@@ -604,6 +604,17 @@ inline struct eagle_cooling_table eagle_readtable(char *cooling_table_path, cons
   return table;
 }
 
+inline int element_index(char *element_name, const struct cooling_function_data* restrict cooling) {
+  int i;
+
+  for (i = 0; i < cooling->N_Elements; i++)
+    if (strcmp(cooling->ElementNames[i], element_name) == 0) return i;
+
+  /* element not found */
+  return -1;
+}
+
+
 inline int get_element_index(char *table[20], int size, char *element_name) {
   int i;
 
@@ -614,19 +625,153 @@ inline int get_element_index(char *table[20], int size, char *element_name) {
   return -1;
 }
 
-inline int set_cooling_SolarAbundances(const float *element_abundance,
-                                float *cooling_element_abundance, 
-				const struct cooling_function_data* restrict cooling) {
-  int i, index;
+inline void MakeNamePointers(struct cooling_function_data* cooling) {
+  int i, j, sili_index = 0;
+  //char *ElementNames;
+  char ElementNames[cooling->N_Elements][eagle_element_name_length];
 
-  for(i = 0; i < cooling->N_Elements; i++){
-    index = get_element_index(cooling->SolarAbundanceNames,
-                          cooling->N_SolarAbundances, cooling->ElementNames[i]);
-    if (cooling->SolarAbundances[index] != 0.0) cooling_element_abundance[i] = element_abundance[i]/cooling->SolarAbundances[index];
-    else cooling_element_abundance[i] = 0.0;
+  /* This is ridiculous, way too many element name arrays. Needs to be changed */
+  //ElementNames = malloc(cooling->N_Elements*eagle_element_name_length*sizeof(char));
+  strcpy(ElementNames[0], "Hydrogen");
+  strcpy(ElementNames[1], "Helium");
+  strcpy(ElementNames[2], "Carbon");
+  strcpy(ElementNames[3], "Nitrogen");
+  strcpy(ElementNames[4], "Oxygen");
+  strcpy(ElementNames[5], "Neon");
+  strcpy(ElementNames[6], "Magnesium");
+  strcpy(ElementNames[7], "Silicon");
+  strcpy(ElementNames[8], "Iron");
+
+  cooling->ElementNamePointers = malloc(cooling->N_Elements * sizeof(int));
+  cooling->SolarAbundanceNamePointers = malloc(cooling->N_Elements * sizeof(int));
+
+  for (i = 0; i < cooling->N_Elements; i++) {
+    if (strcmp(ElementNames[i], "Silicon") == 0) sili_index = i;
   }
 
-  return 0;
+  for (i = 0; i < cooling->N_Elements; i++) {
+    cooling->SolarAbundanceNamePointers[i] = -999;
+    cooling->ElementNamePointers[i] = -999;
+
+    for (j = 0; j < cooling->N_SolarAbundances; j++) {
+      if (strcmp(cooling->ElementNames[i], cooling->SolarAbundanceNames[j]) == 0)
+        cooling->SolarAbundanceNamePointers[i] = j;
+    }
+
+    if (strcmp(cooling->ElementNames[i], "Sulphur") == 0 ||
+        strcmp(cooling->ElementNames[i], "Calcium") ==
+            0) /* These elements are tracked! */
+      cooling->ElementNamePointers[i] = -1 * sili_index;
+    else {
+      for (j = 0; j < cooling->N_Elements; j++) {
+        if (strcmp(cooling->ElementNames[i], ElementNames[j]) == 0)
+          cooling->ElementNamePointers[i] = j;
+      }
+    }
+  }
 }
+
+
+//inline int set_cooling_SolarAbundances(const float *element_abundance,
+//                                float *cooling_element_abundance, 
+//				const struct cooling_function_data* restrict cooling) {
+//  int i, index;
+//
+//  for(i = 0; i < cooling->N_Elements; i++){
+//    index = get_element_index(cooling->SolarAbundanceNames,
+//                          cooling->N_SolarAbundances, cooling->ElementNames[i]);
+//    if (cooling->SolarAbundances[index] != 0.0) cooling_element_abundance[i] = element_abundance[i]/cooling->SolarAbundances[index];
+//    else cooling_element_abundance[i] = 0.0;
+//    printf ("eagle_cool_tables.h element, name, abundance, solar abundance, cooling abundance %d %s %.5e %.5e %.5e\n",index,cooling->ElementNames[i], element_abundance[i],cooling->SolarAbundances[index], cooling_element_abundance[i]);
+//  }
+//
+//  return 0;
+//}
+
+//inline int set_cooling_SolarAbundances(const float *element_abundance,
+//                                float *cooling_element_abundance,
+//				const struct cooling_function_data* restrict cooling) {
+//  int i, index;
+//
+//  int static Silicon_SPH_Index = -1;
+//  int static Calcium_SPH_Index = -1;
+//  int static Sulphur_SPH_Index = -1;
+//
+//  int static Silicon_CoolHeat_Index = -1;
+//  int static Calcium_CoolHeat_Index = -1;
+//  int static Sulphur_CoolHeat_Index = -1;
+//
+//  static int first_call = 0;
+//
+//  if (first_call == 0) {
+//    /* determine (inverse of) solar abundance of these elements */
+//    for (i = 0; i < cooling_N_Elements; i++) {
+//      index =
+//          get_element_index(cooling_SolarAbundanceNames,
+//                            cooling_N_SolarAbundances, cooling_ElementNames[i]);
+//
+//      if (index < 0) endrun(-12345);
+//
+//      index = SolarAbundanceNamePointers[i];
+//
+//      cooling_ElementAbundance_SOLARM1[i] = 1. / cooling_SolarAbundances[index];
+//
+//      index = ElementNamePointers[i];
+//
+//      if (index < 0 && ThisTask == 0)
+//        printf("[bg_cooling] element not found %s\n", cooling_ElementNames[i]);
+//    }
+//
+//    /* Sulphur tracks Silicon: may choose not to follow Sulphur as SPH element
+//     */
+//    /* Same is true for Calcium */
+//    /* We will assume the code tracks Silicon, and may need to scale Calcium and
+//     * Sulphur accordingly */
+//
+//    Silicon_SPH_Index = element_index("Silicon");
+//    Calcium_SPH_Index = element_index("Calcium");
+//    Sulphur_SPH_Index = element_index("Sulphur");
+//
+//    Silicon_CoolHeat_Index =
+//        get_element_index(cooling_ElementNames, cooling_N_Elements, "Silicon");
+//    Calcium_CoolHeat_Index =
+//        get_element_index(cooling_ElementNames, cooling_N_Elements, "Calcium");
+//    Sulphur_CoolHeat_Index =
+//        get_element_index(cooling_ElementNames, cooling_N_Elements, "Sulphur");
+//
+//    if (Silicon_CoolHeat_Index == -1 || Calcium_CoolHeat_Index == -1 ||
+//        Sulphur_CoolHeat_Index == -1) {
+//      if (ThisTask == 0)
+//        printf("[bg_cooling] error: did not find Si or Ca or S??\n");
+//      endrun(-1233);
+//    }
+//
+//    first_call = 1;
+//  }
+//  for (i = 0; i < cooling_N_Elements; i++) {
+//    if (i == Calcium_CoolHeat_Index && Calcium_SPH_Index == -1)
+//      /* SPH does not track Calcium: use Si abundance */
+//      if (Silicon_SPH_Index == -1)
+//        cooling_element_abundance[i] = 0.0;
+//      else
+//        cooling_element_abundance[i] =
+//            element_abundance[Silicon_SPH_Index] *
+//            cooling_ElementAbundance_SOLARM1[Silicon_CoolHeat_Index];
+//    else if (i == Sulphur_CoolHeat_Index && Sulphur_SPH_Index == -1)
+//      /* SPH does not track Sulphur: use Si abundance */
+//      if (Silicon_SPH_Index == -1)
+//        cooling_element_abundance[i] = 0.0;
+//      else
+//        cooling_element_abundance[i] =
+//            element_abundance[Silicon_SPH_Index] *
+//            cooling_ElementAbundance_SOLARM1[Silicon_CoolHeat_Index];
+//    else
+//      cooling_element_abundance[i] = element_abundance[ElementNamePointers[i]] *
+//                                     cooling_ElementAbundance_SOLARM1[i];
+//  }
+//
+//  return 0;
+//}
+
 
 #endif

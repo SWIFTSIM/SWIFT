@@ -40,10 +40,12 @@
 /**
  * @brief Return a string containing the name of a given #chemistry_element.
  */
-__attribute__((always_inline)) INLINE static const char*
+//__attribute__((always_inline)) INLINE static const char*
+__attribute__((always_inline)) INLINE const char*
 chemistry_get_element_name(enum chemistry_element elem) {
 
-  static const char* chemistry_element_names[chemistry_element_count] = {
+  //static const char* chemistry_element_names[chemistry_element_count] = {
+  const char* chemistry_element_names[chemistry_element_count] = {
       "Hydrogen", "Helium",    "Carbon",  "Nitrogen", "Oxygen",
       "Neon",     "Magnesium", "Silicon", "Iron"};
 
@@ -172,22 +174,22 @@ static INLINE void chemistry_print_backend(
  * @param p particle struct
  * @param elem enum value of element
  */
-__attribute__((always_inline)) INLINE static double chemistry_get_number_density(const struct part* restrict p, enum chemistry_element elem, const struct phys_const* restrict internal_const) {
+__attribute__((always_inline)) INLINE static double chemistry_get_number_density(const struct part* restrict p, const struct cosmology* restrict cosmo, enum chemistry_element elem, const struct phys_const* restrict internal_const) {
   double number_density;
   int atomic_number;
   switch(elem){
-    case chemistry_element_H : atomic_number = 1;
-    case chemistry_element_He: atomic_number = 4;
-    case chemistry_element_C : atomic_number = 12;
-    case chemistry_element_N : atomic_number = 14;
-    case chemistry_element_O : atomic_number = 16;
-    case chemistry_element_Ne: atomic_number = 20;
-    case chemistry_element_Mg: atomic_number = 24;
-    case chemistry_element_Si: atomic_number = 28;
-    case chemistry_element_Fe: atomic_number = 56;
+    case chemistry_element_H : atomic_number = 1; break;
+    case chemistry_element_He: atomic_number = 4; break;
+    case chemistry_element_C : atomic_number = 12; break;
+    case chemistry_element_N : atomic_number = 14; break;
+    case chemistry_element_O : atomic_number = 16; break;
+    case chemistry_element_Ne: atomic_number = 20; break;
+    case chemistry_element_Mg: atomic_number = 24; break;
+    case chemistry_element_Si: atomic_number = 28; break;
+    case chemistry_element_Fe: atomic_number = 56; break;
   }
   double element_mass = internal_const->const_proton_mass*atomic_number;
-  number_density = p->chemistry_data.metal_mass_fraction[elem]*hydro_get_comoving_density(p)/element_mass;
+  number_density = p->chemistry_data.metal_mass_fraction[elem]*hydro_get_physical_density(p,cosmo)/element_mass;
 
   return number_density;
 }
