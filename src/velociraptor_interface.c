@@ -120,8 +120,9 @@ void velociraptor_init(struct engine *e) {
         sim_info.cellloc[i].loc[2] = unit_info.lengthtokpc * s->cells_top[i].loc[2];
     }
 
-    char configfilename[PARSER_MAX_LINE_SIZE];
+    char configfilename[PARSER_MAX_LINE_SIZE], outputFileName[FILENAME_BUFFER_SIZE];
     parser_get_param_string(e->parameter_file, "StructureFinding:config_file_name", configfilename);
+    snprintf(outputFileName, FILENAME_BUFFER_SIZE, "%s.VELOCIraptor", e->stfBaseName);
     
     message("Config file name: %s", configfilename);
     message("Period: %e", sim_info.period);
@@ -133,7 +134,7 @@ void velociraptor_init(struct engine *e) {
     //message("Local top-level cell locations range: (%e,%e,%e) -> (%e,%e,%e)", cell_loc_min[0], cell_loc_min[1], cell_loc_min[2], cell_loc_max[0], cell_loc_max[1], cell_loc_max[2]);
     message("Top-level cell locations range: (%e,%e,%e) -> (%e,%e,%e)", sim_info.cellloc[0].loc[0], sim_info.cellloc[0].loc[1], sim_info.cellloc[0].loc[2], sim_info.cellloc[sim_info.numcells - 1].loc[0], sim_info.cellloc[sim_info.numcells - 1].loc[1], sim_info.cellloc[sim_info.numcells - 1].loc[2]);
 
-    InitVelociraptor(configfilename, cosmo_info, unit_info, sim_info);
+    InitVelociraptor(configfilename, outputFileName, cosmo_info, unit_info, sim_info);
 
     /* Free cell locations after VELOCIraptor has copied them. */
     //free(sim_info.cellloc);
