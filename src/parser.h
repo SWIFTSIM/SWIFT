@@ -26,6 +26,10 @@
 /* Standard headers */
 #include <stdio.h>
 
+#if defined(HAVE_HDF5)
+#include <hdf5.h>
+#endif
+
 /* Some constants. */
 #define PARSER_MAX_LINE_SIZE 256
 #define PARSER_MAX_NO_OF_PARAMS 256
