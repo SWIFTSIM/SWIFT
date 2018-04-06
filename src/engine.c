@@ -5089,7 +5089,7 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 
 /* Dump... */
-#if defined(WITH_HDF5)
+#if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   write_output_parallel(e, e->snapshotBaseName, e->internal_units,
