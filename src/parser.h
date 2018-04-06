@@ -23,9 +23,8 @@
 /* Config parameters. */
 #include "../config.h"
 
-#if defined(HAVE_HDF5)
-#include <hdf5.h>
-#endif
+/* Standard headers */
+#include <stdio.h>
 
 /* Some constants. */
 #define PARSER_MAX_LINE_SIZE 256

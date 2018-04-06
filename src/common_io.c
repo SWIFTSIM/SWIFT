@@ -21,21 +21,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-#if defined(HAVE_HDF5)
-
-/* Some standard headers. */
-#include <hdf5.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
-
 /* This object's header. */
 #include "common_io.h"
 
@@ -49,6 +34,22 @@
 #include "threadpool.h"
 #include "units.h"
 #include "version.h"
+
+/* Some standard headers. */
+#include <math.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#if defined(HAVE_HDF5)
+
+#include <hdf5.h>
+
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
 
 /**
  * @brief Converts a C data type to the HDF5 equivalent.
@@ -78,36 +79,6 @@ hid_t io_hdf5_type(enum IO_DATA_TYPE type) {
       return H5T_NATIVE_DOUBLE;
     case CHAR:
       return H5T_NATIVE_CHAR;
-    default:
-      error("Unknown type");
-      return 0;
-  }
-}
-
-/**
- * @brief Returns the memory size of the data type
- */
-size_t io_sizeof_type(enum IO_DATA_TYPE type) {
-
-  switch (type) {
-    case INT:
-      return sizeof(int);
-    case UINT:
-      return sizeof(unsigned int);
-    case LONG:
-      return sizeof(long);
-    case ULONG:
-      return sizeof(unsigned long);
-    case LONGLONG:
-      return sizeof(long long);
-    case ULONGLONG:
-      return sizeof(unsigned long long);
-    case FLOAT:
-      return sizeof(float);
-    case DOUBLE:
-      return sizeof(double);
-    case CHAR:
-      return sizeof(char);
     default:
       error("Unknown type");
       return 0;
@@ -428,6 +399,36 @@ void io_write_engine_policy(hid_t h_file, const struct engine* e) {
 }
 
 #endif /* HAVE_HDF5 */
+
+/**
+ * @brief Returns the memory size of the data type
+ */
+size_t io_sizeof_type(enum IO_DATA_TYPE type) {
+
+  switch (type) {
+    case INT:
+      return sizeof(int);
+    case UINT:
+      return sizeof(unsigned int);
+    case LONG:
+      return sizeof(long);
+    case ULONG:
+      return sizeof(unsigned long);
+    case LONGLONG:
+      return sizeof(long long);
+    case ULONGLONG:
+      return sizeof(unsigned long long);
+    case FLOAT:
+      return sizeof(float);
+    case DOUBLE:
+      return sizeof(double);
+    case CHAR:
+      return sizeof(char);
+    default:
+      error("Unknown type");
+      return 0;
+  }
+}
 
 /**
  * @brief Mapper function to copy #part or #gpart fields into a buffer.
