@@ -322,7 +322,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     float Xi = Vi;
     float Xj = Vj;
 #ifdef GIZMO_VOLUME_CORRECTION
-    if (fabsf(Vi - Vj) / fminf(Vi, Vj) > 1.5 * hydro_dimension) {
+    if (fabsf(Vi - Vj) / min(Vi, Vj) > 1.5 * hydro_dimension) {
       Xi = (Vi * hj + Vj * hi) / (hi + hj);
       Xj = Xi;
     }
