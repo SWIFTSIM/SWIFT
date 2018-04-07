@@ -19,16 +19,6 @@
 #ifndef SWIFT_ISOTHERMAL_EQUATION_OF_STATE_H
 #define SWIFT_ISOTHERMAL_EQUATION_OF_STATE_H
 
-/**
- * @file equation_of_state.h
- * @brief Defines the equation of state of the gas we simulate in the form of
- * relations between thermodynamic quantities. These are later used internally
- * by all hydro schemes
- */
-
-/* Config parameters. */
-#include "../config.h"
-
 /* Some standard headers. */
 #include <math.h>
 
@@ -92,7 +82,7 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
     float density, float pressure) {
 
   return hydro_gamma_minus_one * eos.isothermal_internal_energy *
-    pow_minus_gamma_minus_one(density);
+         pow_minus_gamma_minus_one(density);
 }
 
 /**
@@ -122,11 +112,10 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
  * @param u The internal energy \f$u\f$
  */
 __attribute__((always_inline)) INLINE static float
-gas_entropy_from_internal_energy(
-    float density, float u) {
+gas_entropy_from_internal_energy(float density, float u) {
 
   return hydro_gamma_minus_one * eos.isothermal_internal_energy *
-    pow_minus_gamma_minus_one(density);
+         pow_minus_gamma_minus_one(density);
 }
 
 /**
@@ -139,8 +128,7 @@ gas_entropy_from_internal_energy(
  * @param u The internal energy \f$u\f$
  */
 __attribute__((always_inline)) INLINE static float
-gas_pressure_from_internal_energy(
-    float density, float u) {
+gas_pressure_from_internal_energy(float density, float u) {
 
   return hydro_gamma_minus_one * eos.isothermal_internal_energy * density;
 }
@@ -155,8 +143,7 @@ gas_pressure_from_internal_energy(
  * @return The internal energy \f$u\f$ (which is constant).
  */
 __attribute__((always_inline)) INLINE static float
-gas_internal_energy_from_pressure(
-    float density, float pressure) {
+gas_internal_energy_from_pressure(float density, float pressure) {
   return eos.isothermal_internal_energy;
 }
 
@@ -171,8 +158,7 @@ gas_internal_energy_from_pressure(
  * @param u The internal energy \f$u\f$
  */
 __attribute__((always_inline)) INLINE static float
-gas_soundspeed_from_internal_energy(
-    float density, float u) {
+gas_soundspeed_from_internal_energy(float density, float u) {
 
   return sqrtf(eos.isothermal_internal_energy * hydro_gamma *
                hydro_gamma_minus_one);
@@ -207,7 +193,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
     struct eos_parameters *e, const struct swift_params *params) {
 
   e->isothermal_internal_energy =
-    parser_get_param_float(params, "EoS:isothermal_internal_energy");
+      parser_get_param_float(params, "EoS:isothermal_internal_energy");
 }
 
 /**
@@ -219,9 +205,9 @@ __attribute__((always_inline)) INLINE static void eos_print(
     const struct eos_parameters *e) {
 
   message(
-	  "Equation of state: Isothermal with internal energy "
-	  "per unit mass set to %f.",
-	  e->isothermal_internal_energy);
+      "Equation of state: Isothermal with internal energy "
+      "per unit mass set to %f.",
+      e->isothermal_internal_energy);
 
   message("Adiabatic index gamma: %f.", hydro_gamma);
 }

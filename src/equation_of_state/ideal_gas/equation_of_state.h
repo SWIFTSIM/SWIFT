@@ -19,16 +19,6 @@
 #ifndef SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H
 #define SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H
 
-/**
- * @file equation_of_state.h
- * @brief Defines the equation of state of the gas we simulate in the form of
- * relations between thermodynamic quantities. These are later used internally
- * by all hydro schemes
- */
-
-/* Config parameters. */
-#include "../config.h"
-
 /* Some standard headers. */
 #include <math.h>
 
@@ -110,8 +100,7 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
  * @param u The internal energy \f$u\f$
  */
 __attribute__((always_inline)) INLINE static float
-gas_entropy_from_internal_energy(
-    float density, float u) {
+gas_entropy_from_internal_energy(float density, float u) {
 
   return hydro_gamma_minus_one * u * pow_minus_gamma_minus_one(density);
 }
@@ -125,8 +114,7 @@ gas_entropy_from_internal_energy(
  * @param u The internal energy \f$u\f$
  */
 __attribute__((always_inline)) INLINE static float
-gas_pressure_from_internal_energy(
-    float density, float u) {
+gas_pressure_from_internal_energy(float density, float u) {
 
   return hydro_gamma_minus_one * u * density;
 }
@@ -141,8 +129,7 @@ gas_pressure_from_internal_energy(
  * @return The internal energy \f$u\f$.
  */
 __attribute__((always_inline)) INLINE static float
-gas_internal_energy_from_pressure(
-    float density, float pressure) {
+gas_internal_energy_from_pressure(float density, float pressure) {
   return hydro_one_over_gamma_minus_one * pressure / density;
 }
 
@@ -155,8 +142,7 @@ gas_internal_energy_from_pressure(
  * @param u The internal energy \f$u\f$
  */
 __attribute__((always_inline)) INLINE static float
-gas_soundspeed_from_internal_energy(
-    float density, float u) {
+gas_soundspeed_from_internal_energy(float density, float u) {
 
   return sqrtf(u * hydro_gamma * hydro_gamma_minus_one);
 }
@@ -198,7 +184,6 @@ __attribute__((always_inline)) INLINE static void eos_print(
   message("Adiabatic index gamma: %f.", hydro_gamma);
 }
 
-
 #if defined(HAVE_HDF5)
 /**
  * @brief Write equation of state information to the snapshot
@@ -207,7 +192,7 @@ __attribute__((always_inline)) INLINE static void eos_print(
  * @param e The #eos_parameters
  */
 __attribute__((always_inline)) INLINE static void eos_print_snapshot(
-    hid_t h_grpsph, const struct eos_parameters *e ) {
+    hid_t h_grpsph, const struct eos_parameters *e) {
 
   io_write_attribute_f(h_grpsph, "Adiabatic index", hydro_gamma);
 

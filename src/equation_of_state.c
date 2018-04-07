@@ -23,4 +23,3 @@
 /* Equation of state for the physics model
  * (temporary ugly solution as a global variable) */
 struct eos_parameters eos;
-
