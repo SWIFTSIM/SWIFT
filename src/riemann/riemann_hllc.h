@@ -38,7 +38,8 @@
 #endif
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    float *WL, float *WR, float *n, float *vij, float *totflux) {
+    const float *WL, const float *WR, const float *n, const float *vij,
+    float *totflux) {
 
   /* Handle pure vacuum */
   if (!WL[0] && !WR[0]) {

@@ -47,14 +47,14 @@
  * @param W The left or right state vector
  * @param a The left or right sound speed
  */
-__attribute__((always_inline)) INLINE static float riemann_fb(float p, float* W,
+__attribute__((always_inline)) INLINE static float riemann_fb(float p,
+                                                              const float* W,
                                                               float a) {
 
-  float fval = 0.;
-  float A, B;
+  float fval;
   if (p > W[4]) {
-    A = hydro_two_over_gamma_plus_one / W[0];
-    B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
+    const float A = hydro_two_over_gamma_plus_one / W[0];
+    const float B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
     fval = (p - W[4]) * sqrtf(A / (p + B));
   } else {
     fval = hydro_two_over_gamma_minus_one * a *
@@ -75,7 +75,8 @@ __attribute__((always_inline)) INLINE static float riemann_fb(float p, float* W,
  * @param aR The right sound speed
  */
 __attribute__((always_inline)) INLINE static float riemann_f(
-    float p, float* WL, float* WR, float vL, float vR, float aL, float aR) {
+    float p, const float* WL, const float* WR, float vL, float vR, float aL,
+    float aR) {
 
   return riemann_fb(p, WL, aL) + riemann_fb(p, WR, aR) + (vR - vL);
 }
@@ -87,15 +88,13 @@ __attribute__((always_inline)) INLINE static float riemann_f(
  * @param W The left or right state vector
  * @param a The left or right sound speed
  */
-__attribute__((always_inline)) INLINE static float riemann_fprimeb(float p,
-                                                                   float* W,
-                                                                   float a) {
+__attribute__((always_inline)) INLINE static float riemann_fprimeb(
+    float p, const float* W, float a) {
 
-  float fval = 0.;
-  float A, B;
+  float fval;
   if (p > W[4]) {
-    A = hydro_two_over_gamma_plus_one / W[0];
-    B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
+    const float A = hydro_two_over_gamma_plus_one / W[0];
+    const float B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
     fval = (1.0f - 0.5f * (p - W[4]) / (B + p)) * sqrtf(A / (p + B));
   } else {
     fval = 1.0f / W[0] / a * pow_minus_gamma_plus_one_over_two_gamma(p / W[4]);
@@ -113,7 +112,7 @@ __attribute__((always_inline)) INLINE static float riemann_fprimeb(float p,
  * @param aR The right sound speed
  */
 __attribute__((always_inline)) INLINE static float riemann_fprime(
-    float p, float* WL, float* WR, float aL, float aR) {
+    float p, const float* WL, const float* WR, float aL, float aR) {
 
   return riemann_fprimeb(p, WL, aL) + riemann_fprimeb(p, WR, aR);
 }
@@ -125,11 +124,10 @@ __attribute__((always_inline)) INLINE static float riemann_fprime(
  * @param W The left or right state vector
  */
 __attribute__((always_inline)) INLINE static float riemann_gb(float p,
-                                                              float* W) {
+                                                              const float* W) {
 
-  float A, B;
-  A = hydro_two_over_gamma_plus_one / W[0];
-  B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
+  const float A = hydro_two_over_gamma_plus_one / W[0];
+  const float B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
   return sqrtf(A / (p + B));
 }
 
@@ -147,7 +145,7 @@ __attribute__((always_inline)) INLINE static float riemann_gb(float p,
  * @param aR The right sound speed
  */
 __attribute__((always_inline)) INLINE static float riemann_guess_p(
-    float* WL, float* WR, float vL, float vR, float aL, float aR) {
+    const float* WL, const float* WR, float vL, float vR, float aL, float aR) {
 
   float pguess, pmin, pmax, qmax;
   float ppv;
@@ -199,8 +197,8 @@ __attribute__((always_inline)) INLINE static float riemann_guess_p(
  */
 __attribute__((always_inline)) INLINE static float riemann_solve_brent(
     float lower_limit, float upper_limit, float lowf, float upf,
-    float error_tol, float* WL, float* WR, float vL, float vR, float aL,
-    float aR) {
+    float error_tol, const float* WL, const float* WR, float vL, float vR,
+    float aL, float aR) {
 
   float a, b, c, d, s;
   float fa, fb, fc, fs;
@@ -306,7 +304,7 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
  * @param n_unit Normal vector of the interface
  */
 __attribute__((always_inline)) INLINE static void riemann_solver_solve(
-    float* WL, float* WR, float* Whalf, float* n_unit) {
+    const float* WL, const float* WR, float* Whalf, const float* n_unit) {
 
   /* velocity of the left and right state in a frame aligned with n_unit */
   float vL, vR, vhalf;
@@ -510,7 +508,8 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
 }
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    float* Wi, float* Wj, float* n_unit, float* vij, float* totflux) {
+    const float* Wi, const float* Wj, const float* n_unit, const float* vij,
+    float* totflux) {
 
   float Whalf[5];
   float flux[5][3];

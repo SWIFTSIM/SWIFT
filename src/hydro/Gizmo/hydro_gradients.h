@@ -93,17 +93,16 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
     struct part* restrict pi, struct part* restrict pj, float hi, float hj,
-    const float* dx, float r, float* xij_i, float* Wi, float* Wj) {
+    const float* dx, float r, const float* xij_i, float* Wi, float* Wj) {
 
-  float dWi[5], dWj[5];
-  float xij_j[3];
 
   /* perform gradient reconstruction in space and time */
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8) */
   const float xfac = hj / (hi + hj);
-  for (int k = 0; k < 3; k++) xij_j[k] = xfac * dx[k];
+  const float xij_j[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
 
+  float dWi[5];
   dWi[0] = pi->primitives.gradients.rho[0] * xij_i[0] +
            pi->primitives.gradients.rho[1] * xij_i[1] +
            pi->primitives.gradients.rho[2] * xij_i[2];
@@ -120,6 +119,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
            pi->primitives.gradients.P[1] * xij_i[1] +
            pi->primitives.gradients.P[2] * xij_i[2];
 
+  float dWj[5];
   dWj[0] = pj->primitives.gradients.rho[0] * xij_j[0] +
            pj->primitives.gradients.rho[1] * xij_j[1] +
            pj->primitives.gradients.rho[2] * xij_j[2];

@@ -52,7 +52,7 @@
  * @param n_unit Normal vector of the interface
  */
 __attribute__((always_inline)) INLINE static void riemann_solver_solve(
-    float* WL, float* WR, float* Whalf, float* n_unit) {
+    const float* WL, const float* WR, float* Whalf, const float* n_unit) {
   float aL, aR;
   float PLR;
   float vL, vR;
@@ -160,7 +160,8 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
 }
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    float* Wi, float* Wj, float* n_unit, float* vij, float* totflux) {
+    const float* Wi, const float* Wj, const float* n_unit, const float* vij,
+    float* totflux) {
 
   float Whalf[5];
   float flux[5][3];
