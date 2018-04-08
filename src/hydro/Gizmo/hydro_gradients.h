@@ -97,16 +97,12 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
 
   float dWi[5], dWj[5];
   float xij_j[3];
-  int k;
-  float xfac;
 
   /* perform gradient reconstruction in space and time */
-  /* space */
   /* Compute interface position (relative to pj, since we don't need the actual
-   * position) */
-  /* eqn. (8) */
-  xfac = hj / (hi + hj);
-  for (k = 0; k < 3; k++) xij_j[k] = xfac * dx[k];
+   * position) eqn. (8) */
+  const float xfac = hj / (hi + hj);
+  for (int k = 0; k < 3; k++) xij_j[k] = xfac * dx[k];
 
   dWi[0] = pi->primitives.gradients.rho[0] * xij_i[0] +
            pi->primitives.gradients.rho[1] * xij_i[1] +
@@ -140,6 +136,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
            pj->primitives.gradients.P[1] * xij_j[1] +
            pj->primitives.gradients.P[2] * xij_j[2];
 
+  /* Apply the slope limiter at this interface */
   hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, r);
 
   Wi[0] += dWi[0];
@@ -154,6 +151,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   Wj[3] += dWj[3];
   Wj[4] += dWj[4];
 
+  /* Check that we don't have problematic densities or pressures */
   gizmo_check_physical_quantity("density", Wi[0]);
   gizmo_check_physical_quantity("pressure", Wi[4]);
   gizmo_check_physical_quantity("density", Wj[0]);
