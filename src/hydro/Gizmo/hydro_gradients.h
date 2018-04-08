@@ -95,7 +95,6 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
     struct part* restrict pi, struct part* restrict pj, float hi, float hj,
     const float* dx, float r, const float* xij_i, float* Wi, float* Wj) {
 
-
   /* perform gradient reconstruction in space and time */
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8) */

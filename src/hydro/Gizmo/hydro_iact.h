@@ -459,8 +459,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
 #ifndef GIZMO_TOTAL_ENERGY
     const float ekin_j = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
-				 pj->primitives.v[1] * pj->primitives.v[1] +
-				 pj->primitives.v[2] * pj->primitives.v[2]);
+                                 pj->primitives.v[1] * pj->primitives.v[1] +
+                                 pj->primitives.v[2] * pj->primitives.v[2]);
     pj->conserved.flux.energy -= totflux[1] * pj->primitives.v[0];
     pj->conserved.flux.energy -= totflux[2] * pj->primitives.v[1];
     pj->conserved.flux.energy -= totflux[3] * pj->primitives.v[2];

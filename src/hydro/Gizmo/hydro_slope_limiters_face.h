@@ -88,8 +88,8 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
  * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
-    float *Wi, float *Wj, float *dWi, float *dWj, const float *xij_i, const float *xij_j,
-    float r) {
+    float *Wi, float *Wj, float *dWi, float *dWj, const float *xij_i,
+    const float *xij_j, float r) {
 
   const float xij_i_norm =
       sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
