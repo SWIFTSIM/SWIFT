@@ -44,8 +44,8 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
     return 0.0f;
   }
 
-  delta1 = psi1 * fabs(phi_i - phi_j);
-  delta2 = psi2 * fabs(phi_i - phi_j);
+  delta1 = psi1 * fabsf(phi_i - phi_j);
+  delta2 = psi2 * fabsf(phi_i - phi_j);
 
   phimin = min(phi_i, phi_j);
   phimax = max(phi_i, phi_j);
@@ -57,7 +57,7 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
     phiplus = phimax + delta1;
   } else {
     if (phimax != 0.) {
-      phiplus = phimax / (1.0f + delta1 / fabs(phimax));
+      phiplus = phimax / (1.0f + delta1 / fabsf(phimax));
     } else {
       phiplus = 0.;
     }
@@ -68,7 +68,7 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
     phiminus = phimin - delta1;
   } else {
     if (phimin != 0.) {
-      phiminus = phimin / (1.0f + delta1 / fabs(phimin));
+      phiminus = phimin / (1.0f + delta1 / fabsf(phimin));
     } else {
       phiminus = 0.;
     }
