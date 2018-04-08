@@ -58,7 +58,7 @@ __attribute__((always_inline)) INLINE static float riemann_fprimeb(float rho,
   if (rho < W[0]) {
     return const_isothermal_soundspeed * W[0] / rho;
   } else {
-    return 0.5 * const_isothermal_soundspeed *
+    return 0.5f * const_isothermal_soundspeed *
            (sqrtf(rho / W[0]) + sqrtf(W[0] / rho)) / rho;
   }
 }
