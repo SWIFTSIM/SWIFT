@@ -73,17 +73,20 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   float qL = 1.f;
   if (pstar > WL[4]) {
     qL = sqrtf(1.f +
-               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma * (pstar / WL[4] - 1.f));
+               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                   (pstar / WL[4] - 1.f));
   }
   float qR = 1.f;
   if (pstar > WR[4]) {
     qR = sqrtf(1.f +
-               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma * (pstar / WR[4] - 1.f));
+               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                   (pstar / WR[4] - 1.f));
   }
   const float SL = uL - aL * qL;
   const float SR = uR + aR * qR;
-  const float Sstar = (WR[4] - WL[4] + WL[0] * uL * (SL - uL) - WR[0] * uR * (SR - uR)) /
-    (WL[0] * (SL - uL) - WR[0] * (SR - uR));
+  const float Sstar =
+      (WR[4] - WL[4] + WL[0] * uL * (SL - uL) - WR[0] * uR * (SR - uR)) /
+      (WL[0] * (SL - uL) - WR[0] * (SR - uR));
 
   /* STEP 3: HLLC flux in a frame moving with the interface velocity */
   if (Sstar >= 0.f) {
@@ -157,7 +160,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     }
   }
 
-  /* deboost to lab frame we add the flux contribution due to the 
+  /* deboost to lab frame we add the flux contribution due to the
      movement of the interface the density flux is unchanged
      we add the extra velocity flux due to the absolute motion of the fluid
      similarly, we need to add the energy fluxes due to the absolute motion */
