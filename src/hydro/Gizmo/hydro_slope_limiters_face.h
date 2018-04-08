@@ -32,16 +32,16 @@
 #ifndef SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
 #define SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
 
+#include <float.h>
+
+#include "sign.h"
+
 __attribute__((always_inline)) INLINE static float
 hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
                                 float xij_norm, float r_inv) {
 
   const float psi1 = 0.5f;
   const float psi2 = 0.25f;
-
-  if (phi_i == phi_j) {
-    return 0.0f;
-  }
 
   const float delta1 = psi1 * fabsf(phi_i - phi_j);
   const float delta2 = psi2 * fabsf(phi_i - phi_j);
@@ -53,27 +53,15 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
 
   float phiplus, phiminus, phi_mid;
 
-  /* if sign(phimax+delta1) == sign(phimax) */
-  if ((phimax + delta1) * phimax > 0.0f) {
+  if (same_signf(phimax + delta1, phimax))
     phiplus = phimax + delta1;
-  } else {
-    if (phimax != 0.f) {
-      phiplus = phimax / (1.0f + delta1 / fabsf(phimax));
-    } else {
-      phiplus = 0.f;
-    }
-  }
+  else
+    phiplus = phimax / (1.0f + delta1 / (fabsf(phimax) + FLT_MIN));
 
-  /* if sign(phimin-delta1) == sign(phimin) */
-  if ((phimin - delta1) * phimin > 0.0f) {
+  if (same_signf(phimin - delta1, phimin))
     phiminus = phimin - delta1;
-  } else {
-    if (phimin != 0.f) {
-      phiminus = phimin / (1.0f + delta1 / fabsf(phimin));
-    } else {
-      phiminus = 0.f;
-    }
-  }
+  else
+    phiminus = phimin / (1.0f + delta1 / (fabsf(phimin) + FLT_MIN));
 
   if (phi_i < phi_j) {
     const float temp = min(phibar + delta2, phi_mid0);
