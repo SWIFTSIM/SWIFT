@@ -93,7 +93,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   Wj[4] = pj->primitives.P;
 
   /* Compute kernel of pi. */
-  hi_inv = 1.0 / hi;
+  hi_inv = 1.f / hi;
   xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
@@ -191,7 +191,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   hydro_slope_limit_cell_collect(pi, pj, r);
 
   /* Compute kernel of pj. */
-  hj_inv = 1.0 / hj;
+  hj_inv = 1.f / hj;
   xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
@@ -330,7 +330,7 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
   Wj[4] = pj->primitives.P;
 
   /* Compute kernel of pi. */
-  hi_inv = 1.0 / hi;
+  hi_inv = 1.f / hi;
   xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 

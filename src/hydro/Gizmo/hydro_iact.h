@@ -58,7 +58,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   int k, l;
 
   /* Compute density of pi. */
-  h_inv = 1.0 / hi;
+  h_inv = 1.f / hi;
   xi = r * h_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->geometry.centroid[2] -= dx[2] * wi;
 
   /* Compute density of pj. */
-  h_inv = 1.0 / hj;
+  h_inv = 1.f / hj;
   xj = r * h_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
@@ -126,7 +126,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   /* Get r and r inverse. */
   r = sqrtf(r2);
 
-  h_inv = 1.0 / hi;
+  h_inv = 1.f / hi;
   xi = r * h_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
@@ -274,7 +274,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
                              (vi[2] - vj[2]) * dx[2]);
   if (dvdotdx < 0.) {
     /* the magical factor 3 also appears in Gadget2 */
-    vmax -= 3. * dvdotdx / r;
+    vmax -= 3.f * dvdotdx / r;
   }
   pi->timestepvars.vmax = max(pi->timestepvars.vmax, vmax);
   if (mode == 1) {
@@ -282,13 +282,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   }
 
   /* Compute kernel of pi. */
-  hi_inv = 1.0 / hi;
+  hi_inv = 1.f / hi;
   hi_inv_dim = pow_dimension(hi_inv);
   xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   /* Compute kernel of pj. */
-  hj_inv = 1.0 / hj;
+  hj_inv = 1.f / hj;
   hj_inv_dim = pow_dimension(hj_inv);
   xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
@@ -322,7 +322,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     float Xi = Vi;
     float Xj = Vj;
 #ifdef GIZMO_VOLUME_CORRECTION
-    if (fabsf(Vi - Vj) / min(Vi, Vj) > 1.5 * hydro_dimension) {
+    if (fabsf(Vi - Vj) / min(Vi, Vj) > 1.5f * hydro_dimension) {
       Xi = (Vi * hj + Vj * hi) / (hi + hj);
       Xj = Xi;
     }
@@ -344,7 +344,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     Anorm *= Anorm * r2;
   }
 
-  if (Anorm == 0.) {
+  if (Anorm == 0.f) {
     /* if the interface has no area, nothing happens and we return */
     /* continuing results in dividing by zero and NaN's... */
     return;

@@ -41,9 +41,9 @@
 #endif
 
 #define gizmo_check_physical_quantity(name, quantity) \
-  if (quantity < 0.) {                                \
+  if (quantity < 0.f) {                                \
     gizmo_unphysical_message(name, quantity);         \
-    quantity = 0.;                                    \
+    quantity = 0.f;                                    \
   }
 
 #else  // defined(GIZMO_UNPHYSICAL_ERROR) || defined(GIZMO_UNPHYSICAL_RESCUE)
