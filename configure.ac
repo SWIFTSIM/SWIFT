@@ -275,6 +275,18 @@ elif test "$no_gravity_below_id" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
 fi
 
+# See if we want memuse reporting.
+AC_ARG_ENABLE([memuse-reports],
+   [AS_HELP_STRING([--enable-memuse-reports],
+     [Output reports about significant memory allocations@<:@yes/no@:>@]
+   )],
+   [enable_memuse_reports="$enableval"],
+   [enable_memuse_reports="no"]
+)
+if test "$enable_memuse_reports" = "yes"; then
+   AC_DEFINE([SWIFT_MEMUSE_REPORTS],1,[Enable memory usage reports])
+fi
+
 
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN

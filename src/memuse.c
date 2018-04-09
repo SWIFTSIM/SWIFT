@@ -31,50 +31,60 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+/* Local defines. */
+#include "memuse.h"
+
 /* Local includes. */
 #include "clocks.h"
 #include "engine.h"
 
-/* Local macros to report output. */
-#ifdef WITH_MPI
+#ifdef SWIFT_MEMUSE_REPORTS
+
+/* For output messages. */
 extern int engine_rank;
 extern int engine_cstep;
-#define memuse_output(what, memuse)                                     \
-  ({                                                                    \
-    printf("[%04i] %s :memuse: %i:%s %s\n",                             \
-           engine_rank, clocks_get_timesincestart(), engine_cstep,      \
-           what, memuse);                                               \
-  })
-#else
-#define memuse_output(what, memuse)                                     \
-  ({                                                                    \
-    printf("%s :memuse: %i:%s %s\n",                                    \
-           clocks_get_timesincestart(), engine_cstep, what, memuse);    \
-  })
-#endif
 
 /**
  *  @brief Report a memory allocation or use in bytes.
  *
  *  @param what a name for the report, "parts", "gparts" etc.
+ *  @param file caller code file name
+ *  @param function caller code function.
+ *  @param line caller code file line no.
  *  @param bytes the number of bytes that have been allocated
  */
-void memuse_report(const char *what, size_t bytes) {
+void memuse_report__(const char *what, const char *file, const char *function,
+                     int line, size_t bytes) {
   char buffer[32];
   sprintf(buffer, "%zd", bytes/1024);
-  memuse_output(what, buffer);
+  memuse_report_str__(what, file, function, line, buffer);
 }
 
 /**
  *  @brief Report a memory allocation or use formatted description.
  *
  *  @param what a name for the report, "parts", "gparts" etc.
+ *  @param file caller code file name
+ *  @param function caller code function.
+ *  @param line caller code file line no.
  *  @param description the report, values should be in KB, the
  *         result of memuse_process() is suitable.
  */
-void memuse_report_str(const char *what, const char *description) {
-  memuse_output(what, description);
+void memuse_report_str__(const char *what, const char *file,
+                         const char *function, int line,
+                         const char *description) {
+#ifdef WITH_MPI
+  printf("[%04i] %s :memuse: %i:%s %s:%s:%i %s\n",
+         engine_rank, clocks_get_timesincestart(), engine_cstep, what,
+         file, function, line, description);
+#else
+  printf("%s :memuse: %i:%s %s:%s:%i %s\n",
+         clocks_get_timesincestart(), engine_cstep, what, file, function,
+         line, description);
+#endif
 }
+
+#endif /* SWIFT_MEMUSE_REPORTS */
 
 /**
  * @brief parse the process /proc/self/statm file to get the process
@@ -133,7 +143,7 @@ void memuse_use(long *size, long *resident, long *share, long *trs,
  * @result the memory use of the process, note make a copy if not used
  * immediately.
  */
-char *memuse_process() {
+const char *memuse_process() {
   static char buffer[256];
   long size;
   long resident;

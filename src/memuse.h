@@ -22,10 +22,25 @@
 /* Config parameters. */
 #include "../config.h"
 
-void memuse_report(const char *what, size_t bytes);
-void memuse_report_str(const char *what, const char *description);
+/* Public API. */
 void memuse_use(long *size, long *resident, long *share, long *trs,
                 long *lrs, long *drs, long *dt);
 const char *memuse_process();
+
+/* Reports are a no-op unless wanted. */
+#ifdef SWIFT_MEMUSE_REPORTS
+void memuse_report__(const char *what, const char *file, const char *function,
+                     int line, size_t bytes);
+void memuse_report_str__(const char *what, const char *file,
+                         const char *function, int line, const char *description);
+
+#define memuse_report(what, size)                               \
+    memuse_report__(what, __FILE__, __FUNCTION__, __LINE__, size)
+#define memuse_report_str(what, description)                    \
+    memuse_report_str__(what, __FILE__, __FUNCTION__, __LINE__, description)
+#else
+#define memuse_report(what, size)
+#define memuse_report_str(what, description)
+#endif
 
 #endif /* SWIFT_MEMUSE_H */

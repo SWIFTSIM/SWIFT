@@ -398,7 +398,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
       allocated += sizeof(struct entry) * (count + 1);
     }
   }
-  memuse_report("c->sort[*]", allocated);
+  memuse_report("cell_sorts", allocated);
 
   /* Does this cell have any progeny? */
   if (c->split) {
