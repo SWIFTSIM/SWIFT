@@ -71,7 +71,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
 		 sourceterms.h \
 		 equation_of_state.h \
-		 equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h
+		 equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h \
 	 	 hydro.h hydro_io.h \
 		 hydro/Minimal/hydro.h hydro/Minimal/hydro_iact.h hydro/Minimal/hydro_io.h \
                  hydro/Minimal/hydro_debug.h hydro/Minimal/hydro_part.h \
