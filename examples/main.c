@@ -659,6 +659,7 @@ int main(int argc, char *argv[]) {
     double dim[3] = {0., 0., 0.};
     int periodic = 0;
     if (myrank == 0) clocks_gettime(&tic);
+#if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
@@ -678,6 +679,7 @@ int main(int argc, char *argv[]) {
                    &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
                    cleanup_h, cosmo.h, nr_threads, dry_run);
+#endif
 #endif
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -859,7 +861,7 @@ int main(int argc, char *argv[]) {
 
 /* Initialise the table of Ewald corrections for the gravity checks */
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  if (periodic) gravity_exact_force_ewald_init(e.s->dim[0]);
+  if (s.periodic) gravity_exact_force_ewald_init(e.s->dim[0]);
 #endif
 
 /* Init the runner history. */

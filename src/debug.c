@@ -305,8 +305,8 @@ static void dumpCells_map(struct cell *c, void *data) {
   /* Only cells with particles are dumped. */
   if (c->count > 0 || c->gcount > 0 || c->scount > 0) {
 
-/* In MPI mode we may only output cells with foreign partners.
- * These define the edges of the partitions. */
+    /* In MPI mode we may only output cells with foreign partners.
+     * These define the edges of the partitions. */
     int ismpiactive = 0;
 #if WITH_MPI
     ismpiactive = (c->send_xv != NULL);
@@ -326,7 +326,8 @@ static void dumpCells_map(struct cell *c, void *data) {
 
     /* So output local super cells that are active and have MPI
      * tasks as requested. */
-    if (c->nodeID == e->nodeID && (!super ||(super && c->super == c)) && active && mpiactive) {
+    if (c->nodeID == e->nodeID && (!super || (super && c->super == c)) &&
+        active && mpiactive) {
 
       /* If requested we work out how many particles are active in this cell. */
       int pactcount = 0;
@@ -370,8 +371,8 @@ static void dumpCells_map(struct cell *c, void *data) {
  * @param rank node ID of MPI rank, or 0 if not relevant.
  * @param step the current engine step, or some unique integer.
  */
-void dumpCells(const char *prefix, int super, int active, int mpiactive, int pactive, 
-               struct space *s, int rank, int step) {
+void dumpCells(const char *prefix, int super, int active, int mpiactive,
+               int pactive, struct space *s, int rank, int step) {
 
   FILE *file = NULL;
 

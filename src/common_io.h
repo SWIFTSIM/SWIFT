@@ -39,8 +39,6 @@ struct io_props;
 struct engine;
 struct threadpool;
 
-#if defined(HAVE_HDF5)
-
 /**
  * @brief The different types of data used in the GADGET IC files.
  *
@@ -58,9 +56,9 @@ enum IO_DATA_TYPE {
   CHAR
 };
 
+#if defined(HAVE_HDF5)
+
 hid_t io_hdf5_type(enum IO_DATA_TYPE type);
-size_t io_sizeof_type(enum IO_DATA_TYPE type);
-int io_is_double_precision(enum IO_DATA_TYPE type);
 
 void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                        void* data);
@@ -87,6 +85,9 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                          const struct unit_system* snapshot_units);
 
 #endif /* defined HDF5 */
+
+size_t io_sizeof_type(enum IO_DATA_TYPE type);
+int io_is_double_precision(enum IO_DATA_TYPE type);
 
 void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
                           struct gpart* const dmparts, size_t Ndm);

@@ -23,6 +23,9 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Standard headers */
+#include <stdio.h>
+
 #if defined(HAVE_HDF5)
 #include <hdf5.h>
 #endif
