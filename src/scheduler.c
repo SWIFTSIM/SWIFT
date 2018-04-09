@@ -45,6 +45,7 @@
 #include "error.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
+#include "memuse.h"
 #include "queue.h"
 #include "sort_part.h"
 #include "space.h"
@@ -1147,12 +1148,15 @@ void scheduler_reset(struct scheduler *s, int size) {
     if (posix_memalign((void **)&s->tasks, task_align,
                        size * sizeof(struct task)) != 0)
       error("Failed to allocate task array.");
+    memuse_report("tasks", size * sizeof(struct task));
 
     if ((s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate task lists.");
+    memuse_report("tasks_ind", size * sizeof(int));
 
     if ((s->tid_active = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate aactive task lists.");
+    memuse_report("tid_active", size * sizeof(int));
   }
 
   /* Reset the counters. */
@@ -1770,6 +1774,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   if (posix_memalign((void **)&s->queues, queue_struct_align,
                      sizeof(struct queue) * nr_queues) != 0)
     error("Failed to allocate queues.");
+  memuse_report("queues", sizeof(struct queue) * nr_queues);
 
   /* Initialize each queue. */
   for (int k = 0; k < nr_queues; k++) queue_init(&s->queues[k], NULL);

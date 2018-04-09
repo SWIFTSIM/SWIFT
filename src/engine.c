@@ -61,6 +61,7 @@
 #include "gravity.h"
 #include "hydro.h"
 #include "map.h"
+#include "memuse.h"
 #include "minmax.h"
 #include "parallel_io.h"
 #include "part.h"
@@ -102,6 +103,9 @@ const char *engine_policy_names[] = {"none",
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
+
+/** The current step of the engine as a global variable (for messages). */
+int engine_cstep;
 
 /**
  * @brief Data collected from the cells at the end of a time-step
@@ -394,6 +398,7 @@ static void *engine_do_redistribute(int *counts, char *parts,
           (void **)&parts_new, alignsize,
           sizeofparts * new_nr_parts * engine_redistribute_alloc_margin) != 0)
     error("Failed to allocate new particle data.");
+  memuse_report("parts", sizeofparts * new_nr_parts * engine_redistribute_alloc_margin);
 
   /* Prepare MPI requests for the asynchronous communications */
   MPI_Request *reqs;
@@ -1498,6 +1503,7 @@ void engine_exchange_cells(struct engine *e) {
   if (posix_memalign((void **)&pcells, SWIFT_CACHE_ALIGNMENT,
                      sizeof(struct pcell) * count_out) != 0)
     error("Failed to allocate pcell buffer.");
+  memuse_report("pcells", sizeof(struct pcell) * count_out);
 
   /* Pack the cells. */
   cell_next_tag = 0;
@@ -1568,6 +1574,8 @@ void engine_exchange_cells(struct engine *e) {
                        sizeof(struct part) * s->size_parts_foreign) != 0)
       error("Failed to allocate foreign part data.");
   }
+  memuse_report("parts_foreign", sizeof(struct part) * s->size_parts_foreign);
+
   if (count_gparts_in > s->size_gparts_foreign) {
     if (s->gparts_foreign != NULL) free(s->gparts_foreign);
     s->size_gparts_foreign = 1.1 * count_gparts_in;
@@ -1575,6 +1583,8 @@ void engine_exchange_cells(struct engine *e) {
                        sizeof(struct gpart) * s->size_gparts_foreign) != 0)
       error("Failed to allocate foreign gpart data.");
   }
+  memuse_report("gparts_foreign", sizeof(struct gpart) * s->size_gparts_foreign);
+
   if (count_sparts_in > s->size_sparts_foreign) {
     if (s->sparts_foreign != NULL) free(s->sparts_foreign);
     s->size_sparts_foreign = 1.1 * count_sparts_in;
@@ -1582,6 +1592,7 @@ void engine_exchange_cells(struct engine *e) {
                        sizeof(struct spart) * s->size_sparts_foreign) != 0)
       error("Failed to allocate foreign spart data.");
   }
+  memuse_report("sparts_foreign", sizeof(struct spart) * s->size_sparts_foreign);
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
@@ -1793,6 +1804,9 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
       }
     }
   }
+  memuse_report("parts", sizeof(struct part) * s->size_parts);
+  memuse_report("xparts", sizeof(struct xpart) * s->size_parts);
+
   if (offset_sparts + count_sparts_in > s->size_sparts) {
     message("re-allocating sparts array.");
     s->size_sparts = (offset_sparts + count_sparts_in) * engine_parts_size_grow;
@@ -1809,6 +1823,8 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
       }
     }
   }
+  memuse_report("sparts", sizeof(struct spart) * s->size_sparts);
+
   if (offset_gparts + count_gparts_in > s->size_gparts) {
     message("re-allocating gparts array.");
     s->size_gparts = (offset_gparts + count_gparts_in) * engine_parts_size_grow;
@@ -1828,6 +1844,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
       }
     }
   }
+  memuse_report("gparts", sizeof(struct gpart) * s->size_gparts);
 
   /* Collect the requests for the particle data from the proxies. */
   int nr_in = 0, nr_out = 0;
@@ -4348,6 +4365,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   e->step = 0;
   e->forcerebuild = 1;
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
+  memuse_report_str("step", memuse_process());
 
   if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
 }
@@ -4391,6 +4409,7 @@ void engine_step(struct engine *e) {
   e->max_active_bin = get_max_active_bin(e->ti_end_min);
   e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_old);
   e->step += 1;
+  engine_cstep = e->step;
   e->step_props = engine_step_prop_none;
 
   if (e->policy & engine_policy_cosmology) {
@@ -4532,6 +4551,8 @@ void engine_step(struct engine *e) {
 
   /* Final job is to create a restart file if needed. */
   engine_dump_restarts(e, drifted_all, e->restart_onexit && engine_is_done(e));
+  memuse_report_str("step", memuse_process());
+
 }
 
 /**
@@ -5000,6 +5021,9 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
       posix_memalign((void **)&xparts_new, xpart_align,
                      sizeof(struct xpart) * s->size_parts) != 0)
     error("Failed to allocate new part data.");
+  memuse_report("parts", sizeof(struct part) * s->size_parts);
+  memuse_report("parts", sizeof(struct xpart) * s->size_parts);
+
   if (s->nr_parts > 0) {
     memcpy(parts_new, s->parts, sizeof(struct part) * s->nr_parts);
     memcpy(xparts_new, s->xparts, sizeof(struct xpart) * s->nr_parts);
@@ -5022,6 +5046,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   if (posix_memalign((void **)&sparts_new, spart_align,
                      sizeof(struct spart) * s->size_sparts) != 0)
     error("Failed to allocate new spart data.");
+  memuse_report("sparts", sizeof(struct spart) * s->size_sparts);
+
   if (s->nr_sparts > 0)
     memcpy(sparts_new, s->sparts, sizeof(struct spart) * s->nr_sparts);
   free(s->sparts);
@@ -5040,6 +5066,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   if (posix_memalign((void **)&gparts_new, gpart_align,
                      sizeof(struct gpart) * s->size_gparts) != 0)
     error("Failed to allocate new gpart data.");
+  memuse_report("gparts", sizeof(struct gpart) * s->size_gparts);
+
   if (s->nr_gparts > 0)
     memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->nr_gparts);
   free(s->gparts);
@@ -5683,6 +5711,8 @@ void engine_config(int restart, struct engine *e,
   if (posix_memalign((void **)&e->runners, SWIFT_CACHE_ALIGNMENT,
                      e->nr_threads * sizeof(struct runner)) != 0)
     error("Failed to allocate threads array.");
+  memuse_report("runners", e->nr_threads * sizeof(struct runner));
+
   for (int k = 0; k < e->nr_threads; k++) {
     e->runners[k].id = k;
     e->runners[k].e = e;

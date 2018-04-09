@@ -719,6 +719,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                        (*Ngas) * sizeof(struct part)) != 0)
       error("Error while allocating memory for particles");
     bzero(*parts, *Ngas * sizeof(struct part));
+    memuse_report("parts", (*Ngas) * sizeof(struct part));
   }
 
   /* Allocate memory to store star particles */
@@ -728,6 +729,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                        *Nstars * sizeof(struct spart)) != 0)
       error("Error while allocating memory for star particles");
     bzero(*sparts, *Nstars * sizeof(struct spart));
+    memuse_report("sparts", (*Nstars) * sizeof(struct spart));
   }
 
   /* Allocate memory to store gravity particles */
@@ -740,6 +742,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
+    memuse_report("gparts", (*Ngparts) * sizeof(struct gpart));
   }
 
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
@@ -1247,7 +1250,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
       case swift_type_dark_matter:
         /* Allocate temporary array */
-        if (posix_memalign((void**)&dmparts, gpart_align,
+        if (swift_posix_memalign((void**)&dmparts, gpart_align,
                            Ndm * sizeof(struct gpart)) != 0)
           error(
               "Error while allocating temporart memory for "

@@ -155,8 +155,9 @@ int main(int argc, char *argv[]) {
   if ((res = MPI_Comm_rank(MPI_COMM_WORLD, &myrank)) != MPI_SUCCESS)
     error("Call to MPI_Comm_rank failed with error %i.", res);
 
-  /* Make sure messages are stamped with the correct rank. */
+  /* Make sure messages are stamped with the correct rank and step. */
   engine_rank = myrank;
+  engine_cstep = 0;
 
   if ((res = MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN)) !=
       MPI_SUCCESS)

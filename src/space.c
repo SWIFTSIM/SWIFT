@@ -51,6 +51,7 @@
 #include "kernel_hydro.h"
 #include "lock.h"
 #include "memswap.h"
+#include "memuse.h"
 #include "minmax.h"
 #include "multipole.h"
 #include "restart.h"
@@ -60,7 +61,7 @@
 #include "threadpool.h"
 #include "tools.h"
 
-/* Split size. */
+ /* Split size. */
 int space_splitsize = space_splitsize_default;
 int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
 int space_subsize_self_hydro = space_subsize_self_hydro_default;
@@ -423,10 +424,11 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
-    if (posix_memalign((void **)&s->cells_top, cell_align,
-                       s->nr_cells * sizeof(struct cell)) != 0)
+
+    if (posix_memalign((void **)&s->cells_top, cell_align, s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate top-level cells.");
     bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
+    memuse_report("cells_top", s->nr_cells * sizeof(struct cell));
 
     /* Allocate the multipoles for the top-level cells. */
     if (s->gravity) {
@@ -434,6 +436,7 @@ void space_regrid(struct space *s, int verbose) {
                          s->nr_cells * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate top-level multipoles.");
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
+      memuse_report("multipoles_top", s->nr_cells * sizeof(struct gravity_tensors));
     }
 
     /* Allocate the indices of local cells */
@@ -441,6 +444,7 @@ void space_regrid(struct space *s, int verbose) {
                        s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of local top-level cells.");
     bzero(s->local_cells_top, s->nr_cells * sizeof(int));
+    memuse_report("local_cells_top", s->nr_cells * sizeof(int));
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
@@ -2513,6 +2517,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
       if (posix_memalign((void **)&s->cells_sub, cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
+      memuse_report("cells_sub", space_cellallocchunk * sizeof(struct cell));
 
       /* Constructed a linked list */
       for (int k = 0; k < space_cellallocchunk - 1; k++)
@@ -2526,6 +2531,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
               (void **)&s->multipoles_sub, multipole_align,
               space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
+      memuse_report("multipoles_sub", space_cellallocchunk * sizeof(struct gravity_tensors));
 
       /* Constructed a linked list */
       for (int k = 0; k < space_cellallocchunk - 1; k++)
@@ -3062,6 +3068,7 @@ void space_init(struct space *s, const struct swift_params *params,
                        Npart * sizeof(struct xpart)) != 0)
       error("Failed to allocate xparts.");
     bzero(s->xparts, Npart * sizeof(struct xpart));
+    memuse_report("xparts", Npart * sizeof(struct xpart));
   }
 
   hydro_space_init(&s->hs, s);
@@ -3109,14 +3116,17 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   if (posix_memalign((void **)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
     error("Failed to allocate new part array.");
+  memuse_report("parts", s->nr_parts * sizeof(struct part));
 
   if (posix_memalign((void **)&gparts, gpart_align,
                      s->nr_gparts * sizeof(struct gpart)) != 0)
     error("Failed to allocate new gpart array.");
+  memuse_report("gparts", s->nr_gparts * sizeof(struct gpart));
 
   if (posix_memalign((void **)&sparts, spart_align,
                      s->nr_sparts * sizeof(struct spart)) != 0)
     error("Failed to allocate new spart array.");
+  memuse_report("sparts", s->nr_sparts * sizeof(struct spart));
 
   /* Replicate everything */
   for (int i = 0; i < replicate; ++i) {
@@ -3217,10 +3227,12 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   if (posix_memalign((void **)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
     error("Failed to allocate new part array.");
+  memuse_report("parts", s->nr_parts * sizeof(struct part));
 
   if (posix_memalign((void **)&gparts, gpart_align,
                      s->nr_gparts * sizeof(struct gpart)) != 0)
     error("Failed to allocate new gpart array.");
+  memuse_report("gparts", s->nr_gparts * sizeof(struct gpart));
 
   /* Start by copying the gparts */
   memcpy(gparts, s->gparts, nr_gparts * sizeof(struct gpart));
@@ -3500,9 +3512,12 @@ void space_struct_restore(struct space *s, FILE *stream) {
     if (posix_memalign((void **)&s->parts, part_align,
                        s->size_parts * sizeof(struct part)) != 0)
       error("Failed to allocate restore part array.");
+    memuse_report("parts", s->nr_parts * sizeof(struct part));
+
     if (posix_memalign((void **)&s->xparts, xpart_align,
                        s->size_parts * sizeof(struct xpart)) != 0)
       error("Failed to allocate restore xpart array.");
+    memuse_report("xparts", s->nr_parts * sizeof(struct xpart));
 
     restart_read_blocks(s->parts, s->nr_parts, sizeof(struct part), stream,
                         NULL, "parts");
@@ -3514,6 +3529,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
     if (posix_memalign((void **)&s->gparts, gpart_align,
                        s->size_gparts * sizeof(struct gpart)) != 0)
       error("Failed to allocate restore gpart array.");
+    memuse_report("gparts", s->nr_gparts * sizeof(struct gpart));
 
     restart_read_blocks(s->gparts, s->nr_gparts, sizeof(struct gpart), stream,
                         NULL, "gparts");
@@ -3524,6 +3540,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
     if (posix_memalign((void **)&s->sparts, spart_align,
                        s->size_sparts * sizeof(struct spart)) != 0)
       error("Failed to allocate restore spart array.");
+    memuse_report("sparts", s->nr_sparts * sizeof(struct spart));
 
     restart_read_blocks(s->sparts, s->nr_sparts, sizeof(struct spart), stream,
                         NULL, "sparts");

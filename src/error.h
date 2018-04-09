@@ -36,11 +36,13 @@
 /* Local headers. */
 #include "clocks.h"
 
+/* Use exit when not developing, avoids core dumps. */
 #ifdef SWIFT_DEVELOP_MODE
 #define swift_abort(errcode) abort()
 #else
 #define swift_abort(errcode) exit(errcode)
 #endif
+
 
 /**
  * @brief Error macro. Prints the message given in argument and aborts.

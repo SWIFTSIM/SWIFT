@@ -53,6 +53,7 @@
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "kick.h"
+#include "memuse.h"
 #include "minmax.h"
 #include "runner_doiact_fft.h"
 #include "runner_doiact_vec.h"
@@ -388,13 +389,16 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
 #endif
 
   /* start by allocating the entry arrays in the requested dimensions. */
+  size_t allocated = 0;
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->sort[j] == NULL) {
       if ((c->sort[j] = (struct entry *)malloc(sizeof(struct entry) *
                                                (count + 1))) == NULL)
         error("Failed to allocate sort memory.");
+      allocated += sizeof(struct entry) * (count + 1);
     }
   }
+  memuse_report("c->sort[*]", allocated);
 
   /* Does this cell have any progeny? */
   if (c->split) {

@@ -39,6 +39,7 @@
 
 /* Local headers. */
 #include "error.h"
+#include "memuse.h"
 
 /**
  * @brief Exchange cells with a remote node.
@@ -67,6 +68,8 @@ void proxy_cells_exch1(struct proxy *p) {
   if (posix_memalign((void **)&p->pcells_out, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_out) != 0)
     error("Failed to allocate pcell_out buffer.");
+  memuse_report("pcells_out", sizeof(struct pcell) * p->size_pcells_out);
+
   for (int ind = 0, k = 0; k < p->nr_cells_out; k++) {
     memcpy(&p->pcells_out[ind], p->cells_out[k]->pcell,
            sizeof(struct pcell) * p->cells_out[k]->pcell_size);
@@ -105,6 +108,7 @@ void proxy_cells_exch2(struct proxy *p) {
   if (posix_memalign((void **)&p->pcells_in, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_in) != 0)
     error("Failed to allocate pcell_in buffer.");
+  memuse_report("pcells_in", sizeof(struct pcell) * p->size_pcells_in);
 
   /* Receive the particle buffers. */
   int err = MPI_Irecv(p->pcells_in, sizeof(struct pcell) * p->size_pcells_in,
