@@ -20,48 +20,6 @@
 /* This object's header. */
 #include "equation_of_state.h"
 
-/* local headers */
-#include "common_io.h"
-
 /* Equation of state for the physics model
  * (temporary ugly solution as a global variable) */
 struct eos_parameters eos;
-
-void eos_init(struct eos_parameters *e, const struct swift_params *params) {
-
-#if defined(EOS_IDEAL_GAS)
-/* nothing to do here */
-#elif defined(EOS_ISOTHERMAL_GAS)
-  e->isothermal_internal_energy =
-      parser_get_param_float(params, "EoS:isothermal_internal_energy");
-#endif
-}
-
-void eos_print(const struct eos_parameters *e) {
-
-#if defined(EOS_IDEAL_GAS)
-  message("Equation of state: Ideal gas.");
-#elif defined(EOS_ISOTHERMAL_GAS)
-  message(
-      "Equation of state: Isothermal with internal energy "
-      "per unit mass set to %f.",
-      e->isothermal_internal_energy);
-#endif
-
-  message("Adiabatic index gamma: %f.", hydro_gamma);
-}
-
-#if defined(HAVE_HDF5)
-void eos_print_snapshot(hid_t h_grpsph, const struct eos_parameters *e) {
-
-  io_write_attribute_f(h_grpsph, "Adiabatic index", hydro_gamma);
-
-#if defined(EOS_IDEAL_GAS)
-  io_write_attribute_s(h_grpsph, "Equation of state", "Ideal gas");
-#elif defined(EOS_ISOTHERMAL_GAS)
-  io_write_attribute_s(h_grpsph, "Equation of state", "Isothermal gas");
-  io_write_attribute_f(h_grpsph, "Thermal energy per unit mass",
-                       e->isothermal_internal_energy);
-#endif
-}
-#endif
