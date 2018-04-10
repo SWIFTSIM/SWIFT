@@ -1524,8 +1524,8 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
                                const double dim[3]) {
 
   /* Recover some constants */
-  const float eps = props->epsilon;
-  const float eps_inv = props->epsilon_inv;
+  const float eps = props->epsilon_cur;
+  const float eps_inv = props->epsilon_cur_inv;
 
   /* Compute distance vector */
   float dx = (float)(pos_b[0] - pos_a[0]);
@@ -2380,6 +2380,7 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gp->a_grav[2] += a_grav[2];
   gp->potential += pot;
 }
+
 /**
  * @brief Checks whether a cell-cell interaction can be appromixated by a M-M
  * interaction using the distance and cell radius.

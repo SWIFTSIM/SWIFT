@@ -18,9 +18,24 @@
 ################################################################################
 
 import h5py
+import argparse as ap
 from numpy import *
 
-# Generates a swift IC file for the Evrard collapse
+parser = ap.ArgumentParser(
+    description="Generates a swift IC file for the Evrard collapse"
+)
+
+parser.add_argument(
+    "-n",
+    "--nparts",
+    help="""
+         Number of particles to be used in the Evrard collapse.
+         """,
+    required=False,
+    default=100000
+)
+
+args = vars(parser.parse_args())
 
 # Parameters
 gamma = 5. / 3.      # Gas adiabatic index
@@ -28,7 +43,7 @@ M = 1.  # total mass of the sphere
 R = 1.               # radius of the sphere
 u0 = 0.05 / M        # initial thermal energy
 fileName = "evrard.hdf5" 
-numPart = 100000
+numPart = int(args["nparts"])
 
 r = R * sqrt(random.random(numPart))
 phi = 2. * pi * random.random(numPart)

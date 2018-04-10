@@ -21,21 +21,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-#if defined(HAVE_HDF5)
-
-/* Some standard headers. */
-#include <hdf5.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
-
 /* This object's header. */
 #include "common_io.h"
 
@@ -49,6 +34,22 @@
 #include "threadpool.h"
 #include "units.h"
 #include "version.h"
+
+/* Some standard headers. */
+#include <math.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#if defined(HAVE_HDF5)
+
+#include <hdf5.h>
+
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
 
 /**
  * @brief Converts a C data type to the HDF5 equivalent.
@@ -78,36 +79,6 @@ hid_t io_hdf5_type(enum IO_DATA_TYPE type) {
       return H5T_NATIVE_DOUBLE;
     case CHAR:
       return H5T_NATIVE_CHAR;
-    default:
-      error("Unknown type");
-      return 0;
-  }
-}
-
-/**
- * @brief Returns the memory size of the data type
- */
-size_t io_sizeof_type(enum IO_DATA_TYPE type) {
-
-  switch (type) {
-    case INT:
-      return sizeof(int);
-    case UINT:
-      return sizeof(unsigned int);
-    case LONG:
-      return sizeof(long);
-    case ULONG:
-      return sizeof(unsigned long);
-    case LONGLONG:
-      return sizeof(long long);
-    case ULONGLONG:
-      return sizeof(unsigned long long);
-    case FLOAT:
-      return sizeof(float);
-    case DOUBLE:
-      return sizeof(double);
-    case CHAR:
-      return sizeof(char);
     default:
       error("Unknown type");
       return 0;
@@ -430,6 +401,36 @@ void io_write_engine_policy(hid_t h_file, const struct engine* e) {
 #endif /* HAVE_HDF5 */
 
 /**
+ * @brief Returns the memory size of the data type
+ */
+size_t io_sizeof_type(enum IO_DATA_TYPE type) {
+
+  switch (type) {
+    case INT:
+      return sizeof(int);
+    case UINT:
+      return sizeof(unsigned int);
+    case LONG:
+      return sizeof(long);
+    case ULONG:
+      return sizeof(unsigned long);
+    case LONGLONG:
+      return sizeof(long long);
+    case ULONGLONG:
+      return sizeof(unsigned long long);
+    case FLOAT:
+      return sizeof(float);
+    case DOUBLE:
+      return sizeof(double);
+    case CHAR:
+      return sizeof(char);
+    default:
+      error("Unknown type");
+      return 0;
+  }
+}
+
+/**
  * @brief Mapper function to copy #part or #gpart fields into a buffer.
  */
 void io_copy_mapper(void* restrict temp, int N, void* restrict extra_data) {
@@ -457,6 +458,7 @@ void io_convert_part_f_mapper(void* restrict temp, int N,
 
   const struct io_props props = *((const struct io_props*)extra_data);
   const struct part* restrict parts = props.parts;
+  const struct xpart* restrict xparts = props.xparts;
   const struct engine* e = props.e;
   const size_t dim = props.dimension;
 
@@ -465,7 +467,8 @@ void io_convert_part_f_mapper(void* restrict temp, int N,
   const ptrdiff_t delta = (temp_f - props.start_temp_f) / dim;
 
   for (int i = 0; i < N; i++)
-    props.convert_part_f(e, parts + delta + i, &temp_f[i * dim]);
+    props.convert_part_f(e, parts + delta + i, xparts + delta + i,
+                         &temp_f[i * dim]);
 }
 
 /**
@@ -477,6 +480,7 @@ void io_convert_part_d_mapper(void* restrict temp, int N,
 
   const struct io_props props = *((const struct io_props*)extra_data);
   const struct part* restrict parts = props.parts;
+  const struct xpart* restrict xparts = props.xparts;
   const struct engine* e = props.e;
   const size_t dim = props.dimension;
 
@@ -485,7 +489,8 @@ void io_convert_part_d_mapper(void* restrict temp, int N,
   const ptrdiff_t delta = (temp_d - props.start_temp_d) / dim;
 
   for (int i = 0; i < N; i++)
-    props.convert_part_d(e, parts + delta + i, &temp_d[i * dim]);
+    props.convert_part_d(e, parts + delta + i, xparts + delta + i,
+                         &temp_d[i * dim]);
 }
 
 /**
@@ -704,7 +709,7 @@ void io_duplicate_hydro_gparts_mapper(void* restrict data, int Ngas,
     gparts[i + Ndm].type = swift_type_gas;
 
     /* Link the particles */
-    gparts[i + Ndm].id_or_neg_offset = -i;
+    gparts[i + Ndm].id_or_neg_offset = -(long long)(offset + i);
     parts[i].gpart = &gparts[i + Ndm];
   }
 }
@@ -760,7 +765,7 @@ void io_duplicate_hydro_sparts_mapper(void* restrict data, int Nstars,
     gparts[i + Ndm].type = swift_type_star;
 
     /* Link the particles */
-    gparts[i + Ndm].id_or_neg_offset = -i;
+    gparts[i + Ndm].id_or_neg_offset = -(long long)(offset + i);
     sparts[i].gpart = &gparts[i + Ndm];
   }
 }

@@ -171,6 +171,18 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
 }
 
 /**
+ * @brief Sets the mass of a particle
+ *
+ * @param p The particle of interest
+ * @param m The mass to set.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_mass(
+    struct part *restrict p, float m) {
+
+  p->mass = m;
+}
+
+/**
  * @brief Returns the velocities drifted to the current time of a particle.
  *
  * @param p The particle of interest
@@ -524,15 +536,28 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param p The particle to act upon
  * @param xp The particle extended data to act upon
  * @param dt_therm The time-step for this kick (for thermodynamic quantities)
+ * @param cosmo The cosmological model.
+ * @param hydro_props The constants used in the scheme
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part *restrict p, struct xpart *restrict xp, float dt_therm) {
+    struct part *restrict p, struct xpart *restrict xp, float dt_therm,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
   /* Do not decrease the entropy (temperature) by more than a factor of 2*/
   if (dt_therm > 0. && p->entropy_dt * dt_therm < -0.5f * xp->entropy_full) {
     p->entropy_dt = -0.5f * xp->entropy_full / dt_therm;
   }
   xp->entropy_full += p->entropy_dt * dt_therm;
+
+  /* Apply the minimal energy limit */
+  const float density = p->rho_bar * cosmo->a3_inv;
+  const float min_energy = hydro_props->minimal_internal_energy;
+  const float min_entropy =
+      gas_entropy_from_internal_energy(density, min_energy);
+  if (xp->entropy_full < min_entropy) {
+    xp->entropy_full = min_entropy;
+    p->entropy_dt = 0.f;
+  }
 
   /* Compute the pressure */
   const float pressure =
@@ -556,12 +581,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * Requires the density to be known
  *
  * @param p The particle to act upon
+ * @param xp The extended data.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part *restrict p, struct xpart *restrict xp) {
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
 
   /* We read u in the entropy field. We now get S from u */
-  xp->entropy_full = gas_entropy_from_internal_energy(p->rho_bar, p->entropy);
+  xp->entropy_full =
+      gas_entropy_from_internal_energy(p->rho_bar * cosmo->a3_inv, p->entropy);
   p->entropy = xp->entropy_full;
   p->entropy_one_over_gamma = pow_one_over_gamma(p->entropy);
 
@@ -603,6 +632,23 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
+}
+
+/**
+ * @brief Overwrite the initial internal energy of a particle.
+ *
+ * Note that in the cases where the thermodynamic variable is not
+ * internal energy but gets converted later, we must overwrite that
+ * field. The conversion to the actual variable happens later after
+ * the initial fake time-step.
+ *
+ * @param p The #part to write to.
+ * @param u_init The new initial internal energy.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_init_internal_energy(struct part *p, float u_init) {
+
+  p->entropy = u_init;
 }
 
 #endif /* SWIFT_PRESSURE_ENTROPY_HYDRO_H */

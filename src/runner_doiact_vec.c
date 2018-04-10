@@ -1689,7 +1689,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
                                       struct cell *restrict cj, const int sid,
                                       const int flipped, const double *shift) {
 
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
   TIMER_TIC;
 

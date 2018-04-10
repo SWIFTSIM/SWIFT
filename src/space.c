@@ -2321,7 +2321,19 @@ void space_first_init_parts(struct space *s,
   struct part *restrict p = s->parts;
   struct xpart *restrict xp = s->xparts;
 
+  const struct cosmology *cosmo = s->e->cosmology;
+  const float a_factor_vel = cosmo->a * cosmo->a;
+
+  const struct hydro_props *hydro_props = s->e->hydro_properties;
+  const float u_init = hydro_props->initial_internal_energy;
+  const float u_min = hydro_props->minimal_internal_energy;
+
   for (size_t i = 0; i < nr_parts; ++i) {
+
+    /* Convert velocities to internal units */
+    p[i].v[0] *= a_factor_vel;
+    p[i].v[1] *= a_factor_vel;
+    p[i].v[2] *= a_factor_vel;
 
 #ifdef HYDRO_DIMENSION_2D
     p[i].x[2] = 0.f;
@@ -2334,6 +2346,10 @@ void space_first_init_parts(struct space *s,
 #endif
 
     hydro_first_init_part(&p[i], &xp[i]);
+
+    /* Overwrite the internal energy? */
+    if (u_init > 0.f) hydro_set_init_internal_energy(&p[i], u_init);
+    if (u_min > 0.f) hydro_set_init_internal_energy(&p[i], u_min);
 
     /* Also initialise the chemistry */
     chemistry_first_init_part(&p[i], &xp[i], chemistry);
@@ -2361,8 +2377,15 @@ void space_first_init_gparts(struct space *s,
 
   const size_t nr_gparts = s->nr_gparts;
   struct gpart *restrict gp = s->gparts;
+  const struct cosmology *cosmo = s->e->cosmology;
+  const float a_factor_vel = cosmo->a * cosmo->a;
 
   for (size_t i = 0; i < nr_gparts; ++i) {
+
+    /* Convert velocities to internal units */
+    gp[i].v_full[0] *= a_factor_vel;
+    gp[i].v_full[1] *= a_factor_vel;
+    gp[i].v_full[2] *= a_factor_vel;
 
 #ifdef HYDRO_DIMENSION_2D
     gp[i].x[2] = 0.f;
@@ -2392,8 +2415,15 @@ void space_first_init_sparts(struct space *s) {
 
   const size_t nr_sparts = s->nr_sparts;
   struct spart *restrict sp = s->sparts;
+  const struct cosmology *cosmo = s->e->cosmology;
+  const float a_factor_vel = cosmo->a * cosmo->a;
 
   for (size_t i = 0; i < nr_sparts; ++i) {
+
+    /* Convert velocities to internal units */
+    sp[i].v[0] *= a_factor_vel;
+    sp[i].v[1] *= a_factor_vel;
+    sp[i].v[2] *= a_factor_vel;
 
 #ifdef HYDRO_DIMENSION_2D
     sp[i].x[2] = 0.f;
@@ -2472,11 +2502,12 @@ void space_init_gparts(struct space *s, int verbose) {
 void space_convert_quantities_mapper(void *restrict map_data, int count,
                                      void *restrict extra_data) {
   struct space *s = (struct space *)extra_data;
+  const struct cosmology *cosmo = s->e->cosmology;
   struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
   for (int k = 0; k < count; k++)
-    hydro_convert_quantities(&parts[k], &xparts[k]);
+    hydro_convert_quantities(&parts[k], &xparts[k], cosmo);
 }
 
 /**
@@ -2504,6 +2535,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  *
  * @param s The #space to initialize.
  * @param params The parsed parameter file.
+ * @param cosmo The current cosmological model.
  * @param dim Spatial dimensions of the domain.
  * @param parts Array of Gas particles.
  * @param gparts Array of Gravity particles.
@@ -2512,8 +2544,9 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param Ngpart The number of Gravity particles in the space.
  * @param Nspart The number of star particles in the space.
  * @param periodic flag whether the domain is periodic or not.
- * @param replicate How many replications along each direction do we want ?
- * @param gravity flag whether we are doing gravity or not.
+ * @param replicate How many replications along each direction do we want?
+ * @param generate_gas_in_ics Are we generating gas particles from the gparts?
+ * @param self_gravity flag whether we are doing gravity or not?
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
  *
@@ -2523,9 +2556,10 @@ void space_convert_quantities(struct space *s, int verbose) {
  * recursively.
  */
 void space_init(struct space *s, const struct swift_params *params,
-                double dim[3], struct part *parts, struct gpart *gparts,
-                struct spart *sparts, size_t Npart, size_t Ngpart,
-                size_t Nspart, int periodic, int replicate, int gravity,
+                const struct cosmology *cosmo, double dim[3],
+                struct part *parts, struct gpart *gparts, struct spart *sparts,
+                size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
+                int replicate, int generate_gas_in_ics, int self_gravity,
                 int verbose, int dry_run) {
 
   /* Clean-up everything */
@@ -2536,7 +2570,7 @@ void space_init(struct space *s, const struct swift_params *params,
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
   s->periodic = periodic;
-  s->gravity = gravity;
+  s->gravity = self_gravity;
   s->nr_parts = Npart;
   s->size_parts = Npart;
   s->parts = parts;
@@ -2547,6 +2581,19 @@ void space_init(struct space *s, const struct swift_params *params,
   s->size_sparts = Nspart;
   s->sparts = sparts;
   s->nr_queues = 1; /* Temporary value until engine construction */
+
+  /* Are we generating gas from the DM-only ICs? */
+  if (generate_gas_in_ics) {
+    space_generate_gas(s, cosmo, verbose);
+    parts = s->parts;
+    gparts = s->gparts;
+    Npart = s->nr_parts;
+    Ngpart = s->nr_gparts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    part_verify_links(parts, gparts, sparts, Npart, Ngpart, Nspart, 1);
+#endif
+  }
 
   /* Are we replicating the space ? */
   if (replicate < 1)
@@ -2560,6 +2607,10 @@ void space_init(struct space *s, const struct swift_params *params,
     Npart = s->nr_parts;
     Ngpart = s->nr_gparts;
     Nspart = s->nr_sparts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    part_verify_links(parts, gparts, sparts, Npart, Ngpart, Nspart, 1);
+#endif
   }
 
   /* Decide on the minimal top-level cell size */
@@ -2606,8 +2657,8 @@ void space_init(struct space *s, const struct swift_params *params,
   }
 
   /* Apply h scaling */
-  const double scaling =
-      parser_get_opt_param_double(params, "InitialConditions:h_scaling", 1.0);
+  const double scaling = parser_get_opt_param_double(
+      params, "InitialConditions:smoothing_length_scaling", 1.0);
   if (scaling != 1.0 && !dry_run) {
     message("Re-scaling smoothing lengths by a factor %e", scaling);
     for (size_t k = 0; k < Npart; k++) parts[k].h *= scaling;
@@ -2822,6 +2873,152 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   part_verify_links(s->parts, s->gparts, s->sparts, s->nr_parts, s->nr_gparts,
                     s->nr_sparts, verbose);
 #endif
+}
+
+void space_generate_gas(struct space *s, const struct cosmology *cosmo,
+                        int verbose) {
+
+  if (verbose) message("Generating gas particles from gparts");
+
+  /* Store the current values */
+  const size_t nr_parts = s->nr_parts;
+  const size_t nr_gparts = s->nr_gparts;
+
+  if (nr_parts != 0)
+    error("Generating gas particles from DM but gas already exists!");
+
+  s->size_parts = s->nr_parts = nr_gparts;
+  s->size_gparts = s->nr_gparts = 2 * nr_gparts;
+
+  /* Allocate space for new particles */
+  struct part *parts = NULL;
+  struct gpart *gparts = NULL;
+
+  if (posix_memalign((void **)&parts, part_align,
+                     s->nr_parts * sizeof(struct part)) != 0)
+    error("Failed to allocate new part array.");
+
+  if (posix_memalign((void **)&gparts, gpart_align,
+                     s->nr_gparts * sizeof(struct gpart)) != 0)
+    error("Failed to allocate new gpart array.");
+
+  /* Start by copying the gparts */
+  memcpy(gparts, s->gparts, nr_gparts * sizeof(struct gpart));
+  memcpy(gparts + nr_gparts, s->gparts, nr_gparts * sizeof(struct gpart));
+
+  /* And zero the parts */
+  bzero(parts, s->nr_parts * sizeof(struct part));
+
+  /* Compute some constants */
+  const double mass_ratio = cosmo->Omega_b / cosmo->Omega_m;
+  const double bg_density = cosmo->Omega_m * cosmo->critical_density;
+  const double bg_density_inv = 1. / bg_density;
+
+  /* Update the particle properties */
+  for (size_t i = 0; i < nr_gparts; ++i) {
+
+    struct part *p = &parts[i];
+    struct gpart *gp_gas = &gparts[i];
+    struct gpart *gp_dm = &gparts[nr_gparts + i];
+
+    /* Set the IDs */
+    p->id = gp_gas->id_or_neg_offset * 2 + 1;
+    gp_dm->id_or_neg_offset *= 2;
+
+    if (gp_dm->id_or_neg_offset <= 0) error("DM particle ID overflowd");
+
+    if (p->id <= 0) error("gas particle ID overflowd");
+
+    /* Set the links correctly */
+    p->gpart = gp_gas;
+    gp_gas->id_or_neg_offset = -i;
+    gp_gas->type = swift_type_gas;
+
+    /* Compute positions shift */
+    const double d = cbrt(gp_dm->mass * bg_density_inv);
+    const double shift_dm = d * mass_ratio;
+    const double shift_gas = d * (1. - mass_ratio);
+
+    /* Set the masses */
+    gp_dm->mass *= (1. - mass_ratio);
+    gp_gas->mass *= mass_ratio;
+    hydro_set_mass(p, gp_gas->mass);
+
+    /* Set the new positions */
+    gp_dm->x[0] += shift_dm;
+    gp_dm->x[1] += shift_dm;
+    gp_dm->x[2] += shift_dm;
+    gp_gas->x[0] += shift_gas;
+    gp_gas->x[1] += shift_gas;
+    gp_gas->x[2] += shift_gas;
+    p->x[0] = gp_gas->x[0];
+    p->x[1] = gp_gas->x[1];
+    p->x[2] = gp_gas->x[2];
+
+    /* Also copy the velocities */
+    p->v[0] = gp_gas->v_full[0];
+    p->v[1] = gp_gas->v_full[1];
+    p->v[2] = gp_gas->v_full[2];
+
+    /* Set the smoothing length to the mean inter-particle separation */
+    p->h = 30. * d;
+  }
+
+  /* Replace the content of the space */
+  free(s->gparts);
+  s->parts = parts;
+  s->gparts = gparts;
+}
+
+/**
+ * @brief Verify that the matter content matches the cosmology model.
+ *
+ * @param s The #space.
+ * @param cosmo The current cosmology model.
+ * @param rank The MPI rank of this #space.
+ */
+void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
+                           int rank) {
+
+  struct gpart *gparts = s->gparts;
+  const size_t nr_gparts = s->nr_gparts;
+
+  /* Sum up the mass in this space */
+  double mass = 0.;
+  for (size_t i = 0; i < nr_gparts; ++i) {
+    mass += gparts[i].mass;
+  }
+
+/* Reduce the total mass */
+#ifdef WITH_MPI
+  double total_mass;
+  MPI_Reduce(&mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+#else
+  double total_mass = mass;
+#endif
+
+  if (rank == 0) {
+
+    const double volume = s->dim[0] * s->dim[1] * s->dim[2];
+
+    /* Current Hubble constant */
+    const double H = cosmo->H;
+
+    /* z=0 Hubble parameter */
+    const double H0 = cosmo->H0;
+
+    /* Critical density at z=0 */
+    const double rho_crit0 = cosmo->critical_density * H0 * H0 / (H * H);
+
+    /* Compute the mass density */
+    const double Omega_m = (total_mass / volume) / rho_crit0;
+
+    if (fabs(Omega_m - cosmo->Omega_m) > 1e-3)
+      error(
+          "The matter content of the simulation does not match the cosmology "
+          "in the parameter file comso.Omega_m=%e Omega_m=%e",
+          cosmo->Omega_m, Omega_m);
+  }
 }
 
 /**

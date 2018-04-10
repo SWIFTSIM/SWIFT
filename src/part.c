@@ -139,8 +139,8 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
     if (gparts[k].type == swift_type_dark_matter) {
 
       /* Check that it's not linked */
-      if (gparts[k].id_or_neg_offset < 0)
-        error("DM gpart particle linked to something!");
+      if (gparts[k].id_or_neg_offset <= 0)
+        error("DM gpart particle linked to something !");
     }
 
     /* We have a gas particle */

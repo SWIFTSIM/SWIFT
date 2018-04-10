@@ -3654,7 +3654,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
 #endif
 
   double ntasks = n1 * ntop + n2 * (ncells - ntop);
-  tasks_per_cell = ceil(ntasks / ncells);
+  if (ncells > 0) tasks_per_cell = ceil(ntasks / ncells);
 
   if (tasks_per_cell < 1.0) tasks_per_cell = 1.0;
   if (e->verbose)
@@ -3668,10 +3668,10 @@ int engine_estimate_nr_tasks(struct engine *e) {
  * @brief Rebuild the space and tasks.
  *
  * @param e The #engine.
- * @param clean_h_values Are we cleaning up the values of h before building
- * the tasks ?
+ * @param clean_smoothing_length_values Are we cleaning up the values of
+ * the smoothing lengths before building the tasks ?
  */
-void engine_rebuild(struct engine *e, int clean_h_values) {
+void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
 
   const ticks tic = getticks();
 
@@ -3687,7 +3687,7 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
 #endif
 
   /* Initial cleaning up session ? */
-  if (clean_h_values) space_sanitize(e->s);
+  if (clean_smoothing_length_values) space_sanitize(e->s);
 
 /* If in parallel, exchange the cell structure, top-level and neighbouring
  * multipoles. */
@@ -4379,10 +4379,10 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
-           e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
-           e->max_active_bin, e->updates, e->g_updates, e->s_updates,
-           e->wallclock_time, e->step_props);
+    printf("  %6d %14e %14e %10.5f %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
+           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
+           e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
     fprintf(e->file_timesteps,
@@ -4403,7 +4403,7 @@ void engine_step(struct engine *e) {
 
   if (e->policy & engine_policy_cosmology) {
     e->time_old = e->time;
-    cosmology_update(e->cosmology, e->ti_current);
+    cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
     e->time = e->cosmology->time;
     e->time_step = e->time - e->time_old;
   } else {
@@ -4411,6 +4411,10 @@ void engine_step(struct engine *e) {
     e->time_old = e->ti_old * e->time_base + e->time_begin;
     e->time_step = (e->ti_current - e->ti_old) * e->time_base;
   }
+
+  /* Update the softening lengths */
+  if (e->policy & engine_policy_self_gravity)
+    gravity_update(e->gravity_properties, e->cosmology);
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
@@ -4436,7 +4440,7 @@ void engine_step(struct engine *e) {
   if (e->verbose) engine_print_task_counts(e);
 
 /* Dump local cells and active particle counts. */
-/* dumpCells("cells", 0, 0, 1, e->s, e->nodeID, e->step); */
+/* dumpCells("cells", 0, 0, 0, 0, e->s, e->nodeID, e->step); */
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
@@ -5093,6 +5097,7 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 
 /* Dump... */
+#if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   write_output_parallel(e, e->snapshotBaseName, e->internal_units,
@@ -5106,6 +5111,7 @@ void engine_dump_snapshot(struct engine *e) {
 #else
   write_output_single(e, e->snapshotBaseName, e->internal_units,
                       e->snapshotUnits);
+#endif
 #endif
 
   e->dump_snapshot = 0;
@@ -5201,7 +5207,7 @@ void engine_init(
     long long Ngas, long long Ndm, int policy, int verbose,
     struct repartition *reparttype, const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
-    const struct hydro_props *hydro, const struct gravity_props *gravity,
+    const struct hydro_props *hydro, struct gravity_props *gravity,
     const struct external_potential *potential,
     const struct cooling_function_data *cooling_func,
     const struct chemistry_data *chemistry, struct sourceterms *sourceterms) {

@@ -59,6 +59,8 @@ void test() {
   pj.h = 2.f;
   pi.id = 1ll;
   pj.id = 2ll;
+  pi.time_bin = 1;
+  pj.time_bin = 1;
 
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
   /* Give the primitive variables sensible values, since the Riemann solver does
@@ -157,8 +159,20 @@ void test() {
   i_not_ok = memcmp(&pi, &pi2, sizeof(struct part));
   j_not_ok = memcmp(&pj, &pj2, sizeof(struct part));
 
-  if (i_not_ok) error("Particles 'pi' do not match after density");
-  if (j_not_ok) error("Particles 'pj' do not match after density");
+  if (i_not_ok) {
+    printParticle_single(&pi, &xpi);
+    printParticle_single(&pi2, &xpi);
+    print_bytes(&pj, sizeof(struct part));
+    print_bytes(&pj2, sizeof(struct part));
+    error("Particles 'pi' do not match after force (byte = %d)", i_not_ok);
+  }
+  if (j_not_ok) {
+    printParticle_single(&pj, &xpj);
+    printParticle_single(&pj2, &xpj);
+    print_bytes(&pj, sizeof(struct part));
+    print_bytes(&pj2, sizeof(struct part));
+    error("Particles 'pj' do not match after force (byte = %d)", j_not_ok);
+  }
 
   /* --- Test the force loop --- */
 
