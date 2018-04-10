@@ -83,6 +83,7 @@ void velociraptor_init(struct engine *e) {
     message("Length conversion factor: %e", unit_info.lengthtokpc);
     message("Velocity conversion factor: %e", unit_info.velocitytokms);
     message("Mass conversion factor: %e", unit_info.masstosolarmass);
+    message("Potential conversion factor: %e", unit_info.energyperunitmass);
     message("G: %e", unit_info.gravity);
     message("H: %e", unit_info.hubbleunit);
 
