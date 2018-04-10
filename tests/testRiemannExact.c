@@ -353,4 +353,5 @@ int main() {
   /* symmetry test */
   for (int i = 0; i < 10000; ++i) check_riemann_symmetry();
 
-return 0
+  return 0;
+}
