@@ -32,20 +32,19 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 memuse = OrderedDict()
-functions = OrderedDict()
 
 with open(sys.argv[1]) as infile:
     for line in infile:
         if ":memuse:" in line:
             words = line.split()
-            if words[3] not in memuse:
-                memuse[words[3]] = 0
-                functions[words[3]] = words[4]
-            memuse[words[3]] = memuse[words[3]] + int(words[-1])
+            key = words[3] + ":" + words[4]
+            if key not in memuse:
+                memuse[key] = 0
+            memuse[key] = memuse[key] + int(words[-1])
 
 print "# step label function memuse"
 for key, value in memuse.items():
-    words = key.split(":")
-    print words[0], words[1], functions[key], value
+    words = key.split(":", 2)
+    print words[0], words[1], words[2], value
 
 sys.exit(0)
