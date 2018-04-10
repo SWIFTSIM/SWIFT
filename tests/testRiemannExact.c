@@ -27,20 +27,72 @@
 #include "riemann/riemann_exact.h"
 #include "swift.h"
 
-int opposite(float a, float b) {
-  if ((a - b)) {
-    return fabsf((a + b) / (a - b)) < 1.e-4f;
-  } else {
-    return a == 0.0f;
+const float max_abs_error = 1e-3f;
+const float max_rel_error = 1e-2f;
+const float min_threshold = 1e-2f;
+
+/**
+ * @brief Checks whether two numbers are opposite of each others.
+ */
+int are_symmetric(float a, float b) {
+
+  /* Check that the signs are different */
+  if ((a * b) > 0.f) {
+    message("Identical signs a=%.8e b=%.8e", a, b);
+    return 0;
   }
+
+  const float abs_a = fabsf(a);
+  const float abs_b = fabsf(b);
+
+  const float abs_error = fabsf(abs_a - abs_b);
+
+  /* Avoid FPEs... */
+  if (fabsf(abs_a + abs_b) == 0.f) {
+    return 1;
+  }
+
+  /* Avoid things close to 0 */
+  if ((abs_a < min_threshold) || (abs_b < min_threshold)) {
+    return 1;
+  }
+
+  const float rel_error = 0.5f * abs_error / fabsf(abs_a + abs_b);
+
+  /* Check that we do not breach the relative error limit */
+  if (rel_error > max_rel_error) {
+    message("Relative error too large a=%.8e b=%.8e rel=%.8e", a, b, rel_error);
+    return 0;
+  }
+
+  /* All good */
+  return 1;
 }
 
 int equal(float a, float b) {
-  if ((a + b)) {
-    return fabsf((a - b) / (a + b)) < 1.e-4f;
-  } else {
-    return a == 0.0f;
+
+  const float abs_error = fabsf(a - b);
+
+  /* Avoid FPEs... */
+  if (fabsf(a + b) == 0.f) {
+    return 1;
   }
+
+  /* Avoid things close to 0 */
+  if ((fabsf(a) < min_threshold) || (fabsf(b) < min_threshold)) {
+    return 1;
+  }
+
+  const float rel_error = 0.5f * abs_error / fabsf(a + b);
+
+  /* Check that we do not breach the relative error limit */
+  if (rel_error > max_rel_error) {
+    message("Relative error too large a=%.8e b=%.8e rel=%.8e", a, b, rel_error);
+    return 0;
+  }
+
+  /* All good */
+  return 1;
 }
 
 /**
@@ -51,8 +103,8 @@ int equal(float a, float b) {
  * @param s String used to identify this check in messages
  */
 void check_value(float a, float b, const char* s) {
-  if (fabsf(a + b) != 0.f && fabsf(a - b) / fabsf(a + b) > 1.e-5f &&
-      fabsf(a - b) > 1.e-5f) {
+  if (fabsf(a + b) != 0.f && fabsf(a - b) / fabsf(a + b) > max_rel_error &&
+      fabsf(a - b) > max_abs_error) {
     error("Values are inconsistent: %g %g (%s)!", a, b, s);
   } else {
     message("Values are consistent: %g %g (%s).", a, b, s);
@@ -301,17 +353,22 @@ void check_riemann_symmetry() {
   riemann_solve_for_flux(WL, WR, n_unit1, vij, totflux1);
   riemann_solve_for_flux(WR, WL, n_unit2, vij, totflux2);
 
-  if (!opposite(totflux1[0], totflux2[0]) ||
-      !opposite(totflux1[1], totflux2[1]) ||
-      !opposite(totflux1[2], totflux2[2]) ||
-      !opposite(totflux1[3], totflux2[3]) ||
-      !opposite(totflux1[4], totflux2[4])) {
+  if (!are_symmetric(totflux1[0], totflux2[0]) ||
+      !are_symmetric(totflux1[1], totflux2[1]) ||
+      !are_symmetric(totflux1[2], totflux2[2]) ||
+      !are_symmetric(totflux1[3], totflux2[3]) ||
+      !are_symmetric(totflux1[4], totflux2[4])) {
+    message("WL=[%.8e, %.8e, %.8e, %.8e, %.8e]", WL[0], WL[1], WL[2], WL[3],
+            WL[4]);
+    message("WR=[%.8e, %.8e, %.8e, %.8e, %.8e]", WR[0], WR[1], WR[2], WR[3],
+            WR[4]);
+    message("n_unit1=[%.8e, %.8e, %.8e]", n_unit1[0], n_unit1[1], n_unit1[2]);
+    message("vij=[%.8e, %.8e, %.8e]\n", vij[0], vij[1], vij[2]);
     message(
         "Flux solver asymmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
         "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
         totflux1[0], totflux1[1], totflux1[2], totflux1[3], totflux1[4],
         totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]);
-    message("Asymmetry in flux solution!");
     /* This asymmetry is to be expected, since we do an iteration. Are the
        results at least consistent? */
     check_value(totflux1[0], totflux2[0], "Mass flux");
@@ -319,6 +376,7 @@ void check_riemann_symmetry() {
     check_value(totflux1[2], totflux2[2], "Momentum[1] flux");
     check_value(totflux1[3], totflux2[3], "Momentum[2] flux");
     check_value(totflux1[4], totflux2[4], "Energy flux");
+    error("Asymmetry in flux solution!");
   } else {
     /* message( */
     /*     "Flux solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == " */
@@ -348,10 +406,12 @@ int main() {
   srand(seed);
 
   /* check the exact Riemann solver */
-  check_riemann_exact();
+  // check_riemann_exact();
 
   /* symmetry test */
-  for (int i = 0; i < 10000; ++i) check_riemann_symmetry();
+  for (int i = 0; i < 100000; ++i) {
+    check_riemann_symmetry();
+  }
 
   return 0;
 }

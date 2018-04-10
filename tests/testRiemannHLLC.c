@@ -20,6 +20,7 @@
 
 /* Some standard headers. */
 #include <fenv.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -27,10 +28,56 @@
 #include "riemann/riemann_hllc.h"
 #include "swift.h"
 
-int consistent_with_zero(float val) { return fabsf(val) < 1.e-4f; }
+const float max_abs_error = 1e-3f;
+const float max_rel_error = 1e-3f;
+const float min_threshold = 1e-2f;
 
 /**
- * @brief Check the symmetry of the TRRS Riemann solver
+ * @brief Checks whether two numbers are opposite of each others.
+ */
+int are_symmetric(float a, float b) {
+
+  /* Check that the signs are different */
+  if ((a * b) > 0.f) {
+    message("Identical signs a=%.8e b=%.8e", a, b);
+    return 0;
+  }
+
+  const float abs_a = fabsf(a);
+  const float abs_b = fabsf(b);
+
+  const float abs_error = fabsf(abs_a - abs_b);
+
+  /* Check that we do not breach the absolute error limit */
+  if (abs_error > max_abs_error) {
+    message("Absolute error too large a=%.8e b=%.8e abs=%.8e", a, b, abs_error);
+    return 0;
+  }
+
+  /* Avoid FPEs... */
+  if (fabsf(abs_a + abs_b) == 0.f) {
+    return 1;
+  }
+
+  /* Avoid things close to 0 */
+  if ((abs_a < min_threshold) || (abs_b < min_threshold)) {
+    return 1;
+  }
+
+  const float rel_error = 0.5f * abs_error / fabsf(abs_a + abs_b);
+
+  /* Check that we do not breach the relative error limit */
+  if (rel_error > max_rel_error) {
+    message("Relative error too large a=%.8e b=%.8e rel=%.8e", a, b, rel_error);
+    return 0;
+  }
+
+  /* All good */
+  return 1;
+}
+
+/**
+ * @brief Check the symmetry of the HLLC Riemann solver for a random setup
  */
 void check_riemann_symmetry() {
   float WL[5], WR[5], n_unit1[3], n_unit2[3], n_norm, vij[3], totflux1[5],
@@ -68,11 +115,11 @@ void check_riemann_symmetry() {
   riemann_solve_for_flux(WL, WR, n_unit1, vij, totflux1);
   riemann_solve_for_flux(WR, WL, n_unit2, vij, totflux2);
 
-  if (!consistent_with_zero(totflux1[0] + totflux2[0]) ||
-      !consistent_with_zero(totflux1[1] + totflux2[1]) ||
-      !consistent_with_zero(totflux1[2] + totflux2[2]) ||
-      !consistent_with_zero(totflux1[3] + totflux2[3]) ||
-      !consistent_with_zero(totflux1[4] + totflux2[4])) {
+  if (!are_symmetric(totflux1[0], totflux2[0]) ||
+      !are_symmetric(totflux1[1], totflux2[1]) ||
+      !are_symmetric(totflux1[2], totflux2[2]) ||
+      !are_symmetric(totflux1[3], totflux2[3]) ||
+      !are_symmetric(totflux1[4], totflux2[4])) {
     message("WL=[%.8e, %.8e, %.8e, %.8e, %.8e]", WL[0], WL[1], WL[2], WL[3],
             WL[4]);
     message("WR=[%.8e, %.8e, %.8e, %.8e, %.8e]", WR[0], WR[1], WR[2], WR[3],
@@ -80,8 +127,8 @@ void check_riemann_symmetry() {
     message("n_unit1=[%.8e, %.8e, %.8e]", n_unit1[0], n_unit1[1], n_unit1[2]);
     message("vij=[%.8e, %.8e, %.8e]\n", vij[0], vij[1], vij[2]);
     message(
-        "Flux solver asymmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
-        "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
+        "Flux solver asymmetric: [%.6e,%.6e,%.6e,%.6e,%.6e] == "
+        "[%.6e,%.6e,%.6e,%.6e,%.6e]\n",
         totflux1[0], totflux1[1], totflux1[2], totflux1[3], totflux1[4],
         totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]);
     error("Asymmetry in flux solution!");
@@ -114,7 +161,7 @@ int main() {
   srand(seed);
 
   /* symmetry test */
-  for (int i = 0; i < 10000; i++) {
+  for (int i = 0; i < 100000; i++) {
     check_riemann_symmetry();
   }
 
