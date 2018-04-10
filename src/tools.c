@@ -36,6 +36,7 @@
 /* Local includes. */
 #include "active.h"
 #include "cell.h"
+#include "chemistry.h"
 #include "cosmology.h"
 #include "error.h"
 #include "gravity.h"
@@ -187,7 +188,9 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
   struct part *pi, *pj;
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
-  float a = 1.f, H = 0.f;
+  const struct cosmology *cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -216,6 +219,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj, a, H);
+        runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
       }
     }
   }
@@ -247,6 +251,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi, a, H);
+        runner_iact_nonsym_chemistry(r2, dx, hj, pi->h, pj, pi, a, H);
       }
     }
   }
@@ -258,7 +263,9 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
   struct part *pi, *pj;
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
-  float a = 1.f, H = 0.f;
+  const struct cosmology *cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -331,7 +338,9 @@ void self_all_density(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
   struct part *pi, *pj;
   const struct engine *e = r->e;
-  float a = 1.f, H = 0.f;
+  const struct cosmology *cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -360,6 +369,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_chemistry(r2, dxi, hi, hj, pi, pj, a, H);
       }
 
       /* Hit or miss? */
@@ -371,6 +381,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hj, hi, pj, pi, a, H);
+        runner_iact_nonsym_chemistry(r2, dxi, hj, hi, pj, pi, a, H);
       }
     }
   }
@@ -379,7 +390,10 @@ void self_all_density(struct runner *r, struct cell *ci) {
 void self_all_force(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
   struct part *pi, *pj;
-  float a = 1.f, H = 0.f;
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
