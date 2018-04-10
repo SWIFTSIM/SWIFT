@@ -2405,6 +2405,15 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current);
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure the particle does not drift by more than a box length. */
+      if (fabsf(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
+          fabsf(xp->v_full[1] * dt_drift) > e->s->dim[1] ||
+          fabsf(xp->v_full[2] * dt_drift) > e->s->dim[2]) {
+        error("Particle drifts by more than a box length!");
+      }
+#endif
+
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
 
