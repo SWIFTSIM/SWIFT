@@ -602,8 +602,10 @@ if test "x$with_profiler" != "xno"; then
    else
       proflibs="-lprofiler"
    fi
-   AC_CHECK_LIB([profiler],[ProfilerFlush],[have_profiler="yes"],[have_profiler="no"],
-                $proflibs)
+   AC_CHECK_LIB([profiler],[ProfilerFlush],
+    [have_profiler="yes" 
+      AC_DEFINE([WITH_PROFILER],1,[Link against the gperftools profiling library.])],
+    [have_profiler="no"], $proflibs)
 
    if test "$have_profiler" = "yes"; then
       PROFILER_LIBS="$proflibs"
