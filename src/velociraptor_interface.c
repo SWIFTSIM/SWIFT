@@ -153,6 +153,7 @@ void velociraptor_invoke(struct engine *e) {
     struct space *s = e->s;
     struct gpart *gparts = s->gparts;
     const int nr_gparts = s->nr_gparts;
+    const int nr_hydro_parts = s->nr_parts;
     const int nr_cells = s->nr_cells;
     int *cell_node_ids;
     
@@ -178,9 +179,9 @@ void velociraptor_invoke(struct engine *e) {
         snprintf(outputFileName, FILENAME_BUFFER_SIZE, "%s_%04e.VELOCIraptor", e->stfBaseName,
              e->time);
     }
-   
-    InvokeVelociraptor(nr_gparts, gparts, cell_node_ids, outputFileName);
-    
+
+    InvokeVelociraptor(nr_gparts, nr_hydro_parts, gparts, cell_node_ids, outputFileName);
+
     /* Free cell node ids after VELOCIraptor has copied them. */
     free(cell_node_ids);
 }
