@@ -44,6 +44,11 @@
 #include <numa.h>
 #endif
 
+/* Load the profiler header, if needed. */
+#ifdef WITH_PROFILER
+#include <gperftools/profiler.h>
+#endif
+
 /* This object's header. */
 #include "engine.h"
 
@@ -4591,10 +4596,21 @@ int engine_is_done(struct engine *e) {
 void engine_unskip(struct engine *e) {
 
   const ticks tic = getticks();
+  
+#ifdef WITH_PROFILER
+  static int count = 0;
+  char filename[100];
+  sprintf(filename, "/tmp/swift_runner_do_usnkip_mapper_%06i.prof", count++);
+  ProfilerStart(filename);
+#endif  // WITH_PROFILER
 
   /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->local_cells_top,
                  e->s->nr_local_cells, sizeof(int), 1, e);
+
+#ifdef WITH_PROFILER
+  ProfilerStop();
+#endif  // WITH_PROFILER
 
   /* And the top level gravity FFT one when periodicity is on.*/
   if (e->s->periodic && (e->policy & engine_policy_self_gravity)) {
