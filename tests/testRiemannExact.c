@@ -16,15 +16,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
+/* Some standard headers. */
+#include <fenv.h>
+#include <stdio.h>
 #include <string.h>
-#include "error.h"
+
+/* Local headers. */
 #include "riemann/riemann_exact.h"
-#include "tools.h"
+#include "swift.h"
 
 int opposite(float a, float b) {
   if ((a - b)) {
-    return fabs((a + b) / (a - b)) < 1.e-4;
+    return fabsf((a + b) / (a - b)) < 1.e-4f;
   } else {
     return a == 0.0f;
   }
@@ -32,7 +37,7 @@ int opposite(float a, float b) {
 
 int equal(float a, float b) {
   if ((a + b)) {
-    return fabs((a - b) / (a + b)) < 1.e-4;
+    return fabsf((a - b) / (a + b)) < 1.e-4f;
   } else {
     return a == 0.0f;
   }
@@ -46,7 +51,8 @@ int equal(float a, float b) {
  * @param s String used to identify this check in messages
  */
 void check_value(float a, float b, const char* s) {
-  if (fabsf(a - b) / fabsf(a + b) > 1.e-5f && fabsf(a - b) > 1.e-5f) {
+  if (fabsf(a + b) != 0.f && fabsf(a - b) / fabsf(a + b) > 1.e-5f &&
+      fabsf(a - b) > 1.e-5f) {
     error("Values are inconsistent: %g %g (%s)!", a, b, s);
   } else {
     message("Values are consistent: %g %g (%s).", a, b, s);
@@ -327,12 +333,24 @@ void check_riemann_symmetry() {
  */
 int main() {
 
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
+
+/* Choke on FP-exceptions */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
+
+  /* Get some randomness going */
+  const int seed = time(NULL);
+  message("Seed = %d", seed);
+  srand(seed);
+
   /* check the exact Riemann solver */
   check_riemann_exact();
 
   /* symmetry test */
-  int i;
-  for (i = 0; i < 100; ++i) check_riemann_symmetry();
+  for (int i = 0; i < 10000; ++i) check_riemann_symmetry();
 
-  return 0;
-}
+return 0
