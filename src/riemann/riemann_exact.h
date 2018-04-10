@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ * Copyright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ *               2018 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -38,6 +39,7 @@
 #include "adiabatic_index.h"
 #include "error.h"
 #include "minmax.h"
+#include "riemann_checks.h"
 #include "riemann_vacuum.h"
 
 /**
@@ -318,30 +320,6 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   float SHR, STR;
   float pdpL, SL;
   float SHL, STL;
-  int errorFlag = 0;
-
-  /* sanity checks */
-  if (WL[0] != WL[0] || WL[4] != WL[4]) {
-    printf("NaN WL!\n");
-    errorFlag = 1;
-  }
-  if (WR[0] != WR[0] || WR[4] != WR[4]) {
-    printf("NaN WR!\n");
-    errorFlag = 1;
-  }
-  if (WL[0] < 0.0f || WL[4] < 0.0f) {
-    printf("Negative WL!\n");
-    errorFlag = 1;
-  }
-  if (WR[0] < 0.0f || WR[4] < 0.0f) {
-    printf("Negative WR!\n");
-    errorFlag = 1;
-  }
-  if (errorFlag) {
-    printf("WL: %g %g %g %g %g\n", WL[0], WL[1], WL[2], WL[3], WL[4]);
-    printf("WR: %g %g %g %g %g\n", WR[0], WR[1], WR[2], WR[3], WR[4]);
-    error("Riemman solver input error!\n");
-  }
 
   /* calculate velocities in interface frame */
   vL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
@@ -511,6 +489,10 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     const float* Wi, const float* Wj, const float* n_unit, const float* vij,
     float* totflux) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_input(Wi, Wj, n_unit, vij);
+#endif
+
   float Whalf[5];
   float flux[5][3];
   float vtot[3];
@@ -555,6 +537,10 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
       flux[3][0] * n_unit[0] + flux[3][1] * n_unit[1] + flux[3][2] * n_unit[2];
   totflux[4] =
       flux[4][0] * n_unit[0] + flux[4][1] * n_unit[1] + flux[4][2] * n_unit[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_output(Wi, Wj, n_unit, vij, totflux);
+#endif
 }
 
 #endif /* SWIFT_RIEMANN_EXACT_H */

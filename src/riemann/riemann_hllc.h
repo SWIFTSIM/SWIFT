@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ * Copyright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ *               2018 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -30,6 +31,7 @@
 #include "adiabatic_index.h"
 #include "error.h"
 #include "minmax.h"
+#include "riemann_checks.h"
 #include "riemann_vacuum.h"
 
 #ifndef EOS_IDEAL_GAS
@@ -40,6 +42,10 @@
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     const float *WL, const float *WR, const float *n, const float *vij,
     float *totflux) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_input(WL, WR, n, vij);
+#endif
 
   /* Handle pure vacuum */
   if (!WL[0] && !WR[0]) {
@@ -72,13 +78,13 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   /* STEP 2: wave speed estimates
      all these speeds are along the interface normal, since uL and uR are */
   float qL = 1.f;
-  if (pstar > WL[4]) {
+  if (pstar > WL[4] && WL[4] > 0.f) {
     qL = sqrtf(1.f +
                0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
                    (pstar / WL[4] - 1.f));
   }
   float qR = 1.f;
-  if (pstar > WR[4]) {
+  if (pstar > WR[4] && WR[4] > 0.f) {
     qR = sqrtf(1.f +
                0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
                    (pstar / WR[4] - 1.f));
@@ -174,6 +180,10 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   totflux[1] += vij[0] * totflux[0];
   totflux[2] += vij[1] * totflux[0];
   totflux[3] += vij[2] * totflux[0];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_output(WL, WR, n, vij, totflux);
+#endif
 }
 
 #endif /* SWIFT_RIEMANN_HLLC_H */

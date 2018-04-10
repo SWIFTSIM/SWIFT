@@ -94,10 +94,13 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 #else  // GIZMO_FIX_PARTICLES
 
   if (p->conserved.mass > 0.f && p->primitives.rho > 0.f) {
+
+    const float inverse_mass = 1.f / p->conserved.mass;
+
     /* Normal case: set particle velocity to fluid velocity. */
-    p->v[0] = p->conserved.momentum[0] / p->conserved.mass;
-    p->v[1] = p->conserved.momentum[1] / p->conserved.mass;
-    p->v[2] = p->conserved.momentum[2] / p->conserved.mass;
+    p->v[0] = p->conserved.momentum[0] * inverse_mass;
+    p->v[1] = p->conserved.momentum[1] * inverse_mass;
+    p->v[2] = p->conserved.momentum[2] * inverse_mass;
 
 #ifdef GIZMO_STEER_MOTION
 
@@ -118,8 +121,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     const float soundspeed =
         sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
     /* We only apply the correction if the offset between centroid and position
-       is
-       too large. */
+       is too large. */
     if (d > 0.9f * etaR) {
       float fac = xi * soundspeed / d;
       if (d < 1.1f * etaR) {

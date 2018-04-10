@@ -150,11 +150,10 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   Wj[3] += dWj[3];
   Wj[4] += dWj[4];
 
-  /* Check that we don't have problematic densities or pressures */
-  gizmo_check_physical_quantity("density", Wi[0]);
-  gizmo_check_physical_quantity("pressure", Wi[4]);
-  gizmo_check_physical_quantity("density", Wj[0]);
-  gizmo_check_physical_quantity("pressure", Wj[4]);
+  gizmo_check_physical_quantities("density", "pressure", Wi[0], Wi[1], Wi[2],
+                                  Wi[3], Wi[4]);
+  gizmo_check_physical_quantities("density", "pressure", Wj[0], Wj[1], Wj[2],
+                                  Wj[3], Wj[4]);
 }
 
 #endif /* SWIFT_HYDRO_GIZMO_GRADIENTS_H */
