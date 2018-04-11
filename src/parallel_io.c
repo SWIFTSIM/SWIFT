@@ -1250,8 +1250,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
       case swift_type_dark_matter:
         /* Allocate temporary array */
-        if (swift_posix_memalign((void**)&dmparts, gpart_align,
-                                 Ndm * sizeof(struct gpart)) != 0)
+        if (posix_memalign((void**)&dmparts, gpart_align,
+                           Ndm * sizeof(struct gpart)) != 0)
           error(
               "Error while allocating temporart memory for "
               "DM particles");
