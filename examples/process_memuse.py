@@ -37,14 +37,19 @@ with open(sys.argv[1]) as infile:
     for line in infile:
         if ":memuse:" in line:
             words = line.split()
-            key = words[3] + ":" + words[4]
-            if key not in memuse:
-                memuse[key] = 0
-            memuse[key] = memuse[key] + int(words[-1])
+            if len(words) > 5:
+                key = words[3] + ":" + words[4]
+                if key not in memuse:
+                    memuse[key] = 0
+                try:
+                    memuse[key] = memuse[key] + int(words[-1])
+                except ValueError:
+                    pass
 
 print "# step label function memuse"
 for key, value in memuse.items():
     words = key.split(":", 2)
-    print words[0], words[1], words[2], value
+    if len(words) == 3:
+        print words[0], words[1], words[2], value
 
 sys.exit(0)
