@@ -5022,7 +5022,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
                      sizeof(struct xpart) * s->size_parts) != 0)
     error("Failed to allocate new part data.");
   memuse_report("parts", sizeof(struct part) * s->size_parts);
-  memuse_report("parts", sizeof(struct xpart) * s->size_parts);
+  memuse_report("xparts", sizeof(struct xpart) * s->size_parts);
 
   if (s->nr_parts > 0) {
     memcpy(parts_new, s->parts, sizeof(struct part) * s->nr_parts);
