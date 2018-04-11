@@ -305,8 +305,8 @@ static void dumpCells_map(struct cell *c, void *data) {
   /* Only cells with particles are dumped. */
   if (c->count > 0 || c->gcount > 0 || c->scount > 0) {
 
-/* In MPI mode we may only output cells with foreign partners.
- * These define the edges of the partitions. */
+    /* In MPI mode we may only output cells with foreign partners.
+     * These define the edges of the partitions. */
     int ismpiactive = 0;
 #if WITH_MPI
     ismpiactive = (c->send_xv != NULL);

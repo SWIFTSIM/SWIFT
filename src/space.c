@@ -61,7 +61,7 @@
 #include "threadpool.h"
 #include "tools.h"
 
- /* Split size. */
+/* Split size. */
 int space_splitsize = space_splitsize_default;
 int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
 int space_subsize_self_hydro = space_subsize_self_hydro_default;
@@ -425,7 +425,8 @@ void space_regrid(struct space *s, int verbose) {
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
 
-    if (posix_memalign((void **)&s->cells_top, cell_align, s->nr_cells * sizeof(struct cell)) != 0)
+    if (posix_memalign((void **)&s->cells_top, cell_align,
+                       s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate top-level cells.");
     bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
     memuse_report("cells_top", s->nr_cells * sizeof(struct cell));
@@ -436,7 +437,8 @@ void space_regrid(struct space *s, int verbose) {
                          s->nr_cells * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate top-level multipoles.");
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
-      memuse_report("multipoles_top", s->nr_cells * sizeof(struct gravity_tensors));
+      memuse_report("multipoles_top",
+                    s->nr_cells * sizeof(struct gravity_tensors));
     }
 
     /* Allocate the indices of local cells */
@@ -2531,7 +2533,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
               (void **)&s->multipoles_sub, multipole_align,
               space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
-      memuse_report("multipoles_sub", space_cellallocchunk * sizeof(struct gravity_tensors));
+      memuse_report("multipoles_sub",
+                    space_cellallocchunk * sizeof(struct gravity_tensors));
 
       /* Constructed a linked list */
       for (int k = 0; k < space_cellallocchunk - 1; k++)

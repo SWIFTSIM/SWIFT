@@ -56,7 +56,7 @@ extern int engine_cstep;
 void memuse_report__(const char *what, const char *file, const char *function,
                      int line, size_t bytes) {
   char buffer[32];
-  sprintf(buffer, "%zd", bytes/1024);
+  sprintf(buffer, "%zd", bytes / 1024);
   memuse_report_str__(what, file, function, line, buffer);
 }
 
@@ -74,13 +74,12 @@ void memuse_report_str__(const char *what, const char *file,
                          const char *function, int line,
                          const char *description) {
 #ifdef WITH_MPI
-  printf("[%04i] %s :memuse: %i:%s %s:%s:%i %s\n",
-         engine_rank, clocks_get_timesincestart(), engine_cstep, what,
-         file, function, line, description);
+  printf("[%04i] %s :memuse: %i:%s %s:%s:%i %s\n", engine_rank,
+         clocks_get_timesincestart(), engine_cstep, what, file, function, line,
+         description);
 #else
-  printf("%s :memuse: %i:%s %s:%s:%i %s\n",
-         clocks_get_timesincestart(), engine_cstep, what, file, function,
-         line, description);
+  printf("%s :memuse: %i:%s %s:%s:%i %s\n", clocks_get_timesincestart(),
+         engine_cstep, what, file, function, line, description);
 #endif
 }
 
@@ -98,8 +97,8 @@ void memuse_report_str__(const char *what, const char *file,
  * @param drs      data+stack resident set (DATA)
  * @param dt       dirty pages (nDRT)
  */
-void memuse_use(long *size, long *resident, long *share, long *trs,
-                long *lrs, long *drs, long *dt) {
+void memuse_use(long *size, long *resident, long *share, long *trs, long *lrs,
+                long *drs, long *dt) {
 
   /* Open the file. */
   FILE *file = fopen("/proc/self/statm", "r");
@@ -154,7 +153,9 @@ const char *memuse_process() {
   long dt;
   memuse_use(&size, &resident, &share, &trs, &lrs, &drs, &dt);
 
-  snprintf(buffer, 256, "VIRT = %ld SHR = %ld CODE = %ld DATA = %ld "
-           "RES = %ld", size, share, trs, drs, resident);
+  snprintf(buffer, 256,
+           "VIRT = %ld SHR = %ld CODE = %ld DATA = %ld "
+           "RES = %ld",
+           size, share, trs, drs, resident);
   return buffer;
 }

@@ -43,7 +43,6 @@
 #define swift_abort(errcode) exit(errcode)
 #endif
 
-
 /**
  * @brief Error macro. Prints the message given in argument and aborts.
  *

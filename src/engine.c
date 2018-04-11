@@ -1582,7 +1582,8 @@ void engine_exchange_cells(struct engine *e) {
                        sizeof(struct gpart) * s->size_gparts_foreign) != 0)
       error("Failed to allocate foreign gpart data.");
   }
-  memuse_report("gparts_foreign", sizeof(struct gpart) * s->size_gparts_foreign);
+  memuse_report("gparts_foreign",
+                sizeof(struct gpart) * s->size_gparts_foreign);
 
   if (count_sparts_in > s->size_sparts_foreign) {
     if (s->sparts_foreign != NULL) free(s->sparts_foreign);
@@ -1591,7 +1592,8 @@ void engine_exchange_cells(struct engine *e) {
                        sizeof(struct spart) * s->size_sparts_foreign) != 0)
       error("Failed to allocate foreign spart data.");
   }
-  memuse_report("sparts_foreign", sizeof(struct spart) * s->size_sparts_foreign);
+  memuse_report("sparts_foreign",
+                sizeof(struct spart) * s->size_sparts_foreign);
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
@@ -4551,7 +4553,6 @@ void engine_step(struct engine *e) {
   /* Final job is to create a restart file if needed. */
   engine_dump_restarts(e, drifted_all, e->restart_onexit && engine_is_done(e));
   memuse_report_str("step", memuse_process());
-
 }
 
 /**
