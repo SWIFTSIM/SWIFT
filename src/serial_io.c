@@ -1002,7 +1002,7 @@ void write_output_serial(struct engine* e, const char* baseName,
             /* Allocate temporary array */
             if (posix_memalign((void*)&dmparts, gpart_align,
                                Ndm * sizeof(struct gpart)) != 0)
-              error("Error while allocating temporart memory for DM particles");
+              error("Error while allocating temporary memory for DM particles");
             bzero(dmparts, Ndm * sizeof(struct gpart));
 
             /* Collect the DM particles from gpart */

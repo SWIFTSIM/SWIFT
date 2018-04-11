@@ -1254,7 +1254,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
         if (posix_memalign((void**)&dmparts, gpart_align,
                            Ndm * sizeof(struct gpart)) != 0)
           error(
-              "Error while allocating temporart memory for "
+              "Error while allocating temporary memory for "
               "DM particles");
         bzero(dmparts, Ndm * sizeof(struct gpart));
 
