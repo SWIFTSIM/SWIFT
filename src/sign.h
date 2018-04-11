@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018   Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,10 +16,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_SIGN_H
+#define SWIFT_SIGN_H
 
-/* This object's header. */
-#include "equation_of_state.h"
+/**
+ * @brief Return the sign of a floating point number
+ *
+ * @param x The number of interest.
+ * @return >0 if positive, 0 if negative.
+ */
+__attribute__((always_inline)) INLINE static int signf(float x) {
+#ifdef __GNUC__
+  return !signbit(x);
+#else
+  return (0.f < val) - (val < 0.f);
+#endif
+}
 
-/* Equation of state for the physics model
- * (temporary ugly solution as a global variable) */
-struct eos_parameters eos;
+/**
+ * @brief Return 1 if two numbers have the same sign, 0 otherwise
+ *
+ * @param x The first number
+ * @param y The second number
+ */
+__attribute__((always_inline)) INLINE static int same_signf(float x, float y) {
+  return signf(x) == signf(y);
+}
+
+#endif

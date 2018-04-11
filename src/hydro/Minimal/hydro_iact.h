@@ -53,7 +53,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   float wi, wj, wi_dx, wj_dx;
 
-  const float r = sqrtf(r2);
+  /* Get r. */
+  const float r_inv = 1.0f / sqrtf(r2);
+  const float r = r2 * r_inv;
 
   /* Get the masses. */
   const float mi = pi->mass;
@@ -101,8 +103,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   /* Get the masses. */
   const float mj = pj->mass;
 
-  /* Get r and r inverse. */
-  const float r = sqrtf(r2);
+  /* Get r. */
+  const float r_inv = 1.0f / sqrtf(r2);
+  const float r = r2 * r_inv;
 
   const float h_inv = 1.f / hi;
   const float ui = r * h_inv;
@@ -134,8 +137,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
-  const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  /* Get r and r inverse. */
+  const float r_inv = 1.0f / sqrtf(r2);
+  const float r = r2 * r_inv;
 
   /* Recover some data */
   const float mi = pi->mass;
@@ -246,8 +250,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
-  const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  /* Get r and r inverse. */
+  const float r_inv = 1.0f / sqrtf(r2);
+  const float r = r2 * r_inv;
 
   /* Recover some data */
   // const float mi = pi->mass;

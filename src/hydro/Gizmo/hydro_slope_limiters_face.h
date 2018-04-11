@@ -32,52 +32,43 @@
 #ifndef SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
 #define SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
 
+#include <float.h>
+
+#include "sign.h"
+
 __attribute__((always_inline)) INLINE static float
 hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
-                                float xij_norm, float r) {
+                                float xij_norm, float r_inv) {
 
-  float delta1, delta2, phimin, phimax, phibar, phiplus, phiminus, phi_mid;
   const float psi1 = 0.5f;
   const float psi2 = 0.25f;
 
-  if (phi_i == phi_j) {
-    return 0.0f;
-  }
+  const float delta1 = psi1 * fabsf(phi_i - phi_j);
+  const float delta2 = psi2 * fabsf(phi_i - phi_j);
 
-  delta1 = psi1 * fabs(phi_i - phi_j);
-  delta2 = psi2 * fabs(phi_i - phi_j);
+  const float phimin = min(phi_i, phi_j);
+  const float phimax = max(phi_i, phi_j);
 
-  phimin = fmin(phi_i, phi_j);
-  phimax = fmax(phi_i, phi_j);
+  const float phibar = phi_i + xij_norm * r_inv * (phi_j - phi_i);
 
-  phibar = phi_i + xij_norm / r * (phi_j - phi_i);
+  float phiplus, phiminus, phi_mid;
 
-  /* if sign(phimax+delta1) == sign(phimax) */
-  if ((phimax + delta1) * phimax > 0.0f) {
+  if (same_signf(phimax + delta1, phimax))
     phiplus = phimax + delta1;
-  } else {
-    if (phimax != 0.) {
-      phiplus = phimax / (1.0f + delta1 / fabs(phimax));
-    } else {
-      phiplus = 0.;
-    }
-  }
+  else
+    phiplus = phimax / (1.0f + delta1 / (fabsf(phimax) + FLT_MIN));
 
-  /* if sign(phimin-delta1) == sign(phimin) */
-  if ((phimin - delta1) * phimin > 0.0f) {
+  if (same_signf(phimin - delta1, phimin))
     phiminus = phimin - delta1;
-  } else {
-    if (phimin != 0.) {
-      phiminus = phimin / (1.0f + delta1 / fabs(phimin));
-    } else {
-      phiminus = 0.;
-    }
-  }
+  else
+    phiminus = phimin / (1.0f + delta1 / (fabsf(phimin) + FLT_MIN));
 
   if (phi_i < phi_j) {
-    phi_mid = fmax(phiminus, fmin(phibar + delta2, phi_mid0));
+    const float temp = min(phibar + delta2, phi_mid0);
+    phi_mid = max(phiminus, temp);
   } else {
-    phi_mid = fmin(phiplus, fmax(phibar - delta2, phi_mid0));
+    const float temp = max(phibar - delta2, phi_mid0);
+    phi_mid = min(phiplus, temp);
   }
 
   return phi_mid - phi_i;
@@ -97,38 +88,38 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
  * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
-    float *Wi, float *Wj, float *dWi, float *dWj, float *xij_i, float *xij_j,
-    float r) {
+    float *Wi, float *Wj, float *dWi, float *dWj, const float *xij_i,
+    const float *xij_j, float r) {
 
-  float xij_i_norm, xij_j_norm;
-
-  xij_i_norm =
+  const float xij_i_norm =
       sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
 
-  xij_j_norm =
+  const float xij_j_norm =
       sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
 
+  const float r_inv = 1.f / r;
+
   dWi[0] = hydro_slope_limit_face_quantity(Wi[0], Wj[0], Wi[0] + dWi[0],
-                                           xij_i_norm, r);
+                                           xij_i_norm, r_inv);
   dWi[1] = hydro_slope_limit_face_quantity(Wi[1], Wj[1], Wi[1] + dWi[1],
-                                           xij_i_norm, r);
+                                           xij_i_norm, r_inv);
   dWi[2] = hydro_slope_limit_face_quantity(Wi[2], Wj[2], Wi[2] + dWi[2],
-                                           xij_i_norm, r);
+                                           xij_i_norm, r_inv);
   dWi[3] = hydro_slope_limit_face_quantity(Wi[3], Wj[3], Wi[3] + dWi[3],
-                                           xij_i_norm, r);
+                                           xij_i_norm, r_inv);
   dWi[4] = hydro_slope_limit_face_quantity(Wi[4], Wj[4], Wi[4] + dWi[4],
-                                           xij_i_norm, r);
+                                           xij_i_norm, r_inv);
 
   dWj[0] = hydro_slope_limit_face_quantity(Wj[0], Wi[0], Wj[0] + dWj[0],
-                                           xij_j_norm, r);
+                                           xij_j_norm, r_inv);
   dWj[1] = hydro_slope_limit_face_quantity(Wj[1], Wi[1], Wj[1] + dWj[1],
-                                           xij_j_norm, r);
+                                           xij_j_norm, r_inv);
   dWj[2] = hydro_slope_limit_face_quantity(Wj[2], Wi[2], Wj[2] + dWj[2],
-                                           xij_j_norm, r);
+                                           xij_j_norm, r_inv);
   dWj[3] = hydro_slope_limit_face_quantity(Wj[3], Wi[3], Wj[3] + dWj[3],
-                                           xij_j_norm, r);
+                                           xij_j_norm, r_inv);
   dWj[4] = hydro_slope_limit_face_quantity(Wj[4], Wi[4], Wj[4] + dWj[4],
-                                           xij_j_norm, r);
+                                           xij_j_norm, r_inv);
 }
 
 #endif /* SWIFT_GIZMO_SLOPE_LIMITER_FACE_H */
