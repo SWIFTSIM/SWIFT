@@ -48,6 +48,7 @@
 #include "hydro_properties.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
+#include "memuse.h"
 #include "part.h"
 #include "stars_io.h"
 #include "units.h"
