@@ -1148,16 +1148,16 @@ void scheduler_reset(struct scheduler *s, int size) {
     if (posix_memalign((void **)&s->tasks, task_align,
                        size * sizeof(struct task)) != 0)
       error("Failed to allocate task array.");
-    memuse_report("tasks", size * sizeof(struct task));
 
     if ((s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate task lists.");
-    memuse_report("tasks_ind", size * sizeof(int));
 
     if ((s->tid_active = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate aactive task lists.");
-    memuse_report("tid_active", size * sizeof(int));
   }
+  memuse_report("tasks", size * sizeof(struct task));
+  memuse_report("tasks_ind", size * sizeof(int));
+  memuse_report("tid_active", size * sizeof(int));
 
   /* Reset the counters. */
   s->size = size;
