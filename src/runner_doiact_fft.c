@@ -222,7 +222,8 @@ void runner_do_grav_fft(struct runner* r, int timer) {
 
   /* Some common factors */
   const double green_fac = -1. / (M_PI * box_size);
-  const double a_smooth2 = 4. * M_PI * a_smooth * a_smooth / ((double)(N * N));
+  const double a_smooth2 =
+      4. * M_PI * M_PI * a_smooth * a_smooth / ((double)(N * N));
   const double k_fac = M_PI / (double)N;
 
   /* Now de-convolve the CIC kernel and apply the Green function */
