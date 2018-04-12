@@ -1281,6 +1281,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
  *
  * @param s The #space.
  * @param ind The array of indices to fill.
+ * @param cell_counts The cell counters to update.
  * @param cells The array of #cell to update.
  * @param verbose Are we talkative ?
  */
@@ -1309,6 +1310,7 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
  *
  * @param s The #space.
  * @param gind The array of indices to fill.
+ * @param cell_counts The cell counters to update.
  * @param cells The array of #cell to update.
  * @param verbose Are we talkative ?
  */
@@ -1337,6 +1339,7 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
  *
  * @param s The #space.
  * @param sind The array of indices to fill.
+ * @param cell_counts The cell counters to update.
  * @param cells The array of #cell to update.
  * @param verbose Are we talkative ?
  */
@@ -1368,8 +1371,8 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
  * @param xparts The corresponding #xpart array to sort as well.
  * @param ind The indices with respect to which the parts are sorted.
  * @param counts Number of particles per index.
- * @param num_bins Total number of bins (length of #counts).
- * @param parts_offset Offset of the #parts array from the global #parts array.
+ * @param num_bins Total number of bins (length of count).
+ * @param parts_offset Offset of the #part array from the global #part array.
  */
 void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
                       int *counts, int num_bins, ptrdiff_t parts_offset) {
@@ -1425,8 +1428,8 @@ void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
  * @param sparts The array of #spart to sort.
  * @param ind The indices with respect to which the #spart are sorted.
  * @param counts Number of particles per index.
- * @param num_bins Total number of bins (length of #counts).
- * @param sparts_offset Offset of the #sparts array from the global #sparts
+ * @param num_bins Total number of bins (length of counts).
+ * @param sparts_offset Offset of the #spart array from the global #spart.
  * array.
  */
 void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
@@ -1482,7 +1485,7 @@ void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
  * @param sparts Global #spart array for re-linking.
  * @param ind The indices with respect to which the gparts are sorted.
  * @param counts Number of particles per index.
- * @param num_bins Total number of bins (length of #counts).
+ * @param num_bins Total number of bins (length of counts).
  */
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        struct spart *sparts, int *ind, int *counts,
