@@ -4615,7 +4615,8 @@ void engine_unskip(struct engine *e) {
         (e->policy &
              (engine_policy_self_gravity | engine_policy_external_gravity) &&
          cell_is_active_gravity(c, e))) {
-      memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
+      if (num_active_cells != k)
+        memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
       num_active_cells += 1;
     }
   }
