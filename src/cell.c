@@ -1897,16 +1897,12 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
 
     /* Atomically drift the multipole in ci */
     lock_lock(&ci->mlock);
-    if (ci->ti_old_multipole < e->ti_current) { /* message("oo"); */
-      cell_drift_multipole(ci, e);
-    }
+    if (ci->ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
     if (lock_unlock(&ci->mlock) != 0) error("Impossible to unlock m-pole");
 
     /* Atomically drift the multipole in cj */
     lock_lock(&cj->mlock);
-    if (cj->ti_old_multipole < e->ti_current) { /* message("bb"); */
-      cell_drift_multipole(cj, e);
-    }
+    if (cj->ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
     if (lock_unlock(&cj->mlock) != 0) error("Impossible to unlock m-pole");
 
     /* Recover the multipole information */
@@ -2195,8 +2191,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 }
 
 /**
- * @brief Un-skips all the gravity tasks associated with a given cell and
- * checks if the space needs to be rebuilt.
+ * @brief Un-skips all the gravity tasks associated with a given cell and checks
+ * if the space needs to be rebuilt.
  *
  * @param c the #cell.
  * @param s the #scheduler.
@@ -2310,8 +2306,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
  * @param c The top-level #cell to play with.
- * @param super Pointer to the deepest cell with tasks in this part of the
- * tree.
+ * @param super Pointer to the deepest cell with tasks in this part of the tree.
  */
 void cell_set_super(struct cell *c, struct cell *super) {
 
@@ -2331,8 +2326,8 @@ void cell_set_super(struct cell *c, struct cell *super) {
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
  * @param c The top-level #cell to play with.
- * @param super_hydro Pointer to the deepest cell with tasks in this part of
- * the tree.
+ * @param super_hydro Pointer to the deepest cell with tasks in this part of the
+ * tree.
  */
 void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 
@@ -2681,8 +2676,6 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
   if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
 #endif
 
-  // error("aaa");
-
   /* Drift from the last time the cell was drifted to the current time */
   double dt_drift;
   if (e->policy & engine_policy_cosmology)
@@ -2725,8 +2718,6 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_multipole) error("Attempt to drift to the past");
 #endif
-
-  // error("aaa");
 
   /* Drift from the last time the cell was drifted to the current time */
   double dt_drift;
