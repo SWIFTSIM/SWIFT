@@ -68,15 +68,24 @@ int main() {
       exit(1);
   }
 
+  gamma = 5.0/3.0;
+
+  chemistry_init(params, &us, &internal_const, &chemistry_data);
+  chemistry_first_init_part(&p,&xp,&chemistry_data);
+  chemistry_print(&chemistry_data);
+    
+  u = 1.0*pow(10.0,11)/(units_cgs_conversion_factor(&us,UNIT_CONV_ENERGY)/units_cgs_conversion_factor(&us,UNIT_CONV_MASS));
+  pressure = u*p.rho*(gamma -1.0);
+  hydrogen_number_density = hydrogen_number_density_cgs*pow(units_cgs_conversion_factor(&us,UNIT_CONV_LENGTH),3);
+  p.rho = hydrogen_number_density*internal_const.const_proton_mass*(1.0+p.chemistry_data.metal_mass_fraction[EAGLE_Helium]/p.chemistry_data.metal_mass_fraction[EAGLE_Hydrogen]);
+  p.entropy = pressure/(pow(p.rho,gamma));
+
   cosmology_init(params, &us, &internal_const, &cosmo);
   cosmology_print(&cosmo);
 
   cooling_init(params, &us, &internal_const, &cooling);
   cooling_print(&cooling);
 
-  chemistry_init(params, &us, &internal_const, &chemistry_data);
-  chemistry_first_init_part(&p,&xp,&chemistry_data);
-  chemistry_print(&chemistry_data);
 
   for(int t_i = 0; t_i < n_t_i; t_i++){
     
@@ -85,8 +94,6 @@ int main() {
     hydrogen_number_density = hydrogen_number_density_cgs*pow(units_cgs_conversion_factor(&us,UNIT_CONV_LENGTH),3);
     p.rho = hydrogen_number_density*internal_const.const_proton_mass*(1.0+p.chemistry_data.metal_mass_fraction[EAGLE_Helium]/p.chemistry_data.metal_mass_fraction[EAGLE_Hydrogen]);
     p.entropy = pressure/(pow(p.rho,gamma));
-
-    gamma = 5.0/3.0;
 
     cooling_du_dt = eagle_cooling_rate(&p,&cooling,&cosmo,&internal_const);
     temperature_cgs = eagle_convert_u_to_temp(&p,&cooling,&cosmo,&internal_const);

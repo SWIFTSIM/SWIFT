@@ -261,24 +261,15 @@ inline struct cooling_tables_redshift_invariant get_no_compt_table(char *cooling
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      net_cooling_rate);
     status = H5Dclose(dataset);
-    //for(i = 0; i < cooling->N_Temp*cooling->N_nH; i++) printf("eagle_cool_tables.h i, net_cooling_rate %d, %.5e\n",i,net_cooling_rate[i]);
 
     for (j = 0; j < cooling->N_Temp; j++){
       for (k = 0; k < cooling->N_nH; k++){
         table_index = row_major_index_2d(j,k,cooling->N_Temp,cooling->N_nH);
         cooling_index = row_major_index_4d(0,specs,k,j,1,cooling->N_Elements,cooling->N_nH,cooling->N_Temp); //Redshift invariant table!!!
         cooling_table.metal_heating[cooling_index] = -net_cooling_rate[table_index];
-	//printf("eagle_cool_tables.h j,k,j*cooling->N_nH+k,table_index,cooling_index,net cooling rate, cooling_table value %d, %d, %d, %d, %d %.5e, %.5e\n",j,k,j*cooling->N_nH+k,table_index,cooling_index,-net_cooling_rate[table_index],cooling_table.metal_heating[cooling_index]);
       }
     }
   }
-  //for (i = 0; i < cooling->N_nH; i++){
-  //  table_index = row_major_index_2d(0,i,cooling->N_Temp,cooling->N_nH);
-  //  cooling_index = row_major_index_4d(0,0,i,0,1,cooling->N_Elements,cooling->N_nH,cooling->N_Temp);
-  //  printf("eagle_cool_tables.h i, cooling_index, table_index, cooling_table.metal_heating, net heating = %d %d %d %.5e %.5e\n",i,cooling_index,table_index,cooling_table.metal_heating[cooling_index],net_cooling_rate[table_index]);
-  //}
-  //for (i = 0; i < cooling->N_Elements*cooling->N_Temp*cooling->N_nH; i++) printf("eagle cooling.h i, cooling_table %d, %.5e\n",i,cooling_table.metal_heating[i]);
-  //error("stop in eagle_cool_tables.h");
 
 
   /* Helium */
@@ -382,6 +373,7 @@ inline struct cooling_tables_redshift_invariant get_collisional_table(char *cool
   cooling_table.H_plus_He_electron_abundance = (float *)malloc(cooling->N_He*cooling->N_Temp*cooling->N_nH*sizeof(float));
 
   sprintf(fname, "%sz_photodis.hdf5", cooling_table_path);
+  //sprintf(fname, "%sz_collis.hdf5", cooling_table_path);
 
   file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
 
