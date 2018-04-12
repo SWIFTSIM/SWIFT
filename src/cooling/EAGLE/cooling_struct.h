@@ -113,6 +113,8 @@ struct cooling_function_data {
   double power_scale;
   char cooling_table_path[500];
   float reionisation_redshift;
+  float calcium_over_silicon_ratio;
+  float sulphur_over_silicon_ratio;
 
 };
 

@@ -21,7 +21,7 @@ then
 fi
 
 # Run SWIFT
-../swift -s -C -t 1 coolingBox.yml
+../swift -s -C -t 4 coolingBox.yml
 
 # Check energy conservation and cooling rate
 python energy_plot.py
