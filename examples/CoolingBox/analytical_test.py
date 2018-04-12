@@ -1,4 +1,3 @@
-import sys
 import matplotlib
 matplotlib.use("Agg")
 from pylab import *
@@ -31,17 +30,25 @@ import numpy as np
 import h5py as h5
 import sys
 
-# function for interpolating 1d table of cooling rates
-def interpol_lambda(u_list,cooling_rate,u):
-	if u < u_list[0]: 
+def interpol_lambda(temp_list,cooling_rate,temp):
+	#print(temp,temp_list[0],temp_list[len(temp_list)-1])
+	if temp < temp_list[0]: 
 		return[cooling_rate[0]]
-	if u > u_list[len(u_list)-1]: 
+	if temp > temp_list[len(temp_list)-1]: 
 		return[cooling_rate[len(cooling_rate)-1]]
 	j = 0
-	while u_list[j+1] < u:
+	while temp_list[j+1] < temp:
 		j += 1
-	cooling = cooling_rate[j]*(u_list[j+1]-u)/(u_list[j+1]-u_list[j]) + cooling_rate[j+1]*(u-u_list[j])/(u_list[j+1]-u_list[j])
+	cooling = cooling_rate[j]*(temp_list[j+1]-temp)/(temp_list[j+1]-temp_list[j]) + cooling_rate[j+1]*(temp-temp_list[j])/(temp_list[j+1]-temp_list[j])
 	return cooling
+
+def convert_u_to_temp_sol(u,rho):
+	k_b = 1.38E-16 #boltzmann
+	m_p = 1.67e-24 #proton mass
+	gamma = 5.0/3.0
+	pressure = u*rho*(gamma - 1.0)
+	temp = pressure/(k_b*rho/(0.59*m_p))
+	return temp
 
 # File containing the total energy
 stats_filename = "./energy.txt"
@@ -67,86 +74,76 @@ unit_mass = units.attrs["Unit mass in cgs (U_M)"]
 unit_length = units.attrs["Unit length in cgs (U_L)"]
 unit_time = units.attrs["Unit time in cgs (U_t)"]
 unit_vel = unit_length/unit_time
+#hubble_param = 0.71
+hubble_param = 1.0
+
+unit_length = unit_length/hubble_param
+unit_mass = unit_mass/hubble_param
+
+yHe = 0.28
+temp_0 = 1.0e7
 
 rho = rho*unit_mass/(unit_length**3)
 
 # Read snapshots
-if len(sys.argv) >= 4:
-	nsnap = int(sys.argv[5])
-else:
-	print("Need to specify number of snapshots, defaulting to 100.")
-	nsnap = 100
-npart = 4096
+nsnap = 40
+npart = 32768
 u_snapshots_cgs = zeros(nsnap)
 u_part_snapshots_cgs = zeros((nsnap,npart))
 t_snapshots_cgs = zeros(nsnap)
-scale_factor = zeros(nsnap)
 for i in range(nsnap):
     snap = h5.File("coolingBox_%0.4d.hdf5"%i,'r')
-    u_part_snapshots_cgs[i][:] = snap["/PartType0/InternalEnergy"][:]*(unit_length**2)/(unit_time**2)
+    u_part_snapshots_cgs[i][:] = snap["/PartType0/InternalEnergy"][:]*unit_length**2/(unit_time**2)
     t_snapshots_cgs[i] = snap["/Header"].attrs["Time"] * unit_time
-    scale_factor[i] = snap["/Header"].attrs["Scale-factor"]
 
 # calculate analytic solution. Since cooling rate is constant,
 # temperature decrease in linear in time.
 # read Lambda and temperatures from table
-internal_energy = []
+temperature = []
 cooling_rate = []
 file_in = open('cooling_output.dat', 'r')
 for line in file_in:
         data = line.split()
-        internal_energy.append(float(data[0]))
+        temperature.append(float(data[0]))
         cooling_rate.append(-float(data[1]))
 
-tfinal = t_snapshots_cgs[nsnap-1]
-tfirst = t_snapshots_cgs[0]
-nt = nsnap*10
-dt = (tfinal-tfirst)/nt
+tfinal = 3.3*t_snapshots_cgs[nsnap-1]
+nt = 1e4
+dt = tfinal/nt
 
 t_sol = np.zeros(int(nt))
-u_sol = np.zeros(int(nt))
+temp_sol = np.zeros(int(nt))
 lambda_sol = np.zeros(int(nt))
-u = np.mean(u_part_snapshots_cgs[0,:])/scale_factor[0]**2
-u_sol[0] = u
-t_sol[0] = tfirst
-# integrate explicit ODE
+u = np.mean(u_part_snapshots_cgs[0,:])
+temp_sol[0] = convert_u_to_temp_sol(u,rho)
+#print(u,temp_sol[0])
 for j in range(int(nt-1)):
 	t_sol[j+1] = t_sol[j] + dt
-	Lambda_net = interpol_lambda(internal_energy,cooling_rate,u_sol[j])
-	if j < 10:
-		print(u,Lambda_net)
-	if int(sys.argv[4]) == 1:
-		nH = 0.702*rho/(m_p)/scale_factor[0]**3
-		ratefact = nH*0.702/m_p
-	else:
-		nH = 0.752*rho/(m_p)/scale_factor[0]**3
-		ratefact = nH*0.752/m_p
-	u_next = u - Lambda_net*ratefact*dt
-	u_sol[j+1] = u_next
+	Lambda_net = interpol_lambda(temperature,cooling_rate,temp_sol[j])
+	#u_next = (u*m_p - Lambda_net*rho/(0.59*m_p)*dt)/m_p
+	nH = 0.75*rho/(m_p)
+	u_next = u - Lambda_net*nH**2/rho*dt
+	#print(u_next, u, Lambda_net,rho/(0.59*m_p),dt)
+	print(Lambda_net,rho,dt,nH)
+	temp_sol[j+1] = convert_u_to_temp_sol(u_next,rho)
+	lambda_sol[j] = Lambda_net
 	u = u_next
-u_sol = u_sol*scale_factor[0]**2
 
-# swift solution
-mean_u = np.zeros(nsnap)
+mean_temp = np.zeros(nsnap)
 for j in range(nsnap):
-	mean_u[j] = np.mean(u_part_snapshots_cgs[j,:])
-
-# plot and save results
-log_nh = float(sys.argv[2])
-redshift = float(sys.argv[1])
-p = plt.figure(figsize = (6,6))
-p1, = plt.loglog(t_sol,u_sol,linewidth = 0.5,color = 'k', marker = '*', markersize = 1.5,label = 'explicit ODE')
-p2, = plt.loglog(t_snapshots_cgs,mean_u,linewidth = 0.5,color = 'r', marker = '*', markersize = 1.5,label = 'swift mean')
+	mean_temp[j] = convert_u_to_temp_sol(np.mean(u_part_snapshots_cgs[j,:]),rho)
+p = figure()
+p1, = plot(t_sol,temp_sol,linewidth = 0.5,color = 'k',label = 'analytical')
+p2, = plot(t_snapshots_cgs,mean_temp,linewidth = 0.5,color = 'r',label = 'swift mean')
 l = legend(handles = [p1,p2])
-xlabel("${\\rm{Time~[s]}}$", labelpad=0, fontsize = 14)
-ylabel("Internal energy ${\\rm{[erg \cdot g^{-1}]}}$", fontsize = 14)
-if int(sys.argv[4]) == 1:
-	title('$n_h = 10^{' + "{}".format(log_nh) + '} \\rm{cm}^{-3}, z = ' + "{}".format(redshift) + '$, solar metallicity,\n relative error: ' + "{0:.4f}".format( (u_sol[int(nt)-1] - mean_u[nsnap-1])/(u_sol[int(nt)-1])), fontsize = 16)
-	name = "z_"+str(sys.argv[1])+"_nh_"+str(sys.argv[2])+"_pressure_"+str(sys.argv[3])+"_solar.png"
-elif int(sys.argv[4]) == 0:
-	title('$n_h = 10^{' + "{}".format(log_nh) + '} \\rm{cm}^{-3}, z = ' + "{}".format(redshift) + '$, zero metallicity,\n relative error: ' + "{0:.4f}".format( (u_sol[int(nt)-1] - mean_u[nsnap-1])/(u_sol[int(nt)-1])), fontsize = 16)
-	name = "z_"+str(sys.argv[1])+"_nh_"+str(sys.argv[2])+"_pressure_"+str(sys.argv[3])+"_zero_metal.png"
+xlabel("${\\rm{Time~[s]}}$", labelpad=0)
+ylabel("${\\rm{Temperature~[K]}}$")
 
-savefig(name, dpi=200)
+savefig("energy.png", dpi=200)
 
-print('Final internal energy ode, swift, error ' + str(u_sol[int(nt)-1]) + ' ' + str(mean_u[nsnap-1])  + ' ' + str( (u_sol[int(nt)-1] - mean_u[nsnap-1])/(u_sol[int(nt)-1])))
+p = figure()
+p1, = loglog(temp_sol,lambda_sol,linewidth = 0.5,color = 'k',label = 'analytical')
+xlabel("${\\rm{Temperature~[K]}}$")
+ylabel("${\\rm{Cooling~rate}}$")
+
+savefig("cooling.png", dpi=200)

@@ -1,41 +1,35 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  #UnitMass_in_cgs:     2.0e33     # Solar masses
-  #UnitLength_in_cgs:   3.0857e21  # Kiloparsecs
-  UnitMass_in_cgs:     1.989e43     # 10^10 Solar masses
-  UnitLength_in_cgs:   3.085678e24  # Megaparsec
+  UnitMass_in_cgs:     2.0e33     # Solar masses
+  UnitLength_in_cgs:   3.0857e21  # Kiloparsecs
   UnitVelocity_in_cgs: 1.0e5      # Kilometers per second
   UnitCurrent_in_cgs:  1          # Amperes
   UnitTemp_in_cgs:     1          # Kelvin
 
-# Cosmological parameters
 Cosmology:
-  h:              0.6777        # Reduced Hubble constant
-  a_begin: 0.990099009901    # Initial scale-factor of the simulation
-  a_end: 0.990198019802      # Final scale factor of the simulation
-  Omega_m:        0.307         # Matter density parameter
-  Omega_lambda:   0.693         # Dark-energy density parameter
-  Omega_b:        0.0455        # Baryon density parameter
+  Omega_m:        0.307
+  Omega_lambda:   0.693
+  Omega_b:        0.0455
+  h:              0.6777
+  a_begin:        0.25
+  a_end:          1.0
 
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1e-4  # The end time of the simulation (in internal units).
-  dt_min:     1e-15  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-8  # The maximal time-step size of the simulation (in internal units).
+  time_end:   0.02  # The end time of the simulation (in internal units).
+  dt_min:     1e-5  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
   basename:            coolingBox # Common part of the name of output files
   time_first:          0.         # Time of the first output (in internal units)
-  scale_factor_first: 0.990099009901         # Time of the first output (in internal units)
-  delta_time: 1.0000002   # Time difference between consecutive outputs (in internal units)
+  delta_time:          5e-4       # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  scale_factor_first: 0.990099009901  # Scale-factor of the first stat dump (cosmological run)
-  time_first:          0.0 # Time of the first stat dump (non-cosmological run) (in internal units)
-  delta_time: 1.0000002 # Time between statistics output
+  delta_time:          1e-3 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -72,34 +66,12 @@ GrackleCooling:
   OutputMode: 1 # Write in output corresponding primordial chemistry mode
   MaxSteps: 1000
   ConvergenceLimit: 1e-2
-
-EagleCooling:
-  filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/
-  reionisation_redshift:   20
-  he_reion:                0
-  he_reion_z_center:       3.5
-  he_reion_z_sigma:        0.5
-  he_reion_ev_pH:          2.0
   
 EagleCooling:
     filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/
   reionisation_redshift:   8.898
 
 EAGLEChemistry:
-<<<<<<< HEAD
-  InitMetallicity: 0.0
-  InitAbundance_Hydrogen: 0.752
-  InitAbundance_Helium: 0.248
-  InitAbundance_Carbon: 0.000
-  InitAbundance_Nitrogen: 0.000
-  InitAbundance_Oxygen: 0.000
-  InitAbundance_Neon: 0.000
-  InitAbundance_Magnesium: 0.000
-  InitAbundance_Silicon: 0.000
-  InitAbundance_Iron: 0.000
-  CalciumOverSilicon: 0.0941736
-  SulphurOverSilicon: 0.6054160
-=======
   InitMetallicity:         0.014
   InitAbundance_Hydrogen:  0.706
   InitAbundance_Helium:    0.280
@@ -124,8 +96,6 @@ EAGLEChemistry:
   #InitAbundance_Iron:      0.000
   #CalciumOverSilicon:      0.0941736
   #SulphurOverSilicon:      0.6054160
->>>>>>> Most of the cooling rates seem to be produced correctly. Need work on e.g. iron at low temperatures
 
 GearChemistry:
   InitialMetallicity: 0.01295
-

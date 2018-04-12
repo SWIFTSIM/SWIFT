@@ -27,8 +27,8 @@ from numpy import *
 # Parameters
 periodic= 1           # 1 For periodic box
 boxSize = 1           # 1 kiloparsec    
-rho = 3450447.97588         # Density in code units (3.2e6 is 0.1 hydrogen atoms per cm^3)
-P = 4455445544.55             # Pressure in code units (at 10^6K)
+rho = 3.2e3           # Density in code units (3.2e6 is 0.1 hydrogen atoms per cm^3)
+P = 4.5e8             # Pressure in code units (at 10^7K)
 gamma = 5./3.         # Gas adiabatic index
 eta = 1.2349          # 48 ngbs with cubic spline kernel
 fileName = "coolingBox.hdf5" 
@@ -36,7 +36,7 @@ fileName = "coolingBox.hdf5"
 #---------------------------------------------------
 
 # Read id, position and h from glass
-glass = h5py.File("glassCube_16.hdf5", "r")
+glass = h5py.File("glassCube_32.hdf5", "r")
 ids = glass["/PartType0/ParticleIDs"][:]
 pos = glass["/PartType0/Coordinates"][:,:] * boxSize
 h = glass["/PartType0/SmoothingLength"][:] * boxSize
