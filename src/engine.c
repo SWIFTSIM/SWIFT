@@ -66,6 +66,7 @@
 #include "gravity.h"
 #include "hydro.h"
 #include "map.h"
+#include "memswap.h"
 #include "minmax.h"
 #include "parallel_io.h"
 #include "part.h"
@@ -4596,7 +4597,8 @@ int engine_is_done(struct engine *e) {
 void engine_unskip(struct engine *e) {
 
   const ticks tic = getticks();
-  
+  struct space *s = e->s;
+
 #ifdef WITH_PROFILER
   static int count = 0;
   char filename[100];
@@ -4604,9 +4606,23 @@ void engine_unskip(struct engine *e) {
   ProfilerStart(filename);
 #endif  // WITH_PROFILER
 
+  /* Move the active local cells to the top of the list. */
+  int *local_cells = e->s->local_cells_top;
+  int num_active_cells = 0;
+  for (int k = 0; k < s->nr_local_cells; k++) {
+    struct cell *c = &s->cells_top[local_cells[k]];
+    if ((e->policy & engine_policy_hydro && cell_is_active_hydro(c, e)) ||
+        (e->policy &
+             (engine_policy_self_gravity | engine_policy_external_gravity) &&
+         cell_is_active_gravity(c, e))) {
+      memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
+      num_active_cells += 1;
+    }
+  }
+
   /* Activate all the regular tasks */
-  threadpool_map(&e->threadpool, runner_do_unskip_mapper, e->s->local_cells_top,
-                 e->s->nr_local_cells, sizeof(int), 1, e);
+  threadpool_map(&e->threadpool, runner_do_unskip_mapper, local_cells,
+                 num_active_cells, sizeof(int), 1, e);
 
 #ifdef WITH_PROFILER
   ProfilerStop();
