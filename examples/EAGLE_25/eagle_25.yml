@@ -6,6 +6,14 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
+# Structure finding options
+StructureFinding:
+  config_file_name:     stf_input.cfg    # Name of the STF config file.
+  basename:             ./halo_vel_pot/stf       # Common part of the name of output files.
+  output_time_format:   0                # Specifies format of delta_time. 0 for simulation steps and 1 for simulation time intervals.
+  time_first:           0.               # Time of the first structure finding output (in internal units).
+  delta_time:           250                # Time difference between consecutive structure finding outputs (in internal units). Can either be given in simulation steps or simulation time intervals.
+
 # Define the system of units to use int VELOCIraptor. 
 VelociraptorUnitSystem:
   UnitMass_in_cgs:     1.989e33      # M_sun in grams
