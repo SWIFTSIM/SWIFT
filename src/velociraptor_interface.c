@@ -133,7 +133,6 @@ void velociraptor_init(struct engine *e) {
     message("Cosmological: %d", sim_info.icosmologicalsim);
     message("Space dimensions: (%e,%e,%e)", sim_info.spacedimension[0], sim_info.spacedimension[1], sim_info.spacedimension[2]);
     message("No. of top-level cells: %d", sim_info.numcells);
-    //message("Local top-level cell locations range: (%e,%e,%e) -> (%e,%e,%e)", cell_loc_min[0], cell_loc_min[1], cell_loc_min[2], cell_loc_max[0], cell_loc_max[1], cell_loc_max[2]);
     message("Top-level cell locations range: (%e,%e,%e) -> (%e,%e,%e)", sim_info.cellloc[0].loc[0], sim_info.cellloc[0].loc[1], sim_info.cellloc[0].loc[2], sim_info.cellloc[sim_info.numcells - 1].loc[0], sim_info.cellloc[sim_info.numcells - 1].loc[1], sim_info.cellloc[sim_info.numcells - 1].loc[2]);
 
     InitVelociraptor(configfilename, outputFileName, cosmo_info, unit_info, sim_info);
@@ -156,7 +155,22 @@ void velociraptor_invoke(struct engine *e) {
     const int nr_hydro_parts = s->nr_parts;
     const int nr_cells = s->nr_cells;
     int *cell_node_ids;
-    
+
+    /* Allow thread to run on any core for the duration of the call to VELOCIraptor so that 
+     * when OpenMP threads are spawned they can run on any core on the processor. */
+    const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN) / 2;
+    cpu_set_t cpuset;
+    pthread_t thread = pthread_self();
+
+    /* Set affinity mask to include all cores on the CPU for VELOCIraptor. */
+    CPU_ZERO(&cpuset);
+    for (int j = 0; j < nr_cores; j++)
+        CPU_SET(j, &cpuset);
+
+    pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+
+    ticks tic = getticks();
+
     /* Allocate and populate array of cell node IDs. */
     /* JSW TODO: Remember to free at the end of the simulation. */
     if (posix_memalign((void **)&cell_node_ids, 32,
@@ -181,7 +195,13 @@ void velociraptor_invoke(struct engine *e) {
     }
 
     InvokeVelociraptor(nr_gparts, nr_hydro_parts, gparts, cell_node_ids, outputFileName);
-
+    
+    /* Reset the pthread affinity mask after VELOCIraptor returns. */
+    pthread_setaffinity_np(thread, sizeof(cpu_set_t), engine_entry_affinity());
+    
     /* Free cell node ids after VELOCIraptor has copied them. */
     free(cell_node_ids);
+    
+    message("VELOCIraptor took %.3f %s",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
