@@ -135,7 +135,7 @@ void velociraptor_init(struct engine *e) {
     message("No. of top-level cells: %d", sim_info.numcells);
     message("Top-level cell locations range: (%e,%e,%e) -> (%e,%e,%e)", sim_info.cellloc[0].loc[0], sim_info.cellloc[0].loc[1], sim_info.cellloc[0].loc[2], sim_info.cellloc[sim_info.numcells - 1].loc[0], sim_info.cellloc[sim_info.numcells - 1].loc[1], sim_info.cellloc[sim_info.numcells - 1].loc[2]);
 
-    InitVelociraptor(configfilename, outputFileName, cosmo_info, unit_info, sim_info);
+    if(!InitVelociraptor(configfilename, outputFileName, cosmo_info, unit_info, sim_info)) error("Exiting. VELOCIraptor initialisation failed.");
 
     /* Free cell locations after VELOCIraptor has copied them. */
     //free(sim_info.cellloc);
@@ -194,7 +194,7 @@ void velociraptor_invoke(struct engine *e) {
              e->time);
     }
 
-    InvokeVelociraptor(nr_gparts, nr_hydro_parts, gparts, cell_node_ids, outputFileName);
+    if(!InvokeVelociraptor(nr_gparts, nr_hydro_parts, gparts, cell_node_ids, outputFileName)) error("Exiting. Call to VELOCIraptor failed.");
     
     /* Reset the pthread affinity mask after VELOCIraptor returns. */
     pthread_setaffinity_np(thread, sizeof(cpu_set_t), engine_entry_affinity());
