@@ -406,7 +406,7 @@ int main() {
   srand(seed);
 
   /* check the exact Riemann solver */
-  // check_riemann_exact();
+  check_riemann_exact();
 
   /* symmetry test */
   for (int i = 0; i < 100000; ++i) {
