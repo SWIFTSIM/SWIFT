@@ -48,12 +48,11 @@ void velociraptor_init(struct engine *e) {
     struct unitinfo unit_info;
     struct siminfo sim_info;
     
-    struct unit_system vel_us;
     struct phys_const vel_const;
 
     /* Initialize velociraptor unit system and constants */
-    units_init(&vel_us, e->parameter_file, "VelociraptorUnitSystem");
-    phys_const_init(&vel_us, e->parameter_file, &vel_const);
+    units_init(e->stf_units, e->parameter_file, "VelociraptorUnitSystem");
+    phys_const_init(e->stf_units, e->parameter_file, &vel_const);
 
     /* Set cosmological constants. */
     cosmo_info.atime = e->cosmology->a;
@@ -73,10 +72,10 @@ void velociraptor_init(struct engine *e) {
     message("w_de: %e", cosmo_info.w_de);
 
     /* Set unit conversions. */
-    unit_info.lengthtokpc = units_conversion_factor(e->internal_units, &vel_us, UNIT_CONV_LENGTH); /* 1kpc <=> 3.086e21cm */
-    unit_info.velocitytokms = units_conversion_factor(e->internal_units, &vel_us, UNIT_CONV_SPEED); /* 1km/s <=> 1e5cm/s */
-    unit_info.masstosolarmass = units_conversion_factor(e->internal_units, &vel_us, UNIT_CONV_MASS); /* 1M_sol <=> 1.99e33g */
-    unit_info.energyperunitmass = units_conversion_factor(e->internal_units, &vel_us, UNIT_CONV_ENERGY_PER_UNIT_MASS); /* Conversion for gravitational potential. */
+    unit_info.lengthtokpc = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_LENGTH); /* 1kpc <=> 3.086e21cm */
+    unit_info.velocitytokms = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_SPEED); /* 1km/s <=> 1e5cm/s */
+    unit_info.masstosolarmass = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_MASS); /* 1M_sol <=> 1.99e33g */
+    unit_info.energyperunitmass = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_ENERGY_PER_UNIT_MASS); /* Conversion for gravitational potential. */
     unit_info.gravity = vel_const.const_newton_G; /* TODO: G = 6.67408e-8 (cgs) */
     unit_info.hubbleunit = e->cosmology->H; /* TODO: double check this. */
 
@@ -185,7 +184,8 @@ void velociraptor_invoke(struct engine *e) {
                        nr_hydro_parts * sizeof(float)) != 0)
         error("Failed to allocate array of internal energies for VELOCIraptor.");
     
-    for(int i=0; i<nr_hydro_parts; i++) internal_energies[i] = hydro_get_physical_internal_energy(&parts[i], e->cosmology);    
+    const float energy_scale = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_ENERGY); /* Conversion for particle internal energy. */
+    for(int i=0; i<nr_hydro_parts; i++) internal_energies[i] = hydro_get_physical_internal_energy(&parts[i], e->cosmology) * energy_scale;    
 
     message("MPI rank %d sending %lld gparts to VELOCIraptor.", e->nodeID, nr_gparts);
     

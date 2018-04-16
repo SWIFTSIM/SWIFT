@@ -191,6 +191,9 @@ struct engine {
 
   /* The internal system of units */
   const struct unit_system *internal_units;
+  
+  /* The STF system of units */
+  struct unit_system *stf_units;
 
   /* Snapshot information */
   double timeFirstSnapshot;
