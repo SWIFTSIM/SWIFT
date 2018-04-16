@@ -356,7 +356,12 @@
 #define vec_zero_mask(mask) mask.v = vec_setzero()
 #define vec_pad_mask(mask, pad) \
   for (int i = VEC_SIZE - (pad); i < VEC_SIZE; i++) mask.i[i] = 0
+/* If SSE4.1 doesn't exist on architecture use alternative blend strategy. */
+#ifdef HAVE_SSE4_1
 #define vec_blend(mask, a, b) _mm_blendv_ps(a, b, mask.v)
+#else
+#define vec_blend(mask, a, b) _mm_or_ps(_mm_and_ps(mask.v,b), _mm_andnot_ps(mask.v,a))
+#endif
 #define vec_todbl_lo(a) _mm_cvtps_pd(a)
 #define vec_todbl_hi(a) _mm_cvtps_pd(_mm_movehl_ps(a, a))
 #define vec_dbl_tofloat(a, b) _mm_movelh_ps(_mm_cvtpd_ps(a), _mm_cvtpd_ps(b))
