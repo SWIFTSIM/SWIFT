@@ -151,10 +151,12 @@ void velociraptor_invoke(struct engine *e) {
 
     struct space *s = e->s;
     struct gpart *gparts = s->gparts;
+    struct part *parts = s->parts;
     const size_t nr_gparts = s->nr_gparts;
     const size_t nr_hydro_parts = s->nr_parts;
     const int nr_cells = s->nr_cells;
     int *cell_node_ids;
+    float *internal_energies;
 
     /* Allow thread to run on any core for the duration of the call to VELOCIraptor so that 
      * when OpenMP threads are spawned they can run on any core on the processor. */
@@ -172,14 +174,20 @@ void velociraptor_invoke(struct engine *e) {
     ticks tic = getticks();
 
     /* Allocate and populate array of cell node IDs. */
-    /* JSW TODO: Remember to free at the end of the simulation. */
     if (posix_memalign((void **)&cell_node_ids, 32,
                        nr_cells * sizeof(int)) != 0)
         error("Failed to allocate list of cells node IDs for VELOCIraptor.");
     
     for(int i=0; i<nr_cells; i++) cell_node_ids[i] = s->cells_top[i].nodeID;    
 
-    message("MPI rank %d sending %d gparts to VELOCIraptor.", e->nodeID, nr_gparts);
+    /* Calculate and store the internal energies of gas particles and pass them to VELOCIraptor. */
+    if (posix_memalign((void **)&internal_energies, 32,
+                       nr_hydro_parts * sizeof(float)) != 0)
+        error("Failed to allocate array of internal energies for VELOCIraptor.");
+    
+    for(int i=0; i<nr_hydro_parts; i++) internal_energies[i] = hydro_get_physical_internal_energy(&parts[i], e->cosmology);    
+
+    message("MPI rank %d sending %lld gparts to VELOCIraptor.", e->nodeID, nr_gparts);
     
     //for(int i=0; i<nr_gparts; i++) message("Potential: %f", gparts[i].potential);
 
@@ -194,7 +202,7 @@ void velociraptor_invoke(struct engine *e) {
              e->time);
     }
 
-    if(!InvokeVelociraptor(nr_gparts, nr_hydro_parts, gparts, cell_node_ids, outputFileName)) error("Exiting. Call to VELOCIraptor failed.");
+    if(!InvokeVelociraptor(nr_gparts, nr_hydro_parts, gparts, parts, internal_energies, cell_node_ids, outputFileName)) error("Exiting. Call to VELOCIraptor failed.");
     
     /* Reset the pthread affinity mask after VELOCIraptor returns. */
     pthread_setaffinity_np(thread, sizeof(cpu_set_t), engine_entry_affinity());
