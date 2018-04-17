@@ -83,141 +83,103 @@ __attribute__((always_inline)) INLINE static void cooling_print_fractions(
   message("Metal: %g", tmp.metal_frac);
 }
 
-#define cooling_check(old, new, limit, print, step, field, field_name)	\
-  ({									\
-    float err = fabsf((old->field - new->field) / new->field);		\
-    if (err > limit)							\
-      {									\
-	if (print == 1)							\
-	  {								\
-	    char *msg = "Step: %5i, Element %5s need to converge: %e";	\
-	    printf(msg, step, field_name, err);				\
-	  }								\
-	else if (print == 2)						\
-	  {								\
-	    char *msg = "\rStep: %5i, Element %5s need to converge: %e"; \
-	    printf(msg, step, field_name, err);				\
-	  }								\
-	return 0;							\
-      }									\
-  })
-  
 /**
- * @brief Check if the equilibrium as been reached
+ * @brief Check if the difference of a given field is lower than limit
  *
- * @param old Previous step particle
- * @param xp Current step particle
- * @param limit Convergence limit
- * @param print Print message
- * @param step Current step
+ * @param xp First #xpart
+ * @param old Second #xpart
+ * @param field The field to check
+ * @param limit Difference limit
  *
- * @return Value of the test
+ * @return 0 if diff > limit
  */
-__attribute__((always_inline)) INLINE static int cooling_check_convergence(
-    const struct xpart* restrict old, const struct xpart* restrict xp,
-    const float limit, const int print, const int step) {
+#define cooling_check_field(xp, old, field, limit)			\
+  ({									\
+    float tmp = xp->cooling_data.field - old->cooling_data.field;	\
+    tmp = fabs(tmp) / xp->cooling_data.field;				\
+    if (tmp > limit)							\
+      return 0;								\
+})
 
+/**
+ * @brief Check if difference between two particles is lower than a given value
+ *
+ * @param xp One of the #xpart
+ * @param old The other #xpart
+ * @param limit The difference limit
+ */
+__attribute__((always_inline)) INLINE static int cooling_converged(
+    const struct xpart* restrict xp,
+    const struct xpart* restrict old,
+    const float limit) {
 
 #if COOLING_GRACKLE_MODE > 0
-  const struct cooling_xpart_data *old_data = &old->cooling_data;
-  const struct cooling_xpart_data *new_data = &xp->cooling_data;
-
-  cooling_check(old_data, new_data, limit, print, step, HI_frac, "HI");
-
-  cooling_check(old_data, new_data, limit, print, step, HII_frac, "HII");
-  
-  cooling_check(old_data, new_data, limit, print, step, HeI_frac, "HeI");
-
-  cooling_check(old_data, new_data, limit, print, step, HeII_frac, "HeII");
-
-  cooling_check(old_data, new_data, limit, print, step, HeIII_frac, "HeIII");
-
-  cooling_check(old_data, new_data, limit, print, step, e_frac, "e");
-
-#endif // COOLING_GRACKLE_MODE > 0
-  
+  cooling_check_field(xp, old, HI_frac, limit);
+  cooling_check_field(xp, old, HII_frac, limit);
+  cooling_check_field(xp, old, HeI_frac, limit);
+  cooling_check_field(xp, old, HeII_frac, limit);
+  cooling_check_field(xp, old, HeIII_frac, limit);
+  cooling_check_field(xp, old, e_frac, limit);
+#endif
 #if COOLING_GRACKLE_MODE > 1
+  cooling_check_field(xp, old, HM_frac, limit);
+  cooling_check_field(xp, old, H2I_frac, limit);
+  cooling_check_field(xp, old, H2II_frac, limit);
+#endif
 
-  cooling_check(old_data, new_data, limit, print, step, HM_frac, "HM");
-
-  cooling_check(old_data, new_data, limit, print, step, H2I_frac, "H2I");
-
-  cooling_check(old_data, new_data, limit, print, step, H2II_frac, "H2II");
-
-#endif // COOLING_GRACKLE_MODE > 1
-  
 #if COOLING_GRACKLE_MODE > 2
-
-  cooling_check(old_data, new_data, limit, print, step, DI_frac, "DI");
-
-  cooling_check(old_data, new_data, limit, print, step, DII_frac, "DII");
-
-  cooling_check(old_data, new_data, limit, print, step, HDI_frac, "HDI");
-
-#endif // COOLING_GRACKLE_MODE > 2
+  cooling_check_field(xp, old, DI_frac, limit);
+  cooling_check_field(xp, old, DII_frac, limit);
+  cooling_check_field(xp, old, HDI_frac, limit);
+#endif
 
   return 1;
 }
 
 /**
- * @brief Evolve the chemistry network until reaching equilibrium
+ * @brief Compute equilibrium fraction
  *
- * @param cooling The #cooling_function_data
- * @param p The #part to put at equilibrium
- * @param xp The #xpart to put at equilibrium
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param cooling The properties of the cooling function.
  */
-__attribute__((always_inline)) INLINE static void cooling_compute_equilibrium_fractions(
-    const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp,
-    const int restart) {
+__attribute__((always_inline)) INLINE static void cooling_compute_equilibrium(
+    const struct part* restrict p,
+    struct xpart* restrict xp,
+    const struct cooling_function_data* cooling) {
 
-  struct cooling_function_data tmp_cooling = *cooling;
-  /* disable energy updates */
-  tmp_cooling.chemistry.with_radiative_cooling = 0;
+  /* get temporary data */
+  struct part p_tmp = *p;
+  struct cooling_function_data cooling_tmp = *cooling;
+  cooling_tmp.chemistry.with_radiative_cooling = 0;
+  /* need density for computation, therefore quick estimate */
+  p_tmp.rho = 0.2387 * p_tmp.mass / pow(p_tmp.h, 3);
 
-#if COOLING_GRACKLE_MODE == 0
-  error("This function should not be called in primordial chemistry = 0");
-#endif
+  /* compute time step */
+  const double alpha = 0.01;
+  double dt = fabs(cooling_time(&cooling_tmp, &p_tmp, xp));
+  cooling_rate(NULL, NULL, &cooling_tmp, &p_tmp, xp, dt);
+  dt = alpha * fabs(cooling_time(&cooling_tmp, &p_tmp, xp));
 
-  /* a few constants */
-  const float limit = tmp_cooling.convergence_limit;
-  double dt = 0.1 * fabs(cooling_time(&tmp_cooling, p, xp));
-
-  /* define a few variables */
-  struct xpart xp_1 = *xp;
+  /* init simple variables */
   int step = 0;
-  int print = 0;
+  const int max_step = cooling_tmp.max_step;
+  const float conv_limit = cooling_tmp.convergence_limit;
+  struct xpart old;
 
-  
- 
-  /* compute equilibrium fractions */
   do {
-    /* update data */
+    /* update variables */
     step += 1;
-    xp_1 = *xp;
+    old = *xp;
 
-#ifdef SWIFT_DEBUG_CHECKS
-    /* update type printing */
-    if (step > 0)
-      print = 2; // clear line 
-    else if (step > 1)
-      print = 1; // end line
-#endif
+    /* update chemistry */
+    cooling_rate(NULL, NULL, &cooling_tmp, &p_tmp, xp, dt);
+  } while (step < max_step && !cooling_converged(xp, &old, conv_limit));
 
-    /* compute cooling rate */
-    cooling_rate(NULL, NULL, &tmp_cooling, p, xp, dt);
-
-  } while(!cooling_check_convergence(&xp_1, xp, limit, print, step) &&
-      step < tmp_cooling.max_step);
-
-  if (print > 0)
-    printf("\n");
-  /* check if converged */
-  if (step >= cooling->max_step) {
-    message("WARNING: A particle failed to reach equilibrium. "
-	    "You can change GrackleCooling:MaxStep or "
-	    "GrackleCooling:ConvergenceLimit to avoid this problem");
-  }
+  if (step == max_step)
+    error("A particle element fraction failed to converge."
+	  "You can change 'GrackleCooling:MaxSteps' or "
+	  "'GrackleCooling:ConvergenceLimit' to avoid this problem");
 }
 
 /**
@@ -264,10 +226,8 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 #endif  // MODE >= 3
 
 #if COOLING_GRACKLE_MODE > 0
-  /* compute equilibrium */
-  cooling_compute_equilibrium_fractions(cooling, p, xp, 0);
+  cooling_compute_equilibrium(p, xp, cooling);
 #endif
-
 }
 
 /**
@@ -497,7 +457,7 @@ __attribute__((always_inline)) INLINE static void cooling_copy_to_particle(
  *
  * @return du / dt
  */
-__attribute__((always_inline)) INLINE static double cooling_rate(
+__attribute__((always_inline)) INLINE static gr_float cooling_rate(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
@@ -771,15 +731,6 @@ __attribute__((always_inline)) INLINE static void cooling_init_grackle(
     error("Error in initialize_chemistry_data.");
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
-  message("***************************************");
-  message("initializing grackle cooling function");
-  message("");
-  cooling_print_backend(cooling);
-  message("");
-  message("***************************************");
-#endif
-  
 }
   
 /**
