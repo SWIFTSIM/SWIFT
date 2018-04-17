@@ -50,6 +50,8 @@ GrackleCooling:
   ProvideSpecificHeatingRates: 0 # User provide specific heating rates
   SelfShieldingMethod: 0 # Grackle (<= 3) or Gear self shielding method
   OutputMode: 1 # Write in output corresponding primordial chemistry mode
+  MaxSteps: 1000
+  ConvergenceLimit: 1e-2
   
 EAGLEChemistry:
   InitMetallicity:         0.
@@ -64,3 +66,6 @@ EAGLEChemistry:
   InitAbundance_Iron:      0.000
   CalciumOverSilicon:      0.0941736
   SulphurOverSilicon:      0.6054160
+
+GearChemistry:
+  InitialMetallicity: 0.01295
