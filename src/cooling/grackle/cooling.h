@@ -271,179 +271,180 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
 }
 
 /**
- * @brief allocate required field
- *
- * @param data the #grackle_field_data
+ * @brief copy a single field from the grackle data to a #xpart
+ * 
+ * @param data The #grackle_field_data
+ * @param xp The #xpart
+ * @param rho Particle density
+ * @param field The field to copy
  */
-__attribute__((always_inline)) INLINE static void cooling_malloc_data(
-    grackle_field_data* data) {
-
-#if COOLING_GRACKLE_MODE >= 1
-  /* primordial chemistry >= 1 */
-  data->HI_density = malloc(sizeof(gr_float));
-  data->HII_density = malloc(sizeof(gr_float));
-  data->HeI_density = malloc(sizeof(gr_float));
-  data->HeII_density = malloc(sizeof(gr_float));
-  data->HeIII_density = malloc(sizeof(gr_float));
-  data->e_density = malloc(sizeof(gr_float));
-#endif  // MODE >= 1
-
-#if COOLING_GRACKLE_MODE >= 2
-  /* primordial chemistry >= 2 */
-  data->HM_density = malloc(sizeof(gr_float));
-  data->H2I_density = malloc(sizeof(gr_float));
-  data->H2II_density = malloc(sizeof(gr_float));
-#endif  // MODE 2
-
-#if COOLING_GRACKLE_MODE >= 3
-  /* primordial chemistry >= 3 */
-  data->DI_density = malloc(sizeof(gr_float));
-  data->DII_density = malloc(sizeof(gr_float));
-  data->HDI_density = malloc(sizeof(gr_float));
-#endif  // MODE >= 3
-
-  /* metal cooling = 1 */
-  data->metal_density = malloc(sizeof(gr_float));
-
-  /* /\* volumetric heating rate *\/ */
-  /* data->volumetric_heating_rate = NULL; */
-
-  /* /\* specific heating rate *\/ */
-  /* data->specific_heating_rate = NULL; */
-}
+#define cooling_copy_field_from_grackle(data, xp, rho, field)		\
+  xp->cooling_data.field ## _frac = *data.field ## _density / rho;
 
 /**
- * @brief free the allocated memory
- *
- * @param data the #grackle_field_data
+ * @brief copy a single field from a #xpart to the grackle data
+ * 
+ * @param data The #grackle_field_data
+ * @param xp The #xpart
+ * @param rho Particle density
+ * @param field The field to copy
  */
+#define cooling_copy_field_to_grackle(data, xp, rho, field)		\
+  gr_float grackle_ ## field = xp->cooling_data.field ## _frac * rho;	\
+  data.field ## _density = &grackle_ ## field;
 
-__attribute__((always_inline)) INLINE static void cooling_free_data(
-    grackle_field_data* data) {
-
-#if COOLING_GRACKLE_MODE >= 1
-  /* primordial chemistry >= 1 */
-  free(data->HI_density);
-  free(data->HII_density);
-  free(data->HeI_density);
-  free(data->HeII_density);
-  free(data->HeIII_density);
-  free(data->e_density);
-#endif  // MODE >= 1
-
-#if COOLING_GRACKLE_MODE >= 2
-  /* primordial chemistry >= 2 */
-  free(data->HM_density);
-  free(data->H2I_density);
-  free(data->H2II_density);
-#endif  // MODE 2
-
-#if COOLING_GRACKLE_MODE >= 3
-  /* primordial chemistry >= 3 */
-  free(data->DI_density);
-  free(data->DII_density);
-  free(data->HDI_density);
-#endif  // MODE >= 3
-
-  /* metal cooling = 1 */
-  free(data->metal_density);
-
-  /* /\* volumetric heating rate *\/ */
-  /* data->volumetric_heating_rate = NULL; */
-
-  /* /\* specific heating rate *\/ */
-  /* data->specific_heating_rate = NULL; */
-}
 
 /**
- * @brief copy xp to data
+ * @brief copy a #xpart to the grackle data
  *
- * requires the particle to have been transformed into density
- *
- * @param data the #grackle_field_data
- * @param xp the #xpart
+ * Warning this function creates some variable, therefore the grackle call
+ * should be in a block that still has the variables.
+ * 
+ * @param data The #grackle_field_data
+ * @param p The #part
+ * @param xp The #xpart
+ * @param rho Particle density
  */
-__attribute__((always_inline)) INLINE static void cooling_copy_to_data(
-    grackle_field_data* data, const struct part* p,
-    const struct xpart* xp, const gr_float rho) {
-
-#if COOLING_GRACKLE_MODE >= 1
-  /* primordial chemistry >= 1 */
-  data->HI_density[0] = xp->cooling_data.HI_frac * rho;
-  data->HII_density[0] = xp->cooling_data.HII_frac * rho;
-  data->HeI_density[0] = xp->cooling_data.HeI_frac * rho;
-  data->HeII_density[0] = xp->cooling_data.HeII_frac * rho;
-  data->HeIII_density[0] = xp->cooling_data.HeIII_frac * rho;
-  data->e_density[0] = xp->cooling_data.e_frac * rho;
-#endif  // MODE >= 1
-
-#if COOLING_GRACKLE_MODE >= 2
-  /* primordial chemistry >= 2 */
-  data->HM_density[0] = xp->cooling_data.HM_frac * rho;
-  data->H2I_density[0] = xp->cooling_data.H2I_frac * rho;
-  data->H2II_density[0] = xp->cooling_data.H2II_frac * rho;
-#endif  // MODE 2
-
-#if COOLING_GRACKLE_MODE >= 3
-  /* primordial chemistry >= 3 */
-  data->DI_density[0] = xp->cooling_data.DI_frac * rho;
-  data->DII_density[0] = xp->cooling_data.DII_frac * rho;
-  data->HDI_density[0] = xp->cooling_data.HDI_frac * rho;
-#endif  // MODE >= 3
-
-  /* metal cooling = 1 */
-  const float Z = chemistry_metal_mass_fraction(p, xp);
-  data->metal_density[0] = Z * rho;
-
-  /* volumetric heating rate */
-  data->volumetric_heating_rate = NULL;
-
-  /* specific heating rate */
-  data->specific_heating_rate = NULL;
-}
+#if COOLING_GRACKLE_MODE > 0
+#define cooling_copy_to_grackle1(data, p, xp, rho)			\
+  cooling_copy_field_to_grackle(data, xp, rho, HI);			\
+  cooling_copy_field_to_grackle(data, xp, rho, HII);			\
+  cooling_copy_field_to_grackle(data, xp, rho, HeI);			\
+  cooling_copy_field_to_grackle(data, xp, rho, HeII);			\
+  cooling_copy_field_to_grackle(data, xp, rho, HeIII);			\
+  cooling_copy_field_to_grackle(data, xp, rho, e);
+#else
+#define cooling_copy_to_grackle1(data, p, xp, rho)
+#endif
 
 /**
- * @brief copy data to xp
+ * @brief copy a #xpart to the grackle data
  *
- * @param data the #grackle_field_data
- * @param xp the #xpart
+ * Warning this function creates some variable, therefore the grackle call
+ * should be in a block that still has the variables.
+ * 
+ * @param data The #grackle_field_data
+ * @param p The #part
+ * @param xp The #xpart
+ * @param rho Particle density
  */
-__attribute__((always_inline)) INLINE static void cooling_copy_to_particle(
-    const grackle_field_data* data, struct xpart* xp, const gr_float rho) {
+#if COOLING_GRACKLE_MODE > 1
+#define cooling_copy_to_grackle2(data, p, xp, rho)			\
+  cooling_copy_field_to_grackle(data, xp, rho, HM);			\
+  cooling_copy_field_to_grackle(data, xp, rho, H2I);			\
+  cooling_copy_field_to_grackle(data, xp, rho, H2II);
+#else
+#define cooling_copy_to_grackle2(data, p, xp, rho)
+#endif
 
-#if COOLING_GRACKLE_MODE >= 1
-  /* primordial chemistry >= 1 */
-  xp->cooling_data.HI_frac = data->HI_density[0] / rho;
-  xp->cooling_data.HII_frac = data->HII_density[0] / rho;
-  xp->cooling_data.HeI_frac = data->HeI_density[0] / rho;
-  xp->cooling_data.HeII_frac = data->HeII_density[0] / rho;
-  xp->cooling_data.HeIII_frac = data->HeIII_density[0] / rho;
-  xp->cooling_data.e_frac = data->e_density[0] / rho;
-#endif  // MODE >= 1
+/**
+ * @brief copy a #xpart to the grackle data
+ *
+ * Warning this function creates some variable, therefore the grackle call
+ * should be in a block that still has the variables.
+ * 
+ * @param data The #grackle_field_data
+ * @param p The #part
+ * @param xp The #xpart
+ * @param rho Particle density
+ */
+#if COOLING_GRACKLE_MODE > 2
+#define cooling_copy_to_grackle3(data, p, xp, rho)			\
+  cooling_copy_field_to_grackle(data, xp, rho, DI);			\
+  cooling_copy_field_to_grackle(data, xp, rho, DII);			\
+  cooling_copy_field_to_grackle(data, xp, rho, HDI);
+#else
+#define cooling_copy_to_grackle3(data, p, xp, rho)
+#endif
 
-#if COOLING_GRACKLE_MODE >= 2
-  /* primordial chemistry >= 2 */
-  xp->cooling_data.HM_frac = data->HM_density[0] / rho;
-  xp->cooling_data.H2I_frac = data->H2I_density[0] / rho;
-  xp->cooling_data.H2II_frac = data->H2II_density[0] / rho;
-#endif  // MODE 2
+/**
+ * @brief copy the grackle data to a #xpart
+ * 
+ * @param data The #grackle_field_data
+ * @param p The #part
+ * @param xp The #xpart
+ * @param rho Particle density
+ */
+#if COOLING_GRACKLE_MODE > 0
+#define cooling_copy_from_grackle1(data, p, xp, rho)			\
+  cooling_copy_field_from_grackle(data, xp, rho, HI);			\
+  cooling_copy_field_from_grackle(data, xp, rho, HII);			\
+  cooling_copy_field_from_grackle(data, xp, rho, HeI);			\
+  cooling_copy_field_from_grackle(data, xp, rho, HeII);			\
+  cooling_copy_field_from_grackle(data, xp, rho, HeIII);		\
+  cooling_copy_field_from_grackle(data, xp, rho, e);
+#else
+#define cooling_copy_from_grackle1(data, p, xp, rho)
+#endif
 
-#if COOLING_GRACKLE_MODE >= 3
-  /* primordial chemistry >= 3 */
-  xp->cooling_data.DI_frac = data->DI_density[0] / rho;
-  xp->cooling_data.DII_frac = data->DII_density[0] / rho;
-  xp->cooling_data.HDI_frac = data->HDI_density[0] / rho;
-#endif  // MODE >= 3
+/**
+ * @brief copy the grackle data to a #xpart
+ * 
+ * @param data The #grackle_field_data
+ * @param p The #part
+ * @param xp The #xpart
+ * @param rho Particle density
+ */
+#if COOLING_GRACKLE_MODE > 1
+#define cooling_copy_from_grackle2(data, p, xp, rho)			\
+  cooling_copy_field_from_grackle(data, xp, rho, HM);			\
+  cooling_copy_field_from_grackle(data, xp, rho, H2I);			\
+  cooling_copy_field_from_grackle(data, xp, rho, H2II);
+#else
+#define cooling_copy_from_grackle2(data, p, xp, rho)
+#endif
 
-  /* metal cooling = 1 */
-  xp->cooling_data.metal_frac = data->metal_density[0] / rho;
+/**
+ * @brief copy the grackle data to a #xpart
+ * 
+ * @param data The #grackle_field_data
+ * @param p The #part
+ * @param xp The #xpart
+ * @param rho Particle density
+ */
+#if COOLING_GRACKLE_MODE > 2
+#define cooling_copy_from_grackle3(data, p, xp, rho)			\
+  cooling_copy_field_from_grackle(data, xp, rho, DI);			\
+  cooling_copy_field_from_grackle(data, xp, rho, DII);			\
+  cooling_copy_field_from_grackle(data, xp, rho, HDI);
+#else
+#define cooling_copy_from_grackle3(data, p, xp, rho)
+#endif
 
-  /* /\* volumetric heating rate *\/ */
-  /* data->volumetric_heating_rate = NULL; */
 
-  /* /\* specific heating rate *\/ */
-  /* data->specific_heating_rate = NULL; */
-}
+/**
+ * @brief copy a #xpart to the grackle data
+ *
+ * Warning this function creates some variable, therefore the grackle call
+ * should be in a block that still has the variables.
+ * 
+ * @param data The #grackle_field_data
+ * @param p The #part
+ * @param xp The #xpart
+ * @param rho Particle density
+ */
+#define cooling_copy_to_grackle(data, p, xp, rho)			\
+  cooling_copy_to_grackle1(data, p, xp, rho);				\
+  cooling_copy_to_grackle2(data, p, xp, rho);				\
+  cooling_copy_to_grackle3(data, p, xp, rho);				\
+  gr_float metal_density = chemistry_metal_mass_fraction(p, xp) * rho;	\
+  data.metal_density = &metal_density;
+
+/**
+ * @brief copy a #xpart to the grackle data
+ *
+ * Warning this function creates some variable, therefore the grackle call
+ * should be in a block that still has the variables.
+ * 
+ * @param data The #grackle_field_data
+ * @param p The #part
+ * @param xp The #xpart
+ * @param rho Particle density
+ */
+#define cooling_copy_from_grackle(data, p, xp, rho)			\
+  cooling_copy_from_grackle1(data, p, xp, rho);				\
+  cooling_copy_from_grackle2(data, p, xp, rho);				\
+  cooling_copy_from_grackle3(data, p, xp, rho);
 
 /**
  * @brief Compute the cooling rate and update the particle chemistry data
@@ -501,11 +502,8 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
   data.y_velocity = NULL;
   data.z_velocity = NULL;
 
-  /* allocate grackle data */
-  cooling_malloc_data(&data);
-
-  /* copy data from particle to grackle data */
-  cooling_copy_to_data(&data, p, xp, density);
+  /* copy to grackle structure */
+  cooling_copy_to_grackle(data, p, xp, density);
 
   /* solve chemistry with table */
   if (solve_chemistry(&units, &data, dt) == 0) {
@@ -513,10 +511,7 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
   }
 
   /* copy from grackle data to particle */
-  cooling_copy_to_particle(&data, xp, density);
-
-  /* free allocated memory */
-  cooling_free_data(&data);
+  cooling_copy_from_grackle(data, p, xp, density);
 
   /* compute rate */
   return (energy - energy_before) / dt;
@@ -572,11 +567,8 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
   data.y_velocity = NULL;
   data.z_velocity = NULL;
 
-  /* allocate grackle data */
-  cooling_malloc_data(&data);
-
   /* copy data from particle to grackle data */
-  cooling_copy_to_data(&data, p, xp, density);
+  cooling_copy_to_grackle(data, p, xp, density);
 
   /* Compute cooling time */
   gr_float cooling_time;
@@ -585,10 +577,7 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
   }
 
   /* copy from grackle data to particle */
-  cooling_copy_to_particle(&data, xp, density);
-
-  /* free allocated memory */
-  cooling_free_data(&data);
+  cooling_copy_from_grackle(data, p, xp, density);
 
   /* compute rate */
   return cooling_time;
