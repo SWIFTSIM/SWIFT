@@ -236,7 +236,7 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 #endif  // MODE >= 3
 
 #if COOLING_GRACKLE_MODE > 0
-  cooling_compute_equilibrium(phys_const, us, cosmo, p, xp, cooling);
+  cooling_compute_equilibrium(phys_const, us, cosmo, cooling, p, xp);
 #endif
 }
 
