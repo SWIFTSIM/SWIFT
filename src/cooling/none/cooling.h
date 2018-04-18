@@ -90,8 +90,11 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  * @param cooling The properties of the cooling function.
  */
 __attribute__((always_inline)) INLINE static void cooling_first_init_part(
-    const struct part* restrict p, struct xpart* restrict xp,
-    const struct cooling_function_data* cooling) {}
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* data,
+    const struct part* restrict p, struct xpart* restrict xp) {}
 
 /**
  * @brief Returns the total radiated energy by this particle.

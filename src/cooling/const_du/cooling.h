@@ -80,7 +80,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   float cooling_du_dt = -cooling->cooling_rate;
 
   /* Integrate cooling equation to enforce energy floor */
-  if (u_old + hydro_du_dt * dt < u_floor) {
+   if (u_old + hydro_du_dt * dt < u_floor) {
     cooling_du_dt = 0.f;
   } else if (u_old + (hydro_du_dt + cooling_du_dt) * dt < u_floor) {
     cooling_du_dt = (u_old + dt * hydro_du_dt - u_floor) / dt;
@@ -130,8 +130,11 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  * @param cooling The properties of the cooling function.
  */
 __attribute__((always_inline)) INLINE static void cooling_first_init_part(
-    const struct part* restrict p, struct xpart* restrict xp,
-    const struct cooling_function_data* cooling) {
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, struct xpart* restrict xp) {
 
   xp->cooling_data.radiated_energy = 0.f;
 }
