@@ -497,7 +497,7 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
   /* set current time */
   code_units units = cooling->units;
   if (cooling->redshift == -1)
-    error("TODO time dependant redshift");
+    units.a_value = cosmo->a;
   else
     units.a_value = 1. / (1. + cooling->redshift);
 
@@ -535,27 +535,27 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
   /* copy to grackle structure */
   cooling_copy_to_grackle(data, p, xp, density);
 
-  /* solve chemistry with table */
-
-  
+  /* solve chemistry */
   chemistry_data chemistry_grackle = cooling->chemistry;
   chemistry_data_storage my_rates = grackle_rates;
-  _solve_chemistry(&chemistry_grackle,
-		   &my_rates,
-		   &units, dt, data.grid_dx,
-		   data.grid_rank, data.grid_dimension,
-		   data.grid_start, data.grid_end,
-		   data.density, data.internal_energy,
-		   data.x_velocity, data.y_velocity, data.z_velocity,
-		   data.HI_density, data.HII_density, data.HM_density,
-		   data.HeI_density, data.HeII_density, data.HeIII_density,
-		   data.H2I_density, data.H2II_density,
-		   data.DI_density, data.DII_density, data.HDI_density,
-		   data.e_density, data.metal_density,
-		   data.volumetric_heating_rate, data.specific_heating_rate,
-		   data.RT_heating_rate, data.RT_HI_ionization_rate, data.RT_HeI_ionization_rate,
-		   data.RT_HeII_ionization_rate, data.RT_H2_dissociation_rate,
-		   NULL); 
+  int error_code = _solve_chemistry(&chemistry_grackle,
+				    &my_rates,
+				    &units, dt, data.grid_dx,
+				    data.grid_rank, data.grid_dimension,
+				    data.grid_start, data.grid_end,
+				    data.density, data.internal_energy,
+				    data.x_velocity, data.y_velocity, data.z_velocity,
+				    data.HI_density, data.HII_density, data.HM_density,
+				    data.HeI_density, data.HeII_density, data.HeIII_density,
+				    data.H2I_density, data.H2II_density,
+				    data.DI_density, data.DII_density, data.HDI_density,
+				    data.e_density, data.metal_density,
+				    data.volumetric_heating_rate, data.specific_heating_rate,
+				    data.RT_heating_rate, data.RT_HI_ionization_rate, data.RT_HeI_ionization_rate,
+				    data.RT_HeII_ionization_rate, data.RT_H2_dissociation_rate,
+				    NULL);
+  if (error_code == 0)
+    error("Error in solve_chemistry.");
   //if (solve_chemistry(&units, &data, dt) == 0) {
   //  error("Error in solve_chemistry.");
   //}

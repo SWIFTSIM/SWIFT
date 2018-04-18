@@ -856,7 +856,6 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
-  struct gpart* dmparts = NULL;
   FILE* xmfFile = 0;
   int periodic = e->s->periodic;
   int numFiles = 1;
