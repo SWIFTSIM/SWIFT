@@ -49,6 +49,9 @@ void velociraptor_init(struct engine *e) {
     struct siminfo sim_info;
     
     struct phys_const vel_const;
+    if (posix_memalign((void **)&(e->stf_units), 32,
+                       sizeof(struct unit_system)) != 0)
+        error("Failed to allocate VELOCIraptor unit system.");
 
     /* Initialize velociraptor unit system and constants */
     units_init(e->stf_units, e->parameter_file, "VelociraptorUnitSystem");
