@@ -19,13 +19,36 @@
 #ifndef SWIFT_CHEMISTRY_IO_GEAR_H
 #define SWIFT_CHEMISTRY_IO_GEAR_H
 
-#include "chemistry.h"
 #include "chemistry_struct.h"
+#include "error.h"
 #include "io_properties.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
+
+/**
+ * @brief Return a string containing the name of a given #chemistry_element.
+ */
+__attribute__((always_inline)) INLINE static const char*
+chemistry_get_element_name(enum chemistry_element elem) {
+
+  static const char* chemistry_element_names[chemistry_element_count] = {
+      "Oxygen",    "Magnesium", "Sulfur", "Iron",    "Zinc",
+      "Strontium", "Yttrium",   "Barium", "Europium"};
+
+  return chemistry_element_names[elem];
+}
+
+/**
+ * @brief Prints the properties of the chemistry model to stdout.
+ *
+ * @brief The #chemistry_global_data containing information about the current model.
+ */
+static INLINE void chemistry_print_backend(const struct chemistry_global_data* data) {
+
+  message("Chemistry function is 'Gear'.");
+}
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -91,7 +114,7 @@ __attribute__((always_inline)) INLINE static int chemistry_write_particles(
  * @param h_grp The HDF5 group in which to write
  */
 __attribute__((always_inline)) INLINE static void chemistry_write_flavour(
-    hid_t h_grpsph) {
+    hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Chemistry Model", "GEAR");
   for (enum chemistry_element i = chemistry_element_O;

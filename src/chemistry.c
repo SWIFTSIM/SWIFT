@@ -58,9 +58,9 @@ void chemistry_print(const struct chemistry_global_data* data) {
  * @param chemistry the struct
  * @param stream the file stream
  */
-void chemistry_struct_dump(const struct chemistry_data* chemistry,
+void chemistry_struct_dump(const struct chemistry_global_data* chemistry,
                            FILE* stream) {
-  restart_write_blocks((void*)chemistry, sizeof(struct chemistry_data), 1,
+  restart_write_blocks((void*)chemistry, sizeof(struct chemistry_global_data), 1,
                        stream, "chemistry", "chemistry function");
 }
 
@@ -71,8 +71,8 @@ void chemistry_struct_dump(const struct chemistry_data* chemistry,
  * @param chemistry the struct
  * @param stream the file stream
  */
-void chemistry_struct_restore(const struct chemistry_data* chemistry,
+void chemistry_struct_restore(const struct chemistry_global_data* chemistry,
                               FILE* stream) {
-  restart_read_blocks((void*)chemistry, sizeof(struct chemistry_data), 1,
+  restart_read_blocks((void*)chemistry, sizeof(struct chemistry_global_data), 1,
                       stream, NULL, "chemistry function");
 }

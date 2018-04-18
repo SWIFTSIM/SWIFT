@@ -5965,8 +5965,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   cooling_struct_restore(cooling_func, stream);
   e->cooling_func = cooling_func;
 
-  struct chemistry_data *chemistry =
-      (struct chemistry_data *)malloc(sizeof(struct chemistry_data));
+  struct chemistry_global_data *chemistry =
+      (struct chemistry_global_data *)malloc(sizeof(struct chemistry_global_data));
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
 

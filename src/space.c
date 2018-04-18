@@ -2648,6 +2648,8 @@ void space_first_init_parts(struct space *s,
   struct xpart *restrict xp = s->xparts;
 
   const struct cosmology *cosmo = s->e->cosmology;
+  const struct phys_const *phys_const = s->e->physical_constants;
+  const struct unit_system *us = s->e->internal_units;
   const float a_factor_vel = cosmo->a * cosmo->a;
 
   const struct hydro_props *hydro_props = s->e->hydro_properties;
@@ -2678,10 +2680,10 @@ void space_first_init_parts(struct space *s,
     if (u_min > 0.f) hydro_set_init_internal_energy(&p[i], u_min);
 
     /* Also initialise the chemistry */
-    chemistry_first_init_part(&p[i], &xp[i], chemistry);
+    chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[i], &xp[i]);
 
     /* And the cooling */
-    cooling_first_init_part(&p[i], &xp[i], cool_func);
+    cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[i], &xp[i]);
 
 #ifdef SWIFT_DEBUG_CHECKS
     p[i].ti_drift = 0;

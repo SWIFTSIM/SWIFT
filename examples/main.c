@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
 
   /* Structs used by the engine. Declare now to make sure these are always in
    * scope.  */
-  struct chemistry_data chemistry;
+  struct chemistry_global_data chemistry;
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;

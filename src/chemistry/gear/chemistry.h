@@ -38,18 +38,6 @@
 #include "physical_constants.h"
 #include "units.h"
 
-/**
- * @brief Return a string containing the name of a given #chemistry_element.
- */
-__attribute__((always_inline)) INLINE static const char*
-chemistry_get_element_name(enum chemistry_element elem) {
-
-  static const char* chemistry_element_names[chemistry_element_count] = {
-      "Oxygen",    "Magnesium", "Sulfur", "Iron",    "Zinc",
-      "Strontium", "Yttrium",   "Barium", "Europium"};
-
-  return chemistry_element_names[elem];
-}
 
 /**
  * @brief Compute the metal mass fraction
@@ -79,16 +67,6 @@ static INLINE void chemistry_init_backend(
 
   /* read parameters */
   chemistry_read_parameters(parameter_file, us, phys_const, data);
-}
-
-/**
- * @brief Prints the properties of the chemistry model to stdout.
- *
- * @brief The #chemistry_global_data containing information about the current model.
- */
-static INLINE void chemistry_print_backend(const struct chemistry_global_data* data) {
-
-  message("Chemistry function is 'Gear'.");
 }
 
 /**
@@ -155,8 +133,11 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  * @param data The global chemistry information.
  */
 __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct chemistry_global_data* data) {
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct chemistry_global_data* data,
+    struct part* restrict p, struct xpart* restrict xp) {
 
   p->chemistry_data.Z = data->initial_metallicity;
   chemistry_init_part(p, data);

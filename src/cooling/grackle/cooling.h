@@ -47,12 +47,16 @@
 
 /* prototypes */
 static gr_float cooling_time(
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, struct xpart* restrict xp);
 
 static double cooling_rate(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, struct xpart* restrict xp, double dt);
 
@@ -144,9 +148,12 @@ __attribute__((always_inline)) INLINE static int cooling_converged(
  * @param cooling The properties of the cooling function.
  */
 __attribute__((always_inline)) INLINE static void cooling_compute_equilibrium(
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* restrict cooling,
     const struct part* restrict p,
-    struct xpart* restrict xp,
-    const struct cooling_function_data* cooling) {
+    struct xpart* restrict xp) {
 
   /* get temporary data */
   struct part p_tmp = *p;
@@ -157,9 +164,9 @@ __attribute__((always_inline)) INLINE static void cooling_compute_equilibrium(
 
   /* compute time step */
   const double alpha = 0.01;
-  double dt = fabs(cooling_time(&cooling_tmp, &p_tmp, xp));
-  cooling_rate(NULL, NULL, &cooling_tmp, &p_tmp, xp, dt);
-  dt = alpha * fabs(cooling_time(&cooling_tmp, &p_tmp, xp));
+  double dt = fabs(cooling_time(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp));
+  cooling_rate(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp, dt);
+  dt = alpha * fabs(cooling_time(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp));
 
   /* init simple variables */
   int step = 0;
@@ -173,7 +180,7 @@ __attribute__((always_inline)) INLINE static void cooling_compute_equilibrium(
     old = *xp;
 
     /* update chemistry */
-    cooling_rate(NULL, NULL, &cooling_tmp, &p_tmp, xp, dt);
+    cooling_rate(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp, dt);
   } while (step < max_step && !cooling_converged(xp, &old, conv_limit));
 
   if (step == max_step)
@@ -191,8 +198,11 @@ __attribute__((always_inline)) INLINE static void cooling_compute_equilibrium(
  * @param cooling The properties of the cooling function.
  */
 __attribute__((always_inline)) INLINE static void cooling_first_init_part(
-    const struct part* restrict p, struct xpart* restrict xp,
-    const struct cooling_function_data* cooling) {
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* cooling,
+    const struct part* restrict p, struct xpart* restrict xp) {
 
   xp->cooling_data.radiated_energy = 0.f;
 
@@ -226,7 +236,7 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 #endif  // MODE >= 3
 
 #if COOLING_GRACKLE_MODE > 0
-  cooling_compute_equilibrium(p, xp, cooling);
+  cooling_compute_equilibrium(phys_const, us, cosmo, p, xp, cooling);
 #endif
 }
 
@@ -567,6 +577,9 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
  * @return cooling time
  */
 __attribute__((always_inline)) INLINE static gr_float cooling_time(
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, struct xpart* restrict xp) {
 
@@ -592,8 +605,8 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
   data.grid_end = grid_end;
 
   /* general particle data */
-  const gr_float energy_before = hydro_get_internal_energy(p);
-  gr_float density = hydro_get_density(p);
+  const gr_float energy_before = hydro_get_physical_internal_energy(p, cosmo);
+  gr_float density = hydro_get_physical_density(p, cosmo);
   gr_float energy = energy_before;
 
   /* initialize density */
@@ -646,7 +659,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   const float hydro_du_dt = hydro_get_internal_energy_dt(p);
 
   /* compute cooling rate */
-  const float du_dt = cooling_rate(phys_const, us, cosmo, cooling, p, dt);
+  const float du_dt = cooling_rate(phys_const, us, cosmo, cooling, p, xp, dt);
 
   /* record energy lost */
   xp->cooling_data.radiated_energy += -du_dt * dt * hydro_get_mass(p);
