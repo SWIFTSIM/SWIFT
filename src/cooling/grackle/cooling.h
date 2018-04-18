@@ -314,7 +314,13 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
   cooling_copy_field_to_grackle(data, xp, rho, HeIII);			\
   cooling_copy_field_to_grackle(data, xp, rho, e);
 #else
-#define cooling_copy_to_grackle1(data, p, xp, rho)
+#define cooling_copy_to_grackle1(data, p, xp, rho)	\
+  data.HI_density = NULL;				\
+  data.HII_density = NULL;				\
+  data.HeI_density = NULL;				\
+  data.HeII_density = NULL;				\
+  data.HeIII_density = NULL;				\
+  data.e_density = NULL;
 #endif
 
 /**
@@ -334,7 +340,10 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
   cooling_copy_field_to_grackle(data, xp, rho, H2I);			\
   cooling_copy_field_to_grackle(data, xp, rho, H2II);
 #else
-#define cooling_copy_to_grackle2(data, p, xp, rho)
+#define cooling_copy_to_grackle2(data, p, xp, rho)	\
+  data.HM_density = NULL;				\
+  data.H2I_density = NULL;				\
+  data.H2II_density = NULL;
 #endif
 
 /**
@@ -354,7 +363,10 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
   cooling_copy_field_to_grackle(data, xp, rho, DII);			\
   cooling_copy_field_to_grackle(data, xp, rho, HDI);
 #else
-#define cooling_copy_to_grackle3(data, p, xp, rho)
+#define cooling_copy_to_grackle3(data, p, xp, rho)	\
+  data.DI_density = NULL;				\
+  data.DII_density = NULL;				\
+  data.HDI_density = NULL;
 #endif
 
 /**
@@ -427,6 +439,13 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
   cooling_copy_to_grackle1(data, p, xp, rho);				\
   cooling_copy_to_grackle2(data, p, xp, rho);				\
   cooling_copy_to_grackle3(data, p, xp, rho);				\
+  data.volumetric_heating_rate = NULL;					\
+  data.specific_heating_rate = NULL;					\
+  data.RT_heating_rate = NULL;						\
+  data.RT_HI_ionization_rate = NULL;					\
+  data.RT_HeI_ionization_rate = NULL;					\
+  data.RT_HeII_ionization_rate = NULL;					\
+  data.RT_H2_dissociation_rate = NULL;					\
   gr_float metal_density = chemistry_metal_mass_fraction(p, xp) * rho;	\
   data.metal_density = &metal_density;
 
@@ -481,6 +500,7 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
   int grid_start[GRACKLE_RANK] = {0, 0, 0};
   int grid_end[GRACKLE_RANK] = {GRACKLE_NPART - 1, 0, 0};
 
+  data.grid_dx = 0.;
   data.grid_rank = GRACKLE_RANK;
   data.grid_dimension = grid_dimension;
   data.grid_start = grid_start;
@@ -506,9 +526,29 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
   cooling_copy_to_grackle(data, p, xp, density);
 
   /* solve chemistry with table */
-  if (solve_chemistry(&units, &data, dt) == 0) {
-    error("Error in solve_chemistry.");
-  }
+
+  
+  chemistry_data chemistry_grackle = cooling->chemistry;
+  chemistry_data_storage my_rates = grackle_rates;
+  _solve_chemistry(&chemistry_grackle,
+		   &my_rates,
+		   &units, dt, data.grid_dx,
+		   data.grid_rank, data.grid_dimension,
+		   data.grid_start, data.grid_end,
+		   data.density, data.internal_energy,
+		   data.x_velocity, data.y_velocity, data.z_velocity,
+		   data.HI_density, data.HII_density, data.HM_density,
+		   data.HeI_density, data.HeII_density, data.HeIII_density,
+		   data.H2I_density, data.H2II_density,
+		   data.DI_density, data.DII_density, data.HDI_density,
+		   data.e_density, data.metal_density,
+		   data.volumetric_heating_rate, data.specific_heating_rate,
+		   data.RT_heating_rate, data.RT_HI_ionization_rate, data.RT_HeI_ionization_rate,
+		   data.RT_HeII_ionization_rate, data.RT_H2_dissociation_rate,
+		   NULL); 
+  //if (solve_chemistry(&units, &data, dt) == 0) {
+  //  error("Error in solve_chemistry.");
+  //}
 
   /* copy from grackle data to particle */
   cooling_copy_from_grackle(data, p, xp, density);
