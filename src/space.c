@@ -654,7 +654,7 @@ void space_rebuild(struct space *s, int verbose) {
     if (cells_top[sind[k]].nodeID != local_nodeID) {
       nr_sparts -= 1;
       /* Swap the particle */
-      memswap(&s->sparts[k], &s->sparts[nr_parts], sizeof(struct spart));
+      memswap(&s->sparts[k], &s->sparts[nr_sparts], sizeof(struct spart));
       /* Swap the link with the gpart */
       if (s->sparts[k].gpart != NULL) {
         s->sparts[k].gpart->id_or_neg_offset = -k;
@@ -663,7 +663,7 @@ void space_rebuild(struct space *s, int verbose) {
         s->sparts[nr_sparts].gpart->id_or_neg_offset = -nr_sparts;
       }
       /* Swap the index */
-      memswap(&sind[k], &sind[nr_parts], sizeof(int));
+      memswap(&sind[k], &sind[nr_sparts], sizeof(int));
     } else {
       /* Increment when not exchanging otherwise we need to retest "k".*/
       k++;
