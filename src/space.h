@@ -221,10 +221,8 @@ void space_synchronize_particle_positions(struct space *s);
 void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_do_sparts_sort();
-void space_first_init_parts(struct space *s,
-                            int verbose);
-void space_first_init_gparts(struct space *s,
-			     int verbose);
+void space_first_init_parts(struct space *s, int verbose);
+void space_first_init_gparts(struct space *s, int verbose);
 void space_first_init_sparts(struct space *s, int verbose);
 void space_init_parts(struct space *s, int verbose);
 void space_init_gparts(struct space *s, int verbose);
