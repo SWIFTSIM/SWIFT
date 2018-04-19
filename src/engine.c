@@ -569,7 +569,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the particles according to their cell index. */
   if (s->nr_parts > 0)
-    space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1, e->verbose);
+    space_parts_sort(s->parts, s->xparts, dest, &counts[nodeID * nr_nodes],
+                     nr_nodes, 0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
@@ -660,7 +661,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the particles according to their cell index. */
   if (s->nr_sparts > 0)
-    space_sparts_sort(s, s_dest, s->nr_sparts, 0, nr_nodes - 1, e->verbose);
+    space_sparts_sort(s->sparts, s_dest, &s_counts[nodeID * nr_nodes], nr_nodes,
+                      0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
@@ -752,7 +754,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the gparticles according to their cell index. */
   if (s->nr_gparts > 0)
-    space_gparts_sort(s, g_dest, s->nr_gparts, 0, nr_nodes - 1, e->verbose);
+    space_gparts_sort(s->gparts, s->parts, s->sparts, g_dest,
+                      &g_counts[nodeID * nr_nodes], nr_nodes);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -3696,6 +3699,11 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
+                    e->s->nr_gparts, e->s->nr_sparts, e->verbose);
+#endif
+
   /* Initial cleaning up session ? */
   if (clean_smoothing_length_values) space_sanitize(e->s);
 
@@ -4169,7 +4177,7 @@ void engine_first_init_particles(struct engine *e) {
 
   const ticks tic = getticks();
 
-  /* Set the particles in a state where they are ready for a run */
+  /* Set the particles in a state where they are ready for a run. */
   space_first_init_parts(e->s, e->chemistry, e->cooling_func);
   space_first_init_gparts(e->s, e->gravity_properties);
   space_first_init_sparts(e->s);

@@ -326,8 +326,7 @@ static void dumpCells_map(struct cell *c, void *data) {
 
     /* So output local super cells that are active and have MPI
      * tasks as requested. */
-    if (c->nodeID == e->nodeID && (!super || (super && c->super == c)) &&
-        active && mpiactive) {
+    if (c->nodeID == e->nodeID && (!super ||((super && c->super == c) || (c->parent == NULL))) && active && mpiactive) {
 
       /* If requested we work out how many particles are active in this cell. */
       int pactcount = 0;
