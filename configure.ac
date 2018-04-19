@@ -890,7 +890,7 @@ esac
 #  Equation of state
 AC_ARG_WITH([equation-of-state],
    [AS_HELP_STRING([--with-equation-of-state=<EoS>],
-      [equation of state @<:@ideal-gas, isothermal-gas default: ideal-gas@:>@]
+      [equation of state @<:@ideal-gas, isothermal-gas, tillotson-iron default: ideal-gas@:>@]
    )],
    [with_eos="$withval"],
    [with_eos="ideal-gas"]
@@ -901,6 +901,9 @@ case "$with_eos" in
    ;;
    isothermal-gas)
       AC_DEFINE([EOS_ISOTHERMAL_GAS], [1], [Isothermal gas equation of state])
+   ;;
+   tillotson-iron)
+      AC_DEFINE([EOS_TILLOTSON_IRON], [1], [Tillotson iron equation of state])
    ;;
    *)
       AC_MSG_ERROR([Unknown equation of state: $with_eos])

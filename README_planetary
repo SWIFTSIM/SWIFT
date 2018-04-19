@@ -1,8 +1,17 @@
-SWIFT branch to add equations of state for planetary materials such as iron,
-silicate rocks, ices, and atmospheres; as well as allowing different particles
-to have different materials for the purpose of e.g. giant impact simulations.
+SWIFT 'planetary' branch
 
 Jacob Kegerreis
+
 jacob.kegerreis@durham.ac.uk
+
+# Aims:
+
++ Implement various equations of state, e.g. Tillotson, ANEOS
+
++ Allow multiple SPH materials with different EOS for different particles
+
++ Add examples, e.g. canonical Moon-forming giant impact
+
+# Status:
 
 

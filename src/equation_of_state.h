@@ -34,6 +34,8 @@
 #include "./equation_of_state/ideal_gas/equation_of_state.h"
 #elif defined(EOS_ISOTHERMAL_GAS)
 #include "./equation_of_state/isothermal/equation_of_state.h"
+#elif defined(EOS_TILLOTSON_IRON)
+#include "./equation_of_state/tillotson_iron/equation_of_state.h"
 #else
 #error "Invalid choice of equation of state"
 #endif
