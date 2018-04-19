@@ -95,7 +95,7 @@ int main() {
     p.rho = hydrogen_number_density*internal_const.const_proton_mass*(1.0+p.chemistry_data.metal_mass_fraction[EAGLE_Helium]/p.chemistry_data.metal_mass_fraction[EAGLE_Hydrogen]);
     p.entropy = pressure/(pow(p.rho,gamma));
 
-    cooling_du_dt = eagle_cooling_rate(&p,&cooling,&cosmo,&internal_const);
+    cooling_du_dt = eagle_print_metal_cooling_rate(&p,&cooling,&cosmo,&internal_const);
     temperature_cgs = eagle_convert_u_to_temp(&p,&cooling,&cosmo,&internal_const);
     fprintf(output_file,"%.5e %.5e\n",temperature_cgs,cooling_du_dt);
     fprintf(output_file2,"%.5e %.5e\n",u*(units_cgs_conversion_factor(&us,UNIT_CONV_ENERGY)/units_cgs_conversion_factor(&us,UNIT_CONV_MASS)), temperature_cgs);

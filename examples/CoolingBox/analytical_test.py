@@ -86,8 +86,8 @@ temp_0 = 1.0e7
 rho = rho*unit_mass/(unit_length**3)
 
 # Read snapshots
-nsnap = 40
-npart = 32768
+nsnap = 150
+npart = 4096
 u_snapshots_cgs = zeros(nsnap)
 u_part_snapshots_cgs = zeros((nsnap,npart))
 t_snapshots_cgs = zeros(nsnap)
@@ -107,7 +107,7 @@ for line in file_in:
         temperature.append(float(data[0]))
         cooling_rate.append(-float(data[1]))
 
-tfinal = 3.3*t_snapshots_cgs[nsnap-1]
+tfinal = t_snapshots_cgs[nsnap-1]
 nt = 1e4
 dt = tfinal/nt
 
@@ -121,10 +121,11 @@ for j in range(int(nt-1)):
 	t_sol[j+1] = t_sol[j] + dt
 	Lambda_net = interpol_lambda(temperature,cooling_rate,temp_sol[j])
 	#u_next = (u*m_p - Lambda_net*rho/(0.59*m_p)*dt)/m_p
-	nH = 0.75*rho/(m_p)
+	nH = 0.7*rho/(m_p)
+	#nH = 9.125e-5
 	u_next = u - Lambda_net*nH**2/rho*dt
 	#print(u_next, u, Lambda_net,rho/(0.59*m_p),dt)
-	print(Lambda_net,rho,dt,nH)
+	#print(nH**2/rho*Lambda_net, dt)
 	temp_sol[j+1] = convert_u_to_temp_sol(u_next,rho)
 	lambda_sol[j] = Lambda_net
 	u = u_next
@@ -141,9 +142,9 @@ ylabel("${\\rm{Temperature~[K]}}$")
 
 savefig("energy.png", dpi=200)
 
-p = figure()
-p1, = loglog(temp_sol,lambda_sol,linewidth = 0.5,color = 'k',label = 'analytical')
-xlabel("${\\rm{Temperature~[K]}}$")
-ylabel("${\\rm{Cooling~rate}}$")
+#p = figure()
+#p1, = loglog(temp_sol,lambda_sol,linewidth = 0.5,color = 'k',label = 'analytical')
+#xlabel("${\\rm{Temperature~[K]}}$")
+#ylabel("${\\rm{Cooling~rate}}$")
 
-savefig("cooling.png", dpi=200)
+#savefig("cooling.png", dpi=200)
