@@ -2317,7 +2317,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const struct space *restrict s = (struct space *)extra_data;
   const struct engine *e = s->e;
 
-  struct xpart *restrict xp = s->xparts + (p - s->parts);
+  struct xpart *restrict xp = s->xparts + (ptrdiff_t)(p - s->parts);
 
   const struct cosmology *cosmo = s->e->cosmology;
   const struct phys_const *phys_const = s->e->physical_constants;
