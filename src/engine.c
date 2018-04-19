@@ -4604,6 +4604,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_parts(s, e->verbose);
   space_init_gparts(s, e->verbose);
 
+  message("Performing Friends Of Friends search.");
+  fof_search(e);
+  message("Friends Of Friends search finished.");
+
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e);
