@@ -65,18 +65,17 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
 
-  float r = sqrtf(r2);
-  float xi, xj;
-  float hi_inv, hj_inv;
+  const float r_inv = 1.f / sqrtf(r2);
+  const float r = r2 * r_inv;
+
   float wi, wj, wi_dx, wj_dx;
-  int k, l;
   float Bi[3][3];
   float Bj[3][3];
   float Wi[5], Wj[5];
 
   /* Initialize local variables */
-  for (k = 0; k < 3; k++) {
-    for (l = 0; l < 3; l++) {
+  for (int k = 0; k < 3; k++) {
+    for (int l = 0; l < 3; l++) {
       Bi[k][l] = pi->geometry.matrix_E[k][l];
       Bj[k][l] = pj->geometry.matrix_E[k][l];
     }
@@ -93,8 +92,8 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   Wj[4] = pj->primitives.P;
 
   /* Compute kernel of pi. */
-  hi_inv = 1.0 / hi;
-  xi = r * hi_inv;
+  const float hi_inv = 1.f / hi;
+  const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   if (pi->density.wcorr > const_gizmo_min_wcorr) {
@@ -153,46 +152,46 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
     /* The gradient matrix was not well-behaved, switch to SPH gradients */
 
     pi->primitives.gradients.rho[0] -=
-        wi_dx * dx[0] * (pi->primitives.rho - pj->primitives.rho) / r;
+        wi_dx * dx[0] * (pi->primitives.rho - pj->primitives.rho) * r_inv;
     pi->primitives.gradients.rho[1] -=
-        wi_dx * dx[1] * (pi->primitives.rho - pj->primitives.rho) / r;
+        wi_dx * dx[1] * (pi->primitives.rho - pj->primitives.rho) * r_inv;
     pi->primitives.gradients.rho[2] -=
-        wi_dx * dx[2] * (pi->primitives.rho - pj->primitives.rho) / r;
+        wi_dx * dx[2] * (pi->primitives.rho - pj->primitives.rho) * r_inv;
 
     pi->primitives.gradients.v[0][0] -=
-        wi_dx * dx[0] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+        wi_dx * dx[0] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
     pi->primitives.gradients.v[0][1] -=
-        wi_dx * dx[1] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+        wi_dx * dx[1] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
     pi->primitives.gradients.v[0][2] -=
-        wi_dx * dx[2] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+        wi_dx * dx[2] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
 
     pi->primitives.gradients.v[1][0] -=
-        wi_dx * dx[0] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+        wi_dx * dx[0] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
     pi->primitives.gradients.v[1][1] -=
-        wi_dx * dx[1] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+        wi_dx * dx[1] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
     pi->primitives.gradients.v[1][2] -=
-        wi_dx * dx[2] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+        wi_dx * dx[2] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
 
     pi->primitives.gradients.v[2][0] -=
-        wi_dx * dx[0] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+        wi_dx * dx[0] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
     pi->primitives.gradients.v[2][1] -=
-        wi_dx * dx[1] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+        wi_dx * dx[1] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
     pi->primitives.gradients.v[2][2] -=
-        wi_dx * dx[2] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+        wi_dx * dx[2] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
 
     pi->primitives.gradients.P[0] -=
-        wi_dx * dx[0] * (pi->primitives.P - pj->primitives.P) / r;
+        wi_dx * dx[0] * (pi->primitives.P - pj->primitives.P) * r_inv;
     pi->primitives.gradients.P[1] -=
-        wi_dx * dx[1] * (pi->primitives.P - pj->primitives.P) / r;
+        wi_dx * dx[1] * (pi->primitives.P - pj->primitives.P) * r_inv;
     pi->primitives.gradients.P[2] -=
-        wi_dx * dx[2] * (pi->primitives.P - pj->primitives.P) / r;
+        wi_dx * dx[2] * (pi->primitives.P - pj->primitives.P) * r_inv;
   }
 
   hydro_slope_limit_cell_collect(pi, pj, r);
 
   /* Compute kernel of pj. */
-  hj_inv = 1.0 / hj;
-  xj = r * hj_inv;
+  const float hj_inv = 1.f / hj;
+  const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
   if (pj->density.wcorr > const_gizmo_min_wcorr) {
@@ -252,38 +251,38 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
     /* SPH gradients */
 
     pj->primitives.gradients.rho[0] -=
-        wj_dx * dx[0] * (pi->primitives.rho - pj->primitives.rho) / r;
+        wj_dx * dx[0] * (pi->primitives.rho - pj->primitives.rho) * r_inv;
     pj->primitives.gradients.rho[1] -=
-        wj_dx * dx[1] * (pi->primitives.rho - pj->primitives.rho) / r;
+        wj_dx * dx[1] * (pi->primitives.rho - pj->primitives.rho) * r_inv;
     pj->primitives.gradients.rho[2] -=
-        wj_dx * dx[2] * (pi->primitives.rho - pj->primitives.rho) / r;
+        wj_dx * dx[2] * (pi->primitives.rho - pj->primitives.rho) * r_inv;
 
     pj->primitives.gradients.v[0][0] -=
-        wj_dx * dx[0] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+        wj_dx * dx[0] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
     pj->primitives.gradients.v[0][1] -=
-        wj_dx * dx[1] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+        wj_dx * dx[1] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
     pj->primitives.gradients.v[0][2] -=
-        wj_dx * dx[2] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+        wj_dx * dx[2] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
 
     pj->primitives.gradients.v[1][0] -=
-        wj_dx * dx[0] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+        wj_dx * dx[0] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
     pj->primitives.gradients.v[1][1] -=
-        wj_dx * dx[1] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+        wj_dx * dx[1] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
     pj->primitives.gradients.v[1][2] -=
-        wj_dx * dx[2] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+        wj_dx * dx[2] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
     pj->primitives.gradients.v[2][0] -=
-        wj_dx * dx[0] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+        wj_dx * dx[0] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
     pj->primitives.gradients.v[2][1] -=
-        wj_dx * dx[1] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+        wj_dx * dx[1] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
     pj->primitives.gradients.v[2][2] -=
-        wj_dx * dx[2] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+        wj_dx * dx[2] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
 
     pj->primitives.gradients.P[0] -=
-        wj_dx * dx[0] * (pi->primitives.P - pj->primitives.P) / r;
+        wj_dx * dx[0] * (pi->primitives.P - pj->primitives.P) * r_inv;
     pj->primitives.gradients.P[1] -=
-        wj_dx * dx[1] * (pi->primitives.P - pj->primitives.P) / r;
+        wj_dx * dx[1] * (pi->primitives.P - pj->primitives.P) * r_inv;
     pj->primitives.gradients.P[2] -=
-        wj_dx * dx[2] * (pi->primitives.P - pj->primitives.P) / r;
+        wj_dx * dx[2] * (pi->primitives.P - pj->primitives.P) * r_inv;
   }
 
   hydro_slope_limit_cell_collect(pj, pi, r);
@@ -304,17 +303,15 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
                                struct part *restrict pi,
                                struct part *restrict pj) {
 
-  float r = sqrtf(r2);
-  float xi;
-  float hi_inv;
-  float wi, wi_dx;
-  int k, l;
+  const float r_inv = 1.f / sqrtf(r2);
+  const float r = r2 * r_inv;
+
   float Bi[3][3];
   float Wi[5], Wj[5];
 
   /* Initialize local variables */
-  for (k = 0; k < 3; k++) {
-    for (l = 0; l < 3; l++) {
+  for (int k = 0; k < 3; k++) {
+    for (int l = 0; l < 3; l++) {
       Bi[k][l] = pi->geometry.matrix_E[k][l];
     }
   }
@@ -330,8 +327,9 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
   Wj[4] = pj->primitives.P;
 
   /* Compute kernel of pi. */
-  hi_inv = 1.0 / hi;
-  xi = r * hi_inv;
+  float wi, wi_dx;
+  const float hi_inv = 1.f / hi;
+  const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   if (pi->density.wcorr > const_gizmo_min_wcorr) {
@@ -390,38 +388,38 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
     /* Gradient matrix is not well-behaved, switch to SPH gradients */
 
     pi->primitives.gradients.rho[0] -=
-        wi_dx * dx[0] * (pi->primitives.rho - pj->primitives.rho) / r;
+        wi_dx * dx[0] * (pi->primitives.rho - pj->primitives.rho) * r_inv;
     pi->primitives.gradients.rho[1] -=
-        wi_dx * dx[1] * (pi->primitives.rho - pj->primitives.rho) / r;
+        wi_dx * dx[1] * (pi->primitives.rho - pj->primitives.rho) * r_inv;
     pi->primitives.gradients.rho[2] -=
-        wi_dx * dx[2] * (pi->primitives.rho - pj->primitives.rho) / r;
+        wi_dx * dx[2] * (pi->primitives.rho - pj->primitives.rho) * r_inv;
 
     pi->primitives.gradients.v[0][0] -=
-        wi_dx * dx[0] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+        wi_dx * dx[0] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
     pi->primitives.gradients.v[0][1] -=
-        wi_dx * dx[1] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+        wi_dx * dx[1] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
     pi->primitives.gradients.v[0][2] -=
-        wi_dx * dx[2] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+        wi_dx * dx[2] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
     pi->primitives.gradients.v[1][0] -=
-        wi_dx * dx[0] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+        wi_dx * dx[0] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
     pi->primitives.gradients.v[1][1] -=
-        wi_dx * dx[1] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+        wi_dx * dx[1] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
     pi->primitives.gradients.v[1][2] -=
-        wi_dx * dx[2] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+        wi_dx * dx[2] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
 
     pi->primitives.gradients.v[2][0] -=
-        wi_dx * dx[0] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+        wi_dx * dx[0] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
     pi->primitives.gradients.v[2][1] -=
-        wi_dx * dx[1] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+        wi_dx * dx[1] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
     pi->primitives.gradients.v[2][2] -=
-        wi_dx * dx[2] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+        wi_dx * dx[2] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
 
     pi->primitives.gradients.P[0] -=
-        wi_dx * dx[0] * (pi->primitives.P - pj->primitives.P) / r;
+        wi_dx * dx[0] * (pi->primitives.P - pj->primitives.P) * r_inv;
     pi->primitives.gradients.P[1] -=
-        wi_dx * dx[1] * (pi->primitives.P - pj->primitives.P) / r;
+        wi_dx * dx[1] * (pi->primitives.P - pj->primitives.P) * r_inv;
     pi->primitives.gradients.P[2] -=
-        wi_dx * dx[2] * (pi->primitives.P - pj->primitives.P) / r;
+        wi_dx * dx[2] * (pi->primitives.P - pj->primitives.P) * r_inv;
   }
 
   hydro_slope_limit_cell_collect(pi, pj, r);
@@ -435,12 +433,12 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
 __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     struct part *p) {
 
-  float h, ih;
-
   /* add kernel normalization to gradients */
-  h = p->h;
-  ih = 1.0f / h;
-  const float ihdim = pow_dimension(ih);
+  const float volume = p->geometry.volume;
+  const float h = p->h;
+  const float h_inv = 1.0f / h;
+  const float ihdim = pow_dimension(h_inv);
+  const float ihdimp1 = pow_dimension_plus_one(h_inv);
 
   if (p->density.wcorr > const_gizmo_min_wcorr) {
     p->primitives.gradients.rho[0] *= ihdim;
@@ -462,9 +460,6 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     p->primitives.gradients.P[2] *= ihdim;
 
   } else {
-    const float ihdimp1 = pow_dimension_plus_one(ih);
-
-    float volume = p->geometry.volume;
 
     /* finalize gradients by multiplying with volume */
     p->primitives.gradients.rho[0] *= ihdimp1 * volume;

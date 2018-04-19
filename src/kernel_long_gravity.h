@@ -31,12 +31,41 @@
 #include <math.h>
 
 /**
- * @brief Computes the long-range correction term for the FFT calculation.
+ * @brief Computes the long-range correction term for the potential calculation
+ * coming from FFT.
  *
  * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
  * @param W (return) The value of the kernel function.
  */
-__attribute__((always_inline)) INLINE static void kernel_long_grav_eval(
+__attribute__((always_inline)) INLINE static void kernel_long_grav_pot_eval(
+    const float u, float *const W) {
+
+#ifdef GADGET2_LONG_RANGE_CORRECTION
+
+  const float arg1 = u * 0.5f;
+  const float term1 = erfcf(arg1);
+
+  *W = term1;
+#else
+
+  const float x = 2.f * u;
+  const float exp_x = good_approx_expf(x);
+  const float alpha = 1.f / (1.f + exp_x);
+
+  /* We want 2 - 2 exp(x) * alpha */
+  *W = 1.f - alpha * exp_x;
+  *W *= 2.f;
+#endif
+}
+
+/**
+ * @brief Computes the long-range correction term for the force calculation
+ * coming from FFT.
+ *
+ * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
+ * @param W (return) The value of the kernel function.
+ */
+__attribute__((always_inline)) INLINE static void kernel_long_grav_force_eval(
     float u, float *const W) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
@@ -82,4 +111,4 @@ __attribute__((always_inline)) INLINE static void fourier_kernel_long_grav_eval(
 #endif
 }
 
-#endif  // SWIFT_KERNEL_LONG_GRAVITY_H
+#endif /* SWIFT_KERNEL_LONG_GRAVITY_H */

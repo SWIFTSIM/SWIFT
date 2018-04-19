@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the debug flag to the whole thing
-AM_CFLAGS = $(HDF5_CPPFLAGS)
+AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
@@ -25,7 +25,7 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 GIT_CMD = @GIT_CMD@
 
 # Additional dependencies for shared libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(GRACKLE_LIB)
+EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(GRACKLE_LIB) $(GSL_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)
@@ -65,11 +65,13 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h runner_doiact_fft.h \
                  runner_doiact_nosort.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
-		 dimension.h equation_of_state.h part_type.h periodic.h memswap.h dump.h logger.h \
+		 dimension.h part_type.h periodic.h memswap.h dump.h logger.h sign.h \
 		 gravity.h gravity_io.h gravity_cache.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
 		 sourceterms.h \
+		 equation_of_state.h \
+		 equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h \
 	 	 hydro.h hydro_io.h \
 		 hydro/Minimal/hydro.h hydro/Minimal/hydro_iact.h hydro/Minimal/hydro_io.h \
                  hydro/Minimal/hydro_debug.h hydro/Minimal/hydro_part.h \
@@ -108,6 +110,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/Shadowswift/voronoi_cell.h \
 	         riemann/riemann_hllc.h riemann/riemann_trrs.h \
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
+                 riemann/riemann_checks.h \
 	 	 stars.h stars_io.h \
 		 stars/Default/star.h stars/Default/star_iact.h stars/Default/star_io.h \
 		 stars/Default/star_debug.h stars/Default/star_part.h  \

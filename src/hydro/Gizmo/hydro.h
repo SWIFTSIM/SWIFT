@@ -362,8 +362,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 #endif
 
   /* sanity checks */
-  gizmo_check_physical_quantity("density", p->primitives.rho);
-  gizmo_check_physical_quantity("pressure", p->primitives.P);
+  gizmo_check_physical_quantities("density", "pressure", p->primitives.rho,
+                                  p->primitives.v[0], p->primitives.v[1],
+                                  p->primitives.v[2], p->primitives.P);
 
 #ifdef GIZMO_LLOYD_ITERATION
   /* overwrite primitive variables to make sure they still have safe values */
@@ -517,7 +518,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p, struct xpart* xp) {}
+    struct part* p, struct xpart* xp, const struct cosmology* cosmo) {}
 
 /**
  * @brief Extra operations to be done during the drift
@@ -563,7 +564,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->primitives.v[2] +=
         p->conserved.flux.momentum[2] * dt_drift / p->conserved.mass;
 
-// MATTHIEU: Bert is this correct?
 #if !defined(EOS_ISOTHERMAL_GAS)
     const float u = p->conserved.energy + p->conserved.flux.energy * dt_therm;
     p->primitives.P =
@@ -576,6 +576,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     error("Zero or negative smoothing length (%g)!", p->h);
   }
 #endif
+
+  gizmo_check_physical_quantities("density", "pressure", p->primitives.rho,
+                                  p->primitives.v[0], p->primitives.v[1],
+                                  p->primitives.v[2], p->primitives.P);
 }
 
 /**
@@ -611,7 +615,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param half_dt Half the physical time step.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt) {
+    struct part* p, struct xpart* xp, float dt, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props) {
 
   float a_grav[3];
 
@@ -628,8 +633,17 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.energy += p->conserved.flux.energy * dt;
 #endif
 
-  gizmo_check_physical_quantity("mass", p->conserved.mass);
-  gizmo_check_physical_quantity("energy", p->conserved.energy);
+  /* Apply the minimal energy limit */
+  const float min_energy =
+      hydro_props->minimal_internal_energy * cosmo->a_factor_internal_energy;
+  if (p->conserved.energy < min_energy * p->conserved.mass) {
+    p->conserved.energy = min_energy * p->conserved.mass;
+    p->conserved.flux.energy = 0.f;
+  }
+
+  gizmo_check_physical_quantities(
+      "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
+      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Note that this check will only have effect if no GIZMO_UNPHYSICAL option
@@ -666,6 +680,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[0] += dt * p->conserved.mass * a_grav[0];
     p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
     p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
+
+    p->conserved.energy += dt * (p->gravity.mflux[0] * a_grav[0] +
+                                 p->gravity.mflux[1] * a_grav[1] +
+                                 p->gravity.mflux[2] * a_grav[2]);
   }
 
   hydro_velocities_set(p, xp);
@@ -813,6 +831,18 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
 }
 
 /**
+ * @brief Sets the mass of a particle
+ *
+ * @param p The particle of interest
+ * @param m The mass to set.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_mass(
+    struct part* restrict p, float m) {
+
+  p->conserved.mass = m;
+}
+
+/**
  * @brief Returns the velocities drifted to the current time of a particle.
  *
  * @param p The particle of interest
@@ -915,6 +945,31 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
                           p->conserved.momentum[2] * p->primitives.v[2]);
 #endif
   p->primitives.P = S * pow_gamma(p->primitives.rho);
+}
+
+/**
+ * @brief Overwrite the initial internal energy of a particle.
+ *
+ * Note that in the cases where the thermodynamic variable is not
+ * internal energy but gets converted later, we must overwrite that
+ * field. The conversion to the actual variable happens later after
+ * the initial fake time-step.
+ *
+ * @param p The #part to write to.
+ * @param u_init The new initial internal energy.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_init_internal_energy(struct part* p, float u_init) {
+
+  p->conserved.energy = u_init * p->conserved.mass;
+#ifdef GIZMO_TOTAL_ENERGY
+  /* add the kinetic energy */
+  p->conserved.energy += 0.5f * p->conserved.mass *
+                         (p->conserved.momentum[0] * p->primitives.v[0] +
+                          p->conserved.momentum[1] * p->primitives.v[1] +
+                          p->conserved.momentum[2] * p->primitives.v[2]);
+#endif
+  p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u_init;
 }
 
 #endif /* SWIFT_GIZMO_HYDRO_H */

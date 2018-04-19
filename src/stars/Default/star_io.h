@@ -52,7 +52,7 @@ void star_read_particles(struct spart* sparts, struct io_props* list,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-void star_write_particles(struct spart* sparts, struct io_props* list,
+void star_write_particles(const struct spart* sparts, struct io_props* list,
                           int* num_fields) {
 
   /* Say how much we want to read */

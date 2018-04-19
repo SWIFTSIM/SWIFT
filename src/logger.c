@@ -218,12 +218,6 @@ void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
     buff += 3 * sizeof(float);
   }
 
-  /* Particle smoothing length as a single float. */
-  if (mask & logger_mask_h) {
-    memcpy(buff, &p->epsilon, sizeof(float));
-    buff += sizeof(float);
-  }
-
   /* Particle constants, which is a bit more complicated. */
   if (mask & logger_mask_rho) {
     memcpy(buff, &p->mass, sizeof(float));
@@ -383,12 +377,6 @@ int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff) {
   if (mask & logger_mask_a) {
     memcpy(p->a_grav, buff, 3 * sizeof(float));
     buff += 3 * sizeof(float);
-  }
-
-  /* Particle smoothing length as a single float. */
-  if (mask & logger_mask_h) {
-    memcpy(&p->epsilon, buff, sizeof(float));
-    buff += sizeof(float);
   }
 
   /* Particle constants, which is a bit more complicated. */

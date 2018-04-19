@@ -30,15 +30,19 @@ SPH:
   h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
   max_volume_change:     1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
   max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
-
+  initial_temperature:   0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
+  minimal_temperature:   0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
+  H_mass_fraction:       0.76     # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy.
+  
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:          0.025    # Constant dimensionless multiplier for time integration.
-  theta:        0.7      # Opening angle (Multipole acceptance criterion)
-  epsilon:      0.1      # Softening length (in internal units).
-  a_smooth:     1.25     # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
-  r_cut_max:    4.5      # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
-  r_cut_min:    0.1      # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
+  eta:          0.025               # Constant dimensionless multiplier for time integration.
+  theta:        0.7                 # Opening angle (Multipole acceptance criterion)
+  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
+  max_physical_softening: 0.0007    # Physical softening length (in internal units).
+  a_smooth:     1.25                # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
+  r_cut_max:    4.5                 # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
+  r_cut_min:    0.1                 # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
 
 # Parameters for the task scheduling
 Scheduler:
@@ -81,12 +85,14 @@ Statistics:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  SedovBlast/sedov.hdf5 # The file to read
-  cleanup_h:   0                    # (Optional) Clean the values of h that are read in. Set to 1 to activate.
-  h_scaling:  1.                    # (Optional) A scaling factor to apply to all smoothing lengths in the ICs.
+  generate_gas_in_ics:         0    # (Optional) Generate gas particles from the DM-only ICs (e.g. from panphasia).
+  cleanup_h_factors:           0    # (Optional) Clean up the h-factors used in the ICs (e.g. in Gadget files).
+  cleanup_smoothing_lengths:   0    # (Optional) Clean the values of the smoothing lengths that are read in to remove stupid values. Set to 1 to activate.
+  smoothing_length_scaling:    1.   # (Optional) A scaling factor to apply to all smoothing lengths in the ICs.
   shift_x:    0.                    # (Optional) A shift to apply to all particles read from the ICs (in internal units).
   shift_y:    0.
   shift_z:    0.
-  replicate:  2                     # (Optional) Replicate all particles along each axis a given number of times. Default 1.
+  replicate:  2                     # (Optional) Replicate all particles along each axis a given integer number of times. Default 1.
 
 # Parameters controlling restarts
 Restarts:

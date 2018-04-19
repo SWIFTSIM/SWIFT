@@ -15,9 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the source directory and debug to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS)
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS)
 
-AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(GRACKLE_LIBS)
+AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS)
 
 # List of programs and scripts to run in the test suite
 TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetry \
@@ -26,7 +26,8 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
         testAdiabaticIndex testRiemannExact testRiemannTRRS testRiemannHLLC \
         testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
-	testPeriodicBC.sh testPeriodicBCPerturbed.sh
+	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
+	testPotentialPair 
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
@@ -36,7 +37,7 @@ check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
-		 testGravityDerivatives
+		 testGravityDerivatives testPotentialSelf testPotentialPair
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -99,6 +100,10 @@ testDump_SOURCES = testDump.c
 testLogger_SOURCES = testLogger.c
 
 testGravityDerivatives_SOURCES = testGravityDerivatives.c
+
+testPotentialSelf_SOURCES = testPotentialSelf.c
+
+testPotentialPair_SOURCES = testPotentialPair.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \

@@ -735,7 +735,8 @@ void engine_redistribute(struct engine *e) {
   /* Sort the particles according to their cell index. */
   tic1 = getticks();
   if (s->nr_parts > 0)
-    space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1, e->verbose);
+    space_parts_sort(s->parts, s->xparts, dest, &counts[nodeID * nr_nodes],
+                     nr_nodes, 0);
   message("2: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
           clocks_getunit());
 
@@ -817,7 +818,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the particles according to their cell index. */
   if (s->nr_sparts > 0)
-    space_sparts_sort(s, s_dest, s->nr_sparts, 0, nr_nodes - 1, e->verbose);
+    space_sparts_sort(s->sparts, s_dest, &s_counts[nodeID * nr_nodes], nr_nodes,
+                      0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
@@ -895,7 +897,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the gparticles according to their cell index. */
   if (s->nr_gparts > 0)
-    space_gparts_sort(s, g_dest, s->nr_gparts, 0, nr_nodes - 1, e->verbose);
+    space_gparts_sort(s->gparts, s->parts, s->sparts, g_dest,
+                      &g_counts[nodeID * nr_nodes], nr_nodes);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -3798,7 +3801,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
 #endif
 
   double ntasks = n1 * ntop + n2 * (ncells - ntop);
-  tasks_per_cell = ceil(ntasks / ncells);
+  if (ncells > 0) tasks_per_cell = ceil(ntasks / ncells);
 
   if (tasks_per_cell < 1.0) tasks_per_cell = 1.0;
   if (e->verbose)
@@ -3812,10 +3815,10 @@ int engine_estimate_nr_tasks(struct engine *e) {
  * @brief Rebuild the space and tasks.
  *
  * @param e The #engine.
- * @param clean_h_values Are we cleaning up the values of h before building
- * the tasks ?
+ * @param clean_smoothing_length_values Are we cleaning up the values of
+ * the smoothing lengths before building the tasks ?
  */
-void engine_rebuild(struct engine *e, int clean_h_values) {
+void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
 
   const ticks tic = getticks();
 
@@ -3825,8 +3828,13 @@ void engine_rebuild(struct engine *e, int clean_h_values) {
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
+                    e->s->nr_gparts, e->s->nr_sparts, e->verbose);
+#endif
+
   /* Initial cleaning up session ? */
-  if (clean_h_values) space_sanitize(e->s);
+  if (clean_smoothing_length_values) space_sanitize(e->s);
 
 /* If in parallel, exchange the cell structure, top-level and neighbouring
  * multipoles. */
@@ -4298,7 +4306,7 @@ void engine_first_init_particles(struct engine *e) {
 
   const ticks tic = getticks();
 
-  /* Set the particles in a state where they are ready for a run */
+  /* Set the particles in a state where they are ready for a run. */
   space_first_init_parts(e->s, e->chemistry, e->cooling_func);
   space_first_init_gparts(e->s, e->gravity_properties);
   space_first_init_sparts(e->s);
@@ -4518,10 +4526,10 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
-           e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
-           e->max_active_bin, e->updates, e->g_updates, e->s_updates,
-           e->wallclock_time, e->step_props);
+    printf("  %6d %14e %14e %10.5f %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
+           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
+           e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
     fprintf(e->file_timesteps,
@@ -4542,7 +4550,7 @@ void engine_step(struct engine *e) {
 
   if (e->policy & engine_policy_cosmology) {
     e->time_old = e->time;
-    cosmology_update(e->cosmology, e->ti_current);
+    cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
     e->time = e->cosmology->time;
     e->time_step = e->time - e->time_old;
   } else {
@@ -4550,6 +4558,10 @@ void engine_step(struct engine *e) {
     e->time_old = e->ti_old * e->time_base + e->time_begin;
     e->time_step = (e->ti_current - e->ti_old) * e->time_base;
   }
+
+  /* Update the softening lengths */
+  if (e->policy & engine_policy_self_gravity)
+    gravity_update(e->gravity_properties, e->cosmology);
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
@@ -4575,7 +4587,7 @@ void engine_step(struct engine *e) {
   if (e->verbose) engine_print_task_counts(e);
 
 /* Dump local cells and active particle counts. */
-/* dumpCells("cells", 0, 0, 1, e->s, e->nodeID, e->step); */
+/* dumpCells("cells", 0, 0, 0, 0, e->s, e->nodeID, e->step); */
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
@@ -5232,6 +5244,7 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 
 /* Dump... */
+#if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   write_output_parallel(e, e->snapshotBaseName, e->internal_units,
@@ -5245,6 +5258,7 @@ void engine_dump_snapshot(struct engine *e) {
 #else
   write_output_single(e, e->snapshotBaseName, e->internal_units,
                       e->snapshotUnits);
+#endif
 #endif
 
   e->dump_snapshot = 0;
@@ -5340,7 +5354,7 @@ void engine_init(
     long long Ngas, long long Ndm, int policy, int verbose,
     struct repartition *reparttype, const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
-    const struct hydro_props *hydro, const struct gravity_props *gravity,
+    const struct hydro_props *hydro, struct gravity_props *gravity,
     const struct external_potential *potential,
     const struct cooling_function_data *cooling_func,
     const struct chemistry_data *chemistry, struct sourceterms *sourceterms) {
@@ -5965,11 +5979,13 @@ void engine_compute_next_snapshot_time(struct engine *e) {
     if (e->policy & engine_policy_cosmology) {
       const float next_snapshot_time =
           exp(e->ti_nextSnapshot * e->time_base) * e->cosmology->a_begin;
-      message("Next output time set to a=%e.", next_snapshot_time);
+      if (e->verbose)
+        message("Next output time set to a=%e.", next_snapshot_time);
     } else {
       const float next_snapshot_time =
           e->ti_nextSnapshot * e->time_base + e->time_begin;
-      message("Next output time set to t=%e.", next_snapshot_time);
+      if (e->verbose)
+        message("Next output time set to t=%e.", next_snapshot_time);
     }
   }
 }
@@ -6068,7 +6084,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
   struct cosmology *cosmo =
       (struct cosmology *)malloc(sizeof(struct cosmology));
-  cosmology_struct_restore(cosmo, stream);
+  cosmology_struct_restore(e->policy & engine_policy_cosmology, cosmo, stream);
   e->cosmology = cosmo;
 
 #ifdef WITH_MPI

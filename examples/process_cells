@@ -48,7 +48,7 @@ echo "Number of steps = $steps"
 
 #  And process them,
 echo "Processing cell dumps files..."
-#echo $files | xargs -P $NPROCS -n 4 /bin/bash -c "${SCRIPTHOME}/process_cells_helper $NX $NY $NZ \$0 \$1 \$2 \$3"
+echo $files | xargs -P $NPROCS -n 4 /bin/bash -c "${SCRIPTHOME}/process_cells_helper $NX $NY $NZ \$0 \$1 \$2 \$3"
 
 #  Create summary.
 grep "top cells" step*-active-cells.dat | sort -h > active_cells.log

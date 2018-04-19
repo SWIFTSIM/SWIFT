@@ -1111,6 +1111,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
   const struct engine *e = r->e;
+  const struct cosmology *restrict cosmo = e->cosmology;
   const timebin_t max_active_bin = e->max_active_bin;
   struct part *restrict parts = c->parts;
   const int count = c->count;
@@ -1138,6 +1139,10 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
 
   /* Read the particles from the cell and store them locally in the cache. */
   cache_read_force_particles(c, cell_cache);
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
@@ -1262,7 +1267,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
             &cell_cache->vy[pjd], &cell_cache->vz[pjd], &cell_cache->rho[pjd],
             &cell_cache->grad_h[pjd], &cell_cache->pOrho2[pjd],
             &cell_cache->balsara[pjd], &cell_cache->soundspeed[pjd],
-            &cell_cache->m[pjd], v_hi_inv, v_hj_inv, &v_a_hydro_xSum,
+            &cell_cache->m[pjd], v_hi_inv, v_hj_inv, a, H, &v_a_hydro_xSum,
             &v_a_hydro_ySum, &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum,
             &v_entropy_dtSum, v_doi_mask);
       }
@@ -1684,7 +1689,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
                                       struct cell *restrict cj, const int sid,
                                       const int flipped, const double *shift) {
 
-#ifdef WITH_VECTORIZATION
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
   TIMER_TIC;
 
@@ -1988,6 +1993,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
   const struct engine *restrict e = r->e;
+  const struct cosmology *restrict cosmo = e->cosmology;
   const timebin_t max_active_bin = e->max_active_bin;
 
   TIMER_TIC;
@@ -2018,6 +2024,10 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
   const int active_ci = cell_is_active_hydro(ci, e) && ci_local;
   const int active_cj = cell_is_active_hydro(cj, e) && cj_local;
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that particles have been drifted to the current time */
@@ -2213,7 +2223,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
               &cj_cache->grad_h[cj_cache_idx], &cj_cache->pOrho2[cj_cache_idx],
               &cj_cache->balsara[cj_cache_idx],
               &cj_cache->soundspeed[cj_cache_idx], &cj_cache->m[cj_cache_idx],
-              v_hi_inv, v_hj_inv, &v_a_hydro_xSum, &v_a_hydro_ySum,
+              v_hi_inv, v_hj_inv, a, H, &v_a_hydro_xSum, &v_a_hydro_ySum,
               &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum, &v_entropy_dtSum,
               v_doi_mask);
         }
@@ -2349,7 +2359,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
               &ci_cache->grad_h[ci_cache_idx], &ci_cache->pOrho2[ci_cache_idx],
               &ci_cache->balsara[ci_cache_idx],
               &ci_cache->soundspeed[ci_cache_idx], &ci_cache->m[ci_cache_idx],
-              v_hj_inv, v_hi_inv, &v_a_hydro_xSum, &v_a_hydro_ySum,
+              v_hj_inv, v_hi_inv, a, H, &v_a_hydro_xSum, &v_a_hydro_ySum,
               &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum, &v_entropy_dtSum,
               v_doj_mask);
         }

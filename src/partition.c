@@ -48,6 +48,7 @@
 
 /* Local headers. */
 #include "debug.h"
+#include "engine.h"
 #include "error.h"
 #include "partition.h"
 #include "restart.h"

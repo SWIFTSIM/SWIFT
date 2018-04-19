@@ -835,11 +835,15 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
           memswap(&parts[j], &part, sizeof(struct part));
           memswap(&xparts[j], &xpart, sizeof(struct xpart));
           memswap(&buff[j], &temp_buff, sizeof(struct cell_buff));
+          if (parts[j].gpart)
+            parts[j].gpart->id_or_neg_offset = -(j + parts_offset);
           bid = temp_buff.ind;
         }
         parts[k] = part;
         xparts[k] = xpart;
         buff[k] = temp_buff;
+        if (parts[k].gpart)
+          parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
       }
       bucket_count[bid]++;
     }
@@ -851,10 +855,6 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
     c->progeny[k]->parts = &c->parts[bucket_offset[k]];
     c->progeny[k]->xparts = &c->xparts[bucket_offset[k]];
   }
-
-  /* Re-link the gparts. */
-  if (count > 0 && gcount > 0)
-    part_relink_gparts_to_parts(parts, count, parts_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the buffs are OK. */
@@ -952,10 +952,14 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
           }
           memswap(&sparts[j], &spart, sizeof(struct spart));
           memswap(&sbuff[j], &temp_buff, sizeof(struct cell_buff));
+          if (sparts[j].gpart)
+            sparts[j].gpart->id_or_neg_offset = -(j + sparts_offset);
           bid = temp_buff.ind;
         }
         sparts[k] = spart;
         sbuff[k] = temp_buff;
+        if (sparts[k].gpart)
+          sparts[k].gpart->id_or_neg_offset = -(k + sparts_offset);
       }
       bucket_count[bid]++;
     }
@@ -966,10 +970,6 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
     c->progeny[k]->scount = bucket_count[k];
     c->progeny[k]->sparts = &c->sparts[bucket_offset[k]];
   }
-
-  /* Re-link the gparts. */
-  if (scount > 0 && gcount > 0)
-    part_relink_gparts_to_sparts(sparts, scount, sparts_offset);
 
   /* Finally, do the same song and dance for the gparts. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
@@ -1005,10 +1005,23 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
           }
           memswap(&gparts[j], &gpart, sizeof(struct gpart));
           memswap(&gbuff[j], &temp_buff, sizeof(struct cell_buff));
+          if (gparts[j].type == swift_type_gas) {
+            parts[-gparts[j].id_or_neg_offset - parts_offset].gpart =
+                &gparts[j];
+          } else if (gparts[j].type == swift_type_star) {
+            sparts[-gparts[j].id_or_neg_offset - sparts_offset].gpart =
+                &gparts[j];
+          }
           bid = temp_buff.ind;
         }
         gparts[k] = gpart;
         gbuff[k] = temp_buff;
+        if (gparts[k].type == swift_type_gas) {
+          parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
+        } else if (gparts[k].type == swift_type_star) {
+          sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart =
+              &gparts[k];
+        }
       }
       bucket_count[bid]++;
     }
@@ -1019,14 +1032,6 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
     c->progeny[k]->gcount = bucket_count[k];
     c->progeny[k]->gparts = &c->gparts[bucket_offset[k]];
   }
-
-  /* Re-link the parts. */
-  if (count > 0 && gcount > 0)
-    part_relink_parts_to_gparts(gparts, gcount, parts - parts_offset);
-
-  /* Re-link the sparts. */
-  if (scount > 0 && gcount > 0)
-    part_relink_sparts_to_gparts(gparts, gcount, sparts - sparts_offset);
 }
 
 /**
@@ -1079,23 +1084,6 @@ void cell_sanitize(struct cell *c, int treated) {
 
   /* Record the change */
   c->h_max = h_max;
-}
-
-/**
- * @brief Converts hydro quantities to a valid state after the initial density
- * calculation
- *
- * @param c Cell to act upon
- * @param data Unused parameter
- */
-void cell_convert_hydro(struct cell *c, void *data) {
-
-  struct part *p = c->parts;
-  struct xpart *xp = c->xparts;
-
-  for (int i = 0; i < c->count; ++i) {
-    hydro_convert_quantities(&p[i], &xp[i]);
-  }
 }
 
 /**
@@ -2421,6 +2409,15 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure the particle does not drift by more than a box length. */
+      if (fabsf(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
+          fabsf(xp->v_full[1] * dt_drift) > e->s->dim[1] ||
+          fabsf(xp->v_full[2] * dt_drift) > e->s->dim[2]) {
+        error("Particle drifts by more than a box length!");
+      }
+#endif
 
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
