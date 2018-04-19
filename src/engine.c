@@ -507,35 +507,10 @@ struct redist_mapper {
   void *base;
 };
 
-/* Generic function for accumulating counts for TYPE parts. */
-#define engine_redistribute_dest_mapper_simple(TYPE)                       \
-  engine_redistribute_dest_mapper_##TYPE(void *map_data, int num_elements, \
-                                         void *extra_data) {               \
-    struct TYPE *parts = (struct TYPE *)map_data;                          \
-    struct redist_mapper *mydata = (struct redist_mapper *)extra_data;     \
-    struct space *s = mydata->s;                                           \
-    int *dest =                                                            \
-        mydata->dest + (ptrdiff_t)(parts - (struct TYPE *)mydata->base);   \
-    for (int k = 0; k < num_elements; k++) {                               \
-      for (int j = 0; j < 3; j++) {                                        \
-        if (parts[k].x[j] < 0.0)                                           \
-          parts[k].x[j] += s->dim[j];                                      \
-        else if (parts[k].x[j] >= s->dim[j])                               \
-          parts[k].x[j] -= s->dim[j];                                      \
-      }                                                                    \
-      const int cid = cell_getid(s->cdim, parts[k].x[0] * s->iwidth[0],    \
-                                 parts[k].x[1] * s->iwidth[1],             \
-                                 parts[k].x[2] * s->iwidth[2]);            \
-      dest[k] = s->cells_top[cid].nodeID;                                  \
-      size_t ind = mydata->nodeID * mydata->nr_nodes + dest[k];            \
-      atomic_inc(&mydata->counts[ind]);                                    \
-    }                                                                      \
-  }
-
 /* Generic function for accumulating counts for TYPE parts. Note
  * we use a local counts array to avoid the atomic_add in the parts
  * loop. */
-#define engine_redistribute_dest_mapper_fast(TYPE)                         \
+#define engine_redistribute_dest_mapper(TYPE)                              \
   engine_redistribute_dest_mapper_##TYPE(void *map_data, int num_elements, \
                                          void *extra_data) {               \
     struct TYPE *parts = (struct TYPE *)map_data;                          \
@@ -573,7 +548,7 @@ struct redist_mapper {
  *
  * part version.
  */
-static void engine_redistribute_dest_mapper_fast(part);
+static void engine_redistribute_dest_mapper(part);
 
 /**
  * @brief Accumulate the counts of star particles per cell.
@@ -581,7 +556,7 @@ static void engine_redistribute_dest_mapper_fast(part);
  *
  * spart version.
  */
-static void engine_redistribute_dest_mapper_fast(spart);
+static void engine_redistribute_dest_mapper(spart);
 
 /**
  * @brief Accumulate the counts of gravity particles per cell.
@@ -589,7 +564,7 @@ static void engine_redistribute_dest_mapper_fast(spart);
  *
  * gpart version.
  */
-static void engine_redistribute_dest_mapper_fast(gpart);
+static void engine_redistribute_dest_mapper(gpart);
 
 #endif /* redist_mapper */
 
@@ -715,8 +690,6 @@ void engine_redistribute(struct engine *e) {
   if ((dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
     error("Failed to allocate dest temporary buffer.");
 
-  ticks tic1 = getticks();
-
   /* Get destination of each particle */
   struct redist_mapper redist_data;
   redist_data.s = s;
@@ -729,16 +702,11 @@ void engine_redistribute(struct engine *e) {
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_part, parts,
                  s->nr_parts, sizeof(struct part), 0, &redist_data);
-  message("1: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 
   /* Sort the particles according to their cell index. */
-  tic1 = getticks();
   if (s->nr_parts > 0)
     space_parts_sort(s->parts, s->xparts, dest, &counts[nodeID * nr_nodes],
                      nr_nodes, 0);
-  message("2: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
@@ -765,7 +733,6 @@ void engine_redistribute(struct engine *e) {
 #endif
 
   /* We need to re-link the gpart partners of parts. */
-  tic1 = getticks();
   if (s->nr_parts > 0 && s->nr_gparts > 0) {
     int current_dest = dest[0];
     size_t count_this_dest = 0;
@@ -793,11 +760,8 @@ void engine_redistribute(struct engine *e) {
     }
   }
   free(dest);
-  message("3: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 
   /* Get destination of each s-particle */
-  tic1 = getticks();
   int *s_counts;
   if ((s_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
     error("Failed to allocate s_counts temporary buffer.");
@@ -813,8 +777,6 @@ void engine_redistribute(struct engine *e) {
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_spart, sparts,
                  s->nr_sparts, sizeof(struct spart), 0, &redist_data);
-  message("6: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 
   /* Sort the particles according to their cell index. */
   if (s->nr_sparts > 0)
@@ -876,7 +838,6 @@ void engine_redistribute(struct engine *e) {
   free(s_dest);
 
   /* Get destination of each g-particle */
-  tic1 = getticks();
   int *g_counts;
   if ((g_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
     error("Failed to allocate g_gcount temporary buffer.");
@@ -892,8 +853,6 @@ void engine_redistribute(struct engine *e) {
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_gpart, gparts,
                  s->nr_gparts, sizeof(struct gpart), 0, &redist_data);
-  message("7: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 
   /* Sort the gparticles according to their cell index. */
   if (s->nr_gparts > 0)
@@ -927,7 +886,6 @@ void engine_redistribute(struct engine *e) {
 
   free(g_dest);
 
-  tic1 = getticks();
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
                     MPI_COMM_WORLD) != MPI_SUCCESS)
@@ -942,57 +900,51 @@ void engine_redistribute(struct engine *e) {
   if (MPI_Allreduce(MPI_IN_PLACE, s_counts, nr_nodes * nr_nodes, MPI_INT,
                     MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce sparticle transfer counts.");
-  message("8: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 
   /* Report how many particles will be moved. */
-  // if (e->verbose) {
-  if (e->nodeID == 0) {
-    size_t total = 0, g_total = 0, s_total = 0;
-    size_t unmoved = 0, g_unmoved = 0, s_unmoved = 0;
-    for (int p = 0, r = 0; p < nr_nodes; p++) {
-      for (int n = 0; n < nr_nodes; n++) {
-        total += counts[r];
-        g_total += g_counts[r];
-        s_total += s_counts[r];
-        if (p == n) {
-          unmoved += counts[r];
-          g_unmoved += g_counts[r];
-          s_unmoved += s_counts[r];
+  if (e->verbose) {
+    if (e->nodeID == 0) {
+      size_t total = 0, g_total = 0, s_total = 0;
+      size_t unmoved = 0, g_unmoved = 0, s_unmoved = 0;
+      for (int p = 0, r = 0; p < nr_nodes; p++) {
+        for (int n = 0; n < nr_nodes; n++) {
+          total += counts[r];
+          g_total += g_counts[r];
+          s_total += s_counts[r];
+          if (p == n) {
+            unmoved += counts[r];
+            g_unmoved += g_counts[r];
+            s_unmoved += s_counts[r];
+          }
+          r++;
         }
-        r++;
       }
+      if (total > 0)
+        message("%ld of %ld (%.2f%%) of particles moved", total - unmoved, total,
+                100.0 * (double)(total - unmoved) / (double)total);
+      if (g_total > 0)
+        message("%ld of %ld (%.2f%%) of g-particles moved", g_total - g_unmoved,
+                g_total, 100.0 * (double)(g_total - g_unmoved) / (double)g_total);
+      if (s_total > 0)
+        message("%ld of %ld (%.2f%%) of s-particles moved", s_total - s_unmoved,
+                s_total, 100.0 * (double)(s_total - s_unmoved) / (double)s_total);
     }
-    if (total > 0)
-      message("%ld of %ld (%.2f%%) of particles moved", total - unmoved, total,
-              100.0 * (double)(total - unmoved) / (double)total);
-    if (g_total > 0)
-      message("%ld of %ld (%.2f%%) of g-particles moved", g_total - g_unmoved,
-              g_total, 100.0 * (double)(g_total - g_unmoved) / (double)g_total);
-    if (s_total > 0)
-      message("%ld of %ld (%.2f%%) of s-particles moved", s_total - s_unmoved,
-              s_total, 100.0 * (double)(s_total - s_unmoved) / (double)s_total);
   }
-  //}
 
   /* Now each node knows how many parts, sparts and gparts will be transferred
    * to every other node.
    * Get the new numbers of particles for this node. */
-  tic1 = getticks();
   size_t nr_parts = 0, nr_gparts = 0, nr_sparts = 0;
   for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
   for (int k = 0; k < nr_nodes; k++)
     nr_gparts += g_counts[k * nr_nodes + nodeID];
   for (int k = 0; k < nr_nodes; k++)
     nr_sparts += s_counts[k * nr_nodes + nodeID];
-  message("9: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 
   /* Now exchange the particles, type by type to keep the memory required
    * under control. */
 
   /* SPH particles. */
-  tic1 = getticks();
   void *new_parts = engine_do_redistribute(counts, (char *)s->parts, nr_parts,
                                            sizeof(struct part), part_align,
                                            part_mpi_type, nr_nodes, nodeID);
@@ -1000,21 +952,15 @@ void engine_redistribute(struct engine *e) {
   s->parts = (struct part *)new_parts;
   s->nr_parts = nr_parts;
   s->size_parts = engine_redistribute_alloc_margin * nr_parts;
-  message("10: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 
   /* Extra SPH particle properties. */
-  tic1 = getticks();
   new_parts = engine_do_redistribute(counts, (char *)s->xparts, nr_parts,
                                      sizeof(struct xpart), xpart_align,
                                      xpart_mpi_type, nr_nodes, nodeID);
   free(s->xparts);
   s->xparts = (struct xpart *)new_parts;
-  message("11: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 
   /* Gravity particles. */
-  tic1 = getticks();
   new_parts = engine_do_redistribute(g_counts, (char *)s->gparts, nr_gparts,
                                      sizeof(struct gpart), gpart_align,
                                      gpart_mpi_type, nr_nodes, nodeID);
@@ -1022,11 +968,8 @@ void engine_redistribute(struct engine *e) {
   s->gparts = (struct gpart *)new_parts;
   s->nr_gparts = nr_gparts;
   s->size_gparts = engine_redistribute_alloc_margin * nr_gparts;
-  message("111: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 
   /* Star particles. */
-  tic1 = getticks();
   new_parts = engine_do_redistribute(s_counts, (char *)s->sparts, nr_sparts,
                                      sizeof(struct spart), spart_align,
                                      spart_mpi_type, nr_nodes, nodeID);
@@ -1034,8 +977,6 @@ void engine_redistribute(struct engine *e) {
   s->sparts = (struct spart *)new_parts;
   s->nr_sparts = nr_sparts;
   s->size_sparts = engine_redistribute_alloc_margin * nr_sparts;
-  message("12: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 
   /* All particles have now arrived. Time for some final operations on the
      stuff we just received */
@@ -1043,7 +984,6 @@ void engine_redistribute(struct engine *e) {
   /* Restore the part<->gpart and spart<->gpart links.
    * Generate indices and counts for threadpool tasks. Note we process a node
    * at a time. */
-  tic1 = getticks();
   int *nodes = NULL;
   if ((nodes = (int *)malloc(sizeof(int) * nr_nodes)) == NULL)
     error("Failed to allocate nodes temporary buffer.");
@@ -1060,10 +1000,8 @@ void engine_redistribute(struct engine *e) {
   threadpool_map(&e->threadpool, engine_redistribute_relink_mapper, nodes,
                  nr_nodes, sizeof(int), 1, &relink_data);
   free(nodes);
-  message("13: took %.3f %s.", clocks_from_ticks(getticks() - tic1),
-          clocks_getunit());
 
-  /* Clean up the counts now we done. */
+  /* Clean up the counts now we are done. */
   free(counts);
   free(g_counts);
   free(s_counts);
