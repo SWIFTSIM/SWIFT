@@ -5283,7 +5283,7 @@ void engine_init(
 
   /* Make the space link back to the engine. */
   s->e = e;
-  
+
   /* Setup the timestep if non-cosmological */
   if (!(e->policy & engine_policy_cosmology)) {
     e->time_begin =
@@ -5662,7 +5662,6 @@ void engine_config(int restart, struct engine *e,
 
   /* Find the time of the first output */
   engine_compute_next_snapshot_time(e);
-  message("Next snapshot step will be: %lld", e->ti_nextSnapshot);
 
   /* Whether restarts are enabled. Yes by default. Can be changed on restart. */
   e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
@@ -5853,7 +5852,7 @@ void engine_compute_next_snapshot_time(struct engine *e) {
     time_end = e->time_end + e->deltaTimeSnapshot;
 
   /* Find next snasphot above current time */
-  double time = e->timeFirstSTFOutput;
+  double time = e->timeFirstSnapshot;
   while (time < time_end) {
 
     /* Output time on the integer timeline */
