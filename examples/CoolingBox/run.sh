@@ -2,7 +2,7 @@
 #!/bin/bash
 
 # Generate the initial conditions if they are not present.
-if [ ! -e glassCube_32.hdf5 ]
+if [ ! -e glassCube_16.hdf5 ]
 then
     echo "Fetching initial glass file for the cooling box example..."
     ./getGlass.sh
@@ -21,7 +21,7 @@ then
 fi
 
 # Run SWIFT
-../swift -s -C -t 4 coolingBox.yml
+../swift -s -C -t 8 coolingBox.yml
 
 # Check energy conservation and cooling rate
 python energy_plot.py
