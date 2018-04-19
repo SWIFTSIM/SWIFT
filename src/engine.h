@@ -48,6 +48,7 @@
 #include "space.h"
 #include "task.h"
 #include "units.h"
+#include "fof.h"
 
 /**
  * @brief The different policies the #engine can follow.
