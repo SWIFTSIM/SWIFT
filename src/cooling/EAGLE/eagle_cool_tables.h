@@ -78,8 +78,6 @@ inline void GetCoolingRedshifts(struct cooling_function_data *cooling) {
   }
   fclose(infile);
 
-  //printf("eagle_cool_tables.h redshift max, min, N_Redshifts: %.5e, %.5e, %d\n", cooling->Redshifts[cooling->N_Redshifts-1], cooling->Redshifts[0], cooling->N_Redshifts);
-
 }
 
 inline void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
@@ -352,6 +350,111 @@ inline struct cooling_tables_redshift_invariant get_collisional_table(char *cool
 
   char fname[500], set_name[500];
 
+  int specs, i, j, table_index, cooling_index;
+
+  float *net_cooling_rate;
+  float *electron_abundance;
+  float *temperature;
+  float *he_net_cooling_rate;
+  float *he_electron_abundance;
+
+  net_cooling_rate = (float *)malloc(cooling->N_Temp*sizeof(float));
+  electron_abundance = (float *)malloc(cooling->N_Temp*sizeof(float));
+  temperature = (float *)malloc(cooling->N_He*cooling->N_Temp*sizeof(float));
+  he_net_cooling_rate = (float *)malloc(cooling->N_He*cooling->N_Temp*sizeof(float));
+  he_electron_abundance = (float *)malloc(cooling->N_He*cooling->N_Temp*sizeof(float));
+
+  cooling_table.metal_heating = (float *)malloc(cooling->N_Elements*cooling->N_Temp*sizeof(float));
+  cooling_table.electron_abundance = (float *)malloc(cooling->N_Temp*sizeof(float));
+  cooling_table.temperature = (float *)malloc(cooling->N_He*cooling->N_Temp*sizeof(float));
+  cooling_table.H_plus_He_heating = (float *)malloc(cooling->N_He*cooling->N_Temp*sizeof(float));
+  cooling_table.H_plus_He_electron_abundance = (float *)malloc(cooling->N_He*cooling->N_Temp*sizeof(float));
+
+  sprintf(fname, "%sz_collis.hdf5", cooling_table_path);
+
+  file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
+
+  /* For normal elements */
+  for (specs = 0; specs < cooling->N_Elements; specs++) {
+    sprintf(set_name, "/%s/Net_Cooling", cooling->ElementNames[specs]);
+    dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
+    status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                     net_cooling_rate);
+    status = H5Dclose(dataset);
+
+    for (j = 0; j < cooling->N_Temp; j++){
+        cooling_index = row_major_index_3d(0,specs,j,1,cooling->N_Elements,cooling->N_Temp); //Redshift invariant table!!!
+        cooling_table.metal_heating[cooling_index] = -net_cooling_rate[j];
+    }
+  }
+
+  /* Helium */
+  sprintf(set_name, "/Metal_free/Net_Cooling");
+  dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
+  status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                   he_net_cooling_rate);
+  status = H5Dclose(dataset);
+
+  sprintf(set_name, "/Metal_free/Temperature/Temperature");
+  dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
+  status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                   temperature);
+  status = H5Dclose(dataset);
+
+  sprintf(set_name, "/Metal_free/Electron_density_over_n_h");
+  dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
+  status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                   he_electron_abundance);
+  status = H5Dclose(dataset);
+
+  for (i = 0; i < cooling->N_He; i++){
+    for (j = 0; j < cooling->N_Temp; j++){
+      table_index = row_major_index_2d(i,j,cooling->N_He,cooling->N_Temp);
+      cooling_index = row_major_index_3d(0,i,j,1,cooling->N_He,cooling->N_Temp); //Redshift invariant table!!!
+      cooling_table.H_plus_He_heating[cooling_index] = -he_net_cooling_rate[table_index];
+      cooling_table.H_plus_He_electron_abundance[cooling_index] =
+          he_electron_abundance[table_index];
+      cooling_table.temperature[cooling_index] = log10(temperature[table_index]);
+    }
+  }
+
+  sprintf(set_name, "/Solar/Electron_density_over_n_h");
+  dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
+  status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                   electron_abundance);
+  status = H5Dclose(dataset);
+
+  for (i = 0; i < cooling->N_Temp; i++){
+      cooling_table.electron_abundance[i] = electron_abundance[i];
+  }
+
+  status = H5Fclose(file_id);
+
+  free(net_cooling_rate);
+  free(electron_abundance);
+  free(temperature);
+  free(he_net_cooling_rate);
+  free(he_electron_abundance);
+
+  printf("eagle_cool_tables.h done reading in collisional table\n");
+  return cooling_table;
+}
+
+/*
+ * ----------------------------------------------------------------------
+ * Get the cooling table for photodissociation 
+ * ----------------------------------------------------------------------
+ */
+
+inline struct cooling_tables_redshift_invariant get_photodis_table(char *cooling_table_path, const struct cooling_function_data* restrict cooling) {
+
+  struct cooling_tables_redshift_invariant cooling_table;
+  hid_t file_id, dataset;
+
+  herr_t status;
+
+  char fname[500], set_name[500];
+
   int specs, i, j, k, table_index, cooling_index;
 
   float *net_cooling_rate;
@@ -373,7 +476,6 @@ inline struct cooling_tables_redshift_invariant get_collisional_table(char *cool
   cooling_table.H_plus_He_electron_abundance = (float *)malloc(cooling->N_He*cooling->N_Temp*cooling->N_nH*sizeof(float));
 
   sprintf(fname, "%sz_photodis.hdf5", cooling_table_path);
-  //sprintf(fname, "%sz_collis.hdf5", cooling_table_path);
 
   file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
 
@@ -388,7 +490,7 @@ inline struct cooling_tables_redshift_invariant get_collisional_table(char *cool
     for (j = 0; j < cooling->N_Temp; j++){
       for (k = 0; k < cooling->N_nH; k++){
         table_index = row_major_index_2d(j,k,cooling->N_Temp,cooling->N_nH);
-        cooling_index = row_major_index_4d(0,specs,k,j,1,cooling->N_Elements,cooling->N_nH,cooling->N_Temp); //Redshift invariant table!!!
+        cooling_index = row_major_index_3d(specs,j,k,cooling->N_Elements,cooling->N_Temp,cooling->N_nH); //Redshift invariant table!!!
         cooling_table.metal_heating[cooling_index] = -net_cooling_rate[table_index];
       }
     }
@@ -417,7 +519,7 @@ inline struct cooling_tables_redshift_invariant get_collisional_table(char *cool
     for (j = 0; j < cooling->N_Temp; j++){
       for (k = 0; k < cooling->N_nH; k++) {
         table_index = row_major_index_3d(i,j,k,cooling->N_He,cooling->N_Temp,cooling->N_nH);
-        cooling_index = row_major_index_4d(0,i,k,j,1,cooling->N_He,cooling->N_nH,cooling->N_Temp); //Redshift invariant table!!!
+        cooling_index = row_major_index_3d(i,j,k,cooling->N_He,cooling->N_Temp,cooling->N_nH); //Redshift invariant table!!!
         cooling_table.H_plus_He_heating[cooling_index] = -he_net_cooling_rate[table_index];
         cooling_table.H_plus_He_electron_abundance[cooling_index] =
             he_electron_abundance[table_index];
@@ -435,18 +537,12 @@ inline struct cooling_tables_redshift_invariant get_collisional_table(char *cool
   for (i = 0; i < cooling->N_Temp; i++){
     for (j = 0; j < cooling->N_nH; j++){
       table_index = row_major_index_2d(i,j,cooling->N_Temp,cooling->N_nH);
-      cooling_index = row_major_index_3d(0,j,i,1,cooling->N_nH,cooling->N_Temp); //Redshift invariant table!!!
+      cooling_index = row_major_index_2d(i,j,cooling->N_Temp,cooling->N_nH); //Redshift invariant table!!!
       cooling_table.electron_abundance[cooling_index] = electron_abundance[table_index];
     }
   }
 
   status = H5Fclose(file_id);
-
-  //cooling_table.metal_heating = cooling_MetalsNetHeating;
-  //cooling_table.H_plus_He_heating = cooling_HplusHeNetHeating;
-  //cooling_table.H_plus_He_electron_abundance = cooling_HplusHeElectronAbundance;
-  //cooling_table.temperature = cooling_ThermalToTemp;
-  //cooling_table.electron_abundance = cooling_SolarElectronAbundance;
 
   free(net_cooling_rate);
   free(electron_abundance);
@@ -454,7 +550,7 @@ inline struct cooling_tables_redshift_invariant get_collisional_table(char *cool
   free(he_net_cooling_rate);
   free(he_electron_abundance);
 
-  printf("eagle_cool_tables.h done reading in collisional table\n");
+  printf("eagle_cool_tables.h done reading in photodissociation table\n");
   return cooling_table;
 }
 
@@ -513,7 +609,8 @@ inline struct cooling_tables get_cooling_table(char *cooling_table_path, const s
       for (i = 0; i < cooling->N_nH; i++){
         for (j = 0; j < cooling->N_Temp; j++){
           table_index = row_major_index_2d(j,i,cooling->N_Temp,cooling->N_nH);
-          cooling_index = row_major_index_4d(z_index,specs,i,j,cooling->N_Redshifts,cooling->N_Elements,cooling->N_nH,cooling->N_Temp); 
+          //cooling_index = row_major_index_4d(z_index,specs,i,j,cooling->N_Redshifts,cooling->N_Elements,cooling->N_nH,cooling->N_Temp); 
+          cooling_index = row_major_index_3d(specs,i,j,cooling->N_Elements,cooling->N_nH,cooling->N_Temp); 
           cooling_table.metal_heating[cooling_index] = -net_cooling_rate[table_index];
         }
       }
@@ -542,7 +639,8 @@ inline struct cooling_tables get_cooling_table(char *cooling_table_path, const s
       for (j = 0; j < cooling->N_Temp; j++){
         for (k = 0; k < cooling->N_nH; k++) {
           table_index = row_major_index_3d(i,j,k,cooling->N_He,cooling->N_Temp,cooling->N_nH);
-          cooling_index = row_major_index_4d(z_index,i,k,j,cooling->N_Redshifts,cooling->N_He,cooling->N_nH,cooling->N_Temp); 
+          //cooling_index = row_major_index_4d(z_index,i,k,j,cooling->N_Redshifts,cooling->N_He,cooling->N_nH,cooling->N_Temp); 
+          cooling_index = row_major_index_3d(i,k,j,cooling->N_He,cooling->N_nH,cooling->N_Temp); 
           cooling_table.H_plus_He_heating[cooling_index] = -he_net_cooling_rate[table_index];
           cooling_table.H_plus_He_electron_abundance[cooling_index] =
               he_electron_abundance[table_index];
@@ -560,7 +658,8 @@ inline struct cooling_tables get_cooling_table(char *cooling_table_path, const s
     for (i = 0; i < cooling->N_Temp; i++){
       for (j = 0; j < cooling->N_nH; j++){
         table_index = row_major_index_2d(i,j,cooling->N_Temp,cooling->N_nH);
-        cooling_index = row_major_index_3d(z_index,j,i,cooling->N_Redshifts,cooling->N_nH,cooling->N_Temp); 
+        //cooling_index = row_major_index_3d(z_index,j,i,cooling->N_Redshifts,cooling->N_nH,cooling->N_Temp); 
+        cooling_index = row_major_index_2d(j,i,cooling->N_nH,cooling->N_Temp); 
         cooling_table.electron_abundance[cooling_index] = electron_abundance[table_index];
       }
     }
@@ -568,12 +667,6 @@ inline struct cooling_tables get_cooling_table(char *cooling_table_path, const s
     status = H5Fclose(file_id);
   }
 
-  //cooling_table.metal_heating = cooling_MetalsNetHeating;
-  //cooling_table.H_plus_He_heating = cooling_HplusHeNetHeating;
-  //cooling_table.H_plus_He_electron_abundance = cooling_HplusHeElectronAbundance;
-  //cooling_table.temperature = cooling_ThermalToTemp;
-  //cooling_table.electron_abundance = cooling_SolarElectronAbundance;
-  
   free(net_cooling_rate);
   free(electron_abundance);
   free(temperature);
@@ -590,6 +683,7 @@ inline struct eagle_cooling_table eagle_readtable(char *cooling_table_path, cons
   struct eagle_cooling_table table;
 
   table.photoionisation_cooling = get_no_compt_table(cooling_table_path, cooling);
+  table.photodissociation_cooling = get_photodis_table(cooling_table_path, cooling);
   table.collisional_cooling = get_collisional_table(cooling_table_path, cooling);
   table.element_cooling = get_cooling_table(cooling_table_path, cooling);
 
@@ -661,108 +755,5 @@ inline void MakeNamePointers(struct cooling_function_data* cooling) {
     }
   }
 }
-
-
-//inline int set_cooling_SolarAbundances(const float *element_abundance,
-//                                float *cooling_element_abundance, 
-//				const struct cooling_function_data* restrict cooling) {
-//  int i, index;
-//
-//  for(i = 0; i < cooling->N_Elements; i++){
-//    index = get_element_index(cooling->SolarAbundanceNames,
-//                          cooling->N_SolarAbundances, cooling->ElementNames[i]);
-//    if (cooling->SolarAbundances[index] != 0.0) cooling_element_abundance[i] = element_abundance[i]/cooling->SolarAbundances[index];
-//    else cooling_element_abundance[i] = 0.0;
-//    printf ("eagle_cool_tables.h element, name, abundance, solar abundance, cooling abundance %d %s %.5e %.5e %.5e\n",index,cooling->ElementNames[i], element_abundance[i],cooling->SolarAbundances[index], cooling_element_abundance[i]);
-//  }
-//
-//  return 0;
-//}
-
-//inline int set_cooling_SolarAbundances(const float *element_abundance,
-//                                float *cooling_element_abundance,
-//				const struct cooling_function_data* restrict cooling) {
-//  int i, index;
-//
-//  int static Silicon_SPH_Index = -1;
-//  int static Calcium_SPH_Index = -1;
-//  int static Sulphur_SPH_Index = -1;
-//
-//  int static Silicon_CoolHeat_Index = -1;
-//  int static Calcium_CoolHeat_Index = -1;
-//  int static Sulphur_CoolHeat_Index = -1;
-//
-//  static int first_call = 0;
-//
-//  if (first_call == 0) {
-//    /* determine (inverse of) solar abundance of these elements */
-//    for (i = 0; i < cooling_N_Elements; i++) {
-//      index =
-//          get_element_index(cooling_SolarAbundanceNames,
-//                            cooling_N_SolarAbundances, cooling_ElementNames[i]);
-//
-//      if (index < 0) endrun(-12345);
-//
-//      index = SolarAbundanceNamePointers[i];
-//
-//      cooling_ElementAbundance_SOLARM1[i] = 1. / cooling_SolarAbundances[index];
-//
-//      index = ElementNamePointers[i];
-//
-//      if (index < 0 && ThisTask == 0)
-//        printf("[bg_cooling] element not found %s\n", cooling_ElementNames[i]);
-//    }
-//
-//    /* Sulphur tracks Silicon: may choose not to follow Sulphur as SPH element
-//     */
-//    /* Same is true for Calcium */
-//    /* We will assume the code tracks Silicon, and may need to scale Calcium and
-//     * Sulphur accordingly */
-//
-//    Silicon_SPH_Index = element_index("Silicon");
-//    Calcium_SPH_Index = element_index("Calcium");
-//    Sulphur_SPH_Index = element_index("Sulphur");
-//
-//    Silicon_CoolHeat_Index =
-//        get_element_index(cooling_ElementNames, cooling_N_Elements, "Silicon");
-//    Calcium_CoolHeat_Index =
-//        get_element_index(cooling_ElementNames, cooling_N_Elements, "Calcium");
-//    Sulphur_CoolHeat_Index =
-//        get_element_index(cooling_ElementNames, cooling_N_Elements, "Sulphur");
-//
-//    if (Silicon_CoolHeat_Index == -1 || Calcium_CoolHeat_Index == -1 ||
-//        Sulphur_CoolHeat_Index == -1) {
-//      if (ThisTask == 0)
-//        printf("[bg_cooling] error: did not find Si or Ca or S??\n");
-//      endrun(-1233);
-//    }
-//
-//    first_call = 1;
-//  }
-//  for (i = 0; i < cooling_N_Elements; i++) {
-//    if (i == Calcium_CoolHeat_Index && Calcium_SPH_Index == -1)
-//      /* SPH does not track Calcium: use Si abundance */
-//      if (Silicon_SPH_Index == -1)
-//        cooling_element_abundance[i] = 0.0;
-//      else
-//        cooling_element_abundance[i] =
-//            element_abundance[Silicon_SPH_Index] *
-//            cooling_ElementAbundance_SOLARM1[Silicon_CoolHeat_Index];
-//    else if (i == Sulphur_CoolHeat_Index && Sulphur_SPH_Index == -1)
-//      /* SPH does not track Sulphur: use Si abundance */
-//      if (Silicon_SPH_Index == -1)
-//        cooling_element_abundance[i] = 0.0;
-//      else
-//        cooling_element_abundance[i] =
-//            element_abundance[Silicon_SPH_Index] *
-//            cooling_ElementAbundance_SOLARM1[Silicon_CoolHeat_Index];
-//    else
-//      cooling_element_abundance[i] = element_abundance[ElementNamePointers[i]] *
-//                                     cooling_ElementAbundance_SOLARM1[i];
-//  }
-//
-//  return 0;
-//}
-
 
 #endif
