@@ -41,6 +41,8 @@ AX_CHECK_ENABLE_DEBUG
 AC_PROG_CC
 AM_PROG_CC_C_O
 
+
+
 # If debug is selected then we also define SWIFT_DEVELOP_MODE to control
 # any developer code options.
 if test "x$ax_enable_debug" != "xno"; then
@@ -1055,6 +1057,36 @@ AC_ARG_WITH([multipole-order],
    [with_multipole_order="5"]
 )
 AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Multipole order])
+
+# Subgrid options
+AC_ARG_WITH([subgrid],
+	[AS_HELP_STRING([--with-subgrid=<subgrid>],
+		[Name of the subgrid methods. Inexperiented user should start from here @<:@none, gear default: none@:>@]
+	)],
+	[with_subgrid="$withval"],
+	[with_subgrid=none]
+)
+
+AC_DEFUN([SWIFT_SET_OPTION], [
+	if test "$$1" != "$3"; then
+	   AC_MSG_ERROR([Cannot provide together '$1' and 'with-subrid'])
+	else
+	   $1=$2
+	fi
+])
+
+case "$with_subgrid" in
+   none)
+      ;;
+   gear)
+	SWIFT_SET_OPTION(with_cooling, grackle3, none)
+	SWIFT_SET_OPTION(with_chemistry, gear, none)
+	SWIFT_SET_OPTION(with_hydro, gadget2, gadget2)
+	;;
+   *)
+      AC_MSG_ERROR([Unknown subgrid: $with_subgrid])
+      ;;
+esac
 
 
 # Check for git, needed for revision stamps.
