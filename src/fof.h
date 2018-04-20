@@ -34,6 +34,8 @@
 //#include "vector.h"
 
 /* Function prototypes. */
-void fof_search(struct engine *e);
+void fof_search_naive(struct engine *e);
+void fof_search_serial(struct engine *e);
+void fof_dump_group_data(char *out_file, const int nr_gparts, int *pid, int *num_in_groups);
 
 #endif /* SWIFT_FOF_H */
