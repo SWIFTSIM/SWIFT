@@ -73,15 +73,20 @@ int main() {
   chemistry_init(params, &us, &internal_const, &chemistry_data);
   chemistry_first_init_part(&p,&xp,&chemistry_data);
   chemistry_print(&chemistry_data);
+  
+  cosmology_init(params, &us, &internal_const, &cosmo);
+  cosmology_print(&cosmo);
+
+  //float scale_factor = 1.0/(1.0 + cosmo.z);
+  //float scaled_hydrogen_number_density_cgs = hydrogen_number_density_cgs/pow(scale_factor,3);
     
   u = 1.0*pow(10.0,11)/(units_cgs_conversion_factor(&us,UNIT_CONV_ENERGY)/units_cgs_conversion_factor(&us,UNIT_CONV_MASS));
   pressure = u*p.rho*(gamma -1.0);
+  //hydrogen_number_density = scaled_hydrogen_number_density_cgs*pow(units_cgs_conversion_factor(&us,UNIT_CONV_LENGTH),3);
   hydrogen_number_density = hydrogen_number_density_cgs*pow(units_cgs_conversion_factor(&us,UNIT_CONV_LENGTH),3);
   p.rho = hydrogen_number_density*internal_const.const_proton_mass*(1.0+p.chemistry_data.metal_mass_fraction[EAGLE_Helium]/p.chemistry_data.metal_mass_fraction[EAGLE_Hydrogen]);
   p.entropy = pressure/(pow(p.rho,gamma));
 
-  cosmology_init(params, &us, &internal_const, &cosmo);
-  cosmology_print(&cosmo);
 
   cooling_init(params, &us, &internal_const, &cooling);
   cooling_print(&cooling);
