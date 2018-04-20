@@ -42,4 +42,4 @@ Statistics:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./uniformDMBox_100.hdf5     # The file to read
+  file_name:  ./uniformDMBox_20.hdf5     # The file to read
