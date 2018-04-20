@@ -567,6 +567,77 @@ static void engine_redistribute_dest_mapper(gpart);
 
 #endif /* redist_mapper */
 
+#ifdef WITH_MPI /* savelink_mapper */
+
+/* Support for saving the linkage between gparts and parts/sparts. */
+struct savelink_mapper {
+  int nr_nodes;
+  int *counts;
+  void *parts;
+  int nodeID;
+};
+
+/**
+ * @brief Save the offset of each gravity partner of a part or spart.
+ *
+ * The offset is from the start of the sorted particles to be sent to a node.
+ * This is possible as parts without gravity partners have a positive id.
+ * These offsets are used to restore the pointers on the receiving node.
+ *
+ * CHECKS should be eliminated as dead code when optimizing.
+ */
+#define engine_redistribute_savelink_mapper(TYPE, CHECKS)               \
+  engine_redistribute_savelink_mapper_##TYPE(void *map_data,            \
+                                             int num_elements,          \
+                                             void *extra_data) {        \
+    int *nodes = (int *)map_data;                                       \
+    struct savelink_mapper *mydata = (struct savelink_mapper *)extra_data; \
+    int nodeID = mydata->nodeID;                                        \
+    int nr_nodes = mydata->nr_nodes;                                    \
+    int *counts = mydata->counts;                                       \
+    struct TYPE *parts = (struct TYPE *)mydata->parts;                  \
+                                                                        \
+    for (int j = 0; j < num_elements; j++) {                            \
+      int node = nodes[j];                                              \
+      size_t count = 0;                                                 \
+      size_t offset = 0;                                                \
+      for (int i = 0; i < node; i++) offset += counts[nodeID * nr_nodes + i]; \
+                                                                        \
+      for (size_t k = 0; k < counts[nodeID * nr_nodes + node]; k++) {   \
+        if (parts[k+offset].gpart != NULL) {                            \
+          if (CHECKS)                                                   \
+            if (parts[k].gpart->id_or_neg_offset > 0)                   \
+              error("Trying to link a partnerless "#TYPE "!");          \
+          parts[k+offset].gpart->id_or_neg_offset = -count;             \
+          count++;                                                      \
+        }                                                               \
+      }                                                                 \
+    }                                                                   \
+  }
+
+/**
+ * @brief Save position of part-gpart links.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ */
+#ifdef SWIFT_DEBUG_CHECKS
+static void engine_redistribute_savelink_mapper(part, 1);
+#else
+static void engine_redistribute_savelink_mapper(part, 0);
+#endif
+
+/**
+ * @brief Save position of spart-gpart links.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ */
+#ifdef SWIFT_DEBUG_CHECKS
+static void engine_redistribute_savelink_mapper(spart, 1);
+#else
+static void engine_redistribute_savelink_mapper(spart, 0);
+#endif
+
+#endif /* savelink_mapper */
+
+
 #ifdef WITH_MPI /* relink_mapper */
 
 /* Support for relinking parts, gparts and sparts after moving between nodes. */
@@ -688,6 +759,12 @@ void engine_redistribute(struct engine *e) {
   if ((dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
     error("Failed to allocate dest temporary buffer.");
 
+  /* Simple index of node IDs, used for mappers over nodes. */
+  int *nodes = NULL;
+  if ((nodes = (int *)malloc(sizeof(int) * nr_nodes)) == NULL)
+    error("Failed to allocate nodes temporary buffer.");
+  for (int k = 0; k < nr_nodes; k++) nodes[k] = k;
+
   /* Get destination of each particle */
   struct redist_mapper redist_data;
   redist_data.s = s;
@@ -730,32 +807,17 @@ void engine_redistribute(struct engine *e) {
   }
 #endif
 
-  /* We need to re-link the gpart partners of parts. */
+  /* We will need to re-link the gpart partners of parts, so save their
+   * relative positions in the sent lists. */
   if (s->nr_parts > 0 && s->nr_gparts > 0) {
-    int current_dest = dest[0];
-    size_t count_this_dest = 0;
-    for (size_t k = 0; k < s->nr_parts; ++k) {
-      if (s->parts[k].gpart != NULL) {
 
-        /* As the addresses will be invalidated by the communications, we will
-         * instead store the absolute index from the start of the sub-array of
-         * particles to be sent to a given node.
-         * Recall that gparts without partners have a positive id.
-         * We will restore the pointers on the receiving node later on. */
-        if (dest[k] != current_dest) {
-          current_dest = dest[k];
-          count_this_dest = 0;
-        }
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (s->parts[k].gpart->id_or_neg_offset > 0)
-          error("Trying to link a partnerless gpart !");
-#endif
-
-        s->parts[k].gpart->id_or_neg_offset = -count_this_dest;
-        count_this_dest++;
-      }
-    }
+    struct savelink_mapper savelink_data;
+    savelink_data.nr_nodes = nr_nodes;
+    savelink_data.counts = counts;
+    savelink_data.parts = (void *)parts;
+    savelink_data.nodeID = nodeID;
+    threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_part,
+                   nodes, nr_nodes, sizeof(int), 0, &savelink_data);
   }
   free(dest);
 
@@ -806,32 +868,15 @@ void engine_redistribute(struct engine *e) {
 
   /* We need to re-link the gpart partners of sparts. */
   if (s->nr_sparts > 0) {
-    int current_dest = s_dest[0];
-    size_t count_this_dest = 0;
-    for (size_t k = 0; k < s->nr_sparts; ++k) {
-      if (s->sparts[k].gpart != NULL) {
 
-        /* As the addresses will be invalidated by the communications, we will
-         * instead store the absolute index from the start of the sub-array of
-         * particles to be sent to a given node.
-         * Recall that gparts without partners have a positive id.
-         * We will restore the pointers on the receiving node later on. */
-        if (s_dest[k] != current_dest) {
-          current_dest = s_dest[k];
-          count_this_dest = 0;
-        }
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (s->sparts[k].gpart->id_or_neg_offset > 0)
-          error("Trying to link a partnerless gpart !");
-#endif
-
-        s->sparts[k].gpart->id_or_neg_offset = -count_this_dest;
-        count_this_dest++;
-      }
-    }
+    struct savelink_mapper savelink_data;
+    savelink_data.nr_nodes = nr_nodes;
+    savelink_data.counts = s_counts;
+    savelink_data.parts = (void *)sparts;
+    savelink_data.nodeID = nodeID;
+    threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_spart,
+                   nodes, nr_nodes, sizeof(int), 0, &savelink_data);
   }
-
   free(s_dest);
 
   /* Get destination of each g-particle */
@@ -982,11 +1027,6 @@ void engine_redistribute(struct engine *e) {
   /* Restore the part<->gpart and spart<->gpart links.
    * Generate indices and counts for threadpool tasks. Note we process a node
    * at a time. */
-  int *nodes = NULL;
-  if ((nodes = (int *)malloc(sizeof(int) * nr_nodes)) == NULL)
-    error("Failed to allocate nodes temporary buffer.");
-  for (int k = 0; k < nr_nodes; k++) nodes[k] = k;
-
   struct relink_mapper relink_data;
   relink_data.s = s;
   relink_data.counts = counts;
