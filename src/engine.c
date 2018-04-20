@@ -519,10 +519,9 @@ struct redist_mapper {
     int *dest =                                                            \
         mydata->dest + (ptrdiff_t)(parts - (struct TYPE *)mydata->base);   \
     int *lcounts = NULL;                                                   \
-    if ((lcounts = (int *)malloc(sizeof(int) * mydata->nr_nodes *          \
-                                 mydata->nr_nodes)) == NULL)               \
+    if ((lcounts = (int *)calloc(                                          \
+             sizeof(int), mydata->nr_nodes * mydata->nr_nodes)) == NULL)   \
       error("Failed to allocate counts thread-specific buffer");           \
-    bzero(lcounts, sizeof(int) * mydata->nr_nodes * mydata->nr_nodes);     \
     for (int k = 0; k < num_elements; k++) {                               \
       for (int j = 0; j < 3; j++) {                                        \
         if (parts[k].x[j] < 0.0)                                           \
@@ -568,7 +567,7 @@ static void engine_redistribute_dest_mapper(gpart);
 
 #endif /* redist_mapper */
 
-#ifdef WITH_MPI   /* relink_mapper */
+#ifdef WITH_MPI /* relink_mapper */
 
 /* Support for relinking parts, gparts and sparts after moving between nodes. */
 struct relink_mapper {
@@ -634,7 +633,7 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
       }
 
       /* Does this gpart have a star partner ? */
-      if (s->gparts[k].type == swift_type_star) {
+      else if (s->gparts[k].type == swift_type_star) {
 
         const ptrdiff_t partner_index =
             offset_sparts - s->gparts[k].id_or_neg_offset;
@@ -682,9 +681,8 @@ void engine_redistribute(struct engine *e) {
   /* Allocate temporary arrays to store the counts of particles to be sent
    * and the destination of each particle */
   int *counts;
-  if ((counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
+  if ((counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
     error("Failed to allocate counts temporary buffer.");
-  bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
 
   int *dest;
   if ((dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
@@ -763,9 +761,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Get destination of each s-particle */
   int *s_counts;
-  if ((s_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
+  if ((s_counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
     error("Failed to allocate s_counts temporary buffer.");
-  bzero(s_counts, sizeof(int) * nr_nodes * nr_nodes);
 
   int *s_dest;
   if ((s_dest = (int *)malloc(sizeof(int) * s->nr_sparts)) == NULL)
@@ -839,9 +836,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Get destination of each g-particle */
   int *g_counts;
-  if ((g_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
+  if ((g_counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
     error("Failed to allocate g_gcount temporary buffer.");
-  bzero(g_counts, sizeof(int) * nr_nodes * nr_nodes);
 
   int *g_dest;
   if ((g_dest = (int *)malloc(sizeof(int) * s->nr_gparts)) == NULL)
@@ -920,14 +916,16 @@ void engine_redistribute(struct engine *e) {
         }
       }
       if (total > 0)
-        message("%ld of %ld (%.2f%%) of particles moved", total - unmoved, total,
-                100.0 * (double)(total - unmoved) / (double)total);
+        message("%ld of %ld (%.2f%%) of particles moved", total - unmoved,
+                total, 100.0 * (double)(total - unmoved) / (double)total);
       if (g_total > 0)
         message("%ld of %ld (%.2f%%) of g-particles moved", g_total - g_unmoved,
-                g_total, 100.0 * (double)(g_total - g_unmoved) / (double)g_total);
+                g_total,
+                100.0 * (double)(g_total - g_unmoved) / (double)g_total);
       if (s_total > 0)
         message("%ld of %ld (%.2f%%) of s-particles moved", s_total - s_unmoved,
-                s_total, 100.0 * (double)(s_total - s_unmoved) / (double)s_total);
+                s_total,
+                100.0 * (double)(s_total - s_unmoved) / (double)s_total);
     }
   }
 
@@ -1009,10 +1007,9 @@ void engine_redistribute(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
   for (size_t k = 0; k < nr_parts; k++) {
-    const int cid =
-        cell_getid(s->cdim, s->parts[k].x[0] * s->iwidth[0],
-                   s->parts[k].x[1] * s->iwidth[1],
-                   s->parts[k].x[2] * s->iwidth[2]);
+    const int cid = cell_getid(s->cdim, s->parts[k].x[0] * s->iwidth[0],
+                               s->parts[k].x[1] * s->iwidth[1],
+                               s->parts[k].x[2] * s->iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received particle (%zu) that does not belong here (nodeID=%i).", k,
             cells[cid].nodeID);
@@ -5561,10 +5558,9 @@ void engine_config(int restart, struct engine *e,
     error("SWIFT was not compiled with MPI support.");
 #else
     e->policy |= engine_policy_mpi;
-    if ((e->proxies = (struct proxy *)malloc(sizeof(struct proxy) *
+    if ((e->proxies = (struct proxy *)calloc(sizeof(struct proxy),
                                              engine_maxproxies)) == NULL)
       error("Failed to allocate memory for proxies.");
-    bzero(e->proxies, sizeof(struct proxy) * engine_maxproxies);
     e->nr_proxies = 0;
 #endif
   }
