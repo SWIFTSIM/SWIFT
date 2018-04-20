@@ -598,7 +598,7 @@ struct savelink_mapper {
                                                                                \
     for (int j = 0; j < num_elements; j++) {                                   \
       int node = nodes[j];                                                     \
-      size_t count = 0;                                                        \
+      int count = 0;                                                        \
       size_t offset = 0;                                                       \
       for (int i = 0; i < node; i++) offset += counts[nodeID * nr_nodes + i];  \
                                                                                \
