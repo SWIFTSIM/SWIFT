@@ -482,6 +482,7 @@ __attribute__((always_inline)) INLINE static double eagle_convert_u_to_temp(cons
   double inn_h = chemistry_get_number_density(p,cosmo,chemistry_element_H,internal_const)*cooling->number_density_scale;
   float inHe = p->chemistry_data.metal_mass_fraction[chemistry_element_He]/(p->chemistry_data.metal_mass_fraction[chemistry_element_H]+p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
   double u = hydro_get_physical_internal_energy(p,cosmo)*cooling->internal_energy_scale;
+  //double u = hydro_get_comoving_internal_energy(p)*cooling->internal_energy_scale;
   
   int u_i, He_i, n_h_i;
 
@@ -494,12 +495,12 @@ __attribute__((always_inline)) INLINE static double eagle_convert_u_to_temp(cons
   get_index_1d(cooling->nH, cooling->N_nH, log10(inn_h), &n_h_i, &d_n_h);
   get_index_1d(cooling->Therm, cooling->N_Temp, log10(u), &u_i, &d_u);
   
-  //logT = interpol_2d(cooling->table.collisional_cooling.temperature, u_i, He_i, d_u, d_He, cooling->N_Temp, cooling->N_He);
+  //logT = interpol_2d(cooling->table.collisional_cooling.temperature, He_i, u_i, d_He, d_u, cooling->N_He, cooling->N_Temp);
 
-  logT = interpol_4d(cooling->table.element_cooling.temperature, 0, He_i, n_h_i,
-                     u_i, dz, d_He, d_n_h, d_u, cooling->N_Redshifts,cooling->N_He,cooling->N_nH,cooling->N_Temp);
-
-
+  //logT = interpol_3d(cooling->table.photodissociation_cooling.temperature, He_i,
+  //                   u_i, n_h_i, d_He, d_u, d_n_h,cooling->N_He,cooling->N_Temp,cooling->N_nH);
+  logT = interpol_4d(cooling->table.element_cooling.temperature,z_index, He_i,
+                     u_i, n_h_i, dz, d_He, d_u, d_n_h,cooling->N_Redshifts,cooling->N_He,cooling->N_Temp,cooling->N_nH);
 
   T = pow(10.0, logT);
 
@@ -548,21 +549,20 @@ __attribute__((always_inline)) INLINE static void eagle_metal_cooling_rate(const
     //                 temp_i, d_He, d_temp,cooling->N_He,cooling->N_Temp);
     
     /* Photodissociation */
-    element_lambda[0] =
-        interpol_3d(cooling->table.photodissociation_cooling.H_plus_He_heating, He_i,
-                     temp_i, n_h_i, d_He, d_temp, d_n_h,cooling->N_He,cooling->N_Temp,cooling->N_nH);
-    h_plus_he_electron_abundance =
-        interpol_3d(cooling->table.photodissociation_cooling.H_plus_He_electron_abundance, He_i,
-                     temp_i, n_h_i, d_He, d_temp, d_n_h,cooling->N_He,cooling->N_Temp,cooling->N_nH);
+    //element_lambda[0] =
+    //    interpol_3d(cooling->table.photodissociation_cooling.H_plus_He_heating, He_i,
+    //                 temp_i, n_h_i, d_He, d_temp, d_n_h,cooling->N_He,cooling->N_Temp,cooling->N_nH);
+    //h_plus_he_electron_abundance =
+    //    interpol_3d(cooling->table.photodissociation_cooling.H_plus_He_electron_abundance, He_i,
+    //                 temp_i, n_h_i, d_He, d_temp, d_n_h,cooling->N_He,cooling->N_Temp,cooling->N_nH);
 
     /* redshift tables */
-    //printf("Eagle cooling.h z_index, dz, z %d %.5e %.5e\n", z_index, dz, cooling->Redshifts[z_index]);
-    //element_lambda[0] =
-    //    interpol_4d(cooling->table.element_cooling.H_plus_He_heating, z_index, He_i,
-    //                 temp_i, n_h_i, dz, d_He, d_temp, d_n_h, cooling->N_Redshifts,cooling->N_He,cooling->N_Temp,cooling->N_nH);
-    //h_plus_he_electron_abundance =
-    //    interpol_4d(cooling->table.element_cooling.H_plus_He_electron_abundance, z_index, He_i,
-    //                 temp_i, n_h_i, dz, d_He, d_temp, d_n_h, cooling->N_Redshifts,cooling->N_He,cooling->N_Temp,cooling->N_nH);
+    element_lambda[0] =
+        interpol_4d(cooling->table.element_cooling.H_plus_He_heating, z_index, He_i,
+                     temp_i, n_h_i, dz, d_He, d_temp, d_n_h,cooling->N_Redshifts,cooling->N_He,cooling->N_Temp,cooling->N_nH);
+    h_plus_he_electron_abundance =
+        interpol_4d(cooling->table.element_cooling.H_plus_He_electron_abundance, z_index, He_i,
+                     temp_i, n_h_i, dz, d_He, d_temp, d_n_h,cooling->N_Redshifts,cooling->N_He,cooling->N_Temp,cooling->N_nH);
 
   /* ------------------ */
   /* Compton cooling    */
@@ -600,26 +600,26 @@ __attribute__((always_inline)) INLINE static void eagle_metal_cooling_rate(const
     //}
     
     /* Photodissociation */
-    solar_electron_abundance =
-        interpol_2d(cooling->table.photodissociation_cooling.electron_abundance, temp_i, n_h_i, d_temp, d_n_h, cooling->N_Temp, cooling->N_nH); /* ne/n_h */
-
-    for (i = 0; i < cooling->N_Elements; i++){
-        element_lambda[i+2] = interpol_3d(cooling->table.photodissociation_cooling.metal_heating, i,
-                        temp_i, n_h_i, 0.0, d_temp, d_n_h,cooling->N_Elements,cooling->N_Temp,cooling->N_nH) *
-            (h_plus_he_electron_abundance / solar_electron_abundance) *
-            cooling_solar_abundances[i];
-    }
-    
-    /* redshift tables */
     //solar_electron_abundance =
-    //    interpol_3d(cooling->table.element_cooling.electron_abundance, z_index, temp_i, n_h_i, dz, d_temp, d_n_h, cooling->N_Redshifts, cooling->N_Temp, cooling->N_nH); /* ne/n_h */
-
+    //    interpol_2d(cooling->table.photodissociation_cooling.electron_abundance, temp_i, n_h_i, d_temp, d_n_h, cooling->N_Temp, cooling->N_nH); /* ne/n_h */
+      
     //for (i = 0; i < cooling->N_Elements; i++){
-    //    element_lambda[i+2] = interpol_4d(cooling->table.element_cooling.metal_heating, z_index, i,
-    //                    temp_i, n_h_i, dz, 0.0, d_temp, d_n_h,cooling->N_Redshifts,cooling->N_Elements,cooling->N_Temp,cooling->N_nH) *
+    //    element_lambda[i+2] = interpol_3d(cooling->table.photodissociation_cooling.metal_heating, i,
+    //                    temp_i, n_h_i, 0.0, d_temp, d_n_h,cooling->N_Elements,cooling->N_Temp,cooling->N_nH) *
     //        (h_plus_he_electron_abundance / solar_electron_abundance) *
     //        cooling_solar_abundances[i];
     //}
+    
+    /* redshift tables */
+    solar_electron_abundance =
+        interpol_3d(cooling->table.element_cooling.electron_abundance, z_index, temp_i, n_h_i, dz, d_temp, d_n_h, cooling->N_Redshifts, cooling->N_Temp, cooling->N_nH); /* ne/n_h */
+    
+    for (i = 0; i < cooling->N_Elements; i++){
+        element_lambda[i+2] = interpol_4d(cooling->table.element_cooling.metal_heating, z_index, i,
+                        temp_i, n_h_i, dz, 0.0, d_temp, d_n_h,cooling->N_Redshifts,cooling->N_Elements,cooling->N_Temp,cooling->N_nH) *
+            (h_plus_he_electron_abundance / solar_electron_abundance) *
+            cooling_solar_abundances[i];
+    }
 }
 
 
@@ -681,6 +681,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     struct part* restrict p, struct xpart* restrict xp, float dt) {
   
   double u_old = hydro_get_physical_internal_energy(p,cosmo)*cooling->internal_energy_scale;
+  //double u_old = hydro_get_comoving_internal_energy(p)*cooling->internal_energy_scale;
   float dz; 
   int z_index;
   get_redshift_index(cosmo->z,&z_index,&dz,cooling);
