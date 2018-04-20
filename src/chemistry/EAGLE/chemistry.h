@@ -190,6 +190,7 @@ __attribute__((always_inline)) INLINE static double chemistry_get_number_density
   }
   double element_mass = internal_const->const_proton_mass*atomic_number;
   number_density = p->chemistry_data.metal_mass_fraction[elem]*hydro_get_physical_density(p,cosmo)/element_mass;
+  //number_density = p->chemistry_data.metal_mass_fraction[elem]*hydro_get_comoving_density(p)/element_mass;
 
   return number_density;
 }
