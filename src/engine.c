@@ -586,33 +586,32 @@ struct savelink_mapper {
  *
  * CHECKS should be eliminated as dead code when optimizing.
  */
-#define engine_redistribute_savelink_mapper(TYPE, CHECKS)               \
-  engine_redistribute_savelink_mapper_##TYPE(void *map_data,            \
-                                             int num_elements,          \
-                                             void *extra_data) {        \
-    int *nodes = (int *)map_data;                                       \
-    struct savelink_mapper *mydata = (struct savelink_mapper *)extra_data; \
-    int nodeID = mydata->nodeID;                                        \
-    int nr_nodes = mydata->nr_nodes;                                    \
-    int *counts = mydata->counts;                                       \
-    struct TYPE *parts = (struct TYPE *)mydata->parts;                  \
-                                                                        \
-    for (int j = 0; j < num_elements; j++) {                            \
-      int node = nodes[j];                                              \
-      size_t count = 0;                                                 \
-      size_t offset = 0;                                                \
-      for (int i = 0; i < node; i++) offset += counts[nodeID * nr_nodes + i]; \
-                                                                        \
-      for (size_t k = 0; k < counts[nodeID * nr_nodes + node]; k++) {   \
-        if (parts[k+offset].gpart != NULL) {                            \
-          if (CHECKS)                                                   \
-            if (parts[k].gpart->id_or_neg_offset > 0)                   \
-              error("Trying to link a partnerless "#TYPE "!");          \
-          parts[k+offset].gpart->id_or_neg_offset = -count;             \
-          count++;                                                      \
-        }                                                               \
-      }                                                                 \
-    }                                                                   \
+#define engine_redistribute_savelink_mapper(TYPE, CHECKS)                      \
+  engine_redistribute_savelink_mapper_##TYPE(void *map_data, int num_elements, \
+                                             void *extra_data) {               \
+    int *nodes = (int *)map_data;                                              \
+    struct savelink_mapper *mydata = (struct savelink_mapper *)extra_data;     \
+    int nodeID = mydata->nodeID;                                               \
+    int nr_nodes = mydata->nr_nodes;                                           \
+    int *counts = mydata->counts;                                              \
+    struct TYPE *parts = (struct TYPE *)mydata->parts;                         \
+                                                                               \
+    for (int j = 0; j < num_elements; j++) {                                   \
+      int node = nodes[j];                                                     \
+      size_t count = 0;                                                        \
+      size_t offset = 0;                                                       \
+      for (int i = 0; i < node; i++) offset += counts[nodeID * nr_nodes + i];  \
+                                                                               \
+      for (size_t k = 0; k < counts[nodeID * nr_nodes + node]; k++) {          \
+        if (parts[k + offset].gpart != NULL) {                                 \
+          if (CHECKS)                                                          \
+            if (parts[k].gpart->id_or_neg_offset > 0)                          \
+              error("Trying to link a partnerless " #TYPE "!");                \
+          parts[k + offset].gpart->id_or_neg_offset = -count;                  \
+          count++;                                                             \
+        }                                                                      \
+      }                                                                        \
+    }                                                                          \
   }
 
 /**
@@ -636,7 +635,6 @@ static void engine_redistribute_savelink_mapper(spart, 0);
 #endif
 
 #endif /* savelink_mapper */
-
 
 #ifdef WITH_MPI /* relink_mapper */
 
