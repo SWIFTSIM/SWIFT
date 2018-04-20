@@ -602,7 +602,7 @@ struct savelink_mapper {
       size_t offset = 0;                                                       \
       for (int i = 0; i < node; i++) offset += counts[nodeID * nr_nodes + i];  \
                                                                                \
-      for (size_t k = 0; k < counts[nodeID * nr_nodes + node]; k++) {          \
+      for (int k = 0; k < counts[nodeID * nr_nodes + node]; k++) {             \
         if (parts[k + offset].gpart != NULL) {                                 \
           if (CHECKS)                                                          \
             if (parts[k].gpart->id_or_neg_offset > 0)                          \
