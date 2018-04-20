@@ -4605,7 +4605,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_gparts(s, e->verbose);
 
   message("Performing Friends Of Friends search.");
-  fof_search(e);
+  
+  ticks tic = getticks();
+  fof_search_naive(e);
+  message("Naive FOF search took: %.3f %s.", clocks_from_ticks(getticks() - tic), clocks_getunit());
+  
+  tic = getticks();
+  fof_search_serial(e);
+  message("Serial FOF search took: %.3f %s.", clocks_from_ticks(getticks() - tic), clocks_getunit());
+  
   message("Friends Of Friends search finished.");
 
   /* Now, launch the calculation */
