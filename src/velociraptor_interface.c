@@ -205,7 +205,7 @@ void velociraptor_invoke(struct engine *e) {
              e->time);
     }
 
-    if(!InvokeVelociraptor(nr_gparts, nr_hydro_parts, gparts, parts, internal_energies, cell_node_ids, outputFileName)) error("Exiting. Call to VELOCIraptor failed.");
+    if(!InvokeVelociraptor(nr_gparts, nr_hydro_parts, gparts, parts, internal_energies, cell_node_ids, outputFileName)) error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
     
     /* Reset the pthread affinity mask after VELOCIraptor returns. */
     pthread_setaffinity_np(thread, sizeof(cpu_set_t), engine_entry_affinity());
@@ -213,6 +213,6 @@ void velociraptor_invoke(struct engine *e) {
     /* Free cell node ids after VELOCIraptor has copied them. */
     free(cell_node_ids);
     
-    message("VELOCIraptor took %.3f %s",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    message("VELOCIraptor took %.3f %s on rank %d.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit(), e->nodeID);
 }
