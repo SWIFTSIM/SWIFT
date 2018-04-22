@@ -95,6 +95,26 @@ void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
 }
 
 /**
+ * @brief Re-link both the #part%s and #spart%s associated with the list of
+ * #gpart%s.
+ *
+ * @param gparts The list of #gpart.
+ * @param N The number of particles to re-link;
+ * @param parts The global #part array in which to find the #gpart offsets.
+ * @param sparts The global #spart array in which to find the #gpart offsets.
+ */
+void part_relink_all_parts_to_gparts(struct gpart *gparts, size_t N,
+                                     struct part *parts, struct spart *sparts) {
+  for (size_t k = 0; k < N; k++) {
+    if (gparts[k].type == swift_type_gas) {
+      parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    } else if (gparts[k].type == swift_type_star) {
+      sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    }
+  }
+}
+
+/**
  * @brief Verifies that the #gpart, #part and #spart are correctly linked
  * together
  * and that the particle poisitions match.
@@ -128,19 +148,19 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
 
       /* Check that it is linked */
       if (gparts[k].id_or_neg_offset > 0)
-        error("Gas gpart not linked to anything !");
+        error("Gas gpart not linked to anything!");
 
       /* Find its link */
       const struct part *part = &parts[-gparts[k].id_or_neg_offset];
 
       /* Check the reverse link */
-      if (part->gpart != &gparts[k]) error("Linking problem !");
+      if (part->gpart != &gparts[k]) error("Linking problem!");
 
       /* Check that the particles are at the same place */
       if (gparts[k].x[0] != part->x[0] || gparts[k].x[1] != part->x[1] ||
           gparts[k].x[2] != part->x[2])
         error(
-            "Linked particles are not at the same position !\n"
+            "Linked particles are not at the same position!\n"
             "gp->x=[%e %e %e] p->x=[%e %e %e] diff=[%e %e %e]",
             gparts[k].x[0], gparts[k].x[1], gparts[k].x[2], part->x[0],
             part->x[1], part->x[2], gparts[k].x[0] - part->x[0],
