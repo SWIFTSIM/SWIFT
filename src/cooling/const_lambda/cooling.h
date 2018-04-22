@@ -38,7 +38,6 @@
 #include "physical_constants.h"
 #include "units.h"
 
-
 /**
  * @brief Calculates du/dt in code units for a particle.
  *

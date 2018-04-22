@@ -90,8 +90,8 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
-    const struct chemistry_global_data* data,
-    struct part* restrict p, struct xpart* restrict xp) {
+    const struct chemistry_global_data* data, struct part* restrict p,
+    struct xpart* restrict xp) {
 
   p->chemistry_data.metal_mass_fraction_total =
       data->initial_metal_mass_fraction_total;
@@ -136,9 +136,11 @@ static INLINE void chemistry_init_backend(
 /**
  * @brief Prints the properties of the chemistry model to stdout.
  *
- * @brief The #chemistry_global_data containing information about the current model.
+ * @brief The #chemistry_global_data containing information about the current
+ * model.
  */
-static INLINE void chemistry_print_backend(const struct chemistry_global_data* data) {
+static INLINE void chemistry_print_backend(
+    const struct chemistry_global_data* data) {
 
   message("Chemistry model is 'EAGLE' tracking %d elements.",
           chemistry_element_count);

@@ -66,9 +66,11 @@ static INLINE void chemistry_init_backend(
 /**
  * @brief Prints the properties of the chemistry model to stdout.
  *
- * @brief The #chemistry_global_data containing information about the current model.
+ * @brief The #chemistry_global_data containing information about the current
+ * model.
  */
-static INLINE void chemistry_print_backend(const struct chemistry_global_data* data) {
+static INLINE void chemistry_print_backend(
+    const struct chemistry_global_data* data) {
 
   message("Chemistry function is 'No chemistry'.");
 }
@@ -98,8 +100,8 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
-    const struct chemistry_global_data* data,
-    const struct part* restrict p, struct xpart* restrict xp) {}
+    const struct chemistry_global_data* data, const struct part* restrict p,
+    struct xpart* restrict xp) {}
 
 /**
  * @brief Sets the chemistry properties of the (x-)particles to a valid start

@@ -46,7 +46,8 @@ void chemistry_init(const struct swift_params* parameter_file,
  *
  * Calls chemistry_print_backend for the chosen chemistry model.
  *
- * @brief The #chemistry_global_data containing information about the current model.
+ * @brief The #chemistry_global_data containing information about the current
+ * model.
  */
 void chemistry_print(const struct chemistry_global_data* data) {
   chemistry_print_backend(data);
@@ -60,8 +61,8 @@ void chemistry_print(const struct chemistry_global_data* data) {
  */
 void chemistry_struct_dump(const struct chemistry_global_data* chemistry,
                            FILE* stream) {
-  restart_write_blocks((void*)chemistry, sizeof(struct chemistry_global_data), 1,
-                       stream, "chemistry", "chemistry function");
+  restart_write_blocks((void*)chemistry, sizeof(struct chemistry_global_data),
+                       1, stream, "chemistry", "chemistry function");
 }
 
 /**

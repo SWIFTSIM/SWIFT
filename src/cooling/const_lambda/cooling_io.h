@@ -49,8 +49,8 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
  */
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
     const struct xpart* xparts, struct io_props* list,
-    const struct cooling_function_data *cooling) {
+    const struct cooling_function_data* cooling) {
   return 0;
 }
 
-#endif // SWIFT_COOLING_CONST_LAMBDA_IO_H
+#endif  // SWIFT_COOLING_CONST_LAMBDA_IO_H

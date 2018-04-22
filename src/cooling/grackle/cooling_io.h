@@ -57,74 +57,70 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
  */
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
     const struct xpart* xparts, struct io_props* list,
-    const struct cooling_function_data *cooling) {
+    const struct cooling_function_data* cooling) {
 
   int num = 0;
 
-  if (cooling->output_mode == 0)
-    return num;
+  if (cooling->output_mode == 0) return num;
 
 #if COOLING_GRACKLE_MODE >= 1
   /* List what we want to write */
-  list[0] = io_make_output_field("HI", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, cooling_data.HI_frac);
+  list[0] = io_make_output_field("HI", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
+                                 cooling_data.HI_frac);
 
-  list[1] = io_make_output_field("HII", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, cooling_data.HII_frac);
-  
-  list[2] = io_make_output_field("HeI", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, cooling_data.HeI_frac);
+  list[1] = io_make_output_field("HII", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
+                                 cooling_data.HII_frac);
 
-  list[3] = io_make_output_field("HeII", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, cooling_data.HeII_frac);
+  list[2] = io_make_output_field("HeI", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
+                                 cooling_data.HeI_frac);
 
-  list[4] = io_make_output_field("HeIII", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, cooling_data.HeIII_frac);
+  list[3] = io_make_output_field("HeII", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
+                                 cooling_data.HeII_frac);
 
-  list[5] = io_make_output_field("e", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, cooling_data.e_frac);
+  list[4] = io_make_output_field("HeIII", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
+                                 cooling_data.HeIII_frac);
+
+  list[5] = io_make_output_field("e", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
+                                 cooling_data.e_frac);
 
   num += 6;
 #endif
 
-  if (cooling->output_mode == 1)
-    return num;
+  if (cooling->output_mode == 1) return num;
 
 #if COOLING_GRACKLE_MODE >= 2
   list += num;
 
-  list[0] = io_make_output_field("HM", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, cooling_data.HM_frac);
-    
-  list[1] = io_make_output_field("H2I", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, cooling_data.H2I_frac);
+  list[0] = io_make_output_field("HM", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
+                                 cooling_data.HM_frac);
 
-  list[2] = io_make_output_field("H2II", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, cooling_data.H2II_frac);
+  list[1] = io_make_output_field("H2I", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
+                                 cooling_data.H2I_frac);
+
+  list[2] = io_make_output_field("H2II", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
+                                 cooling_data.H2II_frac);
 
   num += 3;
 #endif
 
-  if (cooling->output_mode == 2)
-    return num;
+  if (cooling->output_mode == 2) return num;
 
 #if COOLING_GRACKLE_MODE >= 3
   list += num;
 
-  list[0] = io_make_output_field("DI", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, cooling_data.DI_frac);
-    
-  list[1] = io_make_output_field("DII", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, cooling_data.DII_frac);
+  list[0] = io_make_output_field("DI", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
+                                 cooling_data.DI_frac);
 
-  list[2] = io_make_output_field("HDI", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, cooling_data.HDI_frac);
+  list[1] = io_make_output_field("DII", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
+                                 cooling_data.DII_frac);
+
+  list[2] = io_make_output_field("HDI", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
+                                 cooling_data.HDI_frac);
 
   num += 3;
 #endif
 
   return num;
-
 }
 
 /**
@@ -146,27 +142,25 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parser_get_param_double(parameter_file, "GrackleCooling:Redshift");
 
   cooling->with_metal_cooling =
-    parser_get_param_int(parameter_file, "GrackleCooling:WithMetalCooling");
+      parser_get_param_int(parameter_file, "GrackleCooling:WithMetalCooling");
 
-  cooling->provide_volumetric_heating_rates =
-    parser_get_opt_param_int(parameter_file, "GrackleCooling:ProvideVolumetricHeatingRates", 0);
+  cooling->provide_volumetric_heating_rates = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:ProvideVolumetricHeatingRates", 0);
 
-  cooling->provide_specific_heating_rates =
-    parser_get_opt_param_int(parameter_file, "GrackleCooling:ProvideSpecificHeatingRates", 0);
+  cooling->provide_specific_heating_rates = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:ProvideSpecificHeatingRates", 0);
 
-  cooling->self_shielding_method =
-    parser_get_opt_param_int(parameter_file, "GrackleCooling:SelfShieldingMethod", 0);
+  cooling->self_shielding_method = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:SelfShieldingMethod", 0);
 
   cooling->output_mode =
-    parser_get_opt_param_int(parameter_file, "GrackleCooling:OutputMode", 0);
+      parser_get_opt_param_int(parameter_file, "GrackleCooling:OutputMode", 0);
 
-  cooling->max_step =
-    parser_get_opt_param_int(parameter_file, "GrackleCooling:MaxSteps", 10000);
+  cooling->max_step = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:MaxSteps", 10000);
 
-  cooling->convergence_limit =
-    parser_get_opt_param_double(parameter_file, "GrackleCooling:ConvergenceLimit", 1e-2);
-
+  cooling->convergence_limit = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:ConvergenceLimit", 1e-2);
 }
 
-
-#endif // SWIFT_COOLING_GRACKLE_IO_H
+#endif  // SWIFT_COOLING_GRACKLE_IO_H

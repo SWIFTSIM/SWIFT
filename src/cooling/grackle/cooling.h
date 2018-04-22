@@ -53,12 +53,12 @@ static gr_float cooling_time(
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, struct xpart* restrict xp);
 
-static double cooling_rate(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp, double dt);
+static double cooling_rate(const struct phys_const* restrict phys_const,
+                           const struct unit_system* restrict us,
+                           const struct cosmology* restrict cosmo,
+                           const struct cooling_function_data* restrict cooling,
+                           const struct part* restrict p,
+                           struct xpart* restrict xp, double dt);
 
 /**
  * @brief Print the chemical network
@@ -70,19 +70,17 @@ __attribute__((always_inline)) INLINE static void cooling_print_fractions(
 
   const struct cooling_xpart_data tmp = xp->cooling_data;
 #if COOLING_GRACKLE_MODE > 0
-  message("HI %g, HII %g, HeI %g, HeII %g, HeIII %g, e %g",
-	  tmp.HI_frac, tmp.HII_frac, tmp.HeI_frac,
-	  tmp.HeII_frac, tmp.HeIII_frac, tmp.e_frac);
+  message("HI %g, HII %g, HeI %g, HeII %g, HeIII %g, e %g", tmp.HI_frac,
+          tmp.HII_frac, tmp.HeI_frac, tmp.HeII_frac, tmp.HeIII_frac,
+          tmp.e_frac);
 #endif
 
 #if COOLING_GRACKLE_MODE > 1
-  message("HM %g, H2I %g, H2II %g",
-	  tmp.HM_frac, tmp.H2I_frac, tmp.H2II_frac);
+  message("HM %g, H2I %g, H2II %g", tmp.HM_frac, tmp.H2I_frac, tmp.H2II_frac);
 #endif
 
 #if COOLING_GRACKLE_MODE > 2
-  message("DI %g, DII %g, HDI %g",
-	  tmp.DI_frac, tmp.DII_frac, tmp.HDI_frac);
+  message("DI %g, DII %g, HDI %g", tmp.DI_frac, tmp.DII_frac, tmp.HDI_frac);
 #endif
   message("Metal: %g", tmp.metal_frac);
 }
@@ -97,13 +95,12 @@ __attribute__((always_inline)) INLINE static void cooling_print_fractions(
  *
  * @return 0 if diff > limit
  */
-#define cooling_check_field(xp, old, field, limit)			\
-  ({									\
-    float tmp = xp->cooling_data.field - old->cooling_data.field;	\
-    tmp = fabs(tmp) / xp->cooling_data.field;				\
-    if (tmp > limit)							\
-      return 0;								\
-})
+#define cooling_check_field(xp, old, field, limit)                \
+  ({                                                              \
+    float tmp = xp->cooling_data.field - old->cooling_data.field; \
+    tmp = fabs(tmp) / xp->cooling_data.field;                     \
+    if (tmp > limit) return 0;                                    \
+  })
 
 /**
  * @brief Check if difference between two particles is lower than a given value
@@ -113,8 +110,7 @@ __attribute__((always_inline)) INLINE static void cooling_print_fractions(
  * @param limit The difference limit
  */
 __attribute__((always_inline)) INLINE static int cooling_converged(
-    const struct xpart* restrict xp,
-    const struct xpart* restrict old,
+    const struct xpart* restrict xp, const struct xpart* restrict old,
     const float limit) {
 
 #if COOLING_GRACKLE_MODE > 0
@@ -152,8 +148,7 @@ __attribute__((always_inline)) INLINE static void cooling_compute_equilibrium(
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p,
-    struct xpart* restrict xp) {
+    const struct part* restrict p, struct xpart* restrict xp) {
 
   /* get temporary data */
   struct part p_tmp = *p;
@@ -164,9 +159,11 @@ __attribute__((always_inline)) INLINE static void cooling_compute_equilibrium(
 
   /* compute time step */
   const double alpha = 0.01;
-  double dt = fabs(cooling_time(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp));
+  double dt =
+      fabs(cooling_time(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp));
   cooling_rate(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp, dt);
-  dt = alpha * fabs(cooling_time(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp));
+  dt = alpha *
+       fabs(cooling_time(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp));
 
   /* init simple variables */
   int step = 0;
@@ -184,9 +181,10 @@ __attribute__((always_inline)) INLINE static void cooling_compute_equilibrium(
   } while (step < max_step && !cooling_converged(xp, &old, conv_limit));
 
   if (step == max_step)
-    error("A particle element fraction failed to converge."
-	  "You can change 'GrackleCooling:MaxSteps' or "
-	  "'GrackleCooling:ConvergenceLimit' to avoid this problem");
+    error(
+        "A particle element fraction failed to converge."
+        "You can change 'GrackleCooling:MaxSteps' or "
+        "'GrackleCooling:ConvergenceLimit' to avoid this problem");
 }
 
 /**
@@ -201,8 +199,8 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
-    const struct cooling_function_data* cooling,
-    const struct part* restrict p, struct xpart* restrict xp) {
+    const struct cooling_function_data* cooling, const struct part* restrict p,
+    struct xpart* restrict xp) {
 
   xp->cooling_data.radiated_energy = 0.f;
 
@@ -215,9 +213,9 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
   xp->cooling_data.HeI_frac = 1. - grackle_data->HydrogenFractionByMass;
   xp->cooling_data.HeII_frac = zero;
   xp->cooling_data.HeIII_frac = zero;
-  xp->cooling_data.e_frac = xp->cooling_data.HII_frac \
-    + 0.25 * xp->cooling_data.HeII_frac \
-    + 0.5  * xp->cooling_data.HeIII_frac;
+  xp->cooling_data.e_frac = xp->cooling_data.HII_frac +
+                            0.25 * xp->cooling_data.HeII_frac +
+                            0.5 * xp->cooling_data.HeIII_frac;
 #endif  // MODE >= 1
 
 #if COOLING_GRACKLE_MODE >= 2
@@ -229,8 +227,8 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 
 #if COOLING_GRACKLE_MODE >= 3
   /* primordial chemistry >= 3 */
-  xp->cooling_data.DI_frac = grackle_data->DeuteriumToHydrogenRatio
-    * grackle_data->HydrogenFractionByMass;
+  xp->cooling_data.DI_frac = grackle_data->DeuteriumToHydrogenRatio *
+                             grackle_data->HydrogenFractionByMass;
   xp->cooling_data.DII_frac = zero;
   xp->cooling_data.HDI_frac = zero;
 #endif  // MODE >= 3
@@ -261,17 +259,16 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
 
   message("Cooling function is 'Grackle'.");
   message("Using Grackle    = %i", cooling->chemistry.use_grackle);
-  message("Chemical network = %i",
-          cooling->chemistry.primordial_chemistry);
+  message("Chemical network = %i", cooling->chemistry.primordial_chemistry);
   message("CloudyTable      = %s", cooling->cloudy_table);
   message("Redshift         = %g", cooling->redshift);
   message("UV background    = %d", cooling->with_uv_background);
   message("Metal cooling    = %i", cooling->chemistry.metal_cooling);
   message("Self Shielding   = %i", cooling->self_shielding_method);
   message("Specific Heating Rates   = %i",
-	  cooling->provide_specific_heating_rates);
+          cooling->provide_specific_heating_rates);
   message("Volumetric Heating Rates = %i",
-	  cooling->provide_volumetric_heating_rates);
+          cooling->provide_volumetric_heating_rates);
   message("Units:");
   message("\tComoving     = %i", cooling->units.comoving_coordinates);
   message("\tLength       = %g", cooling->units.length_units);
@@ -282,54 +279,53 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
 
 /**
  * @brief copy a single field from the grackle data to a #xpart
- * 
+ *
  * @param data The #grackle_field_data
  * @param xp The #xpart
  * @param rho Particle density
  * @param field The field to copy
  */
-#define cooling_copy_field_from_grackle(data, xp, rho, field)		\
-  xp->cooling_data.field ## _frac = *data.field ## _density / rho;
+#define cooling_copy_field_from_grackle(data, xp, rho, field) \
+  xp->cooling_data.field##_frac = *data.field##_density / rho;
 
 /**
  * @brief copy a single field from a #xpart to the grackle data
- * 
+ *
  * @param data The #grackle_field_data
  * @param xp The #xpart
  * @param rho Particle density
  * @param field The field to copy
  */
-#define cooling_copy_field_to_grackle(data, xp, rho, field)		\
-  gr_float grackle_ ## field = xp->cooling_data.field ## _frac * rho;	\
-  data.field ## _density = &grackle_ ## field;
-
+#define cooling_copy_field_to_grackle(data, xp, rho, field)       \
+  gr_float grackle_##field = xp->cooling_data.field##_frac * rho; \
+  data.field##_density = &grackle_##field;
 
 /**
  * @brief copy a #xpart to the grackle data
  *
  * Warning this function creates some variable, therefore the grackle call
  * should be in a block that still has the variables.
- * 
+ *
  * @param data The #grackle_field_data
  * @param p The #part
  * @param xp The #xpart
  * @param rho Particle density
  */
 #if COOLING_GRACKLE_MODE > 0
-#define cooling_copy_to_grackle1(data, p, xp, rho)			\
-  cooling_copy_field_to_grackle(data, xp, rho, HI);			\
-  cooling_copy_field_to_grackle(data, xp, rho, HII);			\
-  cooling_copy_field_to_grackle(data, xp, rho, HeI);			\
-  cooling_copy_field_to_grackle(data, xp, rho, HeII);			\
-  cooling_copy_field_to_grackle(data, xp, rho, HeIII);			\
+#define cooling_copy_to_grackle1(data, p, xp, rho)     \
+  cooling_copy_field_to_grackle(data, xp, rho, HI);    \
+  cooling_copy_field_to_grackle(data, xp, rho, HII);   \
+  cooling_copy_field_to_grackle(data, xp, rho, HeI);   \
+  cooling_copy_field_to_grackle(data, xp, rho, HeII);  \
+  cooling_copy_field_to_grackle(data, xp, rho, HeIII); \
   cooling_copy_field_to_grackle(data, xp, rho, e);
 #else
-#define cooling_copy_to_grackle1(data, p, xp, rho)	\
-  data.HI_density = NULL;				\
-  data.HII_density = NULL;				\
-  data.HeI_density = NULL;				\
-  data.HeII_density = NULL;				\
-  data.HeIII_density = NULL;				\
+#define cooling_copy_to_grackle1(data, p, xp, rho) \
+  data.HI_density = NULL;                          \
+  data.HII_density = NULL;                         \
+  data.HeI_density = NULL;                         \
+  data.HeII_density = NULL;                        \
+  data.HeIII_density = NULL;                       \
   data.e_density = NULL;
 #endif
 
@@ -338,21 +334,21 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
  *
  * Warning this function creates some variable, therefore the grackle call
  * should be in a block that still has the variables.
- * 
+ *
  * @param data The #grackle_field_data
  * @param p The #part
  * @param xp The #xpart
  * @param rho Particle density
  */
 #if COOLING_GRACKLE_MODE > 1
-#define cooling_copy_to_grackle2(data, p, xp, rho)			\
-  cooling_copy_field_to_grackle(data, xp, rho, HM);			\
-  cooling_copy_field_to_grackle(data, xp, rho, H2I);			\
+#define cooling_copy_to_grackle2(data, p, xp, rho)   \
+  cooling_copy_field_to_grackle(data, xp, rho, HM);  \
+  cooling_copy_field_to_grackle(data, xp, rho, H2I); \
   cooling_copy_field_to_grackle(data, xp, rho, H2II);
 #else
-#define cooling_copy_to_grackle2(data, p, xp, rho)	\
-  data.HM_density = NULL;				\
-  data.H2I_density = NULL;				\
+#define cooling_copy_to_grackle2(data, p, xp, rho) \
+  data.HM_density = NULL;                          \
+  data.H2I_density = NULL;                         \
   data.H2II_density = NULL;
 #endif
 
@@ -361,39 +357,39 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
  *
  * Warning this function creates some variable, therefore the grackle call
  * should be in a block that still has the variables.
- * 
+ *
  * @param data The #grackle_field_data
  * @param p The #part
  * @param xp The #xpart
  * @param rho Particle density
  */
 #if COOLING_GRACKLE_MODE > 2
-#define cooling_copy_to_grackle3(data, p, xp, rho)			\
-  cooling_copy_field_to_grackle(data, xp, rho, DI);			\
-  cooling_copy_field_to_grackle(data, xp, rho, DII);			\
+#define cooling_copy_to_grackle3(data, p, xp, rho)   \
+  cooling_copy_field_to_grackle(data, xp, rho, DI);  \
+  cooling_copy_field_to_grackle(data, xp, rho, DII); \
   cooling_copy_field_to_grackle(data, xp, rho, HDI);
 #else
-#define cooling_copy_to_grackle3(data, p, xp, rho)	\
-  data.DI_density = NULL;				\
-  data.DII_density = NULL;				\
+#define cooling_copy_to_grackle3(data, p, xp, rho) \
+  data.DI_density = NULL;                          \
+  data.DII_density = NULL;                         \
   data.HDI_density = NULL;
 #endif
 
 /**
  * @brief copy the grackle data to a #xpart
- * 
+ *
  * @param data The #grackle_field_data
  * @param p The #part
  * @param xp The #xpart
  * @param rho Particle density
  */
 #if COOLING_GRACKLE_MODE > 0
-#define cooling_copy_from_grackle1(data, p, xp, rho)			\
-  cooling_copy_field_from_grackle(data, xp, rho, HI);			\
-  cooling_copy_field_from_grackle(data, xp, rho, HII);			\
-  cooling_copy_field_from_grackle(data, xp, rho, HeI);			\
-  cooling_copy_field_from_grackle(data, xp, rho, HeII);			\
-  cooling_copy_field_from_grackle(data, xp, rho, HeIII);		\
+#define cooling_copy_from_grackle1(data, p, xp, rho)     \
+  cooling_copy_field_from_grackle(data, xp, rho, HI);    \
+  cooling_copy_field_from_grackle(data, xp, rho, HII);   \
+  cooling_copy_field_from_grackle(data, xp, rho, HeI);   \
+  cooling_copy_field_from_grackle(data, xp, rho, HeII);  \
+  cooling_copy_field_from_grackle(data, xp, rho, HeIII); \
   cooling_copy_field_from_grackle(data, xp, rho, e);
 #else
 #define cooling_copy_from_grackle1(data, p, xp, rho)
@@ -401,16 +397,16 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
 
 /**
  * @brief copy the grackle data to a #xpart
- * 
+ *
  * @param data The #grackle_field_data
  * @param p The #part
  * @param xp The #xpart
  * @param rho Particle density
  */
 #if COOLING_GRACKLE_MODE > 1
-#define cooling_copy_from_grackle2(data, p, xp, rho)			\
-  cooling_copy_field_from_grackle(data, xp, rho, HM);			\
-  cooling_copy_field_from_grackle(data, xp, rho, H2I);			\
+#define cooling_copy_from_grackle2(data, p, xp, rho)   \
+  cooling_copy_field_from_grackle(data, xp, rho, HM);  \
+  cooling_copy_field_from_grackle(data, xp, rho, H2I); \
   cooling_copy_field_from_grackle(data, xp, rho, H2II);
 #else
 #define cooling_copy_from_grackle2(data, p, xp, rho)
@@ -418,45 +414,44 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
 
 /**
  * @brief copy the grackle data to a #xpart
- * 
+ *
  * @param data The #grackle_field_data
  * @param p The #part
  * @param xp The #xpart
  * @param rho Particle density
  */
 #if COOLING_GRACKLE_MODE > 2
-#define cooling_copy_from_grackle3(data, p, xp, rho)			\
-  cooling_copy_field_from_grackle(data, xp, rho, DI);			\
-  cooling_copy_field_from_grackle(data, xp, rho, DII);			\
+#define cooling_copy_from_grackle3(data, p, xp, rho)   \
+  cooling_copy_field_from_grackle(data, xp, rho, DI);  \
+  cooling_copy_field_from_grackle(data, xp, rho, DII); \
   cooling_copy_field_from_grackle(data, xp, rho, HDI);
 #else
 #define cooling_copy_from_grackle3(data, p, xp, rho)
 #endif
-
 
 /**
  * @brief copy a #xpart to the grackle data
  *
  * Warning this function creates some variable, therefore the grackle call
  * should be in a block that still has the variables.
- * 
+ *
  * @param data The #grackle_field_data
  * @param p The #part
  * @param xp The #xpart
  * @param rho Particle density
  */
-#define cooling_copy_to_grackle(data, p, xp, rho)			\
-  cooling_copy_to_grackle1(data, p, xp, rho);				\
-  cooling_copy_to_grackle2(data, p, xp, rho);				\
-  cooling_copy_to_grackle3(data, p, xp, rho);				\
-  data.volumetric_heating_rate = NULL;					\
-  data.specific_heating_rate = NULL;					\
-  data.RT_heating_rate = NULL;						\
-  data.RT_HI_ionization_rate = NULL;					\
-  data.RT_HeI_ionization_rate = NULL;					\
-  data.RT_HeII_ionization_rate = NULL;					\
-  data.RT_H2_dissociation_rate = NULL;					\
-  gr_float metal_density = chemistry_metal_mass_fraction(p, xp) * rho;	\
+#define cooling_copy_to_grackle(data, p, xp, rho)                      \
+  cooling_copy_to_grackle1(data, p, xp, rho);                          \
+  cooling_copy_to_grackle2(data, p, xp, rho);                          \
+  cooling_copy_to_grackle3(data, p, xp, rho);                          \
+  data.volumetric_heating_rate = NULL;                                 \
+  data.specific_heating_rate = NULL;                                   \
+  data.RT_heating_rate = NULL;                                         \
+  data.RT_HI_ionization_rate = NULL;                                   \
+  data.RT_HeI_ionization_rate = NULL;                                  \
+  data.RT_HeII_ionization_rate = NULL;                                 \
+  data.RT_H2_dissociation_rate = NULL;                                 \
+  gr_float metal_density = chemistry_metal_mass_fraction(p, xp) * rho; \
   data.metal_density = &metal_density;
 
 /**
@@ -464,15 +459,15 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
  *
  * Warning this function creates some variable, therefore the grackle call
  * should be in a block that still has the variables.
- * 
+ *
  * @param data The #grackle_field_data
  * @param p The #part
  * @param xp The #xpart
  * @param rho Particle density
  */
-#define cooling_copy_from_grackle(data, p, xp, rho)			\
-  cooling_copy_from_grackle1(data, p, xp, rho);				\
-  cooling_copy_from_grackle2(data, p, xp, rho);				\
+#define cooling_copy_from_grackle(data, p, xp, rho) \
+  cooling_copy_from_grackle1(data, p, xp, rho);     \
+  cooling_copy_from_grackle2(data, p, xp, rho);     \
   cooling_copy_from_grackle3(data, p, xp, rho);
 
 /**
@@ -538,25 +533,19 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
   /* solve chemistry */
   chemistry_data chemistry_grackle = cooling->chemistry;
   chemistry_data_storage my_rates = grackle_rates;
-  int error_code = _solve_chemistry(&chemistry_grackle,
-				    &my_rates,
-				    &units, dt, data.grid_dx,
-				    data.grid_rank, data.grid_dimension,
-				    data.grid_start, data.grid_end,
-				    data.density, data.internal_energy,
-				    data.x_velocity, data.y_velocity, data.z_velocity,
-				    data.HI_density, data.HII_density, data.HM_density,
-				    data.HeI_density, data.HeII_density, data.HeIII_density,
-				    data.H2I_density, data.H2II_density,
-				    data.DI_density, data.DII_density, data.HDI_density,
-				    data.e_density, data.metal_density,
-				    data.volumetric_heating_rate, data.specific_heating_rate,
-				    data.RT_heating_rate, data.RT_HI_ionization_rate, data.RT_HeI_ionization_rate,
-				    data.RT_HeII_ionization_rate, data.RT_H2_dissociation_rate,
-				    NULL);
-  if (error_code == 0)
-    error("Error in solve_chemistry.");
-  //if (solve_chemistry(&units, &data, dt) == 0) {
+  int error_code = _solve_chemistry(
+      &chemistry_grackle, &my_rates, &units, dt, data.grid_dx, data.grid_rank,
+      data.grid_dimension, data.grid_start, data.grid_end, data.density,
+      data.internal_energy, data.x_velocity, data.y_velocity, data.z_velocity,
+      data.HI_density, data.HII_density, data.HM_density, data.HeI_density,
+      data.HeII_density, data.HeIII_density, data.H2I_density,
+      data.H2II_density, data.DI_density, data.DII_density, data.HDI_density,
+      data.e_density, data.metal_density, data.volumetric_heating_rate,
+      data.specific_heating_rate, data.RT_heating_rate,
+      data.RT_HI_ionization_rate, data.RT_HeI_ionization_rate,
+      data.RT_HeII_ionization_rate, data.RT_H2_dissociation_rate, NULL);
+  if (error_code == 0) error("Error in solve_chemistry.");
+  // if (solve_chemistry(&units, &data, dt) == 0) {
   //  error("Error in solve_chemistry.");
   //}
 
@@ -688,8 +677,6 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
   return FLT_MAX;
 }
 
-
-
 /**
  * @brief Initialises the cooling unit system.
  *
@@ -697,8 +684,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  * @param cooling The cooling properties to initialize
  */
 __attribute__((always_inline)) INLINE static void cooling_init_units(
-    const struct unit_system* us,
-    struct cooling_function_data* cooling) {
+    const struct unit_system* us, struct cooling_function_data* cooling) {
 
   /* These are conversions from code units to cgs. */
 
@@ -727,7 +713,7 @@ __attribute__((always_inline)) INLINE static void cooling_init_units(
  */
 __attribute__((always_inline)) INLINE static void cooling_init_grackle(
     struct cooling_function_data* cooling) {
-  
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* enable verbose for grackle */
   grackle_verbose = 1;
@@ -752,29 +738,28 @@ __attribute__((always_inline)) INLINE static void cooling_init_grackle(
   chemistry->grackle_data_file = cooling->cloudy_table;
 
   /* radiative transfer */
-  chemistry->use_radiative_transfer =
-    cooling->provide_specific_heating_rates ||
-    cooling->provide_volumetric_heating_rates;
+  chemistry->use_radiative_transfer = cooling->provide_specific_heating_rates ||
+                                      cooling->provide_volumetric_heating_rates;
   chemistry->use_volumetric_heating_rate =
-    cooling->provide_volumetric_heating_rates;
+      cooling->provide_volumetric_heating_rates;
   chemistry->use_specific_heating_rate =
-    cooling->provide_specific_heating_rates;
+      cooling->provide_specific_heating_rates;
 
   if (cooling->provide_specific_heating_rates &&
       cooling->provide_volumetric_heating_rates)
-    message("WARNING: You should specified either the specific or the volumetric heating rates, not both");
+    message(
+        "WARNING: You should specified either the specific or the volumetric "
+        "heating rates, not both");
 
   /* self shielding */
-  chemistry->self_shielding_method =
-    cooling->self_shielding_method;
+  chemistry->self_shielding_method = cooling->self_shielding_method;
 
   /* Initialize the chemistry object. */
   if (initialize_chemistry_data(&cooling->units) == 0) {
     error("Error in initialize_chemistry_data.");
   }
-
 }
-  
+
 /**
  * @brief Initialises the cooling properties.
  *
@@ -798,7 +783,6 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
   cooling_init_units(us, cooling);
 
   cooling_init_grackle(cooling);
-
 }
 
 #endif /* SWIFT_COOLING_GRACKLE_H */

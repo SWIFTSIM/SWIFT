@@ -43,9 +43,11 @@ chemistry_get_element_name(enum chemistry_element elem) {
 /**
  * @brief Prints the properties of the chemistry model to stdout.
  *
- * @brief The #chemistry_global_data containing information about the current model.
+ * @brief The #chemistry_global_data containing information about the current
+ * model.
  */
-static INLINE void chemistry_print_backend(const struct chemistry_global_data* data) {
+static INLINE void chemistry_print_backend(
+    const struct chemistry_global_data* data) {
 
   message("Chemistry function is 'Gear'.");
 }
@@ -65,9 +67,8 @@ __attribute__((always_inline)) INLINE static int chemistry_read_particles(
   list[0] = io_make_input_field(
       "ElementAbundance", FLOAT, chemistry_element_count, OPTIONAL,
       UNIT_CONV_NO_UNITS, parts, chemistry_data.metal_mass_fraction);
-  list[1] =
-      io_make_input_field("Z", FLOAT, 1, OPTIONAL, UNIT_CONV_NO_UNITS,
-                          parts, chemistry_data.Z);
+  list[1] = io_make_input_field("Z", FLOAT, 1, OPTIONAL, UNIT_CONV_NO_UNITS,
+                                parts, chemistry_data.Z);
 
   return 2;
 }
@@ -76,11 +77,9 @@ __attribute__((always_inline)) INLINE static void chemistry_read_parameters(
     const struct swift_params* parameter_file, const struct unit_system* us,
     const struct phys_const* phys_const, struct chemistry_global_data* data) {
 
-  data->initial_metallicity =
-    parser_get_opt_param_float(parameter_file, "GearChemistry:InitialMetallicity",
-			       -1);
+  data->initial_metallicity = parser_get_opt_param_float(
+      parameter_file, "GearChemistry:InitialMetallicity", -1);
 }
-
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -97,8 +96,8 @@ __attribute__((always_inline)) INLINE static int chemistry_write_particles(
   list[0] = io_make_output_field(
       "SmoothedElementAbundance", FLOAT, chemistry_element_count,
       UNIT_CONV_NO_UNITS, parts, chemistry_data.smoothed_metal_mass_fraction);
-  list[1] = io_make_output_field("Z", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                                 parts, chemistry_data.Z);
+  list[1] = io_make_output_field("Z", FLOAT, 1, UNIT_CONV_NO_UNITS, parts,
+                                 chemistry_data.Z);
 
   list[2] = io_make_output_field("ElementAbundance", FLOAT,
                                  chemistry_element_count, UNIT_CONV_NO_UNITS,
@@ -125,6 +124,5 @@ __attribute__((always_inline)) INLINE static void chemistry_write_flavour(
   }
 }
 #endif
-
 
 #endif /* SWIFT_CHEMISTRY_IO_GEAR_H */

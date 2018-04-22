@@ -38,7 +38,6 @@
 #include "physical_constants.h"
 #include "units.h"
 
-
 /**
  * @brief Apply the cooling function to a particle.
  *

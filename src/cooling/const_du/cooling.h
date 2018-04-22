@@ -45,7 +45,6 @@
 #include "physical_constants.h"
 #include "units.h"
 
-
 /**
  * @brief Apply the cooling function to a particle.
  *
@@ -80,7 +79,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   float cooling_du_dt = -cooling->cooling_rate;
 
   /* Integrate cooling equation to enforce energy floor */
-   if (u_old + hydro_du_dt * dt < u_floor) {
+  if (u_old + hydro_du_dt * dt < u_floor) {
     cooling_du_dt = 0.f;
   } else if (u_old + (hydro_du_dt + cooling_du_dt) * dt < u_floor) {
     cooling_du_dt = (u_old + dt * hydro_du_dt - u_floor) / dt;
