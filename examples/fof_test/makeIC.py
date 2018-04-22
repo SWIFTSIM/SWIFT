@@ -31,6 +31,7 @@ periodic= 1           # 1 For periodic box
 boxSize = 1.
 rho = 1.
 L = int(sys.argv[1])  # Number of particles along one axis
+pert = float(sys.argv[2])  # How much to perturb particle positions
 fileName = "uniformDMBox_%d.hdf5"%L 
 
 #---------------------------------------------------
@@ -87,9 +88,9 @@ ds[()] = ids + 1
 # set seed for random number
 np.random.seed(1234)
 
-x_pert = 1.2 * (np.random.rand(numPart, 1) - 0.5)
-z_pert = 1.2 * (np.random.rand(numPart, 1) - 0.5)
-y_pert = 1.2 * (np.random.rand(numPart, 1) - 0.5)
+x_pert = pert * (np.random.rand(numPart, 1) - 0.5)
+z_pert = pert * (np.random.rand(numPart, 1) - 0.5)
+y_pert = pert * (np.random.rand(numPart, 1) - 0.5)
 
 #x_pert = zeros((numPart, 1))
 #y_pert = zeros((numPart, 1))
