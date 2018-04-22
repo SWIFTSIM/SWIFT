@@ -4608,6 +4608,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   
   const double l_x = 0.2 * (s->dim[0] / pow(s->nr_gparts, 1./3.));
   const double l_x2 = l_x * l_x;
+  s->l_x = l_x;
   s->l_x2 = l_x2;
   
   ticks tic = getticks();

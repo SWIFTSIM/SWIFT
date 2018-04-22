@@ -451,9 +451,12 @@ void fof_search_tree_serial(struct space *s) {
   int num_groups = nr_gparts;
   struct gpart *gparts = s->gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double l_x = 0.2 * (dim[0] / pow(nr_gparts, 1./3.));
-  const double l_x2 = l_x * l_x;
-  s->l_x2 = l_x2;
+  const double l_x = s->l_x;
+  const double l_x2 = s->l_x2;
+
+  /* Make sure the search radius includes the extent of the cell. */
+  const double search_r = (sqrt(3.0) * s->width[0]) + l_x;
+  const double search_r2 = search_r * search_r;
 
   message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts, l_x2);
 
@@ -464,7 +467,7 @@ void fof_search_tree_serial(struct space *s) {
 
   for(size_t i=0; i<nr_gparts; i++) {
     gparts[i].offset = i;
-    pid[i] = i;    
+    pid[i] = i;
   }
 
   if (posix_memalign((void **)&num_in_groups, 32,
@@ -477,14 +480,34 @@ void fof_search_tree_serial(struct space *s) {
   for(int cid=0; cid<nr_cells; cid++) {
     
     struct cell *restrict ci = &s->cells_top[cid];
-      
+    const double cix = ci->loc[0];
+    const double ciy = ci->loc[1];
+    const double ciz = ci->loc[2];
+ 
     fof_search_cell(s, ci, pid, num_in_groups, &num_groups);
     
-    for(int cjd=cid + 1; cjd<nr_cells; cjd++) {
-      
-      struct cell *restrict cj = &s->cells_top[cjd];
+    for(int cjd=cid + 1; cjd<nr_cells; cjd++) {      
     
-      fof_search_pair_cells(s, ci, cj, pid, num_in_groups, &num_groups);
+      struct cell *restrict cj = &s->cells_top[cjd];
+      const double cjx = cj->loc[0];
+      const double cjy = cj->loc[1];
+      const double cjz = cj->loc[2];
+
+      /* Compute distance between cells, remembering to account for boundary conditions. */
+      float dx[3], r2 = 0.0f;
+      dx[0] = cix - cjx;
+      dx[1] = ciy - cjy;
+      dx[2] = ciz - cjz;
+
+      for (int k = 0; k < 3; k++) {
+        dx[k] = nearest(dx[k], dim[k]);
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Perform FOF search between pairs of cells that are within the linking length. */
+      if (r2 < search_r2)  {
+        fof_search_pair_cells(s, ci, cj, pid, num_in_groups, &num_groups);
+      }
     }
   }
   
