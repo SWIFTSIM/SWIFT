@@ -26,13 +26,38 @@
 /* Local headers. */
 //#include "active.h"
 
-void fof_search_naive(struct engine *e) {
+__attribute__((always_inline)) INLINE int fof_find(const int i, const int *pid) {
+    
+  int root = i;
+  while(root != pid[root])
+    root = pid[root];
 
-  const size_t nr_gparts = e->s->nr_gparts;
-  struct gpart *gparts = e->s->gparts;
-  const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
-  const double l_x = 0.2 * (dim[0] / pow(nr_gparts, 1./3.));
-  const double l_x2 = l_x * l_x;
+  return root;
+}
+
+__attribute__((always_inline)) INLINE int fof_find_path_comp(const int i, int *pid) {
+    
+  int root = i;
+  while(root != pid[root])
+    root = pid[root];
+
+  /* Perform path compression. */
+  int index = i;
+  while(index != root) {
+    int next = pid[index];
+    pid[index] = root;
+    index = next;
+  }
+  
+  return root;
+}
+
+void fof_search_naive(struct space *s) {
+
+  const size_t nr_gparts = s->nr_gparts;
+  struct gpart *gparts = s->gparts;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double l_x2 = s->l_x2;
   int *pid;
   int *num_in_groups;
   int num_groups = nr_gparts;
@@ -117,39 +142,12 @@ void fof_search_naive(struct engine *e) {
   free(num_in_groups);
 }
 
-__attribute__((always_inline)) INLINE int fof_find(const int i, const int *pid) {
-    
-  int root = i;
-  while(root != pid[root])
-    root = pid[root];
+void fof_search_serial(struct space *s) {
 
-  return root;
-}
-
-__attribute__((always_inline)) INLINE int fof_find_path_comp(const int i, int *pid) {
-    
-  int root = i;
-  while(root != pid[root])
-    root = pid[root];
-
-  /* Perform path compression. */
-  int index = i;
-  while(index != root) {
-    int next = pid[index];
-    pid[index] = root;
-    index = next;
-  }
-  
-  return root;
-}
-
-void fof_search_serial(struct engine *e) {
-
-  const size_t nr_gparts = e->s->nr_gparts;
-  struct gpart *gparts = e->s->gparts;
-  const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
-  const double l_x = 0.2 * (dim[0] / pow(nr_gparts, 1./3.));
-  const double l_x2 = l_x * l_x;
+  const size_t nr_gparts = s->nr_gparts;
+  struct gpart *gparts = s->gparts;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double l_x2 = s->l_x2;
   int *pid;
   int *num_in_groups;
   int num_groups = nr_gparts;

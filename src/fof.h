@@ -24,18 +24,12 @@
 #include "../config.h"
 
 /* Local headers */
-//#include "active.h"
-//#include "cell.h"
-#include "engine.h"
-//#include "hydro.h"
-//#include "part.h"
-//#include "runner.h"
-//#include "timers.h"
-//#include "vector.h"
+#include "space.h"
+#include "cell.h"
 
 /* Function prototypes. */
-void fof_search_naive(struct engine *e);
-void fof_search_serial(struct engine *e);
+void fof_search_naive(struct space *s);
+void fof_search_serial(struct space *s);
 void fof_search_cell(struct space *s, struct cell *c, int *pid, int *num_in_groups, int *num_groups);
 void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj, int *pid, int *num_in_groups, int *num_groups);
 void fof_search_tree_serial(struct space *s);
