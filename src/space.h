@@ -155,6 +155,9 @@ struct space {
   /*! The associated engine. */
   struct engine *e;
 
+  /*! The FOF linking length squared. */
+  double l_x2;
+
 #ifdef WITH_MPI
 
   /*! Buffers for parts that we will receive from foreign cells. */
