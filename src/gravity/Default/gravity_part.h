@@ -44,6 +44,8 @@ struct gpart {
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
 
+  size_t offset;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Numer of gparts this gpart interacted with */
