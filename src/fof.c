@@ -77,7 +77,7 @@ void fof_search_naive(struct space *s) {
 
   for(size_t i=0; i<nr_gparts; i++) num_in_groups[i] = 1;    
 
-  for(size_t k=0; k<2; k++) 
+  for(size_t runs=0; runs<2; runs++) 
   /* Loop over particles and find which particles belong in the same group. */
   for(size_t i=0; i<nr_gparts; i++) {
   
@@ -135,7 +135,7 @@ void fof_search_naive(struct space *s) {
       }
   }
   
-  message("No. of groups: %d. No. of particles in groups: %d. No. of particles not in groups: %d.", num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
+  message("No. of groups: %d. No. of particles in groups: %d. No. of particles not in groups: %ld.", num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
   message("Biggest group size: %d with ID: %d", max_group_size, max_group_id);
 
   free(pid);
@@ -241,7 +241,7 @@ void fof_search_serial(struct space *s) {
   }
 
 
-  message("No. of groups: %d. No. of particles in groups: %d. No. of particles not in groups: %d.", num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
+  message("No. of groups: %d. No. of particles in groups: %d. No. of particles not in groups: %ld.", num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
   message("Biggest group size: %d with ID: %d", max_group_size, max_group_id);
 
   free(pid);
@@ -524,7 +524,7 @@ void fof_search_tree_serial(struct space *s) {
       }
   }
 
-  message("No. of groups: %d. No. of particles in groups: %d. No. of particles not in groups: %d.", num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
+  message("No. of groups: %d. No. of particles in groups: %d. No. of particles not in groups: %ld.", num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
   message("Biggest group size: %d with ID: %d", max_group_size, max_group_id);
 
   free(pid);
@@ -540,7 +540,7 @@ void fof_dump_group_data(char *out_file, const int nr_gparts, int *pid, int *num
 
   for(size_t i=0; i<nr_gparts; i++) {
 
-      fprintf(file, "  %7d %7d %7d\n", i, pid[i], num_in_groups[i]); 
+      fprintf(file, "  %7ld %7d %7d\n", i, pid[i], num_in_groups[i]); 
 
   }
   
