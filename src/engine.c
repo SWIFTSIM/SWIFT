@@ -4160,9 +4160,9 @@ void engine_first_init_particles(struct engine *e) {
   const ticks tic = getticks();
 
   /* Set the particles in a state where they are ready for a run. */
-  space_first_init_parts(e->s, e->chemistry, e->cooling_func);
-  space_first_init_gparts(e->s, e->gravity_properties);
-  space_first_init_sparts(e->s);
+  space_first_init_parts(e->s, e->verbose);
+  space_first_init_gparts(e->s, e->verbose);
+  space_first_init_sparts(e->s, e->verbose);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
