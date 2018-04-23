@@ -52,6 +52,8 @@
 #include "./hydro/Gizmo/hydro_debug.h"
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_debug.h"
+#elif defined(MINIMAL_MULTI_MAT_SPH)
+#include "./hydro/MinimalMultiMat/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif
