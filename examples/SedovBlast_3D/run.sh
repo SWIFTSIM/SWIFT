@@ -12,9 +12,6 @@ then
     python makeIC.py
 fi
 
-# Generate output fields
-../create_ouput_fields.py ../../config.h -o output_fields.yml -d ../output_fields_examples/
-
 # Run SWIFT
 ../swift -s -t 4 sedov.yml 2>&1 | tee output.log
 
