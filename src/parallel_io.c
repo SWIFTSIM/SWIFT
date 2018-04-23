@@ -860,8 +860,6 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   int periodic = e->s->periodic;
   int numFiles = 1;
 
-  const struct cooling_function_data* cooling = e->cooling_func;
-
   /* First time, we need to create the XMF file */
   if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
 
@@ -1084,6 +1082,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
+  const struct cooling_function_data* cooling = e->cooling_func;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
