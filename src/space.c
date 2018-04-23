@@ -2317,8 +2317,10 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const struct space *restrict s = (struct space *)extra_data;
   const struct engine *e = s->e;
 
-  struct xpart *restrict xp = s->xparts + (ptrdiff_t)(p - s->parts);
+  const ptrdiff_t delta = p - s->parts;
+  struct xpart *restrict xp = s->xparts + delta;
 
+  /* Extract some constants */
   const struct cosmology *cosmo = s->e->cosmology;
   const struct phys_const *phys_const = s->e->physical_constants;
   const struct unit_system *us = s->e->internal_units;
@@ -2328,7 +2330,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const float u_init = hydro_props->initial_internal_energy;
   const float u_min = hydro_props->minimal_internal_energy;
 
-  const struct chemistry_data *chemistry = e->chemistry;
+  const struct chemistry_global_data *chemistry = e->chemistry;
   const struct cooling_function_data *cool_func = e->cooling_func;
 
   for (int k = 0; k < count; k++) {
@@ -2359,10 +2361,12 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     /* And the cooling */
     cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);
 
-    /* Check part->gpart->part linkeage. */
-    if (p[i].gpart) p[i].gpart->id_or_neg_offset = -i;
-
 #ifdef SWIFT_DEBUG_CHECKS
+    /* Check part->gpart->part linkeage. */
+    if (p[k].gpart && p[k].gpart->id_or_neg_offset != -(k + delta))
+      error("Invalid gpart -> part link");
+
+    /* Initialise the time-integration check variables */
     p[k].ti_drift = 0;
     p[k].ti_kick = 0;
 #endif
@@ -2417,6 +2421,7 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
     gravity_first_init_gpart(&gp[k], grav_props);
 
 #ifdef SWIFT_DEBUG_CHECKS
+    /* Initialise the time-integration check variables */
     gp[k].ti_drift = 0;
     gp[k].ti_kick = 0;
 #endif
@@ -2446,6 +2451,10 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   struct spart *restrict sp = (struct spart *)map_data;
   const struct space *restrict s = (struct space *)extra_data;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  const ptrdiff_t delta = sp - s->sparts;
+#endif
+
   const struct cosmology *cosmo = s->e->cosmology;
   const float a_factor_vel = cosmo->a * cosmo->a;
 
@@ -2467,10 +2476,11 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
 
     star_first_init_spart(&sp[k]);
 
-    /* Check spart->gpart->spart linkeage. */
-    if (sp[i].gpart) sp[i].gpart->id_or_neg_offset = -i;
-
 #ifdef SWIFT_DEBUG_CHECKS
+    if (sp[k].gpart && sp[k].gpart->id_or_neg_offset != -(k + delta))
+      error("Invalid gpart -> spart link");
+
+    /* Initialise the time-integration check variables */
     sp[k].ti_drift = 0;
     sp[k].ti_kick = 0;
 #endif
