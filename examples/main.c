@@ -485,9 +485,11 @@ int main(int argc, char *argv[]) {
     error("Error allocating memory for the output fields file.");
 
   char outputFieldsFileName[200];
-  parser_get_param_string(params, "Snapshots:FieldsFilename",
-                          outputFieldsFileName);
-  if (myrank == 0) {
+  parser_get_opt_param_string(params, "Snapshots:FieldsFilename",
+			      outputFieldsFileName, "");
+
+  parser_init(outputFieldsFileName, output_fields);  
+  if (myrank == 0 && strcmp(outputFieldsFileName, "") != 0) {
     message("Reading runtime output fields from file '%s'",
             outputFieldsFileName);
     parser_read_file(outputFieldsFileName, output_fields);

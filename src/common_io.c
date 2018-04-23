@@ -813,13 +813,14 @@ void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
 /**
  * @brief Verify the io parameter file
  *
+ * @param output_fields The #swift_params containing output information
  * @param e The #engine
  */
 void io_check_output_fields(const struct swift_params* output_fields,
                             const struct engine* e) {
 
   if (output_fields->paramCount == 0)
-    error("You need to provide an output field in %s", output_fields->fileName);
+    return;
 
   /* particles */
   const struct part* parts = e->s->parts;
