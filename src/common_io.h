@@ -103,4 +103,6 @@ void io_duplicate_star_gparts(struct threadpool* tp, struct spart* const sparts,
 void io_check_output_fields(const struct swift_params* output_fields,
                             const struct engine* e);
 
+void io_write_output_field_parameter(const char* filename);
+
 #endif /* SWIFT_COMMON_IO_H */

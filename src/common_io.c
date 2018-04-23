@@ -890,3 +890,49 @@ void io_check_output_fields(const struct swift_params* output_fields,
     }
   }
 }
+
+/**
+ * @brief Write the output field parameters file
+ *
+ * @param e The #engine
+ * @param filename The file to write
+ */
+void io_write_output_field_parameter(const char* filename) {
+  FILE *file = fopen(filename, "w");
+
+  /* Loop over all particle types */
+  for (int ptype = 0; ptype < swift_type_count; ptype++) {
+    int num_fields = 0;
+    struct io_props list[100];
+
+    /* Write particle fields from the particle structure */
+    switch (ptype) {
+
+    case swift_type_gas:
+      hydro_write_particles(NULL, NULL, list, &num_fields);
+      num_fields += chemistry_write_particles(NULL, list + num_fields);
+      break;
+
+    case swift_type_dark_matter:
+      darkmatter_write_particles(NULL, list, &num_fields);
+      break;
+
+    case swift_type_star:
+      star_write_particles(NULL, list, &num_fields);
+      break;
+    
+    }
+
+    if (num_fields > 0)
+      fprintf(file, "ParticleType%i:\n", ptype);
+
+    /* Write everything */
+    for (int i = 0; i < num_fields; ++i) {
+      fprintf(file, "  %s: 1\n", list[i].name);
+    }
+    
+    fprintf(file, "\n");
+  }
+
+  fclose(file);
+}

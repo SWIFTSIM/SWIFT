@@ -90,6 +90,8 @@ void print_help_message(void) {
   printf("  %2s %14s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps. When unset use the time_end "
          "parameter to stop.");
+  printf("  %2s %14s %s\n", "-o", "{str}",
+	 "Generate a default output parameter file.");
   printf("  %2s %14s %s\n", "-P", "{sec:par:val}",
          "Set parameter value and overwrites values read from the parameters "
          "file. Can be used more than once.");
@@ -195,6 +197,7 @@ int main(int argc, char *argv[]) {
   int nr_threads = 1;
   int with_verbose_timers = 0;
   int nparams = 0;
+  char output_parameters_filename[200] = "";
   char *cmdparams[PARSER_MAX_NO_OF_PARAMS];
   char paramFileName[200] = "";
   char restart_file[200] = "";
@@ -202,7 +205,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:rsSt:Tv:y:Y:")) != -1)
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tv:y:Y:")) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -259,6 +262,15 @@ int main(int argc, char *argv[]) {
           return 1;
         }
         break;
+      case 'o':
+	if (sscanf(optarg, "%s", output_parameters_filename) != 1) {
+	    if (myrank == 0) {
+	      printf("Error parsing output fields filename");
+	      print_help_message();
+	    }
+	    return 1;
+	}
+	break;
       case 'P':
         cmdparams[nparams] = optarg;
         nparams++;
@@ -324,6 +336,15 @@ int main(int argc, char *argv[]) {
         return 1;
         break;
     }
+
+  /* Write output parameter file */
+  if (strcmp(output_parameters_filename, "") != 0) {
+    io_write_output_field_parameter(output_parameters_filename);
+    printf("Ouput parameter file written in %s\n", output_parameters_filename);
+    return 0;
+  }
+
+  /* check inputs */
   if (optind == argc - 1) {
     if (!strcpy(paramFileName, argv[optind++]))
       error("Error reading parameter file name.");
