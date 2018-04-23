@@ -19,14 +19,15 @@
 #ifndef SWIFT_IO_PROPERTIES_H
 #define SWIFT_IO_PROPERTIES_H
 
-#include <string.h>
-
 /* Config parameters. */
 #include "../config.h"
 
 /* Local includes. */
 #include "common_io.h"
 #include "inline.h"
+
+/* Standard includes. */
+#include <string.h>
 
 /**
  * @brief The two sorts of data present in the GADGET IC files: compulsory to
