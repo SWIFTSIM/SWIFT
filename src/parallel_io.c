@@ -38,7 +38,7 @@
 /* Local includes. */
 #include "chemistry_io.h"
 #include "common_io.h"
-#include "cooling.h"
+#include "cooling_io.h"
 #include "dimension.h"
 #include "engine.h"
 #include "error.h"
@@ -860,6 +860,8 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   int periodic = e->s->periodic;
   int numFiles = 1;
 
+  const struct cooling_function_data* cooling = e->cooling_func;
+
   /* First time, we need to create the XMF file */
   if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
 
@@ -1243,6 +1245,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
         Nparticles = Ngas;
         hydro_write_particles(parts, xparts, list, &num_fields);
         num_fields += chemistry_write_particles(parts, list + num_fields);
+        num_fields +=
+            cooling_write_particles(xparts, list + num_fields, cooling);
         break;
 
       case swift_type_dark_matter:

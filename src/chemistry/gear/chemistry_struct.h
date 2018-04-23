@@ -38,7 +38,11 @@ enum chemistry_element {
 /**
  * @brief Global chemical abundance information.
  */
-struct chemistry_data {};
+struct chemistry_global_data {
+
+  /* Initial metallicity Z */
+  float initial_metallicity;
+};
 
 /**
  * @brief Properties of the chemistry function.
@@ -50,6 +54,8 @@ struct chemistry_part_data {
 
   /*! Smoothed fraction of the particle mass in a given element */
   float smoothed_metal_mass_fraction[chemistry_element_count];
+
+  float Z;
 };
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_H */
