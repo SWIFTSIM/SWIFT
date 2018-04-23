@@ -19,6 +19,10 @@
 #ifndef SWIFT_COOLING_EAGLE_IO_H
 #define SWIFT_COOLING_EAGLE_IO_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Local includes */
 #include "io_properties.h"
 
 #ifdef HAVE_HDF5
@@ -49,4 +53,4 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   return 0;
 }
 
-#endif  // SWIFT_COOLING_EAGLE_IO_H
+#endif /* SWIFT_COOLING_EAGLE_IO_H */

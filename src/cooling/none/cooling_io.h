@@ -19,6 +19,10 @@
 #ifndef SWIFT_COOLING_NONE_IO_H
 #define SWIFT_COOLING_NONE_IO_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Local includes */
 #include "io_properties.h"
 
 #ifdef HAVE_HDF5
@@ -37,7 +41,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
- * @param parts The particle array.
+ * @param xparts The extended particle array.
  * @param list The list of i/o properties to write.
  * @param cooling The #cooling_function_data
  *
@@ -49,4 +53,4 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   return 0;
 }
 
-#endif  // SWIFT_COOLING_NONE_IO_H
+#endif /* SWIFT_COOLING_NONE_IO_H */

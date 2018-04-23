@@ -29,10 +29,8 @@
 #include <math.h>
 
 /* Local includes. */
-#include "cooling_io.h"
 #include "error.h"
 #include "hydro.h"
-#include "io_properties.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -84,9 +82,12 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  *
  * Nothing to do here.
  *
+ * @param phys_const The physical constant in internal units.
+ * @param us The unit system.
+ * @param cosmo The current cosmological model.
+ * @param data The properties of the cooling function.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
- * @param cooling The properties of the cooling function.
  */
 __attribute__((always_inline)) INLINE static void cooling_first_init_part(
     const struct phys_const* restrict phys_const,

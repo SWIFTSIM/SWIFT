@@ -43,8 +43,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
     physical_constants.h physical_constants_cgs.h potential.h version.h \
-    hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
-    sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
+    hydro_properties.h riemann.h threadpool.h cooling_io.h cooling.h cooling_struct.h \
+    sourceterms.h sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
     gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h

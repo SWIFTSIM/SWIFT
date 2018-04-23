@@ -19,10 +19,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #ifndef SWIFT_COOLING_CONST_LAMBDA_IO_H
 #define SWIFT_COOLING_CONST_LAMBDA_IO_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Local includes */
 #include "io_properties.h"
 
 #ifdef HAVE_HDF5
@@ -53,4 +56,4 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   return 0;
 }
 
-#endif  // SWIFT_COOLING_CONST_LAMBDA_IO_H
+#endif /* SWIFT_COOLING_CONST_LAMBDA_IO_H */

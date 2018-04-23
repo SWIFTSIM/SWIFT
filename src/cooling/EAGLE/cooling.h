@@ -20,19 +20,20 @@
 #define SWIFT_COOLING_EAGLE_H
 
 /**
- * @file src/cooling/none/cooling.h
- * @brief Empty infrastructure for the cases without cooling function
+ * @file src/cooling/EAGLE/cooling.h
+ * @brief EAGLE cooling function
  */
+
+/* Config parameters. */
+#include "../config.h"
 
 /* Some standard headers. */
 #include <float.h>
 #include <math.h>
 
 /* Local includes. */
-#include "cooling_io.h"
 #include "error.h"
 #include "hydro.h"
-#include "io_properties.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"

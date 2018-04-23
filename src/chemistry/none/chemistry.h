@@ -92,9 +92,12 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  *
  * Nothing to do here.
  *
+ * @param phys_const The physical constant in internal units.
+ * @param us The unit system.
+ * @param cosmo The current cosmological model.
+ * @param data The global chemistry information used for this run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
- * @param data The global chemistry information used for this run.
  */
 __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     const struct phys_const* restrict phys_const,

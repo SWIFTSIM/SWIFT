@@ -23,16 +23,17 @@
 #ifndef SWIFT_COOLING_CONST_LAMBDA_H
 #define SWIFT_COOLING_CONST_LAMBDA_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Some standard headers. */
 #include <float.h>
 #include <math.h>
 
 /* Local includes. */
 #include "const.h"
-#include "cooling_io.h"
 #include "error.h"
 #include "hydro.h"
-#include "io_properties.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"

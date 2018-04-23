@@ -30,16 +30,16 @@
  * realistic functions.
  */
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Some standard headers. */
 #include <math.h>
 
 /* Local includes. */
 #include "const.h"
-#include "cooling_io.h"
-#include "cooling_struct.h"
 #include "error.h"
 #include "hydro.h"
-#include "io_properties.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"

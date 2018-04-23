@@ -20,22 +20,24 @@
 #define SWIFT_COOLING_GRACKLE_H
 
 /**
- * @file src/cooling/none/cooling.h
- * @brief Empty infrastructure for the cases without cooling function
+ * @file src/cooling/grackle/cooling.h
+ * @brief Cooling using the GRACKLE 3.0 library.
  */
+
+/* Config parameters. */
+#include "../config.h"
 
 /* Some standard headers. */
 #include <float.h>
-#include <grackle.h>
 #include <math.h>
 
+/* The grackle library itself */
+#include <grackle.h>
+
 /* Local includes. */
-#include "../config.h"
 #include "chemistry.h"
-#include "cooling_io.h"
 #include "error.h"
 #include "hydro.h"
-#include "io_properties.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
