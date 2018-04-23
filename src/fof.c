@@ -451,14 +451,9 @@ void fof_search_tree_serial(struct space *s) {
   int num_groups = nr_gparts;
   struct gpart *gparts = s->gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double l_x = s->l_x;
-  const double l_x2 = s->l_x2;
+  const double search_r2 = s->cell_search_r2;
 
-  /* Make sure the search radius includes the extent of the cell. */
-  const double search_r = (sqrt(3.0) * s->width[0]) + l_x;
-  const double search_r2 = search_r * search_r;
-
-  message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts, l_x2);
+  message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts, s->l_x2);
 
   /* Allocate and populate array of particle group IDs. */
   if (posix_memalign((void **)&pid, 32,

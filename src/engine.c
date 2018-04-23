@@ -4205,9 +4205,14 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   s->l_x = l_x;
   s->l_x2 = l_x2;
   
+  /* Make sure the cell search radius includes the extent of the cell. */
+  const double search_r = (sqrt(3.0) * s->width[0]) + l_x;
+  s->cell_search_r2 = search_r * search_r;
+
   ticks tic = getticks();
-  fof_search_naive(s);
-  message("Naive FOF search took: %.3f %s.", clocks_from_ticks(getticks() - tic), clocks_getunit());
+  
+  //fof_search_naive(s);
+  //message("Naive FOF search took: %.3f %s.", clocks_from_ticks(getticks() - tic), clocks_getunit());
   
   tic = getticks();
   fof_search_serial(s);
