@@ -828,8 +828,8 @@ void write_output_single(struct engine* e, const char* baseName,
     /* Write everything */
     for (int i = 0; i < num_fields; ++i) {
       char field[256];
-      sprintf(field, "ParticleType%i:%s", i, list[i].name);
-      int should_write = parser_get_opt_param_int(output_fields, field, 0);
+      sprintf(field, "ParticleType%i:%s", ptype, list[i].name);
+      int should_write = parser_get_opt_param_int(output_fields, field, 1);
       if (should_write)
         writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
                    internal_units, snapshot_units);
