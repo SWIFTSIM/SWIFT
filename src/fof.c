@@ -264,11 +264,8 @@ void fof_search_cell(struct space *s, struct cell *c, int *pid, int *num_in_grou
     const double piz = pi->x[2];
     const size_t offset_i = pi->offset;
 
-    for(size_t j=0; j<count; j++) { 
+    for(size_t j=i+1; j<count; j++) { 
 
-      /* Skip yourself. */
-      if(i == j) continue;
-      
       struct gpart *pj = &gparts[j];
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -326,34 +323,37 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj, in
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double l_x2 = s->l_x2;
 
+  /* Account for boundary conditions.*/
+  double shift[3] = {0.0, 0.0, 0.0};
+  
+  /* Get the relative distance between the pairs, wrapping. */
+  const int periodic = s->periodic;
+  double diff[3];
+  for (int k = 0; k < 3; k++) {
+    diff[k] = cj->loc[k] - ci->loc[k];
+    if (periodic && diff[k] < -s->dim[k] / 2)
+      shift[k] = s->dim[k];
+    else if (periodic && diff[k] > s->dim[k] / 2)
+      shift[k] = -s->dim[k];
+    else
+      shift[k] = 0.0;
+    diff[k] += shift[k];
+  }
+ 
   /* Loop over particles and find which particles belong in the same group. */
   for(size_t i=0; i<count_i; i++) {
   
     struct gpart *pi = &gparts_i[i];
-    const double pix = pi->x[0];
-    const double piy = pi->x[1];
-    const double piz = pi->x[2];
+    const double pix = pi->x[0] - shift[0];
+    const double piy = pi->x[1] - shift[1];
+    const double piz = pi->x[2] - shift[2];
     const size_t offset_i = pi->offset;
 
     for(size_t j=0; j<count_j; j++) { 
 
       struct gpart *pj = &gparts_j[j];
-      const double pjx = pj->x[0];
-      const double pjy = pj->x[1];
-      const double pjz = pj->x[2];
       const size_t offset_j = pj->offset;
-
-      /* Compute pairwise distance, remembering to account for boundary conditions. */
-      float dx[3], r2 = 0.0f;
-      dx[0] = pix - pjx;
-      dx[1] = piy - pjy;
-      dx[2] = piz - pjz;
-
-      for (int k = 0; k < 3; k++) {
-        dx[k] = nearest(dx[k], dim[k]);
-        r2 += dx[k] * dx[k];
-      }
-
+      
       /* Find the roots of pi and pj. */
       const int root_i = fof_find(offset_i, pid);
       const int root_j = fof_find(offset_j, pid);
@@ -363,6 +363,18 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj, in
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
+
+      /* Compute pairwise distance, remembering to account for boundary conditions. */
+      const double pjx = pj->x[0];
+      const double pjy = pj->x[1];
+      const double pjz = pj->x[2];
+
+      float dx[3], r2 = 0.0f;
+      dx[0] = pix - pjx;
+      dx[1] = piy - pjy;
+      dx[2] = piz - pjz;
+
+      for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
 
       /* Hit or miss? */
       if (r2 < l_x2)  {
@@ -383,64 +395,6 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj, in
     }
   }
 
-  /* Loop over particles and find which particles belong in the same group. */
-  for(size_t j=0; j<count_j; j++) {
-  
-    //message("Searching for particle: %ld groups.", i);
-
-    struct gpart *pj = &gparts_j[j];
-    const double pjx = pj->x[0];
-    const double pjy = pj->x[1];
-    const double pjz = pj->x[2];
-    const size_t offset_j = pj->offset;
-
-    for(size_t i=0; i<count_i; i++) { 
-
-      struct gpart *pi = &gparts_i[i];
-      const double pix = pi->x[0];
-      const double piy = pi->x[1];
-      const double piz = pi->x[2];
-      const size_t offset_i = pi->offset;
-
-      /* Compute pairwise distance, remembering to account for boundary conditions. */
-      float dx[3], r2 = 0.0f;
-      dx[0] = pjx - pix;
-      dx[1] = pjy - piy;
-      dx[2] = pjz - piz;
-
-      for (int k = 0; k < 3; k++) {
-        dx[k] = nearest(dx[k], dim[k]);
-        r2 += dx[k] * dx[k];
-      }
-
-      /* Find the roots of pi and pj. */
-      const int root_j = fof_find(offset_j, pid);
-      const int root_i = fof_find(offset_i, pid);
-      
-      //const int root_i = fof_find_path_comp(i, pid);
-      //const int root_j = fof_find_path_comp(j, pid);
-
-      /* Skip particles in the same group. */
-      if (root_j == root_i) continue;
-
-      /* Hit or miss? */
-      if (r2 < l_x2)  {
-
-        if(root_i < root_j) {
-          pid[root_j] = root_i; 
-          num_in_groups[root_j]--;
-          num_in_groups[root_i]++;
-        }
-        else {
-          pid[root_i] = root_j;
-          num_in_groups[root_i]--;
-          num_in_groups[root_j]++;
-        }
-        
-        (*num_groups)--;
-      }
-    }
-  }
 }
 
 void fof_search_tree_serial(struct space *s) {
