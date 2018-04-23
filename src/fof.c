@@ -32,22 +32,13 @@ __attribute__((always_inline)) INLINE int fof_find(const int i, const int *pid) 
   while(root != pid[root])
     root = pid[root];
 
-  return root;
-}
-
-__attribute__((always_inline)) INLINE int fof_find_path_comp(const int i, int *pid) {
-    
-  int root = i;
-  while(root != pid[root])
-    root = pid[root];
-
   /* Perform path compression. */
-  int index = i;
-  while(index != root) {
-    int next = pid[index];
-    pid[index] = root;
-    index = next;
-  }
+  //int index = i;
+  //while(index != root) {
+  //  int next = pid[index];
+  //  pid[index] = root;
+  //  index = next;
+  //}
   
   return root;
 }
@@ -170,17 +161,19 @@ void fof_search_serial(struct space *s) {
   /* Loop over particles and find which particles belong in the same group. */
   for(size_t i=0; i<nr_gparts; i++) {
   
-    //message("Searching for particle: %ld groups.", i);
-
     struct gpart *pi = &gparts[i];
     const double pix = pi->x[0];
     const double piy = pi->x[1];
     const double piz = pi->x[2];
 
-    for(size_t j=0; j<nr_gparts; j++) { 
+    for(size_t j=i+1; j<nr_gparts; j++) { 
 
-      /* Skip yourself. */
-      if(i == j) continue;
+      /* Find the roots of pi and pj. */
+      const int root_i = fof_find(i, pid);
+      const int root_j = fof_find(j, pid);
+      
+      /* Skip particles in the same group. */
+      if (root_i == root_j) continue;
 
       struct gpart *pj = &gparts[j];
       const double pjx = pj->x[0];
@@ -197,16 +190,6 @@ void fof_search_serial(struct space *s) {
         dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
-
-      /* Find the roots of pi and pj. */
-      const int root_i = fof_find(i, pid);
-      const int root_j = fof_find(j, pid);
-      
-      //const int root_i = fof_find_path_comp(i, pid);
-      //const int root_j = fof_find_path_comp(j, pid);
-
-      /* Skip particles in the same group. */
-      if (root_i == root_j) continue;
 
       /* Hit or miss? */
       if (r2 < l_x2)  {
@@ -239,7 +222,6 @@ void fof_search_serial(struct space *s) {
         max_group_id = i;
       }
   }
-
 
   message("No. of groups: %d. No. of particles in groups: %d. No. of particles not in groups: %ld.", num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
   message("Biggest group size: %d with ID: %d", max_group_size, max_group_id);
@@ -287,9 +269,6 @@ void fof_search_cell(struct space *s, struct cell *c, int *pid, int *num_in_grou
       const int root_i = fof_find(offset_i, pid);
       const int root_j = fof_find(offset_j, pid);
       
-      //const int root_i = fof_find_path_comp(offset_i, pid);
-      //const int root_j = fof_find_path_comp(offset_j, pid);
-
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
 
@@ -358,9 +337,6 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj, in
       const int root_i = fof_find(offset_i, pid);
       const int root_j = fof_find(offset_j, pid);
       
-      //const int root_i = fof_find_path_comp(offset_i, pid);
-      //const int root_j = fof_find_path_comp(offset_j, pid);
-
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
 
