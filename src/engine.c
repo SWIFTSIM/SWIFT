@@ -497,7 +497,7 @@ static void *engine_do_redistribute(int *counts, char *parts,
 #ifdef WITH_MPI /* redist_mapper */
 
 /* Support for engine_redistribute threadpool dest mappers. */
-struct redist_mapper {
+struct redist_mapper_data {
   int *counts;
   int *dest;
   int nodeID;
@@ -514,7 +514,8 @@ struct redist_mapper {
   engine_redistribute_dest_mapper_##TYPE(void *map_data, int num_elements, \
                                          void *extra_data) {               \
     struct TYPE *parts = (struct TYPE *)map_data;                          \
-    struct redist_mapper *mydata = (struct redist_mapper *)extra_data;     \
+    struct redist_mapper_data *mydata =                                    \
+        (struct redist_mapper_data *)extra_data;                           \
     struct space *s = mydata->s;                                           \
     int *dest =                                                            \
         mydata->dest + (ptrdiff_t)(parts - (struct TYPE *)mydata->base);   \
@@ -565,12 +566,12 @@ static void ENGINE_REDISTRIBUTE_DEST_MAPPER(spart);
  */
 static void ENGINE_REDISTRIBUTE_DEST_MAPPER(gpart);
 
-#endif /* redist_mapper */
+#endif /* redist_mapper_data */
 
-#ifdef WITH_MPI /* savelink_mapper */
+#ifdef WITH_MPI /* savelink_mapper_data */
 
 /* Support for saving the linkage between gparts and parts/sparts. */
-struct savelink_mapper {
+struct savelink_mapper_data {
   int nr_nodes;
   int *counts;
   void *parts;
@@ -590,7 +591,8 @@ struct savelink_mapper {
   engine_redistribute_savelink_mapper_##TYPE(void *map_data, int num_elements, \
                                              void *extra_data) {               \
     int *nodes = (int *)map_data;                                              \
-    struct savelink_mapper *mydata = (struct savelink_mapper *)extra_data;     \
+    struct savelink_mapper_data *mydata =                                      \
+        (struct savelink_mapper_data *)extra_data;                             \
     int nodeID = mydata->nodeID;                                               \
     int nr_nodes = mydata->nr_nodes;                                           \
     int *counts = mydata->counts;                                              \
@@ -598,7 +600,7 @@ struct savelink_mapper {
                                                                                \
     for (int j = 0; j < num_elements; j++) {                                   \
       int node = nodes[j];                                                     \
-      int count = 0;                                                        \
+      int count = 0;                                                           \
       size_t offset = 0;                                                       \
       for (int i = 0; i < node; i++) offset += counts[nodeID * nr_nodes + i];  \
                                                                                \
@@ -634,12 +636,12 @@ static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 1);
 static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 0);
 #endif
 
-#endif /* savelink_mapper */
+#endif /* savelink_mapper_data */
 
-#ifdef WITH_MPI /* relink_mapper */
+#ifdef WITH_MPI /* relink_mapper_data */
 
 /* Support for relinking parts, gparts and sparts after moving between nodes. */
-struct relink_mapper {
+struct relink_mapper_data {
   int nodeID;
   int nr_nodes;
   int *counts;
@@ -653,13 +655,14 @@ struct relink_mapper {
  *
  * @param map_data address of nodes to process.
  * @param num_elements the number nodes to process.
- * @param extra_data additional data defining the context (a relink_mapper).
+ * @param extra_data additional data defining the context (a
+ * relink_mapper_data).
  */
 static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
                                               void *extra_data) {
 
   int *nodes = (int *)map_data;
-  struct relink_mapper *mydata = (struct relink_mapper *)extra_data;
+  struct relink_mapper_data *mydata = (struct relink_mapper_data *)extra_data;
 
   int nodeID = mydata->nodeID;
   int nr_nodes = mydata->nr_nodes;
@@ -715,7 +718,7 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
   }
 }
 
-#endif /* relink_mapper */
+#endif /* relink_mapper_data */
 
 /**
  * @brief Redistribute the particles amongst the nodes according
@@ -764,7 +767,7 @@ void engine_redistribute(struct engine *e) {
   for (int k = 0; k < nr_nodes; k++) nodes[k] = k;
 
   /* Get destination of each particle */
-  struct redist_mapper redist_data;
+  struct redist_mapper_data redist_data;
   redist_data.s = s;
   redist_data.nodeID = nodeID;
   redist_data.nr_nodes = nr_nodes;
@@ -809,7 +812,7 @@ void engine_redistribute(struct engine *e) {
    * relative positions in the sent lists. */
   if (s->nr_parts > 0 && s->nr_gparts > 0) {
 
-    struct savelink_mapper savelink_data;
+    struct savelink_mapper_data savelink_data;
     savelink_data.nr_nodes = nr_nodes;
     savelink_data.counts = counts;
     savelink_data.parts = (void *)parts;
@@ -867,7 +870,7 @@ void engine_redistribute(struct engine *e) {
   /* We need to re-link the gpart partners of sparts. */
   if (s->nr_sparts > 0) {
 
-    struct savelink_mapper savelink_data;
+    struct savelink_mapper_data savelink_data;
     savelink_data.nr_nodes = nr_nodes;
     savelink_data.counts = s_counts;
     savelink_data.parts = (void *)sparts;
@@ -1025,7 +1028,7 @@ void engine_redistribute(struct engine *e) {
   /* Restore the part<->gpart and spart<->gpart links.
    * Generate indices and counts for threadpool tasks. Note we process a node
    * at a time. */
-  struct relink_mapper relink_data;
+  struct relink_mapper_data relink_data;
   relink_data.s = s;
   relink_data.counts = counts;
   relink_data.g_counts = g_counts;
