@@ -543,6 +543,41 @@ AC_SUBST([GRACKLE_LIBS])
 AC_SUBST([GRACKLE_INCS])
 AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
 
+# Check for FFTW. We test for this in the standard directories by default,
+# and only disable if using --with-fftw=no or --without-fftw. When a value
+# is given GSL must be found.
+have_fftw="no"
+AC_ARG_WITH([fftw],
+    [AS_HELP_STRING([--with-fftw=PATH],
+       [root directory where fftw is installed @<:@yes/no@:>@]
+    )],
+    [with_fftw="$withval"],
+    [with_fftw="test"]
+)
+if test "x$with_fftw" != "xno"; then
+   if test "x$with_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
+      FFTW_LIBS="-L$with_fftw/lib -lfftw3"
+      FFTW_INCS="-I$with_fftw/include"
+   else
+      FFTW_LIBS="-lfftw3"
+      FFTW_INCS=""
+   fi
+   #  FFTW is not specified, so just check if we have it.
+   if test "x$with_fftw" = "xtest"; then
+      AC_CHECK_LIB([fftw3],[fftw_malloc],[have_fftw="yes"],[have_fftw="no"],$FFTW_LIBS)
+      if test "x$have_fftw" != "xno"; then
+      	 AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.])
+      fi
+   else
+      AC_CHECK_LIB([fftw3],[fftw_malloc],
+         AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.]),
+         AC_MSG_ERROR(something is wrong with the FFTW library!), $FFTW_LIBS)
+      have_fftw="yes"
+   fi      
+fi
+AC_SUBST([FFTW_LIBS])
+AC_SUBST([FFTW_INCS])
+AM_CONDITIONAL([HAVEFFTW],[test -n "$FFTW_LIBS"])
 
 #  Check for tcmalloc a fast malloc that is part of the gperftools.
 have_tcmalloc="no"
@@ -704,16 +739,6 @@ if test "$ac_cv_func_pthread_setaffinity_np" = "yes"; then
   fi
 fi
 
-# Check for FFTW
-have_fftw3="no"
-AC_CHECK_HEADER([fftw3.h])
-if test "$ac_cv_header_fftw3_h" = "yes"; then
-   AC_CHECK_LIB([fftw3],[fftw_malloc], [AC_DEFINE([HAVE_FFTW],
-   [1],[Defined if FFTW 3.x exists.])] )
-   FFTW_LIBS="-lfftw3"
-   have_fftw3="yes"
-fi
-AC_SUBST([FFTW_LIBS])
 
 # Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
@@ -1114,7 +1139,7 @@ AC_MSG_RESULT([
    HDF5 enabled     : $with_hdf5
     - parallel      : $have_parallel_hdf5
    Metis enabled    : $have_metis
-   FFTW3 enabled    : $have_fftw3
+   FFTW3 enabled    : $have_fftw
    GSL enabled      : $have_gsl
    libNUMA enabled  : $have_numa
    GRACKLE enabled  : $have_grackle
