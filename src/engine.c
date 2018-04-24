@@ -510,7 +510,7 @@ struct redist_mapper {
 /* Generic function for accumulating counts for TYPE parts. Note
  * we use a local counts array to avoid the atomic_add in the parts
  * loop. */
-#define engine_redistribute_dest_mapper(TYPE)                              \
+#define ENGINE_REDISTRIBUTE_DEST_MAPPER(TYPE)                              \
   engine_redistribute_dest_mapper_##TYPE(void *map_data, int num_elements, \
                                          void *extra_data) {               \
     struct TYPE *parts = (struct TYPE *)map_data;                          \
@@ -547,7 +547,7 @@ struct redist_mapper {
  *
  * part version.
  */
-static void engine_redistribute_dest_mapper(part);
+static void ENGINE_REDISTRIBUTE_DEST_MAPPER(part);
 
 /**
  * @brief Accumulate the counts of star particles per cell.
@@ -555,7 +555,7 @@ static void engine_redistribute_dest_mapper(part);
  *
  * spart version.
  */
-static void engine_redistribute_dest_mapper(spart);
+static void ENGINE_REDISTRIBUTE_DEST_MAPPER(spart);
 
 /**
  * @brief Accumulate the counts of gravity particles per cell.
@@ -563,7 +563,7 @@ static void engine_redistribute_dest_mapper(spart);
  *
  * gpart version.
  */
-static void engine_redistribute_dest_mapper(gpart);
+static void ENGINE_REDISTRIBUTE_DEST_MAPPER(gpart);
 
 #endif /* redist_mapper */
 
@@ -586,7 +586,7 @@ struct savelink_mapper {
  *
  * CHECKS should be eliminated as dead code when optimizing.
  */
-#define engine_redistribute_savelink_mapper(TYPE, CHECKS)                      \
+#define ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(TYPE, CHECKS)                      \
   engine_redistribute_savelink_mapper_##TYPE(void *map_data, int num_elements, \
                                              void *extra_data) {               \
     int *nodes = (int *)map_data;                                              \
@@ -619,9 +619,9 @@ struct savelink_mapper {
  * Threadpool helper for accumulating the counts of particles per cell.
  */
 #ifdef SWIFT_DEBUG_CHECKS
-static void engine_redistribute_savelink_mapper(part, 1);
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(part, 1);
 #else
-static void engine_redistribute_savelink_mapper(part, 0);
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(part, 0);
 #endif
 
 /**
@@ -629,9 +629,9 @@ static void engine_redistribute_savelink_mapper(part, 0);
  * Threadpool helper for accumulating the counts of particles per cell.
  */
 #ifdef SWIFT_DEBUG_CHECKS
-static void engine_redistribute_savelink_mapper(spart, 1);
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 1);
 #else
-static void engine_redistribute_savelink_mapper(spart, 0);
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 0);
 #endif
 
 #endif /* savelink_mapper */
