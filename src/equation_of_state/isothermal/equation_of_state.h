@@ -25,7 +25,6 @@
 /* Local headers. */
 #include "adiabatic_index.h"
 #include "common_io.h"
-#include "debug.h"
 #include "inline.h"
 
 extern struct eos_parameters eos;
