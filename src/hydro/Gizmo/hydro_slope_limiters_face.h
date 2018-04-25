@@ -32,9 +32,12 @@
 #ifndef SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
 #define SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
 
+/* Some standard headers. */
 #include <float.h>
 
+/* Local headers. */
 #include "sign.h"
+#include "minmax.h"
 
 __attribute__((always_inline)) INLINE static float
 hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
