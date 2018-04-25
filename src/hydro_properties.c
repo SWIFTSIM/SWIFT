@@ -26,9 +26,9 @@
 
 /* Local headers. */
 #include "adiabatic_index.h"
-#include "equation_of_state.h"
 #include "common_io.h"
 #include "dimension.h"
+#include "equation_of_state.h"
 #include "error.h"
 #include "hydro.h"
 #include "kernel_hydro.h"

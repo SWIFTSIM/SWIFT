@@ -25,6 +25,7 @@
 /* Local includes. */
 #include "common_io.h"
 #include "inline.h"
+#include "part.h"
 
 /* Standard includes. */
 #include <string.h>

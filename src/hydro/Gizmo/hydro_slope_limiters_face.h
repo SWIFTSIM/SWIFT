@@ -36,8 +36,8 @@
 #include <float.h>
 
 /* Local headers. */
-#include "sign.h"
 #include "minmax.h"
+#include "sign.h"
 
 __attribute__((always_inline)) INLINE static float
 hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
