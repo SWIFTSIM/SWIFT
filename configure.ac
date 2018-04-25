@@ -67,6 +67,9 @@ case "$with_subgrid" in
 	with_subgrid_chemistry=gear
 	with_subgrid_hydro=gadget2
 	;;
+   eagle)
+	with_subgrid_cooling=EAGLE
+	with_subgrid_chemistry=EAGLE
    *)
       AC_MSG_ERROR([Unknown subgrid: $with_subgrid])
       ;;
