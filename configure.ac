@@ -444,6 +444,10 @@ if test "x$with_gsl" != "xno"; then
          AC_MSG_ERROR(something is wrong with the GSL library!), $GSL_LIBS)
       have_gsl="yes"
    fi
+   if test "$have_gsl" = "no"; then
+      GSL_LIBS=""
+      GSL_INCS=""
+   fi
 fi
 AC_SUBST([GSL_LIBS])
 AC_SUBST([GSL_INCS])
@@ -574,6 +578,10 @@ if test "x$with_fftw" != "xno"; then
          AC_MSG_ERROR(something is wrong with the FFTW library!), $FFTW_LIBS)
       have_fftw="yes"
    fi      
+   if test "$have_fftw" = "no"; then
+      FFTW_LIBS=""
+      FFTW_INCS=""
+   fi
 fi
 AC_SUBST([FFTW_LIBS])
 AC_SUBST([FFTW_INCS])
