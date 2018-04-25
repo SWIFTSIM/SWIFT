@@ -19,6 +19,8 @@
 #ifndef SWIFT_DEFAULT_HYDRO_IO_H
 #define SWIFT_DEFAULT_HYDRO_IO_H
 
+#include "adiabatic_index.h"
+#include "hydro.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 

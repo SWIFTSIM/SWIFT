@@ -799,7 +799,7 @@ void space_rebuild(struct space *s, int verbose) {
   }
   nr_sparts = s->nr_sparts;
 
-#endif  // WITH_MPI
+#endif /* WITH_MPI */
 
   /* Sort the parts according to their cells. */
   if (nr_parts > 0)
@@ -908,7 +908,7 @@ void space_rebuild(struct space *s, int verbose) {
   }
   nr_gparts = s->nr_gparts;
 
-#endif  // WITH_MPI
+#endif /* WITH_MPI */
 
   /* Sort the gparts according to their cells. */
   if (nr_gparts > 0)
@@ -2310,62 +2310,120 @@ void space_synchronize_particle_positions(struct space *s) {
                    s->nr_gparts, sizeof(struct gpart), 0, (void *)s);
 }
 
-/**
- * @brief Initialises all the particles by setting them into a valid state
- *
- * Calls hydro_first_init_part() on all the particles
- * Calls chemistry_first_init_part() on all the particles
- */
-void space_first_init_parts(struct space *s,
-                            const struct chemistry_data *chemistry,
-                            const struct cooling_function_data *cool_func) {
+void space_first_init_parts_mapper(void *restrict map_data, int count,
+                                   void *restrict extra_data) {
 
-  const size_t nr_parts = s->nr_parts;
-  struct part *restrict p = s->parts;
-  struct xpart *restrict xp = s->xparts;
+  struct part *restrict p = (struct part *)map_data;
+  const struct space *restrict s = (struct space *)extra_data;
+  const struct engine *e = s->e;
 
+  const ptrdiff_t delta = p - s->parts;
+  struct xpart *restrict xp = s->xparts + delta;
+
+  /* Extract some constants */
   const struct cosmology *cosmo = s->e->cosmology;
+  const struct phys_const *phys_const = s->e->physical_constants;
+  const struct unit_system *us = s->e->internal_units;
   const float a_factor_vel = cosmo->a * cosmo->a;
 
   const struct hydro_props *hydro_props = s->e->hydro_properties;
   const float u_init = hydro_props->initial_internal_energy;
   const float u_min = hydro_props->minimal_internal_energy;
 
-  for (size_t i = 0; i < nr_parts; ++i) {
+  const struct chemistry_global_data *chemistry = e->chemistry;
+  const struct cooling_function_data *cool_func = e->cooling_func;
 
+  for (int k = 0; k < count; k++) {
     /* Convert velocities to internal units */
-    p[i].v[0] *= a_factor_vel;
-    p[i].v[1] *= a_factor_vel;
-    p[i].v[2] *= a_factor_vel;
+    p[k].v[0] *= a_factor_vel;
+    p[k].v[1] *= a_factor_vel;
+    p[k].v[2] *= a_factor_vel;
 
 #ifdef HYDRO_DIMENSION_2D
-    p[i].x[2] = 0.f;
-    p[i].v[2] = 0.f;
+    p[k].x[2] = 0.f;
+    p[k].v[2] = 0.f;
 #endif
 
 #ifdef HYDRO_DIMENSION_1D
-    p[i].x[1] = p[i].x[2] = 0.f;
-    p[i].v[1] = p[i].v[2] = 0.f;
+    p[k].x[1] = p[k].x[2] = 0.f;
+    p[k].v[1] = p[k].v[2] = 0.f;
 #endif
 
-    hydro_first_init_part(&p[i], &xp[i]);
+    hydro_first_init_part(&p[k], &xp[k]);
 
     /* Overwrite the internal energy? */
-    if (u_init > 0.f) hydro_set_init_internal_energy(&p[i], u_init);
-    if (u_min > 0.f) hydro_set_init_internal_energy(&p[i], u_min);
+    if (u_init > 0.f) hydro_set_init_internal_energy(&p[k], u_init);
+    if (u_min > 0.f) hydro_set_init_internal_energy(&p[k], u_min);
 
     /* Also initialise the chemistry */
-    chemistry_first_init_part(&p[i], &xp[i], chemistry);
+    chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
 
     /* And the cooling */
-    cooling_first_init_part(&p[i], &xp[i], cool_func);
-
-    /* Check part->gpart->part linkeage. */
-    if (p[i].gpart) p[i].gpart->id_or_neg_offset = -i;
+    cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    p[i].ti_drift = 0;
-    p[i].ti_kick = 0;
+    /* Check part->gpart->part linkeage. */
+    if (p[k].gpart && p[k].gpart->id_or_neg_offset != -(k + delta))
+      error("Invalid gpart -> part link");
+
+    /* Initialise the time-integration check variables */
+    p[k].ti_drift = 0;
+    p[k].ti_kick = 0;
+#endif
+  }
+}
+
+/**
+ * @brief Initialises all the particles by setting them into a valid state
+ *
+ * Calls hydro_first_init_part() on all the particles
+ * Calls chemistry_first_init_part() on all the particles
+ * Calls cooling_first_init_part() on all the particles
+ */
+void space_first_init_parts(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+  if (s->nr_parts > 0)
+    threadpool_map(&s->e->threadpool, space_first_init_parts_mapper, s->parts,
+                   s->nr_parts, sizeof(struct part), 0, s);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+void space_first_init_gparts_mapper(void *restrict map_data, int count,
+                                    void *restrict extra_data) {
+
+  struct gpart *restrict gp = (struct gpart *)map_data;
+  const struct space *restrict s = (struct space *)extra_data;
+
+  const struct cosmology *cosmo = s->e->cosmology;
+  const float a_factor_vel = cosmo->a * cosmo->a;
+  const struct gravity_props *grav_props = s->e->gravity_properties;
+
+  for (int k = 0; k < count; k++) {
+    /* Convert velocities to internal units */
+    gp[k].v_full[0] *= a_factor_vel;
+    gp[k].v_full[1] *= a_factor_vel;
+    gp[k].v_full[2] *= a_factor_vel;
+
+#ifdef HYDRO_DIMENSION_2D
+    gp[k].x[2] = 0.f;
+    gp[k].v_full[2] = 0.f;
+#endif
+
+#ifdef HYDRO_DIMENSION_1D
+    gp[k].x[1] = gp[k].x[2] = 0.f;
+    gp[k].v_full[1] = gp[k].v_full[2] = 0.f;
+#endif
+
+    gravity_first_init_gpart(&gp[k], grav_props);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Initialise the time-integration check variables */
+    gp[k].ti_drift = 0;
+    gp[k].ti_kick = 0;
 #endif
   }
 }
@@ -2375,36 +2433,56 @@ void space_first_init_parts(struct space *s,
  *
  * Calls gravity_first_init_gpart() on all the particles
  */
-void space_first_init_gparts(struct space *s,
-                             const struct gravity_props *grav_props) {
+void space_first_init_gparts(struct space *s, int verbose) {
 
-  const size_t nr_gparts = s->nr_gparts;
-  struct gpart *restrict gp = s->gparts;
+  const ticks tic = getticks();
+  if (s->nr_gparts > 0)
+    threadpool_map(&s->e->threadpool, space_first_init_gparts_mapper, s->gparts,
+                   s->nr_gparts, sizeof(struct gpart), 0, s);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+void space_first_init_sparts_mapper(void *restrict map_data, int count,
+                                    void *restrict extra_data) {
+
+  struct spart *restrict sp = (struct spart *)map_data;
+  const struct space *restrict s = (struct space *)extra_data;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  const ptrdiff_t delta = sp - s->sparts;
+#endif
+
   const struct cosmology *cosmo = s->e->cosmology;
   const float a_factor_vel = cosmo->a * cosmo->a;
 
-  for (size_t i = 0; i < nr_gparts; ++i) {
-
+  for (int k = 0; k < count; k++) {
     /* Convert velocities to internal units */
-    gp[i].v_full[0] *= a_factor_vel;
-    gp[i].v_full[1] *= a_factor_vel;
-    gp[i].v_full[2] *= a_factor_vel;
+    sp[k].v[0] *= a_factor_vel;
+    sp[k].v[1] *= a_factor_vel;
+    sp[k].v[2] *= a_factor_vel;
 
 #ifdef HYDRO_DIMENSION_2D
-    gp[i].x[2] = 0.f;
-    gp[i].v_full[2] = 0.f;
+    sp[k].x[2] = 0.f;
+    sp[k].v[2] = 0.f;
 #endif
 
 #ifdef HYDRO_DIMENSION_1D
-    gp[i].x[1] = gp[i].x[2] = 0.f;
-    gp[i].v_full[1] = gp[i].v_full[2] = 0.f;
+    sp[k].x[1] = sp[k].x[2] = 0.f;
+    sp[k].v[1] = sp[k].v[2] = 0.f;
 #endif
 
-    gravity_first_init_gpart(&gp[i], grav_props);
+    star_first_init_spart(&sp[k]);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    gp[i].ti_drift = 0;
-    gp[i].ti_kick = 0;
+    if (sp[k].gpart && sp[k].gpart->id_or_neg_offset != -(k + delta))
+      error("Invalid gpart -> spart link");
+
+    /* Initialise the time-integration check variables */
+    sp[k].ti_drift = 0;
+    sp[k].ti_kick = 0;
 #endif
   }
 }
@@ -2414,40 +2492,15 @@ void space_first_init_gparts(struct space *s,
  *
  * Calls star_first_init_spart() on all the particles
  */
-void space_first_init_sparts(struct space *s) {
+void space_first_init_sparts(struct space *s, int verbose) {
+  const ticks tic = getticks();
+  if (s->nr_sparts > 0)
+    threadpool_map(&s->e->threadpool, space_first_init_sparts_mapper, s->sparts,
+                   s->nr_sparts, sizeof(struct spart), 0, s);
 
-  const size_t nr_sparts = s->nr_sparts;
-  struct spart *restrict sp = s->sparts;
-  const struct cosmology *cosmo = s->e->cosmology;
-  const float a_factor_vel = cosmo->a * cosmo->a;
-
-  for (size_t i = 0; i < nr_sparts; ++i) {
-
-    /* Convert velocities to internal units */
-    sp[i].v[0] *= a_factor_vel;
-    sp[i].v[1] *= a_factor_vel;
-    sp[i].v[2] *= a_factor_vel;
-
-#ifdef HYDRO_DIMENSION_2D
-    sp[i].x[2] = 0.f;
-    sp[i].v[2] = 0.f;
-#endif
-
-#ifdef HYDRO_DIMENSION_1D
-    sp[i].x[1] = sp[i].x[2] = 0.f;
-    sp[i].v[1] = sp[i].v[2] = 0.f;
-#endif
-
-    star_first_init_spart(&sp[i]);
-
-    /* Check spart->gpart->spart linkeage. */
-    if (sp[i].gpart) sp[i].gpart->id_or_neg_offset = -i;
-
-#ifdef SWIFT_DEBUG_CHECKS
-    sp[i].ti_drift = 0;
-    sp[i].ti_kick = 0;
-#endif
-  }
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 void space_init_parts_mapper(void *restrict map_data, int count,

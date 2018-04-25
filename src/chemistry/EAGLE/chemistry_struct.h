@@ -38,7 +38,7 @@ enum chemistry_element {
 /**
  * @brief Global chemical abundance information in the EAGLE model.
  */
-struct chemistry_data {
+struct chemistry_global_data {
 
   /*! Fraction of the particle mass in given elements at the start of the run */
   float initial_metal_mass_fraction[chemistry_element_count];

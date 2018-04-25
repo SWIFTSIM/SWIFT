@@ -57,10 +57,10 @@ chemistry_get_element_name(enum chemistry_element elem) {
  * the various smooth metallicity tasks
  *
  * @param p The particle to act upon
- * @param cd #chemistry_data containing chemistry informations.
+ * @param cd #chemistry_global_data containing chemistry informations.
  */
 __attribute__((always_inline)) INLINE static void chemistry_init_part(
-    struct part* restrict p, const struct chemistry_data* cd) {}
+    struct part* restrict p, const struct chemistry_global_data* cd) {}
 
 /**
  * @brief Finishes the smooth metal calculation.
@@ -71,11 +71,11 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  * This function requires the #hydro_end_density to have been called.
  *
  * @param p The particle to act upon.
- * @param cd #chemistry_data containing chemistry informations.
+ * @param cd #chemistry_global_data containing chemistry informations.
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_density(
-    struct part* restrict p, const struct chemistry_data* cd,
+    struct part* restrict p, const struct chemistry_global_data* cd,
     const struct cosmology* cosmo) {}
 
 /**
@@ -87,8 +87,11 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  * @param data The global chemistry information.
  */
 __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct chemistry_data* data) {
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct chemistry_global_data* data, struct part* restrict p,
+    struct xpart* restrict xp) {
 
   p->chemistry_data.metal_mass_fraction_total =
       data->initial_metal_mass_fraction_total;
@@ -107,7 +110,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
  */
 static INLINE void chemistry_init_backend(
     const struct swift_params* parameter_file, const struct unit_system* us,
-    const struct phys_const* phys_const, struct chemistry_data* data) {
+    const struct phys_const* phys_const, struct chemistry_global_data* data) {
 
   /* Read the total metallicity */
   data->initial_metal_mass_fraction_total =
@@ -133,9 +136,11 @@ static INLINE void chemistry_init_backend(
 /**
  * @brief Prints the properties of the chemistry model to stdout.
  *
- * @brief The #chemistry_data containing information about the current model.
+ * @brief The #chemistry_global_data containing information about the current
+ * model.
  */
-static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
+static INLINE void chemistry_print_backend(
+    const struct chemistry_global_data* data) {
 
   message("Chemistry model is 'EAGLE' tracking %d elements.",
           chemistry_element_count);

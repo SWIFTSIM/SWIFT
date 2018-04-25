@@ -968,7 +968,7 @@ esac
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<function>],
-      [cooling function @<:@none, const-du, const-lambda, grackle default: none@:>@]
+      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle, grackle1, grackle2, grackle3 default: none@:>@]
    )],
    [with_cooling="$withval"],
    [with_cooling="none"]
@@ -985,7 +985,20 @@ case "$with_cooling" in
    ;;
    grackle)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [0], [Grackle chemistry network, mode 0])
+   ;; 
+   grackle1)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [1], [Grackle chemistry network, mode 1])
    ;;
+   grackle2)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [2], [Grackle chemistry network, mode 2])
+   ;; 
+   grackle3)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [3], [Grackle chemistry network, mode 3])
+   ;; 
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
    ;;

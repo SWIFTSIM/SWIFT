@@ -4160,9 +4160,9 @@ void engine_first_init_particles(struct engine *e) {
   const ticks tic = getticks();
 
   /* Set the particles in a state where they are ready for a run. */
-  space_first_init_parts(e->s, e->chemistry, e->cooling_func);
-  space_first_init_gparts(e->s, e->gravity_properties);
-  space_first_init_sparts(e->s);
+  space_first_init_parts(e->s, e->verbose);
+  space_first_init_gparts(e->s, e->verbose);
+  space_first_init_sparts(e->s, e->verbose);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -5202,15 +5202,18 @@ void engine_unpin() {
  * @param chemistry The chemistry information.
  * @param sourceterms The properties of the source terms function.
  */
-void engine_init(
-    struct engine *e, struct space *s, const struct swift_params *params,
-    long long Ngas, long long Ndm, int policy, int verbose,
-    struct repartition *reparttype, const struct unit_system *internal_units,
-    const struct phys_const *physical_constants, struct cosmology *cosmo,
-    const struct hydro_props *hydro, struct gravity_props *gravity,
-    const struct external_potential *potential,
-    const struct cooling_function_data *cooling_func,
-    const struct chemistry_data *chemistry, struct sourceterms *sourceterms) {
+void engine_init(struct engine *e, struct space *s,
+                 const struct swift_params *params, long long Ngas,
+                 long long Ndm, int policy, int verbose,
+                 struct repartition *reparttype,
+                 const struct unit_system *internal_units,
+                 const struct phys_const *physical_constants,
+                 struct cosmology *cosmo, const struct hydro_props *hydro,
+                 struct gravity_props *gravity,
+                 const struct external_potential *potential,
+                 const struct cooling_function_data *cooling_func,
+                 const struct chemistry_global_data *chemistry,
+                 struct sourceterms *sourceterms) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -5973,8 +5976,9 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   cooling_struct_restore(cooling_func, stream);
   e->cooling_func = cooling_func;
 
-  struct chemistry_data *chemistry =
-      (struct chemistry_data *)malloc(sizeof(struct chemistry_data));
+  struct chemistry_global_data *chemistry =
+      (struct chemistry_global_data *)malloc(
+          sizeof(struct chemistry_global_data));
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
 
