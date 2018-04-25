@@ -34,6 +34,7 @@
 
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
+#include "equation_of_state.h"  // For enum material_id
 
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
@@ -104,7 +105,7 @@ struct part {
   float rho;
 
   /*! Material identifier flag (integer) */
-  material_id mat_id;
+  enum material_id mat_id;
 
   /* Store density/force specific stuff. */
   union {

@@ -779,7 +779,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo, shadowfax, minimal-multi-mat debug default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo, shadowfax, minimal-multi-mat, debug default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -986,7 +986,7 @@ case "$with_cooling" in
    grackle)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       AC_DEFINE([COOLING_GRACKLE_MODE], [0], [Grackle chemistry network, mode 0])
-   ;; 
+   ;;
    grackle1)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       AC_DEFINE([COOLING_GRACKLE_MODE], [1], [Grackle chemistry network, mode 1])
@@ -994,11 +994,11 @@ case "$with_cooling" in
    grackle2)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       AC_DEFINE([COOLING_GRACKLE_MODE], [2], [Grackle chemistry network, mode 2])
-   ;; 
+   ;;
    grackle3)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       AC_DEFINE([COOLING_GRACKLE_MODE], [3], [Grackle chemistry network, mode 3])
-   ;; 
+   ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
    ;;
