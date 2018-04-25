@@ -33,7 +33,6 @@
 #include <math.h>
 
 /* Local headers. */
-#include "debug.h"
 #include "error.h"
 #include "inline.h"
 
