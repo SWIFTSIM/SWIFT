@@ -365,8 +365,8 @@ void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
-void engine_pin();
-void engine_unpin();
+void engine_pin(void);
+void engine_unpin(void);
 void engine_clean(struct engine *e);
 int engine_estimate_nr_tasks(struct engine *e);
 

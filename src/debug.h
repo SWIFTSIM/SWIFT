@@ -51,5 +51,5 @@ void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells);
 
 void getProcMemUse(long *size, long *resident, long *share, long *trs,
                    long *lrs, long *drs, long *dt);
-void printProcMemUse();
+void printProcMemUse(void);
 #endif /* SWIFT_DEBUG_H */

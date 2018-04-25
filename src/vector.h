@@ -493,7 +493,7 @@ __attribute__((always_inline)) INLINE vector vector_set1(const float x) {
  * @return temp set #vector.
  * @return A #vector filled with zeros.
  */
-__attribute__((always_inline)) INLINE vector vector_setzero() {
+__attribute__((always_inline)) INLINE vector vector_setzero(void) {
 
   vector temp;
   temp.v = vec_setzero();

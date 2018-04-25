@@ -787,10 +787,10 @@ if test "$enable_warn" != "no"; then
     # We will do this by hand instead and only default to the macro for unknown compilers
     case "$ax_cv_c_compiler_vendor" in
           gnu | clang)
-             CFLAGS="$CFLAGS -Wall -Wextra -Wno-unused-parameter -Wshadow"
+             CFLAGS="$CFLAGS -Wall -Wextra -Wno-unused-parameter -Wshadow -Wstrict-prototypes"
           ;;
 	  intel)
-             CFLAGS="$CFLAGS -w2 -Wunused-variable -Wshadow"
+             CFLAGS="$CFLAGS -w2 -Wunused-variable -Wshadow -Wstrict-prototypes"
           ;;
 	  *)
 	     AX_CFLAGS_WARN_ALL

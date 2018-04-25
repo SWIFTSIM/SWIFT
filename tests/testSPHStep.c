@@ -93,7 +93,7 @@ void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 
 /* Run a full time step integration for one cell */
-int main() {
+int main(int argc, char *argv[]) {
 
 #ifndef DEFAULT_SPH
   return 0;

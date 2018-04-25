@@ -43,7 +43,7 @@ struct mpicollectgroup1 {
 };
 
 /* Forward declarations. */
-static void mpicollect_create_MPI_type();
+static void mpicollect_create_MPI_type(void);
 
 /**
  * @brief MPI datatype for the #mpicollectgroup1 structure.

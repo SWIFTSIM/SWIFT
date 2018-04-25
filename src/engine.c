@@ -5126,7 +5126,7 @@ void engine_dump_snapshot(struct engine *e) {
 /**
  * @brief Returns the initial affinity the main thread is using.
  */
-static cpu_set_t *engine_entry_affinity() {
+static cpu_set_t *engine_entry_affinity(void) {
 
   static int use_entry_affinity = 0;
   static cpu_set_t entry_affinity;

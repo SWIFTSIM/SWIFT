@@ -26,7 +26,7 @@
 
 #define numPoints (1 << 4)
 
-int main() {
+int main(int argc, char *argv[]) {
 
   const float h = 1.2348f;
 

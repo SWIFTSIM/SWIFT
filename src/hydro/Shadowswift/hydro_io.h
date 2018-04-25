@@ -185,4 +185,4 @@ void hydro_write_flavour(hid_t h_grpsph) {
  *
  * @return 1 if entropy is in 'internal energy', 0 otherwise.
  */
-int writeEntropyFlag() { return 0; }
+int writeEntropyFlag(void) { return 0; }

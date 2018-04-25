@@ -50,7 +50,7 @@ static int clocks_units_index = 0;
 static double clocks_units_scale = 1000.0;
 
 /* Local prototypes. */
-static void clocks_estimate_cpufreq();
+static void clocks_estimate_cpufreq(void);
 
 /**
  * @brief Get the current time.

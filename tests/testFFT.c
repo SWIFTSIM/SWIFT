@@ -18,12 +18,11 @@
  ******************************************************************************/
 
 /* Some standard headers. */
-
 #include "../config.h"
 
 #ifndef HAVE_FFTW
 
-int main() { return 0; }
+int main(int argc, char *argv[]) { return 0; }
 
 #else
 
@@ -34,7 +33,7 @@ int main() { return 0; }
 /* Includes. */
 #include "swift.h"
 
-int main() {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
