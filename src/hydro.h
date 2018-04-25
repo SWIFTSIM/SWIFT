@@ -23,8 +23,10 @@
 #include "../config.h"
 
 /* Local headers. */
+#include "const.h"
 #include "hydro_properties.h"
 #include "kernel_hydro.h"
+#include "part.h"
 
 /* Import the right functions */
 #if defined(MINIMAL_SPH)

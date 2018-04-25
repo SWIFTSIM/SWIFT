@@ -26,6 +26,7 @@
 
 /* Local headers. */
 #include "adiabatic_index.h"
+#include "equation_of_state.h"
 #include "common_io.h"
 #include "dimension.h"
 #include "error.h"
