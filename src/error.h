@@ -50,6 +50,7 @@
 extern int engine_rank;
 #define error(s, ...)                                                      \
   ({                                                                       \
+    fflush(stdout);							   \
     fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,          \
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
@@ -58,6 +59,7 @@ extern int engine_rank;
 #else
 #define error(s, ...)                                                      \
   ({                                                                       \
+    fflush(stdout);							   \
     fprintf(stderr, "%s %s:%s():%i: " s "\n", clocks_get_timesincestart(), \
             __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);              \
     swift_abort(1);                                                        \
