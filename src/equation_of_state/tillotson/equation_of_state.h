@@ -32,14 +32,18 @@
 /* Local headers. */
 #include "adiabatic_index.h"
 #include "common_io.h"
-#include "debug.h"
 #include "inline.h"
 
 extern struct eos_parameters eos;
 /* ------------------------------------------------------------------------- */
 
+// Tillotson parameters
+struct Til_params {
+    float rho_0, a, b, A, B, E_0, E_iv, E_cv, alpha, beta, eta_min;
+};
+
 struct eos_parameters {
-    Til_params Til_iron, Til_granite, Til_water;
+    struct Til_params Til_iron, Til_granite, Til_water;
 };
 
 // Material identifier flags
@@ -48,11 +52,6 @@ enum material_id {
     Til_iron = 10,
     Til_granite = 11,
     Til_water = 12
-};
-
-// Tillotson parameters
-struct Til_params {
-    float rho_0, a, b, A, B, E_0, E_iv, E_cv, alpha, beta, eta_min;
 };
 
 // Tillotson parameter values for each material
@@ -83,7 +82,7 @@ void set_Til_granite(struct Til_params *mat) {
     mat->eta_min = 0.0;
 }
 void set_Til_water(struct Til_params *mat) {
-    mat->rho0 = 0.998;
+    mat->rho_0 = 0.998;
     mat->a = 0.7;
     mat->b = 0.15;
     mat->A = 2.18e10;
@@ -180,13 +179,13 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
     // Select the material parameters
     switch(mat_id) {
         case Til_iron:
-            mat = &eos_parameters.Til_iron;
+            mat = &eos.Til_iron;
 
         case Til_granite:
-            mat = &eos_parameters.Til_granite;
+            mat = &eos.Til_granite;
 
         case Til_water:
-            mat = &eos_parameters.Til_water;
+            mat = &eos.Til_water;
     };
 
     const float eta = density / params->rho_0;
