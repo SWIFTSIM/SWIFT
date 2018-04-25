@@ -172,8 +172,8 @@ void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
   list[7] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
                                               UNIT_CONV_ENTROPY_PER_UNIT_MASS,
                                               parts, xparts, convert_S);
-  list[8] = io_make_output_field_convert_part("MaterialID", INT, 1, 1, parts,
-                                              mat_id);
+  list[8] = io_make_output_field("MaterialID", INT, 1, UNIT_CONV_NO_UNITS,
+                                 parts, mat_id);
   list[8] = io_make_output_field_convert_part(
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, xparts, convert_P);
 

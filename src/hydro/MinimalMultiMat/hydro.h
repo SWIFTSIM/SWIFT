@@ -391,10 +391,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo) {
 
   /* Compute the pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
 
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure, p->mat_id);
 
   /* Compute the "grad h" term */
   const float rho_inv = 1.f / p->rho;
@@ -486,10 +486,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->u += p->u_dt * dt_therm;
 
   /* Compute the new pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
 
   /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure, p->mat_id);
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;

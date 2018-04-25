@@ -55,7 +55,7 @@ enum material_id {
 };
 
 // Tillotson parameter values for each material
-void set_Til_iron(struct Til_params *mat) {
+INLINE static void set_Til_iron(struct Til_params *mat) {
     mat->rho_0 = 7.800;
     mat->a = 0.5;
     mat->b = 1.5;
@@ -68,7 +68,7 @@ void set_Til_iron(struct Til_params *mat) {
     mat->beta = 5.0;
     mat->eta_min = 0.0;
 }
-void set_Til_granite(struct Til_params *mat) {
+INLINE static void set_Til_granite(struct Til_params *mat) {
     mat->rho_0 = 2.680;
     mat->a = 0.5;
     mat->b = 1.3;
@@ -81,7 +81,7 @@ void set_Til_granite(struct Til_params *mat) {
     mat->beta = 5.0;
     mat->eta_min = 0.0;
 }
-void set_Til_water(struct Til_params *mat) {
+INLINE static void set_Til_water(struct Til_params *mat) {
     mat->rho_0 = 0.998;
     mat->a = 0.7;
     mat->b = 0.15;
@@ -188,13 +188,13 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
             mat = &eos.Til_water;
     };
 
-    const float eta = density / params->rho_0;
+    const float eta = density / mat->rho_0;
     const float mu = eta - 1.f;
     const float nu = 1.f/eta - 1.f;
     float P_c, P_e, P;
 
     // Condensed or cold
-    if (eta < eta_min) {
+    if (eta < mat->eta_min) {
         P_c = 0.f;
     }
     else {
@@ -204,8 +204,8 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
     // Expanded and hot
     P_e = mat->a*density*u + (
         mat->b * density * u / (u / (mat->E_0 * eta*eta) + 1.f)
-        + mat->A*mu * np.exp(-mat->beta * nu)
-        ) * np.exp(-mat->alpha * nu*nu);
+        + mat->A*mu * exp(-mat->beta * nu)
+        ) * exp(-mat->alpha * nu*nu);
 
     // Condensed or cold state
     if ((1.f < eta) || (u < mat->E_iv)) {
@@ -251,7 +251,7 @@ gas_internal_energy_from_pressure(float density, float pressure, int mat_id) {
 __attribute__((always_inline)) INLINE static float
 gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
 
-  return ; ///wilo
+  return 12345; ///WIP!
 }
 
 /**
@@ -279,9 +279,9 @@ __attribute__((always_inline)) INLINE static void eos_init(
     struct eos_parameters *e, const struct swift_params *params) {
 
     // Set the Tillotson parameters for each material
-    set_Til_iron(e->Til_iron);
-    set_Til_granite(e->Til_granite);
-    set_Til_water(e->Til_water);
+    set_Til_iron(&e->Til_iron);
+    set_Til_granite(&e->Til_granite);
+    set_Til_water(&e->Til_water);
 }
 
 /**

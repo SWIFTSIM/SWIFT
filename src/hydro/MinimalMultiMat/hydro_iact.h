@@ -34,6 +34,7 @@
 
 #include "adiabatic_index.h"
 #include "minmax.h"
+#include "const.h"
 
 /**
  * @brief Density interaction between two particles.
