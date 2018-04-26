@@ -381,7 +381,7 @@ void fof_search_tree_serial(struct space *s) {
   int num_groups = nr_gparts;
   struct gpart *gparts = s->gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double search_r2 = s->cell_search_r2;
+  const double search_r2 = s->l_x2;
 
   message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts, s->l_x2);
 
@@ -401,7 +401,7 @@ void fof_search_tree_serial(struct space *s) {
 
   for(size_t i=0; i<nr_gparts; i++) num_in_groups[i] = 1;    
 
-  /* Loop over particles and find which particles belong in the same group. */
+  /* Loop over cells and find which cells are in range of each other to perform the FOF search. */
   for(int cid=0; cid<nr_cells; cid++) {
     
     struct cell *restrict ci = &s->cells_top[cid];
@@ -409,6 +409,7 @@ void fof_search_tree_serial(struct space *s) {
     const double ciy = ci->loc[1];
     const double ciz = ci->loc[2];
  
+    /* Perform FOF search on local particles within the cell. */
     fof_search_cell(s, ci, pid, num_in_groups, &num_groups);
     
     for(int cjd=cid + 1; cjd<nr_cells; cjd++) {      
@@ -418,11 +419,16 @@ void fof_search_tree_serial(struct space *s) {
       const double cjy = cj->loc[1];
       const double cjz = cj->loc[2];
 
-      /* Compute distance between cells, remembering to account for boundary conditions. */
+      /* Find the shortest distance between cells, remembering to account for boundary conditions. */
       float dx[3], r2 = 0.0f;
-      dx[0] = cix - cjx;
-      dx[1] = ciy - cjy;
-      dx[2] = ciz - cjz;
+      dx[0] = min3(abs(cix - cjx), abs(cix - (cjx + cj->width[0])), abs((cix + ci->width[0]) - cjx));
+      dx[0] = min(dx[0], abs((cix + ci->width[0]) - (cjx + cj->width[0])));
+
+      dx[1] = min3(abs(ciy - cjy), abs(ciy - (cjy + cj->width[1])), abs((ciy + ci->width[1]) - cjy));
+      dx[1] = min(dx[1], abs((ciy + ci->width[1]) - (cjy + cj->width[1])));
+      
+      dx[2] = min3(abs(ciz - cjz), abs(ciz - (cjz + cj->width[2])), abs((ciz + ci->width[2]) - cjz));
+      dx[2] = min(dx[2], abs((ciz + ci->width[2]) - (cjz + cj->width[2])));
 
       for (int k = 0; k < 3; k++) {
         dx[k] = nearest(dx[k], dim[k]);
