@@ -494,6 +494,232 @@ static void *engine_do_redistribute(int *counts, char *parts,
 }
 #endif
 
+#ifdef WITH_MPI /* redist_mapper */
+
+/* Support for engine_redistribute threadpool dest mappers. */
+struct redist_mapper_data {
+  int *counts;
+  int *dest;
+  int nodeID;
+  int nr_nodes;
+  struct cell *cells;
+  struct space *s;
+  void *base;
+};
+
+/* Generic function for accumulating counts for TYPE parts. Note
+ * we use a local counts array to avoid the atomic_add in the parts
+ * loop. */
+#define ENGINE_REDISTRIBUTE_DEST_MAPPER(TYPE)                              \
+  engine_redistribute_dest_mapper_##TYPE(void *map_data, int num_elements, \
+                                         void *extra_data) {               \
+    struct TYPE *parts = (struct TYPE *)map_data;                          \
+    struct redist_mapper_data *mydata =                                    \
+        (struct redist_mapper_data *)extra_data;                           \
+    struct space *s = mydata->s;                                           \
+    int *dest =                                                            \
+        mydata->dest + (ptrdiff_t)(parts - (struct TYPE *)mydata->base);   \
+    int *lcounts = NULL;                                                   \
+    if ((lcounts = (int *)calloc(                                          \
+             sizeof(int), mydata->nr_nodes * mydata->nr_nodes)) == NULL)   \
+      error("Failed to allocate counts thread-specific buffer");           \
+    for (int k = 0; k < num_elements; k++) {                               \
+      for (int j = 0; j < 3; j++) {                                        \
+        if (parts[k].x[j] < 0.0)                                           \
+          parts[k].x[j] += s->dim[j];                                      \
+        else if (parts[k].x[j] >= s->dim[j])                               \
+          parts[k].x[j] -= s->dim[j];                                      \
+      }                                                                    \
+      const int cid = cell_getid(s->cdim, parts[k].x[0] * s->iwidth[0],    \
+                                 parts[k].x[1] * s->iwidth[1],             \
+                                 parts[k].x[2] * s->iwidth[2]);            \
+      dest[k] = s->cells_top[cid].nodeID;                                  \
+      size_t ind = mydata->nodeID * mydata->nr_nodes + dest[k];            \
+      lcounts[ind] += 1;                                                   \
+    }                                                                      \
+    for (int k = 0; k < (mydata->nr_nodes * mydata->nr_nodes); k++)        \
+      atomic_add(&mydata->counts[k], lcounts[k]);                          \
+    free(lcounts);                                                         \
+  }
+
+/**
+ * @brief Accumulate the counts of particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * part version.
+ */
+static void ENGINE_REDISTRIBUTE_DEST_MAPPER(part);
+
+/**
+ * @brief Accumulate the counts of star particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * spart version.
+ */
+static void ENGINE_REDISTRIBUTE_DEST_MAPPER(spart);
+
+/**
+ * @brief Accumulate the counts of gravity particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * gpart version.
+ */
+static void ENGINE_REDISTRIBUTE_DEST_MAPPER(gpart);
+
+#endif /* redist_mapper_data */
+
+#ifdef WITH_MPI /* savelink_mapper_data */
+
+/* Support for saving the linkage between gparts and parts/sparts. */
+struct savelink_mapper_data {
+  int nr_nodes;
+  int *counts;
+  void *parts;
+  int nodeID;
+};
+
+/**
+ * @brief Save the offset of each gravity partner of a part or spart.
+ *
+ * The offset is from the start of the sorted particles to be sent to a node.
+ * This is possible as parts without gravity partners have a positive id.
+ * These offsets are used to restore the pointers on the receiving node.
+ *
+ * CHECKS should be eliminated as dead code when optimizing.
+ */
+#define ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(TYPE, CHECKS)                      \
+  engine_redistribute_savelink_mapper_##TYPE(void *map_data, int num_elements, \
+                                             void *extra_data) {               \
+    int *nodes = (int *)map_data;                                              \
+    struct savelink_mapper_data *mydata =                                      \
+        (struct savelink_mapper_data *)extra_data;                             \
+    int nodeID = mydata->nodeID;                                               \
+    int nr_nodes = mydata->nr_nodes;                                           \
+    int *counts = mydata->counts;                                              \
+    struct TYPE *parts = (struct TYPE *)mydata->parts;                         \
+                                                                               \
+    for (int j = 0; j < num_elements; j++) {                                   \
+      int node = nodes[j];                                                     \
+      int count = 0;                                                           \
+      size_t offset = 0;                                                       \
+      for (int i = 0; i < node; i++) offset += counts[nodeID * nr_nodes + i];  \
+                                                                               \
+      for (int k = 0; k < counts[nodeID * nr_nodes + node]; k++) {             \
+        if (parts[k + offset].gpart != NULL) {                                 \
+          if (CHECKS)                                                          \
+            if (parts[k].gpart->id_or_neg_offset > 0)                          \
+              error("Trying to link a partnerless " #TYPE "!");                \
+          parts[k + offset].gpart->id_or_neg_offset = -count;                  \
+          count++;                                                             \
+        }                                                                      \
+      }                                                                        \
+    }                                                                          \
+  }
+
+/**
+ * @brief Save position of part-gpart links.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ */
+#ifdef SWIFT_DEBUG_CHECKS
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(part, 1);
+#else
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(part, 0);
+#endif
+
+/**
+ * @brief Save position of spart-gpart links.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ */
+#ifdef SWIFT_DEBUG_CHECKS
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 1);
+#else
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 0);
+#endif
+
+#endif /* savelink_mapper_data */
+
+#ifdef WITH_MPI /* relink_mapper_data */
+
+/* Support for relinking parts, gparts and sparts after moving between nodes. */
+struct relink_mapper_data {
+  int nodeID;
+  int nr_nodes;
+  int *counts;
+  int *s_counts;
+  int *g_counts;
+  struct space *s;
+};
+
+/**
+ * @brief Restore the part/gpart and spart/gpart links for a list of nodes.
+ *
+ * @param map_data address of nodes to process.
+ * @param num_elements the number nodes to process.
+ * @param extra_data additional data defining the context (a
+ * relink_mapper_data).
+ */
+static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
+                                              void *extra_data) {
+
+  int *nodes = (int *)map_data;
+  struct relink_mapper_data *mydata = (struct relink_mapper_data *)extra_data;
+
+  int nodeID = mydata->nodeID;
+  int nr_nodes = mydata->nr_nodes;
+  int *counts = mydata->counts;
+  int *g_counts = mydata->g_counts;
+  int *s_counts = mydata->s_counts;
+  struct space *s = mydata->s;
+
+  for (int i = 0; i < num_elements; i++) {
+
+    int node = nodes[i];
+
+    /* Get offsets to correct parts of the counts arrays for this node. */
+    size_t offset_parts = 0;
+    size_t offset_gparts = 0;
+    size_t offset_sparts = 0;
+    for (int n = 0; n < node; n++) {
+      int ind_recv = n * nr_nodes + nodeID;
+      offset_parts += counts[ind_recv];
+      offset_gparts += g_counts[ind_recv];
+      offset_sparts += s_counts[ind_recv];
+    }
+
+    /* Number of gparts sent from this node. */
+    int ind_recv = node * nr_nodes + nodeID;
+    const size_t count_gparts = g_counts[ind_recv];
+
+    /* Loop over the gparts received from this node */
+    for (size_t k = offset_gparts; k < offset_gparts + count_gparts; k++) {
+
+      /* Does this gpart have a gas partner ? */
+      if (s->gparts[k].type == swift_type_gas) {
+
+        const ptrdiff_t partner_index =
+            offset_parts - s->gparts[k].id_or_neg_offset;
+
+        /* Re-link */
+        s->gparts[k].id_or_neg_offset = -partner_index;
+        s->parts[partner_index].gpart = &s->gparts[k];
+      }
+
+      /* Does this gpart have a star partner ? */
+      else if (s->gparts[k].type == swift_type_star) {
+
+        const ptrdiff_t partner_index =
+            offset_sparts - s->gparts[k].id_or_neg_offset;
+
+        /* Re-link */
+        s->gparts[k].id_or_neg_offset = -partner_index;
+        s->sparts[partner_index].gpart = &s->gparts[k];
+      }
+    }
+  }
+}
+
+#endif /* relink_mapper_data */
+
 /**
  * @brief Redistribute the particles amongst the nodes according
  *      to their cell's node IDs.
@@ -519,9 +745,6 @@ void engine_redistribute(struct engine *e) {
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
   const int nr_cells = s->nr_cells;
-  const int *cdim = s->cdim;
-  const double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   struct part *parts = s->parts;
   struct gpart *gparts = s->gparts;
   struct spart *sparts = s->sparts;
@@ -530,38 +753,31 @@ void engine_redistribute(struct engine *e) {
   /* Allocate temporary arrays to store the counts of particles to be sent
    * and the destination of each particle */
   int *counts;
-  if ((counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
+  if ((counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
     error("Failed to allocate counts temporary buffer.");
-  bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
 
   int *dest;
   if ((dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
     error("Failed to allocate dest temporary buffer.");
 
+  /* Simple index of node IDs, used for mappers over nodes. */
+  int *nodes = NULL;
+  if ((nodes = (int *)malloc(sizeof(int) * nr_nodes)) == NULL)
+    error("Failed to allocate nodes temporary buffer.");
+  for (int k = 0; k < nr_nodes; k++) nodes[k] = k;
+
   /* Get destination of each particle */
-  for (size_t k = 0; k < s->nr_parts; k++) {
+  struct redist_mapper_data redist_data;
+  redist_data.s = s;
+  redist_data.nodeID = nodeID;
+  redist_data.nr_nodes = nr_nodes;
 
-    /* Periodic boundary conditions */
-    for (int j = 0; j < 3; j++) {
-      if (parts[k].x[j] < 0.0)
-        parts[k].x[j] += dim[j];
-      else if (parts[k].x[j] >= dim[j])
-        parts[k].x[j] -= dim[j];
-    }
-    const int cid =
-        cell_getid(cdim, parts[k].x[0] * iwidth[0], parts[k].x[1] * iwidth[1],
-                   parts[k].x[2] * iwidth[2]);
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cid < 0 || cid >= s->nr_cells)
-      error("Bad cell id %i for part %zu at [%.3e,%.3e,%.3e].", cid, k,
-            parts[k].x[0], parts[k].x[1], parts[k].x[2]);
-#endif
+  redist_data.counts = counts;
+  redist_data.dest = dest;
+  redist_data.base = (void *)parts;
 
-    dest[k] = cells[cid].nodeID;
-
-    /* The counts array is indexed as count[from * nr_nodes + to]. */
-    counts[nodeID * nr_nodes + dest[k]] += 1;
-  }
+  threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_part, parts,
+                 s->nr_parts, sizeof(struct part), 0, &redist_data);
 
   /* Sort the particles according to their cell index. */
   if (s->nr_parts > 0)
@@ -592,68 +808,35 @@ void engine_redistribute(struct engine *e) {
   }
 #endif
 
-  /* We need to re-link the gpart partners of parts. */
-  if (s->nr_parts > 0) {
-    int current_dest = dest[0];
-    size_t count_this_dest = 0;
-    for (size_t k = 0; k < s->nr_parts; ++k) {
-      if (s->parts[k].gpart != NULL) {
+  /* We will need to re-link the gpart partners of parts, so save their
+   * relative positions in the sent lists. */
+  if (s->nr_parts > 0 && s->nr_gparts > 0) {
 
-        /* As the addresses will be invalidated by the communications, we will
-         * instead store the absolute index from the start of the sub-array of
-         * particles to be sent to a given node.
-         * Recall that gparts without partners have a positive id.
-         * We will restore the pointers on the receiving node later on. */
-        if (dest[k] != current_dest) {
-          current_dest = dest[k];
-          count_this_dest = 0;
-        }
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (s->parts[k].gpart->id_or_neg_offset > 0)
-          error("Trying to link a partnerless gpart !");
-#endif
-
-        s->parts[k].gpart->id_or_neg_offset = -count_this_dest;
-        count_this_dest++;
-      }
-    }
+    struct savelink_mapper_data savelink_data;
+    savelink_data.nr_nodes = nr_nodes;
+    savelink_data.counts = counts;
+    savelink_data.parts = (void *)parts;
+    savelink_data.nodeID = nodeID;
+    threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_part,
+                   nodes, nr_nodes, sizeof(int), 0, &savelink_data);
   }
   free(dest);
 
   /* Get destination of each s-particle */
   int *s_counts;
-  if ((s_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
+  if ((s_counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
     error("Failed to allocate s_counts temporary buffer.");
-  bzero(s_counts, sizeof(int) * nr_nodes * nr_nodes);
 
   int *s_dest;
   if ((s_dest = (int *)malloc(sizeof(int) * s->nr_sparts)) == NULL)
     error("Failed to allocate s_dest temporary buffer.");
 
-  for (size_t k = 0; k < s->nr_sparts; k++) {
+  redist_data.counts = s_counts;
+  redist_data.dest = s_dest;
+  redist_data.base = (void *)sparts;
 
-    /* Periodic boundary conditions */
-    for (int j = 0; j < 3; j++) {
-      if (sparts[k].x[j] < 0.0)
-        sparts[k].x[j] += dim[j];
-      else if (sparts[k].x[j] >= dim[j])
-        sparts[k].x[j] -= dim[j];
-    }
-    const int cid =
-        cell_getid(cdim, sparts[k].x[0] * iwidth[0], sparts[k].x[1] * iwidth[1],
-                   sparts[k].x[2] * iwidth[2]);
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cid < 0 || cid >= s->nr_cells)
-      error("Bad cell id %i for spart %zu at [%.3e,%.3e,%.3e].", cid, k,
-            sparts[k].x[0], sparts[k].x[1], sparts[k].x[2]);
-#endif
-
-    s_dest[k] = cells[cid].nodeID;
-
-    /* The counts array is indexed as count[from * nr_nodes + to]. */
-    s_counts[nodeID * nr_nodes + s_dest[k]] += 1;
-  }
+  threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_spart, sparts,
+                 s->nr_sparts, sizeof(struct spart), 0, &redist_data);
 
   /* Sort the particles according to their cell index. */
   if (s->nr_sparts > 0)
@@ -686,67 +869,32 @@ void engine_redistribute(struct engine *e) {
 
   /* We need to re-link the gpart partners of sparts. */
   if (s->nr_sparts > 0) {
-    int current_dest = s_dest[0];
-    size_t count_this_dest = 0;
-    for (size_t k = 0; k < s->nr_sparts; ++k) {
-      if (s->sparts[k].gpart != NULL) {
 
-        /* As the addresses will be invalidated by the communications, we will
-         * instead store the absolute index from the start of the sub-array of
-         * particles to be sent to a given node.
-         * Recall that gparts without partners have a positive id.
-         * We will restore the pointers on the receiving node later on. */
-        if (s_dest[k] != current_dest) {
-          current_dest = s_dest[k];
-          count_this_dest = 0;
-        }
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (s->sparts[k].gpart->id_or_neg_offset > 0)
-          error("Trying to link a partnerless gpart !");
-#endif
-
-        s->sparts[k].gpart->id_or_neg_offset = -count_this_dest;
-        count_this_dest++;
-      }
-    }
+    struct savelink_mapper_data savelink_data;
+    savelink_data.nr_nodes = nr_nodes;
+    savelink_data.counts = s_counts;
+    savelink_data.parts = (void *)sparts;
+    savelink_data.nodeID = nodeID;
+    threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_spart,
+                   nodes, nr_nodes, sizeof(int), 0, &savelink_data);
   }
-
   free(s_dest);
 
   /* Get destination of each g-particle */
   int *g_counts;
-  if ((g_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
+  if ((g_counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
     error("Failed to allocate g_gcount temporary buffer.");
-  bzero(g_counts, sizeof(int) * nr_nodes * nr_nodes);
 
   int *g_dest;
   if ((g_dest = (int *)malloc(sizeof(int) * s->nr_gparts)) == NULL)
     error("Failed to allocate g_dest temporary buffer.");
 
-  for (size_t k = 0; k < s->nr_gparts; k++) {
+  redist_data.counts = g_counts;
+  redist_data.dest = g_dest;
+  redist_data.base = (void *)gparts;
 
-    /* Periodic boundary conditions */
-    for (int j = 0; j < 3; j++) {
-      if (gparts[k].x[j] < 0.0)
-        gparts[k].x[j] += dim[j];
-      else if (gparts[k].x[j] >= dim[j])
-        gparts[k].x[j] -= dim[j];
-    }
-    const int cid =
-        cell_getid(cdim, gparts[k].x[0] * iwidth[0], gparts[k].x[1] * iwidth[1],
-                   gparts[k].x[2] * iwidth[2]);
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cid < 0 || cid >= s->nr_cells)
-      error("Bad cell id %i for gpart %zu at [%.3e,%.3e,%.3e].", cid, k,
-            gparts[k].x[0], gparts[k].x[1], gparts[k].x[2]);
-#endif
-
-    g_dest[k] = cells[cid].nodeID;
-
-    /* The counts array is indexed as count[from * nr_nodes + to]. */
-    g_counts[nodeID * nr_nodes + g_dest[k]] += 1;
-  }
+  threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_gpart, gparts,
+                 s->nr_gparts, sizeof(struct gpart), 0, &redist_data);
 
   /* Sort the gparticles according to their cell index. */
   if (s->nr_gparts > 0)
@@ -877,47 +1025,22 @@ void engine_redistribute(struct engine *e) {
   /* All particles have now arrived. Time for some final operations on the
      stuff we just received */
 
-  /* Restore the part<->gpart and spart<->gpart links */
-  size_t offset_parts = 0, offset_sparts = 0, offset_gparts = 0;
-  for (int node = 0; node < nr_nodes; ++node) {
+  /* Restore the part<->gpart and spart<->gpart links.
+   * Generate indices and counts for threadpool tasks. Note we process a node
+   * at a time. */
+  struct relink_mapper_data relink_data;
+  relink_data.s = s;
+  relink_data.counts = counts;
+  relink_data.g_counts = g_counts;
+  relink_data.s_counts = s_counts;
+  relink_data.nodeID = nodeID;
+  relink_data.nr_nodes = nr_nodes;
 
-    const int ind_recv = node * nr_nodes + nodeID;
-    const size_t count_parts = counts[ind_recv];
-    const size_t count_gparts = g_counts[ind_recv];
-    const size_t count_sparts = s_counts[ind_recv];
+  threadpool_map(&e->threadpool, engine_redistribute_relink_mapper, nodes,
+                 nr_nodes, sizeof(int), 1, &relink_data);
+  free(nodes);
 
-    /* Loop over the gparts received from that node */
-    for (size_t k = offset_gparts; k < offset_gparts + count_gparts; ++k) {
-
-      /* Does this gpart have a gas partner ? */
-      if (s->gparts[k].type == swift_type_gas) {
-
-        const ptrdiff_t partner_index =
-            offset_parts - s->gparts[k].id_or_neg_offset;
-
-        /* Re-link */
-        s->gparts[k].id_or_neg_offset = -partner_index;
-        s->parts[partner_index].gpart = &s->gparts[k];
-      }
-
-      /* Does this gpart have a star partner ? */
-      if (s->gparts[k].type == swift_type_star) {
-
-        const ptrdiff_t partner_index =
-            offset_sparts - s->gparts[k].id_or_neg_offset;
-
-        /* Re-link */
-        s->gparts[k].id_or_neg_offset = -partner_index;
-        s->sparts[partner_index].gpart = &s->gparts[k];
-      }
-    }
-
-    offset_parts += count_parts;
-    offset_gparts += count_gparts;
-    offset_sparts += count_sparts;
-  }
-
-  /* Clean up the counts now we done. */
+  /* Clean up the counts now we are done. */
   free(counts);
   free(g_counts);
   free(s_counts);
@@ -925,25 +1048,25 @@ void engine_redistribute(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
   for (size_t k = 0; k < nr_parts; k++) {
-    const int cid =
-        cell_getid(cdim, s->parts[k].x[0] * iwidth[0],
-                   s->parts[k].x[1] * iwidth[1], s->parts[k].x[2] * iwidth[2]);
+    const int cid = cell_getid(s->cdim, s->parts[k].x[0] * s->iwidth[0],
+                               s->parts[k].x[1] * s->iwidth[1],
+                               s->parts[k].x[2] * s->iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received particle (%zu) that does not belong here (nodeID=%i).", k,
             cells[cid].nodeID);
   }
   for (size_t k = 0; k < nr_gparts; k++) {
-    const int cid = cell_getid(cdim, s->gparts[k].x[0] * iwidth[0],
-                               s->gparts[k].x[1] * iwidth[1],
-                               s->gparts[k].x[2] * iwidth[2]);
+    const int cid = cell_getid(s->cdim, s->gparts[k].x[0] * s->iwidth[0],
+                               s->gparts[k].x[1] * s->iwidth[1],
+                               s->gparts[k].x[2] * s->iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received g-particle (%zu) that does not belong here (nodeID=%i).",
             k, cells[cid].nodeID);
   }
   for (size_t k = 0; k < nr_sparts; k++) {
-    const int cid = cell_getid(cdim, s->sparts[k].x[0] * iwidth[0],
-                               s->sparts[k].x[1] * iwidth[1],
-                               s->sparts[k].x[2] * iwidth[2]);
+    const int cid = cell_getid(s->cdim, s->sparts[k].x[0] * s->iwidth[0],
+                               s->sparts[k].x[1] * s->iwidth[1],
+                               s->sparts[k].x[2] * s->iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received s-particle (%zu) that does not belong here (nodeID=%i).",
             k, cells[cid].nodeID);
@@ -5479,10 +5602,9 @@ void engine_config(int restart, struct engine *e,
     error("SWIFT was not compiled with MPI support.");
 #else
     e->policy |= engine_policy_mpi;
-    if ((e->proxies = (struct proxy *)malloc(sizeof(struct proxy) *
+    if ((e->proxies = (struct proxy *)calloc(sizeof(struct proxy),
                                              engine_maxproxies)) == NULL)
       error("Failed to allocate memory for proxies.");
-    bzero(e->proxies, sizeof(struct proxy) * engine_maxproxies);
     e->nr_proxies = 0;
 #endif
   }
