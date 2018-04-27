@@ -611,7 +611,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the hydro properties */
     if (with_hydro)
       hydro_props_init(&hydro_properties, &prog_const, &us, params);
-    if (with_hydro) eos_init(&eos, params);
+    if (with_hydro) eos_init(&eos, params, &us);
 
     /* Initialise the gravity properties */
     if (with_self_gravity)

@@ -33,6 +33,7 @@
 #include "adiabatic_index.h"
 #include "common_io.h"
 #include "inline.h"
+#include "units.h"
 
 extern struct eos_parameters eos;
 /* ------------------------------------------------------------------------- */
@@ -54,7 +55,7 @@ enum material_id {
     Til_water = 12
 };
 
-// Tillotson parameter values for each material
+// Tillotson parameter values for each material (cgs units)
 INLINE static void set_Til_iron(struct Til_params *mat) {
     mat->rho_0 = 7.800;
     mat->a = 0.5;
@@ -95,6 +96,17 @@ INLINE static void set_Til_water(struct Til_params *mat) {
     mat->eta_min = 0.915;
 }
 
+// Convert from cgs to internal units
+INLINE static void convert_units_Til(
+    struct Til_params *mat, struct unit_system* us) {
+
+    mat->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+    mat->A /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+    mat->B /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+    mat->E_0 /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+    mat->E_iv /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+    mat->E_cv /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+}
 
 /**
  * @brief Returns the internal energy given density and entropy
@@ -251,7 +263,7 @@ gas_internal_energy_from_pressure(float density, float pressure, int mat_id) {
 __attribute__((always_inline)) INLINE static float
 gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
 
-  return 12345; ///WIP!
+  return 9.4e-4; /// VERY TEMPORARY!!!
 }
 
 /**
@@ -268,7 +280,6 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
   return 0;
 }
 
-
 /**
  * @brief Initialize the eos parameters
  *
@@ -276,12 +287,18 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
  * @param params The parsed parameters
  */
 __attribute__((always_inline)) INLINE static void eos_init(
-    struct eos_parameters *e, const struct swift_params *params) {
+    struct eos_parameters *e, const struct swift_params *params,
+    struct unit_system* us) {
 
     // Set the Tillotson parameters for each material
     set_Til_iron(&e->Til_iron);
     set_Til_granite(&e->Til_granite);
     set_Til_water(&e->Til_water);
+
+    // Convert from cgs units to internal units
+    convert_units_Til(&e->Til_iron, us);
+    convert_units_Til(&e->Til_granite, us);
+    convert_units_Til(&e->Til_water, us);
 }
 
 /**
