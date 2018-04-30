@@ -421,17 +421,16 @@ void fof_search_tree_serial(struct space *s) {
 
       /* Find the shortest distance between cells, remembering to account for boundary conditions. */
       float dx[3], r2 = 0.0f;
-      dx[0] = min3(abs(cix - cjx), abs(cix - (cjx + cj->width[0])), abs((cix + ci->width[0]) - cjx));
-      dx[0] = min(dx[0], abs((cix + ci->width[0]) - (cjx + cj->width[0])));
+      dx[0] = min3(abs(nearest(cix - cjx, dim[0])), abs(nearest(cix - (cjx + cj->width[0]), dim[0])), abs(nearest((cix + ci->width[0]) - cjx, dim[0])));
+      dx[0] = min(dx[0], abs(nearest((cix + ci->width[0]) - (cjx + cj->width[0]), dim[0])));
 
-      dx[1] = min3(abs(ciy - cjy), abs(ciy - (cjy + cj->width[1])), abs((ciy + ci->width[1]) - cjy));
-      dx[1] = min(dx[1], abs((ciy + ci->width[1]) - (cjy + cj->width[1])));
+      dx[1] = min3(abs(nearest(ciy - cjy, dim[1])), abs(nearest(ciy - (cjy + cj->width[1]), dim[1])), abs(nearest((ciy + ci->width[1]) - cjy, dim[1])));
+      dx[1] = min(dx[1], abs(nearest((ciy + ci->width[1]) - (cjy + cj->width[1]), dim[1])));
       
-      dx[2] = min3(abs(ciz - cjz), abs(ciz - (cjz + cj->width[2])), abs((ciz + ci->width[2]) - cjz));
-      dx[2] = min(dx[2], abs((ciz + ci->width[2]) - (cjz + cj->width[2])));
+      dx[2] = min3(abs(nearest(ciz - cjz, dim[2])), abs(nearest(ciz - (cjz + cj->width[2]), dim[2])), abs(nearest((ciz + ci->width[2]) - cjz, dim[2])));
+      dx[2] = min(dx[2], abs(nearest((ciz + ci->width[2]) - (cjz + cj->width[2]), dim[2])));
 
       for (int k = 0; k < 3; k++) {
-        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
