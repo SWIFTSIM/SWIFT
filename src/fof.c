@@ -196,13 +196,13 @@ void fof_search_serial(struct space *s) {
 
         if(root_j < root_i) {
           pid[root_i] = root_j; 
-          num_in_groups[root_i]--;
-          num_in_groups[root_j]++;
+          num_in_groups[root_j] += num_in_groups[root_i];
+          num_in_groups[root_i] -= num_in_groups[root_i];
         }
         else {
           pid[root_j] = root_i;
-          num_in_groups[root_j]--;
-          num_in_groups[root_i]++;
+          num_in_groups[root_i] += num_in_groups[root_j];
+          num_in_groups[root_j] -= num_in_groups[root_j];
         }
         
         num_groups--;
@@ -277,13 +277,13 @@ void fof_search_cell(struct space *s, struct cell *c, int *pid, int *num_in_grou
 
         if(root_j < root_i) {
           pid[root_i] = root_j; 
-          num_in_groups[root_i]--;
-          num_in_groups[root_j]++;
+          num_in_groups[root_j] += num_in_groups[root_i];
+          num_in_groups[root_i] -= num_in_groups[root_i];
         }
         else {
           pid[root_j] = root_i;
-          num_in_groups[root_j]--;
-          num_in_groups[root_i]++;
+          num_in_groups[root_i] += num_in_groups[root_j];
+          num_in_groups[root_j] -= num_in_groups[root_j];
         }
         
         (*num_groups)--;
@@ -310,10 +310,10 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj, in
   double diff[3];
   for (int k = 0; k < 3; k++) {
     diff[k] = cj->loc[k] - ci->loc[k];
-    if (periodic && diff[k] < -s->dim[k] / 2)
-      shift[k] = s->dim[k];
-    else if (periodic && diff[k] > s->dim[k] / 2)
-      shift[k] = -s->dim[k];
+    if (periodic && diff[k] < -dim[k] / 2)
+      shift[k] = dim[k];
+    else if (periodic && diff[k] > dim[k] / 2)
+      shift[k] = -dim[k];
     else
       shift[k] = 0.0;
     diff[k] += shift[k];
@@ -357,13 +357,13 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj, in
 
         if(root_j < root_i) {
           pid[root_i] = root_j; 
-          num_in_groups[root_i]--;
-          num_in_groups[root_j]++;
+          num_in_groups[root_j] += num_in_groups[root_i];
+          num_in_groups[root_i] -= num_in_groups[root_i];
         }
         else {
           pid[root_j] = root_i;
-          num_in_groups[root_j]--;
-          num_in_groups[root_i]++;
+          num_in_groups[root_i] += num_in_groups[root_j];
+          num_in_groups[root_j] -= num_in_groups[root_j];
         }
         
         (*num_groups)--;
