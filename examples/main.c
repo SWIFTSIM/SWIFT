@@ -1058,6 +1058,7 @@ int main(int argc, char *argv[]) {
 
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
+  if (with_cosmology) cosmology_clean(&cosmo);
   engine_clean(&e);
   free(params);
 
