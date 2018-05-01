@@ -48,7 +48,7 @@ AM_PROG_CC_C_O
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start from here @<:@none, gear, EAGLE default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start from here @<:@none, GEAR, EAGLE default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -65,9 +65,9 @@ case "$with_subgrid" in
    ;;
    none)
    ;;
-   gear)
+   GEAR)
 	with_subgrid_cooling=grackle
-	with_subgrid_chemistry=gear
+	with_subgrid_chemistry=GEAR
 	with_subgrid_hydro=gadget2
    ;;
    EAGLE)
@@ -1096,7 +1096,7 @@ esac
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
-      [chemistry function @<:@none, gear, EAGLE default: none@:>@]
+      [chemistry function @<:@none, GEAR, EAGLE default: none@:>@]
    )],
    [with_chemistry="$withval"],
    [with_chemistry="none"]
@@ -1114,7 +1114,7 @@ case "$with_chemistry" in
    none)
       AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
    ;;
-   gear)
+   GEAR)
       AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
    ;;
    EAGLE)
