@@ -48,7 +48,7 @@
 void hydro_read_particles(struct part* parts, struct io_props* list,
                           int* num_fields) {
 
-  *num_fields = 8;
+  *num_fields = 9;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -151,35 +151,36 @@ void convert_part_potential(const struct engine* e, const struct part* p,
 void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
                            struct io_props* list, int* num_fields) {
 
-  *num_fields = 10;
+  *num_fields = 11;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
                                               UNIT_CONV_LENGTH, parts, xparts,
                                               convert_part_pos);
-  list[1] = io_make_output_field_convert_part(
-      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, xparts, convert_part_vel);
-  list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts, mass);
+  list[1] = io_make_output_field_convert_part("Velocities", FLOAT, 3,
+                                              UNIT_CONV_SPEED, parts, xparts,
+                                              convert_part_vel);
+  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts,
+                                 mass);
   list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
                                  parts, h);
   list[4] = io_make_output_field("InternalEnergy", FLOAT, 1,
                                  UNIT_CONV_ENERGY_PER_UNIT_MASS, parts, u);
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, id);
-  list[6] =
-      io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
+  list[6] = io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts,
+                                 rho);
   list[7] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
                                               UNIT_CONV_ENTROPY_PER_UNIT_MASS,
                                               parts, xparts, convert_S);
   list[8] = io_make_output_field("MaterialID", INT, 1, UNIT_CONV_NO_UNITS,
                                  parts, mat_id);
-  list[8] = io_make_output_field_convert_part(
-      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, xparts, convert_P);
-
-  list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
-                                              UNIT_CONV_POTENTIAL, parts,
-                                              xparts, convert_part_potential);
+  list[9] = io_make_output_field_convert_part("Pressure", FLOAT, 1,
+                                              UNIT_CONV_PRESSURE, parts, xparts,
+                                              convert_P);
+  list[10] = io_make_output_field_convert_part("Potential", FLOAT, 1,
+                                               UNIT_CONV_POTENTIAL, parts,
+                                               xparts, convert_part_potential);
 }
 
 /**

@@ -130,8 +130,8 @@ gas_internal_energy_from_entropy(float density, float entropy, int mat_id) {
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$S\f$.
  */
-__attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
-    float density, float entropy, int mat_id) {
+__attribute__((always_inline)) INLINE static float
+gas_pressure_from_entropy(float density, float entropy, int mat_id) {
 
   return 0;
 }
@@ -145,8 +145,8 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
  * @param pressure The pressure \f$P\f$.
  * @return The entropy \f$A\f$.
  */
-__attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
-    float density, float pressure, int mat_id) {
+__attribute__((always_inline)) INLINE static float
+gas_entropy_from_pressure(float density, float pressure, int mat_id) {
 
   return 0;
 }
@@ -159,8 +159,8 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$S\f$.
  */
-__attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
-    float density, float entropy, int mat_id) {
+__attribute__((always_inline)) INLINE static float
+gas_soundspeed_from_entropy(float density, float entropy, int mat_id) {
 
   return 0;
 }
@@ -192,12 +192,19 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
     switch(mat_id) {
         case Til_iron:
             mat = &eos.Til_iron;
+            break;
 
         case Til_granite:
             mat = &eos.Til_granite;
+            break;
 
         case Til_water:
             mat = &eos.Til_water;
+            break;
+
+        default:
+            error("Unknown material ID! mat_id=%d", mat_id);
+            mat = &eos.Til_iron; // Ignored, just here to keep compiler happy
     };
 
     const float eta = density / mat->rho_0;
@@ -229,7 +236,8 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
     }
     // Hybrid state
     else {
-        P = ((u - mat->E_iv)*P_e + (mat->E_cv - u)*P_c) / (mat->E_cv - mat->E_iv);
+        P = ((u - mat->E_iv)*P_e + (mat->E_cv - u)*P_c) /
+            (mat->E_cv - mat->E_iv);
     }
 
     if (P < 0.f) {
@@ -274,8 +282,8 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
  * @param density The density \f$\rho\f$
  * @param P The pressure \f$P\f$
  */
-__attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
-    float density, float P, int mat_id) {
+__attribute__((always_inline)) INLINE static float
+gas_soundspeed_from_pressure(float density, float P, int mat_id) {
 
   return 0;
 }
