@@ -41,6 +41,47 @@ AX_CHECK_ENABLE_DEBUG
 AC_PROG_CC
 AM_PROG_CC_C_O
 
+
+# Master subgrid options
+# If you add a restriction (e.g. no cooling, chemistry or hydro)
+# you will need to check for overwrite after reading the additional options.
+# As an example for this, see the call to AC_ARG_WITH for cooling.
+AC_ARG_WITH([subgrid],
+	[AS_HELP_STRING([--with-subgrid=<subgrid>],
+		[Master switch for subgrid methods. Inexperienced user should start from here @<:@none, GEAR, EAGLE default: none@:>@]
+	)],
+	[with_subgrid="$withval"],
+	[with_subgrid=none]
+)
+
+# Default values
+with_subgrid_cooling=none
+with_subgrid_chemistry=none
+with_subgrid_hydro=none
+
+case "$with_subgrid" in
+   yes)
+      AC_MSG_ERROR([Invalid option. A subgrid model must be chosen.])
+   ;;
+   none)
+   ;;
+   GEAR)
+	with_subgrid_cooling=grackle
+	with_subgrid_chemistry=GEAR
+	with_subgrid_hydro=gadget2
+   ;;
+   EAGLE)
+	with_subgrid_cooling=EAGLE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_hydro=gadget2
+   ;;
+   *)	
+      AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
+   ;;
+esac
+
+
+
 # If debug is selected then we also define SWIFT_DEVELOP_MODE to control
 # any developer code options.
 if test "x$ax_enable_debug" != "xno"; then
@@ -817,6 +858,15 @@ AC_ARG_WITH([hydro],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
 )
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_hydro" != "gadget2"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-hydro together])
+   else
+      with_hydro="$with_subgrid_hydro"
+   fi
+fi
+
 case "$with_hydro" in
    gadget2)
       AC_DEFINE([GADGET2_SPH], [1], [Gadget-2 SPH])
@@ -1000,6 +1050,15 @@ AC_ARG_WITH([cooling],
    [with_cooling="$withval"],
    [with_cooling="none"]
 )
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_cooling" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-cooling together])
+   else
+      with_cooling="$with_subgrid_cooling"
+   fi
+fi
+
 case "$with_cooling" in
    none)
       AC_DEFINE([COOLING_NONE], [1], [No cooling function])
@@ -1037,16 +1096,25 @@ esac
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
-      [chemistry function @<:@none, gear, EAGLE default: none@:>@]
+      [chemistry function @<:@none, GEAR, EAGLE default: none@:>@]
    )],
    [with_chemistry="$withval"],
    [with_chemistry="none"]
 )
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_chemistry" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-chemistry together])
+   else
+      with_chemistry="$with_subgrid_chemistry"
+   fi
+fi
+
 case "$with_chemistry" in
    none)
       AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
    ;;
-   gear)
+   GEAR)
       AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
    ;;
    EAGLE)
@@ -1101,7 +1169,6 @@ AC_ARG_WITH([multipole-order],
    [with_multipole_order="5"]
 )
 AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Multipole order])
-
 
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
