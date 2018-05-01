@@ -44,7 +44,7 @@ __attribute__((always_inline)) INLINE static int fof_find(const int i, int *pid)
 }
 
 /* Find the shortest distance between cells, remembering to account for boundary conditions. */
-__attribute__((always_inline)) INLINE static double cell_short_dist(const struct cell *ci, const struct cell *cj, const double cix, const double ciy, const double ciz, const double *dim) {
+__attribute__((always_inline)) INLINE static double cell_min_dist(const struct cell *ci, const struct cell *cj, const double cix, const double ciy, const double ciz, const double *dim) {
 
   const double cjx = cj->loc[0];
   const double cjy = cj->loc[1];
@@ -82,7 +82,7 @@ static void rec_fof_search_sub(struct cell *ci, struct cell *cj, struct space *s
     const double ciz = ci->loc[2];
 
     /* Find the shortest distance between cells, remembering to account for boundary conditions. */
-    const double r2 = cell_short_dist(ci, cj, cix, ciy, ciz, dim);
+    const double r2 = cell_min_dist(ci, cj, cix, ciy, ciz, dim);
 
     /* Perform FOF search between pairs of cells that are within the linking length and not the same cell. */
     if (r2 < search_r2 && ci != cj) {
@@ -106,13 +106,16 @@ static void rec_fof_search(struct cell *ci, const int cid, struct space *s, int 
     const double ciy = ci->loc[1];
     const double ciz = ci->loc[2];
 
-    /* Loop over all other top-level cells. */
-    for(int cjd=cid + 1; cjd<s->nr_cells; cjd++) {      
+    /* Perform FOF search on local particles within the cell. */
+    fof_search_cell(s, ci, pid, num_in_groups, num_groups);
+    
+    /* Loop over all top-level cells skipping over the cells already searched. */
+    for(int cjd=cid; cjd<s->nr_cells; cjd++) {      
 
       struct cell *restrict cj = &s->cells_top[cjd];
 
       /* Find the shortest distance between cells, remembering to account for boundary conditions. */
-      const double r2 = cell_short_dist(ci, cj, cix, ciy, ciz, dim);
+      const double r2 = cell_min_dist(ci, cj, cix, ciy, ciz, dim);
       
       /* If the leaf cell of ci is within the linking length of the top-level cell cj recurse on cj. Otherwise skip over cj as all of its leaf cells will also be out of range. */
       if (r2 > search_r2) continue;
@@ -489,9 +492,6 @@ void fof_search_tree_serial(struct space *s) {
  
     message("Searching top-level cell: %d.", cid);
     fflush(stdout);
-
-    /* Perform FOF search on local particles within the cell. */
-    fof_search_cell(s, c, pid, num_in_groups, &num_groups);
 
     /* Recursively perform FOF search on all other cells in top-level grid. */    
     rec_fof_search(c, cid, s, pid, num_in_groups, &num_groups, dim, search_r2);
