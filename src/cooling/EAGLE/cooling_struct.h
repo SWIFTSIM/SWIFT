@@ -19,6 +19,7 @@
 #ifndef SWIFT_COOLING_STRUCT_EAGLE_H
 #define SWIFT_COOLING_STRUCT_EAGLE_H
 #include <stdbool.h>
+#include <time.h>
 
 #define eagle_element_name_length 20
 #define eagle_cmb_temperature 2.728
@@ -98,6 +99,8 @@ struct cooling_function_data {
   float *Therm;
   float *SolarAbundances;
   float *SolarElectronAbundance;
+  float *ElementAbundance_SOLARM1;
+  double *solar_abundances;
   char **ElementNames;
   char **SolarAbundanceNames;
   int *ElementNamePointers;
