@@ -42,24 +42,27 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 
 
-# Subgrid options
-# if you add a restriction (e.g. not cooling, chemistry or hydro)
-# you will need to check for overwrite after ready the parameter
-# see AC_ARG_WITH for cooling for an example.
+# Master subgrid options
+# If you add a restriction (e.g. no cooling, chemistry or hydro)
+# you will need to check for overwrite after reading the additional options.
+# As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Name of the subgrid methods. Inexperiented user should start from here @<:@none, gear default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start from here @<:@none, gear, EAGLE default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
 )
 
-# default values
+# Default values
 with_subgrid_cooling=none
 with_subgrid_chemistry=none
 with_subgrid_hydro=none
 
 case "$with_subgrid" in
+   yes)
+      AC_MSG_ERROR([Invalid option. A subgrid model must be chosen.])
+   ;;
    none)
    ;;
    gear)
@@ -73,7 +76,7 @@ case "$with_subgrid" in
 	with_subgrid_hydro=gadget2
    ;;
    *)	
-      AC_MSG_ERROR([Unknown subgrid: $with_subgrid])
+      AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
    ;;
 esac
 
