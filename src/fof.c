@@ -26,7 +26,7 @@
 /* Local headers. */
 //#include "active.h"
 
-__attribute__((always_inline)) INLINE int fof_find(const int i, const int *pid) {
+__attribute__((always_inline)) INLINE static int fof_find(const int i, const int *pid) {
     
   int root = i;
   while(root != pid[root])
@@ -41,6 +41,91 @@ __attribute__((always_inline)) INLINE int fof_find(const int i, const int *pid) 
   //}
   
   return root;
+}
+
+static void rec_fof_search_sub(struct cell *ci, struct cell *cj, struct space *s, int *pid, int *num_in_groups, int *num_groups, const double *dim, const double search_r2) {
+
+  /* Recurse on cj. */
+  if (cj->split)
+    for (int k = 0; k < 8; k++)
+      if (cj->progeny[k] != NULL)
+        rec_fof_search_sub(ci, cj->progeny[k], s, pid, num_in_groups, num_groups, dim, search_r2);
+
+  /* No progeny? */
+  if (!cj->split) {
+    const double cix = ci->loc[0];
+    const double ciy = ci->loc[1];
+    const double ciz = ci->loc[2];
+
+    const double cjx = cj->loc[0];
+    const double cjy = cj->loc[1];
+    const double cjz = cj->loc[2];
+
+    /* Find the shortest distance between cells, remembering to account for boundary conditions. */
+    float dx[3], r2 = 0.0f;
+    dx[0] = min3(abs(nearest(cix - cjx, dim[0])), abs(nearest(cix - (cjx + cj->width[0]), dim[0])), abs(nearest((cix + ci->width[0]) - cjx, dim[0])));
+    dx[0] = min(dx[0], abs(nearest((cix + ci->width[0]) - (cjx + cj->width[0]), dim[0])));
+
+    dx[1] = min3(abs(nearest(ciy - cjy, dim[1])), abs(nearest(ciy - (cjy + cj->width[1]), dim[1])), abs(nearest((ciy + ci->width[1]) - cjy, dim[1])));
+    dx[1] = min(dx[1], abs(nearest((ciy + ci->width[1]) - (cjy + cj->width[1]), dim[1])));
+
+    dx[2] = min3(abs(nearest(ciz - cjz, dim[2])), abs(nearest(ciz - (cjz + cj->width[2]), dim[2])), abs(nearest((ciz + ci->width[2]) - cjz, dim[2])));
+    dx[2] = min(dx[2], abs(nearest((ciz + ci->width[2]) - (cjz + cj->width[2]), dim[2])));
+
+    for (int k = 0; k < 3; k++) {
+      r2 += dx[k] * dx[k];
+    }
+
+    /* Perform FOF search between pairs of cells that are within the linking length and not the same cell. */
+    if (r2 < search_r2 && ci != cj) {
+      fof_search_pair_cells(s, ci, cj, pid, num_in_groups, num_groups);
+    }
+  }
+}
+
+static void rec_fof_search(struct cell *ci, const int cid, struct space *s, int *pid, int *num_in_groups, int *num_groups, const double *dim, const double search_r2) {
+
+  /* Recurse on ci. */
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        rec_fof_search(ci->progeny[k], cid, s, pid, num_in_groups, num_groups, dim, search_r2);
+
+  /* No progeny? */
+  if (!ci->split) {
+    const double cix = ci->loc[0];
+    const double ciy = ci->loc[1];
+    const double ciz = ci->loc[2];
+
+    /* Loop over all other top-level cells. */
+    for(int cjd=cid + 1; cjd<s->nr_cells; cjd++) {      
+
+      struct cell *restrict cj = &s->cells_top[cjd];
+      const double cjx = cj->loc[0];
+      const double cjy = cj->loc[1];
+      const double cjz = cj->loc[2];
+
+      /* Find the shortest distance between cells, remembering to account for boundary conditions. */
+      float dx[3], r2 = 0.0f;
+      dx[0] = min3(abs(nearest(cix - cjx, dim[0])), abs(nearest(cix - (cjx + cj->width[0]), dim[0])), abs(nearest((cix + ci->width[0]) - cjx, dim[0])));
+      dx[0] = min(dx[0], abs(nearest((cix + ci->width[0]) - (cjx + cj->width[0]), dim[0])));
+
+      dx[1] = min3(abs(nearest(ciy - cjy, dim[1])), abs(nearest(ciy - (cjy + cj->width[1]), dim[1])), abs(nearest((ciy + ci->width[1]) - cjy, dim[1])));
+      dx[1] = min(dx[1], abs(nearest((ciy + ci->width[1]) - (cjy + cj->width[1]), dim[1])));
+
+      dx[2] = min3(abs(nearest(ciz - cjz, dim[2])), abs(nearest(ciz - (cjz + cj->width[2]), dim[2])), abs(nearest((ciz + ci->width[2]) - cjz, dim[2])));
+      dx[2] = min(dx[2], abs(nearest((ciz + ci->width[2]) - (cjz + cj->width[2]), dim[2])));
+
+      for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
+
+      /* If the leaf cell of ci is within the linking length of the top-level cell cj recurse on cj. Otherwise skip over cj as all of its leaf cells will also be out of range. */
+      if (r2 > search_r2) continue;
+      else if(cj->split) rec_fof_search_sub(ci, cj, s, pid, num_in_groups, num_groups, dim, search_r2);
+      /* Perform FOF search between pairs of cells that are within the linking length and not the same cell. */
+      else if(ci != cj)  fof_search_pair_cells(s, ci, cj, pid, num_in_groups, num_groups);
+      
+    }
+  }
 }
 
 void fof_search_naive(struct space *s) {
@@ -404,41 +489,17 @@ void fof_search_tree_serial(struct space *s) {
   /* Loop over cells and find which cells are in range of each other to perform the FOF search. */
   for(int cid=0; cid<nr_cells; cid++) {
     
-    struct cell *restrict ci = &s->cells_top[cid];
-    const double cix = ci->loc[0];
-    const double ciy = ci->loc[1];
-    const double ciz = ci->loc[2];
+    struct cell *restrict c = &s->cells_top[cid];
  
+    message("Searching top-level cell: %d.", cid);
+    fflush(stdout);
+
     /* Perform FOF search on local particles within the cell. */
-    fof_search_cell(s, ci, pid, num_in_groups, &num_groups);
-    
-    for(int cjd=cid + 1; cjd<nr_cells; cjd++) {      
-    
-      struct cell *restrict cj = &s->cells_top[cjd];
-      const double cjx = cj->loc[0];
-      const double cjy = cj->loc[1];
-      const double cjz = cj->loc[2];
+    fof_search_cell(s, c, pid, num_in_groups, &num_groups);
 
-      /* Find the shortest distance between cells, remembering to account for boundary conditions. */
-      float dx[3], r2 = 0.0f;
-      dx[0] = min3(abs(nearest(cix - cjx, dim[0])), abs(nearest(cix - (cjx + cj->width[0]), dim[0])), abs(nearest((cix + ci->width[0]) - cjx, dim[0])));
-      dx[0] = min(dx[0], abs(nearest((cix + ci->width[0]) - (cjx + cj->width[0]), dim[0])));
+    /* Recursively perform FOF search on all other cells in top-level grid. */    
+    rec_fof_search(c, cid, s, pid, num_in_groups, &num_groups, dim, search_r2);
 
-      dx[1] = min3(abs(nearest(ciy - cjy, dim[1])), abs(nearest(ciy - (cjy + cj->width[1]), dim[1])), abs(nearest((ciy + ci->width[1]) - cjy, dim[1])));
-      dx[1] = min(dx[1], abs(nearest((ciy + ci->width[1]) - (cjy + cj->width[1]), dim[1])));
-      
-      dx[2] = min3(abs(nearest(ciz - cjz, dim[2])), abs(nearest(ciz - (cjz + cj->width[2]), dim[2])), abs(nearest((ciz + ci->width[2]) - cjz, dim[2])));
-      dx[2] = min(dx[2], abs(nearest((ciz + ci->width[2]) - (cjz + cj->width[2]), dim[2])));
-
-      for (int k = 0; k < 3; k++) {
-        r2 += dx[k] * dx[k];
-      }
-
-      /* Perform FOF search between pairs of cells that are within the linking length. */
-      if (r2 < search_r2)  {
-        fof_search_pair_cells(s, ci, cj, pid, num_in_groups, &num_groups);
-      }
-    }
   }
   
   fof_dump_group_data("fof_output_tree_serial.dat", nr_gparts, pid, num_in_groups);
