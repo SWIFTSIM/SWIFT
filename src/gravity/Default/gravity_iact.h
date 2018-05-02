@@ -44,11 +44,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
     float r2, float h2, float h_inv, float h_inv3, float mass, float *f_ij,
     float *pot_ij) {
 
-  /* Get the inverse distance */
-  const float r_inv = 1.f / sqrtf(r2);
-
   /* Should we soften ? */
   if (r2 >= h2) {
+
+    /* Get the inverse distance */
+    const float r_inv = 1.f / sqrtf(r2);
 
     /* Get Newtonian gravity */
     *f_ij = mass * r_inv * r_inv * r_inv;
@@ -56,7 +56,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
 
   } else {
 
-    const float r = r2 * r_inv;
+    const float r = sqrtf(r2);
     const float ui = r * h_inv;
 
     float W_f_ij, W_pot_ij;
@@ -89,18 +89,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
     float r2, float h2, float h_inv, float h_inv3, float mass, float rlr_inv,
     float *f_ij, float *pot_ij) {
 
-  /* Get the inverse distance */
-  const float r_inv = 1.f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  float r;
 
   /* Should we soften ? */
   if (r2 >= h2) {
+
+    /* Get the inverse distance */
+    const float r_inv = 1.f / sqrtf(r2);
+    r = r2 * r_inv;
 
     /* Get Newtonian gravity */
     *f_ij = mass * r_inv * r_inv * r_inv;
     *pot_ij = -mass * r_inv;
 
   } else {
+
+    /* Get the distance */
+    r = sqrtf(r2);
 
     const float ui = r * h_inv;
     float W_f_ij, W_pot_ij;

@@ -234,7 +234,8 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
       const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f) error("Interacting particles with 0 distance");
+      if (r2 == 0.f && h_i == 0.)
+        error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
       if (gparts_i[pid].ti_drift != e->ti_current)
