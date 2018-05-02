@@ -486,11 +486,11 @@ void fof_search_tree_serial(struct space *s) {
   for(size_t i=0; i<nr_gparts; i++) num_in_groups[i] = 1;    
 
   /* Loop over cells and find which cells are in range of each other to perform the FOF search. */
-  for(int cid=0; cid<nr_cells; cid++) {
+  for(size_t cid=0; cid<nr_cells; cid++) {
     
     struct cell *restrict c = &s->cells_top[cid];
  
-    message("Searching top-level cell: %d.", cid);
+    message("Searching top-level cell: %ld.", cid);
     fflush(stdout);
 
     /* Recursively perform FOF search on all other cells in top-level grid. */    
@@ -519,16 +519,14 @@ void fof_search_tree_serial(struct space *s) {
 }
 
 /* Dump FOF group data. */
-void fof_dump_group_data(char *out_file, const int nr_gparts, int *pid, int *num_in_groups) {
+void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *pid, int *num_in_groups) {
 
   FILE *file = fopen(out_file,"w");
   fprintf(file, "# %7s %7s %7s\n", "ID", "Root ID","Group Size"); 
   fprintf(file, "#-------------------------------\n"); 
 
   for(size_t i=0; i<nr_gparts; i++) {
-
       fprintf(file, "  %7ld %7d %7d\n", i, pid[i], num_in_groups[i]); 
-
   }
   
   fclose(file);
