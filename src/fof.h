@@ -28,7 +28,6 @@
 #include "cell.h"
 
 /* Function prototypes. */
-void fof_search_naive(struct space *s);
 void fof_search_serial(struct space *s);
 void fof_search_cell(struct space *s, struct cell *c, int *pid, int *num_in_groups, int *num_groups);
 void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj, int *pid, int *num_in_groups, int *num_groups);

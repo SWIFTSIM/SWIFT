@@ -4612,11 +4612,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   s->l_x2 = l_x2;
   
   ticks tic = getticks();
-  
-  //fof_search_naive(s);
-  //message("Naive FOF search took: %.3f %s.", clocks_from_ticks(getticks() - tic), clocks_getunit());
-  
-  tic = getticks();
   fof_search_serial(s);
   message("Serial FOF search took: %.3f %s.", clocks_from_ticks(getticks() - tic), clocks_getunit());
   
