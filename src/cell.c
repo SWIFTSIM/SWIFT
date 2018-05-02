@@ -2515,6 +2515,13 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       }
 #endif
 
+      // Warn if a particle is within 5% of the box boundary (TEMPORARY)
+      for (int i=0; i<3; i++) {
+        if ((p->x[i] > 0.95*e->s->dim[i]) || (p->x[i] < 0.05*e->s->dim[i])) {
+            message("Particle %lld is near the box boundary!", p->id);
+        }
+      }
+
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
 
