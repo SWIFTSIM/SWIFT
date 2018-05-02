@@ -26,6 +26,7 @@
 #include "adiabatic_index.h"
 #include "common_io.h"
 #include "inline.h"
+#include "physical_constants.h"
 
 extern struct eos_parameters eos;
 /* ------------------------------------------------------------------------- */
@@ -180,16 +181,19 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
                hydro_gamma_minus_one);
 }
 
-/* ------------------------------------------------------------------------- */
-
 /**
  * @brief Initialize the eos parameters
  *
- * @param e The #eos_paramters
- * @param params The parsed parameters
+ * Read the constant internal energy from the parameter file.
+ *
+ * @param e The #eos_paramters.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param us The internal unit system.
+ * @param params The parsed parameters.
  */
 __attribute__((always_inline)) INLINE static void eos_init(
-    struct eos_parameters *e, const struct swift_params *params) {
+    struct eos_parameters *e, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct swift_params *params) {
 
   e->isothermal_internal_energy =
       parser_get_param_float(params, "EoS:isothermal_internal_energy");
