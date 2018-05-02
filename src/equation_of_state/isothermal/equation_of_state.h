@@ -29,8 +29,10 @@
 #include "physical_constants.h"
 
 extern struct eos_parameters eos;
-/* ------------------------------------------------------------------------- */
 
+/**
+ * @brief The parameters of the equation of state for the gas.
+ */
 struct eos_parameters {
 
   /*! Thermal energy per unit mass */
