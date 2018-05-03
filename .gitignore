@@ -33,6 +33,9 @@ examples/*/*/*.xmf
 examples/*/*/*.png
 examples/*/*/*.txt
 examples/*/*/*.dot
+examples/*/*/*.rst
+examples/*/*/*.hdf5
+examples/*/snapshots
 examples/*/*/used_parameters.yml
 examples/*/gravity_checks_*.dat
 
@@ -59,7 +62,7 @@ tests/swift_dopair_125_standard.dat
 tests/brute_force_125_perturbed.dat
 tests/swift_dopair_125_perturbed.dat
 tests/brute_force_pair_active.dat
-tests/brute_force_dopair2_active.dat 
+tests/brute_force_dopair2_active.dat
 tests/swift_dopair2_force_active.dat
 tests/brute_force_periodic_BC_perturbed.dat
 tests/swift_dopair_active.dat
