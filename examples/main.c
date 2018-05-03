@@ -91,7 +91,7 @@ void print_help_message(void) {
          "Execute a fixed number of time steps. When unset use the time_end "
          "parameter to stop.");
   printf("  %2s %14s %s\n", "-o", "{str}",
-	 "Generate a default output parameter file.");
+         "Generate a default output parameter file.");
   printf("  %2s %14s %s\n", "-P", "{sec:par:val}",
          "Set parameter value and overwrites values read from the parameters "
          "file. Can be used more than once.");
@@ -263,14 +263,14 @@ int main(int argc, char *argv[]) {
         }
         break;
       case 'o':
-	if (sscanf(optarg, "%s", output_parameters_filename) != 1) {
-	    if (myrank == 0) {
-	      printf("Error parsing output fields filename");
-	      print_help_message();
-	    }
-	    return 1;
-	}
-	break;
+        if (sscanf(optarg, "%s", output_parameters_filename) != 1) {
+          if (myrank == 0) {
+            printf("Error parsing output fields filename");
+            print_help_message();
+          }
+          return 1;
+        }
+        break;
       case 'P':
         cmdparams[nparams] = optarg;
         nparams++;

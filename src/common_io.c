@@ -887,8 +887,8 @@ void io_check_output_fields(const struct swift_params* params,
         }
       }
       if (!found)
-	message("WARNING: Unable to find field corresponding to %s in %s",
-		param_name, params->fileName);
+        message("WARNING: Unable to find field corresponding to %s in %s",
+                param_name, params->fileName);
     }
   }
 }
@@ -900,7 +900,7 @@ void io_check_output_fields(const struct swift_params* params,
  * @param filename The file to write
  */
 void io_write_output_field_parameter(const char* filename) {
-  FILE *file = fopen(filename, "w");
+  FILE* file = fopen(filename, "w");
 
   /* Loop over all particle types */
   fprintf(file, "SelectOutput:\n");
@@ -911,30 +911,28 @@ void io_write_output_field_parameter(const char* filename) {
     /* Write particle fields from the particle structure */
     switch (ptype) {
 
-    case swift_type_gas:
-      hydro_write_particles(NULL, NULL, list, &num_fields);
-      num_fields += chemistry_write_particles(NULL, list + num_fields);
-      break;
+      case swift_type_gas:
+        hydro_write_particles(NULL, NULL, list, &num_fields);
+        num_fields += chemistry_write_particles(NULL, list + num_fields);
+        break;
 
-    case swift_type_dark_matter:
-      darkmatter_write_particles(NULL, list, &num_fields);
-      break;
+      case swift_type_dark_matter:
+        darkmatter_write_particles(NULL, list, &num_fields);
+        break;
 
-    case swift_type_star:
-      star_write_particles(NULL, list, &num_fields);
-      break;
-    
+      case swift_type_star:
+        star_write_particles(NULL, list, &num_fields);
+        break;
     }
 
-    if (num_fields == 0)
-      continue;
+    if (num_fields == 0) continue;
 
     fprintf(file, "  # Particle Type %i\n", ptype);
     /* Write everything */
     for (int i = 0; i < num_fields; ++i) {
       fprintf(file, "  %s_%i: 1\n", list[i].name, ptype);
     }
-    
+
     fprintf(file, "\n");
   }
 
