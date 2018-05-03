@@ -1265,7 +1265,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
     /* Write everything */
     for (int i = 0; i < num_fields; ++i) {
       char field[256];
-      sprintf(field, "SelectOutput:ParticleType%i_%s", ptype, list[i].name);
+      sprintf(field, "SelectOutput:%s_%i", list[i].name, ptype);
       int should_write = parser_get_opt_param_int(params, field, 1);
       if (should_write)
         writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,

@@ -866,9 +866,13 @@ void io_check_output_fields(const struct swift_params* params,
     for (int param_id = 0; param_id < params->paramCount; param_id++) {
       const char* param_name = params->data[param_id].name;
 
-      /* skip if wrong part type */
       char section_name[200];
+      /* skip if wrong section */
       sprintf(section_name, "SelectOutput:");
+      if (strstr(param_name, section_name) == NULL) continue;
+
+      /* skip if wrong particle type */
+      sprintf(section_name, "_%i", ptype);
       if (strstr(param_name, section_name) == NULL) continue;
 
       int found = 0;
@@ -876,7 +880,7 @@ void io_check_output_fields(const struct swift_params* params,
       /* loop over each possible output field */
       for (int field_id = 0; field_id < num_fields; field_id++) {
         char field_name[256];
-        sprintf(field_name, "SelectOutput:PartType%i_%s", ptype, list[field_id].name);
+        sprintf(field_name, "SelectOutput:%s_%i", list[field_id].name, ptype);
         if (strcmp(param_name, field_name) == 0) {
           found = 1;
           continue;
@@ -922,9 +926,13 @@ void io_write_output_field_parameter(const char* filename) {
     
     }
 
+    if (num_fields == 0)
+      continue;
+
+    fprintf(file, "  # Particle Type %i\n", ptype);
     /* Write everything */
     for (int i = 0; i < num_fields; ++i) {
-      fprintf(file, "  ParticleType%i_%s: 1\n", ptype, list[i].name);
+      fprintf(file, "  %s_%i: 1\n", list[i].name, ptype);
     }
     
     fprintf(file, "\n");
