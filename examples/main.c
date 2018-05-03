@@ -478,30 +478,6 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
-  /* Read output fields */
-  struct swift_params *output_fields =
-      (struct swift_params *)malloc(sizeof(struct swift_params));
-  if (output_fields == NULL)
-    error("Error allocating memory for the output fields file.");
-
-  char outputFieldsFileName[200];
-  parser_get_opt_param_string(params, "Snapshots:FieldsFilename",
-			      outputFieldsFileName, "");
-
-  parser_init(outputFieldsFileName, output_fields);  
-  if (myrank == 0 && strcmp(outputFieldsFileName, "") != 0) {
-    message("Reading runtime output fields from file '%s'",
-            outputFieldsFileName);
-    parser_read_file(outputFieldsFileName, output_fields);
-    
-    /* And dump the parameters as used. */
-    parser_write_params_to_file(output_fields, "used_output_fields.yml");
-  }
-#ifdef WITH_MPI
-  /* Broadcast the parameter file */
-  MPI_Bcast(output_fields, sizeof(struct swift_params), MPI_BYTE, 0,
-            MPI_COMM_WORLD);
-#endif
   /* Check that we can write the snapshots by testing if the output
    * directory exists and is searchable and writable. */
   char basename[PARSER_MAX_LINE_SIZE];
@@ -858,7 +834,7 @@ int main(int argc, char *argv[]) {
                   talking, restart_file);
 
     /* check output field */
-    io_check_output_fields(output_fields, &e);
+    io_check_output_fields(params, &e);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -894,7 +870,6 @@ int main(int argc, char *argv[]) {
       message("Time integration ready to start. End of dry-run.");
     engine_clean(&e);
     free(params);
-    free(output_fields);
     return 0;
   }
 
@@ -1117,7 +1092,6 @@ int main(int argc, char *argv[]) {
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(&cosmo);
   engine_clean(&e);
-  free(output_fields);
   free(params);
 
   /* Say goodbye. */

@@ -813,14 +813,11 @@ void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
 /**
  * @brief Verify the io parameter file
  *
- * @param output_fields The #swift_params containing output information
+ * @param params The #swift_params
  * @param e The #engine
  */
-void io_check_output_fields(const struct swift_params* output_fields,
+void io_check_output_fields(const struct swift_params* params,
                             const struct engine* e) {
-
-  if (output_fields->paramCount == 0)
-    return;
 
   /* particles */
   const struct part* parts = e->s->parts;
@@ -866,12 +863,12 @@ void io_check_output_fields(const struct swift_params* output_fields,
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
     /* loop over each parameter */
-    for (int param_id = 0; param_id < output_fields->paramCount; param_id++) {
-      const char* param_name = output_fields->data[param_id].name;
+    for (int param_id = 0; param_id < params->paramCount; param_id++) {
+      const char* param_name = params->data[param_id].name;
 
       /* skip if wrong part type */
       char section_name[200];
-      sprintf(section_name, "PartType%i", ptype);
+      sprintf(section_name, "SelectOutput:");
       if (strstr(param_name, section_name) == NULL) continue;
 
       int found = 0;
@@ -879,15 +876,15 @@ void io_check_output_fields(const struct swift_params* output_fields,
       /* loop over each possible output field */
       for (int field_id = 0; field_id < num_fields; field_id++) {
         char field_name[256];
-        sprintf(field_name, "PartType%i:%s", ptype, list[field_id].name);
+        sprintf(field_name, "SelectOutput:PartType%i_%s", ptype, list[field_id].name);
         if (strcmp(param_name, field_name) == 0) {
           found = 1;
           continue;
         }
       }
       if (!found)
-	error("Unable to find field corresponding to %s in %s",
-	      param_name, output_fields->fileName);
+	message("WARNING: Unable to find field corresponding to %s in %s",
+		param_name, params->fileName);
     }
   }
 }
@@ -902,6 +899,7 @@ void io_write_output_field_parameter(const char* filename) {
   FILE *file = fopen(filename, "w");
 
   /* Loop over all particle types */
+  fprintf(file, "SelectOutput:\n");
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
     int num_fields = 0;
     struct io_props list[100];
@@ -924,12 +922,9 @@ void io_write_output_field_parameter(const char* filename) {
     
     }
 
-    if (num_fields > 0)
-      fprintf(file, "ParticleType%i:\n", ptype);
-
     /* Write everything */
     for (int i = 0; i < num_fields; ++i) {
-      fprintf(file, "  %s: 1\n", list[i].name);
+      fprintf(file, "  ParticleType%i_%s: 1\n", ptype, list[i].name);
     }
     
     fprintf(file, "\n");

@@ -312,9 +312,6 @@ struct engine {
   /* The (parsed) parameter file */
   const struct swift_params *parameter_file;
 
-  /* The (parsed) output fields */
-  const struct swift_params *output_fields;
-
   /* Temporary struct to hold a group of deferable properties (in MPI mode
    * these are reduced together, but may not be required just yet). */
   struct collectgroup1 collect_group1;

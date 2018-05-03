@@ -727,7 +727,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
   const struct cooling_function_data* cooling = e->cooling_func;
-  const struct swift_params* output_fields = e->output_fields;
+  const struct swift_params* params = e->parameter_file;
   FILE* xmfFile = 0;
 
   /* Number of unassociated gparts */
@@ -1009,8 +1009,8 @@ void write_output_serial(struct engine* e, const char* baseName,
         /* Write everything */
         for (int i = 0; i < num_fields; ++i) {
 	  char field[256];
-	  sprintf(field, "ParticleType%i:%s", ptype, list[i].name);
-	  int should_write = parser_get_opt_param_int(output_fields, field, 1);
+	  sprintf(field, "SelectOutput:ParticleType%i_%s", ptype, list[i].name);
+	  int should_write = parser_get_opt_param_int(params, field, 1);
           if (should_write)
             writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
                        Nparticles, N_total[ptype], mpi_rank, offset[ptype],
