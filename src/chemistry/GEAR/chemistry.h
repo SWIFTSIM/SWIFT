@@ -20,7 +20,7 @@
 #define SWIFT_CHEMISTRY_GEAR_H
 
 /**
- * @file src/chemistry/gear/chemistry.h
+ * @file src/chemistry/GEAR/chemistry.h
  * @brief Empty infrastructure for the cases without chemistry function
  */
 
@@ -29,7 +29,6 @@
 #include <math.h>
 
 /* Local includes. */
-#include "chemistry_io.h"
 #include "chemistry_struct.h"
 #include "error.h"
 #include "hydro.h"
@@ -52,6 +51,18 @@ chemistry_metal_mass_fraction(const struct part* restrict p,
 }
 
 /**
+ * @brief Prints the properties of the chemistry model to stdout.
+ *
+ * @brief The #chemistry_global_data containing information about the current
+ * model.
+ */
+static INLINE void chemistry_print_backend(
+    const struct chemistry_global_data* data) {
+
+  message("Chemistry function is 'Gear'.");
+}
+
+/**
  * @brief Initialises the chemistry properties.
  *
  * Nothing to do here.
@@ -66,7 +77,8 @@ static INLINE void chemistry_init_backend(
     const struct phys_const* phys_const, struct chemistry_global_data* data) {
 
   /* read parameters */
-  chemistry_read_parameters(parameter_file, us, phys_const, data);
+  data->initial_metallicity = parser_get_opt_param_float(
+      parameter_file, "GearChemistry:InitialMetallicity", -1);
 }
 
 /**

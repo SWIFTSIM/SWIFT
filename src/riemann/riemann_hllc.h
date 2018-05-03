@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #ifndef SWIFT_RIEMANN_HLLC_H
 #define SWIFT_RIEMANN_HLLC_H
 

@@ -44,6 +44,7 @@
 #include "chemistry.h"
 #include "const.h"
 #include "cooling.h"
+#include "debug.h"
 #include "engine.h"
 #include "error.h"
 #include "gravity.h"
@@ -1419,7 +1420,9 @@ void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
   for (int k = 0; k < num_bins; k++)
     if (offsets[k + 1] != offsets[k] + counts[k])
       error("Bad offsets after shuffle.");
-#endif  // SWIFT_DEBUG_CHECKS
+#endif /* SWIFT_DEBUG_CHECKS */
+
+  free(offsets);
 }
 
 /**
@@ -1474,7 +1477,9 @@ void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
   for (int k = 0; k < num_bins; k++)
     if (offsets[k + 1] != offsets[k] + counts[k])
       error("Bad offsets after shuffle.");
-#endif  // SWIFT_DEBUG_CHECKS
+#endif /* SWIFT_DEBUG_CHECKS */
+
+  free(offsets);
 }
 
 /**
@@ -1536,7 +1541,9 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
   for (int k = 0; k < num_bins; k++)
     if (offsets[k + 1] != offsets[k] + counts[k])
       error("Bad offsets after shuffle.");
-#endif  // SWIFT_DEBUG_CHECKS
+#endif /* SWIFT_DEBUG_CHECKS */
+
+  free(offsets);
 }
 
 /**

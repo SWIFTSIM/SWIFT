@@ -611,7 +611,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the hydro properties */
     if (with_hydro)
       hydro_props_init(&hydro_properties, &prog_const, &us, params);
-    if (with_hydro) eos_init(&eos, params, &us);
+    if (with_hydro) eos_init(&eos, &prog_const, &us, params);
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
@@ -1058,6 +1058,7 @@ int main(int argc, char *argv[]) {
 
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
+  if (with_cosmology) cosmology_clean(&cosmo);
   engine_clean(&e);
   free(params);
 

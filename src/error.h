@@ -50,6 +50,7 @@
 extern int engine_rank;
 #define error(s, ...)                                                      \
   ({                                                                       \
+    fflush(stdout);                                                        \
     fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,          \
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
@@ -58,6 +59,7 @@ extern int engine_rank;
 #else
 #define error(s, ...)                                                      \
   ({                                                                       \
+    fflush(stdout);                                                        \
     fprintf(stderr, "%s %s:%s():%i: " s "\n", clocks_get_timesincestart(), \
             __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);              \
     swift_abort(1);                                                        \
@@ -72,6 +74,7 @@ extern int engine_rank;
  */
 #define mpi_error(res, s, ...)                                             \
   ({                                                                       \
+    fflush(stdout);                                                        \
     fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,          \
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
@@ -84,6 +87,7 @@ extern int engine_rank;
 
 #define mpi_error_string(res, s, ...)                                      \
   ({                                                                       \
+    fflush(stdout);                                                        \
     fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,          \
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
@@ -122,6 +126,7 @@ extern int engine_rank;
 #define assert(expr)                                                          \
   ({                                                                          \
     if (!(expr)) {                                                            \
+      fflush(stdout);                                                         \
       fprintf(stderr, "[%04i] %s %s:%s():%i: FAILED ASSERTION: " #expr " \n", \
               engine_rank, clocks_get_timesincestart(), __FILE__,             \
               __FUNCTION__, __LINE__);                                        \
@@ -133,6 +138,7 @@ extern int engine_rank;
 #define assert(expr)                                                          \
   ({                                                                          \
     if (!(expr)) {                                                            \
+      fflush(stdout);                                                         \
       fprintf(stderr, "%s %s:%s():%i: FAILED ASSERTION: " #expr " \n",        \
               clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__); \
       fflush(stderr);                                                         \

@@ -32,8 +32,11 @@
 #ifndef SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
 #define SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
 
+/* Some standard headers. */
 #include <float.h>
 
+/* Local headers. */
+#include "minmax.h"
 #include "sign.h"
 
 __attribute__((always_inline)) INLINE static float

@@ -41,18 +41,6 @@ chemistry_get_element_name(enum chemistry_element elem) {
 }
 
 /**
- * @brief Prints the properties of the chemistry model to stdout.
- *
- * @brief The #chemistry_global_data containing information about the current
- * model.
- */
-static INLINE void chemistry_print_backend(
-    const struct chemistry_global_data* data) {
-
-  message("Chemistry function is 'Gear'.");
-}
-
-/**
  * @brief Specifies which particle fields to read from a dataset
  *
  * @param parts The particle array.
@@ -71,14 +59,6 @@ __attribute__((always_inline)) INLINE static int chemistry_read_particles(
                                 parts, chemistry_data.Z);
 
   return 2;
-}
-
-__attribute__((always_inline)) INLINE static void chemistry_read_parameters(
-    const struct swift_params* parameter_file, const struct unit_system* us,
-    const struct phys_const* phys_const, struct chemistry_global_data* data) {
-
-  data->initial_metallicity = parser_get_opt_param_float(
-      parameter_file, "GearChemistry:InitialMetallicity", -1);
 }
 
 /**

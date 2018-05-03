@@ -20,7 +20,7 @@
 #define SWIFT_CHEMISTRY_EAGLE_H
 
 /**
- * @file src/chemistry/gear/chemistry.h
+ * @file src/chemistry/EAGLE/chemistry.h
  * @brief Empty infrastructure for the cases without chemistry function
  */
 
