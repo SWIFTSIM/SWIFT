@@ -704,6 +704,16 @@ static INLINE void runner_doself_grav_pp_full(struct runner *r,
     swift_align_information(float, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded, VEC_SIZE);
 
+//      int index = -gparts[pid].id_or_neg_offset;    ///###
+//      if (e->s->parts[index].id == 7708) {    ///###
+//        message("a");
+//        printParticle_single(&e->s->parts[index],  &e->s->xparts[index]);
+//      }
+//      if (e->s->parts[index].id == 7727) {    ///###
+//        message("b");
+//        printParticle_single(&e->s->parts[index],  &e->s->xparts[index]);
+//      }
+
     /* Loop over every other particle in the cell. */
     for (int pjd = 0; pjd < gcount_padded; pjd++) {
 
@@ -721,6 +731,19 @@ static INLINE void runner_doself_grav_pp_full(struct runner *r,
       const float dy = y_i - y_j;
       const float dz = z_i - z_j;
       const float r2 = dx * dx + dy * dy + dz * dz;
+
+      if (r2 == 0) {    ///###
+        message("Particles at identical positions!");
+
+        int index;
+        index = -gparts[pid].id_or_neg_offset;
+        printParticle_single(&e->s->parts[index],  &e->s->xparts[index]);
+
+        index = -gparts[pjd].id_or_neg_offset;
+        printParticle_single(&e->s->parts[index],  &e->s->xparts[index]);
+
+        error("");
+      }
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (r2 == 0.f) error("Interacting particles with 0 distance");

@@ -8,5 +8,19 @@ mass planets made of Tillotson iron.
 Code Setup
 ----------
 
-$ ./configure --with-hydro=minimal-multi-mat --with-equation-of-state=tillotson --disable-vec
-$ make
+In `swiftsim/`:
+
+`$ ./configure --with-hydro=minimal-multi-mat --with-equation-of-state=tillotson --disable-vec`
+`$ make`
+
+In `swiftsim/examples/IronPlanetImpact/`:
+
+`$ ./run.sh`
+
+
+To do
+-----
+
+* Get it working!
+* Add analysis code
+* Make initial conditions available

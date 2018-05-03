@@ -22,8 +22,8 @@
 /**
  * @file equation_of_state/tillotson/equation_of_state.h
  *
- * Only P(rho, u) and c_s(rho, u) are implemented for now!
- * So, must be used with the Minimal SPH formulation.
+ * Only P(rho, u), c_s(rho, u), and c_s(rho, P) are implemented for now!
+ * So, must be used with the MinimalMultiMat SPH formulation.
  */
 
 /* Some standard headers. */
@@ -240,6 +240,7 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
             (mat->E_cv - mat->E_iv);
     }
 
+    // Minimum pressure
     if (P < 0.f) {
         P = 0.f;
     }
@@ -270,6 +271,83 @@ gas_internal_energy_from_pressure(float density, float pressure, int mat_id) {
  */
 __attribute__((always_inline)) INLINE static float
 gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
+//    struct Til_params *mat;
+//    // Select the material parameters
+//    switch(mat_id) {
+//        case Til_iron:
+//            mat = &eos.Til_iron;
+//            break;
+//
+//        case Til_granite:
+//            mat = &eos.Til_granite;
+//            break;
+//
+//        case Til_water:
+//            mat = &eos.Til_water;
+//            break;
+//
+//        default:
+//            error("Unknown material ID! mat_id=%d", mat_id);
+//            mat = &eos.Til_iron; // Ignored, just here to keep compiler happy
+//    };
+//
+//    const float eta = density / mat->rho_0;
+//    const float mu = eta - 1.f;
+//    const float nu = 1.f/eta - 1.f;
+//    float P_c, P_e, P, c_c, c_e, c;
+//
+//    // Condensed or cold
+//    if (eta < mat->eta_min) {
+//        P_c = 0.f;
+//    }
+//    else {
+//        P_c = (mat->a + mat->b / (u / (mat->E_0 * eta*eta) + 1.f)) * density * u
+//            + mat->A * mu + mat->B * mu*mu;
+//    }
+//    c_c = mat->a*u + mat->b*u / ((u / (mat->E_0*eta*eta)+1.f) *
+//        (u / (mat->E_0*eta*eta)+1.f)) *
+//        (3.f*(u / (mat->E_0*eta*eta)+1.f) - 2.f) +
+//        (mat->A + 2.f*mat->B*mu) / mat->rho_0  +  P_c / (rho*rho) *
+//        (mat->a*rho + mat->b*rho / ((u / (mat->E_0*eta*eta)+1.f) *
+//        (u / (mat->E_0*eta*eta)+1.f)));
+//
+//    c_c = max(c_s, mat->A / mat->rho_0);
+//
+//    // Expanded and hot
+//    P_e = mat->a*density*u + (
+//        mat->b * density * u / (u / (mat->E_0 * eta*eta) + 1.f)
+//        + mat->A*mu * exp(-mat->beta * nu)
+//        ) * exp(-mat->alpha * nu*nu);
+//
+//    c_e = (mat->a + mat->b / (u / (mat->E_0*eta*eta)+1.f) *
+//        exp(-mat->beta*((1.f - eta)/eta)*((1.f - eta)/eta))
+//        + 1.f)*P_e/rho + mat->A/mat->rho_0
+//        *exp(-(mat->alpha*((1.f - eta)/eta)+mat->beta *
+//        ((1.f - eta)/eta)*((1.f - eta)/eta)))*(1.f+mu/(eta*eta)
+//        *(mat->alpha+2.f*mat->beta*((1.f - eta)/eta)-eta)) +
+//        mat->b*rho*u/((u / (mat->E_0*eta*eta)+1.f)*
+//        (u / (mat->E_0*eta*eta)+1.f)*eta*eta)*
+//        exp(-mat->beta*((1.f - eta)/eta)*((1.f - eta)/eta))*
+//        (2.f*mat->beta*((1.f - eta)/eta)*(u / (mat->E_0*eta*eta)+1.f) /
+//         mat->rho_0 + 1.f/(mat->u0*rho)*(2.f*u-P_e/rho));
+//
+//    // Condensed or cold state
+//    if ((1.f < eta) || (u < mat->E_iv)) {
+//        c = c_c;
+//    }
+//    // Expanded and hot state
+//    else if ((eta < 1.f) && (mat->E_cv < u)) {
+//        c = c_e;
+//    }
+//    // Hybrid state
+//    else {
+//		c = ((u - mat->E_iv)*c_e + (mat->E_cv - u)*c_c) /
+//            (mat->E_cv - mat->E_iv);
+//
+//        c = max(c_c, mat->A / mat->rho0);
+//    }
+//
+//    return c;
 
   return 9.4e-4; /// VERY TEMPORARY!!!
 }
@@ -277,15 +355,13 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
 /**
  * @brief Returns the sound speed given density and pressure
  *
- * NOT IMPLEMENTED!
- *
  * @param density The density \f$\rho\f$
  * @param P The pressure \f$P\f$
  */
 __attribute__((always_inline)) INLINE static float
 gas_soundspeed_from_pressure(float density, float P, int mat_id) {
 
-  return 0;
+  return 9.4e-4; /// VERY TEMPORARY!!!
 }
 
 /**
