@@ -34,6 +34,7 @@
 #include "common_io.h"
 #include "inline.h"
 #include "units.h"
+#include "physical_constants.h"
 
 extern struct eos_parameters eos;
 /* ------------------------------------------------------------------------- */
@@ -98,7 +99,7 @@ INLINE static void set_Til_water(struct Til_params *mat) {
 
 // Convert from cgs to internal units
 INLINE static void convert_units_Til(
-    struct Til_params *mat, struct unit_system* us) {
+    struct Til_params *mat, const struct unit_system* us) {
 
     mat->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
     mat->A /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
@@ -372,7 +373,7 @@ gas_soundspeed_from_pressure(float density, float P, int mat_id) {
  */
 __attribute__((always_inline)) INLINE static void eos_init(
     struct eos_parameters *e, const struct phys_const *phys_const,
-    const struct swift_params *params, struct unit_system* us) {
+    const struct unit_system *us, const struct swift_params *params) {
 
     // Set the Tillotson parameters for each material
     set_Til_iron(&e->Til_iron);
