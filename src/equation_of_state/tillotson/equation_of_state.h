@@ -371,8 +371,8 @@ gas_soundspeed_from_pressure(float density, float P, int mat_id) {
  * @param params The parsed parameters
  */
 __attribute__((always_inline)) INLINE static void eos_init(
-    struct eos_parameters *e, const struct swift_params *params,
-    struct unit_system* us) {
+    struct eos_parameters *e, const struct phys_const *phys_const,
+    const struct swift_params *params, struct unit_system* us) {
 
     // Set the Tillotson parameters for each material
     set_Til_iron(&e->Til_iron);
