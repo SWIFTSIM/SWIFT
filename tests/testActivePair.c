@@ -429,7 +429,7 @@ int main(int argc, char *argv[]) {
   struct runner *runner;
   char c;
   static long long partId = 0;
-  char outputFileNameExtension[200] = "";
+  char outputFileNameExtension[100] = "";
   char swiftOutputFileName[200] = "";
   char bruteForceOutputFileName[200] = "";
 

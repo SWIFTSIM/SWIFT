@@ -342,7 +342,7 @@ int main(int argc, char *argv[]) {
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0., h_pert = 0.;
-  char outputFileNameExtension[200] = "";
+  char outputFileNameExtension[100] = "";
   char outputFileName[200] = "";
   enum velocity_types vel = velocity_zero;
 

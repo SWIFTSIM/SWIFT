@@ -388,7 +388,7 @@ int main(int argc, char *argv[]) {
   double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0.;
   double threshold = ACC_THRESHOLD;
-  char outputFileNameExtension[200] = "";
+  char outputFileNameExtension[100] = "";
   char swiftOutputFileName[200] = "";
   char bruteForceOutputFileName[200] = "";
   enum velocity_types vel = velocity_zero;
