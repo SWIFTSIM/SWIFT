@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,29 +18,35 @@
  ******************************************************************************/
 #ifndef SWIFT_PRESSURE_ENERGY_HYDRO_DEBUG_H
 #define SWIFT_PRESSURE_ENERGY_HYDRO_DEBUG_H
-
 /**
- * @file PressureEnergy/hydro_debug.h
- * @brief Pressure-Energy implementation of SPH (Debugging routines)
+ * @file Minimal/hydro_debug.h
+ * @brief Minimal conservative implementation of SPH (Debugging routines)
  *
- * The thermal variable is the energy (u) and the pressure is smoothed over
- * contact discontinuities to prevent spurious surface tension.
+ * The thermal variable is the internal energy (u). Simple constant
+ * viscosity term without switches is implemented. No thermal conduction
+ * term is implemented.
  *
- * Follows equations (16), (17) and (18) of Hopkins, P., MNRAS, 2013,
- * Volume 428, Issue 4, pp. 2840-2856 with a simple Balsara viscosity term.
+ * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
+ * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
+ * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
+ * pp. 759-794.
  */
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
     const struct part* p, const struct xpart* xp) {
   printf(
       "x=[%.3e,%.3e,%.3e], "
-      "v=[%.3e,%.3e,%.3e],v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n "
-      "h=%.3e, wcount=%.3f, wcount_dh=%.3e, time_bin=%d\n"
-      "p_bar=%.3e, p_bar_dh=%3.e, u=%3.e\n",
+      "v=[%.3e,%.3e,%.3e],v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e], "
+      "u=%.3e, du/dt=%.3e v_sig=%.3e, P=%.3e\n"
+      "h=%.3e, dh/dt=%.3e wcount=%d, m=%.3e, dh_drho=%.3e, rho=%.3e, \n"
+      "p_dh=%.3e, p_bar=%.3e \n"
+      "time_bin=%d\n",
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
       xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
-      p->h, p->density.wcount, p->density.wcount_dh, p->time_bin,
-      p->pressure_bar, p->pressure_bar_dh, p->u);
+      p->u, p->u_dt, p->force.v_sig, hydro_get_comoving_pressure(p), p->h,
+      p->force.h_dt, (int)p->density.wcount, p->mass, p->density.rho_dh, p->rho,
+      p->density.pressure_bar_dh, p->pressure_bar,
+      p->time_bin);
 }
 
-#endif /* SWIFT_PRESSURE_ENERGY_HYDRO_DEBUG_H */
+#endif /* SWIFT_MINIMAL_HYDRO_DEBUG_H */

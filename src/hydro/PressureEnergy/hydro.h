@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,15 +20,17 @@
 #define SWIFT_PRESSURE_ENERGY_HYDRO_H
 
 /**
- * @file PressureEnergy/hydro.h
- * @brief Pressure-Energy implementation of SPH (Non-neighbour loop
+ * @file Minimal/hydro.h
+ * @brief Minimal conservative implementation of SPH (Non-neighbour loop
  * equations)
  *
- * The thermal variable is the energy (u) and the pressure is smoothed over
- * contact discontinuities to prevent spurious surface tension.
+ * The thermal variable is the internal energy (u). Simple constant
+ * viscosity term without switches is implemented. No thermal conduction
+ * term is implemented.
  *
- * Follows equations (16), (17) and (18) of Hopkins, P., MNRAS, 2013,
- * Volume 428, Issue 4, pp. 2840-2856 with a simple Balsara viscosity term.
+ * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
+ * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
+ * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
 #include "adiabatic_index.h"
@@ -37,6 +39,7 @@
 #include "dimension.h"
 #include "equation_of_state.h"
 #include "hydro_properties.h"
+#include "hydro_space.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 
@@ -45,10 +48,14 @@
 /**
  * @brief Returns the comoving internal energy of a particle
  *
+ * For implementations where the main thermodynamic variable
+ * is not internal energy, this function computes the internal
+ * energy from the thermodynamic variable.
+ *
  * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static float hydro_get_comoving_internal_energy(
-    const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float
+hydro_get_comoving_internal_energy(const struct part *restrict p) {
 
   return p->u;
 }
@@ -56,17 +63,25 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_internal_e
 /**
  * @brief Returns the physical internal energy of a particle
  *
- * @param p The particle of interest
+ * For implementations where the main thermodynamic variable
+ * is not internal energy, this function computes the internal
+ * energy from the thermodynamic variable and converts it to
+ * physical coordinates.
+ *
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
  */
-__attribute__((always_inline)) INLINE static float hydro_get_physical_internal_energy(
-    const struct part *restrict p,
-    const struct cosmology *cosmo) {
+__attribute__((always_inline)) INLINE static float
+hydro_get_physical_internal_energy(const struct part *restrict p,
+                                   const struct cosmology *cosmo) {
 
   return p->u * cosmo->a_factor_internal_energy;
 }
 
 /**
  * @brief Returns the comoving pressure of a particle
+ *
+ * Computes the pressure based on the particle's properties.
  *
  * @param p The particle of interest
  */
@@ -79,20 +94,25 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
 /**
  * @brief Returns the physical pressure of a particle
  *
+ * Computes the pressure based on the particle's properties and
+ * convert it to physical coordinates.
+ *
  * @param p The particle of interest
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
-    const struct part *restrict p,
-    const struct cosmology *cosmo) {
+    const struct part *restrict p, const struct cosmology *cosmo) {
 
-  return gas_pressure_from_internal_energy(p->rho, p->u) * cosmo->a_factor_pressure;
+  return cosmo->a_factor_pressure *
+         gas_pressure_from_internal_energy(p->rho, p->u);
 }
 
 /**
  * @brief Returns the comoving entropy of a particle
  *
- * This function actually calculates the entropy from the internal energy of the
- * particle, as in PressureEnergy (unsurprisingly) we follow U.
+ * For implementations where the main thermodynamic variable
+ * is not entropy, this function computes the entropy from
+ * the thermodynamic variable.
  *
  * @param p The particle of interest
  */
@@ -105,18 +125,19 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
 /**
  * @brief Returns the physical entropy of a particle
  *
- * This function actually calculates the entropy from the internal energy of the
- * particle, as in PressureEnergy (unsurprisingly) we follow U.
+ * For implementations where the main thermodynamic variable
+ * is not entropy, this function computes the entropy from
+ * the thermodynamic variable and converts it to
+ * physical coordinates.
  *
  * @param p The particle of interest
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
-    const struct part *restrict p,
-    const struct cosmology *cosmo) {
+    const struct part *restrict p, const struct cosmology *cosmo) {
 
-  /* Note we choose co-ordinates such that this always works out to 
-   * require no conversion */
-
+  /* Note: no cosmological conversion required here with our choice of
+   * coordinates. */
   return gas_entropy_from_internal_energy(p->rho, p->u);
 }
 
@@ -125,8 +146,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
  *
  * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static float hydro_get_comoving_soundspeed(
-    const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float
+hydro_get_comoving_soundspeed(const struct part *restrict p) {
 
   return p->force.soundspeed;
 }
@@ -135,12 +156,13 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_soundspeed
  * @brief Returns the physical sound speed of a particle
  *
  * @param p The particle of interest
+ * @param cosmo The cosmological model.
  */
-__attribute__((always_inline)) INLINE static float hydro_get_physical_soundspeed(
-    const struct part *restrict p,
-    const struct cosmology *cosmo) {
+__attribute__((always_inline)) INLINE static float
+hydro_get_physical_soundspeed(const struct part *restrict p,
+                              const struct cosmology *cosmo) {
 
-  return p->force.soundspeed * cosmo->a_factor_sound_speed;
+  return cosmo->a_factor_sound_speed * p->force.soundspeed;
 }
 
 /**
@@ -155,14 +177,15 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_density(
 }
 
 /**
- * @brief Returns the physical density of a particle
+ * @brief Returns the comoving density of a particle.
  *
  * @param p The particle of interest
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
-    const struct part *restrict p, const struct cosmology *restrict cosmo) {
+    const struct part *restrict p, const struct cosmology *cosmo) {
 
-  return p->rho * cosmo->a3_inv;
+  return cosmo->a3_inv * p->rho;
 }
 
 /**
@@ -176,13 +199,13 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
   return p->mass;
 }
 
-
 /**
  * @brief Returns the velocities drifted to the current time of a particle.
  *
  * @param p The particle of interest
  * @param xp The extended data of the particle.
- * @param dt The time since the last kick.
+ * @param dt_kick_hydro The time (for hydro accelerations) since the last kick.
+ * @param dt_kick_grav The time (for gravity accelerations) since the last kick.
  * @param v (return) The velocities at the current time.
  */
 __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
@@ -190,11 +213,11 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
     float dt_kick_grav, float v[3]) {
 
   v[0] = xp->v_full[0] + p->a_hydro[0] * dt_kick_hydro +
-	                 xp->a_grav[0] * dt_kick_grav;
+         xp->a_grav[0] * dt_kick_grav;
   v[1] = xp->v_full[1] + p->a_hydro[1] * dt_kick_hydro +
-	                 xp->a_grav[1] * dt_kick_grav;
+         xp->a_grav[1] * dt_kick_grav;
   v[2] = xp->v_full[2] + p->a_hydro[2] * dt_kick_hydro +
-	                 xp->a_grav[2] * dt_kick_grav;
+         xp->a_grav[2] * dt_kick_grav;
 }
 
 /**
@@ -204,52 +227,48 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
  *
  * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static float hydro_get_energy_dt(
+__attribute__((always_inline)) INLINE static float hydro_get_internal_energy_dt(
     const struct part *restrict p) {
-  /* Since we track energy, we can forget about entropy conversions etc. */
+
   return p->u_dt;
 }
 
 /**
- * @brief Sets the time derivative of internal energy of a particle
+ * @brief Returns the time derivative of internal energy of a particle
  *
  * We assume a constant density.
  *
  * @param p The particle of interest.
  * @param du_dt The new time derivative of the internal energy.
  */
-__attribute__((always_inline)) INLINE static void hydro_set_energy_dt(
+__attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
     struct part *restrict p, float du_dt) {
-  /* Since we track energy, we can forget about entropy conversions etc. */
+
   p->u_dt = du_dt;
 }
-
 /**
  * @brief Computes the hydro time-step of a given particle
  *
+ * This function returns the time-step of a particle given its hydro-dynamical
+ * state. A typical time-step calculation would be the use of the CFL condition.
+ *
  * @param p Pointer to the particle data
  * @param xp Pointer to the extended particle data
- *
+ * @param hydro_properties The SPH parameters
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct part *restrict p, const struct xpart *restrict xp,
     const struct hydro_props *restrict hydro_properties,
     const struct cosmology *restrict cosmo) {
-  
+
   const float CFL_condition = hydro_properties->CFL_condition;
 
   /* CFL condition */
-  const float dt_cfl =
-      2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
-      (p->force.v_sig * cosmo->a_factor_sound_speed);
+  const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
+                       (cosmo->a_factor_sound_speed * p->force.v_sig);
 
-  /* U change limited */
-  /* TODO: Ensure this is consistent with cosmology */
-  const float dt_u_changes = 
-    (p->u_dt != 0.0f) ? fabsf(const_max_u_change * p->u / p->u_dt)
-                      : FLT_MAX;
-
-  return min(dt_u_changes, dt_cfl);
+  return dt_cfl;
 }
 
 /**
@@ -266,23 +285,21 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
  * @brief Prepares a particle for the density calculation.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
- * the variaous density tasks
+ * the various density loop over neighbours. Typically, all fields of the
+ * density sub-structure of a particle get zeroed in here.
  *
  * @param p The particle to act upon
+ * @param hs #hydro_space containing hydro specific space information.
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p, const struct hydro_space *hs) {
 
-  p->rho = 0.f;
-  p->pressure_bar = 0.f;
-  p->pressure_bar_dh = 0.f;
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
-
-  p->density.div_v = 0.f;
-  p->density.rot_v[0] = 0.f;
-  p->density.rot_v[1] = 0.f;
-  p->density.rot_v[2] = 0.f;
+  p->rho = 0.f;
+  p->density.rho_dh = 0.f;
+  p->pressure_bar = 0.f;
+  p->density.pressure_bar_dh = 0.f;
 }
 
 /**
@@ -290,8 +307,13 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  *
  * Multiplies the density and number of neighbours by the appropiate constants
  * and add the self-contribution term.
+ * Additional quantities such as velocity gradients will also get the final
+ * terms added to them here.
+ *
+ * Also adds/multiplies the cosmological terms if need be.
  *
  * @param p The particle to act upon
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density(
     struct part *restrict p, const struct cosmology *cosmo) {
@@ -301,40 +323,34 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   const float h_inv = 1.0f / h;                       /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
-  
+
   /* Final operation on the density (add self-contribution). */
-  p->density.wcount += kernel_root;
-  p->density.wcount_dh -= hydro_dimension * kernel_root * h_inv;
   p->rho += p->mass * kernel_root;
+  p->density.rho_dh -= hydro_dimension * p->mass * kernel_root;
   p->pressure_bar += p->mass * p->u * kernel_root;
-  p->pressure_bar_dh -=
-    p->mass * p->u * h_inv * (hydro_dimension * kernel_root);
+  p->density.pressure_bar_dh -= hydro_dimension * p->mass * p->u * kernel_root;
+  p->density.wcount += kernel_root;
+  p->density.wcount_dh -= hydro_dimension * kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
+  p->rho *= h_inv_dim;
+  p->density.rho_dh *= h_inv_dim_plus_one;
+  p->pressure_bar *= (h_inv_dim * hydro_gamma_minus_one);
+  p->density.pressure_bar_dh *= (h_inv_dim_plus_one * hydro_gamma_minus_one);
   p->density.wcount *= h_inv_dim;
-  p->density.wcount_dh *= h_inv_dim;
-  p->pressure_bar *= h_inv_dim;
-  p->pressure_bar_dh *= h_inv_dim;
-
-  /* Insert gamma factors */
-  p->pressure_bar *= hydro_gamma_minus_one;
-  p->pressure_bar_dh *= hydro_gamma_minus_one;
-
-  /* Finish calculation of the velocity curl components */
-  const float factor = h_inv_dim_plus_one / p->rho;
-  p->density.rot_v[0] *= factor;
-  p->density.rot_v[1] *= factor;
-  p->density.rot_v[2] *= factor;
-
-  /* Finish calculation of the velocity divergence */
-  p->density.div_v *= factor;
+  p->density.wcount_dh *= h_inv_dim_plus_one;
 }
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
  *
+ * In the desperate case where a particle has no neighbours (likely because
+ * of the h_max ceiling), set the particle fields to something sensible to avoid
+ * NaNs in the next calculations.
+ *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
     struct part *restrict p, struct xpart *restrict xp,
@@ -346,68 +362,54 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
   /* Re-set problematic values */
+  p->rho = p->mass * kernel_root * h_inv_dim;
+  p->pressure_bar = p->mass * p->u * hydro_gamma_minus_one * kernel_root * h_inv_dim;
   p->density.wcount = kernel_root * kernel_norm * h_inv_dim;
+  p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
-  p->pressure_bar =
-    kernel_root * p->mass * p->u * hydro_gamma_minus_one * h_inv_dim;
-  p->rho = kernel_root * p->mass * h_inv_dim;
-  p->pressure_bar_dh = 0;
-  p->density.div_v = 0.f;
-  p->density.rot_v[0] = 0.f;
-  p->density.rot_v[1] = 0.f;
-  p->density.rot_v[2] = 0.f;
+  p->density.pressure_bar_dh = 0.f;
 }
 
 /**
  * @brief Prepare a particle for the force calculation.
  *
- * Computes viscosity term, conduction term and smoothing length gradient terms.
+ * This function is called in the ghost task to convert some quantities coming
+ * from the density loop over neighbours into quantities ready to be used in the
+ * force loop over neighbours. Quantities are typically read from the density
+ * sub-structure and written to the force sub-structure.
+ * Examples of calculations done here include the calculation of viscosity term
+ * constants, thermal conduction terms, hydro conversions, etc.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo) {
-  
-  const float fac_mu = 1.f; /* Will change with cosmological integration */
-
-  /* Compute the norm of the curl */
-  const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
-                             p->density.rot_v[1] * p->density.rot_v[1] +
-                             p->density.rot_v[2] * p->density.rot_v[2]);
-
-  /* Compute the norm of div v */
-  const float abs_div_v = fabsf(p->density.div_v);
 
   /* Compute the pressure */
-  const float pressure =
-    gas_pressure_from_internal_energy(p->rho, p->u);
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
 
   /* Compute the sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
-  /* Compute this `useful' property */
+  /* Compute the "grad h" term */
   const float rho_inv = 1.f / p->rho;
-  const float P_over_rho2 = pressure * rho_inv * rho_inv;
+  const float grad_h_term =
+      1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
 
-  /* Compute the Balsara switch */
-  const float balsara =
-    abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed / fac_mu / p->h);
-
-
-  /* Update variables */
+  /* Update variables. */
+  p->force.f = grad_h_term;
+  p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-  p->force.balsara = balsara;
-  p->force.P_over_rho2 = P_over_rho2;
-  p->force.f = 1.f; /* This cannot be computed individually in Pressure-Energy */
 }
 
 /**
  * @brief Reset acceleration fields of a particle
  *
  * Resets all hydro acceleration and time derivative fields in preparation
- * for the sums taking place in the variaous force tasks
+ * for the sums taking  place in the various force tasks.
  *
  * @param p The particle to act upon
  */
@@ -420,10 +422,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->a_hydro[2] = 0.0f;
 
   /* Reset the time derivatives. */
-  p->force.h_dt = 0.0f;
   p->u_dt = 0.0f;
-
-  /* Reset maximal signal velocity */
+  p->force.h_dt = 0.0f;
   p->force.v_sig = 0.0f;
 }
 
@@ -442,15 +442,23 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->v[1] = xp->v_full[1];
   p->v[2] = xp->v_full[2];
 
+  /* Re-set the entropy */
   p->u = xp->u_full;
 }
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
  *
- * @param p The particle
- * @param xp The extended data of the particle
- * @param dt The drift time-step.
+ * Additional hydrodynamic quantites are drifted forward in time here. These
+ * include thermal quantities (thermal energy or total energy or entropy, ...).
+ *
+ * Note the different time-step sizes used for the different quantities as they
+ * include cosmological factors.
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @param dt_drift The drift time-step for positions.
+ * @param dt_therm The drift time-step for thermal quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *restrict p, const struct xpart *restrict xp, float dt_drift,
@@ -466,99 +474,102 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->h *= expf(w1);
 
   /* Predict density */
-
   const float w2 = -hydro_dimension * w1;
-  if (fabsf(w2) < 0.2f) {
+  if (fabsf(w2) < 0.2f)
     p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-    p->pressure_bar *= approx_expf(w2);
-  } else {
+  else
     p->rho *= expf(w2);
-    p->pressure_bar *= expf(w2);
-  }
 
-  /* Predict the energy */
+  /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
 
-  /* Compute the pressure */
+  /* Compute the new pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
 
   /* Compute the new sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
+  p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 }
 
 /**
  * @brief Finishes the force calculation.
  *
- * Multiplies the forces and accelerationsby the appropiate constants
+ * Multiplies the force and accelerations by the appropiate constants
+ * and add the self-contribution term. In most cases, there is little
+ * to do here.
+ *
+ * Cosmological terms are also added/multiplied here.
  *
  * @param p The particle to act upon
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
-  
+
   p->force.h_dt *= p->h * hydro_dimension_inv;
 }
 
 /**
  * @brief Kick the additional variables
  *
- * @param p The particle to act upon
- * @param xp The particle extended data to act upon
- * @param dt The time-step for this kick
- * @param half_dt The half time-step for this kick
+ * Additional hydrodynamic quantites are kicked forward in time here. These
+ * include thermal quantities (thermal energy or total energy or entropy, ...).
+ *
+ * @param p The particle to act upon.
+ * @param xp The particle extended data to act upon.
+ * @param dt_therm The time-step for this kick (for thermodynamic quantities).
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm) {
 
-  /* Do not decrease the energy (temperature) by more than a factor of 2*/
-  if (dt_therm > 0. && p->u_dt * dt_therm < -0.5f * p->u) {
-    p->u_dt = -0.5f * p->u / dt_therm;
+  /* Do not decrease the energy by more than a factor of 2*/
+  if (dt_therm > 0. && p->u_dt * dt_therm < -0.5f * xp->u_full) {
+    p->u_dt = -0.5f * xp->u_full / dt_therm;
   }
   xp->u_full += p->u_dt * dt_therm;
 
   /* Compute the pressure */
-  const float pressure =
-      gas_pressure_from_internal_energy(p->rho, xp->u_full);
+  const float pressure = gas_pressure_from_internal_energy(p->rho, xp->u_full);
 
-  /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  /* Compute the sound speed */
+  const float soundspeed = gas_soundspeed_from_internal_energy(p->rho, p->u);
 
-  /* Update the sound speed */
+  p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 }
 
 /**
- *  @brief Converts hydro quantity of a particle at the start of a run
+ * @brief Converts hydro quantity of a particle at the start of a run
  *
- * Requires the density to be known
+ * This function is called once at the end of the engine_init_particle()
+ * routine (at the start of a calculation) after the densities of
+ * particles have been computed.
+ * This can be used to convert internal energy into entropy for instance.
  *
  * @param p The particle to act upon
+ * @param xp The extended particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp) {
 
-  p->entropy = hydro_get_comoving_entropy(p);
-
   /* Compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float soundspeed = gas_soundspeed_from_internal_energy(p->rho, p->u);
 
-  const float rho_inv = 1.f / p->rho;
-  const float P_over_rho2 = pressure * rho_inv * rho_inv;
-
-  /* Update sound speed */
+  p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-  p->force.P_over_rho2 = P_over_rho2;
 }
 
 /**
  * @brief Initialises the particles for the first time
  *
  * This function is called only once just after the ICs have been
- * read in to do some conversions.
+ * read in to do some conversions or assignments between the particle
+ * and extended particle fields.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -567,24 +578,17 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
-  p->rho = 0.f;
-  p->pressure_bar = 0.f;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
-
+  xp->a_grav[0] = 0.f;
+  xp->a_grav[1] = 0.f;
+  xp->a_grav[2] = 0.f;
   xp->u_full = p->u;
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
 }
-
-/* Begin actual helper functions for the specific hydro implementation.
- *
- * Here we define:
- *
- * hydro_h_term(*pi, *pj)
- */
 
 /**
  *  @brief Calculates the f_ij factors for a given particle i and j (i.e. the
@@ -602,7 +606,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  *  @param hi The smoothing length of particle i
  */
 __attribute__((always_inline)) INLINE static float hydro_h_term(
-    struct part *restrict pi, struct part *restrict pj, float hi) {
+    const struct part * pi, const struct part * pj, float hi) {
   
   /* First constrct h_i / (n_D n_i) */
   
@@ -612,7 +616,7 @@ __attribute__((always_inline)) INLINE static float hydro_h_term(
   const float bottom_term = 1 + hi_over_density * pi->density.wcount_dh;
 
   /* Construct the 'top term' */
-  const float top_term_top = pi->pressure_bar_dh * hi_over_density;
+  const float top_term_top = pi->density.pressure_bar_dh * hi_over_density;
   const float top_term_bottom =
     hydro_gamma_minus_one * pj->mass * pj->u;
 
@@ -622,4 +626,5 @@ __attribute__((always_inline)) INLINE static float hydro_h_term(
   return f_ij;
 }
 
-#endif /* SWIFT_PRESSURE_ENERGY_HYDRO_H */
+
+#endif /* SWIFT_MINIMAL_HYDRO_H */

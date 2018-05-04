@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,37 +18,44 @@
  ******************************************************************************/
 #ifndef SWIFT_PRESSURE_ENERGY_HYDRO_PART_H
 #define SWIFT_PRESSURE_ENERGY_HYDRO_PART_H
-
 /**
- * @file PressureEnergy/hydro_part.h
- * @brief Pressure-Energy implementation of SPH (Particle definition)
+ * @file Minimal/hydro_part.h
+ * @brief Minimal conservative implementation of SPH (Particle definition)
  *
- * The thermal variable is the energy (u) and the pressure is smoothed over
- * contact discontinuities to prevent spurious surface tension.
+ * The thermal variable is the internal energy (u). Simple constant
+ * viscosity term without switches is implemented. No thermal conduction
+ * term is implemented.
  *
- * Follows equations (16), (17) and (18) of Hopkins, P., MNRAS, 2013,
- * Volume 428, Issue 4, pp. 2840-2856 with a simple Balsara viscosity term.
+ * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
+ * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
+ * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 
-/* Extra particle data not needed during the SPH loops over neighbours. */
+/**
+ * @brief Particle fields not needed during the SPH loops over neighbours.
+ *
+ * This structure contains the particle fields that are not used in the
+ * density or force loops. Quantities should be used in the kick, drift and
+ * potentially ghost tasks only.
+ */
 struct xpart {
 
   /*! Offset between current position and position at last tree rebuild. */
   float x_diff[3];
 
-  /* Offset between the current position and position at the last sort. */
+  /*! Offset between the current position and position at the last sort. */
   float x_diff_sort[3];
 
   /*! Velocity at the last full step. */
   float v_full[3];
 
-  /*! Gravitational acceleration */
+  /*! Gravitational acceleration at the last full step. */
   float a_grav[3];
 
-  /*! Full internal energy */
+  /*! Internal energy at the last full step. */
   float u_full;
 
   /*! Additional data used to record cooling information */
@@ -56,10 +63,16 @@ struct xpart {
 
 } SWIFT_STRUCT_ALIGN;
 
-/* Data of a single particle. */
+/**
+ * @brief Particle fields for the SPH particles
+ *
+ * The density and force substructures are used to contain variables only used
+ * within the density and force loops over neighbours. All more permanent
+ * variables should be declared in the main part of the part structure,
+ */
 struct part {
 
-  /*! Particle ID. */
+  /*! Particle unique ID. */
   long long id;
 
   /*! Pointer to corresponding gravity part. */
@@ -77,77 +90,78 @@ struct part {
   /*! Particle mass. */
   float mass;
 
-  /*! SPH Density */
-  float rho;
-
-  /*! Smoothed particle pressure. */
-  float pressure_bar;
-
-  /*! Smoothed particle pressure's spatial derivative */
-  float pressure_bar_dh;
-
-  /*! Particle internal energy */
-  float u;
-
-  /*! Differential of the internal energy with respect to time */
-  float u_dt;
-
-  /*! Entropy (for if people want it) */ 
-  float entropy;
-
-  /*! Particle cutoff radius. */
+  /*! Particle smoothing length. */
   float h;
 
+  /*! Particle internal energy. */
+  float u;
 
+  /*! Time derivative of the internal energy. */
+  float u_dt;
+
+  /*! Particle density. */
+  float rho;
+  
+  /*! Particle pressure (weighted) */
+  float pressure_bar;
+
+  /* Store density/force specific stuff. */
+  /*union {*/
+
+    /**
+     * @brief Structure for the variables only used in the density loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the density
+     * loop over neighbours and the ghost task.
+     */
     struct {
 
-      /*! Number of neighbours. */
+      /*! Neighbour number count. */
       float wcount;
 
-      /*! Number of neighbours spatial derivative. */
+      /*! Derivative of the neighbour number with respect to h. */
       float wcount_dh;
 
-      /*! Velocity curl */
-      float rot_v[3];
-
-      /*! Velocity divergence */
-      float div_v;
-
-      /*! d\rho/dh */
+      /*! Derivative of density with respect to h */
       float rho_dh;
 
-      /*! dP/dh */
-      float pressure_dh;
+	  /*! Derivative of the weighted pressure with respect to h */
+      float pressure_bar_dh;
 
     } density;
 
+    /**
+     * @brief Structure for the variables only used in the force loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the force
+     * loop over neighbours and the ghost, drift and kick tasks.
+     */
     struct {
 
-      /*! Signal velocity. */
-      float v_sig;
-
-      /*! Time derivative of the smoothing length */
-      float h_dt;
-
-      /*! Sound speed */
-      float soundspeed;
-      
-      /*! Balsara switch */
-      float balsara;
-
-      /*! F_{ij} -- not actually possible to set this. */
+      /*! "Grad h" term */
       float f;
 
-      /*! P/\rho^2 -- not actually required for Pressure Energy but this is
-      needed for cross-compatibility with the unit tests */
-      float P_over_rho2;
+      /*! Particle pressure. */
+      float pressure;
+
+      /*! Particle soundspeed. */
+      float soundspeed;
+
+      /*! Particle signal velocity */
+      float v_sig;
+
+      /*! Time derivative of smoothing length  */
+      float h_dt;
 
     } force;
+  /*};*/
 
   /* Chemistry information */
   struct chemistry_part_data chemistry_data;
 
-  /* Time-step length */
+  /*! Time-step length */
   timebin_t time_bin;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -162,4 +176,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_PRESSURE_ENERGY_HYDRO_PART_H */
+#endif /* SWIFT_MINIMAL_HYDRO_PART_H */
