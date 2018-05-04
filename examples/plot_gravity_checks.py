@@ -43,6 +43,7 @@ cols = ['#332288', '#88CCEE', '#117733', '#DDCC77', '#CC6677']
 
 # Time-step to plot
 step = int(sys.argv[1])
+periodic = int(sys.argv[2])
 
 # Find the files for the different expansion orders
 order_list = glob.glob("gravity_checks_swift_step%d_order*.dat"%step)
@@ -56,7 +57,10 @@ order = sorted(order)
 order_list = sorted(order_list)
 
 # Read the exact accelerations first
-data = np.loadtxt('gravity_checks_exact_step%d.dat'%step)
+if periodic:
+    data = np.loadtxt('gravity_checks_exact_periodic_step%d.dat'%step)
+else:
+    data = np.loadtxt('gravity_checks_exact_step%d.dat'%step)
 exact_ids = data[:,0]
 exact_pos = data[:,1:4]
 exact_a = data[:,4:7]
@@ -104,7 +108,7 @@ if len(gadget2_file_list) != 0:
         print "Comparing different exact accelerations ! max difference:"
         index = np.argmax(exact_a[:,0]**2 + exact_a[:,1]**2 + exact_a[:,2]**2 - gadget2_a_exact[:,0]**2 - gadget2_a_exact[:,1]**2 - gadget2_a_exact[:,2]**2)
         print "a_exact --- Gadget2:", gadget2_a_exact[index,:], "exact:", exact_a[index,:]
-        print "pos ---     Gadget2: (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "exact (id=%d):"%ids[index], pos[index,:],"\n"
+        print "pos ---     Gadget2: (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "exact (id=%d):"%gadget2_ids[index], gadget2_pos[index,:],"\n"
 
     
     # Compute the error norm
@@ -146,16 +150,16 @@ if len(gadget2_file_list) != 0:
     print "Z   : median= %f 99%%= %f max= %f"%(median_z, per99_z, max_z)
     print ""
 
-    plt.subplot(221)    
+    plt.subplot(231)    
     plt.text(min_error * 1.5, 1.55, "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(norm_median, norm_per99), ha="left", va="top", alpha=0.8)
     plt.semilogx(bins, norm_error_hist, 'k--', label="Gadget-2", alpha=0.8)
-    plt.subplot(222)
+    plt.subplot(232)
     plt.semilogx(bins, error_x_hist, 'k--', label="Gadget-2", alpha=0.8)
     plt.text(min_error * 1.5, 1.55, "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_x, per99_x), ha="left", va="top", alpha=0.8)
-    plt.subplot(223)    
+    plt.subplot(233)    
     plt.semilogx(bins, error_y_hist, 'k--', label="Gadget-2", alpha=0.8)
     plt.text(min_error * 1.5, 1.55, "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_y, per99_y), ha="left", va="top", alpha=0.8)
-    plt.subplot(224)    
+    plt.subplot(234)    
     plt.semilogx(bins, error_z_hist, 'k--', label="Gadget-2", alpha=0.8)
     plt.text(min_error * 1.5, 1.55, "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(median_z, per99_z), ha="left", va="top", alpha=0.8)
     
