@@ -395,7 +395,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   /* Compute the "grad h" term */
-  const float common_factor = p->h / (3 * p->density.wcount);
+  const float common_factor = p->h / (hydro_dimension * p->density.wcount);
   const float grad_h_term =
       (p->density.pressure_bar_dh * common_factor / hydro_gamma_minus_one) / 
       (1 + common_factor * p->density.wcount_dh);
