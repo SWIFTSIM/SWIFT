@@ -297,3 +297,6 @@ sympy-plots-for-*.tex/
 
 # macOS
 *.DS_Store
+
+#ctags
+*tags
