@@ -51,6 +51,8 @@ testReading_SOURCES = testReading.c
 
 testSymmetry_SOURCES = testSymmetry.c
 
+testSymmetry_CFLAGS = $(AM_CFLAGS) -fno-builtin-memcmp
+
 testTimeIntegration_SOURCES = testTimeIntegration.c
 
 testSPHStep_SOURCES = testSPHStep.c
