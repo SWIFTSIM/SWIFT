@@ -106,7 +106,7 @@ struct part {
   float pressure_bar;
 
   /* Store density/force specific stuff. */
-  /*union {*/
+  union {
 
     /**
      * @brief Structure for the variables only used in the density loop over
@@ -128,7 +128,12 @@ struct part {
 
 	  /*! Derivative of the weighted pressure with respect to h */
       float pressure_bar_dh;
+ 
+      /*! Particle velocity curl. */
+      float rot_v[3];
 
+      /*! Particle velocity divergence. */
+      float div_v;
     } density;
 
     /**
@@ -156,7 +161,7 @@ struct part {
       float h_dt;
 
     } force;
-  /*};*/
+  };
 
   /* Chemistry information */
   struct chemistry_part_data chemistry_data;
