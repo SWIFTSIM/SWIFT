@@ -395,9 +395,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   /* Compute the "grad h" term */
-  const float rho_inv = 1.f / p->rho;
+  const float common_factor = p->h / (3 * p->density.wcount);
   const float grad_h_term =
-      1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
+      (p->density.pressure_bar_dh * common_factor / hydro_gamma_minus_one) / 
+      (1 + common_factor * p->density.wcount_dh);
 
   /* Update variables. */
   p->force.f = grad_h_term;
@@ -473,12 +474,15 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->h *= expf(w1);
 
-  /* Predict density */
+  /* Predict density and weighted pressure */
   const float w2 = -hydro_dimension * w1;
-  if (fabsf(w2) < 0.2f)
+  if (fabsf(w2) < 0.2f) {
     p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-  else
+    p->pressure_bar *= approx_expf(w2);
+  } else {
     p->rho *= expf(w2);
+    p->pressure_bar *= approx_expf(w2);
+  }
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
@@ -589,42 +593,5 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
 }
-
-/**
- *  @brief Calculates the f_ij factors for a given particle i and j (i.e. the
- *         'h-terms'.
- *
- *  Requires the relevant quantities to be known; here (in Pressure Energy) we
- *  require: 
- *    - pressure_bar_dh
- *    - number density (wcount)
- *    - internal_energy
- *    - number density dh (wcount_dh)
- *
- *  @param pi The particle i
- *  @param pj The particle j
- *  @param hi The smoothing length of particle i
- */
-__attribute__((always_inline)) INLINE static float hydro_h_term(
-    const struct part * pi, const struct part * pj, float hi) {
-  
-  /* First constrct h_i / (n_D n_i) */
-  
-  const float hi_over_density = hi / (hydro_dimension * pi->density.wcount);
-
-  /* Construct the 'bottom term' */
-  const float bottom_term = 1 + hi_over_density * pi->density.wcount_dh;
-
-  /* Construct the 'top term' */
-  const float top_term_top = pi->density.pressure_bar_dh * hi_over_density;
-  const float top_term_bottom =
-    hydro_gamma_minus_one * pj->mass * pj->u;
-
-  /* Putting it all together... */
-  const float f_ij = 1 - (top_term_top / (bottom_term * top_term_bottom));
-
-  return f_ij;
-}
-
 
 #endif /* SWIFT_MINIMAL_HYDRO_H */

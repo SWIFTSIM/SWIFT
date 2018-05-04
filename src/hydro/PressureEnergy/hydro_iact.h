@@ -144,13 +144,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float r_inv = 1.0f / r;
 
   /* Recover some data */
-  const float mi = pi->mass;
   const float mj = pj->mass;
+  const float mi = pi->mass;
+  
+  const float miui = mi * pi->u;
+  const float mjuj = mj * pj->u;
+  
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-  /* Compute f terms */
-  const float f_ij = hydro_h_term(pi, pj, hi);
-  const float f_ji = hydro_h_term(pj, pi, hj);
+  /* Compute gradient terms */
+  const float f_ij = 1 - (pi->force.f / mjuj);
+  const float f_ji = 1 - (pj->force.f / miui);
+
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -258,11 +263,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Recover some data */
   // const float mi = pi->mass;
   const float mj = pj->mass;
+  const float mi = pi->mass;
+  
+  const float miui = mi * pi->u;
+  const float mjuj = mj * pj->u;
+  
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
   /* Compute gradient terms */
-  const float f_ij = hydro_h_term(pi, pj, hi);
-  const float f_ji = hydro_h_term(pj, pi, hj);
+  const float f_ij = 1 - (pi->force.f / mjuj);
+  const float f_ji = 1 - (pj->force.f / miui);
 
 
   /* Get the kernel for hi. */
