@@ -164,14 +164,14 @@ void test() {
     printParticle_single(&pi2, &xpi);
     print_bytes(&pj, sizeof(struct part));
     print_bytes(&pj2, sizeof(struct part));
-    error("Particles 'pi' do not match after force (byte = %d)", i_not_ok);
+    error("Particles 'pi' do not match after density (byte = %d)", i_not_ok);
   }
   if (j_not_ok) {
     printParticle_single(&pj, &xpj);
     printParticle_single(&pj2, &xpj);
     print_bytes(&pj, sizeof(struct part));
     print_bytes(&pj2, sizeof(struct part));
-    error("Particles 'pj' do not match after force (byte = %d)", j_not_ok);
+    error("Particles 'pj' do not match after density (byte = %d)", j_not_ok);
   }
 
   /* --- Test the force loop --- */

@@ -23,9 +23,9 @@
 #ifdef HAVE_POSIX_FALLOCATE /* Are we on a sensible platform? */
 
 /* Some standard headers. */
+#include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -98,6 +98,8 @@ int main(int argc, char *argv[]) {
 }
 
 #else
+
+#include <stdio.h>
 
 int main(int argc, char *argv[]) {
   printf("No posix_fallocate, not testing anything.\n");
