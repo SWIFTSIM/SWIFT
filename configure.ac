@@ -976,7 +976,7 @@ esac
 #  Equation of state
 AC_ARG_WITH([equation-of-state],
    [AS_HELP_STRING([--with-equation-of-state=<EoS>],
-      [equation of state @<:@ideal-gas, isothermal-gas, tillotson default: ideal-gas@:>@]
+      [equation of state @<:@ideal-gas, isothermal-gas, tillotson, planetary default: ideal-gas@:>@]
    )],
    [with_eos="$withval"],
    [with_eos="ideal-gas"]
@@ -990,6 +990,9 @@ case "$with_eos" in
    ;;
    tillotson)
       AC_DEFINE([EOS_TILLOTSON], [1], [Tillotson equation of state])
+   ;;
+   planetary)
+      AC_DEFINE([EOS_PLANETARY], [1], [Planetary equation(s) of state])
    ;;
    *)
       AC_MSG_ERROR([Unknown equation of state: $with_eos])
