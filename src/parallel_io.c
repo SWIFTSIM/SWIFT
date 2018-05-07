@@ -207,12 +207,6 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
   const hid_t h_data = H5Dopen2(grp, props.name, H5P_DEFAULT);
   if (h_data < 0) error("Error while opening data space '%s'.", props.name);
 
-  /* Check data type */
-  const hid_t h_type = H5Dget_type(h_data);
-  if (h_type < 0) error("Unable to retrieve data type from the file");
-  /* if (!H5Tequal(h_type, hdf5_type(type))) */
-  /*   error("Non-matching types between the code and the file"); */
-
   /* Create property list for collective dataset read. */
   const hid_t h_plist_id = H5Pcreate(H5P_DATASET_XFER);
   H5Pset_dxpl_mpio(h_plist_id, H5FD_MPIO_COLLECTIVE);
@@ -254,7 +248,6 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
 
   /* Close everything */
   H5Pclose(h_plist_id);
-  H5Tclose(h_type);
   H5Dclose(h_data);
 }
 

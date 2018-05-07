@@ -104,12 +104,6 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
   const hid_t h_data = H5Dopen(grp, props.name, H5P_DEFAULT);
   if (h_data < 0) error("Error while opening data space '%s'.", props.name);
 
-  /* Check data type */
-  const hid_t h_type = H5Dget_type(h_data);
-  if (h_type < 0) error("Unable to retrieve data type from the file");
-  /* if (!H5Tequal(h_type, hdf5_type(type))) */
-  /*   error("Non-matching types between the code and the file"); */
-
   /* Allocate temporary buffer */
   void* temp = malloc(num_elements * typeSize);
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
@@ -189,7 +183,6 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
   free(temp);
   H5Sclose(h_filespace);
   H5Sclose(h_memspace);
-  H5Tclose(h_type);
   H5Dclose(h_data);
 }
 
