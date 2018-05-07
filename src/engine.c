@@ -4145,9 +4145,23 @@ void engine_print_stats(struct engine *e) {
                           e->policy & engine_policy_self_gravity);
 
   /* Be verbose about this */
-  if (e->nodeID == 0) message("Saving statistics at t=%e.", e->time);
+  if (e->nodeID == 0) {
+    if (e->policy & engine_policy_cosmology)
+      message("Saving statistics at a=%e",
+              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
+    else
+      message("Saving statistics at t=%e",
+              e->ti_current * e->time_base + e->time_begin);
+  }
 #else
-  if (e->verbose) message("Saving statistics at t=%e.", e->time);
+  if (e->verbose) {
+    if (e->policy & engine_policy_cosmology)
+      message("Saving statistics at a=%e",
+              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
+    else
+      message("Saving statistics at t=%e",
+              e->ti_current * e->time_base + e->time_begin);
+  }
 #endif
 
   e->save_stats = 0;
@@ -4176,6 +4190,9 @@ void engine_print_stats(struct engine *e) {
   /* Print info */
   if (e->nodeID == 0)
     stats_print_to_file(e->file_stats, &global_stats, e->time);
+
+  /* Flag that we dumped some statistics */
+  e->step_props |= engine_step_prop_statistics;
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -4609,11 +4626,11 @@ void engine_step(struct engine *e) {
   e->forcerebuild = e->collect_group1.forcerebuild;
 
   /* Save some statistics ? */
-  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics)
+  if (e->ti_end_min >= e->ti_next_stats && e->ti_next_stats > 0)
     e->save_stats = 1;
 
   /* Do we want a snapshot? */
-  if (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0)
+  if (e->ti_end_min >= e->ti_next_snapshot && e->ti_next_snapshot > 0)
     e->dump_snapshot = 1;
 
   /* Drift everybody (i.e. what has not yet been drifted) */
@@ -4630,9 +4647,6 @@ void engine_step(struct engine *e) {
 
     /* ... and find the next output time */
     engine_compute_next_snapshot_time(e);
-
-    /* Flag that we dumped a snapshot */
-    e->step_props |= engine_step_prop_snapshot;
   }
 
   /* Save some  statistics */
@@ -4642,10 +4656,7 @@ void engine_step(struct engine *e) {
     engine_print_stats(e);
 
     /* and move on */
-    e->timeLastStatistics += e->deltaTimeStatistics;
-
-    /* Flag that we dumped some statistics */
-    e->step_props |= engine_step_prop_statistics;
+    engine_compute_next_statistics_time(e);
   }
 
   /* Now apply all the collected time step updates and particle counts. */
@@ -4782,7 +4793,14 @@ void engine_drift_all(struct engine *e) {
   const ticks tic = getticks();
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (e->nodeID == 0) message("Drifting all");
+  if (e->nodeID == 0) {
+    if (e->policy & engine_policy_cosmology)
+      message("Drifting all to a=%e",
+              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
+    else
+      message("Drifting all to t=%e",
+              e->ti_current * e->time_base + e->time_begin);
+  }
 #endif
 
   threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
@@ -4874,6 +4892,17 @@ void engine_do_reconstruct_multipoles_mapper(void *map_data, int num_elements,
 void engine_reconstruct_multipoles(struct engine *e) {
 
   const ticks tic = getticks();
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (e->nodeID == 0) {
+    if (e->policy & engine_policy_cosmology)
+      message("Reconstructing multipoles at a=%e",
+              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
+    else
+      message("Reconstructing multipoles at t=%e",
+              e->ti_current * e->time_base + e->time_begin);
+  }
+#endif
 
   threadpool_map(&e->threadpool, engine_do_reconstruct_multipoles_mapper,
                  e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 0, e);
@@ -5214,9 +5243,23 @@ void engine_dump_snapshot(struct engine *e) {
                           e->policy & engine_policy_self_gravity);
 
   /* Be verbose about this */
-  if (e->nodeID == 0) message("writing snapshot at t=%e.", e->time);
+  if (e->nodeID == 0) {
+    if (e->policy & engine_policy_cosmology)
+      message("Dumping snapshot at a=%e",
+              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
+    else
+      message("Dumping snapshot at t=%e",
+              e->ti_current * e->time_base + e->time_begin);
+  }
 #else
-  if (e->verbose) message("writing snapshot at t=%e.", e->time);
+  if (e->verbose) {
+    if (e->policy & engine_policy_cosmology)
+      message("Dumping snapshot at a=%e",
+              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
+    else
+      message("Dumping snapshot at t=%e",
+              e->ti_current * e->time_base + e->time_begin);
+  }
 #endif
 
 /* Dump... */
@@ -5238,6 +5281,9 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 
   e->dump_snapshot = 0;
+
+  /* Flag that we dumped a snapshot */
+  e->step_props |= engine_step_prop_snapshot;
 
   clocks_gettime(&time2);
   if (e->verbose)
@@ -5360,11 +5406,13 @@ void engine_init(struct engine *e, struct space *s,
   e->max_active_bin = num_time_bins;
   e->min_active_bin = 1;
   e->internal_units = internal_units;
-  e->timeFirstSnapshot =
-      parser_get_param_double(params, "Snapshots:time_first");
-  e->deltaTimeSnapshot =
+  e->a_first_snapshot =
+      parser_get_opt_param_double(params, "Snapshots:scale_factor_first", 0.1);
+  e->time_first_snapshot =
+      parser_get_opt_param_double(params, "Snapshots:time_first", 0.);
+  e->delta_time_snapshot =
       parser_get_param_double(params, "Snapshots:delta_time");
-  e->ti_nextSnapshot = 0;
+  e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshotBaseName);
   e->snapshotCompression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
@@ -5373,9 +5421,13 @@ void engine_init(struct engine *e, struct space *s,
   e->snapshotOutputCount = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
-  e->deltaTimeStatistics =
+  e->a_first_statistics =
+      parser_get_opt_param_double(params, "Statistics:scale_factor_first", 0.1);
+  e->time_first_statistics =
+      parser_get_opt_param_double(params, "Statistics:time_first", 0.);
+  e->delta_time_statistics =
       parser_get_param_double(params, "Statistics:delta_time");
-  e->timeLastStatistics = 0;
+  e->ti_next_stats = 0;
   e->verbose = verbose;
   e->count_step = 0;
   e->wallclock_time = 0.f;
@@ -5728,17 +5780,54 @@ void engine_config(int restart, struct engine *e,
           e->time_end - e->time_begin);
 
   /* Deal with outputs */
-  if (e->deltaTimeSnapshot < 0.)
-    error("Time between snapshots (%e) must be positive.",
-          e->deltaTimeSnapshot);
+  if (e->policy & engine_policy_cosmology) {
 
-  if (e->timeFirstSnapshot < e->time_begin)
-    error(
-        "Time of first snapshot (%e) must be after the simulation start t=%e.",
-        e->timeFirstSnapshot, e->time_begin);
+    if (e->delta_time_snapshot <= 1.)
+      error("Time between snapshots (%e) must be > 1.", e->delta_time_snapshot);
 
-  /* Find the time of the first output */
+    if (e->delta_time_statistics <= 1.)
+      error("Time between statistics (%e) must be > 1.",
+            e->delta_time_statistics);
+
+    if (e->a_first_snapshot < e->cosmology->a_begin)
+      error(
+          "Scale-factor of first snapshot (%e) must be after the simulation "
+          "start a=%e.",
+          e->a_first_snapshot, e->cosmology->a_begin);
+
+    if (e->a_first_statistics < e->cosmology->a_begin)
+      error(
+          "Scale-factor of first stats output (%e) must be after the "
+          "simulation start a=%e.",
+          e->a_first_statistics, e->cosmology->a_begin);
+  } else {
+
+    if (e->delta_time_snapshot <= 0.)
+      error("Time between snapshots (%e) must be positive.",
+            e->delta_time_snapshot);
+
+    if (e->delta_time_statistics <= 0.)
+      error("Time between statistics (%e) must be positive.",
+            e->delta_time_statistics);
+
+    if (e->time_first_snapshot < e->time_begin)
+      error(
+          "Time of first snapshot (%e) must be after the simulation start "
+          "t=%e.",
+          e->time_first_snapshot, e->time_begin);
+
+    if (e->time_first_statistics < e->time_begin)
+      error(
+          "Time of first stats output (%e) must be after the simulation start "
+          "t=%e.",
+          e->time_first_statistics, e->time_begin);
+  }
+
+  /* Find the time of the first snapshot  output */
   engine_compute_next_snapshot_time(e);
+
+  /* Find the time of the first statistics output */
+  engine_compute_next_statistics_time(e);
 
   /* Whether restarts are enabled. Yes by default. Can be changed on restart. */
   e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
@@ -5924,46 +6013,110 @@ void engine_compute_next_snapshot_time(struct engine *e) {
   /* Find upper-bound on last output */
   double time_end;
   if (e->policy & engine_policy_cosmology)
-    time_end = e->cosmology->a_end * e->deltaTimeSnapshot;
+    time_end = e->cosmology->a_end * e->delta_time_snapshot;
   else
-    time_end = e->time_end + e->deltaTimeSnapshot;
+    time_end = e->time_end + e->delta_time_snapshot;
 
   /* Find next snasphot above current time */
-  double time = e->timeFirstSnapshot;
+  double time;
+  if (e->policy & engine_policy_cosmology)
+    time = e->a_first_snapshot;
+  else
+    time = e->time_first_snapshot;
   while (time < time_end) {
 
     /* Output time on the integer timeline */
     if (e->policy & engine_policy_cosmology)
-      e->ti_nextSnapshot = log(time / e->cosmology->a_begin) / e->time_base;
+      e->ti_next_snapshot = log(time / e->cosmology->a_begin) / e->time_base;
     else
-      e->ti_nextSnapshot = (time - e->time_begin) / e->time_base;
+      e->ti_next_snapshot = (time - e->time_begin) / e->time_base;
 
     /* Found it? */
-    if (e->ti_nextSnapshot > e->ti_current) break;
+    if (e->ti_next_snapshot > e->ti_current) break;
 
     if (e->policy & engine_policy_cosmology)
-      time *= e->deltaTimeSnapshot;
+      time *= e->delta_time_snapshot;
     else
-      time += e->deltaTimeSnapshot;
+      time += e->delta_time_snapshot;
   }
 
   /* Deal with last snapshot */
-  if (e->ti_nextSnapshot >= max_nr_timesteps) {
-    e->ti_nextSnapshot = -1;
+  if (e->ti_next_snapshot >= max_nr_timesteps) {
+    e->ti_next_snapshot = -1;
     if (e->verbose) message("No further output time.");
   } else {
 
     /* Be nice, talk... */
     if (e->policy & engine_policy_cosmology) {
-      const float next_snapshot_time =
-          exp(e->ti_nextSnapshot * e->time_base) * e->cosmology->a_begin;
+      const double next_snapshot_time =
+          exp(e->ti_next_snapshot * e->time_base) * e->cosmology->a_begin;
       if (e->verbose)
-        message("Next output time set to a=%e.", next_snapshot_time);
+        message("Next snapshot time set to a=%e.", next_snapshot_time);
     } else {
-      const float next_snapshot_time =
-          e->ti_nextSnapshot * e->time_base + e->time_begin;
+      const double next_snapshot_time =
+          e->ti_next_snapshot * e->time_base + e->time_begin;
       if (e->verbose)
-        message("Next output time set to t=%e.", next_snapshot_time);
+        message("Next snapshot time set to t=%e.", next_snapshot_time);
+    }
+  }
+}
+
+/**
+ * @brief Computes the next time (on the time line) for a statistics dump
+ *
+ * @param e The #engine.
+ */
+void engine_compute_next_statistics_time(struct engine *e) {
+
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->delta_time_statistics;
+  else
+    time_end = e->time_end + e->delta_time_statistics;
+
+  /* Find next snasphot above current time */
+  double time;
+  if (e->policy & engine_policy_cosmology)
+    time = e->a_first_statistics;
+  else
+    time = e->time_first_statistics;
+  while (time < time_end) {
+
+    /* Output time on the integer timeline */
+    if (e->policy & engine_policy_cosmology)
+      e->ti_next_stats = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_next_stats = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (e->ti_next_stats > e->ti_current) break;
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->delta_time_statistics;
+    else
+      time += e->delta_time_statistics;
+  }
+
+  /* Deal with last statistics */
+  if (e->ti_next_stats >= max_nr_timesteps) {
+    e->ti_next_stats = -1;
+    if (e->verbose) message("No further output time.");
+  } else {
+
+    /* Be nice, talk... */
+    if (e->policy & engine_policy_cosmology) {
+      const double next_statistics_time =
+          exp(e->ti_next_stats * e->time_base) * e->cosmology->a_begin;
+      if (e->verbose)
+        message("Next output time for stats set to a=%e.",
+                next_statistics_time);
+    } else {
+      const double next_statistics_time =
+          e->ti_next_stats * e->time_base + e->time_begin;
+      if (e->verbose)
+        message("Next output time for stats set to t=%e.",
+                next_statistics_time);
     }
   }
 }
