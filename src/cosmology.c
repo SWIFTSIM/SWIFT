@@ -642,8 +642,12 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "a_end", c->a_end);
   io_write_attribute_d(h_grp, "time_beg [internal units]", c->time_begin);
   io_write_attribute_d(h_grp, "time_end [internal units]", c->time_end);
+  io_write_attribute_d(h_grp, "Universe age [internal units]", c->time);
+  io_write_attribute_d(h_grp, "Lookback time [internal units]",
+                       c->lookback_time);
   io_write_attribute_d(h_grp, "h", c->h);
   io_write_attribute_d(h_grp, "H0 [internal units]", c->H0);
+  io_write_attribute_d(h_grp, "H [internal units]", c->H);
   io_write_attribute_d(h_grp, "Hubble time [internal units]", c->Hubble_time);
   io_write_attribute_d(h_grp, "Omega_m", c->Omega_m);
   io_write_attribute_d(h_grp, "Omega_r", c->Omega_r);
@@ -652,6 +656,11 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "Omega_lambda", c->Omega_lambda);
   io_write_attribute_d(h_grp, "w_0", c->w_0);
   io_write_attribute_d(h_grp, "w_a", c->w_a);
+  io_write_attribute_d(h_grp, "w", c->w);
+  io_write_attribute_d(h_grp, "Redshift", c->z);
+  io_write_attribute_d(h_grp, "Scale-factor", c->a);
+  io_write_attribute_d(h_grp, "Critical density [internal units]",
+                       c->critical_density);
 }
 #endif
 
