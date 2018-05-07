@@ -137,9 +137,7 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
   /* Using HDF5 dataspaces would be better */
   const hid_t h_err = H5Dread(h_data, io_hdf5_type(props.type), h_memspace,
                               h_filespace, H5P_DEFAULT, temp);
-  if (h_err < 0) {
-    error("Error while reading data array '%s'.", props.name);
-  }
+  if (h_err < 0) error("Error while reading data array '%s'.", props.name);
 
   /* Unit conversion if necessary */
   const double factor =
@@ -198,9 +196,8 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
-  if (h_space < 0) {
+  if (h_space < 0)
     error("Error while creating data space for field '%s'.", props.name);
-  }
 
   int rank = 0;
   hsize_t shape[2];
@@ -224,19 +221,17 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
 
   /* Change shape of data space */
   hid_t h_err = H5Sset_extent_simple(h_space, rank, shape, shape);
-  if (h_err < 0) {
+  if (h_err < 0)
     error("Error while changing data space shape for field '%s'.", props.name);
-  }
 
   /* Dataset properties */
   const hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
   /* Set chunk size */
   h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
-  if (h_err < 0) {
+  if (h_err < 0)
     error("Error while setting chunk size (%llu, %llu) for field '%s'.",
           chunk_shape[0], chunk_shape[1], props.name);
-  }
 
   /* Impose data compression */
   if (e->snapshot_compression > 0) {
@@ -254,9 +249,7 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
   /* Create dataset */
   const hid_t h_data = H5Dcreate(grp, props.name, io_hdf5_type(props.type),
                                  h_space, H5P_DEFAULT, h_prop, H5P_DEFAULT);
-  if (h_data < 0) {
-    error("Error while creating dataspace '%s'.", props.name);
-  }
+  if (h_data < 0) error("Error while creating dataspace '%s'.", props.name);
 
   /* Write XMF description for this data set */
   xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N_total,
@@ -497,10 +490,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     }
 
     /* message("Found %lld particles in a %speriodic box of size [%f %f %f].",
-     */
-    /* 	    N_total, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
-
-    fflush(stdout);
+       N_total, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
 
     /* Close header */
     H5Gclose(h_grp);
@@ -618,9 +608,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
         snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
                  ptype);
         h_grp = H5Gopen(h_file, partTypeGroupName, H5P_DEFAULT);
-        if (h_grp < 0) {
+        if (h_grp < 0)
           error("Error while opening particle group %s.", partTypeGroupName);
-        }
 
         int num_fields = 0;
         struct io_props list[100];
@@ -777,9 +766,7 @@ void write_output_serial(struct engine* e, const char* baseName,
     /* Open file */
     /* message("Opening file '%s'.", fileName); */
     h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_file < 0) {
-      error("Error while opening file '%s'.", fileName);
-    }
+    if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
     /* Open header to write simulation properties */
     /* message("Writing runtime parameters..."); */
@@ -933,9 +920,7 @@ void write_output_serial(struct engine* e, const char* baseName,
                ptype);
       h_grp = H5Gcreate(h_file, partTypeGroupName, H5P_DEFAULT, H5P_DEFAULT,
                         H5P_DEFAULT);
-      if (h_grp < 0) {
-        error("Error while creating particle group.\n");
-      }
+      if (h_grp < 0) error("Error while creating particle group.\n");
 
       /* Close particle group */
       H5Gclose(h_grp);
@@ -972,9 +957,8 @@ void write_output_serial(struct engine* e, const char* baseName,
         snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
                  ptype);
         h_grp = H5Gopen(h_file, partTypeGroupName, H5P_DEFAULT);
-        if (h_grp < 0) {
+        if (h_grp < 0)
           error("Error while opening particle group %s.", partTypeGroupName);
-        }
 
         int num_fields = 0;
         struct io_props list[100];
