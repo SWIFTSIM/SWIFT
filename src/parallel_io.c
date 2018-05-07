@@ -904,6 +904,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
   io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
   io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
+  io_write_attribute_s(h_grp, "Code", "SWIFT");
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
