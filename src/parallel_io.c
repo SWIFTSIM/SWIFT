@@ -119,9 +119,7 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
   /* Using HDF5 dataspaces would be better */
   const hid_t h_err = H5Dread(h_data, io_hdf5_type(props.type), h_memspace,
                               h_filespace, h_plist_id, temp);
-  if (h_err < 0) {
-    error("Error while reading data array '%s'.", props.name);
-  }
+  if (h_err < 0) error("Error while reading data array '%s'.", props.name);
 
   /* Unit conversion if necessary */
   const double factor =
@@ -394,10 +392,9 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Create data space */
   const hid_t h_memspace = H5Screate(H5S_SIMPLE);
-  if (h_memspace < 0) {
+  if (h_memspace < 0)
     error("Error while creating data space (memory) for field '%s'.",
           props.name);
-  }
 
   int rank;
   hsize_t shape[2];
@@ -418,19 +415,17 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Change shape of memory data space */
   hid_t h_err = H5Sset_extent_simple(h_memspace, rank, shape, NULL);
-  if (h_err < 0) {
+  if (h_err < 0)
     error("Error while changing data space (memory) shape for field '%s'.",
           props.name);
-  }
 
   /* Select the hyper-salb corresponding to this rank */
   hid_t h_filespace = H5Dget_space(h_data);
-  if (N > 0) {
+  if (N > 0)
     H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape,
                         NULL);
-  } else {
+  else
     H5Sselect_none(h_filespace);
-  }
 
 /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
  * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize, */
@@ -444,9 +439,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
   /* Write temporary buffer to HDF5 dataspace */
   h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
                    H5P_DEFAULT, temp);
-  if (h_err < 0) {
-    error("Error while writing data array '%s'.", props.name);
-  }
+  if (h_err < 0) error("Error while writing data array '%s'.", props.name);
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -597,9 +590,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   hid_t h_plist_id = H5Pcreate(H5P_FILE_ACCESS);
   H5Pset_fapl_mpio(h_plist_id, comm, info);
   h_file = H5Fopen(fileName, H5F_ACC_RDONLY, h_plist_id);
-  if (h_file < 0) {
-    error("Error while opening file '%s'.", fileName);
-  }
+  if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Open header to read simulation properties */
   /* message("Reading runtime parameters..."); */
@@ -658,8 +649,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   }
 
   /* message("Found %lld particles in a %speriodic box of size [%f %f %f].", */
-  /* 	  N_total[0], (periodic ? "": "non-"), dim[0], */
-  /* 	  dim[1], dim[2]); */
+  /* 	  N_total[0], (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
 
   /* Divide the particles among the tasks. */
   for (int ptype = 0; ptype < swift_type_count; ++ptype) {
@@ -759,9 +749,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
              ptype);
     h_grp = H5Gopen(h_file, partTypeGroupName, H5P_DEFAULT);
-    if (h_grp < 0) {
+    if (h_grp < 0)
       error("Error while opening particle group %s.", partTypeGroupName);
-    }
 
     int num_fields = 0;
     struct io_props list[100];
@@ -1173,9 +1162,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fopen(fileName, H5F_ACC_RDWR, plist_id);
-  if (h_file < 0) {
-    error("Error while opening file '%s'.", fileName);
-  }
+  if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
