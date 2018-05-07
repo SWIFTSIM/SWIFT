@@ -239,13 +239,13 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
   }
 
   /* Impose data compression */
-  if (e->snapshotCompression > 0) {
+  if (e->snapshot_compression > 0) {
     h_err = H5Pset_shuffle(h_prop);
     if (h_err < 0)
       error("Error while setting shuffling options for field '%s'.",
             props.name);
 
-    h_err = H5Pset_deflate(h_prop, e->snapshotCompression);
+    h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
     if (h_err < 0)
       error("Error while setting compression options for field '%s'.",
             props.name);
@@ -746,7 +746,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           e->snapshotOutputCount);
+           e->snapshot_output_count);
 
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas, Ndm, 0, 0, Nstars, 0};
@@ -766,7 +766,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   if (mpi_rank == 0) {
 
     /* First time, we need to create the XMF file */
-    if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
+    if (e->snapshot_output_count == 0) xmf_create_file(baseName);
 
     /* Prepare the XMF file for the new entry */
     xmfFile = xmf_prepare_file(baseName);
@@ -1045,10 +1045,10 @@ void write_output_serial(struct engine* e, const char* baseName,
 
   /* Write footer of LXMF file descriptor */
   if (mpi_rank == 0)
-    xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
+    xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
 
   /* message("Done writing particles..."); */
-  e->snapshotOutputCount++;
+  e->snapshot_output_count++;
 }
 
 #endif /* HAVE_HDF5 && HAVE_MPI */

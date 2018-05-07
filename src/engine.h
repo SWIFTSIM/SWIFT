@@ -199,10 +199,10 @@ struct engine {
   /* Integer time of the next snapshot */
   integertime_t ti_next_snapshot;
 
-  char snapshotBaseName[PARSER_MAX_LINE_SIZE];
-  int snapshotCompression;
-  struct unit_system *snapshotUnits;
-  int snapshotOutputCount;
+  char snapshot_base_name[PARSER_MAX_LINE_SIZE];
+  int snapshot_compression;
+  struct unit_system *snapshot_units;
+  int snapshot_output_count;
 
   /* Statistics information */
   double a_first_statistics;

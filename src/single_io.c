@@ -246,13 +246,13 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
   }
 
   /* Impose data compression */
-  if (e->snapshotCompression > 0) {
+  if (e->snapshot_compression > 0) {
     h_err = H5Pset_shuffle(h_prop);
     if (h_err < 0)
       error("Error while setting shuffling options for field '%s'.",
             props.name);
 
-    h_err = H5Pset_deflate(h_prop, e->snapshotCompression);
+    h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
     if (h_err < 0)
       error("Error while setting compression options for field '%s'.",
             props.name);
@@ -616,10 +616,10 @@ void write_output_single(struct engine* e, const char* baseName,
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           e->snapshotOutputCount);
+           e->snapshot_output_count);
 
   /* First time, we need to create the XMF file */
-  if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
+  if (e->snapshot_output_count == 0) xmf_create_file(baseName);
 
   /* Prepare the XMF file for the new entry */
   FILE* xmfFile = 0;
@@ -853,14 +853,14 @@ void write_output_single(struct engine* e, const char* baseName,
   }
 
   /* Write LXMF file descriptor */
-  xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
+  xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
 
   /* message("Done writing particles..."); */
 
   /* Close file */
   H5Fclose(h_file);
 
-  e->snapshotOutputCount++;
+  e->snapshot_output_count++;
 }
 
 #endif /* HAVE_HDF5 */

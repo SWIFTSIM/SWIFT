@@ -854,7 +854,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   int numFiles = 1;
 
   /* First time, we need to create the XMF file */
-  if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
+  if (e->snapshot_output_count == 0) xmf_create_file(baseName);
 
   /* Prepare the XMF file for the new entry */
   xmfFile = xmf_prepare_file(baseName);
@@ -862,7 +862,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   /* HDF5 File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           e->snapshotOutputCount);
+           e->snapshot_output_count);
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1035,7 +1035,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   }
 
   /* Write LXMF file descriptor */
-  xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
+  xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
 
   /* Close the file for now */
   H5Fclose(h_file);
@@ -1117,7 +1117,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   /* HDF5 File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           e->snapshotOutputCount);
+           e->snapshot_output_count);
 
   /* Prepare some file-access properties */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
@@ -1327,7 +1327,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
             clocks_getunit());
 #endif
 
-  e->snapshotOutputCount++;
+  e->snapshot_output_count++;
 }
 
 #endif /* HAVE_HDF5 */

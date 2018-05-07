@@ -5266,17 +5266,17 @@ void engine_dump_snapshot(struct engine *e) {
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  write_output_parallel(e, e->snapshotBaseName, e->internal_units,
-                        e->snapshotUnits, e->nodeID, e->nr_nodes,
+  write_output_parallel(e, e->snapshot_base_name, e->internal_units,
+                        e->snapshot_units, e->nodeID, e->nr_nodes,
                         MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  write_output_serial(e, e->snapshotBaseName, e->internal_units,
-                      e->snapshotUnits, e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
+  write_output_serial(e, e->snapshot_base_name, e->internal_units,
+                      e->snapshot_units, e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
                       MPI_INFO_NULL);
 #endif
 #else
-  write_output_single(e, e->snapshotBaseName, e->internal_units,
-                      e->snapshotUnits);
+  write_output_single(e, e->snapshot_base_name, e->internal_units,
+                      e->snapshot_units);
 #endif
 #endif
 
@@ -5413,12 +5413,12 @@ void engine_init(struct engine *e, struct space *s,
   e->delta_time_snapshot =
       parser_get_param_double(params, "Snapshots:delta_time");
   e->ti_next_snapshot = 0;
-  parser_get_param_string(params, "Snapshots:basename", e->snapshotBaseName);
-  e->snapshotCompression =
+  parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
+  e->snapshot_compression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
-  e->snapshotUnits = (struct unit_system *)malloc(sizeof(struct unit_system));
-  units_init_default(e->snapshotUnits, params, "Snapshots", internal_units);
-  e->snapshotOutputCount = 0;
+  e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
+  units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
+  e->snapshot_output_count = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->a_first_statistics =
@@ -6135,7 +6135,7 @@ void engine_clean(struct engine *e) {
     gravity_cache_clean(&e->runners[i].cj_gravity_cache);
   }
   free(e->runners);
-  free(e->snapshotUnits);
+  free(e->snapshot_units);
   free(e->links);
   scheduler_clean(&e->sched);
   space_clean(e->s);
@@ -6159,7 +6159,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   /* And all the engine pointed data, these use their own dump functions. */
   space_struct_dump(e->s, stream);
   units_struct_dump(e->internal_units, stream);
-  units_struct_dump(e->snapshotUnits, stream);
+  units_struct_dump(e->snapshot_units, stream);
   cosmology_struct_dump(e->cosmology, stream);
 
 #ifdef WITH_MPI
@@ -6211,7 +6211,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
   us = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_struct_restore(us, stream);
-  e->snapshotUnits = us;
+  e->snapshot_units = us;
 
   struct cosmology *cosmo =
       (struct cosmology *)malloc(sizeof(struct cosmology));
