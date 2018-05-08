@@ -33,14 +33,14 @@
 #define ACC_THRESHOLD 1e-5
 
 #if defined(WITH_VECTORIZATION)
-#define DOSELF1 runner_doself1_density_vec
+#define DOSELF1 runner_doself1_branch_density
 #define DOPAIR1 runner_dopair1_branch_density
 #define DOSELF1_NAME "runner_doself1_density_vec"
 #define DOPAIR1_NAME "runner_dopair1_density_vec"
 #endif
 
 #ifndef DOSELF1
-#define DOSELF1 runner_doself1_density
+#define DOSELF1 runner_doself1_branch_density
 #define DOSELF1_NAME "runner_doself1_density"
 #endif
 
@@ -283,6 +283,7 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
+void runner_doself1_branch_density(struct runner *r, struct cell *c);
 
 void test_boundary_conditions(struct cell **cells, struct runner runner,
                               const int loc_i, const int loc_j, const int loc_k,
@@ -296,8 +297,6 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
   for (int j = 0; j < dim * dim * dim; ++j) zero_particle_fields(cells[j]);
 
 /* Run all the pairs */
-#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
-
 #ifdef WITH_VECTORIZATION
   runner.ci_cache.count = 0;
   cache_init(&runner.ci_cache, 512);
@@ -329,8 +328,6 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
 
   DOSELF1(&runner, main_cell);
 
-#endif
-
   /* Let's get physical ! */
   end_calculation(main_cell, runner.e->cosmology);
 
@@ -341,8 +338,6 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
 
   /* Zero the fields */
   for (int i = 0; i < dim * dim * dim; ++i) zero_particle_fields(cells[i]);
-
-#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
   /* Now loop over all the neighbours of this cell
    * and perform the pair interactions. */
@@ -366,8 +361,6 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
 
   /* And now the self-interaction */
   self_all_density(&runner, main_cell);
-
-#endif
 
   /* Let's get physical ! */
   end_calculation(main_cell, runner.e->cosmology);
