@@ -160,6 +160,8 @@ struct part {
       /*! Time derivative of smoothing length  */
       float h_dt;
 
+      /*! Balsara switch */
+      float balsara;
     } force;
   };
 
