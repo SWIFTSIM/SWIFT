@@ -470,7 +470,7 @@ int main(int argc, char *argv[]) {
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 2.5;
   double perturbation = 0.;
-  char outputFileNameExtension[200] = "";
+  char outputFileNameExtension[100] = "";
   char outputFileName[200] = "";
   enum velocity_field vel = velocity_zero;
   enum pressure_field press = pressure_const;
@@ -660,7 +660,6 @@ int main(int argc, char *argv[]) {
       runner_do_sort(&runner, cells[j], 0x1FFF, 0, 0);
 
 /* Do the density calculation */
-#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
 /* Initialise the particle cache. */
 #ifdef WITH_VECTORIZATION
@@ -704,13 +703,10 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 27; ++j)
       runner_doself1_density(&runner, inner_cells[j]);
 
-#endif
-
     /* Ghost to finish everything on the central cells */
     for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
 
 /* Do the force calculation */
-#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
 #ifdef WITH_VECTORIZATION
     /* Initialise the cache. */
@@ -746,7 +742,6 @@ int main(int argc, char *argv[]) {
     DOSELF2(&runner, main_cell);
 
     timings[26] += getticks() - self_tic;
-#endif
 
     /* Finally, give a gentle kick */
     runner_do_end_force(&runner, main_cell, 0);
@@ -792,18 +787,17 @@ int main(int argc, char *argv[]) {
 
   const ticks tic = getticks();
 
-/* Kick the central cell */
-// runner_do_kick1(&runner, main_cell, 0);
+  /* Kick the central cell */
+  // runner_do_kick1(&runner, main_cell, 0);
 
-/* And drift it */
-// runner_do_drift_particles(&runner, main_cell, 0);
+  /* And drift it */
+  // runner_do_drift_particles(&runner, main_cell, 0);
 
-/* Initialise the particles */
-// for (int j = 0; j < 125; ++j) runner_do_drift_particles(&runner, cells[j],
-// 0);
+  /* Initialise the particles */
+  // for (int j = 0; j < 125; ++j) runner_do_drift_particles(&runner, cells[j],
+  // 0);
 
-/* Do the density calculation */
-#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
+  /* Do the density calculation */
 
   /* Run all the pairs (only once !)*/
   for (int i = 0; i < 5; i++) {
@@ -838,13 +832,10 @@ int main(int argc, char *argv[]) {
   /* And now the self-interaction for the central cells*/
   for (int j = 0; j < 27; ++j) self_all_density(&runner, inner_cells[j]);
 
-#endif
-
   /* Ghost to finish everything on the central cells */
   for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
 
-/* Do the force calculation */
-#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
+  /* Do the force calculation */
 
   /* Do the pairs (for the central 27 cells) */
   for (int i = 1; i < 4; i++) {
@@ -860,8 +851,6 @@ int main(int argc, char *argv[]) {
 
   /* And now the self-interaction for the main cell */
   self_all_force(&runner, main_cell);
-
-#endif
 
   /* Finally, give a gentle kick */
   runner_do_end_force(&runner, main_cell, 0);
