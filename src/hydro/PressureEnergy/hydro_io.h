@@ -71,7 +71,7 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
 void convert_u(const struct engine* e, const struct part* p,
 	       const struct xpart* xp, float* ret) {
 
-  ret[0] = hydro_get_comoving_entropy(p);
+  ret[0] = hydro_get_comoving_internal_energy(p);
 }
 
 void convert_P(const struct engine* e, const struct part* p, 
@@ -139,7 +139,7 @@ void hydro_write_particles(const struct part* parts,
 		           const struct xpart* xparts,
 		           struct io_props* list, int* num_fields) {
 
-  *num_fields = 9;
+  *num_fields = 8;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
@@ -158,7 +158,7 @@ void hydro_write_particles(const struct part* parts,
                                  UNIT_CONV_NO_UNITS, parts, id);
   list[6] =
       io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
-  list[8] = io_make_output_field(
+  list[7] = io_make_output_field(
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, pressure_bar);
 }
 
