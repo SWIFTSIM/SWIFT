@@ -263,6 +263,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             hydro_get_comoving_density(&main_cell->parts[pid]),
 #if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
             0.f,
+#elif defined(HOPKINS_PU_SPH)
+	    main_cell->parts[pid].density.pressure_bar_dh,
 #else
             main_cell->parts[pid].density.rho_dh,
 #endif
