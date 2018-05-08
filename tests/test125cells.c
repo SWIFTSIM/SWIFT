@@ -406,7 +406,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
             hydro_get_comoving_density(&main_cell->parts[pid]),
 #if defined(MINIMAL_SPH) || defined(MINIMAL_MULTI_MAT_SPH) || \
-    defined(SHADOWFAX_SPH)
+    defined(SHADOWFAX_SPH) || defined(HOPKINS_PU_SPH)
             0.f,
 #else
             main_cell->parts[pid].density.div_v,
@@ -663,6 +663,7 @@ int main(int argc, char *argv[]) {
       runner_do_sort(&runner, cells[j], 0x1FFF, 0, 0);
 
 /* Do the density calculation */
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
 /* Initialise the particle cache. */
 #ifdef WITH_VECTORIZATION
@@ -706,10 +707,13 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 27; ++j)
       runner_doself1_density(&runner, inner_cells[j]);
 
+#endif
+
     /* Ghost to finish everything on the central cells */
     for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
 
 /* Do the force calculation */
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
 #ifdef WITH_VECTORIZATION
     /* Initialise the cache. */
@@ -745,6 +749,7 @@ int main(int argc, char *argv[]) {
     DOSELF2(&runner, main_cell);
 
     timings[26] += getticks() - self_tic;
+#endif
 
     /* Finally, give a gentle kick */
     runner_do_end_force(&runner, main_cell, 0);
@@ -800,7 +805,8 @@ int main(int argc, char *argv[]) {
   // for (int j = 0; j < 125; ++j) runner_do_drift_particles(&runner, cells[j],
   // 0);
 
-  /* Do the density calculation */
+/* Do the density calculation */
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
   /* Run all the pairs (only once !)*/
   for (int i = 0; i < 5; i++) {
@@ -835,10 +841,13 @@ int main(int argc, char *argv[]) {
   /* And now the self-interaction for the central cells*/
   for (int j = 0; j < 27; ++j) self_all_density(&runner, inner_cells[j]);
 
+#endif
+
   /* Ghost to finish everything on the central cells */
   for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
 
-  /* Do the force calculation */
+/* Do the force calculation */
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
   /* Do the pairs (for the central 27 cells) */
   for (int i = 1; i < 4; i++) {
@@ -854,6 +863,8 @@ int main(int argc, char *argv[]) {
 
   /* And now the self-interaction for the main cell */
   self_all_force(&runner, main_cell);
+
+#endif
 
   /* Finally, give a gentle kick */
   runner_do_end_force(&runner, main_cell, 0);
