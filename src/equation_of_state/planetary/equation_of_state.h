@@ -61,7 +61,8 @@ struct HM80_params {
         log_u_max, log_u_step, inv_log_u_step, bulk_mod;
     float **table_P_rho_u;
 };
-// Table file names /// to be read in from the parameter file once tested...
+// Table file names
+/// to be read in from the parameter file instead once tested...
 #define HM80_HHe_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_HHe.txt"
 #define HM80_ice_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_ice.txt"
 #define HM80_rock_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_roc.txt"
@@ -218,6 +219,18 @@ INLINE static void load_HM80_table(struct HM80_params *mat, char *table_file) {
     fclose(f);
 }
 
+// ANEOS
+INLINE static void set_ANEOS_iron(struct ANEOS_params *mat) {
+    mat->mat_id = ANEOS_iron;
+    mat->num_rho = 100;
+    mat->num_u = 100;
+}
+INLINE static void set_ANEOS_forsterite(struct ANEOS_params *mat) {
+    mat->mat_id = ANEOS_forsterite;
+    mat->num_rho = 100;
+    mat->num_u = 100;
+}
+
 // Convert from cgs to internal units
 // Tillotson
 INLINE static void convert_units_Til(
@@ -254,6 +267,11 @@ INLINE static void convert_units_HM80(
     }
 
     mat->bulk_mod /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+}
+// ANEOS
+INLINE static void convert_units_ANEOS(
+    struct ANEOS_params *mat, const struct unit_system* us) {
+
 }
 
 /**
@@ -376,6 +394,11 @@ INLINE static float Til_pressure_from_internal_energy(float density, float u,
 INLINE static float HM80_pressure_from_internal_energy(float density, float u,
                                                        struct HM80_params *mat) {
     float P;
+
+    if (u <= 0) {
+        return 0;
+    }
+
     int rho_idx, u_idx;
     float intp_rho, intp_u;
     const float log_rho = log(density);
@@ -497,11 +520,6 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
               error("Unknown material ID! mat_id = %d", mat_id);
               mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
         };
-
-        if (u <= 0) {
-            P = 0;
-            break;
-        }
 
         P = HM80_pressure_from_internal_energy(density, u, mat_HM80);
 
@@ -906,9 +924,11 @@ __attribute__((always_inline)) INLINE static void eos_init(
     load_HM80_table(&e->HM80_ice, HM80_ice_table_file);
     load_HM80_table(&e->HM80_rock, HM80_rock_table_file);
 
-    // ANEOS (WIP)
+    // ANEOS
+    set_ANEOS_iron(&e->ANEOS_iron);
+    set_ANEOS_forsterite(&e->ANEOS_forsterite);
 
-    // Convert from cgs units to internal units
+    // Convert to internal units
     // Tillotson
     convert_units_Til(&e->Til_iron, us);
     convert_units_Til(&e->Til_granite, us);
@@ -919,7 +939,9 @@ __attribute__((always_inline)) INLINE static void eos_init(
     convert_units_HM80(&e->HM80_ice, us);
     convert_units_HM80(&e->HM80_rock, us);
 
-    // ANEOS (WIP)
+    // ANEOS
+    convert_units_ANEOS(&e->ANEOS_iron, us);
+    convert_units_ANEOS(&e->ANEOS_forsterite, us);
 }
 
 /**

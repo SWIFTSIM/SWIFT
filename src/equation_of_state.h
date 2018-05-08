@@ -38,6 +38,8 @@
 #include "./equation_of_state/tillotson/equation_of_state.h"
 #elif defined(EOS_HUBBARD_MACFARLANE)
 #include "./equation_of_state/hubbard_macfarlane/equation_of_state.h"
+#elif defined(EOS_ANEOS)
+#include "./equation_of_state/aneos/equation_of_state.h"
 #elif defined(EOS_PLANETARY)
 #include "./equation_of_state/planetary/equation_of_state.h"
 #else

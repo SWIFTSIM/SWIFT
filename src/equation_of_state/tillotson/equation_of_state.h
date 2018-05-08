@@ -22,7 +22,7 @@
 /**
  * @file equation_of_state/tillotson/equation_of_state.h
  *
- * Only P(rho, u), c_s(rho, u), and c_s(rho, P) are implemented for now!
+ * Only P(rho, u), c(rho, u), and c(rho, P) are implemented for now!
  * So, must be used with the MinimalMultiMat SPH formulation.
  */
 
