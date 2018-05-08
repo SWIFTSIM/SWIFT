@@ -976,7 +976,7 @@ esac
 #  Equation of state
 AC_ARG_WITH([equation-of-state],
    [AS_HELP_STRING([--with-equation-of-state=<EoS>],
-      [equation of state @<:@ideal-gas, isothermal-gas, tillotson, hubbard-macfarlane, aneos, planetary default: ideal-gas@:>@]
+      [equation of state @<:@ideal-gas, isothermal-gas, tillotson, hubbard-macfarlane, aneos, sesame, planetary default: ideal-gas@:>@]
    )],
    [with_eos="$withval"],
    [with_eos="ideal-gas"]
@@ -996,6 +996,9 @@ case "$with_eos" in
    ;;
    aneos)
       AC_DEFINE([EOS_ANEOS], [1], [ANEOS equations of state])
+   ;;
+   sesame)
+      AC_DEFINE([EOS_SESAME], [1], [SESAME equations of state])
    ;;
    planetary)
       AC_DEFINE([EOS_PLANETARY], [1], [All planetary equations of state])

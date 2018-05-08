@@ -24,8 +24,7 @@
  *
  *              WORK IN PROGRESS!
  *
- * To contain a variety of planetary EOS.
- *
+ * To contain all of the planetary EOS.
  * See material_id for the available choices.
  *
  * Only P(rho, u), c(rho, u), and c(rho, P) are implemented for now!
@@ -62,7 +61,7 @@ struct HM80_params {
     float **table_P_rho_u;
 };
 // Table file names
-/// to be read in from the parameter file instead once tested...
+/// to be read in from the parameter file instead once finished testing...
 #define HM80_HHe_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_HHe.txt"
 #define HM80_ice_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_ice.txt"
 #define HM80_rock_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_roc.txt"
@@ -73,10 +72,16 @@ struct ANEOS_params {
     int num_rho, num_u;
 };
 
+// SESAME (WIP)
+struct SESAME_params {
+    int mat_id;
+};
+
 struct eos_parameters {
     struct Til_params Til_iron, Til_granite, Til_water;
     struct HM80_params HM80_HHe, HM80_ice, HM80_rock;
     struct ANEOS_params ANEOS_iron, MANEOS_forsterite;
+    struct SESAME_params SESAME_iron;
 };
 
 // Material identifier flags (material_ID = type_ID * type_factor + unit_ID)
@@ -84,7 +89,8 @@ struct eos_parameters {
 enum type_id {
     type_Till   = 1,
     type_HM80   = 2,
-    type_ANEOS  = 3
+    type_ANEOS  = 3,
+    type_SESAME = 4
 };
 enum material_id {
     // Tillotson
@@ -97,7 +103,9 @@ enum material_id {
     HM80_rock   = type_HM80*type_factor + 2,    // SiO2-MgO-FeS-FeO rock mix
     // ANEOS
     ANEOS_iron          = type_ANEOS*type_factor,
-    MANEOS_forsterite   = type_ANEOS*type_factor + 1
+    MANEOS_forsterite   = type_ANEOS*type_factor + 1,
+    // SESAME
+    SESAME_iron = type_SESAME*type_factor,
 };
 
 // Parameter values for each material (cgs units)
@@ -225,10 +233,15 @@ INLINE static void set_ANEOS_iron(struct ANEOS_params *mat) {
     mat->num_rho = 100;
     mat->num_u = 100;
 }
-INLINE static void set_ANEOS_forsterite(struct ANEOS_params *mat) {
-    mat->mat_id = ANEOS_forsterite;
+INLINE static void set_MANEOS_forsterite(struct ANEOS_params *mat) {
+    mat->mat_id = MANEOS_forsterite;
     mat->num_rho = 100;
     mat->num_u = 100;
+}
+
+// SESAME
+INLINE static void set_SESAME_iron(struct SESAME_params *mat) {
+    mat->mat_id = SESAME_iron;
 }
 
 // Convert from cgs to internal units
@@ -246,6 +259,7 @@ INLINE static void convert_units_Til(
 
     mat->c_TEMPORARY /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
 }
+
 // Hubbard & MacFarlane (1980)
 #define Mbar_to_Ba 1e12     // Convert Megabar to Barye
 INLINE static void convert_units_HM80(
@@ -268,9 +282,16 @@ INLINE static void convert_units_HM80(
 
     mat->bulk_mod /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
 }
+
 // ANEOS
 INLINE static void convert_units_ANEOS(
     struct ANEOS_params *mat, const struct unit_system* us) {
+
+}
+
+// SESAME
+INLINE static void convert_units_SESAME(
+    struct SESAME_params *mat, const struct unit_system* us) {
 
 }
 
@@ -460,6 +481,17 @@ INLINE static float ANEOS_pressure_from_internal_energy(float density, float u,
     return P;
 }
 
+// SESAME
+INLINE static float SESAME_pressure_from_internal_energy(float density, float u,
+                                                         struct SESAME_params *mat) {
+    float P;
+
+    /// Placeholder
+    P = mat->mat_id;
+
+    return P;
+}
+
 /**
  * @brief Returns the pressure given density and internal energy
  *
@@ -545,6 +577,25 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
         };
 
         P = ANEOS_pressure_from_internal_energy(density, u, mat_ANEOS);
+
+        break;
+
+    /// WIP
+    // SESAME
+    case type_SESAME:;
+        struct SESAME_params *mat_SESAME;
+        // Select the material parameters
+        switch(mat_id) {
+          case SESAME_iron:
+              mat_SESAME = &eos.SESAME_iron;
+              break;
+
+          default:
+              error("Unknown material ID! mat_id = %d", mat_id);
+              mat_SESAME = &eos.SESAME_iron; // Ignored, just here to keep the compiler happy
+        };
+
+        P = SESAME_pressure_from_internal_energy(density, u, mat_SESAME);
 
         break;
 
@@ -666,6 +717,17 @@ INLINE static float ANEOS_soundspeed_from_internal_energy(float density, float u
     return c;
 }
 
+// SESAME
+INLINE static float SESAME_soundspeed_from_internal_energy(float density, float u,
+                                                           struct SESAME_params *mat) {
+    float c;
+
+    /// Placeholder
+    c = mat->mat_id;
+
+    return c;
+}
+
 /**
  * @brief Returns the sound speed given density and internal energy
  *
@@ -754,6 +816,25 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
 
         break;
 
+    /// WIP
+    // SESAME
+    case type_SESAME:;
+        struct SESAME_params *mat_SESAME;
+        // Select the material parameters
+        switch(mat_id) {
+          case SESAME_iron:
+              mat_SESAME = &eos.SESAME_iron;
+              break;
+
+          default:
+              error("Unknown material ID! mat_id = %d", mat_id);
+              mat_SESAME = &eos.SESAME_iron; // Ignored, just here to keep the compiler happy
+        };
+
+        c = SESAME_soundspeed_from_internal_energy(density, u, mat_SESAME);
+
+        break;
+
     default:
         error("Unknown material type! mat_id = %d", mat_id);
         c = 0; // Ignored, just here to keep the compiler happy
@@ -789,6 +870,7 @@ INLINE static float HM80_soundspeed_from_pressure(float density, float P,
 
     return c;
 }
+
 // ANEOS
 INLINE static float ANEOS_soundspeed_from_pressure(float density, float P,
                                                    struct ANEOS_params *mat) {
@@ -796,6 +878,17 @@ INLINE static float ANEOS_soundspeed_from_pressure(float density, float P,
 
     /// Placeholder
     c = mat->num_rho;
+
+    return c;
+}
+
+// SESAME
+INLINE static float SESAME_soundspeed_from_pressure(float density, float P,
+                                                    struct SESAME_params *mat) {
+    float c;
+
+    /// Placeholder
+    c = mat->mat_id;
 
     return c;
 }
@@ -839,7 +932,6 @@ gas_soundspeed_from_pressure(float density, float P, int mat_id) {
 
         break;
 
-
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
         // Select the material parameters
@@ -866,7 +958,6 @@ gas_soundspeed_from_pressure(float density, float P, int mat_id) {
 
         break;
 
-
     /// WIP
     // ANEOS
     case type_ANEOS:;
@@ -890,6 +981,24 @@ gas_soundspeed_from_pressure(float density, float P, int mat_id) {
 
         break;
 
+    /// WIP
+    // SESAME
+    case type_SESAME:;
+        struct SESAME_params *mat_SESAME;
+        // Select the material parameters
+        switch(mat_id) {
+          case SESAME_iron:
+              mat_SESAME = &eos.SESAME_iron;
+              break;
+
+          default:
+              error("Unknown material ID! mat_id = %d", mat_id);
+              mat_SESAME = &eos.SESAME_iron; // Ignored, just here to keep the compiler happy
+        };
+
+        c = SESAME_soundspeed_from_pressure(density, P, mat_SESAME);
+
+        break;
 
     default:
         error("Unknown material type! mat_id = %d", mat_id);
@@ -926,7 +1035,10 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     // ANEOS
     set_ANEOS_iron(&e->ANEOS_iron);
-    set_ANEOS_forsterite(&e->ANEOS_forsterite);
+    set_MANEOS_forsterite(&e->MANEOS_forsterite);
+
+    // SESAME
+    set_SESAME_iron(&e->SESAME_iron);
 
     // Convert to internal units
     // Tillotson
@@ -941,7 +1053,10 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     // ANEOS
     convert_units_ANEOS(&e->ANEOS_iron, us);
-    convert_units_ANEOS(&e->ANEOS_forsterite, us);
+    convert_units_ANEOS(&e->MANEOS_forsterite, us);
+
+    // SESAME
+    convert_units_SESAME(&e->SESAME_iron, us);
 }
 
 /**
