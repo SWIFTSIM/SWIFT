@@ -749,7 +749,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Finally, give a gentle kick */
-    runner_do_end_force(&runner, main_cell, &cosmo);
+    runner_do_end_force(&runner, main_cell, 0);
     const ticks toc = getticks();
     time += toc - tic;
 
@@ -864,7 +864,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Finally, give a gentle kick */
-  runner_do_end_force(&runner, main_cell, &cosmo);
+  runner_do_end_force(&runner, main_cell, 0);
   // runner_do_kick2(&runner, main_cell, 0);
 
   const ticks toc = getticks();
