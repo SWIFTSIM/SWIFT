@@ -23,9 +23,9 @@
 #ifdef HAVE_POSIX_FALLOCATE /* Are we on a sensible platform? */
 
 /* Some standard headers. */
-#include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
