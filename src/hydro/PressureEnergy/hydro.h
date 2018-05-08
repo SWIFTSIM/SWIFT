@@ -88,7 +88,7 @@ hydro_get_physical_internal_energy(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
     const struct part *restrict p) {
 
-  return gas_pressure_from_internal_energy(p->rho, p->u);
+  return p->pressure_bar;
 }
 
 /**
@@ -103,8 +103,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
     const struct part *restrict p, const struct cosmology *cosmo) {
 
-  return cosmo->a_factor_pressure *
-         gas_pressure_from_internal_energy(p->rho, p->u);
+  return cosmo->a_factor_pressure * p->pressure_bar;
 }
 
 /**
