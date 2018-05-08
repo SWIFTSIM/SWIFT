@@ -2,7 +2,7 @@ Canonical Moon-Forming Giant Impact
 ===================================
 
 A version of the canonical moon-forming giant impact of Theia onto the early
-Earth (Barr, 2016). Both bodies made of Tillotson iron and granite.
+Earth (Canup 2004; Barr 2016). Both bodies made of Tillotson iron and granite.
 
 
 Code Setup

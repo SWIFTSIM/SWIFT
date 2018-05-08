@@ -21,11 +21,11 @@ Snapshots:
                                         # Common part of the name of output files
     basename:   snapshots/iron_planet_impact
     time_first: 0                       # Time of the first output (in internal units)
-    delta_time: 100                     # Time difference between consecutive outputs (in internal units)
+    delta_time: 500                     # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-    delta_time: 100                     # Time between statistics output
+    delta_time: 500                     # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:

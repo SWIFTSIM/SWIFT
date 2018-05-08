@@ -41,7 +41,7 @@ extern struct eos_parameters eos;
 
 // Tillotson parameters
 struct Til_params {
-    float rho_0, a, b, A, B, E_0, E_iv, E_cv, alpha, beta, eta_min;
+    float rho_0, a, b, A, B, E_0, E_iv, E_cv, alpha, beta, eta_min, P_min;
 };
 
 struct eos_parameters {
@@ -69,6 +69,7 @@ INLINE static void set_Til_iron(struct Til_params *mat) {
     mat->alpha = 5.0;
     mat->beta = 5.0;
     mat->eta_min = 0.0;
+    mat->P_min = 0.0;
 }
 INLINE static void set_Til_granite(struct Til_params *mat) {
     mat->rho_0 = 2.680;
@@ -82,6 +83,7 @@ INLINE static void set_Til_granite(struct Til_params *mat) {
     mat->alpha = 5.0;
     mat->beta = 5.0;
     mat->eta_min = 0.0;
+    mat->P_min = 0.0;
 }
 INLINE static void set_Til_water(struct Til_params *mat) {
     mat->rho_0 = 0.998;
@@ -95,6 +97,7 @@ INLINE static void set_Til_water(struct Til_params *mat) {
     mat->alpha = 10.0;
     mat->beta = 5.0;
     mat->eta_min = 0.915;
+    mat->P_min = 0.0;
 }
 
 // Convert from cgs to internal units
@@ -107,6 +110,7 @@ INLINE static void convert_units_Til(
     mat->E_0 /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
     mat->E_iv /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
     mat->E_cv /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+    mat->P_min /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
 }
 
 /**
@@ -242,8 +246,8 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
     }
 
     // Minimum pressure
-    if (P < 0.f) {
-        P = 0.f;
+    if (P < mat->P_min) {
+        P = mat->P_min;
     }
 
     return P;
