@@ -125,6 +125,12 @@ struct engine {
   /* The minimum and maximum allowed dt */
   double dt_min, dt_max;
 
+  /* Maximum time-step allowed by the RMS condition in cosmology runs. */
+  double dt_max_RMS_displacement;
+
+  /* Dimensionless factor for the RMS time-step condition. */
+  double max_RMS_displacement_factor;
+
   /* Time of the simulation beginning */
   double time_begin;
 

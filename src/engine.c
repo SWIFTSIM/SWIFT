@@ -5421,6 +5421,9 @@ void engine_init(struct engine *e, struct space *s,
   e->snapshot_output_count = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
+  e->dt_max_RMS_displacement = FLT_MAX;
+  e->max_RMS_displacement_factor =
+      parser_get_param_double(params, "TimeIntegration:max_RMS_factor");
   e->a_first_statistics =
       parser_get_opt_param_double(params, "Statistics:scale_factor_first", 0.1);
   e->time_first_statistics =
