@@ -375,7 +375,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   /* Re-set problematic values */
   p->rho = p->mass * kernel_root * h_inv_dim;
-  p->pressure_bar = p->mass * p->u * hydro_gamma_minus_one * kernel_root * h_inv_dim;
+  p->pressure_bar =
+      p->mass * p->u * hydro_gamma_minus_one * kernel_root * h_inv_dim;
   p->density.wcount = kernel_root * kernel_norm * h_inv_dim;
   p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
@@ -409,7 +410,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the "grad h" term */
   const float common_factor = p->h / (hydro_dimension * p->density.wcount);
   const float grad_h_term =
-      (p->density.pressure_bar_dh * common_factor / hydro_gamma_minus_one) / 
+      (p->density.pressure_bar_dh * common_factor / hydro_gamma_minus_one) /
       (1 + common_factor * p->density.wcount_dh);
 
   /* Update variables. */

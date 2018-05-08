@@ -69,13 +69,13 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
 }
 
 void convert_u(const struct engine* e, const struct part* p,
-	       const struct xpart* xp, float* ret) {
+               const struct xpart* xp, float* ret) {
 
   ret[0] = hydro_get_comoving_internal_energy(p);
 }
 
-void convert_P(const struct engine* e, const struct part* p, 
-	       const struct xpart* xp, float* ret) {
+void convert_P(const struct engine* e, const struct part* p,
+               const struct xpart* xp, float* ret) {
 
   ret[0] = hydro_get_comoving_pressure(p);
 }
@@ -135,31 +135,30 @@ void convert_part_vel(const struct engine* e, const struct part* p,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-void hydro_write_particles(const struct part* parts,
-		           const struct xpart* xparts,
-		           struct io_props* list, int* num_fields) {
+void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
+                           struct io_props* list, int* num_fields) {
 
   *num_fields = 8;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
-		                              UNIT_CONV_LENGTH, parts, xparts,
-					      convert_part_pos);
+                                              UNIT_CONV_LENGTH, parts, xparts,
+                                              convert_part_pos);
   list[1] = io_make_output_field_convert_part(
       "Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, xparts, convert_part_vel);
   list[2] =
       io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts, mass);
   list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
                                  parts, h);
-  list[4] = io_make_output_field_convert_part(
-      "InternalEnergy", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-      xparts, convert_u);
+  list[4] = io_make_output_field_convert_part("InternalEnergy", FLOAT, 1,
+                                              UNIT_CONV_ENERGY_PER_UNIT_MASS,
+                                              parts, xparts, convert_u);
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, id);
   list[6] =
       io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
-  list[7] = io_make_output_field(
-      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, pressure_bar);
+  list[7] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
+                                 parts, pressure_bar);
 }
 
 /**

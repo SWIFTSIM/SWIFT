@@ -101,7 +101,7 @@ struct part {
 
   /*! Particle density. */
   float rho;
-  
+
   /*! Particle pressure (weighted) */
   float pressure_bar;
 
@@ -126,9 +126,9 @@ struct part {
       /*! Derivative of density with respect to h */
       float rho_dh;
 
-	  /*! Derivative of the weighted pressure with respect to h */
+      /*! Derivative of the weighted pressure with respect to h */
       float pressure_bar_dh;
- 
+
       /*! Particle velocity curl. */
       float rot_v[3];
 

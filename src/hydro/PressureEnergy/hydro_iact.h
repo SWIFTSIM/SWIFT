@@ -48,7 +48,7 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, const float *dx, float hi, float hj, struct part* pi,
+    float r2, const float* dx, float hi, float hj, struct part* pi,
     struct part* pj, float a, float H) {
 
   float wi, wj, wi_dx, wj_dx;
@@ -67,7 +67,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->rho += mj * wi;
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->pressure_bar += mj * wi * pj->u;
-  pi->density.pressure_bar_dh -= mj * pj->u * (hydro_dimension * wi + ui * wi_dx);
+  pi->density.pressure_bar_dh -=
+      mj * pj->u * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
@@ -79,7 +80,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->rho += mi * wj;
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
   pj->pressure_bar += mi * wj * pi->u;
-  pj->density.pressure_bar_dh -= mi * pi->u * (hydro_dimension * wj + uj * wj_dx);
+  pj->density.pressure_bar_dh -=
+      mi * pi->u * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 }
@@ -97,7 +99,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, const float *dx, float hi, float hj, struct part* pi,
+    float r2, const float* dx, float hi, float hj, struct part* pi,
     const struct part* pj, float a, float H) {
 
   float wi, wi_dx;
@@ -115,7 +117,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->rho += mj * wi;
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->pressure_bar += mj * wi * pj->u;
-  pi->density.pressure_bar_dh -= mj * pj->u * (hydro_dimension * wi + ui * wi_dx);
+  pi->density.pressure_bar_dh -=
+      mj * pj->u * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 }
@@ -133,7 +136,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, const float *dx, float hi, float hj, struct part* pi,
+    float r2, const float* dx, float hi, float hj, struct part* pi,
     struct part* pj, float a, float H) {
 
   /* Cosmological factors entering the EoMs */
@@ -146,16 +149,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Recover some data */
   const float mj = pj->mass;
   const float mi = pi->mass;
-  
+
   const float miui = mi * pi->u;
   const float mjuj = mj * pj->u;
-  
+
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
   /* Compute gradient terms */
   const float f_ij = 1 - (pi->force.f / mjuj);
   const float f_ji = 1 - (pj->force.f / miui);
-
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -195,9 +197,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
 
   /* SPH acceleration term */
-  const float sph_acc_term = pj->u * pi->u *
-    hydro_gamma_minus_one * hydro_gamma_minus_one *
-    ((f_ij/pi->pressure_bar) * wi_dr + (f_ji/pj->pressure_bar) * wj_dr) * r_inv; 
+  const float sph_acc_term =
+      pj->u * pi->u * hydro_gamma_minus_one * hydro_gamma_minus_one *
+      ((f_ij / pi->pressure_bar) * wi_dr + (f_ji / pj->pressure_bar) * wj_dr) *
+      r_inv;
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
@@ -213,9 +216,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get the time derivative for u. */
   const float sph_du_term_i = hydro_gamma_minus_one * hydro_gamma_minus_one *
-    pj->u * pi->u * (f_ij / pi->pressure_bar) * wi_dr * dvdr * r_inv;
+                              pj->u * pi->u * (f_ij / pi->pressure_bar) *
+                              wi_dr * dvdr * r_inv;
   const float sph_du_term_j = hydro_gamma_minus_one * hydro_gamma_minus_one *
-    pi->u * pj->u * (f_ji / pj->pressure_bar) * wj_dr * dvdr * r_inv;
+                              pi->u * pj->u * (f_ji / pj->pressure_bar) *
+                              wj_dr * dvdr * r_inv;
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr;
@@ -250,7 +255,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, const float *dx, float hi, float hj, struct part* pi,
+    float r2, const float* dx, float hi, float hj, struct part* pi,
     const struct part* pj, float a, float H) {
 
   /* Cosmological factors entering the EoMs */
@@ -264,16 +269,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   // const float mi = pi->mass;
   const float mj = pj->mass;
   const float mi = pi->mass;
-  
+
   const float miui = mi * pi->u;
   const float mjuj = mj * pj->u;
-  
+
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
   /* Compute gradient terms */
   const float f_ij = 1 - (pi->force.f / mjuj);
   const float f_ji = 1 - (pj->force.f / miui);
-
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -313,9 +317,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
 
   /* SPH acceleration term */
-  const float sph_acc_term = pj->u * pi->u *
-    hydro_gamma_minus_one * hydro_gamma_minus_one *
-    ((f_ij/pi->pressure_bar) * wi_dr + (f_ji/pj->pressure_bar) * wj_dr) * r_inv; 
+  const float sph_acc_term =
+      pj->u * pi->u * hydro_gamma_minus_one * hydro_gamma_minus_one *
+      ((f_ij / pi->pressure_bar) * wi_dr + (f_ji / pj->pressure_bar) * wj_dr) *
+      r_inv;
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
@@ -327,7 +332,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the time derivative for u. */
   const float sph_du_term_i = hydro_gamma_minus_one * hydro_gamma_minus_one *
-    pj->u * pi->u * (f_ij / pi->pressure_bar) * wi_dr * dvdr * r_inv;
+                              pj->u * pi->u * (f_ij / pi->pressure_bar) *
+                              wi_dr * dvdr * r_inv;
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr;
