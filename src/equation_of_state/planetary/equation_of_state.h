@@ -48,12 +48,14 @@ extern struct eos_parameters eos;
 
 // Tillotson parameters
 struct Til_params {
+    int mat_id;
     float rho_0, a, b, A, B, E_0, E_iv, E_cv, alpha, beta, eta_min, P_min;
     float c_TEMPORARY;
 };
 
 // Hubbard & MacFarlane (1980) Uranus/Neptune table parameters
 struct HM80_params {
+    int mat_id;
     int num_rho, num_u;
     float log_rho_min, log_rho_max, log_rho_step, inv_log_rho_step, log_u_min,
         log_u_max, log_u_step, inv_log_u_step, bulk_mod;
@@ -66,6 +68,7 @@ struct HM80_params {
 
 // ANEOS (WIP)
 struct ANEOS_params {
+    int mat_id;
     int num_rho, num_u;
 };
 
@@ -99,6 +102,7 @@ enum material_id {
 // Parameter values for each material (cgs units)
 // Tillotson
 INLINE static void set_Til_iron(struct Til_params *mat) {
+    mat->mat_id = Til_iron;
     mat->rho_0 = 7.800;
     mat->a = 0.5;
     mat->b = 1.5;
@@ -115,6 +119,7 @@ INLINE static void set_Til_iron(struct Til_params *mat) {
     mat->c_TEMPORARY = 9.4e-4;
 }
 INLINE static void set_Til_granite(struct Til_params *mat) {
+    mat->mat_id = Til_granite;
     mat->rho_0 = 2.680;
     mat->a = 0.5;
     mat->b = 1.3;
@@ -131,6 +136,7 @@ INLINE static void set_Til_granite(struct Til_params *mat) {
     mat->c_TEMPORARY = 9.4e-4;
 }
 INLINE static void set_Til_water(struct Til_params *mat) {
+    mat->mat_id = Til_water;
     mat->rho_0 = 0.998;
     mat->a = 0.7;
     mat->b = 0.15;
@@ -149,6 +155,7 @@ INLINE static void set_Til_water(struct Til_params *mat) {
 
 // Hubbard & MacFarlane (1980)
 INLINE static void set_HM80_HHe(struct HM80_params *mat) {
+    mat->mat_id = HM80_HHe;
     mat->num_rho = 100;
     mat->num_u = 100;
     mat->log_rho_min = -9.2103404;
@@ -163,6 +170,7 @@ INLINE static void set_HM80_HHe(struct HM80_params *mat) {
     mat->inv_log_u_step = 1.f / mat->log_u_step;
 }
 INLINE static void set_HM80_ice(struct HM80_params *mat) {
+    mat->mat_id = HM80_ice;
     mat->num_rho = 200;
     mat->num_u = 200;
     mat->log_rho_min = -6.9077553;
@@ -177,6 +185,7 @@ INLINE static void set_HM80_ice(struct HM80_params *mat) {
     mat->inv_log_u_step = 1.f / mat->log_u_step;
 }
 INLINE static void set_HM80_rock(struct HM80_params *mat) {
+    mat->mat_id = HM80_rock;
     mat->num_rho = 100;
     mat->num_u = 100;
     mat->log_rho_min = -6.9077553;
@@ -318,6 +327,116 @@ gas_entropy_from_internal_energy(float density, float u, int mat_id) {
   return 0;
 }
 
+// gas_pressure_from_internal_energy
+// Tillotson
+INLINE static float Til_pressure_from_internal_energy(float density, float u,
+                                                      struct Til_params *mat) {
+    const float eta = density / mat->rho_0;
+    const float mu = eta - 1.f;
+    const float nu = 1.f/eta - 1.f;
+    float P_c, P_e, P;
+
+    // Condensed or cold
+    if (eta < mat->eta_min) {
+        P_c = 0.f;
+    }
+    else {
+        P_c = (mat->a + mat->b / (u / (mat->E_0 * eta*eta) + 1.f)) * density * u
+            + mat->A * mu + mat->B * mu*mu;
+    }
+    // Expanded and hot
+    P_e = mat->a*density*u + (
+        mat->b * density * u / (u / (mat->E_0 * eta*eta) + 1.f)
+        + mat->A*mu * exp(-mat->beta * nu)
+        ) * exp(-mat->alpha * nu*nu);
+
+    // Condensed or cold state
+    if ((1.f < eta) || (u < mat->E_iv)) {
+        P = P_c;
+    }
+    // Expanded and hot state
+    else if ((eta < 1.f) && (mat->E_cv < u)) {
+        P = P_e;
+    }
+    // Hybrid state
+    else {
+        P = ((u - mat->E_iv)*P_e + (mat->E_cv - u)*P_c) /
+            (mat->E_cv - mat->E_iv);
+    }
+
+    // Minimum pressure
+    if (P < mat->P_min) {
+        P = mat->P_min;
+    }
+
+    return P;
+}
+
+// Hubbard & MacFarlane (1980)
+INLINE static float HM80_pressure_from_internal_energy(float density, float u,
+                                                       struct HM80_params *mat) {
+    float P;
+    int rho_idx, u_idx;
+    float intp_rho, intp_u;
+    const float log_rho = log(density);
+    const float log_u = log(u);
+
+    // 2D interpolation (linear in log(rho), log(u)) to find P(rho, u)
+    rho_idx = floor((log_rho - mat->log_rho_min) * mat->inv_log_rho_step);
+    u_idx = floor((log_u - mat->log_u_min) * mat->inv_log_u_step);
+
+    intp_rho = (log_rho - mat->log_rho_min - rho_idx*mat->log_rho_step) *
+        mat->inv_log_rho_step;
+    intp_u = (log_u - mat->log_u_min - u_idx*mat->log_u_step) *
+        mat->inv_log_u_step;
+
+    // Return zero pressure if below the table minimum/a
+    // Extrapolate the pressure for low densities
+    if (rho_idx < 0) {                      // Too-low rho
+        P = exp(log((1-intp_u)*mat->table_P_rho_u[0][u_idx]
+                    + intp_u*mat->table_P_rho_u[0][u_idx+1])
+                + log_rho - mat->log_rho_min);
+        if (u_idx < 0) {                    // and too-low u
+            P = 0;
+        }
+    }
+    else if (u_idx < 0) {                   // Too-low u
+        P = 0;
+    }
+    // Return an edge value if above the table maximum/a
+    else if (rho_idx >= mat->num_rho-1) {   // Too-high rho
+        if (u_idx >= mat->num_u-1) {        // and too-high u
+            P = mat->table_P_rho_u[mat->num_rho-1][mat->num_u-1];
+        }
+        else {
+            P = mat->table_P_rho_u[mat->num_rho-1][u_idx];
+        }
+    }
+    else if (u_idx >= mat->num_u-1) {       // Too-high u
+        P = mat->table_P_rho_u[rho_idx][mat->num_u-1];
+    }
+    // Normal interpolation within the table
+    else {
+        P = (1-intp_rho) * ((1-intp_u)*mat->table_P_rho_u[rho_idx][u_idx] +
+                            intp_u*mat->table_P_rho_u[rho_idx][u_idx+1]) +
+            intp_rho * ((1-intp_u)*mat->table_P_rho_u[rho_idx+1][u_idx] +
+                        intp_u*mat->table_P_rho_u[rho_idx+1][u_idx+1]);
+    }
+
+    return P;
+}
+
+// ANEOS
+INLINE static float ANEOS_pressure_from_internal_energy(float density, float u,
+                                                        struct ANEOS_params *mat) {
+    float P;
+
+    /// Placeholder
+    P = mat->num_rho;
+
+    return P;
+}
+
 /**
  * @brief Returns the pressure given density and internal energy
  *
@@ -334,86 +453,49 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
     // Tillotson
     case type_Till:;
         // Select the material parameters
-        struct Til_params *m_T;
+        struct Til_params *mat_Til;
         switch(mat_id) {
           case Til_iron:
-              m_T = &eos.Til_iron;
+              mat_Til = &eos.Til_iron;
               break;
 
           case Til_granite:
-              m_T = &eos.Til_granite;
+              mat_Til = &eos.Til_granite;
               break;
 
           case Til_water:
-              m_T = &eos.Til_water;
+              mat_Til = &eos.Til_water;
               break;
 
           default:
               error("Unknown material ID! mat_id = %d", mat_id);
-              m_T = &eos.Til_iron; // Ignored, just here to keep the compiler happy
+              mat_Til = &eos.Til_iron; // Ignored, just here to keep the compiler happy
         };
 
-        const float eta = density / m_T->rho_0;
-        const float mu = eta - 1.f;
-        const float nu = 1.f/eta - 1.f;
-        float P_c, P_e;
-
-        // Condensed or cold
-        if (eta < m_T->eta_min) {
-          P_c = 0.f;
-        }
-        else {
-          P_c = (m_T->a + m_T->b / (u / (m_T->E_0 * eta*eta) + 1.f)) * density*u
-              + m_T->A * mu + m_T->B * mu*mu;
-        }
-        // Expanded and hot
-        P_e = m_T->a*density*u + (
-            m_T->b * density * u / (u / (m_T->E_0 * eta*eta) + 1.f)
-            + m_T->A*mu * exp(-m_T->beta * nu)
-            ) * exp(-m_T->alpha * nu*nu);
-
-        // Condensed or cold state
-        if ((1.f < eta) || (u < m_T->E_iv)) {
-          P = P_c;
-        }
-        // Expanded and hot state
-        else if ((eta < 1.f) && (m_T->E_cv < u)) {
-          P = P_e;
-        }
-        // Hybrid state
-        else {
-          P = ((u - m_T->E_iv)*P_e + (m_T->E_cv - u)*P_c) /
-              (m_T->E_cv - m_T->E_iv);
-        }
-
-        // Minimum pressure
-        if (P < m_T->P_min) {
-          P = m_T->P_min;
-        }
+        P = Til_pressure_from_internal_energy(density, u, mat_Til);
 
         break;
-
 
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
         // Select the material parameters
-        struct HM80_params *m_H;
+        struct HM80_params *mat_HM80;
         switch(mat_id) {
           case HM80_HHe:
-              m_H = &eos.HM80_HHe;
+              mat_HM80 = &eos.HM80_HHe;
               break;
 
           case HM80_ice:
-              m_H = &eos.HM80_ice;
+              mat_HM80 = &eos.HM80_ice;
               break;
 
           case HM80_rock:
-              m_H = &eos.HM80_rock;
+              mat_HM80 = &eos.HM80_rock;
               break;
 
           default:
               error("Unknown material ID! mat_id = %d", mat_id);
-              m_H = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
+              mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
         };
 
         if (u <= 0) {
@@ -421,80 +503,32 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
             break;
         }
 
-        int rho_idx, u_idx;
-        float intp_rho, intp_u;
-        const float log_rho = log(density);
-        const float log_u = log(u);
-
-        // 2D interpolation (linear in log(rho), log(u)) to find P(rho, u)
-        rho_idx = floor((log_rho - m_H->log_rho_min) * m_H->inv_log_rho_step);
-        u_idx = floor((log_u - m_H->log_u_min) * m_H->inv_log_u_step);
-
-        intp_rho = (log_rho - m_H->log_rho_min - rho_idx*m_H->log_rho_step) *
-            m_H->inv_log_rho_step;
-        intp_u = (log_u - m_H->log_u_min - u_idx*m_H->log_u_step) *
-            m_H->inv_log_u_step;
-
-        // Return zero pressure if below the table minimum/a
-        // Extrapolate the pressure for low densities
-        if (rho_idx < 0) {                      // Too-low rho
-            P = exp(log((1-intp_u)*m_H->table_P_rho_u[0][u_idx]
-                        + intp_u*m_H->table_P_rho_u[0][u_idx+1])
-                    + log_rho - m_H->log_rho_min);
-            if (u_idx < 0) {                    // and too-low u
-                P = 0;
-            }
-        }
-        else if (u_idx < 0) {                   // Too-low u
-            P = 0;
-        }
-        // Return an edge value if above the table maximum/a
-        else if (rho_idx >= m_H->num_rho-1) {   // Too-high rho
-            if (u_idx >= m_H->num_u-1) {        // and too-high u
-                P = m_H->table_P_rho_u[m_H->num_rho-1][m_H->num_u-1];
-            }
-            else {
-                P = m_H->table_P_rho_u[m_H->num_rho-1][u_idx];
-            }
-        }
-        else if (u_idx >= m_H->num_u-1) {       // Too-high u
-            P = m_H->table_P_rho_u[rho_idx][m_H->num_u-1];
-        }
-        // Normal interpolation within the table
-        else {
-            P = (1-intp_rho) * ((1-intp_u)*m_H->table_P_rho_u[rho_idx][u_idx] +
-                                intp_u*m_H->table_P_rho_u[rho_idx][u_idx+1]) +
-                intp_rho * ((1-intp_u)*m_H->table_P_rho_u[rho_idx+1][u_idx] +
-                            intp_u*m_H->table_P_rho_u[rho_idx+1][u_idx+1]);
-        }
+        P = HM80_pressure_from_internal_energy(density, u, mat_HM80);
 
         break;
-
 
     /// WIP
     // ANEOS
     case type_ANEOS:;
-        struct ANEOS_params *m_A;
+        struct ANEOS_params *mat_ANEOS;
         // Select the material parameters
         switch(mat_id) {
           case ANEOS_iron:
-              m_A = &eos.ANEOS_iron;
+              mat_ANEOS = &eos.ANEOS_iron;
               break;
 
           case MANEOS_forsterite:
-              m_A = &eos.MANEOS_forsterite;
+              mat_ANEOS = &eos.MANEOS_forsterite;
               break;
 
           default:
               error("Unknown material ID! mat_id = %d", mat_id);
-              m_A = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
+              mat_ANEOS = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
         };
 
-        /// Placeholder
-        P = m_A->num_rho;
+        P = ANEOS_pressure_from_internal_energy(density, u, mat_ANEOS);
 
         break;
-
 
     default:
         error("Unknown material type! mat_id = %d", mat_id);
@@ -519,34 +553,10 @@ gas_internal_energy_from_pressure(float density, float pressure, int mat_id) {
   return 0;
 }
 
-/**
- * @brief Returns the sound speed given density and internal energy
- *
- * @param density The density \f$\rho\f$
- * @param u The internal energy \f$u\f$
- */
-__attribute__((always_inline)) INLINE static float
-gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
-//    struct Til_params *mat;
-//    // Select the material parameters
-//    switch(mat_id) {
-//        case Til_iron:
-//            mat = &eos.Til_iron;
-//            break;
-//
-//        case Til_granite:
-//            mat = &eos.Til_granite;
-//            break;
-//
-//        case Til_water:
-//            mat = &eos.Til_water;
-//            break;
-//
-//        default:
-//            error("Unknown material ID! mat_id = %d", mat_id);
-//            mat = &eos.Til_iron; // Ignored, just here to keep compiler happy
-//    };
-//
+// gas_soundspeed_from_internal_energy
+// Tillotson
+INLINE static float Til_soundspeed_from_internal_energy(float density, float u,
+                                                        struct Til_params *mat) {
 //    const float eta = density / mat->rho_0;
 //    const float mu = eta - 1.f;
 //    const float nu = 1.f/eta - 1.f;
@@ -602,10 +612,51 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
 //
 //        c = max(c_c, mat->A / mat->rho0);
 //    }
-//
-//    return c;
+    float c;
 
-  float c, P;
+    c = mat->c_TEMPORARY; /// VERY TEMPORARY!!!
+
+    return c;
+}
+
+// Hubbard & MacFarlane (1980)
+INLINE static float HM80_soundspeed_from_internal_energy(float density, float u,
+                                                         struct HM80_params *mat) {
+    float c, P;
+
+    // Bulk modulus
+    if (mat->bulk_mod != 0) {
+        c = sqrt(mat->bulk_mod / density);
+    }
+    // Ideal gas
+    else {
+        P = gas_pressure_from_internal_energy(density, u, mat->mat_id);
+        c = sqrt(5.f/3.f * P / density);
+    }
+
+    return c;
+}
+
+// ANEOS
+INLINE static float ANEOS_soundspeed_from_internal_energy(float density, float u,
+                                                          struct ANEOS_params *mat) {
+    float c;
+
+    /// Placeholder
+    c = mat->num_rho;
+
+    return c;
+}
+
+/**
+ * @brief Returns the sound speed given density and internal energy
+ *
+ * @param density The density \f$\rho\f$
+ * @param u The internal energy \f$u\f$
+ */
+__attribute__((always_inline)) INLINE static float
+gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
+  float c;
 
   // Material base type
   switch((int)(mat_id/type_factor)) {
@@ -613,90 +664,77 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
     // Tillotson
     case type_Till:;
         // Select the material parameters
-        struct Til_params *m_T;
+        struct Til_params *mat_Til;
         switch(mat_id) {
           case Til_iron:
-              m_T = &eos.Til_iron;
+              mat_Til = &eos.Til_iron;
               break;
 
           case Til_granite:
-              m_T = &eos.Til_granite;
+              mat_Til = &eos.Til_granite;
               break;
 
           case Til_water:
-              m_T = &eos.Til_water;
+              mat_Til = &eos.Til_water;
               break;
 
           default:
               error("Unknown material ID! mat_id = %d", mat_id);
-              m_T = &eos.Til_iron; // Ignored, just here to keep the compiler happy
+              mat_Til = &eos.Til_iron; // Ignored, just here to keep the compiler happy
         };
 
-        c = m_T->rho_0; // Ignored, just here to keep the compiler happy
-        c = m_T->c_TEMPORARY; /// VERY TEMPORARY!!!
+        c = Til_soundspeed_from_internal_energy(density, u, mat_Til);
 
         break;
-
 
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
         // Select the material parameters
-        struct HM80_params *m_H;
+        struct HM80_params *mat_HM80;
         switch(mat_id) {
           case HM80_HHe:
-              m_H = &eos.HM80_HHe;
+              mat_HM80 = &eos.HM80_HHe;
               break;
 
           case HM80_ice:
-              m_H = &eos.HM80_ice;
+              mat_HM80 = &eos.HM80_ice;
               break;
 
           case HM80_rock:
-              m_H = &eos.HM80_rock;
+              mat_HM80 = &eos.HM80_rock;
               break;
 
           default:
               error("Unknown material ID! mat_id = %d", mat_id);
-              m_H = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
+              mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
         };
 
-        // Bulk modulus
-        if (m_H->bulk_mod != 0) {
-            c = sqrt(m_H->bulk_mod / density);
-        }
-        // Ideal gas
-        else {
-            P = gas_pressure_from_internal_energy(density, u, mat_id);
-            c = sqrt(5.f/3.f * P / density);
-        }
+        c = HM80_soundspeed_from_internal_energy(density, u, mat_HM80);
 
         break;
-
 
     /// WIP
     // ANEOS
     case type_ANEOS:;
-        struct ANEOS_params *m_A;
+        struct ANEOS_params *mat_ANEOS;
         // Select the material parameters
         switch(mat_id) {
           case ANEOS_iron:
-              m_A = &eos.ANEOS_iron;
+              mat_ANEOS = &eos.ANEOS_iron;
               break;
 
           case MANEOS_forsterite:
-              m_A = &eos.MANEOS_forsterite;
+              mat_ANEOS = &eos.MANEOS_forsterite;
               break;
 
           default:
               error("Unknown material ID! mat_id = %d", mat_id);
-              m_A = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
+              mat_ANEOS = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
         };
 
-        /// Placeholder
-        c = m_A->num_rho;
+        c = ANEOS_soundspeed_from_internal_energy(density, u, mat_ANEOS);
 
         break;
-
 
     default:
         error("Unknown material type! mat_id = %d", mat_id);
@@ -704,6 +742,44 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
   }
 
   return c;
+}
+
+// gas_soundspeed_from_pressure
+// Tillotson
+INLINE static float Til_soundspeed_from_pressure(float density, float P,
+                                                 struct Til_params *mat) {
+    float c;
+
+    c = mat->c_TEMPORARY; /// VERY TEMPORARY!!!
+
+    return c;
+}
+
+// Hubbard & MacFarlane (1980)
+INLINE static float HM80_soundspeed_from_pressure(float density, float P,
+                                                  struct HM80_params *mat) {
+    float c;
+
+    // Bulk modulus
+    if (mat->bulk_mod != 0) {
+        c = sqrt(mat->bulk_mod / density);
+    }
+    // Ideal gas
+    else {
+        c = sqrt(5.f/3.f * P / density);
+    }
+
+    return c;
+}
+// ANEOS
+INLINE static float ANEOS_soundspeed_from_pressure(float density, float P,
+                                                   struct ANEOS_params *mat) {
+    float c;
+
+    /// Placeholder
+    c = mat->num_rho;
+
+    return c;
 }
 
 /**
@@ -722,27 +798,26 @@ gas_soundspeed_from_pressure(float density, float P, int mat_id) {
     // Tillotson
     case type_Till:;
         // Select the material parameters
-        struct Til_params *m_T;
+        struct Til_params *mat_Til;
         switch(mat_id) {
           case Til_iron:
-              m_T = &eos.Til_iron;
+              mat_Til = &eos.Til_iron;
               break;
 
           case Til_granite:
-              m_T = &eos.Til_granite;
+              mat_Til = &eos.Til_granite;
               break;
 
           case Til_water:
-              m_T = &eos.Til_water;
+              mat_Til = &eos.Til_water;
               break;
 
           default:
               error("Unknown material ID! mat_id = %d", mat_id);
-              m_T = &eos.Til_iron; // Ignored, just here to keep the compiler happy
+              mat_Til = &eos.Til_iron; // Ignored, just here to keep the compiler happy
         };
 
-        c = m_T->rho_0; // Ignored, just here to keep the compiler happy
-        c = m_T->c_TEMPORARY; /// VERY TEMPORARY!!!
+        c = Til_soundspeed_from_internal_energy(density, P, mat_Til);
 
         break;
 
@@ -750,33 +825,26 @@ gas_soundspeed_from_pressure(float density, float P, int mat_id) {
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
         // Select the material parameters
-        struct HM80_params *m_H;
+        struct HM80_params *mat_HM80;
         switch(mat_id) {
           case HM80_HHe:
-              m_H = &eos.HM80_HHe;
+              mat_HM80 = &eos.HM80_HHe;
               break;
 
           case HM80_ice:
-              m_H = &eos.HM80_ice;
+              mat_HM80 = &eos.HM80_ice;
               break;
 
           case HM80_rock:
-              m_H = &eos.HM80_rock;
+              mat_HM80 = &eos.HM80_rock;
               break;
 
           default:
               error("Unknown material ID! mat_id = %d", mat_id);
-              m_H = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
+              mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
         };
 
-        // Bulk modulus
-        if (m_H->bulk_mod != 0) {
-            c = sqrt(m_H->bulk_mod / density);
-        }
-        // Ideal gas
-        else {
-            c = sqrt(5.f/3.f * P / density);
-        }
+        c = HM80_soundspeed_from_pressure(density, P, mat_HM80);
 
         break;
 
@@ -784,24 +852,23 @@ gas_soundspeed_from_pressure(float density, float P, int mat_id) {
     /// WIP
     // ANEOS
     case type_ANEOS:;
-        struct ANEOS_params *m_A;
+        struct ANEOS_params *mat_ANEOS;
         // Select the material parameters
         switch(mat_id) {
           case ANEOS_iron:
-              m_A = &eos.ANEOS_iron;
+              mat_ANEOS = &eos.ANEOS_iron;
               break;
 
           case MANEOS_forsterite:
-              m_A = &eos.MANEOS_forsterite;
+              mat_ANEOS = &eos.MANEOS_forsterite;
               break;
 
           default:
               error("Unknown material ID! mat_id = %d", mat_id);
-              m_A = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
+              mat_ANEOS = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
         };
 
-        /// Placeholder
-        c = m_A->num_rho;
+        c = ANEOS_soundspeed_from_pressure(density, P, mat_ANEOS);
 
         break;
 

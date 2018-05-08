@@ -42,21 +42,26 @@ extern struct eos_parameters eos;
 // Tillotson parameters
 struct Til_params {
     float rho_0, a, b, A, B, E_0, E_iv, E_cv, alpha, beta, eta_min, P_min;
+    float c_TEMPORARY;
 };
 
 struct eos_parameters {
     struct Til_params Til_iron, Til_granite, Til_water;
 };
 
-// Material identifier flags
+// Material identifier flags (material_ID = type_ID * type_factor + unit_ID)
+#define type_factor 10
+enum type_id {
+    type_Till   = 1
+};
 enum material_id {
     // Tillotson
-    Til_iron = 10,
-    Til_granite = 11,
-    Til_water = 12
+    Til_iron    = type_Till*type_factor,
+    Til_granite = type_Till*type_factor + 1,
+    Til_water   = type_Till*type_factor + 2
 };
 
-// Tillotson parameter values for each material (cgs units)
+// Parameter values for each material (cgs units)
 INLINE static void set_Til_iron(struct Til_params *mat) {
     mat->rho_0 = 7.800;
     mat->a = 0.5;
@@ -70,6 +75,8 @@ INLINE static void set_Til_iron(struct Til_params *mat) {
     mat->beta = 5.0;
     mat->eta_min = 0.0;
     mat->P_min = 0.0;
+
+    mat->c_TEMPORARY = 9.4e-4;
 }
 INLINE static void set_Til_granite(struct Til_params *mat) {
     mat->rho_0 = 2.680;
@@ -84,6 +91,8 @@ INLINE static void set_Til_granite(struct Til_params *mat) {
     mat->beta = 5.0;
     mat->eta_min = 0.0;
     mat->P_min = 0.0;
+
+    mat->c_TEMPORARY = 9.4e-4;
 }
 INLINE static void set_Til_water(struct Til_params *mat) {
     mat->rho_0 = 0.998;
@@ -98,6 +107,8 @@ INLINE static void set_Til_water(struct Til_params *mat) {
     mat->beta = 5.0;
     mat->eta_min = 0.915;
     mat->P_min = 0.0;
+
+    mat->c_TEMPORARY = 9.4e-4;
 }
 
 // Convert from cgs to internal units
@@ -111,6 +122,8 @@ INLINE static void convert_units_Til(
     mat->E_iv /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
     mat->E_cv /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
     mat->P_min /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+
+    mat->c_TEMPORARY /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
 }
 
 /**
@@ -192,8 +205,8 @@ gas_entropy_from_internal_energy(float density, float u, int mat_id) {
  */
 __attribute__((always_inline)) INLINE static float
 gas_pressure_from_internal_energy(float density, float u, int mat_id) {
-    struct Til_params *mat;
     // Select the material parameters
+    struct Til_params *mat;
     switch(mat_id) {
         case Til_iron:
             mat = &eos.Til_iron;
@@ -209,7 +222,7 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
 
         default:
             error("Unknown material ID! mat_id=%d", mat_id);
-            mat = &eos.Til_iron; // Ignored, just here to keep compiler happy
+            mat = &eos.Til_iron; // Ignored, just here to keep the compiler happy
     };
 
     const float eta = density / mat->rho_0;
@@ -276,26 +289,28 @@ gas_internal_energy_from_pressure(float density, float pressure, int mat_id) {
  */
 __attribute__((always_inline)) INLINE static float
 gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
-//    struct Til_params *mat;
-//    // Select the material parameters
-//    switch(mat_id) {
-//        case Til_iron:
-//            mat = &eos.Til_iron;
-//            break;
-//
-//        case Til_granite:
-//            mat = &eos.Til_granite;
-//            break;
-//
-//        case Til_water:
-//            mat = &eos.Til_water;
-//            break;
-//
-//        default:
-//            error("Unknown material ID! mat_id=%d", mat_id);
-//            mat = &eos.Til_iron; // Ignored, just here to keep compiler happy
-//    };
-//
+    // Select the material parameters
+    struct Til_params *mat;
+    switch(mat_id) {
+        case Til_iron:
+            mat = &eos.Til_iron;
+            break;
+
+        case Til_granite:
+            mat = &eos.Til_granite;
+            break;
+
+        case Til_water:
+            mat = &eos.Til_water;
+            break;
+
+        default:
+            error("Unknown material ID! mat_id=%d", mat_id);
+            mat = &eos.Til_iron; // Ignored, just here to keep the compiler happy
+    };
+
+    return mat->c_TEMPORARY; /// VERY TEMPORARY!!!
+
 //    const float eta = density / mat->rho_0;
 //    const float mu = eta - 1.f;
 //    const float nu = 1.f/eta - 1.f;
@@ -353,8 +368,6 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
 //    }
 //
 //    return c;
-
-  return 9.4e-4; /// VERY TEMPORARY!!!
 }
 
 /**
@@ -365,8 +378,27 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
  */
 __attribute__((always_inline)) INLINE static float
 gas_soundspeed_from_pressure(float density, float P, int mat_id) {
+    // Select the material parameters
+    struct Til_params *mat;
+    switch(mat_id) {
+        case Til_iron:
+            mat = &eos.Til_iron;
+            break;
 
-  return 9.4e-4; /// VERY TEMPORARY!!!
+        case Til_granite:
+            mat = &eos.Til_granite;
+            break;
+
+        case Til_water:
+            mat = &eos.Til_water;
+            break;
+
+        default:
+            error("Unknown material ID! mat_id=%d", mat_id);
+            mat = &eos.Til_iron; // Ignored, just here to keep the compiler happy
+    };
+
+    return mat->c_TEMPORARY; /// VERY TEMPORARY!!!
 }
 
 /**
