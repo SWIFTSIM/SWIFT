@@ -5544,6 +5544,7 @@ void engine_config(int restart, struct engine *e,
   e->restart_file = restart_file;
   e->restart_next = 0;
   e->restart_dt = 0;
+  e->timeFirstSTFOutput = 0;
   e->deltaTimeSTF = 0;
   e->stf_output_freq_format = 0;
   e->ti_nextSTF = 0;
@@ -5831,8 +5832,7 @@ void engine_config(int restart, struct engine *e,
       error("Time between statistics (%e) must be > 1.",
             e->delta_time_statistics);
 
-    if (e->deltaTimeSTF <= 1.)
-      error("Time between snapshots (%e) must be > 1.", e->deltaTimeSTF);
+
     
     if (e->a_first_snapshot < e->cosmology->a_begin)
       error(
@@ -5846,12 +5846,16 @@ void engine_config(int restart, struct engine *e,
           "simulation start a=%e.",
           e->a_first_statistics, e->cosmology->a_begin);
     
-    if (e->a_first_stf < e->cosmology->a_begin)
-      error(
-          "Scale-factor of first stf output (%e) must be after the simulation "
-          "start a=%e.",
-          e->a_first_stf, e->cosmology->a_begin);
+    if (e->policy & engine_policy_structure_finding) {
+      if (e->deltaTimeSTF <= 1.)
+        error("Time between snapshots (%e) must be > 1.", e->deltaTimeSTF);
 
+      if (e->a_first_stf < e->cosmology->a_begin)
+        error(
+            "Scale-factor of first stf output (%e) must be after the simulation "
+            "start a=%e.",
+            e->a_first_stf, e->cosmology->a_begin);
+    }
   } else {
 
     if (e->delta_time_snapshot <= 0.)
@@ -5860,18 +5864,14 @@ void engine_config(int restart, struct engine *e,
 
     if (e->delta_time_statistics <= 0.)
       error("Time between statistics (%e) must be positive.",
-            e->delta_time_statistics);
-
-    if (e->deltaTimeSTF <= 0.)
-      error("Time between STF (%e) must be positive.",
-          e->deltaTimeSTF);
+          e->delta_time_statistics);
 
     /* Find the time of the first output */
-      if (e->time_first_snapshot < e->time_begin)
-        error(
-            "Time of first snapshot (%e) must be after the simulation start "
-            "t=%e.",
-            e->time_first_snapshot, e->time_begin);
+    if (e->time_first_snapshot < e->time_begin)
+      error(
+          "Time of first snapshot (%e) must be after the simulation start "
+          "t=%e.",
+          e->time_first_snapshot, e->time_begin);
 
     if (e->time_first_statistics < e->time_begin)
       error(
@@ -5879,16 +5879,25 @@ void engine_config(int restart, struct engine *e,
           "t=%e.",
           e->time_first_statistics, e->time_begin);
 
-    if (e->timeFirstSTFOutput < e->time_begin)
-      error(
-          "Time of first STF (%e) must be after the simulation start t=%e.",
-          e->timeFirstSTFOutput, e->time_begin);
+    if (e->policy & engine_policy_structure_finding) {
+
+      if (e->deltaTimeSTF <= 0.)
+        error("Time between STF (%e) must be positive.",
+            e->deltaTimeSTF);
+
+      if (e->timeFirstSTFOutput < e->time_begin)
+        error(
+            "Time of first STF (%e) must be after the simulation start t=%e.",
+            e->timeFirstSTFOutput, e->time_begin);
+    }
   }
 
-  /* Find the time of the first stf output */
-  if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) { 
-    engine_compute_next_stf_time(e);
-    message("Next STF step will be: %lld", e->ti_nextSTF);
+  if (e->policy & engine_policy_structure_finding) {
+    /* Find the time of the first stf output */
+    if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) { 
+      engine_compute_next_stf_time(e);
+      message("Next STF step will be: %lld", e->ti_nextSTF);
+    }
   }
 
   /* Find the time of the first snapshot  output */
