@@ -356,6 +356,17 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.pressure_bar_dh *= (h_inv_dim_plus_one * hydro_gamma_minus_one);
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
+
+  const float rho_inv = 1.f / p->rho;
+  const float a_inv2 = cosmo->a2_inv;
+
+  /* Finish calculation of the velocity curl components */
+  p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->density.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+
+  /* Finish calculation of the velocity divergence */
+  p->density.div_v *= h_inv_dim_plus_one * rho_inv;
 }
 
 /**
