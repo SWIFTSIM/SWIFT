@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part* of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk) &
+ *                    Josh Borrow (joshua.borrow@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,16 +21,15 @@
 #define SWIFT_MINIMAL_HYDRO_IACT_H
 
 /**
- * @file Minimal/hydro_iact.h
- * @brief Minimal conservative implementation of SPH (Neighbour loop equations)
+ * @file PressureEnergy/hydro_iact.h
+ * @brief P-U implementation of SPH (Neighbour loop equations)
  *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
- * term is implemented.
+ * The thermal variable is the internal energy (u). A simple constant
+ * viscosity term with a Balsara switch is implemented.
  *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
+ * No thermal conduction term is implemented.
+ *
+ * See PressureEnergy/hydro.h for references.
  */
 
 #include "adiabatic_index.h"

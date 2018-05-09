@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk) &
+ *                    Josh Borrow (joshua.borrow@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,17 +20,15 @@
 #ifndef SWIFT_PRESSURE_ENERGY_HYDRO_IACT_H
 #define SWIFT_PRESSURE_ENERGY_HYDRO_IACT_H
 /**
- * @file Minimal/hydro_io.h
- * @brief Minimal conservative implementation of SPH (i/o routines)
+ * @file PressureEnergy/hydro_io.h
+ * @brief P-U implementation of SPH (i/o routines)
  *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
- * term is implemented.
+ * The thermal variable is the internal energy (u). A simple constant
+ * viscosity term with a Balsara switch is implemented.
  *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
- * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
- * pp. 759-794.
+ * No thermal conduction term is implemented.
+ *
+ * See PressureEnergy/hydro.h for references.
  */
 
 #include "adiabatic_index.h"
@@ -72,6 +71,12 @@ void convert_u(const struct engine* e, const struct part* p,
                const struct xpart* xp, float* ret) {
 
   ret[0] = hydro_get_comoving_internal_energy(p);
+}
+
+void convert_S(const struct engine* e, const struct part* p,
+	       const struct xpart* xp, float*ret) {
+  
+  ret[0] = hydro_get_entropy(p);
 }
 
 void convert_P(const struct engine* e, const struct part* p,
@@ -138,7 +143,7 @@ void convert_part_vel(const struct engine* e, const struct part* p,
 void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
                            struct io_props* list, int* num_fields) {
 
-  *num_fields = 8;
+  *num_fields = 9;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
@@ -159,6 +164,9 @@ void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
       io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
   list[7] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
                                  parts, pressure_bar);
+  list[8] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
+                                              UNIT_CONV_ENTROPY_PER_UNIT_MASS,
+                                              parts, xparts, convert_S);
 }
 
 /**

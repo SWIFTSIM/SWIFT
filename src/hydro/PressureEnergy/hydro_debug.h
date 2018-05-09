@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk) &
+ *                    Josh Borrow (joshua.borrow@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,17 +20,8 @@
 #ifndef SWIFT_PRESSURE_ENERGY_HYDRO_DEBUG_H
 #define SWIFT_PRESSURE_ENERGY_HYDRO_DEBUG_H
 /**
- * @file Minimal/hydro_debug.h
- * @brief Minimal conservative implementation of SPH (Debugging routines)
- *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
- * term is implemented.
- *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
- * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
- * pp. 759-794.
+ * @file PressureEnergy/hydro_debug.h
+ * @brief P-U conservative implementation of SPH (Debugging routines)
  */
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(

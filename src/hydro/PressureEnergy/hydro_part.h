@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk) &
+ *                    Josh Borrow (joshua.borrow@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,16 +20,15 @@
 #ifndef SWIFT_PRESSURE_ENERGY_HYDRO_PART_H
 #define SWIFT_PRESSURE_ENERGY_HYDRO_PART_H
 /**
- * @file Minimal/hydro_part.h
- * @brief Minimal conservative implementation of SPH (Particle definition)
+ * @file PressureEnergy/hydro_part.h
+ * @brief P-U implementation of SPH (Particle definition)
  *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
- * term is implemented.
+ * The thermal variable is the internal energy (u). A simple constant
+ * viscosity term with a Balsara switch is implemented.
  *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
+ * No thermal conduction term is implemented.
+ *
+ * See PressureEnergy/hydro.h for references.
  */
 
 #include "chemistry_struct.h"
