@@ -35,39 +35,48 @@
 #define atomic_swap(v, n) __sync_lock_test_and_set(v, n)
 
 /**
- * @param Atomic min operation on floats.
+ * @brief Atomic min operation on floats.
  */
-__attribute__((always_inline)) INLINE void atomic_min_f(float const* x,
+__attribute__((always_inline)) INLINE void atomic_min_f(volatile float* x,
                                                         float y) {
-  int done = 0;
-  while (!done) {
-    const float val = *x;
-    done = __sync_bool_compare_and_swap((int*)x, val, min(val, y));
-  }
+  float test, new;
+  float old = *x;
+  do {
+    test = old;
+    new = min(old, y);
+    if (new == old) return;
+    old = atomic_cas((int*)x, test, new);
+  } while (test != old);
 }
 
 /**
- * @param Atomic max operation on floats.
+ * @brief Atomic max operation on floats.
  */
-__attribute__((always_inline)) INLINE void atomic_max_f(float const* x,
+__attribute__((always_inline)) INLINE void atomic_max_f(volatile float* x,
                                                         float y) {
-  int done = 0;
-  while (!done) {
-    const float val = *x;
-    done = __sync_bool_compare_and_swap((int*)x, val, max(val, y));
-  }
+  float test, new;
+  float old = *x;
+  do {
+    test = old;
+    new = max(old, y);
+    if (new == old) return;
+    old = atomic_cas((int*)x, test, new);
+  } while (test != old);
 }
 
 /**
- * @param Atomic add operation on floats.
+ * @brief Atomic add operation on floats.
  */
-__attribute__((always_inline)) INLINE void atomic_add_f(float const* x,
+__attribute__((always_inline)) INLINE void atomic_add_f(volatile float* x,
                                                         float y) {
-  int done = 0;
-  while (!done) {
-    const float val = *x;
-    done = __sync_bool_compare_and_swap((int*)x, val, val + y);
-  }
+  float test, new;
+  float old = *x;
+  do {
+    test = old;
+    new = old + y;
+    if (new == old) return;
+    old = atomic_cas((int*)x, test, new);
+  } while (test != old);
 }
 
 #endif /* SWIFT_ATOMIC_H */
