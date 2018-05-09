@@ -28,11 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
-
 /* This object's header. */
 #include "units.h"
 
