@@ -37,14 +37,13 @@
 /**
  * @brief Atomic min operation on floats.
  */
-__attribute__((always_inline)) INLINE void atomic_min_f(volatile float* x,
-                                                        float y) {
+__attribute__((always_inline)) INLINE static void atomic_min_f(
+    volatile float* x, float y) {
   float test, new;
   float old = *x;
   do {
     test = old;
     new = min(old, y);
-    if (new == old) return;
     old = atomic_cas((int*)x, test, new);
   } while (test != old);
 }
@@ -52,14 +51,13 @@ __attribute__((always_inline)) INLINE void atomic_min_f(volatile float* x,
 /**
  * @brief Atomic max operation on floats.
  */
-__attribute__((always_inline)) INLINE void atomic_max_f(volatile float* x,
-                                                        float y) {
+__attribute__((always_inline)) INLINE static void atomic_max_f(
+    volatile float* x, float y) {
   float test, new;
   float old = *x;
   do {
     test = old;
     new = max(old, y);
-    if (new == old) return;
     old = atomic_cas((int*)x, test, new);
   } while (test != old);
 }
@@ -67,14 +65,13 @@ __attribute__((always_inline)) INLINE void atomic_max_f(volatile float* x,
 /**
  * @brief Atomic add operation on floats.
  */
-__attribute__((always_inline)) INLINE void atomic_add_f(volatile float* x,
-                                                        float y) {
+__attribute__((always_inline)) INLINE static void atomic_add_f(
+    volatile float* x, float y) {
   float test, new;
   float old = *x;
   do {
     test = old;
     new = old + y;
-    if (new == old) return;
     old = atomic_cas((int*)x, test, new);
   } while (test != old);
 }

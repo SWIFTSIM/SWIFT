@@ -1087,8 +1087,9 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
-  /* Init the local minimal part mass */
+  /* Init the local collectors */
   float min_mass = FLT_MAX;
+  float sum_vel_norm = 0.f;
 
   /* Loop over the parts. */
   for (int k = 0; k < nr_parts; k++) {
@@ -1125,6 +1126,9 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     /* Compute minimal mass */
     min_mass = min(min_mass, hydro_get_mass(p));
 
+    /* Compute sum of velocity norm */
+    sum_vel_norm += p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2];
+
     /* Update the position */
     p->x[0] = pos_x;
     p->x[1] = pos_y;
@@ -1136,8 +1140,9 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
 
-  /* Write back thee minimal part mass */
+  /* Write back the minimal part mass and velocity sum */
   atomic_min_f(&s->min_part_mass, min_mass);
+  atomic_add_f(&s->sum_part_vel_norm, sum_vel_norm);
 }
 
 /**
@@ -1170,8 +1175,9 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
-  /* Init the local minimal part mass */
+  /* Init the local collectors */
   float min_mass = FLT_MAX;
+  float sum_vel_norm = 0.f;
 
   for (int k = 0; k < nr_gparts; k++) {
 
@@ -1205,7 +1211,12 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
 #endif
 
     /* Compute minimal mass */
-    if (gp->type == swift_type_dark_matter) min_mass = min(min_mass, gp->mass);
+    if (gp->type == swift_type_dark_matter) {
+      min_mass = min(min_mass, gp->mass);
+      sum_vel_norm += gp->v_full[0] * gp->v_full[0] +
+                      gp->v_full[1] * gp->v_full[1] +
+                      gp->v_full[2] * gp->v_full[2];
+    }
 
     /* Update the position */
     gp->x[0] = pos_x;
@@ -1218,8 +1229,9 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
 
-  /* Write back thee minimal part mass */
+  /* Write back the minimal part mass and velocity sum */
   atomic_min_f(&s->min_gpart_mass, min_mass);
+  atomic_add_f(&s->sum_gpart_vel_norm, sum_vel_norm);
 }
 
 /**
@@ -1252,8 +1264,9 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
-  /* Init the local minimal part mass */
+  /* Init the local collectors */
   float min_mass = FLT_MAX;
+  float sum_vel_norm = 0.f;
 
   for (int k = 0; k < nr_sparts; k++) {
 
@@ -1289,6 +1302,10 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     /* Compute minimal mass */
     min_mass = min(min_mass, sp->mass);
 
+    /* Compute sum of velocity norm */
+    sum_vel_norm +=
+        sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2];
+
     /* Update the position */
     sp->x[0] = pos_x;
     sp->x[1] = pos_y;
@@ -1300,8 +1317,9 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
 
-  /* Write back thee minimal part mass */
+  /* Write back the minimal part mass and velocity sum */
   atomic_min_f(&s->min_spart_mass, min_mass);
+  atomic_add_f(&s->sum_spart_vel_norm, sum_vel_norm);
 }
 
 /**
@@ -1320,8 +1338,9 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
 
   const ticks tic = getticks();
 
-  /* Re-set the minimal mass */
+  /* Re-set the counters */
   s->min_part_mass = FLT_MAX;
+  s->sum_part_vel_norm = 0.f;
 
   /* Pack the extra information */
   struct index_data data;
@@ -1354,8 +1373,9 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
 
   const ticks tic = getticks();
 
-  /* Re-set the minimal mass */
+  /* Re-set the counters */
   s->min_gpart_mass = FLT_MAX;
+  s->sum_gpart_vel_norm = 0.f;
 
   /* Pack the extra information */
   struct index_data data;
@@ -1388,8 +1408,9 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
 
   const ticks tic = getticks();
 
-  /* Re-set the minimal mass */
+  /* Re-set the counters */
   s->min_spart_mass = FLT_MAX;
+  s->sum_spart_vel_norm = 0.f;
 
   /* Pack the extra information */
   struct index_data data;
@@ -2685,6 +2706,12 @@ void space_init(struct space *s, const struct swift_params *params,
   s->nr_sparts = Nspart;
   s->size_sparts = Nspart;
   s->sparts = sparts;
+  s->min_part_mass = FLT_MAX;
+  s->min_gpart_mass = FLT_MAX;
+  s->min_spart_mass = FLT_MAX;
+  s->sum_part_vel_norm = 0.f;
+  s->sum_gpart_vel_norm = 0.f;
+  s->sum_spart_vel_norm = 0.f;
   s->nr_queues = 1; /* Temporary value until engine construction */
 
   /* Are we generating gas from the DM-only ICs? */
