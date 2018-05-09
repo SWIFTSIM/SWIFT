@@ -59,11 +59,12 @@ Scheduler:
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
-  time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1.    # The end time of the simulation (in internal units).
-  dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
-
+  time_begin:        0.    # The starting time of the simulation (in internal units).
+  time_end:          1.    # The end time of the simulation (in internal units).
+  dt_min:            1e-6  # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+  max_dt_RMS_factor: 0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
+  
 # Parameters governing the snapshots
 Snapshots:
   basename:   output      # Common part of the name of output files
