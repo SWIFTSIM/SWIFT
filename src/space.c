@@ -1087,9 +1087,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
-  /* Init the local minimal part mass */
-  float min_mass = FLT_MAX;
-
   /* Loop over the parts. */
   for (int k = 0; k < nr_parts; k++) {
 
@@ -1122,9 +1119,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
             pos_z);
 #endif
 
-    /* Compute minimal mass */
-    min_mass = min(min_mass, hydro_get_mass(p));
-
     /* Update the position */
     p->x[0] = pos_x;
     p->x[1] = pos_y;
@@ -1135,9 +1129,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   for (int k = 0; k < s->nr_cells; k++)
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
-
-  /* Write back thee minimal part mass */
-  atomic_min_f(&s->min_part_mass, min_mass);
 }
 
 /**
@@ -1170,9 +1161,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
-  /* Init the local minimal part mass */
-  float min_mass = FLT_MAX;
-
   for (int k = 0; k < nr_gparts; k++) {
 
     /* Get the particle */
@@ -1204,9 +1192,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
             pos_z);
 #endif
 
-    /* Compute minimal mass */
-    if (gp->type == swift_type_dark_matter) min_mass = min(min_mass, gp->mass);
-
     /* Update the position */
     gp->x[0] = pos_x;
     gp->x[1] = pos_y;
@@ -1217,9 +1202,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   for (int k = 0; k < s->nr_cells; k++)
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
-
-  /* Write back thee minimal part mass */
-  atomic_min_f(&s->min_gpart_mass, min_mass);
 }
 
 /**
@@ -1252,9 +1234,6 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
-  /* Init the local minimal part mass */
-  float min_mass = FLT_MAX;
-
   for (int k = 0; k < nr_sparts; k++) {
 
     /* Get the particle */
@@ -1286,9 +1265,6 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
             pos_z);
 #endif
 
-    /* Compute minimal mass */
-    min_mass = min(min_mass, sp->mass);
-
     /* Update the position */
     sp->x[0] = pos_x;
     sp->x[1] = pos_y;
@@ -1299,15 +1275,10 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   for (int k = 0; k < s->nr_cells; k++)
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
-
-  /* Write back thee minimal part mass */
-  atomic_min_f(&s->min_spart_mass, min_mass);
 }
 
 /**
  * @brief Computes the cell index of all the particles.
- *
- * Also computes the minimal mass of all #part.
  *
  * @param s The #space.
  * @param ind The array of indices to fill.
@@ -1319,9 +1290,6 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
                                 struct cell *cells, int verbose) {
 
   const ticks tic = getticks();
-
-  /* Re-set the minimal mass */
-  s->min_part_mass = FLT_MAX;
 
   /* Pack the extra information */
   struct index_data data;
@@ -1341,8 +1309,6 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
 /**
  * @brief Computes the cell index of all the g-particles.
  *
- * Also computes the minimal mass of all dark-matter #gpart.
- *
  * @param s The #space.
  * @param gind The array of indices to fill.
  * @param cell_counts The cell counters to update.
@@ -1353,9 +1319,6 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
                                  struct cell *cells, int verbose) {
 
   const ticks tic = getticks();
-
-  /* Re-set the minimal mass */
-  s->min_gpart_mass = FLT_MAX;
 
   /* Pack the extra information */
   struct index_data data;
@@ -1375,8 +1338,6 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
 /**
  * @brief Computes the cell index of all the s-particles.
  *
- * Also computes the minimal mass of all #spart.
- *
  * @param s The #space.
  * @param sind The array of indices to fill.
  * @param cell_counts The cell counters to update.
@@ -1387,9 +1348,6 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
                                  struct cell *cells, int verbose) {
 
   const ticks tic = getticks();
-
-  /* Re-set the minimal mass */
-  s->min_spart_mass = FLT_MAX;
 
   /* Pack the extra information */
   struct index_data data;

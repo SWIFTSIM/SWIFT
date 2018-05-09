@@ -3805,10 +3805,6 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
 
-  /* Re-compute the maximal RMS displacement constraint */
-  if (e->policy & engine_policy_cosmology)
-    engine_recompute_displacement_constraint(e);
-
 #ifdef SWIFT_DEBUG_CHECKS
   part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
                     e->s->nr_gparts, e->s->nr_sparts, e->verbose);
@@ -5448,8 +5444,8 @@ void engine_init(struct engine *e, struct space *s,
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->dt_max_RMS_displacement = FLT_MAX;
-  e->max_RMS_displacement_factor = parser_get_opt_param_double(
-      params, "TimeIntegration:max_dt_RMS_factor", 1.);
+  e->max_RMS_displacement_factor =
+      parser_get_param_double(params, "TimeIntegration:max_RMS_factor");
   e->a_first_statistics =
       parser_get_opt_param_double(params, "Statistics:scale_factor_first", 0.1);
   e->time_first_statistics =
@@ -6258,17 +6254,6 @@ void engine_compute_next_stf_time(struct engine *e) {
         message("Next output time set to t=%e.", next_snapshot_time);
     }
   }
-}
-
-/**
- * @brief Computes the maximal time-step allowed by the max RMS displacement
- * condition.
- *
- * @param e The #engine.
- */
-void engine_recompute_displacement_constraint(struct engine *e) {
-
-  message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
 }
 
 /**

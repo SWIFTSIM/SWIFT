@@ -146,15 +146,6 @@ struct space {
   /*! The top-level FFT task */
   struct task *grav_top_level;
 
-  /*! Minimal mass of all the #part */
-  float min_part_mass;
-
-  /*! Minimal mass of all the dark-matter #gpart */
-  float min_gpart_mass;
-
-  /*! Minimal mass of all the #spart */
-  float min_spart_mass;
-
   /*! General-purpose lock for this space. */
   swift_lock_type lock;
 
