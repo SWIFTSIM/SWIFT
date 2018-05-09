@@ -24,6 +24,7 @@
 #include "cosmology.h"
 #include "dimension.h"
 #include "equation_of_state.h"
+#include "hydro_properties.h"
 #include "hydro_space.h"
 #include "kernel_hydro.h"
 #include "minmax.h"

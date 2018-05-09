@@ -24,7 +24,6 @@
 #include "../config.h"
 
 /* Local includes. */
-#include "part.h"
 #include "units.h"
 
 #define FIELD_BUFFER_SIZE 200
@@ -35,6 +34,9 @@
 #define IO_STF_OUTPUT_FREQ_FORMAT_TIME 1
 
 /* Avoid cyclic inclusion problems */
+struct part;
+struct gpart;
+struct spart;
 struct io_props;
 struct engine;
 struct threadpool;

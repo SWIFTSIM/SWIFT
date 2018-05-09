@@ -93,21 +93,15 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
     struct part* restrict pi, struct part* restrict pj, float hi, float hj,
-    const float* dx, float r, float* xij_i, float* Wi, float* Wj) {
-
-  float dWi[5], dWj[5];
-  float xij_j[3];
-  int k;
-  float xfac;
+    const float* dx, float r, const float* xij_i, float* Wi, float* Wj) {
 
   /* perform gradient reconstruction in space and time */
-  /* space */
   /* Compute interface position (relative to pj, since we don't need the actual
-   * position) */
-  /* eqn. (8) */
-  xfac = hj / (hi + hj);
-  for (k = 0; k < 3; k++) xij_j[k] = xfac * dx[k];
+   * position) eqn. (8) */
+  const float xfac = hj / (hi + hj);
+  const float xij_j[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
 
+  float dWi[5];
   dWi[0] = pi->primitives.gradients.rho[0] * xij_i[0] +
            pi->primitives.gradients.rho[1] * xij_i[1] +
            pi->primitives.gradients.rho[2] * xij_i[2];
@@ -124,6 +118,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
            pi->primitives.gradients.P[1] * xij_i[1] +
            pi->primitives.gradients.P[2] * xij_i[2];
 
+  float dWj[5];
   dWj[0] = pj->primitives.gradients.rho[0] * xij_j[0] +
            pj->primitives.gradients.rho[1] * xij_j[1] +
            pj->primitives.gradients.rho[2] * xij_j[2];
@@ -140,6 +135,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
            pj->primitives.gradients.P[1] * xij_j[1] +
            pj->primitives.gradients.P[2] * xij_j[2];
 
+  /* Apply the slope limiter at this interface */
   hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, r);
 
   Wi[0] += dWi[0];
@@ -154,10 +150,10 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   Wj[3] += dWj[3];
   Wj[4] += dWj[4];
 
-  gizmo_check_physical_quantity("density", Wi[0]);
-  gizmo_check_physical_quantity("pressure", Wi[4]);
-  gizmo_check_physical_quantity("density", Wj[0]);
-  gizmo_check_physical_quantity("pressure", Wj[4]);
+  gizmo_check_physical_quantities("density", "pressure", Wi[0], Wi[1], Wi[2],
+                                  Wi[3], Wi[4]);
+  gizmo_check_physical_quantities("density", "pressure", Wj[0], Wj[1], Wj[2],
+                                  Wj[3], Wj[4]);
 }
 
 #endif /* SWIFT_HYDRO_GIZMO_GRADIENTS_H */

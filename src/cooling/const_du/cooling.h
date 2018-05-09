@@ -30,32 +30,20 @@
  * realistic functions.
  */
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Some standard headers. */
 #include <math.h>
 
 /* Local includes. */
 #include "const.h"
-#include "cooling_struct.h"
 #include "error.h"
 #include "hydro.h"
-#include "io_properties.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
-
-#ifdef HAVE_HDF5
-
-/**
- * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
- */
-__attribute__((always_inline)) INLINE static void cooling_write_flavour(
-    hid_t h_grpsph) {
-
-  io_write_attribute_s(h_grpsph, "Cooling Model", "Constant du/dt");
-}
-#endif
 
 /**
  * @brief Apply the cooling function to a particle.
@@ -141,8 +129,11 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  * @param cooling The properties of the cooling function.
  */
 __attribute__((always_inline)) INLINE static void cooling_first_init_part(
-    const struct part* restrict p, struct xpart* restrict xp,
-    const struct cooling_function_data* cooling) {
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, struct xpart* restrict xp) {
 
   xp->cooling_data.radiated_energy = 0.f;
 }

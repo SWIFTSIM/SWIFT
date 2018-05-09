@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
 
   /* Structs used by the engine. Declare now to make sure these are always in
    * scope.  */
-  struct chemistry_data chemistry;
+  struct chemistry_global_data chemistry;
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
@@ -628,7 +628,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the hydro properties */
     if (with_hydro)
       hydro_props_init(&hydro_properties, &prog_const, &us, params);
-    if (with_hydro) eos_init(&eos, params);
+    if (with_hydro) eos_init(&eos, &prog_const, &us, params);
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
@@ -1077,6 +1077,7 @@ int main(int argc, char *argv[]) {
 
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
+  if (with_cosmology) cosmology_clean(&cosmo);
   engine_clean(&e);
   free(params);
 

@@ -38,7 +38,7 @@
 /* Local includes. */
 #include "chemistry_io.h"
 #include "common_io.h"
-#include "cooling.h"
+#include "cooling_io.h"
 #include "dimension.h"
 #include "engine.h"
 #include "error.h"
@@ -103,12 +103,6 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
   /* Open data space */
   const hid_t h_data = H5Dopen(grp, props.name, H5P_DEFAULT);
   if (h_data < 0) error("Error while opening data space '%s'.", props.name);
-
-  /* Check data type */
-  const hid_t h_type = H5Dget_type(h_data);
-  if (h_type < 0) error("Unable to retrieve data type from the file");
-  /* if (!H5Tequal(h_type, hdf5_type(type))) */
-  /*   error("Non-matching types between the code and the file"); */
 
   /* Allocate temporary buffer */
   void* temp = malloc(num_elements * typeSize);
@@ -187,7 +181,6 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
   free(temp);
   H5Sclose(h_filespace);
   H5Sclose(h_memspace);
-  H5Tclose(h_type);
   H5Dclose(h_data);
 }
 
@@ -241,13 +234,13 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
           chunk_shape[0], chunk_shape[1], props.name);
 
   /* Impose data compression */
-  if (e->snapshotCompression > 0) {
+  if (e->snapshot_compression > 0) {
     h_err = H5Pset_shuffle(h_prop);
     if (h_err < 0)
       error("Error while setting shuffling options for field '%s'.",
             props.name);
 
-    h_err = H5Pset_deflate(h_prop, e->snapshotCompression);
+    h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
     if (h_err < 0)
       error("Error while setting compression options for field '%s'.",
             props.name);
@@ -733,6 +726,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   const struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
+  const struct cooling_function_data* cooling = e->cooling_func;
   FILE* xmfFile = 0;
 
   /* Number of unassociated gparts */
@@ -741,7 +735,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           e->snapshotOutputCount);
+           e->snapshot_output_count);
 
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas, Ndm, 0, 0, Nstars, 0};
@@ -761,7 +755,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   if (mpi_rank == 0) {
 
     /* First time, we need to create the XMF file */
-    if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
+    if (e->snapshot_output_count == 0) xmf_create_file(baseName);
 
     /* Prepare the XMF file for the new entry */
     xmfFile = xmf_prepare_file(baseName);
@@ -977,6 +971,8 @@ void write_output_serial(struct engine* e, const char* baseName,
             Nparticles = Ngas;
             hydro_write_particles(parts, xparts, list, &num_fields);
             num_fields += chemistry_write_particles(parts, list + num_fields);
+            num_fields +=
+                cooling_write_particles(xparts, list + num_fields, cooling);
             break;
 
           case swift_type_dark_matter:
@@ -1033,10 +1029,10 @@ void write_output_serial(struct engine* e, const char* baseName,
 
   /* Write footer of LXMF file descriptor */
   if (mpi_rank == 0)
-    xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
+    xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
 
   /* message("Done writing particles..."); */
-  e->snapshotOutputCount++;
+  e->snapshot_output_count++;
 }
 
 #endif /* HAVE_HDF5 && HAVE_MPI */

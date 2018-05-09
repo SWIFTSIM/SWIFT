@@ -67,7 +67,8 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   basename:   output      # Common part of the name of output files
-  time_first: 0.          # Time of the first output (in internal units)
+  scale_factor_first: 0.1 # (Optional) Scale-factor of the first snapshot if cosmological time-integration.
+  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
   compression: 0          # (Optional) Set the level of compression of the HDF5 datasets [0-9]. 0 does no compression.
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
@@ -78,7 +79,9 @@ Snapshots:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-2      # Time between statistics output
+  delta_time:           1e-2     # Time between statistics output
+  scale_factor_first:     0.1    # (Optional) Scale-factor of the first statistics dump if cosmological time-integration.
+  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
   energy_file_name:    energy    # (Optional) File name for energy output
   timestep_file_name:  timesteps # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name
 
@@ -179,12 +182,18 @@ LambdaCooling:
   hydrogen_mass_abundance:     0.75  # Hydrogen mass abundance (dimensionless)
   cooling_tstep_mult:          1.0   # Dimensionless pre-factor for the time-step condition
 
-# Cooling with Grackle 2.0
+# Cooling with Grackle 3.0
 GrackleCooling:
-  GrackleCloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  UVbackground: 1 # Enable or not the UV background
-  GrackleRedshift: 0 # Redshift to use (-1 means time based redshift)
-  GrackleHSShieldingDensityThreshold: 1.1708e-26 # self shielding threshold in internal system of units
+  CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  WithUVbackground: 1                   # Enable or not the UV background
+  Redshift: 0                           # Redshift to use (-1 means time based redshift)
+  WithMetalCooling: 1                   # Enable or not the metal cooling
+  ProvideVolumetricHeatingRates: 0      # (optional) User provide volumetric heating rates
+  ProvideSpecificHeatingRates: 0        # (optional) User provide specific heating rates
+  SelfShieldingMethod: 0                # (optional) Grackle (<= 3) or Gear self shielding method
+  OutputMode: 0                         # (optional) Write in output corresponding primordial chemistry mode
+  MaxSteps: 10000                       # (optional) Max number of step when computing the initial composition
+  ConvergenceLimit: 1e-2                # (optional) Convergence threshold (relative) for initial composition
 
 # Parameters related to chemistry models  -----------------------------------------------
 

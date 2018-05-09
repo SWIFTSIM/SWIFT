@@ -41,6 +41,47 @@ AX_CHECK_ENABLE_DEBUG
 AC_PROG_CC
 AM_PROG_CC_C_O
 
+
+# Master subgrid options
+# If you add a restriction (e.g. no cooling, chemistry or hydro)
+# you will need to check for overwrite after reading the additional options.
+# As an example for this, see the call to AC_ARG_WITH for cooling.
+AC_ARG_WITH([subgrid],
+	[AS_HELP_STRING([--with-subgrid=<subgrid>],
+		[Master switch for subgrid methods. Inexperienced user should start from here @<:@none, GEAR, EAGLE default: none@:>@]
+	)],
+	[with_subgrid="$withval"],
+	[with_subgrid=none]
+)
+
+# Default values
+with_subgrid_cooling=none
+with_subgrid_chemistry=none
+with_subgrid_hydro=none
+
+case "$with_subgrid" in
+   yes)
+      AC_MSG_ERROR([Invalid option. A subgrid model must be chosen.])
+   ;;
+   none)
+   ;;
+   GEAR)
+	with_subgrid_cooling=grackle
+	with_subgrid_chemistry=GEAR
+	with_subgrid_hydro=gadget2
+   ;;
+   EAGLE)
+	with_subgrid_cooling=EAGLE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_hydro=gadget2
+   ;;
+   *)	
+      AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
+   ;;
+esac
+
+
+
 # If debug is selected then we also define SWIFT_DEVELOP_MODE to control
 # any developer code options.
 if test "x$ax_enable_debug" != "xno"; then
@@ -444,6 +485,10 @@ if test "x$with_gsl" != "xno"; then
          AC_MSG_ERROR(something is wrong with the GSL library!), $GSL_LIBS)
       have_gsl="yes"
    fi
+   if test "$have_gsl" = "no"; then
+      GSL_LIBS=""
+      GSL_INCS=""
+   fi
 fi
 AC_SUBST([GSL_LIBS])
 AC_SUBST([GSL_INCS])
@@ -543,6 +588,45 @@ AC_SUBST([GRACKLE_LIBS])
 AC_SUBST([GRACKLE_INCS])
 AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
 
+# Check for FFTW. We test for this in the standard directories by default,
+# and only disable if using --with-fftw=no or --without-fftw. When a value
+# is given GSL must be found.
+have_fftw="no"
+AC_ARG_WITH([fftw],
+    [AS_HELP_STRING([--with-fftw=PATH],
+       [root directory where fftw is installed @<:@yes/no@:>@]
+    )],
+    [with_fftw="$withval"],
+    [with_fftw="test"]
+)
+if test "x$with_fftw" != "xno"; then
+   if test "x$with_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
+      FFTW_LIBS="-L$with_fftw/lib -lfftw3"
+      FFTW_INCS="-I$with_fftw/include"
+   else
+      FFTW_LIBS="-lfftw3"
+      FFTW_INCS=""
+   fi
+   #  FFTW is not specified, so just check if we have it.
+   if test "x$with_fftw" = "xtest"; then
+      AC_CHECK_LIB([fftw3],[fftw_malloc],[have_fftw="yes"],[have_fftw="no"],$FFTW_LIBS)
+      if test "x$have_fftw" != "xno"; then
+      	 AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.])
+      fi
+   else
+      AC_CHECK_LIB([fftw3],[fftw_malloc],
+         AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.]),
+         AC_MSG_ERROR(something is wrong with the FFTW library!), $FFTW_LIBS)
+      have_fftw="yes"
+   fi      
+   if test "$have_fftw" = "no"; then
+      FFTW_LIBS=""
+      FFTW_INCS=""
+   fi
+fi
+AC_SUBST([FFTW_LIBS])
+AC_SUBST([FFTW_INCS])
+AM_CONDITIONAL([HAVEFFTW],[test -n "$FFTW_LIBS"])
 
 #  Check for tcmalloc a fast malloc that is part of the gperftools.
 have_tcmalloc="no"
@@ -704,16 +788,6 @@ if test "$ac_cv_func_pthread_setaffinity_np" = "yes"; then
   fi
 fi
 
-# Check for FFTW
-have_fftw3="no"
-AC_CHECK_HEADER([fftw3.h])
-if test "$ac_cv_header_fftw3_h" = "yes"; then
-   AC_CHECK_LIB([fftw3],[fftw_malloc], [AC_DEFINE([HAVE_FFTW],
-   [1],[Defined if FFTW 3.x exists.])] )
-   FFTW_LIBS="-lfftw3"
-   have_fftw3="yes"
-fi
-AC_SUBST([FFTW_LIBS])
 
 # Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
@@ -784,6 +858,15 @@ AC_ARG_WITH([hydro],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
 )
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_hydro" != "gadget2"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-hydro together])
+   else
+      with_hydro="$with_subgrid_hydro"
+   fi
+fi
+
 case "$with_hydro" in
    gadget2)
       AC_DEFINE([GADGET2_SPH], [1], [Gadget-2 SPH])
@@ -962,11 +1045,20 @@ esac
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<function>],
-      [cooling function @<:@none, const-du, const-lambda, grackle default: none@:>@]
+      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle, grackle1, grackle2, grackle3 default: none@:>@]
    )],
    [with_cooling="$withval"],
    [with_cooling="none"]
 )
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_cooling" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-cooling together])
+   else
+      with_cooling="$with_subgrid_cooling"
+   fi
+fi
+
 case "$with_cooling" in
    none)
       AC_DEFINE([COOLING_NONE], [1], [No cooling function])
@@ -979,7 +1071,20 @@ case "$with_cooling" in
    ;;
    grackle)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [0], [Grackle chemistry network, mode 0])
+   ;; 
+   grackle1)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [1], [Grackle chemistry network, mode 1])
    ;;
+   grackle2)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [2], [Grackle chemistry network, mode 2])
+   ;; 
+   grackle3)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [3], [Grackle chemistry network, mode 3])
+   ;; 
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
    ;;
@@ -991,16 +1096,25 @@ esac
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
-      [chemistry function @<:@none, gear, EAGLE default: none@:>@]
+      [chemistry function @<:@none, GEAR, EAGLE default: none@:>@]
    )],
    [with_chemistry="$withval"],
    [with_chemistry="none"]
 )
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_chemistry" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-chemistry together])
+   else
+      with_chemistry="$with_subgrid_chemistry"
+   fi
+fi
+
 case "$with_chemistry" in
    none)
       AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
    ;;
-   gear)
+   GEAR)
       AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
    ;;
    EAGLE)
@@ -1056,7 +1170,6 @@ AC_ARG_WITH([multipole-order],
 )
 AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Multipole order])
 
-
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
 AC_SUBST([GIT_CMD])
@@ -1101,7 +1214,7 @@ AC_MSG_RESULT([
    HDF5 enabled     : $with_hdf5
     - parallel      : $have_parallel_hdf5
    Metis enabled    : $have_metis
-   FFTW3 enabled    : $have_fftw3
+   FFTW3 enabled    : $have_fftw
    GSL enabled      : $have_gsl
    libNUMA enabled  : $have_numa
    GRACKLE enabled  : $have_grackle

@@ -31,7 +31,7 @@
 #if defined(CHEMISTRY_NONE)
 #include "./chemistry/none/chemistry_struct.h"
 #elif defined(CHEMISTRY_GEAR)
-#include "./chemistry/gear/chemistry_struct.h"
+#include "./chemistry/GEAR/chemistry_struct.h"
 #elif defined(CHEMISTRY_EAGLE)
 #include "./chemistry/EAGLE/chemistry_struct.h"
 #else

@@ -24,20 +24,20 @@
  * @brief Check if the given input states are vacuum or will generate vacuum
  */
 __attribute__((always_inline)) INLINE static int riemann_is_vacuum(
-    float* WL, float* WR, float vL, float vR, float aL, float aR) {
+    const float* WL, const float* WR, float vL, float vR, float aL, float aR) {
 
   /* vacuum */
-  if (!WL[0] || !WR[0]) {
-    return 1;
-  }
+  if (!WL[0] || !WR[0]) return 1;
+
   /* vacuum generation */
-  if (2.0f * aL / hydro_gamma_minus_one + 2.0f * aR / hydro_gamma_minus_one <=
-      vR - vL) {
+  else if (hydro_two_over_gamma_minus_one * aL +
+               hydro_two_over_gamma_minus_one * aR <=
+           vR - vL)
     return 1;
-  }
 
   /* no vacuum */
-  return 0;
+  else
+    return 0;
 }
 
 /**
@@ -53,8 +53,8 @@ __attribute__((always_inline)) INLINE static int riemann_is_vacuum(
  * @param n_unit Normal vector of the interface
  */
 __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
-    float* WL, float* WR, float vL, float vR, float aL, float aR, float* Whalf,
-    float* n_unit) {
+    const float* WL, const float* WR, float vL, float vR, float aL, float aR,
+    float* Whalf, const float* n_unit) {
 
   float SL, SR;
   float vhalf;
@@ -202,8 +202,8 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
  * @brief Solve the vacuum Riemann problem and return the fluxes
  */
 __attribute__((always_inline)) INLINE static void riemann_solve_vacuum_flux(
-    float* WL, float* WR, float vL, float vR, float aL, float aR, float* n_unit,
-    float* vij, float* totflux) {
+    const float* WL, const float* WR, float vL, float vR, float aL, float aR,
+    const float* n_unit, const float* vij, float* totflux) {
 
   float Whalf[5];
   float flux[5][3];

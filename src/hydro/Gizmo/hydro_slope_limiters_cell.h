@@ -57,29 +57,29 @@ hydro_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
   /* basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
   pi->primitives.limiter.rho[0] =
-      fmin(pj->primitives.rho, pi->primitives.limiter.rho[0]);
+      min(pj->primitives.rho, pi->primitives.limiter.rho[0]);
   pi->primitives.limiter.rho[1] =
-      fmax(pj->primitives.rho, pi->primitives.limiter.rho[1]);
+      max(pj->primitives.rho, pi->primitives.limiter.rho[1]);
 
   pi->primitives.limiter.v[0][0] =
-      fmin(pj->primitives.v[0], pi->primitives.limiter.v[0][0]);
+      min(pj->primitives.v[0], pi->primitives.limiter.v[0][0]);
   pi->primitives.limiter.v[0][1] =
-      fmax(pj->primitives.v[0], pi->primitives.limiter.v[0][1]);
+      max(pj->primitives.v[0], pi->primitives.limiter.v[0][1]);
   pi->primitives.limiter.v[1][0] =
-      fmin(pj->primitives.v[1], pi->primitives.limiter.v[1][0]);
+      min(pj->primitives.v[1], pi->primitives.limiter.v[1][0]);
   pi->primitives.limiter.v[1][1] =
-      fmax(pj->primitives.v[1], pi->primitives.limiter.v[1][1]);
+      max(pj->primitives.v[1], pi->primitives.limiter.v[1][1]);
   pi->primitives.limiter.v[2][0] =
-      fmin(pj->primitives.v[2], pi->primitives.limiter.v[2][0]);
+      min(pj->primitives.v[2], pi->primitives.limiter.v[2][0]);
   pi->primitives.limiter.v[2][1] =
-      fmax(pj->primitives.v[2], pi->primitives.limiter.v[2][1]);
+      max(pj->primitives.v[2], pi->primitives.limiter.v[2][1]);
 
   pi->primitives.limiter.P[0] =
-      fmin(pj->primitives.P, pi->primitives.limiter.P[0]);
+      min(pj->primitives.P, pi->primitives.limiter.P[0]);
   pi->primitives.limiter.P[1] =
-      fmax(pj->primitives.P, pi->primitives.limiter.P[1]);
+      max(pj->primitives.P, pi->primitives.limiter.P[1]);
 
-  pi->primitives.limiter.maxr = fmax(r, pi->primitives.limiter.maxr);
+  pi->primitives.limiter.maxr = max(r, pi->primitives.limiter.maxr);
 }
 
 /**
@@ -90,8 +90,7 @@ hydro_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
     struct part* p) {
 
-  float gradrho[3], gradv[3][3], gradP[3];
-  float gradtrue, gradmax, gradmin, alpha;
+  float gradtrue, gradrho[3], gradv[3][3], gradP[3];
 
   gradrho[0] = p->primitives.gradients.rho[0];
   gradrho[1] = p->primitives.gradients.rho[1];
@@ -117,9 +116,11 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
                    gradrho[2] * gradrho[2]);
   if (gradtrue) {
     gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.rho[1] - p->primitives.rho;
-    gradmin = p->primitives.rho - p->primitives.limiter.rho[0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
+    const float gradmax = p->primitives.limiter.rho[1] - p->primitives.rho;
+    const float gradmin = p->primitives.rho - p->primitives.limiter.rho[0];
+    const float gradtrue_inv = 1.f / gradtrue;
+    const float alpha =
+        min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
     p->primitives.gradients.rho[0] *= alpha;
     p->primitives.gradients.rho[1] *= alpha;
     p->primitives.gradients.rho[2] *= alpha;
@@ -129,9 +130,11 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
                    gradv[0][2] * gradv[0][2]);
   if (gradtrue) {
     gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.v[0][1] - p->primitives.v[0];
-    gradmin = p->primitives.v[0] - p->primitives.limiter.v[0][0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
+    const float gradmax = p->primitives.limiter.v[0][1] - p->primitives.v[0];
+    const float gradmin = p->primitives.v[0] - p->primitives.limiter.v[0][0];
+    const float gradtrue_inv = 1.f / gradtrue;
+    const float alpha =
+        min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
     p->primitives.gradients.v[0][0] *= alpha;
     p->primitives.gradients.v[0][1] *= alpha;
     p->primitives.gradients.v[0][2] *= alpha;
@@ -141,9 +144,11 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
                    gradv[1][2] * gradv[1][2]);
   if (gradtrue) {
     gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.v[1][1] - p->primitives.v[1];
-    gradmin = p->primitives.v[1] - p->primitives.limiter.v[1][0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
+    const float gradmax = p->primitives.limiter.v[1][1] - p->primitives.v[1];
+    const float gradmin = p->primitives.v[1] - p->primitives.limiter.v[1][0];
+    const float gradtrue_inv = 1.f / gradtrue;
+    const float alpha =
+        min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
     p->primitives.gradients.v[1][0] *= alpha;
     p->primitives.gradients.v[1][1] *= alpha;
     p->primitives.gradients.v[1][2] *= alpha;
@@ -153,9 +158,11 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
                    gradv[2][2] * gradv[2][2]);
   if (gradtrue) {
     gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.v[2][1] - p->primitives.v[2];
-    gradmin = p->primitives.v[2] - p->primitives.limiter.v[2][0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
+    const float gradmax = p->primitives.limiter.v[2][1] - p->primitives.v[2];
+    const float gradmin = p->primitives.v[2] - p->primitives.limiter.v[2][0];
+    const float gradtrue_inv = 1.f / gradtrue;
+    const float alpha =
+        min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
     p->primitives.gradients.v[2][0] *= alpha;
     p->primitives.gradients.v[2][1] *= alpha;
     p->primitives.gradients.v[2][2] *= alpha;
@@ -165,9 +172,11 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
       sqrtf(gradP[0] * gradP[0] + gradP[1] * gradP[1] + gradP[2] * gradP[2]);
   if (gradtrue) {
     gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.P[1] - p->primitives.P;
-    gradmin = p->primitives.P - p->primitives.limiter.P[0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
+    const float gradmax = p->primitives.limiter.P[1] - p->primitives.P;
+    const float gradmin = p->primitives.P - p->primitives.limiter.P[0];
+    const float gradtrue_inv = 1.f / gradtrue;
+    const float alpha =
+        min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
     p->primitives.gradients.P[0] *= alpha;
     p->primitives.gradients.P[1] *= alpha;
     p->primitives.gradients.P[2] *= alpha;
