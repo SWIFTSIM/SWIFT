@@ -947,13 +947,15 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   }
 
   /* Print the gravity parameters */
-  if (e->policy & engine_policy_cosmology) {
-    h_grp =
-        H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating cosmology group");
-    cosmology_write_model(h_grp, e->cosmology);
-    H5Gclose(h_grp);
-  }
+  h_grp =
+      H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating cosmology group");
+  if (e->policy & engine_policy_cosmology)
+    io_write_attribute_i(h_grp, "Cosmological run", 1);
+  else
+    io_write_attribute_i(h_grp, "Cosmological run", 0);
+  cosmology_write_model(h_grp, e->cosmology);
+  H5Gclose(h_grp);
 
   /* Print the runtime parameters */
   h_grp =

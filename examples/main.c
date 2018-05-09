@@ -590,7 +590,7 @@ int main(int argc, char *argv[]) {
 
     /* Not restarting so look for the ICs. */
     /* Initialize unit system and constants */
-    units_init(&us, params, "InternalUnitSystem");
+    units_init_from_params(&us, params, "InternalUnitSystem");
     phys_const_init(&us, params, &prog_const);
     if (myrank == 0 && verbose > 0) {
       message("Internal unit system: U_M = %e g.", us.UnitMass_in_cgs);
