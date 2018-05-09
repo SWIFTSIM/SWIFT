@@ -244,7 +244,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
+  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij *
 	             (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
@@ -369,7 +369,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
+  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij *
 	             (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
