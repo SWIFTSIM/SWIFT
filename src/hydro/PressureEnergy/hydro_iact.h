@@ -109,6 +109,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.rot_v[1] += faci * curlvr[1];
   pi->density.rot_v[2] += faci * curlvr[2];
 
+  /* Negative because of the change in sign of dx & dv. */
   pj->density.rot_v[0] += facj * curlvr[0];
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
@@ -244,7 +245,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij *
+  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
 	             (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
@@ -369,8 +370,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij *
-	             (balsara_i + balsara_j) / rho_ij;
+  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
+	             (balsara_i + balsara_j) / rho_ij; 
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
