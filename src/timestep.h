@@ -84,6 +84,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
   /* Take the minimum of all */
   float new_dt = min(new_dt_self, new_dt_ext);
 
+  /* Apply the maximal displacement constraint (FLT_MAX  if non-cosmological)*/
+  new_dt = min(new_dt, e->dt_max_RMS_displacement);
+
   /* Apply cosmology correction (This is 1 if non-cosmological) */
   new_dt *= e->cosmology->time_step_factor;
 
@@ -140,13 +143,16 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   /* Final time-step is minimum of hydro and gravity */
   float new_dt = min3(new_dt_hydro, new_dt_cooling, new_dt_grav);
 
-  /* Limit change in h */
+  /* Limit change in smoothing length */
   const float dt_h_change =
       (p->force.h_dt != 0.0f)
           ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->force.h_dt)
           : FLT_MAX;
 
   new_dt = min(new_dt, dt_h_change);
+
+  /* Apply the maximal displacement constraint (FLT_MAX  if non-cosmological)*/
+  new_dt = min(new_dt, e->dt_max_RMS_displacement);
 
   /* Apply cosmology correction (This is 1 if non-cosmological) */
   new_dt *= e->cosmology->time_step_factor;
@@ -190,6 +196,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
 
   /* Take the minimum of all */
   float new_dt = min3(new_dt_star, new_dt_self, new_dt_ext);
+
+  /* Apply the maximal displacement constraint (FLT_MAX  if non-cosmological)*/
+  new_dt = min(new_dt, e->dt_max_RMS_displacement);
 
   /* Apply cosmology correction (This is 1 if non-cosmological) */
   new_dt *= e->cosmology->time_step_factor;

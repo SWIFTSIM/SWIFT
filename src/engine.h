@@ -126,6 +126,12 @@ struct engine {
   /* The minimum and maximum allowed dt */
   double dt_min, dt_max;
 
+  /* Maximum time-step allowed by the RMS condition in cosmology runs. */
+  double dt_max_RMS_displacement;
+
+  /* Dimensionless factor for the RMS time-step condition. */
+  double max_RMS_displacement_factor;
+
   /* Time of the simulation beginning */
   double time_begin;
 
@@ -352,6 +358,7 @@ void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
 void engine_compute_next_stf_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
+void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e);
 void engine_drift_top_multipoles(struct engine *e);
