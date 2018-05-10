@@ -146,6 +146,24 @@ struct space {
   /*! The top-level FFT task */
   struct task *grav_top_level;
 
+  /*! Minimal mass of all the #part */
+  float min_part_mass;
+
+  /*! Minimal mass of all the dark-matter #gpart */
+  float min_gpart_mass;
+
+  /*! Minimal mass of all the #spart */
+  float min_spart_mass;
+
+  /*! Sum of the norm of the velocity of all the #part */
+  float sum_part_vel_norm;
+
+  /*! Sum of the norm of the velocity of all the dark-matter #gpart */
+  float sum_gpart_vel_norm;
+
+  /*! Sum of the norm of the velocity of all the #spart */
+  float sum_spart_vel_norm;
+
   /*! General-purpose lock for this space. */
   swift_lock_type lock;
 
@@ -173,12 +191,14 @@ struct space {
 };
 
 /* function prototypes. */
-void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
-                      int verbose);
-void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
-                       int verbose);
-void space_sparts_sort(struct space *s, int *ind, size_t N, int min, int max,
-                       int verbose);
+void space_free_buff_sort_indices(struct space *s);
+void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
+                      int *counts, int num_bins, ptrdiff_t parts_offset);
+void space_gparts_sort(struct gpart *gparts, struct part *parts,
+                       struct spart *sparts, int *ind, int *counts,
+                       int num_bins);
+void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
+                       int num_bins, ptrdiff_t sparts_offset);
 void space_getcells(struct space *s, int nr_cells, struct cell **cells);
 void space_init(struct space *s, const struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
@@ -197,12 +217,6 @@ void space_map_parts_xparts(struct space *s,
                                         struct cell *c));
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
-void space_parts_sort_mapper(void *map_data, int num_elements,
-                             void *extra_data);
-void space_gparts_sort_mapper(void *map_data, int num_elements,
-                              void *extra_data);
-void space_sparts_sort_mapper(void *map_data, int num_elements,
-                              void *extra_data);
 void space_rebuild(struct space *s, int verbose);
 void space_recycle(struct space *s, struct cell *c);
 void space_recycle_list(struct space *s, struct cell *cell_list_begin,
@@ -213,22 +227,19 @@ void space_split(struct space *s, struct cell *cells, int nr_cells,
                  int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);
 void space_list_cells_with_tasks(struct space *s);
-void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
-                                int verbose);
-void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
-                                 int verbose);
-void space_sparts_get_cell_index(struct space *s, int *sind, struct cell *cells,
-                                 int verbose);
+void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
+                                struct cell *cells, int verbose);
+void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
+                                 struct cell *cells, int verbose);
+void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
+                                 struct cell *cells, int verbose);
 void space_synchronize_particle_positions(struct space *s);
 void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_do_sparts_sort();
-void space_first_init_parts(struct space *s,
-                            const struct chemistry_data *chemistry,
-                            const struct cooling_function_data *cool_func);
-void space_first_init_gparts(struct space *s,
-                             const struct gravity_props *grav_props);
-void space_first_init_sparts(struct space *s);
+void space_first_init_parts(struct space *s, int verbose);
+void space_first_init_gparts(struct space *s, int verbose);
+void space_first_init_sparts(struct space *s, int verbose);
 void space_init_parts(struct space *s, int verbose);
 void space_init_gparts(struct space *s, int verbose);
 void space_convert_quantities(struct space *s, int verbose);

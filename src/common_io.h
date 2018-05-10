@@ -24,7 +24,6 @@
 #include "../config.h"
 
 /* Local includes. */
-#include "part.h"
 #include "units.h"
 
 #define FIELD_BUFFER_SIZE 200
@@ -33,6 +32,9 @@
 #define IO_BUFFER_ALIGNMENT 1024
 
 /* Avoid cyclic inclusion problems */
+struct part;
+struct gpart;
+struct spart;
 struct io_props;
 struct engine;
 struct threadpool;

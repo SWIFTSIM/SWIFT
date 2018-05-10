@@ -20,7 +20,7 @@
 #define SWIFT_CHEMISTRY_GEAR_H
 
 /**
- * @file src/chemistry/gear/chemistry.h
+ * @file src/chemistry/GEAR/chemistry.h
  * @brief Empty infrastructure for the cases without chemistry function
  */
 
@@ -38,16 +38,28 @@
 #include "units.h"
 
 /**
- * @brief Return a string containing the name of a given #chemistry_element.
+ * @brief Compute the metal mass fraction
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param data The global chemistry information.
  */
-__attribute__((always_inline)) INLINE static const char*
-chemistry_get_element_name(enum chemistry_element elem) {
+__attribute__((always_inline)) INLINE static float
+chemistry_metal_mass_fraction(const struct part* restrict p,
+                              const struct xpart* restrict xp) {
+  return p->chemistry_data.Z;
+}
 
-  static const char* chemistry_element_names[chemistry_element_count] = {
-      "Oxygen",    "Magnesium", "Sulfur", "Iron",    "Zinc",
-      "Strontium", "Yttrium",   "Barium", "Europium"};
+/**
+ * @brief Prints the properties of the chemistry model to stdout.
+ *
+ * @brief The #chemistry_global_data containing information about the current
+ * model.
+ */
+static INLINE void chemistry_print_backend(
+    const struct chemistry_global_data* data) {
 
-  return chemistry_element_names[elem];
+  message("Chemistry function is 'Gear'.");
 }
 
 /**
@@ -62,16 +74,11 @@ chemistry_get_element_name(enum chemistry_element elem) {
  */
 static INLINE void chemistry_init_backend(
     const struct swift_params* parameter_file, const struct unit_system* us,
-    const struct phys_const* phys_const, struct chemistry_data* data) {}
+    const struct phys_const* phys_const, struct chemistry_global_data* data) {
 
-/**
- * @brief Prints the properties of the chemistry model to stdout.
- *
- * @brief The #chemistry_data containing information about the current model.
- */
-static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
-
-  message("Chemistry function is 'Gear'.");
+  /* read parameters */
+  data->initial_metallicity = parser_get_opt_param_float(
+      parameter_file, "GearChemistry:InitialMetallicity", -1);
 }
 
 /**
@@ -81,10 +88,10 @@ static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
  * the various smooth metallicity tasks
  *
  * @param p The particle to act upon
- * @param cd #chemistry_data containing chemistry informations.
+ * @param cd #chemistry_global_data containing chemistry informations.
  */
 __attribute__((always_inline)) INLINE static void chemistry_init_part(
-    struct part* restrict p, const struct chemistry_data* cd) {
+    struct part* restrict p, const struct chemistry_global_data* cd) {
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
 
@@ -102,11 +109,11 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  * This function requires the #hydro_end_density to have been called.
  *
  * @param p The particle to act upon.
- * @param cd #chemistry_data containing chemistry informations.
+ * @param cd #chemistry_global_data containing chemistry informations.
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_density(
-    struct part* restrict p, const struct chemistry_data* cd,
+    struct part* restrict p, const struct chemistry_global_data* cd,
     const struct cosmology* cosmo) {
 
   /* Some smoothing length multiples. */
@@ -138,8 +145,13 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  * @param data The global chemistry information.
  */
 __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct chemistry_data* data) {
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct chemistry_global_data* data, struct part* restrict p,
+    struct xpart* restrict xp) {
+
+  p->chemistry_data.Z = data->initial_metallicity;
   chemistry_init_part(p, data);
 }
 

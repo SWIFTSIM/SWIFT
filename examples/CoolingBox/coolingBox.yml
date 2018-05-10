@@ -42,11 +42,17 @@ LambdaCooling:
 
 # Cooling with Grackle 2.0
 GrackleCooling:
-  GrackleCloudyTable: ../CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  UVbackground: 0 # Enable or not the UV background
-  GrackleRedshift: 0 # Redshift to use (-1 means time based redshift)
-  GrackleHSShieldingDensityThreshold: 1.1708e-26 # self shielding threshold in internal system of units
-
+  CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  WithUVbackground: 0 # Enable or not the UV background
+  Redshift: 0 # Redshift to use (-1 means time based redshift)
+  WithMetalCooling: 1 # Enable or not the metal cooling
+  ProvideVolumetricHeatingRates: 0 # User provide volumetric heating rates
+  ProvideSpecificHeatingRates: 0 # User provide specific heating rates
+  SelfShieldingMethod: 0 # Grackle (<= 3) or Gear self shielding method
+  OutputMode: 1 # Write in output corresponding primordial chemistry mode
+  MaxSteps: 1000
+  ConvergenceLimit: 1e-2
+  
 EAGLEChemistry:
   InitMetallicity:         0.
   InitAbundance_Hydrogen:  0.752
@@ -60,3 +66,6 @@ EAGLEChemistry:
   InitAbundance_Iron:      0.000
   CalciumOverSilicon:      0.0941736
   SulphurOverSilicon:      0.6054160
+
+GearChemistry:
+  InitialMetallicity: 0.01295

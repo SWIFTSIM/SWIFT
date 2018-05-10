@@ -33,7 +33,6 @@
 #include <math.h>
 
 /* Local headers. */
-#include "debug.h"
 #include "error.h"
 #include "inline.h"
 
@@ -42,6 +41,7 @@
 
 #define hydro_gamma 1.66666666666666667f
 #define hydro_gamma_minus_one 0.66666666666666667f
+#define hydro_gamma_plus_one 2.66666666666666667f
 #define hydro_one_over_gamma_minus_one 1.5f
 #define hydro_gamma_plus_one_over_two_gamma 0.8f
 #define hydro_gamma_minus_one_over_two_gamma 0.2f
@@ -56,6 +56,7 @@
 
 #define hydro_gamma 1.4f
 #define hydro_gamma_minus_one 0.4f
+#define hydro_gamma_plus_one 2.4f
 #define hydro_one_over_gamma_minus_one 2.5f
 #define hydro_gamma_plus_one_over_two_gamma 0.857142857f
 #define hydro_gamma_minus_one_over_two_gamma 0.142857143f
@@ -70,6 +71,7 @@
 
 #define hydro_gamma 1.33333333333333333f
 #define hydro_gamma_minus_one 0.33333333333333333f
+#define hydro_gamma_plus_one 2.33333333333333333f
 #define hydro_one_over_gamma_minus_one 3.f
 #define hydro_gamma_plus_one_over_two_gamma 0.875f
 #define hydro_gamma_minus_one_over_two_gamma 0.125f
@@ -84,6 +86,7 @@
 
 #define hydro_gamma 2.f
 #define hydro_gamma_minus_one 1.f
+#define hydro_gamma_plus_one 3.f
 #define hydro_one_over_gamma_minus_one 1.f
 #define hydro_gamma_plus_one_over_two_gamma 0.75f
 #define hydro_gamma_minus_one_over_two_gamma 0.25f

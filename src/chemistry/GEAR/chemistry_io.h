@@ -19,9 +19,26 @@
 #ifndef SWIFT_CHEMISTRY_IO_GEAR_H
 #define SWIFT_CHEMISTRY_IO_GEAR_H
 
-#include "chemistry.h"
 #include "chemistry_struct.h"
+#include "error.h"
 #include "io_properties.h"
+#include "parser.h"
+#include "part.h"
+#include "physical_constants.h"
+#include "units.h"
+
+/**
+ * @brief Return a string containing the name of a given #chemistry_element.
+ */
+__attribute__((always_inline)) INLINE static const char*
+chemistry_get_element_name(enum chemistry_element elem) {
+
+  static const char* chemistry_element_names[chemistry_element_count] = {
+      "Oxygen",    "Magnesium", "Sulfur", "Iron",    "Zinc",
+      "Strontium", "Yttrium",   "Barium", "Europium"};
+
+  return chemistry_element_names[elem];
+}
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -31,13 +48,17 @@
  *
  * @return Returns the number of fields to read.
  */
-int chemistry_read_particles(struct part* parts, struct io_props* list) {
+__attribute__((always_inline)) INLINE static int chemistry_read_particles(
+    struct part* parts, struct io_props* list) {
 
   /* List what we want to read */
   list[0] = io_make_input_field(
       "ElementAbundance", FLOAT, chemistry_element_count, OPTIONAL,
       UNIT_CONV_NO_UNITS, parts, chemistry_data.metal_mass_fraction);
-  return 1;
+  list[1] = io_make_input_field("Z", FLOAT, 1, OPTIONAL, UNIT_CONV_NO_UNITS,
+                                parts, chemistry_data.Z);
+
+  return 2;
 }
 
 /**
@@ -48,18 +69,21 @@ int chemistry_read_particles(struct part* parts, struct io_props* list) {
  *
  * @return Returns the number of fields to write.
  */
-int chemistry_write_particles(const struct part* parts, struct io_props* list) {
+__attribute__((always_inline)) INLINE static int chemistry_write_particles(
+    const struct part* parts, struct io_props* list) {
 
   /* List what we want to write */
   list[0] = io_make_output_field(
       "SmoothedElementAbundance", FLOAT, chemistry_element_count,
       UNIT_CONV_NO_UNITS, parts, chemistry_data.smoothed_metal_mass_fraction);
+  list[1] = io_make_output_field("Z", FLOAT, 1, UNIT_CONV_NO_UNITS, parts,
+                                 chemistry_data.Z);
 
-  list[1] = io_make_output_field("ElementAbundance", FLOAT,
+  list[2] = io_make_output_field("ElementAbundance", FLOAT,
                                  chemistry_element_count, UNIT_CONV_NO_UNITS,
                                  parts, chemistry_data.metal_mass_fraction);
 
-  return 2;
+  return 3;
 }
 
 #ifdef HAVE_HDF5
@@ -68,7 +92,8 @@ int chemistry_write_particles(const struct part* parts, struct io_props* list) {
  * @brief Writes the current model of SPH to the file
  * @param h_grp The HDF5 group in which to write
  */
-void chemistry_write_flavour(hid_t h_grp) {
+__attribute__((always_inline)) INLINE static void chemistry_write_flavour(
+    hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Chemistry Model", "GEAR");
   for (enum chemistry_element i = chemistry_element_O;
