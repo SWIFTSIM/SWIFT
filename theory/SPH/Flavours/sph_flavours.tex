@@ -377,7 +377,70 @@ itself is \emph{not} updated.
 \subsection{Pressure-Energy SPH}
 \label{sec:sph:pu}
 
-Section 2.2.2 of \cite{Hopkins2013}.\\ \tbd
+Section 2.2.2 of \cite{Hopkins2013} describes the equations for Pressure-Energy
+(P-U) SPH; they are reproduced here with some more details.
+
+P-U SPH depends on the calculation of a smoothed pressure, and follows the
+evolution of the internal energy, as opposed to the entropy.
+
+For P-U, the following choice of parameters in the formalism of \S
+\ref{sec:derivation} provides convenient properties:
+\begin{align}
+  x_i =& (\gamma - 1) m_i u_i~, \\
+  \tilde{x}_i =& 1,
+  \label{eq:sph:pu:xichoice}
+\end{align}
+leading to the following requirements to ensure correct volume elements:
+\begin{align}
+  y_i =& \sum_{j} (\gamma - 1) m_j u_j W_{ij} = \bar{P}_i,\\
+  \tilde{y}_i =& \sum_{j} W_{ij} = \bar{n}_i, \\
+  \label{eq:sph:pu:yichoice}
+\end{align}
+with the resulting variables representing a smoothed pressure and particle
+number density. This choice of variables leads to the following equation of
+motion:
+\begin{align}
+  \frac{\mathrm{d} \mathbf{v}_i}{\mathrm{d} t} = -\sum_j (\gamma - 1)^2 m_j u_j u_i
+	 &\left[\frac{f_{ij}}{\bar{P}_i} \nabla_i W_{ij}(h_i) ~+ \right. \\
+	       &\frac{f_{ji}}{\bar{P}_j} \nabla_i W_{ji}(h_j) ~+ \\
+	       & \left.\nu_{ij}\bar{\nabla_i W_{ij}}\right]~.
+  \label{eq:sph:pu:eom}
+\end{align}
+which includes the Monaghan artificial viscosity term and Balsara switch in
+the final term.
+
+The $h$-terms are given as
+\begin{align}
+  f_{ij} = 1 - & \left[\frac{h_i}{n_d (\gamma - 1) \bar{n}_i \left\{m_j u_j\right\}}
+		   \frac{\partial \bar{P}_i}{\partial h_i} \right] \times \\
+               & \left( 1 + \frac{h_i}{n_d \bar{n}_i} \frac{\partial \bar{n}_i}{\partial h_i} \right)^{-1}
+  \label{eq:sph:pu:fij}
+\end{align}
+with $n_d$ the number of dimensions. In practice, the majority of $f_{ij}$ is
+precomputed in {\tt hydro\_prepare\_force} as only the curly-bracketed term
+depends on the $j$ particle. This cuts out on the majority of operations,
+including expensive divisions.
+
+In a similar fashion to \MinimalSPH, the internal energy must also be
+evolved. Following \cite{Hopkins2013}, this is calculated as
+\begin{align}
+  \frac{\mathrm{d}u_i}{\mathrm{d}t} = \sum_j (\gamma - 1)^2 m_j u_j u_i
+	\frac{f_{ij}}{\bar{P}_i}(\mathbf{v}_i - \mathbf{v}_j) \cdot
+	\nabla_i W_{ij}(h_i)~.
+  \label{eq:sph:pu:dudt}
+\end{align}
+
+\subsubsection{Time integration}
+
+Time integration follows exactly the same scheme as \MinimalSPH.
+
+\subsubsection{Particle properties prediction}
+
+The prediciton of particle properties follows exactly the same scheme as
+\MinimalSPH.
+
+
+
 \subsection{Anarchy SPH}
 Dalla Vecchia (\textit{in prep.}), also described in section 2.2.2 of
 \cite{Schaller2015}.\\
