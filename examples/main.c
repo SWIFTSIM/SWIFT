@@ -798,8 +798,8 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_init(&e, &s, params, N_total[0], N_total[1], engine_policies,
-                talking, &reparttype, &us, &prog_const, &cosmo,
+    engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
+                engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &gravity_properties, &potential,
                 &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,

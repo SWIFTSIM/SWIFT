@@ -5361,7 +5361,8 @@ void engine_unpin() {
  * @param s The #space in which this #runner will run.
  * @param params The parsed parameter file.
  * @param Ngas total number of gas particles in the simulation.
- * @param Ndm total number of gravity particles in the simulation.
+ * @param Ngparts total number of gravity particles in the simulation.
+ * @param Nstars total number of star particles in the simulation.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param reparttype What type of repartition algorithm are we using ?
@@ -5377,7 +5378,7 @@ void engine_unpin() {
  */
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, long long Ngas,
-                 long long Ndm, int policy, int verbose,
+                 long long Ngparts, long long Nstars, int policy, int verbose,
                  struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
@@ -5396,7 +5397,8 @@ void engine_init(struct engine *e, struct space *s,
   e->policy = policy;
   e->step = 0;
   e->total_nr_parts = Ngas;
-  e->total_nr_gparts = Ndm;
+  e->total_nr_gparts = Ngparts;
+  e->total_nr_sparts = Nstars;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->reparttype = reparttype;
@@ -5427,7 +5429,7 @@ void engine_init(struct engine *e, struct space *s,
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->dt_max_RMS_displacement = FLT_MAX;
   e->max_RMS_displacement_factor = parser_get_opt_param_double(
-      params, "TimeIntegration:max_dt_RMS_factor", 1.);
+      params, "TimeIntegration:max_dt_RMS_factor", 0.25);
   e->a_first_statistics =
       parser_get_opt_param_double(params, "Statistics:scale_factor_first", 0.1);
   e->time_first_statistics =
@@ -6136,7 +6138,107 @@ void engine_compute_next_statistics_time(struct engine *e) {
  */
 void engine_recompute_displacement_constraint(struct engine *e) {
 
-  message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
+  /* Get the cosmological information */
+  const struct cosmology *cosmo = e->cosmology;
+  const float Om = cosmo->Omega_m;
+  const float Ob = cosmo->Omega_b;
+  const float rho_crit = cosmo->critical_density;
+  const float a = cosmo->a;
+
+  /* Start by reducing the minimal mass of each particle type */
+  float min_mass[swift_type_count] = {e->s->min_part_mass,
+                                      e->s->min_gpart_mass,
+                                      FLT_MAX,
+                                      FLT_MAX,
+                                      e->s->min_spart_mass,
+                                      FLT_MAX};
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the minimal mass collection worked */
+  float min_part_mass_check = FLT_MAX;
+  for (size_t i = 0; i < e->s->nr_parts; ++i)
+    min_part_mass_check =
+        min(min_part_mass_check, hydro_get_mass(&e->s->parts[i]));
+  if (min_part_mass_check != min_mass[swift_type_gas])
+    error("Error collecting minimal mass of gas particles.");
+#endif
+
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, min_mass, swift_type_count, MPI_FLOAT, MPI_MIN,
+                MPI_COMM_WORLD);
+#endif
+
+  /* Do the same for the velocity norm sum */
+  float vel_norm[swift_type_count] = {e->s->sum_part_vel_norm,
+                                      e->s->sum_gpart_vel_norm,
+                                      0.f,
+                                      0.f,
+                                      e->s->sum_spart_vel_norm,
+                                      0.f};
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, vel_norm, swift_type_count, MPI_FLOAT, MPI_SUM,
+                MPI_COMM_WORLD);
+#endif
+
+  /* Get the counts of each particle types */
+  const long long total_nr_dm_gparts =
+      e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
+  float count_parts[swift_type_count] = {
+      e->total_nr_parts, total_nr_dm_gparts, 0.f, 0.f, e->total_nr_sparts, 0.f};
+
+  /* Count of particles for the two species */
+  const float N_dm = count_parts[1];
+  const float N_b = count_parts[0] + count_parts[4];
+
+  /* Peculiar motion norm for the two species */
+  const float vel_norm_dm = vel_norm[1];
+  const float vel_norm_b = vel_norm[0] + vel_norm[4];
+
+  /* Mesh forces smoothing scale */
+  const float a_smooth =
+      e->gravity_properties->a_smooth * e->s->dim[0] / e->s->cdim[0];
+
+  float dt_dm = FLT_MAX, dt_b = FLT_MAX;
+
+  /* DM case */
+  if (N_dm > 0.f) {
+
+    /* Minimal mass for the DM */
+    const float min_mass_dm = min_mass[1];
+
+    /* Inter-particle sepration for the DM */
+    const float d_dm = cbrtf(min_mass_dm / ((Om - Ob) * rho_crit));
+
+    /* RMS peculiar motion for the DM */
+    const float rms_vel_dm = vel_norm_dm / N_dm;
+
+    /* Time-step based on maximum displacement */
+    dt_dm = a * a * min(a_smooth, d_dm) / sqrtf(rms_vel_dm);
+  }
+
+  /* Baryon case */
+  if (N_b > 0.f) {
+
+    /* Minimal mass for the baryons */
+    const float min_mass_b = min(min_mass[0], min_mass[4]);
+
+    /* Inter-particle sepration for the baryons */
+    const float d_b = cbrtf(min_mass_b / (Ob * rho_crit));
+
+    /* RMS peculiar motion for the baryons */
+    const float rms_vel_b = vel_norm_b / N_b;
+
+    /* Time-step based on maximum displacement */
+    dt_b = a * a * min(a_smooth, d_b) / sqrtf(rms_vel_b);
+  }
+
+  /* Use the minimum */
+  const float dt = min(dt_dm, dt_b);
+
+  /* Apply the dimensionless factor */
+  e->dt_max_RMS_displacement = dt * e->max_RMS_displacement_factor;
+
+  if (e->verbose)
+    message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
 }
 
 /**

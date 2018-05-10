@@ -36,47 +36,86 @@
 
 /**
  * @brief Atomic min operation on floats.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
  */
-__attribute__((always_inline)) INLINE void atomic_min_f(volatile float* x,
-                                                        float y) {
-  float test, new;
-  float old = *x;
+__attribute__((always_inline)) INLINE static void atomic_min_f(
+    volatile float* address, float y) {
+
+  int* int_ptr = (int*)address;
+
+  typedef union {
+    float as_float;
+    int as_int;
+  } cast_type;
+
+  cast_type assumed, old, new;
+  old.as_float = *address;
+
   do {
-    test = old;
-    new = min(old, y);
-    if (new == old) return;
-    old = atomic_cas((int*)x, test, new);
-  } while (test != old);
+    assumed.as_int = old.as_int;
+    new.as_float = min(old.as_float, y);
+    old.as_int = atomic_cas(int_ptr, assumed.as_int, new.as_int);
+  } while (assumed.as_int != old.as_int);
 }
 
 /**
  * @brief Atomic max operation on floats.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
  */
-__attribute__((always_inline)) INLINE void atomic_max_f(volatile float* x,
-                                                        float y) {
-  float test, new;
-  float old = *x;
+__attribute__((always_inline)) INLINE static void atomic_max_f(
+    volatile float* address, float y) {
+
+  int* int_ptr = (int*)address;
+
+  typedef union {
+    float as_float;
+    int as_int;
+  } cast_type;
+
+  cast_type assumed, old, new;
+  old.as_float = *address;
+
   do {
-    test = old;
-    new = max(old, y);
-    if (new == old) return;
-    old = atomic_cas((int*)x, test, new);
-  } while (test != old);
+    assumed.as_int = old.as_int;
+    new.as_float = max(old.as_float, y);
+    old.as_int = atomic_cas(int_ptr, assumed.as_int, new.as_int);
+  } while (assumed.as_int != old.as_int);
 }
 
 /**
  * @brief Atomic add operation on floats.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
  */
-__attribute__((always_inline)) INLINE void atomic_add_f(volatile float* x,
-                                                        float y) {
-  float test, new;
-  float old = *x;
+__attribute__((always_inline)) INLINE static void atomic_add_f(
+    volatile float* address, float y) {
+
+  int* int_ptr = (int*)address;
+
+  typedef union {
+    float as_float;
+    int as_int;
+  } cast_type;
+
+  cast_type assumed, old, new;
+  old.as_float = *address;
+
   do {
-    test = old;
-    new = old + y;
-    if (new == old) return;
-    old = atomic_cas((int*)x, test, new);
-  } while (test != old);
+    assumed.as_int = old.as_int;
+    new.as_float = old.as_float + y;
+    old.as_int = atomic_cas(int_ptr, assumed.as_int, new.as_int);
+  } while (assumed.as_int != old.as_int);
 }
 
 #endif /* SWIFT_ATOMIC_H */

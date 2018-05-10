@@ -192,7 +192,7 @@ struct engine {
   int step_props;
 
   /* Total numbers of particles in the system. */
-  long long total_nr_parts, total_nr_gparts;
+  long long total_nr_parts, total_nr_gparts, total_nr_sparts;
 
   /* The internal system of units */
   const struct unit_system *internal_units;
@@ -350,7 +350,7 @@ void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, long long Ngas,
-                 long long Ndm, int policy, int verbose,
+                 long long Ngparts, long long Nstars, int policy, int verbose,
                  struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
