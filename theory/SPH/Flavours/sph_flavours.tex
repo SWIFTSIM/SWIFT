@@ -386,14 +386,14 @@ evolution of the internal energy, as opposed to the entropy.
 For P-U, the following choice of parameters in the formalism of \S
 \ref{sec:derivation} provides convenient properties:
 \begin{align}
-  x_i =& (\gamma - 1) m_i u_i~, \\
-  \tilde{x}_i =& 1,
+  x_i =&~ (\gamma - 1) m_i u_i, \\
+  \tilde{x}_i =&~ 1,
   \label{eq:sph:pu:xichoice}
 \end{align}
 leading to the following requirements to ensure correct volume elements:
 \begin{align}
   y_i =& \sum_{j} (\gamma - 1) m_j u_j W_{ij} = \bar{P}_i,\\
-  \tilde{y}_i =& \sum_{j} W_{ij} = \bar{n}_i, \\
+  \tilde{y}_i =& \sum_{j} W_{ij} = \bar{n}_i,
   \label{eq:sph:pu:yichoice}
 \end{align}
 with the resulting variables representing a smoothed pressure and particle
@@ -401,8 +401,8 @@ number density. This choice of variables leads to the following equation of
 motion:
 \begin{align}
   \frac{\mathrm{d} \mathbf{v}_i}{\mathrm{d} t} = -\sum_j (\gamma - 1)^2 m_j u_j u_i
-	 &\left[\frac{f_{ij}}{\bar{P}_i} \nabla_i W_{ij}(h_i) ~+ \right. \\
-	       &\frac{f_{ji}}{\bar{P}_j} \nabla_i W_{ji}(h_j) ~+ \\
+	 &\left[\frac{f_{ij}}{\bar{P}_i} \nabla_i W_{ij}(h_i) ~+ \right. \nonumber \\
+	       &\frac{f_{ji}}{\bar{P}_j} \nabla_i W_{ji}(h_j) ~+ \nonumber \\
 	       & \left.\nu_{ij}\bar{\nabla_i W_{ij}}\right]~.
   \label{eq:sph:pu:eom}
 \end{align}
@@ -411,9 +411,10 @@ the final term.
 
 The $h$-terms are given as
 \begin{align}
-  f_{ij} = 1 - & \left[\frac{h_i}{n_d (\gamma - 1) \bar{n}_i \left\{m_j u_j\right\}}
-		   \frac{\partial \bar{P}_i}{\partial h_i} \right] \times \\
-               & \left( 1 + \frac{h_i}{n_d \bar{n}_i} \frac{\partial \bar{n}_i}{\partial h_i} \right)^{-1}
+  f_{ij} = 1 - \left[\frac{h_i}{n_d (\gamma - 1) \bar{n}_i \left\{m_j u_j\right\}}
+		   \frac{\partial \bar{P}_i}{\partial h_i} \right]
+		   \left( 1 + \frac{h_i}{n_d \bar{n}_i}
+		   \frac{\partial \bar{n}_i}{\partial h_i} \right)^{-1}
   \label{eq:sph:pu:fij}
 \end{align}
 with $n_d$ the number of dimensions. In practice, the majority of $f_{ij}$ is
