@@ -111,6 +111,8 @@ tests/benchmarkInteractions
 tests/testGravityDerivatives
 tests/testPotentialSelf
 tests/testPotentialPair
+tests/testEOS
+tests/testEOS*.txt
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf
