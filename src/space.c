@@ -104,52 +104,6 @@ struct index_data {
 };
 
 /**
- * @brief Get the shift-id of the given pair of cells, swapping them
- *      if need be.
- *
- * @param s The space
- * @param ci Pointer to first #cell.
- * @param cj Pointer second #cell.
- * @param shift Vector from ci to cj.
- *
- * @return The shift ID and set shift, may or may not swap ci and cj.
- */
-int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
-                 double *shift) {
-
-  /* Get the relative distance between the pairs, wrapping. */
-  const int periodic = s->periodic;
-  double dx[3];
-  for (int k = 0; k < 3; k++) {
-    dx[k] = (*cj)->loc[k] - (*ci)->loc[k];
-    if (periodic && dx[k] < -s->dim[k] / 2)
-      shift[k] = s->dim[k];
-    else if (periodic && dx[k] > s->dim[k] / 2)
-      shift[k] = -s->dim[k];
-    else
-      shift[k] = 0.0;
-    dx[k] += shift[k];
-  }
-
-  /* Get the sorting index. */
-  int sid = 0;
-  for (int k = 0; k < 3; k++)
-    sid = 3 * sid + ((dx[k] < 0.0) ? 0 : ((dx[k] > 0.0) ? 2 : 1));
-
-  /* Switch the cells around? */
-  if (runner_flip[sid]) {
-    struct cell *temp = *ci;
-    *ci = *cj;
-    *cj = temp;
-    for (int k = 0; k < 3; k++) shift[k] = -shift[k];
-  }
-  sid = sortlistID[sid];
-
-  /* Return the sort ID. */
-  return sid;
-}
-
-/**
  * @brief Recursively dismantle a cell tree.
  *
  * @param s The #space.
