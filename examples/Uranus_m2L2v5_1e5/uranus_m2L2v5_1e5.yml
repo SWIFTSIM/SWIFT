@@ -1,8 +1,5 @@
 # Define the system of units to use internally.
 InternalUnitSystem:
-#    UnitMass_in_cgs:        1           # Grams
-#    UnitLength_in_cgs:      1           # Centimeters
-#    UnitVelocity_in_cgs:    1           # Centimeters per second
     UnitMass_in_cgs:        5.9724e27   # Grams
     UnitLength_in_cgs:      6.371e8     # Centimeters
     UnitVelocity_in_cgs:    6.371e8     # Centimeters per second
@@ -13,7 +10,7 @@ InternalUnitSystem:
 TimeIntegration:
     time_begin: 0                       # The starting time of the simulation (in internal units).
     time_end:   100000                  # The end time of the simulation (in internal units).
-    dt_min:     1e-11                   # The minimal time-step size of the simulation (in internal units).
+    dt_min:     1e-3                    # The minimal time-step size of the simulation (in internal units).
     dt_max:     10                      # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots

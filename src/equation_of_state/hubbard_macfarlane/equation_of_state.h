@@ -136,18 +136,22 @@ INLINE static void load_HM80_table(struct HM80_params *mat, char *table_file) {
 }
 
 // Convert from cgs to internal units
-#define Mbar_to_Ba 1e12     // Convert Megabar to Barye
+#define Mbar_to_Ba 1e12         // Convert Megabar to Barye
+#define J_kg_to_erg_g 1e4       // Convert J/kg to erg/g
 INLINE static void convert_units_HM80(
     struct HM80_params *mat, const struct unit_system* us) {
 
+    // Table densities from cgs
     mat->log_rho_min -= log(units_cgs_conversion_factor(us, UNIT_CONV_DENSITY));
     mat->log_rho_max -= log(units_cgs_conversion_factor(us, UNIT_CONV_DENSITY));
-    mat->log_rho_step -= log(units_cgs_conversion_factor(us, UNIT_CONV_DENSITY));
 
-    mat->log_u_min -= log(units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
-    mat->log_u_max -= log(units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
-    mat->log_u_step -= log(units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
+    // Table energies from SI
+    mat->log_u_min += log(J_kg_to_erg_g /
+        units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
+    mat->log_u_max += log(J_kg_to_erg_g /
+        units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
 
+    // Table Pressures from Mbar
     for (int i=0; i<mat->num_rho; i++) {
         for (int j=0; j<mat->num_u; j++) {
             mat->table_P_rho_u[i][j] *= Mbar_to_Ba /
