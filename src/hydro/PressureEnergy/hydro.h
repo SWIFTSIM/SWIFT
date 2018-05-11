@@ -374,7 +374,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 
   /* Finish calculation of the velocity divergence */
-  p->density.div_v *= h_inv_dim_plus_one * rho_inv;
+  p->density.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
 }
 
 /**
@@ -405,6 +405,11 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
   p->density.pressure_bar_dh = 0.f;
+
+  p->density.div_v = 0.f;
+  p->density.rot_v[0] = 0.f;
+  p->density.rot_v[1] = 0.f;
+  p->density.rot_v[2] = 0.f;
 }
 
 /**
