@@ -26,6 +26,7 @@
 #include "gravity.h"
 #include "inline.h"
 #include "part.h"
+#include "space_getsid.h"
 #include "timers.h"
 
 /**
