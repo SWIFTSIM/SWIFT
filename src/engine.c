@@ -4605,20 +4605,22 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_gparts(s, e->verbose);
 
   message("Performing Friends Of Friends search.");
-  
-  const double l_x = 0.2 * (s->dim[0] / pow(s->nr_gparts, 1./3.));
+
+  const double l_x = 0.2 * (s->dim[0] / pow(s->nr_gparts, 1. / 3.));
   const double l_x2 = l_x * l_x;
   s->l_x = l_x;
   s->l_x2 = l_x2;
-  
+
   ticks tic = getticks();
   fof_search_serial(s);
-  message("Serial FOF search took: %.3f %s.", clocks_from_ticks(getticks() - tic), clocks_getunit());
-  
+  message("Serial FOF search took: %.3f %s.",
+          clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   tic = getticks();
   fof_search_tree_serial(s);
-  message("Serial tree FOF search took: %.3f %s.", clocks_from_ticks(getticks() - tic), clocks_getunit());
-  
+  message("Serial tree FOF search took: %.3f %s.",
+          clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   message("Friends Of Friends search finished.");
 
   /* Now, launch the calculation */
