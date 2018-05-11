@@ -678,7 +678,7 @@ AC_ARG_WITH([profiler],
       [use cpu profiler library or specify the directory with lib @<:@yes/no@:>@]
    )],
    [with_profiler="$withval"],
-   [with_profiler="yes"]
+   [with_profiler="no"]
 )
 if test "x$with_profiler" != "xno"; then
    if test "x$with_profiler" != "xyes" -a "x$with_profiler" != "x"; then
