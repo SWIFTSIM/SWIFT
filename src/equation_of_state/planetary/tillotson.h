@@ -116,9 +116,55 @@ INLINE static void convert_units_Til(
     mat->c_TEMPORARY /= units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
 }
 
+// gas_internal_energy_from_entropy
+INLINE static float Til_internal_energy_from_entropy(
+    float density, float entropy, struct Til_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_pressure_from_entropy
+INLINE static float Til_pressure_from_entropy(
+    float density, float entropy, struct Til_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_entropy_from_pressure
+INLINE static float Til_entropy_from_pressure(
+    float density, float pressure, struct Til_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_soundspeed_from_entropy
+INLINE static float Til_soundspeed_from_entropy(
+    float density, float entropy, struct Til_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_entropy_from_internal_energy
+INLINE static float Til_entropy_from_internal_energy(
+    float density, float u, struct Til_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
 // gas_pressure_from_internal_energy
-INLINE static float Til_pressure_from_internal_energy(float density, float u,
-                                                      struct Til_params *mat) {
+INLINE static float Til_pressure_from_internal_energy(
+    float density, float u, struct Til_params *mat) {
+
     const float eta = density / mat->rho_0;
     const float mu = eta - 1.f;
     const float nu = 1.f/eta - 1.f;
@@ -160,9 +206,19 @@ INLINE static float Til_pressure_from_internal_energy(float density, float u,
     return P;
 }
 
+// gas_internal_energy_from_pressure
+INLINE static float Til_internal_energy_from_pressure(
+    float density, float P, struct Til_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
 // gas_soundspeed_from_internal_energy
-INLINE static float Til_soundspeed_from_internal_energy(float density, float u,
-                                                        struct Til_params *mat) {
+INLINE static float Til_soundspeed_from_internal_energy(
+    float density, float u, struct Til_params *mat) {
+
 //    const float eta = density / mat->rho_0;
 //    const float mu = eta - 1.f;
 //    const float nu = 1.f/eta - 1.f;
@@ -226,8 +282,9 @@ INLINE static float Til_soundspeed_from_internal_energy(float density, float u,
 }
 
 // gas_soundspeed_from_pressure
-INLINE static float Til_soundspeed_from_pressure(float density, float P,
-                                                 struct Til_params *mat) {
+INLINE static float Til_soundspeed_from_pressure(
+    float density, float P, struct Til_params *mat) {
+
     float c;
 
     c = mat->c_TEMPORARY; /// VERY TEMPORARY!!!

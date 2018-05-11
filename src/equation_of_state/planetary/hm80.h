@@ -41,7 +41,7 @@
 
 /* ------------------------------------------------------------------------- */
 
-// Hubbard & MacFarlane (1980) table parameters
+// Hubbard & MacFarlane (1980) parameters
 struct HM80_params {
     int mat_id;
     int num_rho, num_u;
@@ -147,9 +147,55 @@ INLINE static void convert_units_HM80(
     mat->bulk_mod /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
 }
 
+// gas_internal_energy_from_entropy
+INLINE static float HM80_internal_energy_from_entropy(
+    float density, float entropy, struct HM80_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_pressure_from_entropy
+INLINE static float HM80_pressure_from_entropy(
+    float density, float entropy, struct HM80_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_entropy_from_pressure
+INLINE static float HM80_entropy_from_pressure(
+    float density, float pressure, struct HM80_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_soundspeed_from_entropy
+INLINE static float HM80_soundspeed_from_entropy(
+    float density, float entropy, struct HM80_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_entropy_from_internal_energy
+INLINE static float HM80_entropy_from_internal_energy(
+    float density, float u, struct HM80_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
 // gas_pressure_from_internal_energy
-INLINE static float HM80_pressure_from_internal_energy(float density, float u,
-                                                       struct HM80_params *mat) {
+INLINE static float HM80_pressure_from_internal_energy(
+    float density, float u, struct HM80_params *mat) {
+
     float P;
 
     if (u <= 0) {
@@ -206,9 +252,19 @@ INLINE static float HM80_pressure_from_internal_energy(float density, float u,
     return P;
 }
 
+// gas_internal_energy_from_pressure
+INLINE static float HM80_internal_energy_from_pressure(
+    float density, float P, struct HM80_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
 // gas_soundspeed_from_internal_energy
-INLINE static float HM80_soundspeed_from_internal_energy(float density, float u,
-                                                         struct HM80_params *mat) {
+INLINE static float HM80_soundspeed_from_internal_energy(
+    float density, float u, struct HM80_params *mat) {
+
     float c, P;
 
     // Bulk modulus
@@ -225,8 +281,9 @@ INLINE static float HM80_soundspeed_from_internal_energy(float density, float u,
 }
 
 // gas_soundspeed_from_pressure
-INLINE static float HM80_soundspeed_from_pressure(float density, float P,
-                                                  struct HM80_params *mat) {
+INLINE static float HM80_soundspeed_from_pressure(
+    float density, float P, struct HM80_params *mat) {
+
     float c;
 
     // Bulk modulus

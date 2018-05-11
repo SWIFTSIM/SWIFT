@@ -43,7 +43,7 @@
 
 /* ------------------------------------------------------------------------- */
 
-// SESAME (WIP)
+// SESAME parameters
 struct SESAME_params {
     int mat_id;
 };
@@ -59,37 +59,85 @@ INLINE static void convert_units_SESAME(
 
 }
 
+// gas_internal_energy_from_entropy
+INLINE static float SESAME_internal_energy_from_entropy(
+    float density, float entropy, struct SESAME_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_pressure_from_entropy
+INLINE static float SESAME_pressure_from_entropy(
+    float density, float entropy, struct SESAME_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_entropy_from_pressure
+INLINE static float SESAME_entropy_from_pressure(
+    float density, float pressure, struct SESAME_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_soundspeed_from_entropy
+INLINE static float SESAME_soundspeed_from_entropy(
+    float density, float entropy, struct SESAME_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_entropy_from_internal_energy
+INLINE static float SESAME_entropy_from_internal_energy(
+    float density, float u, struct SESAME_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
 // gas_pressure_from_internal_energy
-INLINE static float SESAME_pressure_from_internal_energy(float density, float u,
-                                                         struct SESAME_params *mat) {
-    float P;
+INLINE static float SESAME_pressure_from_internal_energy(
+    float density, float u, struct SESAME_params *mat) {
 
-    /// Placeholder
-    P = mat->mat_id;
+    error("This EOS function is not yet implemented!");
 
-    return P;
+    return 0;
+}
+
+// gas_internal_energy_from_pressure
+INLINE static float SESAME_internal_energy_from_pressure(
+    float density, float P, struct SESAME_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
 }
 
 // gas_soundspeed_from_internal_energy
-INLINE static float SESAME_soundspeed_from_internal_energy(float density, float u,
-                                                           struct SESAME_params *mat) {
-    float c;
+INLINE static float SESAME_soundspeed_from_internal_energy(
+    float density, float u, struct SESAME_params *mat) {
 
-    /// Placeholder
-    c = mat->mat_id;
+    error("This EOS function is not yet implemented!");
 
-    return c;
+    return 0;
 }
 
 // gas_soundspeed_from_pressure
-INLINE static float SESAME_soundspeed_from_pressure(float density, float P,
-                                                    struct SESAME_params *mat) {
-    float c;
+INLINE static float SESAME_soundspeed_from_pressure(
+    float density, float P, struct SESAME_params *mat) {
 
-    /// Placeholder
-    c = mat->mat_id;
+    error("This EOS function is not yet implemented!");
 
-    return c;
+    return 0;
 }
 
 

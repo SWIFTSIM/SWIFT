@@ -43,22 +43,17 @@
 
 /* ------------------------------------------------------------------------- */
 
-// ANEOS
+// ANEOS parameters
 struct ANEOS_params {
     int mat_id;
-    int num_rho, num_u;
 };
 
 // Parameter values for each material (cgs units)
 INLINE static void set_ANEOS_iron(struct ANEOS_params *mat, int mat_id) {
     mat->mat_id = mat_id;
-    mat->num_rho = 100;
-    mat->num_u = 100;
 }
 INLINE static void set_MANEOS_forsterite(struct ANEOS_params *mat, int mat_id) {
     mat->mat_id = mat_id;
-    mat->num_rho = 100;
-    mat->num_u = 100;
 }
 
 // Convert from cgs to internal units
@@ -67,37 +62,85 @@ INLINE static void convert_units_ANEOS(
 
 }
 
+// gas_internal_energy_from_entropy
+INLINE static float ANEOS_internal_energy_from_entropy(
+    float density, float entropy, struct ANEOS_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_pressure_from_entropy
+INLINE static float ANEOS_pressure_from_entropy(
+    float density, float entropy, struct ANEOS_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_entropy_from_pressure
+INLINE static float ANEOS_entropy_from_pressure(
+    float density, float pressure, struct ANEOS_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_soundspeed_from_entropy
+INLINE static float ANEOS_soundspeed_from_entropy(
+    float density, float entropy, struct ANEOS_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
+// gas_entropy_from_internal_energy
+INLINE static float ANEOS_entropy_from_internal_energy(
+    float density, float u, struct ANEOS_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
+}
+
 // gas_pressure_from_internal_energy
-INLINE static float ANEOS_pressure_from_internal_energy(float density, float u,
-                                                        struct ANEOS_params *mat) {
-    float P;
+INLINE static float ANEOS_pressure_from_internal_energy(
+    float density, float u, struct ANEOS_params *mat) {
 
-    /// Placeholder
-    P = mat->num_rho;
+    error("This EOS function is not yet implemented!");
 
-    return P;
+    return 0;
+}
+
+// gas_internal_energy_from_pressure
+INLINE static float ANEOS_internal_energy_from_pressure(
+    float density, float P, struct ANEOS_params *mat) {
+
+    error("This EOS function is not yet implemented!");
+
+    return 0;
 }
 
 // gas_soundspeed_from_internal_energy
-INLINE static float ANEOS_soundspeed_from_internal_energy(float density, float u,
-                                                          struct ANEOS_params *mat) {
-    float c;
+INLINE static float ANEOS_soundspeed_from_internal_energy(
+    float density, float u, struct ANEOS_params *mat) {
 
-    /// Placeholder
-    c = mat->num_rho;
+    error("This EOS function is not yet implemented!");
 
-    return c;
+    return 0;
 }
 
 // gas_soundspeed_from_pressure
-INLINE static float ANEOS_soundspeed_from_pressure(float density, float P,
-                                                   struct ANEOS_params *mat) {
-    float c;
+INLINE static float ANEOS_soundspeed_from_pressure(
+    float density, float P, struct ANEOS_params *mat) {
 
-    /// Placeholder
-    c = mat->num_rho;
+    error("This EOS function is not yet implemented!");
 
-    return c;
+    return 0;
 }
 
 #endif /* SWIFT_ANEOS_EQUATION_OF_STATE_H */
