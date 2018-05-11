@@ -33,7 +33,7 @@ SPH:
   initial_temperature:   0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
   minimal_temperature:   0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
   H_mass_fraction:       0.76     # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy.
-  
+
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025               # Constant dimensionless multiplier for time integration.
@@ -64,7 +64,7 @@ TimeIntegration:
   dt_min:            1e-6  # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
   max_dt_RMS_factor: 0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
-  
+
 # Parameters governing the snapshots
 Snapshots:
   basename:   output      # Common part of the name of output files
@@ -72,6 +72,7 @@ Snapshots:
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
   compression: 0          # (Optional) Set the level of compression of the HDF5 datasets [0-9]. 0 does no compression.
+  label_delta: 1          # (Optional) Set the integer increment between snapshot output labels
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
   UnitLength_in_cgs:   1  # (Optional) Unit system for the outputs (Centimeters)
   UnitVelocity_in_cgs: 1  # (Optional) Unit system for the outputs (Centimeters per second)

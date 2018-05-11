@@ -60,6 +60,7 @@
 #include "minmax.h"
 #include "scheduler.h"
 #include "space.h"
+#include "space_getsid.h"
 #include "timers.h"
 
 /* Global variables. */

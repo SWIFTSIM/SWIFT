@@ -52,14 +52,14 @@ __attribute__((always_inline)) INLINE static void atomic_min_f(
     int as_int;
   } cast_type;
 
-  cast_type assumed, old, new;
-  old.as_float = *address;
+  cast_type test_val, old_val, new_val;
+  old_val.as_float = *address;
 
   do {
-    assumed.as_int = old.as_int;
-    new.as_float = min(old.as_float, y);
-    old.as_int = atomic_cas(int_ptr, assumed.as_int, new.as_int);
-  } while (assumed.as_int != old.as_int);
+    test_val.as_int = old_val.as_int;
+    new_val.as_float = min(old_val.as_float, y);
+    old_val.as_int = atomic_cas(int_ptr, test_val.as_int, new_val.as_int);
+  } while (test_val.as_int != old_val.as_int);
 }
 
 /**
@@ -80,14 +80,14 @@ __attribute__((always_inline)) INLINE static void atomic_max_f(
     int as_int;
   } cast_type;
 
-  cast_type assumed, old, new;
-  old.as_float = *address;
+  cast_type test_val, old_val, new_val;
+  old_val.as_float = *address;
 
   do {
-    assumed.as_int = old.as_int;
-    new.as_float = max(old.as_float, y);
-    old.as_int = atomic_cas(int_ptr, assumed.as_int, new.as_int);
-  } while (assumed.as_int != old.as_int);
+    test_val.as_int = old_val.as_int;
+    new_val.as_float = max(old_val.as_float, y);
+    old_val.as_int = atomic_cas(int_ptr, test_val.as_int, new_val.as_int);
+  } while (test_val.as_int != old_val.as_int);
 }
 
 /**
@@ -108,14 +108,14 @@ __attribute__((always_inline)) INLINE static void atomic_add_f(
     int as_int;
   } cast_type;
 
-  cast_type assumed, old, new;
-  old.as_float = *address;
+  cast_type test_val, old_val, new_val;
+  old_val.as_float = *address;
 
   do {
-    assumed.as_int = old.as_int;
-    new.as_float = old.as_float + y;
-    old.as_int = atomic_cas(int_ptr, assumed.as_int, new.as_int);
-  } while (assumed.as_int != old.as_int);
+    test_val.as_int = old_val.as_int;
+    new_val.as_float = old_val.as_float + y;
+    old_val.as_int = atomic_cas(int_ptr, test_val.as_int, new_val.as_int);
+  } while (test_val.as_int != old_val.as_int);
 }
 
 #endif /* SWIFT_ATOMIC_H */

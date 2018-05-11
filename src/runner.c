@@ -60,6 +60,7 @@
 #include "sort_part.h"
 #include "sourceterms.h"
 #include "space.h"
+#include "space_getsid.h"
 #include "stars.h"
 #include "task.h"
 #include "timers.h"
