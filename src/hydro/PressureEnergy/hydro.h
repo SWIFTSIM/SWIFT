@@ -535,11 +535,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Predict density and weighted pressure */
   const float w2 = -hydro_dimension * w1;
   if (fabsf(w2) < 0.2f) {
-    p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-    p->pressure_bar *= approx_expf(w2);
+    const float expf_approx = approx_expf(w2); /* 4th order expansion of exp(w) */
+    p->rho *= expf_approx;
+    p->pressure_bar *= expf_approx;
   } else {
-    p->rho *= expf(w2);
-    p->pressure_bar *= approx_expf(w2);
+    const float expf_exact = expf(w2);
+    p->rho *= expf_exact;
+    p->pressure_bar *= expf_exact;
   }
 
   /* Predict the internal energy */
