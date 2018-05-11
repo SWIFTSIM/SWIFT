@@ -34,6 +34,8 @@
  * @brief Get the shift-id of the given pair of cells, swapping them
  *      if need be.
  *
+ * WARNING: This function may swap the cells ci and cj.
+ *
  * @param s The space
  * @param ci Pointer to first #cell.
  * @param cj Pointer second #cell.
