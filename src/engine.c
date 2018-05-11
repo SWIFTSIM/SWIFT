@@ -5422,6 +5422,8 @@ void engine_init(struct engine *e, struct space *s,
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
+  e->snapshot_label_delta =
+      parser_get_opt_param_int(params, "Snapshots:label_delta", 1);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->snapshot_output_count = 0;
