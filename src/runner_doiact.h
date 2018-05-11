@@ -125,9 +125,6 @@
 #define _TIMER_DOPAIR_SUBSET(f) PASTE(timer_dopair_subset, f)
 #define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
 
-/* Local headers. */
-#include "space_getsid.h"
-
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric case).
  *
