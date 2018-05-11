@@ -38,6 +38,7 @@
 #include "clocks.h"
 #include "collectgroup.h"
 #include "cooling_struct.h"
+#include "fof.h"
 #include "gravity_properties.h"
 #include "parser.h"
 #include "partition.h"
@@ -48,7 +49,6 @@
 #include "space.h"
 #include "task.h"
 #include "units.h"
-#include "fof.h"
 
 /**
  * @brief The different policies the #engine can follow.
