@@ -206,8 +206,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
   /* Compute gradient terms */
-  const float f_ij = 1 - (pi->force.f / mjuj);
-  const float f_ji = 1 - (pj->force.f / miui);
+  const float f_ij = 1.f - (pi->force.f / mjuj);
+  const float f_ji = 1.f - (pj->force.f / miui);
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -331,8 +331,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
   /* Compute gradient terms */
-  const float f_ij = 1 - (pi->force.f / mjuj);
-  const float f_ji = 1 - (pj->force.f / miui);
+  const float f_ij = 1.f - (pi->force.f / mjuj);
+  const float f_ji = 1.f - (pj->force.f / miui);
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
