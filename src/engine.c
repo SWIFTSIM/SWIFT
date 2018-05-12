@@ -6230,7 +6230,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
   /* Mesh forces smoothing scale */
   float a_smooth;
-  if((e->policy & engine_policy_self_gravity) && e->s->periodic == 1)
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic == 1)
     a_smooth = e->gravity_properties->a_smooth * e->s->dim[0] / e->s->cdim[0];
   else
     a_smooth = FLT_MAX;
