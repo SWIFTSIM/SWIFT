@@ -187,8 +187,6 @@ INLINE static float HM80_soundspeed_from_entropy(
 INLINE static float HM80_entropy_from_internal_energy(
     float density, float u, struct HM80_params *mat) {
 
-    error("This EOS function is not yet implemented!");
-
     return 0;
 }
 

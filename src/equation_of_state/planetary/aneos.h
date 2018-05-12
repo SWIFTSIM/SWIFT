@@ -26,7 +26,7 @@
  * Contains the (M)ANEOS EOS functions for
  * equation_of_state/planetary/equation_of_state.h
  *
- *              WORK IN PROGRESS!
+ * Adapted from the implementation in Gadget 2 of Cuk & Stewart (2012)
  *
  */
 
@@ -101,8 +101,6 @@ INLINE static float ANEOS_soundspeed_from_entropy(
 // gas_entropy_from_internal_energy
 INLINE static float ANEOS_entropy_from_internal_energy(
     float density, float u, struct ANEOS_params *mat) {
-
-    error("This EOS function is not yet implemented!");
 
     return 0;
 }

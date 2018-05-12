@@ -147,8 +147,6 @@ INLINE static float Til_soundspeed_from_entropy(
 INLINE static float Til_entropy_from_internal_energy(
     float density, float u, struct Til_params *mat) {
 
-    error("This EOS function is not yet implemented!");
-
     return 0;
 }
 
