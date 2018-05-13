@@ -454,6 +454,7 @@ void runner_do_grav_fft(struct runner* r, int timer) {
   TIMER_TIC;
 
   if (cdim[0] != cdim[1] || cdim[0] != cdim[2]) error("Non-square mesh");
+  if (a_smooth <= 0.) error("Invalid value of a_smooth");
 
   /* Some useful constants */
   const int N = cdim[0];
