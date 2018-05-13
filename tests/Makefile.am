@@ -23,7 +23,7 @@ AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS
 TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetry \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh  \
         testParser.sh testSPHStep test125cells.sh test125cellsPerturbed.sh testFFT \
-        testAdiabaticIndex testRiemannExact testRiemannTRRS testRiemannHLLC \
+        testAdiabaticIndex \
         testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
