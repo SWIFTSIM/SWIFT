@@ -95,9 +95,8 @@ __attribute__((always_inline)) INLINE static double CIC_get(
  * @param fac The width of a mesh cell.
  * @param dim The dimensions of the simulation box.
  */
-__attribute__((always_inline)) INLINE static void multipole_to_mesh_CIC(
-    const struct gravity_tensors* m, double* rho, int N, double fac,
-    const double dim[3]) {
+void multipole_to_mesh_CIC(const struct gravity_tensors* m, double* rho, int N,
+                           double fac, const double dim[3]) {
 
   /* Box wrap the multipole's position */
   const double CoM_x = box_wrap(m->CoM[0], 0., dim[0]);
@@ -137,6 +136,7 @@ __attribute__((always_inline)) INLINE static void multipole_to_mesh_CIC(
   rho[row_major_id(i + 1, j + 1, k + 0, N)] += mass * dx * dy * tz;
   rho[row_major_id(i + 1, j + 1, k + 1, N)] += mass * dx * dy * dz;
 }
+
 /**
  * @brief Computes the potential on a multipole from a given mesh using the CIC
  * method.
@@ -147,9 +147,8 @@ __attribute__((always_inline)) INLINE static void multipole_to_mesh_CIC(
  * @param fac width of a mesh cell.
  * @param dim The dimensions of the simulation box.
  */
-__attribute__((always_inline)) INLINE static void mesh_to_multipole_CIC(
-    struct gravity_tensors* m, const double* pot, int N, double fac,
-    const double dim[3]) {
+void mesh_to_multipole_CIC(struct gravity_tensors* m, const double* pot, int N,
+                           double fac, const double dim[3]) {
 
   /* Box wrap the multipole's position */
   const double CoM_x = box_wrap(m->CoM[0], 0., dim[0]);
