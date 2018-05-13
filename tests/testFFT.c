@@ -32,7 +32,17 @@ int main() { return 0; }
 #include <string.h>
 
 /* Includes. */
+#include "runner_doiact_fft.h"
 #include "swift.h"
+
+__attribute__((always_inline)) INLINE static int row_major_id(int i, int j,
+                                                              int k, int N) {
+  return (((i + N) % N) * N * N + ((j + N) % N) * N + ((k + N) % N));
+}
+
+int is_close(double x, double y, double abs_err) {
+  return (abs(x - y) < abs_err);
+}
 
 int main() {
 
@@ -139,6 +149,312 @@ int main() {
     fprintf(file, "%e %e %e %e\n", r[i], m[i], pot[i], pot_exact[i]);
   }
   fclose(file);
+
+  /* Let's now check the interpolation functions */
+  int cdim[3] = {space.cdim[0], space.cdim[1], space.cdim[2]};
+
+  /* Constant function --> Derivatives must be 0 */
+  for (int i = 0; i < cdim[0]; ++i) {
+    for (int j = 0; j < cdim[1]; ++j) {
+      for (int k = 0; k < cdim[2]; ++k) {
+        pot[row_major_id(i, j, k, cdim[0])] = 1.;
+      }
+    }
+  }
+  for (int i = 0; i < nr_cells; ++i)
+    gravity_field_tensors_init(&space.multipoles_top[i].pot, engine.ti_current);
+  for (int i = 0; i < nr_cells; ++i)
+    mesh_to_multipole_CIC(&space.multipoles_top[i], pot, cdim[0], cdim[0], dim);
+  for (int i = 0; i < cdim[0]; ++i) {
+    for (int j = 0; j < cdim[1]; ++j) {
+      for (int k = 0; k < cdim[2]; ++k) {
+        const struct grav_tensor *f =
+            &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
+
+        if (!is_close(f->F_000, -1., 1e-10))
+          error("Invalid value for (%d %d %d) F_000 (%e)", i, j, k, f->F_000);
+        if (!is_close(f->F_100, 0., 1e-10))
+          error("Invalid value for (%d %d %d) F_100 (%e)", i, j, k, f->F_100);
+        if (!is_close(f->F_010, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_010 (%e)", i, j, k, f->F_010);
+        if (!is_close(f->F_001, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_001 (%e)", i, j, k, f->F_001);
+        if (!is_close(f->F_200, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_200 (%e)", i, j, k, f->F_200);
+        if (!is_close(f->F_020, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_020 (%e)", i, j, k, f->F_020);
+        if (!is_close(f->F_002, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_002 (%e)", i, j, k, f->F_002);
+        if (!is_close(f->F_011, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_011 (%e)", i, j, k, f->F_011);
+        if (!is_close(f->F_101, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_101 (%e)", i, j, k, f->F_101);
+        if (!is_close(f->F_110, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_110 (%e)", i, j, k, f->F_110);
+      }
+    }
+  }
+
+  /* Linear function in x --> Derivatives must be 1 */
+  for (int i = 0; i < cdim[0]; ++i) {
+    for (int j = 0; j < cdim[1]; ++j) {
+      for (int k = 0; k < cdim[2]; ++k) {
+        pot[row_major_id(i, j, k, cdim[0])] = i / ((double)cdim[0]);
+      }
+    }
+  }
+  for (int i = 0; i < nr_cells; ++i)
+    gravity_field_tensors_init(&space.multipoles_top[i].pot, engine.ti_current);
+  for (int i = 0; i < nr_cells; ++i)
+    mesh_to_multipole_CIC(&space.multipoles_top[i], pot, cdim[0], cdim[0], dim);
+  for (int i = 2; i < cdim[0] - 3; ++i) {
+    for (int j = 0; j < cdim[1]; ++j) {
+      for (int k = 0; k < cdim[2]; ++k) {
+        const struct grav_tensor *f =
+            &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
+
+        if (!is_close(f->F_000, -i / ((double)cdim[0]), 1e-10))
+          error("Invalid value for (%d %d %d) F_000 (%e)", i, j, k, f->F_000);
+        if (!is_close(f->F_100, -1., 1e-10))
+          error("Invalid value for (%d %d %d) F_100 (%e)", i, j, k, f->F_100);
+        if (!is_close(f->F_010, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_010 (%e)", i, j, k, f->F_010);
+        if (!is_close(f->F_001, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_001 (%e)", i, j, k, f->F_001);
+        if (!is_close(f->F_200, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_200 (%e)", i, j, k, f->F_200);
+        if (!is_close(f->F_020, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_020 (%e)", i, j, k, f->F_020);
+        if (!is_close(f->F_002, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_002 (%e)", i, j, k, f->F_002);
+        if (!is_close(f->F_011, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_011 (%e)", i, j, k, f->F_011);
+        if (!is_close(f->F_101, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_101 (%e)", i, j, k, f->F_101);
+        if (!is_close(f->F_110, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_110 (%e)", i, j, k, f->F_110);
+      }
+    }
+  }
+
+  /* Linear function in y --> Derivatives must be 1 */
+  for (int i = 0; i < cdim[0]; ++i) {
+    for (int j = 0; j < cdim[1]; ++j) {
+      for (int k = 0; k < cdim[2]; ++k) {
+        pot[row_major_id(i, j, k, cdim[0])] = j / ((double)cdim[0]);
+      }
+    }
+  }
+  for (int i = 0; i < nr_cells; ++i)
+    gravity_field_tensors_init(&space.multipoles_top[i].pot, engine.ti_current);
+  for (int i = 0; i < nr_cells; ++i)
+    mesh_to_multipole_CIC(&space.multipoles_top[i], pot, cdim[0], cdim[0], dim);
+  for (int i = 0; i < cdim[0]; ++i) {
+    for (int j = 2; j < cdim[1] - 3; ++j) {
+      for (int k = 0; k < cdim[2]; ++k) {
+        const struct grav_tensor *f =
+            &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
+
+        if (!is_close(f->F_000, -j / ((double)cdim[0]), 1e-10))
+          error("Invalid value for (%d %d %d) F_000 (%e)", i, j, k, f->F_000);
+        if (!is_close(f->F_100, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_100 (%e)", i, j, k, f->F_100);
+        if (!is_close(f->F_010, -1., 1e-10))
+          error("Invalid value for (%d %d %d) F_010 (%e)", i, j, k, f->F_010);
+        if (!is_close(f->F_001, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_001 (%e)", i, j, k, f->F_001);
+        if (!is_close(f->F_200, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_200 (%e)", i, j, k, f->F_200);
+        if (!is_close(f->F_020, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_020 (%e)", i, j, k, f->F_020);
+        if (!is_close(f->F_002, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_002 (%e)", i, j, k, f->F_002);
+        if (!is_close(f->F_011, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_011 (%e)", i, j, k, f->F_011);
+        if (!is_close(f->F_101, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_101 (%e)", i, j, k, f->F_101);
+        if (!is_close(f->F_110, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_110 (%e)", i, j, k, f->F_110);
+      }
+    }
+  }
+
+  /* Linear function in z --> Derivatives must be 1 */
+  for (int i = 0; i < cdim[0]; ++i) {
+    for (int j = 0; j < cdim[1]; ++j) {
+      for (int k = 0; k < cdim[2]; ++k) {
+        pot[row_major_id(i, j, k, cdim[0])] = k / ((double)cdim[0]);
+      }
+    }
+  }
+  for (int i = 0; i < nr_cells; ++i)
+    gravity_field_tensors_init(&space.multipoles_top[i].pot, engine.ti_current);
+  for (int i = 0; i < nr_cells; ++i)
+    mesh_to_multipole_CIC(&space.multipoles_top[i], pot, cdim[0], cdim[0], dim);
+  for (int i = 0; i < cdim[0]; ++i) {
+    for (int j = 0; j < cdim[1]; ++j) {
+      for (int k = 2; k < cdim[2] - 3; ++k) {
+        const struct grav_tensor *f =
+            &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
+
+        if (!is_close(f->F_000, -k / ((double)cdim[0]), 1e-10))
+          error("Invalid value for (%d %d %d) F_000 (%e)", i, j, k, f->F_000);
+        if (!is_close(f->F_100, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_100 (%e)", i, j, k, f->F_100);
+        if (!is_close(f->F_010, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_010 (%e)", i, j, k, f->F_010);
+        if (!is_close(f->F_001, -1., 1e-10))
+          error("Invalid value for (%d %d %d) F_001 (%e)", i, j, k, f->F_001);
+        if (!is_close(f->F_200, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_200 (%e)", i, j, k, f->F_200);
+        if (!is_close(f->F_020, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_020 (%e)", i, j, k, f->F_020);
+        if (!is_close(f->F_002, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_002 (%e)", i, j, k, f->F_002);
+        if (!is_close(f->F_011, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_011 (%e)", i, j, k, f->F_011);
+        if (!is_close(f->F_101, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_101 (%e)", i, j, k, f->F_101);
+        if (!is_close(f->F_110, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_110 (%e)", i, j, k, f->F_110);
+      }
+    }
+  }
+
+  /* Quadratic function in x --> Derivatives must be 2 */
+  for (int i = 0; i < cdim[0]; ++i) {
+    for (int j = 0; j < cdim[1]; ++j) {
+      for (int k = 0; k < cdim[2]; ++k) {
+        pot[row_major_id(i, j, k, cdim[0])] =
+            i * i / ((double)cdim[0] * cdim[0]);
+      }
+    }
+  }
+  for (int i = 0; i < nr_cells; ++i)
+    gravity_field_tensors_init(&space.multipoles_top[i].pot, engine.ti_current);
+  for (int i = 0; i < nr_cells; ++i)
+    mesh_to_multipole_CIC(&space.multipoles_top[i], pot, cdim[0], cdim[0], dim);
+  for (int i = 2; i < cdim[0] - 3; ++i) {
+    for (int j = 0; j < cdim[1]; ++j) {
+      for (int k = 0; k < cdim[2]; ++k) {
+        const struct grav_tensor *f =
+            &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
+        const double val = i / ((double)cdim[0]);
+        const double val2 = val * val;
+
+        if (!is_close(f->F_000, -val2, 1e-10))
+          error("Invalid value for (%d %d %d) F_000 (%e)", i, j, k, f->F_000);
+        if (!is_close(f->F_100, -2 * val, 1e-10))
+          error("Invalid value for (%d %d %d) F_100 (%e)", i, j, k, f->F_100);
+        if (!is_close(f->F_010, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_010 (%e)", i, j, k, f->F_010);
+        if (!is_close(f->F_001, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_001 (%e)", i, j, k, f->F_001);
+        if (!is_close(f->F_200, 2.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_200 (%e)", i, j, k, f->F_200);
+        if (!is_close(f->F_020, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_020 (%e)", i, j, k, f->F_020);
+        if (!is_close(f->F_002, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_002 (%e)", i, j, k, f->F_002);
+        if (!is_close(f->F_011, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_011 (%e)", i, j, k, f->F_011);
+        if (!is_close(f->F_101, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_101 (%e)", i, j, k, f->F_101);
+        if (!is_close(f->F_110, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_110 (%e)", i, j, k, f->F_110);
+      }
+    }
+  }
+
+  /* Quadratic function in y --> Derivatives must be 2 */
+  for (int i = 0; i < cdim[0]; ++i) {
+    for (int j = 0; j < cdim[1]; ++j) {
+      for (int k = 0; k < cdim[2]; ++k) {
+        pot[row_major_id(i, j, k, cdim[0])] =
+            j * j / ((double)cdim[0] * cdim[0]);
+      }
+    }
+  }
+  for (int i = 0; i < nr_cells; ++i)
+    gravity_field_tensors_init(&space.multipoles_top[i].pot, engine.ti_current);
+  for (int i = 0; i < nr_cells; ++i)
+    mesh_to_multipole_CIC(&space.multipoles_top[i], pot, cdim[0], cdim[0], dim);
+  for (int i = 0; i < cdim[0]; ++i) {
+    for (int j = 2; j < cdim[1] - 3; ++j) {
+      for (int k = 0; k < cdim[2]; ++k) {
+        const struct grav_tensor *f =
+            &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
+        const double val = j / ((double)cdim[0]);
+        const double val2 = val * val;
+
+        if (!is_close(f->F_000, -val2, 1e-10))
+          error("Invalid value for (%d %d %d) F_000 (%e)", i, j, k, f->F_000);
+        if (!is_close(f->F_100, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_100 (%e)", i, j, k, f->F_100);
+        if (!is_close(f->F_010, -2 * val, 1e-10))
+          error("Invalid value for (%d %d %d) F_010 (%e)", i, j, k, f->F_010);
+        if (!is_close(f->F_001, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_001 (%e)", i, j, k, f->F_001);
+        if (!is_close(f->F_200, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_200 (%e)", i, j, k, f->F_200);
+        if (!is_close(f->F_020, 2.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_020 (%e)", i, j, k, f->F_020);
+        if (!is_close(f->F_002, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_002 (%e)", i, j, k, f->F_002);
+        if (!is_close(f->F_011, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_011 (%e)", i, j, k, f->F_011);
+        if (!is_close(f->F_101, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_101 (%e)", i, j, k, f->F_101);
+        if (!is_close(f->F_110, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_110 (%e)", i, j, k, f->F_110);
+      }
+    }
+  }
+
+  /* Quadratic function in z --> Derivatives must be 2 */
+  for (int i = 0; i < cdim[0]; ++i) {
+    for (int j = 0; j < cdim[1]; ++j) {
+      for (int k = 0; k < cdim[2]; ++k) {
+        pot[row_major_id(i, j, k, cdim[0])] =
+            k * k / ((double)cdim[0] * cdim[0]);
+      }
+    }
+  }
+  for (int i = 0; i < nr_cells; ++i)
+    gravity_field_tensors_init(&space.multipoles_top[i].pot, engine.ti_current);
+  for (int i = 0; i < nr_cells; ++i)
+    mesh_to_multipole_CIC(&space.multipoles_top[i], pot, cdim[0], cdim[0], dim);
+  for (int i = 0; i < cdim[0]; ++i) {
+    for (int j = 0; j < cdim[1]; ++j) {
+      for (int k = 2; k < cdim[2] - 3; ++k) {
+        const struct grav_tensor *f =
+            &space.multipoles_top[row_major_id(i, j, k, cdim[0])].pot;
+        const double val = k / ((double)cdim[0]);
+        const double val2 = val * val;
+
+        if (!is_close(f->F_000, -val2, 1e-10))
+          error("Invalid value for (%d %d %d) F_000 (%e)", i, j, k, f->F_000);
+        if (!is_close(f->F_100, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_100 (%e)", i, j, k, f->F_100);
+        if (!is_close(f->F_010, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_010 (%e)", i, j, k, f->F_010);
+        if (!is_close(f->F_001, -2 * val, 1e-10))
+          error("Invalid value for (%d %d %d) F_001 (%e)", i, j, k, f->F_001);
+        if (!is_close(f->F_200, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_200 (%e)", i, j, k, f->F_200);
+        if (!is_close(f->F_020, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_020 (%e)", i, j, k, f->F_020);
+        if (!is_close(f->F_002, 2.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_002 (%e)", i, j, k, f->F_002);
+        if (!is_close(f->F_011, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_011 (%e)", i, j, k, f->F_011);
+        if (!is_close(f->F_101, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_101 (%e)", i, j, k, f->F_101);
+        if (!is_close(f->F_110, 0.f, 1e-10))
+          error("Invalid value for (%d %d %d) F_110 (%e)", i, j, k, f->F_110);
+      }
+    }
+  }
 
   /* Clean up */
   free(r);
