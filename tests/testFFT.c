@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,7 +18,6 @@
  ******************************************************************************/
 
 /* Some standard headers. */
-
 #include "../config.h"
 
 #ifndef HAVE_FFTW
@@ -28,6 +27,7 @@ int main() { return 0; }
 #else
 
 /* Some standard headers. */
+#include <fenv.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -40,11 +40,16 @@ int main() {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
+/* Choke on FP-exceptions */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
+
   /* Make one particle */
   int nr_gparts = 1;
   struct gpart *gparts = NULL;
-  if (posix_memalign((void **)&gparts, 64, nr_gparts * sizeof(struct gpart)) !=
-      0)
+  if (posix_memalign((void **)&gparts, gpart_align,
+                     nr_gparts * sizeof(struct gpart)) != 0)
     error("Impossible to allocate memory for gparts.");
   bzero(gparts, nr_gparts * sizeof(struct gpart));
 
@@ -68,7 +73,7 @@ int main() {
   struct space space;
   double dim[3] = {1., 1., 1.};
   space_init(&space, params, &cosmo, dim, NULL, gparts, NULL, 0, nr_gparts, 0,
-             1, 1, 0, 1, 0, 0);
+             1, 1, 0, 1, 1, 0);
 
   struct engine engine;
   engine.s = &space;
@@ -81,6 +86,7 @@ int main() {
   engine.nr_threads = 1;
   engine.nodeID = 0;
   engine_rank = 0;
+  engine.verbose = 1;
 
   struct runner runner;
   runner.e = &engine;
@@ -88,7 +94,13 @@ int main() {
   /* Initialize the threadpool. */
   threadpool_init(&engine.threadpool, engine.nr_threads);
 
-  space_rebuild(&space, 0);
+  /* Construct the space and all the multipoles. */
+  space_rebuild(&space, 1);
+
+/* Initialise the Ewald correction table */
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  gravity_exact_force_ewald_init(dim[0]);
+#endif
 
   /* Run the FFT task */
   runner_do_grav_fft(&runner, 1);
@@ -96,26 +108,41 @@ int main() {
   /* Now check that we got the right answer */
   int nr_cells = space.nr_cells;
   double *r = malloc(nr_cells * sizeof(double));
+  double *m = malloc(nr_cells * sizeof(double));
   double *pot = malloc(nr_cells * sizeof(double));
   double *pot_exact = malloc(nr_cells * sizeof(double));
 
-  // FILE *file = fopen("potential.dat", "w");
+  FILE *file = fopen("potential.dat", "w");
   for (int i = 0; i < nr_cells; ++i) {
     pot[i] = space.multipoles_top[i].pot.F_000;
+    m[i] = space.multipoles_top[i].m_pole.M_000;
     double dx =
         nearest(space.multipoles_top[i].CoM[0] - gparts[0].x[0], dim[0]);
     double dy =
         nearest(space.multipoles_top[i].CoM[1] - gparts[0].x[1], dim[1]);
     double dz =
         nearest(space.multipoles_top[i].CoM[2] - gparts[0].x[2], dim[2]);
+
+    /* Distance */
     r[i] = sqrt(dx * dx + dy * dy + dz * dz);
-    if (r[i] > 0) pot_exact[i] = -1. / r[i];
-    // fprintf(file, "%e %e %e\n", r[i], pot[i], pot_exact[i]);
+
+    /* Potential with correction */
+    if (r[i] > 0) pot_exact[i] = 1. / r[i];
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+    /* Get Ewald periodic correction */
+    double f_corr[3], pot_corr;
+    gravity_exact_force_ewald_evaluate(dx, dy, dz, f_corr, &pot_corr);
+    pot_exact[i] -= pot_corr;
+#endif
+
+    fprintf(file, "%e %e %e %e\n", r[i], m[i], pot[i], pot_exact[i]);
   }
-  // fclose(file);
+  fclose(file);
 
   /* Clean up */
   free(r);
+  free(m);
   free(pot);
   free(pot_exact);
   free(params);
