@@ -120,6 +120,8 @@ struct cooling_function_data {
   float calcium_over_silicon_ratio;
   float sulphur_over_silicon_ratio;
 
+  double delta_u;
+
 };
 
 /**

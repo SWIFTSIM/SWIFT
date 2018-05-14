@@ -610,7 +610,7 @@ inline struct cooling_tables get_cooling_table(char *cooling_table_path, const s
       for (i = 0; i < cooling->N_nH; i++){
         for (j = 0; j < cooling->N_Temp; j++){
           table_index = row_major_index_2d(j,i,cooling->N_Temp,cooling->N_nH);
-          cooling_index = row_major_index_4d(z_index,specs,j,i,cooling->N_Redshifts,cooling->N_Elements,cooling->N_Temp,cooling->N_nH); 
+          cooling_index = row_major_index_4d(z_index,specs,i,j,cooling->N_Redshifts,cooling->N_Elements,cooling->N_nH,cooling->N_Temp); 
           //cooling_index = row_major_index_3d(specs,j,i,cooling->N_Elements,cooling->N_Temp,cooling->N_nH); 
           cooling_table.metal_heating[cooling_index] = -net_cooling_rate[table_index];
         }
@@ -640,7 +640,7 @@ inline struct cooling_tables get_cooling_table(char *cooling_table_path, const s
       for (j = 0; j < cooling->N_Temp; j++){
         for (k = 0; k < cooling->N_nH; k++) {
           table_index = row_major_index_3d(i,j,k,cooling->N_He,cooling->N_Temp,cooling->N_nH);
-          cooling_index = row_major_index_4d(z_index,i,j,k,cooling->N_Redshifts,cooling->N_He,cooling->N_Temp,cooling->N_nH); 
+          cooling_index = row_major_index_4d(z_index,k,i,j,cooling->N_Redshifts,cooling->N_nH,cooling->N_He,cooling->N_Temp); 
           //cooling_index = row_major_index_3d(i,j,k,cooling->N_He,cooling->N_Temp,cooling->N_nH); 
           cooling_table.H_plus_He_heating[cooling_index] = -he_net_cooling_rate[table_index];
           cooling_table.H_plus_He_electron_abundance[cooling_index] =
@@ -659,7 +659,7 @@ inline struct cooling_tables get_cooling_table(char *cooling_table_path, const s
     for (i = 0; i < cooling->N_Temp; i++){
       for (j = 0; j < cooling->N_nH; j++){
         table_index = row_major_index_2d(i,j,cooling->N_Temp,cooling->N_nH);
-        cooling_index = row_major_index_3d(z_index,i,j,cooling->N_Redshifts,cooling->N_Temp,cooling->N_nH); 
+        cooling_index = row_major_index_3d(z_index,j,i,cooling->N_Redshifts,cooling->N_nH,cooling->N_Temp); 
         //cooling_index = row_major_index_2d(i,j,cooling->N_Temp,cooling->N_nH); 
         cooling_table.electron_abundance[cooling_index] = electron_abundance[table_index];
       }
