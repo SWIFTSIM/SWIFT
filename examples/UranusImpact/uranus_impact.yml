@@ -18,8 +18,8 @@ Snapshots:
                                         # Common part of the name of output files
     basename:       snapshots/uranus_impact
     time_first:     0                   # Time of the first output (in internal units)
-    delta_time:     200                 # Time difference between consecutive outputs (in internal units)
-    label_delta:    200                 # Integer increment between snapshot output labels
+    delta_time:     500                 # Time difference between consecutive outputs (in internal units)
+    label_delta:    500                 # Integer increment between snapshot output labels
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -40,5 +40,4 @@ Gravity:
 
 # Parameters related to the initial conditions
 InitialConditions:
-                                        # The initial conditions file to read
-    file_name:  uranus_impact.hdf5
+    file_name:      uranus_impact.hdf5  # The initial conditions file to read

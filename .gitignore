@@ -38,6 +38,7 @@ examples/*/*/*.hdf5
 examples/*/snapshots*
 examples/*/restart
 examples/*/*/used_parameters.yml
+examples/*/*.mpg
 examples/*/gravity_checks_*.dat
 
 tests/testActivePair

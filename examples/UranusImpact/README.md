@@ -19,6 +19,7 @@ Setup
 In `swiftsim/`:
 
 `$ ./configure --with-hydro=minimal-multi-mat --with-equation-of-state=planetary`
+
 `$ make`
 
 In `swiftsim/examples/UranusImpact/`:
@@ -30,9 +31,10 @@ Run
 
 `$ ./run.sh`
 
-Output
-------
+Analysis
+--------
 
 `$ python plot.py`
+
 `$ mplayer anim.mpg`
 

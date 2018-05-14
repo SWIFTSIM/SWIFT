@@ -53,7 +53,7 @@ R_Ea        = 6.371e6
 
 # Default sys args
 time_end_default    = 100000
-delta_time_default  = 200
+delta_time_default  = 500
 
 # Snapshot info
 file_snap   = "./snapshots/uranus_impact_"
@@ -222,20 +222,6 @@ def plot_snapshot(A2_picle, filename, time, ax_lim=13, dz=0.1):
     plt.close()
 
 
-def analyse_result(A2_picle):
-    """ Do some quick analysis on the final snapshot.
-    """
-    # Rotation rate assuming circular orbits
-    A1_phi      = np.arctan(A2_picle['y'] / A2_picle['x'])
-    A1_v_phi    = abs(A2_picle['v_x']*np.sin(A1_phi) -
-                      A2_picle['v_y']*np.cos(A1_phi))
-    A1_r_z      = np.sqrt(A2_picle['x']**2 + A2_picle['y']**2)
-    A1_t_rot    = 2*np.pi * A1_r_z / A1_v_phi * s_to_hour
-    t_rot_med   = np.median(A1_t_rot)
-
-    return t_rot_med
-
-
 if __name__ == '__main__':
     # Sys args
     try:
@@ -249,7 +235,7 @@ if __name__ == '__main__':
         delta_time  = delta_time_default
 
     # Load and plot each snapshot
-    for i_snap in range(int(time_end/delta_time), int(time_end/delta_time) + 1):
+    for i_snap in range(int(time_end/delta_time) + 1):
         snap_time   = i_snap * delta_time
         print "\rPlotting snapshot %06d (%d of %d)" % (
             snap_time, i_snap+1, int(time_end/delta_time)
@@ -273,11 +259,6 @@ if __name__ == '__main__':
         )
     print "\n$ %s\n" % command
     subprocess.call(command, shell=True)
-
-    # Analyse final snapshot
-    t_rot   = analyse_result(A2_picle)
-
-    print "\n Final rotation period = %.1f h \n" % t_rot
 
 
 
