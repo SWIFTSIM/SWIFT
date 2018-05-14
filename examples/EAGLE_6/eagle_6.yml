@@ -70,3 +70,40 @@ InitialConditions:
   cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
 
 
+EAGLEChemistry:
+  InitMetallicity:         0.014
+  InitAbundance_Hydrogen:  0.70649785
+  InitAbundance_Helium:    0.28055534
+  InitAbundance_Carbon:    2.0665436e-3
+  InitAbundance_Nitrogen:  8.3562563e-4
+  InitAbundance_Oxygen:    5.4926244e-3
+  InitAbundance_Neon:      1.4144605e-3
+  InitAbundance_Magnesium: 5.907064e-4
+  InitAbundance_Silicon:   6.825874e-4
+  InitAbundance_Iron:      1.1032152e-3
+  CalciumOverSilicon:      0.0941736
+  SulphurOverSilicon:      0.6054160
+
+EagleCooling:
+  filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/
+  reionisation_redshift:   8.898
+
+#Cosmology:
+#  Omega_m:        0.307
+#  Omega_lambda:   0.693
+#  Omega_b:        0.0455
+#  h:              0.6777
+#  #a_begin:        0.0078125
+#  a_begin:        1.0
+#  #a_begin:        0.5
+#  a_end:          1.0
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.9090909     # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_m:        0.307         # Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0455        # Baryon density parameter
+

@@ -86,7 +86,7 @@ temp_0 = 1.0e7
 rho = rho*unit_mass/(unit_length**3)
 
 # Read snapshots
-nsnap = 150
+nsnap = 110
 npart = 4096
 u_snapshots_cgs = zeros(nsnap)
 u_part_snapshots_cgs = zeros((nsnap,npart))
@@ -137,6 +137,7 @@ p = figure()
 p1, = plot(t_sol,temp_sol,linewidth = 0.5,color = 'k',label = 'analytical')
 p2, = plot(t_snapshots_cgs,mean_temp,linewidth = 0.5,color = 'r',label = 'swift mean')
 l = legend(handles = [p1,p2])
+plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 xlabel("${\\rm{Time~[s]}}$", labelpad=0)
 ylabel("${\\rm{Temperature~[K]}}$")
 
