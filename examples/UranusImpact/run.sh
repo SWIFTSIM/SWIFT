@@ -1,2 +1,2 @@
 #!/bin/bash
-../swift -G -s uranus_impact.yml
+../swift -G -s -t 8 uranus_impact.yml

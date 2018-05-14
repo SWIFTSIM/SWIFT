@@ -24,12 +24,11 @@
  * @file equation_of_state/planetary/equation_of_state.h
  *
  * For any/all of the planetary EOS. Each EOS type's functions are set in its
- * own header file: equation_of_state/planetary/<eos_type>.h
- * See material_id for the available choices.
+ * own header file: `equation_of_state/planetary/<eos_type>.h`.
+ * See `material_id` for the available choices.
  *
  * Not all functions are implemented for all EOS types, so not all can be used
  * with all hydro formulations yet.
- *
  */
 
 /* Some standard headers. */

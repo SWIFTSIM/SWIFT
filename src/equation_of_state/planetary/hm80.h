@@ -121,21 +121,21 @@ INLINE static void load_HM80_table(struct HM80_params *mat, char *table_file) {
 }
 
 // Convert from cgs to internal units
-#define Mbar_to_Ba 1e12    // Convert Megabar to Barye
-#define J_kg_to_erg_g 1e4  // Convert J/kg to erg/g
 INLINE static void convert_units_HM80(struct HM80_params *mat,
                                       const struct unit_system *us) {
+  const float Mbar_to_Ba = 1e12;    // Convert Megabar to Barye
+  const float J_kg_to_erg_g = 1e4;  // Convert J/kg to erg/g
 
   // Table densities in cgs
-  mat->log_rho_min -= log(units_cgs_conversion_factor(us, UNIT_CONV_DENSITY));
-  mat->log_rho_max -= log(units_cgs_conversion_factor(us, UNIT_CONV_DENSITY));
+  mat->log_rho_min -= logf(units_cgs_conversion_factor(us, UNIT_CONV_DENSITY));
+  mat->log_rho_max -= logf(units_cgs_conversion_factor(us, UNIT_CONV_DENSITY));
 
   // Table energies in SI
   mat->log_u_min +=
-      log(J_kg_to_erg_g /
+      logf(J_kg_to_erg_g /
           units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
   mat->log_u_max +=
-      log(J_kg_to_erg_g /
+      logf(J_kg_to_erg_g /
           units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
 
   // Table Pressures in Mbar
@@ -205,12 +205,12 @@ INLINE static float HM80_pressure_from_internal_energy(
 
   int rho_idx, u_idx;
   float intp_rho, intp_u;
-  const float log_rho = log(density);
-  const float log_u = log(u);
+  const float log_rho = logf(density);
+  const float log_u = logf(u);
 
   // 2D interpolation (linear in log(rho), log(u)) to find P(rho, u)
-  rho_idx = floor((log_rho - mat->log_rho_min) * mat->inv_log_rho_step);
-  u_idx = floor((log_u - mat->log_u_min) * mat->inv_log_u_step);
+  rho_idx = floorf((log_rho - mat->log_rho_min) * mat->inv_log_rho_step);
+  u_idx = floorf((log_u - mat->log_u_min) * mat->inv_log_u_step);
 
   intp_rho = (log_rho - mat->log_rho_min - rho_idx * mat->log_rho_step) *
              mat->inv_log_rho_step;
@@ -220,9 +220,9 @@ INLINE static float HM80_pressure_from_internal_energy(
   // Return zero pressure if below the table minimum/a
   // Extrapolate the pressure for low densities
   if (rho_idx < 0) {  // Too-low rho
-    P = exp(log((1 - intp_u) * mat->table_P_rho_u[0][u_idx] +
-                intp_u * mat->table_P_rho_u[0][u_idx + 1]) +
-            log_rho - mat->log_rho_min);
+    P = expf(logf((1 - intp_u) * mat->table_P_rho_u[0][u_idx] +
+                  intp_u * mat->table_P_rho_u[0][u_idx + 1]) +
+             log_rho - mat->log_rho_min);
     if (u_idx < 0) {  // and too-low u
       P = 0;
     }
@@ -267,12 +267,12 @@ INLINE static float HM80_soundspeed_from_internal_energy(
 
   // Bulk modulus
   if (mat->bulk_mod != 0) {
-    c = sqrt(mat->bulk_mod / density);
+    c = sqrtf(mat->bulk_mod / density);
   }
   // Ideal gas
   else {
     P = HM80_pressure_from_internal_energy(density, u, mat);
-    c = sqrt(5.f / 3.f * P / density);
+    c = sqrtf(5.f / 3.f * P / density);
   }
 
   return c;
@@ -286,11 +286,11 @@ INLINE static float HM80_soundspeed_from_pressure(float density, float P,
 
   // Bulk modulus
   if (mat->bulk_mod != 0) {
-    c = sqrt(mat->bulk_mod / density);
+    c = sqrtf(mat->bulk_mod / density);
   }
   // Ideal gas
   else {
-    c = sqrt(5.f / 3.f * P / density);
+    c = sqrtf(5.f / 3.f * P / density);
   }
 
   return c;

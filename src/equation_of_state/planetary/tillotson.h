@@ -50,48 +50,48 @@ struct Til_params {
 // Parameter values for each material (cgs units)
 INLINE static void set_Til_iron(struct Til_params *mat, int mat_id) {
   mat->mat_id = mat_id;
-  mat->rho_0 = 7.800;
-  mat->a = 0.5;
-  mat->b = 1.5;
+  mat->rho_0 = 7.800f;
+  mat->a = 0.5f;
+  mat->b = 1.5f;
   mat->A = 1.28e12;
   mat->B = 1.05e12;
   mat->E_0 = 9.5e10;
   mat->E_iv = 2.4e10;
   mat->E_cv = 8.67e10;
-  mat->alpha = 5.0;
-  mat->beta = 5.0;
-  mat->eta_min = 0.0;
-  mat->P_min = 0.0;
+  mat->alpha = 5.0f;
+  mat->beta = 5.0f;
+  mat->eta_min = 0.0f;
+  mat->P_min = 0.0f;
 }
 INLINE static void set_Til_granite(struct Til_params *mat, int mat_id) {
   mat->mat_id = mat_id;
-  mat->rho_0 = 2.680;
-  mat->a = 0.5;
-  mat->b = 1.3;
+  mat->rho_0 = 2.680f;
+  mat->a = 0.5f;
+  mat->b = 1.3f;
   mat->A = 1.8e11;
   mat->B = 1.8e11;
   mat->E_0 = 1.6e11;
   mat->E_iv = 3.5e10;
   mat->E_cv = 1.8e11;
-  mat->alpha = 5.0;
-  mat->beta = 5.0;
-  mat->eta_min = 0.0;
-  mat->P_min = 0.0;
+  mat->alpha = 5.0f;
+  mat->beta = 5.0f;
+  mat->eta_min = 0.0f;
+  mat->P_min = 0.0f;
 }
 INLINE static void set_Til_water(struct Til_params *mat, int mat_id) {
   mat->mat_id = mat_id;
-  mat->rho_0 = 0.998;
-  mat->a = 0.7;
-  mat->b = 0.15;
+  mat->rho_0 = 0.998f;
+  mat->a = 0.7f;
+  mat->b = 0.15f;
   mat->A = 2.18e10;
   mat->B = 1.325e11;
   mat->E_0 = 7.0e10;
   mat->E_iv = 4.19e9;
   mat->E_cv = 2.69e10;
-  mat->alpha = 10.0;
-  mat->beta = 5.0;
-  mat->eta_min = 0.915;
-  mat->P_min = 0.0;
+  mat->alpha = 10.0f;
+  mat->beta = 5.0f;
+  mat->eta_min = 0.915f;
+  mat->P_min = 0.0f;
 }
 
 // Convert from cgs to internal units
@@ -170,8 +170,8 @@ INLINE static float Til_pressure_from_internal_energy(float density, float u,
   // Expanded and hot
   P_e = mat->a * density * u +
         (mat->b * density * u / (u / (mat->E_0 * eta * eta) + 1.f) +
-         mat->A * mu * exp(-mat->beta * nu)) *
-            exp(-mat->alpha * nu * nu);
+         mat->A * mu * expf(-mat->beta * nu)) *
+            expf(-mat->alpha * nu * nu);
 
   // Condensed or cold state
   if ((1.f < eta) || (u < mat->E_iv)) {
@@ -234,18 +234,18 @@ INLINE static float Til_soundspeed_from_internal_energy(
   //    // Expanded and hot
   //    P_e = mat->a*density*u + (
   //        mat->b * density * u / (u / (mat->E_0 * eta*eta) + 1.f)
-  //        + mat->A*mu * exp(-mat->beta * nu)
-  //        ) * exp(-mat->alpha * nu*nu);
+  //        + mat->A*mu * expf(-mat->beta * nu)
+  //        ) * expf(-mat->alpha * nu*nu);
   //
   //    c_e = (mat->a + mat->b / (u / (mat->E_0*eta*eta)+1.f) *
-  //        exp(-mat->beta*((1.f - eta)/eta)*((1.f - eta)/eta))
+  //        expf(-mat->beta*((1.f - eta)/eta)*((1.f - eta)/eta))
   //        + 1.f)*P_e/rho + mat->A/mat->rho_0
-  //        *exp(-(mat->alpha*((1.f - eta)/eta)+mat->beta *
+  //        *expf(-(mat->alpha*((1.f - eta)/eta)+mat->beta *
   //        ((1.f - eta)/eta)*((1.f - eta)/eta)))*(1.f+mu/(eta*eta)
   //        *(mat->alpha+2.f*mat->beta*((1.f - eta)/eta)-eta)) +
   //        mat->b*rho*u/((u / (mat->E_0*eta*eta)+1.f)*
   //        (u / (mat->E_0*eta*eta)+1.f)*eta*eta)*
-  //        exp(-mat->beta*((1.f - eta)/eta)*((1.f - eta)/eta))*
+  //        expf(-mat->beta*((1.f - eta)/eta)*((1.f - eta)/eta))*
   //        (2.f*mat->beta*((1.f - eta)/eta)*(u / (mat->E_0*eta*eta)+1.f) /
   //         mat->rho_0 + 1.f/(mat->E_0*rho)*(2.f*u-P_e/rho));
   //
@@ -266,7 +266,7 @@ INLINE static float Til_soundspeed_from_internal_energy(
   //    }
   float c;
 
-  c = sqrt(mat->A / mat->rho_0);
+  c = sqrtf(mat->A / mat->rho_0);
 
   return c;
 }
@@ -277,7 +277,7 @@ INLINE static float Til_soundspeed_from_pressure(float density, float P,
 
   float c;
 
-  c = sqrt(mat->A / mat->rho_0);
+  c = sqrtf(mat->A / mat->rho_0);
 
   return c;
 }

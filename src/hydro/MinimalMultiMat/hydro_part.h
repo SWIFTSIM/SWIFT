@@ -106,9 +106,6 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  /*! Material identifier flag (integer) */
-  enum material_id mat_id;
-
   /* Store density/force specific stuff. */
   union {
 
@@ -162,6 +159,9 @@ struct part {
   /* Chemistry information */
   struct chemistry_part_data chemistry_data;
 
+  /*! Material identifier flag (integer) */
+  enum material_id mat_id;
+  
   /*! Time-step length */
   timebin_t time_bin;
 
