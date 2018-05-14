@@ -1,8 +1,5 @@
 # Define the system of units to use internally.
 InternalUnitSystem:
-#    UnitMass_in_cgs:        1           # Grams
-#    UnitLength_in_cgs:      1           # Centimeters
-#    UnitVelocity_in_cgs:    1           # Centimeters per second
     UnitMass_in_cgs:        5.9724e27   # Grams
     UnitLength_in_cgs:      6.371e8     # Centimeters
     UnitVelocity_in_cgs:    6.371e8     # Centimeters per second
@@ -11,22 +8,22 @@ InternalUnitSystem:
 
 # Parameters governing the time integration
 TimeIntegration:
-    time_begin: 0                       # The starting time of the simulation (in internal units).
-    time_end:   100000                  # The end time of the simulation (in internal units).
-    dt_min:     0.01                    # The minimal time-step size of the simulation (in internal units).
-    dt_max:     10                      # The maximal time-step size of the simulation (in internal units).
+    time_begin:     0                   # The starting time of the simulation (in internal units).
+    time_end:       100000              # The end time of the simulation (in internal units).
+    dt_min:         0.001               # The minimal time-step size of the simulation (in internal units).
+    dt_max:         100                 # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
                                         # Common part of the name of output files
-    basename:   snapshots/moon_forming_impact
-#    basename:   snapshots_1e5/moon_forming_impact
-    time_first: 0                       # Time of the first output (in internal units)
-    delta_time: 500                     # Time difference between consecutive outputs (in internal units)
+    basename:       snapshots/moon_forming_impact
+    time_first:     0                   # Time of the first output (in internal units)
+    delta_time:     100                 # Time difference between consecutive outputs (in internal units)
+    label_delta:    100                 # Integer increment between snapshot output labels
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-    delta_time: 500                     # Time between statistics output
+    delta_time:     500                 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -43,6 +40,5 @@ Gravity:
 
 # Parameters related to the initial conditions
 InitialConditions:
-    file_name:  init_cond.hdf5          # The initial conditions file to read
-#    file_name:  init_cond_1e5.hdf5      # The initial conditions file to read
-#    file_name:  snapshots/iron_planet_impact_0064.hdf5          # The initial conditions file to read
+                                        # The initial conditions file to read
+    file_name:  moon_forming_impact.hdf5
