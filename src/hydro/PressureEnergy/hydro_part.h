@@ -145,11 +145,8 @@ struct part {
      */
     struct {
 
-      /*! "Grad h" term */
+      /*! "Grad h" term -- only partial in P-U */
       float f;
-
-      /*! Particle pressure. */
-      float pressure;
 
       /*! Particle soundspeed. */
       float soundspeed;

@@ -151,7 +151,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_soundspeed(const struct part *restrict p) {
 
-  return p->force.soundspeed;
+  /* Compute the sound speed -- see theory section for justification */
+  /* IDEAL GAS ONLY -- P-U does not work with generic EoS. */
+  return sqrtf(p->u * p->u * p->rho / p->pressure_bar);
 }
 
 /**
@@ -440,11 +442,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the norm of div v */
   const float abs_div_v = fabsf(p->density.div_v);
 
-  /* Compute the pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
-
-  /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  /* Compute the sound speed -- see theory section for justification */
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
 
   /* Compute the Balsara switch */
   const float balsara =
@@ -459,7 +458,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Update variables. */
   p->force.f = grad_h_term;
-  p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
 }
@@ -547,13 +545,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
 
-  /* Compute the new pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
-
   /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
 
-  p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 }
 
@@ -596,13 +590,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   }
   xp->u_full += p->u_dt * dt_therm;
 
-  /* Compute the pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, xp->u_full);
-
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_internal_energy(p->rho, p->u);
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
 
-  p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 }
 
@@ -621,13 +611,9 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo) {
 
-  /* Compute the pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
-
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_internal_energy(p->rho, p->u);
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
 
-  p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 }
 
