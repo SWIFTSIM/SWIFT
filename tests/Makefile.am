@@ -27,7 +27,7 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
         testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
-	testPotentialPair testEOS
+	testPotentialPair
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
@@ -37,7 +37,7 @@ check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
-		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS
+		 testGravityDerivatives testPotentialSelf testPotentialPair
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -104,8 +104,6 @@ testGravityDerivatives_SOURCES = testGravityDerivatives.c
 testPotentialSelf_SOURCES = testPotentialSelf.c
 
 testPotentialPair_SOURCES = testPotentialPair.c
-
-testEOS_SOURCES = testEOS.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \

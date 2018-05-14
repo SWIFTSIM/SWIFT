@@ -23,6 +23,8 @@ Plotting script for the Uranus Giant Impact example.
 Save a figure for each snapshot in `./plots/` then make them into a simple
 animation with ffmpeg in `./`.
 
+The snapshot plots show all particles with z < 0, coloured by their material.
+
 Usage:
     `$ python  plot.py  time_end  delta_time`
 
@@ -30,7 +32,7 @@ Usage:
         + `time_end` | (opt) int | The time of the last snapshot to plot.
             Default = 100000
         + `delta_time` | (opt) int | The time between successive snapshots.
-            Default = 100
+            Default = 500
 """
 
 from __future__ import division
@@ -255,7 +257,7 @@ if __name__ == '__main__':
 
     # Animation
     command = (
-        "ffmpeg -framerate 12 -i plots/uranus_impact_%*.png -r 25 anim.mpg -y"
+        "ffmpeg -framerate 10 -i plots/uranus_impact_%*.png -r 25 anim.mpg -y"
         )
     print "\n$ %s\n" % command
     subprocess.call(command, shell=True)
