@@ -22,7 +22,8 @@
 
 /**
  * @file MinimalMultiMat/hydro_part.h
- * @brief MinimalMultiMat conservative implementation of SPH (Particle definition)
+ * @brief MinimalMultiMat conservative implementation of SPH (Particle
+ * definition)
  *
  * The thermal variable is the internal energy (u). Simple constant
  * viscosity term without switches is implemented. No thermal conduction

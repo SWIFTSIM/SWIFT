@@ -22,7 +22,8 @@
 
 /**
  * @file MinimalMultiMat/hydro_iact.h
- * @brief MinimalMultiMat conservative implementation of SPH (Neighbour loop equations)
+ * @brief MinimalMultiMat conservative implementation of SPH (Neighbour loop
+ * equations)
  *
  * The thermal variable is the internal energy (u). Simple constant
  * viscosity term without switches is implemented. No thermal conduction
@@ -34,8 +35,8 @@
  */
 
 #include "adiabatic_index.h"
-#include "minmax.h"
 #include "const.h"
+#include "minmax.h"
 
 /**
  * @brief Density interaction between two particles.

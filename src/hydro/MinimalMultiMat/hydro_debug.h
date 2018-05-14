@@ -22,7 +22,8 @@
 
 /**
  * @file MinimalMultiMat/hydro_debug.h
- * @brief MinimalMultiMat conservative implementation of SPH (Debugging routines)
+ * @brief MinimalMultiMat conservative implementation of SPH (Debugging
+ * routines)
  *
  * The thermal variable is the internal energy (u). Simple constant
  * viscosity term without switches is implemented. No thermal conduction

@@ -39,47 +39,42 @@
 #include "adiabatic_index.h"
 #include "common_io.h"
 #include "inline.h"
-#include "units.h"
 #include "physical_constants.h"
+#include "units.h"
 
 /* EOS function headers. */
-#include "tillotson.h"
-#include "hm80.h"
 #include "aneos.h"
+#include "hm80.h"
 #include "sesame.h"
+#include "tillotson.h"
 
 extern struct eos_parameters eos;
 /* ------------------------------------------------------------------------- */
 
 struct eos_parameters {
-    struct Til_params Til_iron, Til_granite, Til_water;
-    struct HM80_params HM80_HHe, HM80_ice, HM80_rock;
-    struct ANEOS_params ANEOS_iron, MANEOS_forsterite;
-    struct SESAME_params SESAME_iron;
+  struct Til_params Til_iron, Til_granite, Til_water;
+  struct HM80_params HM80_HHe, HM80_ice, HM80_rock;
+  struct ANEOS_params ANEOS_iron, MANEOS_forsterite;
+  struct SESAME_params SESAME_iron;
 };
 
 // Material identifier flags (material_ID = type_ID * type_factor + unit_ID)
 #define type_factor 100
-enum type_id {
-    type_Til    = 1,
-    type_HM80   = 2,
-    type_ANEOS  = 3,
-    type_SESAME = 4
-};
+enum type_id { type_Til = 1, type_HM80 = 2, type_ANEOS = 3, type_SESAME = 4 };
 enum material_id {
-    // Tillotson
-    id_Til_iron     = type_Til*type_factor,
-    id_Til_granite  = type_Til*type_factor + 1,
-    id_Til_water    = type_Til*type_factor + 2,
-    // Hubbard & MacFarlane (1980) Uranus/Neptune
-    id_HM80_HHe     = type_HM80*type_factor,        // Hydrogen-helium atmosphere
-    id_HM80_ice     = type_HM80*type_factor + 1,    // H20-CH4-NH3 ice mix
-    id_HM80_rock    = type_HM80*type_factor + 2,    // SiO2-MgO-FeS-FeO rock mix
-    // ANEOS
-    id_ANEOS_iron           = type_ANEOS*type_factor,
-    id_MANEOS_forsterite    = type_ANEOS*type_factor + 1,
-    // SESAME
-    id_SESAME_iron  = type_SESAME*type_factor,
+  // Tillotson
+  id_Til_iron = type_Til * type_factor,
+  id_Til_granite = type_Til * type_factor + 1,
+  id_Til_water = type_Til * type_factor + 2,
+  // Hubbard & MacFarlane (1980) Uranus/Neptune
+  id_HM80_HHe = type_HM80 * type_factor,       // Hydrogen-helium atmosphere
+  id_HM80_ice = type_HM80 * type_factor + 1,   // H20-CH4-NH3 ice mix
+  id_HM80_rock = type_HM80 * type_factor + 2,  // SiO2-MgO-FeS-FeO rock mix
+  // ANEOS
+  id_ANEOS_iron = type_ANEOS * type_factor,
+  id_MANEOS_forsterite = type_ANEOS * type_factor + 1,
+  // SESAME
+  id_SESAME_iron = type_SESAME * type_factor,
 };
 
 /**
@@ -93,103 +88,107 @@ gas_internal_energy_from_entropy(float density, float entropy, int mat_id) {
   float u;
 
   // Material base type
-  switch((int) (mat_id / type_factor)) {
+  switch ((int)(mat_id / type_factor)) {
 
     // Tillotson
     case type_Til:;
-        // Select the material parameters
-        struct Til_params *mat_Til;
-        switch(mat_id) {
-            case id_Til_iron:
-                mat_Til = &eos.Til_iron;
-                break;
+      // Select the material parameters
+      struct Til_params *mat_Til;
+      switch (mat_id) {
+        case id_Til_iron:
+          mat_Til = &eos.Til_iron;
+          break;
 
-            case id_Til_granite:
-                mat_Til = &eos.Til_granite;
-                break;
+        case id_Til_granite:
+          mat_Til = &eos.Til_granite;
+          break;
 
-            case id_Til_water:
-                mat_Til = &eos.Til_water;
-                break;
+        case id_Til_water:
+          mat_Til = &eos.Til_water;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_Til = &eos.Til_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_Til =
+              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        u = Til_internal_energy_from_entropy(density, entropy, mat_Til);
+      u = Til_internal_energy_from_entropy(density, entropy, mat_Til);
 
-        break;
+      break;
 
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
-        // Select the material parameters
-        struct HM80_params *mat_HM80;
-        switch(mat_id) {
-            case id_HM80_HHe:
-                mat_HM80 = &eos.HM80_HHe;
-                break;
+      // Select the material parameters
+      struct HM80_params *mat_HM80;
+      switch (mat_id) {
+        case id_HM80_HHe:
+          mat_HM80 = &eos.HM80_HHe;
+          break;
 
-            case id_HM80_ice:
-                mat_HM80 = &eos.HM80_ice;
-                break;
+        case id_HM80_ice:
+          mat_HM80 = &eos.HM80_ice;
+          break;
 
-            case id_HM80_rock:
-                mat_HM80 = &eos.HM80_rock;
-                break;
+        case id_HM80_rock:
+          mat_HM80 = &eos.HM80_rock;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_HM80 =
+              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+      };
 
-        u = HM80_internal_energy_from_entropy(density, entropy, mat_HM80);
+      u = HM80_internal_energy_from_entropy(density, entropy, mat_HM80);
 
-        break;
+      break;
 
     // ANEOS
     case type_ANEOS:;
-        struct ANEOS_params *mat_ANEOS;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_ANEOS_iron:
-                mat_ANEOS = &eos.ANEOS_iron;
-                break;
+      struct ANEOS_params *mat_ANEOS;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_ANEOS_iron:
+          mat_ANEOS = &eos.ANEOS_iron;
+          break;
 
-            case id_MANEOS_forsterite:
-                mat_ANEOS = &eos.MANEOS_forsterite;
-                break;
+        case id_MANEOS_forsterite:
+          mat_ANEOS = &eos.MANEOS_forsterite;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_ANEOS = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_ANEOS =
+              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        u = ANEOS_internal_energy_from_entropy(density, entropy, mat_ANEOS);
+      u = ANEOS_internal_energy_from_entropy(density, entropy, mat_ANEOS);
 
-        break;
+      break;
 
     // SESAME
     case type_SESAME:;
-        struct SESAME_params *mat_SESAME;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_SESAME_iron:
-                mat_SESAME = &eos.SESAME_iron;
-                break;
+      struct SESAME_params *mat_SESAME;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_SESAME_iron:
+          mat_SESAME = &eos.SESAME_iron;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_SESAME = &eos.SESAME_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
+                                          // compiler happy
+      };
 
-        u = SESAME_internal_energy_from_entropy(density, entropy, mat_SESAME);
+      u = SESAME_internal_energy_from_entropy(density, entropy, mat_SESAME);
 
-        break;
+      break;
 
     default:
-        error("Unknown material type! mat_id = %d", mat_id);
-        u = 0; // Ignored, just here to keep the compiler happy
+      error("Unknown material type! mat_id = %d", mat_id);
+      u = 0;  // Ignored, just here to keep the compiler happy
   }
 
   return u;
@@ -201,108 +200,112 @@ gas_internal_energy_from_entropy(float density, float entropy, int mat_id) {
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$S\f$.
  */
-__attribute__((always_inline)) INLINE static float
-gas_pressure_from_entropy(float density, float entropy, int mat_id) {
+__attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
+    float density, float entropy, int mat_id) {
   float P;
 
   // Material base type
-  switch((int) (mat_id / type_factor)) {
+  switch ((int)(mat_id / type_factor)) {
 
     // Tillotson
     case type_Til:;
-        // Select the material parameters
-        struct Til_params *mat_Til;
-        switch(mat_id) {
-            case id_Til_iron:
-                mat_Til = &eos.Til_iron;
-                break;
+      // Select the material parameters
+      struct Til_params *mat_Til;
+      switch (mat_id) {
+        case id_Til_iron:
+          mat_Til = &eos.Til_iron;
+          break;
 
-            case id_Til_granite:
-                mat_Til = &eos.Til_granite;
-                break;
+        case id_Til_granite:
+          mat_Til = &eos.Til_granite;
+          break;
 
-            case id_Til_water:
-                mat_Til = &eos.Til_water;
-                break;
+        case id_Til_water:
+          mat_Til = &eos.Til_water;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_Til = &eos.Til_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_Til =
+              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        P = Til_pressure_from_entropy(density, entropy, mat_Til);
+      P = Til_pressure_from_entropy(density, entropy, mat_Til);
 
-        break;
+      break;
 
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
-        // Select the material parameters
-        struct HM80_params *mat_HM80;
-        switch(mat_id) {
-            case id_HM80_HHe:
-                mat_HM80 = &eos.HM80_HHe;
-                break;
+      // Select the material parameters
+      struct HM80_params *mat_HM80;
+      switch (mat_id) {
+        case id_HM80_HHe:
+          mat_HM80 = &eos.HM80_HHe;
+          break;
 
-            case id_HM80_ice:
-                mat_HM80 = &eos.HM80_ice;
-                break;
+        case id_HM80_ice:
+          mat_HM80 = &eos.HM80_ice;
+          break;
 
-            case id_HM80_rock:
-                mat_HM80 = &eos.HM80_rock;
-                break;
+        case id_HM80_rock:
+          mat_HM80 = &eos.HM80_rock;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_HM80 =
+              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+      };
 
-        P = HM80_pressure_from_entropy(density, entropy, mat_HM80);
+      P = HM80_pressure_from_entropy(density, entropy, mat_HM80);
 
-        break;
+      break;
 
     // ANEOS
     case type_ANEOS:;
-        struct ANEOS_params *mat_ANEOS;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_ANEOS_iron:
-                mat_ANEOS = &eos.ANEOS_iron;
-                break;
+      struct ANEOS_params *mat_ANEOS;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_ANEOS_iron:
+          mat_ANEOS = &eos.ANEOS_iron;
+          break;
 
-            case id_MANEOS_forsterite:
-                mat_ANEOS = &eos.MANEOS_forsterite;
-                break;
+        case id_MANEOS_forsterite:
+          mat_ANEOS = &eos.MANEOS_forsterite;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_ANEOS = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_ANEOS =
+              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        P = ANEOS_pressure_from_entropy(density, entropy, mat_ANEOS);
+      P = ANEOS_pressure_from_entropy(density, entropy, mat_ANEOS);
 
-        break;
+      break;
 
     // SESAME
     case type_SESAME:;
-        struct SESAME_params *mat_SESAME;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_SESAME_iron:
-                mat_SESAME = &eos.SESAME_iron;
-                break;
+      struct SESAME_params *mat_SESAME;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_SESAME_iron:
+          mat_SESAME = &eos.SESAME_iron;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_SESAME = &eos.SESAME_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
+                                          // compiler happy
+      };
 
-        P = SESAME_pressure_from_entropy(density, entropy, mat_SESAME);
+      P = SESAME_pressure_from_entropy(density, entropy, mat_SESAME);
 
-        break;
+      break;
 
     default:
-        error("Unknown material type! mat_id = %d", mat_id);
-        P = 0; // Ignored, just here to keep the compiler happy
+      error("Unknown material type! mat_id = %d", mat_id);
+      P = 0;  // Ignored, just here to keep the compiler happy
   }
 
   return P;
@@ -315,108 +318,112 @@ gas_pressure_from_entropy(float density, float entropy, int mat_id) {
  * @param pressure The pressure \f$P\f$.
  * @return The entropy \f$A\f$.
  */
-__attribute__((always_inline)) INLINE static float
-gas_entropy_from_pressure(float density, float P, int mat_id) {
+__attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
+    float density, float P, int mat_id) {
   float entropy;
 
   // Material base type
-  switch((int) (mat_id / type_factor)) {
+  switch ((int)(mat_id / type_factor)) {
 
     // Tillotson
     case type_Til:;
-        // Select the material parameters
-        struct Til_params *mat_Til;
-        switch(mat_id) {
-            case id_Til_iron:
-                mat_Til = &eos.Til_iron;
-                break;
+      // Select the material parameters
+      struct Til_params *mat_Til;
+      switch (mat_id) {
+        case id_Til_iron:
+          mat_Til = &eos.Til_iron;
+          break;
 
-            case id_Til_granite:
-                mat_Til = &eos.Til_granite;
-                break;
+        case id_Til_granite:
+          mat_Til = &eos.Til_granite;
+          break;
 
-            case id_Til_water:
-                mat_Til = &eos.Til_water;
-                break;
+        case id_Til_water:
+          mat_Til = &eos.Til_water;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_Til = &eos.Til_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_Til =
+              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        entropy = Til_entropy_from_pressure(density, P, mat_Til);
+      entropy = Til_entropy_from_pressure(density, P, mat_Til);
 
-        break;
+      break;
 
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
-        // Select the material parameters
-        struct HM80_params *mat_HM80;
-        switch(mat_id) {
-            case id_HM80_HHe:
-                mat_HM80 = &eos.HM80_HHe;
-                break;
+      // Select the material parameters
+      struct HM80_params *mat_HM80;
+      switch (mat_id) {
+        case id_HM80_HHe:
+          mat_HM80 = &eos.HM80_HHe;
+          break;
 
-            case id_HM80_ice:
-                mat_HM80 = &eos.HM80_ice;
-                break;
+        case id_HM80_ice:
+          mat_HM80 = &eos.HM80_ice;
+          break;
 
-            case id_HM80_rock:
-                mat_HM80 = &eos.HM80_rock;
-                break;
+        case id_HM80_rock:
+          mat_HM80 = &eos.HM80_rock;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_HM80 =
+              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+      };
 
-        entropy = HM80_entropy_from_pressure(density, P, mat_HM80);
+      entropy = HM80_entropy_from_pressure(density, P, mat_HM80);
 
-        break;
+      break;
 
     // ANEOS
     case type_ANEOS:;
-        struct ANEOS_params *mat_ANEOS;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_ANEOS_iron:
-                mat_ANEOS = &eos.ANEOS_iron;
-                break;
+      struct ANEOS_params *mat_ANEOS;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_ANEOS_iron:
+          mat_ANEOS = &eos.ANEOS_iron;
+          break;
 
-            case id_MANEOS_forsterite:
-                mat_ANEOS = &eos.MANEOS_forsterite;
-                break;
+        case id_MANEOS_forsterite:
+          mat_ANEOS = &eos.MANEOS_forsterite;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_ANEOS = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_ANEOS =
+              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        entropy = ANEOS_entropy_from_pressure(density, P, mat_ANEOS);
+      entropy = ANEOS_entropy_from_pressure(density, P, mat_ANEOS);
 
-        break;
+      break;
 
     // SESAME
     case type_SESAME:;
-        struct SESAME_params *mat_SESAME;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_SESAME_iron:
-                mat_SESAME = &eos.SESAME_iron;
-                break;
+      struct SESAME_params *mat_SESAME;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_SESAME_iron:
+          mat_SESAME = &eos.SESAME_iron;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_SESAME = &eos.SESAME_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
+                                          // compiler happy
+      };
 
-        entropy = SESAME_entropy_from_pressure(density, P, mat_SESAME);
+      entropy = SESAME_entropy_from_pressure(density, P, mat_SESAME);
 
-        break;
+      break;
 
     default:
-        error("Unknown material type! mat_id = %d", mat_id);
-        entropy = 0; // Ignored, just here to keep the compiler happy
+      error("Unknown material type! mat_id = %d", mat_id);
+      entropy = 0;  // Ignored, just here to keep the compiler happy
   }
 
   return entropy;
@@ -428,108 +435,112 @@ gas_entropy_from_pressure(float density, float P, int mat_id) {
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$S\f$.
  */
-__attribute__((always_inline)) INLINE static float
-gas_soundspeed_from_entropy(float density, float entropy, int mat_id) {
+__attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
+    float density, float entropy, int mat_id) {
   float c;
 
   // Material base type
-  switch((int) (mat_id / type_factor)) {
+  switch ((int)(mat_id / type_factor)) {
 
     // Tillotson
     case type_Til:;
-        // Select the material parameters
-        struct Til_params *mat_Til;
-        switch(mat_id) {
-            case id_Til_iron:
-                mat_Til = &eos.Til_iron;
-                break;
+      // Select the material parameters
+      struct Til_params *mat_Til;
+      switch (mat_id) {
+        case id_Til_iron:
+          mat_Til = &eos.Til_iron;
+          break;
 
-            case id_Til_granite:
-                mat_Til = &eos.Til_granite;
-                break;
+        case id_Til_granite:
+          mat_Til = &eos.Til_granite;
+          break;
 
-            case id_Til_water:
-                mat_Til = &eos.Til_water;
-                break;
+        case id_Til_water:
+          mat_Til = &eos.Til_water;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_Til = &eos.Til_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_Til =
+              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        c = Til_soundspeed_from_entropy(density, entropy, mat_Til);
+      c = Til_soundspeed_from_entropy(density, entropy, mat_Til);
 
-        break;
+      break;
 
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
-        // Select the material parameters
-        struct HM80_params *mat_HM80;
-        switch(mat_id) {
-            case id_HM80_HHe:
-                mat_HM80 = &eos.HM80_HHe;
-                break;
+      // Select the material parameters
+      struct HM80_params *mat_HM80;
+      switch (mat_id) {
+        case id_HM80_HHe:
+          mat_HM80 = &eos.HM80_HHe;
+          break;
 
-            case id_HM80_ice:
-                mat_HM80 = &eos.HM80_ice;
-                break;
+        case id_HM80_ice:
+          mat_HM80 = &eos.HM80_ice;
+          break;
 
-            case id_HM80_rock:
-                mat_HM80 = &eos.HM80_rock;
-                break;
+        case id_HM80_rock:
+          mat_HM80 = &eos.HM80_rock;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_HM80 =
+              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+      };
 
-        c = HM80_soundspeed_from_entropy(density, entropy, mat_HM80);
+      c = HM80_soundspeed_from_entropy(density, entropy, mat_HM80);
 
-        break;
+      break;
 
     // ANEOS
     case type_ANEOS:;
-        struct ANEOS_params *mat_ANEOS;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_ANEOS_iron:
-                mat_ANEOS = &eos.ANEOS_iron;
-                break;
+      struct ANEOS_params *mat_ANEOS;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_ANEOS_iron:
+          mat_ANEOS = &eos.ANEOS_iron;
+          break;
 
-            case id_MANEOS_forsterite:
-                mat_ANEOS = &eos.MANEOS_forsterite;
-                break;
+        case id_MANEOS_forsterite:
+          mat_ANEOS = &eos.MANEOS_forsterite;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_ANEOS = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_ANEOS =
+              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        c = ANEOS_soundspeed_from_entropy(density, entropy, mat_ANEOS);
+      c = ANEOS_soundspeed_from_entropy(density, entropy, mat_ANEOS);
 
-        break;
+      break;
 
     // SESAME
     case type_SESAME:;
-        struct SESAME_params *mat_SESAME;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_SESAME_iron:
-                mat_SESAME = &eos.SESAME_iron;
-                break;
+      struct SESAME_params *mat_SESAME;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_SESAME_iron:
+          mat_SESAME = &eos.SESAME_iron;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_SESAME = &eos.SESAME_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
+                                          // compiler happy
+      };
 
-        c = SESAME_soundspeed_from_entropy(density, entropy, mat_SESAME);
+      c = SESAME_soundspeed_from_entropy(density, entropy, mat_SESAME);
 
-        break;
+      break;
 
     default:
-        error("Unknown material type! mat_id = %d", mat_id);
-        c = 0; // Ignored, just here to keep the compiler happy
+      error("Unknown material type! mat_id = %d", mat_id);
+      c = 0;  // Ignored, just here to keep the compiler happy
   }
 
   return c;
@@ -546,103 +557,107 @@ gas_entropy_from_internal_energy(float density, float u, int mat_id) {
   float entropy;
 
   // Material base type
-  switch((int) (mat_id / type_factor)) {
+  switch ((int)(mat_id / type_factor)) {
 
     // Tillotson
     case type_Til:;
-        // Select the material parameters
-        struct Til_params *mat_Til;
-        switch(mat_id) {
-            case id_Til_iron:
-                mat_Til = &eos.Til_iron;
-                break;
+      // Select the material parameters
+      struct Til_params *mat_Til;
+      switch (mat_id) {
+        case id_Til_iron:
+          mat_Til = &eos.Til_iron;
+          break;
 
-            case id_Til_granite:
-                mat_Til = &eos.Til_granite;
-                break;
+        case id_Til_granite:
+          mat_Til = &eos.Til_granite;
+          break;
 
-            case id_Til_water:
-                mat_Til = &eos.Til_water;
-                break;
+        case id_Til_water:
+          mat_Til = &eos.Til_water;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_Til = &eos.Til_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_Til =
+              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        entropy = Til_entropy_from_internal_energy(density, u, mat_Til);
+      entropy = Til_entropy_from_internal_energy(density, u, mat_Til);
 
-        break;
+      break;
 
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
-        // Select the material parameters
-        struct HM80_params *mat_HM80;
-        switch(mat_id) {
-            case id_HM80_HHe:
-                mat_HM80 = &eos.HM80_HHe;
-                break;
+      // Select the material parameters
+      struct HM80_params *mat_HM80;
+      switch (mat_id) {
+        case id_HM80_HHe:
+          mat_HM80 = &eos.HM80_HHe;
+          break;
 
-            case id_HM80_ice:
-                mat_HM80 = &eos.HM80_ice;
-                break;
+        case id_HM80_ice:
+          mat_HM80 = &eos.HM80_ice;
+          break;
 
-            case id_HM80_rock:
-                mat_HM80 = &eos.HM80_rock;
-                break;
+        case id_HM80_rock:
+          mat_HM80 = &eos.HM80_rock;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_HM80 =
+              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+      };
 
-        entropy = HM80_entropy_from_internal_energy(density, u, mat_HM80);
+      entropy = HM80_entropy_from_internal_energy(density, u, mat_HM80);
 
-        break;
+      break;
 
     // ANEOS
     case type_ANEOS:;
-        struct ANEOS_params *mat_ANEOS;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_ANEOS_iron:
-                mat_ANEOS = &eos.ANEOS_iron;
-                break;
+      struct ANEOS_params *mat_ANEOS;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_ANEOS_iron:
+          mat_ANEOS = &eos.ANEOS_iron;
+          break;
 
-            case id_MANEOS_forsterite:
-                mat_ANEOS = &eos.MANEOS_forsterite;
-                break;
+        case id_MANEOS_forsterite:
+          mat_ANEOS = &eos.MANEOS_forsterite;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_ANEOS = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_ANEOS =
+              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        entropy = ANEOS_entropy_from_internal_energy(density, u, mat_ANEOS);
+      entropy = ANEOS_entropy_from_internal_energy(density, u, mat_ANEOS);
 
-        break;
+      break;
 
     // SESAME
     case type_SESAME:;
-        struct SESAME_params *mat_SESAME;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_SESAME_iron:
-                mat_SESAME = &eos.SESAME_iron;
-                break;
+      struct SESAME_params *mat_SESAME;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_SESAME_iron:
+          mat_SESAME = &eos.SESAME_iron;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_SESAME = &eos.SESAME_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
+                                          // compiler happy
+      };
 
-        entropy = SESAME_entropy_from_internal_energy(density, u, mat_SESAME);
+      entropy = SESAME_entropy_from_internal_energy(density, u, mat_SESAME);
 
-        break;
+      break;
 
     default:
-        error("Unknown material type! mat_id = %d", mat_id);
-        entropy = 0; // Ignored, just here to keep the compiler happy
+      error("Unknown material type! mat_id = %d", mat_id);
+      entropy = 0;  // Ignored, just here to keep the compiler happy
   }
 
   return entropy;
@@ -659,103 +674,107 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
   float P;
 
   // Material base type
-  switch((int) (mat_id / type_factor)) {
+  switch ((int)(mat_id / type_factor)) {
 
     // Tillotson
     case type_Til:;
-        // Select the material parameters
-        struct Til_params *mat_Til;
-        switch(mat_id) {
-            case id_Til_iron:
-                mat_Til = &eos.Til_iron;
-                break;
+      // Select the material parameters
+      struct Til_params *mat_Til;
+      switch (mat_id) {
+        case id_Til_iron:
+          mat_Til = &eos.Til_iron;
+          break;
 
-            case id_Til_granite:
-                mat_Til = &eos.Til_granite;
-                break;
+        case id_Til_granite:
+          mat_Til = &eos.Til_granite;
+          break;
 
-            case id_Til_water:
-                mat_Til = &eos.Til_water;
-                break;
+        case id_Til_water:
+          mat_Til = &eos.Til_water;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_Til = &eos.Til_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_Til =
+              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        P = Til_pressure_from_internal_energy(density, u, mat_Til);
+      P = Til_pressure_from_internal_energy(density, u, mat_Til);
 
-        break;
+      break;
 
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
-        // Select the material parameters
-        struct HM80_params *mat_HM80;
-        switch(mat_id) {
-            case id_HM80_HHe:
-                mat_HM80 = &eos.HM80_HHe;
-                break;
+      // Select the material parameters
+      struct HM80_params *mat_HM80;
+      switch (mat_id) {
+        case id_HM80_HHe:
+          mat_HM80 = &eos.HM80_HHe;
+          break;
 
-            case id_HM80_ice:
-                mat_HM80 = &eos.HM80_ice;
-                break;
+        case id_HM80_ice:
+          mat_HM80 = &eos.HM80_ice;
+          break;
 
-            case id_HM80_rock:
-                mat_HM80 = &eos.HM80_rock;
-                break;
+        case id_HM80_rock:
+          mat_HM80 = &eos.HM80_rock;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_HM80 =
+              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+      };
 
-        P = HM80_pressure_from_internal_energy(density, u, mat_HM80);
+      P = HM80_pressure_from_internal_energy(density, u, mat_HM80);
 
-        break;
+      break;
 
     // ANEOS
     case type_ANEOS:;
-        struct ANEOS_params *mat_ANEOS;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_ANEOS_iron:
-                mat_ANEOS = &eos.ANEOS_iron;
-                break;
+      struct ANEOS_params *mat_ANEOS;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_ANEOS_iron:
+          mat_ANEOS = &eos.ANEOS_iron;
+          break;
 
-            case id_MANEOS_forsterite:
-                mat_ANEOS = &eos.MANEOS_forsterite;
-                break;
+        case id_MANEOS_forsterite:
+          mat_ANEOS = &eos.MANEOS_forsterite;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_ANEOS = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_ANEOS =
+              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        P = ANEOS_pressure_from_internal_energy(density, u, mat_ANEOS);
+      P = ANEOS_pressure_from_internal_energy(density, u, mat_ANEOS);
 
-        break;
+      break;
 
     // SESAME
     case type_SESAME:;
-        struct SESAME_params *mat_SESAME;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_SESAME_iron:
-                mat_SESAME = &eos.SESAME_iron;
-                break;
+      struct SESAME_params *mat_SESAME;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_SESAME_iron:
+          mat_SESAME = &eos.SESAME_iron;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_SESAME = &eos.SESAME_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
+                                          // compiler happy
+      };
 
-        P = SESAME_pressure_from_internal_energy(density, u, mat_SESAME);
+      P = SESAME_pressure_from_internal_energy(density, u, mat_SESAME);
 
-        break;
+      break;
 
     default:
-        error("Unknown material type! mat_id = %d", mat_id);
-        P = 0; // Ignored, just here to keep the compiler happy
+      error("Unknown material type! mat_id = %d", mat_id);
+      P = 0;  // Ignored, just here to keep the compiler happy
   }
 
   return P;
@@ -775,103 +794,107 @@ gas_internal_energy_from_pressure(float density, float P, int mat_id) {
   float u;
 
   // Material base type
-  switch((int) (mat_id / type_factor)) {
+  switch ((int)(mat_id / type_factor)) {
 
     // Tillotson
     case type_Til:;
-        // Select the material parameters
-        struct Til_params *mat_Til;
-        switch(mat_id) {
-            case id_Til_iron:
-                mat_Til = &eos.Til_iron;
-                break;
+      // Select the material parameters
+      struct Til_params *mat_Til;
+      switch (mat_id) {
+        case id_Til_iron:
+          mat_Til = &eos.Til_iron;
+          break;
 
-            case id_Til_granite:
-                mat_Til = &eos.Til_granite;
-                break;
+        case id_Til_granite:
+          mat_Til = &eos.Til_granite;
+          break;
 
-            case id_Til_water:
-                mat_Til = &eos.Til_water;
-                break;
+        case id_Til_water:
+          mat_Til = &eos.Til_water;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_Til = &eos.Til_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_Til =
+              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        u = Til_internal_energy_from_pressure(density, P, mat_Til);
+      u = Til_internal_energy_from_pressure(density, P, mat_Til);
 
-        break;
+      break;
 
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
-        // Select the material parameters
-        struct HM80_params *mat_HM80;
-        switch(mat_id) {
-            case id_HM80_HHe:
-                mat_HM80 = &eos.HM80_HHe;
-                break;
+      // Select the material parameters
+      struct HM80_params *mat_HM80;
+      switch (mat_id) {
+        case id_HM80_HHe:
+          mat_HM80 = &eos.HM80_HHe;
+          break;
 
-            case id_HM80_ice:
-                mat_HM80 = &eos.HM80_ice;
-                break;
+        case id_HM80_ice:
+          mat_HM80 = &eos.HM80_ice;
+          break;
 
-            case id_HM80_rock:
-                mat_HM80 = &eos.HM80_rock;
-                break;
+        case id_HM80_rock:
+          mat_HM80 = &eos.HM80_rock;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_HM80 =
+              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+      };
 
-        u = HM80_internal_energy_from_pressure(density, P, mat_HM80);
+      u = HM80_internal_energy_from_pressure(density, P, mat_HM80);
 
-        break;
+      break;
 
     // ANEOS
     case type_ANEOS:;
-        struct ANEOS_params *mat_ANEOS;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_ANEOS_iron:
-                mat_ANEOS = &eos.ANEOS_iron;
-                break;
+      struct ANEOS_params *mat_ANEOS;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_ANEOS_iron:
+          mat_ANEOS = &eos.ANEOS_iron;
+          break;
 
-            case id_MANEOS_forsterite:
-                mat_ANEOS = &eos.MANEOS_forsterite;
-                break;
+        case id_MANEOS_forsterite:
+          mat_ANEOS = &eos.MANEOS_forsterite;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_ANEOS = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_ANEOS =
+              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        u = ANEOS_internal_energy_from_pressure(density, P, mat_ANEOS);
+      u = ANEOS_internal_energy_from_pressure(density, P, mat_ANEOS);
 
-        break;
+      break;
 
     // SESAME
     case type_SESAME:;
-        struct SESAME_params *mat_SESAME;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_SESAME_iron:
-                mat_SESAME = &eos.SESAME_iron;
-                break;
+      struct SESAME_params *mat_SESAME;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_SESAME_iron:
+          mat_SESAME = &eos.SESAME_iron;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_SESAME = &eos.SESAME_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
+                                          // compiler happy
+      };
 
-        u = SESAME_internal_energy_from_pressure(density, P, mat_SESAME);
+      u = SESAME_internal_energy_from_pressure(density, P, mat_SESAME);
 
-        break;
+      break;
 
     default:
-        error("Unknown material type! mat_id = %d", mat_id);
-        u = 0; // Ignored, just here to keep the compiler happy
+      error("Unknown material type! mat_id = %d", mat_id);
+      u = 0;  // Ignored, just here to keep the compiler happy
   }
 
   return u;
@@ -888,103 +911,107 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
   float c;
 
   // Material base type
-  switch((int) (mat_id / type_factor)) {
+  switch ((int)(mat_id / type_factor)) {
 
     // Tillotson
     case type_Til:;
-        // Select the material parameters
-        struct Til_params *mat_Til;
-        switch(mat_id) {
-            case id_Til_iron:
-                mat_Til = &eos.Til_iron;
-                break;
+      // Select the material parameters
+      struct Til_params *mat_Til;
+      switch (mat_id) {
+        case id_Til_iron:
+          mat_Til = &eos.Til_iron;
+          break;
 
-            case id_Til_granite:
-                mat_Til = &eos.Til_granite;
-                break;
+        case id_Til_granite:
+          mat_Til = &eos.Til_granite;
+          break;
 
-            case id_Til_water:
-                mat_Til = &eos.Til_water;
-                break;
+        case id_Til_water:
+          mat_Til = &eos.Til_water;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_Til = &eos.Til_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_Til =
+              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        c = Til_soundspeed_from_internal_energy(density, u, mat_Til);
+      c = Til_soundspeed_from_internal_energy(density, u, mat_Til);
 
-        break;
+      break;
 
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
-        // Select the material parameters
-        struct HM80_params *mat_HM80;
-        switch(mat_id) {
-            case id_HM80_HHe:
-                mat_HM80 = &eos.HM80_HHe;
-                break;
+      // Select the material parameters
+      struct HM80_params *mat_HM80;
+      switch (mat_id) {
+        case id_HM80_HHe:
+          mat_HM80 = &eos.HM80_HHe;
+          break;
 
-            case id_HM80_ice:
-                mat_HM80 = &eos.HM80_ice;
-                break;
+        case id_HM80_ice:
+          mat_HM80 = &eos.HM80_ice;
+          break;
 
-            case id_HM80_rock:
-                mat_HM80 = &eos.HM80_rock;
-                break;
+        case id_HM80_rock:
+          mat_HM80 = &eos.HM80_rock;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_HM80 =
+              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+      };
 
-        c = HM80_soundspeed_from_internal_energy(density, u, mat_HM80);
+      c = HM80_soundspeed_from_internal_energy(density, u, mat_HM80);
 
-        break;
+      break;
 
     // ANEOS
     case type_ANEOS:;
-        struct ANEOS_params *mat_ANEOS;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_ANEOS_iron:
-                mat_ANEOS = &eos.ANEOS_iron;
-                break;
+      struct ANEOS_params *mat_ANEOS;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_ANEOS_iron:
+          mat_ANEOS = &eos.ANEOS_iron;
+          break;
 
-            case id_MANEOS_forsterite:
-                mat_ANEOS = &eos.MANEOS_forsterite;
-                break;
+        case id_MANEOS_forsterite:
+          mat_ANEOS = &eos.MANEOS_forsterite;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_ANEOS = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_ANEOS =
+              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        c = ANEOS_soundspeed_from_internal_energy(density, u, mat_ANEOS);
+      c = ANEOS_soundspeed_from_internal_energy(density, u, mat_ANEOS);
 
-        break;
+      break;
 
     // SESAME
     case type_SESAME:;
-        struct SESAME_params *mat_SESAME;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_SESAME_iron:
-                mat_SESAME = &eos.SESAME_iron;
-                break;
+      struct SESAME_params *mat_SESAME;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_SESAME_iron:
+          mat_SESAME = &eos.SESAME_iron;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_SESAME = &eos.SESAME_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
+                                          // compiler happy
+      };
 
-        c = SESAME_soundspeed_from_internal_energy(density, u, mat_SESAME);
+      c = SESAME_soundspeed_from_internal_energy(density, u, mat_SESAME);
 
-        break;
+      break;
 
     default:
-        error("Unknown material type! mat_id = %d", mat_id);
-        c = 0; // Ignored, just here to keep the compiler happy
+      error("Unknown material type! mat_id = %d", mat_id);
+      c = 0;  // Ignored, just here to keep the compiler happy
   }
 
   return c;
@@ -996,108 +1023,112 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
  * @param density The density \f$\rho\f$
  * @param P The pressure \f$P\f$
  */
-__attribute__((always_inline)) INLINE static float
-gas_soundspeed_from_pressure(float density, float P, int mat_id) {
+__attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
+    float density, float P, int mat_id) {
   float c;
 
   // Material base type
-  switch((int) (mat_id / type_factor)) {
+  switch ((int)(mat_id / type_factor)) {
 
     // Tillotson
     case type_Til:;
-        // Select the material parameters
-        struct Til_params *mat_Til;
-        switch(mat_id) {
-            case id_Til_iron:
-                mat_Til = &eos.Til_iron;
-                break;
+      // Select the material parameters
+      struct Til_params *mat_Til;
+      switch (mat_id) {
+        case id_Til_iron:
+          mat_Til = &eos.Til_iron;
+          break;
 
-            case id_Til_granite:
-                mat_Til = &eos.Til_granite;
-                break;
+        case id_Til_granite:
+          mat_Til = &eos.Til_granite;
+          break;
 
-            case id_Til_water:
-                mat_Til = &eos.Til_water;
-                break;
+        case id_Til_water:
+          mat_Til = &eos.Til_water;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_Til = &eos.Til_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_Til =
+              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        c = Til_soundspeed_from_pressure(density, P, mat_Til);
+      c = Til_soundspeed_from_pressure(density, P, mat_Til);
 
-        break;
+      break;
 
     // Hubbard & MacFarlane (1980)
     case type_HM80:;
-        // Select the material parameters
-        struct HM80_params *mat_HM80;
-        switch(mat_id) {
-            case id_HM80_HHe:
-                mat_HM80 = &eos.HM80_HHe;
-                break;
+      // Select the material parameters
+      struct HM80_params *mat_HM80;
+      switch (mat_id) {
+        case id_HM80_HHe:
+          mat_HM80 = &eos.HM80_HHe;
+          break;
 
-            case id_HM80_ice:
-                mat_HM80 = &eos.HM80_ice;
-                break;
+        case id_HM80_ice:
+          mat_HM80 = &eos.HM80_ice;
+          break;
 
-            case id_HM80_rock:
-                mat_HM80 = &eos.HM80_rock;
-                break;
+        case id_HM80_rock:
+          mat_HM80 = &eos.HM80_rock;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_HM80 = &eos.HM80_HHe; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_HM80 =
+              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+      };
 
-        c = HM80_soundspeed_from_pressure(density, P, mat_HM80);
+      c = HM80_soundspeed_from_pressure(density, P, mat_HM80);
 
-        break;
+      break;
 
     // ANEOS
     case type_ANEOS:;
-        struct ANEOS_params *mat_ANEOS;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_ANEOS_iron:
-                mat_ANEOS = &eos.ANEOS_iron;
-                break;
+      struct ANEOS_params *mat_ANEOS;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_ANEOS_iron:
+          mat_ANEOS = &eos.ANEOS_iron;
+          break;
 
-            case id_MANEOS_forsterite:
-                mat_ANEOS = &eos.MANEOS_forsterite;
-                break;
+        case id_MANEOS_forsterite:
+          mat_ANEOS = &eos.MANEOS_forsterite;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_ANEOS = &eos.ANEOS_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_ANEOS =
+              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+      };
 
-        c = ANEOS_soundspeed_from_pressure(density, P, mat_ANEOS);
+      c = ANEOS_soundspeed_from_pressure(density, P, mat_ANEOS);
 
-        break;
+      break;
 
     // SESAME
     case type_SESAME:;
-        struct SESAME_params *mat_SESAME;
-        // Select the material parameters
-        switch(mat_id) {
-            case id_SESAME_iron:
-                mat_SESAME = &eos.SESAME_iron;
-                break;
+      struct SESAME_params *mat_SESAME;
+      // Select the material parameters
+      switch (mat_id) {
+        case id_SESAME_iron:
+          mat_SESAME = &eos.SESAME_iron;
+          break;
 
-            default:
-                error("Unknown material ID! mat_id = %d", mat_id);
-                mat_SESAME = &eos.SESAME_iron; // Ignored, just here to keep the compiler happy
-        };
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
+                                          // compiler happy
+      };
 
-        c = SESAME_soundspeed_from_pressure(density, P, mat_SESAME);
+      c = SESAME_soundspeed_from_pressure(density, P, mat_SESAME);
 
-        break;
+      break;
 
     default:
-        error("Unknown material type! mat_id = %d", mat_id);
-        c = 0; // Ignored, just here to keep the compiler happy
+      error("Unknown material type! mat_id = %d", mat_id);
+      c = 0;  // Ignored, just here to keep the compiler happy
   }
 
   return c;
@@ -1113,45 +1144,45 @@ __attribute__((always_inline)) INLINE static void eos_init(
     struct eos_parameters *e, const struct phys_const *phys_const,
     const struct unit_system *us, const struct swift_params *params) {
 
-    // Set the parameters and material IDs, load tables, etc. for each material
-    // Tillotson
-    set_Til_iron(&e->Til_iron, id_Til_iron);
-    set_Til_granite(&e->Til_granite, id_Til_granite);
-    set_Til_water(&e->Til_water, id_Til_water);
+  // Set the parameters and material IDs, load tables, etc. for each material
+  // Tillotson
+  set_Til_iron(&e->Til_iron, id_Til_iron);
+  set_Til_granite(&e->Til_granite, id_Til_granite);
+  set_Til_water(&e->Til_water, id_Til_water);
 
-    // Hubbard & MacFarlane (1980)
-    set_HM80_HHe(&e->HM80_HHe, id_HM80_HHe);
-    set_HM80_ice(&e->HM80_ice, id_HM80_ice);
-    set_HM80_rock(&e->HM80_rock, id_HM80_rock);
+  // Hubbard & MacFarlane (1980)
+  set_HM80_HHe(&e->HM80_HHe, id_HM80_HHe);
+  set_HM80_ice(&e->HM80_ice, id_HM80_ice);
+  set_HM80_rock(&e->HM80_rock, id_HM80_rock);
 
-    load_HM80_table(&e->HM80_HHe, HM80_HHe_table_file);
-    load_HM80_table(&e->HM80_ice, HM80_ice_table_file);
-    load_HM80_table(&e->HM80_rock, HM80_rock_table_file);
+  load_HM80_table(&e->HM80_HHe, HM80_HHe_table_file);
+  load_HM80_table(&e->HM80_ice, HM80_ice_table_file);
+  load_HM80_table(&e->HM80_rock, HM80_rock_table_file);
 
-    // ANEOS
-    set_ANEOS_iron(&e->ANEOS_iron, id_ANEOS_iron);
-    set_MANEOS_forsterite(&e->MANEOS_forsterite, id_MANEOS_forsterite);
+  // ANEOS
+  set_ANEOS_iron(&e->ANEOS_iron, id_ANEOS_iron);
+  set_MANEOS_forsterite(&e->MANEOS_forsterite, id_MANEOS_forsterite);
 
-    // SESAME
-    set_SESAME_iron(&e->SESAME_iron, id_SESAME_iron);
+  // SESAME
+  set_SESAME_iron(&e->SESAME_iron, id_SESAME_iron);
 
-    // Convert to internal units
-    // Tillotson
-    convert_units_Til(&e->Til_iron, us);
-    convert_units_Til(&e->Til_granite, us);
-    convert_units_Til(&e->Til_water, us);
+  // Convert to internal units
+  // Tillotson
+  convert_units_Til(&e->Til_iron, us);
+  convert_units_Til(&e->Til_granite, us);
+  convert_units_Til(&e->Til_water, us);
 
-    // Hubbard & MacFarlane (1980)
-    convert_units_HM80(&e->HM80_HHe, us);
-    convert_units_HM80(&e->HM80_ice, us);
-    convert_units_HM80(&e->HM80_rock, us);
+  // Hubbard & MacFarlane (1980)
+  convert_units_HM80(&e->HM80_HHe, us);
+  convert_units_HM80(&e->HM80_ice, us);
+  convert_units_HM80(&e->HM80_rock, us);
 
-    // ANEOS
-    convert_units_ANEOS(&e->ANEOS_iron, us);
-    convert_units_ANEOS(&e->MANEOS_forsterite, us);
+  // ANEOS
+  convert_units_ANEOS(&e->ANEOS_iron, us);
+  convert_units_ANEOS(&e->MANEOS_forsterite, us);
 
-    // SESAME
-    convert_units_SESAME(&e->SESAME_iron, us);
+  // SESAME
+  convert_units_SESAME(&e->SESAME_iron, us);
 }
 
 /**

@@ -39,8 +39,8 @@
 #endif
 
 /* Local headers. */
-#include "swift.h"
 #include "equation_of_state.h"
+#include "swift.h"
 
 /* Engine policy flags. */
 #ifndef ENGINE_POLICY
@@ -73,169 +73,129 @@
  */
 
 int main(int argc, char *argv[]) {
-    int mat_id, do_output;
-    struct HM80_params mat;
-    float rho, log_rho, log_u, P;
-    int num_rho, num_u;
-    struct unit_system us;
-    const struct phys_const *phys_const = 0; // Unused placeholder
-    const struct swift_params *params = 0; // Unused placeholder
+  int mat_id, do_output;
+  struct HM80_params mat;
+  float rho, log_rho, log_u, P;
+  int num_rho, num_u;
+  struct unit_system us;
+  const struct phys_const *phys_const = 0;  // Unused placeholder
+  const struct swift_params *params = 0;    // Unused placeholder
 
-    // Check the number of system arguments and set defaults if not provided
-    switch(argc) {
-        case 1:
-            // Default both
-            mat_id = HM80_ice;
-            do_output = 0;
-            break;
+  // Check the number of system arguments and set defaults if not provided
+  switch (argc) {
+    case 1:
+      // Default both
+      mat_id = HM80_ice;
+      do_output = 0;
+      break;
 
-        case 2:
-            // Read mat_id, default do_output
-            mat_id = atoi(argv[1]);
-            do_output = 0;
-            break;
+    case 2:
+      // Read mat_id, default do_output
+      mat_id = atoi(argv[1]);
+      do_output = 0;
+      break;
 
-        case 3:
-            // Read both
-            mat_id = atoi(argv[1]);
-            do_output = atoi(argv[2]);
-            break;
+    case 3:
+      // Read both
+      mat_id = atoi(argv[1]);
+      do_output = atoi(argv[2]);
+      break;
 
-        default:
-            error("Invalid number of system arguments!\n");
-            mat_id = HM80_ice; // Ignored, just here to keep the compiler happy
-            do_output = 0;
-    };
+    default:
+      error("Invalid number of system arguments!\n");
+      mat_id = HM80_ice;  // Ignored, just here to keep the compiler happy
+      do_output = 0;
+  };
 
-    /* Greeting message */
-    printf("This is %s\n", package_description());
+  /* Greeting message */
+  printf("This is %s\n", package_description());
 
-    // Select the material parameters
-    switch(mat_id) {
-        case HM80_HHe:
-            printf("HM80_HHe \n");
-            set_HM80_HHe(&mat);
-            load_HM80_table(&mat, HM80_HHe_table_file);
-            break;
+  // Select the material parameters
+  switch (mat_id) {
+    case HM80_HHe:
+      printf("HM80_HHe \n");
+      set_HM80_HHe(&mat);
+      load_HM80_table(&mat, HM80_HHe_table_file);
+      break;
 
-        case HM80_ice:
-            printf("HM80_ice \n");
-            set_HM80_ice(&mat);
-            load_HM80_table(&mat, HM80_ice_table_file);
-            break;
+    case HM80_ice:
+      printf("HM80_ice \n");
+      set_HM80_ice(&mat);
+      load_HM80_table(&mat, HM80_ice_table_file);
+      break;
 
-        case HM80_rock:
-            printf("HM80_rock \n");
-            set_HM80_rock(&mat);
-            load_HM80_table(&mat, HM80_rock_table_file);
-            break;
+    case HM80_rock:
+      printf("HM80_rock \n");
+      set_HM80_rock(&mat);
+      load_HM80_table(&mat, HM80_rock_table_file);
+      break;
 
-        default:
-            error("Unknown material ID! mat_id = %d", mat_id);
-            set_HM80_rock(&mat); // Ignored, just here to keep the compiler happy
-            load_HM80_table(&mat, HM80_rock_table_file);
-    };
+    default:
+      error("Unknown material ID! mat_id = %d", mat_id);
+      set_HM80_rock(&mat);  // Ignored, just here to keep the compiler happy
+      load_HM80_table(&mat, HM80_rock_table_file);
+  };
 
-    // Convert to internal units
-    units_init(&us, 5.9724e27, 6.3710e8, 1, 1, 1);
-    convert_units_HM80(&mat, &us);
+  // Convert to internal units
+  units_init(&us, 5.9724e27, 6.3710e8, 1, 1, 1);
+  convert_units_HM80(&mat, &us);
 
-    eos_init(&eos, phys_const, &us, params);
+  eos_init(&eos, phys_const, &us, params);
 
-    // Output file
-    FILE *f = fopen("testEOS_rho_u_P.txt", "w");
-    if (f == NULL) {
-        printf("Could not open output file!\n");
-        exit(EXIT_FAILURE);
-    }
+  // Output file
+  FILE *f = fopen("testEOS_rho_u_P.txt", "w");
+  if (f == NULL) {
+    printf("Could not open output file!\n");
+    exit(EXIT_FAILURE);
+  }
 
-    num_rho = (mat.log_rho_max - mat.log_rho_min) / mat.log_rho_step;
-    num_u = (mat.log_u_max - mat.log_u_min) / mat.log_u_step;
-    if (do_output == 1) {
-        fprintf(f, "Density  Sp.Int.Energy  mat_id \n");
-        fprintf(f, "%d      %d            %d \n",
-                num_rho, num_u, mat_id);
-    }
+  num_rho = (mat.log_rho_max - mat.log_rho_min) / mat.log_rho_step;
+  num_u = (mat.log_u_max - mat.log_u_min) / mat.log_u_step;
+  if (do_output == 1) {
+    fprintf(f, "Density  Sp.Int.Energy  mat_id \n");
+    fprintf(f, "%d      %d            %d \n", num_rho, num_u, mat_id);
+  }
 
-    // Arrays of densities and energies
-    float A1_rho[num_rho], A1_u[num_u];
+  // Arrays of densities and energies
+  float A1_rho[num_rho], A1_u[num_u];
 
-    log_rho = mat.log_rho_min;
-    for (int i = 0; i < num_rho; i++) {
-        A1_rho[i] = exp(log_rho);
-        log_rho += mat.log_rho_step;
+  log_rho = mat.log_rho_min;
+  for (int i = 0; i < num_rho; i++) {
+    A1_rho[i] = exp(log_rho);
+    log_rho += mat.log_rho_step;
 
-        if (do_output == 1)
-            fprintf(f, "%.6e ", A1_rho[i] *
-                    units_cgs_conversion_factor(&us, UNIT_CONV_DENSITY));
+    if (do_output == 1)
+      fprintf(f, "%.6e ",
+              A1_rho[i] * units_cgs_conversion_factor(&us, UNIT_CONV_DENSITY));
+  }
+
+  if (do_output == 1) fprintf(f, "\n");
+  log_u = mat.log_u_min;
+  for (int i = 0; i < num_u; i++) {
+    A1_u[i] = exp(log_u);
+    log_u += mat.log_u_step;
+
+    if (do_output == 1)
+      fprintf(f, "%.6e ", A1_u[i] * units_cgs_conversion_factor(
+                                        &us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
+  }
+
+  // Pressures P(rho, u)
+  if (do_output == 1) fprintf(f, "\n");
+  for (int i = 0; i < num_rho; i++) {
+    rho = A1_rho[i];
+
+    for (int j = 0; j < num_u; j++) {
+      P = gas_pressure_from_internal_energy(rho, A1_u[j], mat.mat_id);
+
+      if (do_output == 1)
+        fprintf(f, "%.6e ",
+                P * units_cgs_conversion_factor(&us, UNIT_CONV_PRESSURE));
     }
 
     if (do_output == 1) fprintf(f, "\n");
-    log_u = mat.log_u_min;
-    for (int i = 0; i < num_u; i++) {
-        A1_u[i] = exp(log_u);
-        log_u += mat.log_u_step;
+  }
+  fclose(f);
 
-        if (do_output == 1)
-            fprintf(f, "%.6e ", A1_u[i] *
-                    units_cgs_conversion_factor(&us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
-    }
-
-    // Pressures P(rho, u)
-    if (do_output == 1) fprintf(f, "\n");
-    for (int i = 0; i < num_rho; i++) {
-        rho = A1_rho[i];
-
-        for (int j = 0; j < num_u; j++) {
-            P = gas_pressure_from_internal_energy(rho, A1_u[j], mat.mat_id);
-
-            if (do_output == 1)
-                fprintf(f, "%.6e ", P *
-                        units_cgs_conversion_factor(&us, UNIT_CONV_PRESSURE));
-        }
-
-        if (do_output == 1) fprintf(f, "\n");
-    }
-    fclose(f);
-
-    return 0;
+  return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
