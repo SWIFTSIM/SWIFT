@@ -847,8 +847,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       error("Smoothing length failed to converge on %i particles.", count);
     }
 #else
-    if (count)
+    if (count) {
       error("Smoothing length failed to converge on %i particles.", count);
+    }
 #endif
 
     /* Be clean */

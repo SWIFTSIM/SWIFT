@@ -75,7 +75,7 @@ case "$with_subgrid" in
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_hydro=gadget2
    ;;
-   *)	
+   *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
    ;;
 esac
@@ -618,7 +618,7 @@ if test "x$with_fftw" != "xno"; then
          AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.]),
          AC_MSG_ERROR(something is wrong with the FFTW library!), $FFTW_LIBS)
       have_fftw="yes"
-   fi      
+   fi
    if test "$have_fftw" = "no"; then
       FFTW_LIBS=""
       FFTW_INCS=""
@@ -855,7 +855,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo, shadowfax debug default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo, shadowfax, minimal-multi-mat, debug default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -887,6 +887,9 @@ case "$with_hydro" in
    ;;
    shadowfax)
       AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])
+   ;;
+   minimal-multi-mat)
+      AC_DEFINE([MINIMAL_MULTI_MAT_SPH], [1], [Minimal Multiple Material SPH])
    ;;
 
    *)
@@ -975,7 +978,7 @@ esac
 #  Equation of state
 AC_ARG_WITH([equation-of-state],
    [AS_HELP_STRING([--with-equation-of-state=<EoS>],
-      [equation of state @<:@ideal-gas, isothermal-gas default: ideal-gas@:>@]
+      [equation of state @<:@ideal-gas, isothermal-gas, planetary default: ideal-gas@:>@]
    )],
    [with_eos="$withval"],
    [with_eos="ideal-gas"]
@@ -986,6 +989,9 @@ case "$with_eos" in
    ;;
    isothermal-gas)
       AC_DEFINE([EOS_ISOTHERMAL_GAS], [1], [Isothermal gas equation of state])
+   ;;
+   planetary)
+      AC_DEFINE([EOS_PLANETARY], [1], [All planetary equations of state])
    ;;
    *)
       AC_MSG_ERROR([Unknown equation of state: $with_eos])
@@ -1074,7 +1080,7 @@ case "$with_cooling" in
    grackle)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       AC_DEFINE([COOLING_GRACKLE_MODE], [0], [Grackle chemistry network, mode 0])
-   ;; 
+   ;;
    grackle1)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       AC_DEFINE([COOLING_GRACKLE_MODE], [1], [Grackle chemistry network, mode 1])
@@ -1082,11 +1088,11 @@ case "$with_cooling" in
    grackle2)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       AC_DEFINE([COOLING_GRACKLE_MODE], [2], [Grackle chemistry network, mode 2])
-   ;; 
+   ;;
    grackle3)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       AC_DEFINE([COOLING_GRACKLE_MODE], [3], [Grackle chemistry network, mode 3])
-   ;; 
+   ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
    ;;

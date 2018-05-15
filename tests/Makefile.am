@@ -1,16 +1,16 @@
 # This file is part of SWIFT.
 # Copyright (c) 2015 matthieu.schaller@durham.ac.uk.
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -27,7 +27,7 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
         testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
-	testPotentialPair 
+	testPotentialPair testEOS
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
@@ -37,7 +37,7 @@ check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
-		 testGravityDerivatives testPotentialSelf testPotentialPair
+		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -105,6 +105,8 @@ testPotentialSelf_SOURCES = testPotentialSelf.c
 
 testPotentialPair_SOURCES = testPotentialPair.c
 
+testEOS_SOURCES = testEOS.c
+
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
 	     test27cells.sh test27cellsPerturbed.sh testParser.sh testPeriodicBC.sh \
@@ -112,4 +114,5 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
 	     difffloat.py tolerance_125_normal.dat tolerance_125_perturbed.dat \
              tolerance_27_normal.dat tolerance_27_perturbed.dat tolerance_27_perturbed_h.dat tolerance_27_perturbed_h2.dat \
 	     tolerance_testInteractions.dat tolerance_pair_active.dat tolerance_pair_force_active.dat \
-	     fft_params.yml tolerance_periodic_BC_normal.dat tolerance_periodic_BC_perturbed.dat
+	     fft_params.yml tolerance_periodic_BC_normal.dat tolerance_periodic_BC_perturbed.dat \
+	     testEOS.sh testEOS_plot.sh

@@ -120,6 +120,8 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
+#elif defined(MINIMAL_MULTI_MAT_SPH)
+  part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
   part->primitives.P = pressure;
 #else
@@ -403,7 +405,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
             hydro_get_comoving_density(&main_cell->parts[pid]),
-#if defined(MINIMAL_SPH) || defined(SHADOWFAX_SPH)
+#if defined(MINIMAL_SPH) || defined(MINIMAL_MULTI_MAT_SPH) || \
+    defined(SHADOWFAX_SPH)
             0.f,
 #else
             main_cell->parts[pid].density.div_v,

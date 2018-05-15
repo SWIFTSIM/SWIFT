@@ -33,7 +33,12 @@ examples/*/*/*.xmf
 examples/*/*/*.png
 examples/*/*/*.txt
 examples/*/*/*.dot
+examples/*/*/*.rst
+examples/*/*/*.hdf5
+examples/*/snapshots*
+examples/*/restart
 examples/*/*/used_parameters.yml
+examples/*/*.mpg
 examples/*/gravity_checks_*.dat
 
 tests/testActivePair
@@ -59,7 +64,7 @@ tests/swift_dopair_125_standard.dat
 tests/brute_force_125_perturbed.dat
 tests/swift_dopair_125_perturbed.dat
 tests/brute_force_pair_active.dat
-tests/brute_force_dopair2_active.dat 
+tests/brute_force_dopair2_active.dat
 tests/swift_dopair2_force_active.dat
 tests/brute_force_periodic_BC_perturbed.dat
 tests/swift_dopair_active.dat
@@ -108,6 +113,9 @@ tests/benchmarkInteractions
 tests/testGravityDerivatives
 tests/testPotentialSelf
 tests/testPotentialPair
+tests/testEOS
+tests/testEOS*.txt
+tests/testEOS*.png
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf
