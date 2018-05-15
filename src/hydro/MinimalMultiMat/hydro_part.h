@@ -159,8 +159,8 @@ struct part {
   /* Chemistry information */
   struct chemistry_part_data chemistry_data;
 
-  /*! Material identifier flag (integer) */
-  enum material_id mat_id;
+  /*! Material identifier flag */
+  enum eos_planetary_material_id mat_id;
 
   /*! Time-step length */
   timebin_t time_bin;

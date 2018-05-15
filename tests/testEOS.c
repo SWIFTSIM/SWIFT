@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
   // Sys args
   int mat_id, do_output;
   // Default sys args
-  const int mat_id_def = id_HM80_ice;
+  const int mat_id_def = eos_planetary_id_HM80_ice;
   const int do_output_def = 0;
 
   // Check the number of system arguments and use defaults if not provided
@@ -133,19 +133,19 @@ int main(int argc, char *argv[]) {
 
   // Check material ID
   // Material base type
-  switch ((int)(mat_id / type_factor)) {
+  switch ((int)(mat_id / eos_planetary_type_factor)) {
     // Tillotson
-    case type_Til:
+    case eos_planetary_type_Til:
       switch (mat_id) {
-        case id_Til_iron:
+        case eos_planetary_id_Til_iron:
           printf("  Tillotson iron \n");
           break;
 
-        case id_Til_granite:
+        case eos_planetary_id_Til_granite:
           printf("  Tillotson granite \n");
           break;
 
-        case id_Til_water:
+        case eos_planetary_id_Til_water:
           printf("  Tillotson water \n");
           break;
 
@@ -155,17 +155,17 @@ int main(int argc, char *argv[]) {
       break;
 
     // Hubbard & MacFarlane (1980)
-    case type_HM80:
+    case eos_planetary_type_HM80:
       switch (mat_id) {
-        case id_HM80_HHe:
+        case eos_planetary_id_HM80_HHe:
           printf("  Hubbard & MacFarlane (1980) hydrogen-helium atmosphere \n");
           break;
 
-        case id_HM80_ice:
+        case eos_planetary_id_HM80_ice:
           printf("  Hubbard & MacFarlane (1980) ice mix \n");
           break;
 
-        case id_HM80_rock:
+        case eos_planetary_id_HM80_rock:
           printf("  Hubbard & MacFarlane (1980) rock mix \n");
           break;
 
@@ -175,13 +175,13 @@ int main(int argc, char *argv[]) {
       break;
 
     // ANEOS
-    case type_ANEOS:
+    case eos_planetary_type_ANEOS:
       switch (mat_id) {
-        case id_ANEOS_iron:
+        case eos_planetary_id_ANEOS_iron:
           printf("  ANEOS iron \n");
           break;
 
-        case id_MANEOS_forsterite:
+        case eos_planetary_id_MANEOS_forsterite:
           printf("  MANEOS forsterite \n");
           break;
 
@@ -191,9 +191,9 @@ int main(int argc, char *argv[]) {
       break;
 
     // SESAME
-    case type_SESAME:
+    case eos_planetary_type_SESAME:
       switch (mat_id) {
-        case id_SESAME_iron:
+        case eos_planetary_id_SESAME_iron:
           printf("  SESAME iron \n");
           break;
 

@@ -48,7 +48,6 @@
 #include "tillotson.h"
 
 extern struct eos_parameters eos;
-/* ------------------------------------------------------------------------- */
 
 struct eos_parameters {
   struct Til_params Til_iron, Til_granite, Til_water;
@@ -57,30 +56,67 @@ struct eos_parameters {
   struct SESAME_params SESAME_iron;
 };
 
-// Material identifier flags (material_ID = type_ID * type_factor + unit_ID)
+/*! Material identifier flags (material_ID = type_ID * type_factor + unit_ID) */
 #define eos_planetary_type_factor 100
 
-enum type_id {
-  type_Til = 1,
-  type_HM80 = 2,
-  type_ANEOS = 3,
-  type_SESAME = 4,
+/**
+ * @brief Master type for the planetary equation of state.
+ */
+enum eos_planetary_type_id {
+  eos_planetary_type_Til = 1,
+  eos_planetary_type_HM80 = 2,
+  eos_planetary_type_ANEOS = 3,
+  eos_planetary_type_SESAME = 4,
 } __attribute__((packed));
 
-enum material_id {
-  // Tillotson
-  id_Til_iron = type_Til * eos_planetary_type_factor,
-  id_Til_granite = type_Til * eos_planetary_type_factor + 1,
-  id_Til_water = type_Til * eos_planetary_type_factor + 2,
-  // Hubbard & MacFarlane (1980) Uranus/Neptune
-  id_HM80_HHe = type_HM80 * eos_planetary_type_factor,       // Hydrogen-helium atmosphere
-  id_HM80_ice = type_HM80 * eos_planetary_type_factor + 1,   // H20-CH4-NH3 ice mix
-  id_HM80_rock = type_HM80 * eos_planetary_type_factor + 2,  // SiO2-MgO-FeS-FeO rock mix
-  // ANEOS
-  id_ANEOS_iron = type_ANEOS * eos_planetary_type_factor,
-  id_MANEOS_forsterite = type_ANEOS * eos_planetary_type_factor + 1,
-  // SESAME
-  id_SESAME_iron = type_SESAME * eos_planetary_type_factor,
+/**
+ * @brief Minor type for the planetary equation of state.
+ */
+enum eos_planetary_material_id {
+
+  /* Tillotson */
+
+  /*! Tillotson iron */
+  eos_planetary_id_Til_iron =
+      eos_planetary_type_Til * eos_planetary_type_factor,
+
+  /*! Tillotson granite */
+  eos_planetary_id_Til_granite =
+      eos_planetary_type_Til * eos_planetary_type_factor + 1,
+
+  /*! Tillotson water */
+  eos_planetary_id_Til_water =
+      eos_planetary_type_Til * eos_planetary_type_factor + 2,
+
+  /* Hubbard & MacFarlane (1980) Uranus/Neptune */
+
+  /*! Hydrogen-helium atmosphere */
+  eos_planetary_id_HM80_HHe =
+      eos_planetary_type_HM80 * eos_planetary_type_factor,
+
+  /*! H20-CH4-NH3 ice mix */
+  eos_planetary_id_HM80_ice =
+      eos_planetary_type_HM80 * eos_planetary_type_factor + 1,
+
+  /*! SiO2-MgO-FeS-FeO rock mix */
+  eos_planetary_id_HM80_rock =
+      eos_planetary_type_HM80 * eos_planetary_type_factor + 2,
+
+  /* ANEOS */
+
+  /*! ANEOS iron */
+  eos_planetary_id_ANEOS_iron =
+      eos_planetary_type_ANEOS * eos_planetary_type_factor,
+
+  /*! ANEOS forsterite */
+  eos_planetary_id_MANEOS_forsterite =
+      eos_planetary_type_ANEOS * eos_planetary_type_factor + 1,
+
+  /* SESAME */
+
+  /*! SESAME iron */
+  eos_planetary_id_SESAME_iron =
+      eos_planetary_type_SESAME * eos_planetary_type_factor,
 } __attribute__((packed));
 
 /**
@@ -97,19 +133,19 @@ gas_internal_energy_from_entropy(float density, float entropy, int mat_id) {
   switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
-    case type_Til:;
+    case eos_planetary_type_Til:;
       // Select the material parameters
       struct Til_params *mat_Til;
       switch (mat_id) {
-        case id_Til_iron:
+        case eos_planetary_id_Til_iron:
           mat_Til = &eos.Til_iron;
           break;
 
-        case id_Til_granite:
+        case eos_planetary_id_Til_granite:
           mat_Til = &eos.Til_granite;
           break;
 
-        case id_Til_water:
+        case eos_planetary_id_Til_water:
           mat_Til = &eos.Til_water;
           break;
 
@@ -124,19 +160,19 @@ gas_internal_energy_from_entropy(float density, float entropy, int mat_id) {
       break;
 
     // Hubbard & MacFarlane (1980)
-    case type_HM80:;
+    case eos_planetary_type_HM80:;
       // Select the material parameters
       struct HM80_params *mat_HM80;
       switch (mat_id) {
-        case id_HM80_HHe:
+        case eos_planetary_id_HM80_HHe:
           mat_HM80 = &eos.HM80_HHe;
           break;
 
-        case id_HM80_ice:
+        case eos_planetary_id_HM80_ice:
           mat_HM80 = &eos.HM80_ice;
           break;
 
-        case id_HM80_rock:
+        case eos_planetary_id_HM80_rock:
           mat_HM80 = &eos.HM80_rock;
           break;
 
@@ -151,15 +187,15 @@ gas_internal_energy_from_entropy(float density, float entropy, int mat_id) {
       break;
 
     // ANEOS
-    case type_ANEOS:;
+    case eos_planetary_type_ANEOS:;
       struct ANEOS_params *mat_ANEOS;
       // Select the material parameters
       switch (mat_id) {
-        case id_ANEOS_iron:
+        case eos_planetary_id_ANEOS_iron:
           mat_ANEOS = &eos.ANEOS_iron;
           break;
 
-        case id_MANEOS_forsterite:
+        case eos_planetary_id_MANEOS_forsterite:
           mat_ANEOS = &eos.MANEOS_forsterite;
           break;
 
@@ -174,11 +210,11 @@ gas_internal_energy_from_entropy(float density, float entropy, int mat_id) {
       break;
 
     // SESAME
-    case type_SESAME:;
+    case eos_planetary_type_SESAME:;
       struct SESAME_params *mat_SESAME;
       // Select the material parameters
       switch (mat_id) {
-        case id_SESAME_iron:
+        case eos_planetary_id_SESAME_iron:
           mat_SESAME = &eos.SESAME_iron;
           break;
 
@@ -214,19 +250,19 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
   switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
-    case type_Til:;
+    case eos_planetary_type_Til:;
       // Select the material parameters
       struct Til_params *mat_Til;
       switch (mat_id) {
-        case id_Til_iron:
+        case eos_planetary_id_Til_iron:
           mat_Til = &eos.Til_iron;
           break;
 
-        case id_Til_granite:
+        case eos_planetary_id_Til_granite:
           mat_Til = &eos.Til_granite;
           break;
 
-        case id_Til_water:
+        case eos_planetary_id_Til_water:
           mat_Til = &eos.Til_water;
           break;
 
@@ -241,19 +277,19 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
       break;
 
     // Hubbard & MacFarlane (1980)
-    case type_HM80:;
+    case eos_planetary_type_HM80:;
       // Select the material parameters
       struct HM80_params *mat_HM80;
       switch (mat_id) {
-        case id_HM80_HHe:
+        case eos_planetary_id_HM80_HHe:
           mat_HM80 = &eos.HM80_HHe;
           break;
 
-        case id_HM80_ice:
+        case eos_planetary_id_HM80_ice:
           mat_HM80 = &eos.HM80_ice;
           break;
 
-        case id_HM80_rock:
+        case eos_planetary_id_HM80_rock:
           mat_HM80 = &eos.HM80_rock;
           break;
 
@@ -268,15 +304,15 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
       break;
 
     // ANEOS
-    case type_ANEOS:;
+    case eos_planetary_type_ANEOS:;
       struct ANEOS_params *mat_ANEOS;
       // Select the material parameters
       switch (mat_id) {
-        case id_ANEOS_iron:
+        case eos_planetary_id_ANEOS_iron:
           mat_ANEOS = &eos.ANEOS_iron;
           break;
 
-        case id_MANEOS_forsterite:
+        case eos_planetary_id_MANEOS_forsterite:
           mat_ANEOS = &eos.MANEOS_forsterite;
           break;
 
@@ -291,11 +327,11 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
       break;
 
     // SESAME
-    case type_SESAME:;
+    case eos_planetary_type_SESAME:;
       struct SESAME_params *mat_SESAME;
       // Select the material parameters
       switch (mat_id) {
-        case id_SESAME_iron:
+        case eos_planetary_id_SESAME_iron:
           mat_SESAME = &eos.SESAME_iron;
           break;
 
@@ -332,19 +368,19 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
   switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
-    case type_Til:;
+    case eos_planetary_type_Til:;
       // Select the material parameters
       struct Til_params *mat_Til;
       switch (mat_id) {
-        case id_Til_iron:
+        case eos_planetary_id_Til_iron:
           mat_Til = &eos.Til_iron;
           break;
 
-        case id_Til_granite:
+        case eos_planetary_id_Til_granite:
           mat_Til = &eos.Til_granite;
           break;
 
-        case id_Til_water:
+        case eos_planetary_id_Til_water:
           mat_Til = &eos.Til_water;
           break;
 
@@ -359,19 +395,19 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
       break;
 
     // Hubbard & MacFarlane (1980)
-    case type_HM80:;
+    case eos_planetary_type_HM80:;
       // Select the material parameters
       struct HM80_params *mat_HM80;
       switch (mat_id) {
-        case id_HM80_HHe:
+        case eos_planetary_id_HM80_HHe:
           mat_HM80 = &eos.HM80_HHe;
           break;
 
-        case id_HM80_ice:
+        case eos_planetary_id_HM80_ice:
           mat_HM80 = &eos.HM80_ice;
           break;
 
-        case id_HM80_rock:
+        case eos_planetary_id_HM80_rock:
           mat_HM80 = &eos.HM80_rock;
           break;
 
@@ -386,15 +422,15 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
       break;
 
     // ANEOS
-    case type_ANEOS:;
+    case eos_planetary_type_ANEOS:;
       struct ANEOS_params *mat_ANEOS;
       // Select the material parameters
       switch (mat_id) {
-        case id_ANEOS_iron:
+        case eos_planetary_id_ANEOS_iron:
           mat_ANEOS = &eos.ANEOS_iron;
           break;
 
-        case id_MANEOS_forsterite:
+        case eos_planetary_id_MANEOS_forsterite:
           mat_ANEOS = &eos.MANEOS_forsterite;
           break;
 
@@ -409,11 +445,11 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
       break;
 
     // SESAME
-    case type_SESAME:;
+    case eos_planetary_type_SESAME:;
       struct SESAME_params *mat_SESAME;
       // Select the material parameters
       switch (mat_id) {
-        case id_SESAME_iron:
+        case eos_planetary_id_SESAME_iron:
           mat_SESAME = &eos.SESAME_iron;
           break;
 
@@ -449,19 +485,19 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
   switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
-    case type_Til:;
+    case eos_planetary_type_Til:;
       // Select the material parameters
       struct Til_params *mat_Til;
       switch (mat_id) {
-        case id_Til_iron:
+        case eos_planetary_id_Til_iron:
           mat_Til = &eos.Til_iron;
           break;
 
-        case id_Til_granite:
+        case eos_planetary_id_Til_granite:
           mat_Til = &eos.Til_granite;
           break;
 
-        case id_Til_water:
+        case eos_planetary_id_Til_water:
           mat_Til = &eos.Til_water;
           break;
 
@@ -476,19 +512,19 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
       break;
 
     // Hubbard & MacFarlane (1980)
-    case type_HM80:;
+    case eos_planetary_type_HM80:;
       // Select the material parameters
       struct HM80_params *mat_HM80;
       switch (mat_id) {
-        case id_HM80_HHe:
+        case eos_planetary_id_HM80_HHe:
           mat_HM80 = &eos.HM80_HHe;
           break;
 
-        case id_HM80_ice:
+        case eos_planetary_id_HM80_ice:
           mat_HM80 = &eos.HM80_ice;
           break;
 
-        case id_HM80_rock:
+        case eos_planetary_id_HM80_rock:
           mat_HM80 = &eos.HM80_rock;
           break;
 
@@ -503,15 +539,15 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
       break;
 
     // ANEOS
-    case type_ANEOS:;
+    case eos_planetary_type_ANEOS:;
       struct ANEOS_params *mat_ANEOS;
       // Select the material parameters
       switch (mat_id) {
-        case id_ANEOS_iron:
+        case eos_planetary_id_ANEOS_iron:
           mat_ANEOS = &eos.ANEOS_iron;
           break;
 
-        case id_MANEOS_forsterite:
+        case eos_planetary_id_MANEOS_forsterite:
           mat_ANEOS = &eos.MANEOS_forsterite;
           break;
 
@@ -526,11 +562,11 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
       break;
 
     // SESAME
-    case type_SESAME:;
+    case eos_planetary_type_SESAME:;
       struct SESAME_params *mat_SESAME;
       // Select the material parameters
       switch (mat_id) {
-        case id_SESAME_iron:
+        case eos_planetary_id_SESAME_iron:
           mat_SESAME = &eos.SESAME_iron;
           break;
 
@@ -566,19 +602,19 @@ gas_entropy_from_internal_energy(float density, float u, int mat_id) {
   switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
-    case type_Til:;
+    case eos_planetary_type_Til:;
       // Select the material parameters
       struct Til_params *mat_Til;
       switch (mat_id) {
-        case id_Til_iron:
+        case eos_planetary_id_Til_iron:
           mat_Til = &eos.Til_iron;
           break;
 
-        case id_Til_granite:
+        case eos_planetary_id_Til_granite:
           mat_Til = &eos.Til_granite;
           break;
 
-        case id_Til_water:
+        case eos_planetary_id_Til_water:
           mat_Til = &eos.Til_water;
           break;
 
@@ -593,19 +629,19 @@ gas_entropy_from_internal_energy(float density, float u, int mat_id) {
       break;
 
     // Hubbard & MacFarlane (1980)
-    case type_HM80:;
+    case eos_planetary_type_HM80:;
       // Select the material parameters
       struct HM80_params *mat_HM80;
       switch (mat_id) {
-        case id_HM80_HHe:
+        case eos_planetary_id_HM80_HHe:
           mat_HM80 = &eos.HM80_HHe;
           break;
 
-        case id_HM80_ice:
+        case eos_planetary_id_HM80_ice:
           mat_HM80 = &eos.HM80_ice;
           break;
 
-        case id_HM80_rock:
+        case eos_planetary_id_HM80_rock:
           mat_HM80 = &eos.HM80_rock;
           break;
 
@@ -620,15 +656,15 @@ gas_entropy_from_internal_energy(float density, float u, int mat_id) {
       break;
 
     // ANEOS
-    case type_ANEOS:;
+    case eos_planetary_type_ANEOS:;
       struct ANEOS_params *mat_ANEOS;
       // Select the material parameters
       switch (mat_id) {
-        case id_ANEOS_iron:
+        case eos_planetary_id_ANEOS_iron:
           mat_ANEOS = &eos.ANEOS_iron;
           break;
 
-        case id_MANEOS_forsterite:
+        case eos_planetary_id_MANEOS_forsterite:
           mat_ANEOS = &eos.MANEOS_forsterite;
           break;
 
@@ -643,11 +679,11 @@ gas_entropy_from_internal_energy(float density, float u, int mat_id) {
       break;
 
     // SESAME
-    case type_SESAME:;
+    case eos_planetary_type_SESAME:;
       struct SESAME_params *mat_SESAME;
       // Select the material parameters
       switch (mat_id) {
-        case id_SESAME_iron:
+        case eos_planetary_id_SESAME_iron:
           mat_SESAME = &eos.SESAME_iron;
           break;
 
@@ -683,19 +719,19 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
   switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
-    case type_Til:;
+    case eos_planetary_type_Til:;
       // Select the material parameters
       struct Til_params *mat_Til;
       switch (mat_id) {
-        case id_Til_iron:
+        case eos_planetary_id_Til_iron:
           mat_Til = &eos.Til_iron;
           break;
 
-        case id_Til_granite:
+        case eos_planetary_id_Til_granite:
           mat_Til = &eos.Til_granite;
           break;
 
-        case id_Til_water:
+        case eos_planetary_id_Til_water:
           mat_Til = &eos.Til_water;
           break;
 
@@ -710,19 +746,19 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
       break;
 
     // Hubbard & MacFarlane (1980)
-    case type_HM80:;
+    case eos_planetary_type_HM80:;
       // Select the material parameters
       struct HM80_params *mat_HM80;
       switch (mat_id) {
-        case id_HM80_HHe:
+        case eos_planetary_id_HM80_HHe:
           mat_HM80 = &eos.HM80_HHe;
           break;
 
-        case id_HM80_ice:
+        case eos_planetary_id_HM80_ice:
           mat_HM80 = &eos.HM80_ice;
           break;
 
-        case id_HM80_rock:
+        case eos_planetary_id_HM80_rock:
           mat_HM80 = &eos.HM80_rock;
           break;
 
@@ -737,15 +773,15 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
       break;
 
     // ANEOS
-    case type_ANEOS:;
+    case eos_planetary_type_ANEOS:;
       struct ANEOS_params *mat_ANEOS;
       // Select the material parameters
       switch (mat_id) {
-        case id_ANEOS_iron:
+        case eos_planetary_id_ANEOS_iron:
           mat_ANEOS = &eos.ANEOS_iron;
           break;
 
-        case id_MANEOS_forsterite:
+        case eos_planetary_id_MANEOS_forsterite:
           mat_ANEOS = &eos.MANEOS_forsterite;
           break;
 
@@ -760,11 +796,11 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
       break;
 
     // SESAME
-    case type_SESAME:;
+    case eos_planetary_type_SESAME:;
       struct SESAME_params *mat_SESAME;
       // Select the material parameters
       switch (mat_id) {
-        case id_SESAME_iron:
+        case eos_planetary_id_SESAME_iron:
           mat_SESAME = &eos.SESAME_iron;
           break;
 
@@ -803,19 +839,19 @@ gas_internal_energy_from_pressure(float density, float P, int mat_id) {
   switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
-    case type_Til:;
+    case eos_planetary_type_Til:;
       // Select the material parameters
       struct Til_params *mat_Til;
       switch (mat_id) {
-        case id_Til_iron:
+        case eos_planetary_id_Til_iron:
           mat_Til = &eos.Til_iron;
           break;
 
-        case id_Til_granite:
+        case eos_planetary_id_Til_granite:
           mat_Til = &eos.Til_granite;
           break;
 
-        case id_Til_water:
+        case eos_planetary_id_Til_water:
           mat_Til = &eos.Til_water;
           break;
 
@@ -830,19 +866,19 @@ gas_internal_energy_from_pressure(float density, float P, int mat_id) {
       break;
 
     // Hubbard & MacFarlane (1980)
-    case type_HM80:;
+    case eos_planetary_type_HM80:;
       // Select the material parameters
       struct HM80_params *mat_HM80;
       switch (mat_id) {
-        case id_HM80_HHe:
+        case eos_planetary_id_HM80_HHe:
           mat_HM80 = &eos.HM80_HHe;
           break;
 
-        case id_HM80_ice:
+        case eos_planetary_id_HM80_ice:
           mat_HM80 = &eos.HM80_ice;
           break;
 
-        case id_HM80_rock:
+        case eos_planetary_id_HM80_rock:
           mat_HM80 = &eos.HM80_rock;
           break;
 
@@ -857,15 +893,15 @@ gas_internal_energy_from_pressure(float density, float P, int mat_id) {
       break;
 
     // ANEOS
-    case type_ANEOS:;
+    case eos_planetary_type_ANEOS:;
       struct ANEOS_params *mat_ANEOS;
       // Select the material parameters
       switch (mat_id) {
-        case id_ANEOS_iron:
+        case eos_planetary_id_ANEOS_iron:
           mat_ANEOS = &eos.ANEOS_iron;
           break;
 
-        case id_MANEOS_forsterite:
+        case eos_planetary_id_MANEOS_forsterite:
           mat_ANEOS = &eos.MANEOS_forsterite;
           break;
 
@@ -880,11 +916,11 @@ gas_internal_energy_from_pressure(float density, float P, int mat_id) {
       break;
 
     // SESAME
-    case type_SESAME:;
+    case eos_planetary_type_SESAME:;
       struct SESAME_params *mat_SESAME;
       // Select the material parameters
       switch (mat_id) {
-        case id_SESAME_iron:
+        case eos_planetary_id_SESAME_iron:
           mat_SESAME = &eos.SESAME_iron;
           break;
 
@@ -920,19 +956,19 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
   switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
-    case type_Til:;
+    case eos_planetary_type_Til:;
       // Select the material parameters
       struct Til_params *mat_Til;
       switch (mat_id) {
-        case id_Til_iron:
+        case eos_planetary_id_Til_iron:
           mat_Til = &eos.Til_iron;
           break;
 
-        case id_Til_granite:
+        case eos_planetary_id_Til_granite:
           mat_Til = &eos.Til_granite;
           break;
 
-        case id_Til_water:
+        case eos_planetary_id_Til_water:
           mat_Til = &eos.Til_water;
           break;
 
@@ -947,19 +983,19 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
       break;
 
     // Hubbard & MacFarlane (1980)
-    case type_HM80:;
+    case eos_planetary_type_HM80:;
       // Select the material parameters
       struct HM80_params *mat_HM80;
       switch (mat_id) {
-        case id_HM80_HHe:
+        case eos_planetary_id_HM80_HHe:
           mat_HM80 = &eos.HM80_HHe;
           break;
 
-        case id_HM80_ice:
+        case eos_planetary_id_HM80_ice:
           mat_HM80 = &eos.HM80_ice;
           break;
 
-        case id_HM80_rock:
+        case eos_planetary_id_HM80_rock:
           mat_HM80 = &eos.HM80_rock;
           break;
 
@@ -974,15 +1010,15 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
       break;
 
     // ANEOS
-    case type_ANEOS:;
+    case eos_planetary_type_ANEOS:;
       struct ANEOS_params *mat_ANEOS;
       // Select the material parameters
       switch (mat_id) {
-        case id_ANEOS_iron:
+        case eos_planetary_id_ANEOS_iron:
           mat_ANEOS = &eos.ANEOS_iron;
           break;
 
-        case id_MANEOS_forsterite:
+        case eos_planetary_id_MANEOS_forsterite:
           mat_ANEOS = &eos.MANEOS_forsterite;
           break;
 
@@ -997,11 +1033,11 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
       break;
 
     // SESAME
-    case type_SESAME:;
+    case eos_planetary_type_SESAME:;
       struct SESAME_params *mat_SESAME;
       // Select the material parameters
       switch (mat_id) {
-        case id_SESAME_iron:
+        case eos_planetary_id_SESAME_iron:
           mat_SESAME = &eos.SESAME_iron;
           break;
 
@@ -1037,19 +1073,19 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
   switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
-    case type_Til:;
+    case eos_planetary_type_Til:;
       // Select the material parameters
       struct Til_params *mat_Til;
       switch (mat_id) {
-        case id_Til_iron:
+        case eos_planetary_id_Til_iron:
           mat_Til = &eos.Til_iron;
           break;
 
-        case id_Til_granite:
+        case eos_planetary_id_Til_granite:
           mat_Til = &eos.Til_granite;
           break;
 
-        case id_Til_water:
+        case eos_planetary_id_Til_water:
           mat_Til = &eos.Til_water;
           break;
 
@@ -1064,19 +1100,19 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
       break;
 
     // Hubbard & MacFarlane (1980)
-    case type_HM80:;
+    case eos_planetary_type_HM80:;
       // Select the material parameters
       struct HM80_params *mat_HM80;
       switch (mat_id) {
-        case id_HM80_HHe:
+        case eos_planetary_id_HM80_HHe:
           mat_HM80 = &eos.HM80_HHe;
           break;
 
-        case id_HM80_ice:
+        case eos_planetary_id_HM80_ice:
           mat_HM80 = &eos.HM80_ice;
           break;
 
-        case id_HM80_rock:
+        case eos_planetary_id_HM80_rock:
           mat_HM80 = &eos.HM80_rock;
           break;
 
@@ -1091,15 +1127,15 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
       break;
 
     // ANEOS
-    case type_ANEOS:;
+    case eos_planetary_type_ANEOS:;
       struct ANEOS_params *mat_ANEOS;
       // Select the material parameters
       switch (mat_id) {
-        case id_ANEOS_iron:
+        case eos_planetary_id_ANEOS_iron:
           mat_ANEOS = &eos.ANEOS_iron;
           break;
 
-        case id_MANEOS_forsterite:
+        case eos_planetary_id_MANEOS_forsterite:
           mat_ANEOS = &eos.MANEOS_forsterite;
           break;
 
@@ -1114,11 +1150,11 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
       break;
 
     // SESAME
-    case type_SESAME:;
+    case eos_planetary_type_SESAME:;
       struct SESAME_params *mat_SESAME;
       // Select the material parameters
       switch (mat_id) {
-        case id_SESAME_iron:
+        case eos_planetary_id_SESAME_iron:
           mat_SESAME = &eos.SESAME_iron;
           break;
 
@@ -1152,25 +1188,26 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
   // Set the parameters and material IDs, load tables, etc. for each material
   // Tillotson
-  set_Til_iron(&e->Til_iron, id_Til_iron);
-  set_Til_granite(&e->Til_granite, id_Til_granite);
-  set_Til_water(&e->Til_water, id_Til_water);
+  set_Til_iron(&e->Til_iron, eos_planetary_id_Til_iron);
+  set_Til_granite(&e->Til_granite, eos_planetary_id_Til_granite);
+  set_Til_water(&e->Til_water, eos_planetary_id_Til_water);
 
   // Hubbard & MacFarlane (1980)
-  set_HM80_HHe(&e->HM80_HHe, id_HM80_HHe);
-  set_HM80_ice(&e->HM80_ice, id_HM80_ice);
-  set_HM80_rock(&e->HM80_rock, id_HM80_rock);
+  set_HM80_HHe(&e->HM80_HHe, eos_planetary_id_HM80_HHe);
+  set_HM80_ice(&e->HM80_ice, eos_planetary_id_HM80_ice);
+  set_HM80_rock(&e->HM80_rock, eos_planetary_id_HM80_rock);
 
   load_HM80_table(&e->HM80_HHe, HM80_HHe_table_file);
   load_HM80_table(&e->HM80_ice, HM80_ice_table_file);
   load_HM80_table(&e->HM80_rock, HM80_rock_table_file);
 
   // ANEOS
-  set_ANEOS_iron(&e->ANEOS_iron, id_ANEOS_iron);
-  set_MANEOS_forsterite(&e->MANEOS_forsterite, id_MANEOS_forsterite);
+  set_ANEOS_iron(&e->ANEOS_iron, eos_planetary_id_ANEOS_iron);
+  set_MANEOS_forsterite(&e->MANEOS_forsterite,
+                        eos_planetary_id_MANEOS_forsterite);
 
   // SESAME
-  set_SESAME_iron(&e->SESAME_iron, id_SESAME_iron);
+  set_SESAME_iron(&e->SESAME_iron, eos_planetary_id_SESAME_iron);
 
   // Convert to internal units
   // Tillotson
