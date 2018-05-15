@@ -60,12 +60,12 @@ INLINE static void set_HM80_HHe(struct HM80_params *mat, int mat_id) {
   mat->mat_id = mat_id;
   mat->num_rho = 100;
   mat->num_u = 100;
-  mat->log_rho_min = -9.2103404;
-  mat->log_rho_max = 1.6094379;
-  mat->log_rho_step = 0.1092907;
-  mat->log_u_min = 9.2103404;
-  mat->log_u_max = 22.3327037;
-  mat->log_u_step = 0.1325491;
+  mat->log_rho_min = -9.2103404f;
+  mat->log_rho_max = 1.6094379f;
+  mat->log_rho_step = 0.1092907f;
+  mat->log_u_min = 9.2103404f;
+  mat->log_u_max = 22.3327037f;
+  mat->log_u_step = 0.1325491f;
   mat->bulk_mod = 0;
 
   mat->inv_log_rho_step = 1.f / mat->log_rho_step;
@@ -75,13 +75,13 @@ INLINE static void set_HM80_ice(struct HM80_params *mat, int mat_id) {
   mat->mat_id = mat_id;
   mat->num_rho = 200;
   mat->num_u = 200;
-  mat->log_rho_min = -6.9077553;
-  mat->log_rho_max = 2.7080502;
-  mat->log_rho_step = 0.0483206;
-  mat->log_u_min = 6.9077553;
-  mat->log_u_max = 22.3327037;
-  mat->log_u_step = 0.0775123;
-  mat->bulk_mod = 2.0e10;
+  mat->log_rho_min = -6.9077553f;
+  mat->log_rho_max = 2.7080502f;
+  mat->log_rho_step = 0.0483206f;
+  mat->log_u_min = 6.9077553f;
+  mat->log_u_max = 22.3327037f;
+  mat->log_u_step = 0.0775123f;
+  mat->bulk_mod = 2.0e10f;
 
   mat->inv_log_rho_step = 1.f / mat->log_rho_step;
   mat->inv_log_u_step = 1.f / mat->log_u_step;
@@ -90,13 +90,13 @@ INLINE static void set_HM80_rock(struct HM80_params *mat, int mat_id) {
   mat->mat_id = mat_id;
   mat->num_rho = 100;
   mat->num_u = 100;
-  mat->log_rho_min = -6.9077553;
-  mat->log_rho_max = 2.9957323;
-  mat->log_rho_step = 0.1000352;
-  mat->log_u_min = 9.2103404;
-  mat->log_u_max = 20.7232658;
-  mat->log_u_step = 0.1162922;
-  mat->bulk_mod = 3.49e11;
+  mat->log_rho_min = -6.9077553f;
+  mat->log_rho_max = 2.9957323f;
+  mat->log_rho_step = 0.1000352f;
+  mat->log_u_min = 9.2103404f;
+  mat->log_u_max = 20.7232658f;
+  mat->log_u_step = 0.1162922f;
+  mat->bulk_mod = 3.49e11f;
 
   mat->inv_log_rho_step = 1.f / mat->log_rho_step;
   mat->inv_log_u_step = 1.f / mat->log_u_step;
@@ -127,8 +127,8 @@ INLINE static void load_HM80_table(struct HM80_params *mat, char *table_file) {
 // Convert from cgs to internal units
 INLINE static void convert_units_HM80(struct HM80_params *mat,
                                       const struct unit_system *us) {
-  const float Mbar_to_Ba = 1e12;    // Convert Megabar to Barye
-  const float J_kg_to_erg_g = 1e4;  // Convert J/kg to erg/g
+  const float Mbar_to_Ba = 1e12f;    // Convert Megabar to Barye
+  const float J_kg_to_erg_g = 1e4f;  // Convert J/kg to erg/g
 
   // Table densities in cgs
   mat->log_rho_min -= logf(units_cgs_conversion_factor(us, UNIT_CONV_DENSITY));
@@ -205,7 +205,7 @@ INLINE static float HM80_pressure_from_internal_energy(
   float P;
 
   if (u <= 0) {
-    return 0;
+    return 0.f;
   }
 
   int rho_idx, u_idx;
@@ -246,8 +246,9 @@ INLINE static float HM80_pressure_from_internal_energy(
   }
   // Normal interpolation within the table
   else {
-    P = (1 - intp_rho) * ((1 - intp_u) * mat->table_P_rho_u[rho_idx][u_idx] +
-                          intp_u * mat->table_P_rho_u[rho_idx][u_idx + 1]) +
+    P = (1.f - intp_rho) *
+            ((1.f - intp_u) * mat->table_P_rho_u[rho_idx][u_idx] +
+             intp_u * mat->table_P_rho_u[rho_idx][u_idx + 1]) +
         intp_rho * ((1 - intp_u) * mat->table_P_rho_u[rho_idx + 1][u_idx] +
                     intp_u * mat->table_P_rho_u[rho_idx + 1][u_idx + 1]);
   }
