@@ -127,113 +127,105 @@ enum eos_planetary_material_id {
  */
 __attribute__((always_inline)) INLINE static float
 gas_internal_energy_from_entropy(float density, float entropy, int mat_id) {
-  float u;
 
-  // Material base type
-  switch ((int)(mat_id / eos_planetary_type_factor)) {
+  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
 
-    // Tillotson
-    case eos_planetary_type_Til:;
-      // Select the material parameters
-      struct Til_params *mat_Til;
+  /* Select the material base type */
+  switch (type) {
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_Til_iron:
-          mat_Til = &eos.Til_iron;
+          return Til_internal_energy_from_entropy(density, entropy,
+                                                  &eos.Til_iron);
           break;
 
         case eos_planetary_id_Til_granite:
-          mat_Til = &eos.Til_granite;
+          return Til_internal_energy_from_entropy(density, entropy,
+                                                  &eos.Til_granite);
           break;
 
         case eos_planetary_id_Til_water:
-          mat_Til = &eos.Til_water;
+          return Til_internal_energy_from_entropy(density, entropy,
+                                                  &eos.Til_water);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_Til =
-              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      u = Til_internal_energy_from_entropy(density, entropy, mat_Til);
-
       break;
 
-    // Hubbard & MacFarlane (1980)
-    case eos_planetary_type_HM80:;
-      // Select the material parameters
-      struct HM80_params *mat_HM80;
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_HM80_HHe:
-          mat_HM80 = &eos.HM80_HHe;
+          return HM80_internal_energy_from_entropy(density, entropy,
+                                                   &eos.HM80_HHe);
           break;
 
         case eos_planetary_id_HM80_ice:
-          mat_HM80 = &eos.HM80_ice;
+          return HM80_internal_energy_from_entropy(density, entropy,
+                                                   &eos.HM80_ice);
           break;
 
         case eos_planetary_id_HM80_rock:
-          mat_HM80 = &eos.HM80_rock;
+          return HM80_internal_energy_from_entropy(density, entropy,
+                                                   &eos.HM80_rock);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_HM80 =
-              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      u = HM80_internal_energy_from_entropy(density, entropy, mat_HM80);
-
       break;
 
-    // ANEOS
-    case eos_planetary_type_ANEOS:;
-      struct ANEOS_params *mat_ANEOS;
-      // Select the material parameters
+    /* ANEOS EoS */
+    case eos_planetary_type_ANEOS:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_ANEOS_iron:
-          mat_ANEOS = &eos.ANEOS_iron;
+          return ANEOS_internal_energy_from_entropy(density, entropy,
+                                                    &eos.ANEOS_iron);
           break;
 
         case eos_planetary_id_MANEOS_forsterite:
-          mat_ANEOS = &eos.MANEOS_forsterite;
+          return ANEOS_internal_energy_from_entropy(density, entropy,
+                                                    &eos.MANEOS_forsterite);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_ANEOS =
-              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      u = ANEOS_internal_energy_from_entropy(density, entropy, mat_ANEOS);
-
       break;
 
-    // SESAME
+    /* SESAME EoS */
     case eos_planetary_type_SESAME:;
-      struct SESAME_params *mat_SESAME;
-      // Select the material parameters
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_SESAME_iron:
-          mat_SESAME = &eos.SESAME_iron;
+          return SESAME_internal_energy_from_entropy(density, entropy,
+                                                     &eos.SESAME_iron);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
-                                          // compiler happy
+          return 0.f;
       };
-
-      u = SESAME_internal_energy_from_entropy(density, entropy, mat_SESAME);
-
       break;
 
     default:
       error("Unknown material type! mat_id = %d", mat_id);
-      u = 0;  // Ignored, just here to keep the compiler happy
+      return 0.f;
   }
-
-  return u;
 }
 
 /**
@@ -244,113 +236,98 @@ gas_internal_energy_from_entropy(float density, float entropy, int mat_id) {
  */
 __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
     float density, float entropy, int mat_id) {
-  float P;
 
-  // Material base type
-  switch ((int)(mat_id / eos_planetary_type_factor)) {
+  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
 
-    // Tillotson
-    case eos_planetary_type_Til:;
-      // Select the material parameters
-      struct Til_params *mat_Til;
+  /* Select the material base type */
+  switch (type) {
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_Til_iron:
-          mat_Til = &eos.Til_iron;
+          return Til_pressure_from_entropy(density, entropy, &eos.Til_iron);
           break;
 
         case eos_planetary_id_Til_granite:
-          mat_Til = &eos.Til_granite;
+          return Til_pressure_from_entropy(density, entropy, &eos.Til_granite);
           break;
 
         case eos_planetary_id_Til_water:
-          mat_Til = &eos.Til_water;
+          return Til_pressure_from_entropy(density, entropy, &eos.Til_water);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_Til =
-              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      P = Til_pressure_from_entropy(density, entropy, mat_Til);
-
       break;
 
-    // Hubbard & MacFarlane (1980)
-    case eos_planetary_type_HM80:;
-      // Select the material parameters
-      struct HM80_params *mat_HM80;
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_HM80_HHe:
-          mat_HM80 = &eos.HM80_HHe;
+          return HM80_pressure_from_entropy(density, entropy, &eos.HM80_HHe);
           break;
 
         case eos_planetary_id_HM80_ice:
-          mat_HM80 = &eos.HM80_ice;
+          return HM80_pressure_from_entropy(density, entropy, &eos.HM80_ice);
           break;
 
         case eos_planetary_id_HM80_rock:
-          mat_HM80 = &eos.HM80_rock;
+          return HM80_pressure_from_entropy(density, entropy, &eos.HM80_rock);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_HM80 =
-              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      P = HM80_pressure_from_entropy(density, entropy, mat_HM80);
-
       break;
 
-    // ANEOS
-    case eos_planetary_type_ANEOS:;
-      struct ANEOS_params *mat_ANEOS;
-      // Select the material parameters
+    /* ANEOS EoS */
+    case eos_planetary_type_ANEOS:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_ANEOS_iron:
-          mat_ANEOS = &eos.ANEOS_iron;
+          return ANEOS_pressure_from_entropy(density, entropy, &eos.ANEOS_iron);
           break;
 
         case eos_planetary_id_MANEOS_forsterite:
-          mat_ANEOS = &eos.MANEOS_forsterite;
+          return ANEOS_pressure_from_entropy(density, entropy,
+                                             &eos.MANEOS_forsterite);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_ANEOS =
-              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      P = ANEOS_pressure_from_entropy(density, entropy, mat_ANEOS);
-
       break;
 
-    // SESAME
+    /* SESAME EoS */
     case eos_planetary_type_SESAME:;
-      struct SESAME_params *mat_SESAME;
-      // Select the material parameters
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_SESAME_iron:
-          mat_SESAME = &eos.SESAME_iron;
+          return SESAME_pressure_from_entropy(density, entropy,
+                                              &eos.SESAME_iron);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
-                                          // compiler happy
+          return 0.f;
       };
-
-      P = SESAME_pressure_from_entropy(density, entropy, mat_SESAME);
-
       break;
 
     default:
       error("Unknown material type! mat_id = %d", mat_id);
-      P = 0;  // Ignored, just here to keep the compiler happy
+      return 0.f;
   }
-
-  return P;
 }
 
 /**
@@ -362,113 +339,97 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
  */
 __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
     float density, float P, int mat_id) {
-  float entropy;
 
-  // Material base type
-  switch ((int)(mat_id / eos_planetary_type_factor)) {
+  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
 
-    // Tillotson
-    case eos_planetary_type_Til:;
-      // Select the material parameters
-      struct Til_params *mat_Til;
+  /* Select the material base type */
+  switch (type) {
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_Til_iron:
-          mat_Til = &eos.Til_iron;
+          return Til_entropy_from_pressure(density, P, &eos.Til_iron);
           break;
 
         case eos_planetary_id_Til_granite:
-          mat_Til = &eos.Til_granite;
+          return Til_entropy_from_pressure(density, P, &eos.Til_granite);
           break;
 
         case eos_planetary_id_Til_water:
-          mat_Til = &eos.Til_water;
+          return Til_entropy_from_pressure(density, P, &eos.Til_water);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_Til =
-              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      entropy = Til_entropy_from_pressure(density, P, mat_Til);
-
       break;
 
-    // Hubbard & MacFarlane (1980)
-    case eos_planetary_type_HM80:;
-      // Select the material parameters
-      struct HM80_params *mat_HM80;
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_HM80_HHe:
-          mat_HM80 = &eos.HM80_HHe;
+          return HM80_entropy_from_pressure(density, P, &eos.HM80_HHe);
           break;
 
         case eos_planetary_id_HM80_ice:
-          mat_HM80 = &eos.HM80_ice;
+          return HM80_entropy_from_pressure(density, P, &eos.HM80_ice);
           break;
 
         case eos_planetary_id_HM80_rock:
-          mat_HM80 = &eos.HM80_rock;
+          return HM80_entropy_from_pressure(density, P, &eos.HM80_rock);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_HM80 =
-              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      entropy = HM80_entropy_from_pressure(density, P, mat_HM80);
-
       break;
 
-    // ANEOS
-    case eos_planetary_type_ANEOS:;
-      struct ANEOS_params *mat_ANEOS;
-      // Select the material parameters
+    /* ANEOS EoS */
+    case eos_planetary_type_ANEOS:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_ANEOS_iron:
-          mat_ANEOS = &eos.ANEOS_iron;
+          return ANEOS_entropy_from_pressure(density, P, &eos.ANEOS_iron);
           break;
 
         case eos_planetary_id_MANEOS_forsterite:
-          mat_ANEOS = &eos.MANEOS_forsterite;
+          return ANEOS_entropy_from_pressure(density, P,
+                                             &eos.MANEOS_forsterite);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_ANEOS =
-              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      entropy = ANEOS_entropy_from_pressure(density, P, mat_ANEOS);
-
       break;
 
-    // SESAME
+    /* SESAME EoS */
     case eos_planetary_type_SESAME:;
-      struct SESAME_params *mat_SESAME;
-      // Select the material parameters
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_SESAME_iron:
-          mat_SESAME = &eos.SESAME_iron;
+          return SESAME_entropy_from_pressure(density, P, &eos.SESAME_iron);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
-                                          // compiler happy
+          return 0.f;
       };
-
-      entropy = SESAME_entropy_from_pressure(density, P, mat_SESAME);
-
       break;
 
     default:
       error("Unknown material type! mat_id = %d", mat_id);
-      entropy = 0;  // Ignored, just here to keep the compiler happy
+      return 0.f;
   }
-
-  return entropy;
 }
 
 /**
@@ -479,113 +440,100 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
  */
 __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
     float density, float entropy, int mat_id) {
-  float c;
 
-  // Material base type
-  switch ((int)(mat_id / eos_planetary_type_factor)) {
+  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
 
-    // Tillotson
-    case eos_planetary_type_Til:;
-      // Select the material parameters
-      struct Til_params *mat_Til;
+  /* Select the material base type */
+  switch (type) {
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_Til_iron:
-          mat_Til = &eos.Til_iron;
+          return Til_soundspeed_from_entropy(density, entropy, &eos.Til_iron);
           break;
 
         case eos_planetary_id_Til_granite:
-          mat_Til = &eos.Til_granite;
+          return Til_soundspeed_from_entropy(density, entropy,
+                                             &eos.Til_granite);
           break;
 
         case eos_planetary_id_Til_water:
-          mat_Til = &eos.Til_water;
+          return Til_soundspeed_from_entropy(density, entropy, &eos.Til_water);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_Til =
-              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      c = Til_soundspeed_from_entropy(density, entropy, mat_Til);
-
       break;
 
-    // Hubbard & MacFarlane (1980)
-    case eos_planetary_type_HM80:;
-      // Select the material parameters
-      struct HM80_params *mat_HM80;
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_HM80_HHe:
-          mat_HM80 = &eos.HM80_HHe;
+          return HM80_soundspeed_from_entropy(density, entropy, &eos.HM80_HHe);
           break;
 
         case eos_planetary_id_HM80_ice:
-          mat_HM80 = &eos.HM80_ice;
+          return HM80_soundspeed_from_entropy(density, entropy, &eos.HM80_ice);
           break;
 
         case eos_planetary_id_HM80_rock:
-          mat_HM80 = &eos.HM80_rock;
+          return HM80_soundspeed_from_entropy(density, entropy, &eos.HM80_rock);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_HM80 =
-              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      c = HM80_soundspeed_from_entropy(density, entropy, mat_HM80);
-
       break;
 
-    // ANEOS
-    case eos_planetary_type_ANEOS:;
-      struct ANEOS_params *mat_ANEOS;
-      // Select the material parameters
+    /* ANEOS EoS */
+    case eos_planetary_type_ANEOS:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_ANEOS_iron:
-          mat_ANEOS = &eos.ANEOS_iron;
+          return ANEOS_soundspeed_from_entropy(density, entropy,
+                                               &eos.ANEOS_iron);
           break;
 
         case eos_planetary_id_MANEOS_forsterite:
-          mat_ANEOS = &eos.MANEOS_forsterite;
+          return ANEOS_soundspeed_from_entropy(density, entropy,
+                                               &eos.MANEOS_forsterite);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_ANEOS =
-              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      c = ANEOS_soundspeed_from_entropy(density, entropy, mat_ANEOS);
-
       break;
 
-    // SESAME
+    /* SESAME EoS */
     case eos_planetary_type_SESAME:;
-      struct SESAME_params *mat_SESAME;
-      // Select the material parameters
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_SESAME_iron:
-          mat_SESAME = &eos.SESAME_iron;
+          return SESAME_soundspeed_from_entropy(density, entropy,
+                                                &eos.SESAME_iron);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
-                                          // compiler happy
+          return 0.f;
       };
-
-      c = SESAME_soundspeed_from_entropy(density, entropy, mat_SESAME);
-
       break;
 
     default:
       error("Unknown material type! mat_id = %d", mat_id);
-      c = 0;  // Ignored, just here to keep the compiler happy
+      return 0.f;
   }
-
-  return c;
 }
 
 /**
@@ -596,113 +544,99 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
  */
 __attribute__((always_inline)) INLINE static float
 gas_entropy_from_internal_energy(float density, float u, int mat_id) {
-  float entropy;
 
-  // Material base type
-  switch ((int)(mat_id / eos_planetary_type_factor)) {
+  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
 
-    // Tillotson
-    case eos_planetary_type_Til:;
-      // Select the material parameters
-      struct Til_params *mat_Til;
+  /* Select the material base type */
+  switch (type) {
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_Til_iron:
-          mat_Til = &eos.Til_iron;
+          return Til_entropy_from_internal_energy(density, u, &eos.Til_iron);
           break;
 
         case eos_planetary_id_Til_granite:
-          mat_Til = &eos.Til_granite;
+          return Til_entropy_from_internal_energy(density, u, &eos.Til_granite);
           break;
 
         case eos_planetary_id_Til_water:
-          mat_Til = &eos.Til_water;
+          return Til_entropy_from_internal_energy(density, u, &eos.Til_water);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_Til =
-              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      entropy = Til_entropy_from_internal_energy(density, u, mat_Til);
-
       break;
 
-    // Hubbard & MacFarlane (1980)
-    case eos_planetary_type_HM80:;
-      // Select the material parameters
-      struct HM80_params *mat_HM80;
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_HM80_HHe:
-          mat_HM80 = &eos.HM80_HHe;
+          return HM80_entropy_from_internal_energy(density, u, &eos.HM80_HHe);
           break;
 
         case eos_planetary_id_HM80_ice:
-          mat_HM80 = &eos.HM80_ice;
+          return HM80_entropy_from_internal_energy(density, u, &eos.HM80_ice);
           break;
 
         case eos_planetary_id_HM80_rock:
-          mat_HM80 = &eos.HM80_rock;
+          return HM80_entropy_from_internal_energy(density, u, &eos.HM80_rock);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_HM80 =
-              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      entropy = HM80_entropy_from_internal_energy(density, u, mat_HM80);
-
       break;
 
-    // ANEOS
-    case eos_planetary_type_ANEOS:;
-      struct ANEOS_params *mat_ANEOS;
-      // Select the material parameters
+    /* ANEOS EoS */
+    case eos_planetary_type_ANEOS:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_ANEOS_iron:
-          mat_ANEOS = &eos.ANEOS_iron;
+          return ANEOS_entropy_from_internal_energy(density, u,
+                                                    &eos.ANEOS_iron);
           break;
 
         case eos_planetary_id_MANEOS_forsterite:
-          mat_ANEOS = &eos.MANEOS_forsterite;
+          return ANEOS_entropy_from_internal_energy(density, u,
+                                                    &eos.MANEOS_forsterite);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_ANEOS =
-              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      entropy = ANEOS_entropy_from_internal_energy(density, u, mat_ANEOS);
-
       break;
 
-    // SESAME
+    /* SESAME EoS */
     case eos_planetary_type_SESAME:;
-      struct SESAME_params *mat_SESAME;
-      // Select the material parameters
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_SESAME_iron:
-          mat_SESAME = &eos.SESAME_iron;
+          return SESAME_entropy_from_internal_energy(density, u,
+                                                     &eos.SESAME_iron);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
-                                          // compiler happy
+          return 0.f;
       };
-
-      entropy = SESAME_entropy_from_internal_energy(density, u, mat_SESAME);
-
       break;
 
     default:
       error("Unknown material type! mat_id = %d", mat_id);
-      entropy = 0;  // Ignored, just here to keep the compiler happy
+      return 0.f;
   }
-
-  return entropy;
 }
 
 /**
@@ -713,113 +647,100 @@ gas_entropy_from_internal_energy(float density, float u, int mat_id) {
  */
 __attribute__((always_inline)) INLINE static float
 gas_pressure_from_internal_energy(float density, float u, int mat_id) {
-  float P;
 
-  // Material base type
-  switch ((int)(mat_id / eos_planetary_type_factor)) {
+  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
 
-    // Tillotson
-    case eos_planetary_type_Til:;
-      // Select the material parameters
-      struct Til_params *mat_Til;
+  /* Select the material base type */
+  switch (type) {
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_Til_iron:
-          mat_Til = &eos.Til_iron;
+          return Til_pressure_from_internal_energy(density, u, &eos.Til_iron);
           break;
 
         case eos_planetary_id_Til_granite:
-          mat_Til = &eos.Til_granite;
+          return Til_pressure_from_internal_energy(density, u,
+                                                   &eos.Til_granite);
           break;
 
         case eos_planetary_id_Til_water:
-          mat_Til = &eos.Til_water;
+          return Til_pressure_from_internal_energy(density, u, &eos.Til_water);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_Til =
-              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      P = Til_pressure_from_internal_energy(density, u, mat_Til);
-
       break;
 
-    // Hubbard & MacFarlane (1980)
-    case eos_planetary_type_HM80:;
-      // Select the material parameters
-      struct HM80_params *mat_HM80;
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_HM80_HHe:
-          mat_HM80 = &eos.HM80_HHe;
+          return HM80_pressure_from_internal_energy(density, u, &eos.HM80_HHe);
           break;
 
         case eos_planetary_id_HM80_ice:
-          mat_HM80 = &eos.HM80_ice;
+          return HM80_pressure_from_internal_energy(density, u, &eos.HM80_ice);
           break;
 
         case eos_planetary_id_HM80_rock:
-          mat_HM80 = &eos.HM80_rock;
+          return HM80_pressure_from_internal_energy(density, u, &eos.HM80_rock);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_HM80 =
-              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      P = HM80_pressure_from_internal_energy(density, u, mat_HM80);
-
       break;
 
-    // ANEOS
-    case eos_planetary_type_ANEOS:;
-      struct ANEOS_params *mat_ANEOS;
-      // Select the material parameters
+    /* ANEOS EoS */
+    case eos_planetary_type_ANEOS:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_ANEOS_iron:
-          mat_ANEOS = &eos.ANEOS_iron;
+          return ANEOS_pressure_from_internal_energy(density, u,
+                                                     &eos.ANEOS_iron);
           break;
 
         case eos_planetary_id_MANEOS_forsterite:
-          mat_ANEOS = &eos.MANEOS_forsterite;
+          return ANEOS_pressure_from_internal_energy(density, u,
+                                                     &eos.MANEOS_forsterite);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_ANEOS =
-              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      P = ANEOS_pressure_from_internal_energy(density, u, mat_ANEOS);
-
       break;
 
-    // SESAME
+    /* SESAME EoS */
     case eos_planetary_type_SESAME:;
-      struct SESAME_params *mat_SESAME;
-      // Select the material parameters
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_SESAME_iron:
-          mat_SESAME = &eos.SESAME_iron;
+          return SESAME_pressure_from_internal_energy(density, u,
+                                                      &eos.SESAME_iron);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
-                                          // compiler happy
+          return 0.f;
       };
-
-      P = SESAME_pressure_from_internal_energy(density, u, mat_SESAME);
-
       break;
 
     default:
       error("Unknown material type! mat_id = %d", mat_id);
-      P = 0;  // Ignored, just here to keep the compiler happy
+      return 0.f;
   }
-
-  return P;
 }
 
 /**
@@ -833,113 +754,100 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
  */
 __attribute__((always_inline)) INLINE static float
 gas_internal_energy_from_pressure(float density, float P, int mat_id) {
-  float u;
 
-  // Material base type
-  switch ((int)(mat_id / eos_planetary_type_factor)) {
+  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
 
-    // Tillotson
-    case eos_planetary_type_Til:;
-      // Select the material parameters
-      struct Til_params *mat_Til;
+  /* Select the material base type */
+  switch (type) {
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_Til_iron:
-          mat_Til = &eos.Til_iron;
+          return Til_internal_energy_from_pressure(density, P, &eos.Til_iron);
           break;
 
         case eos_planetary_id_Til_granite:
-          mat_Til = &eos.Til_granite;
+          return Til_internal_energy_from_pressure(density, P,
+                                                   &eos.Til_granite);
           break;
 
         case eos_planetary_id_Til_water:
-          mat_Til = &eos.Til_water;
+          return Til_internal_energy_from_pressure(density, P, &eos.Til_water);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_Til =
-              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      u = Til_internal_energy_from_pressure(density, P, mat_Til);
-
       break;
 
-    // Hubbard & MacFarlane (1980)
-    case eos_planetary_type_HM80:;
-      // Select the material parameters
-      struct HM80_params *mat_HM80;
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_HM80_HHe:
-          mat_HM80 = &eos.HM80_HHe;
+          return HM80_internal_energy_from_pressure(density, P, &eos.HM80_HHe);
           break;
 
         case eos_planetary_id_HM80_ice:
-          mat_HM80 = &eos.HM80_ice;
+          return HM80_internal_energy_from_pressure(density, P, &eos.HM80_ice);
           break;
 
         case eos_planetary_id_HM80_rock:
-          mat_HM80 = &eos.HM80_rock;
+          return HM80_internal_energy_from_pressure(density, P, &eos.HM80_rock);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_HM80 =
-              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      u = HM80_internal_energy_from_pressure(density, P, mat_HM80);
-
       break;
 
-    // ANEOS
-    case eos_planetary_type_ANEOS:;
-      struct ANEOS_params *mat_ANEOS;
-      // Select the material parameters
+    /* ANEOS EoS */
+    case eos_planetary_type_ANEOS:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_ANEOS_iron:
-          mat_ANEOS = &eos.ANEOS_iron;
+          return ANEOS_internal_energy_from_pressure(density, P,
+                                                     &eos.ANEOS_iron);
           break;
 
         case eos_planetary_id_MANEOS_forsterite:
-          mat_ANEOS = &eos.MANEOS_forsterite;
+          return ANEOS_internal_energy_from_pressure(density, P,
+                                                     &eos.MANEOS_forsterite);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_ANEOS =
-              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      u = ANEOS_internal_energy_from_pressure(density, P, mat_ANEOS);
-
       break;
 
-    // SESAME
+    /* SESAME EoS */
     case eos_planetary_type_SESAME:;
-      struct SESAME_params *mat_SESAME;
-      // Select the material parameters
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_SESAME_iron:
-          mat_SESAME = &eos.SESAME_iron;
+          return SESAME_internal_energy_from_pressure(density, P,
+                                                      &eos.SESAME_iron);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
-                                          // compiler happy
+          return 0.f;
       };
-
-      u = SESAME_internal_energy_from_pressure(density, P, mat_SESAME);
-
       break;
 
     default:
       error("Unknown material type! mat_id = %d", mat_id);
-      u = 0;  // Ignored, just here to keep the compiler happy
+      return 0.f;
   }
-
-  return u;
 }
 
 /**
@@ -950,113 +858,104 @@ gas_internal_energy_from_pressure(float density, float P, int mat_id) {
  */
 __attribute__((always_inline)) INLINE static float
 gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
-  float c;
 
-  // Material base type
-  switch ((int)(mat_id / eos_planetary_type_factor)) {
+  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
 
-    // Tillotson
-    case eos_planetary_type_Til:;
-      // Select the material parameters
-      struct Til_params *mat_Til;
+  /* Select the material base type */
+  switch (type) {
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_Til_iron:
-          mat_Til = &eos.Til_iron;
+          return Til_soundspeed_from_internal_energy(density, u, &eos.Til_iron);
           break;
 
         case eos_planetary_id_Til_granite:
-          mat_Til = &eos.Til_granite;
+          return Til_soundspeed_from_internal_energy(density, u,
+                                                     &eos.Til_granite);
           break;
 
         case eos_planetary_id_Til_water:
-          mat_Til = &eos.Til_water;
+          return Til_soundspeed_from_internal_energy(density, u,
+                                                     &eos.Til_water);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_Til =
-              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      c = Til_soundspeed_from_internal_energy(density, u, mat_Til);
-
       break;
 
-    // Hubbard & MacFarlane (1980)
-    case eos_planetary_type_HM80:;
-      // Select the material parameters
-      struct HM80_params *mat_HM80;
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_HM80_HHe:
-          mat_HM80 = &eos.HM80_HHe;
+          return HM80_soundspeed_from_internal_energy(density, u,
+                                                      &eos.HM80_HHe);
           break;
 
         case eos_planetary_id_HM80_ice:
-          mat_HM80 = &eos.HM80_ice;
+          return HM80_soundspeed_from_internal_energy(density, u,
+                                                      &eos.HM80_ice);
           break;
 
         case eos_planetary_id_HM80_rock:
-          mat_HM80 = &eos.HM80_rock;
+          return HM80_soundspeed_from_internal_energy(density, u,
+                                                      &eos.HM80_rock);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_HM80 =
-              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      c = HM80_soundspeed_from_internal_energy(density, u, mat_HM80);
-
       break;
 
-    // ANEOS
-    case eos_planetary_type_ANEOS:;
-      struct ANEOS_params *mat_ANEOS;
-      // Select the material parameters
+    /* ANEOS EoS */
+    case eos_planetary_type_ANEOS:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_ANEOS_iron:
-          mat_ANEOS = &eos.ANEOS_iron;
+          return ANEOS_soundspeed_from_internal_energy(density, u,
+                                                       &eos.ANEOS_iron);
           break;
 
         case eos_planetary_id_MANEOS_forsterite:
-          mat_ANEOS = &eos.MANEOS_forsterite;
+          return ANEOS_soundspeed_from_internal_energy(density, u,
+                                                       &eos.MANEOS_forsterite);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_ANEOS =
-              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      c = ANEOS_soundspeed_from_internal_energy(density, u, mat_ANEOS);
-
       break;
 
-    // SESAME
+    /* SESAME EoS */
     case eos_planetary_type_SESAME:;
-      struct SESAME_params *mat_SESAME;
-      // Select the material parameters
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_SESAME_iron:
-          mat_SESAME = &eos.SESAME_iron;
+          return SESAME_soundspeed_from_internal_energy(density, u,
+                                                        &eos.SESAME_iron);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
-                                          // compiler happy
+          return 0.f;
       };
-
-      c = SESAME_soundspeed_from_internal_energy(density, u, mat_SESAME);
-
       break;
 
     default:
       error("Unknown material type! mat_id = %d", mat_id);
-      c = 0;  // Ignored, just here to keep the compiler happy
+      return 0.f;
   }
-
-  return c;
 }
 
 /**
@@ -1067,113 +966,97 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
  */
 __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
     float density, float P, int mat_id) {
-  float c;
 
-  // Material base type
-  switch ((int)(mat_id / eos_planetary_type_factor)) {
+  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
 
-    // Tillotson
-    case eos_planetary_type_Til:;
-      // Select the material parameters
-      struct Til_params *mat_Til;
+  /* Select the material base type */
+  switch (type) {
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_Til_iron:
-          mat_Til = &eos.Til_iron;
+          return Til_soundspeed_from_pressure(density, P, &eos.Til_iron);
           break;
 
         case eos_planetary_id_Til_granite:
-          mat_Til = &eos.Til_granite;
+          return Til_soundspeed_from_pressure(density, P, &eos.Til_granite);
           break;
 
         case eos_planetary_id_Til_water:
-          mat_Til = &eos.Til_water;
+          return Til_soundspeed_from_pressure(density, P, &eos.Til_water);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_Til =
-              &eos.Til_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      c = Til_soundspeed_from_pressure(density, P, mat_Til);
-
       break;
 
-    // Hubbard & MacFarlane (1980)
-    case eos_planetary_type_HM80:;
-      // Select the material parameters
-      struct HM80_params *mat_HM80;
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_HM80_HHe:
-          mat_HM80 = &eos.HM80_HHe;
+          return HM80_soundspeed_from_pressure(density, P, &eos.HM80_HHe);
           break;
 
         case eos_planetary_id_HM80_ice:
-          mat_HM80 = &eos.HM80_ice;
+          return HM80_soundspeed_from_pressure(density, P, &eos.HM80_ice);
           break;
 
         case eos_planetary_id_HM80_rock:
-          mat_HM80 = &eos.HM80_rock;
+          return HM80_soundspeed_from_pressure(density, P, &eos.HM80_rock);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_HM80 =
-              &eos.HM80_HHe;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      c = HM80_soundspeed_from_pressure(density, P, mat_HM80);
-
       break;
 
-    // ANEOS
-    case eos_planetary_type_ANEOS:;
-      struct ANEOS_params *mat_ANEOS;
-      // Select the material parameters
+    /* ANEOS EoS */
+    case eos_planetary_type_ANEOS:
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_ANEOS_iron:
-          mat_ANEOS = &eos.ANEOS_iron;
+          return ANEOS_soundspeed_from_pressure(density, P, &eos.ANEOS_iron);
           break;
 
         case eos_planetary_id_MANEOS_forsterite:
-          mat_ANEOS = &eos.MANEOS_forsterite;
+          return ANEOS_soundspeed_from_pressure(density, P,
+                                                &eos.MANEOS_forsterite);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_ANEOS =
-              &eos.ANEOS_iron;  // Ignored, just here to keep the compiler happy
+          return 0.f;
       };
-
-      c = ANEOS_soundspeed_from_pressure(density, P, mat_ANEOS);
-
       break;
 
-    // SESAME
+    /* SESAME EoS */
     case eos_planetary_type_SESAME:;
-      struct SESAME_params *mat_SESAME;
-      // Select the material parameters
+
+      /* Select the material */
       switch (mat_id) {
         case eos_planetary_id_SESAME_iron:
-          mat_SESAME = &eos.SESAME_iron;
+          return SESAME_soundspeed_from_pressure(density, P, &eos.SESAME_iron);
           break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
-          mat_SESAME = &eos.SESAME_iron;  // Ignored, just here to keep the
-                                          // compiler happy
+          return 0.f;
       };
-
-      c = SESAME_soundspeed_from_pressure(density, P, mat_SESAME);
-
       break;
 
     default:
       error("Unknown material type! mat_id = %d", mat_id);
-      c = 0;  // Ignored, just here to keep the compiler happy
+      return 0.f;
   }
-
-  return c;
 }
 
 /**
