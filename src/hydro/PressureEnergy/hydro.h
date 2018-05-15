@@ -153,7 +153,7 @@ hydro_get_comoving_soundspeed(const struct part *restrict p) {
 
   /* Compute the sound speed -- see theory section for justification */
   /* IDEAL GAS ONLY -- P-U does not work with generic EoS. */
-  const float square_rooted = sqrtf(p->rho / p->pressure_bar);
+  const float square_rooted = sqrtf(hydro_gamma * p->rho / p->pressure_bar);
 
   return p->u * hydro_gamma_minus_one * square_rooted;
 }
