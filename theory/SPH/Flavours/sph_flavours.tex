@@ -255,8 +255,36 @@ where, as above, the last two updated quantities are obtained using
 the pre-defined equation of state. Note that the entropic function $A_i$
 itself is \emph{not} updated.
 
+\subsection{Weighted-Pressure SPH Validity}
 
-%#######################################################################################################
+A new class of Lagrangian SPH methods were introduced to the astrophysical community
+by \citet{Hopkins2013} and \citet{Saitoh2013}. Two of these methods, Pressure-Entropy
+(used in the original ANARCHY implementation in EAGLE) and Pressure-Energy, are
+implemented for use in \swift{}. Before considering the use of these methods, though,
+it is important to pause for a moment and consider where it is valid to use them
+in a cosmological context. These methods (as implemented in \swift{}) are only valid
+for cases that use an \emph{ideal gas equation of state}, i.e. one in which
+\begin{equation}
+  P = (\gamma - 1) u \rho \propto \rho.
+  \nonumber
+\end{equation}
+Implementations that differ from this, such as the original ANARCHY scheme in EAGLE,
+may have some problems with energy conservation \cite[see][]{Hosono2013} and other
+properties as at their core they assume that pressure is proportional to the local
+energy density, i.e. $P \propto \rho u$. This is most easily shown in Pressure-Energy
+SPH where the weighted pressure $\bar{P}$ is written as
+\begin{equation}
+  \bar{P} = \sum_j \frac{P_j}{\rho_j} W_{ij} = \sum_j m_j (\gamma - 1) u_j W_{ij},
+\end{equation}
+and the right-hand side is what is actually calculated using the scheme. It is 
+clear that this does not give a valid weighted pressure for any scheme using a non-ideal
+equation of state. Fortunately, there is a general prescription for including non-ideal
+equations of state in the P-X formalisms, but this is yet to be implemented in \swift{}
+and requires an extra density loop. Attempting to use these weighted schemes with
+a non-ideal equation of state will lead to an incorrect calculation of both the pressure
+and the equation fo motion. How incorrect this estimate is, however, remains to be seen.
+
+%#####################################################################################################
 
 \subsection{Pressure-Entropy SPH}
 \label{sec:sph:pe}
@@ -430,15 +458,43 @@ evolved. Following \cite{Hopkins2013}, this is calculated as
 	\nabla_i W_{ij}(h_i)~.
   \label{eq:sph:pu:dudt}
 \end{align}
+The sound-speed in P-U requires some consideration. To see what the `correct' sound-speed
+is, it is worth looking at the equation of motion (Equation \ref{eq:sph:pu:eom}) in
+contrast with that of the EoM for Density-Energy SPH (Equation \ref{eq:sph:minimal:dv_dt})
+to see what terms are applicable.
+
+For Density-Energy SPH, we see that
+\begin{align}
+  \frac{\mathrm{d}\mathbf{v}_i}{\mathrm{d} t} \sim \frac{c_{s, i}}{\rho_i} \nabla_i W_{ij},
+  \nonumber
+\end{align}
+and for Pressure-Energy SPH
+\begin{align}
+  \frac{\mathrm{d}\mathbf{v}_i}{\mathrm{d} t} \sim (\gamma - 1)^2 \frac{u_i u_j}{\bar{P}_i}
+                                     \nabla_i W_{ij}.
+  \nonumber
+\end{align}
+From this it is reasonable to assume that the sound-speed, i.e. the speed at which
+information propagates in the system through pressure waves, is given by the expression
+\begin{align}
+  c_{s, i} = (\gamma - 1) u_i \sqrt{\gamma \frac{\rho_i}{\bar{P_i}}}.
+  \label{eq:sph:pu:soundspeed}
+\end{align}
+This expression is dimensionally consistent with a sound-speed, and includes the gas
+density information (through $\rho$), traditionally used for sound-speeds, \emph{and}
+the information from the equation of motion (through $\bar{P}$). This sound-speed is
+used in the artificial viscosity scheme and in the calculation of the signal velocity,
+as was shown in the section for \MinimalSPH.
 
 \subsubsection{Time integration}
 
-Time integration follows exactly the same scheme as \MinimalSPH.
+Time integration follows exactly the same scheme as \MinimalSPH. 
 
 \subsubsection{Particle properties prediction}
 
 The prediciton of particle properties follows exactly the same scheme as
-\MinimalSPH.
+\MinimalSPH. \TODO: P-U also includes some efforts to drift the smoothed pressure.
+It is unclear at the moment what form that should take.
 
 
 
