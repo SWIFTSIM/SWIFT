@@ -137,10 +137,10 @@ INLINE static void convert_units_HM80(struct HM80_params *mat,
   // Table energies in SI
   mat->log_u_min +=
       logf(J_kg_to_erg_g /
-          units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
+           units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
   mat->log_u_max +=
       logf(J_kg_to_erg_g /
-          units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
+           units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
 
   // Table Pressures in Mbar
   for (int i = 0; i < mat->num_rho; i++) {

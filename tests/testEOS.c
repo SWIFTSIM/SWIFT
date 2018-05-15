@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
   struct unit_system us;
   const struct phys_const *phys_const = 0;  // Unused placeholder
   const struct swift_params *params = 0;    // Unused placeholder
-  const float J_kg_to_erg_g = 1e4;  // Convert J/kg to erg/g
+  const float J_kg_to_erg_g = 1e4;          // Convert J/kg to erg/g
   char filename[64];
   // Output table params
   const int num_rho = 100, num_u = 100;
@@ -210,12 +210,10 @@ int main(int argc, char *argv[]) {
   units_init(&us, 5.9724e27, 6.3710e8, 1.f, 1.f, 1.f);
   log_rho_min -= logf(units_cgs_conversion_factor(&us, UNIT_CONV_DENSITY));
   log_rho_max -= logf(units_cgs_conversion_factor(&us, UNIT_CONV_DENSITY));
-  log_u_min +=
-      logf(J_kg_to_erg_g /
-           units_cgs_conversion_factor(&us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
-  log_u_max +=
-      logf(J_kg_to_erg_g /
-           units_cgs_conversion_factor(&us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
+  log_u_min += logf(J_kg_to_erg_g / units_cgs_conversion_factor(
+                                        &us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
+  log_u_max += logf(J_kg_to_erg_g / units_cgs_conversion_factor(
+                                        &us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
 
   // Initialise the EOS materials
   eos_init(&eos, phys_const, &us, params);
@@ -252,8 +250,8 @@ int main(int argc, char *argv[]) {
     log_u += log_u_step;
 
     if (do_output == 1)
-      fprintf(f, "%.6e ", A1_u[i] *
-              units_cgs_conversion_factor(&us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
+      fprintf(f, "%.6e ", A1_u[i] * units_cgs_conversion_factor(
+                                        &us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
   }
   if (do_output == 1) fprintf(f, "\n");
 
@@ -276,7 +274,5 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 #else
-int main() {
-  return 0;
-}
+int main() { return 0; }
 #endif

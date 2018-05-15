@@ -161,7 +161,7 @@ struct part {
 
   /*! Material identifier flag (integer) */
   enum material_id mat_id;
-  
+
   /*! Time-step length */
   timebin_t time_bin;
 

@@ -104,7 +104,8 @@ struct part *make_particles(size_t count, double *offset, double spacing,
  */
 void prepare_force(struct part *parts, size_t count) {
 
-#if !defined(GIZMO_SPH) && !defined(SHADOWFAX_SPH) && !defined(MINIMAL_SPH)
+#if !defined(GIZMO_SPH) && !defined(SHADOWFAX_SPH) && !defined(MINIMAL_SPH) && \
+    !defined(MINIMAL_MULTI_MAT_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];
@@ -131,7 +132,8 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->h,
           hydro_get_comoving_density(p),
-#if defined(MINIMAL_SPH) || defined(SHADOWFAX_SPH)
+#if defined(MINIMAL_SPH) || defined(MINIMAL_MULTI_MAT_SPH) || \
+    defined(SHADOWFAX_SPH)
           0.f,
 #else
           p->density.div_v,
