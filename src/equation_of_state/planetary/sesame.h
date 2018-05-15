@@ -97,6 +97,8 @@ INLINE static float SESAME_soundspeed_from_entropy(float density, float entropy,
 INLINE static float SESAME_entropy_from_internal_energy(
     float density, float u, struct SESAME_params *mat) {
 
+  error("This EOS function is not yet implemented!");
+
   return 0;
 }
 

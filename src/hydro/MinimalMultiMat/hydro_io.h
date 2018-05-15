@@ -72,12 +72,6 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
       io_make_input_field("MaterialID", INT, 1, OPTIONAL, 1, parts, mat_id);
 }
 
-void convert_S(const struct engine* e, const struct part* p,
-               const struct xpart* xp, float* ret) {
-
-  ret[0] = hydro_get_comoving_entropy(p);
-}
-
 void convert_P(const struct engine* e, const struct part* p,
                const struct xpart* xp, float* ret) {
 
@@ -152,7 +146,7 @@ void convert_part_potential(const struct engine* e, const struct part* p,
 void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
                            struct io_props* list, int* num_fields) {
 
-  *num_fields = 11;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
@@ -170,16 +164,13 @@ void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
                                  UNIT_CONV_NO_UNITS, parts, id);
   list[6] =
       io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
-  list[7] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
-                                              UNIT_CONV_ENTROPY_PER_UNIT_MASS,
-                                              parts, xparts, convert_S);
-  list[8] = io_make_output_field("MaterialID", INT, 1, UNIT_CONV_NO_UNITS,
+  list[7] = io_make_output_field("MaterialID", INT, 1, UNIT_CONV_NO_UNITS,
                                  parts, mat_id);
-  list[9] = io_make_output_field_convert_part(
+  list[8] = io_make_output_field_convert_part(
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, xparts, convert_P);
-  list[10] = io_make_output_field_convert_part("Potential", FLOAT, 1,
-                                               UNIT_CONV_POTENTIAL, parts,
-                                               xparts, convert_part_potential);
+  list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
+                                              UNIT_CONV_POTENTIAL, parts,
+                                              xparts, convert_part_potential);
 }
 
 /**
