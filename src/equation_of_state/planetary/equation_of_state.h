@@ -58,23 +58,30 @@ struct eos_parameters {
 };
 
 // Material identifier flags (material_ID = type_ID * type_factor + unit_ID)
-#define type_factor 100
-enum type_id { type_Til = 1, type_HM80 = 2, type_ANEOS = 3, type_SESAME = 4 };
+#define eos_planetary_type_factor 100
+
+enum type_id {
+  type_Til = 1,
+  type_HM80 = 2,
+  type_ANEOS = 3,
+  type_SESAME = 4,
+} __attribute__((packed));
+
 enum material_id {
   // Tillotson
-  id_Til_iron = type_Til * type_factor,
-  id_Til_granite = type_Til * type_factor + 1,
-  id_Til_water = type_Til * type_factor + 2,
+  id_Til_iron = type_Til * eos_planetary_type_factor,
+  id_Til_granite = type_Til * eos_planetary_type_factor + 1,
+  id_Til_water = type_Til * eos_planetary_type_factor + 2,
   // Hubbard & MacFarlane (1980) Uranus/Neptune
-  id_HM80_HHe = type_HM80 * type_factor,       // Hydrogen-helium atmosphere
-  id_HM80_ice = type_HM80 * type_factor + 1,   // H20-CH4-NH3 ice mix
-  id_HM80_rock = type_HM80 * type_factor + 2,  // SiO2-MgO-FeS-FeO rock mix
+  id_HM80_HHe = type_HM80 * eos_planetary_type_factor,       // Hydrogen-helium atmosphere
+  id_HM80_ice = type_HM80 * eos_planetary_type_factor + 1,   // H20-CH4-NH3 ice mix
+  id_HM80_rock = type_HM80 * eos_planetary_type_factor + 2,  // SiO2-MgO-FeS-FeO rock mix
   // ANEOS
-  id_ANEOS_iron = type_ANEOS * type_factor,
-  id_MANEOS_forsterite = type_ANEOS * type_factor + 1,
+  id_ANEOS_iron = type_ANEOS * eos_planetary_type_factor,
+  id_MANEOS_forsterite = type_ANEOS * eos_planetary_type_factor + 1,
   // SESAME
-  id_SESAME_iron = type_SESAME * type_factor,
-};
+  id_SESAME_iron = type_SESAME * eos_planetary_type_factor,
+} __attribute__((packed));
 
 /**
  * @brief Returns the internal energy given density and entropy
@@ -87,7 +94,7 @@ gas_internal_energy_from_entropy(float density, float entropy, int mat_id) {
   float u;
 
   // Material base type
-  switch ((int)(mat_id / type_factor)) {
+  switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
     case type_Til:;
@@ -204,7 +211,7 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
   float P;
 
   // Material base type
-  switch ((int)(mat_id / type_factor)) {
+  switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
     case type_Til:;
@@ -322,7 +329,7 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
   float entropy;
 
   // Material base type
-  switch ((int)(mat_id / type_factor)) {
+  switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
     case type_Til:;
@@ -439,7 +446,7 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
   float c;
 
   // Material base type
-  switch ((int)(mat_id / type_factor)) {
+  switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
     case type_Til:;
@@ -556,7 +563,7 @@ gas_entropy_from_internal_energy(float density, float u, int mat_id) {
   float entropy;
 
   // Material base type
-  switch ((int)(mat_id / type_factor)) {
+  switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
     case type_Til:;
@@ -673,7 +680,7 @@ gas_pressure_from_internal_energy(float density, float u, int mat_id) {
   float P;
 
   // Material base type
-  switch ((int)(mat_id / type_factor)) {
+  switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
     case type_Til:;
@@ -793,7 +800,7 @@ gas_internal_energy_from_pressure(float density, float P, int mat_id) {
   float u;
 
   // Material base type
-  switch ((int)(mat_id / type_factor)) {
+  switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
     case type_Til:;
@@ -910,7 +917,7 @@ gas_soundspeed_from_internal_energy(float density, float u, int mat_id) {
   float c;
 
   // Material base type
-  switch ((int)(mat_id / type_factor)) {
+  switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
     case type_Til:;
@@ -1027,7 +1034,7 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
   float c;
 
   // Material base type
-  switch ((int)(mat_id / type_factor)) {
+  switch ((int)(mat_id / eos_planetary_type_factor)) {
 
     // Tillotson
     case type_Til:;
