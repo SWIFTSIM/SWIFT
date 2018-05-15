@@ -112,9 +112,13 @@ INLINE static void load_HM80_table(struct HM80_params *mat, char *table_file) {
 
   // Load table contents from file
   FILE *f = fopen(table_file, "r");
+  int c;
   for (int i = 0; i < mat->num_rho; i++) {
     for (int j = 0; j < mat->num_u; j++) {
-      fscanf(f, "%f", &mat->table_P_rho_u[i][j]);
+      c = fscanf(f, "%f", &mat->table_P_rho_u[i][j]);
+      if (c != 1) {
+        error("Failed to read EOS table");
+      }
     }
   }
   fclose(f);
@@ -272,7 +276,7 @@ INLINE static float HM80_soundspeed_from_internal_energy(
   // Ideal gas
   else {
     P = HM80_pressure_from_internal_energy(density, u, mat);
-    c = sqrtf(5.f / 3.f * P / density);
+    c = sqrtf(hydro_gamma * P / density);
   }
 
   return c;
@@ -290,7 +294,7 @@ INLINE static float HM80_soundspeed_from_pressure(float density, float P,
   }
   // Ideal gas
   else {
-    c = sqrtf(5.f / 3.f * P / density);
+    c = sqrtf(hydro_gamma * P / density);
   }
 
   return c;
