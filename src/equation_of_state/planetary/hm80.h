@@ -39,16 +39,15 @@
 #include "physical_constants.h"
 #include "units.h"
 
-/* ------------------------------------------------------------------------- */
-
 // Hubbard & MacFarlane (1980) parameters
 struct HM80_params {
-  int mat_id;
+  float **table_P_rho_u;
   int num_rho, num_u;
   float log_rho_min, log_rho_max, log_rho_step, inv_log_rho_step, log_u_min,
       log_u_max, log_u_step, inv_log_u_step, bulk_mod;
-  float **table_P_rho_u;
+  enum eos_planetary_material_id mat_id;
 };
+
 // Table file names
 /// to be read in from the parameter file instead once finished testing...
 #define HM80_HHe_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_HHe.txt"
@@ -56,7 +55,8 @@ struct HM80_params {
 #define HM80_rock_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_roc.txt"
 
 // Parameter values for each material (cgs units)
-INLINE static void set_HM80_HHe(struct HM80_params *mat, int mat_id) {
+INLINE static void set_HM80_HHe(struct HM80_params *mat,
+                                enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->num_rho = 100;
   mat->num_u = 100;
@@ -71,7 +71,8 @@ INLINE static void set_HM80_HHe(struct HM80_params *mat, int mat_id) {
   mat->inv_log_rho_step = 1.f / mat->log_rho_step;
   mat->inv_log_u_step = 1.f / mat->log_u_step;
 }
-INLINE static void set_HM80_ice(struct HM80_params *mat, int mat_id) {
+INLINE static void set_HM80_ice(struct HM80_params *mat,
+                                enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->num_rho = 200;
   mat->num_u = 200;
@@ -86,7 +87,8 @@ INLINE static void set_HM80_ice(struct HM80_params *mat, int mat_id) {
   mat->inv_log_rho_step = 1.f / mat->log_rho_step;
   mat->inv_log_u_step = 1.f / mat->log_u_step;
 }
-INLINE static void set_HM80_rock(struct HM80_params *mat, int mat_id) {
+INLINE static void set_HM80_rock(struct HM80_params *mat,
+                                 enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->num_rho = 100;
   mat->num_u = 100;
@@ -154,9 +156,8 @@ INLINE static void convert_units_HM80(struct HM80_params *mat,
 }
 
 // gas_internal_energy_from_entropy
-INLINE static float HM80_internal_energy_from_entropy(float density,
-                                                      float entropy,
-                                                      struct HM80_params *mat) {
+INLINE static float HM80_internal_energy_from_entropy(
+    float density, float entropy, const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -165,7 +166,7 @@ INLINE static float HM80_internal_energy_from_entropy(float density,
 
 // gas_pressure_from_entropy
 INLINE static float HM80_pressure_from_entropy(float density, float entropy,
-                                               struct HM80_params *mat) {
+                                               const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -174,7 +175,7 @@ INLINE static float HM80_pressure_from_entropy(float density, float entropy,
 
 // gas_entropy_from_pressure
 INLINE static float HM80_entropy_from_pressure(float density, float pressure,
-                                               struct HM80_params *mat) {
+                                               const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -182,8 +183,8 @@ INLINE static float HM80_entropy_from_pressure(float density, float pressure,
 }
 
 // gas_soundspeed_from_entropy
-INLINE static float HM80_soundspeed_from_entropy(float density, float entropy,
-                                                 struct HM80_params *mat) {
+INLINE static float HM80_soundspeed_from_entropy(
+    float density, float entropy, const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -191,8 +192,8 @@ INLINE static float HM80_soundspeed_from_entropy(float density, float entropy,
 }
 
 // gas_entropy_from_internal_energy
-INLINE static float HM80_entropy_from_internal_energy(float density, float u,
-                                                      struct HM80_params *mat) {
+INLINE static float HM80_entropy_from_internal_energy(
+    float density, float u, const struct HM80_params *mat) {
   error("This EOS function is not yet implemented!");
 
   return 0;
@@ -200,7 +201,7 @@ INLINE static float HM80_entropy_from_internal_energy(float density, float u,
 
 // gas_pressure_from_internal_energy
 INLINE static float HM80_pressure_from_internal_energy(
-    float density, float u, struct HM80_params *mat) {
+    float density, float u, const struct HM80_params *mat) {
 
   float P;
 
@@ -258,7 +259,7 @@ INLINE static float HM80_pressure_from_internal_energy(
 
 // gas_internal_energy_from_pressure
 INLINE static float HM80_internal_energy_from_pressure(
-    float density, float P, struct HM80_params *mat) {
+    float density, float P, const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -267,7 +268,7 @@ INLINE static float HM80_internal_energy_from_pressure(
 
 // gas_soundspeed_from_internal_energy
 INLINE static float HM80_soundspeed_from_internal_energy(
-    float density, float u, struct HM80_params *mat) {
+    float density, float u, const struct HM80_params *mat) {
 
   float c, P;
 
@@ -285,8 +286,8 @@ INLINE static float HM80_soundspeed_from_internal_energy(
 }
 
 // gas_soundspeed_from_pressure
-INLINE static float HM80_soundspeed_from_pressure(float density, float P,
-                                                  struct HM80_params *mat) {
+INLINE static float HM80_soundspeed_from_pressure(
+    float density, float P, const struct HM80_params *mat) {
 
   float c;
 

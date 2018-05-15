@@ -41,15 +41,14 @@
 #include "physical_constants.h"
 #include "units.h"
 
-/* ------------------------------------------------------------------------- */
-
 // SESAME parameters
 struct SESAME_params {
-  int mat_id;
+  enum eos_planetary_material_id mat_id;
 };
 
 // Parameter values for each material (cgs units)
-INLINE static void set_SESAME_iron(struct SESAME_params *mat, int mat_id) {
+INLINE static void set_SESAME_iron(struct SESAME_params *mat,
+                                   enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
 }
 
@@ -59,7 +58,7 @@ INLINE static void convert_units_SESAME(struct SESAME_params *mat,
 
 // gas_internal_energy_from_entropy
 INLINE static float SESAME_internal_energy_from_entropy(
-    float density, float entropy, struct SESAME_params *mat) {
+    float density, float entropy, const struct SESAME_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -67,8 +66,8 @@ INLINE static float SESAME_internal_energy_from_entropy(
 }
 
 // gas_pressure_from_entropy
-INLINE static float SESAME_pressure_from_entropy(float density, float entropy,
-                                                 struct SESAME_params *mat) {
+INLINE static float SESAME_pressure_from_entropy(
+    float density, float entropy, const struct SESAME_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -76,8 +75,8 @@ INLINE static float SESAME_pressure_from_entropy(float density, float entropy,
 }
 
 // gas_entropy_from_pressure
-INLINE static float SESAME_entropy_from_pressure(float density, float pressure,
-                                                 struct SESAME_params *mat) {
+INLINE static float SESAME_entropy_from_pressure(
+    float density, float pressure, const struct SESAME_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -85,8 +84,8 @@ INLINE static float SESAME_entropy_from_pressure(float density, float pressure,
 }
 
 // gas_soundspeed_from_entropy
-INLINE static float SESAME_soundspeed_from_entropy(float density, float entropy,
-                                                   struct SESAME_params *mat) {
+INLINE static float SESAME_soundspeed_from_entropy(
+    float density, float entropy, const struct SESAME_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -95,7 +94,7 @@ INLINE static float SESAME_soundspeed_from_entropy(float density, float entropy,
 
 // gas_entropy_from_internal_energy
 INLINE static float SESAME_entropy_from_internal_energy(
-    float density, float u, struct SESAME_params *mat) {
+    float density, float u, const struct SESAME_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -104,7 +103,7 @@ INLINE static float SESAME_entropy_from_internal_energy(
 
 // gas_pressure_from_internal_energy
 INLINE static float SESAME_pressure_from_internal_energy(
-    float density, float u, struct SESAME_params *mat) {
+    float density, float u, const struct SESAME_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -113,7 +112,7 @@ INLINE static float SESAME_pressure_from_internal_energy(
 
 // gas_internal_energy_from_pressure
 INLINE static float SESAME_internal_energy_from_pressure(
-    float density, float P, struct SESAME_params *mat) {
+    float density, float P, const struct SESAME_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -122,7 +121,7 @@ INLINE static float SESAME_internal_energy_from_pressure(
 
 // gas_soundspeed_from_internal_energy
 INLINE static float SESAME_soundspeed_from_internal_energy(
-    float density, float u, struct SESAME_params *mat) {
+    float density, float u, const struct SESAME_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
@@ -130,8 +129,8 @@ INLINE static float SESAME_soundspeed_from_internal_energy(
 }
 
 // gas_soundspeed_from_pressure
-INLINE static float SESAME_soundspeed_from_pressure(float density, float P,
-                                                    struct SESAME_params *mat) {
+INLINE static float SESAME_soundspeed_from_pressure(
+    float density, float P, const struct SESAME_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
