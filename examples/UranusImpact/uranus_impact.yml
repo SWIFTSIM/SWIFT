@@ -41,3 +41,11 @@ Gravity:
 # Parameters related to the initial conditions
 InitialConditions:
     file_name:      uranus_impact.hdf5  # The initial conditions file to read
+
+# Parameters related to the equation of state
+EoS:
+    use_HM80:   1                       # Whether to prepare the Hubbard & MacFarlane (1980) EOS
+                                        # Table file paths
+    HM80_HHe_table_file:    /gpfs/data/dc-kege1/gihr_data/P_rho_u_HHe.txt
+    HM80_ice_table_file:    /gpfs/data/dc-kege1/gihr_data/P_rho_u_ice.txt
+    HM80_rock_table_file:   /gpfs/data/dc-kege1/gihr_data/P_rho_u_roc.txt

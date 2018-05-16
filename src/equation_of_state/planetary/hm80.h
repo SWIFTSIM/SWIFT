@@ -48,12 +48,6 @@ struct HM80_params {
   enum eos_planetary_material_id mat_id;
 };
 
-// Table file names
-/// to be read in from the parameter file instead once finished testing...
-#define HM80_HHe_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_HHe.txt"
-#define HM80_ice_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_ice.txt"
-#define HM80_rock_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_roc.txt"
-
 // Parameter values for each material (cgs units)
 INLINE static void set_HM80_HHe(struct HM80_params *mat,
                                 enum eos_planetary_material_id mat_id) {
