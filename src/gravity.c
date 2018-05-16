@@ -145,9 +145,6 @@ void gravity_exact_force_ewald_init(double boxSize) {
     const float factor_cos = 2.f * M_PI;
     const float factor_pot = M_PI / alpha2;
 
-    /* Ewald factor to access the table */
-    ewald_fac = (double)(2 * Newald) / boxSize;
-
     /* Zero everything */
     bzero(fewald_x, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
     bzero(fewald_y, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
@@ -294,6 +291,9 @@ void gravity_exact_force_ewald_init(double boxSize) {
     message("Ewald correction table computed (took %.3f %s). ",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
+
+  /* Ewald factor to access the table */
+  ewald_fac = (double)(2 * Newald) / boxSize;
 
   /* Apply the box-size correction */
   for (int i = 0; i <= Newald; ++i) {
@@ -508,7 +508,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
       /* Interact it with all other particles in the space.*/
       for (int j = 0; j < (int)s->nr_gparts; ++j) {
 
-        struct gpart *gpj = &s->gparts[j];
+        const struct gpart *gpj = &s->gparts[j];
 
         /* No self interaction */
         if (gpi == gpj) continue;

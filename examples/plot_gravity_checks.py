@@ -81,7 +81,10 @@ plt.figure()
 count = 0
 
 # Get the Gadget-2 data if existing
-gadget2_file_list = glob.glob("forcetest_gadget2.txt")
+if periodic:
+    gadget2_file_list = glob.glob("forcetest_gadget2_periodic.txt")
+else:
+    gadget2_file_list = glob.glob("forcetest_gadget2.txt")
 if len(gadget2_file_list) != 0:
 
     gadget2_data = np.loadtxt(gadget2_file_list[0])
