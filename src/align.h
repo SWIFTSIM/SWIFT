@@ -20,9 +20,14 @@
 #define SWIFT_ALIGN_H
 
 /**
- * @brief The default struct alignment in SWIFT.
+ * @brief The default struct alignment in SWIFT. Should be at least
+ * as large as the SIMD vector instruction size.
  */
+#ifdef __AVX512F__
+#define SWIFT_STRUCT_ALIGNMENT 64
+#else
 #define SWIFT_STRUCT_ALIGNMENT 32
+#endif
 
 /**
  * @brief Defines alignment of structures
