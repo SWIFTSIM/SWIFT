@@ -72,6 +72,8 @@ exact_pos = exact_pos[sort_index, :]
 exact_a = exact_a[sort_index, :]        
 exact_pot = exact_pot[sort_index]
 exact_a_norm = np.sqrt(exact_a[:,0]**2 + exact_a[:,1]**2 + exact_a[:,2]**2)
+
+print "Number of particles tested:", np.size(exact_ids)
     
 # Start the plot
 plt.figure()
@@ -93,6 +95,7 @@ if len(gadget2_file_list) != 0:
     gadget2_ids = gadget2_ids[sort_index]
     gadget2_pos = gadget2_pos[sort_index, :]
     gadget2_a_exact = gadget2_a_exact[sort_index, :]
+    gadget2_exact_a_norm = np.sqrt(gadget2_a_exact[:,0]**2 + gadget2_a_exact[:,1]**2 + gadget2_a_exact[:,2]**2)
     gadget2_a_grav = gadget2_a_grav[sort_index, :]
 
     # Cross-checks
@@ -104,9 +107,14 @@ if len(gadget2_file_list) != 0:
         index = np.argmax(exact_pos[:,0]**2 + exact_pos[:,1]**2 + exact_pos[:,2]**2 - gadget2_pos[:,0]**2 - gadget2_pos[:,1]**2 - gadget2_pos[:,2]**2)
         print "Gadget2 (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "exact (id=%d):"%exact_ids[index], exact_pos[index,:], "\n"
 
-    if np.max(np.abs(exact_a - gadget2_a_exact) / np.abs(gadget2_a_exact)) > 2e-6:
-        print "Comparing different exact accelerations ! max difference:"
-        index = np.argmax(exact_a[:,0]**2 + exact_a[:,1]**2 + exact_a[:,2]**2 - gadget2_a_exact[:,0]**2 - gadget2_a_exact[:,1]**2 - gadget2_a_exact[:,2]**2)
+    diff = np.abs(exact_a_norm - gadget2_exact_a_norm) / np.abs(gadget2_exact_a_norm)
+    max_diff = np.max(diff)
+    if max_diff > 2e-6:
+        print "Comparing different exact accelerations !"
+        print "Median=", np.median(diff), "Mean=", np.mean(diff), "99%=", np.percentile(diff, 99)
+        print "max difference ( relative diff =", max_diff, "):"
+        #index = np.argmax(exact_a[:,0]**2 + exact_a[:,1]**2 + exact_a[:,2]**2 - gadget2_a_exact[:,0]**2 - gadget2_a_exact[:,1]**2 - gadget2_a_exact[:,2]**2)
+        index = np.argmax(diff)
         print "a_exact --- Gadget2:", gadget2_a_exact[index,:], "exact:", exact_a[index,:]
         print "pos ---     Gadget2: (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "exact (id=%d):"%gadget2_ids[index], gadget2_pos[index,:],"\n"
 
