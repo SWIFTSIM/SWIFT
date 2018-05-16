@@ -25,7 +25,7 @@
  *
  * For any/all of the planetary EOS. Each EOS type's functions are set in its
  * own header file: `equation_of_state/planetary/<eos_type>.h`.
- * See `material_id` for the available choices.
+ * See `eos_planetary_material_id` for the available choices.
  *
  * Not all functions are implemented for all EOS types, so not all can be used
  * with all hydro formulations yet.
@@ -95,7 +95,7 @@ enum eos_planetary_material_id {
   eos_planetary_id_ANEOS_iron =
       eos_planetary_type_ANEOS * eos_planetary_type_factor,
 
-  /*! ANEOS forsterite */
+  /*! MANEOS forsterite */
   eos_planetary_id_MANEOS_forsterite =
       eos_planetary_type_ANEOS * eos_planetary_type_factor + 1,
 
