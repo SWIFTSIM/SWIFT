@@ -115,6 +115,7 @@ tests/testPotentialPair
 tests/testEOS
 tests/testEOS*.txt
 tests/testEOS*.png
+tests/testUtilities
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf
