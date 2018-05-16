@@ -671,6 +671,12 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
+#ifndef HAVE_FFTW
+    /* Need the FFTW library if periodic and self gravity. */
+    if (with_self_gravity && periodic)
+      error("No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check once and for all that we don't have unwanted links */
     if (!with_stars && !dry_run) {
