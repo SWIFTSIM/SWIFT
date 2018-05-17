@@ -74,6 +74,7 @@ void gravity_exact_force_ewald_init(double boxSize) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
+  const float boxSize_inv = 1.f / boxSize;
   const float boxSize_inv2 = 1.f / (boxSize * boxSize);
 
   int use_file = 0;
@@ -302,7 +303,7 @@ void gravity_exact_force_ewald_init(double boxSize) {
         fewald_x[i][j][k] *= boxSize_inv2;
         fewald_y[i][j][k] *= boxSize_inv2;
         fewald_z[i][j][k] *= boxSize_inv2;
-        potewald[i][j][k] *= boxSize_inv2;
+        potewald[i][j][k] *= boxSize_inv;
       }
     }
   }
