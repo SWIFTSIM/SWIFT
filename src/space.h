@@ -155,14 +155,8 @@ struct space {
   /*! The associated engine. */
   struct engine *e;
 
-  /*! The FOF linking length. */
-  double l_x;
-
   /*! The FOF linking length squared. */
   double l_x2;
-
-  /*! The cell search radius squared for FOF. */
-  double cell_search_r2;
 
 #ifdef WITH_MPI
 
