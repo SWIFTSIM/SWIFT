@@ -4606,7 +4606,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   message("Performing Friends Of Friends search.");
 
-  /* Calculate the particle linking length based upon the mean inter-particle spacing. */
+  /* Calculate the particle linking length based upon the mean inter-particle
+   * spacing. */
   const int total_nr_dmparts = e->total_nr_gparts - e->total_nr_parts;
   const double l_x = 0.2 * (s->dim[0] / cbrt(total_nr_dmparts));
   s->l_x2 = l_x * l_x;
