@@ -31,7 +31,8 @@
  *
  * Set -1 and n for x below and above the array edge values respectively.
  */
-void find_value_in_monotonic_array(float x, float *arr, int n, int *i) {
+INLINE static void find_value_in_monotonic_array(float x, float *arr, int n,
+                                                 int *i) {
 
     int is_incr = (arr[n-1] > arr[0]);  // Increasing or decreasing?
     int i_mid, i_low = 0, i_high = n;
