@@ -25,7 +25,7 @@
  */
 int main() {
     /// Test find_value_in_monotonic_array()
-    const int n = 100;
+    int n = 100;
     float arr[n];
     int i;
     float x;
@@ -35,15 +35,15 @@ int main() {
         arr[j] = j;
     }
 
-    // Typical example
+    // Typical value
     x = 42.42f;
     find_value_in_monotonic_array(x, arr, n, &i);
     if (i != 42) {
-        printf("Failed with a normal value \n");
+        printf("Failed with a typical value \n");
         return 1;
     }
 
-    // On array element
+    // Value on array element
     x = 33.f;
     find_value_in_monotonic_array(x, arr, n, &i);
     if (i != 33) {
@@ -51,7 +51,7 @@ int main() {
         return 1;
     }
 
-    // Below array
+    // Value below array
     x = -123.f;
     find_value_in_monotonic_array(x, arr, n, &i);
     if (i != -1) {
@@ -59,11 +59,20 @@ int main() {
         return 1;
     }
 
-    // Above array
+    // Value above array
     x = 123.f;
     find_value_in_monotonic_array(x, arr, n, &i);
     if (i != n) {
         printf("Failed with a value above the array \n");
+        return 1;
+    }
+
+    // Array slice with typical value
+    x = 9.81f;
+    n = 10;
+    find_value_in_monotonic_array(x, arr + 5, n, &i);
+    if (i != 4) {
+        printf("Failed with an array slice \n");
         return 1;
     }
 
