@@ -62,6 +62,11 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_physical_internal_energy(const struct part *restrict p,
                                    const struct cosmology *cosmo) {
 
+  float u = gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv, p->entropy);
+  if (u < 0){
+    printf("Gadget 2 hydro.h u, rho, a3_inv, entropy %.5e %.5e %.5e %.5e \n", u,p->rho,cosmo->a3_inv,p->entropy);
+    fflush(stdout);
+  }
   return gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv, p->entropy);
 }
 
@@ -485,7 +490,12 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf(w2);
 
   /* Predict the entropy */
+  float entropy_old = p->entropy;
   p->entropy += p->entropy_dt * dt_therm;
+  if (p->entropy < 0){
+    printf("Gadget2 hydro.h entropy less than zero old entropy, entropy, entropy_dt, dt_therm %.5e %.5e %.5e %.5e\n", entropy_old, p->entropy, p->entropy_dt,dt_therm);
+    fflush(stdout);
+  }
 
   /* Re-compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);

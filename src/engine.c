@@ -4743,21 +4743,22 @@ void engine_step(struct engine *e) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d %6d %6d %6d %.5e\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-        e->s_updates, e->wallclock_time, e->step_props);
+        e->s_updates, e->wallclock_time, e->step_props,  (n_eagle_cooling_rate_calls_1 - n_eagle_cooling_rate_calls_3)/n_eagle_cooling_rate_calls_2, n_eagle_cooling_rate_calls_2, n_eagle_cooling_rate_calls_3, ((float) n_eagle_cooling_rate_calls_3)/((float) n_eagle_cooling_rate_calls_2));
     fflush(stdout);
 
-    if (!e->restarting)
-      fprintf(e->file_timesteps,
-              "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f "
-              "%6d\n",
-              e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
-              e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-              e->s_updates, e->wallclock_time, e->step_props);
+    fprintf(e->file_timesteps,
+            "  %6d %14e %14e %14e %4d %4d %12lld %12lld %12lld %21.3f %6d  %6d %6d %6d %.5e\n",
+            e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
+            e->max_active_bin, e->updates, e->g_updates, e->s_updates,
+            e->wallclock_time, e->step_props, (n_eagle_cooling_rate_calls_1 - n_eagle_cooling_rate_calls_3)/n_eagle_cooling_rate_calls_2, n_eagle_cooling_rate_calls_2, n_eagle_cooling_rate_calls_3, ((float) n_eagle_cooling_rate_calls_3)/((float) n_eagle_cooling_rate_calls_2));
     fflush(e->file_timesteps);
   }
+  n_eagle_cooling_rate_calls_1 = 0;
+  n_eagle_cooling_rate_calls_2 = 0;
+  n_eagle_cooling_rate_calls_3 = 0;
 
   /* We need some cells to exist but not the whole task stuff. */
   if (e->restarting) space_rebuild(e->s, e->verbose);
