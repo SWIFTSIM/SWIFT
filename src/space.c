@@ -1395,9 +1395,11 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
 void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
                       int *counts, int num_bins, ptrdiff_t parts_offset) {
   /* Create the offsets array. */
-  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (num_bins + 1));
-  if (offsets == NULL)
+  size_t *offsets = NULL;
+  if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
+
   offsets[0] = 0;
   for (int k = 1; k <= num_bins; k++) {
     offsets[k] = offsets[k - 1] + counts[k - 1];
@@ -1455,9 +1457,11 @@ void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
 void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t sparts_offset) {
   /* Create the offsets array. */
-  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (num_bins + 1));
-  if (offsets == NULL)
+  size_t *offsets = NULL;
+  if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
+
   offsets[0] = 0;
   for (int k = 1; k <= num_bins; k++) {
     offsets[k] = offsets[k - 1] + counts[k - 1];
@@ -1513,9 +1517,11 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        struct spart *sparts, int *ind, int *counts,
                        int num_bins) {
   /* Create the offsets array. */
-  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (num_bins + 1));
-  if (offsets == NULL)
+  size_t *offsets = NULL;
+  if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
+
   offsets[0] = 0;
   for (int k = 1; k <= num_bins; k++) {
     offsets[k] = offsets[k - 1] + counts[k - 1];
