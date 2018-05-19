@@ -171,7 +171,7 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
  *
  * Nothing to do here since this EoS is parameter-free.
  *
- * @param e The #eos_paramters.
+ * @param e The #eos_parameters.
  * @param phys_const The physical constants in the internal unit system.
  * @param us The internal unit system.
  * @param params The parsed parameters.

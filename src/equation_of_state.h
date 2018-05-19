@@ -20,7 +20,7 @@
 #define SWIFT_EQUATION_OF_STATE_H
 
 /**
- * @file equation_of_state.h
+ * @file src/equation_of_state.h
  * @brief Defines the equation of state of the gas we simulate in the form of
  * relations between thermodynamic quantities. These are later used internally
  * by all hydro schemes
