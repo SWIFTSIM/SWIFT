@@ -54,6 +54,7 @@
 int n_eagle_cooling_rate_calls_1;
 int n_eagle_cooling_rate_calls_2;
 int n_eagle_cooling_rate_calls_3;
+int n_eagle_cooling_rate_calls_4;
 
 /**
  * @brief The different policies the #engine can follow.
