@@ -37,28 +37,28 @@ int main() {
 
     // Typical value
     x = 42.42f;
-    find_value_in_monotonic_array(x, array, n, &index);
+    index = find_value_in_monotonic_array(x, array, n);
     if (index != 42) {
         error("Failed with a typical value ");
     }
 
     // Value on array element
     x = 33.f;
-    find_value_in_monotonic_array(x, array, n, &index);
+    index = find_value_in_monotonic_array(x, array, n);
     if (index != 33) {
         error("Failed with an array element ");
     }
 
     // Value below array
     x = -123.f;
-    find_value_in_monotonic_array(x, array, n, &index);
+    index = find_value_in_monotonic_array(x, array, n);
     if (index != -1) {
         error("Failed with a value below the array ");
     }
 
     // Value above array
     x = 123.f;
-    find_value_in_monotonic_array(x, array, n, &index);
+    index = find_value_in_monotonic_array(x, array, n);
     if (index != n) {
         error("Failed with a value above the array ");
     }
@@ -66,7 +66,7 @@ int main() {
     // Array slice with typical value
     x = 9.81f;
     n = 10;
-    find_value_in_monotonic_array(x, array + 5, n, &index);
+    index = find_value_in_monotonic_array(x, array + 5, n);
     if (index != 4) {
         error("Failed with an array slice ");
     }

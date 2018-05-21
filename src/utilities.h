@@ -27,12 +27,11 @@
  * @param x The value to find
  * @param array The array to search
  * @param n The length of the array
- * @param index The found index
  *
- * Set -1 and n for x below and above the array edge values respectively.
+ * Return -1 and n for x below and above the array edge values respectively.
  */
-INLINE static void find_value_in_monotonic_array(
-    const float x, const float *array, const int n, int *index) {
+INLINE static int find_value_in_monotonic_array(
+    const float x, const float *array, const int n) {
 
     int index_mid, index_low = 0, index_high = n;
 
@@ -49,11 +48,11 @@ INLINE static void find_value_in_monotonic_array(
 
     // Set index with the found index_low or an error value if outside the array
     if (x < array[0])
-        *index = -1;
+        return -1;
     else if (array[n-1] <= x)
-        *index = n;
+        return n;
     else
-        *index = index_low;
+        return index_low;
 }
 
 #endif /* SWIFT_UTILITIES_H */
