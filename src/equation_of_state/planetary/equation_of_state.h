@@ -1085,7 +1085,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
   // Set the parameters and material IDs, load tables, etc. for each material
   // and convert to internal units
   // Tillotson
-  if (parser_get_opt_param_int(params, "EoS:use_Til", 0)) {
+  if (parser_get_opt_param_int(params, "EoS:planetary_use_Til", 0)) {
       set_Til_iron(&e->Til_iron, eos_planetary_id_Til_iron);
       set_Til_granite(&e->Til_granite, eos_planetary_id_Til_granite);
       set_Til_water(&e->Til_water, eos_planetary_id_Til_water);
@@ -1096,16 +1096,16 @@ __attribute__((always_inline)) INLINE static void eos_init(
   }
 
   // Hubbard & MacFarlane (1980)
-  if (parser_get_opt_param_int(params, "EoS:use_HM80", 0)) {
+  if (parser_get_opt_param_int(params, "EoS:planetary_use_HM80", 0)) {
       set_HM80_HHe(&e->HM80_HHe, eos_planetary_id_HM80_HHe);
       set_HM80_ice(&e->HM80_ice, eos_planetary_id_HM80_ice);
       set_HM80_rock(&e->HM80_rock, eos_planetary_id_HM80_rock);
 
-      parser_get_param_string(params, "EoS:HM80_HHe_table_file",
+      parser_get_param_string(params, "EoS:planetary_HM80_HHe_table_file",
                               HM80_HHe_table_file);
-      parser_get_param_string(params, "EoS:HM80_ice_table_file",
+      parser_get_param_string(params, "EoS:planetary_HM80_ice_table_file",
                               HM80_ice_table_file);
-      parser_get_param_string(params, "EoS:HM80_rock_table_file",
+      parser_get_param_string(params, "EoS:planetary_HM80_rock_table_file",
                               HM80_rock_table_file);
 
       load_HM80_table(&e->HM80_HHe, HM80_HHe_table_file);
@@ -1118,7 +1118,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
   }
 
   // ANEOS
-  if (parser_get_opt_param_int(params, "EoS:use_ANEOS", 0)) {
+  if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS", 0)) {
       set_ANEOS_iron(&e->ANEOS_iron, eos_planetary_id_ANEOS_iron);
       set_MANEOS_forsterite(&e->MANEOS_forsterite,
                             eos_planetary_id_MANEOS_forsterite);
@@ -1128,7 +1128,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
   }
 
   // SESAME
-  if (parser_get_opt_param_int(params, "EoS:use_SESAME", 0)) {
+  if (parser_get_opt_param_int(params, "EoS:planetary_use_SESAME", 0)) {
     set_SESAME_iron(&e->SESAME_iron, eos_planetary_id_SESAME_iron);
 
     convert_units_SESAME(&e->SESAME_iron, us);

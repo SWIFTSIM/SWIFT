@@ -133,14 +133,14 @@ DomainDecomposition:
 EoS:
   isothermal_internal_energy: 20.26784  # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
 
-  use_Til:      1           # (Optional) Whether to prepare the Tillotson EOS
-  use_HM80:     0           # (Optional) Whether to prepare the Hubbard & MacFarlane (1980) EOS
-  use_ANEOS:    0           # (Optional) Whether to prepare the ANEOS EOS
-  use_SESAME:   0           # (Optional) Whether to prepare the SESAME EOS
+  planetary_use_Til:    1   # (Optional) Whether to prepare the Tillotson EOS
+  planetary_use_HM80:   0   # (Optional) Whether to prepare the Hubbard & MacFarlane (1980) EOS
+  planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EOS
+  planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EOS
                             # (Optional) Table file paths
-  HM80_HHe_table_file:    HM80_HHe.txt
-  HM80_ice_table_file:    HM80_ice.txt
-  HM80_rock_table_file:   HM80_rock.txt
+  planetary_HM80_HHe_table_file:    HM80_HHe.txt
+  planetary_HM80_ice_table_file:    HM80_ice.txt
+  planetary_HM80_rock_table_file:   HM80_rock.txt
 
 # Parameters related to external potentials --------------------------------------------
 
