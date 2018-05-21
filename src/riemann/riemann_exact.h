@@ -485,6 +485,88 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   Whalf[3] += vhalf * n_unit[2];
 }
 
+/**
+ * @brief Solve the Riemann problem between the given left and right state and
+ * return the velocity and pressure in the middle state
+ *
+ * Based on chapter 4 in Toro
+ *
+ * @param WL Left state.
+ * @param vL Left state velocity.
+ * @param WR Right state.
+ * @param vR Right state velocity.
+ * @param vM Middle state velocity.
+ * @param PM Middle state pressure.
+ */
+__attribute__((always_inline)) INLINE static void
+riemann_solver_solve_middle_state(const float* WL, const float vL,
+                                  const float* WR, const float vR, float* vM,
+                                  float* PM) {
+
+  /* sound speeds */
+  float aL, aR;
+  /* variables used for finding pstar */
+  float p, pguess, fp, fpguess;
+
+  /* calculate sound speeds */
+  aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
+  aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
+
+  /* vacuum */
+  /* check vacuum (generation) condition */
+  if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
+    *vM = 0.0f;
+    *PM = 0.0f;
+    return;
+  }
+
+  /* values are ok: let's find pstar (riemann_f(pstar) = 0)! */
+  /* We normally use a Newton-Raphson iteration to find the zeropoint
+     of riemann_f(p), but if pstar is close to 0, we risk negative p values.
+     Since riemann_f(p) is undefined for negative pressures, we don't
+     want this to happen.
+     We therefore use Brent's method if riemann_f(0) is larger than some
+     value. -5 makes the iteration fail safe while almost never invoking
+     the expensive Brent solver. */
+  p = 0.0f;
+  /* obtain a first guess for p */
+  pguess = riemann_guess_p(WL, WR, vL, vR, aL, aR);
+  fp = riemann_f(p, WL, WR, vL, vR, aL, aR);
+  fpguess = riemann_f(pguess, WL, WR, vL, vR, aL, aR);
+  /* ok, pstar is close to 0, better use Brent's method... */
+  /* we use Newton-Raphson until we find a suitable interval */
+  if (fp * fpguess >= 0.0f) {
+    /* Newton-Raphson until convergence or until suitable interval is found
+       to use Brent's method */
+    unsigned int counter = 0;
+    while (fabs(p - pguess) > 1.e-6f * 0.5f * (p + pguess) && fpguess < 0.0f) {
+      p = pguess;
+      pguess = pguess - fpguess / riemann_fprime(pguess, WL, WR, aL, aR);
+      fpguess = riemann_f(pguess, WL, WR, vL, vR, aL, aR);
+      counter++;
+      if (counter > 1000) {
+        error("Stuck in Newton-Raphson!\n");
+      }
+    }
+  }
+  /* As soon as there is a suitable interval: use Brent's method */
+  if (1.e6 * fabs(p - pguess) > 0.5f * (p + pguess) && fpguess > 0.0f) {
+    p = 0.0f;
+    fp = riemann_f(p, WL, WR, vL, vR, aL, aR);
+    /* use Brent's method to find the zeropoint */
+    p = riemann_solve_brent(p, pguess, fp, fpguess, 1.e-6, WL, WR, vL, vR, aL,
+                            aR);
+  } else {
+    p = pguess;
+  }
+
+  *PM = p;
+  /* calculate the velocity in the intermediate state */
+  *vM =
+      0.5f * (vL + vR) + 0.5f * (riemann_fb(p, WR, aR) - riemann_fb(p, WL, aL));
+}
+
+#ifndef GIZMO_MFM
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     const float* Wi, const float* Wj, const float* n_unit, const float* vij,
     float* totflux) {
@@ -542,5 +624,44 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   riemann_check_output(Wi, Wj, n_unit, vij, totflux);
 #endif
 }
+#else /* GIZMO_MFM */
+__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
+    const float* Wi, const float* Wj, const float* n_unit, const float* vij,
+    float* totflux) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_input(Wi, Wj, n_unit, vij);
+#endif
+
+  /* vacuum? */
+  if (Wi[0] == 0.0f || Wj[0] == 0.0f) {
+    totflux[0] = 0.0f;
+    totflux[1] = 0.0f;
+    totflux[2] = 0.0f;
+    totflux[3] = 0.0f;
+    totflux[4] = 0.0f;
+    return;
+  }
+
+  const float vL = Wi[1] * n_unit[0] + Wi[2] * n_unit[1] + Wi[3] * n_unit[2];
+  const float vR = Wj[1] * n_unit[0] + Wj[2] * n_unit[1] + Wj[3] * n_unit[2];
+
+  float vM, PM;
+  riemann_solver_solve_middle_state(Wi, vL, Wj, vR, &vM, &PM);
+
+  const float vface =
+      vij[0] * n_unit[0] + vij[1] * n_unit[1] + vij[2] * n_unit[2];
+
+  totflux[0] = 0.0f;
+  totflux[1] = PM * n_unit[0];
+  totflux[2] = PM * n_unit[1];
+  totflux[3] = PM * n_unit[2];
+  totflux[4] = (vM + vface) * PM;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_output(Wi, Wj, n_unit, vij, totflux);
+#endif
+}
+#endif /* GIZMO_MFM */
 
 #endif /* SWIFT_RIEMANN_EXACT_H */

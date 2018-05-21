@@ -38,6 +38,7 @@
     "The HLLC Riemann solver currently only supports and ideal gas equation of state. Either select this equation of state, or try using another Riemann solver!"
 #endif
 
+#ifndef GIZMO_MFM
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     const float *WL, const float *WR, const float *n, const float *vij,
     float *totflux) {
@@ -184,5 +185,78 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   riemann_check_output(WL, WR, n, vij, totflux);
 #endif
 }
+#else /* GIZMO_MFM */
+__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
+    const float *WL, const float *WR, const float *n, const float *vij,
+    float *totflux) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_input(WL, WR, n, vij);
+#endif
+
+  /* Handle pure vacuum */
+  if (!WL[0] && !WR[0]) {
+    totflux[0] = 0.f;
+    totflux[1] = 0.f;
+    totflux[2] = 0.f;
+    totflux[3] = 0.f;
+    totflux[4] = 0.f;
+    return;
+  }
+
+  /* STEP 0: obtain velocity in interface frame */
+  const float uL = WL[1] * n[0] + WL[2] * n[1] + WL[3] * n[2];
+  const float uR = WR[1] * n[0] + WR[2] * n[1] + WR[3] * n[2];
+  const float aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
+  const float aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
+
+  /* Handle vacuum: vacuum does not require iteration and is always exact */
+  if (riemann_is_vacuum(WL, WR, uL, uR, aL, aR)) {
+    totflux[0] = 0.f;
+    totflux[1] = 0.f;
+    totflux[2] = 0.f;
+    totflux[3] = 0.f;
+    totflux[4] = 0.f;
+    return;
+  }
+
+  /* STEP 1: pressure estimate */
+  const float rhobar = 0.5f * (WL[0] + WR[0]);
+  const float abar = 0.5f * (aL + aR);
+  const float pPVRS = 0.5f * (WL[4] + WR[4]) - 0.5f * (uR - uL) * rhobar * abar;
+  const float pstar = max(0.f, pPVRS);
+
+  /* STEP 2: wave speed estimates
+     all these speeds are along the interface normal, since uL and uR are */
+  float qL = 1.f;
+  if (pstar > WL[4] && WL[4] > 0.f) {
+    qL = sqrtf(1.f +
+               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                   (pstar / WL[4] - 1.f));
+  }
+  float qR = 1.f;
+  if (pstar > WR[4] && WR[4] > 0.f) {
+    qR = sqrtf(1.f +
+               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                   (pstar / WR[4] - 1.f));
+  }
+  const float SL = uL - aL * qL;
+  const float SR = uR + aR * qR;
+  const float Sstar =
+      (WR[4] - WL[4] + WL[0] * uL * (SL - uL) - WR[0] * uR * (SR - uR)) /
+      (WL[0] * (SL - uL) - WR[0] * (SR - uR));
+
+  totflux[0] = 0.0f;
+  totflux[1] = pstar * n[0];
+  totflux[2] = pstar * n[1];
+  totflux[3] = pstar * n[2];
+  const float vface = vij[0] * n[0] + vij[1] * n[1] + vij[2] * n[2];
+  totflux[4] = pstar * (Sstar + vface);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_output(WL, WR, n, vij, totflux);
+#endif
+}
+#endif /* GIZMO_MFM */
 
 #endif /* SWIFT_RIEMANN_HLLC_H */
