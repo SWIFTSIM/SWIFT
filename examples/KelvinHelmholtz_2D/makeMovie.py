@@ -9,15 +9,10 @@ Edit this file near the bottom with the number of snaps you have.
 Written by Josh Borrow (joshua.borrow@durham.ac.uk)
 """
 
-import matplotlib
-matplotlib.use("Agg")
-
 import os
 import h5py as h5
 import numpy as np
-import scipy as sp
 import scipy.interpolate as si
-import matplotlib.pyplot as plt
 
 
 def load_and_extract(filename):
@@ -67,14 +62,32 @@ def frame(n, *args):
 
 
 if __name__ == "__main__":
+    import matplotlib
+    matplotlib.use("Agg")
+
     from tqdm import tqdm
     from matplotlib.animation import FuncAnimation
     from scipy.stats import gaussian_kde
 
+    import matplotlib.pyplot as plt
+
     filename = "kelvinhelmholtz"
     dpi = 512
 
-    frames = tqdm(np.arange(0, 448))
+
+    # Look for the number of files in the directory.
+    i = 0
+    while True:
+        if os.path.isfile("{}_{:04d}.hdf5".format(filename, i)):
+            i += 1
+        else:
+            break
+
+        if i > 10000:
+            raise FileNotFoundError(
+                "Could not find the snapshots in the directory")
+
+    frames = tqdm(np.arange(0, i))
 
     # Creation of first frame
     fig, ax = plt.subplots(1, 1, figsize=(1, 1), frameon=False)
