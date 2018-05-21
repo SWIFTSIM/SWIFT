@@ -153,9 +153,10 @@ hydro_get_comoving_soundspeed(const struct part *restrict p) {
 
   /* Compute the sound speed -- see theory section for justification */
   /* IDEAL GAS ONLY -- P-U does not work with generic EoS. */
-  const float square_rooted = sqrtf(hydro_gamma * p->rho / p->pressure_bar);
+  const float square_rooted = sqrtf(hydro_gamma * p->pressure_bar / p->rho);
 
-  return p->u * hydro_gamma_minus_one * square_rooted;
+  return square_rooted;
+
 }
 
 /**
@@ -287,7 +288,6 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
 
-  /* Limit maximum change in u */
   const float dt_u_change = 
       (p->u_dt != 0.0f) ? fabsf(const_max_u_change * p->u / p->u_dt)
                         : FLT_MAX;
