@@ -21,73 +21,39 @@
 #define SWIFT_UTILITIES_H
 
 /**
- * @brief Search for a value in a monotonic array to find the index such that
- *      array[index] < value < array[index + 1]
+ * @brief Search for a value in a monotonically increasing array to find the
+ *      index such that array[index] < value < array[index + 1]
  *
  * @param x The value to find
- * @param arr The array to search
+ * @param array The array to search
  * @param n The length of the array
- * @param i The found index
+ * @param index The found index
  *
  * Set -1 and n for x below and above the array edge values respectively.
  */
-INLINE static void find_value_in_monotonic_array(float x, float *arr, int n,
-                                                 int *i) {
+INLINE static void find_value_in_monotonic_array(
+    const float x, const float *array, const int n, int *index) {
 
-    int is_incr = (arr[n-1] > arr[0]);  // Increasing or decreasing?
-    int i_mid, i_low = 0, i_high = n;
+    int index_mid, index_low = 0, index_high = n;
 
-    // Until arr[i_low] < x < arr[i_high=i_low+1]
-    while (i_high - i_low > 1) {
-        i_mid = (i_high + i_low) >> 1;  // Middle index
+    // Until array[index_low] < x < array[index_high=index_low+1]
+    while (index_high - index_low > 1) {
+        index_mid = (index_high + index_low) / 2.f;  // Middle index
 
-        // If mid < x and increasing or x < mid and decreasing
-        if ((arr[i_mid] <= x) == is_incr)
-            i_low = i_mid;
+        // Replace the low or high index with the middle
+        if (array[index_mid] <= x)
+            index_low = index_mid;
         else
-            i_high = i_mid;
+            index_high = index_mid;
     }
 
-    // Set i with the found i_low, or an error value if outside the array
-    if (x < arr[0])
-        *i = -1;
-    else if (arr[n-1] <= x)
-        *i = n;
+    // Set index with the found index_low or an error value if outside the array
+    if (x < array[0])
+        *index = -1;
+    else if (array[n-1] <= x)
+        *index = n;
     else
-        *i = i_low;
+        *index = index_low;
 }
 
 #endif /* SWIFT_UTILITIES_H */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

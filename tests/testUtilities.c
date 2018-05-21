@@ -26,54 +26,49 @@
 int main() {
     /// Test find_value_in_monotonic_array()
     int n = 100;
-    float arr[n];
-    int i;
+    float array[n];
+    int index;
     float x;
 
     // Initialise test array
     for (int j = 0; j < n; j++) {
-        arr[j] = j;
+        array[j] = j;
     }
 
     // Typical value
     x = 42.42f;
-    find_value_in_monotonic_array(x, arr, n, &i);
-    if (i != 42) {
-        printf("Failed with a typical value \n");
-        return 1;
+    find_value_in_monotonic_array(x, array, n, &index);
+    if (index != 42) {
+        error("Failed with a typical value ");
     }
 
     // Value on array element
     x = 33.f;
-    find_value_in_monotonic_array(x, arr, n, &i);
-    if (i != 33) {
-        printf("Failed with an array element \n");
-        return 1;
+    find_value_in_monotonic_array(x, array, n, &index);
+    if (index != 33) {
+        error("Failed with an array element ");
     }
 
     // Value below array
     x = -123.f;
-    find_value_in_monotonic_array(x, arr, n, &i);
-    if (i != -1) {
-        printf("Failed with a value below the array \n");
-        return 1;
+    find_value_in_monotonic_array(x, array, n, &index);
+    if (index != -1) {
+        error("Failed with a value below the array ");
     }
 
     // Value above array
     x = 123.f;
-    find_value_in_monotonic_array(x, arr, n, &i);
-    if (i != n) {
-        printf("Failed with a value above the array \n");
-        return 1;
+    find_value_in_monotonic_array(x, array, n, &index);
+    if (index != n) {
+        error("Failed with a value above the array ");
     }
 
     // Array slice with typical value
     x = 9.81f;
     n = 10;
-    find_value_in_monotonic_array(x, arr + 5, n, &i);
-    if (i != 4) {
-        printf("Failed with an array slice \n");
-        return 1;
+    find_value_in_monotonic_array(x, array + 5, n, &index);
+    if (index != 4) {
+        error("Failed with an array slice ");
     }
 
     return 0;
