@@ -24,7 +24,10 @@
 #include <unistd.h>
 #include "swift.h"
 
-#ifdef WITH_VECTORIZATION
+/* Other schemes need to be added here if they are not vectorized, otherwise
+ * this test will simply not compile. */
+
+#if defined(GADGET2_SPH) && defined(WITH_VECTORIZATION) 
 
 #define array_align sizeof(float) * VEC_SIZE
 #define ACC_THRESHOLD 1e-5
@@ -105,7 +108,7 @@ struct part *make_particles(size_t count, double *offset, double spacing,
 void prepare_force(struct part *parts, size_t count) {
 
 #if !defined(GIZMO_SPH) && !defined(SHADOWFAX_SPH) && !defined(MINIMAL_SPH) && \
-    !defined(MINIMAL_MULTI_MAT_SPH)
+    !defined(MINIMAL_MULTI_MAT_SPH) && !defined(HOPKINS_PU_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];
@@ -145,7 +148,7 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           p->force.v_sig, p->entropy_dt, 0.f
 #elif defined(DEFAULT_SPH)
           p->force.v_sig, 0.f, p->force.u_dt
-#elif defined(MINIMAL_SPH)
+#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH)
           p->force.v_sig, 0.f, p->u_dt
 #else
           0.f, 0.f, 0.f
@@ -549,7 +552,9 @@ void test_force_interactions(struct part test_part, struct part *parts,
       vizq[i] = pi_vec.v[2];
       rhoiq[i] = pi_vec.rho;
       grad_hiq[i] = pi_vec.force.f;
+#if !defined(HOPKINS_PU_SPH)
       pOrhoi2q[i] = pi_vec.force.P_over_rho2;
+#endif
       balsaraiq[i] = pi_vec.force.balsara;
       ciq[i] = pi_vec.force.soundspeed;
 
@@ -560,7 +565,9 @@ void test_force_interactions(struct part test_part, struct part *parts,
       vjzq[i] = pj_vec[i].v[2];
       rhojq[i] = pj_vec[i].rho;
       grad_hjq[i] = pj_vec[i].force.f;
+#if !defined(HOPKINS_PU_SPH)
       pOrhoj2q[i] = pj_vec[i].force.P_over_rho2;
+#endif
       balsarajq[i] = pj_vec[i].force.balsara;
       cjq[i] = pj_vec[i].force.soundspeed;
     }
@@ -640,7 +647,9 @@ void test_force_interactions(struct part test_part, struct part *parts,
     VEC_HADD(a_hydro_zSum, piq[0]->a_hydro[2]);
     VEC_HADD(h_dtSum, piq[0]->force.h_dt);
     VEC_HMAX(v_sigSum, piq[0]->force.v_sig);
+#if !defined(HOPKINS_PU_SPH)
     VEC_HADD(entropy_dtSum, piq[0]->entropy_dt);
+#endif
 
     vec_time += getticks() - vec_tic;
   }
