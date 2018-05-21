@@ -37,7 +37,7 @@ INLINE static int find_value_in_monotonic_array(
 
     // Until array[index_low] < x < array[index_high=index_low+1]
     while (index_high - index_low > 1) {
-        index_mid = (index_high + index_low) / 2.f;  // Middle index
+        index_mid = (index_high + index_low) / 2;  // Middle index
 
         // Replace the low or high index with the middle
         if (array[index_mid] <= x)
