@@ -45,4 +45,4 @@ InitialConditions:
 
 # Parameters related to the equation of state
 EoS:
-    use_Til:    1                       # Whether to prepare the Tillotson EOS
+    planetary_use_Til:    1                       # Whether to prepare the Tillotson EOS
