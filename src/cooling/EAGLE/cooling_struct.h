@@ -25,7 +25,7 @@
 #define eagle_cmb_temperature 2.728
 #define eagle_compton_rate 1.0178e-37*2.728*2.728*2.728*2.728
 #define eagle_metal_cooling_on 1
-#define eagle_max_iterations 150
+#define eagle_max_iterations 15
 #define eagle_proton_mass_cgs 1.6726e-24
 
 
