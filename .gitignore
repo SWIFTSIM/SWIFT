@@ -31,6 +31,7 @@ examples/*/*.dot
 examples/*/used_parameters.yml
 examples/*/*/*.xmf
 examples/*/*/*.png
+examples/*/*/*.mp4
 examples/*/*/*.txt
 examples/*/*/*.dot
 examples/*/*/*.rst
