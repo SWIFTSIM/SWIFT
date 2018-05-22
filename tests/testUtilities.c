@@ -24,7 +24,7 @@
  * @brief Test generic utility functions
  */
 int main() {
-    /// Test find_value_in_monotonic_array()
+    /// Test find_value_in_monot_incr_array()
     int n = 100;
     float array[n];
     int index;
@@ -37,28 +37,28 @@ int main() {
 
     // Typical value
     x = 42.42f;
-    index = find_value_in_monotonic_array(x, array, n);
+    index = find_value_in_monot_incr_array(x, array, n);
     if (index != 42) {
         error("Failed with a typical value ");
     }
 
     // Value on array element
     x = 33.f;
-    index = find_value_in_monotonic_array(x, array, n);
+    index = find_value_in_monot_incr_array(x, array, n);
     if (index != 33) {
         error("Failed with an array element ");
     }
 
     // Value below array
     x = -123.f;
-    index = find_value_in_monotonic_array(x, array, n);
+    index = find_value_in_monot_incr_array(x, array, n);
     if (index != -1) {
         error("Failed with a value below the array ");
     }
 
     // Value above array
     x = 123.f;
-    index = find_value_in_monotonic_array(x, array, n);
+    index = find_value_in_monot_incr_array(x, array, n);
     if (index != n) {
         error("Failed with a value above the array ");
     }
@@ -66,7 +66,7 @@ int main() {
     // Array slice with typical value
     x = 9.81f;
     n = 10;
-    index = find_value_in_monotonic_array(x, array + 5, n);
+    index = find_value_in_monot_incr_array(x, array + 5, n);
     if (index != 4) {
         error("Failed with an array slice ");
     }
