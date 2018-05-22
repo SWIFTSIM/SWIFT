@@ -8,7 +8,7 @@ then
 fi
 
 # Run SWIFT
-../swift -s -c -G -v 1 -t 1 zeldovichPancake.yml 2>&1 | tee output.log
+../swift -s -c -G -t 4 zeldovichPancake.yml 2>&1 | tee output.log
 
 # Plot the result
-#python plotSolution.py 1
+python plotSolution.py 2

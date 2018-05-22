@@ -66,6 +66,7 @@ sim = h5py.File("zeldovichPancake_%04d.hdf5"%snap, "r")
 boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 redshift = sim["/Header"].attrs["Redshift"][0]
+a = sim["/Header"].attrs["Scale-factor"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
 neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
@@ -131,6 +132,7 @@ subplot(234)
 #plot(x, u, '.', color='r', ms=4.0)
 #plot(x_s, u_s, '--', color='k', alpha=0.8, lw=1.2)
 u *= (unit_length_in_si**2 / unit_time_in_si**2)
+u /= a**(3 * (gas_gamma - 1.))
 T = (gas_gamma - 1.) * u * mH_in_kg / k_in_J_K
 print T.mean()
 plot(x, T, '.', color='r', ms=4.0)
