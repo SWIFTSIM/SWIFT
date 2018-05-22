@@ -30,29 +30,30 @@
  *
  * Return -1 and n for x below and above the array edge values respectively.
  */
-INLINE static int find_value_in_monot_incr_array(
-    const float x, const float *array, const int n) {
+INLINE static int find_value_in_monot_incr_array(const float x,
+                                                 const float *array,
+                                                 const int n) {
 
-    int index_mid, index_low = 0, index_high = n;
+  int index_mid, index_low = 0, index_high = n;
 
-    // Until array[index_low] < x < array[index_high=index_low+1]
-    while (index_high - index_low > 1) {
-        index_mid = (index_high + index_low) / 2;  // Middle index
+  // Until array[index_low] < x < array[index_high=index_low+1]
+  while (index_high - index_low > 1) {
+    index_mid = (index_high + index_low) / 2;  // Middle index
 
-        // Replace the low or high index with the middle
-        if (array[index_mid] <= x)
-            index_low = index_mid;
-        else
-            index_high = index_mid;
-    }
-
-    // Set index with the found index_low or an error value if outside the array
-    if (x < array[0])
-        return -1;
-    else if (array[n-1] <= x)
-        return n;
+    // Replace the low or high index with the middle
+    if (array[index_mid] <= x)
+      index_low = index_mid;
     else
-        return index_low;
+      index_high = index_mid;
+  }
+
+  // Set index with the found index_low or an error value if outside the array
+  if (x < array[0])
+    return -1;
+  else if (array[n - 1] <= x)
+    return n;
+  else
+    return index_low;
 }
 
 #endif /* SWIFT_UTILITIES_H */

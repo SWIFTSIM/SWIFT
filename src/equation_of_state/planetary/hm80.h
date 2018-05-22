@@ -101,15 +101,15 @@ INLINE static void set_HM80_rock(struct HM80_params *mat,
 // Read the table from file
 INLINE static void load_HM80_table(struct HM80_params *mat, char *table_file) {
   // Allocate table memory
-  mat->table_P_rho_u = (float *)malloc(mat->num_rho * mat->num_u *
-                                       sizeof(float *));
+  mat->table_P_rho_u =
+      (float *)malloc(mat->num_rho * mat->num_u * sizeof(float *));
 
   // Load table contents from file
   FILE *f = fopen(table_file, "r");
   int c;
   for (int i = 0; i < mat->num_rho; i++) {
     for (int j = 0; j < mat->num_u; j++) {
-      c = fscanf(f, "%f", &mat->table_P_rho_u[i*mat->num_rho + j]);
+      c = fscanf(f, "%f", &mat->table_P_rho_u[i * mat->num_rho + j]);
       if (c != 1) {
         error("Failed to read EOS table");
       }
@@ -139,7 +139,7 @@ INLINE static void convert_units_HM80(struct HM80_params *mat,
   // Table Pressures in Mbar
   for (int i = 0; i < mat->num_rho; i++) {
     for (int j = 0; j < mat->num_u; j++) {
-      mat->table_P_rho_u[i*mat->num_rho + j] *=
+      mat->table_P_rho_u[i * mat->num_rho + j] *=
           Mbar_to_Ba / units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
     }
   }
@@ -229,20 +229,23 @@ INLINE static float HM80_pressure_from_internal_energy(
   // Return an edge value if above the table maximum/a
   else if (rho_idx >= mat->num_rho - 1) {  // Too-high rho
     if (u_idx >= mat->num_u - 1) {         // and too-high u
-      P = mat->table_P_rho_u[(mat->num_rho - 1)*mat->num_u + mat->num_u - 1];
+      P = mat->table_P_rho_u[(mat->num_rho - 1) * mat->num_u + mat->num_u - 1];
     } else {
-      P = mat->table_P_rho_u[(mat->num_rho - 1)*mat->num_u + u_idx];
+      P = mat->table_P_rho_u[(mat->num_rho - 1) * mat->num_u + u_idx];
     }
   } else if (u_idx >= mat->num_u - 1) {  // Too-high u
-    P = mat->table_P_rho_u[rho_idx*mat->num_u + mat->num_u - 1];
+    P = mat->table_P_rho_u[rho_idx * mat->num_u + mat->num_u - 1];
   }
   // Normal interpolation within the table
   else {
     P = (1.f - intp_rho) *
-            ((1.f - intp_u) * mat->table_P_rho_u[rho_idx*mat->num_u + u_idx] +
-             intp_u * mat->table_P_rho_u[rho_idx*mat->num_u + u_idx + 1]) +
-        intp_rho * ((1 - intp_u) * mat->table_P_rho_u[(rho_idx + 1)*mat->num_u + u_idx] +
-                    intp_u * mat->table_P_rho_u[(rho_idx + 1)*mat->num_u + u_idx + 1]);
+            ((1.f - intp_u) * mat->table_P_rho_u[rho_idx * mat->num_u + u_idx] +
+             intp_u * mat->table_P_rho_u[rho_idx * mat->num_u + u_idx + 1]) +
+        intp_rho *
+            ((1 - intp_u) *
+                 mat->table_P_rho_u[(rho_idx + 1) * mat->num_u + u_idx] +
+             intp_u *
+                 mat->table_P_rho_u[(rho_idx + 1) * mat->num_u + u_idx + 1]);
   }
 
   return P;

@@ -1086,45 +1086,45 @@ __attribute__((always_inline)) INLINE static void eos_init(
   // and convert to internal units
   // Tillotson
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til", 0)) {
-      set_Til_iron(&e->Til_iron, eos_planetary_id_Til_iron);
-      set_Til_granite(&e->Til_granite, eos_planetary_id_Til_granite);
-      set_Til_water(&e->Til_water, eos_planetary_id_Til_water);
+    set_Til_iron(&e->Til_iron, eos_planetary_id_Til_iron);
+    set_Til_granite(&e->Til_granite, eos_planetary_id_Til_granite);
+    set_Til_water(&e->Til_water, eos_planetary_id_Til_water);
 
-      convert_units_Til(&e->Til_iron, us);
-      convert_units_Til(&e->Til_granite, us);
-      convert_units_Til(&e->Til_water, us);
+    convert_units_Til(&e->Til_iron, us);
+    convert_units_Til(&e->Til_granite, us);
+    convert_units_Til(&e->Til_water, us);
   }
 
   // Hubbard & MacFarlane (1980)
   if (parser_get_opt_param_int(params, "EoS:planetary_use_HM80", 0)) {
-      set_HM80_HHe(&e->HM80_HHe, eos_planetary_id_HM80_HHe);
-      set_HM80_ice(&e->HM80_ice, eos_planetary_id_HM80_ice);
-      set_HM80_rock(&e->HM80_rock, eos_planetary_id_HM80_rock);
+    set_HM80_HHe(&e->HM80_HHe, eos_planetary_id_HM80_HHe);
+    set_HM80_ice(&e->HM80_ice, eos_planetary_id_HM80_ice);
+    set_HM80_rock(&e->HM80_rock, eos_planetary_id_HM80_rock);
 
-      parser_get_param_string(params, "EoS:planetary_HM80_HHe_table_file",
-                              HM80_HHe_table_file);
-      parser_get_param_string(params, "EoS:planetary_HM80_ice_table_file",
-                              HM80_ice_table_file);
-      parser_get_param_string(params, "EoS:planetary_HM80_rock_table_file",
-                              HM80_rock_table_file);
+    parser_get_param_string(params, "EoS:planetary_HM80_HHe_table_file",
+                            HM80_HHe_table_file);
+    parser_get_param_string(params, "EoS:planetary_HM80_ice_table_file",
+                            HM80_ice_table_file);
+    parser_get_param_string(params, "EoS:planetary_HM80_rock_table_file",
+                            HM80_rock_table_file);
 
-      load_HM80_table(&e->HM80_HHe, HM80_HHe_table_file);
-      load_HM80_table(&e->HM80_ice, HM80_ice_table_file);
-      load_HM80_table(&e->HM80_rock, HM80_rock_table_file);
+    load_HM80_table(&e->HM80_HHe, HM80_HHe_table_file);
+    load_HM80_table(&e->HM80_ice, HM80_ice_table_file);
+    load_HM80_table(&e->HM80_rock, HM80_rock_table_file);
 
-      convert_units_HM80(&e->HM80_HHe, us);
-      convert_units_HM80(&e->HM80_ice, us);
-      convert_units_HM80(&e->HM80_rock, us);
+    convert_units_HM80(&e->HM80_HHe, us);
+    convert_units_HM80(&e->HM80_ice, us);
+    convert_units_HM80(&e->HM80_rock, us);
   }
 
   // ANEOS
   if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS", 0)) {
-      set_ANEOS_iron(&e->ANEOS_iron, eos_planetary_id_ANEOS_iron);
-      set_MANEOS_forsterite(&e->MANEOS_forsterite,
-                            eos_planetary_id_MANEOS_forsterite);
+    set_ANEOS_iron(&e->ANEOS_iron, eos_planetary_id_ANEOS_iron);
+    set_MANEOS_forsterite(&e->MANEOS_forsterite,
+                          eos_planetary_id_MANEOS_forsterite);
 
-      convert_units_ANEOS(&e->ANEOS_iron, us);
-      convert_units_ANEOS(&e->MANEOS_forsterite, us);
+    convert_units_ANEOS(&e->ANEOS_iron, us);
+    convert_units_ANEOS(&e->MANEOS_forsterite, us);
   }
 
   // SESAME
