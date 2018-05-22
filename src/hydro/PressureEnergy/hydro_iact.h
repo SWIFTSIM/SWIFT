@@ -129,11 +129,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   if (pi->rho < -FLT_MIN)
     error("Particle %lld has negative rho=%.3e\n", pi->id, pi->rho);
 
-  if (mj < -FLT_MIN)
-    error("Particle %lld has negative m=%.3e\n", pj->id, mj);
+  if (mj < -FLT_MIN) error("Particle %lld has negative m=%.3e\n", pj->id, mj);
 
-  if (wi < -FLT_MIN)
-    error("Particle %lld has negative rho=%.3e\n", pi->id, wi);
+  if (wi < -FLT_MIN) error("Particle %lld has negative rho=%.3e\n", pi->id, wi);
 #endif
 }
 
@@ -206,11 +204,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   if (pi->rho < -FLT_MIN)
     error("Particle %lld has negative rho=%.3e\n", pi->id, pi->rho);
 
-  if (mj < -FLT_MIN)
-    error("Particle %lld has negative m=%.3e\n", pj->id, mj);
+  if (mj < -FLT_MIN) error("Particle %lld has negative m=%.3e\n", pj->id, mj);
 
-  if (wi < -FLT_MIN)
-    error("Particle %lld has negative rho=%.3e\n", pi->id, wi);
+  if (wi < -FLT_MIN) error("Particle %lld has negative rho=%.3e\n", pi->id, wi);
 #endif
 }
 
@@ -287,7 +283,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
   const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-	             (balsara_i + balsara_j) / rho_ij;
+                     (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -412,7 +408,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
   const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-	             (balsara_i + balsara_j) / rho_ij; 
+                     (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;

@@ -406,7 +406,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
             hydro_get_comoving_density(&main_cell->parts[pid]),
 #if defined(MINIMAL_SPH) || defined(MINIMAL_MULTI_MAT_SPH) || \
-    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) || defined(HOPKINS_PU_SPH)
+    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) ||       \
+    defined(HOPKINS_PU_SPH)
             0.f,
 #else
             main_cell->parts[pid].density.div_v,
@@ -795,15 +796,15 @@ int main(int argc, char *argv[]) {
 
   const ticks tic = getticks();
 
-  /* Kick the central cell */
-  // runner_do_kick1(&runner, main_cell, 0);
+/* Kick the central cell */
+// runner_do_kick1(&runner, main_cell, 0);
 
-  /* And drift it */
-  // runner_do_drift_particles(&runner, main_cell, 0);
+/* And drift it */
+// runner_do_drift_particles(&runner, main_cell, 0);
 
-  /* Initialise the particles */
-  // for (int j = 0; j < 125; ++j) runner_do_drift_particles(&runner, cells[j],
-  // 0);
+/* Initialise the particles */
+// for (int j = 0; j < 125; ++j) runner_do_drift_particles(&runner, cells[j],
+// 0);
 
 /* Do the density calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))

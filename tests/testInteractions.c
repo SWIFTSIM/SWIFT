@@ -27,7 +27,7 @@
 /* Other schemes need to be added here if they are not vectorized, otherwise
  * this test will simply not compile. */
 
-#if defined(GADGET2_SPH) && defined(WITH_VECTORIZATION) 
+#if defined(GADGET2_SPH) && defined(WITH_VECTORIZATION)
 
 #define array_align sizeof(float) * VEC_SIZE
 #define ACC_THRESHOLD 1e-5
@@ -107,7 +107,7 @@ struct part *make_particles(size_t count, double *offset, double spacing,
  */
 void prepare_force(struct part *parts, size_t count) {
 
-#if !defined(GIZMO_MFV_SPH) && !defined(SHADOWFAX_SPH) && \
+#if !defined(GIZMO_MFV_SPH) && !defined(SHADOWFAX_SPH) &&       \
     !defined(MINIMAL_SPH) && !defined(MINIMAL_MULTI_MAT_SPH) && \
     !defined(HOPKINS_PU_SPH)
   struct part *p;

@@ -27,7 +27,7 @@
  *
  * The thermal variable is the internal energy (u). A simple constant
  * viscosity term with a Balsara switch is implemented.
- * 
+ *
  * No thermal conduction term is implemented.
  *
  * This implementation corresponds to the one presented in the SWIFT
@@ -156,7 +156,6 @@ hydro_get_comoving_soundspeed(const struct part *restrict p) {
   const float square_rooted = sqrtf(hydro_gamma * p->pressure_bar / p->rho);
 
   return square_rooted;
-
 }
 
 /**
@@ -288,9 +287,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
 
-  const float dt_u_change = 
-      (p->u_dt != 0.0f) ? fabsf(const_max_u_change * p->u / p->u_dt)
-                        : FLT_MAX;
+  const float dt_u_change =
+      (p->u_dt != 0.0f) ? fabsf(const_max_u_change * p->u / p->u_dt) : FLT_MAX;
 
   return fminf(dt_cfl, dt_u_change);
 }
@@ -453,10 +451,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the "grad h" term */
   const float common_factor = p->h / (hydro_dimension * p->density.wcount);
-  const float grad_h_term =
-      (p->density.pressure_bar_dh * common_factor *
-       hydro_one_over_gamma_minus_one) /
-      (1.f + common_factor * p->density.wcount_dh);
+  const float grad_h_term = (p->density.pressure_bar_dh * common_factor *
+                             hydro_one_over_gamma_minus_one) /
+                            (1.f + common_factor * p->density.wcount_dh);
 
   /* Update variables. */
   p->force.f = grad_h_term;
@@ -535,7 +532,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Predict density and weighted pressure */
   const float w2 = -hydro_dimension * w1;
   if (fabsf(w2) < 0.2f) {
-    const float expf_approx = approx_expf(w2); /* 4th order expansion of exp(w) */
+    const float expf_approx =
+        approx_expf(w2); /* 4th order expansion of exp(w) */
     p->rho *= expf_approx;
     p->pressure_bar *= expf_approx;
   } else {
@@ -611,7 +609,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo) { }
+    const struct cosmology *cosmo) {}
 
 /**
  * @brief Initialises the particles for the first time
@@ -645,20 +643,28 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   }
 
   if (p->u < -0.0001)
-    printf("Particle %lld has negative u=%.3e "
-	   "(hydro_first_init_part)\n", p->id, p->u);
+    printf(
+        "Particle %lld has negative u=%.3e "
+        "(hydro_first_init_part)\n",
+        p->id, p->u);
 
   if (p->pressure_bar < -0.0001)
-    printf("Particle %lld has negative P_bar=%.3e "
-	   "(hydro_first_init_part)\n", p->id, p->pressure_bar);
+    printf(
+        "Particle %lld has negative P_bar=%.3e "
+        "(hydro_first_init_part)\n",
+        p->id, p->pressure_bar);
 
   if (p->rho < -0.0001)
-    printf("Particle %lld has negative rho=%.3e "
-	   "(hydro_first_init_part)\n", p->id, p->rho);
+    printf(
+        "Particle %lld has negative rho=%.3e "
+        "(hydro_first_init_part)\n",
+        p->id, p->rho);
 
   if (p->mass < -0.0001)
-    printf("Particle %lld has negative m=%.3e "
-	   "(hydro_first_init_part)\n", p->id, p->mass);
+    printf(
+        "Particle %lld has negative m=%.3e "
+        "(hydro_first_init_part)\n",
+        p->id, p->mass);
 #endif
 }
 

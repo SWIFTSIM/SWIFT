@@ -74,8 +74,8 @@ void convert_u(const struct engine* e, const struct part* p,
 }
 
 void convert_S(const struct engine* e, const struct part* p,
-	       const struct xpart* xp, float*ret) {
-  
+               const struct xpart* xp, float* ret) {
+
   ret[0] = hydro_get_comoving_entropy(p);
 }
 
