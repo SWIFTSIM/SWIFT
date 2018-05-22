@@ -985,11 +985,11 @@ __attribute__((always_inline)) INLINE static float newton_iter(float x_init,
 		//if (x > cooling->Therm[cooling->N_Temp - 1]*log(10) + 1) x = newton_guess_iter(u_ini,H_plus_He_heat_table,H_plus_He_electron_abundance_table,element_cooling_table,element_electron_abundance_table,temp_table,p,cooling,cosmo,phys_const,dt); 
 		//if (x < cooling->Therm[0]*log(10) - 1) x = newton_guess_iter(u_ini,H_plus_He_heat_table,H_plus_He_electron_abundance_table,element_cooling_table,element_electron_abundance_table,temp_table,p,cooling,cosmo,phys_const,dt); 
 
-      if(dt > 0) printf("Eagle cooling.h u, u_old, error, step %.5e %.5e %.5e %.5e %.5e %d\n", exp(x), exp(x_old), LambdaNet*ratefact*dt, dLambdaNet_du*ratefact*dt, x - x_old, i);
+      //if(dt > 0) printf("Eagle cooling.h u, u_old, error, step %.5e %.5e %.5e %d\n", exp(x), exp(x_old), fabs((x - x_old) / x), i);
       //if(dt > 0) printf("Eagle cooling.h %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e %d\n", 1.0,  u_ini, exp(-x_old),  LambdaNet, ratefact, dt, exp(-x_old),1.0, dLambdaNet_du, ratefact, dt, i);
 
       i++;
-    } while (fabs(x - x_old) > 1.0e-5 && i < eagle_max_iterations);
+    } while (fabs((exp(x) - exp(x_old)) / exp(x)) > 1.0e-2 && i < eagle_max_iterations);
 
   return x;
 
