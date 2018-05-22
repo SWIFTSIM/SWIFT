@@ -42,3 +42,7 @@ Gravity:
 InitialConditions:
                                         # The initial conditions file to read
     file_name:  moon_forming_impact.hdf5
+
+# Parameters related to the equation of state
+EoS:
+    planetary_use_Til:    1                       # Whether to prepare the Tillotson EOS
