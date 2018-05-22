@@ -71,7 +71,7 @@ struct part *make_particles(size_t count, double *offset, double spacing,
   p->h = h;
   p->id = ++(*partId);
 
-#if !defined(GIZMO_SPH) && !defined(SHADOWFAX_SPH)
+#if !defined(GIZMO_MFV_SPH) && !defined(SHADOWFAX_SPH)
   p->mass = 1.0f;
 #endif
 
@@ -92,7 +92,7 @@ struct part *make_particles(size_t count, double *offset, double spacing,
 
     p->h = h;
     p->id = ++(*partId);
-#if !defined(GIZMO_SPH) && !defined(SHADOWFAX_SPH)
+#if !defined(GIZMO_MFV_SPH) && !defined(SHADOWFAX_SPH)
     p->mass = 1.0f;
 #endif
   }
@@ -104,8 +104,8 @@ struct part *make_particles(size_t count, double *offset, double spacing,
  */
 void prepare_force(struct part *parts, size_t count) {
 
-#if !defined(GIZMO_SPH) && !defined(SHADOWFAX_SPH) && !defined(MINIMAL_SPH) && \
-    !defined(MINIMAL_MULTI_MAT_SPH)
+#if !defined(GIZMO_MFV_SPH) && !defined(SHADOWFAX_SPH) && \
+    !defined(MINIMAL_SPH) && !defined(MINIMAL_MULTI_MAT_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];

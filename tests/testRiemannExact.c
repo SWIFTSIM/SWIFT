@@ -23,6 +23,12 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Force use of exact Riemann solver */
+#undef RIEMANN_SOLVER_TRRS
+#undef RIEMANN_SOLVER_HLLC
+#undef RIEMANN_SOLVER_EXACT
+#define RIEMANN_SOLVER_EXACT 1
+
 /* Local headers. */
 #include "riemann/riemann_exact.h"
 #include "swift.h"

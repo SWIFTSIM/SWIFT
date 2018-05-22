@@ -122,7 +122,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_MULTI_MAT_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
-#elif defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#elif defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
   part->primitives.P = pressure;
 #else
   error("Need to define pressure here !");
@@ -222,9 +222,9 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
 
     hydro_init_part(p, hs);
 
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
     float volume = p->conserved.mass / density;
-#if defined(GIZMO_SPH)
+#if defined(GIZMO_MFV_SPH)
     p->geometry.volume = volume;
 #else
     p->cell.volume = volume;
@@ -300,7 +300,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->h = size * h / (float)n;
         h_max = fmax(h_max, part->h);
 
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
@@ -314,7 +314,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->id = ++(*partId);
         part->time_bin = 1;
 
-#if defined(GIZMO_SPH)
+#if defined(GIZMO_MFV_SPH)
         part->geometry.volume = part->conserved.mass / density;
         part->primitives.rho = density;
         part->primitives.v[0] = part->v[0];
@@ -406,7 +406,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
             hydro_get_comoving_density(&main_cell->parts[pid]),
 #if defined(MINIMAL_SPH) || defined(MINIMAL_MULTI_MAT_SPH) || \
-    defined(SHADOWFAX_SPH)
+    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
             main_cell->parts[pid].density.div_v,

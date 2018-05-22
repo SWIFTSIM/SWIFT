@@ -18,8 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_HYDRO_IACT_H
-#define SWIFT_GIZMO_HYDRO_IACT_H
+#ifndef SWIFT_GIZMO_MFM_HYDRO_IACT_H
+#define SWIFT_GIZMO_MFM_HYDRO_IACT_H
 
 #include "adiabatic_index.h"
 #include "hydro_gradients.h"
@@ -406,7 +406,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
    * itself (see GIZMO) */
 
   float totflux[5];
-  riemann_solve_for_flux(Wi, Wj, n_unit, vij, totflux);
+  riemann_solve_for_middle_state_flux(Wi, Wj, n_unit, vij, totflux);
 
   /* Multiply with the interface surface area */
   totflux[0] *= Anorm;
@@ -514,4 +514,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H);
 }
 
-#endif /* SWIFT_GIZMO_HYDRO_IACT_H */
+#endif /* SWIFT_GIZMO_MFM_HYDRO_IACT_H */

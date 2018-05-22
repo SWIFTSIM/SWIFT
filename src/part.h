@@ -54,8 +54,12 @@
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_part.h"
 #define hydro_need_extra_init_loop 0
-#elif defined(GIZMO_SPH)
-#include "./hydro/Gizmo/hydro_part.h"
+#elif defined(GIZMO_MFV_SPH)
+#include "./hydro/GizmoMFV/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
+#elif defined(GIZMO_MFM_SPH)
+#include "./hydro/GizmoMFM/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
 #elif defined(SHADOWFAX_SPH)

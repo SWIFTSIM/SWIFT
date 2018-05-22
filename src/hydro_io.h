@@ -31,8 +31,10 @@
 #include "./hydro/PressureEntropy/hydro_io.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_io.h"
-#elif defined(GIZMO_SPH)
-#include "./hydro/Gizmo/hydro_io.h"
+#elif defined(GIZMO_MFV_SPH)
+#include "./hydro/GizmoMFV/hydro_io.h"
+#elif defined(GIZMO_MFM_SPH)
+#include "./hydro/GizmoMFM/hydro_io.h"
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_io.h"
 #elif defined(MINIMAL_MULTI_MAT_SPH)

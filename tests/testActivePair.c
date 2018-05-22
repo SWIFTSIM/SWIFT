@@ -94,7 +94,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->id = ++(*partId);
 
 /* Set the mass */
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 
 #ifdef SHADOWFAX_SPH
@@ -105,7 +105,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
 #else
         part->mass = density * volume / count;
-#endif /* GIZMO_SPH */
+#endif /* GIZMO_MFV_SPH */
 
 /* Set the thermodynamic variable */
 #if defined(GADGET2_SPH)

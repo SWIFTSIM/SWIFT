@@ -855,7 +855,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo, shadowfax, minimal-multi-mat, debug default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo-mfv, gizmo-mfm, shadowfax, minimal-multi-mat, debug default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -882,8 +882,11 @@ case "$with_hydro" in
    default)
       AC_DEFINE([DEFAULT_SPH], [1], [Default SPH])
    ;;
-   gizmo)
-      AC_DEFINE([GIZMO_SPH], [1], [GIZMO SPH])
+   gizmo-mfv)
+      AC_DEFINE([GIZMO_MFV_SPH], [1], [GIZMO MFV SPH])
+   ;;
+   gizmo-mfm)
+      AC_DEFINE([GIZMO_MFM_SPH], [1], [GIZMO MFM SPH])
    ;;
    shadowfax)
       AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])

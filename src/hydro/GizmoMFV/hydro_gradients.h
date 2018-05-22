@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_HYDRO_GIZMO_GRADIENTS_H
-#define SWIFT_HYDRO_GIZMO_GRADIENTS_H
+#ifndef SWIFT_HYDRO_GIZMO_MFV_GRADIENTS_H
+#define SWIFT_HYDRO_GIZMO_MFV_GRADIENTS_H
 
 #include "hydro_slope_limiters.h"
 #include "hydro_unphysical.h"
@@ -156,4 +156,4 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
                                   Wj[3], Wj[4]);
 }
 
-#endif /* SWIFT_HYDRO_GIZMO_GRADIENTS_H */
+#endif /* SWIFT_HYDRO_GIZMO_MFV_GRADIENTS_H */
