@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_HYDRO_DEBUG_H
-#define SWIFT_GIZMO_HYDRO_DEBUG_H
+#ifndef SWIFT_GIZMO_MFV_HYDRO_DEBUG_H
+#define SWIFT_GIZMO_MFV_HYDRO_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
     const struct part* p, const struct xpart* xp) {
@@ -78,4 +78,4 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->timestepvars.vmax, p->density.wcount_dh, p->density.wcount);
 }
 
-#endif /* SWIFT_GIZMO_HYDRO_DEBUG_H */
+#endif /* SWIFT_GIZMO_MFV_HYDRO_DEBUG_H */

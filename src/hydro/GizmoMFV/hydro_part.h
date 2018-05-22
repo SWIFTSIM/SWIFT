@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_HYDRO_PART_H
-#define SWIFT_GIZMO_HYDRO_PART_H
+#ifndef SWIFT_GIZMO_MFV_HYDRO_PART_H
+#define SWIFT_GIZMO_MFV_HYDRO_PART_H
 
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
@@ -210,4 +210,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_GIZMO_HYDRO_PART_H */
+#endif /* SWIFT_GIZMO_MFV_HYDRO_PART_H */
