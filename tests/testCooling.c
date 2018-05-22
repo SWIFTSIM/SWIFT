@@ -109,6 +109,11 @@ int main() {
   construct_1d_table_from_4d_elements(&p,&cooling,&cosmo,&internal_const,cooling.table.element_cooling.metal_heating,element_cooling_table);
   construct_1d_table_from_3d(&p,&cooling,&cosmo,&internal_const,cooling.table.element_cooling.electron_abundance,element_electron_abundance_table);
 
+  //
+  // printf("cooling table values \n");
+  // for( int j=0; j < 176; j++) {
+  //    printf("   %.5e",  H_plus_He_heat_table[j]+element_cooling_table[j]
+
   float XH = p.chemistry_data.metal_mass_fraction[chemistry_element_H];
   float inn_h = chemistry_get_number_density(&p,&cosmo,chemistry_element_H,&internal_const)*cooling.number_density_scale;
   ratefact = inn_h * (XH / eagle_proton_mass_cgs);
@@ -138,20 +143,25 @@ int main() {
   //fclose(output_file2);
   //fclose(output_file3);
 
-  double dLambdaNet_du, LambdaNet, LambdaNext;
-  for(int j = 0; j < 5; j++){
-    float u_ini = eagle_convert_temp_to_u_1d_table(pow(10.0,j+4),temp_table,&p,&cooling,&cosmo,&internal_const),x,du;
-    float dt = 2.0e-2*units_cgs_conversion_factor(&us,UNIT_CONV_TIME);
+  double dLambdaNet_du, LambdaNet;  //, LambdaNext;
+  float x_init, u_eq = 2.0e12 ;
+  for(int j = 5; j < 6; j++){
+    float u_ini = eagle_convert_temp_to_u_1d_table(pow(10.0,0.5*(j+5)),temp_table,&p,&cooling,&cosmo,&internal_const),x,du;
+    float dt = 2.0e-4*units_cgs_conversion_factor(&us,UNIT_CONV_TIME);
     LambdaNet = eagle_cooling_rate_1d_table(u_ini, &dLambdaNet_du, H_plus_He_heat_table, H_plus_He_electron_abundance_table, element_cooling_table, element_electron_abundance_table, temp_table, &p, &cooling, &cosmo, &internal_const);
     float u_temp = u_ini + LambdaNet*ratefact*dt;
+    /* RGB removed this **
     if (u_temp > 0) LambdaNext = eagle_cooling_rate_1d_table(u_temp, &dLambdaNet_du, H_plus_He_heat_table, H_plus_He_electron_abundance_table, element_cooling_table, element_electron_abundance_table, temp_table, &p, &cooling, &cosmo, &internal_const);
     if (fabs(LambdaNet - LambdaNext)/LambdaNet < 0.5) {
       u_temp = u_ini;
     } else {
       u_temp = eagle_convert_temp_to_u_1d_table(1.0e4,temp_table,&p,&cooling,&cosmo,&internal_const);
+		} */
+	 if (u_temp > u_eq) {
+		x_init = log(u_temp);
+	 } else {
+		x_init = log(u_eq);
     }
-    float x_init = log(u_temp);
-
     x = newton_iter(x_init,u_ini,H_plus_He_heat_table,H_plus_He_electron_abundance_table,element_cooling_table,element_electron_abundance_table,temp_table,&p,&cosmo,&cooling,&internal_const,dt);
     printf("testing newton integration, u_ini, u %.5e %.5e, temperature initial, final %.5e %.5e\n", u_ini, exp(x), eagle_convert_u_to_temp_1d_table(u_ini,&du,temp_table,&p,&cooling,&cosmo,&internal_const), eagle_convert_u_to_temp_1d_table(exp(x),&du,temp_table,&p,&cooling,&cosmo,&internal_const));
   }
