@@ -58,6 +58,10 @@
 #include "./hydro/GizmoMFV/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
+#elif defined(GIZMO_MFM_SPH)
+#include "./hydro/GizmoMFM/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_part.h"
 #define hydro_need_extra_init_loop 0

@@ -92,6 +92,17 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/GizmoMFV/hydro_slope_limiters.h \
                  hydro/GizmoMFV/hydro_unphysical.h \
                  hydro/GizmoMFV/hydro_velocities.h \
+		 hydro/GizmoMFM/hydro.h hydro/GizmoMFM/hydro_iact.h \
+                 hydro/GizmoMFM/hydro_io.h hydro/GizmoMFM/hydro_debug.h \
+                 hydro/GizmoMFM/hydro_part.h \
+                 hydro/GizmoMFM/hydro_gradients_gizmo.h \
+                 hydro/GizmoMFM/hydro_gradients.h \
+                 hydro/GizmoMFM/hydro_gradients_sph.h \
+                 hydro/GizmoMFM/hydro_slope_limiters_cell.h \
+                 hydro/GizmoMFM/hydro_slope_limiters_face.h \
+                 hydro/GizmoMFM/hydro_slope_limiters.h \
+                 hydro/GizmoMFM/hydro_unphysical.h \
+                 hydro/GizmoMFM/hydro_velocities.h \
                  hydro/Shadowswift/hydro_debug.h \
                  hydro/Shadowswift/hydro_gradients.h hydro/Shadowswift/hydro.h \
                  hydro/Shadowswift/hydro_iact.h \

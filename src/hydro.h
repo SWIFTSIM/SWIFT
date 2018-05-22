@@ -49,6 +49,10 @@
 #include "./hydro/GizmoMFV/hydro.h"
 #include "./hydro/GizmoMFV/hydro_iact.h"
 #define SPH_IMPLEMENTATION "GIZMO MFV (Hopkins 2015)"
+#elif defined(GIZMO_MFM_SPH)
+#include "./hydro/GizmoMFM/hydro.h"
+#include "./hydro/GizmoMFM/hydro_iact.h"
+#define SPH_IMPLEMENTATION "GIZMO MFM (Hopkins 2015)"
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro.h"
 #include "./hydro/Shadowswift/hydro_iact.h"

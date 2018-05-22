@@ -54,8 +54,6 @@
 //#define GIZMO_FIX_PARTICLES
 /* Try to keep cells regular by adding a correction velocity. */
 //#define GIZMO_STEER_MOTION
-/* Use a meshless finite mass method. */
-//#define GIZMO_MFM
 /* Use the total energy instead of the thermal energy as conserved variable. */
 //#define GIZMO_TOTAL_ENERGY
 

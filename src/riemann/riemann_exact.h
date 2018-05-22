@@ -566,7 +566,6 @@ riemann_solver_solve_middle_state(const float* WL, const float vL,
       0.5f * (vL + vR) + 0.5f * (riemann_fb(p, WR, aR) - riemann_fb(p, WL, aL));
 }
 
-#ifndef GIZMO_MFM
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     const float* Wi, const float* Wj, const float* n_unit, const float* vij,
     float* totflux) {
@@ -624,10 +623,11 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   riemann_check_output(Wi, Wj, n_unit, vij, totflux);
 #endif
 }
-#else /* GIZMO_MFM */
-__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    const float* Wi, const float* Wj, const float* n_unit, const float* vij,
-    float* totflux) {
+
+__attribute__((always_inline)) INLINE static void
+riemann_solve_for_middle_state_flux(const float* Wi, const float* Wj,
+                                    const float* n_unit, const float* vij,
+                                    float* totflux) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_input(Wi, Wj, n_unit, vij);
@@ -662,6 +662,5 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   riemann_check_output(Wi, Wj, n_unit, vij, totflux);
 #endif
 }
-#endif /* GIZMO_MFM */
 
 #endif /* SWIFT_RIEMANN_EXACT_H */

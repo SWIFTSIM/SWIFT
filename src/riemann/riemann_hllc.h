@@ -38,7 +38,6 @@
     "The HLLC Riemann solver currently only supports and ideal gas equation of state. Either select this equation of state, or try using another Riemann solver!"
 #endif
 
-#ifndef GIZMO_MFM
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     const float *WL, const float *WR, const float *n, const float *vij,
     float *totflux) {
@@ -185,10 +184,11 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   riemann_check_output(WL, WR, n, vij, totflux);
 #endif
 }
-#else /* GIZMO_MFM */
-__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    const float *WL, const float *WR, const float *n, const float *vij,
-    float *totflux) {
+
+__attribute__((always_inline)) INLINE static void
+riemann_solve_for_middle_state_flux(const float *WL, const float *WR,
+                                    const float *n, const float *vij,
+                                    float *totflux) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_input(WL, WR, n, vij);
@@ -257,6 +257,5 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   riemann_check_output(WL, WR, n, vij, totflux);
 #endif
 }
-#endif /* GIZMO_MFM */
 
 #endif /* SWIFT_RIEMANN_HLLC_H */
