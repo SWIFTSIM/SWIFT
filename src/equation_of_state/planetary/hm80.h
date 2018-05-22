@@ -41,18 +41,12 @@
 
 // Hubbard & MacFarlane (1980) parameters
 struct HM80_params {
-  float **table_P_rho_u;
+  float *table_P_rho_u;
   int num_rho, num_u;
   float log_rho_min, log_rho_max, log_rho_step, inv_log_rho_step, log_u_min,
       log_u_max, log_u_step, inv_log_u_step, bulk_mod;
   enum eos_planetary_material_id mat_id;
 };
-
-// Table file names
-/// to be read in from the parameter file instead once finished testing...
-#define HM80_HHe_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_HHe.txt"
-#define HM80_ice_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_ice.txt"
-#define HM80_rock_table_file "/gpfs/data/dc-kege1/gihr_data/P_rho_u_roc.txt"
 
 // Parameter values for each material (cgs units)
 INLINE static void set_HM80_HHe(struct HM80_params *mat,
@@ -107,17 +101,15 @@ INLINE static void set_HM80_rock(struct HM80_params *mat,
 // Read the table from file
 INLINE static void load_HM80_table(struct HM80_params *mat, char *table_file) {
   // Allocate table memory
-  mat->table_P_rho_u = (float **)malloc(mat->num_rho * sizeof(float *));
-  for (int i = 0; i < mat->num_rho; i++) {
-    mat->table_P_rho_u[i] = (float *)malloc(mat->num_u * sizeof(float));
-  }
+  mat->table_P_rho_u =
+      (float *)malloc(mat->num_rho * mat->num_u * sizeof(float *));
 
   // Load table contents from file
   FILE *f = fopen(table_file, "r");
   int c;
   for (int i = 0; i < mat->num_rho; i++) {
     for (int j = 0; j < mat->num_u; j++) {
-      c = fscanf(f, "%f", &mat->table_P_rho_u[i][j]);
+      c = fscanf(f, "%f", &mat->table_P_rho_u[i * mat->num_rho + j]);
       if (c != 1) {
         error("Failed to read EOS table");
       }
@@ -147,7 +139,7 @@ INLINE static void convert_units_HM80(struct HM80_params *mat,
   // Table Pressures in Mbar
   for (int i = 0; i < mat->num_rho; i++) {
     for (int j = 0; j < mat->num_u; j++) {
-      mat->table_P_rho_u[i][j] *=
+      mat->table_P_rho_u[i * mat->num_rho + j] *=
           Mbar_to_Ba / units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
     }
   }
@@ -194,7 +186,6 @@ INLINE static float HM80_soundspeed_from_entropy(
 // gas_entropy_from_internal_energy
 INLINE static float HM80_entropy_from_internal_energy(
     float density, float u, const struct HM80_params *mat) {
-  error("This EOS function is not yet implemented!");
 
   return 0;
 }
@@ -205,7 +196,7 @@ INLINE static float HM80_pressure_from_internal_energy(
 
   float P;
 
-  if (u <= 0) {
+  if (u <= 0.f) {
     return 0.f;
   }
 
@@ -226,32 +217,35 @@ INLINE static float HM80_pressure_from_internal_energy(
   // Return zero pressure if below the table minimum/a
   // Extrapolate the pressure for low densities
   if (rho_idx < 0) {  // Too-low rho
-    P = expf(logf((1 - intp_u) * mat->table_P_rho_u[0][u_idx] +
-                  intp_u * mat->table_P_rho_u[0][u_idx + 1]) +
+    P = expf(logf((1 - intp_u) * mat->table_P_rho_u[u_idx] +
+                  intp_u * mat->table_P_rho_u[u_idx + 1]) +
              log_rho - mat->log_rho_min);
     if (u_idx < 0) {  // and too-low u
-      P = 0;
+      P = 0.f;
     }
   } else if (u_idx < 0) {  // Too-low u
-    P = 0;
+    P = 0.f;
   }
   // Return an edge value if above the table maximum/a
   else if (rho_idx >= mat->num_rho - 1) {  // Too-high rho
     if (u_idx >= mat->num_u - 1) {         // and too-high u
-      P = mat->table_P_rho_u[mat->num_rho - 1][mat->num_u - 1];
+      P = mat->table_P_rho_u[(mat->num_rho - 1) * mat->num_u + mat->num_u - 1];
     } else {
-      P = mat->table_P_rho_u[mat->num_rho - 1][u_idx];
+      P = mat->table_P_rho_u[(mat->num_rho - 1) * mat->num_u + u_idx];
     }
   } else if (u_idx >= mat->num_u - 1) {  // Too-high u
-    P = mat->table_P_rho_u[rho_idx][mat->num_u - 1];
+    P = mat->table_P_rho_u[rho_idx * mat->num_u + mat->num_u - 1];
   }
   // Normal interpolation within the table
   else {
     P = (1.f - intp_rho) *
-            ((1.f - intp_u) * mat->table_P_rho_u[rho_idx][u_idx] +
-             intp_u * mat->table_P_rho_u[rho_idx][u_idx + 1]) +
-        intp_rho * ((1 - intp_u) * mat->table_P_rho_u[rho_idx + 1][u_idx] +
-                    intp_u * mat->table_P_rho_u[rho_idx + 1][u_idx + 1]);
+            ((1.f - intp_u) * mat->table_P_rho_u[rho_idx * mat->num_u + u_idx] +
+             intp_u * mat->table_P_rho_u[rho_idx * mat->num_u + u_idx + 1]) +
+        intp_rho *
+            ((1 - intp_u) *
+                 mat->table_P_rho_u[(rho_idx + 1) * mat->num_u + u_idx] +
+             intp_u *
+                 mat->table_P_rho_u[(rho_idx + 1) * mat->num_u + u_idx + 1]);
   }
 
   return P;

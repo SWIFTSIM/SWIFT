@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_HYDRO_H
-#define SWIFT_GIZMO_HYDRO_H
+#ifndef SWIFT_GIZMO_MFV_HYDRO_H
+#define SWIFT_GIZMO_MFV_HYDRO_H
 
 #include "adiabatic_index.h"
 #include "approx_math.h"
@@ -972,4 +972,4 @@ hydro_set_init_internal_energy(struct part* p, float u_init) {
   p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u_init;
 }
 
-#endif /* SWIFT_GIZMO_HYDRO_H */
+#endif /* SWIFT_GIZMO_MFV_HYDRO_H */

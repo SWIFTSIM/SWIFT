@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_SLOPE_LIMITER_CELL_H
-#define SWIFT_GIZMO_SLOPE_LIMITER_CELL_H
+#ifndef SWIFT_GIZMO_MFV_SLOPE_LIMITER_CELL_H
+#define SWIFT_GIZMO_MFV_SLOPE_LIMITER_CELL_H
 
 #include <float.h>
 
@@ -183,4 +183,4 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
   }
 }
 
-#endif /* SWIFT_GIZMO_SLOPE_LIMITER_CELL_H */
+#endif /* SWIFT_GIZMO_MFV_SLOPE_LIMITER_CELL_H */

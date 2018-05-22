@@ -219,4 +219,64 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 #endif
 }
 
+__attribute__((always_inline)) INLINE static void
+riemann_solve_for_middle_state_flux(const float* Wi, const float* Wj,
+                                    const float* n_unit, const float* vij,
+                                    float* totflux) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_input(Wi, Wj, n_unit, vij);
+#endif
+
+  if (Wi[0] == 0.0f || Wj[0] == 0.0f) {
+    totflux[0] = 0.0f;
+    totflux[1] = 0.0f;
+    totflux[2] = 0.0f;
+    totflux[3] = 0.0f;
+    totflux[4] = 0.0f;
+    return;
+  }
+
+  /* calculate the velocities along the interface normal */
+  const float vL = Wi[1] * n_unit[0] + Wi[2] * n_unit[1] + Wi[3] * n_unit[2];
+  const float vR = Wj[1] * n_unit[0] + Wj[2] * n_unit[1] + Wj[3] * n_unit[2];
+
+  /* calculate the sound speeds */
+  const float aL = sqrtf(hydro_gamma * Wi[4] / Wi[0]);
+  const float aR = sqrtf(hydro_gamma * Wj[4] / Wj[0]);
+
+  if (riemann_is_vacuum(Wi, Wj, vL, vR, aL, aR)) {
+    totflux[0] = 0.0f;
+    totflux[1] = 0.0f;
+    totflux[2] = 0.0f;
+    totflux[3] = 0.0f;
+    totflux[4] = 0.0f;
+    return;
+  }
+
+  /* calculate the velocity and pressure in the intermediate state */
+  const float PLR = pow_gamma_minus_one_over_two_gamma(Wi[4] / Wj[4]);
+  const float ustar = (PLR * vL / aL + vR / aR +
+                       hydro_two_over_gamma_minus_one * (PLR - 1.0f)) /
+                      (PLR / aL + 1.0f / aR);
+  const float pstar =
+      0.5f *
+      (Wi[4] * pow_two_gamma_over_gamma_minus_one(
+                   1.0f + hydro_gamma_minus_one_over_two / aL * (vL - ustar)) +
+       Wj[4] * pow_two_gamma_over_gamma_minus_one(
+                   1.0f + hydro_gamma_minus_one_over_two / aR * (ustar - vR)));
+
+  totflux[0] = 0.0f;
+  totflux[1] = pstar * n_unit[0];
+  totflux[2] = pstar * n_unit[1];
+  totflux[3] = pstar * n_unit[2];
+  const float vface =
+      vij[0] * n_unit[0] + vij[1] * n_unit[1] + vij[2] * n_unit[2];
+  totflux[4] = pstar * (ustar + vface);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_output(Wi, Wj, n_unit, vij, totflux);
+#endif
+}
+
 #endif /* SWIFT_RIEMANN_TRRS_H */
