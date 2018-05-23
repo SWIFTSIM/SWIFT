@@ -614,8 +614,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   float a_grav[3];
 
-  /* Update conserved variables. */
-  p->conserved.mass += p->conserved.flux.mass * dt;
+  /* Update conserved variables (note: the mass does not change). */
   p->conserved.momentum[0] += p->conserved.flux.momentum[0] * dt;
   p->conserved.momentum[1] += p->conserved.flux.momentum[1] * dt;
   p->conserved.momentum[2] += p->conserved.flux.momentum[2] * dt;
@@ -664,9 +663,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     a_grav[0] = p->gpart->a_grav[0];
     a_grav[1] = p->gpart->a_grav[1];
     a_grav[2] = p->gpart->a_grav[2];
-
-    /* Make sure the gpart knows the mass has changed. */
-    p->gpart->mass = p->conserved.mass;
 
     /* Kick the momentum for half a time step */
     /* Note that this also affects the particle movement, as the velocity for
