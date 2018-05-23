@@ -115,24 +115,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[0] += facj * curlvr[0];
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (pi->u < -FLT_MIN)
-    error("Particle %lld has negative u=%.3e\n", pi->id, pi->u);
-
-  if (pj->u < -FLT_MIN)
-    error("Particle %lld has negative u=%.3e\n", pj->id, pj->u);
-
-  if (pi->pressure_bar < -FLT_MIN)
-    error("Particle %lld has negative P_bar=%.3e\n", pi->id, pi->pressure_bar);
-
-  if (pi->rho < -FLT_MIN)
-    error("Particle %lld has negative rho=%.3e\n", pi->id, pi->rho);
-
-  if (mj < -FLT_MIN) error("Particle %lld has negative m=%.3e\n", pj->id, mj);
-
-  if (wi < -FLT_MIN) error("Particle %lld has negative rho=%.3e\n", pi->id, wi);
-#endif
 }
 
 /**
@@ -193,21 +175,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[0] += faci * curlvr[0];
   pi->density.rot_v[1] += faci * curlvr[1];
   pi->density.rot_v[2] += faci * curlvr[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (pi->u < -FLT_MIN)
-    error("Particle %lld has negative u=%.3e\n", pi->id, pi->u);
-
-  if (pi->pressure_bar < -FLT_MIN)
-    error("Particle %lld has negative P_bar=%.3e\n", pi->id, pi->pressure_bar);
-
-  if (pi->rho < -FLT_MIN)
-    error("Particle %lld has negative rho=%.3e\n", pi->id, pi->rho);
-
-  if (mj < -FLT_MIN) error("Particle %lld has negative m=%.3e\n", pj->id, mj);
-
-  if (wi < -FLT_MIN) error("Particle %lld has negative rho=%.3e\n", pi->id, wi);
-#endif
 }
 
 /**

@@ -635,37 +635,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (p->id == 116589) {
-    printf("Ending hydro_first_init_part\n");
-    printf("P_bar=%.3e\n", p->pressure_bar);
-  }
-
-  if (p->u < -0.0001)
-    printf(
-        "Particle %lld has negative u=%.3e "
-        "(hydro_first_init_part)\n",
-        p->id, p->u);
-
-  if (p->pressure_bar < -0.0001)
-    printf(
-        "Particle %lld has negative P_bar=%.3e "
-        "(hydro_first_init_part)\n",
-        p->id, p->pressure_bar);
-
-  if (p->rho < -0.0001)
-    printf(
-        "Particle %lld has negative rho=%.3e "
-        "(hydro_first_init_part)\n",
-        p->id, p->rho);
-
-  if (p->mass < -0.0001)
-    printf(
-        "Particle %lld has negative m=%.3e "
-        "(hydro_first_init_part)\n",
-        p->id, p->mass);
-#endif
 }
 
 /**
