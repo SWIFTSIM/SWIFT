@@ -60,6 +60,7 @@ const char* timers_names[timer_count] = {
     "dopair_grav_pp",
     "dograv_external",
     "dograv_down",
+    "dograv_mesh",
     "dograv_top_level",
     "dograv_long_range",
     "dosource",

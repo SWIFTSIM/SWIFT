@@ -130,6 +130,7 @@ int main(int argc, char *argv[]) {
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
+  struct pm_mesh mesh;
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
@@ -688,13 +689,6 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
-#ifndef HAVE_FFTW
-    /* Need the FFTW library if periodic and self gravity. */
-    if (with_self_gravity && periodic)
-      error(
-          "No FFTW library found. Cannot compute periodic long-range forces.");
-#endif
-
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check once and for all that we don't have unwanted links */
     if (!with_stars && !dry_run) {
@@ -732,6 +726,17 @@ int main(int argc, char *argv[]) {
 
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);
+
+    /* Initialise the long-range gravity mesh */
+    if (with_self_gravity && periodic) {
+#ifdef HAVE_FFTW
+      pm_mesh_init(&mesh, &gravity_properties, dim[0]);
+#else
+      /* Need the FFTW library if periodic and self gravity. */
+      error(
+          "No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
+    }
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -827,7 +832,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
-                &hydro_properties, &gravity_properties, &potential,
+                &hydro_properties, &gravity_properties, &mesh, &potential,
                 &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
@@ -1096,6 +1101,7 @@ int main(int argc, char *argv[]) {
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(&cosmo);
+  if (with_self_gravity) pm_mesh_clean(&mesh);
   engine_clean(&e);
   free(params);
 

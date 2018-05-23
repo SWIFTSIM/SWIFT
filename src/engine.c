@@ -333,8 +333,15 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         c->grav_down = scheduler_addtask(s, task_type_grav_down,
                                          task_subtype_none, 0, 0, c, NULL);
 
+        /* Gravity mesh force propagation */
+        if (periodic)
+          c->grav_mesh = scheduler_addtask(s, task_type_grav_mesh,
+                                           task_subtype_none, 0, 0, c, NULL);
+
         if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost_in);
         if (periodic) scheduler_addunlock(s, c->grav_ghost_out, c->grav_down);
+        if (periodic) scheduler_addunlock(s, c->drift_gpart, c->grav_mesh);
+        if (periodic) scheduler_addunlock(s, c->grav_mesh, c->super->end_force);
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->super->end_force);
@@ -3810,6 +3817,10 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
 
+  /* Re-compute the mesh forces */
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+    pm_mesh_compute_potential(e->mesh, e);
+
   /* Re-compute the maximal RMS displacement constraint */
   if (e->policy & engine_policy_cosmology)
     engine_recompute_displacement_constraint(e);
@@ -5427,7 +5438,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
-                 struct gravity_props *gravity,
+                 struct gravity_props *gravity, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
                  const struct chemistry_global_data *chemistry,
@@ -5490,6 +5501,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->cosmology = cosmo;
   e->hydro_properties = hydro;
   e->gravity_properties = gravity;
+  e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
   e->chemistry = chemistry;

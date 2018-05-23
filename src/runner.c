@@ -178,6 +178,41 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
+ * @brief Calculate gravity accelerations from the periodic mesh
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
+
+  struct gpart *restrict gparts = c->gparts;
+  const int gcount = c->gcount;
+  const struct engine *e = r->e;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!e->s->periodic) error("Calling mesh forces in non-periodic mode.");
+#endif
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active_gravity(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_grav_mesh(r, c->progeny[k], 0);
+  } else {
+
+    /* Get the forces from the gravity mesh */
+    pm_mesh_interpolate_forces(e->mesh, e, gparts, gcount);
+  }
+
+  if (timer) TIMER_TOC(timer_dograv_mesh);
+}
+
+/**
  * @brief Calculate change in thermal state of particles induced
  * by radiative cooling and heating.
  *
@@ -2169,8 +2204,11 @@ void *runner_main(void *data) {
         case task_type_grav_down:
           runner_do_grav_down(r, t->ci, 1);
           break;
+        case task_type_grav_mesh:
+          runner_do_grav_mesh(r, t->ci, 1);
+          break;
         case task_type_grav_top_level:
-          runner_do_grav_fft(r, 1);
+          // runner_do_grav_fft(r, 1);
           break;
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);

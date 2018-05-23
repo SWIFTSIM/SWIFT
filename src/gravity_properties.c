@@ -49,6 +49,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     error("Invalid tree rebuild frequency. Must be in [0., 1.]");
 
   /* Tree-PM parameters */
+  p->mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
   p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
                                            gravity_props_default_a_smooth);
   p->r_cut_max = parser_get_opt_param_float(params, "Gravity:r_cut_max",
@@ -120,6 +121,7 @@ void gravity_props_print(const struct gravity_props *p) {
       p->epsilon_max_physical * kernel_gravity_softening_plummer_equivalent,
       p->epsilon_max_physical);
 
+  message("Self-gravity mesh side-length: N=%d", p->mesh_size);
   message("Self-gravity mesh smoothing-scale: a_smooth=%f", p->a_smooth);
 
   message("Self-gravity tree cut-off: r_cut_max=%f", p->r_cut_max);
