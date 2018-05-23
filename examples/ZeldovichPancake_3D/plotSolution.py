@@ -21,14 +21,11 @@
 # the simulation result
 
 # Parameters
-gas_gamma = 5./3.    # Polytropic index
-lambda_i = 1.975e24  # Wavelength of the density perturbation (in h^-1 m)
-rho_0 = 1.8788e-26   # Critical density of the Universe (in h^2 kg m^-3)
 T_i = 100.           # Initial temperature of the gas (in K)
-H_0 = 3.24077929e-18 # Assumed value of the Hubble constant (in s^-1)
 z_c = 1.             # Redshift of caustic formation (non-linear collapse)
 z_i = 100.           # Initial redshift
 
+# Physical constants needed for internal energy to temperature conversion
 k_in_J_K = 1.38064852e-23
 mH_in_kg = 1.6737236e-27
 
@@ -45,7 +42,7 @@ params = {'axes.labelsize': 10,
 'xtick.labelsize': 10,
 'ytick.labelsize': 10,
 'text.usetex': True,
- 'figure.figsize' : (9.90,6.45),
+ 'figure.figsize' : (6.45,6.45),
 'figure.subplot.left'    : 0.045,
 'figure.subplot.right'   : 0.99,
 'figure.subplot.bottom'  : 0.05,
@@ -73,14 +70,26 @@ neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
 eta = sim["/HydroScheme"].attrs["Kernel eta"]
 git = sim["Code"].attrs["Git Revision"]
 
+# Cosmological parameters
+H_0 = sim["/Cosmology"].attrs["H0 [internal units]"][0]
+gas_gamma = sim["/HydroScheme"].attrs["Adiabatic index"][0]
+
 x = sim["/PartType0/Coordinates"][:,0]
 v = sim["/PartType0/Velocities"][:,0]
 u = sim["/PartType0/InternalEnergy"][:]
 S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 rho = sim["/PartType0/Density"][:]
+m = sim["/PartType0/Masses"][:]
+phi = sim["/PartType0/Potential"][:]
 
-x_s = linspace(0., lambda_i, 1000)
+x -= 0.5 * boxSize
+
+# Derived parameters
+rho_0 = m.sum() / (boxSize**3) # critical density of the box
+lambda_i = boxSize             # wavelength of the perturbation
+
+x_s = linspace(-0.5 * lambda_i, 0.5 * lambda_i, 1000)
 k_i = 2. * pi / lambda_i
 zfac = (1. + z_c) / (1. + redshift)
 rho_s = rho_0 / (1 - zfac * cos(k_i * x_s))
@@ -99,56 +108,38 @@ unit_length_in_si = 0.01 * unit_length_in_cgs
 unit_mass_in_si = 0.001 * unit_mass_in_cgs
 unit_time_in_si = unit_time_in_cgs
 
-x_s /= unit_length_in_si
-rho_s *= (unit_length_in_si**3 / unit_mass_in_si)
-v_s *= (unit_time_in_si / unit_length_in_si)
-
 # Plot the interesting quantities
 figure()
 
 # Velocity profile --------------------------------
-subplot(231)
+subplot(221)
 plot(x, v, '.', color='r', ms=4.0)
 plot(x_s, v_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
 
 # Density profile --------------------------------
-subplot(232)
-plot(x, rho, '.', color='r', ms=4.0)
-plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
+subplot(222)
+plot(x, phi, '.', color='r', ms=4.0)
+#plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
 
-# Pressure profile --------------------------------
-subplot(233)
-plot(x, P, '.', color='r', ms=4.0)
-plot(x_s, P_s, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Pressure}}~P$", labelpad=0)
-
 # Internal energy profile -------------------------
-subplot(234)
+subplot(223)
 #plot(x, u, '.', color='r', ms=4.0)
 #plot(x_s, u_s, '--', color='k', alpha=0.8, lw=1.2)
 u *= (unit_length_in_si**2 / unit_time_in_si**2)
 u /= a**(3 * (gas_gamma - 1.))
 T = (gas_gamma - 1.) * u * mH_in_kg / k_in_J_K
-print T.mean()
+print "z = {0:.2f}, T_avg = {1:.2f}".format(redshift, T.mean())
 plot(x, T, '.', color='r', ms=4.0)
 plot(x_s, T_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
 
-# Entropy profile ---------------------------------
-subplot(235)
-plot(x, S, '.', color='r', ms=4.0)
-plot(x_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Entropy}}~S$", labelpad=0)
-
 # Information -------------------------------------
-subplot(236, frameon=False)
+subplot(224, frameon=False)
 
 text(-0.49, 0.9, "Zeldovich pancake with  $\\gamma=%.3f$ in 1D at $t=%.2f$"%(gas_gamma,time), fontsize=10)
 text(-0.49, 0.8, "$z={0:.2f}$".format(redshift))

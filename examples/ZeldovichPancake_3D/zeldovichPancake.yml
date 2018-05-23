@@ -17,8 +17,8 @@ TimeIntegration:
 Snapshots:
   basename:            zeldovichPancake # Common part of the name of output files
   time_first:          0.       # Time of the first output (in internal units)
-  delta_time:          10     # Time difference between consecutive outputs (in internal units)
-  scale_factor_first: 0.01
+  delta_time:          1.04     # Time difference between consecutive outputs (in internal units)
+  scale_factor_first: 0.00991
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -36,7 +36,7 @@ InitialConditions:
 Cosmology:
   Omega_m: 1.
   Omega_lambda: 0.
-  Omega_b: 0.
+  Omega_b: 1.
   h: 1.
   a_begin: 0.00990099
   a_end: 1.0
@@ -44,5 +44,5 @@ Cosmology:
 Gravity:
   eta: 0.025
   theta: 0.9
-  comoving_softening: 0.001
-  max_physical_softening: 0.001
+  comoving_softening: 0.0001
+  max_physical_softening: 0.0001

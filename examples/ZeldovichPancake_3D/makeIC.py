@@ -26,8 +26,8 @@ from numpy import *
 gamma = 5./3.          # Gas adiabatic index
 numPart_1D = 32        # Number of particles
 lambda_i = 1.975e24    # h^-1 m (= 64 h^-1 Mpc)
-x_min = 0.
-x_max = lambda_i
+x_min = -0.5 * lambda_i
+x_max = 0.5 * lambda_i
 rho_0 = 1.8788e-26 # h^2 kg m^-3
 T_i = 100. # K
 H_0 = 3.24077929e-18 # s^-1
@@ -62,6 +62,7 @@ boxSize = x_max - x_min
 delta_x = boxSize / numPart_1D
 
 # Get the particle mass
+a_i = 1. / (1. + z_i)
 m_i = boxSize**3 * rho_0 / numPart
 
 # Build the arrays
@@ -78,9 +79,9 @@ for i in range(numPart_1D):
     for k in range(numPart_1D):
       index = i * numPart_1D**2 + j * numPart_1D + k
       q = x_min + (i + 0.5) * delta_x
-      coords[index,0] = q - zfac * sin(k_i * q) / k_i
-      coords[index,1] = x_min + (j + 0.5) * delta_x
-      coords[index,2] = x_min + (k + 0.5) * delta_x
+      coords[index,0] = q - zfac * sin(k_i * q) / k_i - x_min
+      coords[index,1] = (j + 0.5) * delta_x
+      coords[index,2] = (k + 0.5) * delta_x
       T = T_i * (1. / (1. - zfac * cos(k_i * q)))**(2. / 3.)
       u[index] = k_in_J_K * T / (gamma - 1.) / mH_in_kg
       h[index] = 1.2348 * delta_x
@@ -135,3 +136,8 @@ grp.create_dataset('InternalEnergy', data=u, dtype='f')
 grp.create_dataset('ParticleIDs', data=ids, dtype='L')
 
 file.close()
+
+import pylab as pl
+
+pl.plot(coords[:,0], v[:,0], "k.")
+pl.show()
