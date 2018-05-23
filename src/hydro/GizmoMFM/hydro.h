@@ -28,13 +28,10 @@
 #include "hydro_properties.h"
 #include "hydro_space.h"
 #include "hydro_unphysical.h"
-#include "hydro_velocities.h"
 #include "minmax.h"
 #include "riemann.h"
 
 #include <float.h>
-
-//#define GIZMO_LLOYD_ITERATION
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -50,10 +47,6 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct cosmology* restrict cosmo) {
 
   const float CFL_condition = hydro_properties->CFL_condition;
-
-#ifdef GIZMO_LLOYD_ITERATION
-  return CFL_condition;
-#endif
 
   /* v_full is the actual velocity of the particle, primitives.v is its
      hydrodynamical velocity. The time step depends on the relative difference
@@ -149,27 +142,14 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
                                  p->conserved.momentum[2] * p->primitives.v[2]);
 #endif
 
-#ifdef GIZMO_LLOYD_ITERATION
-  /* overwrite all variables to make sure they have safe values */
-  p->primitives.rho = 1.;
-  p->primitives.v[0] = 0.;
-  p->primitives.v[1] = 0.;
-  p->primitives.v[2] = 0.;
-  p->primitives.P = 1.;
-
-  p->conserved.mass = 1.;
-  p->conserved.momentum[0] = 0.;
-  p->conserved.momentum[1] = 0.;
-  p->conserved.momentum[2] = 0.;
-  p->conserved.energy = 1.;
-
-  p->v[0] = 0.;
-  p->v[1] = 0.;
-  p->v[2] = 0.;
-#endif
-
   /* initialize the particle velocity based on the primitive fluid velocity */
-  hydro_velocities_init(p, xp);
+  p->v[0] = p->primitives.v[0];
+  p->v[1] = p->primitives.v[1];
+  p->v[2] = p->primitives.v[2];
+
+  xp->v_full[0] = p->v[0];
+  xp->v_full[1] = p->v[1];
+  xp->v_full[2] = p->v[2];
 
   /* ignore accelerations present in the initial condition */
   p->a_hydro[0] = 0.0f;
@@ -366,15 +346,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
                                   p->primitives.v[0], p->primitives.v[1],
                                   p->primitives.v[2], p->primitives.P);
 
-#ifdef GIZMO_LLOYD_ITERATION
-  /* overwrite primitive variables to make sure they still have safe values */
-  p->primitives.rho = 1.;
-  p->primitives.v[0] = 0.;
-  p->primitives.v[1] = 0.;
-  p->primitives.v[2] = 0.;
-  p->primitives.P = 1.;
-#endif
-
   /* Add a correction factor to wcount (to force a neighbour number increase if
      the geometry matrix is close to singular) */
   p->density.wcount *= p->density.wcorr;
@@ -440,9 +411,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->timestepvars.vmax = 0.;
 
   // MATTHIEU: Bert is this correct? Do we need cosmology terms here?
-
-  /* Set the actual velocity of the particle */
-  hydro_velocities_prepare_force(p, xp);
 }
 
 /**
@@ -559,10 +527,6 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, float dt_drift, float dt_therm) {
 
-#ifdef GIZMO_LLOYD_ITERATION
-  return;
-#endif
-
   const float h_inv = 1.0f / p->h;
 
   /* Predict smoothing length */
@@ -629,7 +593,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   /* set the variables that are used to drift the primitive variables */
 
   // MATTHIEU: Bert is this correct? Do we need cosmology terms here?
-  hydro_velocities_end_force(p);
+
+  /* Add normalization to h_dt. */
+  p->force.h_dt *= p->h * hydro_dimension_inv;
 }
 
 /**
@@ -710,26 +676,33 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
   }
 
-  hydro_velocities_set(p, xp);
+  /* Set the velocities: */
+  /* We first set the particle velocity */
+  if (p->conserved.mass > 0.f && p->primitives.rho > 0.f) {
 
-#ifdef GIZMO_LLOYD_ITERATION
-  /* reset conserved variables to safe values */
-  p->conserved.mass = 1.;
-  p->conserved.momentum[0] = 0.;
-  p->conserved.momentum[1] = 0.;
-  p->conserved.momentum[2] = 0.;
-  p->conserved.energy = 1.;
+    const float inverse_mass = 1.f / p->conserved.mass;
 
-  /* set the particle velocities to the Lloyd velocities */
-  /* note that centroid is the relative position of the centroid w.r.t. the
-     particle position (position - centroid) */
-  xp->v_full[0] = -p->geometry.centroid[0] / p->force.dt;
-  xp->v_full[1] = -p->geometry.centroid[1] / p->force.dt;
-  xp->v_full[2] = -p->geometry.centroid[2] / p->force.dt;
-  p->v[0] = xp->v_full[0];
-  p->v[1] = xp->v_full[1];
-  p->v[2] = xp->v_full[2];
-#endif
+    /* Normal case: set particle velocity to fluid velocity. */
+    p->v[0] = p->conserved.momentum[0] * inverse_mass;
+    p->v[1] = p->conserved.momentum[1] * inverse_mass;
+    p->v[2] = p->conserved.momentum[2] * inverse_mass;
+  } else {
+    /* Vacuum particles have no fluid velocity. */
+    p->v[0] = 0.f;
+    p->v[1] = 0.f;
+    p->v[2] = 0.f;
+  }
+
+  /* Now make sure all velocity variables are up to date. */
+  xp->v_full[0] = p->v[0];
+  xp->v_full[1] = p->v[1];
+  xp->v_full[2] = p->v[2];
+
+  if (p->gpart) {
+    p->gpart->v_full[0] = p->v[0];
+    p->gpart->v_full[1] = p->v[1];
+    p->gpart->v_full[2] = p->v[2];
+  }
 
   /* reset wcorr */
   p->density.wcorr = 1.0f;
