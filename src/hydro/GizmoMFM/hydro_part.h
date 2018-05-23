@@ -123,8 +123,7 @@ struct part {
     /* Fluxes. */
     struct {
 
-      /* Mass flux. */
-      float mass;
+      /* No mass flux, since it is always zero. */
 
       /* Momentum flux. */
       float momentum[3];

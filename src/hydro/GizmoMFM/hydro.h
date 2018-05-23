@@ -544,10 +544,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   }
 
   /* drift the primitive variables based on the old fluxes */
-  if (p->geometry.volume > 0.) {
-    p->primitives.rho += p->conserved.flux.mass * dt_drift / p->geometry.volume;
-  }
-
   if (p->conserved.mass > 0.) {
     p->primitives.v[0] +=
         p->conserved.flux.momentum[0] * dt_drift / p->conserved.mass;
@@ -641,12 +637,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #ifdef SWIFT_DEBUG_CHECKS
   /* Note that this check will only have effect if no GIZMO_UNPHYSICAL option
      was selected. */
-  if (p->conserved.mass < 0.) {
-    error(
-        "Negative mass after conserved variables update (mass: %g, dmass: %g)!",
-        p->conserved.mass, p->conserved.flux.mass);
-  }
-
   if (p->conserved.energy < 0.) {
     error(
         "Negative energy after conserved variables update (energy: %g, "
