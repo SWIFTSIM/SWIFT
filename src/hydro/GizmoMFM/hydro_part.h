@@ -184,14 +184,6 @@ struct part {
 
   } force;
 
-  /* Specific stuff for the gravity-hydro coupling. */
-  struct {
-
-    /* Current value of the mass flux vector. */
-    float mflux[3];
-
-  } gravity;
-
   /* Chemistry information */
   struct chemistry_part_data chemistry_data;
 

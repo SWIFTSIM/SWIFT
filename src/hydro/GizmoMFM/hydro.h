@@ -708,10 +708,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[0] += dt * p->conserved.mass * a_grav[0];
     p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
     p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
-
-    p->conserved.energy += dt * (p->gravity.mflux[0] * a_grav[0] +
-                                 p->gravity.mflux[1] * a_grav[1] +
-                                 p->gravity.mflux[2] * a_grav[2]);
   }
 
   hydro_velocities_set(p, xp);

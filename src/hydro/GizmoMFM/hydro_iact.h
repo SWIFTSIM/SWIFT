@@ -415,12 +415,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   totflux[3] *= Anorm;
   totflux[4] *= Anorm;
 
-  /* Store mass flux */
-  const float mflux_i = totflux[0];
-  pi->gravity.mflux[0] += mflux_i * dx[0];
-  pi->gravity.mflux[1] += mflux_i * dx[1];
-  pi->gravity.mflux[2] += mflux_i * dx[2];
-
   /* Update conserved variables */
   /* eqn. (16) */
   pi->conserved.flux.mass -= totflux[0];
@@ -445,12 +439,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
    * conservation anymore and just assume the current fluxes are representative
    * for the flux over the entire time step. */
   if (mode == 1) {
-    /* Store mass flux */
-    const float mflux_j = totflux[0];
-    pj->gravity.mflux[0] -= mflux_j * dx[0];
-    pj->gravity.mflux[1] -= mflux_j * dx[1];
-    pj->gravity.mflux[2] -= mflux_j * dx[2];
-
     pj->conserved.flux.mass += totflux[0];
     pj->conserved.flux.momentum[0] += totflux[1];
     pj->conserved.flux.momentum[1] += totflux[2];
