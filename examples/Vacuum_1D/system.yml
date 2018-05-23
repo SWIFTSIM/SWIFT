@@ -1,0 +1,8 @@
+input:
+  - vacuum.yml
+
+output:
+  - Vacuum.png
+
+swift_parameters: -s
+swift_threads: 1

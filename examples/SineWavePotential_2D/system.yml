@@ -1,0 +1,18 @@
+input:
+  - sineWavePotential.yml
+
+output:
+  - sineWavePotential_0000.png
+  - sineWavePotential_0001.png
+  - sineWavePotential_0002.png
+  - sineWavePotential_0003.png
+  - sineWavePotential_0004.png
+  - sineWavePotential_0005.png
+  - sineWavePotential_0006.png
+  - sineWavePotential_0007.png
+  - sineWavePotential_0008.png
+  - sineWavePotential_0009.png
+  - sineWavePotential_0010.png
+
+swift_parameters: -s -g
+swift_threads: 2

@@ -1,0 +1,10 @@
+input:
+  - glassPlane_128.hdf5
+  - vacuumSpherical2D_exact.txt
+  - vacuum.yml
+
+output:
+  - Vacuum.png
+
+swift_parameters: -s
+swift_threads: 4

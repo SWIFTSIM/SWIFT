@@ -1,0 +1,9 @@
+input:
+  - glassPlane_128.hdf5
+  - gresho.yml
+
+output:
+  - GreshoVortex.png
+
+swift_parameters: -s
+swift_threads: 1

@@ -1,0 +1,9 @@
+input:
+  - glassPlane_128.hdf5
+  - sedov.yml
+
+output:
+  - Sedov.png
+
+swift_parameters: -s
+swift_threads: 1

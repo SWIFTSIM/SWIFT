@@ -1,0 +1,8 @@
+input:
+  - square.yml
+
+output:
+  - Square.png
+
+swift_parameters: -s
+swift_threads: 1

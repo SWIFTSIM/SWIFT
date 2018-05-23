@@ -1,0 +1,9 @@
+input:
+  - glassCube_64.hdf5
+  - sedov.yml
+
+output:
+  - Sedov.png
+
+swift_parameters: -s
+swift_threads: 4

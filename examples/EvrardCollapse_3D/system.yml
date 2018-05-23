@@ -1,0 +1,9 @@
+input:
+  - evrardCollapse3D_exact.txt
+  - evrard.yml
+
+output:
+  - EvrardCollapse.png
+
+swift_parameters: -s -G
+swift_threads: 4

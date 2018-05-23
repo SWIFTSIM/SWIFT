@@ -1,0 +1,9 @@
+input:
+  - glassCube_64.hdf5
+  - noh.yml
+
+output:
+  - Noh.png
+
+swift_parameters: -s
+swift_threads: 2

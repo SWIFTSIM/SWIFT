@@ -1,0 +1,8 @@
+input:
+  - kelvinHelmholtz.yml
+
+output:
+  - KelvinHelmholtz.png
+
+swift_parameters: -s
+swift_threads: 1

@@ -1,0 +1,10 @@
+input:
+  - glassPlane_128.hdf5
+  - glassPlane_48.hdf5
+  - sodShock.yml
+
+output:
+  - SodShock.png
+
+swift_parameters: -s
+swift_threads: 1

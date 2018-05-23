@@ -1,0 +1,7 @@
+with-subgrid: none
+with-hydro-dimension: 1
+with-equation-of-state: ideal-gas
+with-adiabatic-index: 5/3
+with-cooling: none
+with-chemistry: none
+with-ext-potential: none

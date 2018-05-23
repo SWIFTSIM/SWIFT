@@ -1,0 +1,11 @@
+input:
+  - glassCube_64.hdf5
+  - glassCube_32.hdf5
+  - sodShock.yml
+  - sodShockSpherical3D_exact.txt
+
+output:
+  - SodShock.png
+
+swift_parameters: -s
+swift_threads: 4

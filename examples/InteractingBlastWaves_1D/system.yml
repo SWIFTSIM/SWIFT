@@ -1,0 +1,9 @@
+input:
+  - interactingBlastWaves1D_exact.txt
+  - interactingBlastWaves.yml
+
+output:
+  - InteractingBlastWaves.png
+
+swift_parameters: -s
+swift_threads: 1
