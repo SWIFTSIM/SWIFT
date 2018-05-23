@@ -38,11 +38,12 @@ parser.add_argument(
 args = vars(parser.parse_args())
 
 # Parameters
+vrot = 1.e-1  # Amplitude of the initial rotation
 gamma = 5. / 3.      # Gas adiabatic index
 M = 1.  # total mass of the sphere
 R = 1.               # radius of the sphere
 u0 = 0.05 / M        # initial thermal energy
-fileName = "evrard.hdf5"
+fileName = "evrard_disc.hdf5"
 numPart = int(args["nparts"])
 
 r = R * sqrt(random.random(numPart))
@@ -69,7 +70,7 @@ m = ones(numPart) * M / numPart
 u = ones(numPart) * u0
 
 # Set up rotation profile
-vsize = 1. / (r + 0.01)
+vsize = vrot / (r + 0.01)
 v[:,0] = -vsize * pos[:,1] / rcyl
 v[:,1] = vsize * pos[:,0] / rcyl
 
