@@ -409,28 +409,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   riemann_solve_for_middle_state_flux(Wi, Wj, n_unit, vij, totflux);
 
   /* Multiply with the interface surface area */
-  totflux[0] *= Anorm;
   totflux[1] *= Anorm;
   totflux[2] *= Anorm;
   totflux[3] *= Anorm;
   totflux[4] *= Anorm;
 
   /* Update conserved variables */
+  /* We shamelessly exploit the fact that the mass flux is zero and omit all
+     terms involving it */
   /* eqn. (16) */
-  pi->conserved.flux.mass -= totflux[0];
   pi->conserved.flux.momentum[0] -= totflux[1];
   pi->conserved.flux.momentum[1] -= totflux[2];
   pi->conserved.flux.momentum[2] -= totflux[3];
   pi->conserved.flux.energy -= totflux[4];
 
 #ifndef GIZMO_TOTAL_ENERGY
-  const float ekin_i = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
-                               pi->primitives.v[1] * pi->primitives.v[1] +
-                               pi->primitives.v[2] * pi->primitives.v[2]);
   pi->conserved.flux.energy += totflux[1] * pi->primitives.v[0];
   pi->conserved.flux.energy += totflux[2] * pi->primitives.v[1];
   pi->conserved.flux.energy += totflux[3] * pi->primitives.v[2];
-  pi->conserved.flux.energy -= totflux[0] * ekin_i;
 #endif
 
   /* Note that this used to be much more complicated in early implementations of
@@ -439,20 +435,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
    * conservation anymore and just assume the current fluxes are representative
    * for the flux over the entire time step. */
   if (mode == 1) {
-    pj->conserved.flux.mass += totflux[0];
     pj->conserved.flux.momentum[0] += totflux[1];
     pj->conserved.flux.momentum[1] += totflux[2];
     pj->conserved.flux.momentum[2] += totflux[3];
     pj->conserved.flux.energy += totflux[4];
 
 #ifndef GIZMO_TOTAL_ENERGY
-    const float ekin_j = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
-                                 pj->primitives.v[1] * pj->primitives.v[1] +
-                                 pj->primitives.v[2] * pj->primitives.v[2]);
     pj->conserved.flux.energy -= totflux[1] * pj->primitives.v[0];
     pj->conserved.flux.energy -= totflux[2] * pj->primitives.v[1];
     pj->conserved.flux.energy -= totflux[3] * pj->primitives.v[2];
-    pj->conserved.flux.energy += totflux[0] * ekin_j;
 #endif
   }
 }
