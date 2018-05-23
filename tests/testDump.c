@@ -99,6 +99,8 @@ int main(int argc, char *argv[]) {
 
 #else
 
+#include <stdio.h>
+
 int main(int argc, char *argv[]) {
   printf("No posix_fallocate, not testing anything.\n");
   return 0;

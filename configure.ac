@@ -855,7 +855,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, hopkins, default, gizmo-mfv, gizmo-mfm, shadowfax, minimal-multi-mat, debug default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, default, gizmo-mfv, gizmo-mfm, shadowfax, minimal-multi-mat, debug default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -876,8 +876,11 @@ case "$with_hydro" in
    minimal)
       AC_DEFINE([MINIMAL_SPH], [1], [Minimal SPH])
    ;;
-   hopkins)
+   pressure-entropy)
       AC_DEFINE([HOPKINS_PE_SPH], [1], [Pressure-Entropy SPH])
+   ;;
+   pressure-energy)
+      AC_DEFINE([HOPKINS_PU_SPH], [1], [Pressure-Energy SPH])
    ;;
    default)
       AC_DEFINE([DEFAULT_SPH], [1], [Default SPH])

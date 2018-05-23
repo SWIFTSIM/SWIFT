@@ -29,6 +29,8 @@
 #include "./hydro/Gadget2/hydro_io.h"
 #elif defined(HOPKINS_PE_SPH)
 #include "./hydro/PressureEntropy/hydro_io.h"
+#elif defined(HOPKINS_PU_SPH)
+#include "./hydro/PressureEnergy/hydro_io.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_io.h"
 #elif defined(GIZMO_MFV_SPH)

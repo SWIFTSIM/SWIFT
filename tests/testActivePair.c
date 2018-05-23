@@ -110,7 +110,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 /* Set the thermodynamic variable */
 #if defined(GADGET2_SPH)
         part->entropy = 1.f;
-#elif defined(MINIMAL_SPH)
+#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH)
         part->u = 1.f;
 #elif defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;
@@ -194,13 +194,13 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo) {
     p->density.rot_v[1] = 0.f;
     p->density.rot_v[2] = 0.f;
     p->density.div_v = 0.f;
-#endif
+#endif /* GADGET-2 */
 #ifdef MINIMAL_SPH
     p->rho = 1.f;
     p->density.rho_dh = 0.f;
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
-#endif
+#endif /* MINIMAL */
 #ifdef HOPKINS_PE_SPH
     p->rho = 1.f;
     p->rho_bar = 1.f;
@@ -208,7 +208,15 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo) {
     p->density.pressure_dh = 0.f;
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
-#endif
+#endif /* PRESSURE-ENTROPY */
+#ifdef HOPKINS_PU_SPH
+    p->rho = 1.f;
+    p->pressure_bar = 0.6666666;
+    p->density.rho_dh = 0.f;
+    p->density.pressure_bar_dh = 0.f;
+    p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
+    p->density.wcount_dh = 0.f;
+#endif /* PRESSURE-ENERGY */
 
     /* And prepare for a round of force tasks. */
     hydro_prepare_force(p, xp, cosmo);
