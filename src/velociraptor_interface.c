@@ -98,7 +98,7 @@ void velociraptor_init(struct engine *e) {
     }
     else sim_info.period = 0.0;
     sim_info.zoomhigresolutionmass = -1.0; /* Placeholder. */
-    sim_info.interparticlespacing = sim_info.period / pow(total_nr_dmparts, 1./3.);
+    sim_info.interparticlespacing = sim_info.period / cbrt(total_nr_dmparts);
     sim_info.icosmologicalsim = (e->policy & engine_policy_cosmology);
     sim_info.spacedimension[0] = unit_info.lengthtokpc * s->dim[0];
     sim_info.spacedimension[1] = unit_info.lengthtokpc * s->dim[1];
