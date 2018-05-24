@@ -883,6 +883,9 @@ int main(int argc, char *argv[]) {
     /* Write the state of the system before starting time integration. */
     engine_dump_snapshot(&e);
     engine_print_stats(&e);
+  
+    /* Call VELOCIraptor for the first time after the first snapshot dump. */
+    if (e.policy & engine_policy_structure_finding) velociraptor_invoke(&e);
 
   }
 

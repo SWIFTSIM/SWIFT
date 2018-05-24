@@ -4347,9 +4347,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_parts(s, e->verbose);
   space_init_gparts(s, e->verbose);
 
-  /* Call VELOCIraptor before first step and before velocities are kicked. */
-  if (e->policy & engine_policy_structure_finding) velociraptor_invoke(e);
-  
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e);
@@ -4648,7 +4645,7 @@ void engine_step(struct engine *e) {
   /* Drift everybody (i.e. what has not yet been drifted) */
   /* to the current time */
   int drifted_all =
-      (e->dump_snapshot || e->forcerebuild || e->forcerepart || e->save_stats);
+      (e->dump_snapshot || e->forcerebuild || e->forcerepart || e->save_stats || e->run_stf);
   if (drifted_all) engine_drift_all(e);
 
   /* Write a snapshot ? */
