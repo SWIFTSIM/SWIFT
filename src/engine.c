@@ -3592,7 +3592,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Gravity stuff ? */
-    else if (t->type == task_type_grav_down ||
+    else if (t->type == task_type_grav_down || t->type == task_type_grav_mesh ||
              t->type == task_type_grav_long_range ||
              t->type == task_type_init_grav) {
       if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);

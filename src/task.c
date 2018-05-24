@@ -180,6 +180,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_drift_gpart:
     case task_type_grav_down:
+    case task_type_grav_mesh:
       return task_action_gpart;
       break;
 
@@ -290,6 +291,7 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
+    case task_type_grav_mesh:
       cell_gunlocktree(ci);
       break;
 
@@ -385,6 +387,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
+    case task_type_grav_mesh:
       if (ci->ghold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
       break;
