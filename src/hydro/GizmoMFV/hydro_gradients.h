@@ -98,8 +98,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   /* perform gradient reconstruction in space and time */
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8) */
-  const float xfac = hj / (hi + hj);
-  const float xij_j[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
+  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   float dWi[5];
   dWi[0] = pi->primitives.gradients.rho[0] * xij_i[0] +
