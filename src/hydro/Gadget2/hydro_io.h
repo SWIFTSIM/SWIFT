@@ -199,7 +199,8 @@ INLINE static void hydro_write_particles(const struct part* parts,
  * In this version, we only want the ids and the offset.
  */
 __attribute__((always_inline)) INLINE static void hydro_write_index(
-    struct part* parts, struct io_props* list,
+    const struct part* parts, const struct xpart* xparts,
+    struct io_props* list,
     int* num_fields) {
 
 #ifdef WITH_LOGGER
@@ -210,7 +211,7 @@ __attribute__((always_inline)) INLINE static void hydro_write_index(
                                  UNIT_CONV_NO_UNITS, parts, id);
 
   list[1] = io_make_output_field("Offset", ULONGLONG, 1,
-                                 UNIT_CONV_NO_UNITS, parts, last_offset);
+                                 UNIT_CONV_NO_UNITS, xparts, logger.last_offset);
 #else
   error("Cannot write index without logger");
 #endif

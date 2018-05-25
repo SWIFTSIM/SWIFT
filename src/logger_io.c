@@ -248,7 +248,7 @@ void write_index_single(struct engine* e, const char* baseName,
 
       case swift_type_gas:
         N = Ngas;
-	hydro_write_index(parts, list, &num_fields);
+	hydro_write_index(parts, xparts, list, &num_fields);
         break;
 
       case swift_type_dark_matter:

@@ -128,8 +128,9 @@ void logger_log_part(const struct part *p, const unsigned int mask, size_t *offs
                      struct dump *dump);
 void logger_log_gpart(const struct gpart *p, const unsigned int mask, size_t *offset,
                       struct dump *dump);
-void logger_log_timestamp(integertime_t t, size_t *offset,
-                          struct dump *dump);
+void logger_init(struct logger *log, const struct swift_params *params);
+void logger_clean(struct logger *log);
+void logger_log_timestamp(struct logger *log, integertime_t t, size_t *offset);
 int logger_read_part(struct part *p, size_t *offset, const char *buff);
 int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff);
 int logger_read_timestamp(unsigned long long int *t, size_t *offset,

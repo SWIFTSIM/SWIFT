@@ -396,7 +396,7 @@ void logger_ensure_size(struct logger *log, size_t total_nr_parts) {
  *
  * @param log The #logger
  */
-void logger_init(struct logger *log) {
+void logger_init(struct logger *log, struct swift_params *params) {
   /* read parameters */
   log->delta_step = parser_get_param_int(params, "Logger:delta_step");
   log->buffer_size = parser_get_param_float(params, "Logger:mmaped_buffer_size") * 1e9;
