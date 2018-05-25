@@ -33,6 +33,7 @@
 
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
+#include "logger_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
@@ -56,8 +57,7 @@ struct xpart {
   struct cooling_xpart_data cooling_data;
 
 #ifdef WITH_LOGGER
-  /* Number of particle updates since last output */
-  short int last_output;
+  struct logger_part_data logger;
 #endif
 
 } SWIFT_STRUCT_ALIGN;
@@ -94,11 +94,6 @@ struct part {
 
   /* Entropy time derivative */
   float entropy_dt;
-
-#ifdef WITH_LOGGER
-  /* offset of last particle log entry */
-  size_t last_offset;
-#endif
 
   union {
 

@@ -42,6 +42,7 @@
 
 char LOGGER_VERSION[LOGGER_VERSION_SIZE] = "0.1";
 
+
 const unsigned int logger_data_size[logger_data_count] = {
   sizeof(int),
   sizeof(float),
@@ -71,7 +72,6 @@ char *logger_write_chunk_header(char *buff, const unsigned int *mask, const size
 
   return buff;
 }
-
 
 /**
  * @brief write a data to the file
@@ -177,19 +177,22 @@ int logger_compute_chunk_size(unsigned int mask) {
 /**
  * @brief log all particles
  *
- * This function update the last_offset in #part
- *
- * @param p List of all the #part to log
- * @param Np Number of particle to log
- * @param dump The #dump in which to log the particle data
+ * @param log The #logger
+ * @param e The #engine
  */
-void logger_log_all(struct part *p, const long long Np, struct dump *dump) {
+void logger_log_all(struct logger *log, struct engine *e) {
+  struct space *s = e->s;
   const unsigned int mask = logger_mask_x | logger_mask_v | logger_mask_a |
     logger_mask_u | logger_mask_h | logger_mask_rho |
     logger_mask_consts;
-  for(long long i=0; i < Np; i++) {
-    logger_log_part(&p[i], mask, &p[i].last_offset, dump);
+  
+  for(long long i=0; i < e->total_nr_parts; i++) {
+    logger_log_part(&s->parts[i], mask, &s->xparts[i].logger.last_offset, log->dump);
   }
+
+  if (e->total_nr_gparts > 0)
+    error("Not implemented");
+
 }
 
 /**
@@ -331,12 +334,13 @@ void logger_log_gpart(const struct gpart *p, const unsigned int mask, size_t *of
 /**
  * @brief write a timestamp
  *
+ * @param log The #logger
  * @param timestamp time to write
  * @param offset In: previous offset, out: offset of this chunk
- * @param dump #dump file
  */
-void logger_log_timestamp(integertime_t timestamp, size_t *offset,
-                          struct dump *dump) {
+void logger_log_timestamp(struct logger *log, integertime_t timestamp, size_t *offset) {
+  struct dump *dump = log->dump;
+  
   /* Start by computing the size of the message. */
   const int size = logger_compute_chunk_size(logger_mask_timestamp);
 
@@ -357,12 +361,15 @@ void logger_log_timestamp(integertime_t timestamp, size_t *offset,
 
 
 /**
- * @brief ensure that the input parameter logger size is large enough
+ * @brief ensure that the buffer is large enough
+ *
+ * Check if logger parameters are large enough to write all particles
+ * and ensure that enough space is available in the buffer
  *
  * @param total_nr_nparts total number of particle
  * @param logger_buffer_size requested file size upate
  */
-void logger_ensure_size(size_t total_nr_parts, size_t logger_buffer_size) {
+void logger_ensure_size(struct logger *log, size_t total_nr_parts) {
   size_t limit, i;
   struct logger_const log_const;
   logger_const_init(&log_const);
@@ -380,6 +387,43 @@ void logger_ensure_size(size_t total_nr_parts, size_t logger_buffer_size) {
   if (logger_buffer_size < limit) error("Need a larger logger size");
   
   logger_const_free(&log_const);
+
+  dump_ensure(e->logger_dump, e->logger_buffer_size);
+}
+
+/**
+ * @brief intialize the logger structure
+ *
+ * @param log The #logger
+ */
+void logger_init(struct logger *log) {
+  /* read parameters */
+  log->delta_step = parser_get_param_int(params, "Logger:delta_step");
+  log->buffer_size = parser_get_param_float(params, "Logger:mmaped_buffer_size") * 1e9;
+  parser_get_param_string(params, "Logger:basename", log->base_name);
+
+  /* generate dump filename */
+  char logger_name_file[PARSER_MAX_LINE_SIZE];
+  strcpy(logger_name_file, log->base_name);
+  strcat(logger_name_file, ".dump");
+
+  /* init dump */
+  log->dump = malloc(sizeof(struct dump));
+  struct dump *dump_file = log->dump;
+  
+  dump_init(dump_file, logger_name_file, log->buffer_size);
+  logger_write_file_header(log, dump_file);
+  dump_ensure(dump_file, log->buffer_size);
+  log->timestamp_offset = 0;
+}
+
+/**
+ * @brief Close dump file and desallocate memory
+ *
+ * @param log The #logger
+ */
+void logger_clean(struct logger *log) {
+  dump_close(log->dump);
 }
 
 /**
@@ -453,8 +497,8 @@ void logger_write_file_header(struct dump *dump, struct engine *e) {
   
   /* Write data */
   char *name = malloc(sizeof(char) * log_const.name);
-  strcpy(name, "timeBase");
-  logger_write_general_data(dump, &log_const, &file_offset, &e->timeBase,
+  strcpy(name, "time_base");
+  logger_write_general_data(dump, &log_const, &file_offset, &e->time_base,
 			    name, logger_data_double);
 
   /* last step: write first offset */
@@ -463,6 +507,9 @@ void logger_write_file_header(struct dump *dump, struct engine *e) {
   /* free memory */
   logger_const_free(&log_const);
   free(name);
+
+  dump_ensure(e->logger_dump, e->logger_buffer_size);
+  e->logger_time_offset = 0;
 }
 
 /**

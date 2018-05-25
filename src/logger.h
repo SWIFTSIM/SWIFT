@@ -22,10 +22,11 @@
 #ifdef WITH_LOGGER
 
 /* Includes. */
+#include "common_io.h"
+#include "engine.h"
+#include "logger_struct.h"
 #include "part.h"
 #include "units.h"
-#include "engine.h"
-#include "common_io.h"
 
 /* Forward declaration */
 struct dump;
@@ -93,6 +94,7 @@ struct dump;
 #define LOGGER_DATATYPE_SIZE 1 // size of the data type information
 
 extern char LOGGER_VERSION[LOGGER_VERSION_SIZE];
+
 
 struct logger_const {
   size_t name; // labels size

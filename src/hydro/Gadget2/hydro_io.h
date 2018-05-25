@@ -198,8 +198,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
  * 
  * In this version, we only want the ids and the offset.
  */
-void hydro_write_index(struct part* parts, struct io_props* list,
-		       int* num_fields) {
+__attribute__((always_inline)) INLINE static void hydro_write_index(
+    struct part* parts, struct io_props* list,
+    int* num_fields) {
 
 #ifdef WITH_LOGGER
   *num_fields = 2;

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2017 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,22 +16,42 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_LOGGER_IO_H
-#define SWIFT_LOGGER_IO_H
-
-/* Config parameters. */
-#include "../config.h"
+#ifndef SWIFT_LOGGER_STRUCT_H
+#define SWIFT_LOGGER_STRUCT_H
 
 #ifdef WITH_LOGGER
 
-/* Includes. */
-#include "engine.h"
-#include "part.h"
-#include "units.h"
+#define LOGGER_STRING_LENGTH 200
+#include "dump.h"
 
-void write_index_single(struct engine* e, const char* baseName,
-			const struct unit_system* internal_units,
-			const struct unit_system* snapshot_units);
-#endif
+/* structure containing global data */
+struct logger {
+  /* Number of particle steps between dumping a chunk of data */
+  short int delta_step;
 
-#endif /* SWIFT_LOGGER_IO_H */
+  /* Logger basename */
+  char base_name[LOGGER_STRING_LENGTH];  
+
+  /* File name of the dump file */
+  struct dump *dump;
+
+  /* timestamp offset for logger*/
+  size_t timestamp_offset;
+
+  /* size of the buffer */
+  size_t buffer_size;
+
+} SWIFT_STRUCT_ALIGN;
+
+/* required structure for each particle type */
+struct logger_part_data {
+  /* Number of particle updates since last output */
+  short int last_output;
+
+  /* offset of last particle log entry */
+  size_t last_offset;
+};
+
+#endif // WITH_LOGGER
+
+#endif // SWIFT_LOGGER_STRUCT_H

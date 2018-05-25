@@ -1009,9 +1009,8 @@ int main(int argc, char *argv[]) {
   /* Write the state of the system before starting time integration. */
 #ifdef WITH_LOGGER
     engine_dump_index(&e);
-#else
-    engine_dump_snapshot(&e);
 #endif
+    engine_dump_snapshot(&e);
     engine_print_stats(&e);
 
     /* Is there a dump before the end of the first time-step? */

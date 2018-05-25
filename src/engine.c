@@ -5214,8 +5214,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_sparts(s, e->verbose);
 
 #ifdef WITH_LOGGER
-  logger_log_timestamp(e->ti_old, &e->logger_time_offset,
-		       e->logger_dump);
+  logger_write_timestamp(e->log);
   logger_ensure_size(e->total_nr_parts, e->logger_buffer_size);
 #endif
   
@@ -5468,12 +5467,10 @@ void engine_step(struct engine *e) {
        ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
     e->forcerebuild = 1;
 
-
 #ifdef WITH_LOGGER
   logger_log_timestamp(e->ti_current, &e->logger_time_offset,
 		       e->logger_dump);
   logger_ensure_size(e->total_nr_parts, e->logger_buffer_size);
-  dump_ensure(e->logger_dump, e->logger_buffer_size);
 #endif
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
@@ -6521,8 +6518,8 @@ void engine_dump_index(struct engine *e) {
 #endif
 
   /* Dump... */
-    write_index_single(e, e->loggerBaseName, e->internal_units,
-		       e->snapshotUnits);
+  write_index_single(e, e->loggerBaseName, e->internal_units,
+		     e->snapshotUnits);
 
   e->dump_snapshot = 0;
 
@@ -6702,22 +6699,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 
 
 #if defined(WITH_LOGGER)
-  /* Logger params */
-  char logger_name_file[PARSER_MAX_LINE_SIZE];
-  e->logger_max_steps = parser_get_opt_param_int(params, "Snapshots:logger_max_steps", 10);
-  e->logger_size = parser_get_param_float(params, "Snapshots:logger_size") * 1e6;
-
-  /* generate dump filename */
-  strcpy(logger_name_file, e->snapshotBaseName);
-  strcat(logger_name_file, ".dump");
-
-  /* init dump */
-  e->logger_dump = malloc(sizeof(struct dump));
-  struct dump *dump_file = e->logger_dump;
-  dump_init(dump_file, logger_name_file, e->logger_size);
-  logger_write_file_header(dump_file, e);
-  dump_ensure(dump_file, e->logger_size);
-  e->logger_time_offset = 0;
+  e->log = (struct logger *) malloc(sizeof(struct logger));
+  logger_init(e->log);
 #endif
 
   /* Make the space link back to the engine. */
@@ -7327,11 +7310,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   }
 
 #ifdef WITH_LOGGER
-  if (e->nodeID == 0)
-    message("Expected output of over 9000\n Should write a real message...");
   logger_write_file_header(e->logger_dump, e);
-  dump_ensure(e->logger_dump, e->logger_buffer_size);
-  e->logger_time_offset = 0;
 #endif
 
   /* Free the affinity stuff */
@@ -7754,8 +7733,8 @@ void engine_clean(struct engine *e) {
   free(e->links);
   free(e->cell_loc);
 #if defined(WITH_LOGGER)
-  dump_close(e->logger_dump);
-  free(e->logger_dump);
+  logger_clean(e->log);
+  free(e->log);
 #endif
   scheduler_clean(&e->sched);
   space_clean(e->s);
