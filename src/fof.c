@@ -172,7 +172,7 @@ static void rec_fof_search_ci_cj(struct cell *ci, struct cell *cj, struct space 
 
   if (r2 > search_r2)
     return;
-  /* Recurse on both cells if they are both split.
+  /* Recurse on both cells if they are both split. */
   else if (ci->split && cj->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL) {
@@ -219,7 +219,7 @@ void fof_search_serial(struct space *s) {
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double l_x2 = s->l_x2;
   int *pid;
-  int *num_in_groups;
+  int *group_sizes;
   int num_groups = nr_gparts;
 
   message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts,
@@ -231,10 +231,11 @@ void fof_search_serial(struct space *s) {
 
   for (size_t i = 0; i < nr_gparts; i++) pid[i] = i;
 
-  if (posix_memalign((void **)&num_in_groups, 32, nr_gparts * sizeof(int)) != 0)
+  /* Allocate and initialise a group size array. */
+  if (posix_memalign((void **)&group_sizes, 32, nr_gparts * sizeof(int)) != 0)
     error("Failed to allocate list of number in groups for FOF search.");
 
-  for (size_t i = 0; i < nr_gparts; i++) num_in_groups[i] = 0;
+  bzero(group_sizes, nr_gparts * sizeof(int));
 
   /* Loop over particles and find which particles belong in the same group. */
   for (size_t i = 0; i < nr_gparts; i++) {
@@ -284,17 +285,17 @@ void fof_search_serial(struct space *s) {
   }
 
   /* Calculate the total number of particles in each group. */
-  for (size_t i = 0; i < nr_gparts; i++) num_in_groups[fof_find(i, pid)]++;
+  for (size_t i = 0; i < nr_gparts; i++) group_sizes[fof_find(i, pid)]++;
 
-  fof_dump_group_data("fof_output_serial.dat", nr_gparts, pid, num_in_groups);
+  fof_dump_group_data("fof_output_serial.dat", nr_gparts, pid, group_sizes);
 
   int num_parts_in_groups = 0;
   int max_group_size = 0, max_group_id = 0;
   for (size_t i = 0; i < nr_gparts; i++) {
 
-    if (num_in_groups[i] > 1) num_parts_in_groups += num_in_groups[i];
-    if (num_in_groups[i] > max_group_size) {
-      max_group_size = num_in_groups[i];
+    if (group_sizes[i] > 1) num_parts_in_groups += group_sizes[i];
+    if (group_sizes[i] > max_group_size) {
+      max_group_size = group_sizes[i];
       max_group_id = i;
     }
   }
@@ -306,7 +307,7 @@ void fof_search_serial(struct space *s) {
   message("Biggest group size: %d with ID: %d", max_group_size, max_group_id);
 
   free(pid);
-  free(num_in_groups);
+  free(group_sizes);
 }
 
 /* Perform a FOF search on a single cell using the Union-Find algorithm.*/
@@ -450,7 +451,7 @@ void fof_search_tree_serial(struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_cells = s->nr_cells;
-  int *pid, *num_in_groups;
+  int *pid, *group_sizes;
   int num_groups = nr_gparts;
   struct gpart *gparts = s->gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -468,43 +469,44 @@ void fof_search_tree_serial(struct space *s) {
     pid[i] = i;
   }
 
-  if (posix_memalign((void **)&num_in_groups, 32, nr_gparts * sizeof(int)) != 0)
-    error("Failed to allocate list of number in groups for FOF search.");
+  /* Allocate and initialise a group size array. */
+  if (posix_memalign((void **)&group_sizes, 32, nr_gparts * sizeof(int)) != 0)
+    error("Failed to allocate list of group size for FOF search.");
 
-  for (size_t i = 0; i < nr_gparts; i++) num_in_groups[i] = 0;
+  bzero(group_sizes, nr_gparts * sizeof(int));
 
   /* Loop over cells and find which cells are in range of each other to perform
    * the FOF search. */
   for (size_t cid = 0; cid < nr_cells; cid++) {
 
-    struct cell *restrict c = &s->cells_top[cid];
+    struct cell *restrict ci = &s->cells_top[cid];
 
     /* Perform FOF search on local particles within the cell. */
-    rec_fof_search_self_ci(c, s, pid, &num_groups, dim, search_r2);
+    rec_fof_search_self_ci(ci, s, pid, &num_groups, dim, search_r2);
 
     /* Loop over all top-level cells skipping over the cells already searched.
     */
-    for (int cjd = cid + 1; cjd < s->nr_cells; cjd++) {
+    for (int cjd = cid + 1; cjd < nr_cells; cjd++) {
 
       struct cell *restrict cj = &s->cells_top[cjd];
 
-      rec_fof_search_ci_cj(c, cj, s, pid, &num_groups, dim, search_r2);
+      rec_fof_search_ci_cj(ci, cj, s, pid, &num_groups, dim, search_r2);
     }   
   }
 
   /* Calculate the total number of particles in each group. */
-  for (size_t i = 0; i < nr_gparts; i++) num_in_groups[fof_find(i, pid)]++;
+  for (size_t i = 0; i < nr_gparts; i++) group_sizes[fof_find(i, pid)]++;
 
   fof_dump_group_data("fof_output_tree_serial.dat", nr_gparts, pid,
-                      num_in_groups);
+                      group_sizes);
 
   int num_parts_in_groups = 0;
   int max_group_size = 0, max_group_id = 0;
   for (size_t i = 0; i < nr_gparts; i++) {
 
-    if (num_in_groups[i] > 1) num_parts_in_groups += num_in_groups[i];
-    if (num_in_groups[i] > max_group_size) {
-      max_group_size = num_in_groups[i];
+    if (group_sizes[i] > 1) num_parts_in_groups += group_sizes[i];
+    if (group_sizes[i] > max_group_size) {
+      max_group_size = group_sizes[i];
       max_group_id = i;
     }
   }
@@ -516,19 +518,19 @@ void fof_search_tree_serial(struct space *s) {
   message("Biggest group size: %d with ID: %d", max_group_size, max_group_id);
 
   free(pid);
-  free(num_in_groups);
+  free(group_sizes);
 }
 
 /* Dump FOF group data. */
 void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *pid,
-                         int *num_in_groups) {
+                         int *group_sizes) {
 
   FILE *file = fopen(out_file, "w");
   fprintf(file, "# %7s %7s %7s\n", "ID", "Root ID", "Group Size");
   fprintf(file, "#-------------------------------\n");
 
   for (size_t i = 0; i < nr_gparts; i++) {
-    fprintf(file, "  %7ld %7d %7d\n", i, pid[i], num_in_groups[i]);
+    fprintf(file, "  %7ld %7d %7d\n", i, pid[i], group_sizes[i]);
   }
 
   fclose(file);
