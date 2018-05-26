@@ -33,7 +33,7 @@ SPH:
   initial_temperature:   0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
   minimal_temperature:   0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
   H_mass_fraction:       0.76     # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy.
-  
+
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025               # Constant dimensionless multiplier for time integration.
@@ -59,17 +59,20 @@ Scheduler:
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
-  time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1.    # The end time of the simulation (in internal units).
-  dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+  time_begin:        0.    # The starting time of the simulation (in internal units).
+  time_end:          1.    # The end time of the simulation (in internal units).
+  dt_min:            1e-6  # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+  max_dt_RMS_factor: 0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
 
 # Parameters governing the snapshots
 Snapshots:
   basename:   output      # Common part of the name of output files
-  time_first: 0.          # Time of the first output (in internal units)
+  scale_factor_first: 0.1 # (Optional) Scale-factor of the first snapshot if cosmological time-integration.
+  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
   compression: 0          # (Optional) Set the level of compression of the HDF5 datasets [0-9]. 0 does no compression.
+  label_delta: 1          # (Optional) Set the integer increment between snapshot output labels
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
   UnitLength_in_cgs:   1  # (Optional) Unit system for the outputs (Centimeters)
   UnitVelocity_in_cgs: 1  # (Optional) Unit system for the outputs (Centimeters per second)
@@ -78,7 +81,9 @@ Snapshots:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-2      # Time between statistics output
+  delta_time:           1e-2     # Time between statistics output
+  scale_factor_first:     0.1    # (Optional) Scale-factor of the first statistics dump if cosmological time-integration.
+  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
   energy_file_name:    energy    # (Optional) File name for energy output
   timestep_file_name:  timesteps # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name
 
@@ -126,7 +131,16 @@ DomainDecomposition:
 # Parameters related to the equation of state ------------------------------------------
 
 EoS:
-  isothermal_internal_energy: 20.26784 # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
+  isothermal_internal_energy: 20.26784  # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
+
+  planetary_use_Til:    1   # (Optional) Whether to prepare the Tillotson EOS
+  planetary_use_HM80:   0   # (Optional) Whether to prepare the Hubbard & MacFarlane (1980) EOS
+  planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EOS
+  planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EOS
+                            # (Optional) Table file paths
+  planetary_HM80_HHe_table_file:    HM80_HHe.txt
+  planetary_HM80_ice_table_file:    HM80_ice.txt
+  planetary_HM80_rock_table_file:   HM80_rock.txt
 
 # Parameters related to external potentials --------------------------------------------
 

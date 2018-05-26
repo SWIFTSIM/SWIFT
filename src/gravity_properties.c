@@ -48,6 +48,9 @@ void gravity_props_init(struct gravity_props *p,
   p->r_cut_min = parser_get_opt_param_float(params, "Gravity:r_cut_min",
                                             gravity_props_default_r_cut_min);
 
+  if (p->a_smooth <= 0.)
+    error("The mesh smoothing scale 'a_smooth' must be > 0.");
+
   /* Time integration */
   p->eta = parser_get_param_float(params, "Gravity:eta");
 

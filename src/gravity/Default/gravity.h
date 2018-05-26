@@ -130,6 +130,13 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[2] = 0.f;
   gp->potential = 0.f;
 
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  gp->potential_PM = 0.f;
+  gp->a_grav_PM[0] = 0.f;
+  gp->a_grav_PM[1] = 0.f;
+  gp->a_grav_PM[2] = 0.f;
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
   gp->num_interacted = 0;
 #endif
@@ -151,6 +158,13 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->a_grav[1] *= const_G;
   gp->a_grav[2] *= const_G;
   gp->potential *= const_G;
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  gp->potential_PM *= const_G;
+  gp->a_grav_PM[0] *= const_G;
+  gp->a_grav_PM[1] *= const_G;
+  gp->a_grav_PM[2] *= const_G;
+#endif
 }
 
 /**

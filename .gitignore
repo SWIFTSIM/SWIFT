@@ -26,14 +26,22 @@ examples/swift_mpi
 examples/*/*.xmf
 examples/*/*.h5
 examples/*/*.png
+examples/*/*.mp4
 examples/*/*.txt
 examples/*/*.dot
+examples/*/restart/*
 examples/*/used_parameters.yml
 examples/*/*/*.xmf
 examples/*/*/*.png
+examples/*/*/*.mp4
 examples/*/*/*.txt
 examples/*/*/*.dot
+examples/*/*/*.rst
+examples/*/*/*.hdf5
+examples/*/snapshots*
+examples/*/restart/*
 examples/*/*/used_parameters.yml
+examples/*/*.mpg
 examples/*/gravity_checks_*.dat
 
 tests/testActivePair
@@ -59,7 +67,7 @@ tests/swift_dopair_125_standard.dat
 tests/brute_force_125_perturbed.dat
 tests/swift_dopair_125_perturbed.dat
 tests/brute_force_pair_active.dat
-tests/brute_force_dopair2_active.dat 
+tests/brute_force_dopair2_active.dat
 tests/swift_dopair2_force_active.dat
 tests/brute_force_periodic_BC_perturbed.dat
 tests/swift_dopair_active.dat
@@ -70,6 +78,7 @@ tests/test_nonsym_density_1_vec.dat
 tests/test_nonsym_density_2_vec.dat
 tests/test_nonsym_force_1_vec.dat
 tests/test_nonsym_force_2_vec.dat
+tests/potential.dat
 tests/testGreetings
 tests/testReading
 tests/testSingle
@@ -107,6 +116,10 @@ tests/benchmarkInteractions
 tests/testGravityDerivatives
 tests/testPotentialSelf
 tests/testPotentialPair
+tests/testEOS
+tests/testEOS*.txt
+tests/testEOS*.png
+tests/testUtilities
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf
@@ -288,3 +301,6 @@ sympy-plots-for-*.tex/
 
 # macOS
 *.DS_Store
+
+#ctags
+*tags

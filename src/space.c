@@ -106,52 +106,6 @@ struct index_data {
 };
 
 /**
- * @brief Get the shift-id of the given pair of cells, swapping them
- *      if need be.
- *
- * @param s The space
- * @param ci Pointer to first #cell.
- * @param cj Pointer second #cell.
- * @param shift Vector from ci to cj.
- *
- * @return The shift ID and set shift, may or may not swap ci and cj.
- */
-int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
-                 double *shift) {
-
-  /* Get the relative distance between the pairs, wrapping. */
-  const int periodic = s->periodic;
-  double dx[3];
-  for (int k = 0; k < 3; k++) {
-    dx[k] = (*cj)->loc[k] - (*ci)->loc[k];
-    if (periodic && dx[k] < -s->dim[k] / 2)
-      shift[k] = s->dim[k];
-    else if (periodic && dx[k] > s->dim[k] / 2)
-      shift[k] = -s->dim[k];
-    else
-      shift[k] = 0.0;
-    dx[k] += shift[k];
-  }
-
-  /* Get the sorting index. */
-  int sid = 0;
-  for (int k = 0; k < 3; k++)
-    sid = 3 * sid + ((dx[k] < 0.0) ? 0 : ((dx[k] > 0.0) ? 2 : 1));
-
-  /* Switch the cells around? */
-  if (runner_flip[sid]) {
-    struct cell *temp = *ci;
-    *ci = *cj;
-    *cj = temp;
-    for (int k = 0; k < 3; k++) shift[k] = -shift[k];
-  }
-  sid = sortlistID[sid];
-
-  /* Return the sort ID. */
-  return sid;
-}
-
-/**
  * @brief Recursively dismantle a cell tree.
  *
  * @param s The #space.
@@ -1087,6 +1041,10 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
+  /* Init the local collectors */
+  float min_mass = FLT_MAX;
+  float sum_vel_norm = 0.f;
+
   /* Loop over the parts. */
   for (int k = 0; k < nr_parts; k++) {
 
@@ -1119,6 +1077,12 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
             pos_z);
 #endif
 
+    /* Compute minimal mass */
+    min_mass = min(min_mass, hydro_get_mass(p));
+
+    /* Compute sum of velocity norm */
+    sum_vel_norm += p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2];
+
     /* Update the position */
     p->x[0] = pos_x;
     p->x[1] = pos_y;
@@ -1129,6 +1093,10 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   for (int k = 0; k < s->nr_cells; k++)
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
+
+  /* Write back the minimal part mass and velocity sum */
+  atomic_min_f(&s->min_part_mass, min_mass);
+  atomic_add_f(&s->sum_part_vel_norm, sum_vel_norm);
 }
 
 /**
@@ -1161,6 +1129,10 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
+  /* Init the local collectors */
+  float min_mass = FLT_MAX;
+  float sum_vel_norm = 0.f;
+
   for (int k = 0; k < nr_gparts; k++) {
 
     /* Get the particle */
@@ -1192,6 +1164,14 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
             pos_z);
 #endif
 
+    /* Compute minimal mass */
+    if (gp->type == swift_type_dark_matter) {
+      min_mass = min(min_mass, gp->mass);
+      sum_vel_norm += gp->v_full[0] * gp->v_full[0] +
+                      gp->v_full[1] * gp->v_full[1] +
+                      gp->v_full[2] * gp->v_full[2];
+    }
+
     /* Update the position */
     gp->x[0] = pos_x;
     gp->x[1] = pos_y;
@@ -1202,6 +1182,10 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   for (int k = 0; k < s->nr_cells; k++)
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
+
+  /* Write back the minimal part mass and velocity sum */
+  atomic_min_f(&s->min_gpart_mass, min_mass);
+  atomic_add_f(&s->sum_gpart_vel_norm, sum_vel_norm);
 }
 
 /**
@@ -1234,6 +1218,10 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
+  /* Init the local collectors */
+  float min_mass = FLT_MAX;
+  float sum_vel_norm = 0.f;
+
   for (int k = 0; k < nr_sparts; k++) {
 
     /* Get the particle */
@@ -1265,6 +1253,13 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
             pos_z);
 #endif
 
+    /* Compute minimal mass */
+    min_mass = min(min_mass, sp->mass);
+
+    /* Compute sum of velocity norm */
+    sum_vel_norm +=
+        sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2];
+
     /* Update the position */
     sp->x[0] = pos_x;
     sp->x[1] = pos_y;
@@ -1275,10 +1270,16 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   for (int k = 0; k < s->nr_cells; k++)
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
+
+  /* Write back the minimal part mass and velocity sum */
+  atomic_min_f(&s->min_spart_mass, min_mass);
+  atomic_add_f(&s->sum_spart_vel_norm, sum_vel_norm);
 }
 
 /**
  * @brief Computes the cell index of all the particles.
+ *
+ * Also computes the minimal mass of all #part.
  *
  * @param s The #space.
  * @param ind The array of indices to fill.
@@ -1290,6 +1291,10 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
                                 struct cell *cells, int verbose) {
 
   const ticks tic = getticks();
+
+  /* Re-set the counters */
+  s->min_part_mass = FLT_MAX;
+  s->sum_part_vel_norm = 0.f;
 
   /* Pack the extra information */
   struct index_data data;
@@ -1309,6 +1314,8 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
 /**
  * @brief Computes the cell index of all the g-particles.
  *
+ * Also computes the minimal mass of all dark-matter #gpart.
+ *
  * @param s The #space.
  * @param gind The array of indices to fill.
  * @param cell_counts The cell counters to update.
@@ -1319,6 +1326,10 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
                                  struct cell *cells, int verbose) {
 
   const ticks tic = getticks();
+
+  /* Re-set the counters */
+  s->min_gpart_mass = FLT_MAX;
+  s->sum_gpart_vel_norm = 0.f;
 
   /* Pack the extra information */
   struct index_data data;
@@ -1338,6 +1349,8 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
 /**
  * @brief Computes the cell index of all the s-particles.
  *
+ * Also computes the minimal mass of all #spart.
+ *
  * @param s The #space.
  * @param sind The array of indices to fill.
  * @param cell_counts The cell counters to update.
@@ -1348,6 +1361,10 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
                                  struct cell *cells, int verbose) {
 
   const ticks tic = getticks();
+
+  /* Re-set the counters */
+  s->min_spart_mass = FLT_MAX;
+  s->sum_spart_vel_norm = 0.f;
 
   /* Pack the extra information */
   struct index_data data;
@@ -1378,9 +1395,11 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
 void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
                       int *counts, int num_bins, ptrdiff_t parts_offset) {
   /* Create the offsets array. */
-  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (num_bins + 1));
-  if (offsets == NULL)
+  size_t *offsets = NULL;
+  if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
+
   offsets[0] = 0;
   for (int k = 1; k <= num_bins; k++) {
     offsets[k] = offsets[k - 1] + counts[k - 1];
@@ -1420,7 +1439,9 @@ void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
   for (int k = 0; k < num_bins; k++)
     if (offsets[k + 1] != offsets[k] + counts[k])
       error("Bad offsets after shuffle.");
-#endif  // SWIFT_DEBUG_CHECKS
+#endif /* SWIFT_DEBUG_CHECKS */
+
+  free(offsets);
 }
 
 /**
@@ -1436,9 +1457,11 @@ void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
 void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t sparts_offset) {
   /* Create the offsets array. */
-  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (num_bins + 1));
-  if (offsets == NULL)
+  size_t *offsets = NULL;
+  if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
+
   offsets[0] = 0;
   for (int k = 1; k <= num_bins; k++) {
     offsets[k] = offsets[k - 1] + counts[k - 1];
@@ -1475,7 +1498,9 @@ void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
   for (int k = 0; k < num_bins; k++)
     if (offsets[k + 1] != offsets[k] + counts[k])
       error("Bad offsets after shuffle.");
-#endif  // SWIFT_DEBUG_CHECKS
+#endif /* SWIFT_DEBUG_CHECKS */
+
+  free(offsets);
 }
 
 /**
@@ -1492,9 +1517,11 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        struct spart *sparts, int *ind, int *counts,
                        int num_bins) {
   /* Create the offsets array. */
-  size_t *offsets = (size_t *)malloc(sizeof(size_t) * (num_bins + 1));
-  if (offsets == NULL)
+  size_t *offsets = NULL;
+  if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
+
   offsets[0] = 0;
   for (int k = 1; k <= num_bins; k++) {
     offsets[k] = offsets[k - 1] + counts[k - 1];
@@ -1537,7 +1564,9 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
   for (int k = 0; k < num_bins; k++)
     if (offsets[k + 1] != offsets[k] + counts[k])
       error("Bad offsets after shuffle.");
-#endif  // SWIFT_DEBUG_CHECKS
+#endif /* SWIFT_DEBUG_CHECKS */
+
+  free(offsets);
 }
 
 /**
@@ -2637,6 +2666,12 @@ void space_init(struct space *s, const struct swift_params *params,
   s->nr_sparts = Nspart;
   s->size_sparts = Nspart;
   s->sparts = sparts;
+  s->min_part_mass = FLT_MAX;
+  s->min_gpart_mass = FLT_MAX;
+  s->min_spart_mass = FLT_MAX;
+  s->sum_part_vel_norm = 0.f;
+  s->sum_gpart_vel_norm = 0.f;
+  s->sum_spart_vel_norm = 0.f;
   s->nr_queues = 1; /* Temporary value until engine construction */
 
   /* Are we generating gas from the DM-only ICs? */

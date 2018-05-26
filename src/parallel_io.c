@@ -119,9 +119,7 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
   /* Using HDF5 dataspaces would be better */
   const hid_t h_err = H5Dread(h_data, io_hdf5_type(props.type), h_memspace,
                               h_filespace, h_plist_id, temp);
-  if (h_err < 0) {
-    error("Error while reading data array '%s'.", props.name);
-  }
+  if (h_err < 0) error("Error while reading data array '%s'.", props.name);
 
   /* Unit conversion if necessary */
   const double factor =
@@ -207,12 +205,6 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
   const hid_t h_data = H5Dopen2(grp, props.name, H5P_DEFAULT);
   if (h_data < 0) error("Error while opening data space '%s'.", props.name);
 
-  /* Check data type */
-  const hid_t h_type = H5Dget_type(h_data);
-  if (h_type < 0) error("Unable to retrieve data type from the file");
-  /* if (!H5Tequal(h_type, hdf5_type(type))) */
-  /*   error("Non-matching types between the code and the file"); */
-
   /* Create property list for collective dataset read. */
   const hid_t h_plist_id = H5Pcreate(H5P_DATASET_XFER);
   H5Pset_dxpl_mpio(h_plist_id, H5FD_MPIO_COLLECTIVE);
@@ -254,7 +246,6 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
 
   /* Close everything */
   H5Pclose(h_plist_id);
-  H5Tclose(h_type);
   H5Dclose(h_data);
 }
 
@@ -394,10 +385,9 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Create data space */
   const hid_t h_memspace = H5Screate(H5S_SIMPLE);
-  if (h_memspace < 0) {
+  if (h_memspace < 0)
     error("Error while creating data space (memory) for field '%s'.",
           props.name);
-  }
 
   int rank;
   hsize_t shape[2];
@@ -418,19 +408,17 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Change shape of memory data space */
   hid_t h_err = H5Sset_extent_simple(h_memspace, rank, shape, NULL);
-  if (h_err < 0) {
+  if (h_err < 0)
     error("Error while changing data space (memory) shape for field '%s'.",
           props.name);
-  }
 
   /* Select the hyper-salb corresponding to this rank */
   hid_t h_filespace = H5Dget_space(h_data);
-  if (N > 0) {
+  if (N > 0)
     H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape,
                         NULL);
-  } else {
+  else
     H5Sselect_none(h_filespace);
-  }
 
 /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
  * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize, */
@@ -444,9 +432,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
   /* Write temporary buffer to HDF5 dataspace */
   h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
                    H5P_DEFAULT, temp);
-  if (h_err < 0) {
-    error("Error while writing data array '%s'.", props.name);
-  }
+  if (h_err < 0) error("Error while writing data array '%s'.", props.name);
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -597,9 +583,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   hid_t h_plist_id = H5Pcreate(H5P_FILE_ACCESS);
   H5Pset_fapl_mpio(h_plist_id, comm, info);
   h_file = H5Fopen(fileName, H5F_ACC_RDONLY, h_plist_id);
-  if (h_file < 0) {
-    error("Error while opening file '%s'.", fileName);
-  }
+  if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Open header to read simulation properties */
   /* message("Reading runtime parameters..."); */
@@ -658,8 +642,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   }
 
   /* message("Found %lld particles in a %speriodic box of size [%f %f %f].", */
-  /* 	  N_total[0], (periodic ? "": "non-"), dim[0], */
-  /* 	  dim[1], dim[2]); */
+  /* 	  N_total[0], (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
 
   /* Divide the particles among the tasks. */
   for (int ptype = 0; ptype < swift_type_count; ++ptype) {
@@ -759,9 +742,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
              ptype);
     h_grp = H5Gopen(h_file, partTypeGroupName, H5P_DEFAULT);
-    if (h_grp < 0) {
+    if (h_grp < 0)
       error("Error while opening particle group %s.", partTypeGroupName);
-    }
 
     int num_fields = 0;
     struct io_props list[100];
@@ -861,15 +843,19 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   int numFiles = 1;
 
   /* First time, we need to create the XMF file */
-  if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
+  if (e->snapshot_output_count == 0) xmf_create_file(baseName);
 
   /* Prepare the XMF file for the new entry */
   xmfFile = xmf_prepare_file(baseName);
 
   /* HDF5 File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           e->snapshotOutputCount);
+  if (e->snapshot_label_delta == 1)
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->snapshot_output_count);
+  else
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
+             e->snapshot_output_count * e->snapshot_label_delta);
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -904,6 +890,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
   io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
   io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
+  io_write_attribute_s(h_grp, "Code", "SWIFT");
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
@@ -964,13 +951,15 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   }
 
   /* Print the gravity parameters */
-  if (e->policy & engine_policy_cosmology) {
-    h_grp =
-        H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating cosmology group");
-    cosmology_write_model(h_grp, e->cosmology);
-    H5Gclose(h_grp);
-  }
+  h_grp =
+      H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating cosmology group");
+  if (e->policy & engine_policy_cosmology)
+    io_write_attribute_i(h_grp, "Cosmological run", 1);
+  else
+    io_write_attribute_i(h_grp, "Cosmological run", 0);
+  cosmology_write_model(h_grp, e->cosmology);
+  H5Gclose(h_grp);
 
   /* Print the runtime parameters */
   h_grp =
@@ -1041,7 +1030,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   }
 
   /* Write LXMF file descriptor */
-  xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
+  xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
 
   /* Close the file for now */
   H5Fclose(h_file);
@@ -1123,7 +1112,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   /* HDF5 File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           e->snapshotOutputCount);
+           e->snapshot_output_count);
 
   /* Prepare some file-access properties */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
@@ -1173,9 +1162,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fopen(fileName, H5F_ACC_RDWR, plist_id);
-  if (h_file < 0) {
-    error("Error while opening file '%s'.", fileName);
-  }
+  if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -1333,7 +1320,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
             clocks_getunit());
 #endif
 
-  e->snapshotOutputCount++;
+  e->snapshot_output_count++;
 }
 
 #endif /* HAVE_HDF5 */

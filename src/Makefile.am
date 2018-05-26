@@ -47,7 +47,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     sourceterms.h sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
     gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
-    chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h
+    chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
@@ -81,17 +81,28 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h \
 		 hydro/PressureEntropy/hydro.h hydro/PressureEntropy/hydro_iact.h hydro/PressureEntropy/hydro_io.h \
                  hydro/PressureEntropy/hydro_debug.h hydro/PressureEntropy/hydro_part.h \
-		 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h \
-                 hydro/Gizmo/hydro_io.h hydro/Gizmo/hydro_debug.h \
-                 hydro/Gizmo/hydro_part.h \
-                 hydro/Gizmo/hydro_gradients_gizmo.h \
-                 hydro/Gizmo/hydro_gradients.h \
-                 hydro/Gizmo/hydro_gradients_sph.h \
-                 hydro/Gizmo/hydro_slope_limiters_cell.h \
-                 hydro/Gizmo/hydro_slope_limiters_face.h \
-                 hydro/Gizmo/hydro_slope_limiters.h \
-                 hydro/Gizmo/hydro_unphysical.h \
-                 hydro/Gizmo/hydro_velocities.h \
+		 hydro/GizmoMFV/hydro.h hydro/GizmoMFV/hydro_iact.h \
+                 hydro/GizmoMFV/hydro_io.h hydro/GizmoMFV/hydro_debug.h \
+                 hydro/GizmoMFV/hydro_part.h \
+                 hydro/GizmoMFV/hydro_gradients_gizmo.h \
+                 hydro/GizmoMFV/hydro_gradients.h \
+                 hydro/GizmoMFV/hydro_gradients_sph.h \
+                 hydro/GizmoMFV/hydro_slope_limiters_cell.h \
+                 hydro/GizmoMFV/hydro_slope_limiters_face.h \
+                 hydro/GizmoMFV/hydro_slope_limiters.h \
+                 hydro/GizmoMFV/hydro_unphysical.h \
+                 hydro/GizmoMFV/hydro_velocities.h \
+		 hydro/GizmoMFM/hydro.h hydro/GizmoMFM/hydro_iact.h \
+                 hydro/GizmoMFM/hydro_io.h hydro/GizmoMFM/hydro_debug.h \
+                 hydro/GizmoMFM/hydro_part.h \
+                 hydro/GizmoMFM/hydro_gradients_gizmo.h \
+                 hydro/GizmoMFM/hydro_gradients.h \
+                 hydro/GizmoMFM/hydro_gradients_sph.h \
+                 hydro/GizmoMFM/hydro_slope_limiters_cell.h \
+                 hydro/GizmoMFM/hydro_slope_limiters_face.h \
+                 hydro/GizmoMFM/hydro_slope_limiters.h \
+                 hydro/GizmoMFM/hydro_unphysical.h \
+                 hydro/GizmoMFM/hydro_velocities.h \
                  hydro/Shadowswift/hydro_debug.h \
                  hydro/Shadowswift/hydro_gradients.h hydro/Shadowswift/hydro.h \
                  hydro/Shadowswift/hydro_iact.h \
@@ -131,10 +142,10 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 chemistry/none/chemistry_io.h \
 		 chemistry/none/chemistry_struct.h \
 		 chemistry/none/chemistry_iact.h \
-                 chemistry/gear/chemistry.h \
-		 chemistry/gear/chemistry_io.h \
-		 chemistry/gear/chemistry_struct.h \
-		 chemistry/gear/chemistry_iact.h \
+                 chemistry/GEAR/chemistry.h \
+		 chemistry/GEAR/chemistry_io.h \
+		 chemistry/GEAR/chemistry_struct.h \
+		 chemistry/GEAR/chemistry_iact.h \
                  chemistry/EAGLE/chemistry.h \
 		 chemistry/EAGLE/chemistry_io.h \
 		 chemistry/EAGLE/chemistry_struct.h\

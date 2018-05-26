@@ -26,9 +26,17 @@
 #include "inline.h"
 #include "minmax.h"
 
+//#define GADGET2_SOFTENING_CORRECTION
+
+#ifdef GADGET2_SOFTENING_CORRECTION
+/*! Conversion factor between Plummer softening and internal softening */
+#define kernel_gravity_softening_plummer_equivalent 2.8
+#define kernel_gravity_softening_plummer_equivalent_inv (1. / 2.8)
+#else
 /*! Conversion factor between Plummer softening and internal softening */
 #define kernel_gravity_softening_plummer_equivalent 3.
 #define kernel_gravity_softening_plummer_equivalent_inv (1. / 3.)
+#endif /* GADGET2_SOFTENING_CORRECTION */
 
 /**
  * @brief Computes the gravity softening function for potential.
@@ -41,6 +49,15 @@
 __attribute__((always_inline)) INLINE static void kernel_grav_pot_eval(
     float u, float *const W) {
 
+#ifdef GADGET2_SOFTENING_CORRECTION
+  if (u < 0.5f)
+    *W = -2.8f + u * u * (5.333333333333f + u * u * (6.4f * u - 9.6f));
+  else
+    *W = -3.2f + 0.066666666667f / u +
+         u * u * (10.666666666667f +
+                  u * (-16.f + u * (9.6f - 2.133333333333f * u)));
+#else
+
   /* W(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
   *W = 3.f * u - 15.f;
   *W = *W * u + 28.f;
@@ -49,6 +66,7 @@ __attribute__((always_inline)) INLINE static void kernel_grav_pot_eval(
   *W = *W * u + 7.f;
   *W = *W * u;
   *W = *W * u - 3.f;
+#endif
 }
 
 /**
@@ -62,12 +80,21 @@ __attribute__((always_inline)) INLINE static void kernel_grav_pot_eval(
 __attribute__((always_inline)) INLINE static void kernel_grav_force_eval(
     float u, float *const W) {
 
+#ifdef GADGET2_SOFTENING_CORRECTION
+  if (u < 0.5f)
+    *W = 10.6666667f + u * u * (32.f * u - 38.4f);
+  else
+    *W = 21.3333333f - 48.f * u + 38.4f * u * u - 10.6666667f * u * u * u -
+         0.06666667f / (u * u * u);
+#else
+
   /* W(u) = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */
   *W = 21.f * u - 90.f;
   *W = *W * u + 140.f;
   *W = *W * u - 84.f;
   *W = *W * u;
   *W = *W * u + 14.f;
+#endif
 }
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -84,6 +111,15 @@ __attribute__((always_inline)) INLINE static void kernel_grav_force_eval(
 __attribute__((always_inline)) INLINE static void kernel_grav_eval_pot_double(
     double u, double *const W) {
 
+#ifdef GADGET2_SOFTENING_CORRECTION
+  if (u < 0.5)
+    *W = -2.8 + u * u * (5.333333333333 + u * u * (6.4 * u - 9.6));
+  else
+    *W = -3.2 + 0.066666666667 / u +
+         u * u *
+             (10.666666666667 + u * (-16.0 + u * (9.6 - 2.133333333333 * u)));
+#else
+
   /* W(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
   *W = 3. * u - 15.;
   *W = *W * u + 28.;
@@ -92,6 +128,7 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval_pot_double(
   *W = *W * u + 7.;
   *W = *W * u;
   *W = *W * u - 3;
+#endif
 }
 
 /**
@@ -106,14 +143,25 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval_pot_double(
 __attribute__((always_inline)) INLINE static void kernel_grav_eval_force_double(
     double u, double *const W) {
 
+#ifdef GADGET2_SOFTENING_CORRECTION
+  if (u < 0.5)
+    *W = 10.666666666667 + u * u * (32.0 * u - 38.4);
+  else
+    *W = 21.333333333333 - 48.0 * u + 38.4 * u * u -
+         10.666666666667 * u * u * u - 0.066666666667 / (u * u * u);
+#else
+
   /* W(u) = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */
   *W = 21. * u - 90.;
   *W = *W * u + 140.;
   *W = *W * u - 84.;
   *W = *W * u;
   *W = *W * u + 14.;
+#endif
 }
 #endif /* SWIFT_GRAVITY_FORCE_CHECKS */
+
+#undef GADGET2_SOFTENING_CORRECTION
 
 /************************************************/
 /* Derivatives of softening kernel used for FMM */

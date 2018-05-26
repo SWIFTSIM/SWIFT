@@ -33,8 +33,8 @@
 #include "./chemistry/none/chemistry.h"
 #include "./chemistry/none/chemistry_iact.h"
 #elif defined(CHEMISTRY_GEAR)
-#include "./chemistry/gear/chemistry.h"
-#include "./chemistry/gear/chemistry_iact.h"
+#include "./chemistry/GEAR/chemistry.h"
+#include "./chemistry/GEAR/chemistry_iact.h"
 #elif defined(CHEMISTRY_EAGLE)
 #include "./chemistry/EAGLE/chemistry.h"
 #include "./chemistry/EAGLE/chemistry_iact.h"
