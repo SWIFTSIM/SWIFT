@@ -80,84 +80,6 @@ __attribute__((always_inline)) INLINE static double cell_min_dist(
   return r2;
 }
 
-/* Recurse on a cell and perform a FOF search between cells that are within
- * range. */
-static void rec_fof_search_sub(struct cell *ci, struct cell *cj,
-                               struct space *s, int *pid, int *num_groups,
-                               const double *dim, const double search_r2) {
-
-  /* Recurse on cj. */
-  if (cj->split)
-    for (int k = 0; k < 8; k++)
-      if (cj->progeny[k] != NULL)
-        rec_fof_search_sub(ci, cj->progeny[k], s, pid, num_groups, dim,
-                           search_r2);
-
-  /* No progeny? */
-  if (!cj->split) {
-    const double cix = ci->loc[0];
-    const double ciy = ci->loc[1];
-    const double ciz = ci->loc[2];
-
-    /* Find the shortest distance between cells, remembering to account for
-     * boundary conditions. */
-    const double r2 = cell_min_dist(ci, cj, cix, ciy, ciz, dim);
-
-    /* Perform FOF search between pairs of cells that are within the linking
-     * length and not the same cell. */
-    if (r2 < search_r2 && ci != cj) {
-      fof_search_pair_cells(s, ci, cj, pid, num_groups);
-    }
-  }
-}
-
-/* Recurse on a top-level cell and perform a search of all other top-level
- * cells. Recurse on top-level cells that are within range and perform a FOF
- * search between cells. */
-static void rec_fof_search(struct cell *ci, const int cid, struct space *s,
-                           int *pid, int *num_groups, const double *dim,
-                           const double search_r2) {
-
-  /* Recurse on ci. */
-  if (ci->split)
-    for (int k = 0; k < 8; k++)
-      if (ci->progeny[k] != NULL)
-        rec_fof_search(ci->progeny[k], cid, s, pid, num_groups, dim, search_r2);
-
-  /* No progeny? */
-  if (!ci->split) {
-    const double cix = ci->loc[0];
-    const double ciy = ci->loc[1];
-    const double ciz = ci->loc[2];
-
-    /* Perform FOF search on local particles within the cell. */
-    fof_search_cell(s, ci, pid, num_groups);
-
-    /* Loop over all top-level cells skipping over the cells already searched.
-     */
-    for (int cjd = cid; cjd < s->nr_cells; cjd++) {
-
-      struct cell *restrict cj = &s->cells_top[cjd];
-
-      /* Find the shortest distance between cells, remembering to account for
-       * boundary conditions. */
-      const double r2 = cell_min_dist(ci, cj, cix, ciy, ciz, dim);
-
-      /* If the leaf cell of ci is within the linking length of the top-level
-       * cell cj recurse on cj. Otherwise skip over cj as all of its leaf cells
-       * will also be out of range. */
-      if (r2 > search_r2)
-        continue;
-      else if (cj->split)
-        rec_fof_search_sub(ci, cj, s, pid, num_groups, dim, search_r2);
-      /* Perform FOF search between pairs of cells that are within the linking
-       * length and not the same cell. */
-      else if (ci != cj)
-        fof_search_pair_cells(s, ci, cj, pid, num_groups);
-    }
-  }
-}
-
 static void rec_fof_search_ci_cj(struct cell *ci, struct cell *cj, struct space *s,
                            int *pid, int *num_groups, const double *dim,
                            const double search_r2) {
@@ -190,6 +112,8 @@ static void rec_fof_search_ci_cj(struct cell *ci, struct cell *cj, struct space 
 
 }
 
+/* Recurse on a cell and perform a FOF search between cells that are within
+ * range. */
 static void rec_fof_search_self_ci(struct cell *ci, struct space *s,
                            int *pid, int *num_groups, const double *dim,
                            const double search_r2) {
