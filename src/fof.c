@@ -47,9 +47,12 @@ __attribute__((always_inline)) INLINE static int fof_find(const int i,
 /* Find the shortest distance between cells, remembering to account for boundary
  * conditions. */
 __attribute__((always_inline)) INLINE static double cell_min_dist(
-    const struct cell *ci, const struct cell *cj, const double cix,
-    const double ciy, const double ciz, const double *dim) {
+    const struct cell *ci, const struct cell *cj, const double *dim) {
 
+  /* Get cell locations. */
+  const double cix = ci->loc[0];
+  const double ciy = ci->loc[1];
+  const double ciz = ci->loc[2];
   const double cjx = cj->loc[0];
   const double cjy = cj->loc[1];
   const double cjz = cj->loc[2];
@@ -80,17 +83,15 @@ __attribute__((always_inline)) INLINE static double cell_min_dist(
   return r2;
 }
 
-static void rec_fof_search_ci_cj(struct cell *ci, struct cell *cj, struct space *s,
+/* Recurse on a pair of cells and perform a FOF search between cells that are within
+ * range. */
+static void rec_fof_search_pair(struct cell *ci, struct cell *cj, struct space *s,
                            int *pid, int *num_groups, const double *dim,
                            const double search_r2) {
 
-  const double cix = ci->loc[0];
-  const double ciy = ci->loc[1];
-  const double ciz = ci->loc[2];
-
   /* Find the shortest distance between cells, remembering to account for
    * boundary conditions. */
-  const double r2 = cell_min_dist(ci, cj, cix, ciy, ciz, dim);
+  const double r2 = cell_min_dist(ci, cj, dim);
 
   if (r2 > search_r2)
     return;
@@ -101,7 +102,7 @@ static void rec_fof_search_ci_cj(struct cell *ci, struct cell *cj, struct space 
 
         for (int l = 0; l < 8; l++)
           if (cj->progeny[l] != NULL)
-            rec_fof_search_ci_cj(ci->progeny[k], cj->progeny[l], s, pid, num_groups, dim, search_r2);
+            rec_fof_search_pair(ci->progeny[k], cj->progeny[l], s, pid, num_groups, dim, search_r2);
       }
     }
   }
@@ -109,27 +110,32 @@ static void rec_fof_search_ci_cj(struct cell *ci, struct cell *cj, struct space 
    * length and not the same cell. */
   else if (ci != cj)
     fof_search_pair_cells(s, ci, cj, pid, num_groups);
+  else if (ci == cj) error("Pair FOF called on same cell!!!");
 
 }
 
 /* Recurse on a cell and perform a FOF search between cells that are within
  * range. */
-static void rec_fof_search_self_ci(struct cell *ci, struct space *s,
+static void rec_fof_search_self(struct cell *ci, struct space *s,
                            int *pid, int *num_groups, const double *dim,
                            const double search_r2) {
 
+  /* Recurse? */
   if (ci->split) {
+    
+    /* Loop over all progeny. Perform pair and self recursion on progenies.*/
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL) {
 
-        rec_fof_search_self_ci(ci->progeny[k], s, pid, num_groups, dim, search_r2);
+        rec_fof_search_self(ci->progeny[k], s, pid, num_groups, dim, search_r2);
 
         for (int l = k+1; l < 8; l++)
           if (ci->progeny[l] != NULL)
-            rec_fof_search_ci_cj(ci->progeny[k], ci->progeny[l], s, pid, num_groups, dim, search_r2);
+            rec_fof_search_pair(ci->progeny[k], ci->progeny[l], s, pid, num_groups, dim, search_r2);
       }
     }
   }
+  /* Otherwise, compute self-interaction. */
   else 
     fof_search_cell(s, ci, pid, num_groups);
 }
@@ -405,16 +411,22 @@ void fof_search_tree_serial(struct space *s) {
 
     struct cell *restrict ci = &s->cells_top[cid];
 
+    /* Skip empty cells. */
+    if(ci->gcount == 0) continue;
+
     /* Perform FOF search on local particles within the cell. */
-    rec_fof_search_self_ci(ci, s, pid, &num_groups, dim, search_r2);
+    rec_fof_search_self(ci, s, pid, &num_groups, dim, search_r2);
 
     /* Loop over all top-level cells skipping over the cells already searched.
     */
     for (int cjd = cid + 1; cjd < nr_cells; cjd++) {
 
       struct cell *restrict cj = &s->cells_top[cjd];
+      
+      /* Skip empty cells. */
+      if(cj->gcount == 0) continue;
 
-      rec_fof_search_ci_cj(ci, cj, s, pid, &num_groups, dim, search_r2);
+      rec_fof_search_pair(ci, cj, s, pid, &num_groups, dim, search_r2);
     }   
   }
 
