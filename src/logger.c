@@ -422,7 +422,6 @@ void logger_init(struct logger *log, const struct swift_params *params, const st
   struct dump *dump_file = log->dump;
   
   dump_init(dump_file, logger_name_file, log->buffer_size);
-  logger_write_file_header(log, e);
   dump_ensure(dump_file, log->buffer_size);
   log->timestamp_offset = 0;
 }
