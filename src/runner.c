@@ -2738,18 +2738,25 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
 	    logger_log_part(p, logger_mask_x | logger_mask_v | logger_mask_a |
 			    logger_mask_u | logger_mask_h | logger_mask_rho |
 			    logger_mask_consts,
-			    &xp->logger.last_offset, e->log->dump);
+			    &xp->logger_data.last_offset, e->log->dump);
 	    //message("Offset: %lu", p->last_offset);
 	    /* Set counter back to zero */
-	    xp->logger.last_output = 0;
+	    xp->logger_data.last_output = 0;
 	  }
 	else
 	  /* Update counter */
-	  xp->logger.last_output += 1;
+	  xp->logger_data.last_output += 1;
       }
     }
 
   }
+
+  if (c->gcount > 0)
+    error("gparts not implemented");
+
+  if (c->scount > 0)
+    error("sparts not implemented");
+  
   if (timer) TIMER_TOC(timer_logger);
 
 #else
