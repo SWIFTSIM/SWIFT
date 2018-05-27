@@ -57,7 +57,7 @@ struct xpart {
   struct cooling_xpart_data cooling_data;
 
 #ifdef WITH_LOGGER
-  struct logger_part_data logger;
+  struct logger_part_data logger_data;
 #endif
 
 } SWIFT_STRUCT_ALIGN;
