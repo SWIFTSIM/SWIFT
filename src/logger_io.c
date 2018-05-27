@@ -114,8 +114,6 @@ void write_index_single(struct engine* e, const char* baseName,
 
   /* Write the relevant information */
   io_write_attribute(h_grp, "PeriodicBoundariesOn", INT, &periodic, 1);
-  int index = 1;
-  io_write_attribute(h_grp, "IsIndexFile", INT, &index, 1);
 
   /* Close runtime parameters */
   H5Gclose(h_grp);
