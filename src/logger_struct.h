@@ -52,6 +52,12 @@ struct logger_part_data {
   size_t last_offset;
 };
 
+__attribute__((always_inline)) INLINE static  void logger_part_data_init(
+    struct logger_part_data) {
+  xp->logger.last_offset = 0;
+  xp->logger.last_output = SHRT_MAX;
+}
+
 #endif // WITH_LOGGER
 
 #endif // SWIFT_LOGGER_STRUCT_H

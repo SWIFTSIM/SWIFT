@@ -753,8 +753,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->entropy_full = p->entropy;
 
 #ifdef WITH_LOGGER
-  xp->logger.last_offset = 0;
-  xp->logger.last_output = SHRT_MAX;
+  logger_part_data_init(xp->logger_data);
 #endif
 
   hydro_reset_acceleration(p);
