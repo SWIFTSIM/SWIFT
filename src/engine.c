@@ -6480,8 +6480,8 @@ void engine_dump_snapshot(struct engine *e) {
                       MPI_INFO_NULL);
 #endif
 #else
-    write_output_single(e, e->snapshotBaseName, e->internal_units,
-			e->snapshotUnits);
+    write_output_single(e, e->snapshot_base_name, e->internal_units,
+			e->snapshot_units);
 #endif
 #endif
 
@@ -6520,7 +6520,7 @@ void engine_dump_index(struct engine *e) {
 
   /* Dump... */
   write_index_single(e, e->log->base_name, e->internal_units,
-		     e->snapshotUnits);
+		     e->snapshot_units);
 
   e->dump_snapshot = 0;
 
