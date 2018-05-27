@@ -49,6 +49,6 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
                 const struct unit_system* internal_units,
                 const struct unit_system* snapshot_units);
 
-#endif // HAVE_HDF5 && !WITH_MPI
+#endif /* HAVE_HDF5 && !WITH_MPI */
 
 #endif /* SWIFT_SINGLE_IO_H */
