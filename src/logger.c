@@ -187,8 +187,8 @@ void logger_log_all(struct logger *log, struct engine *e) {
     logger_mask_consts;
   
   for(long long i=0; i < e->total_nr_parts; i++) {
-    logger_log_part(&s->parts[i], mask, &s->xparts[i].logger_data.last_offset, log->dump);
-    xparts[i].logger_data.last_output = 0;
+    logger_log_part(log, &s->parts[i], mask, &s->xparts[i].logger_data.last_offset);
+    s->xparts[i].logger_data.last_output = 0;
   }
 
   if (e->total_nr_gparts > 0)
@@ -199,13 +199,12 @@ void logger_log_all(struct logger *log, struct engine *e) {
 /**
  * @brief Dump a #part to the log.
  *
+ * @param log The #logger
  * @param p The #part to dump.
  * @param mask The mask of the data to dump.
  * @param offset Pointer to the offset of the previous log of this particle.
- * @param dump The #dump in which to log the particle data.
  */
-void logger_log_part(const struct part *p, const unsigned int mask, size_t *offset,
-                     struct dump *dump) {
+void logger_log_part(struct logger *log, const struct part *p, const unsigned int mask, size_t *offset) {
 
   /* Make sure we're not writing a timestamp. */
   if (mask & logger_mask_timestamp)
@@ -216,7 +215,7 @@ void logger_log_part(const struct part *p, const unsigned int mask, size_t *offs
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
-  char *buff = (char *)dump_get(dump, size, &offset_new);
+  char *buff = (char *)dump_get(log->dump, size, &offset_new);
 
   /* Write the header. */
   buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
@@ -276,13 +275,12 @@ void logger_log_part(const struct part *p, const unsigned int mask, size_t *offs
 /**
  * @brief Dump a #gpart to the log.
  *
+ * @param log The #logger
  * @param p The #gpart to dump.
  * @param mask The mask of the data to dump.
  * @param offset Pointer to the offset of the previous log of this particle.
- * @param dump The #dump in which to log the particle data.
  */
-void logger_log_gpart(const struct gpart *p, const unsigned int mask, size_t *offset,
-                      struct dump *dump) {
+void logger_log_gpart(struct logger *log, const struct gpart *p, const unsigned int mask, size_t *offset) {
 
   /* Make sure we're not writing a timestamp. */
   if (mask & logger_mask_timestamp)
@@ -297,7 +295,7 @@ void logger_log_gpart(const struct gpart *p, const unsigned int mask, size_t *of
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
-  char *buff = (char *)dump_get(dump, size, &offset_new);
+  char *buff = (char *)dump_get(log->dump, size, &offset_new);
 
   /* Write the header. */
   buff = logger_write_chunk_header(buff, &mask, offset, offset_new);

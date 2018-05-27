@@ -2735,10 +2735,10 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
 	if (xpart_should_write(xp, e))
 	  {
 	    /* Write particle */
-	    logger_log_part(p, logger_mask_x | logger_mask_v | logger_mask_a |
+	    logger_log_part(e->log, p, logger_mask_x | logger_mask_v | logger_mask_a |
 			    logger_mask_u | logger_mask_h | logger_mask_rho |
 			    logger_mask_consts,
-			    &xp->logger_data.last_offset, e->log->dump);
+			    &xp->logger_data.last_offset);
 	    //message("Offset: %lu", p->last_offset);
 	    /* Set counter back to zero */
 	    xp->logger_data.last_output = 0;

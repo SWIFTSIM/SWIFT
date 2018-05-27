@@ -53,9 +53,9 @@ struct logger_part_data {
 };
 
 __attribute__((always_inline)) INLINE static  void logger_part_data_init(
-    struct logger_part_data) {
-  xp->logger.last_offset = 0;
-  xp->logger.last_output = SHRT_MAX;
+    struct logger_part_data *logger ) {
+  logger->last_offset = 0;
+  logger->last_output = SHRT_MAX;
 }
 
 #endif // WITH_LOGGER

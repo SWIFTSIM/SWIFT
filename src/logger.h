@@ -123,22 +123,22 @@ extern const unsigned int logger_data_size[];
 /* Function prototypes. */
 int logger_compute_chunk_size(unsigned int mask);
 void logger_log_all(struct logger *log, struct engine *e);
-void logger_log_part(const struct part *p, const unsigned int mask, size_t *offset,
-                     struct dump *dump);
-void logger_log_gpart(const struct gpart *p, const unsigned int mask, size_t *offset,
-                      struct dump *dump);
+void logger_log_part(struct logger *log, const struct part *p, const unsigned int mask, size_t *offset);
+void logger_log_gpart(struct logger *log, const struct gpart *p, const unsigned int mask, size_t *offset);
 void logger_init(struct logger *log, const struct swift_params *params, const struct engine *e);
 void logger_clean(struct logger *log);
 void logger_log_timestamp(struct logger *log, integertime_t t, size_t *offset);
+void logger_ensure_size(struct logger *log, size_t total_nr_parts,
+    size_t total_nr_gparts, size_t total_nr_sparts);
+void logger_write_file_header(struct logger *log, const struct engine* e);
+
 int logger_read_part(struct part *p, size_t *offset, const char *buff);
 int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff);
 int logger_read_timestamp(unsigned long long int *t, size_t *offset,
                           const char *buff);
-void logger_write_file_header(struct logger *log, const struct engine* e);
+
 void logger_const_init(struct logger_const* log_const);
 void logger_const_free(struct logger_const* log_const);
-void logger_ensure_size(struct logger *log, size_t total_nr_parts,
-    size_t total_nr_gparts, size_t total_nr_sparts);
 
 #endif /* WITH_LOGGER */
 

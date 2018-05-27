@@ -211,7 +211,7 @@ __attribute__((always_inline)) INLINE static void hydro_write_index(
                                  UNIT_CONV_NO_UNITS, parts, id);
 
   list[1] = io_make_output_field("Offset", ULONGLONG, 1,
-                                 UNIT_CONV_NO_UNITS, xparts, logger.last_offset);
+                                 UNIT_CONV_NO_UNITS, xparts, logger_data.last_offset);
 #else
   error("Cannot write index without logger");
 #endif
