@@ -79,24 +79,20 @@ struct dump;
 #define logger_mask_consts 64
 #define logger_mask_timestamp 128
 
-#define logger_size_mask 1 // size of the mask
-#define logger_size_offset 7 // size of the offset
+#define logger_mask_size 1 // size of the mask
+#define logger_offset_size 7 // size of the offset
 
 /* header constants
  * Thoses are definitions from the format and therefore should not be changed!
  * Size in bytes
  */
-#define LOGGER_VERSION_SIZE 20 // size of the version message
-#define LOGGER_NAME_SIZE 2 // size of the labels size information
-#define LOGGER_MASK_SIZE 1 // size of the masks size information
-#define LOGGER_NBER_SIZE 1 // size of the number of elements information
-#define LOGGER_OFFSET_SIZE 1// size of the offset size information
-#define LOGGER_DATATYPE_SIZE 1 // size of the data type information
+#define logger_string_size 20 // size of the version message
+#define logger_number_size 2 // size of the labels size information
 
-extern char LOGGER_VERSION[LOGGER_VERSION_SIZE];
+extern char logger_version[logger_string_size];
 
 
-struct logger_const {
+struct logger_parameters {
   size_t name; // labels size
   size_t offset; // offset size
   size_t mask; // mask size
@@ -118,7 +114,7 @@ enum logger_datatype {
   logger_data_count /* should be last */
 };
 
-extern const unsigned int logger_data_size[];
+extern const unsigned int logger_datatype_size[];
 
 /* Function prototypes. */
 int logger_compute_chunk_size(unsigned int mask);
@@ -137,8 +133,8 @@ int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff);
 int logger_read_timestamp(unsigned long long int *t, size_t *offset,
                           const char *buff);
 
-void logger_const_init(struct logger_const* log_const);
-void logger_const_free(struct logger_const* log_const);
+void logger_parameters_init(struct logger_parameters* log_params);
+void logger_parameters_free(struct logger_parameters* log_params);
 
 #endif /* WITH_LOGGER */
 
