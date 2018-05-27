@@ -81,10 +81,13 @@ void write_index_single(struct engine* e, const char* baseName,
   int periodic = e->s->periodic;
   int numFiles = 1;
   struct part* parts = e->s->parts;
+  struct xpart *xparts = e->s->xparts;
   //struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   //struct spart* sparts = e->s->sparts;
   static int outputCount = 0;
+
+  struct logger *log = e->log;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
@@ -126,7 +129,7 @@ void write_index_single(struct engine* e, const char* baseName,
   io_write_attribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
   double dblTime = e->time;
   io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
-  io_write_attribute(h_grp, "Time Offset", UINT, &e->logger_time_offset, 1);
+  io_write_attribute(h_grp, "Time Offset", UINT, &log->timestamp_offset, 1);
   int dimension = (int)hydro_dimension;
   io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
 

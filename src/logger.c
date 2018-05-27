@@ -100,7 +100,7 @@ void logger_write_data(struct dump *d, size_t *offset, const size_t size, void *
  * @param data_type #logger_datatype to write
  */
 void logger_write_general_data(struct dump *d, struct logger_const *log, size_t *offset,
-			       void *p, char* name, size_t data_type)
+			       const void *p, char* name, size_t data_type)
 {
   char *buff;
   /* write name */
@@ -366,10 +366,12 @@ void logger_log_timestamp(struct logger *log, integertime_t timestamp, size_t *o
  * Check if logger parameters are large enough to write all particles
  * and ensure that enough space is available in the buffer
  *
+ * @param log The #logger
  * @param total_nr_nparts total number of particle
- * @param logger_buffer_size requested file size upate
  */
-void logger_ensure_size(struct logger *log, size_t total_nr_parts) {
+void logger_ensure_size(
+    struct logger *log, size_t total_nr_parts,
+    size_t total_nr_gparts, size_t total_nr_sparts) {
   size_t limit, i;
   struct logger_const log_const;
   logger_const_init(&log_const);
@@ -384,19 +386,27 @@ void logger_ensure_size(struct logger *log, size_t total_nr_parts) {
 
   limit *= total_nr_parts;
 
-  if (logger_buffer_size < limit) error("Need a larger logger size");
+  if (log->buffer_size < limit) error("Need a larger logger size");
+
+  if (total_nr_gparts > 0)
+    error("Not implemented");
+
+  if (total_nr_sparts > 0)
+    error("Not implemented");
   
   logger_const_free(&log_const);
 
-  dump_ensure(e->logger_dump, e->logger_buffer_size);
+  dump_ensure(log->dump, log->buffer_size);
 }
 
 /**
  * @brief intialize the logger structure
  *
  * @param log The #logger
+ * @param params The #swift_params
+ * @param e The #engine
  */
-void logger_init(struct logger *log, struct swift_params *params) {
+void logger_init(struct logger *log, const struct swift_params *params, const struct engine *e) {
   /* read parameters */
   log->delta_step = parser_get_param_int(params, "Logger:delta_step");
   log->buffer_size = parser_get_param_float(params, "Logger:mmaped_buffer_size") * 1e9;
@@ -412,7 +422,7 @@ void logger_init(struct logger *log, struct swift_params *params) {
   struct dump *dump_file = log->dump;
   
   dump_init(dump_file, logger_name_file, log->buffer_size);
-  logger_write_file_header(log, dump_file);
+  logger_write_file_header(log, e);
   dump_ensure(dump_file, log->buffer_size);
   log->timestamp_offset = 0;
 }
@@ -429,11 +439,11 @@ void logger_clean(struct logger *log) {
 /**
  * @brief Write a file header to a logger file
  *
- * @param offset Pointer to the offset of the previous log of this particle.
+ * @param log The #logger
  * @param dump The #dump in which to log the particle data.
  *
  */
-void logger_write_file_header(struct dump *dump, struct engine *e) {
+void logger_write_file_header(struct logger *log, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   message("writing header");
@@ -444,6 +454,7 @@ void logger_write_file_header(struct dump *dump, struct engine *e) {
   size_t file_offset;
 
   struct logger_const log_const;
+  struct dump *dump = log->dump;
   logger_const_init(&log_const);
   
   file_offset = dump->file_offset;
@@ -508,8 +519,8 @@ void logger_write_file_header(struct dump *dump, struct engine *e) {
   logger_const_free(&log_const);
   free(name);
 
-  dump_ensure(e->logger_dump, e->logger_buffer_size);
-  e->logger_time_offset = 0;
+  dump_ensure(log->dump, log->buffer_size);
+  log->timestamp_offset = 0;
 }
 
 /**
