@@ -187,7 +187,8 @@ void logger_log_all(struct logger *log, struct engine *e) {
     logger_mask_consts;
   
   for(long long i=0; i < e->total_nr_parts; i++) {
-    logger_log_part(&s->parts[i], mask, &s->xparts[i].logger.last_offset, log->dump);
+    logger_log_part(&s->parts[i], mask, &s->xparts[i].logger_data.last_offset, log->dump);
+    xparts[i].logger_data.last_output = 0;
   }
 
   if (e->total_nr_gparts > 0)
