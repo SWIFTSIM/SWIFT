@@ -51,6 +51,20 @@ relative error limit of $\epsilon=10^{-10}$. The value for a specific $a$ (over
 the course of a simulation run) is then obtained by linear interpolation of the
 table.
 
+\subsubsection{Additional quantities}
+
+\swift computes additional quantities that enter common expressions appearing in
+cosmological simulations. For completeness we give their expressions here. The
+look-back time is defined as
+\begin{equation}
+  t_{\rm lookback} = \int_{a_{\rm lookback}}^{a_0} \frac{da}{a E(a)},
+\end{equation}
+and the critical density for closure at a given redshift as
+\begin{equation}
+  \rho_{\rm crit} = \frac{3H(a)^2}{8\pi G_{\rm{N}}}.
+\end{equation}
+These quantities are computed every time-step.
+
 \subsubsection{Typical Values of the Cosmological Parameters}
 
 Typical values for the constants are: $\Omega_m = 0.3, \Omega_\Lambda=0.7, 0 <

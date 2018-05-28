@@ -15,8 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Add the debug flag to the whole thing
-AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS)
+# Add the non-standard paths to the included library headers
+AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
@@ -43,11 +43,11 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
     physical_constants.h physical_constants_cgs.h potential.h version.h \
-    hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
-    sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
+    hydro_properties.h riemann.h threadpool.h cooling_io.h cooling.h cooling_struct.h \
+    sourceterms.h sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
     gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
-    chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h fof.h
+    chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h fof.h space_getsid.h utilities.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
@@ -81,17 +81,28 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h \
 		 hydro/PressureEntropy/hydro.h hydro/PressureEntropy/hydro_iact.h hydro/PressureEntropy/hydro_io.h \
                  hydro/PressureEntropy/hydro_debug.h hydro/PressureEntropy/hydro_part.h \
-		 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h \
-                 hydro/Gizmo/hydro_io.h hydro/Gizmo/hydro_debug.h \
-                 hydro/Gizmo/hydro_part.h \
-                 hydro/Gizmo/hydro_gradients_gizmo.h \
-                 hydro/Gizmo/hydro_gradients.h \
-                 hydro/Gizmo/hydro_gradients_sph.h \
-                 hydro/Gizmo/hydro_slope_limiters_cell.h \
-                 hydro/Gizmo/hydro_slope_limiters_face.h \
-                 hydro/Gizmo/hydro_slope_limiters.h \
-                 hydro/Gizmo/hydro_unphysical.h \
-                 hydro/Gizmo/hydro_velocities.h \
+		 hydro/GizmoMFV/hydro.h hydro/GizmoMFV/hydro_iact.h \
+                 hydro/GizmoMFV/hydro_io.h hydro/GizmoMFV/hydro_debug.h \
+                 hydro/GizmoMFV/hydro_part.h \
+                 hydro/GizmoMFV/hydro_gradients_gizmo.h \
+                 hydro/GizmoMFV/hydro_gradients.h \
+                 hydro/GizmoMFV/hydro_gradients_sph.h \
+                 hydro/GizmoMFV/hydro_slope_limiters_cell.h \
+                 hydro/GizmoMFV/hydro_slope_limiters_face.h \
+                 hydro/GizmoMFV/hydro_slope_limiters.h \
+                 hydro/GizmoMFV/hydro_unphysical.h \
+                 hydro/GizmoMFV/hydro_velocities.h \
+		 hydro/GizmoMFM/hydro.h hydro/GizmoMFM/hydro_iact.h \
+                 hydro/GizmoMFM/hydro_io.h hydro/GizmoMFM/hydro_debug.h \
+                 hydro/GizmoMFM/hydro_part.h \
+                 hydro/GizmoMFM/hydro_gradients_gizmo.h \
+                 hydro/GizmoMFM/hydro_gradients.h \
+                 hydro/GizmoMFM/hydro_gradients_sph.h \
+                 hydro/GizmoMFM/hydro_slope_limiters_cell.h \
+                 hydro/GizmoMFM/hydro_slope_limiters_face.h \
+                 hydro/GizmoMFM/hydro_slope_limiters.h \
+                 hydro/GizmoMFM/hydro_unphysical.h \
+                 hydro/GizmoMFM/hydro_velocities.h \
                  hydro/Shadowswift/hydro_debug.h \
                  hydro/Shadowswift/hydro_gradients.h hydro/Shadowswift/hydro.h \
                  hydro/Shadowswift/hydro_iact.h \
@@ -118,18 +129,23 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
                  potential/sine_wave/potential.h \
 		 cooling/none/cooling.h cooling/none/cooling_struct.h \
+                 cooling/none/cooling_io.h \
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
+                 cooling/const_du/cooling_io.h \
                  cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
+                 cooling/const_lambda/cooling_io.h \
                  cooling/grackle/cooling.h cooling/grackle/cooling_struct.h \
+                 cooling/grackle/cooling_io.h \
 		 cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h \
+                 cooling/EAGLE/cooling_io.h \
                  chemistry/none/chemistry.h \
 		 chemistry/none/chemistry_io.h \
 		 chemistry/none/chemistry_struct.h \
 		 chemistry/none/chemistry_iact.h \
-                 chemistry/gear/chemistry.h \
-		 chemistry/gear/chemistry_io.h \
-		 chemistry/gear/chemistry_struct.h \
-		 chemistry/gear/chemistry_iact.h \
+                 chemistry/GEAR/chemistry.h \
+		 chemistry/GEAR/chemistry_io.h \
+		 chemistry/GEAR/chemistry_struct.h \
+		 chemistry/GEAR/chemistry_iact.h \
                  chemistry/EAGLE/chemistry.h \
 		 chemistry/EAGLE/chemistry_io.h \
 		 chemistry/EAGLE/chemistry_struct.h\

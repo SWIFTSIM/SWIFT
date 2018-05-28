@@ -24,6 +24,12 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Force use of the HLLC Riemann solver */
+#undef RIEMANN_SOLVER_TRRS
+#undef RIEMANN_SOLVER_EXACT
+#undef RIEMANN_SOLVER_HLLC
+#define RIEMANN_SOLVER_HLLC 1
+
 /* Local headers. */
 #include "riemann/riemann_hllc.h"
 #include "swift.h"

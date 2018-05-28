@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
 
   /* Structs used by the engine. Declare now to make sure these are always in
    * scope.  */
-  struct chemistry_data chemistry;
+  struct chemistry_global_data chemistry;
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
@@ -590,7 +590,7 @@ int main(int argc, char *argv[]) {
 
     /* Not restarting so look for the ICs. */
     /* Initialize unit system and constants */
-    units_init(&us, params, "InternalUnitSystem");
+    units_init_from_params(&us, params, "InternalUnitSystem");
     phys_const_init(&us, params, &prog_const);
     if (myrank == 0 && verbose > 0) {
       message("Internal unit system: U_M = %e g.", us.UnitMass_in_cgs);
@@ -611,7 +611,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the hydro properties */
     if (with_hydro)
       hydro_props_init(&hydro_properties, &prog_const, &us, params);
-    if (with_hydro) eos_init(&eos, params);
+    if (with_hydro) eos_init(&eos, &prog_const, &us, params);
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
@@ -670,6 +670,13 @@ int main(int argc, char *argv[]) {
               clocks_diff(&tic, &toc), clocks_getunit());
       fflush(stdout);
     }
+
+#ifndef HAVE_FFTW
+    /* Need the FFTW library if periodic and self gravity. */
+    if (with_self_gravity && periodic)
+      error(
+          "No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check once and for all that we don't have unwanted links */
@@ -798,8 +805,8 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_init(&e, &s, params, N_total[0], N_total[1], engine_policies,
-                talking, &reparttype, &us, &prog_const, &cosmo,
+    engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
+                engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &gravity_properties, &potential,
                 &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
@@ -1058,6 +1065,7 @@ int main(int argc, char *argv[]) {
 
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
+  if (with_cosmology) cosmology_clean(&cosmo);
   engine_clean(&e);
   free(params);
 

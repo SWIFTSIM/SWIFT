@@ -115,17 +115,12 @@ int io_is_double_precision(enum IO_DATA_TYPE type) {
  */
 void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                        void* data) {
-  hid_t h_attr = 0, h_err = 0;
 
-  h_attr = H5Aopen(grp, name, H5P_DEFAULT);
-  if (h_attr < 0) {
-    error("Error while opening attribute '%s'", name);
-  }
+  const hid_t h_attr = H5Aopen(grp, name, H5P_DEFAULT);
+  if (h_attr < 0) error("Error while opening attribute '%s'", name);
 
-  h_err = H5Aread(h_attr, io_hdf5_type(type), data);
-  if (h_err < 0) {
-    error("Error while reading attribute '%s'", name);
-  }
+  const hid_t h_err = H5Aread(h_attr, io_hdf5_type(type), data);
+  if (h_err < 0) error("Error while reading attribute '%s'", name);
 
   H5Aclose(h_attr);
 }
@@ -143,28 +138,22 @@ void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
  */
 void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                         void* data, int num) {
-  hid_t h_space = 0, h_attr = 0, h_err = 0;
-  hsize_t dim[1] = {(hsize_t)num};
 
-  h_space = H5Screate(H5S_SIMPLE);
-  if (h_space < 0) {
+  const hid_t h_space = H5Screate(H5S_SIMPLE);
+  if (h_space < 0)
     error("Error while creating dataspace for attribute '%s'.", name);
-  }
 
-  h_err = H5Sset_extent_simple(h_space, 1, dim, NULL);
-  if (h_err < 0) {
+  hsize_t dim[1] = {(hsize_t)num};
+  const hid_t h_err = H5Sset_extent_simple(h_space, 1, dim, NULL);
+  if (h_err < 0)
     error("Error while changing dataspace shape for attribute '%s'.", name);
-  }
 
-  h_attr = H5Acreate1(grp, name, io_hdf5_type(type), h_space, H5P_DEFAULT);
-  if (h_attr < 0) {
-    error("Error while creating attribute '%s'.", name);
-  }
+  const hid_t h_attr =
+      H5Acreate1(grp, name, io_hdf5_type(type), h_space, H5P_DEFAULT);
+  if (h_attr < 0) error("Error while creating attribute '%s'.", name);
 
-  h_err = H5Awrite(h_attr, io_hdf5_type(type), data);
-  if (h_err < 0) {
-    error("Error while reading attribute '%s'.", name);
-  }
+  const hid_t h_err2 = H5Awrite(h_attr, io_hdf5_type(type), data);
+  if (h_err2 < 0) error("Error while reading attribute '%s'.", name);
 
   H5Sclose(h_space);
   H5Aclose(h_attr);
@@ -182,32 +171,22 @@ void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
  */
 void io_writeStringAttribute(hid_t grp, const char* name, const char* str,
                              int length) {
-  hid_t h_space = 0, h_attr = 0, h_err = 0, h_type = 0;
 
-  h_space = H5Screate(H5S_SCALAR);
-  if (h_space < 0) {
+  const hid_t h_space = H5Screate(H5S_SCALAR);
+  if (h_space < 0)
     error("Error while creating dataspace for attribute '%s'.", name);
-  }
 
-  h_type = H5Tcopy(H5T_C_S1);
-  if (h_type < 0) {
-    error("Error while copying datatype 'H5T_C_S1'.");
-  }
+  const hid_t h_type = H5Tcopy(H5T_C_S1);
+  if (h_type < 0) error("Error while copying datatype 'H5T_C_S1'.");
 
-  h_err = H5Tset_size(h_type, length);
-  if (h_err < 0) {
-    error("Error while resizing attribute type to '%i'.", length);
-  }
+  const hid_t h_err = H5Tset_size(h_type, length);
+  if (h_err < 0) error("Error while resizing attribute type to '%i'.", length);
 
-  h_attr = H5Acreate1(grp, name, h_type, h_space, H5P_DEFAULT);
-  if (h_attr < 0) {
-    error("Error while creating attribute '%s'.", name);
-  }
+  const hid_t h_attr = H5Acreate1(grp, name, h_type, h_space, H5P_DEFAULT);
+  if (h_attr < 0) error("Error while creating attribute '%s'.", name);
 
-  h_err = H5Awrite(h_attr, h_type, str);
-  if (h_err < 0) {
-    error("Error while reading attribute '%s'.", name);
-  }
+  const hid_t h_err2 = H5Awrite(h_attr, h_type, str);
+  if (h_err2 < 0) error("Error while reading attribute '%s'.", name);
 
   H5Tclose(h_type);
   H5Sclose(h_space);
@@ -323,8 +302,7 @@ void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank) {
 void io_write_unit_system(hid_t h_file, const struct unit_system* us,
                           const char* groupName) {
 
-  hid_t h_grpunit = 0;
-  h_grpunit = H5Gcreate1(h_file, groupName, 0);
+  const hid_t h_grpunit = H5Gcreate1(h_file, groupName, 0);
   if (h_grpunit < 0) error("Error while creating Unit System group");
 
   io_write_attribute_d(h_grpunit, "Unit mass in cgs (U_M)",

@@ -48,6 +48,7 @@
 #include "queue.h"
 #include "sort_part.h"
 #include "space.h"
+#include "space_getsid.h"
 #include "task.h"
 #include "timers.h"
 #include "version.h"

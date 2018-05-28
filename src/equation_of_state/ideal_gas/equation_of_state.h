@@ -25,12 +25,16 @@
 /* Local headers. */
 #include "adiabatic_index.h"
 #include "common_io.h"
-#include "debug.h"
 #include "inline.h"
+#include "physical_constants.h"
 
 extern struct eos_parameters eos;
-/* ------------------------------------------------------------------------- */
 
+/**
+ * @brief The parameters of the equation of state for the gas.
+ *
+ * This equation of state is parameter-free.
+ */
 struct eos_parameters {};
 
 /**
@@ -165,12 +169,16 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
 /**
  * @brief Initialize the eos parameters
  *
- * @param e The #eos_paramters
- * @param params The parsed parameters
+ * Nothing to do here since this EoS is parameter-free.
+ *
+ * @param e The #eos_parameters.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param us The internal unit system.
+ * @param params The parsed parameters.
  */
 __attribute__((always_inline)) INLINE static void eos_init(
-    struct eos_parameters *e, const struct swift_params *params) {}
-
+    struct eos_parameters *e, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct swift_params *params) {}
 /**
  * @brief Print the equation of state
  *

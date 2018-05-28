@@ -107,6 +107,8 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_ext_grav = (e->policy & engine_policy_external_gravity);
+  const int with_self_grav = (e->policy & engine_policy_self_gravity);
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
   const double time = e->time;
@@ -190,11 +192,11 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
                    a_inv2; /* 1/2 m a^2 \dot{r}^2 */
     stats.E_int += m * u_inter;
     stats.E_rad += cooling_get_radiated_energy(xp);
-    if (gp != NULL) {
+    if (gp != NULL && with_self_grav)
       stats.E_pot_self += 0.5f * m * gravity_get_physical_potential(gp, cosmo);
+    if (gp != NULL && with_ext_grav)
       stats.E_pot_ext += m * external_gravity_get_potential_energy(
                                  time, potential, phys_const, gp);
-    }
 
     /* Collect entropy */
     stats.entropy += m * entropy;
@@ -220,6 +222,8 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_ext_grav = (e->policy & engine_policy_external_gravity);
+  const int with_self_grav = (e->policy & engine_policy_self_gravity);
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
   const double time = e->time;
@@ -292,9 +296,11 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
     /* Collect energies. */
     stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) *
                    a_inv2; /* 1/2 m a^2 \dot{r}^2 */
-    stats.E_pot_self += 0.5f * m * gravity_get_physical_potential(gp, cosmo);
-    stats.E_pot_ext += m * external_gravity_get_potential_energy(
-                               time, potential, phys_const, gp);
+    if (with_self_grav)
+      stats.E_pot_self += 0.5f * m * gravity_get_physical_potential(gp, cosmo);
+    if (with_ext_grav)
+      stats.E_pot_ext += m * external_gravity_get_potential_energy(
+                                 time, potential, phys_const, gp);
   }
 
   /* Now write back to memory */

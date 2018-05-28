@@ -26,6 +26,7 @@
 #include "gravity.h"
 #include "inline.h"
 #include "part.h"
+#include "space_getsid.h"
 #include "timers.h"
 
 /**
@@ -234,7 +235,8 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
       const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f) error("Interacting particles with 0 distance");
+      if (r2 == 0.f && h2_i == 0.)
+        error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
       if (gparts_i[pid].ti_drift != e->ti_current)
@@ -328,7 +330,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
       const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f) error("Interacting particles with 0 distance");
+      if (r2 == 0.f && h2_i == 0.)
+        error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
       if (gparts_i[pid].ti_drift != e->ti_current)
@@ -723,7 +726,8 @@ static INLINE void runner_doself_grav_pp_full(struct runner *r,
       const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f) error("Interacting particles with 0 distance");
+      if (r2 == 0.f && h2_i == 0.)
+        error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
       if (gparts[pid].ti_drift != e->ti_current)
@@ -853,7 +857,8 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
       const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f) error("Interacting particles with 0 distance");
+      if (r2 == 0.f && h2_i == 0.)
+        error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
       if (gparts[pid].ti_drift != e->ti_current)

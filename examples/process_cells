@@ -38,7 +38,7 @@ ranks=$(ls -v cells_*.dat | sed 's,cells_\(.*\)_.*.dat,\1,' | sort | uniq | wc -
 echo "Number of ranks = $ranks"
 
 #  Now construct a list of files ordered by rank, not step.
-files=$(ls cells_*.dat | sort -t "_" -k 3,3 -n | xargs -n 4)
+files=$(ls cells_*.dat | sort -t "_" -k 3,3 -n | xargs -n $ranks)
 
 #  Need number of steps.
 nfiles=$(echo $files| wc -w)
@@ -48,10 +48,10 @@ echo "Number of steps = $steps"
 
 #  And process them,
 echo "Processing cell dumps files..."
-echo $files | xargs -P $NPROCS -n 4 /bin/bash -c "${SCRIPTHOME}/process_cells_helper $NX $NY $NZ \$0 \$1 \$2 \$3"
+echo $files | xargs -P $NPROCS -n $ranks ${SCRIPTHOME}/process_cells_helper $NX $NY $NZ
 
 #  Create summary.
-grep "top cells" step*-active-cells.dat | sort -h > active_cells.log
+grep "top cells" step*-active-cells.dat | sort -n -k 1.5 > active_cells.log
 
 #  And plot of active cells to edge cells.
 stilts plot2plane ifmt=ascii in=active_cells.log xmin=-0.1 xmax=1.1 ymin=0 ymax=$steps grid=1 \

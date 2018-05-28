@@ -68,6 +68,12 @@ struct gpart {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
+  /*! Acceleration taken from the mesh only */
+  float a_grav_PM[3];
+
+  /*! Potential taken from the mesh only */
+  float potential_PM;
+
   /* Brute-force particle acceleration. */
   double a_grav_exact[3];
 

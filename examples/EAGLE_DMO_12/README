@@ -1,0 +1,15 @@
+ICs extracted from the EAGLE suite of simulations. 
+
+WARNING: The ICs are 210MB in size. They contain ~6.5M DM particles.
+
+The particle distribution here is the snapshot 27 (z=0.1) of the 12Mpc
+DMONLY-model. h- and a- factors from the original Gadget code have been
+corrected for. Variables not used in a pure gravity code have
+been removed.  Everything is ready to be run without cosmological
+integration.
+
+The particle load of the main EAGLE simulation can be reproduced by
+running these ICs on 8 cores.
+
+MD5 checksum of the ICs: 
+d70d08f261d8d2d5c9b674f93b4b8ce4  EAGLE_DMO_ICs_12.hdf5

@@ -28,11 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
-
 /* This object's header. */
 #include "units.h"
 
@@ -56,6 +51,25 @@ void units_init_cgs(struct unit_system* us) {
 }
 
 /**
+ * @brief Initialise the unit_system with values for the base units.
+ *
+ * @param us The #unit_system to initialise.
+ * @param U_M_in_cgs The mass unit in [g].
+ * @param U_L_in_cgs The length unit in [cm].
+ * @param U_t_in_cgs The time unit in [s].
+ * @param U_C_in_cgs The current unit in [A].
+ * @param U_T_in_cgs The temperature unit in [K].
+ */
+void units_init(struct unit_system* us, double U_M_in_cgs, double U_L_in_cgs,
+                double U_t_in_cgs, double U_C_in_cgs, double U_T_in_cgs) {
+  us->UnitMass_in_cgs = U_M_in_cgs;
+  us->UnitLength_in_cgs = U_L_in_cgs;
+  us->UnitTime_in_cgs = U_t_in_cgs;
+  us->UnitCurrent_in_cgs = U_C_in_cgs;
+  us->UnitTemperature_in_cgs = U_T_in_cgs;
+}
+
+/**
  * @brief Initialises the unit_system structure with the constants given in
  * the parameter file.
  *
@@ -63,8 +77,9 @@ void units_init_cgs(struct unit_system* us) {
  * @param params The parsed parameter file.
  * @param category The section of the parameter file to read from.
  */
-void units_init(struct unit_system* us, const struct swift_params* params,
-                const char* category) {
+void units_init_from_params(struct unit_system* us,
+                            const struct swift_params* params,
+                            const char* category) {
 
   char buffer[200];
   sprintf(buffer, "%s:UnitMass_in_cgs", category);

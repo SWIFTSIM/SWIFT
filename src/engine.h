@@ -126,6 +126,12 @@ struct engine {
   /* The minimum and maximum allowed dt */
   double dt_min, dt_max;
 
+  /* Maximum time-step allowed by the RMS condition in cosmology runs. */
+  double dt_max_RMS_displacement;
+
+  /* Dimensionless factor for the RMS time-step condition. */
+  double max_RMS_displacement_factor;
+
   /* Time of the simulation beginning */
   double time_begin;
 
@@ -187,26 +193,37 @@ struct engine {
   int step_props;
 
   /* Total numbers of particles in the system. */
-  long long total_nr_parts, total_nr_gparts;
+  long long total_nr_parts, total_nr_gparts, total_nr_sparts;
 
   /* The internal system of units */
   const struct unit_system *internal_units;
 
   /* Snapshot information */
-  double timeFirstSnapshot;
-  double deltaTimeSnapshot;
-  integertime_t ti_nextSnapshot;
-  char snapshotBaseName[PARSER_MAX_LINE_SIZE];
-  int snapshotCompression;
-  struct unit_system *snapshotUnits;
-  int snapshotOutputCount;
+  double a_first_snapshot;
+  double time_first_snapshot;
+  double delta_time_snapshot;
+
+  /* Integer time of the next snapshot */
+  integertime_t ti_next_snapshot;
+
+  char snapshot_base_name[PARSER_MAX_LINE_SIZE];
+  int snapshot_compression;
+  int snapshot_label_delta;
+  struct unit_system *snapshot_units;
+  int snapshot_output_count;
 
   /* Statistics information */
-  FILE *file_stats;
-  double timeLastStatistics;
-  double deltaTimeStatistics;
+  double a_first_statistics;
+  double time_first_statistics;
+  double delta_time_statistics;
 
-  /* Timesteps information */
+  /* Integer time of the next statistics dump */
+  integertime_t ti_next_stats;
+
+  /* File handle for the statistics */
+  FILE *file_stats;
+
+  /* File handle for the timesteps information */
   FILE *file_timesteps;
 
   /* The current step number. */
@@ -288,7 +305,7 @@ struct engine {
   const struct cooling_function_data *cooling_func;
 
   /* Properties of the chemistry model */
-  const struct chemistry_data *chemistry;
+  const struct chemistry_global_data *chemistry;
 
   /* Properties of source terms */
   struct sourceterms *sourceterms;
@@ -325,21 +342,26 @@ struct engine {
 /* Function prototypes. */
 void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
+void engine_compute_next_statistics_time(struct engine *e);
+void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
-void engine_init(
-    struct engine *e, struct space *s, const struct swift_params *params,
-    long long Ngas, long long Ndm, int policy, int verbose,
-    struct repartition *reparttype, const struct unit_system *internal_units,
-    const struct phys_const *physical_constants, struct cosmology *cosmo,
-    const struct hydro_props *hydro, struct gravity_props *gravity,
-    const struct external_potential *potential,
-    const struct cooling_function_data *cooling_func,
-    const struct chemistry_data *chemistry, struct sourceterms *sourceterms);
+void engine_init(struct engine *e, struct space *s,
+                 const struct swift_params *params, long long Ngas,
+                 long long Ngparts, long long Nstars, int policy, int verbose,
+                 struct repartition *reparttype,
+                 const struct unit_system *internal_units,
+                 const struct phys_const *physical_constants,
+                 struct cosmology *cosmo, const struct hydro_props *hydro,
+                 struct gravity_props *gravity,
+                 const struct external_potential *potential,
+                 const struct cooling_function_data *cooling_func,
+                 const struct chemistry_global_data *chemistry,
+                 struct sourceterms *sourceterms);
 void engine_config(int restart, struct engine *e,
                    const struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_threads, int with_aff, int verbose,

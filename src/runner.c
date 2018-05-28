@@ -60,6 +60,7 @@
 #include "sort_part.h"
 #include "sourceterms.h"
 #include "space.h"
+#include "space_getsid.h"
 #include "stars.h"
 #include "task.h"
 #include "timers.h"
@@ -656,7 +657,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct space *s = e->s;
   const struct hydro_space *hs = &s->hs;
   const struct cosmology *cosmo = e->cosmology;
-  const struct chemistry_data *chemistry = e->chemistry;
+  const struct chemistry_global_data *chemistry = e->chemistry;
   const float hydro_h_max = e->hydro_properties->h_max;
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
@@ -846,8 +847,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       error("Smoothing length failed to converge on %i particles.", count);
     }
 #else
-    if (count)
+    if (count) {
       error("Smoothing length failed to converge on %i particles.", count);
+    }
 #endif
 
     /* Be clean */
