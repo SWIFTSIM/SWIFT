@@ -419,7 +419,7 @@ void fof_search_tree_serial(struct space *s) {
 
     /* Loop over all top-level cells skipping over the cells already searched.
     */
-    for (int cjd = cid + 1; cjd < nr_cells; cjd++) {
+    for (size_t cjd = cid + 1; cjd < nr_cells; cjd++) {
 
       struct cell *restrict cj = &s->cells_top[cjd];
       
