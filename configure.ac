@@ -696,6 +696,8 @@ if test "x$with_tcmalloc" != "xno"; then
    if test "$have_tcmalloc" = "yes"; then
       TCMALLOC_LIBS="$tclibs"
 
+      AC_DEFINE([HAVE_TCMALLOC],1,[The tc-malloc library appears to be present.])
+
       have_special_allocator="yes"
 
       # Prevent compilers that replace the calls with built-ins (GNU 99) from doing so.
@@ -737,6 +739,8 @@ if test "x$with_jemalloc" != "xno"; then
    if test "$have_jemalloc" = "yes"; then
       JEMALLOC_LIBS="$jelibs"
 
+      AC_DEFINE([HAVE_JEMALLOC],1,[The je-malloc library appears to be present.])
+
       have_special_allocator="yes"
 
       # Prevent compilers that replace the regular calls with built-ins (GNU 99) from doing so.
@@ -777,6 +781,8 @@ if test "x$with_tbbmalloc" != "xno"; then
 
    if test "$have_tbbmalloc" = "yes"; then
       TBBMALLOC_LIBS="$tbblibs"
+
+      AC_DEFINE([HAVE_TBBMALLOC],1,[The TBB-malloc library appears to be present.])
 
       have_special_allocator="yes"
 
