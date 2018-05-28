@@ -834,7 +834,8 @@ int main(int argc, char *argv[]) {
                   talking, restart_file);
 
     /* check output field */
-    io_check_output_fields(params, &e);
+    if (myrank == 0)
+      io_check_output_fields(params, &e, N_total);
 
     if (myrank == 0) {
       clocks_gettime(&toc);

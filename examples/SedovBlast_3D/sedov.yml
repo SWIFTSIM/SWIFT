@@ -33,4 +33,4 @@ SPH:
 InitialConditions:
   file_name:                    ./sedov.hdf5          
   smoothing_length_scaling:     3.33
-
+ 

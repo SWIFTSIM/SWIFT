@@ -49,6 +49,7 @@
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "part_type.h"
 #include "stars_io.h"
 #include "units.h"
 #include "xmf.h"
@@ -1264,8 +1265,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
     /* Write everything */
     for (int i = 0; i < num_fields; ++i) {
-      char field[256];
-      sprintf(field, "SelectOutput:%s_%i", list[i].name, ptype);
+      char field[PARSER_MAX_LINE_SIZE];
+      sprintf(field, "SelectOutput:%s_%s", list[i].name, part_type_names[ptype]);
       int should_write = parser_get_opt_param_int(params, field, 1);
       if (should_write)
         writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,
