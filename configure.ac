@@ -660,10 +660,13 @@ if test "x$with_tcmalloc" != "xno"; then
    if test "$have_tcmalloc" = "yes"; then
       TCMALLOC_LIBS="$tclibs"
 
-      # These are recommended for GCC.
-      if test "$ax_cv_c_compiler_vendor" = "gnu"; then
-         CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
-      fi
+      # Prevent compilers that replace the calls within built-ins (GNU 99) from doing so.
+      case "$ax_cv_c_compiler_vendor" in
+        intel | gnu | clang)
+             CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+          ;;
+      esac
+
    else
       TCMALLOC_LIBS=""
    fi
@@ -720,6 +723,14 @@ if test "x$with_jemalloc" != "xno"; then
 
    if test "$have_jemalloc" = "yes"; then
       JEMALLOC_LIBS="$jelibs"
+
+      # Prevent compilers that replace the regular calls within built-ins (GNU 99) from doing so.
+      case "$ax_cv_c_compiler_vendor" in
+        intel | gnu | clang)
+             CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+          ;;
+      esac
+
    else
       JEMALLOC_LIBS=""
    fi
