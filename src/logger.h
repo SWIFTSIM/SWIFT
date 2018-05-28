@@ -69,6 +69,11 @@ struct dump;
  * indicated that this is the first message for the given particle/timestamp.
  */
 
+/* header constants
+ * Thoses are definitions from the format and therefore should not be changed!
+ * Size in bytes
+ */
+
 /* Some constants. */
 #define logger_mask_x 1
 #define logger_mask_v 2
@@ -79,30 +84,19 @@ struct dump;
 #define logger_mask_consts 64
 #define logger_mask_timestamp 128
 
-#define logger_mask_size 1 // size of the mask
-#define logger_offset_size 7 // size of the offset
+/* size of a mask */
+#define logger_mask_size 1
 
-/* header constants
- * Thoses are definitions from the format and therefore should not be changed!
- * Size in bytes
- */
-#define logger_string_size 20 // size of the version message
-#define logger_number_size 2 // size of the labels size information
+/* size of an offset */
+#define logger_offset_size 7
 
-extern char logger_version[logger_string_size];
+/* size of the version information */
+#define logger_version_size 20
 
+/* size of the size information */
+#define logger_header_number_size 2
 
-struct logger_parameters {
-  size_t name; // labels size
-  size_t offset; // offset size
-  size_t mask; // mask size
-  size_t number; // number size
-  size_t nber_mask; // number of different masks
-  size_t *masks; // value of each masks (e.g. logger_mask_...)
-  size_t *masks_size; // size of each mask
-  char *masks_name; // label of each mask
-  char *masks_type; // type of data (e.g. 'CHAR', 'INT', 'FLOAT')
-};
+extern char logger_version[logger_version_size];
 
 enum logger_datatype {
   logger_data_int,

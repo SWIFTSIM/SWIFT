@@ -40,7 +40,7 @@
 #include "units.h"
 #include "engine.h"
 
-char LOGGER_VERSION[LOGGER_VERSION_SIZE] = "0.1";
+char logger_version[logger_version_size] = "0.1";
 
 
 const unsigned int logger_datatype_size[logger_data_count] = {
@@ -63,9 +63,11 @@ const unsigned int logger_datatype_size[logger_data_count] = {
  * @return updated buff
  */
 char *logger_write_chunk_header(char *buff, const unsigned int *mask, const size_t *offset, const size_t offset_new) {
+  /* write mask */
   memcpy(buff, mask, logger_mask_size);
   buff += logger_mask_size;
-  
+
+  /* write offset */
   size_t diff_offset = offset_new - *offset;
   memcpy(buff, &diff_offset, logger_offset_size);
   buff += logger_offset_size;
@@ -104,12 +106,12 @@ void logger_write_general_data(struct dump *d, struct logger_parameters *params,
 {
   char *buff;
   /* write name */
-  buff = dump_get(d, params->name, offset);
-  memcpy(buff, name, params->name);
+  buff = dump_get(d, params->name_size, offset);
+  memcpy(buff, name, params->name_size);
 
   /* write data type */
-  buff = dump_get(d, LOGGER_DATATYPE_SIZE, offset);
-  memcpy(buff, &data_type, LOGGER_DATATYPE_SIZE);
+  buff = dump_get(d, params->data_type_size, offset);
+  memcpy(buff, &data_type, params->data_type_size);
 
   /* write value */
   if (data_type >= logger_data_count)
@@ -372,15 +374,13 @@ void logger_ensure_size(
     struct logger *log, size_t total_nr_parts,
     size_t total_nr_gparts, size_t total_nr_sparts) {
   size_t limit, i;
-  struct logger_parameters log_params;
-  logger_parameters_init(&log_params);
+  struct logger_parameters *log_params = log->params;
 
+  limit = log_params->offset_size + log_params->mask_size;
 
-  limit = log_params.offset + log_params.mask;
-
-  for(i=0; i < log_params.nber_mask; i++) {
-    if (log_params.masks[i] != logger_mask_timestamp)
-      limit += log_params.masks_size[i];
+  for(i=0; i < log_params->nber_mask; i++) {
+    if (log_params->masks[i] != logger_mask_timestamp)
+      limit += log_params->masks_size[i];
   }
 
   limit *= total_nr_parts;
@@ -393,8 +393,6 @@ void logger_ensure_size(
   if (total_nr_sparts > 0)
     error("Not implemented");
   
-  logger_parameters_free(&log_params);
-
   dump_ensure(log->dump, log->buffer_size);
 }
 
@@ -419,7 +417,11 @@ void logger_init(struct logger *log, const struct swift_params *params, const st
   /* init dump */
   log->dump = malloc(sizeof(struct dump));
   struct dump *dump_file = log->dump;
-  
+
+  /* init parameters */
+  log->params = (struct logger_parameters*) malloc(sizeof(struct logger_parameters));
+  logger_parameters_init(log->params);
+    
   dump_init(dump_file, logger_name_file, log->buffer_size);
   dump_ensure(dump_file, log->buffer_size);
   log->timestamp_offset = 0;
@@ -432,6 +434,7 @@ void logger_init(struct logger *log, const struct swift_params *params, const st
  */
 void logger_clean(struct logger *log) {
   dump_close(log->dump);
+  free(log->params);
 }
 
 /**
@@ -451,9 +454,8 @@ void logger_write_file_header(struct logger *log, const struct engine *e) {
   char *skip_header;
   size_t file_offset;
 
-  struct logger_parameters log_params;
+  const struct logger_parameters log_params = *log->params;
   struct dump *dump = log->dump;
-  logger_parameters_init(&log_params);
   
   file_offset = dump->file_offset;
     
@@ -463,39 +465,39 @@ void logger_write_file_header(struct logger *log, const struct engine *e) {
   logger_write_data(dump, &file_offset, logger_string_size, &logger_version);
  
   /* write number of bytes used for the offsets */
-  logger_write_data(dump, &file_offset, logger_number_size, &log_params.offset);
+  logger_write_data(dump, &file_offset, logger_number_size, &log_params.offset_size);
 
   /* write offset direction */
   int reversed = 0;
-  logger_write_data(dump, &file_offset, logger_data_size[logger_data_bool], &reversed);
+  logger_write_data(dump, &file_offset, logger_datatype_size[logger_data_bool], &reversed);
 
   /* will write the offset of the first particle here */
-  skip_header = dump_get(dump, log_params.offset, &file_offset);
+  skip_header = dump_get(dump, log_params.offset_size, &file_offset);
 
   /* write number of bytes used for names */
-  logger_write_data(dump, &file_offset, LOGGER_NAME_SIZE, &log_params.name);
+  logger_write_data(dump, &file_offset, logger_number_size, &log_params.name_size);
 
   /* write number of bytes used for numbers */
-  logger_write_data(dump, &file_offset, LOGGER_NBER_SIZE, &log_params.number);
+  logger_write_data(dump, &file_offset, logger_number_size, &log_params.number_size);
 
   /* write number of bytes used for masks */
-  logger_write_data(dump, &file_offset, LOGGER_MASK_SIZE, &log_params.mask);
+  logger_write_data(dump, &file_offset, logger_number_size, &log_params.mask_size);
 
   /* write number of masks */
-  logger_write_data(dump, &file_offset, log_params.number, &log_params.nber_mask);
+  logger_write_data(dump, &file_offset, log_params.number_size, &log_params.nber_mask);
   
   /* write masks */
   // loop over all mask type
   for(i=0; i<log_params.nber_mask; i++) {
     // mask name
-    size_t j = i * log_params.name;
-    logger_write_data(dump, &file_offset, log_params.name, &log_params.masks_name[j]);
+    size_t j = i * log_params.name_size;
+    logger_write_data(dump, &file_offset, log_params.name_size, &log_params.masks_name[j]);
     
     // mask
-    logger_write_data(dump, &file_offset, log_params.mask, &log_params.masks[i]);
+    logger_write_data(dump, &file_offset, log_params.mask_size, &log_params.masks[i]);
 
     // mask size
-    logger_write_data(dump, &file_offset, log_params.number, &log_params.masks_size[i]);
+    logger_write_data(dump, &file_offset, log_params.number_size, &log_params.masks_size[i]);
   }
 
   /* write mask data */
@@ -505,16 +507,15 @@ void logger_write_file_header(struct logger *log, const struct engine *e) {
   /* write data name (mass, id, ...) */
   
   /* Write data */
-  char *name = malloc(sizeof(char) * log_params.name);
+  char *name = malloc(sizeof(char) * log_params.name_size);
   strcpy(name, "time_base");
   logger_write_general_data(dump, &log_params, &file_offset, &e->time_base,
 			    name, logger_data_double);
 
   /* last step: write first offset */
-  memcpy(skip_header, &file_offset, log_params.offset);
+  memcpy(skip_header, &file_offset, log_params.offset_size);
 
   /* free memory */
-  logger_parameters_free(&log_params);
   free(name);
 
   dump_ensure(log->dump, log->buffer_size);
@@ -527,10 +528,11 @@ void logger_write_file_header(struct logger *log, const struct engine *e) {
  * @param log_params #logger_parameters to initialize
  */
 void logger_parameters_init(struct logger_parameters* log_params) {
-  log_params->name = 20;
-  log_params->offset = 7;
-  log_params->mask = 1;
-  log_params->number = 1;
+  log_params->name_size = 20;
+  log_params->offset_size = 7;
+  log_params->mask_size = 1;
+  log_params->number_size = 1;
+  log_params->data_type_size = 1;
 
   log_params->nber_mask = 8;
 
@@ -550,41 +552,41 @@ void logger_parameters_init(struct logger_parameters* log_params) {
   log_params->masks[7] = logger_mask_timestamp;
 
   // masks name
-  block_size = log_params->name * log_params->nber_mask;
+  block_size = log_params->name_size * log_params->nber_mask;
   log_params->masks_name = malloc(block_size);
   cur_name = log_params->masks_name;
 
   strcpy(tmp, "position");
-  memcpy(cur_name, &tmp, log_params->name);
-  cur_name += log_params->name;
+  memcpy(cur_name, &tmp, log_params->name_size);
+  cur_name += log_params->name_size;
 
   strcpy(tmp, "velocity");
-  memcpy(cur_name, &tmp, log_params->name);
-  cur_name += log_params->name;
+  memcpy(cur_name, &tmp, log_params->name_size);
+  cur_name += log_params->name_size;
 
   strcpy(tmp, "acceleration");
-  memcpy(cur_name, &tmp, log_params->name);
-  cur_name += log_params->name;
+  memcpy(cur_name, &tmp, log_params->name_size);
+  cur_name += log_params->name_size;
 
   strcpy(tmp, "entropy");
-  memcpy(cur_name, &tmp, log_params->name);
-  cur_name += log_params->name;
+  memcpy(cur_name, &tmp, log_params->name_size);
+  cur_name += log_params->name_size;
 
   strcpy(tmp, "cutoff radius");
-  memcpy(cur_name, &tmp, log_params->name);
-  cur_name += log_params->name;
+  memcpy(cur_name, &tmp, log_params->name_size);
+  cur_name += log_params->name_size;
 
   strcpy(tmp, "density");
-  memcpy(cur_name, &tmp, log_params->name);
-  cur_name += log_params->name;
+  memcpy(cur_name, &tmp, log_params->name_size);
+  cur_name += log_params->name_size;
 
   strcpy(tmp, "consts");
-  memcpy(cur_name, &tmp, log_params->name);
-  cur_name += log_params->name;
+  memcpy(cur_name, &tmp, log_params->name_size);
+  cur_name += log_params->name_size;
 
   strcpy(tmp, "timestamp");
-  memcpy(cur_name, &tmp, log_params->name);
-  cur_name += log_params->name;
+  memcpy(cur_name, &tmp, log_params->name_size);
+  cur_name += log_params->name_size;
 
   log_params->masks_size = malloc(sizeof(size_t) * log_params->nber_mask);
   log_params->masks_size[0] = 3 * sizeof(double);
@@ -608,7 +610,7 @@ void logger_parameters_init(struct logger_parameters* log_params) {
 void logger_parameters_free(struct logger_parameters* log_params) {
   free(log_params->masks);
   free(log_params->masks_name);
-  free(log_params->masks_size);
+  free(log_params->masks_data_size);
 }
 
 

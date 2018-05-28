@@ -24,6 +24,38 @@
 #define LOGGER_STRING_LENGTH 200
 #include "dump.h"
 
+/* parameters of the logger */
+struct logger_parameters {
+  /* size of a label in bytes */
+  size_t label_size;
+
+  /* size of an offset in bytes */
+  size_t offset_size;
+
+  /* size of a mask in bytes */
+  size_t mask_size;
+
+  /* size of a number in bytes */
+  size_t number_size;
+
+  /* size of a data type in bytes */
+  size_t data_type_size;
+  
+  /* number of different mask */
+  size_t nber_mask;
+
+  /* value of each masks */
+  size_t *masks;
+
+  /* data size of each mask */
+  size_t *masks_data_size;
+  
+  /* label of each mask */
+  char *masks_name;
+
+};
+
+
 /* structure containing global data */
 struct logger {
   /* Number of particle steps between dumping a chunk of data */
@@ -40,6 +72,9 @@ struct logger {
 
   /* size of the buffer */
   size_t buffer_size;
+
+  /* logger parameters */
+  struct logger_parameters *params;
 
 } SWIFT_STRUCT_ALIGN;
 
