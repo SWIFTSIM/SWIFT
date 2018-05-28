@@ -403,7 +403,7 @@ void logger_ensure_size(
  * @param params The #swift_params
  * @param e The #engine
  */
-void logger_init(struct logger *log, const struct swift_params *params, const struct engine *e) {
+void logger_init(struct logger *log, const struct swift_params *params) {
   /* read parameters */
   log->delta_step = parser_get_param_int(params, "Logger:delta_step");
   log->buffer_size = parser_get_param_float(params, "Logger:mmaped_buffer_size") * 1e9;

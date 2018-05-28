@@ -31,7 +31,8 @@
 /* Local headers. */
 #include "swift.h"
 
-void test_log_parts(struct dump *d) {
+void test_log_parts(struct logger *log) {
+  struct dump *d = log->dump;
 
   /* Write several copies of a part to the dump. */
   struct part p;
@@ -43,22 +44,20 @@ void test_log_parts(struct dump *d) {
   size_t offset = d->count;
 
   /* Write the full part. */
-  logger_log_part(&p,
-                  logger_mask_x | logger_mask_v | logger_mask_a |
-                      logger_mask_u | logger_mask_h | logger_mask_rho |
-                      logger_mask_consts,
-                  &offset, d);
+  logger_log_part(log, &p, logger_mask_x | logger_mask_v | logger_mask_a |
+                          logger_mask_u | logger_mask_h | logger_mask_rho |
+                          logger_mask_consts, &offset);
   printf("Wrote part at offset %#016zx.\n", offset);
 
   /* Write only the position. */
   p.x[0] = 2.0;
-  logger_log_part(&p, logger_mask_x, &offset, d);
+  logger_log_part(log, &p, logger_mask_x, &offset);
   printf("Wrote part at offset %#016zx.\n", offset);
 
   /* Write the position and velocity. */
   p.x[0] = 3.0;
   p.v[0] = 0.3;
-  logger_log_part(&p, logger_mask_x | logger_mask_v, &offset, d);
+  logger_log_part(log, &p, logger_mask_x | logger_mask_v, &offset);
   printf("Wrote part at offset %#016zx.\n", offset);
 
   /* Recover the last part from the dump. */
@@ -101,7 +100,8 @@ void test_log_parts(struct dump *d) {
   }
 }
 
-void test_log_gparts(struct dump *d) {
+void test_log_gparts(struct logger *log) {
+  struct dump *d = log->dump;
 
   /* Write several copies of a part to the dump. */
   struct gpart p;
@@ -113,21 +113,19 @@ void test_log_gparts(struct dump *d) {
   size_t offset = d->count;
 
   /* Write the full part. */
-  logger_log_gpart(&p,
-                   logger_mask_x | logger_mask_v | logger_mask_a |
-                       logger_mask_h | logger_mask_consts,
-                   &offset, d);
+  logger_log_gpart(log, &p, logger_mask_x | logger_mask_v | logger_mask_a |
+                           logger_mask_h | logger_mask_consts, &offset);
   printf("Wrote gpart at offset %#016zx.\n", offset);
 
   /* Write only the position. */
   p.x[0] = 2.0;
-  logger_log_gpart(&p, logger_mask_x, &offset, d);
+  logger_log_gpart(log, &p, logger_mask_x, &offset);
   printf("Wrote gpart at offset %#016zx.\n", offset);
 
   /* Write the position and velocity. */
   p.x[0] = 3.0;
   p.v_full[0] = 0.3;
-  logger_log_gpart(&p, logger_mask_x | logger_mask_v, &offset, d);
+  logger_log_gpart(log, &p, logger_mask_x | logger_mask_v, &offset);
   printf("Wrote gpart at offset %#016zx.\n", offset);
 
   /* Recover the last part from the dump. */
@@ -170,7 +168,8 @@ void test_log_gparts(struct dump *d) {
   }
 }
 
-void test_log_timestamps(struct dump *d) {
+void test_log_timestamps(struct logger *log) {
+  struct dump *d = log->dump;
 
   /* The timestamp to log. */
   unsigned long long int t = 10;
@@ -179,13 +178,13 @@ void test_log_timestamps(struct dump *d) {
   size_t offset = d->count;
 
   /* Log three consecutive timestamps. */
-  logger_log_timestamp(t, &offset, d);
+  logger_log_timestamp(log, t, &offset);
   printf("Logged timestamp %020llu at offset %#016zx.\n", t, offset);
   t += 10;
-  logger_log_timestamp(t, &offset, d);
+  logger_log_timestamp(log, t, &offset);
   printf("Logged timestamp %020llu at offset %#016zx.\n", t, offset);
   t += 10;
-  logger_log_timestamp(t, &offset, d);
+  logger_log_timestamp(log, t, &offset);
   printf("Logged timestamp %020llu at offset %#016zx.\n", t, offset);
 
   /* Recover the three timestamps. */
@@ -222,29 +221,28 @@ void test_log_timestamps(struct dump *d) {
 
 int main(int argc, char *argv[]) {
 
-  /* Some constants. */
-  char filename[256];
-  const int now = time(NULL);
-  sprintf(filename, "/tmp/SWIFT_logger_test_%d.out", now);
-
-  /* Prepare a dump. */
-  struct dump d;
-  dump_init(&d, filename, 1024 * 1024);
+  /* Prepare a logger. */
+  struct logger log;
+  struct swift_params params;
+  parser_read_file("logger.yml", &params);
+  logger_init(&log, &params);
 
   /* Test writing/reading parts. */
-  test_log_parts(&d);
+  test_log_parts(&log);
 
   /* Test writing/reading gparts. */
-  test_log_gparts(&d);
+  test_log_gparts(&log);
 
   /* Test writing/reading timestamps. */
-  test_log_timestamps(&d);
-
-  /* Finalize the dump. */
-  dump_close(&d);
+  test_log_timestamps(&log);
 
   /* Be clean */
+  char filename[256];
+  sprintf(filename, "%s.dump", log.base_name);
   remove(filename);
+
+  /* Clean the logger. */
+  logger_clean(&log);
 
   /* Return a happy number. */
   return 0;

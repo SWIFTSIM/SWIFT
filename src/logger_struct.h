@@ -21,8 +21,12 @@
 
 #ifdef WITH_LOGGER
 
-#define LOGGER_STRING_LENGTH 200
+#include <limits.h>
+
+/* Local Includes */
 #include "dump.h"
+
+#define LOGGER_STRING_LENGTH 200
 
 /* parameters of the logger */
 struct logger_parameters {

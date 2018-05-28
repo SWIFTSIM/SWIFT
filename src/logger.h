@@ -115,7 +115,7 @@ int logger_compute_chunk_size(unsigned int mask);
 void logger_log_all(struct logger *log, const struct engine *e);
 void logger_log_part(struct logger *log, const struct part *p, unsigned int mask, size_t *offset);
 void logger_log_gpart(struct logger *log, const struct gpart *p, unsigned int mask, size_t *offset);
-void logger_init(struct logger *log, const struct swift_params *params, const struct engine *e);
+void logger_init(struct logger *log, const struct swift_params *params);
 void logger_clean(struct logger *log);
 void logger_log_timestamp(struct logger *log, integertime_t t, size_t *offset);
 void logger_ensure_size(struct logger *log, size_t total_nr_parts,

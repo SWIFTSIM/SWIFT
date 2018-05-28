@@ -6705,7 +6705,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 
 #if defined(WITH_LOGGER)
   e->log = (struct logger *) malloc(sizeof(struct logger));
-  logger_init(e->log, params, e);
+  logger_init(e->log, params);
 #endif
 
   /* Make the space link back to the engine. */
