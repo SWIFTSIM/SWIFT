@@ -628,52 +628,6 @@ AC_SUBST([FFTW_LIBS])
 AC_SUBST([FFTW_INCS])
 AM_CONDITIONAL([HAVEFFTW],[test -n "$FFTW_LIBS"])
 
-#  Check for tcmalloc a fast malloc that is part of the gperftools.
-have_tcmalloc="no"
-AC_ARG_WITH([tcmalloc],
-   [AS_HELP_STRING([--with-tcmalloc],
-      [use tcmalloc library or specify the directory with lib @<:@yes/no@:>@]
-   )],
-   [with_tcmalloc="$withval"],
-   [with_tcmalloc="no"]
-)
-if test "x$with_tcmalloc" != "xno"; then
-   if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
-      tclibs="-L$with_tcmalloc -ltcmalloc"
-   else
-      tclibs="-ltcmalloc"
-   fi
-   AC_CHECK_LIB([tcmalloc],[tc_cfree],[have_tcmalloc="yes"],[have_tcmalloc="no"],
-                $tclibs)
-
-   #  Could just have the minimal version.
-   if test "$have_tcmalloc" = "no"; then
-      if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
-         tclibs="-L$with_tcmalloc -ltcmalloc_minimal"
-      else
-         tclibs="-ltcmalloc_minimal"
-      fi
-      AC_CHECK_LIB([tcmalloc],[tc_cfree],[have_tcmalloc="yes"],[have_tcmalloc="no"],
-                   $tclibs)
-   fi
-
-   if test "$have_tcmalloc" = "yes"; then
-      TCMALLOC_LIBS="$tclibs"
-
-      # Prevent compilers that replace the calls within built-ins (GNU 99) from doing so.
-      case "$ax_cv_c_compiler_vendor" in
-        intel | gnu | clang)
-             CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
-          ;;
-      esac
-
-   else
-      TCMALLOC_LIBS=""
-   fi
-fi
-AC_SUBST([TCMALLOC_LIBS])
-AM_CONDITIONAL([HAVETCMALLOC],[test -n "$TCMALLOC_LIBS"])
-
 #  Check for -lprofiler usually part of the gperftools along with tcmalloc.
 have_profiler="no"
 AC_ARG_WITH([profiler],
@@ -703,6 +657,61 @@ fi
 AC_SUBST([PROFILER_LIBS])
 AM_CONDITIONAL([HAVEPROFILER],[test -n "$PROFILER_LIBS"])
 
+# Check for special allocators
+have_special_allocator="no"
+
+#  Check for tcmalloc a fast malloc that is part of the gperftools.
+have_tcmalloc="no"
+AC_ARG_WITH([tcmalloc],
+   [AS_HELP_STRING([--with-tcmalloc],
+      [use tcmalloc library or specify the directory with lib @<:@yes/no@:>@]
+   )],
+   [with_tcmalloc="$withval"],
+   [with_tcmalloc="no"]
+)
+if test "x$with_tcmalloc" != "xno" -a "x$have_special_allocator" != "xno"; then
+   AC_MSG_ERROR("Cannot activate more than one alternative malloc library")
+fi
+
+if test "x$with_tcmalloc" != "xno"; then
+   if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
+      tclibs="-L$with_tcmalloc -ltcmalloc"
+   else
+      tclibs="-ltcmalloc"
+   fi
+   AC_CHECK_LIB([tcmalloc],[tc_cfree],[have_tcmalloc="yes"],[have_tcmalloc="no"],
+                $tclibs)
+
+   #  Could just have the minimal version.
+   if test "$have_tcmalloc" = "no"; then
+      if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
+         tclibs="-L$with_tcmalloc -ltcmalloc_minimal"
+      else
+         tclibs="-ltcmalloc_minimal"
+      fi
+      AC_CHECK_LIB([tcmalloc],[tc_cfree],[have_tcmalloc="yes"],[have_tcmalloc="no"],
+                   $tclibs)
+   fi
+
+   if test "$have_tcmalloc" = "yes"; then
+      TCMALLOC_LIBS="$tclibs"
+
+      have_special_allocator="yes"
+
+      # Prevent compilers that replace the calls with built-ins (GNU 99) from doing so.
+      case "$ax_cv_c_compiler_vendor" in
+        intel | gnu | clang)
+             CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+          ;;
+      esac
+
+   else
+      TCMALLOC_LIBS=""
+   fi
+fi
+AC_SUBST([TCMALLOC_LIBS])
+AM_CONDITIONAL([HAVETCMALLOC],[test -n "$TCMALLOC_LIBS"])
+
 #  Check for jemalloc another fast malloc that is good with contention.
 have_jemalloc="no"
 AC_ARG_WITH([jemalloc],
@@ -712,6 +721,10 @@ AC_ARG_WITH([jemalloc],
    [with_jemalloc="$withval"],
    [with_jemalloc="no"]
 )
+if test "x$with_jemalloc" != "xno" -a "x$have_special_allocator" != "xno"; then
+   AC_MSG_ERROR("Cannot activate more than one alternative malloc library")
+fi
+
 if test "x$with_jemalloc" != "xno"; then
    if test "x$with_jemalloc" != "xyes" -a "x$with_jemalloc" != "x"; then
       jelibs="-L$with_jemalloc -ljemalloc"
@@ -724,7 +737,9 @@ if test "x$with_jemalloc" != "xno"; then
    if test "$have_jemalloc" = "yes"; then
       JEMALLOC_LIBS="$jelibs"
 
-      # Prevent compilers that replace the regular calls within built-ins (GNU 99) from doing so.
+      have_special_allocator="yes"
+
+      # Prevent compilers that replace the regular calls with built-ins (GNU 99) from doing so.
       case "$ax_cv_c_compiler_vendor" in
         intel | gnu | clang)
              CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
@@ -738,10 +753,46 @@ fi
 AC_SUBST([JEMALLOC_LIBS])
 AM_CONDITIONAL([HAVEJEMALLOC],[test -n "$JEMALLOC_LIBS"])
 
-#  Don't allow both tcmalloc and jemalloc.
-if test "x$have_tcmalloc" != "xno" -a "x$have_jemalloc" != "xno"; then
-   AC_MSG_ERROR([Cannot use tcmalloc at same time as jemalloc])
+#  Check for tbbmalloc, Intel's fast and parallel allocator
+have_tbbmalloc="no"
+AC_ARG_WITH([tbbmalloc],
+   [AS_HELP_STRING([--with-tbbmalloc],
+      [use tbbmalloc library or specify the directory with lib @<:@yes/no@:>@]
+   )],
+   [with_tbbmalloc="$withval"],
+   [with_tbbmalloc="no"]
+)
+if test "x$with_tbbmalloc" != "xno" -a "x$have_special_allocator" != "xno"; then
+   AC_MSG_ERROR("Cannot activate more than one alternative malloc library")
 fi
+
+if test "x$with_tbbmalloc" != "xno"; then
+   if test "x$with_tbbmalloc" != "xyes" -a "x$with_tbbmalloc" != "x"; then
+      tbblibs="-L$with_tbbmalloc -ltbbmalloc_proxy -ltbbmalloc"
+   else
+      tbblibs="-ltbbmalloc_proxy -ltbbmalloc"
+   fi
+   AC_CHECK_LIB([tbbmalloc],[scalable_malloc],[have_tbbmalloc="yes"],[have_tbbmalloc="no"],
+                $tbblibs)
+
+   if test "$have_tbbmalloc" = "yes"; then
+      TBBMALLOC_LIBS="$tbblibs"
+
+      have_special_allocator="yes"
+
+      # Prevent compilers that replace the calls with built-ins (GNU 99) from doing so.
+      case "$ax_cv_c_compiler_vendor" in
+        intel | gnu | clang)
+             CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+          ;;
+      esac
+
+   else
+      TBBMALLOC_LIBS=""
+   fi
+fi
+AC_SUBST([TBBMALLOC_LIBS])
+AM_CONDITIONAL([HAVETBBMALLOC],[test -n "$TBBMALLOC_LIBS"])
 
 # Check for HDF5. This is required.
 AX_LIB_HDF5
@@ -1243,6 +1294,7 @@ AC_MSG_RESULT([
    GSL enabled      : $have_gsl
    libNUMA enabled  : $have_numa
    GRACKLE enabled  : $have_grackle
+   Using tbbmalloc  : $have_tbbmalloc
    Using tcmalloc   : $have_tcmalloc
    Using jemalloc   : $have_jemalloc
    CPU profiler     : $have_profiler
