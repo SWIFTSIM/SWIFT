@@ -128,7 +128,7 @@ int logger_read_timestamp(unsigned long long int *t, size_t *offset,
                           const char *buff);
 
 void logger_parameters_init(struct logger_parameters* log_params);
-void logger_parameters_free(struct logger_parameters* log_params);
+void logger_parameters_clean(struct logger_parameters* log_params);
 
 #endif /* WITH_LOGGER */
 

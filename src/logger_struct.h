@@ -77,6 +77,9 @@ struct logger {
   /* size of the buffer */
   size_t buffer_size;
 
+  /* scaling factor when buffer is too small */
+  float buffer_scale;
+
   /* logger parameters */
   struct logger_parameters *params;
 

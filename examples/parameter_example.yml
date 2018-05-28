@@ -95,6 +95,7 @@ Snapshots:
 Logger:
   delta_step:           10     # (Optional) Update the particle log every this many updates
   mmaped_buffer_size:   .01    # buffer size in GB
+  buffer_scale:		1.2    # (Optional) When buffer size is too small, update it with required memory times buffer_scale
   basename:             indice # Common part of the filenames
   
 # Parameters governing the conserved quantities statistics
