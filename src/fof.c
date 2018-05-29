@@ -175,10 +175,12 @@ void fof_search_serial(struct space *s) {
     const double piy = pi->x[1];
     const double piz = pi->x[2];
 
+    /* Find the root of pi. */
+    int root_i = fof_find(i, pid);
+    
     for (size_t j = i + 1; j < nr_gparts; j++) {
 
       /* Find the roots of pi and pj. */
-      const int root_i = fof_find(i, pid);
       const int root_j = fof_find(j, pid);
 
       /* Skip particles in the same group. */
@@ -204,8 +206,13 @@ void fof_search_serial(struct space *s) {
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-        if (root_j < root_i)
+        /* If the root ID of pj is lower than pi's root ID set pi's root to point to pj's. 
+         * Otherwise set pj's to root to point to pi's.*/
+        if (root_j < root_i) {
           pid[root_i] = root_j;
+          /* Update root_i on the fly. */
+          root_i = root_j;
+        }
         else
           pid[root_j] = root_i;
 
