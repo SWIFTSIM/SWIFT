@@ -368,9 +368,10 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   /* Re-set problematic values */
   p->rho = p->mass * kernel_root * h_inv_dim;
-  p->density.wcount = kernel_root * kernel_norm * h_inv_dim;
+  p->density.wcount = kernel_root * h_inv_dim;
   p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
+  p->force.v_sig = 1.f;
 }
 
 /**
@@ -429,7 +430,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
-  p->force.v_sig = 0.0f;
+  p->force.v_sig = p->force.soundspeed;
 }
 
 /**
