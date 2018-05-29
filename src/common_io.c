@@ -868,7 +868,7 @@ void io_check_output_fields(const struct swift_params* params,
       if (strstr(param_name, section_name) == NULL) continue;
 
       /* skip if wrong particle type */
-      sprintf(section_name, "_%i", ptype);
+      sprintf(section_name, "_%s", part_type_names[ptype]);
       if (strstr(param_name, section_name) == NULL) continue;
 
       int found = 0;
@@ -884,10 +884,10 @@ void io_check_output_fields(const struct swift_params* params,
 	  /* check if correct input */
 	  int retParam = 0;
 	  char str[PARSER_MAX_LINE_SIZE];
-	  sscanf(params->data[field_id].value, "%d%s", &retParam, str);
+	  sscanf(params->data[param_id].value, "%d%s", &retParam, str);
 
 	  if (retParam != 0 && retParam != 1)
-	    message("WARNING: Unexpected input for %s."
+	    message("WARNING: Unexpected input for %s. "
 		    "Received %i but expect 0 or 1", field_name, retParam);
           continue;
         }
