@@ -733,7 +733,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               p->density.wcount_dh * h_old_dim +
               hydro_dimension * p->density.wcount * h_old_dim_minus_one;
 
-          h_new = h_old - f / f_prime;
+          /* Avoid floating point exception from f_prime = 0 */
+          h_new = h_old - f / (f_prime + FLT_MIN);
 
 #ifdef SWIFT_DEBUG_CHECKS
           if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
