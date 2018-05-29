@@ -6217,8 +6217,12 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   /* Get the counts of each particle types */
   const long long total_nr_dm_gparts =
       e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
-  float count_parts[swift_type_count] = {
-      (float)e->total_nr_parts, (float)total_nr_dm_gparts, 0.f, 0.f, (float)e->total_nr_sparts, 0.f};
+  float count_parts[swift_type_count] = {(float)e->total_nr_parts,
+                                         (float)total_nr_dm_gparts,
+                                         0.f,
+                                         0.f,
+                                         (float)e->total_nr_sparts,
+                                         0.f};
 
   /* Count of particles for the two species */
   const float N_dm = count_parts[1];
