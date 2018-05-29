@@ -96,16 +96,20 @@ SWIFT depends on a number of third party libraries that should be available
 before you can build it.
 
 
- - HDF5: a HDF5 library (v. 1.8.x or higher) is required to read and
-         write particle data. One of the commands "h5cc" or "h5pcc"
-         should be available. If "h5pcc" is located them a parallel
-         HDF5 built for the version of MPI located should be
-         provided. If the command is not available then it can be
-         located using the "--with-hfd5" configure option. The value
-         should be the full path to the "h5cc" or "h5pcc" commands.
+ - HDF5:
+	A HDF5 library (v. 1.8.x or higher) is required to read and
+        write particle data. One of the commands "h5cc" or "h5pcc"
+        should be available. If "h5pcc" is located them a parallel
+        HDF5 built for the version of MPI located should be
+        provided. If the command is not available then it can be
+        located using the "--with-hfd5" configure option. The value
+        should be the full path to the "h5cc" or "h5pcc" commands.
+        SWIFT can make a very effective use of a parallel build of the
+        library when running on more than one node. This is highly
+        recommended.
 
-
- - MPI: to run on more than one node an MPI library that fully
+ - MPI:
+	To run on more than one node an MPI library that fully
         supports MPI_THREAD_MULTIPLE.  Before running configure the
         "mpirun" command should be available in the shell. If your
         command isn't called "mpirun" then define the "MPIRUN"
@@ -116,50 +120,63 @@ before you can build it.
 	much like the CC one. Use this when your MPI compiler has a
 	none-standard name.
 
- - GSL: To use cosmological time integration, a version of the GSL
-        must be available. 
+ - GSL:
+	To use cosmological time integration, a version of the GSL
+	must be available.
 
- - libtool: The build system relies on libtool as well as the other autotools.
+ - FFTW 3.x:
+	To run with periodic gravity forces, a build of the fftw 3
+	library must be available. Note that SWIFT does not make use
+	of the parallel capability of FFTW. Calculations are done by
+	single MPI nodes independently.
+
+- libtool:
+	The build system relies on libtool as well as the other autotools.
+
 
 
                            Optional Dependencies
                            =====================
 
 
- - METIS: a build of the METIS library can be optionally used to
-          optimize the load between MPI nodes (requires an MPI
-          library). This should be found in the standard installation
-          directories, or pointed at using the "--with-metis"
-          configuration option.  In this case the top-level
-          installation directory of the METIS build should be
-          given. Note to use METIS you should at least supply
-          "--with-metis".
+ - METIS:
+	a build of the METIS library can be optionally used to
+        optimize the load between MPI nodes (requires an MPI
+        library). This should be found in the standard installation
+        directories, or pointed at using the "--with-metis"
+        configuration option.  In this case the top-level installation
+        directory of the METIS build should be given. Note to use
+        METIS you should at least supply "--with-metis".
 
+- libNUMA:
+	a build of the NUMA library can be used to pin the threads to
+        the physical core of the machine SWIFT is running on. This is
+        not always necessary as the OS scheduler may do a good job at
+        distributing the threads among the different cores on each
+        computing node.
 
- - libNUMA: a build of the NUMA library can be used to pin the threads
-            to the physical core of the machine SWIFT is running
-            on. This is not always necessary as the OS scheduler may
-            do a good job at distributing the threads among the
-            different cores on each computing node.
+ - tcmalloc / jemalloc / TBBmalloc:
+	a build of the tcmalloc library (part of gperftools), jemalloc
+	or TBBmalloc can be used be used to obtain faster and more
+	scalable allocations than the standard C malloc function part
+	of glibc. Using one of these is highly recommended on systems
+	with many cores per node. One of the options
+	"--with-tcmalloc", "--with-jemalloc" or "--with-tbbmalloc"
+	should be passed to the configuration script to use it.
 
+ - gperftools:
+	a build of gperftools can be used to obtain good profiling of
+        the code. The option "-with-profiler" needs to be passed to
+        the configuration script to use it.
 
- - TCMalloc: a build of the TCMalloc library (part of gperftools) can
-             be used to obtain faster allocations than the standard C
-             malloc function part of glibc. The option "-with-tcmalloc"
-	     should be passed to the configuration script to use it.
+ - DOXYGEN:
+	the doxygen library is required to create the SWIFT API
+        documentation.
 
+ - python:
+	Examples and solution script use python and rely on the numpy
+	library version 1.8.2 or higher.
 
- - gperftools: a build of gperftools can be used to obtain good
-               profiling of the code. The option "-with-profiler"
-               needs to be passed to the configuration script to use
-               it.
-
-
- - DOXYGEN: the doxygen library is required to create the SWIFT API
-            documentation.
-
- - python:  Examples and solution script use python and rely on the
-   	    numpy library version 1.8.2 or higher.
 
 
                              SWIFT Coding style
