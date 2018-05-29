@@ -259,7 +259,7 @@ MPI_Datatype multipole_mpi_type;
 /**
  * @brief Registers MPI particle types.
  */
-void part_create_mpi_types() {
+void part_create_mpi_types(void) {
 
   /* This is not the recommended way of doing this.
      One should define the structure field by field

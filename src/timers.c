@@ -110,7 +110,7 @@ void timers_reset(unsigned long long mask) {
  * @brief Re-set all the timers.
  *
  */
-void timers_reset_all() { timers_reset(timers_mask_all); }
+void timers_reset_all(void) { timers_reset(timers_mask_all); }
 
 /**
  * @brief Outputs all the timers to the timers dump file.
@@ -145,4 +145,4 @@ void timers_open_file(int rank) {
 /**
  * @brief Close the file containing the timer info.
  */
-void timers_close_file() { fclose(timers_file); }
+void timers_close_file(void) { fclose(timers_file); }

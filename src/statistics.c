@@ -396,7 +396,7 @@ void stats_add_MPI(void *in, void *inout, int *len, MPI_Datatype *datatype) {
 /**
  * @brief Registers MPI #statistics type and reduction function.
  */
-void stats_create_MPI_type() {
+void stats_create_MPI_type(void) {
 
   /* This is not the recommended way of doing this.
      One should define the structure field by field

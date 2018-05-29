@@ -113,7 +113,7 @@ void clocks_set_cpufreq(unsigned long long freq) {
  *
  * @result the CPU frequency.
  */
-unsigned long long clocks_get_cpufreq() {
+unsigned long long clocks_get_cpufreq(void) {
 
   if (clocks_cpufreq > 0) return clocks_cpufreq;
 
@@ -132,7 +132,7 @@ unsigned long long clocks_get_cpufreq() {
  * file (probably a overestimate) or finally just use a value of 1 with
  * time units of ticks.
  */
-static void clocks_estimate_cpufreq() {
+static void clocks_estimate_cpufreq(void) {
 
 #ifdef HAVE_CLOCK_GETTIME
   /* Try to time a nanosleep() in ticks. */
@@ -241,7 +241,7 @@ ticks clocks_to_ticks(double ms) {
  *
  * @result the current time units.
  */
-const char *clocks_getunit() { return clocks_units[clocks_units_index]; }
+const char *clocks_getunit(void) { return clocks_units[clocks_units_index]; }
 
 /**
  * @brief returns the time since the start of the execution in seconds
@@ -252,7 +252,7 @@ const char *clocks_getunit() { return clocks_units[clocks_units_index]; }
  *
  * @result the time since the start of the execution
  */
-const char *clocks_get_timesincestart() {
+const char *clocks_get_timesincestart(void) {
 
   static char buffer[40];
 
@@ -274,7 +274,7 @@ const char *clocks_get_timesincestart() {
  * @result cpu time used in sysconf(_SC_CLK_TCK) ticks, usually 100/s not our
  *         usual ticks.
  */
-double clocks_get_cputime_used() {
+double clocks_get_cputime_used(void) {
 
   struct tms tmstic;
   times(&tmstic);
