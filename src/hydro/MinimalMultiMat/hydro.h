@@ -371,7 +371,6 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
-  p->force.v_sig = 1.f;
 }
 
 /**
