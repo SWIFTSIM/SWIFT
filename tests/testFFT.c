@@ -35,7 +35,6 @@ int main(int argc, char *argv[]) { return 0; }
 #include "runner_doiact_fft.h"
 #include "swift.h"
 
-
 __attribute__((always_inline)) INLINE static int row_major_id(int i, int j,
                                                               int k, int N) {
   return (((i + N) % N) * N * N + ((j + N) % N) * N + ((k + N) % N));

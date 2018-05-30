@@ -58,7 +58,7 @@ float gadget(float r, float epsilon) {
   }
 }
 
-int main() {
+int main(int argc, char *argv[]) {
 
   const float h = 3.f;
   const float r_max = 6.f;

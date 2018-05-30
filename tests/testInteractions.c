@@ -748,6 +748,6 @@ int main(int argc, char *argv[]) {
 
 #else
 
-int main() { return 1; }
+int main(int argc, char *argv[]) { return 1; }
 
 #endif
