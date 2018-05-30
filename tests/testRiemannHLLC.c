@@ -85,7 +85,7 @@ int are_symmetric(float a, float b) {
 /**
  * @brief Check the symmetry of the HLLC Riemann solver for a random setup
  */
-void check_riemann_symmetry() {
+void check_riemann_symmetry(void) {
   float WL[5], WR[5], n_unit1[3], n_unit2[3], n_norm, vij[3], totflux1[5],
       totflux2[5];
 
@@ -150,7 +150,7 @@ void check_riemann_symmetry() {
 /**
  * @brief Check the HLLC Riemann solver
  */
-int main() {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

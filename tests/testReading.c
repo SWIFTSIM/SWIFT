@@ -23,7 +23,7 @@
 /* Includes. */
 #include "swift.h"
 
-int main() {
+int main(int argc, char *argv[]) {
 
   size_t Ngas = 0, Ngpart = 0, Nspart = 0;
   int periodic = -1;

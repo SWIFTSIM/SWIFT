@@ -19,9 +19,6 @@
 AC_INIT([SWIFT],[0.7.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
-#  Need to define this, instead of using fifth argument of AC_INIT, until 2.64.
-AC_DEFINE([PACKAGE_URL],["www.swiftsim.com"], [Package web pages])
-
 AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
@@ -917,6 +914,11 @@ if test "$enable_warn" != "no"; then
           ;;
        esac
     fi
+
+    # We want strict-prototypes, but this must still work even if warnings
+    # are an error.
+    AX_CHECK_COMPILE_FLAG([-Wstrict-prototypes],[CFLAGS="$CFLAGS -Wstrict-prototypes"],
+                          [CFLAGS="$CFLAGS"],[$CFLAGS],[AC_LANG_SOURCE([int main(void){return 0;}])])
 fi
 
 # Various package configuration options.
@@ -1279,6 +1281,11 @@ AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to
 
 # Make sure the latest git revision string gets included
 touch src/version.c
+
+#  Need to define this, instead of using fifth argument of AC_INIT, until
+#  2.64. Defer until now as this redefines PACKAGE_URL, which can emit a
+#  compilation error when testing with -Werror.
+AC_DEFINE([PACKAGE_URL],["www.swiftsim.com"], [Package web pages])
 
 # Generate output.
 AC_OUTPUT

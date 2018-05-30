@@ -22,7 +22,7 @@
 
 #ifndef HAVE_FFTW
 
-int main() { return 0; }
+int main(int argc, char *argv[]) { return 0; }
 
 #else
 
@@ -44,8 +44,7 @@ int is_close(double x, double y, double abs_err) {
   return (abs(x - y) < abs_err);
 }
 
-int main() {
-
+int main(int argc, char *argv[]) {
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);

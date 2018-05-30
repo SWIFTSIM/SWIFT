@@ -23,7 +23,7 @@
 /**
  * @brief Test generic utility functions
  */
-int main() {
+int main(int argc, char *argv[]) {
   /// Test find_value_in_monot_incr_array()
   int n = 100;
   float array[n];

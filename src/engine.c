@@ -5332,7 +5332,7 @@ void engine_dump_snapshot(struct engine *e) {
 /**
  * @brief Returns the initial affinity the main thread is using.
  */
-static cpu_set_t *engine_entry_affinity() {
+static cpu_set_t *engine_entry_affinity(void) {
 
   static int use_entry_affinity = 0;
   static cpu_set_t entry_affinity;
@@ -5351,7 +5351,7 @@ static cpu_set_t *engine_entry_affinity() {
  * @brief  Ensure the NUMA node on which we initialise (first touch) everything
  * doesn't change before engine_init allocates NUMA-local workers.
  */
-void engine_pin() {
+void engine_pin(void) {
 
 #ifdef HAVE_SETAFFINITY
   cpu_set_t *entry_affinity = engine_entry_affinity();
@@ -5373,7 +5373,7 @@ void engine_pin() {
 /**
  * @brief Unpins the main thread.
  */
-void engine_unpin() {
+void engine_unpin(void) {
 #ifdef HAVE_SETAFFINITY
   pthread_t main_thread = pthread_self();
   cpu_set_t *entry_affinity = engine_entry_affinity();
@@ -6217,8 +6217,12 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   /* Get the counts of each particle types */
   const long long total_nr_dm_gparts =
       e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
-  float count_parts[swift_type_count] = {
-      e->total_nr_parts, total_nr_dm_gparts, 0.f, 0.f, e->total_nr_sparts, 0.f};
+  float count_parts[swift_type_count] = {(float)e->total_nr_parts,
+                                         (float)total_nr_dm_gparts,
+                                         0.f,
+                                         0.f,
+                                         (float)e->total_nr_sparts,
+                                         0.f};
 
   /* Count of particles for the two species */
   const float N_dm = count_parts[1];
