@@ -146,7 +146,7 @@ const char *configuration_options(void) {
   static int initialised = 0;
   static const char *config = SWIFT_CONFIG_FLAGS;
   if (!initialised) {
-    snprintf(buf, 1024, "'%s'", config);
+    snprintf(buf, 1024, "'%.1022s'", config);
     initialised = 1;
   }
   return buf;
@@ -162,7 +162,7 @@ const char *compilation_cflags(void) {
   static int initialised = 0;
   static const char *cflags = SWIFT_CFLAGS;
   if (!initialised) {
-    snprintf(buf, 1024, "'%s'", cflags);
+    snprintf(buf, 1024, "'%.1022s'", cflags);
     initialised = 1;
   }
   return buf;
@@ -272,12 +272,12 @@ const char *mpi_version(void) {
 #else
   /* Use autoconf guessed value. */
   static char lib_version[60] = {0};
-  snprintf(lib_version, 60, "%s", SWIFT_MPI_LIBRARY);
+  snprintf(lib_version, 60, "%.60s", SWIFT_MPI_LIBRARY);
 #endif
 
   /* Numeric version. */
   MPI_Get_version(&std_version, &std_subversion);
-  snprintf(version, 80, "%s (MPI std v%i.%i)", lib_version, std_version,
+  snprintf(version, 80, "%.60s (MPI std v%i.%i)", lib_version, std_version,
            std_subversion);
 #else
   sprintf(version, "Code was not compiled with MPI support");
@@ -345,7 +345,7 @@ const char *libgsl_version(void) {
 
   static char version[256] = {0};
 #if defined(HAVE_LIBGSL)
-  sprintf(version, "%s", gsl_version);
+  sprintf(version, "%.255s", gsl_version);
 #else
   sprintf(version, "Unknown version");
 #endif
