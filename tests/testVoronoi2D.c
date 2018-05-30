@@ -16,14 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #include "hydro/Shadowswift/voronoi2d_algorithm.h"
 #include "tools.h"
 
 /* Number of cells used to test the 2D interaction algorithm */
 #define TESTVORONOI2D_NUMCELL 100
 
-int main() {
+int main(int argc, char *argv[]) {
 
   /* initialize simulation box */
   double anchor[3] = {-0.5f, -0.5f, -0.5f};

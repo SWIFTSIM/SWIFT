@@ -54,7 +54,7 @@ struct profiler prof;
 /**
  * @brief Help messages for the command line parameters.
  */
-void print_help_message() {
+void print_help_message(void) {
 
   printf("\nUsage: swift [OPTION]... PARAMFILE\n");
   printf("       swift_mpi [OPTION]... PARAMFILE\n\n");

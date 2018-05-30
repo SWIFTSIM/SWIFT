@@ -43,7 +43,7 @@ struct mpicollectgroup1 {
 };
 
 /* Forward declarations. */
-static void mpicollect_create_MPI_type();
+static void mpicollect_create_MPI_type(void);
 
 /**
  * @brief MPI datatype for the #mpicollectgroup1 structure.
@@ -60,7 +60,7 @@ static MPI_Op mpicollectgroup1_reduce_op;
 /**
  * @brief Perform any once only initialisations. Must be called once.
  */
-void collectgroup_init() {
+void collectgroup_init(void) {
 
 #ifdef WITH_MPI
   /* Initialise the MPI types. */
@@ -211,7 +211,7 @@ static void mpicollectgroup1_reduce(void *in, void *inout, int *len,
 /**
  * @brief Registers any MPI collection types and reduction functions.
  */
-static void mpicollect_create_MPI_type() {
+static void mpicollect_create_MPI_type(void) {
 
   if (MPI_Type_contiguous(sizeof(struct mpicollectgroup1), MPI_BYTE,
                           &mpicollectgroup1_type) != MPI_SUCCESS ||

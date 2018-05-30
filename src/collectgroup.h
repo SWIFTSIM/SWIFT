@@ -45,7 +45,7 @@ struct collectgroup1 {
   int forcerebuild;
 };
 
-void collectgroup_init();
+void collectgroup_init(void);
 void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e);
 void collectgroup1_init(struct collectgroup1 *grp1, size_t updates,
                         size_t g_updates, size_t s_updates,

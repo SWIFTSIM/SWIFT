@@ -16,7 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #include "../config.h"
 
 #include <fenv.h>
@@ -32,7 +31,7 @@ void print_bytes(void *p, size_t len) {
   printf(")\n");
 }
 
-void test() {
+void test(void) {
 
 #if defined(SHADOWFAX_SPH)
   /* Initialize the Voronoi simulation box */

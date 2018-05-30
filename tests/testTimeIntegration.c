@@ -26,7 +26,7 @@
  * @brief Test the kick-drift-kick leapfrog integration
  * via a Sun-Earth simulation
  */
-int main() {
+int main(int argc, char *argv[]) {
 
   struct cell c;
   int i;

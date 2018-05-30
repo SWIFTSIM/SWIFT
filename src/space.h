@@ -234,9 +234,9 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
                                  struct cell *cells, int verbose);
 void space_synchronize_particle_positions(struct space *s);
-void space_do_parts_sort();
-void space_do_gparts_sort();
-void space_do_sparts_sort();
+void space_do_parts_sort(void);
+void space_do_gparts_sort(void);
+void space_do_sparts_sort(void);
 void space_first_init_parts(struct space *s, int verbose);
 void space_first_init_gparts(struct space *s, int verbose);
 void space_first_init_sparts(struct space *s, int verbose);
