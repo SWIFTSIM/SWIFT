@@ -150,8 +150,10 @@ int main(int argc, char *argv[]) {
   cj.ti_gravity_end_max = 8;
 
   /* Allocate multipoles */
-  ci.multipole = malloc(sizeof(struct gravity_tensors));
-  cj.multipole = malloc(sizeof(struct gravity_tensors));
+  ci.multipole =
+      (struct gravity_tensors *)malloc(sizeof(struct gravity_tensors));
+  cj.multipole =
+      (struct gravity_tensors *)malloc(sizeof(struct gravity_tensors));
   bzero(ci.multipole, sizeof(struct gravity_tensors));
   bzero(cj.multipole, sizeof(struct gravity_tensors));
 

@@ -68,7 +68,8 @@ int main(int argc, char *argv[]) {
   gparts[0].mass = 1.f;
 
   /* Read the parameter file */
-  struct swift_params *params = malloc(sizeof(struct swift_params));
+  struct swift_params *params =
+      (struct swift_params *)malloc(sizeof(struct swift_params));
   parser_read_file("fft_params.yml", params);
 
   struct cosmology cosmo;
@@ -116,10 +117,10 @@ int main(int argc, char *argv[]) {
 
   /* Now check that we got the right answer */
   int nr_cells = space.nr_cells;
-  double *r = malloc(nr_cells * sizeof(double));
-  double *m = malloc(nr_cells * sizeof(double));
-  double *pot = malloc(nr_cells * sizeof(double));
-  double *pot_exact = malloc(nr_cells * sizeof(double));
+  double *r = (double *)malloc(nr_cells * sizeof(double));
+  double *m = (double *)malloc(nr_cells * sizeof(double));
+  double *pot = (double *)malloc(nr_cells * sizeof(double));
+  double *pot_exact = (double *)malloc(nr_cells * sizeof(double));
 
   FILE *file = fopen("potential.dat", "w");
   for (int i = 0; i < nr_cells; ++i) {

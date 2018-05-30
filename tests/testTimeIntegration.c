@@ -63,10 +63,10 @@ int main(int argc, char *argv[]) {
 
   /* Create a particle */
   struct part *parts = NULL;
-  parts = malloc(sizeof(struct part));
+  parts = (struct part *)malloc(sizeof(struct part));
   bzero(parts, sizeof(struct part));
   struct xpart *xparts = NULL;
-  xparts = malloc(sizeof(struct xpart));
+  xparts = (struct xpart *)malloc(sizeof(struct xpart));
   bzero(xparts, sizeof(struct xpart));
 
   /* Put the particle on the orbit */

@@ -27,7 +27,7 @@
  */
 struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   size_t count = N * N * N;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
   struct part *part;
   struct xpart *xpart;

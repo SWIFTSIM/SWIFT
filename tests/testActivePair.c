@@ -59,7 +59,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->parts, part_align,
