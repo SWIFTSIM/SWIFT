@@ -54,7 +54,7 @@
 #include "xmf.h"
 
 /* The current limit of ROMIO (the underlying MPI-IO layer) is 2GB */
-#define HDF5_PARALLEL_IO_MAX_BYTES 2000000000LL
+#define HDF5_PARALLEL_IO_MAX_BYTES 2147000000LL
 
 /* Are we timing the i/o? */
 //#define IO_SPEED_MEASUREMENT
@@ -84,7 +84,7 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
 
   /* Can't handle writes of more than 2GB */
   if (N * props.dimension * typeSize > HDF5_PARALLEL_IO_MAX_BYTES)
-    error("Dataset too large to be written in one pass!");
+    error("Dataset too large to be read in one pass!");
 
   /* Allocate temporary buffer */
   void* temp = malloc(num_elements * typeSize);
