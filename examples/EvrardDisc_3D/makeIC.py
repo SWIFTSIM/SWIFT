@@ -70,7 +70,7 @@ m = ones(numPart) * M / numPart
 u = ones(numPart) * u0
 
 # Set up rotation profile
-vsize = vrot / (r + 0.01)
+vsize = vrot / (sqrt(r) + 0.0001)
 v[:,0] = -vsize * pos[:,1] / rcyl
 v[:,1] = vsize * pos[:,0] / rcyl
 
