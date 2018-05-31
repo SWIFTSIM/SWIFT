@@ -888,7 +888,8 @@ void io_check_output_fields(const struct swift_params* params,
 
 	  if (retParam != 0 && retParam != 1)
 	    message("WARNING: Unexpected input for %s. "
-		    "Received %i but expect 0 or 1", field_name, retParam);
+		    "Received %i but expect 0 or 1. "
+		    "We will write this field.", field_name, retParam);
           continue;
         }
       }
@@ -933,7 +934,7 @@ void io_write_output_field_parameter(const char* filename) {
 
     if (num_fields == 0) continue;
 
-    fprintf(file, "  # Particle Type %i\n", ptype);
+    fprintf(file, "  # Particle Type %s\n", part_type_names[ptype]);
     /* Write everything */
     for (int i = 0; i < num_fields; ++i) {
       fprintf(file, "  %s_%s: 1\n",

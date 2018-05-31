@@ -1268,7 +1268,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
       char field[PARSER_MAX_LINE_SIZE];
       sprintf(field, "SelectOutput:%s_%s", list[i].name, part_type_names[ptype]);
       int should_write = parser_get_opt_param_int(params, field, 1);
-      if (should_write)
+      if (should_write != 0)
         writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,
                    N_total[ptype], mpi_rank, offset[ptype], internal_units,
                    snapshot_units);
