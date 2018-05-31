@@ -512,9 +512,9 @@ int main(int argc, char *argv[]) {
   }
 
   /* Create output file names. */
-  sprintf(swiftOutputFileName, "swift_periodic_BC_%s.dat",
+  sprintf(swiftOutputFileName, "swift_periodic_BC_%.150s.dat",
           outputFileNameExtension);
-  sprintf(bruteForceOutputFileName, "brute_force_periodic_BC_%s.dat",
+  sprintf(bruteForceOutputFileName, "brute_force_periodic_BC_%.150s.dat",
           outputFileNameExtension);
 
   /* Delete files if they already exist. */
