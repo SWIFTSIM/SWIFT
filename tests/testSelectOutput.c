@@ -42,8 +42,9 @@ void select_output_engine_init(struct engine *e, struct space *s,
   /* set parameters */
   e->verbose = 1;
   e->time = 0;
-  e->snapshotOutputCount = 0;
-  e->snapshotCompression = 0;
+  e->snapshot_output_count = 0;
+  e->snapshot_compression = 0;
+  e->snapshot_label_delta = 1;
 };
 
 void select_output_space_init(struct space *s, double *dim, int periodic,
@@ -77,7 +78,11 @@ void select_output_engine_clean(struct engine *e) {
   threadpool_clean(&e->threadpool);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
 
   char *base_name = "testSelectOutput";
   size_t Ngas = 0, Ngpart = 0, Nspart = 0;
@@ -139,7 +144,7 @@ int main() {
   /* check output selection */
   message("Checking output parameters.");
   long long N_total[swift_type_count] = {Ngas, Ngpart, 0, 0, Nspart, 0};
-  io_check_output_fields(&param_file, &e, N_total);
+  io_check_output_fields(&param_file, N_total);
 
   /* write output file */
   message("Writing output.");

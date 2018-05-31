@@ -890,8 +890,10 @@ void io_check_output_fields(const struct swift_params* params,
 
           /* Check that we have a 0 or 1 */
           if (retParam != 0 && retParam != 1)
-            error("Unexpected input for %s. Received %i but expect 0 or 1. ",
-                  field_name, retParam);
+            message(
+                "WARNING: Unexpected input for %s. Received %i but expect 0 or "
+                "1. ",
+                field_name, retParam);
 
           /* Found it, so move to the next one. */
           break;

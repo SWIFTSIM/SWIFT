@@ -80,6 +80,7 @@ tests/test_nonsym_force_1_vec.dat
 tests/test_nonsym_force_2_vec.dat
 tests/potential.dat
 tests/testGreetings
+tests/testSelectOutput
 tests/testReading
 tests/testSingle
 tests/testTimeIntegration
