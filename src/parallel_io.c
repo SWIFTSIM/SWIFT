@@ -839,6 +839,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
+  const struct swift_params* params = e->parameter_file;
   FILE* xmfFile = 0;
   int periodic = e->s->periodic;
   int numFiles = 1;
@@ -1019,9 +1020,14 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
     }
 
     /* Prepare everything */
-    for (int i = 0; i < num_fields; ++i)
-      prepareArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
-                   N_total[ptype], snapshot_units);
+    for (int i = 0; i < num_fields; ++i) {
+      char field[PARSER_MAX_LINE_SIZE];
+      sprintf(field, "SelectOutput:%s_%s", list[i].name, part_type_names[ptype]);
+      int should_write = parser_get_opt_param_int(params, field, 1);
+      if (should_write != 0)
+	prepareArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
+		     N_total[ptype], snapshot_units);
+    }
 
     /* Close particle group */
     H5Gclose(h_grp);
