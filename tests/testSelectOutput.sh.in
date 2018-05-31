@@ -9,3 +9,4 @@ echo "Generating output"
 echo "Checking output"
 python @srcdir@/testSelectOutput.py
 
+rm -f testSelectOutput_0000.hdf5 testSelectOutput.xmf
