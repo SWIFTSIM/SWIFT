@@ -212,6 +212,5 @@ __attribute__((always_inline)) INLINE static void hydro_write_flavour(
 __attribute__((always_inline)) INLINE static int writeEntropyFlag(void) {
   return 0;
 }
->>>>>>> Check if all parameters in output_fields are correct
 
 #endif /* SWIFT_GADGET2_HYDRO_IO_H */
