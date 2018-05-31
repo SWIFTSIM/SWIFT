@@ -32,6 +32,7 @@
 #include "common_io.h"
 #include "const.h"
 #include "cooling.h"
+#include "cooling_struct.h"
 #include "cosmology.h"
 #include "cycle.h"
 #include "debug.h"
