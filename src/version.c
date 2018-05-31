@@ -369,6 +369,26 @@ const char *thread_barrier_version(void) {
 }
 
 /**
+ * @brief return the allocator library used in SWIFT.
+ *
+ * @result description of the allocation library
+ */
+const char *allocator_version(void) {
+
+  static char version[256] = {0};
+#if defined(HAVE_TBBMALLOC)
+  sprintf(version, "TBB malloc");
+#elif defined(HAVE_TCMALLOC)
+  sprintf(version, "tc-malloc");
+#elif defined(HAVE_JEMALLOC)
+  sprintf(version, "je-malloc");
+#else
+  sprintf(version, "Compiler version (probably glibc)");
+#endif
+  return version;
+}
+
+/**
  * @brief Prints a greeting message to the standard output containing code
  * version and revision number
  */
