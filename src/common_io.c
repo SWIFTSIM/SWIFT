@@ -818,8 +818,7 @@ void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
  * @param e The #engine
  */
 void io_check_output_fields(const struct swift_params* params,
-                            const struct engine* e,
-			    const long long *N_total) {
+                            const struct engine* e, const long long* N_total) {
 
   /* particles */
   const struct part* parts = e->s->parts;
@@ -829,7 +828,7 @@ void io_check_output_fields(const struct swift_params* params,
 
   /* copy N_total to array with length == 6 */
   const long long nr_total[swift_type_count] = {
-    N_total[0], N_total[1], N_total[2], 0, 0, 0};
+      N_total[0], N_total[1], N_total[2], 0, 0, 0};
 
   /* get all the possible outputs */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
@@ -876,20 +875,22 @@ void io_check_output_fields(const struct swift_params* params,
       /* loop over each possible output field */
       for (int field_id = 0; field_id < num_fields; field_id++) {
         char field_name[PARSER_MAX_LINE_SIZE];
-        sprintf(field_name, "SelectOutput:%s_%s",
-		list[field_id].name, part_type_names[ptype]);
+        sprintf(field_name, "SelectOutput:%s_%s", list[field_id].name,
+                part_type_names[ptype]);
 
         if (strcmp(param_name, field_name) == 0) {
           found = 1;
-	  /* check if correct input */
-	  int retParam = 0;
-	  char str[PARSER_MAX_LINE_SIZE];
-	  sscanf(params->data[param_id].value, "%d%s", &retParam, str);
+          /* check if correct input */
+          int retParam = 0;
+          char str[PARSER_MAX_LINE_SIZE];
+          sscanf(params->data[param_id].value, "%d%s", &retParam, str);
 
-	  if (retParam != 0 && retParam != 1)
-	    message("WARNING: Unexpected input for %s. "
-		    "Received %i but expect 0 or 1. "
-		    "We will write this field.", field_name, retParam);
+          if (retParam != 0 && retParam != 1)
+            message(
+                "WARNING: Unexpected input for %s. "
+                "Received %i but expect 0 or 1. "
+                "We will write this field.",
+                field_name, retParam);
           continue;
         }
       }
@@ -937,8 +938,7 @@ void io_write_output_field_parameter(const char* filename) {
     fprintf(file, "  # Particle Type %s\n", part_type_names[ptype]);
     /* Write everything */
     for (int i = 0; i < num_fields; ++i) {
-      fprintf(file, "  %s_%s: 1\n",
-	      list[i].name, part_type_names[ptype]);
+      fprintf(file, "  %s_%s: 1\n", list[i].name, part_type_names[ptype]);
     }
 
     fprintf(file, "\n");

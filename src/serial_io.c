@@ -1010,7 +1010,8 @@ void write_output_serial(struct engine* e, const char* baseName,
         /* Write everything */
         for (int i = 0; i < num_fields; ++i) {
           char field[PARSER_MAX_LINE_SIZE];
-          sprintf(field, "SelectOutput:%s_%s", list[i].name, part_type_names[ptype]);
+          sprintf(field, "SelectOutput:%s_%s", list[i].name,
+                  part_type_names[ptype]);
           int should_write = parser_get_opt_param_int(params, field, 1);
           if (should_write != 0)
             writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],

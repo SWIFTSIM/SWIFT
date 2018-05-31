@@ -578,7 +578,8 @@ int main(int argc, char *argv[]) {
   runner->e = &engine;
 
   /* Create output file names. */
-  sprintf(swiftOutputFileName, "swift_dopair_%.150s.dat", outputFileNameExtension);
+  sprintf(swiftOutputFileName, "swift_dopair_%.150s.dat",
+          outputFileNameExtension);
   sprintf(bruteForceOutputFileName, "brute_force_pair_%.150s.dat",
           outputFileNameExtension);
 

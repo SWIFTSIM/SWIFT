@@ -24,9 +24,10 @@
 #include "swift.h"
 
 void select_output_engine_init(struct engine *e, struct space *s,
-			       struct cosmology *cosmo, struct swift_params *params,
-			       struct cooling_function_data *cooling,
-			       struct hydro_props *hydro_properties) {
+                               struct cosmology *cosmo,
+                               struct swift_params *params,
+                               struct cooling_function_data *cooling,
+                               struct hydro_props *hydro_properties) {
   /* set structures */
   e->s = s;
   e->cooling_func = cooling;
@@ -42,16 +43,15 @@ void select_output_engine_init(struct engine *e, struct space *s,
   e->verbose = 1;
   e->time = 0;
   e->snapshotOutputCount = 0;
-  e->snapshotCompression = 0;  
-  
+  e->snapshotCompression = 0;
 };
 
 void select_output_space_init(struct space *s, double *dim, int periodic,
-			      size_t Ngas, size_t Nspart, size_t Ngpart,
-			      struct part *parts, struct spart *sparts,
-			      struct gpart *gparts) {
+                              size_t Ngas, size_t Nspart, size_t Ngpart,
+                              struct part *parts, struct spart *sparts,
+                              struct gpart *gparts) {
   s->periodic = periodic;
-  for (int i=0; i<3; i++) {
+  for (int i = 0; i < 3; i++) {
     s->dim[i] = dim[i];
   }
 
@@ -66,18 +66,15 @@ void select_output_space_init(struct space *s, double *dim, int periodic,
 
   /* Allocate the extra parts array for the gas particles. */
   if (posix_memalign((void **)&s->xparts, xpart_align,
-		     Ngas * sizeof(struct xpart)) != 0)
+                     Ngas * sizeof(struct xpart)) != 0)
     error("Failed to allocate xparts.");
   bzero(s->xparts, Ngas * sizeof(struct xpart));
 };
 
-void select_output_space_clean(struct space *s) {
-  free(s->xparts);
-};
-
+void select_output_space_clean(struct space *s) { free(s->xparts); };
 
 void select_output_engine_clean(struct engine *e) {
-  threadpool_clean(&e->threadpool);  
+  threadpool_clean(&e->threadpool);
 }
 
 int main() {
@@ -116,8 +113,8 @@ int main() {
   /* pseudo initialization of the space */
   message("Initialization of the space.");
   struct space s;
-  select_output_space_init(&s, dim, periodic, Ngas, Nspart, Ngpart,
-			   parts, sparts, gparts);
+  select_output_space_init(&s, dim, periodic, Ngas, Nspart, Ngpart, parts,
+                           sparts, gparts);
 
   /* initialization of cosmology */
   message("Initialization of the cosmology.");
@@ -136,8 +133,8 @@ int main() {
   /* pseudo initialization of the engine */
   message("Initialization of the engine.");
   struct engine e;
-  select_output_engine_init(&e, &s, &cosmo, &param_file,
-			    &cooling, &hydro_properties);
+  select_output_engine_init(&e, &s, &cosmo, &param_file, &cooling,
+                            &hydro_properties);
 
   /* check output selection */
   message("Checking output parameters.");
