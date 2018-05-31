@@ -28,8 +28,8 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-__attribute__((always_inline)) INLINE static void star_read_particles(
-    struct spart* sparts, struct io_props* list, int* num_fields) {
+INLINE static void star_read_particles(struct spart* sparts,
+                                       struct io_props* list, int* num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 4;
@@ -52,8 +52,9 @@ __attribute__((always_inline)) INLINE static void star_read_particles(
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-__attribute__((always_inline)) INLINE static void star_write_particles(
-    const struct spart* sparts, struct io_props* list, int* num_fields) {
+INLINE static void star_write_particles(const struct spart* sparts,
+                                        struct io_props* list,
+                                        int* num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 4;

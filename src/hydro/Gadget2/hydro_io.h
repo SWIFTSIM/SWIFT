@@ -31,8 +31,9 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-__attribute__((always_inline)) INLINE static void hydro_read_particles(
-    struct part* parts, struct io_props* list, int* num_fields) {
+INLINE static void hydro_read_particles(struct part* parts,
+                                        struct io_props* list,
+                                        int* num_fields) {
 
   *num_fields = 8;
 
@@ -55,23 +56,21 @@ __attribute__((always_inline)) INLINE static void hydro_read_particles(
                                 UNIT_CONV_DENSITY, parts, rho);
 }
 
-__attribute__((always_inline)) INLINE static void convert_part_u(
-    const struct engine* e, const struct part* p, const struct xpart* xp,
-    float* ret) {
+INLINE static void convert_part_u(const struct engine* e, const struct part* p,
+                                  const struct xpart* xp, float* ret) {
 
   ret[0] = hydro_get_comoving_internal_energy(p);
 }
 
-__attribute__((always_inline)) INLINE static void convert_part_P(
-    const struct engine* e, const struct part* p, const struct xpart* xp,
-    float* ret) {
+INLINE static void convert_part_P(const struct engine* e, const struct part* p,
+                                  const struct xpart* xp, float* ret) {
 
   ret[0] = hydro_get_comoving_pressure(p);
 }
 
-__attribute__((always_inline)) INLINE static void convert_part_pos(
-    const struct engine* e, const struct part* p, const struct xpart* xp,
-    double* ret) {
+INLINE static void convert_part_pos(const struct engine* e,
+                                    const struct part* p,
+                                    const struct xpart* xp, double* ret) {
 
   if (e->s->periodic) {
     ret[0] = box_wrap(p->x[0], 0.0, e->s->dim[0]);
@@ -84,9 +83,9 @@ __attribute__((always_inline)) INLINE static void convert_part_pos(
   }
 }
 
-__attribute__((always_inline)) INLINE static void convert_part_vel(
-    const struct engine* e, const struct part* p, const struct xpart* xp,
-    float* ret) {
+INLINE static void convert_part_vel(const struct engine* e,
+                                    const struct part* p,
+                                    const struct xpart* xp, float* ret) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology* cosmo = e->cosmology;
@@ -119,9 +118,9 @@ __attribute__((always_inline)) INLINE static void convert_part_vel(
   ret[2] *= cosmo->a2_inv;
 }
 
-__attribute__((always_inline)) INLINE static void convert_part_potential(
-    const struct engine* e, const struct part* p, const struct xpart* xp,
-    float* ret) {
+INLINE static void convert_part_potential(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
 
   if (p->gpart != NULL)
     ret[0] = gravity_get_comoving_potential(p->gpart);
@@ -136,9 +135,10 @@ __attribute__((always_inline)) INLINE static void convert_part_potential(
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-__attribute__((always_inline)) INLINE static void hydro_write_particles(
-    const struct part* parts, const struct xpart* xparts, struct io_props* list,
-    int* num_fields) {
+INLINE static void hydro_write_particles(const struct part* parts,
+                                         const struct xpart* xparts,
+                                         struct io_props* list,
+                                         int* num_fields) {
 
   *num_fields = 10;
 
@@ -191,8 +191,7 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-__attribute__((always_inline)) INLINE static void hydro_write_flavour(
-    hid_t h_grpsph) {
+INLINE static void hydro_write_flavour(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   io_write_attribute_s(h_grpsph, "Thermal Conductivity Model",
@@ -209,8 +208,6 @@ __attribute__((always_inline)) INLINE static void hydro_write_flavour(
  *
  * @return 1 if entropy is in 'internal energy', 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int writeEntropyFlag(void) {
-  return 0;
-}
+INLINE static int writeEntropyFlag(void) { return 0; }
 
 #endif /* SWIFT_GADGET2_HYDRO_IO_H */
