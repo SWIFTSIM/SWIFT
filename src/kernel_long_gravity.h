@@ -30,6 +30,8 @@
 /* Standard headers */
 #include <math.h>
 
+#define GADGET2_LONG_RANGE_CORRECTION
+
 /**
  * @brief Computes the long-range correction term for the potential calculation
  * coming from FFT.

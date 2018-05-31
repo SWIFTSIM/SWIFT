@@ -1523,8 +1523,6 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
                                const struct gravity_props *props, int periodic,
                                const double dim[3]) {
 
-  return;
-
   /* Recover some constants */
   const float eps = props->epsilon_cur;
   const float eps_inv = props->epsilon_cur_inv;
@@ -2263,8 +2261,6 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gp->num_interacted += lb->num_interacted;
 #endif
 
-  return;
-  
   /* Local accumulator */
   double a_grav[3] = {0., 0., 0.};
   double pot = 0.;

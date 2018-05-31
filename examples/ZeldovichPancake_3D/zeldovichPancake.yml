@@ -1,7 +1,7 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.989e43 # 10^10 M_su in grams
-  UnitLength_in_cgs:   3.085678e24   # Mpc in centimeters
+  UnitMass_in_cgs:     1.989e43  # 10^10 M_su in grams
+  UnitLength_in_cgs:   3.085678e24  # Mpc in centimeters
   UnitVelocity_in_cgs: 1e5   # km/s in centimeters per second
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
@@ -42,6 +42,7 @@ Cosmology:
   a_end: 1.0
 
 Gravity:
+  mesh_side_length:   12
   eta: 0.025
   theta: 0.9
   comoving_softening: 0.0001

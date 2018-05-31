@@ -24,7 +24,7 @@ from numpy import *
 
 # Parameters
 gamma = 5./3.          # Gas adiabatic index
-numPart_1D = 32        # Number of particles
+numPart_1D = 64        # Number of particles
 lambda_i = 1.975e24    # h^-1 m (= 64 h^-1 Mpc)
 x_min = -0.5 * lambda_i
 x_max = 0.5 * lambda_i
@@ -35,9 +35,9 @@ z_c = 1.
 z_i = 100.
 fileName = "zeldovichPancake.hdf5"
 
-Mpc_in_m = 3.086e22
-Msol_in_kg = 1.988435e30
-Gyr_in_s = 3.154e16
+Mpc_in_m = 3.085678e22
+Msol_in_kg = 1.989e30
+Gyr_in_s = 3.085678e19
 mH_in_kg = 1.6737236e-27
 k_in_J_K = 1.38064852e-23
 

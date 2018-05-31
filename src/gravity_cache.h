@@ -185,7 +185,7 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     const float dy = y[i] - CoM[1];
     const float dz = z[i] - CoM[2];
     const float r2 = dx * dx + dy * dy + dz * dz;
-    use_mpole[i] = gravity_M2P_accept(r_max2, theta_crit2, r2);
+    use_mpole[i] = 0 * gravity_M2P_accept(r_max2, theta_crit2, r2);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS

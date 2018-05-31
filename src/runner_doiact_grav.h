@@ -29,6 +29,9 @@
 #include "space_getsid.h"
 #include "timers.h"
 
+static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
+                                         struct cell *cj, int symmetric);
+
 /**
  * @brief Recursively propagate the multipoles down the tree by applying the
  * L2L and L2P kernels.
@@ -57,6 +60,8 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
 
   if (c->split) { /* Node case */
 
+    message("aa");
+
     /* Add the field-tensor to all the 8 progenitors */
     for (int k = 0; k < 8; ++k) {
       struct cell *cp = c->progeny[k];
@@ -73,7 +78,7 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
         struct grav_tensor shifted_tensor;
 
         /* If the tensor received any contribution, push it down */
-        if (c->multipole->pot.interacted) {
+        if (1 || c->multipole->pot.interacted) {
 
           /* Shift the field tensor */
           gravity_L2L(&shifted_tensor, &c->multipole->pot, cp->multipole->CoM,
@@ -129,7 +134,7 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
  * @param ci The #cell with field tensor to interact.
  * @param cj The #cell with the multipole.
  */
-static INLINE void runner_dopair_grav_mm(const struct runner *r,
+static INLINE void runner_dopair_grav_mm(struct runner *r,
                                          struct cell *restrict ci,
                                          struct cell *restrict cj) {
 
@@ -143,6 +148,8 @@ static INLINE void runner_dopair_grav_mm(const struct runner *r,
   // const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
 
   TIMER_TIC;
+
+  // error("aa");
 
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e) || ci->nodeID != engine_rank) return;
@@ -169,8 +176,10 @@ static INLINE void runner_dopair_grav_mm(const struct runner *r,
         cj->ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 
   /* Let's interact at this level */
-  gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
-              cj->multipole->CoM, props, periodic, dim);
+  if (0)
+    gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
+                cj->multipole->CoM, props, periodic, dim);
+  runner_dopair_grav_pp(r, ci, cj, 0);
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
@@ -184,6 +193,8 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
                                               struct gpart *restrict gparts_j) {
 
   TIMER_TIC;
+
+  error("aa");
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
@@ -278,6 +289,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
     int gcount_padded_j, struct gpart *restrict gparts_i,
     struct gpart *restrict gparts_j) {
 
+  const float dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+
   TIMER_TIC;
 
   /* Loop over all particles in ci... */
@@ -324,9 +337,14 @@ static INLINE void runner_dopair_grav_pp_truncated(
       const float mass_j = cj_cache->m[pjd];
 
       /* Compute the pairwise (square) distance. */
-      const float dx = x_i - x_j;
-      const float dy = y_i - y_j;
-      const float dz = z_i - z_j;
+      float dx = x_i - x_j;
+      float dy = y_i - y_j;
+      float dz = z_i - z_j;
+
+      dx = nearestf(dx, dim[0]);
+      dy = nearestf(dy, dim[1]);
+      dz = nearestf(dz, dim[2]);
+
       const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -449,7 +467,7 @@ static INLINE void runner_dopair_grav_pm(
  * @param cj The other #cell.
  */
 static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
-                                         struct cell *cj) {
+                                         struct cell *cj, int symmetric) {
 
   const struct engine *e = r->e;
 
@@ -468,10 +486,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
   /* Recover some useful constants */
   struct space *s = e->s;
   const int periodic = s->periodic;
-  const double cell_width = s->width[0];
-  const double a_smooth = e->gravity_properties->a_smooth;
   const double r_cut_min = e->gravity_properties->r_cut_min;
-  const double rlr = cell_width * a_smooth;
+  const double rlr = e->mesh->a_smooth;
   const double min_trunc = rlr * r_cut_min;
   const float rlr_inv = 1. / rlr;
 
@@ -481,7 +497,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
 
   /* Get the distance vector between the pairs, wrapping. */
   double cell_shift[3];
-  space_getsid(s, &ci, &cj, cell_shift);
+  struct cell *cii = ci, *cjj = cj;
+  space_getsid(s, &cii, &cjj, cell_shift);
 
   /* Record activity status */
   const int ci_active = cell_is_active_gravity(ci, e);
@@ -494,14 +511,15 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
     error("Un-drifted multipole");
 
   /* Centre of the cell pair */
-  const double loc[3] = {ci->loc[0],   // + 0. * ci->width[0],
-                         ci->loc[1],   // + 0. * ci->width[1],
-                         ci->loc[2]};  // + 0. * ci->width[2]};
+  /* const double loc[3] = {ci->loc[0],   // + 0. * ci->width[0], */
+  /*                        ci->loc[1],   // + 0. * ci->width[1], */
+  /*                        ci->loc[2]};  // + 0. * ci->width[2]}; */
 
   /* Shift to apply to the particles in each cell */
-  const double shift_i[3] = {loc[0] + cell_shift[0], loc[1] + cell_shift[1],
-                             loc[2] + cell_shift[2]};
-  const double shift_j[3] = {loc[0], loc[1], loc[2]};
+  const double shift_i[3] = {
+      0., 0., 0.};  //{loc[0] + cell_shift[0], loc[1] + cell_shift[1],
+                    // loc[2] + cell_shift[2]};
+  const double shift_j[3] = {0., 0., 0.};  //{loc[0], loc[1], loc[2]};
 
   /* Recover the multipole info and shift the CoM locations */
   const float rmax_i = ci->multipole->r_max;
@@ -556,7 +574,7 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
       runner_dopair_grav_pm(e, ci_cache, gcount_i, gcount_padded_i, ci->gparts,
                             CoM_j, multi_j, cj);
     }
-    if (cj_active) {
+    if (cj_active && symmetric) {
 
       /* First the P2P */
       runner_dopair_grav_pp_full(e, cj_cache, ci_cache, gcount_j, gcount_i,
@@ -651,6 +669,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
  */
 static INLINE void runner_doself_grav_pp_full(struct runner *r,
                                               struct cell *c) {
+
+  error("bb");
 
   /* Some constants */
   const struct engine *const e = r->e;
@@ -778,10 +798,7 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
 
   /* Some constants */
   const struct engine *const e = r->e;
-  const struct space *s = e->s;
-  const double cell_width = s->width[0];
-  const double a_smooth = e->gravity_properties->a_smooth;
-  const double rlr = cell_width * a_smooth;
+  const double rlr = e->mesh->a_smooth;
   const float rlr_inv = 1. / rlr;
 
   /* Caches to play with */
@@ -908,10 +925,9 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   const struct engine *e = r->e;
   const struct space *s = e->s;
   const int periodic = s->periodic;
-  const double cell_width = s->width[0];
-  const double a_smooth = e->gravity_properties->a_smooth;
+  const double a_smooth = e->mesh->a_smooth;
   const double r_cut_min = e->gravity_properties->r_cut_min;
-  const double min_trunc = cell_width * r_cut_min * a_smooth;
+  const double min_trunc = r_cut_min * a_smooth;
 
   TIMER_TIC;
 
@@ -965,11 +981,10 @@ static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
   const struct space *s = e->s;
   const int nodeID = e->nodeID;
   const int periodic = s->periodic;
-  const double cell_width = s->width[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const struct gravity_props *props = e->gravity_properties;
   const double theta_crit2 = props->theta_crit2;
-  const double max_distance = props->a_smooth * props->r_cut_max * cell_width;
+  const double max_distance = e->mesh->a_smooth * props->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
   /* Anything to do here? */
@@ -1039,7 +1054,7 @@ static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
   }
   /* We have two leaves. Go P-P. */
   else if (!ci->split && !cj->split) {
-    runner_dopair_grav_pp(r, ci, cj);
+    runner_dopair_grav_pp(r, ci, cj, 1);
   }
   /* Alright, we'll have to split and recurse. */
   else {
@@ -1169,10 +1184,9 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   const struct space *s = e->s;
   const struct gravity_props *props = e->gravity_properties;
   const int periodic = s->periodic;
-  const double cell_width = s->width[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double theta_crit2 = props->theta_crit2;
-  const double max_distance = props->a_smooth * props->r_cut_max * cell_width;
+  const double max_distance = e->mesh->a_smooth * props->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
   TIMER_TIC;

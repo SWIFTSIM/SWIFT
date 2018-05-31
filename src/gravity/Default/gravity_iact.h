@@ -47,6 +47,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
     float r2, float h2, float h_inv, float h_inv3, float mass, float *f_ij,
     float *pot_ij) {
 
+  /* *f_ij = 0.f; */
+  /* *pot_ij = 0.f; */
+  /* return; */
+
   /* Get the inverse distance */
   const float r_inv = 1.f / sqrtf(r2 + FLT_MIN);
 
@@ -91,6 +95,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
     float r2, float h2, float h_inv, float h_inv3, float mass, float rlr_inv,
     float *f_ij, float *pot_ij) {
+
+  /* *f_ij = 0.f; */
+  /* *pot_ij = 0.f; */
+  /* return; */
 
   /* Get the inverse distance */
   const float r_inv = 1.f / sqrtf(r2 + FLT_MIN);
@@ -146,6 +154,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
     float r_x, float r_y, float r_z, float r2, float h, float h_inv,
     const struct multipole *m, float *f_x, float *f_y, float *f_z, float *pot) {
+
+  *f_x = 0.f;
+  *f_y = 0.f;
+  *f_z = 0.f;
+  *pot = 0.f;
+  return;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER < 3
   float f_ij;

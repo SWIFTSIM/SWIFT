@@ -37,7 +37,7 @@
 #include "space.h"
 #include "timers.h"
 
-#ifdef HAVE_FFTW
+#ifdef HAVE_FFTW2
 
 /**
  * @brief Returns 1D index of a 3D NxNxN array using row-major style.
@@ -441,7 +441,7 @@ void print_carray(fftw_complex* array, int N) {
  */
 void runner_do_grav_fft(struct runner* r, int timer) {
 
-#ifdef HAVE_FFTW
+#ifdef HAVE_FFTW2
 
   const struct engine* e = r->e;
   const struct space* s = e->s;
