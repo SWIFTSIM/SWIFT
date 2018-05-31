@@ -101,7 +101,7 @@ void io_duplicate_star_gparts(struct threadpool* tp, struct spart* const sparts,
                               size_t Ndm);
 
 void io_check_output_fields(const struct swift_params* params,
-                            const struct engine* e, const long long* N_total);
+                            const long long N_total[3]);
 
 void io_write_output_field_parameter(const char* filename);
 

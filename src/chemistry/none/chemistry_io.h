@@ -29,8 +29,8 @@
  *
  * @return Returns the number of fields to write.
  */
-__attribute__((always_inline)) INLINE static int chemistry_read_particles(
-    struct part* parts, struct io_props* list) {
+INLINE static int chemistry_read_particles(struct part* parts,
+                                           struct io_props* list) {
 
   /* update list according to hydro_io */
 
@@ -46,8 +46,8 @@ __attribute__((always_inline)) INLINE static int chemistry_read_particles(
  *
  * @return Returns the number of fields to write.
  */
-__attribute__((always_inline)) INLINE static int chemistry_write_particles(
-    const struct part* parts, struct io_props* list) {
+INLINE static int chemistry_write_particles(const struct part* parts,
+                                            struct io_props* list) {
 
   /* update list according to hydro_io */
 
@@ -61,8 +61,7 @@ __attribute__((always_inline)) INLINE static int chemistry_write_particles(
  * @brief Writes the current model of SPH to the file
  * @param h_grp The HDF5 group in which to write
  */
-__attribute__((always_inline)) INLINE static void chemistry_write_flavour(
-    hid_t h_grp) {
+INLINE static void chemistry_write_flavour(hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Chemistry Model", "None");
 }

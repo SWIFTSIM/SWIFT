@@ -815,58 +815,61 @@ void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
  * @brief Verify the io parameter file
  *
  * @param params The #swift_params
- * @param e The #engine
+ * @param N_total The total number of each particle type.
  */
 void io_check_output_fields(const struct swift_params* params,
-                            const struct engine* e, const long long* N_total) {
+                            const long long N_total[3]) {
 
-  /* particles */
-  const struct part* parts = e->s->parts;
-  const struct xpart* xparts = e->s->xparts;
-  const struct gpart* gparts = e->s->gparts;
-  const struct spart* sparts = e->s->sparts;
+  /* Create some fake particles as arguments for the writing routines */
+  struct part p;
+  struct xpart xp;
+  struct spart sp;
+  struct gpart gp;
 
-  /* copy N_total to array with length == 6 */
+  /* Copy N_total to array with length == 6 */
   const long long nr_total[swift_type_count] = {
       N_total[0], N_total[1], N_total[2], 0, 0, 0};
 
-  /* get all the possible outputs */
+  /* Loop over all particle types to check the fields */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
+
     int num_fields = 0;
     struct io_props list[100];
 
     /* Don't do anything if no particle of this kind */
     if (nr_total[ptype] == 0) continue;
 
-    /* Write particle fields from the particle structure */
+    /* Gather particle fields from the particle structures */
     switch (ptype) {
 
       case swift_type_gas:
-        hydro_write_particles(parts, xparts, list, &num_fields);
-        num_fields += chemistry_write_particles(parts, list + num_fields);
+        hydro_write_particles(&p, &xp, list, &num_fields);
+        num_fields += chemistry_write_particles(&p, list + num_fields);
         break;
 
       case swift_type_dark_matter:
-        darkmatter_write_particles(gparts, list, &num_fields);
+        darkmatter_write_particles(&gp, list, &num_fields);
         break;
 
       case swift_type_star:
-        star_write_particles(sparts, list, &num_fields);
+        star_write_particles(&sp, list, &num_fields);
         break;
 
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
+
     /* loop over each parameter */
     for (int param_id = 0; param_id < params->paramCount; param_id++) {
       const char* param_name = params->data[param_id].name;
 
       char section_name[PARSER_MAX_LINE_SIZE];
-      /* skip if wrong section */
+
+      /* Skip if wrong section */
       sprintf(section_name, "SelectOutput:");
       if (strstr(param_name, section_name) == NULL) continue;
 
-      /* skip if wrong particle type */
+      /* Skip if wrong particle type */
       sprintf(section_name, "_%s", part_type_names[ptype]);
       if (strstr(param_name, section_name) == NULL) continue;
 
@@ -885,18 +888,20 @@ void io_check_output_fields(const struct swift_params* params,
           char str[PARSER_MAX_LINE_SIZE];
           sscanf(params->data[param_id].value, "%d%s", &retParam, str);
 
+          /* Check that we have a 0 or 1 */
           if (retParam != 0 && retParam != 1)
-            message(
-                "WARNING: Unexpected input for %s. "
-                "Received %i but expect 0 or 1. "
-                "We will write this field.",
-                field_name, retParam);
-          continue;
+            error("Unexpected input for %s. Received %i but expect 0 or 1. ",
+                  field_name, retParam);
+
+          /* Found it, so move to the next one. */
+          break;
         }
       }
       if (!found)
-        message("WARNING: Unable to find field corresponding to %s in %s",
-                param_name, params->fileName);
+        message(
+            "WARNING: Trying to dump particle field '%s' (read from '%s') that "
+            "does not exist.",
+            param_name, params->fileName);
     }
   }
 }
@@ -904,15 +909,17 @@ void io_check_output_fields(const struct swift_params* params,
 /**
  * @brief Write the output field parameters file
  *
- * @param e The #engine
  * @param filename The file to write
  */
 void io_write_output_field_parameter(const char* filename) {
+
   FILE* file = fopen(filename, "w");
+  if (file == NULL) error("Error opening file '%s'", filename);
 
   /* Loop over all particle types */
   fprintf(file, "SelectOutput:\n");
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
+
     int num_fields = 0;
     struct io_props list[100];
 
@@ -931,18 +938,27 @@ void io_write_output_field_parameter(const char* filename) {
       case swift_type_star:
         star_write_particles(NULL, list, &num_fields);
         break;
+
+      default:
+        break;
     }
 
     if (num_fields == 0) continue;
 
+    /* Output a header for that particle type */
     fprintf(file, "  # Particle Type %s\n", part_type_names[ptype]);
-    /* Write everything */
-    for (int i = 0; i < num_fields; ++i) {
+
+    /* Write all the fields of this particle type */
+    for (int i = 0; i < num_fields; ++i)
       fprintf(file, "  %s_%s: 1\n", list[i].name, part_type_names[ptype]);
-    }
 
     fprintf(file, "\n");
   }
 
   fclose(file);
+
+  printf(
+      "List of valid ouput fields for the particle in snapshots dumped in "
+      "'%s'.\n",
+      filename);
 }

@@ -1019,13 +1019,16 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
 
-    /* Prepare everything */
+    /* Prepare everything that is not cancelled */
     for (int i = 0; i < num_fields; ++i) {
+
+      /* Did the user cancel this field? */
       char field[PARSER_MAX_LINE_SIZE];
       sprintf(field, "SelectOutput:%s_%s", list[i].name,
               part_type_names[ptype]);
       int should_write = parser_get_opt_param_int(params, field, 1);
-      if (should_write != 0)
+
+      if (should_write)
         prepareArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
                      N_total[ptype], snapshot_units);
     }
@@ -1270,13 +1273,16 @@ void write_output_parallel(struct engine* e, const char* baseName,
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
 
-    /* Write everything */
+    /* Write everything that is not cancelled */
     for (int i = 0; i < num_fields; ++i) {
+
+      /* Did the user cancel this field? */
       char field[PARSER_MAX_LINE_SIZE];
       sprintf(field, "SelectOutput:%s_%s", list[i].name,
               part_type_names[ptype]);
       int should_write = parser_get_opt_param_int(params, field, 1);
-      if (should_write != 0)
+
+      if (should_write)
         writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,
                    N_total[ptype], mpi_rank, offset[ptype], internal_units,
                    snapshot_units);

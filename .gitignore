@@ -102,6 +102,7 @@ tests/test125cells.sh
 tests/test125cellsPerturbed.sh
 tests/testParser.sh
 tests/testReading.sh
+tests/testSelectOutput.sh
 tests/testAdiabaticIndex
 tests/testRiemannExact
 tests/testRiemannTRRS

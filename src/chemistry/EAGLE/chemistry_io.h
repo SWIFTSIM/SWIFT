@@ -30,7 +30,8 @@
  *
  * @return Returns the number of fields to read.
  */
-int chemistry_read_particles(struct part* parts, struct io_props* list) {
+INLINE static int chemistry_read_particles(struct part* parts,
+                                           struct io_props* list) {
 
   /* Nothing to read */
   return 0;
@@ -44,7 +45,8 @@ int chemistry_read_particles(struct part* parts, struct io_props* list) {
  *
  * @return Returns the number of fields to write.
  */
-int chemistry_write_particles(const struct part* parts, struct io_props* list) {
+INLINE static int chemistry_write_particles(const struct part* parts,
+                                            struct io_props* list) {
 
   /* List what we want to write */
   list[0] = io_make_output_field("ElementAbundance", FLOAT,
@@ -101,7 +103,7 @@ int chemistry_write_particles(const struct part* parts, struct io_props* list) {
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-void chemistry_write_flavour(hid_t h_grp) {
+INLINE static void chemistry_write_flavour(hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Chemistry Model", "EAGLE");
   for (int elem = 0; elem < chemistry_element_count; ++elem) {

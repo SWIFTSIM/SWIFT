@@ -338,9 +338,9 @@ int main(int argc, char *argv[]) {
     }
 
   /* Write output parameter file */
-  if (strcmp(output_parameters_filename, "") != 0) {
+  if (myrank == 0 && strcmp(output_parameters_filename, "") != 0) {
     io_write_output_field_parameter(output_parameters_filename);
-    printf("Ouput parameter file written in %s\n", output_parameters_filename);
+    printf("End of run.\n");
     return 0;
   }
 
@@ -734,6 +734,9 @@ int main(int argc, char *argv[]) {
           "ICs.",
           N_total[0], N_total[2], N_total[1]);
 
+    /* Verify that the fields to dump actually exist */
+    if (myrank == 0) io_check_output_fields(params, N_total);
+
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
@@ -832,9 +835,6 @@ int main(int argc, char *argv[]) {
                 &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
-
-    /* check output field */
-    if (myrank == 0) io_check_output_fields(params, &e, N_total);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
