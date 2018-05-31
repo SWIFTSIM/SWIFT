@@ -1,0 +1,11 @@
+#!/bin/bash
+
+echo "Creating initial conditions"
+python @srcdir@/makeInput.py
+
+echo "Generating output"
+./testSelectOutput 
+
+echo "Checking output"
+python @srcdir@/testSelectOutput.py
+
