@@ -99,19 +99,18 @@ before you can build it.
  - HDF5:
 	A HDF5 library (v. 1.8.x or higher) is required to read and
         write particle data. One of the commands "h5cc" or "h5pcc"
-        should be available. If "h5pcc" is located them a parallel
+        should be available. If "h5pcc" is located then a parallel
         HDF5 built for the version of MPI located should be
         provided. If the command is not available then it can be
-        located using the "--with-hfd5" configure option. The value
+        located using the "--with-hdf5" configure option. The value
         should be the full path to the "h5cc" or "h5pcc" commands.
-        SWIFT can make a very effective use of a parallel build of the
-        library when running on more than one node. This is highly
-        recommended.
+        SWIFT makes effective use of parallel HDF5 when running on more than
+        one node, so this option is highly recommended.
 
  - MPI:
 	To run on more than one node an MPI library that fully
-        supports MPI_THREAD_MULTIPLE.  Before running configure the
-        "mpirun" command should be available in the shell. If your
+        supports MPI_THREAD_MULTIPLE is required.  Before running configure
+        the "mpirun" command should be available in the shell. If your
         command isn't called "mpirun" then define the "MPIRUN"
         environment variable, either in the shell or when running
         configure.
@@ -125,7 +124,7 @@ before you can build it.
 	must be available.
 
  - FFTW 3.x:
-	To run with periodic gravity forces, a build of the fftw 3
+	To run with periodic gravity forces, a build of the FFTW 3
 	library must be available. Note that SWIFT does not make use
 	of the parallel capability of FFTW. Calculations are done by
 	single MPI nodes independently.
@@ -146,7 +145,7 @@ before you can build it.
         directories, or pointed at using the "--with-metis"
         configuration option.  In this case the top-level installation
         directory of the METIS build should be given. Note to use
-        METIS you should at least supply "--with-metis".
+        METIS you should supply at least "--with-metis".
 
 - libNUMA:
 	a build of the NUMA library can be used to pin the threads to
@@ -166,7 +165,7 @@ before you can build it.
 
  - gperftools:
 	a build of gperftools can be used to obtain good profiling of
-        the code. The option "-with-profiler" needs to be passed to
+        the code. The option "--with-profiler" needs to be passed to
         the configuration script to use it.
 
  - DOXYGEN:
@@ -182,8 +181,7 @@ before you can build it.
                              SWIFT Coding style
                              ==================
 
-The SWIFT source code is using a variation of the 'Google' style. The
-script 'format.sh' in the root directory applies the clang-format-3.8
-tool with our style choices to all the SWIFT C source file. Please
-apply the formatting script to the files before submitting a merge
-request.
+The SWIFT source code uses a variation of 'Google' style. The script
+'format.sh' in the root directory applies the clang-format-3.8 tool with our
+style choices to all the SWIFT C source file. Please apply the formatting
+script to the files before submitting a merge request.
