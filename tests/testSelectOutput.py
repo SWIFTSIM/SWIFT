@@ -23,7 +23,7 @@
 import h5py
 
 filename = "testSelectOutput_0000.hdf5"
-log_filename = "testSelectOutput.sh.log"
+log_filename = "select_output.log"
 
 # Read the simulation data
 sim = h5py.File(filename, "r")
