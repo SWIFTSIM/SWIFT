@@ -234,6 +234,11 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
     error("Error while setting chunk size (%llu, %llu) for field '%s'.",
           chunk_shape[0], chunk_shape[1], props.name);
 
+  /* Impose check-sum to verify data corruption */
+  h_err = H5Pset_fletcher32(h_prop);
+  if (h_err < 0)
+    error("Error while setting checksum options for field '%s'.", props.name);
+
   /* Impose data compression */
   if (e->snapshot_compression > 0) {
     h_err = H5Pset_shuffle(h_prop);
