@@ -86,7 +86,7 @@ __attribute__((always_inline)) INLINE static double cell_min_dist(
 /* Recurse on a pair of cells and perform a FOF search between cells that are within
  * range. */
 static void rec_fof_search_pair(struct cell *ci, struct cell *cj, struct space *s,
-                           int *pid, int *num_groups, const double *dim,
+                           int *pid, const double *dim,
                            const double search_r2) {
 
   /* Find the shortest distance between cells, remembering to account for
@@ -102,14 +102,14 @@ static void rec_fof_search_pair(struct cell *ci, struct cell *cj, struct space *
 
         for (int l = 0; l < 8; l++)
           if (cj->progeny[l] != NULL)
-            rec_fof_search_pair(ci->progeny[k], cj->progeny[l], s, pid, num_groups, dim, search_r2);
+            rec_fof_search_pair(ci->progeny[k], cj->progeny[l], s, pid, dim, search_r2);
       }
     }
   }
   /* Perform FOF search between pairs of cells that are within the linking
    * length and not the same cell. */
   else if (ci != cj)
-    fof_search_pair_cells(s, ci, cj, pid, num_groups);
+    fof_search_pair_cells(s, ci, cj, pid);
   else if (ci == cj) error("Pair FOF called on same cell!!!");
 
 }
@@ -117,7 +117,7 @@ static void rec_fof_search_pair(struct cell *ci, struct cell *cj, struct space *
 /* Recurse on a cell and perform a FOF search between cells that are within
  * range. */
 static void rec_fof_search_self(struct cell *ci, struct space *s,
-                           int *pid, int *num_groups, const double *dim,
+                           int *pid, const double *dim,
                            const double search_r2) {
 
   /* Recurse? */
@@ -127,17 +127,17 @@ static void rec_fof_search_self(struct cell *ci, struct space *s,
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL) {
 
-        rec_fof_search_self(ci->progeny[k], s, pid, num_groups, dim, search_r2);
+        rec_fof_search_self(ci->progeny[k], s, pid, dim, search_r2);
 
         for (int l = k+1; l < 8; l++)
           if (ci->progeny[l] != NULL)
-            rec_fof_search_pair(ci->progeny[k], ci->progeny[l], s, pid, num_groups, dim, search_r2);
+            rec_fof_search_pair(ci->progeny[k], ci->progeny[l], s, pid, dim, search_r2);
       }
     }
   }
   /* Otherwise, compute self-interaction. */
   else 
-    fof_search_cell(s, ci, pid, num_groups);
+    fof_search_cell(s, ci, pid);
 }
 
 /* Perform naive N^2 FOF search on gravity particles using the Union-Find
@@ -150,7 +150,7 @@ void fof_search_serial(struct space *s) {
   const double l_x2 = s->l_x2;
   int *pid;
   int *group_sizes;
-  int num_groups = nr_gparts;
+  int num_groups = 0;
 
   message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts,
           l_x2);
@@ -216,13 +216,15 @@ void fof_search_serial(struct space *s) {
         else
           pid[root_j] = root_i;
 
-        num_groups--;
       }
     }
   }
 
-  /* Calculate the total number of particles in each group. */
-  for (size_t i = 0; i < nr_gparts; i++) group_sizes[fof_find(i, pid)]++;
+  /* Calculate the total number of particles in each group and total number of groups. */
+  for (size_t i = 0; i < nr_gparts; i++) {
+    group_sizes[fof_find(i, pid)]++;
+    if(pid[i] == i) num_groups++;
+  }
 
   fof_dump_group_data("fof_output_serial.dat", nr_gparts, pid, group_sizes);
 
@@ -248,8 +250,7 @@ void fof_search_serial(struct space *s) {
 }
 
 /* Perform a FOF search on a single cell using the Union-Find algorithm.*/
-void fof_search_cell(struct space *s, struct cell *c, int *pid,
-                     int *num_groups) {
+void fof_search_cell(struct space *s, struct cell *c, int *pid) {
 
   const size_t count = c->gcount;
   struct gpart *gparts = c->gparts;
@@ -307,7 +308,6 @@ void fof_search_cell(struct space *s, struct cell *c, int *pid,
         else
           pid[root_j] = root_i;
 
-        (*num_groups)--;
       }
     }
   }
@@ -315,7 +315,7 @@ void fof_search_cell(struct space *s, struct cell *c, int *pid,
 
 /* Perform a FOF search on a pair of cells using the Union-Find algorithm.*/
 void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj,
-                           int *pid, int *num_groups) {
+                           int *pid) {
 
   const size_t count_i = ci->gcount;
   const size_t count_j = cj->gcount;
@@ -390,7 +390,6 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj,
         else
           pid[root_j] = root_i;
 
-        (*num_groups)--;
       }
     }
   }
@@ -403,7 +402,7 @@ void fof_search_tree_serial(struct space *s) {
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_cells = s->nr_cells;
   int *pid, *group_sizes;
-  int num_groups = nr_gparts;
+  int num_groups = 0;
   struct gpart *gparts = s->gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->l_x2;
@@ -436,7 +435,7 @@ void fof_search_tree_serial(struct space *s) {
     if(ci->gcount == 0) continue;
 
     /* Perform FOF search on local particles within the cell. */
-    rec_fof_search_self(ci, s, pid, &num_groups, dim, search_r2);
+    rec_fof_search_self(ci, s, pid, dim, search_r2);
 
     /* Loop over all top-level cells skipping over the cells already searched.
     */
@@ -447,12 +446,15 @@ void fof_search_tree_serial(struct space *s) {
       /* Skip empty cells. */
       if(cj->gcount == 0) continue;
 
-      rec_fof_search_pair(ci, cj, s, pid, &num_groups, dim, search_r2);
+      rec_fof_search_pair(ci, cj, s, pid, dim, search_r2);
     }   
   }
 
-  /* Calculate the total number of particles in each group. */
-  for (size_t i = 0; i < nr_gparts; i++) group_sizes[fof_find(i, pid)]++;
+  /* Calculate the total number of particles in each group and total number of groups. */
+  for (size_t i = 0; i < nr_gparts; i++) {
+    group_sizes[fof_find(i, pid)]++;
+    if(pid[i] == i) num_groups++;
+  }
 
   fof_dump_group_data("fof_output_tree_serial.dat", nr_gparts, pid,
                       group_sizes);
