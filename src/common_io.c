@@ -829,7 +829,7 @@ void io_check_output_fields(const struct swift_params* params,
 
   /* Copy N_total to array with length == 6 */
   const long long nr_total[swift_type_count] = {
-      N_total[0], N_total[1], N_total[2], 0, 0, 0};
+      N_total[0], N_total[1], 0, 0, N_total[2], 0};
 
   /* Loop over all particle types to check the fields */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
