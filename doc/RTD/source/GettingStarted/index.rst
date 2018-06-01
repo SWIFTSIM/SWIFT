@@ -20,4 +20,5 @@ and keep on your desk.
    running_example
    runtime_options
    configuration_options
+   parameter_file
    what_about_mpi

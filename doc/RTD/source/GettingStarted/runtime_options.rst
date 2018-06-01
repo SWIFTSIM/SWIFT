@@ -26,6 +26,7 @@ can be found by typing ``./swift -h``.
 + ``-M``: Reconstruct the multipoles every time-step.
 + ``-n``: {int} Execute a fixed number of time steps. When unset use the
   time_end parameter to stop.
++ ``-o``: {str} Generate a default output parameter file.
 + ``-P``: {sec:par:val} Set parameter value and overwrites values read from the
   parameters file. Can be used more than once.
 + ``-s``: Run with hydrodynamics.
@@ -38,4 +39,3 @@ can be found by typing ``./swift -h``.
 + ``-y``: {int} Time-step frequency at which task graphs are dumped.
 + ``-Y``: {int} Time-step frequency at which threadpool tasks are dumped.
 + ``-h``: Print a help message and exit.
-
