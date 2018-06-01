@@ -35,10 +35,19 @@
 #define gravity_props_default_a_smooth 1.25f
 #define gravity_props_default_r_cut_max 4.5f
 #define gravity_props_default_r_cut_min 0.1f
+#define gravity_props_default_rebuild_frequency 0.01f
 
 void gravity_props_init(struct gravity_props *p,
                         const struct swift_params *params,
                         const struct cosmology *cosmo) {
+
+  /* Tree updates */
+  p->rebuild_frequency =
+      parser_get_opt_param_float(params, "Gravity:rebuild_frequency",
+                                 gravity_props_default_rebuild_frequency);
+
+  if (p->rebuild_frequency < 0.f || p->rebuild_frequency > 1.f)
+    error("Invalid tree rebuild frequency. Must be in [0., 1.]");
 
   /* Tree-PM parameters */
   p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
@@ -116,12 +125,16 @@ void gravity_props_print(const struct gravity_props *p) {
 
   message("Self-gravity tree cut-off: r_cut_max=%f", p->r_cut_max);
   message("Self-gravity truncation cut-off: r_cut_min=%f", p->r_cut_min);
+
+  message("Self-gravity tree update frequency: f=%f", p->rebuild_frequency);
 }
 
 #if defined(HAVE_HDF5)
 void gravity_props_print_snapshot(hid_t h_grpgrav,
                                   const struct gravity_props *p) {
 
+  io_write_attribute_f(h_grpgrav, "Tree update frequency",
+                       p->rebuild_frequency);
   io_write_attribute_f(h_grpgrav, "Time integration eta", p->eta);
   io_write_attribute_f(
       h_grpgrav, "Comoving softening length",

@@ -3854,6 +3854,11 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
 
+  /* Clear the counters of updates since the last rebuild */
+  e->updates_since_rebuild = 0;
+  e->g_updates_since_rebuild = 0;
+  e->s_updates_since_rebuild = 0;
+
   /* Flag that a rebuild has taken place */
   e->step_props |= engine_step_prop_rebuild;
 
@@ -4543,6 +4548,11 @@ void engine_step(struct engine *e) {
     fflush(e->file_timesteps);
   }
 
+  /* Update the counters */
+  e->updates_since_rebuild += e->updates;
+  e->g_updates_since_rebuild += e->g_updates;
+  e->s_updates_since_rebuild += e->s_updates;
+
   /* Move forward in time */
   e->ti_old = e->ti_current;
   e->ti_current = e->ti_end_min;
@@ -4623,9 +4633,10 @@ void engine_step(struct engine *e) {
     gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-  /* Let's trigger a non-SPH rebuild every-so-often for good measure */
-  if (!(e->policy & engine_policy_hydro) &&  // MATTHIEU improve this
-      (e->policy & engine_policy_self_gravity) && e->step % 20 == 0)
+  /* Trigger a tree-rebuild if we passed the frequency threshold */
+  if ((e->policy & engine_policy_self_gravity) &&
+      (e->g_updates_since_rebuild >
+       e->total_nr_gparts * e->gravity_properties->rebuild_frequency))
     e->forcerebuild = 1;
 
   /* Collect the values of rebuild from all nodes and recover the (integer)

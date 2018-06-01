@@ -188,6 +188,11 @@ struct engine {
   /* Number of particles updated in the previous step */
   size_t updates, g_updates, s_updates;
 
+  /* Number of updates since the last rebuild */
+  size_t updates_since_rebuild;
+  size_t g_updates_since_rebuild;
+  size_t s_updates_since_rebuild;
+
   /* Properties of the previous step */
   int step_props;
 

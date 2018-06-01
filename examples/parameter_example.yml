@@ -37,9 +37,10 @@ SPH:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025               # Constant dimensionless multiplier for time integration.
-  theta:        0.7                 # Opening angle (Multipole acceptance criterion)
+  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
   comoving_softening:     0.0026994 # Comoving softening length (in internal units).
   max_physical_softening: 0.0007    # Physical softening length (in internal units).
+  rebuild_frequency:      0.01      # (Optional) Frequency of the gravity-tree rebuild in units of the number of g-particles (this is the default value).
   a_smooth:     1.25                # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
   r_cut_max:    4.5                 # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
   r_cut_min:    0.1                 # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).

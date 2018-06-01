@@ -36,6 +36,9 @@
  */
 struct gravity_props {
 
+  /*! Frequency of tree-rebuild in units of #gpart updates. */
+  float rebuild_frequency;
+
   /*! Mesh smoothing scale in units of top-level cell size */
   float a_smooth;
 
