@@ -4113,13 +4113,13 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate particle counts.");
     if (in_ll[0] != (long long)e->collect_group1.updates)
-      error("Failed to get same updates, is %lld, should be %ld", in_ll[0],
+      error("Failed to get same updates, is %lld, should be %lld", in_ll[0],
             e->collect_group1.updates);
     if (in_ll[1] != (long long)e->collect_group1.g_updates)
-      error("Failed to get same g_updates, is %lld, should be %ld", in_ll[1],
+      error("Failed to get same g_updates, is %lld, should be %lld", in_ll[1],
             e->collect_group1.g_updates);
     if (in_ll[2] != (long long)e->collect_group1.s_updates)
-      error("Failed to get same s_updates, is %lld, should be %ld", in_ll[2],
+      error("Failed to get same s_updates, is %lld, should be %lld", in_ll[2],
             e->collect_group1.s_updates);
 
     int buff = 0;
