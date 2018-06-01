@@ -29,10 +29,9 @@
 
 /* Function prototypes. */
 void fof_search_serial(struct space *s);
-void fof_search_cell(struct space *s, struct cell *c, int *pid,
-                     int *num_groups);
+void fof_search_cell(struct space *s, struct cell *c, int *pid);
 void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj,
-                           int *pid, int *num_groups);
+                           int *pid);
 void fof_search_tree_serial(struct space *s);
 void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *pid,
                          int *num_in_groups);
