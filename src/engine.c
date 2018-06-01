@@ -5765,6 +5765,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_opt_param_double(params, "Snapshots:time_first", 0.);
   e->delta_time_snapshot =
       parser_get_param_double(params, "Snapshots:delta_time");
+  e->time_array_snapshots = NULL;
   e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
@@ -5829,6 +5830,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
     e->time_base_inv = e->cosmology->time_base_inv;
     e->ti_current = 0;
   }
+
+  engine_read_time_files(e, params);
 }
 
 /**
@@ -6435,6 +6438,11 @@ void engine_print_policy(struct engine *e) {
  * @param e The #engine.
  */
 void engine_compute_next_snapshot_time(struct engine *e) {
+  /* Do snaplist file case */
+  if (e->time_array_snapshots) {
+    engine_read_next_snapshot_time(e);
+    return;
+  }
 
   /* Find upper-bound on last output */
   double time_end;
@@ -6735,6 +6743,8 @@ void engine_clean(struct engine *e) {
   }
   free(e->runners);
   free(e->snapshot_units);
+  if (e->time_array_snapshots)
+    free(e->time_array_snapshots);
   free(e->links);
   free(e->cell_loc);
   scheduler_clean(&e->sched);
@@ -6875,4 +6885,77 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   /* Want to force a rebuild before using this engine. Wait to repartition.*/
   e->forcerebuild = 1;
   e->forcerepart = 0;
+}
+
+
+void engine_read_time_files(struct engine *e, const struct swift_params *params) {
+  char filename[PARSER_MAX_LINE_SIZE];
+  
+  /* Read snapshot time array */
+  e->time_array_snapshots = (struct time_array*) malloc(sizeof(struct time_array));
+  
+  strcpy(filename, "");
+  parser_get_opt_param_string(params, "Snapshots:snaplist",
+			      filename, "");
+
+  if (strcmp(filename, "")) {
+    message("Reading snaplist file.");
+    time_array_read_file(e->time_array_snapshots, filename);
+  }
+}
+
+
+void engine_read_next_snapshot_time(struct engine *e) {
+  int is_cosmo = e->policy & engine_policy_cosmology;
+  const struct time_array *t = e->time_array_snapshots;
+  
+  /* Find upper-bound on last output */
+  double time_end;
+  if (is_cosmo)
+    time_end = e->cosmology->a_end * e->delta_time_snapshot;
+  else
+    time_end = e->time_end + e->delta_time_snapshot;
+
+  /* Find next snasphot above current time */
+  double time;
+  time = t->times[0];
+  size_t ind = 0;
+  while (time < time_end) {
+    
+    /* Output time on the integer timeline */
+    if (is_cosmo)
+      e->ti_next_snapshot = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_next_snapshot = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (e->ti_next_snapshot > e->ti_current) break;
+
+    ind += 1;
+    if (ind == t->size)
+      break;
+    
+    time = t->times[ind];
+  }
+
+  /* Deal with last snapshot */
+  if (e->ti_next_snapshot >= max_nr_timesteps || ind == t->size) {
+    e->ti_next_snapshot = -1;
+    if (e->verbose) message("No further output time.");
+  } else {
+
+    /* Be nice, talk... */
+    if (is_cosmo) {
+      const double next_snapshot_time =
+          exp(e->ti_next_snapshot * e->time_base) * e->cosmology->a_begin;
+      if (e->verbose)
+        message("Next snapshot time set to a=%e.", next_snapshot_time);
+    } else {
+      const double next_snapshot_time =
+          e->ti_next_snapshot * e->time_base + e->time_begin;
+      if (e->verbose)
+        message("Next snapshot time set to t=%e.", next_snapshot_time);
+    }
+  }
+  
 }

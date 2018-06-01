@@ -966,3 +966,47 @@ void io_write_output_field_parameter(const char* filename) {
       "'%s'.\n",
       filename);
 }
+
+
+void time_array_read_file(struct time_array *times, const char* filename) {
+  /* initialize times */
+  times->size = 0;
+  
+  /* Open file */
+  FILE* file = fopen(filename, "r");
+  if (file == NULL) error("Error opening file '%s'", filename);
+
+  /* Read file */
+  ssize_t read;
+  size_t len = 0;
+  char *line = NULL;
+  while ((read = getline(&line, &len, file)) != -1) {
+
+    /* Check data size */
+    if (times->size == TIME_ARRAY_MAX_SIZE)
+      error("Not enough memory to write the time array buffer. "
+	    "Please decrease the number of time required in '%s'.",
+	    filename);
+
+    /* Write data to time array */
+    if (sscanf(line, "%lf", &times->times[times->size]) != 1) {
+      error(
+            "Tried parsing double but found '%s' with illegal double "
+            "characters in file '%s'.",
+	    line, filename);
+    }
+
+    /* Update size */
+    times->size += 1;
+  }
+
+  time_array_print(times);
+}
+
+void time_array_print(const struct time_array *times) {
+
+  printf("/*\t Time Array\t */\n");
+  for(size_t ind = 0; ind < times->size; ind++) {
+    printf("\t%lf\n", times->times[ind]);
+  }
+}

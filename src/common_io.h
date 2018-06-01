@@ -30,6 +30,7 @@
 #define PARTICLE_GROUP_BUFFER_SIZE 50
 #define FILENAME_BUFFER_SIZE 150
 #define IO_BUFFER_ALIGNMENT 1024
+#define TIME_ARRAY_MAX_SIZE 8192
 
 /* Avoid cyclic inclusion problems */
 struct part;
@@ -61,6 +62,11 @@ enum IO_DATA_TYPE {
  *
  */
 enum IO_STF_OUTPUT_FORMAT { STEPS = 0, TIME };
+
+struct time_array {
+  double times[TIME_ARRAY_MAX_SIZE];
+  size_t size;
+};
 
 #if defined(HAVE_HDF5)
 
@@ -112,5 +118,8 @@ void io_check_output_fields(const struct swift_params* params,
                             const long long N_total[3]);
 
 void io_write_output_field_parameter(const char* filename);
+
+void time_array_read_file(struct time_array *times, const char* filename);
+void time_array_print(const struct time_array *times);
 
 #endif /* SWIFT_COMMON_IO_H */

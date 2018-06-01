@@ -214,6 +214,7 @@ struct engine {
   double a_first_snapshot;
   double time_first_snapshot;
   double delta_time_snapshot;
+  struct time_array *time_array_snapshots;
 
   /* Integer time of the next snapshot */
   integertime_t ti_next_snapshot;
@@ -365,6 +366,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t);
 void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
 void engine_compute_next_stf_time(struct engine *e);
+void engine_read_next_snapshot_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
@@ -373,6 +375,7 @@ void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
+void engine_read_time_files(struct engine *e, const struct swift_params *params);
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
                  int policy, int verbose, struct repartition *reparttype,
