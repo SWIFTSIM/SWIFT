@@ -469,9 +469,6 @@ int main(int argc, char *argv[]) {
       for (int k = 0; k < nparams; k++) parser_set_param(params, cmdparams[k]);
     }
 
-    /* And dump the parameters as used. */
-    // parser_print_params(&params);
-    parser_write_params_to_file(params, "used_parameters.yml");
   }
 #ifdef WITH_MPI
   /* Broadcast the parameter file */
@@ -914,6 +911,10 @@ int main(int argc, char *argv[]) {
       0)
     error("Failed to generate restart filename");
 
+  /* dump the parameters as used. */
+  //parser_print_params(params);
+  parser_write_params_to_file(params, "used_parameters.yml");
+  
   /* Main simulation loop */
   /* ==================== */
   int force_stop = 0;
