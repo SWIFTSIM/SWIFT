@@ -27,7 +27,7 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
         testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
-	testPotentialPair testEOS testUtilities
+	testPotentialPair testEOS testUtilities testSelectOutput.sh
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
@@ -37,7 +37,8 @@ check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
-		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities
+		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
+		 testSelectOutput
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -48,6 +49,8 @@ testGreetings_SOURCES = testGreetings.c
 testMaths_SOURCES = testMaths.c
 
 testReading_SOURCES = testReading.c
+
+testSelectOutput_SOURCES = testSelectOutput.c
 
 testSymmetry_SOURCES = testSymmetry.c
 
@@ -120,4 +123,4 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              tolerance_27_normal.dat tolerance_27_perturbed.dat tolerance_27_perturbed_h.dat tolerance_27_perturbed_h2.dat \
 	     tolerance_testInteractions.dat tolerance_pair_active.dat tolerance_pair_force_active.dat \
 	     fft_params.yml tolerance_periodic_BC_normal.dat tolerance_periodic_BC_perturbed.dat \
-	     testEOS.sh testEOS_plot.sh
+	     testEOS.sh testEOS_plot.sh testSelectOutput.sh selectOutput.yml

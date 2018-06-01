@@ -759,7 +759,7 @@ int main(int argc, char *argv[]) {
 
     /* Dump if necessary */
     if (n == 0) {
-      sprintf(outputFileName, "swift_dopair_125_%s.dat",
+      sprintf(outputFileName, "swift_dopair_125_%.150s.dat",
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, solution, 0);
     }
@@ -876,7 +876,8 @@ int main(int argc, char *argv[]) {
   /* Output timing */
   message("Brute force calculation took : %15lli ticks.", toc - tic);
 
-  sprintf(outputFileName, "brute_force_125_%s.dat", outputFileNameExtension);
+  sprintf(outputFileName, "brute_force_125_%.150s.dat",
+          outputFileNameExtension);
   dump_particle_fields(outputFileName, main_cell, solution, 0);
 
   /* Clean things to make the sanitizer happy ... */

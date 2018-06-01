@@ -49,6 +49,7 @@
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "part_type.h"
 #include "stars_io.h"
 #include "units.h"
 #include "xmf.h"
@@ -838,6 +839,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
+  const struct swift_params* params = e->parameter_file;
   FILE* xmfFile = 0;
   int periodic = e->s->periodic;
   int numFiles = 1;
@@ -1017,10 +1019,19 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
 
-    /* Prepare everything */
-    for (int i = 0; i < num_fields; ++i)
-      prepareArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
-                   N_total[ptype], snapshot_units);
+    /* Prepare everything that is not cancelled */
+    for (int i = 0; i < num_fields; ++i) {
+
+      /* Did the user cancel this field? */
+      char field[PARSER_MAX_LINE_SIZE];
+      sprintf(field, "SelectOutput:%s_%s", list[i].name,
+              part_type_names[ptype]);
+      int should_write = parser_get_opt_param_int(params, field, 1);
+
+      if (should_write)
+        prepareArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
+                     N_total[ptype], snapshot_units);
+    }
 
     /* Close particle group */
     H5Gclose(h_grp);
@@ -1072,6 +1083,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
   const struct cooling_function_data* cooling = e->cooling_func;
+  const struct swift_params* params = e->parameter_file;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
@@ -1261,11 +1273,20 @@ void write_output_parallel(struct engine* e, const char* baseName,
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
 
-    /* Write everything */
-    for (int i = 0; i < num_fields; ++i)
-      writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,
-                 N_total[ptype], mpi_rank, offset[ptype], internal_units,
-                 snapshot_units);
+    /* Write everything that is not cancelled */
+    for (int i = 0; i < num_fields; ++i) {
+
+      /* Did the user cancel this field? */
+      char field[PARSER_MAX_LINE_SIZE];
+      sprintf(field, "SelectOutput:%s_%s", list[i].name,
+              part_type_names[ptype]);
+      int should_write = parser_get_opt_param_int(params, field, 1);
+
+      if (should_write)
+        writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,
+                   N_total[ptype], mpi_rank, offset[ptype], internal_units,
+                   snapshot_units);
+    }
 
     /* Free temporary array */
     if (dmparts) {

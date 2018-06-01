@@ -21,8 +21,8 @@
 
 #include "io_properties.h"
 
-void convert_gpart_pos(const struct engine* e, const struct gpart* gp,
-                       double* ret) {
+INLINE static void convert_gpart_pos(const struct engine* e,
+                                     const struct gpart* gp, double* ret) {
 
   if (e->s->periodic) {
     ret[0] = box_wrap(gp->x[0], 0.0, e->s->dim[0]);
@@ -35,8 +35,8 @@ void convert_gpart_pos(const struct engine* e, const struct gpart* gp,
   }
 }
 
-void convert_gpart_vel(const struct engine* e, const struct gpart* gp,
-                       float* ret) {
+INLINE static void convert_gpart_vel(const struct engine* e,
+                                     const struct gpart* gp, float* ret) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology* cosmo = e->cosmology;
@@ -74,8 +74,9 @@ void convert_gpart_vel(const struct engine* e, const struct gpart* gp,
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-void darkmatter_read_particles(struct gpart* gparts, struct io_props* list,
-                               int* num_fields) {
+INLINE static void darkmatter_read_particles(struct gpart* gparts,
+                                             struct io_props* list,
+                                             int* num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 4;
@@ -98,8 +99,9 @@ void darkmatter_read_particles(struct gpart* gparts, struct io_props* list,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-void darkmatter_write_particles(const struct gpart* gparts,
-                                struct io_props* list, int* num_fields) {
+INLINE static void darkmatter_write_particles(const struct gpart* gparts,
+                                              struct io_props* list,
+                                              int* num_fields) {
 
   /* Say how much we want to write */
   *num_fields = 5;

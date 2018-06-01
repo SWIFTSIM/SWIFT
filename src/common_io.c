@@ -25,12 +25,17 @@
 #include "common_io.h"
 
 /* Local includes. */
+#include "chemistry_io.h"
 #include "engine.h"
 #include "error.h"
+#include "gravity_io.h"
 #include "hydro.h"
+#include "hydro_io.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "part_type.h"
+#include "stars_io.h"
 #include "threadpool.h"
 #include "units.h"
 #include "version.h"
@@ -805,4 +810,158 @@ void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
   if (count != Ndm)
     error("Collected the wrong number of dm particles (%zu vs. %zu expected)",
           count, Ndm);
+}
+
+/**
+ * @brief Verify the io parameter file
+ *
+ * @param params The #swift_params
+ * @param N_total The total number of each particle type.
+ */
+void io_check_output_fields(const struct swift_params* params,
+                            const long long N_total[3]) {
+
+  /* Create some fake particles as arguments for the writing routines */
+  struct part p;
+  struct xpart xp;
+  struct spart sp;
+  struct gpart gp;
+
+  /* Copy N_total to array with length == 6 */
+  const long long nr_total[swift_type_count] = {
+      N_total[0], N_total[1], N_total[2], 0, 0, 0};
+
+  /* Loop over all particle types to check the fields */
+  for (int ptype = 0; ptype < swift_type_count; ptype++) {
+
+    int num_fields = 0;
+    struct io_props list[100];
+
+    /* Don't do anything if no particle of this kind */
+    if (nr_total[ptype] == 0) continue;
+
+    /* Gather particle fields from the particle structures */
+    switch (ptype) {
+
+      case swift_type_gas:
+        hydro_write_particles(&p, &xp, list, &num_fields);
+        num_fields += chemistry_write_particles(&p, list + num_fields);
+        break;
+
+      case swift_type_dark_matter:
+        darkmatter_write_particles(&gp, list, &num_fields);
+        break;
+
+      case swift_type_star:
+        star_write_particles(&sp, list, &num_fields);
+        break;
+
+      default:
+        error("Particle Type %d not yet supported. Aborting", ptype);
+    }
+
+    /* loop over each parameter */
+    for (int param_id = 0; param_id < params->paramCount; param_id++) {
+      const char* param_name = params->data[param_id].name;
+
+      char section_name[PARSER_MAX_LINE_SIZE];
+
+      /* Skip if wrong section */
+      sprintf(section_name, "SelectOutput:");
+      if (strstr(param_name, section_name) == NULL) continue;
+
+      /* Skip if wrong particle type */
+      sprintf(section_name, "_%s", part_type_names[ptype]);
+      if (strstr(param_name, section_name) == NULL) continue;
+
+      int found = 0;
+
+      /* loop over each possible output field */
+      for (int field_id = 0; field_id < num_fields; field_id++) {
+        char field_name[PARSER_MAX_LINE_SIZE];
+        sprintf(field_name, "SelectOutput:%s_%s", list[field_id].name,
+                part_type_names[ptype]);
+
+        if (strcmp(param_name, field_name) == 0) {
+          found = 1;
+          /* check if correct input */
+          int retParam = 0;
+          char str[PARSER_MAX_LINE_SIZE];
+          sscanf(params->data[param_id].value, "%d%s", &retParam, str);
+
+          /* Check that we have a 0 or 1 */
+          if (retParam != 0 && retParam != 1)
+            message(
+                "WARNING: Unexpected input for %s. Received %i but expect 0 or "
+                "1. ",
+                field_name, retParam);
+
+          /* Found it, so move to the next one. */
+          break;
+        }
+      }
+      if (!found)
+        message(
+            "WARNING: Trying to dump particle field '%s' (read from '%s') that "
+            "does not exist.",
+            param_name, params->fileName);
+    }
+  }
+}
+
+/**
+ * @brief Write the output field parameters file
+ *
+ * @param filename The file to write
+ */
+void io_write_output_field_parameter(const char* filename) {
+
+  FILE* file = fopen(filename, "w");
+  if (file == NULL) error("Error opening file '%s'", filename);
+
+  /* Loop over all particle types */
+  fprintf(file, "SelectOutput:\n");
+  for (int ptype = 0; ptype < swift_type_count; ptype++) {
+
+    int num_fields = 0;
+    struct io_props list[100];
+
+    /* Write particle fields from the particle structure */
+    switch (ptype) {
+
+      case swift_type_gas:
+        hydro_write_particles(NULL, NULL, list, &num_fields);
+        num_fields += chemistry_write_particles(NULL, list + num_fields);
+        break;
+
+      case swift_type_dark_matter:
+        darkmatter_write_particles(NULL, list, &num_fields);
+        break;
+
+      case swift_type_star:
+        star_write_particles(NULL, list, &num_fields);
+        break;
+
+      default:
+        break;
+    }
+
+    if (num_fields == 0) continue;
+
+    /* Output a header for that particle type */
+    fprintf(file, "  # Particle Type %s\n", part_type_names[ptype]);
+
+    /* Write all the fields of this particle type */
+    for (int i = 0; i < num_fields; ++i)
+      fprintf(file, "  %s_%s: 1\n", list[i].name, part_type_names[ptype]);
+
+    fprintf(file, "\n");
+  }
+
+  fclose(file);
+
+  printf(
+      "List of valid ouput fields for the particle in snapshots dumped in "
+      "'%s'.\n",
+      filename);
 }
