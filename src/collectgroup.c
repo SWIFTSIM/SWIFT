@@ -36,7 +36,7 @@
 
 /* Local collections for MPI reduces. */
 struct mpicollectgroup1 {
-  size_t updates, g_updates, s_updates;
+  long long updates, g_updates, s_updates;
   integertime_t ti_hydro_end_min;
   integertime_t ti_gravity_end_min;
   int forcerebuild;
@@ -88,7 +88,6 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
   e->updates = grp1->updates;
   e->g_updates = grp1->g_updates;
   e->s_updates = grp1->s_updates;
-  e->forcerebuild = grp1->forcerebuild;
 }
 
 /**

@@ -35,7 +35,7 @@ struct engine;
 struct collectgroup1 {
 
   /* Number of particles updated */
-  size_t updates, g_updates, s_updates;
+  long long updates, g_updates, s_updates;
 
   /* Times for the time-step */
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;

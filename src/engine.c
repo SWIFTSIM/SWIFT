@@ -4534,24 +4534,20 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10.5f %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
-           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
-           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-           e->s_updates, e->wallclock_time, e->step_props);
+    printf(
+        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+        e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
+        e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
+        e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
     fprintf(e->file_timesteps,
-            "  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+            "  %6d %14e %14e %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
             e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
             e->max_active_bin, e->updates, e->g_updates, e->s_updates,
             e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
-
-  /* Update the counters */
-  e->updates_since_rebuild += e->updates;
-  e->g_updates_since_rebuild += e->g_updates;
-  e->s_updates_since_rebuild += e->s_updates;
 
   /* Move forward in time */
   e->ti_old = e->ti_current;
@@ -4633,18 +4629,23 @@ void engine_step(struct engine *e) {
     gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-  /* Trigger a tree-rebuild if we passed the frequency threshold */
-  if ((e->policy & engine_policy_self_gravity) &&
-      (e->g_updates_since_rebuild >
-       e->total_nr_gparts * e->gravity_properties->rebuild_frequency))
-    e->forcerebuild = 1;
-
   /* Collect the values of rebuild from all nodes and recover the (integer)
    * end of the next time-step. Do these together to reduce the collective MPI
    * calls per step, but some of the gathered information is not applied just
    * yet (in case we save a snapshot or drift). */
   engine_collect_end_of_step(e, 0);
   e->forcerebuild = e->collect_group1.forcerebuild;
+
+  /* Update the counters */
+  e->updates_since_rebuild += e->collect_group1.updates;
+  e->g_updates_since_rebuild += e->collect_group1.g_updates;
+  e->s_updates_since_rebuild += e->collect_group1.s_updates;
+
+  /* Trigger a tree-rebuild if we passed the frequency threshold */
+  if ((e->policy & engine_policy_self_gravity) &&
+      ((double)e->g_updates_since_rebuild >
+       ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
+    e->forcerebuild = 1;
 
   /* Save some statistics ? */
   if (e->ti_end_min >= e->ti_next_stats && e->ti_next_stats > 0)
