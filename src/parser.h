@@ -39,6 +39,7 @@
 struct parameter {
   char name[PARSER_MAX_LINE_SIZE];
   char value[PARSER_MAX_LINE_SIZE];
+  int used;
 };
 
 struct section {
