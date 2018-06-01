@@ -6890,6 +6890,9 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
 void engine_read_time_files(struct engine *e, const struct swift_params *params) {
   char filename[PARSER_MAX_LINE_SIZE];
+  struct cosmology *cosmo = NULL;
+  if (e->policy & engine_policy_cosmology)
+    cosmo = e->cosmology;
   
   /* Read snapshot time array */
   e->time_array_snapshots = (struct time_array*) malloc(sizeof(struct time_array));
@@ -6900,7 +6903,7 @@ void engine_read_time_files(struct engine *e, const struct swift_params *params)
 
   if (strcmp(filename, "")) {
     message("Reading snaplist file.");
-    time_array_read_file(e->time_array_snapshots, filename);
+    time_array_read_file(e->time_array_snapshots, filename, cosmo);
   }
 }
 
@@ -6912,9 +6915,9 @@ void engine_read_next_snapshot_time(struct engine *e) {
   /* Find upper-bound on last output */
   double time_end;
   if (is_cosmo)
-    time_end = e->cosmology->a_end * e->delta_time_snapshot;
+    time_end = e->cosmology->a_end;
   else
-    time_end = e->time_end + e->delta_time_snapshot;
+    time_end = e->time_end;
 
   /* Find next snasphot above current time */
   double time;

@@ -968,7 +968,8 @@ void io_write_output_field_parameter(const char* filename) {
 }
 
 
-void time_array_read_file(struct time_array *times, const char* filename) {
+void time_array_read_file(struct time_array *times, const char* filename,
+			  struct cosmology *cosmo) {
   /* initialize times */
   times->size = 0;
   
@@ -976,10 +977,35 @@ void time_array_read_file(struct time_array *times, const char* filename) {
   FILE* file = fopen(filename, "r");
   if (file == NULL) error("Error opening file '%s'", filename);
 
-  /* Read file */
+  /* Read header */
   ssize_t read;
   size_t len = 0;
   char *line = NULL;
+  if((read = getline(&line, &len, file)) == -1)
+    error("Unable to read header in file '%s'", filename);
+
+  /* Remove end of line character */
+  line[strcspn(line, "\n")] = 0;
+
+  /* Find type of data in file */
+  int type;
+  if (!strcmp(line, "# Redshift"))
+    type = TIME_ARRAY_REDSHIFT;
+  else if (!strcmp(line, "# Age"))
+    type = TIME_ARRAY_AGE;
+  else if (!strcmp(line, "# Scale Factor"))
+    type = TIME_ARRAY_SCALE_FACTOR;
+  else
+    error("Unable to interpret the header (%s) in file '%s'",
+	  line, filename);
+
+  if (!cosmo &&
+      (type == TIME_ARRAY_SCALE_FACTOR || type == TIME_ARRAY_REDSHIFT))
+    error("Unable to compute a redshift or a scale factor without cosmology. "
+	  "Please change the header in '%s'", filename);
+    
+
+  /* Read file */
   while ((read = getline(&line, &len, file)) != -1) {
 
     /* Check data size */
@@ -988,19 +1014,29 @@ void time_array_read_file(struct time_array *times, const char* filename) {
 	    "Please decrease the number of time required in '%s'.",
 	    filename);
 
+    double *time = &times->times[times->size];
     /* Write data to time array */
-    if (sscanf(line, "%lf", &times->times[times->size]) != 1) {
+    if (sscanf(line, "%lf", time) != 1) {
       error(
             "Tried parsing double but found '%s' with illegal double "
             "characters in file '%s'.",
 	    line, filename);
     }
 
+    /* Transform input into correct time (e.g. ages or scale factor) */
+    if (type == TIME_ARRAY_REDSHIFT)
+      *time = cosmology_get_a_from_z(cosmo, *time);
+
+    if (cosmo && type == TIME_ARRAY_AGE)
+      error("Not implemented");
+
     /* Update size */
     times->size += 1;
   }
 
   time_array_print(times);
+
+  fclose(file);
 }
 
 void time_array_print(const struct time_array *times) {
