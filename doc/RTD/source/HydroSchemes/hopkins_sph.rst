@@ -15,10 +15,16 @@ This includes a Monaghan AV scheme and a Balsara switch.
 
 .. code-block:: bash
    
-   ./configure --with-hydro="hopkins"
+   ./configure --with-hydro="pressure-entropy"
 
 
 Pressure-Energy SPH
 ===================
 
-A pressure-energy SPH scheme is currently being implemented in SWIFT.
+Pressure-energy SPH is now implemented in SWIFT, and like the pressure-entropy
+scheme it includes a Monaghan AV scheme and a Balsara switch.
+
+
+.. code-block:: bash
+   
+   ./configure --with-hydro="pressure-energy"
