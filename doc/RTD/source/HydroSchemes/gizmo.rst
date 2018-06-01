@@ -16,5 +16,12 @@ this, and configure as follows:
 
 .. code-block:: bash
    
-   ./configure --with-hydro="gizmo" --with-riemann-solver="hllc" --disable-vec
+   ./configure --with-hydro="gizmo-mfv" --with-riemann-solver="hllc"
 
+
+We also have the meshless finite mass (MFM) GIZMO-like scheme. You can select
+this at compile-time with the following configuration flags:
+
+.. code-block:: bash
+   
+   ./configure --with-hydro="gizmo-mfm" --with-riemann-solver="hllc"
