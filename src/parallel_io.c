@@ -218,24 +218,24 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
       error("Error getting property list for data set '%s'", props.name);
 
     /* Recover the number of filters in the list */
-    const int n_filters = H5Pget_nfilters(props);
+    const int n_filters = H5Pget_nfilters(h_plist);
 
     for (int n = 0; n < n_filters; ++n) {
 
       unsigned int flag;
-      size_t cd_nelmts = 10;
+      size_t cd_nelmts = 32;
       unsigned int* cd_values = malloc(cd_nelmts * sizeof(unsigned int));
       size_t namelen = 256;
-      char* name = calloc(namelen * sizeof(char));
+      char* name = calloc(namelen, sizeof(char));
       unsigned int filter_config;
 
       /* Recover the n^th filter in the list */
       const H5Z_filter_t filter =
-          H5Pget_filter(props, n, &flag, &cd_nelmts, cd_values, namelen, name,
+          H5Pget_filter(h_plist, n, &flag, &cd_nelmts, cd_values, namelen, name,
                         &filter_config);
       if (filter < 0)
         error("Error retrieving %d^th (%d) filter for data set '%s'", n,
-              f_filters, props.name);
+              n_filters, props.name);
 
       /* Now check whether the deflate filter had been applied */
       if (filter == H5Z_FILTER_DEFLATE)
@@ -243,14 +243,17 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
             "HDF5 1.10.2 cannot correctly read data that was compressed with "
             "the 'deflate' filter.\nThe field '%s' has had this filter applied "
             "and the code would silently read garbage into the particle arrays "
-            "so we'd rather stop here.You can:\n - Recompile the code with an "
+            "so we'd rather stop here. You can:\n - Recompile the code with an "
             "earlier or older version of HDF5.\n - Use the 'h5repack' tool to "
-            "remove the filter from the ICs.",
+            "remove the filter from the ICs (e.g. h5repack -f NONE -i in_file "
+            "-o out_file).\n",
             props.name);
 
       free(name);
       free(cd_values);
     }
+
+    H5Pclose(h_plist);
   }
 #endif
 
