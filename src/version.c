@@ -146,7 +146,7 @@ const char *configuration_options(void) {
   static int initialised = 0;
   static const char *config = SWIFT_CONFIG_FLAGS;
   if (!initialised) {
-    snprintf(buf, 1024, "'%.1022s'", config);
+    snprintf(buf, 1024, "'%.1021s'", config);
     initialised = 1;
   }
   return buf;
@@ -162,7 +162,7 @@ const char *compilation_cflags(void) {
   static int initialised = 0;
   static const char *cflags = SWIFT_CFLAGS;
   if (!initialised) {
-    snprintf(buf, 1024, "'%.1022s'", cflags);
+    snprintf(buf, 1024, "'%.1021s'", cflags);
     initialised = 1;
   }
   return buf;
