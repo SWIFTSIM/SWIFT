@@ -39,16 +39,13 @@
  *
  * This is a text-book implementation based on an atomic CAS.
  *
- * We create a temporary union to cope with the int-only atomic CAS
- * and the floating-point min that we want.
- *
  * @param address The address to update.
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_min_f(
-    volatile float* const address, const float y) {
+    volatile float* address, float y) {
 
-  int* const int_ptr = (int* const)address;
+  int* int_ptr = (int*)address;
 
   typedef union {
     float as_float;
@@ -70,16 +67,13 @@ __attribute__((always_inline)) INLINE static void atomic_min_f(
  *
  * This is a text-book implementation based on an atomic CAS.
  *
- * We create a temporary union to cope with the int-only atomic CAS
- * and the floating-point max that we want.
- *
  * @param address The address to update.
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_max_f(
-    volatile float* const address, const float y) {
+    volatile float* address, float y) {
 
-  int* const int_ptr = (int* const)address;
+  int* int_ptr = (int*)address;
 
   typedef union {
     float as_float;
@@ -101,16 +95,13 @@ __attribute__((always_inline)) INLINE static void atomic_max_f(
  *
  * This is a text-book implementation based on an atomic CAS.
  *
- * We create a temporary union to cope with the int-only atomic CAS
- * and the floating-point add that we want.
- *
  * @param address The address to update.
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_add_f(
-    volatile float* const address, const float y) {
+    volatile float* address, float y) {
 
-  int* const int_ptr = (int* const)address;
+  int* int_ptr = (int*)address;
 
   typedef union {
     float as_float;
