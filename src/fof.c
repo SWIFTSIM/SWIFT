@@ -258,6 +258,9 @@ void fof_search_cell(struct space *s, struct cell *c, int *pid) {
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double l_x2 = s->l_x2;
 
+  /* Make a list of particle offsets into the global gparts array. */
+  int *const offset = pid + (ptrdiff_t)(gparts - s->gparts);
+
   /* Loop over particles and find which particles belong in the same group. */
   for (size_t i = 0; i < count; i++) {
 
@@ -265,10 +268,9 @@ void fof_search_cell(struct space *s, struct cell *c, int *pid) {
     const double pix = pi->x[0];
     const double piy = pi->x[1];
     const double piz = pi->x[2];
-    const size_t offset_i = pi->offset;
 
     /* Find the root of pi. */
-    int root_i = fof_find(offset_i, pid);
+    int root_i = fof_find(offset[i], pid);
 
     for (size_t j = i + 1; j < count; j++) {
 
@@ -276,7 +278,6 @@ void fof_search_cell(struct space *s, struct cell *c, int *pid) {
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
-      const size_t offset_j = pj->offset;
 
       /* Compute pairwise distance, remembering to account for boundary
        * conditions. */
@@ -291,7 +292,7 @@ void fof_search_cell(struct space *s, struct cell *c, int *pid) {
       }
 
       /* Find the root of pj. */
-      const int root_j = fof_find(offset_j, pid);
+      const int root_j = fof_find(offset[j], pid);
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
@@ -324,6 +325,10 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj,
   struct gpart *gparts_j = cj->gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double l_x2 = s->l_x2;
+  
+  /* Make a list of particle offsets into the global gparts array. */
+  int *const offset_i = pid + (ptrdiff_t)(gparts_i - s->gparts);
+  int *const offset_j = pid + (ptrdiff_t)(gparts_j - s->gparts);
 
   /* Account for boundary conditions.*/
   double shift[3] = {0.0, 0.0, 0.0};
@@ -349,18 +354,16 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj,
     const double pix = pi->x[0] - shift[0];
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
-    const size_t offset_i = pi->offset;
 
     /* Find the root of pi. */
-    int root_i = fof_find(offset_i, pid);
+    int root_i = fof_find(offset_i[i], pid);
     
     for (size_t j = 0; j < count_j; j++) {
 
       struct gpart *pj = &gparts_j[j];
-      const size_t offset_j = pj->offset;
 
       /* Find the root of pj. */
-      const int root_j = fof_find(offset_j, pid);
+      const int root_j = fof_find(offset_j[j], pid);
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
@@ -416,10 +419,7 @@ void fof_search_tree_serial(struct space *s) {
   if (posix_memalign((void **)&pid, 32, nr_gparts * sizeof(int)) != 0)
     error("Failed to allocate list of particle group IDs for FOF search.");
 
-  for (size_t i = 0; i < nr_gparts; i++) {
-    gparts[i].offset = i;
-    pid[i] = i;
-  }
+  for (size_t i = 0; i < nr_gparts; i++) pid[i] = i;
 
   /* Allocate and initialise a group size array. */
   if (posix_memalign((void **)&group_size, 32, nr_gparts * sizeof(int)) != 0)
