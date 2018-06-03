@@ -33,6 +33,9 @@ SPH:
 InitialConditions:
   file_name:  ./zeldovichPancake.hdf5       # The file to read
 
+Scheduler:
+  max_top_level_cells: 8
+  
 Cosmology:
   Omega_m: 1.
   Omega_lambda: 0.
@@ -42,7 +45,7 @@ Cosmology:
   a_end: 1.0
 
 Gravity:
-  mesh_side_length:   12
+  mesh_side_length:   16
   eta: 0.025
   theta: 0.9
   comoving_softening: 0.0001

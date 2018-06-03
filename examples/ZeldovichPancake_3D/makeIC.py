@@ -22,24 +22,26 @@ from numpy import *
 
 # Generates a swift IC file for the 1D Zeldovich pancake
 
-# Parameters
-gamma = 5./3.          # Gas adiabatic index
-numPart_1D = 64        # Number of particles
-lambda_i = 1.975e24    # h^-1 m (= 64 h^-1 Mpc)
-x_min = -0.5 * lambda_i
-x_max = 0.5 * lambda_i
-rho_0 = 1.8788e-26 # h^2 kg m^-3
-T_i = 100. # K
-H_0 = 3.24077929e-18 # s^-1
-z_c = 1.
-z_i = 100.
-fileName = "zeldovichPancake.hdf5"
-
+# Some units
 Mpc_in_m = 3.085678e22
 Msol_in_kg = 1.989e30
 Gyr_in_s = 3.085678e19
 mH_in_kg = 1.6737236e-27
 k_in_J_K = 1.38064852e-23
+
+# Parameters
+gamma = 5./3.          # Gas adiabatic index
+numPart_1D = 32        # Number of particles
+rho_0 = 1.8788e-26 # h^2 kg m^-3
+T_i = 100. # K
+H_0 = 1. / Mpc_in_m * 10**5 # s^-1
+#lambda_i = 1.975e24    # h^-1 m (= 64 h^-1 Mpc)
+lambda_i = 64. / H_0 * 10**5 # h^-1 m (= 64 h^-1 Mpc)
+x_min = -0.5 * lambda_i
+x_max = 0.5 * lambda_i
+z_c = 1.
+z_i = 100.
+fileName = "zeldovichPancake.hdf5"
 
 unit_l_in_si = Mpc_in_m
 unit_m_in_si = Msol_in_kg * 1.e10
