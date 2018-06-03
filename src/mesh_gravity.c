@@ -388,7 +388,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct engine* e) {
   /* Some common factors */
   const double green_fac = -1. / (M_PI * box_size);
   const double a_smooth2 =
-      4. * M_PI * M_PI * a_smooth * a_smooth / ((double)(N * N));
+      4. * M_PI * M_PI * a_smooth * a_smooth / (box_size * box_size);
   const double k_fac = M_PI / (double)N;
 
   /* Now de-convolve the CIC kernel and apply the Green function */
