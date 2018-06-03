@@ -186,6 +186,9 @@ struct space {
 
   /*! The FOF linking length squared. */
   double l_x2;
+  
+  /*! The FOF group data. */
+  int *group_id;
 
 #ifdef WITH_MPI
 
