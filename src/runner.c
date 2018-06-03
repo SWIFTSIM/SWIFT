@@ -1630,13 +1630,20 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
         gravity_end_force(gp, const_G);
 
 #ifdef SWIFT_NO_GRAVITY_BELOW_ID
+
+        /* Get the ID of the gpart */
+        long long id = 0;
+        if (gpi->type == swift_type_gas)
+          id = e->s->parts[-gpi->id_or_neg_offset].id;
+        else if (gpi->type == swift_type_star)
+          id = e->s->sparts[-gpi->id_or_neg_offset].id;
+        else if (gpi->type == swift_type_black_hole)
+          error("Unexisting type");
+        else
+          id = gpi->id_or_neg_offset;
+
         /* Cancel gravity forces of these particles */
-        if ((gp->type == swift_type_dark_matter &&
-             gp->id_or_neg_offset < SWIFT_NO_GRAVITY_BELOW_ID) ||
-            (gp->type == swift_type_gas &&
-             parts[-gp->id_or_neg_offset].id < SWIFT_NO_GRAVITY_BELOW_ID) ||
-            (gp->type == swift_type_star &&
-             sparts[-gp->id_or_neg_offset].id < SWIFT_NO_GRAVITY_BELOW_ID)) {
+        if (id < SWIFT_NO_GRAVITY_BELOW_ID) {
 
           /* Don't move ! */
           gp->a_grav[0] = 0.f;
@@ -1653,14 +1660,27 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
           /* Check that this gpart has interacted with all the other
            * particles (via direct or multipoles) in the box */
-          if (gp->num_interacted != e->total_nr_gparts)
+          if (gp->num_interacted != e->total_nr_gparts) {
+
+            /* Get the ID of the gpart */
+            long long my_id = 0;
+            if (gpi->type == swift_type_gas)
+              my_id = e->s->parts[-gpi->id_or_neg_offset].id;
+            else if (gpi->type == swift_type_star)
+              my_id = e->s->sparts[-gpi->id_or_neg_offset].id;
+            else if (gpi->type == swift_type_black_hole)
+              error("Unexisting type");
+            else
+              my_id = gpi->id_or_neg_offset;
+
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
-                "gravitationally "
-                "with all other gparts gp->num_interacted=%lld, "
-                "total_gparts=%lld (local num_gparts=%zd)",
-                gp->id_or_neg_offset, part_type_names[gp->type],
-                gp->num_interacted, e->total_nr_gparts, e->s->nr_gparts);
+                "gravitationally with all other gparts "
+                "gp->num_interacted=%lld, total_gparts=%lld (local "
+                "num_gparts=%zd)",
+                my_id, part_type_names[gp->type], gp->num_interacted,
+                e->total_nr_gparts, e->s->nr_gparts);
+          }
         }
 #endif
       }
