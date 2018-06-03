@@ -1633,14 +1633,14 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
         /* Get the ID of the gpart */
         long long id = 0;
-        if (gpi->type == swift_type_gas)
-          id = e->s->parts[-gpi->id_or_neg_offset].id;
-        else if (gpi->type == swift_type_star)
-          id = e->s->sparts[-gpi->id_or_neg_offset].id;
-        else if (gpi->type == swift_type_black_hole)
+        if (gp->type == swift_type_gas)
+          id = e->s->parts[-gp->id_or_neg_offset].id;
+        else if (gp->type == swift_type_star)
+          id = e->s->sparts[-gp->id_or_neg_offset].id;
+        else if (gp->type == swift_type_black_hole)
           error("Unexisting type");
         else
-          id = gpi->id_or_neg_offset;
+          id = gp->id_or_neg_offset;
 
         /* Cancel gravity forces of these particles */
         if (id < SWIFT_NO_GRAVITY_BELOW_ID) {
@@ -1664,14 +1664,14 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
             /* Get the ID of the gpart */
             long long my_id = 0;
-            if (gpi->type == swift_type_gas)
-              my_id = e->s->parts[-gpi->id_or_neg_offset].id;
-            else if (gpi->type == swift_type_star)
-              my_id = e->s->sparts[-gpi->id_or_neg_offset].id;
-            else if (gpi->type == swift_type_black_hole)
+            if (gp->type == swift_type_gas)
+              my_id = e->s->parts[-gp->id_or_neg_offset].id;
+            else if (gp->type == swift_type_star)
+              my_id = e->s->sparts[-gp->id_or_neg_offset].id;
+            else if (gp->type == swift_type_black_hole)
               error("Unexisting type");
             else
-              my_id = gpi->id_or_neg_offset;
+              my_id = gp->id_or_neg_offset;
 
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
