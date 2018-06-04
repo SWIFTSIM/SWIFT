@@ -651,6 +651,47 @@ double cosmology_get_a_from_z(const struct cosmology *c, double redshift) {
 }
 
 /**
+ * @brief Compute scale factor from time since big bang.
+ *
+ * WARNING: This function is slow, therefore it should not be called more than
+ * once per time step.
+ *
+ * Find the scale factor from the time since big bang using the bisection method
+ * on $ t - f(a) = 0 $ where $ f(a) $ is #cosmology_get_time_since_big_bang
+ *
+ * By knowing that this function is a decreasing monotonic function, we can
+ * avoid a few checks.
+ *
+ * @param cosmo The current #cosmology.
+ * @param t since the big bang
+ * @return The scale factor.
+ */
+double cosmology_get_scale_factor(const struct cosmology *cosmo, double t) {
+  /* convergence limit and current error */
+  const double limit = 1e-8;
+  double eps = 1.;
+
+  /* limits in scale factor */
+  double a_low = 1e-9;
+  double a_up = 1.;
+
+  /* do the bisection method */
+  while (eps > limit) {
+    double a_tmp = 0.5 * (a_low + a_up);
+    double f_tmp = t - cosmology_get_time_since_big_bang(cosmo, a_tmp);
+
+    if (f_tmp > 0)
+      a_low = a_tmp;
+    else
+      a_up = a_tmp;
+
+    eps = a_up - a_low;
+  }
+
+  return 0.5 * (a_low + a_up);
+}
+
+/**
  * @brief Prints the #cosmology model to stdout.
  */
 void cosmology_print(const struct cosmology *c) {

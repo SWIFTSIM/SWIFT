@@ -186,6 +186,8 @@ double cosmology_get_delta_time(const struct cosmology *c, double a1,
 double cosmology_get_a_from_z(const struct cosmology *c,
 			      double redshift);
 
+double cosmology_get_scale_factor(const struct cosmology *cosmo, double t);
+
 double cosmology_get_time_since_big_bang(const struct cosmology *c, double a);
 void cosmology_init(struct swift_params *params, const struct unit_system *us,
                     const struct phys_const *phys_const, struct cosmology *c);
