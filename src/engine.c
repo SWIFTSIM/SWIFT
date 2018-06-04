@@ -4370,7 +4370,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
           clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
-  fof_search_tree_serial(s);
+  //fof_search_tree_serial(s);
+  fof_search_tree(s);
   message("Serial tree FOF search took: %.3f %s.",
           clocks_from_ticks(getticks() - tic), clocks_getunit());
 

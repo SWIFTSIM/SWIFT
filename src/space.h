@@ -178,6 +178,9 @@ struct space {
   
   /*! The FOF group data. */
   int *group_id;
+  
+  /*! List of cell indices. */
+  int *cell_index;
 
 #ifdef WITH_MPI
 
