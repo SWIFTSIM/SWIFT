@@ -24,7 +24,7 @@
 #include "swift.h"
 
 #define N_CHECK 10
-#define TOLERANCE 1e-1
+#define TOLERANCE 1e-3
 
 void test_params_init(struct swift_params *params) {
   parser_init("", params);
