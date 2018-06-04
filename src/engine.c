@@ -6754,7 +6754,7 @@ void engine_read_outputlist_files(struct engine *e, const struct swift_params *p
   list = e->outputlist_snapshots;
   
   strcpy(filename, "");
-  parser_get_opt_param_string(params, "Snapshots:outputlist",
+  parser_get_opt_param_string(params, "Snapshots:output_list",
 			      filename, "");
 
   /* Read outputlist for snapshots */
@@ -6781,7 +6781,7 @@ void engine_read_outputlist_files(struct engine *e, const struct swift_params *p
   list = e->outputlist_stats;
   
   strcpy(filename, "");
-  parser_get_opt_param_string(params, "Statistics:outputlist",
+  parser_get_opt_param_string(params, "Statistics:output_list",
 			      filename, "");
 
   /* Read outputlist for stats */
