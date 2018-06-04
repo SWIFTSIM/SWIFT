@@ -991,7 +991,7 @@ void time_array_read_file(struct time_array *times, const char* filename,
   int type;
   if (!strcmp(line, "# Redshift"))
     type = TIME_ARRAY_REDSHIFT;
-  else if (!strcmp(line, "# Age"))
+  else if (!strcmp(line, "# Time"))
     type = TIME_ARRAY_AGE;
   else if (!strcmp(line, "# Scale Factor"))
     type = TIME_ARRAY_SCALE_FACTOR;
@@ -1028,7 +1028,7 @@ void time_array_read_file(struct time_array *times, const char* filename,
       *time = cosmology_get_a_from_z(cosmo, *time);
 
     if (cosmo && type == TIME_ARRAY_AGE)
-      error("Not implemented");
+      *time = cosmology_get_scale_factor(cosmo, *time);
 
     /* Update size */
     times->size += 1;
