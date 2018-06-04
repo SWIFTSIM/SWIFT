@@ -63,6 +63,7 @@
 #include "scheduler.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "snaplist.h"
 #include "sourceterms.h"
 #include "space.h"
 #include "task.h"

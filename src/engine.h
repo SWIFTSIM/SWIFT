@@ -214,7 +214,7 @@ struct engine {
   double a_first_snapshot;
   double time_first_snapshot;
   double delta_time_snapshot;
-  struct time_array *time_array_snapshots;
+  struct snaplist *snaplist_snapshots;
 
   /* Integer time of the next snapshot */
   integertime_t ti_next_snapshot;

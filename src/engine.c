@@ -78,6 +78,7 @@
 #include "runner.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "snaplist.h"
 #include "sort_part.h"
 #include "sourceterms.h"
 #include "statistics.h"
@@ -5765,7 +5766,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_opt_param_double(params, "Snapshots:time_first", 0.);
   e->delta_time_snapshot =
       parser_get_param_double(params, "Snapshots:delta_time");
-  e->time_array_snapshots = NULL;
+  e->snaplist_snapshots = NULL;
   e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
@@ -6439,7 +6440,7 @@ void engine_print_policy(struct engine *e) {
  */
 void engine_compute_next_snapshot_time(struct engine *e) {
   /* Do snaplist file case */
-  if (e->time_array_snapshots) {
+  if (e->snaplist_snapshots) {
     engine_read_next_snapshot_time(e);
     return;
   }
@@ -6743,8 +6744,8 @@ void engine_clean(struct engine *e) {
   }
   free(e->runners);
   free(e->snapshot_units);
-  if (e->time_array_snapshots)
-    free(e->time_array_snapshots);
+  if (e->snaplist_snapshots)
+    free(e->snaplist_snapshots);
   free(e->links);
   free(e->cell_loc);
   scheduler_clean(&e->sched);
@@ -6895,7 +6896,7 @@ void engine_read_time_files(struct engine *e, const struct swift_params *params)
     cosmo = e->cosmology;
   
   /* Read snapshot time array */
-  e->time_array_snapshots = (struct time_array*) malloc(sizeof(struct time_array));
+  e->snaplist_snapshots = (struct snaplist*) malloc(sizeof(struct snaplist));
   
   strcpy(filename, "");
   parser_get_opt_param_string(params, "Snapshots:snaplist",
@@ -6903,14 +6904,14 @@ void engine_read_time_files(struct engine *e, const struct swift_params *params)
 
   if (strcmp(filename, "")) {
     message("Reading snaplist file.");
-    time_array_read_file(e->time_array_snapshots, filename, cosmo);
+    snaplist_read_file(e->snaplist_snapshots, filename, cosmo);
   }
 }
 
 
 void engine_read_next_snapshot_time(struct engine *e) {
   int is_cosmo = e->policy & engine_policy_cosmology;
-  const struct time_array *t = e->time_array_snapshots;
+  const struct snaplist *t = e->snaplist_snapshots;
   
   /* Find upper-bound on last output */
   double time_end;
