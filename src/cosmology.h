@@ -156,6 +156,9 @@ struct cosmology {
   /*! Time interpolation table */
   double *time_interp_table;
 
+  /*! Scale factor interpolation table */
+  double *scale_factor_interp_table;
+
   /*! Time between Big Bang and first entry in the table */
   double time_interp_table_offset;
 

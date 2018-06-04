@@ -308,6 +308,8 @@ void cosmology_init_tables(struct cosmology *c) {
       (double *)malloc(cosmology_table_length * sizeof(double));
   c->time_interp_table =
       (double *)malloc(cosmology_table_length * sizeof(double));
+  c->scale_factor_interp_table =
+    (double *)malloc(cosmology_table_length * sizeof(double));
 
   /* Prepare a table of scale factors for the integral bounds */
   const double delta_a =
@@ -371,6 +373,30 @@ void cosmology_init_tables(struct cosmology *c) {
   gsl_integration_qag(&F, 0., 1, 0, 1.0e-13, GSL_workspace_size,
                       GSL_INTEG_GAUSS61, space, &result, &abserr);
   c->universe_age_at_present_day = result;
+
+  /* Inverse t(a) */
+  const double time_init = c->time_interp_table_offset;
+  const double delta_t = (c->universe_age_at_present_day - time_init) / cosmology_table_length;
+
+  int i_prev = 0;
+  for (int i = 0; i < cosmology_table_length; i++) {
+    /* Current time */
+    double time_interp = delta_t * i;
+
+    /* Find next time in time_interp_table */
+    while (i_prev < cosmology_table_length && c->time_interp_table[i_prev] <= time_interp) {
+      i_prev++;
+    }
+
+    /* Find linear interpolation scaling */
+    double scale = time_interp - c->time_interp_table[i_prev - 1];
+    scale /= c->time_interp_table[i_prev] - c->time_interp_table[i_prev - 1];
+    scale += i_prev;
+
+    /* Compute interpolated scale factor */
+    double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) / cosmology_table_length;
+    c->scale_factor_interp_table[i] = exp(log_a) - c->a_begin;
+  }
 
   /* Free the workspace and temp array */
   gsl_integration_workspace_free(space);
@@ -653,42 +679,16 @@ double cosmology_get_a_from_z(const struct cosmology *c, double redshift) {
 /**
  * @brief Compute scale factor from time since big bang.
  *
- * WARNING: This function is slow, therefore it should not be called more than
- * once per time step.
- *
- * Find the scale factor from the time since big bang using the bisection method
- * on $ t - f(a) = 0 $ where $ f(a) $ is #cosmology_get_time_since_big_bang
- *
- * By knowing that this function is a decreasing monotonic function, we can
- * avoid a few checks.
- *
- * @param cosmo The current #cosmology.
- * @param t since the big bang
+ * @param c The current #cosmology.
+ * @param t time since the big bang
  * @return The scale factor.
  */
-double cosmology_get_scale_factor(const struct cosmology *cosmo, double t) {
-  /* convergence limit and current error */
-  const double limit = 1e-8;
-  double eps = 1.;
-
-  /* limits in scale factor */
-  double a_low = 1e-9;
-  double a_up = 1.;
-
-  /* do the bisection method */
-  while (eps > limit) {
-    double a_tmp = 0.5 * (a_low + a_up);
-    double f_tmp = t - cosmology_get_time_since_big_bang(cosmo, a_tmp);
-
-    if (f_tmp > 0)
-      a_low = a_tmp;
-    else
-      a_up = a_tmp;
-
-    eps = a_up - a_low;
-  }
-
-  return 0.5 * (a_low + a_up);
+double cosmology_get_scale_factor(const struct cosmology *c, double t) {
+  /* scale factor between time_begin and t */
+  const double a =
+      interp_table(c->scale_factor_interp_table, t, c->time_interp_table_offset,
+		   c->universe_age_at_present_day);
+  return a + c->a_begin;
 }
 
 /**
@@ -712,6 +712,7 @@ void cosmology_clean(struct cosmology *c) {
   free(c->grav_kick_fac_interp_table);
   free(c->hydro_kick_fac_interp_table);
   free(c->time_interp_table);
+  free(c->scale_factor_interp_table);
 }
 
 #ifdef HAVE_HDF5
