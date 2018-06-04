@@ -710,8 +710,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         const float h_old_dim = pow_dimension(h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
         float h_new;
+        int has_no_neighbours = 0;
 
         if (p->density.wcount == 0.f) { /* No neighbours case */
+
+          /* Flag that there were no neighbours */
+          has_no_neighbours = 1;
 
           /* Double h and try again */
           h_new = 2.f * h_old;
@@ -729,7 +733,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               p->density.wcount_dh * h_old_dim +
               hydro_dimension * p->density.wcount * h_old_dim_minus_one;
 
-          h_new = h_old - f / f_prime;
+          /* Avoid floating point exception from f_prime = 0 */
+          h_new = h_old - f / (f_prime + FLT_MIN);
 
 #ifdef SWIFT_DEBUG_CHECKS
           if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
@@ -768,8 +773,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             p->h = hydro_h_max;
 
             /* Do some damage control if no neighbours at all were found */
-            if (p->density.wcount == kernel_root * kernel_norm)
+            if (has_no_neighbours) {
               hydro_part_has_no_neighbours(p, xp, cosmo);
+              chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
+            }
           }
         }
 
