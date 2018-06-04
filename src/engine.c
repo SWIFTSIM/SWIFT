@@ -5832,7 +5832,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
     e->ti_current = 0;
   }
 
-  engine_read_time_files(e, params);
+  engine_read_snaplist_files(e, params);
 }
 
 /**
@@ -6744,8 +6744,10 @@ void engine_clean(struct engine *e) {
   }
   free(e->runners);
   free(e->snapshot_units);
-  if (e->snaplist_snapshots)
+  if (e->snaplist_snapshots) {
+    snaplist_clean(e->snaplist_snapshots);
     free(e->snaplist_snapshots);
+  }
   free(e->links);
   free(e->cell_loc);
   scheduler_clean(&e->sched);
@@ -6788,6 +6790,8 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   chemistry_struct_dump(e->chemistry, stream);
   sourceterms_struct_dump(e->sourceterms, stream);
   parser_struct_dump(e->parameter_file, stream);
+  if (e->snaplist_snapshots)
+    snaplist_struct_dump(e->snaplist_snapshots, stream);
 }
 
 /**
@@ -6883,28 +6887,58 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   parser_struct_restore(parameter_file, stream);
   e->parameter_file = parameter_file;
 
+  if (e->snaplist_snapshots) {
+    struct snaplist *snaplist_snapshots =
+      (struct snaplist *) malloc(sizeof(struct snaplist));
+    snaplist_struct_restore(snaplist_snapshots, stream);
+    e->snaplist_snapshots = snaplist_snapshots;
+  }
+
   /* Want to force a rebuild before using this engine. Wait to repartition.*/
   e->forcerebuild = 1;
   e->forcerepart = 0;
 }
 
-
-void engine_read_time_files(struct engine *e, const struct swift_params *params) {
+/**
+  * @brief Read all the snaplist files
+ *
+ * @param e The #engine.
+ * @param params The #swift_params.
+ */
+void engine_read_snaplist_files(struct engine *e, const struct swift_params *params) {
   char filename[PARSER_MAX_LINE_SIZE];
+  struct snaplist *list;
+
+  /* get cosmo */
   struct cosmology *cosmo = NULL;
   if (e->policy & engine_policy_cosmology)
     cosmo = e->cosmology;
   
-  /* Read snapshot time array */
+  /* Deal with snapshots */
   e->snaplist_snapshots = (struct snaplist*) malloc(sizeof(struct snaplist));
+  list = e->snaplist_snapshots;
   
   strcpy(filename, "");
   parser_get_opt_param_string(params, "Snapshots:snaplist",
 			      filename, "");
 
+  /* Read snaplist for snapshots */
   if (strcmp(filename, "")) {
     message("Reading snaplist file.");
-    snaplist_read_file(e->snaplist_snapshots, filename, cosmo);
+    snaplist_read_file(list, filename, cosmo, engine_max_snaplist_snapshots);
+
+    if (list->size < 2)
+      error("You need to provide more snapshots in '%s'", filename);
+
+    /* Set data for later checks */
+    if (cosmo) {
+      e->delta_time_snapshot = list->times[1] / list->times[0];
+      e->a_first_snapshot = list->times[0];
+    }
+    else {
+      e->delta_time_snapshot = list->times[1] - list->times[0];
+      e->time_first_snapshot = list->times[0];
+    }
   }
 }
 
