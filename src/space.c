@@ -72,6 +72,8 @@ int space_maxsize = space_maxsize_default;
 int last_cell_id;
 #endif
 
+extern int cid_check;
+
 /**
  * @brief Interval stack necessary for parallel particle sorting.
  */
@@ -976,6 +978,23 @@ void space_split(struct space *s, struct cell *cells, int nr_cells,
   threadpool_map(&s->e->threadpool, space_split_mapper, cells, nr_cells,
                  sizeof(struct cell), 0, s);
 
+  for(int cid = 0 ; cid < nr_cells; ++cid) {
+
+    const struct cell *c = &cells[cid];
+
+    for(int i = 0; i < c->gcount; ++i) {
+
+      long long id_i = s->parts[-c->gparts[i].id_or_neg_offset].id;
+      
+      if(id_i == 1000) {
+	cid_check = cid;
+	message("cid_check = %d %d", cid_check, cid);
+      }
+    }
+
+  }
+
+  
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

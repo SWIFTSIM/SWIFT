@@ -106,6 +106,8 @@ const char *engine_policy_names[] = {"none",
                                      "sourceterms",
                                      "stars"};
 
+int cid_check = -1;
+
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
 
@@ -2416,6 +2418,13 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           if (!gravity_M2L_accept(multi_i->r_max_rebuild,
                                   multi_j->r_max_rebuild, theta_crit2, r2)) {
 
+	    if(cid == cid_check)
+	      message("Pair-1 for cells [%d %d %d] and [%d %d %d] split=%d gcount=%d",
+		      i, j, k, ii, jj, kk, cj->split, cj->gcount);
+	    if(cjd == cid_check)
+	      message("Pair-2 for cells [%d %d %d] and [%d %d %d] split=%d gcount=%d",
+		      ii, jj, kk, i, j, k, ci->split, ci->gcount);
+	    
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
                               ci, cj);

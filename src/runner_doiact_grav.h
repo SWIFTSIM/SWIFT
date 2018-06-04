@@ -29,6 +29,8 @@
 #include "space_getsid.h"
 #include "timers.h"
 
+extern int cid_check;
+
 static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                          struct cell *cj, int symmetric);
 
@@ -179,6 +181,7 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
   if (0)
     gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
                 cj->multipole->CoM, props, periodic, dim);
+
   runner_dopair_grav_pp(r, ci, cj, 0);
 
   TIMER_TOC(timer_dopair_grav_mm);
@@ -337,9 +340,9 @@ static INLINE void runner_dopair_grav_pp_truncated(
       const float mass_j = cj_cache->m[pjd];
 
       /* Compute the pairwise (square) distance. */
-      float dx = x_i - x_j;
-      float dy = y_i - y_j;
-      float dz = z_i - z_j;
+      float dx = x_j - x_i;
+      float dy = y_j - y_i;
+      float dz = z_j - z_i;
 
       dx = nearestf(dx, dim[0]);
       dy = nearestf(dy, dim[1]);
@@ -358,15 +361,31 @@ static INLINE void runner_dopair_grav_pp_truncated(
         error("gpj not drifted to current time");
 #endif
 
+      long long id_i = e->s->parts[-gparts_i[pid].id_or_neg_offset].id;
+      long long id_j = e->s->parts[-gparts_j[pjd].id_or_neg_offset].id;
+
       /* Interact! */
-      float f_ij, pot_ij;
-      runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                    rlr_inv, &f_ij, &pot_ij);
+      float f_ij, pot_ij, f1_ij, corr;
+      runner_iact_grav_pp_truncated_debug(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
+                                          rlr_inv, &f_ij, &f1_ij, &corr,
+                                          &pot_ij);
+
+      if (0 && id_i == 1000 && pjd < gcount_j) {
+        message("--- Interacting part");
+        message("id=%lld mass=%e r=%e h=%e", id_j, mass_j, sqrtf(r2),
+                sqrtf(h2_i));
+        /* message("e->s->dim[0]=%e", e->s->dim[0]); */
+        message("dx=[%e %e %e]", dx, dy, dz);
+        message("pos_i=[%e %e %e]", x_i, y_i, z_i);
+        message("pos_j=[%e %e %e]", x_j, y_j, z_j);
+        message("fac=%e corr=%e fac2=%e", f1_ij, corr, f_ij);
+        message("a=[%e %e %e]", f_ij * dx, f_ij * dy, f_ij * dz);
+      }
 
       /* Store it back */
-      a_x -= f_ij * dx;
-      a_y -= f_ij * dy;
-      a_z -= f_ij * dz;
+      a_x += f_ij * dx;
+      a_y += f_ij * dy;
+      a_z += f_ij * dz;
       pot += pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -422,6 +441,8 @@ static INLINE void runner_dopair_grav_pm(
     if (pid < gcount_i && !gpart_is_active(&gparts_i[pid], e))
       error("Active particle went through the cache");
 #endif
+
+    error("aa");
 
     const float x_i = x[pid];
     const float y_i = y[pid];
@@ -808,9 +829,10 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
   const int gcount = c->gcount;
   struct gpart *restrict gparts = c->gparts;
   const int c_active = cell_is_active_gravity(c, e);
-  const double loc[3] = {c->loc[0] + 0.5 * c->width[0],
-                         c->loc[1] + 0.5 * c->width[1],
-                         c->loc[2] + 0.5 * c->width[2]};
+  const double loc[3] = {0., 0., 0.};
+  //{c->loc[0] + 0.5 * c->width[0],
+  //                      c->loc[1] + 0.5 * c->width[1],
+  //                       c->loc[2] + 0.5 * c->width[2]};
 
   /* Anything to do here ?*/
   if (!c_active) return;
@@ -868,9 +890,14 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
       const float mass_j = ci_cache->m[pjd];
 
       /* Compute the pairwise (square) distance. */
-      const float dx = x_i - x_j;
-      const float dy = y_i - y_j;
-      const float dz = z_i - z_j;
+      float dx = x_j - x_i;
+      float dy = y_j - y_i;
+      float dz = z_j - z_i;
+
+      dx = nearestf(dx, e->s->dim[0]);
+      dy = nearestf(dy, e->s->dim[1]);
+      dz = nearestf(dz, e->s->dim[2]);
+
       const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -884,15 +911,31 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
         error("gpj not drifted to current time");
 #endif
 
+      long long id_i = e->s->parts[-gparts[pid].id_or_neg_offset].id;
+      long long id_j = e->s->parts[-gparts[pjd].id_or_neg_offset].id;
+
       /* Interact! */
-      float f_ij, pot_ij;
-      runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                    rlr_inv, &f_ij, &pot_ij);
+      float f_ij, pot_ij, f1_ij, corr;
+      runner_iact_grav_pp_truncated_debug(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
+                                          rlr_inv, &f_ij, &f1_ij, &corr,
+                                          &pot_ij);
+
+      if (0 && id_i == 1000) {
+        message("--- Interacting part");
+        message("id=%lld mass=%e r=%e h=%e", id_j, mass_j, sqrtf(r2),
+                sqrtf(h2_i));
+        /* message("e->s->dim[0]=%e", e->s->dim[0]); */
+        message("dx=[%e %e %e]", dx, dy, dz);
+        message("pos_i=[%e %e %e]", x_i, y_i, z_i);
+        message("pos_j=[%e %e %e]", x_j, y_j, z_j);
+        message("fac=%e corr=%e fac2=%e", f1_ij, corr, f_ij);
+        message("a=[%e %e %e]", f_ij * dx, f_ij * dy, f_ij * dz);
+      }
 
       /* Store it back */
-      a_x -= f_ij * dx;
-      a_y -= f_ij * dy;
-      a_z -= f_ij * dz;
+      a_x += f_ij * dx;
+      a_y += f_ij * dy;
+      a_z += f_ij * dz;
       pot += pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1178,17 +1221,24 @@ static INLINE void runner_doself_grav(struct runner *r, struct cell *c,
  */
 static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
                                              int timer) {
-
+  
   /* Some constants */
   const struct engine *e = r->e;
   const struct space *s = e->s;
   const struct gravity_props *props = e->gravity_properties;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double theta_crit2 = props->theta_crit2;
   const double max_distance = e->mesh->a_smooth * props->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
+  //const double max_distance2 = max_distance * max_distance;
 
+  /* const float u = 1.; */
+  /* float W; */
+  /* kernel_long_grav_force_eval(u, &W); */
+  /* message("a_smooth = %e, max_dist = %e, W=%e", */
+  /* 	  e->mesh->a_smooth, max_distance,W); */
+  
   TIMER_TIC;
 
   /* Recover the list of top-level cells */
@@ -1205,13 +1255,19 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   if (ci->ti_old_multipole != e->ti_current)
     error("Interacting un-drifted multipole");
 
+  if(ci - s->cells_top != cid_check) return;
+
+  for(int i = 0; i < ci->count; ++i)
+    if(ci->parts[i].id == 1000)
+      message("Hello!");
+  
   /* Recover the local multipole */
   struct gravity_tensors *const multi_i = ci->multipole;
-  const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
+  //const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
   const double CoM_rebuild_i[3] = {multi_i->CoM_rebuild[0],
                                    multi_i->CoM_rebuild[1],
                                    multi_i->CoM_rebuild[2]};
-
+  int cc = 0;
   /* Loop over all the top-level cells and go for a M-M interaction if
    * well-separated */
   for (int n = 0; n < nr_cells; ++n) {
@@ -1226,6 +1282,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
+    
     /* Get the distance between the CoMs at the last rebuild*/
     double dx_r = CoM_rebuild_i[0] - multi_j->CoM_rebuild[0];
     double dy_r = CoM_rebuild_i[1] - multi_j->CoM_rebuild[1];
@@ -1243,22 +1300,14 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     if (gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
                            theta_crit2, r2_rebuild)) {
 
-      /* Let's compute the current distance between the cell pair*/
-      double dx = CoM_i[0] - multi_j->CoM[0];
-      double dy = CoM_i[1] - multi_j->CoM[1];
-      double dz = CoM_i[2] - multi_j->CoM[2];
-
-      /* Apply BC */
-      if (periodic) {
-        dx = nearest(dx, dim[0]);
-        dy = nearest(dy, dim[1]);
-        dz = nearest(dz, dim[2]);
-      }
-      const double r2 = dx * dx + dy * dy + dz * dz;
-
+      const double max_radius =  sqrt(r2_rebuild) - (multi_i->r_max_rebuild + multi_j->r_max_rebuild);
+      
       /* Are we beyond the distance where the truncated forces are 0 ?*/
-      if (periodic && r2 > max_distance2) {
+      if (0 && periodic && max_radius  > max_distance) {
 
+	message("hello");
+	message("max_r = %e max_distance = %e", max_radius, max_distance);
+  	
 #ifdef SWIFT_DEBUG_CHECKS
         /* Need to account for the interactions we missed */
         multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
@@ -1266,16 +1315,42 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         continue;
       }
 
-      /* Check the multipole acceptance criterion */
-      if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) {
+      const int cid = n;
+      const int i = cid / (cdim[1] * cdim[2]);
+      const int j = (cid / cdim[2]) % cdim[1];
+      const int k = cid % cdim[2];
 
-        /* Go for a (non-symmetric) M-M calculation */
-        runner_dopair_grav_mm(r, ci, cj);
-      } else {
-        /* Alright, we have to take charge of that pair in a different way. */
-        // MATTHIEU: We should actually open the tree-node here and recurse.
-        runner_dopair_grav_mm(r, ci, cj);
-      }
+      ++cc;
+      message("Interacting with [%d %d %d] (%d)",i,j,k, cc);
+      
+      // MATTHIEU
+      runner_dopair_grav_mm(r, ci, cj);
+      continue;
+
+      
+/*       /\* Let's compute the current distance between the cell pair*\/ */
+/*       double dx = CoM_i[0] - multi_j->CoM[0]; */
+/*       double dy = CoM_i[1] - multi_j->CoM[1]; */
+/*       double dz = CoM_i[2] - multi_j->CoM[2]; */
+
+/*       /\* Apply BC *\/ */
+/*       if (periodic) { */
+/*         dx = nearest(dx, dim[0]); */
+/*         dy = nearest(dy, dim[1]); */
+/*         dz = nearest(dz, dim[2]); */
+/*       } */
+/*       const double r2 = dx * dx + dy * dy + dz * dz; */
+
+/*       /\* Check the multipole acceptance criterion *\/ */
+/*       if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) { */
+
+/*         /\* Go for a (non-symmetric) M-M calculation *\/ */
+/*         runner_dopair_grav_mm(r, ci, cj); */
+/*       } else { */
+/*         /\* Alright, we have to take charge of that pair in a different way. *\/ */
+/*         // MATTHIEU: We should actually open the tree-node here and recurse. */
+/*         runner_dopair_grav_mm(r, ci, cj); */
+      /* } */
     } /* We are in charge of this pair */
   }   /* Loop over top-level cells */
 
