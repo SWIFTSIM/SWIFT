@@ -24,7 +24,8 @@
 #include "fof.h"
 
 /* Local headers. */
-//#include "active.h"
+#include "threadpool.h"
+#include "engine.h"
 
 /* Finds the root ID of the group a particle exists in. */
 __attribute__((always_inline)) INLINE static int fof_find(const int i,
@@ -150,23 +151,17 @@ void fof_search_serial(struct space *s) {
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double l_x2 = s->l_x2;
   int *group_id = s->group_id;
-  int *group_sizes;
+  int *group_size;
   int num_groups = 0;
 
   message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts,
           l_x2);
 
-  /* Allocate and populate array of particle group IDs. */
-  if (posix_memalign((void **)&group_id, 32, nr_gparts * sizeof(int)) != 0)
-    error("Failed to allocate list of particle group IDs for FOF search.");
-
-  for (size_t i = 0; i < nr_gparts; i++) group_id[i] = i;
-
   /* Allocate and initialise a group size array. */
-  if (posix_memalign((void **)&group_sizes, 32, nr_gparts * sizeof(int)) != 0)
+  if (posix_memalign((void **)&group_size, 32, nr_gparts * sizeof(int)) != 0)
     error("Failed to allocate list of number in groups for FOF search.");
 
-  bzero(group_sizes, nr_gparts * sizeof(int));
+  bzero(group_size, nr_gparts * sizeof(int));
 
   /* Loop over particles and find which particles belong in the same group. */
   for (size_t i = 0; i < nr_gparts; i++) {
@@ -223,19 +218,19 @@ void fof_search_serial(struct space *s) {
 
   /* Calculate the total number of particles in each group and total number of groups. */
   for (size_t i = 0; i < nr_gparts; i++) {
-    group_sizes[fof_find(i, group_id)]++;
+    group_size[fof_find(i, group_id)]++;
     if(group_id[i] == i) num_groups++;
   }
 
-  fof_dump_group_data("fof_output_serial.dat", nr_gparts, group_id, group_sizes);
+  fof_dump_group_data("fof_output_serial.dat", nr_gparts, group_id, group_size);
 
   int num_parts_in_groups = 0;
   int max_group_size = 0, max_group_id = 0;
   for (size_t i = 0; i < nr_gparts; i++) {
 
-    if (group_sizes[i] > 1) num_parts_in_groups += group_sizes[i];
-    if (group_sizes[i] > max_group_size) {
-      max_group_size = group_sizes[i];
+    if (group_size[i] > 1) num_parts_in_groups += group_size[i];
+    if (group_size[i] > max_group_size) {
+      max_group_size = group_size[i];
       max_group_id = i;
     }
   }
@@ -246,7 +241,7 @@ void fof_search_serial(struct space *s) {
       num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
   message("Biggest group size: %d with ID: %d", max_group_size, max_group_id);
 
-  free(group_sizes);
+  free(group_size);
 }
 
 /* Perform a FOF search on a single cell using the Union-Find algorithm.*/
@@ -405,11 +400,11 @@ void fof_search_tree_serial(struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_cells = s->nr_cells;
+  struct gpart *gparts = s->gparts;
   int *group_id = s->group_id;
   int *group_size;
   float *group_mass;
   int num_groups = 0;
-  struct gpart *gparts = s->gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->l_x2;
 
@@ -495,16 +490,138 @@ void fof_search_tree_serial(struct space *s) {
   free(group_mass);
 }
 
+/**
+ * @brief Mapper function to perform FOF search.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to a #space.
+ */
+void fof_search_tree_mapper(void *map_data, int num_elements,
+                            void *extra_data) {
+
+  /* Retrieve mapped data. */
+  struct space *s = (struct space *)extra_data;
+  struct cell *cells = (struct cell *)map_data;
+
+  const size_t nr_cells = s->nr_cells;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double search_r2 = s->l_x2;
+ 
+  /* Make a list of cell offsets into the top-level cell array. */
+  int *const offset = s->cell_index + (ptrdiff_t)(cells - s->cells_top);
+
+  /* Loop over cells and find which cells are in range of each other to perform
+   * the FOF search. */
+  for (size_t ind = 0; ind < num_elements; ind++) {
+    
+    /* Get the cell. */
+    struct cell *restrict ci = &cells[ind];
+    
+    /* Skip empty cells. */
+    if(ci->gcount == 0) continue;
+
+    /* Perform FOF search on local particles within the cell. */
+    rec_fof_search_self(ci, s, dim, search_r2);
+
+    /* Loop over all top-level cells skipping over the cells already searched.
+    */
+    for (size_t cjd = offset[ind] + 1; cjd < nr_cells; cjd++) {
+
+      struct cell *restrict cj = &s->cells_top[cjd];
+      
+      /* Skip empty cells. */
+      if(cj->gcount == 0) continue;
+
+      rec_fof_search_pair(ci, cj, s, dim, search_r2);
+    }
+  }
+}
+
+/* Perform a FOF search on gravity particles using the cells and applying the
+ * Union-Find algorithm.*/
+void fof_search_tree(struct space *s) {
+
+  const size_t nr_gparts = s->nr_gparts;
+  const size_t nr_cells = s->nr_cells;
+  struct gpart *gparts = s->gparts;
+  int *group_id = s->group_id;
+  int *group_size;
+  float *group_mass;
+  int num_groups = 0;
+
+  message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts,
+          s->l_x2);
+
+  /* Allocate and initialise a group size array. */
+  if (posix_memalign((void **)&group_size, 32, nr_gparts * sizeof(int)) != 0)
+    error("Failed to allocate list of group size for FOF search.");
+
+  /* Allocate and initialise a group mass array. */
+  if (posix_memalign((void **)&group_mass, 32, nr_gparts * sizeof(float)) != 0)
+    error("Failed to allocate list of group masses for FOF search.");
+
+  bzero(group_size, nr_gparts * sizeof(int));
+  bzero(group_mass, nr_gparts * sizeof(float));
+
+  /* Activate all the regular tasks */
+  threadpool_map(&s->e->threadpool, fof_search_tree_mapper, s->cells_top,
+                 nr_cells, sizeof(struct cell), 1, s);
+
+  /* Calculate the total number of particles in each group, group mass and the total number of groups. */
+  for (size_t i = 0; i < nr_gparts; i++) {
+    const int root = fof_find(i, group_id);
+    group_size[root]++;
+    group_mass[root] += gparts[i].mass;
+    if(group_id[i] == i) num_groups++;
+  }
+
+  fof_dump_group_data("fof_output_tree_serial.dat", nr_gparts, group_id,
+                      group_size);
+
+  int num_parts_in_groups = 0;
+  int max_group_size = 0, max_group_id = 0, max_group_mass_id = 0;
+  float max_group_mass = 0;
+  for (size_t i = 0; i < nr_gparts; i++) {
+
+    /* Find the total number of particles in groups. */
+    if (group_size[i] > 1) num_parts_in_groups += group_size[i];
+
+    /* Find the largest group. */
+    if (group_size[i] > max_group_size) {
+      max_group_size = group_size[i];
+      max_group_id = i;
+    }
+    
+    /* Find the largest group by mass. */
+    if (group_mass[i] > max_group_mass) {
+      max_group_mass = group_mass[i];
+      max_group_mass_id = i;
+    }
+  }
+
+  message(
+      "No. of groups: %d. No. of particles in groups: %d. No. of particles not "
+      "in groups: %ld.",
+      num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
+  message("Biggest group size: %d with ID: %d", max_group_size, max_group_id);
+  message("Biggest group by mass: %f with ID: %d", max_group_mass, max_group_mass_id);
+
+  free(group_size);
+  free(group_mass);
+
+}
+
 /* Dump FOF group data. */
 void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_id,
-                         int *group_sizes) {
+                         int *group_size) {
 
   FILE *file = fopen(out_file, "w");
   fprintf(file, "# %7s %7s %7s\n", "ID", "Root ID", "Group Size");
   fprintf(file, "#-------------------------------\n");
 
   for (size_t i = 0; i < nr_gparts; i++) {
-    fprintf(file, "  %7ld %7d %7d\n", i, group_id[i], group_sizes[i]);
+    fprintf(file, "  %7ld %7d %7d\n", i, group_id[i], group_size[i]);
   }
 
   fclose(file);
