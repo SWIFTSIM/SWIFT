@@ -517,9 +517,9 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
   struct gravity_cache *const cj_cache = &r->cj_gravity_cache;
 
   /* Get the distance vector between the pairs, wrapping. */
-  double cell_shift[3];
-  struct cell *cii = ci, *cjj = cj;
-  space_getsid(s, &cii, &cjj, cell_shift);
+  //double cell_shift[3];
+  //struct cell *cii = ci, *cjj = cj;
+  //space_getsid(s, &cii, &cjj, cell_shift);
 
   /* Record activity status */
   const int ci_active = cell_is_active_gravity(ci, e);
@@ -632,7 +632,7 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
         runner_dopair_grav_pm(e, ci_cache, gcount_i, gcount_padded_i,
                               ci->gparts, CoM_j, multi_j, cj);
       }
-      if (cj_active) {
+      if (cj_active && symmetric) {
 
         /* First the (truncated) P2P */
         runner_dopair_grav_pp_truncated(e, rlr_inv, cj_cache, ci_cache,
@@ -645,6 +645,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
       }
 
     } else {
+
+      error("oo");
 
       /* Periodic but close-by cells can use the full Newtonian potential */
 
@@ -659,7 +661,7 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
         runner_dopair_grav_pm(e, ci_cache, gcount_i, gcount_padded_i,
                               ci->gparts, CoM_j, multi_j, cj);
       }
-      if (cj_active) {
+      if (cj_active && symmetric) {
 
         /* First the (Newtonian) P2P */
         runner_dopair_grav_pp_full(e, cj_cache, ci_cache, gcount_j, gcount_i,
@@ -674,7 +676,7 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
 
   /* Write back to the particles */
   if (ci_active) gravity_cache_write_back(ci_cache, ci->gparts, gcount_i);
-  if (cj_active) gravity_cache_write_back(cj_cache, cj->gparts, gcount_j);
+  if (cj_active && symmetric) gravity_cache_write_back(cj_cache, cj->gparts, gcount_j);
 
   TIMER_TOC(timer_dopair_grav_branch);
 }
@@ -1255,7 +1257,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   if (ci->ti_old_multipole != e->ti_current)
     error("Interacting un-drifted multipole");
 
-  if(ci - s->cells_top != cid_check) return;
+  //if(ci - s->cells_top != cid_check) return;
 
   for(int i = 0; i < ci->count; ++i)
     if(ci->parts[i].id == 1000)
@@ -1321,7 +1323,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       const int k = cid % cdim[2];
 
       ++cc;
-      message("Interacting with [%d %d %d] (%d)",i,j,k, cc);
+      if(0)message("Interacting with [%d %d %d] (%d)",i,j,k, cc);
       
       // MATTHIEU
       runner_dopair_grav_mm(r, ci, cj);
