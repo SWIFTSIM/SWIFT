@@ -12,6 +12,35 @@ parameters.  Each section in this file corresponds to a different option in
 SWIFT and are not always required depending on the configuration options and
 the run time parameters.
 
+Output List
+~~~~~~~~~~~
+
+In the sections ``Snapshots`` and ``Statistics``, you can specify the option ``output_list``  which receives a filename.
+This file consists in a list of time where you want to output either a snapshot or a statistic.
+With the header, you can choose between writing redshifts, scale factors or times.
+
+Example of file containing with times:
+::
+   # Time
+   0.5
+   1.5
+   3.0
+   12.5
+
+Example of file with scale factors:
+::
+   # Scale Factor
+   0.1
+   0.2
+   0.3
+
+Example of file with redshift: 
+::
+   # Redshift
+   20
+   15
+   10
+   5
 
 Output Selection
 ~~~~~~~~~~~~~~~~
