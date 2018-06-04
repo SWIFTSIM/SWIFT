@@ -69,6 +69,7 @@
 #include "map.h"
 #include "memswap.h"
 #include "minmax.h"
+#include "outputlist.h"
 #include "parallel_io.h"
 #include "part.h"
 #include "partition.h"
@@ -78,7 +79,6 @@
 #include "runner.h"
 #include "serial_io.h"
 #include "single_io.h"
-#include "snaplist.h"
 #include "sort_part.h"
 #include "sourceterms.h"
 #include "statistics.h"
@@ -5766,8 +5766,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_opt_param_double(params, "Snapshots:time_first", 0.);
   e->delta_time_snapshot =
       parser_get_param_double(params, "Snapshots:delta_time");
-  e->snaplist_snapshots = NULL;
-  e->snaplist_stats = NULL;
+  e->outputlist_snapshots = NULL;
+  e->outputlist_stats = NULL;
   e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
@@ -5833,7 +5833,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
     e->ti_current = 0;
   }
 
-  engine_read_snaplist_files(e, params);
+  engine_read_outputlist_files(e, params);
 }
 
 /**
@@ -6440,8 +6440,8 @@ void engine_print_policy(struct engine *e) {
  * @param e The #engine.
  */
 void engine_compute_next_snapshot_time(struct engine *e) {
-  /* Do snaplist file case */
-  if (e->snaplist_snapshots) {
+  /* Do outputlist file case */
+  if (e->outputlist_snapshots) {
     engine_read_next_snapshot_time(e);
     return;
   }
@@ -6504,7 +6504,7 @@ void engine_compute_next_snapshot_time(struct engine *e) {
  */
 void engine_read_next_snapshot_time(struct engine *e) {
   int is_cosmo = e->policy & engine_policy_cosmology;
-  const struct snaplist *t = e->snaplist_snapshots;
+  const struct outputlist *t = e->outputlist_snapshots;
   
   /* Find upper-bound on last output */
   double time_end;
@@ -6564,7 +6564,7 @@ void engine_read_next_snapshot_time(struct engine *e) {
  * @param e The #engine.
  */
 void engine_compute_next_statistics_time(struct engine *e) {
-  if (e->snaplist_stats) {
+  if (e->outputlist_stats) {
     engine_read_next_statistics_time(e);
     return;
   }
@@ -6614,7 +6614,7 @@ void engine_compute_next_statistics_time(struct engine *e) {
                 next_statistics_time);
     } else {
       const double next_statistics_time =
-          e->ti_next_stats * e->time_base + e->time_begin;
+	e->ti_next_stats * e->time_base + e->time_begin;
       if (e->verbose)
         message("Next output time for stats set to t=%e.",
                 next_statistics_time);
@@ -6684,7 +6684,7 @@ void engine_compute_next_stf_time(struct engine *e) {
  */
 void engine_read_next_statistics_time(struct engine *e) {
   int is_cosmo = e->policy & engine_policy_cosmology;
-  const struct snaplist *t = e->snaplist_stats;
+  const struct outputlist *t = e->outputlist_stats;
 
   /* Find upper-bound on last output */
   double time_end;
@@ -6735,14 +6735,14 @@ void engine_read_next_statistics_time(struct engine *e) {
 }
 
 /**
-  * @brief Read all the snaplist files
+  * @brief Read all the outputlist files
  *
  * @param e The #engine.
  * @param params The #swift_params.
  */
-void engine_read_snaplist_files(struct engine *e, const struct swift_params *params) {
+void engine_read_outputlist_files(struct engine *e, const struct swift_params *params) {
   char filename[PARSER_MAX_LINE_SIZE];
-  struct snaplist *list;
+  struct outputlist *list;
 
   /* get cosmo */
   struct cosmology *cosmo = NULL;
@@ -6750,17 +6750,17 @@ void engine_read_snaplist_files(struct engine *e, const struct swift_params *par
     cosmo = e->cosmology;
   
   /* Deal with snapshots */
-  e->snaplist_snapshots = (struct snaplist*) malloc(sizeof(struct snaplist));
-  list = e->snaplist_snapshots;
+  e->outputlist_snapshots = (struct outputlist*) malloc(sizeof(struct outputlist));
+  list = e->outputlist_snapshots;
   
   strcpy(filename, "");
-  parser_get_opt_param_string(params, "Snapshots:snaplist",
+  parser_get_opt_param_string(params, "Snapshots:outputlist",
 			      filename, "");
 
-  /* Read snaplist for snapshots */
+  /* Read outputlist for snapshots */
   if (strcmp(filename, "")) {
-    message("Reading snaplist file.");
-    snaplist_read_file(list, filename, cosmo, engine_max_snaplist_snapshots);
+    message("Reading snapshots output file.");
+    outputlist_read_file(list, filename, cosmo);
 
     if (list->size < 2)
       error("You need to provide more snapshots in '%s'", filename);
@@ -6777,17 +6777,17 @@ void engine_read_snaplist_files(struct engine *e, const struct swift_params *par
   }
 
     /* Deal with stats */
-  e->snaplist_stats = (struct snaplist*) malloc(sizeof(struct snaplist));
-  list = e->snaplist_stats;
+  e->outputlist_stats = (struct outputlist*) malloc(sizeof(struct outputlist));
+  list = e->outputlist_stats;
   
   strcpy(filename, "");
-  parser_get_opt_param_string(params, "Statistics:snaplist",
+  parser_get_opt_param_string(params, "Statistics:outputlist",
 			      filename, "");
 
-  /* Read snaplist for stats */
+  /* Read outputlist for stats */
   if (strcmp(filename, "")) {
-    message("Reading snaplist file.");
-    snaplist_read_file(list, filename, cosmo, engine_max_snaplist_stats);
+    message("Reading statistics output file.");
+    outputlist_read_file(list, filename, cosmo);
 
     if (list->size < 2)
       error("You need to provide more snapshots in '%s'", filename);
@@ -6937,13 +6937,13 @@ void engine_clean(struct engine *e) {
   }
   free(e->runners);
   free(e->snapshot_units);
-  if (e->snaplist_snapshots) {
-    snaplist_clean(e->snaplist_snapshots);
-    free(e->snaplist_snapshots);
+  if (e->outputlist_snapshots) {
+    outputlist_clean(e->outputlist_snapshots);
+    free(e->outputlist_snapshots);
   }
-  if (e->snaplist_stats) {
-    snaplist_clean(e->snaplist_stats);
-    free(e->snaplist_stats);
+  if (e->outputlist_stats) {
+    outputlist_clean(e->outputlist_stats);
+    free(e->outputlist_stats);
   }
   free(e->links);
   free(e->cell_loc);
@@ -6987,10 +6987,10 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   chemistry_struct_dump(e->chemistry, stream);
   sourceterms_struct_dump(e->sourceterms, stream);
   parser_struct_dump(e->parameter_file, stream);
-  if (e->snaplist_snapshots)
-    snaplist_struct_dump(e->snaplist_snapshots, stream);
-  if (e->snaplist_stats)
-    snaplist_struct_dump(e->snaplist_stats, stream);
+  if (e->outputlist_snapshots)
+    outputlist_struct_dump(e->outputlist_snapshots, stream);
+  if (e->outputlist_stats)
+    outputlist_struct_dump(e->outputlist_stats, stream);
 }
 
 /**
@@ -7086,18 +7086,18 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   parser_struct_restore(parameter_file, stream);
   e->parameter_file = parameter_file;
 
-  if (e->snaplist_snapshots) {
-    struct snaplist *snaplist_snapshots =
-      (struct snaplist *) malloc(sizeof(struct snaplist));
-    snaplist_struct_restore(snaplist_snapshots, stream);
-    e->snaplist_snapshots = snaplist_snapshots;
+  if (e->outputlist_snapshots) {
+    struct outputlist *outputlist_snapshots =
+      (struct outputlist *) malloc(sizeof(struct outputlist));
+    outputlist_struct_restore(outputlist_snapshots, stream);
+    e->outputlist_snapshots = outputlist_snapshots;
   }
 
-  if (e->snaplist_stats) {
-    struct snaplist *snaplist_stats =
-      (struct snaplist *) malloc(sizeof(struct snaplist));
-    snaplist_struct_restore(snaplist_stats, stream);
-    e->snaplist_stats = snaplist_stats;
+  if (e->outputlist_stats) {
+    struct outputlist *outputlist_stats =
+      (struct outputlist *) malloc(sizeof(struct outputlist));
+    outputlist_struct_restore(outputlist_stats, stream);
+    e->outputlist_stats = outputlist_stats;
   }
 
   /* Want to force a rebuild before using this engine. Wait to repartition.*/

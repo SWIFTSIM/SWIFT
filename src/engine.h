@@ -97,8 +97,6 @@ enum engine_step_properties {
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost 1000
-#define engine_max_snaplist_snapshots 8192
-#define engine_max_snaplist_stats 32768
 
 /**
  * @brief The rank of the engine as a global variable (for messages).
@@ -216,8 +214,8 @@ struct engine {
   double a_first_snapshot;
   double time_first_snapshot;
   double delta_time_snapshot;
-  struct snaplist *snaplist_snapshots;
-  struct snaplist *snaplist_stats;
+  struct outputlist *outputlist_snapshots;
+  struct outputlist *outputlist_stats;
 
   /* Integer time of the next snapshot */
   integertime_t ti_next_snapshot;
@@ -379,7 +377,7 @@ void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
-void engine_read_snaplist_files(struct engine *e, const struct swift_params *params);
+void engine_read_outputlist_files(struct engine *e, const struct swift_params *params);
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
                  int policy, int verbose, struct repartition *reparttype,
