@@ -217,6 +217,7 @@ struct engine {
   double time_first_snapshot;
   double delta_time_snapshot;
   struct snaplist *snaplist_snapshots;
+  struct snaplist *snaplist_stats;
 
   /* Integer time of the next snapshot */
   integertime_t ti_next_snapshot;
@@ -370,6 +371,7 @@ void engine_compute_next_snapshot_time(struct engine *e);
 void engine_compute_next_stf_time(struct engine *e);
 void engine_read_next_snapshot_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
+void engine_read_next_statistics_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e);
