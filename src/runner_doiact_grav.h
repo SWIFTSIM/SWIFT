@@ -87,6 +87,7 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
         struct grav_tensor shifted_tensor;
 
         /* If the tensor received any contribution, push it down */
+	// MATTHIEU
         if (1 || c->multipole->pot.interacted) {
 
           /* Shift the field tensor */
@@ -129,7 +130,7 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
           error("c->field tensor not initialised");
 #endif
         /* Apply the kernel */
-        //gravity_L2P(&c->multipole->pot, c->multipole->CoM, gp);
+        gravity_L2P(&c->multipole->pot, c->multipole->CoM, gp);
 
 	/* Apply periodic BC contribution to the potential */
 	if(with_cosmology && periodic) {
@@ -1345,10 +1346,10 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       const double max_radius =  sqrt(r2_rebuild) - (multi_i->r_max_rebuild + multi_j->r_max_rebuild);
       
       /* Are we beyond the distance where the truncated forces are 0 ?*/
-      if (0 && periodic && max_radius  > max_distance) {
+      if (periodic && max_radius  > max_distance) {
 
-	message("hello");
-	message("max_r = %e max_distance = %e", max_radius, max_distance);
+	/* message("hello"); */
+	/* message("max_r = %e max_distance = %e", max_radius, max_distance); */
   	
 #ifdef SWIFT_DEBUG_CHECKS
         /* Need to account for the interactions we missed */

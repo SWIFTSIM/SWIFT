@@ -1699,8 +1699,14 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       if (gpart_is_active(gp, e)) {
 
+	if(e->s->parts[-gp->id_or_neg_offset].id == 1000)
+	  message("After mesh: pot=%e", gp->potential);
+	
         /* Finish the force calculation */
         gravity_end_force(gp, const_G);
+
+	if(e->s->parts[-gp->id_or_neg_offset].id == 1000)
+	  message("After mmultiply by G: pot=%e", gp->potential);
 
 #ifdef SWIFT_NO_GRAVITY_BELOW_ID
 
@@ -1730,7 +1736,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
           /* Let's add a self interaction to simplify the count */
           gp->num_interacted++;
-
+ 
           /* Check that this gpart has interacted with all the other
            * particles (via direct or multipoles) in the box */
           if (gp->num_interacted != e->total_nr_gparts) {

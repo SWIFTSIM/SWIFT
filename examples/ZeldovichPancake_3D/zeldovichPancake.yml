@@ -8,8 +8,6 @@ InternalUnitSystem:
 
 # Parameters governing the time integration
 TimeIntegration:
-  time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   0.2   # The end time of the simulation (in internal units).
   dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
 
@@ -35,6 +33,7 @@ InitialConditions:
 
 Scheduler:
   max_top_level_cells: 8
+  cell_split_size:           400
   
 Cosmology:
   Omega_m: 1.
@@ -47,7 +46,7 @@ Cosmology:
 Gravity:
   mesh_side_length:   16
   eta: 0.025
-  theta: 0.8
-  r_cut_max: 4.5
+  theta: 0.85
+  r_cut_max: 5.
   comoving_softening: 0.0001
   max_physical_softening: 0.0001

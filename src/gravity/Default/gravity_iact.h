@@ -183,7 +183,7 @@ runner_iact_grav_pp_truncated_debug(float r2, float h2, float h_inv,
     *pot_ij = mass * h_inv * W_pot_ij;
   }
 
-  *f1_ij = *f_ij;
+  *f1_ij = *pot_ij;
 
   /* Get long-range correction */
   const float u_lr = r * rlr_inv;
@@ -193,7 +193,7 @@ runner_iact_grav_pp_truncated_debug(float r2, float h2, float h_inv,
   *f_ij *= corr_f_lr;
   *pot_ij *= corr_pot_lr;
 
-  *corr = corr_f_lr;
+  *corr = corr_pot_lr;
 }
 
 /**
