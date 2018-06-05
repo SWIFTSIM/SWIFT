@@ -47,7 +47,14 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
 
   /* Some constants */
   const struct engine *e = r->e;
-
+  const struct space *s = e->s;
+  const int periodic = s->periodic;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const float Omega_m = e->cosmology->Omega_m;
+  const float H0 = e->cosmology->H0;
+  const float G_newton = e->physical_constants->const_newton_G;
+  const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
+  
   /* Cell properties */
   struct gpart *gparts = c->gparts;
   const int gcount = c->gcount;
@@ -98,7 +105,7 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
   } else { /* Leaf case */
 
     /* We can abort early if no interactions via multipole happened */
-    if (!c->multipole->pot.interacted) return;
+    //if (!c->multipole->pot.interacted) return;
 
     if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
@@ -111,6 +118,9 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
       /* Update if active */
       if (gpart_is_active(gp, e)) {
 
+	if(e->s->parts[-gp->id_or_neg_offset].id == 1000)
+	  message("After tree: pot=%e", gp->potential);
+	
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (gp->ti_drift != e->ti_current)
@@ -118,9 +128,24 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
         if (c->multipole->pot.ti_init != e->ti_current)
           error("c->field tensor not initialised");
 #endif
-
         /* Apply the kernel */
-        gravity_L2P(&c->multipole->pot, c->multipole->CoM, gp);
+        //gravity_L2P(&c->multipole->pot, c->multipole->CoM, gp);
+
+	/* Apply periodic BC contribution to the potential */
+	if(with_cosmology && periodic) {
+	  const float mass = gravity_get_mass(gp);
+	  const float mass2 = mass * mass;
+
+	  if(e->s->parts[-gp->id_or_neg_offset].id == 1000)
+	    message("mass=%e Omega_m=%e H=%e rho_crit=%e", mass, Omega_m, e->cosmology->H, rho_crit0);
+
+	  /* This correction term matches the one used in Gadget-2 */
+	  /* The numerical constant is taken from Hernquist, Bouchet & Suto 1991 */
+	  gp->potential -= 2.8372975f * cbrtf(mass2 * Omega_m * rho_crit0);
+	}
+
+	if(e->s->parts[-gp->id_or_neg_offset].id == 1000)
+	  message("After correction: pot=%e", gp->potential);
       }
     }
   }
@@ -370,7 +395,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
                                           rlr_inv, &f_ij, &f1_ij, &corr,
                                           &pot_ij);
 
-      if (0 && id_i == 1000 && pjd < gcount_j) {
+      if (id_i == 1000 && id_j == 900 && pjd < gcount_j) {
         message("--- Interacting part");
         message("id=%lld mass=%e r=%e h=%e", id_j, mass_j, sqrtf(r2),
                 sqrtf(h2_i));
@@ -378,8 +403,9 @@ static INLINE void runner_dopair_grav_pp_truncated(
         message("dx=[%e %e %e]", dx, dy, dz);
         message("pos_i=[%e %e %e]", x_i, y_i, z_i);
         message("pos_j=[%e %e %e]", x_j, y_j, z_j);
-        message("fac=%e corr=%e fac2=%e", f1_ij, corr, f_ij);
+        message("fac=%e corr=%e fac2=%e", f1_ij, corr, pot_ij);
         message("a=[%e %e %e]", f_ij * dx, f_ij * dy, f_ij * dz);
+	message("pot=%e", pot_ij);
       }
 
       /* Store it back */
@@ -896,9 +922,9 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
       float dy = y_j - y_i;
       float dz = z_j - z_i;
 
-      dx = nearestf(dx, e->s->dim[0]);
-      dy = nearestf(dy, e->s->dim[1]);
-      dz = nearestf(dz, e->s->dim[2]);
+      /* dx = nearestf(dx, e->s->dim[0]); */
+      /* dy = nearestf(dy, e->s->dim[1]); */
+      /* dz = nearestf(dz, e->s->dim[2]); */
 
       const float r2 = dx * dx + dy * dy + dz * dz;
 
@@ -921,6 +947,20 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
       runner_iact_grav_pp_truncated_debug(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
                                           rlr_inv, &f_ij, &f1_ij, &corr,
                                           &pot_ij);
+
+      if (id_i == 1000 && id_j == 901) {
+        message("--- Interacting part");
+        message("id=%lld mass=%e r=%e h=%e", id_j, mass_j, sqrtf(r2),
+                sqrtf(h2_i));
+        /* message("e->s->dim[0]=%e", e->s->dim[0]); */
+        message("dx=[%e %e %e]", dx, dy, dz);
+        message("pos_i=[%e %e %e]", x_i, y_i, z_i);
+        message("pos_j=[%e %e %e]", x_j, y_j, z_j);
+        message("fac=%e corr=%e fac2=%e", f1_ij, corr, pot_ij);
+        message("a=[%e %e %e]", f_ij * dx, f_ij * dy, f_ij * dz);
+	message("pot=%e", pot_ij);
+      }
+
 
       if (0 && id_i == 1000) {
         message("--- Interacting part");
