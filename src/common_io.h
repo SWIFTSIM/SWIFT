@@ -32,7 +32,6 @@
 #define IO_BUFFER_ALIGNMENT 1024
 
 /* Avoid cyclic inclusion problems */
-struct cosmology;
 struct part;
 struct gpart;
 struct spart;
