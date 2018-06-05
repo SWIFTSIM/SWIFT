@@ -606,8 +606,10 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 #ifdef EXTRA_HYDRO_LOOP
 
   struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
   const int count = c->count;
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
 
   TIMER_TIC;
 
@@ -625,6 +627,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
       /* Get a direct pointer on the part. */
       struct part *restrict p = &parts[i];
+      struct xpart *restrict xp = &xparts[i];
 
       if (part_is_active(p, e)) {
 
