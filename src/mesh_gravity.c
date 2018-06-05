@@ -315,7 +315,9 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
  *
  * Interpolates the top-level multipoles on-to a mesh, move to Fourier space,
  * compute the potential including short-range correction and move back
- * to real space.
+ * to real space. We use CIC for the interpolation.
+ *
+ * Note that there is no multiplication by G_newton at this stage.
  *
  * @param mesh The #pm_mesh used to store the potential.
  * @param e The #engine from which to compute the forces.
@@ -458,13 +460,6 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct engine* e) {
   /* message("\n\n\n POTENTIAL"); */
   /* print_array(potential, N); */
 
-  /* #ifdef SWIFT_GRAVITY_FORCE_CHECKS */
-  /*   /\* Get the potential from the mesh to the gparts using CIC *\/ */
-  /*   for (size_t i = 0; i < s->nr_gparts; ++i) */
-  /*     mesh_to_gparts_CIC(&s->gparts[i], mesh->potential, N, cell_fac, dim);
-   */
-  /* #endif */
-
   /* Clean-up the mess */
   fftw_destroy_plan(forward_plan);
   fftw_destroy_plan(inverse_plan);
@@ -475,6 +470,17 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct engine* e) {
 #endif
 }
 
+/**
+ * @brief Interpolate the forces and potential from the mesh to the #gpart.
+ *
+ * We use CIC interpolation. The resulting accelerations and potential must
+ * be multiplied by G_newton.
+ *
+ * @param mesh The #pm_mesh (containing the potential) to interpolate from.
+ * @param e The #engine (to check active status).
+ * @param gparts The #gpart to interpolate to.
+ * @param gcount The number of #gparts.
+ */
 void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
                                 const struct engine* e, struct gpart* gparts,
                                 int gcount) {
