@@ -467,9 +467,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 /**
  * @brief Prepare a particle for the force calculation.
  *
- * This function is called in the extra_ghost task to convert some quantities coming
- * from the gradient loop over neighbours into quantities ready to be used in the
- * force loop over neighbours.
+ * This function is called in the extra_ghost task to convert some quantities
+ * coming from the gradient loop over neighbours into quantities ready to be
+ * used in the force loop over neighbours.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -513,15 +513,15 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 
 /**
  * @brief Resets the variables that are required for a gradient calculation.
- * 
+ *
  * This function is called after hydro_prepare_gradient.
- * 
+ *
  * @param p The particle to act upon.
  * @param xp The extended particle data to act upon.
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
-    struct part *restrict p) {}
+    struct part* restrict p) {}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
