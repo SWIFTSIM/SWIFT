@@ -200,10 +200,16 @@ for i in range(num_order):
         print "Comparing different positions ! max difference:"
         index = np.argmax(exact_pos[:,0]**2 + exact_pos[:,1]**2 + exact_pos[:,2]**2 - pos[:,0]**2 - pos[:,1]**2 - pos[:,2]**2)
         print "SWIFT (id=%d):"%ids[index], pos[index,:], "exact (id=%d):"%exact_ids[index], exact_pos[index,:], "\n"
-
     
     # Compute the error norm
     diff = exact_a - a_grav
+    diff_pot = exact_pot - pot
+
+    # Correct for different normalization of potential
+    print "Difference in normalization of potential:", np.mean(diff_pot),
+    print "std_dev=", np.std(diff_pot), "99-percentile:", np.percentile(diff_pot, 99)-np.median(diff_pot), "1-percentile:", np.median(diff_pot) - np.percentile(diff_pot, 1)
+
+    exact_pot -= np.mean(diff_pot)
     diff_pot = exact_pot - pot
 
     norm_diff = np.sqrt(diff[:,0]**2 + diff[:,1]**2 + diff[:,2]**2)
