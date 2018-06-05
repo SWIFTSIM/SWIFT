@@ -33,11 +33,6 @@
 #include "riemann_checks.h"
 #include "riemann_vacuum.h"
 
-#ifndef EOS_IDEAL_GAS
-#error \
-    "The HLLC Riemann solver currently only supports and ideal gas equation of state. Either select this equation of state, or try using another Riemann solver!"
-#endif
-
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     const float *WL, const float *WR, const float *n, const float *vij,
     float *totflux) {
