@@ -679,6 +679,9 @@ double cosmology_get_a_from_z(const struct cosmology *c, double redshift) {
 /**
  * @brief Compute scale factor from time since big bang.
  *
+ * WARNING: This method has a low accuracy at high redshift.
+ * The relative error is around 1e-3 (testCosmology.c is measuring it).
+ *
  * @param c The current #cosmology.
  * @param t time since the big bang
  * @return The scale factor.

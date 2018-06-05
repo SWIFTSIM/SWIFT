@@ -23,7 +23,7 @@
 /* Includes. */
 #include "swift.h"
 
-#define N_CHECK 10
+#define N_CHECK 20
 #define TOLERANCE 1e-3
 
 void test_params_init(struct swift_params *params) {
@@ -58,17 +58,15 @@ int main(int argc, char *argv[]) {
 
   message("Start checking computation...");
 
-  double a[N_CHECK] = {0.1, 0.2, 0.3, 0.4, 0.5,
-		       0.6, 0.7, 0.8, 0.9, 1.0};
-
   for(int i=0; i < N_CHECK; i++) {
+    double a = 0.1 + 0.9 * i / (N_CHECK - 1.);
     /* Compute a(t(a)) and check if same results */
-    double tmp = cosmology_get_time_since_big_bang(&cosmo, a[i]);
+    double tmp = cosmology_get_time_since_big_bang(&cosmo, a);
     tmp = cosmology_get_scale_factor(&cosmo, tmp);
 
     /* check accuracy */
-    tmp = (tmp - a[i]) / a[i];
-    message("Accuracy of %f at a=%f", tmp, a[i]);
+    tmp = (tmp - a) / a;
+    message("Accuracy of %g at a=%g", tmp, a);
     assert(fabs(tmp) < TOLERANCE);
   }
 
