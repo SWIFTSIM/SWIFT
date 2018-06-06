@@ -606,8 +606,10 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 #ifdef EXTRA_HYDRO_LOOP
 
   struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
   const int count = c->count;
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
 
   TIMER_TIC;
 
@@ -625,11 +627,23 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
       /* Get a direct pointer on the part. */
       struct part *restrict p = &parts[i];
+      struct xpart *restrict xp = &xparts[i];
 
       if (part_is_active(p, e)) {
 
-        /* Get ready for a force calculation */
+        /* Finish the gradient calculation */
         hydro_end_gradient(p);
+
+        /* As of here, particle force variables will be set. */
+
+        /* Compute variables required for the force loop */
+        hydro_prepare_force(p, xp, cosmo);
+
+        /* The particle force values are now set.  Do _NOT_
+           try to read any particle density variables! */
+
+        /* Prepare the particle for the force loop over neighbours */
+        hydro_reset_acceleration(p);
       }
     }
   }
@@ -780,8 +794,23 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           }
         }
 
-        /* We now have a particle whose smoothing length has converged */
+/* We now have a particle whose smoothing length has converged */
 
+#ifdef EXTRA_HYDRO_LOOP
+
+        /* As of here, particle gradient variables will be set. */
+        /* The force variables are set in the extra ghost. */
+
+        /* Compute variables required for the gradient loop */
+        hydro_prepare_gradient(p, xp, cosmo);
+
+        /* The particle gradient values are now set.  Do _NOT_
+           try to read any particle density variables! */
+
+        /* Prepare the particle for the gradient loop over neighbours */
+        hydro_reset_gradient(p);
+
+#else
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
@@ -792,6 +821,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Prepare the particle for the force loop over neighbours */
         hydro_reset_acceleration(p);
+
+#endif /* EXTRA_HYDRO_LOOP */
       }
 
       /* We now need to treat the particles whose smoothing length had not
