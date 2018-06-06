@@ -103,8 +103,7 @@ k_i = 2. * pi / lambda_i
 zfac = (1. + z_c) / (1. + redshift)
 rho_s = rho_0 / (1 - zfac * cos(k_i * x_s))
 v_s = -H_0 * (1. + z_c) / sqrt(1. + redshift) * sin(k_i * x_s) / k_i
-T_s = T_i * \
-  (((1. + redshift) / (1. + z_i))**3 / (1. - zfac * cos(k_i * x_s)))**(2. / 3.)
+T_s = T_i * (((1. + redshift) / (1. + z_i))**3 / (1. - zfac * cos(k_i * x_s)))**(2. / 3.)
 P_s = zeros(1000)
 u_s = zeros(1000)
 s_s = zeros(1000)
@@ -127,6 +126,7 @@ plot(x, v, '.', color='r', ms=4.0)
 plot(x_s, v_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
+
 
 # Density profile --------------------------------
 subplot(232)
