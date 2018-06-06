@@ -978,23 +978,21 @@ void space_split(struct space *s, struct cell *cells, int nr_cells,
   threadpool_map(&s->e->threadpool, space_split_mapper, cells, nr_cells,
                  sizeof(struct cell), 0, s);
 
-  for(int cid = 0 ; cid < nr_cells; ++cid) {
+  for (int cid = 0; cid < nr_cells; ++cid) {
 
     const struct cell *c = &cells[cid];
 
-    for(int i = 0; i < c->gcount; ++i) {
+    for (int i = 0; i < c->gcount; ++i) {
 
       long long id_i = s->parts[-c->gparts[i].id_or_neg_offset].id;
-      
-      if(id_i == 1000) {
-	cid_check = cid;
-	message("cid_check = %d %d", cid_check, cid);
+
+      if (id_i == 1000) {
+        cid_check = cid;
+        message("cid_check = %d %d", cid_check, cid);
       }
     }
-
   }
 
-  
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -2613,14 +2611,11 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
   struct xpart *restrict xparts = s->xparts + index;
   for (int k = 0; k < count; k++) {
 
-    if(parts[k].id == 1000)
-      message("S (u) = %e", parts[k].entropy);
-    
+    if (parts[k].id == 1000) message("S (u) = %e", parts[k].entropy);
+
     hydro_convert_quantities(&parts[k], &xparts[k], cosmo);
 
-    if(parts[k].id == 1000)
-      message("S = %e", parts[k].entropy);
-	
+    if (parts[k].id == 1000) message("S = %e", parts[k].entropy);
   }
 }
 
