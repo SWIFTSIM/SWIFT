@@ -62,9 +62,9 @@ INLINE static void convert_gpart_vel(const struct engine* e,
   ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
 
   /* Conversion from internal units to peculiar velocities */
-  ret[0] *= cosmo->a2_inv;
-  ret[1] *= cosmo->a2_inv;
-  ret[2] *= cosmo->a2_inv;
+  ret[0] *= cosmo->a_inv;
+  ret[1] *= cosmo->a_inv;
+  ret[2] *= cosmo->a_inv;
 }
 
 /**

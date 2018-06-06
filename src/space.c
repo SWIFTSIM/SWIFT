@@ -2354,7 +2354,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const struct cosmology *cosmo = s->e->cosmology;
   const struct phys_const *phys_const = s->e->physical_constants;
   const struct unit_system *us = s->e->internal_units;
-  const float a_factor_vel = cosmo->a * cosmo->a;
+  const float a_factor_vel = cosmo->a;
 
   const struct hydro_props *hydro_props = s->e->hydro_properties;
   const float u_init = hydro_props->initial_internal_energy;
@@ -2429,7 +2429,7 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
   const struct space *restrict s = (struct space *)extra_data;
 
   const struct cosmology *cosmo = s->e->cosmology;
-  const float a_factor_vel = cosmo->a * cosmo->a;
+  const float a_factor_vel = cosmo->a;
   const struct gravity_props *grav_props = s->e->gravity_properties;
 
   for (int k = 0; k < count; k++) {
@@ -2486,7 +2486,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
 #endif
 
   const struct cosmology *cosmo = s->e->cosmology;
-  const float a_factor_vel = cosmo->a * cosmo->a;
+  const float a_factor_vel = cosmo->a;
 
   for (int k = 0; k < count; k++) {
     /* Convert velocities to internal units */

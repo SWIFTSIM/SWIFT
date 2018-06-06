@@ -113,9 +113,9 @@ INLINE static void convert_part_vel(const struct engine* e,
   hydro_get_drifted_velocities(p, xp, dt_kick_hydro, dt_kick_grav, ret);
 
   /* Conversion from internal units to peculiar velocities */
-  ret[0] *= cosmo->a2_inv;
-  ret[1] *= cosmo->a2_inv;
-  ret[2] *= cosmo->a2_inv;
+  ret[0] *= cosmo->a_inv;
+  ret[1] *= cosmo->a_inv;
+  ret[2] *= cosmo->a_inv;
 }
 
 INLINE static void convert_part_potential(const struct engine* e,
