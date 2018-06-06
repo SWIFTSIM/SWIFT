@@ -42,7 +42,7 @@ params = {'axes.labelsize': 10,
 'xtick.labelsize': 10,
 'ytick.labelsize': 10,
 'text.usetex': True,
- 'figure.figsize' : (6.45,6.45),
+ 'figure.figsize' : (9.90,6.45),
 'figure.subplot.left'    : 0.045,
 'figure.subplot.right'   : 0.99,
 'figure.subplot.bottom'  : 0.05,
@@ -112,21 +112,28 @@ unit_time_in_si = unit_time_in_cgs
 figure()
 
 # Velocity profile --------------------------------
-subplot(221)
+subplot(231)
 plot(x, v, '.', color='r', ms=4.0)
 plot(x_s, v_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
 
 # Density profile --------------------------------
-subplot(222)
-plot(x, phi, '.', color='r', ms=4.0)
-#plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
+subplot(232)
+plot(x, rho, '.', color='r', ms=4.0)
+plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
 
+# Potential profile --------------------------------
+subplot(233)
+plot(x, phi, '.', color='r', ms=4.0)
+#plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
+xlabel("${\\rm{Position}}~x$", labelpad=0)
+ylabel("${\\rm{Potential}}~\\phi$", labelpad=0)
+
 # Internal energy profile -------------------------
-subplot(223)
+subplot(234)
 #plot(x, u, '.', color='r', ms=4.0)
 #plot(x_s, u_s, '--', color='k', alpha=0.8, lw=1.2)
 u *= (unit_length_in_si**2 / unit_time_in_si**2)
@@ -136,10 +143,10 @@ print "z = {0:.2f}, T_avg = {1:.2f}".format(redshift, T.mean())
 plot(x, T, '.', color='r', ms=4.0)
 plot(x_s, T_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
+ylabel("${\\rm{Temperature}}~T$", labelpad=0)
 
 # Information -------------------------------------
-subplot(224, frameon=False)
+subplot(236, frameon=False)
 
 text(-0.49, 0.9, "Zeldovich pancake with  $\\gamma=%.3f$ in 1D at $t=%.2f$"%(gas_gamma,time), fontsize=10)
 text(-0.49, 0.8, "$z={0:.2f}$".format(redshift))
