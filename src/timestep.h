@@ -143,6 +143,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   /* Final time-step is minimum of hydro and gravity */
   float new_dt = min3(new_dt_hydro, new_dt_cooling, new_dt_grav);
 
+  if(p->id == 1000)
+    message("dt_hydro=%e dt_grav=%e", new_dt_hydro, new_dt_grav);
+  
   /* Limit change in smoothing length */
   const float dt_h_change =
       (p->force.h_dt != 0.0f)
@@ -151,14 +154,21 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   new_dt = min(new_dt, dt_h_change);
 
-  /* Apply the maximal displacement constraint (FLT_MAX  if non-cosmological)*/
+  /* Apply the maximal displacement constraint (FLT_MAX if non-cosmological)*/
   new_dt = min(new_dt, e->dt_max_RMS_displacement);
 
   /* Apply cosmology correction (This is 1 if non-cosmological) */
   new_dt *= e->cosmology->time_step_factor;
-
+  
+  if(p->id == 1000)
+    message("dt=%e factor=%e", new_dt, e->cosmology->time_step_factor);
+  
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
+
+  if(p->id == 1000)
+    message("dt=%e max_dt=%e dt_disp=%e", new_dt, e->dt_max, e->dt_max_RMS_displacement);
+  
   if (new_dt < e->dt_min)
     error("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
           new_dt, e->dt_min);

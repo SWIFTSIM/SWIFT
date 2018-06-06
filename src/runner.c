@@ -1119,6 +1119,12 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           dt_kick_therm = (ti_step / 2) * time_base;
         }
 
+	if(p->id == 1000) {
+	  message("a_grav=[%e %e %e]", p->gpart->a_grav[0], p->gpart->a_grav[1], p->gpart->a_grav[2]);
+	  message("a_hydr=[%e %e %e]", p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]);
+	  message("dt_kick_grav=%e dt_kick_hydro=%e", dt_kick_grav, dt_kick_hydro);
+	}
+	
         /* do the kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, cosmo,
                   hydro_props, ti_begin, ti_begin + ti_step / 2);
@@ -1285,6 +1291,13 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           dt_kick_therm = (ti_step / 2) * time_base;
         }
 
+	if(p->id == 1000) {
+	  message("a_grav=[%e %e %e]", p->gpart->a_grav[0], p->gpart->a_grav[1], p->gpart->a_grav[2]);
+	  message("a_hydr=[%e %e %e]", p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]);
+	  message("dt_kick_grav=%e dt_kick_hydro=%e", dt_kick_grav, dt_kick_hydro);
+	}
+
+	
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, cosmo,
                   hydro_props, ti_begin + ti_step / 2, ti_begin + ti_step);
@@ -1451,6 +1464,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
 
+	if(p->id == 1000) {
+	  message("new time_bin = %d max=%lld time_base=%e", p->time_bin, max_nr_timesteps, e->time_base);
+	}
+
+	
         /* Number of updated particles */
         updated++;
         if (p->gpart != NULL) g_updated++;
@@ -1699,14 +1717,20 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       if (gpart_is_active(gp, e)) {
 
-	if(e->s->parts[-gp->id_or_neg_offset].id == 1000)
-	  message("After mesh: pot=%e", gp->potential);
 	
         /* Finish the force calculation */
         gravity_end_force(gp, const_G);
 
 	if(e->s->parts[-gp->id_or_neg_offset].id == 1000)
-	  message("After mmultiply by G: pot=%e", gp->potential);
+	  message("After multiply by G: pot=%e", gp->potential);
+
+	if(e->s->parts[-gp->id_or_neg_offset].id == 1000)
+	  message("After multiply by G: a=[%e %e %e]", gp->a_grav[0], gp->a_grav[1], gp->a_grav[2]);
+	
+	if(e->s->parts[-gp->id_or_neg_offset].id == 1000) {
+	  message("After multiply by G: v=[%e %e %e]", gp->v_full[0], gp->v_full[1], gp->v_full[2]);
+	  message("After multiply by G: S=%e", e->s->parts[-gp->id_or_neg_offset].entropy);
+	}
 
 #ifdef SWIFT_NO_GRAVITY_BELOW_ID
 

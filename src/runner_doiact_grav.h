@@ -387,8 +387,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
         error("gpj not drifted to current time");
 #endif
 
-      long long id_i = e->s->parts[-gparts_i[pid].id_or_neg_offset].id;
-      long long id_j = e->s->parts[-gparts_j[pjd].id_or_neg_offset].id;
+      /* long long id_i = e->s->parts[-gparts_i[pid].id_or_neg_offset].id; */
+      /* long long id_j = e->s->parts[-gparts_j[pjd].id_or_neg_offset].id; */
 
       /* Interact! */
       float f_ij, pot_ij, f1_ij, corr;
@@ -396,18 +396,18 @@ static INLINE void runner_dopair_grav_pp_truncated(
                                           rlr_inv, &f_ij, &f1_ij, &corr,
                                           &pot_ij);
 
-      if (id_i == 1000 && id_j == 900 && pjd < gcount_j) {
-        message("--- Interacting part");
-        message("id=%lld mass=%e r=%e h=%e", id_j, mass_j, sqrtf(r2),
-                sqrtf(h2_i));
-        /* message("e->s->dim[0]=%e", e->s->dim[0]); */
-        message("dx=[%e %e %e]", dx, dy, dz);
-        message("pos_i=[%e %e %e]", x_i, y_i, z_i);
-        message("pos_j=[%e %e %e]", x_j, y_j, z_j);
-        message("fac=%e corr=%e fac2=%e", f1_ij, corr, pot_ij);
-        message("a=[%e %e %e]", f_ij * dx, f_ij * dy, f_ij * dz);
-	message("pot=%e", pot_ij);
-      }
+      /* if (id_i == 1000 && id_j == 900 && pjd < gcount_j) { */
+      /*   message("--- Interacting part"); */
+      /*   message("id=%lld mass=%e r=%e h=%e", id_j, mass_j, sqrtf(r2), */
+      /*           sqrtf(h2_i)); */
+      /*   /\* message("e->s->dim[0]=%e", e->s->dim[0]); *\/ */
+      /*   message("dx=[%e %e %e]", dx, dy, dz); */
+      /*   message("pos_i=[%e %e %e]", x_i, y_i, z_i); */
+      /*   message("pos_j=[%e %e %e]", x_j, y_j, z_j); */
+      /*   message("fac=%e corr=%e fac2=%e", f1_ij, corr, pot_ij); */
+      /*   message("a=[%e %e %e]", f_ij * dx, f_ij * dy, f_ij * dz); */
+      /* 	message("pot=%e", pot_ij); */
+      /* } */
 
       /* Store it back */
       a_x += f_ij * dx;
@@ -940,8 +940,8 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
         error("gpj not drifted to current time");
 #endif
 
-      long long id_i = e->s->parts[-gparts[pid].id_or_neg_offset].id;
-      long long id_j = e->s->parts[-gparts[pjd].id_or_neg_offset].id;
+      /* long long id_i = e->s->parts[-gparts[pid].id_or_neg_offset].id; */
+      /* long long id_j = e->s->parts[-gparts[pjd].id_or_neg_offset].id; */
 
       /* Interact! */
       float f_ij, pot_ij, f1_ij, corr;
@@ -949,31 +949,31 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
                                           rlr_inv, &f_ij, &f1_ij, &corr,
                                           &pot_ij);
 
-      if (id_i == 1000 && id_j == 901) {
-        message("--- Interacting part");
-        message("id=%lld mass=%e r=%e h=%e", id_j, mass_j, sqrtf(r2),
-                sqrtf(h2_i));
-        /* message("e->s->dim[0]=%e", e->s->dim[0]); */
-        message("dx=[%e %e %e]", dx, dy, dz);
-        message("pos_i=[%e %e %e]", x_i, y_i, z_i);
-        message("pos_j=[%e %e %e]", x_j, y_j, z_j);
-        message("fac=%e corr=%e fac2=%e", f1_ij, corr, pot_ij);
-        message("a=[%e %e %e]", f_ij * dx, f_ij * dy, f_ij * dz);
-	message("pot=%e", pot_ij);
-      }
+      /* if (id_i == 1000 && id_j == 901) { */
+      /*   message("--- Interacting part"); */
+      /*   message("id=%lld mass=%e r=%e h=%e", id_j, mass_j, sqrtf(r2), */
+      /*           sqrtf(h2_i)); */
+      /*   /\* message("e->s->dim[0]=%e", e->s->dim[0]); *\/ */
+      /*   message("dx=[%e %e %e]", dx, dy, dz); */
+      /*   message("pos_i=[%e %e %e]", x_i, y_i, z_i); */
+      /*   message("pos_j=[%e %e %e]", x_j, y_j, z_j); */
+      /*   message("fac=%e corr=%e fac2=%e", f1_ij, corr, pot_ij); */
+      /*   message("a=[%e %e %e]", f_ij * dx, f_ij * dy, f_ij * dz); */
+      /* 	message("pot=%e", pot_ij); */
+      /* } */
 
 
-      if (0 && id_i == 1000) {
-        message("--- Interacting part");
-        message("id=%lld mass=%e r=%e h=%e", id_j, mass_j, sqrtf(r2),
-                sqrtf(h2_i));
-        /* message("e->s->dim[0]=%e", e->s->dim[0]); */
-        message("dx=[%e %e %e]", dx, dy, dz);
-        message("pos_i=[%e %e %e]", x_i, y_i, z_i);
-        message("pos_j=[%e %e %e]", x_j, y_j, z_j);
-        message("fac=%e corr=%e fac2=%e", f1_ij, corr, f_ij);
-        message("a=[%e %e %e]", f_ij * dx, f_ij * dy, f_ij * dz);
-      }
+      /* if (0 && id_i == 1000) { */
+      /*   message("--- Interacting part"); */
+      /*   message("id=%lld mass=%e r=%e h=%e", id_j, mass_j, sqrtf(r2), */
+      /*           sqrtf(h2_i)); */
+      /*   /\* message("e->s->dim[0]=%e", e->s->dim[0]); *\/ */
+      /*   message("dx=[%e %e %e]", dx, dy, dz); */
+      /*   message("pos_i=[%e %e %e]", x_i, y_i, z_i); */
+      /*   message("pos_j=[%e %e %e]", x_j, y_j, z_j); */
+      /*   message("fac=%e corr=%e fac2=%e", f1_ij, corr, f_ij); */
+      /*   message("a=[%e %e %e]", f_ij * dx, f_ij * dy, f_ij * dz); */
+      /* } */
 
       /* Store it back */
       a_x += f_ij * dx;
@@ -1302,7 +1302,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   for(int i = 0; i < ci->count; ++i)
     if(ci->parts[i].id == 1000)
-      message("Hello!");
+      printf("\n");
   
   /* Recover the local multipole */
   struct gravity_tensors *const multi_i = ci->multipole;

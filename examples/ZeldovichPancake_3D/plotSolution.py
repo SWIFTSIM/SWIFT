@@ -85,6 +85,15 @@ phi = sim["/PartType0/Potential"][:]
 
 x -= 0.5 * boxSize
 
+sim_g = h5py.File("snapshot_%03d.hdf5"%snap, "r")
+x_g = sim_g["/PartType0/Coordinates"][:,0]
+v_g = sim_g["/PartType0/Velocities"][:,0]
+u_g = sim_g["/PartType0/InternalEnergy"][:]
+rho_g = sim_g["/PartType0/Density"][:]
+phi_g = sim_g["/PartType0/Potential"][:]
+
+x_g -= 0.5 * boxSize
+
 # Derived parameters
 rho_0 = m.sum() / (boxSize**3) # critical density of the box
 lambda_i = boxSize             # wavelength of the perturbation
@@ -113,6 +122,7 @@ figure()
 
 # Velocity profile --------------------------------
 subplot(231)
+plot(x_g, v_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, v, '.', color='r', ms=4.0)
 plot(x_s, v_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
@@ -120,6 +130,7 @@ ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
 
 # Density profile --------------------------------
 subplot(232)
+plot(x_g, rho_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, rho, '.', color='r', ms=4.0)
 plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
@@ -127,6 +138,7 @@ ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
 
 # Potential profile --------------------------------
 subplot(233)
+plot(x_g, phi_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, phi, '.', color='r', ms=4.0)
 #plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
@@ -137,9 +149,13 @@ subplot(234)
 #plot(x, u, '.', color='r', ms=4.0)
 #plot(x_s, u_s, '--', color='k', alpha=0.8, lw=1.2)
 u *= (unit_length_in_si**2 / unit_time_in_si**2)
+u_g *= (unit_length_in_si**2 / unit_time_in_si**2)
 u /= a**(3 * (gas_gamma - 1.))
+u_g /= a**(3 * (gas_gamma - 1.))
 T = (gas_gamma - 1.) * u * mH_in_kg / k_in_J_K
+T_g = (gas_gamma - 1.) * u_g * mH_in_kg / k_in_J_K
 print "z = {0:.2f}, T_avg = {1:.2f}".format(redshift, T.mean())
+plot(x_g, T_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, T, '.', color='r', ms=4.0)
 plot(x_s, T_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
