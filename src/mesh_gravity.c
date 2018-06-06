@@ -479,7 +479,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct engine* e) {
  * @param mesh The #pm_mesh (containing the potential) to interpolate from.
  * @param e The #engine (to check active status).
  * @param gparts The #gpart to interpolate to.
- * @param gcount The number of #gparts.
+ * @param gcount The number of #gpart.
  */
 void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
                                 const struct engine* e, struct gpart* gparts,

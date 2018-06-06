@@ -46,21 +46,21 @@ step = int(sys.argv[1])
 periodic = int(sys.argv[2])
 
 # Find the files for the different expansion orders
-order_list = glob.glob("gravity_checks_swift_step%d_order*.dat"%step)
+order_list = glob.glob("gravity_checks_swift_step%.4d_order*.dat"%step)
 num_order = len(order_list)
 
 # Get the multipole orders
 order = np.zeros(num_order)
 for i in range(num_order):
-    order[i] = int(order_list[i][32])
+    order[i] = int(order_list[i][35])
 order = sorted(order)
 order_list = sorted(order_list)
 
 # Read the exact accelerations first
 if periodic:
-    data = np.loadtxt('gravity_checks_exact_periodic_step%d.dat'%step)
+    data = np.loadtxt('gravity_checks_exact_periodic_step%.4d.dat'%step)
 else:
-    data = np.loadtxt('gravity_checks_exact_step%d.dat'%step)
+    data = np.loadtxt('gravity_checks_exact_step%.4d.dat'%step)
 exact_ids = data[:,0]
 exact_pos = data[:,1:4]
 exact_a = data[:,4:7]
@@ -303,5 +303,5 @@ plt.ylim(0,1.75)
 
 
 
-plt.savefig("gravity_checks_step%d.png"%step, dpi=200)
-plt.savefig("gravity_checks_step%d.pdf"%step, dpi=200)
+plt.savefig("gravity_checks_step%.4d.png"%step, dpi=200)
+plt.savefig("gravity_checks_step%.4d.pdf"%step, dpi=200)
