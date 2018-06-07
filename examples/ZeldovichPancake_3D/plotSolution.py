@@ -86,17 +86,20 @@ phi = sim["/PartType0/Potential"][:]
 
 x -= 0.5 * boxSize
 
-filename_g = "snapshot_%03d.hdf5"%snap
-print filename_g
+if snap > 40:
+    filename_g = "snapshot_%03d.hdf5"%(snap+1)
+else:
+    filename_g = "snapshot_%03d.hdf5"%(snap)
 if os.path.exists(filename_g):
-    print "exists!"
     sim_g = h5py.File(filename_g, "r")
     x_g = sim_g["/PartType0/Coordinates"][:,0]
     v_g = sim_g["/PartType0/Velocities"][:,0]
     u_g = sim_g["/PartType0/InternalEnergy"][:]
     rho_g = sim_g["/PartType0/Density"][:]
     phi_g = sim_g["/PartType0/Potential"][:]
-
+    a_g = sim_g["/Header"].attrs["Time"]
+    print "Gadget Scale-factor:", a_g, "redshift:", 1/a_g - 1.
+    
     x_g -= 0.5 * boxSize
 else:
     x_g = np.zeros(1)
@@ -109,15 +112,6 @@ else:
 rho_0 = m.sum() / (boxSize**3) # critical density of the box
 lambda_i = boxSize             # wavelength of the perturbation
 
-#x_s = linspace(-0.5 * lambda_i, 0.5 * lambda_i, 256)
-#k_i = 2. * pi / lambda_i
-#zfac = (1. + z_c) / (1. + redshift)
-#rho_s = rho_0 / (1 - zfac * cos(k_i * x_s))
-#v_s = -H_0 * (1. + z_c) / sqrt(1. + redshift) * sin(k_i * x_s) / k_i
-#T_s = T_i * (((1. + redshift) / (1. + z_i))**3 / (1. - zfac * cos(k_i * x_s)))**(2. / 3.)
-#P_s = zeros(256)
-#u_s = zeros(256)
-#s_s = zeros(256)
 
 # Solution taken from Springel 2010. Eqs. 127 - 130
 q = linspace(-0.5 * lambda_i, 0.5 * lambda_i, 256)
@@ -146,25 +140,25 @@ if np.size(x_g) > 1:
     plot(x_g, v_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, v, '.', color='r', ms=4.0)
 plot(x_s, v_s, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
+xlabel("${\\rm{Comoving Position}}~x$", labelpad=0)
+ylabel("${\\rm{Peculiar Velocity}}~v_x$", labelpad=0)
 
 
 # Density profile --------------------------------
-subplot(232)
+subplot(232, yscale="log")
 if np.size(x_g) > 1:
-    plot(x_g, rho_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
-plot(x, rho, '.', color='r', ms=4.0)
-plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
+    plot(x_g, rho_g/rho_0, 's', color='g', alpha=0.8, lw=1.2, ms=4)
+plot(x, rho/rho_0, '.', color='r', ms=4.0)
+plot(x_s, rho_s/rho_0, '--', color='k', alpha=0.8, lw=1.2)
+xlabel("${\\rm{Comoving Position}}~x$", labelpad=0)
+ylabel("${\\rm{Density}}~\\rho / \\rho_0$", labelpad=0)
 
 # Potential profile --------------------------------
 subplot(233)
 if np.size(x_g) > 1:
     plot(x_g, phi_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, phi, '.', color='r', ms=4.0)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
+xlabel("${\\rm{Comoving Position}}~x$", labelpad=0)
 ylabel("${\\rm{Potential}}~\\phi$", labelpad=0)
 
 # Internal energy profile -------------------------
@@ -180,7 +174,7 @@ if np.size(x_g) > 1:
     plot(x_g, T_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, T, '.', color='r', ms=4.0)
 plot(x_s, T_s, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
+xlabel("${\\rm{Comoving Position}}~x$", labelpad=0)
 ylabel("${\\rm{Temperature}}~T$", labelpad=0)
 
 # Information -------------------------------------
