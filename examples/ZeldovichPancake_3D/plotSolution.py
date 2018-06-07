@@ -33,6 +33,7 @@ import matplotlib
 matplotlib.use("Agg")
 from pylab import *
 import h5py
+import os.path
 
 # Plot parameters
 params = {'axes.labelsize': 10,
@@ -85,28 +86,48 @@ phi = sim["/PartType0/Potential"][:]
 
 x -= 0.5 * boxSize
 
-sim_g = h5py.File("snapshot_%03d.hdf5"%snap, "r")
-x_g = sim_g["/PartType0/Coordinates"][:,0]
-v_g = sim_g["/PartType0/Velocities"][:,0]
-u_g = sim_g["/PartType0/InternalEnergy"][:]
-rho_g = sim_g["/PartType0/Density"][:]
-phi_g = sim_g["/PartType0/Potential"][:]
+filename_g = "snapshot_%03d.hdf5"%snap
+print filename_g
+if os.path.exists(filename_g):
+    print "exists!"
+    sim_g = h5py.File(filename_g, "r")
+    x_g = sim_g["/PartType0/Coordinates"][:,0]
+    v_g = sim_g["/PartType0/Velocities"][:,0]
+    u_g = sim_g["/PartType0/InternalEnergy"][:]
+    rho_g = sim_g["/PartType0/Density"][:]
+    phi_g = sim_g["/PartType0/Potential"][:]
 
-x_g -= 0.5 * boxSize
+    x_g -= 0.5 * boxSize
+else:
+    x_g = np.zeros(1)
+    v_g = np.zeros(1)
+    u_g = np.zeros(1)
+    rho_g = np.zeros(1)
+    phi_g = np.zeros(1)
 
 # Derived parameters
 rho_0 = m.sum() / (boxSize**3) # critical density of the box
 lambda_i = boxSize             # wavelength of the perturbation
 
-x_s = linspace(-0.5 * lambda_i, 0.5 * lambda_i, 1000)
+#x_s = linspace(-0.5 * lambda_i, 0.5 * lambda_i, 256)
+#k_i = 2. * pi / lambda_i
+#zfac = (1. + z_c) / (1. + redshift)
+#rho_s = rho_0 / (1 - zfac * cos(k_i * x_s))
+#v_s = -H_0 * (1. + z_c) / sqrt(1. + redshift) * sin(k_i * x_s) / k_i
+#T_s = T_i * (((1. + redshift) / (1. + z_i))**3 / (1. - zfac * cos(k_i * x_s)))**(2. / 3.)
+#P_s = zeros(256)
+#u_s = zeros(256)
+#s_s = zeros(256)
+
+# Solution taken from Springel 2010. Eqs. 127 - 130
+q = linspace(-0.5 * lambda_i, 0.5 * lambda_i, 256)
 k_i = 2. * pi / lambda_i
 zfac = (1. + z_c) / (1. + redshift)
-rho_s = rho_0 / (1 - zfac * cos(k_i * x_s))
-v_s = -H_0 * (1. + z_c) / sqrt(1. + redshift) * sin(k_i * x_s) / k_i
-T_s = T_i * (((1. + redshift) / (1. + z_i))**3 / (1. - zfac * cos(k_i * x_s)))**(2. / 3.)
-P_s = zeros(1000)
-u_s = zeros(1000)
-s_s = zeros(1000)
+x_s = q - zfac * sin(k_i * q) / k_i
+rho_s = rho_0 / (1. - zfac * cos(k_i * q))
+v_s = -H_0 * (1. + z_c) / sqrt(1. + redshift) * sin(k_i * q) / k_i
+T_s = T_i * (((1. + redshift) / ( 1. + z_i))**3. * rho_s / rho_0)**(2. / 3.)
+
 
 unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"]
 unit_mass_in_cgs = sim["/Units"].attrs["Unit mass in cgs (U_M)"]
@@ -121,7 +142,8 @@ figure()
 
 # Velocity profile --------------------------------
 subplot(231)
-plot(x_g, v_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
+if np.size(x_g) > 1:
+    plot(x_g, v_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, v, '.', color='r', ms=4.0)
 plot(x_s, v_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
@@ -130,7 +152,8 @@ ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
 
 # Density profile --------------------------------
 subplot(232)
-plot(x_g, rho_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
+if np.size(x_g) > 1:
+    plot(x_g, rho_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, rho, '.', color='r', ms=4.0)
 plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
@@ -138,16 +161,14 @@ ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
 
 # Potential profile --------------------------------
 subplot(233)
-plot(x_g, phi_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
+if np.size(x_g) > 1:
+    plot(x_g, phi_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, phi, '.', color='r', ms=4.0)
-#plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Potential}}~\\phi$", labelpad=0)
 
 # Internal energy profile -------------------------
-subplot(234)
-#plot(x, u, '.', color='r', ms=4.0)
-#plot(x_s, u_s, '--', color='k', alpha=0.8, lw=1.2)
+subplot(234, yscale="log")
 u *= (unit_length_in_si**2 / unit_time_in_si**2)
 u_g *= (unit_length_in_si**2 / unit_time_in_si**2)
 u /= a**(3 * (gas_gamma - 1.))
@@ -155,7 +176,8 @@ u_g /= a**(3 * (gas_gamma - 1.))
 T = (gas_gamma - 1.) * u * mH_in_kg / k_in_J_K
 T_g = (gas_gamma - 1.) * u_g * mH_in_kg / k_in_J_K
 print "z = {0:.2f}, T_avg = {1:.2f}".format(redshift, T.mean())
-plot(x_g, T_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
+if np.size(x_g) > 1:
+    plot(x_g, T_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, T, '.', color='r', ms=4.0)
 plot(x_s, T_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
@@ -176,4 +198,4 @@ ylim(0, 1)
 xticks([])
 yticks([])
 
-savefig("ZeldovichPancake.png", dpi=200)
+savefig("ZeldovichPancake_%.3d.png"%snap, dpi=200)
