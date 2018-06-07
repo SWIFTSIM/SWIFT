@@ -33,6 +33,7 @@
 /* Local headers. */
 #include "inline.h"
 #include "kernel_gravity.h"
+#include "kernel_long_gravity.h"
 
 /**
  * @brief Structure containing all the derivatives of the potential field
@@ -40,7 +41,7 @@
  */
 struct potential_derivatives_M2L {
 
-  /* 0th order terms */
+  /* 0th order term */
   float D_000;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
@@ -124,11 +125,14 @@ struct potential_derivatives_M2P {
  * @param r_inv Inverse norm of distance vector
  * @param eps Softening length.
  * @param eps_inv Inverse of softening length.
+ * @param periodic Is the calculation periodic ?
+ * @param rs_inv
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
 compute_potential_derivatives_M2L(float r_x, float r_y, float r_z, float r2,
                                   float r_inv, float eps, float eps_inv,
+                                  int periodic, float rs_inv,
                                   struct potential_derivatives_M2L *pot) {
 
   float Dt_1;
@@ -148,8 +152,8 @@ compute_potential_derivatives_M2L(float r_x, float r_y, float r_z, float r2,
   float Dt_11;
 #endif
 
-  /* Un-softened case */
-  if (r2 > eps * eps) {
+  /* Un-softened un-truncated case (Newtonian potential) */
+  if (!periodic && r2 > eps * eps) {
 
     Dt_1 = r_inv;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
@@ -171,6 +175,52 @@ compute_potential_derivatives_M2L(float r_x, float r_y, float r_z, float r2,
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
 #endif
+    /* Un-softened truncated case */
+  } else if (periodic && r2 > eps * eps) {
+
+    /* Get the derivatives of the truncated potential */
+    const float r = r2 * r_inv;
+    struct truncated_derivatives derivs;
+    kernel_long_grav_derivatives(r, rs_inv, &derivs);
+
+    Dt_1 = derivs.chi_0 * r_inv;
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+    const float r_inv2 = r_inv * r_inv;
+    const float r_inv3 = r_inv2 * r_inv;
+    Dt_3 = (r * derivs.chi_1 - derivs.chi_0) * r_inv3;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+    const float r_inv5 = r_inv2 * r_inv3;
+    Dt_5 =
+        (r * r * derivs.chi_2 - 3.f * r * derivs.chi_1 + 3.f * derivs.chi_0) *
+        r_inv5;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+    const float r_inv7 = r_inv2 * r_inv5;
+    Dt_7 = (r * r * r * derivs.chi_3 - 6.f * r * r * derivs.chi_2 +
+            15.f * r * derivs.chi_1 - 15.f * derivs.chi_0) *
+           r_inv7;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+    const float r_inv9 = r_inv2 * r_inv7;
+    Dt_9 = (r * r * r * r * derivs.chi_4 - 10.f * r * r * r * derivs.chi_3 +
+            45.f * r * r * derivs.chi_2 - 105.f * r * derivs.chi_1 +
+            105.f * derivs.chi_0) *
+           r_inv9;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+    const float r_inv11 = r_inv2 * r_inv9;
+    Dt_11 = (r * r * r * r * r * derivs.chi_5 -
+             15.f * r * r * r * r * derivs.chi_4 +
+             105.f * r * r * r * derivs.chi_3 - 420.f * r * r * derivs.chi_2 +
+             945.f * r * derivs.chi_1 - 945.f * derivs.chi_0) *
+            r_inv11;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
+#endif
+
+    /* Softened case */
 
   } else {
     const float r = r2 * r_inv;

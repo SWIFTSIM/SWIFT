@@ -174,8 +174,8 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const struct gravity_props *props = e->gravity_properties;
-  // const float a_smooth = e->gravity_properties->a_smooth;
-  // const float rlr_inv = 1. / (a_smooth * ci->super->width[0]);
+  const float a_smooth = e->mesh->a_smooth;
+  const float rlr_inv = 1. / a_smooth;
 
   TIMER_TIC;
 
@@ -206,11 +206,8 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
         cj->ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 
   /* Let's interact at this level */
-  if (0)
-    gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
-                cj->multipole->CoM, props, periodic, dim);
-
-  runner_dopair_grav_pp(r, ci, cj, 0);
+  gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
+              cj->multipole->CoM, props, periodic, dim, rlr_inv);
 
   TIMER_TOC(timer_dopair_grav_mm);
 }

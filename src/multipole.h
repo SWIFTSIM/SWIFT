@@ -1521,9 +1521,7 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
                                const struct multipole *m_a,
                                const double pos_b[3], const double pos_a[3],
                                const struct gravity_props *props, int periodic,
-                               const double dim[3]) {
-
-  error("ooo");
+                               const double dim[3], float rs_inv) {
 
   /* Recover some constants */
   const float eps = props->epsilon_cur;
@@ -1547,7 +1545,8 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
 
   /* Compute all derivatives */
   struct potential_derivatives_M2L pot;
-  compute_potential_derivatives_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv, &pot);
+  compute_potential_derivatives_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
+                                    periodic, rs_inv, &pot);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Count interactions */
@@ -2264,7 +2263,7 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
 #endif
 
   // MATTHIEU
-  return;
+  // return;
 
   /* Local accumulator */
   double a_grav[3] = {0., 0., 0.};
