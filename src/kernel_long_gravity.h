@@ -47,34 +47,38 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_derivatives(
     const float r, const float rs_inv,
     struct truncated_derivatives *const derivs) {
 
-  const float constant1 = 2.f * rs_inv;
-  const float x = constant1 * r;
+  /* Powers of 2/r_s */
+  const float c0 = 1.f;
+  const float c1 = 2.f * rs_inv;
+  const float c2 = c1 * c1;
+  const float c3 = c2 * c1;
+  const float c4 = c3 * c1;
+  const float c5 = c4 * c1;
 
+  /* 2r / r_s */
+  const float x = c1 * r;
+
+  /* e^(2r / r_s) */
   const float exp_x = expf(x);  // good_approx_expf(x);
-  const float alpha_inv = 1.f + exp_x;
 
-  const float alpha1 = 1.f / alpha_inv;
-  const float alpha2 = alpha1 * alpha1;
-  const float alpha3 = alpha2 * alpha1;
-  const float alpha4 = alpha3 * alpha1;
-  const float alpha5 = alpha4 * alpha1;
-  const float alpha6 = alpha5 * alpha1;
+  /* 1 / alpha(w) */
+  const float a_inv = 1.f + exp_x;
 
-  const float constant2 = constant1 * constant1;
-  const float constant3 = constant2 * constant1;
-  const float constant4 = constant3 * constant1;
-  const float constant5 = constant4 * constant1;
+  /* Powers of alpha */
+  const float a1 = 1.f / a_inv;
+  const float a2 = a1 * a1;
+  const float a3 = a2 * a1;
+  const float a4 = a3 * a1;
+  const float a5 = a4 * a1;
+  const float a6 = a5 * a1;
 
-  derivs->chi_0 = 2.f * (1.f - exp_x * alpha1);
-  derivs->chi_1 = constant1 * (2.f * alpha2 - 2.f * alpha1);
-  derivs->chi_2 = constant2 * (4.f * alpha3 - 6.f * alpha2 + 2.f * alpha1);
-  derivs->chi_3 = constant3 * (12.f * alpha4 - 24.f * alpha3 + 14.f * alpha2 -
-                               2.f * alpha1);
-  derivs->chi_4 = constant4 * (48.f * alpha5 - 120.f * alpha4 + 100.f * alpha3 -
-                               30.f * alpha2 + 2.f * alpha1);
-  derivs->chi_5 =
-      constant5 * (240.f * alpha6 - 720.f * alpha5 + 780.f * alpha4 -
-                   360.f * alpha3 + 62.f * alpha2 - 2.f * alpha1);
+  /* Derivatives of \chi */
+  derivs->chi_0 = -2.f * exp_x * c0 * a1 + 2.f;
+  derivs->chi_1 = -2.f * exp_x * c1 * a2;
+  derivs->chi_2 = -2.f * exp_x * c2 * (2.f * a3 - a2);
+  derivs->chi_3 = -2.f * exp_x * c3 * (6.f * a4 - 6.f * a3 + a2);
+  derivs->chi_4 = -2.f * exp_x * c4 * (24.f * a5 - 36.f * a4 + 14.f * a3 - a2);
+  derivs->chi_5 = -2.f * exp_x * c5 * (120.f * a6 - 240.f * a5 + 150.f * a4 - 30.f * a3 + a2);
 }
 
 /**
