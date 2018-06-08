@@ -14,7 +14,7 @@ long-range truncation function. We define
   \alpha(w) \equiv \left(1 + e^w\right)^{-1} \nonumber
 \end{equation}
 and compute its derivatives in terms of powers of $\alpha$ (note the
-difference in notation between powers $\alpha^n$ and n-th derivative
+difference in notation between powers $\alpha^n$ and n-th derivatives
 $\alpha^{(n)}$)\footnote{This can be computed by \textsc{Mathematica}
   using the expression \texttt{Apart[D[1/(1 + Exp[w]), {w, n}]]} for
   the n-th derivative.}:
@@ -53,14 +53,15 @@ $\chi(r,r_s) \equiv 2 - 2\sigma(2r/r_s)$ and its derivatives
 \end{align}
 In the Newtonian limit ($r_s\rightarrow\infty$) the first expression
 reduces to $\chi(r,r_s) = 1$ whilst all higher-order derivatives
-vanish. All these derivatives can be computed easily as they are
-simple polynomials of $\alpha(2r/r_s)$. They involve one exponential
-and one inversion for the initial calculation of $\alpha$ and all the
-other terms can be obtained very eeficiently on modern architectures
-as they only involve \emph{fused-multiple-add} operations.We can now
-construct common quantities that appear in derivatives of multiple
-orders of the truncated an softened gravity field
-$\varphi (\mathbf{r}, r_s, H) \equiv \frac{1}{r}\chi(r,r_s)$:
+vanish. In the limit $r\rightarrow\infty$ (and $r_s < \infty$), all terms vanish. All these
+derivatives can be computed easily as they are simple polynomials of
+$\alpha(2r/r_s)$. They involve one exponential and one inversion for
+the initial calculation of $\alpha$ and all the other terms can be
+obtained very eeficiently on modern architectures as they only involve
+\emph{fused-multiple-add} operations.We can now construct common
+quantities that appear in derivatives of multiple orders of the
+truncated an softened gravity field $\varphi (\mathbf{r}, r_s, H)
+\equiv \frac{1}{r}\chi(r,r_s)$:
 
 
 % \begin{align}

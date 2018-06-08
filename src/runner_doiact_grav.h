@@ -174,8 +174,8 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const struct gravity_props *props = e->gravity_properties;
-  const float a_smooth = e->mesh->a_smooth;
-  const float rlr_inv = 1. / a_smooth;
+  const float rlr = e->mesh->a_smooth;
+  const float rlr_inv = 1.f / rlr;
 
   TIMER_TIC;
 

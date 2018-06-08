@@ -78,7 +78,8 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_derivatives(
   derivs->chi_2 = -2.f * exp_x * c2 * (2.f * a3 - a2);
   derivs->chi_3 = -2.f * exp_x * c3 * (6.f * a4 - 6.f * a3 + a2);
   derivs->chi_4 = -2.f * exp_x * c4 * (24.f * a5 - 36.f * a4 + 14.f * a3 - a2);
-  derivs->chi_5 = -2.f * exp_x * c5 * (120.f * a6 - 240.f * a5 + 150.f * a4 - 30.f * a3 + a2);
+  derivs->chi_5 = -2.f * exp_x * c5 *
+                  (120.f * a6 - 240.f * a5 + 150.f * a4 - 30.f * a3 + a2);
 }
 
 /**

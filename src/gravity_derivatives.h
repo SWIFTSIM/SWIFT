@@ -175,6 +175,7 @@ compute_potential_derivatives_M2L(float r_x, float r_y, float r_z, float r2,
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
 #endif
+
     /* Un-softened truncated case */
   } else if (periodic && r2 > eps * eps) {
 
@@ -221,7 +222,6 @@ compute_potential_derivatives_M2L(float r_x, float r_y, float r_z, float r2,
 #endif
 
     /* Softened case */
-
   } else {
     const float r = r2 * r_inv;
     const float u = r * eps_inv;

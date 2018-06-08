@@ -9,6 +9,11 @@ then
     echo "Generating 2nd figures..."
     python plot_mesh.py
 fi
+if [ ! -e alpha_powers.pdf ]
+then
+    echo "Generating derivative figures..."
+    python plot_derivatives.py
+fi
 echo "Generating PDF..."
 pdflatex -jobname=fmm fmm_standalone.tex
 bibtex fmm.aux
