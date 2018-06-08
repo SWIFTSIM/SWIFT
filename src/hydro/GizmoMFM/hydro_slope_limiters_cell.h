@@ -62,17 +62,17 @@ hydro_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
       max(pj->primitives.rho, pi->primitives.limiter.rho[1]);
 
   pi->primitives.limiter.v[0][0] =
-      min(pj->primitives.v[0], pi->primitives.limiter.v[0][0]);
+      min(pj->v[0], pi->primitives.limiter.v[0][0]);
   pi->primitives.limiter.v[0][1] =
-      max(pj->primitives.v[0], pi->primitives.limiter.v[0][1]);
+      max(pj->v[0], pi->primitives.limiter.v[0][1]);
   pi->primitives.limiter.v[1][0] =
-      min(pj->primitives.v[1], pi->primitives.limiter.v[1][0]);
+      min(pj->v[1], pi->primitives.limiter.v[1][0]);
   pi->primitives.limiter.v[1][1] =
-      max(pj->primitives.v[1], pi->primitives.limiter.v[1][1]);
+      max(pj->v[1], pi->primitives.limiter.v[1][1]);
   pi->primitives.limiter.v[2][0] =
-      min(pj->primitives.v[2], pi->primitives.limiter.v[2][0]);
+      min(pj->v[2], pi->primitives.limiter.v[2][0]);
   pi->primitives.limiter.v[2][1] =
-      max(pj->primitives.v[2], pi->primitives.limiter.v[2][1]);
+      max(pj->v[2], pi->primitives.limiter.v[2][1]);
 
   pi->primitives.limiter.P[0] =
       min(pj->primitives.P, pi->primitives.limiter.P[0]);
@@ -130,8 +130,8 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
                    gradv[0][2] * gradv[0][2]);
   if (gradtrue) {
     gradtrue *= p->primitives.limiter.maxr;
-    const float gradmax = p->primitives.limiter.v[0][1] - p->primitives.v[0];
-    const float gradmin = p->primitives.v[0] - p->primitives.limiter.v[0][0];
+    const float gradmax = p->primitives.limiter.v[0][1] - p->v[0];
+    const float gradmin = p->v[0] - p->primitives.limiter.v[0][0];
     const float gradtrue_inv = 1.f / gradtrue;
     const float alpha =
         min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
@@ -144,8 +144,8 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
                    gradv[1][2] * gradv[1][2]);
   if (gradtrue) {
     gradtrue *= p->primitives.limiter.maxr;
-    const float gradmax = p->primitives.limiter.v[1][1] - p->primitives.v[1];
-    const float gradmin = p->primitives.v[1] - p->primitives.limiter.v[1][0];
+    const float gradmax = p->primitives.limiter.v[1][1] - p->v[1];
+    const float gradmin = p->v[1] - p->primitives.limiter.v[1][0];
     const float gradtrue_inv = 1.f / gradtrue;
     const float alpha =
         min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
@@ -158,8 +158,8 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
                    gradv[2][2] * gradv[2][2]);
   if (gradtrue) {
     gradtrue *= p->primitives.limiter.maxr;
-    const float gradmax = p->primitives.limiter.v[2][1] - p->primitives.v[2];
-    const float gradmin = p->primitives.v[2] - p->primitives.limiter.v[2][0];
+    const float gradmax = p->primitives.limiter.v[2][1] - p->v[2];
+    const float gradmin = p->v[2] - p->primitives.limiter.v[2][0];
     const float gradtrue_inv = 1.f / gradtrue;
     const float alpha =
         min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);

@@ -81,14 +81,14 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
     }
   }
   Wi[0] = pi->primitives.rho;
-  Wi[1] = pi->primitives.v[0];
-  Wi[2] = pi->primitives.v[1];
-  Wi[3] = pi->primitives.v[2];
+  Wi[1] = pi->v[0];
+  Wi[2] = pi->v[1];
+  Wi[3] = pi->v[2];
   Wi[4] = pi->primitives.P;
   Wj[0] = pj->primitives.rho;
-  Wj[1] = pj->primitives.v[0];
-  Wj[2] = pj->primitives.v[1];
-  Wj[3] = pj->primitives.v[2];
+  Wj[1] = pj->v[0];
+  Wj[2] = pj->v[1];
+  Wj[3] = pj->v[2];
   Wj[4] = pj->primitives.P;
 
   /* Compute kernel of pi. */
@@ -159,25 +159,25 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
         wi_dx * dx[2] * (pi->primitives.rho - pj->primitives.rho) * r_inv;
 
     pi->primitives.gradients.v[0][0] -=
-        wi_dx * dx[0] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
+        wi_dx * dx[0] * (pi->v[0] - pj->v[0]) * r_inv;
     pi->primitives.gradients.v[0][1] -=
-        wi_dx * dx[1] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
+        wi_dx * dx[1] * (pi->v[0] - pj->v[0]) * r_inv;
     pi->primitives.gradients.v[0][2] -=
-        wi_dx * dx[2] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
+        wi_dx * dx[2] * (pi->v[0] - pj->v[0]) * r_inv;
 
     pi->primitives.gradients.v[1][0] -=
-        wi_dx * dx[0] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
+        wi_dx * dx[0] * (pi->v[1] - pj->v[1]) * r_inv;
     pi->primitives.gradients.v[1][1] -=
-        wi_dx * dx[1] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
+        wi_dx * dx[1] * (pi->v[1] - pj->v[1]) * r_inv;
     pi->primitives.gradients.v[1][2] -=
-        wi_dx * dx[2] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
+        wi_dx * dx[2] * (pi->v[1] - pj->v[1]) * r_inv;
 
     pi->primitives.gradients.v[2][0] -=
-        wi_dx * dx[0] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
+        wi_dx * dx[0] * (pi->v[2] - pj->v[2]) * r_inv;
     pi->primitives.gradients.v[2][1] -=
-        wi_dx * dx[1] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
+        wi_dx * dx[1] * (pi->v[2] - pj->v[2]) * r_inv;
     pi->primitives.gradients.v[2][2] -=
-        wi_dx * dx[2] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
+        wi_dx * dx[2] * (pi->v[2] - pj->v[2]) * r_inv;
 
     pi->primitives.gradients.P[0] -=
         wi_dx * dx[0] * (pi->primitives.P - pj->primitives.P) * r_inv;
@@ -258,24 +258,24 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
         wj_dx * dx[2] * (pi->primitives.rho - pj->primitives.rho) * r_inv;
 
     pj->primitives.gradients.v[0][0] -=
-        wj_dx * dx[0] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
+        wj_dx * dx[0] * (pi->v[0] - pj->v[0]) * r_inv;
     pj->primitives.gradients.v[0][1] -=
-        wj_dx * dx[1] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
+        wj_dx * dx[1] * (pi->v[0] - pj->v[0]) * r_inv;
     pj->primitives.gradients.v[0][2] -=
-        wj_dx * dx[2] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
+        wj_dx * dx[2] * (pi->v[0] - pj->v[0]) * r_inv;
 
     pj->primitives.gradients.v[1][0] -=
-        wj_dx * dx[0] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
+        wj_dx * dx[0] * (pi->v[1] - pj->v[1]) * r_inv;
     pj->primitives.gradients.v[1][1] -=
-        wj_dx * dx[1] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
+        wj_dx * dx[1] * (pi->v[1] - pj->v[1]) * r_inv;
     pj->primitives.gradients.v[1][2] -=
-        wj_dx * dx[2] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
+        wj_dx * dx[2] * (pi->v[1] - pj->v[1]) * r_inv;
     pj->primitives.gradients.v[2][0] -=
-        wj_dx * dx[0] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
+        wj_dx * dx[0] * (pi->v[2] - pj->v[2]) * r_inv;
     pj->primitives.gradients.v[2][1] -=
-        wj_dx * dx[1] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
+        wj_dx * dx[1] * (pi->v[2] - pj->v[2]) * r_inv;
     pj->primitives.gradients.v[2][2] -=
-        wj_dx * dx[2] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
+        wj_dx * dx[2] * (pi->v[2] - pj->v[2]) * r_inv;
 
     pj->primitives.gradients.P[0] -=
         wj_dx * dx[0] * (pi->primitives.P - pj->primitives.P) * r_inv;
@@ -316,14 +316,14 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
     }
   }
   Wi[0] = pi->primitives.rho;
-  Wi[1] = pi->primitives.v[0];
-  Wi[2] = pi->primitives.v[1];
-  Wi[3] = pi->primitives.v[2];
+  Wi[1] = pi->v[0];
+  Wi[2] = pi->v[1];
+  Wi[3] = pi->v[2];
   Wi[4] = pi->primitives.P;
   Wj[0] = pj->primitives.rho;
-  Wj[1] = pj->primitives.v[0];
-  Wj[2] = pj->primitives.v[1];
-  Wj[3] = pj->primitives.v[2];
+  Wj[1] = pj->v[0];
+  Wj[2] = pj->v[1];
+  Wj[3] = pj->v[2];
   Wj[4] = pj->primitives.P;
 
   /* Compute kernel of pi. */
@@ -395,24 +395,24 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
         wi_dx * dx[2] * (pi->primitives.rho - pj->primitives.rho) * r_inv;
 
     pi->primitives.gradients.v[0][0] -=
-        wi_dx * dx[0] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
+        wi_dx * dx[0] * (pi->v[0] - pj->v[0]) * r_inv;
     pi->primitives.gradients.v[0][1] -=
-        wi_dx * dx[1] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
+        wi_dx * dx[1] * (pi->v[0] - pj->v[0]) * r_inv;
     pi->primitives.gradients.v[0][2] -=
-        wi_dx * dx[2] * (pi->primitives.v[0] - pj->primitives.v[0]) * r_inv;
+        wi_dx * dx[2] * (pi->v[0] - pj->v[0]) * r_inv;
     pi->primitives.gradients.v[1][0] -=
-        wi_dx * dx[0] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
+        wi_dx * dx[0] * (pi->v[1] - pj->v[1]) * r_inv;
     pi->primitives.gradients.v[1][1] -=
-        wi_dx * dx[1] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
+        wi_dx * dx[1] * (pi->v[1] - pj->v[1]) * r_inv;
     pi->primitives.gradients.v[1][2] -=
-        wi_dx * dx[2] * (pi->primitives.v[1] - pj->primitives.v[1]) * r_inv;
+        wi_dx * dx[2] * (pi->v[1] - pj->v[1]) * r_inv;
 
     pi->primitives.gradients.v[2][0] -=
-        wi_dx * dx[0] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
+        wi_dx * dx[0] * (pi->v[2] - pj->v[2]) * r_inv;
     pi->primitives.gradients.v[2][1] -=
-        wi_dx * dx[1] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
+        wi_dx * dx[1] * (pi->v[2] - pj->v[2]) * r_inv;
     pi->primitives.gradients.v[2][2] -=
-        wi_dx * dx[2] * (pi->primitives.v[2] - pj->primitives.v[2]) * r_inv;
+        wi_dx * dx[2] * (pi->v[2] - pj->v[2]) * r_inv;
 
     pi->primitives.gradients.P[0] -=
         wi_dx * dx[0] * (pi->primitives.P - pj->primitives.P) * r_inv;

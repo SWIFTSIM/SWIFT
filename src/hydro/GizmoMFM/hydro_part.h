@@ -69,9 +69,6 @@ struct part {
     /* Density. */
     float rho;
 
-    /* Fluid velocity. */
-    float v[3];
-
     /* Pressure. */
     float P;
 

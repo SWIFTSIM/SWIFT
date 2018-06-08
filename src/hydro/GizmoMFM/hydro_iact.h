@@ -239,14 +239,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   const float Vj = pj->geometry.volume;
   float Wi[5], Wj[5];
   Wi[0] = pi->primitives.rho;
-  Wi[1] = pi->primitives.v[0];
-  Wi[2] = pi->primitives.v[1];
-  Wi[3] = pi->primitives.v[2];
+  Wi[1] = pi->v[0];
+  Wi[2] = pi->v[1];
+  Wi[3] = pi->v[2];
   Wi[4] = pi->primitives.P;
   Wj[0] = pj->primitives.rho;
-  Wj[1] = pj->primitives.v[0];
-  Wj[2] = pj->primitives.v[1];
-  Wj[3] = pj->primitives.v[2];
+  Wj[1] = pj->v[0];
+  Wj[2] = pj->v[1];
+  Wj[3] = pj->v[2];
   Wj[4] = pj->primitives.P;
 
   /* calculate the maximal signal velocity */
@@ -424,9 +424,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   pi->conserved.flux.energy -= totflux[4];
 
 #ifndef GIZMO_TOTAL_ENERGY
-  pi->conserved.flux.energy += totflux[1] * pi->primitives.v[0];
-  pi->conserved.flux.energy += totflux[2] * pi->primitives.v[1];
-  pi->conserved.flux.energy += totflux[3] * pi->primitives.v[2];
+  pi->conserved.flux.energy += totflux[1] * pi->v[0];
+  pi->conserved.flux.energy += totflux[2] * pi->v[1];
+  pi->conserved.flux.energy += totflux[3] * pi->v[2];
 #endif
 
   /* Note that this used to be much more complicated in early implementations of
@@ -441,9 +441,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     pj->conserved.flux.energy += totflux[4];
 
 #ifndef GIZMO_TOTAL_ENERGY
-    pj->conserved.flux.energy -= totflux[1] * pj->primitives.v[0];
-    pj->conserved.flux.energy -= totflux[2] * pj->primitives.v[1];
-    pj->conserved.flux.energy -= totflux[3] * pj->primitives.v[2];
+    pj->conserved.flux.energy -= totflux[1] * pj->v[0];
+    pj->conserved.flux.energy -= totflux[2] * pj->v[1];
+    pj->conserved.flux.energy -= totflux[3] * pj->v[2];
 #endif
   }
 }
