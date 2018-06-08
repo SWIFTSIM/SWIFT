@@ -8,4 +8,4 @@ then
 fi
 
 # Run SWIFT
-../swift -s -G -t 16 evrard.yml 2>&1 | tee output.log
+../swift -s -G -D -M -t 16 evrard.yml 2>&1 | tee output.log
