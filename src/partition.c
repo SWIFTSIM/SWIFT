@@ -43,6 +43,9 @@
 /* METIS headers only used when MPI is also available. */
 #ifdef HAVE_METIS
 #include <metis.h>
+#define bool int
+#include <kaHIP_interface.h>
+#undef bool
 #endif
 #endif
 
@@ -283,7 +286,7 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
   /* To check or visualise the partition dump all the cells. */
-  /* dumpCellRanks("metis_partition", s->cells_top, s->nr_cells); */
+  dumpCellRanks("metis_partition", s->cells_top, s->nr_cells);
 }
 #endif
 
@@ -418,19 +421,25 @@ static void pick_metis(struct space *s, int nregions, double *vertexw,
   options[METIS_OPTION_NITER] = 20;
 
   /* Call METIS. */
-  idx_t one = 1;
   idx_t idx_ncells = ncells;
   idx_t idx_nregions = nregions;
   idx_t objval;
 
   /* Dump graph in METIS format */
-  /*dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy,
-   *               weights_v, NULL, weights_e);
-   */
-  if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
-                          weights_e, &idx_nregions, NULL, NULL, options,
-                          &objval, regionid) != METIS_OK)
-    error("Call to METIS_PartGraphKway failed.");
+  idx_t one = 1;
+  dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy,
+                 weights_v, NULL, weights_e);
+
+  //if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
+  //                        weights_e, &idx_nregions, NULL, NULL, options,
+  //                        &objval, regionid) != METIS_OK)
+  //  error("Call to METIS_PartGraphKway failed.");
+  message("Calling kaffpa");
+  double d = 0.001;
+  kaffpa(&idx_ncells, weights_v, xadj, weights_e, adjncy, &idx_nregions,
+         &d, 0, 4321, STRONG, &objval, regionid);
+  message("Edgecut = %d", objval);
+
 
   /* Check that the regionids are ok. */
   for (int k = 0; k < ncells; k++)
