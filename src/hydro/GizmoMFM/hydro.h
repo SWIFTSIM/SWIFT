@@ -462,11 +462,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology* cosmo) {
 
   /* Initialise values that are used in the force loop */
-  p->gravity.mflux[0] = 0.0f;
-  p->gravity.mflux[1] = 0.0f;
-  p->gravity.mflux[2] = 0.0f;
-
-  p->conserved.flux.mass = 0.0f;
   p->conserved.flux.momentum[0] = 0.0f;
   p->conserved.flux.momentum[1] = 0.0f;
   p->conserved.flux.momentum[2] = 0.0f;
@@ -545,19 +540,33 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* drift the primitive variables based on the old fluxes */
   if (p->conserved.mass > 0.) {
-    p->primitives.v[0] +=
-        p->conserved.flux.momentum[0] * dt_drift / p->conserved.mass;
-    p->primitives.v[1] +=
-        p->conserved.flux.momentum[1] * dt_drift / p->conserved.mass;
-    p->primitives.v[2] +=
-        p->conserved.flux.momentum[2] * dt_drift / p->conserved.mass;
+    const float m_inv = 1. / p->conserved.mass;
+
+    p->primitives.v[0] += p->conserved.flux.momentum[0] * dt_drift * m_inv;
+    p->primitives.v[1] += p->conserved.flux.momentum[1] * dt_drift * m_inv;
+    p->primitives.v[2] += p->conserved.flux.momentum[2] * dt_drift * m_inv;
 
 #if !defined(EOS_ISOTHERMAL_GAS)
-    const float u = p->conserved.energy + p->conserved.flux.energy * dt_therm;
-    p->primitives.P =
-        hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
+#ifdef GIZMO_TOTAL_ENERGY
+    const float Etot =
+        p->conserved.energy + p->conserved.flux.energy * dt_therm;
+    const float v2 = (p->primitives.v[0] * p->primitives.v[0] +
+                      p->primitives.v[1] * p->primitives.v[1] +
+                      p->primitives.v[2] * p->primitives.v[2]);
+    const float u = (Etot * m_inv - 0.5f * v2);
+#else
+    const float u =
+        (p->conserved.energy + p->conserved.flux.energy * dt_therm) * m_inv;
+#endif
+    p->primitives.P = hydro_gamma_minus_one * u * p->primitives.rho;
 #endif
   }
+
+  /* we use a sneaky way to get the gravitational contribtuion to the
+     velocity update */
+  p->primitives.v[0] += p->v[0] - xp->v_full[0];
+  p->primitives.v[1] += p->v[1] - xp->v_full[1];
+  p->primitives.v[2] += p->v[2] - xp->v_full[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->h <= 0.) {
