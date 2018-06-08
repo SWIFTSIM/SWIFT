@@ -57,7 +57,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   vrel[2] = p->v[2] - xp->v_full[2];
   float vmax =
       sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
-      sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+      sqrtf(hydro_gamma * p->P / p->rho);
   vmax = max(vmax, p->timestepvars.vmax);
 
   // MATTHIEU: Bert is this correct? Do we need more cosmology terms here?
@@ -152,7 +152,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
      time the density loop is repeated, and the whole point of storing wcorr
      is to have a way of remembering that we need more neighbours for this
      particle */
-  p->density.wcorr = 1.0f;
+  p->geometry.wcorr = 1.0f;
 }
 
 /**
@@ -268,7 +268,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
       hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
 
   if (condition_number > const_gizmo_max_condition_number &&
-      p->density.wcorr > const_gizmo_min_wcorr) {
+      p->geometry.wcorr > const_gizmo_min_wcorr) {
 #ifdef GIZMO_PATHOLOGICAL_ERROR
     error("Condition number larger than %g (%g)!",
           const_gizmo_max_condition_number, condition_number);
@@ -278,7 +278,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
             condition_number, const_gizmo_max_condition_number, p->id);
 #endif
     /* add a correction to the number of neighbours for this particle */
-    p->density.wcorr *= const_gizmo_w_correction_factor;
+    p->geometry.wcorr *= const_gizmo_w_correction_factor;
   }
 
   /* compute primitive variables */
@@ -300,7 +300,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   momentum[0] = p->conserved.momentum[0];
   momentum[1] = p->conserved.momentum[1];
   momentum[2] = p->conserved.momentum[2];
-  p->primitives.rho = m / volume;
+  p->rho = m / volume;
   if (m == 0.0f) {
     p->v[0] = 0.0f;
     p->v[1] = 0.0f;
@@ -315,7 +315,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 #ifdef EOS_ISOTHERMAL_GAS
   /* although the pressure is not formally used anywhere if an isothermal eos
      has been selected, we still make sure it is set to the correct value */
-  p->primitives.P = gas_pressure_from_internal_energy(p->primitives.rho, 0.0f);
+  p->P = gas_pressure_from_internal_energy(p->rho, 0.0f);
 #else
 
   float energy = p->conserved.energy;
@@ -328,17 +328,17 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* energy contains the total thermal energy, we want the specific energy.
      this is why we divide by the volume, and not by the density */
-  p->primitives.P = hydro_gamma_minus_one * energy / volume;
+  p->P = hydro_gamma_minus_one * energy / volume;
 #endif
 
   /* sanity checks */
-  gizmo_check_physical_quantities("density", "pressure", p->primitives.rho,
-                                  p->v[0], p->v[1], p->v[2], p->primitives.P);
+  gizmo_check_physical_quantities("density", "pressure", p->rho, p->v[0],
+                                  p->v[1], p->v[2], p->P);
 
   /* Add a correction factor to wcount (to force a neighbour number increase if
      the geometry matrix is close to singular) */
-  p->density.wcount *= p->density.wcorr;
-  p->density.wcount_dh *= p->density.wcorr;
+  p->density.wcount *= p->geometry.wcorr;
+  p->density.wcount_dh *= p->geometry.wcorr;
 }
 
 /**
@@ -453,10 +453,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology* cosmo) {
 
   /* Initialise values that are used in the force loop */
-  p->conserved.flux.momentum[0] = 0.0f;
-  p->conserved.flux.momentum[1] = 0.0f;
-  p->conserved.flux.momentum[2] = 0.0f;
-  p->conserved.flux.energy = 0.0f;
+  p->flux.momentum[0] = 0.0f;
+  p->flux.momentum[1] = 0.0f;
+  p->flux.momentum[2] = 0.0f;
+  p->flux.energy = 0.0f;
 }
 
 /**
@@ -533,22 +533,20 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   if (p->conserved.mass > 0.0f) {
     const float m_inv = 1.0f / p->conserved.mass;
 
-    p->v[0] += p->conserved.flux.momentum[0] * dt_drift * m_inv;
-    p->v[1] += p->conserved.flux.momentum[1] * dt_drift * m_inv;
-    p->v[2] += p->conserved.flux.momentum[2] * dt_drift * m_inv;
+    p->v[0] += p->flux.momentum[0] * dt_drift * m_inv;
+    p->v[1] += p->flux.momentum[1] * dt_drift * m_inv;
+    p->v[2] += p->flux.momentum[2] * dt_drift * m_inv;
 
 #if !defined(EOS_ISOTHERMAL_GAS)
 #ifdef GIZMO_TOTAL_ENERGY
-    const float Etot =
-        p->conserved.energy + p->conserved.flux.energy * dt_therm;
+    const float Etot = p->conserved.energy + p->flux.energy * dt_therm;
     const float v2 =
         (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]);
     const float u = (Etot * m_inv - 0.5f * v2);
 #else
-    const float u =
-        (p->conserved.energy + p->conserved.flux.energy * dt_therm) * m_inv;
+    const float u = (p->conserved.energy + p->flux.energy * dt_therm) * m_inv;
 #endif
-    p->primitives.P = hydro_gamma_minus_one * u * p->primitives.rho;
+    p->P = hydro_gamma_minus_one * u * p->rho;
 #endif
   }
 
@@ -564,8 +562,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   }
 #endif
 
-  gizmo_check_physical_quantities("density", "pressure", p->primitives.rho,
-                                  p->v[0], p->v[1], p->v[2], p->primitives.P);
+  gizmo_check_physical_quantities("density", "pressure", p->rho, p->v[0],
+                                  p->v[1], p->v[2], p->P);
 }
 
 /**
@@ -609,15 +607,15 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   float a_grav[3];
 
   /* Update conserved variables (note: the mass does not change). */
-  p->conserved.momentum[0] += p->conserved.flux.momentum[0] * dt;
-  p->conserved.momentum[1] += p->conserved.flux.momentum[1] * dt;
-  p->conserved.momentum[2] += p->conserved.flux.momentum[2] * dt;
+  p->conserved.momentum[0] += p->flux.momentum[0] * dt;
+  p->conserved.momentum[1] += p->flux.momentum[1] * dt;
+  p->conserved.momentum[2] += p->flux.momentum[2] * dt;
 #if defined(EOS_ISOTHERMAL_GAS)
   /* We use the EoS equation in a sneaky way here just to get the constant u */
   p->conserved.energy =
       p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
-  p->conserved.energy += p->conserved.flux.energy * dt;
+  p->conserved.energy += p->flux.energy * dt;
 #endif
 
   /* Apply the minimal energy limit */
@@ -625,7 +623,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       hydro_props->minimal_internal_energy * cosmo->a_factor_internal_energy;
   if (p->conserved.energy < min_energy * p->conserved.mass) {
     p->conserved.energy = min_energy * p->conserved.mass;
-    p->conserved.flux.energy = 0.0f;
+    p->flux.energy = 0.0f;
   }
 
   gizmo_check_physical_quantities(
@@ -639,7 +637,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     error(
         "Negative energy after conserved variables update (energy: %g, "
         "denergy: %g)!",
-        p->conserved.energy, p->conserved.flux.energy);
+        p->conserved.energy, p->flux.energy);
   }
 #endif
 
@@ -662,7 +660,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Set the velocities: */
   /* We first set the particle velocity */
-  if (p->conserved.mass > 0.0f && p->primitives.rho > 0.0f) {
+  if (p->conserved.mass > 0.0f && p->rho > 0.0f) {
 
     const float inverse_mass = 1.0f / p->conserved.mass;
 
@@ -685,7 +683,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   }
 
   /* reset wcorr */
-  p->density.wcorr = 1.0f;
+  p->geometry.wcorr = 1.0f;
 }
 
 /**
@@ -696,9 +694,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_internal_energy(const struct part* restrict p) {
 
-  if (p->primitives.rho > 0.0f) {
-    return gas_internal_energy_from_pressure(p->primitives.rho,
-                                             p->primitives.P);
+  if (p->rho > 0.0f) {
+    return gas_internal_energy_from_pressure(p->rho, p->P);
   } else {
     return 0.0f;
   }
@@ -726,8 +723,8 @@ hydro_get_physical_internal_energy(const struct part* restrict p,
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
     const struct part* restrict p) {
 
-  if (p->primitives.rho > 0.0f) {
-    return gas_entropy_from_pressure(p->primitives.rho, p->primitives.P);
+  if (p->rho > 0.0f) {
+    return gas_entropy_from_pressure(p->rho, p->P);
   } else {
     return 0.0f;
   }
@@ -755,8 +752,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_soundspeed(const struct part* restrict p) {
 
-  if (p->primitives.rho > 0.0f) {
-    return gas_soundspeed_from_pressure(p->primitives.rho, p->primitives.P);
+  if (p->rho > 0.0f) {
+    return gas_soundspeed_from_pressure(p->rho, p->P);
   } else {
     return 0.0f;
   }
@@ -783,7 +780,7 @@ hydro_get_physical_soundspeed(const struct part* restrict p,
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
     const struct part* restrict p) {
 
-  return p->primitives.P;
+  return p->P;
 }
 
 /**
@@ -795,7 +792,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
     const struct part* restrict p, const struct cosmology* cosmo) {
 
-  return cosmo->a_factor_pressure * p->primitives.P;
+  return cosmo->a_factor_pressure * p->P;
 }
 
 /**
@@ -836,12 +833,9 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 
   if (p->conserved.mass > 0.0f) {
     const float inverse_mass = 1.0f / p->conserved.mass;
-    v[0] =
-        p->v[0] + p->conserved.flux.momentum[0] * dt_kick_hydro * inverse_mass;
-    v[1] =
-        p->v[1] + p->conserved.flux.momentum[1] * dt_kick_hydro * inverse_mass;
-    v[2] =
-        p->v[2] + p->conserved.flux.momentum[2] * dt_kick_hydro * inverse_mass;
+    v[0] = p->v[0] + p->flux.momentum[0] * dt_kick_hydro * inverse_mass;
+    v[1] = p->v[1] + p->flux.momentum[1] * dt_kick_hydro * inverse_mass;
+    v[2] = p->v[2] + p->flux.momentum[2] * dt_kick_hydro * inverse_mass;
   } else {
     v[0] = p->v[0];
     v[1] = p->v[1];
@@ -862,7 +856,7 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_density(
     const struct part* restrict p) {
 
-  return p->primitives.rho;
+  return p->rho;
 }
 
 /**
@@ -874,7 +868,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_density(
 __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
     const struct part* restrict p, const struct cosmology* cosmo) {
 
-  return cosmo->a3_inv * p->primitives.rho;
+  return cosmo->a3_inv * p->rho;
 }
 
 /**
@@ -900,7 +894,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
       (p->conserved.momentum[0] * p->v[0] + p->conserved.momentum[1] * p->v[1] +
        p->conserved.momentum[2] * p->v[2]);
 #endif
-  p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u;
+  p->P = hydro_gamma_minus_one * p->rho * u;
 }
 
 /**
@@ -915,7 +909,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
 __attribute__((always_inline)) INLINE static void hydro_set_entropy(
     struct part* restrict p, float S) {
 
-  p->conserved.energy = S * pow_gamma_minus_one(p->primitives.rho) *
+  p->conserved.energy = S * pow_gamma_minus_one(p->rho) *
                         hydro_one_over_gamma_minus_one * p->conserved.mass;
 #ifdef GIZMO_TOTAL_ENERGY
   /* add the kinetic energy */
@@ -924,7 +918,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
       (p->conserved.momentum[0] * p->v[0] + p->conserved.momentum[1] * p->v[1] +
        p->conserved.momentum[2] * p->v[2]);
 #endif
-  p->primitives.P = S * pow_gamma(p->primitives.rho);
+  p->P = S * pow_gamma(p->rho);
 }
 
 /**
@@ -949,7 +943,7 @@ hydro_set_init_internal_energy(struct part* p, float u_init) {
       (p->conserved.momentum[0] * p->v[0] + p->conserved.momentum[1] * p->v[1] +
        p->conserved.momentum[2] * p->v[2]);
 #endif
-  p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u_init;
+  p->P = hydro_gamma_minus_one * p->rho * u_init;
 }
 
 #endif /* SWIFT_GIZMO_MFM_HYDRO_H */

@@ -27,7 +27,6 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "a=[%.3e,%.3e,%.3e], "
       "h=%.3e, "
       "time_bin=%d, "
-      "primitives={"
       "rho=%.3e, "
       "P=%.3e, "
       "gradients={"
@@ -38,7 +37,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "rho=[%.3e,%.3e], "
       "v=[[%.3e,%.3e],[%.3e,%.3e],[%.3e,%.3e]], "
       "P=[%.3e,%.3e], "
-      "maxr=%.3e}}, "
+      "maxr=%.3e}, "
       "conserved={"
       "momentum=[%.3e,%.3e,%.3e], "
       "mass=%.3e, "
@@ -52,23 +51,18 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "wcount_dh=%.3e, "
       "wcount=%.3e}\n",
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->a_hydro[0],
-      p->a_hydro[1], p->a_hydro[2], p->h, p->time_bin, p->primitives.rho,
-      p->primitives.P, p->primitives.gradients.rho[0],
-      p->primitives.gradients.rho[1], p->primitives.gradients.rho[2],
-      p->primitives.gradients.v[0][0], p->primitives.gradients.v[0][1],
-      p->primitives.gradients.v[0][2], p->primitives.gradients.v[1][0],
-      p->primitives.gradients.v[1][1], p->primitives.gradients.v[1][2],
-      p->primitives.gradients.v[2][0], p->primitives.gradients.v[2][1],
-      p->primitives.gradients.v[2][2], p->primitives.gradients.P[0],
-      p->primitives.gradients.P[1], p->primitives.gradients.P[2],
-      p->primitives.limiter.rho[0], p->primitives.limiter.rho[1],
-      p->primitives.limiter.v[0][0], p->primitives.limiter.v[0][1],
-      p->primitives.limiter.v[1][0], p->primitives.limiter.v[1][1],
-      p->primitives.limiter.v[2][0], p->primitives.limiter.v[2][1],
-      p->primitives.limiter.P[0], p->primitives.limiter.P[1],
-      p->primitives.limiter.maxr, p->conserved.momentum[0],
-      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.mass,
-      p->conserved.energy, p->geometry.volume, p->geometry.matrix_E[0][0],
+      p->a_hydro[1], p->a_hydro[2], p->h, p->time_bin, p->rho, p->P,
+      p->gradients.rho[0], p->gradients.rho[1], p->gradients.rho[2],
+      p->gradients.v[0][0], p->gradients.v[0][1], p->gradients.v[0][2],
+      p->gradients.v[1][0], p->gradients.v[1][1], p->gradients.v[1][2],
+      p->gradients.v[2][0], p->gradients.v[2][1], p->gradients.v[2][2],
+      p->gradients.P[0], p->gradients.P[1], p->gradients.P[2],
+      p->limiter.rho[0], p->limiter.rho[1], p->limiter.v[0][0],
+      p->limiter.v[0][1], p->limiter.v[1][0], p->limiter.v[1][1],
+      p->limiter.v[2][0], p->limiter.v[2][1], p->limiter.P[0], p->limiter.P[1],
+      p->limiter.maxr, p->conserved.momentum[0], p->conserved.momentum[1],
+      p->conserved.momentum[2], p->conserved.mass, p->conserved.energy,
+      p->geometry.volume, p->geometry.matrix_E[0][0],
       p->geometry.matrix_E[0][1], p->geometry.matrix_E[0][2],
       p->geometry.matrix_E[1][0], p->geometry.matrix_E[1][1],
       p->geometry.matrix_E[1][2], p->geometry.matrix_E[2][0],

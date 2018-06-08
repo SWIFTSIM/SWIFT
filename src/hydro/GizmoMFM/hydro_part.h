@@ -63,28 +63,23 @@ struct part {
   /* Particle smoothing length. */
   float h;
 
-  /* The primitive hydrodynamical variables. */
-  struct {
+  /* Density. */
+  float rho;
 
-    /* Density. */
-    float rho;
+  /* Pressure. */
+  float P;
 
-    /* Pressure. */
-    float P;
-
-    /* Gradients of the primitive variables. */
+  union {
+    /* Quantities used during the volume (=density) loop. */
     struct {
 
-      /* Density gradients. */
-      float rho[3];
+      /* Derivative of particle number density. */
+      float wcount_dh;
 
-      /* Fluid velocity gradients. */
-      float v[3][3];
+      /* Particle number density. */
+      float wcount;
 
-      /* Pressure gradients. */
-      float P[3];
-
-    } gradients;
+    } density;
 
     /* Quantities needed by the slope limiter. */
     struct {
@@ -103,7 +98,56 @@ struct part {
 
     } limiter;
 
-  } primitives;
+    struct {
+      /* Fluxes. */
+      struct {
+
+        /* No mass flux, since it is always zero. */
+
+        /* Momentum flux. */
+        float momentum[3];
+
+        /* Energy flux. */
+        float energy;
+
+      } flux;
+
+      /* Variables used for timestep calculation. */
+      struct {
+
+        /* Maximum signal velocity among all the neighbours of the particle. The
+         * signal velocity encodes information about the relative fluid
+         * velocities
+         * AND particle velocities of the neighbour and this particle, as well
+         * as
+         * the sound speed of both particles. */
+        float vmax;
+
+      } timestepvars;
+
+      /* Quantities used during the force loop. */
+      struct {
+
+        /* Needed to drift the primitive variables. */
+        float h_dt;
+
+      } force;
+    };
+  };
+
+  /* Gradients of the primitive variables. */
+  struct {
+
+    /* Density gradients. */
+    float rho[3];
+
+    /* Fluid velocity gradients. */
+    float v[3][3];
+
+    /* Pressure gradients. */
+    float P[3];
+
+  } gradients;
 
   /* The conserved hydrodynamical variables. */
   struct {
@@ -116,19 +160,6 @@ struct part {
 
     /* Fluid thermal energy (not per unit mass!). */
     float energy;
-
-    /* Fluxes. */
-    struct {
-
-      /* No mass flux, since it is always zero. */
-
-      /* Momentum flux. */
-      float momentum[3];
-
-      /* Energy flux. */
-      float energy;
-
-    } flux;
 
   } conserved;
 
@@ -145,40 +176,10 @@ struct part {
     /* Centroid of the "cell". */
     float centroid[3];
 
-  } geometry;
-
-  /* Variables used for timestep calculation. */
-  struct {
-
-    /* Maximum signal velocity among all the neighbours of the particle. The
-     * signal velocity encodes information about the relative fluid velocities
-     * AND particle velocities of the neighbour and this particle, as well as
-     * the sound speed of both particles. */
-    float vmax;
-
-  } timestepvars;
-
-  /* Quantities used during the volume (=density) loop. */
-  struct {
-
-    /* Derivative of particle number density. */
-    float wcount_dh;
-
-    /* Particle number density. */
-    float wcount;
-
     /* Correction factor for wcount. */
     float wcorr;
 
-  } density;
-
-  /* Quantities used during the force loop. */
-  struct {
-
-    /* Needed to drift the primitive variables. */
-    float h_dt;
-
-  } force;
+  } geometry;
 
   /* Chemistry information */
   struct chemistry_part_data chemistry_data;

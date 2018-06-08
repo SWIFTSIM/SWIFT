@@ -238,16 +238,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   const float Vi = pi->geometry.volume;
   const float Vj = pj->geometry.volume;
   float Wi[5], Wj[5];
-  Wi[0] = pi->primitives.rho;
+  Wi[0] = pi->rho;
   Wi[1] = pi->v[0];
   Wi[2] = pi->v[1];
   Wi[3] = pi->v[2];
-  Wi[4] = pi->primitives.P;
-  Wj[0] = pj->primitives.rho;
+  Wi[4] = pi->P;
+  Wj[0] = pj->rho;
   Wj[1] = pj->v[0];
   Wj[2] = pj->v[1];
   Wj[3] = pj->v[2];
-  Wj[4] = pj->primitives.P;
+  Wj[4] = pj->P;
 
   /* calculate the maximal signal velocity */
   float vmax;
@@ -298,17 +298,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   const float wi_dr = hidp1 * wi_dx;
   const float wj_dr = hjdp1 * wj_dx;
   dvdr *= r_inv;
-  if (pj->primitives.rho > 0.)
-    pi->force.h_dt -= pj->conserved.mass * dvdr / pj->primitives.rho * wi_dr;
-  if (mode == 1 && pi->primitives.rho > 0.)
-    pj->force.h_dt -= pi->conserved.mass * dvdr / pi->primitives.rho * wj_dr;
+  if (pj->rho > 0.)
+    pi->force.h_dt -= pj->conserved.mass * dvdr / pj->rho * wi_dr;
+  if (mode == 1 && pi->rho > 0.)
+    pj->force.h_dt -= pi->conserved.mass * dvdr / pi->rho * wj_dr;
 
   /* Compute (square of) area */
   /* eqn. (7) */
   float Anorm2 = 0.0f;
   float A[3];
-  if (pi->density.wcorr > const_gizmo_min_wcorr &&
-      pj->density.wcorr > const_gizmo_min_wcorr) {
+  if (pi->geometry.wcorr > const_gizmo_min_wcorr &&
+      pj->geometry.wcorr > const_gizmo_min_wcorr) {
     /* in principle, we use Vi and Vj as weights for the left and right
        contributions to the generalized surface vector.
        However, if Vi and Vj are very different (because they have very
@@ -418,15 +418,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* We shamelessly exploit the fact that the mass flux is zero and omit all
      terms involving it */
   /* eqn. (16) */
-  pi->conserved.flux.momentum[0] -= totflux[1];
-  pi->conserved.flux.momentum[1] -= totflux[2];
-  pi->conserved.flux.momentum[2] -= totflux[3];
-  pi->conserved.flux.energy -= totflux[4];
+  pi->flux.momentum[0] -= totflux[1];
+  pi->flux.momentum[1] -= totflux[2];
+  pi->flux.momentum[2] -= totflux[3];
+  pi->flux.energy -= totflux[4];
 
 #ifndef GIZMO_TOTAL_ENERGY
-  pi->conserved.flux.energy += totflux[1] * pi->v[0];
-  pi->conserved.flux.energy += totflux[2] * pi->v[1];
-  pi->conserved.flux.energy += totflux[3] * pi->v[2];
+  pi->flux.energy += totflux[1] * pi->v[0];
+  pi->flux.energy += totflux[2] * pi->v[1];
+  pi->flux.energy += totflux[3] * pi->v[2];
 #endif
 
   /* Note that this used to be much more complicated in early implementations of
@@ -435,15 +435,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
    * conservation anymore and just assume the current fluxes are representative
    * for the flux over the entire time step. */
   if (mode == 1) {
-    pj->conserved.flux.momentum[0] += totflux[1];
-    pj->conserved.flux.momentum[1] += totflux[2];
-    pj->conserved.flux.momentum[2] += totflux[3];
-    pj->conserved.flux.energy += totflux[4];
+    pj->flux.momentum[0] += totflux[1];
+    pj->flux.momentum[1] += totflux[2];
+    pj->flux.momentum[2] += totflux[3];
+    pj->flux.energy += totflux[4];
 
 #ifndef GIZMO_TOTAL_ENERGY
-    pj->conserved.flux.energy -= totflux[1] * pj->v[0];
-    pj->conserved.flux.energy -= totflux[2] * pj->v[1];
-    pj->conserved.flux.energy -= totflux[3] * pj->v[2];
+    pj->flux.energy -= totflux[1] * pj->v[0];
+    pj->flux.energy -= totflux[2] * pj->v[1];
+    pj->flux.energy -= totflux[3] * pj->v[2];
 #endif
   }
 }
