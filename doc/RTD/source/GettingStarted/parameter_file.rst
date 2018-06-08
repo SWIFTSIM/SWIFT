@@ -15,11 +15,11 @@ the run time parameters.
 Output List
 ~~~~~~~~~~~
 
-In the sections ``Snapshots`` and ``Statistics``, you can specify the option ``output_list``  which receives a filename.
-This file consists in a list of time where you want to output either a snapshot or a statistic.
-With the header, you can choose between writing redshifts, scale factors or times.
+In the sections ``Snapshots`` and ``Statistics``, you can specify the options ``output_list_on`` and ``output_list``  which receive an int and a filename.
+The ``output_list_on`` enable or not the output list and ``output_list`` is the filename containing the output times.
+With the file header, you can choose between writing redshifts, scale factors or times.
 
-Example of file containing with times:
+Example of file containing with times (in internal units):
 ::
    # Time
    0.5

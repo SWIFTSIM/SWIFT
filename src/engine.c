@@ -6750,15 +6750,16 @@ void engine_read_outputlist_files(struct engine *e, const struct swift_params *p
     cosmo = e->cosmology;
   
   /* Deal with snapshots */
-  e->outputlist_snapshots = (struct outputlist*) malloc(sizeof(struct outputlist));
-  list = e->outputlist_snapshots;
-  
-  strcpy(filename, "");
-  parser_get_opt_param_string(params, "Snapshots:output_list",
-			      filename, "");
+  int outputlist_on = parser_get_opt_param_int(params, "Snapshots:output_list_on", 0);
 
   /* Read outputlist for snapshots */
-  if (strcmp(filename, "")) {
+  if (outputlist_on) {
+    e->outputlist_snapshots = (struct outputlist*) malloc(sizeof(struct outputlist));
+    list = e->outputlist_snapshots;
+
+    parser_get_param_string(params, "Snapshots:output_list",
+			    filename);
+    
     message("Reading snapshots output file.");
     outputlist_read_file(list, filename, cosmo);
 
@@ -6777,15 +6778,17 @@ void engine_read_outputlist_files(struct engine *e, const struct swift_params *p
   }
 
     /* Deal with stats */
-  e->outputlist_stats = (struct outputlist*) malloc(sizeof(struct outputlist));
-  list = e->outputlist_stats;
   
-  strcpy(filename, "");
-  parser_get_opt_param_string(params, "Statistics:output_list",
-			      filename, "");
+  outputlist_on = parser_get_opt_param_int(params, "Statistics:output_list_on", 0);
 
   /* Read outputlist for stats */
-  if (strcmp(filename, "")) {
+  if (outputlist_on) {
+    e->outputlist_stats = (struct outputlist*) malloc(sizeof(struct outputlist));
+    list = e->outputlist_stats;
+
+    parser_get_param_string(params, "Statistics:output_list",
+			    filename);
+    
     message("Reading statistics output file.");
     outputlist_read_file(list, filename, cosmo);
 
