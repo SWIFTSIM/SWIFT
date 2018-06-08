@@ -57,7 +57,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float r = sqrtf(r2);
 
   /* Compute density of pi. */
-  const float hi_inv = 1.f / hi;
+  const float hi_inv = 1.0f / hi;
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->geometry.centroid[2] -= dx[2] * wi;
 
   /* Compute density of pj. */
-  const float hj_inv = 1.f / hj;
+  const float hj_inv = 1.0f / hj;
   const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
@@ -123,7 +123,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   /* Get r and h inverse. */
   const float r = sqrtf(r2);
 
-  const float hi_inv = 1.f / hi;
+  const float hi_inv = 1.0f / hi;
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
@@ -220,7 +220,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, int mode, float a, float H) {
 
-  const float r_inv = 1.f / sqrtf(r2);
+  const float r_inv = 1.0f / sqrtf(r2);
   const float r = r2 * r_inv;
 
   /* Initialize local variables */
@@ -258,21 +258,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   } else
     vmax = 0.0f;
 
-  float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
-               (pi->v[2] - pj->v[2]) * dx[2];
-
   /* Velocity on the axis linking the particles */
-  float dvdotdx = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
-                  (Wi[3] - Wj[3]) * dx[2];
-  dvdotdx = min(dvdotdx, dvdr);
+  float dvdr = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
+               (Wi[3] - Wj[3]) * dx[2];
 
-  /* We only care about this velocity for particles moving towards each others
+  /* We only care about this velocity for particles moving towards each other
    */
-  dvdotdx = min(dvdotdx, 0.f);
+  const float dvdotdx = min(dvdr, 0.0f);
 
   /* Get the signal velocity */
   /* the magical factor 3 also appears in Gadget2 */
-  vmax -= 3.f * dvdotdx * r_inv;
+  vmax -= 3.0f * dvdotdx * r_inv;
 
   /* Store the signal velocity */
   pi->timestepvars.vmax = max(pi->timestepvars.vmax, vmax);
@@ -280,14 +276,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* Compute kernel of pi. */
   float wi, wi_dx;
-  const float hi_inv = 1.f / hi;
+  const float hi_inv = 1.0f / hi;
   const float hi_inv_dim = pow_dimension(hi_inv);
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   /* Compute kernel of pj. */
   float wj, wj_dx;
-  const float hj_inv = 1.f / hj;
+  const float hj_inv = 1.0f / hj;
   const float hj_inv_dim = pow_dimension(hj_inv);
   const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
@@ -298,9 +294,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   const float wi_dr = hidp1 * wi_dx;
   const float wj_dr = hjdp1 * wj_dx;
   dvdr *= r_inv;
-  if (pj->rho > 0.)
+  if (pj->rho > 0.0f)
     pi->force.h_dt -= pj->conserved.mass * dvdr / pj->rho * wi_dr;
-  if (mode == 1 && pi->rho > 0.)
+  if (mode == 1 && pi->rho > 0.0f)
     pj->force.h_dt -= pi->conserved.mass * dvdr / pi->rho * wj_dr;
 
   /* Compute (square of) area */
@@ -342,10 +338,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* if the interface has no area, nothing happens and we return */
   /* continuing results in dividing by zero and NaN's... */
-  if (Anorm2 == 0.f) return;
+  if (Anorm2 == 0.0f) return;
 
   /* Compute the area */
-  const float Anorm_inv = 1. / sqrtf(Anorm2);
+  const float Anorm_inv = 1.0f / sqrtf(Anorm2);
   const float Anorm = Anorm2 * Anorm_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -375,11 +371,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* Compute interface velocity */
   /* eqn. (9) */
-  float xijdotdx = xij_i[0] * dx[0] + xij_i[1] * dx[1] + xij_i[2] * dx[2];
-  xijdotdx *= r_inv * r_inv;
-  const float vij[3] = {vi[0] + (vi[0] - vj[0]) * xijdotdx,
-                        vi[1] + (vi[1] - vj[1]) * xijdotdx,
-                        vi[2] + (vi[2] - vj[2]) * xijdotdx};
+  const float vij[3] = {vi[0] + (vi[0] - vj[0]) * xfac,
+                        vi[1] + (vi[1] - vj[1]) * xfac,
+                        vi[2] + (vi[2] - vj[2]) * xfac};
 
   /* complete calculation of position of interface */
   /* NOTE: dx is not necessarily just pi->x - pj->x but can also contain

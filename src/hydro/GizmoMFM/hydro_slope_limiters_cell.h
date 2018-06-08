@@ -108,7 +108,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
     gradtrue *= p->limiter.maxr;
     const float gradmax = p->limiter.rho[1] - p->rho;
     const float gradmin = p->rho - p->limiter.rho[0];
-    const float gradtrue_inv = 1.f / gradtrue;
+    const float gradtrue_inv = 1.0f / gradtrue;
     const float alpha =
         min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
     p->gradients.rho[0] *= alpha;
@@ -122,7 +122,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
     gradtrue *= p->limiter.maxr;
     const float gradmax = p->limiter.v[0][1] - p->v[0];
     const float gradmin = p->v[0] - p->limiter.v[0][0];
-    const float gradtrue_inv = 1.f / gradtrue;
+    const float gradtrue_inv = 1.0f / gradtrue;
     const float alpha =
         min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
     p->gradients.v[0][0] *= alpha;
@@ -136,7 +136,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
     gradtrue *= p->limiter.maxr;
     const float gradmax = p->limiter.v[1][1] - p->v[1];
     const float gradmin = p->v[1] - p->limiter.v[1][0];
-    const float gradtrue_inv = 1.f / gradtrue;
+    const float gradtrue_inv = 1.0f / gradtrue;
     const float alpha =
         min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
     p->gradients.v[1][0] *= alpha;
@@ -150,7 +150,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
     gradtrue *= p->limiter.maxr;
     const float gradmax = p->limiter.v[2][1] - p->v[2];
     const float gradmin = p->v[2] - p->limiter.v[2][0];
-    const float gradtrue_inv = 1.f / gradtrue;
+    const float gradtrue_inv = 1.0f / gradtrue;
     const float alpha =
         min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
     p->gradients.v[2][0] *= alpha;
@@ -164,7 +164,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
     gradtrue *= p->limiter.maxr;
     const float gradmax = p->limiter.P[1] - p->P;
     const float gradmin = p->P - p->limiter.P[0];
-    const float gradtrue_inv = 1.f / gradtrue;
+    const float gradtrue_inv = 1.0f / gradtrue;
     const float alpha =
         min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
     p->gradients.P[0] *= alpha;
