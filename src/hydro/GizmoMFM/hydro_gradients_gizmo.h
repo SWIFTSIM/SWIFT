@@ -65,7 +65,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
 
-  const float r_inv = 1.f / sqrtf(r2);
+  const float r_inv = 1.0f / sqrtf(r2);
   const float r = r2 * r_inv;
 
   float wi, wj, wi_dx, wj_dx;
@@ -92,168 +92,87 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   Wj[4] = pj->P;
 
   /* Compute kernel of pi. */
-  const float hi_inv = 1.f / hi;
+  const float hi_inv = 1.0f / hi;
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
+  const float dW[5] = {Wi[0] - Wj[0], Wi[1] - Wj[1], Wi[2] - Wj[2],
+                       Wi[3] - Wj[3], Wi[4] - Wj[4]};
+
+  float wiBidx[3];
   if (pi->geometry.wcorr > const_gizmo_min_wcorr) {
-    /* Compute gradients for pi */
-    /* there is a sign difference w.r.t. eqn. (6) because of the inverse
-     * definition of dx */
-    pi->gradients.rho[0] +=
-        (Wi[0] - Wj[0]) * wi *
-        (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
-    pi->gradients.rho[1] +=
-        (Wi[0] - Wj[0]) * wi *
-        (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
-    pi->gradients.rho[2] +=
-        (Wi[0] - Wj[0]) * wi *
-        (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
-
-    pi->gradients.v[0][0] +=
-        (Wi[1] - Wj[1]) * wi *
-        (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
-    pi->gradients.v[0][1] +=
-        (Wi[1] - Wj[1]) * wi *
-        (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
-    pi->gradients.v[0][2] +=
-        (Wi[1] - Wj[1]) * wi *
-        (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
-    pi->gradients.v[1][0] +=
-        (Wi[2] - Wj[2]) * wi *
-        (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
-    pi->gradients.v[1][1] +=
-        (Wi[2] - Wj[2]) * wi *
-        (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
-    pi->gradients.v[1][2] +=
-        (Wi[2] - Wj[2]) * wi *
-        (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
-    pi->gradients.v[2][0] +=
-        (Wi[3] - Wj[3]) * wi *
-        (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
-    pi->gradients.v[2][1] +=
-        (Wi[3] - Wj[3]) * wi *
-        (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
-    pi->gradients.v[2][2] +=
-        (Wi[3] - Wj[3]) * wi *
-        (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
-
-    pi->gradients.P[0] +=
-        (Wi[4] - Wj[4]) * wi *
-        (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
-    pi->gradients.P[1] +=
-        (Wi[4] - Wj[4]) * wi *
-        (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
-    pi->gradients.P[2] +=
-        (Wi[4] - Wj[4]) * wi *
-        (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
-
+    wiBidx[0] = wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
+    wiBidx[1] = wi * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
+    wiBidx[2] = wi * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
   } else {
-    /* The gradient matrix was not well-behaved, switch to SPH gradients */
-
-    pi->gradients.rho[0] -= wi_dx * dx[0] * (pi->rho - pj->rho) * r_inv;
-    pi->gradients.rho[1] -= wi_dx * dx[1] * (pi->rho - pj->rho) * r_inv;
-    pi->gradients.rho[2] -= wi_dx * dx[2] * (pi->rho - pj->rho) * r_inv;
-
-    pi->gradients.v[0][0] -= wi_dx * dx[0] * (pi->v[0] - pj->v[0]) * r_inv;
-    pi->gradients.v[0][1] -= wi_dx * dx[1] * (pi->v[0] - pj->v[0]) * r_inv;
-    pi->gradients.v[0][2] -= wi_dx * dx[2] * (pi->v[0] - pj->v[0]) * r_inv;
-
-    pi->gradients.v[1][0] -= wi_dx * dx[0] * (pi->v[1] - pj->v[1]) * r_inv;
-    pi->gradients.v[1][1] -= wi_dx * dx[1] * (pi->v[1] - pj->v[1]) * r_inv;
-    pi->gradients.v[1][2] -= wi_dx * dx[2] * (pi->v[1] - pj->v[1]) * r_inv;
-
-    pi->gradients.v[2][0] -= wi_dx * dx[0] * (pi->v[2] - pj->v[2]) * r_inv;
-    pi->gradients.v[2][1] -= wi_dx * dx[1] * (pi->v[2] - pj->v[2]) * r_inv;
-    pi->gradients.v[2][2] -= wi_dx * dx[2] * (pi->v[2] - pj->v[2]) * r_inv;
-
-    pi->gradients.P[0] -= wi_dx * dx[0] * (pi->P - pj->P) * r_inv;
-    pi->gradients.P[1] -= wi_dx * dx[1] * (pi->P - pj->P) * r_inv;
-    pi->gradients.P[2] -= wi_dx * dx[2] * (pi->P - pj->P) * r_inv;
+    const float norm = -wi_dx * r_inv;
+    wiBidx[0] = norm * dx[0];
+    wiBidx[1] = norm * dx[1];
+    wiBidx[2] = norm * dx[2];
   }
+
+  /* Compute gradients for pi */
+  /* there is a sign difference w.r.t. eqn. (6) because of the inverse
+   * definition of dx */
+  pi->gradients.rho[0] += dW[0] * wiBidx[0];
+  pi->gradients.rho[1] += dW[0] * wiBidx[1];
+  pi->gradients.rho[2] += dW[0] * wiBidx[2];
+
+  pi->gradients.v[0][0] += dW[1] * wiBidx[0];
+  pi->gradients.v[0][1] += dW[1] * wiBidx[1];
+  pi->gradients.v[0][2] += dW[1] * wiBidx[2];
+  pi->gradients.v[1][0] += dW[2] * wiBidx[0];
+  pi->gradients.v[1][1] += dW[2] * wiBidx[1];
+  pi->gradients.v[1][2] += dW[2] * wiBidx[2];
+  pi->gradients.v[2][0] += dW[3] * wiBidx[0];
+  pi->gradients.v[2][1] += dW[3] * wiBidx[1];
+  pi->gradients.v[2][2] += dW[3] * wiBidx[2];
+
+  pi->gradients.P[0] += dW[4] * wiBidx[0];
+  pi->gradients.P[1] += dW[4] * wiBidx[1];
+  pi->gradients.P[2] += dW[4] * wiBidx[2];
 
   hydro_slope_limit_cell_collect(pi, pj, r);
 
   /* Compute kernel of pj. */
-  const float hj_inv = 1.f / hj;
+  const float hj_inv = 1.0f / hj;
   const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
+  float wjBjdx[3];
   if (pj->geometry.wcorr > const_gizmo_min_wcorr) {
-    /* Compute gradients for pj */
-    /* there is no sign difference w.r.t. eqn. (6) because dx is now what we
-     * want
-     * it to be */
-    pj->gradients.rho[0] +=
-        (Wi[0] - Wj[0]) * wj *
-        (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
-    pj->gradients.rho[1] +=
-        (Wi[0] - Wj[0]) * wj *
-        (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]);
-    pj->gradients.rho[2] +=
-        (Wi[0] - Wj[0]) * wj *
-        (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]);
 
-    pj->gradients.v[0][0] +=
-        (Wi[1] - Wj[1]) * wj *
-        (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
-    pj->gradients.v[0][1] +=
-        (Wi[1] - Wj[1]) * wj *
-        (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]);
-    pj->gradients.v[0][2] +=
-        (Wi[1] - Wj[1]) * wj *
-        (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]);
-    pj->gradients.v[1][0] +=
-        (Wi[2] - Wj[2]) * wj *
-        (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
-    pj->gradients.v[1][1] +=
-        (Wi[2] - Wj[2]) * wj *
-        (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]);
-    pj->gradients.v[1][2] +=
-        (Wi[2] - Wj[2]) * wj *
-        (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]);
-    pj->gradients.v[2][0] +=
-        (Wi[3] - Wj[3]) * wj *
-        (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
-    pj->gradients.v[2][1] +=
-        (Wi[3] - Wj[3]) * wj *
-        (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]);
-    pj->gradients.v[2][2] +=
-        (Wi[3] - Wj[3]) * wj *
-        (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]);
-
-    pj->gradients.P[0] +=
-        (Wi[4] - Wj[4]) * wj *
-        (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
-    pj->gradients.P[1] +=
-        (Wi[4] - Wj[4]) * wj *
-        (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]);
-    pj->gradients.P[2] +=
-        (Wi[4] - Wj[4]) * wj *
-        (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]);
+    wjBjdx[0] = wj * (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
+    wjBjdx[1] = wj * (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]);
+    wjBjdx[2] = wj * (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]);
 
   } else {
-    /* SPH gradients */
-
-    pj->gradients.rho[0] -= wj_dx * dx[0] * (pi->rho - pj->rho) * r_inv;
-    pj->gradients.rho[1] -= wj_dx * dx[1] * (pi->rho - pj->rho) * r_inv;
-    pj->gradients.rho[2] -= wj_dx * dx[2] * (pi->rho - pj->rho) * r_inv;
-
-    pj->gradients.v[0][0] -= wj_dx * dx[0] * (pi->v[0] - pj->v[0]) * r_inv;
-    pj->gradients.v[0][1] -= wj_dx * dx[1] * (pi->v[0] - pj->v[0]) * r_inv;
-    pj->gradients.v[0][2] -= wj_dx * dx[2] * (pi->v[0] - pj->v[0]) * r_inv;
-
-    pj->gradients.v[1][0] -= wj_dx * dx[0] * (pi->v[1] - pj->v[1]) * r_inv;
-    pj->gradients.v[1][1] -= wj_dx * dx[1] * (pi->v[1] - pj->v[1]) * r_inv;
-    pj->gradients.v[1][2] -= wj_dx * dx[2] * (pi->v[1] - pj->v[1]) * r_inv;
-    pj->gradients.v[2][0] -= wj_dx * dx[0] * (pi->v[2] - pj->v[2]) * r_inv;
-    pj->gradients.v[2][1] -= wj_dx * dx[1] * (pi->v[2] - pj->v[2]) * r_inv;
-    pj->gradients.v[2][2] -= wj_dx * dx[2] * (pi->v[2] - pj->v[2]) * r_inv;
-
-    pj->gradients.P[0] -= wj_dx * dx[0] * (pi->P - pj->P) * r_inv;
-    pj->gradients.P[1] -= wj_dx * dx[1] * (pi->P - pj->P) * r_inv;
-    pj->gradients.P[2] -= wj_dx * dx[2] * (pi->P - pj->P) * r_inv;
+    const float norm = -wj_dx * r_inv;
+    wjBjdx[0] = norm * dx[0];
+    wjBjdx[1] = norm * dx[1];
+    wjBjdx[2] = norm * dx[2];
   }
+
+  /* Compute gradients for pj */
+  /* there is no sign difference w.r.t. eqn. (6) because dx is now what we
+   * want it to be */
+  pj->gradients.rho[0] += dW[0] * wjBjdx[0];
+  pj->gradients.rho[1] += dW[0] * wjBjdx[1];
+  pj->gradients.rho[2] += dW[0] * wjBjdx[2];
+
+  pj->gradients.v[0][0] += dW[1] * wjBjdx[0];
+  pj->gradients.v[0][1] += dW[1] * wjBjdx[1];
+  pj->gradients.v[0][2] += dW[1] * wjBjdx[2];
+  pj->gradients.v[1][0] += dW[2] * wjBjdx[0];
+  pj->gradients.v[1][1] += dW[2] * wjBjdx[1];
+  pj->gradients.v[1][2] += dW[2] * wjBjdx[2];
+  pj->gradients.v[2][0] += dW[3] * wjBjdx[0];
+  pj->gradients.v[2][1] += dW[3] * wjBjdx[1];
+  pj->gradients.v[2][2] += dW[3] * wjBjdx[2];
+
+  pj->gradients.P[0] += dW[4] * wjBjdx[0];
+  pj->gradients.P[1] += dW[4] * wjBjdx[1];
+  pj->gradients.P[2] += dW[4] * wjBjdx[2];
 
   hydro_slope_limit_cell_collect(pj, pi, r);
 }
@@ -273,7 +192,7 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
                                struct part *restrict pi,
                                struct part *restrict pj) {
 
-  const float r_inv = 1.f / sqrtf(r2);
+  const float r_inv = 1.0f / sqrtf(r2);
   const float r = r2 * r_inv;
 
   float Bi[3][3];
@@ -298,84 +217,45 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
 
   /* Compute kernel of pi. */
   float wi, wi_dx;
-  const float hi_inv = 1.f / hi;
+  const float hi_inv = 1.0f / hi;
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
+  const float dW[5] = {Wi[0] - Wj[0], Wi[1] - Wj[1], Wi[2] - Wj[2],
+                       Wi[3] - Wj[3], Wi[4] - Wj[4]};
+
+  float wiBidx[3];
   if (pi->geometry.wcorr > const_gizmo_min_wcorr) {
-    /* Compute gradients for pi */
-    /* there is a sign difference w.r.t. eqn. (6) because of the inverse
-     * definition of dx */
-    pi->gradients.rho[0] +=
-        (Wi[0] - Wj[0]) * wi *
-        (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
-    pi->gradients.rho[1] +=
-        (Wi[0] - Wj[0]) * wi *
-        (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
-    pi->gradients.rho[2] +=
-        (Wi[0] - Wj[0]) * wi *
-        (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
-
-    pi->gradients.v[0][0] +=
-        (Wi[1] - Wj[1]) * wi *
-        (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
-    pi->gradients.v[0][1] +=
-        (Wi[1] - Wj[1]) * wi *
-        (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
-    pi->gradients.v[0][2] +=
-        (Wi[1] - Wj[1]) * wi *
-        (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
-    pi->gradients.v[1][0] +=
-        (Wi[2] - Wj[2]) * wi *
-        (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
-    pi->gradients.v[1][1] +=
-        (Wi[2] - Wj[2]) * wi *
-        (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
-    pi->gradients.v[1][2] +=
-        (Wi[2] - Wj[2]) * wi *
-        (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
-    pi->gradients.v[2][0] +=
-        (Wi[3] - Wj[3]) * wi *
-        (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
-    pi->gradients.v[2][1] +=
-        (Wi[3] - Wj[3]) * wi *
-        (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
-    pi->gradients.v[2][2] +=
-        (Wi[3] - Wj[3]) * wi *
-        (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
-
-    pi->gradients.P[0] +=
-        (Wi[4] - Wj[4]) * wi *
-        (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
-    pi->gradients.P[1] +=
-        (Wi[4] - Wj[4]) * wi *
-        (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
-    pi->gradients.P[2] +=
-        (Wi[4] - Wj[4]) * wi *
-        (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
-
+    wiBidx[0] = wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
+    wiBidx[1] = wi * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
+    wiBidx[2] = wi * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
   } else {
-    /* Gradient matrix is not well-behaved, switch to SPH gradients */
-
-    pi->gradients.rho[0] -= wi_dx * dx[0] * (pi->rho - pj->rho) * r_inv;
-    pi->gradients.rho[1] -= wi_dx * dx[1] * (pi->rho - pj->rho) * r_inv;
-    pi->gradients.rho[2] -= wi_dx * dx[2] * (pi->rho - pj->rho) * r_inv;
-
-    pi->gradients.v[0][0] -= wi_dx * dx[0] * (pi->v[0] - pj->v[0]) * r_inv;
-    pi->gradients.v[0][1] -= wi_dx * dx[1] * (pi->v[0] - pj->v[0]) * r_inv;
-    pi->gradients.v[0][2] -= wi_dx * dx[2] * (pi->v[0] - pj->v[0]) * r_inv;
-    pi->gradients.v[1][0] -= wi_dx * dx[0] * (pi->v[1] - pj->v[1]) * r_inv;
-    pi->gradients.v[1][1] -= wi_dx * dx[1] * (pi->v[1] - pj->v[1]) * r_inv;
-    pi->gradients.v[1][2] -= wi_dx * dx[2] * (pi->v[1] - pj->v[1]) * r_inv;
-
-    pi->gradients.v[2][0] -= wi_dx * dx[0] * (pi->v[2] - pj->v[2]) * r_inv;
-    pi->gradients.v[2][1] -= wi_dx * dx[1] * (pi->v[2] - pj->v[2]) * r_inv;
-    pi->gradients.v[2][2] -= wi_dx * dx[2] * (pi->v[2] - pj->v[2]) * r_inv;
-
-    pi->gradients.P[0] -= wi_dx * dx[0] * (pi->P - pj->P) * r_inv;
-    pi->gradients.P[1] -= wi_dx * dx[1] * (pi->P - pj->P) * r_inv;
-    pi->gradients.P[2] -= wi_dx * dx[2] * (pi->P - pj->P) * r_inv;
+    const float norm = -wi_dx * r_inv;
+    wiBidx[0] = norm * dx[0];
+    wiBidx[1] = norm * dx[1];
+    wiBidx[2] = norm * dx[2];
   }
+
+  /* Compute gradients for pi */
+  /* there is a sign difference w.r.t. eqn. (6) because of the inverse
+   * definition of dx */
+  pi->gradients.rho[0] += dW[0] * wiBidx[0];
+  pi->gradients.rho[1] += dW[0] * wiBidx[1];
+  pi->gradients.rho[2] += dW[0] * wiBidx[2];
+
+  pi->gradients.v[0][0] += dW[1] * wiBidx[0];
+  pi->gradients.v[0][1] += dW[1] * wiBidx[1];
+  pi->gradients.v[0][2] += dW[1] * wiBidx[2];
+  pi->gradients.v[1][0] += dW[2] * wiBidx[0];
+  pi->gradients.v[1][1] += dW[2] * wiBidx[1];
+  pi->gradients.v[1][2] += dW[2] * wiBidx[2];
+  pi->gradients.v[2][0] += dW[3] * wiBidx[0];
+  pi->gradients.v[2][1] += dW[3] * wiBidx[1];
+  pi->gradients.v[2][2] += dW[3] * wiBidx[2];
+
+  pi->gradients.P[0] += dW[4] * wiBidx[0];
+  pi->gradients.P[1] += dW[4] * wiBidx[1];
+  pi->gradients.P[2] += dW[4] * wiBidx[2];
 
   hydro_slope_limit_cell_collect(pi, pj, r);
 }
@@ -393,49 +273,32 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
   const float h = p->h;
   const float h_inv = 1.0f / h;
   const float ihdim = pow_dimension(h_inv);
-  const float ihdimp1 = pow_dimension_plus_one(h_inv);
 
+  float norm;
   if (p->geometry.wcorr > const_gizmo_min_wcorr) {
-    p->gradients.rho[0] *= ihdim;
-    p->gradients.rho[1] *= ihdim;
-    p->gradients.rho[2] *= ihdim;
-
-    p->gradients.v[0][0] *= ihdim;
-    p->gradients.v[0][1] *= ihdim;
-    p->gradients.v[0][2] *= ihdim;
-    p->gradients.v[1][0] *= ihdim;
-    p->gradients.v[1][1] *= ihdim;
-    p->gradients.v[1][2] *= ihdim;
-    p->gradients.v[2][0] *= ihdim;
-    p->gradients.v[2][1] *= ihdim;
-    p->gradients.v[2][2] *= ihdim;
-
-    p->gradients.P[0] *= ihdim;
-    p->gradients.P[1] *= ihdim;
-    p->gradients.P[2] *= ihdim;
-
+    norm = ihdim;
   } else {
-
-    /* finalize gradients by multiplying with volume */
-    p->gradients.rho[0] *= ihdimp1 * volume;
-    p->gradients.rho[1] *= ihdimp1 * volume;
-    p->gradients.rho[2] *= ihdimp1 * volume;
-
-    p->gradients.v[0][0] *= ihdimp1 * volume;
-    p->gradients.v[0][1] *= ihdimp1 * volume;
-    p->gradients.v[0][2] *= ihdimp1 * volume;
-
-    p->gradients.v[1][0] *= ihdimp1 * volume;
-    p->gradients.v[1][1] *= ihdimp1 * volume;
-    p->gradients.v[1][2] *= ihdimp1 * volume;
-    p->gradients.v[2][0] *= ihdimp1 * volume;
-    p->gradients.v[2][1] *= ihdimp1 * volume;
-    p->gradients.v[2][2] *= ihdimp1 * volume;
-
-    p->gradients.P[0] *= ihdimp1 * volume;
-    p->gradients.P[1] *= ihdimp1 * volume;
-    p->gradients.P[2] *= ihdimp1 * volume;
+    const float ihdimp1 = pow_dimension_plus_one(h_inv);
+    norm = ihdimp1 * volume;
   }
+
+  p->gradients.rho[0] *= norm;
+  p->gradients.rho[1] *= norm;
+  p->gradients.rho[2] *= norm;
+
+  p->gradients.v[0][0] *= norm;
+  p->gradients.v[0][1] *= norm;
+  p->gradients.v[0][2] *= norm;
+  p->gradients.v[1][0] *= norm;
+  p->gradients.v[1][1] *= norm;
+  p->gradients.v[1][2] *= norm;
+  p->gradients.v[2][0] *= norm;
+  p->gradients.v[2][1] *= norm;
+  p->gradients.v[2][2] *= norm;
+
+  p->gradients.P[0] *= norm;
+  p->gradients.P[1] *= norm;
+  p->gradients.P[2] *= norm;
 
   hydro_slope_limit_cell(p);
 }
