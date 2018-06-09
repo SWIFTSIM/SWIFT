@@ -67,7 +67,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_derivatives(
   derivs->chi_2 = rs_inv2 * u;
   derivs->chi_3 = -rs_inv3 * (u2 - 0.5f);
   derivs->chi_4 = rs_inv4 * (u3 - 1.5f * u);
-  derivs->chi_5 = -rs_inv5 * (u4 - u2 + 0.75f);
+  derivs->chi_5 = -rs_inv5 * (u4 - 3.f * u2 + 0.75f);
 
   const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
   const float common_factor = one_over_sqrt_pi * expf(-u2);

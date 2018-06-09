@@ -47,6 +47,6 @@ Gravity:
   mesh_side_length:   16
   eta: 0.025
   theta: 0.85
-  r_cut_max: 6.
+  r_cut_max: 5.
   comoving_softening: 0.0001
   max_physical_softening: 0.0001
