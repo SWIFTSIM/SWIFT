@@ -206,8 +206,11 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
         cj->ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 
   /* Let's interact at this level */
-  gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
-              cj->multipole->CoM, props, periodic, dim, rlr_inv);
+  if (0)
+    gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
+                cj->multipole->CoM, props, periodic, dim, rlr_inv);
+
+  runner_dopair_grav_pp(r, ci, cj, 0);
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
@@ -1077,7 +1080,6 @@ static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
   const struct gravity_props *props = e->gravity_properties;
   const double theta_crit2 = props->theta_crit2;
   const double max_distance = e->mesh->a_smooth * props->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
   /* Anything to do here? */
   if (!((cell_is_active_gravity(ci, e) && ci->nodeID == nodeID) ||
@@ -1120,9 +1122,10 @@ static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
     dz = nearest(dz, dim[2]);
   }
   const double r2 = dx * dx + dy * dy + dz * dz;
+  const double r_lr_check = sqrt(r2) - (multi_i->r_max + multi_j->r_max);
 
   /* Are we beyond the distance where the truncated forces are 0? */
-  if (periodic && r2 > max_distance2) {
+  if (periodic && r_lr_check > max_distance) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Need to account for the interactions we missed */
