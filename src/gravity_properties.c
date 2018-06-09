@@ -57,6 +57,9 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   p->r_cut_min = parser_get_opt_param_float(params, "Gravity:r_cut_min",
                                             gravity_props_default_r_cut_min);
 
+  if (p->mesh_size % 2 != 0)
+    error("The mesh side-length must be an even number.");
+
   if (p->a_smooth <= 0.)
     error("The mesh smoothing scale 'a_smooth' must be > 0.");
 
