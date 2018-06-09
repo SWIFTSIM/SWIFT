@@ -55,7 +55,6 @@
 #include "minmax.h"
 #include "multipole.h"
 #include "restart.h"
-#include "runner.h"
 #include "sort_part.h"
 #include "stars.h"
 #include "threadpool.h"

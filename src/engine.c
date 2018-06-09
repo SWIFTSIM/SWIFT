@@ -64,6 +64,7 @@
 #include "debug.h"
 #include "error.h"
 #include "gravity.h"
+#include "gravity_cache.h"
 #include "hydro.h"
 #include "map.h"
 #include "memswap.h"
