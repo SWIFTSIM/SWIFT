@@ -31,7 +31,7 @@
 #include <float.h>
 #include <math.h>
 
-//#define GADGET2_LONG_RANGE_CORRECTION
+#define GADGET2_LONG_RANGE_CORRECTION
 
 struct truncated_derivatives {
 
@@ -46,6 +46,40 @@ struct truncated_derivatives {
 __attribute__((always_inline)) INLINE static void kernel_long_grav_derivatives(
     const float r, const float rs_inv,
     struct truncated_derivatives *const derivs) {
+
+#ifdef GADGET2_LONG_RANGE_CORRECTION
+
+  /* Powers of u=r/2r_s */
+  const float u = 0.5f * r * rs_inv;
+  const float u2 = u * u;
+  const float u3 = u2 * u;
+  const float u4 = u3 * u;
+
+  /* Powers of (1/r_s) */
+  const float rs_inv2 = rs_inv * rs_inv;
+  const float rs_inv3 = rs_inv2 * rs_inv;
+  const float rs_inv4 = rs_inv3 * rs_inv;
+  const float rs_inv5 = rs_inv4 * rs_inv;
+
+  /* Derivatives of \chi */
+  derivs->chi_0 = erfcf(u);
+  derivs->chi_1 = -rs_inv;
+  derivs->chi_2 = rs_inv2 * u;
+  derivs->chi_3 = -rs_inv3 * (u2 - 0.5f);
+  derivs->chi_4 = rs_inv4 * (u3 - 1.5f * u);
+  derivs->chi_5 = -rs_inv5 * (u4 - u2 + 0.75f);
+
+  const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
+  const float common_factor = one_over_sqrt_pi * expf(-u2);
+
+  /* Multiply in the common factors */
+  derivs->chi_1 *= common_factor;
+  derivs->chi_2 *= common_factor;
+  derivs->chi_3 *= common_factor;
+  derivs->chi_4 *= common_factor;
+  derivs->chi_5 *= common_factor;
+
+#else
 
   /* Powers of 2/r_s */
   const float c0 = 1.f;
@@ -80,6 +114,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_derivatives(
   derivs->chi_4 = -2.f * exp_x * c4 * (24.f * a5 - 36.f * a4 + 14.f * a3 - a2);
   derivs->chi_5 = -2.f * exp_x * c5 *
                   (120.f * a6 - 240.f * a5 + 150.f * a4 - 30.f * a3 + a2);
+#endif
 }
 
 /**
