@@ -160,11 +160,10 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_force_eval(
   const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
 
   const float arg1 = u * 0.5f;
-  const float arg2 = u * one_over_sqrt_pi;
-  const float arg3 = -arg1 * arg1;
+  const float arg2 = -arg1 * arg1;
 
   const float term1 = erfcf(arg1);
-  const float term2 = arg2 * expf(arg3);
+  const float term2 = u * one_over_sqrt_pi * expf(arg2);
 
   *W = term1 + term2;
 #else
