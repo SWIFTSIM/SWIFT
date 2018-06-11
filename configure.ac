@@ -1813,7 +1813,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, nfw, hernquist, disc-patch, sine-wave, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, nfw, hernquist, disc-patch, sine-wave, spiral-galaxy, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -1839,6 +1839,9 @@ case "$with_potential" in
    ;;
    sine-wave)
       AC_DEFINE([EXTERNAL_POTENTIAL_SINE_WAVE], [1], [Sine wave external potential in 1D])
+   ;;
+   spiral-galaxy)
+      AC_DEFINE([EXTERNAL_POTENTIAL_SPIRAL_GALAXY], [1], [Spiral galaxy external potential in 3D])
    ;;
    point-mass-ring)
       AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_RING], [1], [Point mass potential for Keplerian Ring (Hopkins 2015).])

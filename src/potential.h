@@ -42,6 +42,8 @@
 #include "./potential/disc_patch/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_SINE_WAVE)
 #include "./potential/sine_wave/potential.h"
+#elif defined(EXTERNAL_POTENTIAL_SPIRAL_GALAXY)
+#include "./potential/spiral_galaxy/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_POINTMASS_RING)
 #include "./potential/point_mass_ring/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_POINTMASS_SOFT)

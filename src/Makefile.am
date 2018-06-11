@@ -181,6 +181,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  star_formation/GEAR/star_formation_logger.h star_formation/GEAR/star_formation_logger_struct.h \
                  star_formation/none/star_formation_logger.h star_formation/none/star_formation_logger_struct.h \
                  cooling/none/cooling.h cooling/none/cooling_struct.h \
+                 potential/spiral_galaxy/potential.h \
                  cooling/none/cooling_io.h \
 		 cooling/Compton/cooling.h cooling/Compton/cooling_struct.h \
                  cooling/Compton/cooling_io.h \
