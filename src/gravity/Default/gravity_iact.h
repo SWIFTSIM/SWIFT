@@ -218,6 +218,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
     float r_x, float r_y, float r_z, float r2, float h, float h_inv,
     const struct multipole *m, float *f_x, float *f_y, float *f_z, float *pot) {
 
+  /* In the case where the order is < 3, then there is only a monopole term left. */
+  /* We can default to the normal P-P interaction with the mass of the multipole */
+  /* and its CoM as the "particle" property */
 #if SELF_GRAVITY_MULTIPOLE_ORDER < 3
   float f_ij;
   runner_iact_grav_pp_full(r2, h * h, h_inv, h_inv * h_inv * h_inv, m->M_000,
@@ -230,8 +233,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
   /* Get the inverse distance */
   const float r_inv = 1.f / sqrtf(r2);
 
+  /* Compute the derivatives of the potential */
   struct potential_derivatives_M2P d;
-  compute_potential_derivatives_M2P(r_x, r_y, r_z, r2, r_inv, h, h_inv, &d);
+  compute_potential_derivatives_M2P(r_x, r_y, r_z, r2, r_inv, h, h_inv, 0, FLT_MAX, &d);
 
   /* 1st order terms (monopole) */
   *f_x = m->M_000 * d.D_100;
@@ -250,6 +254,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
   *f_z += m->M_110 * d.D_111 + m->M_101 * d.D_102 + m->M_011 * d.D_012;
   *pot -= m->M_110 * d.D_110 + m->M_101 * d.D_101 + m->M_011 * d.D_011;
 
+  /* Take care of the the sign convention */
+  *f_x *= -1.f;
+  *f_y *= -1.f;
+  *f_z *= -1.f;
+  *pot *= -1.f;
 #endif
 }
 
@@ -258,12 +267,49 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
     float rlr_inv, const struct multipole *m, float *f_x, float *f_y,
     float *f_z, float *pot) {
 
+  /* In the case where the order is < 3, then there is only a monopole term left. */
+  /* We can default to the normal P-P interaction with the mass of the multipole */
+  /* and its CoM as the "particle" property */
+#if SELF_GRAVITY_MULTIPOLE_ORDER < 3
   float f_ij;
   runner_iact_grav_pp_truncated(r2, h * h, h_inv, h_inv * h_inv * h_inv,
                                 m->M_000, rlr_inv, &f_ij, pot);
   *f_x = f_ij * r_x;
   *f_y = f_ij * r_y;
   *f_z = f_ij * r_z;
+
+#else
+
+  /* Get the inverse distance */
+  const float r_inv = 1.f / sqrtf(r2);
+
+  /* Compute the derivatives of the potential */
+  struct potential_derivatives_M2P d;
+  compute_potential_derivatives_M2P(r_x, r_y, r_z, r2, r_inv, h, h_inv, 1, rlr_inv, &d);
+
+  /* 1st order terms (monopole) */
+  *f_x = m->M_000 * d.D_100;
+  *f_y = m->M_000 * d.D_010;
+  *f_z = m->M_000 * d.D_001;
+  *pot = m->M_000 * d.D_000;
+
+  /* 3rd order terms (quadrupole) */
+  *f_x += m->M_200 * d.D_300 + m->M_020 * d.D_120 + m->M_002 * d.D_102;
+  *f_y += m->M_200 * d.D_210 + m->M_020 * d.D_030 + m->M_002 * d.D_012;
+  *f_z += m->M_200 * d.D_201 + m->M_020 * d.D_021 + m->M_002 * d.D_003;
+  *pot -= m->M_200 * d.D_100 + m->M_020 * d.D_020 + m->M_002 * d.D_002;
+
+  *f_x += m->M_110 * d.D_210 + m->M_101 * d.D_201 + m->M_011 * d.D_111;
+  *f_y += m->M_110 * d.D_120 + m->M_101 * d.D_111 + m->M_011 * d.D_021;
+  *f_z += m->M_110 * d.D_111 + m->M_101 * d.D_102 + m->M_011 * d.D_012;
+  *pot -= m->M_110 * d.D_110 + m->M_101 * d.D_101 + m->M_011 * d.D_011;
+
+  /* Take care of the the sign convention */
+  *f_x *= -1.f;
+  *f_y *= -1.f;
+  *f_z *= -1.f;
+  *pot *= -1.f;
+#endif
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IACT_H */

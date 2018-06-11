@@ -96,7 +96,7 @@ struct potential_derivatives_M2L {
  */
 struct potential_derivatives_M2P {
 
-  /* 0th order terms */
+  /* 0th order term */
   float D_000;
 
   /* 1st order terms */
@@ -130,9 +130,9 @@ struct potential_derivatives_M2P {
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
-compute_potential_derivatives_M2L(float r_x, float r_y, float r_z, float r2,
-                                  float r_inv, float eps, float eps_inv,
-                                  int periodic, float rs_inv,
+compute_potential_derivatives_M2L(const float r_x, const float r_y, const float r_z, const float r2,
+                                  const float r_inv, const float eps, const float eps_inv,
+                                  const int periodic, const float rs_inv,
                                   struct potential_derivatives_M2L *pot) {
 
   float Dt_1;
@@ -379,11 +379,14 @@ compute_potential_derivatives_M2L(float r_x, float r_y, float r_z, float r2,
  * @param r_inv Inverse norm of distance vector
  * @param eps Softening length.
  * @param eps_inv Inverse of softening length.
+ * @param periodic Is the calculation using periodic BCs?
+ * @param rs_inv The inverse of the gravity mesh-smoothing scale.
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
-compute_potential_derivatives_M2P(float r_x, float r_y, float r_z, float r2,
-                                  float r_inv, float eps, float eps_inv,
+compute_potential_derivatives_M2P(const float r_x, const float r_y, const float r_z, const float r2,
+                                  const float r_inv, const float eps, const float eps_inv,
+				  const int periodic, const float rs_inv,
                                   struct potential_derivatives_M2P *pot) {
 
   float Dt_1;
@@ -391,8 +394,8 @@ compute_potential_derivatives_M2P(float r_x, float r_y, float r_z, float r2,
   float Dt_5;
   float Dt_7;
 
-  /* Un-softened case */
-  if (r2 > eps * eps) {
+  /* Un-softened un-truncated case (Newtonian potential) */
+  if (!periodic && r2 > eps * eps) {
 
     const float r_inv2 = r_inv * r_inv;
 
@@ -401,6 +404,25 @@ compute_potential_derivatives_M2P(float r_x, float r_y, float r_z, float r2,
     Dt_5 = -3.f * Dt_3 * r_inv2; /* 3 / r^5 */
     Dt_7 = -5.f * Dt_5 * r_inv2; /* -15 / r^7 */
 
+    /* Un-softened truncated case */
+  } else if (periodic && r2 > eps * eps) {
+
+    /* Get the derivatives of the truncated potential */
+    const float r = r2 * r_inv;
+    struct truncated_derivatives d;
+    kernel_long_grav_derivatives(r, rs_inv, &d);
+
+    const float r_inv2 = r_inv * r_inv;
+    const float r_inv3 = r_inv2 * r_inv;
+    const float r_inv5 = r_inv2 * r_inv3;
+    const float r_inv7 = r_inv2 * r_inv5;
+
+    Dt_1 = d.chi_0 * r_inv;
+    Dt_3 = (r * d.chi_1 - d.chi_0) * r_inv3;
+    Dt_5 = (r * r * d.chi_2 - 3.f * r * d.chi_1 + 3.f * d.chi_0) * r_inv5;
+    Dt_7 = (r * r * r * d.chi_3 - 6.f * r * r * d.chi_2 + 15.f * r * d.chi_1 - 15.f * d.chi_0) * r_inv7;
+
+    /* Softened case */
   } else {
 
     const float r = r2 * r_inv;
