@@ -154,7 +154,7 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
  * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static void gravity_cache_populate(
-    const timebin_t max_active_bin, struct gravity_cache *c,
+									 const timebin_t max_active_bin, const float dim[3], const int periodic, struct gravity_cache *c,
     const struct gpart *restrict gparts, const int gcount,
     const int gcount_padded, const double shift[3], const float CoM[3],
     const float r_max2, const struct cell *cell,
@@ -185,10 +185,17 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     active[i] = (int)(gparts[i].time_bin <= max_active_bin);
 
     /* Check whether we can use the multipole instead of P-P */
-    const float dx = x[i] - CoM[0];
-    const float dy = y[i] - CoM[1];
-    const float dz = z[i] - CoM[2];
-    const float r2 = dx * dx + dy * dy + dz * dz;
+    float dx = x[i] - CoM[0];
+    float dy = y[i] - CoM[1];
+    float dz = z[i] - CoM[2];
+
+    if(periodic) {
+      dx = nearestf(dx, dim[0]);
+      dy = nearestf(dy, dim[1]);
+      dz = nearestf(dz, dim[2]);
+    }
+      
+    float r2 = dx * dx + dy * dy + dz * dz;
     use_mpole[i] = gravity_M2P_accept(r_max2, theta_crit2, r2);
   }
 
