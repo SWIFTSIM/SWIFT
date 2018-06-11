@@ -1516,6 +1516,7 @@ INLINE static void gravity_M2M(struct multipole *m_a,
  * @param props The #gravity_props of this calculation.
  * @param periodic Is the calculation periodic ?
  * @param dim The size of the simulation box.
+ * @param rs_inv The inverse of the gravity mesh-smoothing scale.
  */
 INLINE static void gravity_M2L(struct grav_tensor *l_b,
                                const struct multipole *m_a,

@@ -403,7 +403,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
       /* Interact! */
       float f_ij, pot_ij;
       runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-				    rlr_inv, &f_ij, &pot_ij);
+                                    rlr_inv, &f_ij, &pot_ij);
 
       /* if (id_i == 1000 && id_j == 900 && pjd < gcount_j) { */
       /*   message("--- Interacting part"); */
@@ -504,10 +504,10 @@ static INLINE void runner_dopair_grav_pm_full(
     const float r_max2 = r_max_j * r_max_j;
     const float theta_crit2 = e->gravity_properties->theta_crit2;
 
-    if(!gravity_M2P_accept(r_max2, theta_crit2, r2))
+    if (!gravity_M2P_accept(r_max2, theta_crit2, r2))
       error("use_mpole[i] set when M2P accept fails");
 #endif
-    
+
     /* Interact! */
     float f_x, f_y, f_z, pot_ij;
     runner_iact_grav_pm_full(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y,
@@ -594,10 +594,10 @@ static INLINE void runner_dopair_grav_pm_truncated(
     const float r_max2 = r_max_j * r_max_j;
     const float theta_crit2 = e->gravity_properties->theta_crit2;
 
-    if(!gravity_M2P_accept(r_max2, theta_crit2, r2))
+    if (!gravity_M2P_accept(r_max2, theta_crit2, r2))
       error("use_mpole[i] set when M2P accept fails");
 #endif
-    
+
     /* Interact! */
     float f_x, f_y, f_z, pot_ij;
     runner_iact_grav_pm_truncated(dx, dy, dz, r2, h_i, h_inv_i, rlr_inv,
@@ -713,12 +713,12 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
 
   /* Fill the caches */
   const float dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
-  gravity_cache_populate(e->max_active_bin, dim, s->periodic, ci_cache, ci->gparts, gcount_i,
-                         gcount_padded_i, shift_i, CoM_j, rmax2_j, ci,
-                         e->gravity_properties);
-  gravity_cache_populate(e->max_active_bin, dim, s->periodic, cj_cache, cj->gparts, gcount_j,
-                         gcount_padded_j, shift_j, CoM_i, rmax2_i, cj,
-                         e->gravity_properties);
+  gravity_cache_populate(e->max_active_bin, dim, s->periodic, ci_cache,
+                         ci->gparts, gcount_i, gcount_padded_i, shift_i, CoM_j,
+                         rmax2_j, ci, e->gravity_properties);
+  gravity_cache_populate(e->max_active_bin, dim, s->periodic, cj_cache,
+                         cj->gparts, gcount_j, gcount_padded_j, shift_j, CoM_i,
+                         rmax2_i, cj, e->gravity_properties);
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
@@ -1061,7 +1061,7 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
       /* Interact! */
       float f_ij, pot_ij;
       runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-				    rlr_inv, &f_ij, &pot_ij);
+                                    rlr_inv, &f_ij, &pot_ij);
 
       /* if (id_i == 1000 && id_j == 901) { */
       /*   message("--- Interacting part"); */

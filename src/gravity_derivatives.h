@@ -136,9 +136,11 @@ struct potential_derivatives_M2P {
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
-compute_potential_derivatives_M2L(const float r_x, const float r_y, const float r_z, const float r2,
-                                  const float r_inv, const float eps, const float eps_inv,
-                                  const int periodic, const float rs_inv,
+compute_potential_derivatives_M2L(const float r_x, const float r_y,
+                                  const float r_z, const float r2,
+                                  const float r_inv, const float eps,
+                                  const float eps_inv, const int periodic,
+                                  const float rs_inv,
                                   struct potential_derivatives_M2L *pot) {
 
   float Dt_1;
@@ -390,9 +392,11 @@ compute_potential_derivatives_M2L(const float r_x, const float r_y, const float 
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
-compute_potential_derivatives_M2P(const float r_x, const float r_y, const float r_z, const float r2,
-                                  const float r_inv, const float eps, const float eps_inv,
-				  const int periodic, const float rs_inv,
+compute_potential_derivatives_M2P(const float r_x, const float r_y,
+                                  const float r_z, const float r2,
+                                  const float r_inv, const float eps,
+                                  const float eps_inv, const int periodic,
+                                  const float rs_inv,
                                   struct potential_derivatives_M2P *pot) {
 
   float Dt_1;
@@ -400,7 +404,7 @@ compute_potential_derivatives_M2P(const float r_x, const float r_y, const float 
   float Dt_5;
   float Dt_7;
   float Dt_9;
-  
+
   /* Un-softened un-truncated case (Newtonian potential) */
   if (!periodic && r2 > eps * eps) {
 
@@ -429,8 +433,11 @@ compute_potential_derivatives_M2P(const float r_x, const float r_y, const float 
     Dt_1 = d.chi_0 * r_inv;
     Dt_3 = (r * d.chi_1 - d.chi_0) * r_inv3;
     Dt_5 = (r * r * d.chi_2 - 3.f * r * d.chi_1 + 3.f * d.chi_0) * r_inv5;
-    Dt_7 = (r * r * r * d.chi_3 - 6.f * r * r * d.chi_2 + 15.f * r * d.chi_1 - 15.f * d.chi_0) * r_inv7;
-    Dt_9 = (r * r * r * r * d.chi_4 - 10.f * r * r * r * d.chi_3 +  45.f * r * r * d.chi_2 - 105.f * r * d.chi_1 + 105.f * d.chi_0) *
+    Dt_7 = (r * r * r * d.chi_3 - 6.f * r * r * d.chi_2 + 15.f * r * d.chi_1 -
+            15.f * d.chi_0) *
+           r_inv7;
+    Dt_9 = (r * r * r * r * d.chi_4 - 10.f * r * r * r * d.chi_3 +
+            45.f * r * r * d.chi_2 - 105.f * r * d.chi_1 + 105.f * d.chi_0) *
            r_inv9;
 
     /* Softened case */
