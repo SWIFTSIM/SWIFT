@@ -105,7 +105,8 @@ static INLINE void gravity_cache_clean(struct gravity_cache *c) {
  * @param count The number of #gpart to allocated for (space_splitsize is a good
  * choice).
  */
-static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
+static INLINE void gravity_cache_init(struct gravity_cache *c,
+                                      const int count) {
 
   /* Size of the gravity cache */
   const int padded_count = count - (count % VEC_SIZE) + VEC_SIZE;
@@ -153,10 +154,11 @@ static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
  * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static void gravity_cache_populate(
-    timebin_t max_active_bin, struct gravity_cache *c,
-    const struct gpart *restrict gparts, int gcount, int gcount_padded,
-    const double shift[3], const float CoM[3], float r_max2,
-    const struct cell *cell, const struct gravity_props *grav_props) {
+    const timebin_t max_active_bin, struct gravity_cache *c,
+    const struct gpart *restrict gparts, const int gcount,
+    const int gcount_padded, const double shift[3], const float CoM[3],
+    const float r_max2, const struct cell *cell,
+    const struct gravity_props *grav_props) {
 
   const float theta_crit2 = grav_props->theta_crit2;
 
@@ -187,7 +189,7 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     const float dy = y[i] - CoM[1];
     const float dz = z[i] - CoM[2];
     const float r2 = dx * dx + dy * dy + dz * dz;
-    use_mpole[i] = 0 * gravity_M2P_accept(r_max2, theta_crit2, r2);
+    use_mpole[i] = gravity_M2P_accept(r_max2, theta_crit2, r2);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -227,11 +229,11 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
  * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static void
-gravity_cache_populate_no_mpole(timebin_t max_active_bin,
+gravity_cache_populate_no_mpole(const timebin_t max_active_bin,
                                 struct gravity_cache *c,
-                                const struct gpart *restrict gparts, int gcount,
-                                int gcount_padded, const double shift[3],
-                                const struct cell *cell,
+                                const struct gpart *restrict gparts,
+                                const int gcount, const int gcount_padded,
+                                const double shift[3], const struct cell *cell,
                                 const struct gravity_props *grav_props) {
 
   /* Make the compiler understand we are in happy vectorization land */

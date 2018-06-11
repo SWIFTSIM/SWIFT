@@ -24,6 +24,7 @@
 #include "active.h"
 #include "cell.h"
 #include "gravity.h"
+#include "gravity_cache.h"
 #include "inline.h"
 #include "part.h"
 #include "space_getsid.h"
@@ -440,11 +441,13 @@ static INLINE void runner_dopair_grav_pp_truncated(
   TIMER_TOC(timer_dopair_grav_pp);
 }
 
-static INLINE void runner_dopair_grav_pm(
+static INLINE void runner_dopair_grav_pm_full(
     const struct engine *restrict e, struct gravity_cache *ci_cache,
     int gcount_i, int gcount_padded_i, struct gpart *restrict gparts_i,
     const float CoM_j[3], const struct multipole *restrict multi_j,
     struct cell *restrict cj) {
+
+  const float dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
 
   TIMER_TIC;
 
@@ -478,7 +481,86 @@ static INLINE void runner_dopair_grav_pm(
       error("Active particle went through the cache");
 #endif
 
-    error("aa");
+    const float x_i = x[pid];
+    const float y_i = y[pid];
+    const float z_i = z[pid];
+
+    /* Some powers of the softening length */
+    const float h_i = epsilon[pid];
+    const float h_inv_i = 1.f / h_i;
+
+    /* Distance to the Multipole */
+    float dx = CoM_j[0] - x_i;
+    float dy = CoM_j[1] - y_i;
+    float dz = CoM_j[2] - z_i;
+
+    dx = nearestf(dx, dim[0]);
+    dy = nearestf(dy, dim[1]);
+    dz = nearestf(dz, dim[2]);
+
+    const float r2 = dx * dx + dy * dy + dz * dz;
+
+    /* Interact! */
+    float f_x, f_y, f_z, pot_ij;
+    runner_iact_grav_pm_full(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y,
+                             &f_z, &pot_ij);
+
+    /* Store it back */
+    a_x[pid] = f_x;
+    a_y[pid] = f_y;
+    a_z[pid] = f_z;
+    pot[pid] = pot_ij;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Update the interaction counter */
+    if (pid < gcount_i)
+      gparts_i[pid].num_interacted += cj->multipole->m_pole.num_gpart;
+#endif
+  }
+
+  TIMER_TOC(timer_dopair_grav_pm);
+}
+
+static INLINE void runner_dopair_grav_pm_truncated(
+    const struct engine *restrict e, struct gravity_cache *ci_cache,
+    int gcount_i, int gcount_padded_i, struct gpart *restrict gparts_i,
+    const float CoM_j[3], const struct multipole *restrict multi_j,
+    struct cell *restrict cj) {
+
+  const float dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const float rlr_inv = 1. / e->mesh->a_smooth;
+
+  TIMER_TIC;
+
+  /* Make the compiler understand we are in happy vectorization land */
+  swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, epsilon, ci_cache->epsilon,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, a_x, ci_cache->a_x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, a_y, ci_cache->a_y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, a_z, ci_cache->a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, pot, ci_cache->pot, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, active, ci_cache->active,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, use_mpole, ci_cache->use_mpole,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_assume_size(gcount_padded_i, VEC_SIZE);
+
+  /* Loop over all particles in ci... */
+  for (int pid = 0; pid < gcount_padded_i; pid++) {
+
+    /* Skip inactive particles */
+    if (!active[pid]) continue;
+
+    /* Skip particle that cannot use the multipole */
+    if (!use_mpole[pid]) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (pid < gcount_i && !gpart_is_active(&gparts_i[pid], e))
+      error("Active particle went through the cache");
+#endif
 
     const float x_i = x[pid];
     const float y_i = y[pid];
@@ -489,15 +571,20 @@ static INLINE void runner_dopair_grav_pm(
     const float h_inv_i = 1.f / h_i;
 
     /* Distance to the Multipole */
-    const float dx = x_i - CoM_j[0];
-    const float dy = y_i - CoM_j[1];
-    const float dz = z_i - CoM_j[2];
+    float dx = CoM_j[0] - x_i;
+    float dy = CoM_j[1] - y_i;
+    float dz = CoM_j[2] - z_i;
+
+    dx = nearestf(dx, dim[0]);
+    dy = nearestf(dy, dim[1]);
+    dz = nearestf(dz, dim[2]);
+
     const float r2 = dx * dx + dy * dy + dz * dz;
 
     /* Interact! */
     float f_x, f_y, f_z, pot_ij;
-    runner_iact_grav_pm(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y, &f_z,
-                        &pot_ij);
+    runner_iact_grav_pm_truncated(dx, dy, dz, r2, h_i, h_inv_i, rlr_inv,
+                                  multi_j, &f_x, &f_y, &f_z, &pot_ij);
 
     /* Store it back */
     a_x[pid] = f_x;
@@ -628,8 +715,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                  gcount_padded_j, ci->gparts, cj->gparts);
 
       /* Then the M2P */
-      runner_dopair_grav_pm(e, ci_cache, gcount_i, gcount_padded_i, ci->gparts,
-                            CoM_j, multi_j, cj);
+      runner_dopair_grav_pm_full(e, ci_cache, gcount_i, gcount_padded_i,
+                                 ci->gparts, CoM_j, multi_j, cj);
     }
     if (cj_active && symmetric) {
 
@@ -637,8 +724,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
       runner_dopair_grav_pp_full(e, cj_cache, ci_cache, gcount_j, gcount_i,
                                  gcount_padded_i, cj->gparts, ci->gparts);
       /* Then the M2P */
-      runner_dopair_grav_pm(e, cj_cache, gcount_j, gcount_padded_j, cj->gparts,
-                            CoM_i, multi_i, ci);
+      runner_dopair_grav_pm_full(e, cj_cache, gcount_j, gcount_padded_j,
+                                 cj->gparts, CoM_i, multi_i, ci);
     }
 
   } else { /* Periodic BC */
@@ -665,8 +752,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                         ci->gparts, cj->gparts);
 
         /* Then the M2P */
-        runner_dopair_grav_pm(e, ci_cache, gcount_i, gcount_padded_i,
-                              ci->gparts, CoM_j, multi_j, cj);
+        runner_dopair_grav_pm_truncated(e, ci_cache, gcount_i, gcount_padded_i,
+                                        ci->gparts, CoM_j, multi_j, cj);
       }
       if (cj_active && symmetric) {
 
@@ -676,8 +763,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                         cj->gparts, ci->gparts);
 
         /* Then the M2P */
-        runner_dopair_grav_pm(e, cj_cache, gcount_j, gcount_padded_j,
-                              cj->gparts, CoM_i, multi_i, ci);
+        runner_dopair_grav_pm_truncated(e, cj_cache, gcount_j, gcount_padded_j,
+                                        cj->gparts, CoM_i, multi_i, ci);
       }
 
     } else {
@@ -694,8 +781,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                    gcount_padded_j, ci->gparts, cj->gparts);
 
         /* Then the M2P */
-        runner_dopair_grav_pm(e, ci_cache, gcount_i, gcount_padded_i,
-                              ci->gparts, CoM_j, multi_j, cj);
+        runner_dopair_grav_pm_full(e, ci_cache, gcount_i, gcount_padded_i,
+                                   ci->gparts, CoM_j, multi_j, cj);
       }
       if (cj_active && symmetric) {
 
@@ -704,8 +791,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                    gcount_padded_i, cj->gparts, ci->gparts);
 
         /* Then the M2P */
-        runner_dopair_grav_pm(e, cj_cache, gcount_j, gcount_padded_j,
-                              cj->gparts, CoM_i, multi_i, ci);
+        runner_dopair_grav_pm_full(e, cj_cache, gcount_j, gcount_padded_j,
+                                   cj->gparts, CoM_i, multi_i, ci);
       }
     }
   }

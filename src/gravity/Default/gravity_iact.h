@@ -214,23 +214,17 @@ runner_iact_grav_pp_truncated_debug(float r2, float h2, float h_inv,
  * @param f_z (return) The z-component of the acceleration.
  * @param pot (return) The potential.
  */
-__attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
+__attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
     float r_x, float r_y, float r_z, float r2, float h, float h_inv,
     const struct multipole *m, float *f_x, float *f_y, float *f_z, float *pot) {
-
-  *f_x = 0.f;
-  *f_y = 0.f;
-  *f_z = 0.f;
-  *pot = 0.f;
-  return;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER < 3
   float f_ij;
   runner_iact_grav_pp_full(r2, h * h, h_inv, h_inv * h_inv * h_inv, m->M_000,
                            &f_ij, pot);
-  *f_x = -f_ij * r_x;
-  *f_y = -f_ij * r_y;
-  *f_z = -f_ij * r_z;
+  *f_x = f_ij * r_x;
+  *f_y = f_ij * r_y;
+  *f_z = f_ij * r_z;
 #else
 
   /* Get the inverse distance */
@@ -257,6 +251,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
   *pot -= m->M_110 * d.D_110 + m->M_101 * d.D_101 + m->M_011 * d.D_011;
 
 #endif
+}
+
+__attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
+    float r_x, float r_y, float r_z, float r2, float h, float h_inv,
+    float rlr_inv, const struct multipole *m, float *f_x, float *f_y,
+    float *f_z, float *pot) {
+
+  float f_ij;
+  runner_iact_grav_pp_truncated(r2, h * h, h_inv, h_inv * h_inv * h_inv,
+                                m->M_000, rlr_inv, &f_ij, pot);
+  *f_x = f_ij * r_x;
+  *f_y = f_ij * r_y;
+  *f_z = f_ij * r_z;
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IACT_H */
