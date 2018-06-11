@@ -401,10 +401,9 @@ static INLINE void runner_dopair_grav_pp_truncated(
       /* long long id_j = e->s->parts[-gparts_j[pjd].id_or_neg_offset].id; */
 
       /* Interact! */
-      float f_ij, pot_ij, f1_ij, corr;
-      runner_iact_grav_pp_truncated_debug(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                          rlr_inv, &f_ij, &f1_ij, &corr,
-                                          &pot_ij);
+      float f_ij, pot_ij;
+      runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
+				    rlr_inv, &f_ij, &pot_ij);
 
       /* if (id_i == 1000 && id_j == 900 && pjd < gcount_j) { */
       /*   message("--- Interacting part"); */
@@ -1060,10 +1059,9 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
       /* long long id_j = e->s->parts[-gparts[pjd].id_or_neg_offset].id; */
 
       /* Interact! */
-      float f_ij, pot_ij, f1_ij, corr;
-      runner_iact_grav_pp_truncated_debug(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                          rlr_inv, &f_ij, &f1_ij, &corr,
-                                          &pot_ij);
+      float f_ij, pot_ij;
+      runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
+				    rlr_inv, &f_ij, &pot_ij);
 
       /* if (id_i == 1000 && id_j == 901) { */
       /*   message("--- Interacting part"); */
