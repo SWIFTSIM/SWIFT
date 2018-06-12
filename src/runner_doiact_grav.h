@@ -504,8 +504,12 @@ static INLINE void runner_dopair_grav_pm_full(
     const float r_max2 = r_max_j * r_max_j;
     const float theta_crit2 = e->gravity_properties->theta_crit2;
 
-    if (!gravity_M2P_accept(r_max2, theta_crit2, r2))
-      error("use_mpole[i] set when M2P accept fails");
+    /* 1.01 to avoid FP rounding false-positives */
+    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.01, r2))
+      error(
+          "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
+          "%e], rmax=%e",
+          CoM_j[0], CoM_j[1], CoM_j[2], x_i, y_i, z_i, r_max_j);
 #endif
 
     /* Interact! */
@@ -594,8 +598,12 @@ static INLINE void runner_dopair_grav_pm_truncated(
     const float r_max2 = r_max_j * r_max_j;
     const float theta_crit2 = e->gravity_properties->theta_crit2;
 
-    if (!gravity_M2P_accept(r_max2, theta_crit2, r2))
-      error("use_mpole[i] set when M2P accept fails");
+    /* 1.01 to avoid FP rounding false-positives */
+    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.01, r2))
+      error(
+          "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
+          "%e], rmax=%e",
+          CoM_j[0], CoM_j[1], CoM_j[2], x_i, y_i, z_i, r_max_j);
 #endif
 
     /* Interact! */

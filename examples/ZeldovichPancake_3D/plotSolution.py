@@ -145,7 +145,7 @@ ylabel("${\\rm{Peculiar Velocity}}~v_x$", labelpad=0)
 
 
 # Density profile --------------------------------
-subplot(232, yscale="log")
+subplot(232)#, yscale="log")
 if np.size(x_g) > 1:
     plot(x_g, rho_g/rho_0, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, rho/rho_0, '.', color='r', ms=4.0)
@@ -161,8 +161,8 @@ plot(x, phi, '.', color='r', ms=4.0)
 xlabel("${\\rm{Comoving Position}}~x$", labelpad=0)
 ylabel("${\\rm{Potential}}~\\phi$", labelpad=0)
 
-# Internal energy profile -------------------------
-subplot(234, yscale="log")
+# Temperature profile -------------------------
+subplot(234)#, yscale="log")
 u *= (unit_length_in_si**2 / unit_time_in_si**2)
 u_g *= (unit_length_in_si**2 / unit_time_in_si**2)
 u /= a**(3 * (gas_gamma - 1.))
