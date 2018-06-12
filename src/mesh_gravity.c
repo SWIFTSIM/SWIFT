@@ -327,13 +327,13 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct engine* e) {
 #ifdef HAVE_FFTW
 
   const struct space* s = e->s;
-  const double a_smooth = mesh->a_smooth;
+  const double r_s = mesh->r_s;
   const double box_size = s->dim[0];
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   if (cdim[0] != cdim[1] || cdim[0] != cdim[2]) error("Non-square mesh");
-  // if (a_smooth <= 0.) error("Invalid value of a_smooth");
+  if (r_s <= 0.) error("Invalid value of a_smooth");
 
   /* Some useful constants */
   const int N = mesh->N;
@@ -389,8 +389,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct engine* e) {
 
   /* Some common factors */
   const double green_fac = -1. / (M_PI * box_size);
-  const double a_smooth2 =
-      4. * M_PI * M_PI * a_smooth * a_smooth / (box_size * box_size);
+  const double a_smooth2 = 4. * M_PI * M_PI * r_s * r_s / (box_size * box_size);
   const double k_fac = M_PI / (double)N;
 
   /* Now de-convolve the CIC kernel and apply the Green function */
@@ -516,12 +515,12 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
 
 #ifdef HAVE_FFTW
 
-  /* Initi the mesh size */
   const int N = props->mesh_size;
   mesh->N = N;
   mesh->box_size = box_size;
   mesh->cell_fac = N / box_size;
-  mesh->a_smooth = props->a_smooth * box_size / N;
+  mesh->r_s = props->a_smooth * box_size / N;
+  mesh->r_s_inv = 1. / mesh->r_s;
 
   /* Allocate the memory for the combined density and potential array */
   mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);

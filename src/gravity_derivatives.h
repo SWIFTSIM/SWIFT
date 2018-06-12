@@ -132,7 +132,7 @@ struct potential_derivatives_M2P {
  * @param eps Softening length.
  * @param eps_inv Inverse of softening length.
  * @param periodic Is the calculation periodic ?
- * @param rs_inv
+ * @param r_s_inv Inverse of the long-range gravity mesh smoothing length.
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
@@ -140,7 +140,7 @@ compute_potential_derivatives_M2L(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
                                   const float eps_inv, const int periodic,
-                                  const float rs_inv,
+                                  const float r_s_inv,
                                   struct potential_derivatives_M2L *pot) {
 
   float Dt_1;
@@ -189,8 +189,8 @@ compute_potential_derivatives_M2L(const float r_x, const float r_y,
 
     /* Get the derivatives of the truncated potential */
     const float r = r2 * r_inv;
-    struct truncated_derivatives derivs;
-    kernel_long_grav_derivatives(r, rs_inv, &derivs);
+    struct chi_derivatives derivs;
+    kernel_long_grav_derivatives(r, r_s_inv, &derivs);
 
     Dt_1 = derivs.chi_0 * r_inv;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
@@ -388,7 +388,7 @@ compute_potential_derivatives_M2L(const float r_x, const float r_y,
  * @param eps Softening length.
  * @param eps_inv Inverse of softening length.
  * @param periodic Is the calculation using periodic BCs?
- * @param rs_inv The inverse of the gravity mesh-smoothing scale.
+ * @param r_s_inv The inverse of the gravity mesh-smoothing scale.
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
@@ -396,7 +396,7 @@ compute_potential_derivatives_M2P(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
                                   const float eps_inv, const int periodic,
-                                  const float rs_inv,
+                                  const float r_s_inv,
                                   struct potential_derivatives_M2P *pot) {
 
   float Dt_1;
@@ -421,8 +421,8 @@ compute_potential_derivatives_M2P(const float r_x, const float r_y,
 
     /* Get the derivatives of the truncated potential */
     const float r = r2 * r_inv;
-    struct truncated_derivatives d;
-    kernel_long_grav_derivatives(r, rs_inv, &d);
+    struct chi_derivatives d;
+    kernel_long_grav_derivatives(r, r_s_inv, &d);
 
     const float r_inv2 = r_inv * r_inv;
     const float r_inv3 = r_inv2 * r_inv;

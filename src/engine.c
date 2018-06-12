@@ -6268,11 +6268,11 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const float vel_norm_b = vel_norm[0] + vel_norm[4];
 
   /* Mesh forces smoothing scale */
-  float a_smooth;
+  float r_s;
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic == 1)
-    a_smooth = e->mesh->a_smooth;
+    r_s = e->mesh->r_s;
   else
-    a_smooth = FLT_MAX;
+    r_s = FLT_MAX;
 
   float dt_dm = FLT_MAX, dt_b = FLT_MAX;
 
@@ -6289,7 +6289,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     const float rms_vel_dm = vel_norm_dm / N_dm;
 
     /* Time-step based on maximum displacement */
-    dt_dm = a * a * min(a_smooth, d_dm) / sqrtf(rms_vel_dm);
+    dt_dm = a * a * min(r_s, d_dm) / sqrtf(rms_vel_dm);
   }
 
   /* Baryon case */
@@ -6305,7 +6305,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     const float rms_vel_b = vel_norm_b / N_b;
 
     /* Time-step based on maximum displacement */
-    dt_b = a * a * min(a_smooth, d_b) / sqrtf(rms_vel_b);
+    dt_b = a * a * min(r_s, d_b) / sqrtf(rms_vel_b);
   }
 
   /* Use the minimum */

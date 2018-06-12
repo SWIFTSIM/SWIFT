@@ -33,41 +33,63 @@
 
 #define GADGET2_LONG_RANGE_CORRECTION
 
-struct truncated_derivatives {
+/**
+ * @brief Derivatives of the long-range truncation function \f$\chi(r,r_s)\f$ up
+ * to 5th order.
+ */
+struct chi_derivatives {
 
+  /*! 0th order derivative \f$\chi(r,r_s)\f$ */
   float chi_0;
+
+  /*! 1st order derivative \f$\partial_{r}\chi(r,r_s)\f$ */
   float chi_1;
+
+  /*! 2nd order derivative \f$\partial_{rr}\chi(r,r_s)\f$ */
   float chi_2;
+
+  /*! 3rd order derivative \f$\partial_{rrr}\chi(r,r_s)\f$ */
   float chi_3;
+
+  /*! 4th order derivative \f$\partial_{rrrr}\chi(r,r_s)\f$ */
   float chi_4;
+
+  /*! 5th order derivative \f$\partial_{rrrrr}\chi(r,r_s)\f$ */
   float chi_5;
 };
 
+/**
+ * @brief Compute the derivatives of the long-range truncation function
+ * \f$\chi(r,r_s)\f$ up to 5th order.
+ *
+ * @param r The distance.
+ * @param r_s_inv The inverse of the long-range gravity mesh scale.
+ * @param derivs (return) The computed #chi_derivatives.
+ */
 __attribute__((always_inline)) INLINE static void kernel_long_grav_derivatives(
-    const float r, const float rs_inv,
-    struct truncated_derivatives *const derivs) {
+    const float r, const float r_s_inv, struct chi_derivatives *const derivs) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
   /* Powers of u=r/2r_s */
-  const float u = 0.5f * r * rs_inv;
+  const float u = 0.5f * r * r_s_inv;
   const float u2 = u * u;
   const float u3 = u2 * u;
   const float u4 = u3 * u;
 
   /* Powers of (1/r_s) */
-  const float rs_inv2 = rs_inv * rs_inv;
-  const float rs_inv3 = rs_inv2 * rs_inv;
-  const float rs_inv4 = rs_inv3 * rs_inv;
-  const float rs_inv5 = rs_inv4 * rs_inv;
+  const float r_s_inv2 = r_s_inv * r_s_inv;
+  const float r_s_inv3 = r_s_inv2 * r_s_inv;
+  const float r_s_inv4 = r_s_inv3 * r_s_inv;
+  const float r_s_inv5 = r_s_inv4 * r_s_inv;
 
   /* Derivatives of \chi */
   derivs->chi_0 = erfcf(u);
-  derivs->chi_1 = -rs_inv;
-  derivs->chi_2 = rs_inv2 * u;
-  derivs->chi_3 = -rs_inv3 * (u2 - 0.5f);
-  derivs->chi_4 = rs_inv4 * (u3 - 1.5f * u);
-  derivs->chi_5 = -rs_inv5 * (u4 - 3.f * u2 + 0.75f);
+  derivs->chi_1 = -r_s_inv;
+  derivs->chi_2 = r_s_inv2 * u;
+  derivs->chi_3 = -r_s_inv3 * (u2 - 0.5f);
+  derivs->chi_4 = r_s_inv4 * (u3 - 1.5f * u);
+  derivs->chi_5 = -r_s_inv5 * (u4 - 3.f * u2 + 0.75f);
 
   const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
   const float common_factor = one_over_sqrt_pi * expf(-u2);
@@ -83,7 +105,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_derivatives(
 
   /* Powers of 2/r_s */
   const float c0 = 1.f;
-  const float c1 = 2.f * rs_inv;
+  const float c1 = 2.f * r_s_inv;
   const float c2 = c1 * c1;
   const float c3 = c2 * c1;
   const float c4 = c3 * c1;
@@ -93,7 +115,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_derivatives(
   const float x = c1 * r;
 
   /* e^(2r / r_s) */
-  const float exp_x = expf(x);  // good_approx_expf(x);
+  const float exp_x = good_approx_expf(x);
 
   /* 1 / alpha(w) */
   const float a_inv = 1.f + exp_x;
@@ -136,7 +158,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_pot_eval(
 #else
 
   const float x = 2.f * u;
-  const float exp_x = expf(x);  // good_approx_expf(x);
+  const float exp_x = good_approx_expf(x);
   const float alpha = 1.f / (1.f + exp_x);
 
   /* We want 2 - 2 exp(x) * alpha */
@@ -169,7 +191,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_force_eval(
 #else
 
   const float x = 2.f * u;
-  const float exp_x = expf(x);  // good_approx_expf(x);
+  const float exp_x = good_approx_expf(x);
   const float alpha = 1.f / (1.f + exp_x);
 
   /* We want 2*(x*alpha - x*alpha^2 - exp(x)*alpha + 1) */
@@ -177,13 +199,6 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_force_eval(
   *W = *W * x - exp_x;
   *W = *W * alpha + 1.f;
   *W *= 2.f;
-
-/* const float arg = 2.f * u; */
-/* const float exp_arg = good_approx_expf(arg); */
-/* const float term = 1.f / (1.f + exp_arg); */
-
-/* *W = arg * exp_arg * term * term - exp_arg * term + 1.f; */
-/* *W *= 2.f; */
 #endif
 }
 

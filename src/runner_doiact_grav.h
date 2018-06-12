@@ -175,8 +175,7 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const struct gravity_props *props = e->gravity_properties;
-  const float rlr = e->mesh->a_smooth;
-  const float rlr_inv = 1.f / rlr;
+  const float r_s_inv = e->mesh->r_s_inv;
 
   TIMER_TIC;
 
@@ -209,7 +208,7 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
   /* Let's interact at this level */
   if (0)
     gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
-                cj->multipole->CoM, props, periodic, dim, rlr_inv);
+                cj->multipole->CoM, props, periodic, dim, r_s_inv);
 
   runner_dopair_grav_pp(r, ci, cj, 0);
 
@@ -323,7 +322,7 @@ static INLINE void runner_dopair_grav_pp_full(const struct engine *e,
 }
 
 static INLINE void runner_dopair_grav_pp_truncated(
-    const struct engine *e, const float rlr_inv, struct gravity_cache *ci_cache,
+    const struct engine *e, const float r_s_inv, struct gravity_cache *ci_cache,
     struct gravity_cache *cj_cache, int gcount_i, int gcount_j,
     int gcount_padded_j, struct gpart *restrict gparts_i,
     struct gpart *restrict gparts_j) {
@@ -403,7 +402,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
       /* Interact! */
       float f_ij, pot_ij;
       runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                    rlr_inv, &f_ij, &pot_ij);
+                                    r_s_inv, &f_ij, &pot_ij);
 
       /* if (id_i == 1000 && id_j == 900 && pjd < gcount_j) { */
       /*   message("--- Interacting part"); */
@@ -540,7 +539,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
     struct cell *restrict cj) {
 
   const float dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
-  const float rlr_inv = 1. / e->mesh->a_smooth;
+  const float r_s_inv = e->mesh->r_s_inv;
 
   TIMER_TIC;
 
@@ -608,7 +607,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
 
     /* Interact! */
     float f_x, f_y, f_z, pot_ij;
-    runner_iact_grav_pm_truncated(dx, dy, dz, r2, h_i, h_inv_i, rlr_inv,
+    runner_iact_grav_pm_truncated(dx, dy, dz, r2, h_i, h_inv_i, r_s_inv,
                                   multi_j, &f_x, &f_y, &f_z, &pot_ij);
 
     /* Store it back */
@@ -656,9 +655,9 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
   struct space *s = e->s;
   const int periodic = s->periodic;
   const double r_cut_min = e->gravity_properties->r_cut_min;
-  const double rlr = e->mesh->a_smooth;
-  const double min_trunc = rlr * r_cut_min;
-  const float rlr_inv = 1. / rlr;
+  const double r_s = e->mesh->r_s;
+  const float r_s_inv = e->mesh->r_s_inv;
+  const double min_trunc = r_s * r_cut_min;
 
   /* Caches to play with */
   struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
@@ -773,7 +772,7 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
       if (ci_active) {
 
         /* First the (truncated) P2P */
-        runner_dopair_grav_pp_truncated(e, rlr_inv, ci_cache, cj_cache,
+        runner_dopair_grav_pp_truncated(e, r_s_inv, ci_cache, cj_cache,
                                         gcount_i, gcount_j, gcount_padded_j,
                                         ci->gparts, cj->gparts);
 
@@ -784,7 +783,7 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
       if (cj_active && symmetric) {
 
         /* First the (truncated) P2P */
-        runner_dopair_grav_pp_truncated(e, rlr_inv, cj_cache, ci_cache,
+        runner_dopair_grav_pp_truncated(e, r_s_inv, cj_cache, ci_cache,
                                         gcount_j, gcount_i, gcount_padded_i,
                                         cj->gparts, ci->gparts);
 
@@ -913,6 +912,7 @@ static INLINE void runner_doself_grav_pp_full(struct runner *r,
       const float mass_j = ci_cache->m[pjd];
 
       /* Compute the pairwise (square) distance. */
+      /* Note: no need for periodic wrapping inside a cell */
       const float dx = x_j - x_i;
       const float dy = y_j - y_i;
       const float dz = z_j - z_i;
@@ -971,8 +971,7 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
 
   /* Some constants */
   const struct engine *const e = r->e;
-  const double rlr = e->mesh->a_smooth;
-  const float rlr_inv = 1. / rlr;
+  const float r_s_inv = e->mesh->r_s_inv;
 
   /* Caches to play with */
   struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
@@ -1042,13 +1041,10 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
       const float mass_j = ci_cache->m[pjd];
 
       /* Compute the pairwise (square) distance. */
-      float dx = x_j - x_i;
-      float dy = y_j - y_i;
-      float dz = z_j - z_i;
-
-      /* dx = nearestf(dx, e->s->dim[0]); */
-      /* dy = nearestf(dy, e->s->dim[1]); */
-      /* dz = nearestf(dz, e->s->dim[2]); */
+      /* Note: no need for periodic wrapping inside a cell */
+      const float dx = x_j - x_i;
+      const float dy = y_j - y_i;
+      const float dz = z_j - z_i;
 
       const float r2 = dx * dx + dy * dy + dz * dz;
 
@@ -1063,38 +1059,10 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
         error("gpj not drifted to current time");
 #endif
 
-      /* long long id_i = e->s->parts[-gparts[pid].id_or_neg_offset].id; */
-      /* long long id_j = e->s->parts[-gparts[pjd].id_or_neg_offset].id; */
-
       /* Interact! */
       float f_ij, pot_ij;
       runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                    rlr_inv, &f_ij, &pot_ij);
-
-      /* if (id_i == 1000 && id_j == 901) { */
-      /*   message("--- Interacting part"); */
-      /*   message("id=%lld mass=%e r=%e h=%e", id_j, mass_j, sqrtf(r2), */
-      /*           sqrtf(h2_i)); */
-      /*   /\* message("e->s->dim[0]=%e", e->s->dim[0]); *\/ */
-      /*   message("dx=[%e %e %e]", dx, dy, dz); */
-      /*   message("pos_i=[%e %e %e]", x_i, y_i, z_i); */
-      /*   message("pos_j=[%e %e %e]", x_j, y_j, z_j); */
-      /*   message("fac=%e corr=%e fac2=%e", f1_ij, corr, pot_ij); */
-      /*   message("a=[%e %e %e]", f_ij * dx, f_ij * dy, f_ij * dz); */
-      /* 	message("pot=%e", pot_ij); */
-      /* } */
-
-      /* if (0 && id_i == 1000) { */
-      /*   message("--- Interacting part"); */
-      /*   message("id=%lld mass=%e r=%e h=%e", id_j, mass_j, sqrtf(r2), */
-      /*           sqrtf(h2_i)); */
-      /*   /\* message("e->s->dim[0]=%e", e->s->dim[0]); *\/ */
-      /*   message("dx=[%e %e %e]", dx, dy, dz); */
-      /*   message("pos_i=[%e %e %e]", x_i, y_i, z_i); */
-      /*   message("pos_j=[%e %e %e]", x_j, y_j, z_j); */
-      /*   message("fac=%e corr=%e fac2=%e", f1_ij, corr, f_ij); */
-      /*   message("a=[%e %e %e]", f_ij * dx, f_ij * dy, f_ij * dz); */
-      /* } */
+                                    r_s_inv, &f_ij, &pot_ij);
 
       /* Store it back */
       a_x += f_ij * dx;
@@ -1132,9 +1100,8 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   const struct engine *e = r->e;
   const struct space *s = e->s;
   const int periodic = s->periodic;
-  const double a_smooth = e->mesh->a_smooth;
-  const double r_cut_min = e->gravity_properties->r_cut_min;
-  const double min_trunc = r_cut_min * a_smooth;
+  const double r_s = e->mesh->r_s;
+  const double min_trunc = e->gravity_properties->r_cut_min * r_s;
 
   TIMER_TIC;
 
@@ -1189,9 +1156,8 @@ static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
   const int nodeID = e->nodeID;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const struct gravity_props *props = e->gravity_properties;
-  const double theta_crit2 = props->theta_crit2;
-  const double max_distance = e->mesh->a_smooth * props->r_cut_max;
+  const double theta_crit2 = e->gravity_properties->theta_crit2;
+  const double max_distance = e->mesh->r_s * e->gravity_properties->r_cut_max;
 
   /* Anything to do here? */
   if (!((cell_is_active_gravity(ci, e) && ci->nodeID == nodeID) ||
@@ -1389,13 +1355,11 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   /* Some constants */
   const struct engine *e = r->e;
   const struct space *s = e->s;
-  const struct gravity_props *props = e->gravity_properties;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double theta_crit2 = props->theta_crit2;
-  const double max_distance = e->mesh->a_smooth * props->r_cut_max;
-  // const double max_distance2 = max_distance * max_distance;
+  const double theta_crit2 = e->gravity_properties->theta_crit2;
+  const double max_distance = e->mesh->r_s * e->gravity_properties->r_cut_max;
 
   /* const float u = 1.; */
   /* float W; */

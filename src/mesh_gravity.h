@@ -44,7 +44,10 @@ struct pm_mesh {
   double box_size;
 
   /*! Scale over which we smooth the forces */
-  double a_smooth;
+  double r_s;
+
+  /*! Inverse of the scale over which we smooth the forces */
+  double r_s_inv;
 
   /*! Potential field */
   double *potential;
