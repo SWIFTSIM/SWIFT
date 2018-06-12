@@ -142,8 +142,8 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
  * more expensive P2P.
  *
  * @param max_active_bin The largest active bin in the current time-step.
- * @param dim The size of the simulation volume along each dimension.
  * @param periodic Are we using periodic BCs ?
+ * @param dim The size of the simulation volume along each dimension.
  * @param c The #gravity_cache to fill.
  * @param gparts The #gpart array to read from.
  * @param gcount The number of particles to read.
@@ -156,7 +156,7 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
  * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static void gravity_cache_populate(
-    const timebin_t max_active_bin, const float dim[3], const int periodic,
+    const timebin_t max_active_bin, const int periodic, const float dim[3],
     struct gravity_cache *c, const struct gpart *restrict gparts,
     const int gcount, const int gcount_padded, const double shift[3],
     const float CoM[3], const float r_max2, const struct cell *cell,
@@ -288,7 +288,9 @@ gravity_cache_populate_no_mpole(const timebin_t max_active_bin,
 }
 
 /**
- * @brief Write the output cache values back to the #gpart.
+ * @brief Write the output cache values back to the active #gpart.
+ *
+ * This function obviously omits the padded values in the cache.
  *
  * @param c The #gravity_cache to read from.
  * @param gparts The #gpart array to write to.
