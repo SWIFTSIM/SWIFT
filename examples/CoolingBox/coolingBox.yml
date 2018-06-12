@@ -72,30 +72,30 @@ EagleCooling:
   reionisation_redshift:   8.898
 
 EAGLEChemistry:
-  InitMetallicity:         0.014
-  InitAbundance_Hydrogen:  0.70649785
-  InitAbundance_Helium:    0.28055534
-  InitAbundance_Carbon:    2.0665436e-3
-  InitAbundance_Nitrogen:  8.3562563e-4
-  InitAbundance_Oxygen:    5.4926244e-3
-  InitAbundance_Neon:      1.4144605e-3
-  InitAbundance_Magnesium: 5.907064e-4
-  InitAbundance_Silicon:   6.825874e-4
-  InitAbundance_Iron:      1.1032152e-3
-  CalciumOverSilicon:      0.0941736
-  SulphurOverSilicon:      0.6054160
-  #InitMetallicity:         0.
-  #InitAbundance_Hydrogen:  0.752
-  #InitAbundance_Helium:    0.248
-  #InitAbundance_Carbon:    0.000
-  #InitAbundance_Nitrogen:  0.000
-  #InitAbundance_Oxygen:    0.000
-  #InitAbundance_Neon:      0.000
-  #InitAbundance_Magnesium: 0.000
-  #InitAbundance_Silicon:   0.000
-  #InitAbundance_Iron:      0.000
+  #InitMetallicity:         0.014
+  #InitAbundance_Hydrogen:  0.70649785
+  #InitAbundance_Helium:    0.28055534
+  #InitAbundance_Carbon:    2.0665436e-3
+  #InitAbundance_Nitrogen:  8.3562563e-4
+  #InitAbundance_Oxygen:    5.4926244e-3
+  #InitAbundance_Neon:      1.4144605e-3
+  #InitAbundance_Magnesium: 5.907064e-4
+  #InitAbundance_Silicon:   6.825874e-4
+  #InitAbundance_Iron:      1.1032152e-3
   #CalciumOverSilicon:      0.0941736
   #SulphurOverSilicon:      0.6054160
+  InitMetallicity:         0.
+  InitAbundance_Hydrogen:  0.722
+  InitAbundance_Helium:    0.218
+  InitAbundance_Carbon:    0.010
+  InitAbundance_Nitrogen:  0.010
+  InitAbundance_Oxygen:    0.010
+  InitAbundance_Neon:      0.010
+  InitAbundance_Magnesium: 0.010
+  InitAbundance_Silicon:   0.000
+  InitAbundance_Iron:      0.010
+  CalciumOverSilicon:      0.0941736
+  SulphurOverSilicon:      0.6054160
 
 GearChemistry:
   InitialMetallicity: 0.01295
