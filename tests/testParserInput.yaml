@@ -16,4 +16,7 @@ Simulation:
 IO:
   #Input file
   ic_file:            ic_file.ini
+
+#Box:
+#  sides: [2, 3, 4]
 ...

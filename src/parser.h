@@ -66,6 +66,11 @@ char parser_get_param_char(const struct swift_params *params, const char *name);
 int parser_get_param_int(const struct swift_params *params, const char *name);
 float parser_get_param_float(const struct swift_params *params,
                              const char *name);
+
+int parser_get_param_float_array(const struct swift_params *params,
+                                 const char *name, int required,
+                                 int nval, float *values);
+
 double parser_get_param_double(const struct swift_params *params,
                                const char *name);
 void parser_get_param_string(const struct swift_params *params,

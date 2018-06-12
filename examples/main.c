@@ -470,7 +470,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* And dump the parameters as used. */
-    // parser_print_params(&params);
+    // parser_print_params(params);
     parser_write_params_to_file(params, "used_parameters.yml");
   }
 #ifdef WITH_MPI

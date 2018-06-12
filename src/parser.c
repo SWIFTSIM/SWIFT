@@ -56,6 +56,26 @@ static void find_duplicate_section(const struct swift_params *params,
                                    const char *section_name);
 static int lineNumber = 0;
 
+// Functions to trim strings of spaces.
+static char *trim_leading(char *s) {
+  if (s == NULL || strlen(s) < 2) return s;
+  while(isspace(*s)) s++;
+  return s;
+}
+
+static char *trim_trailing(char *s) {
+  if (s == NULL || strlen(s) < 2) return s;
+  char *end = s + strlen(s) - 1;
+  while(isspace(*end)) end--;
+  *(end+1) = '\0';
+  return s;
+}
+
+char *trim_both(char *s) {
+  if (s == NULL || strlen(s) < 2) return s;
+  return trim_trailing(trim_leading(s));
+}
+
 /**
  * @brief Initialize the parser structure.
  *
@@ -324,11 +344,11 @@ static void parse_value(char *line, struct swift_params *params) {
     parse_section_param(line, &isFirstParam, section, params);
   } else { /*Else it is the start of a new section or standalone parameter. */
     /* Take first token as the parameter name. */
-    token = strtok(line, " :\t");
-    strcpy(tmpStr, token);
+    token = strtok(line, ":\t");
+    strcpy(tmpStr, trim_trailing(token));
 
     /* Take second token as the parameter value. */
-    token = strtok(NULL, " #\n");
+    token = trim_both(strtok(NULL, "#\n"));
 
     /* If second token is NULL then the line must be a section heading. */
     if (token == NULL) {
@@ -411,11 +431,11 @@ static void parse_section_param(char *line, int *isFirstParam,
   }
 
   /* Take first token as the parameter name and trim leading white space. */
-  token = strtok(line, " :\t");
+  token = trim_both(strtok(line, ":\t"));
   strcpy(tmpStr, token);
 
   /* Take second token as the parameter value. */
-  token = strtok(NULL, " #\n");
+  token = trim_both(strtok(NULL, "#\n"));
 
   /* Prefix the parameter name with its section name and
    * copy it into the parameter structure. */
@@ -527,6 +547,63 @@ float parser_get_param_float(const struct swift_params *params,
   error("Cannot find '%s' in the structure, in file '%s'.", name,
         params->fileName);
   return 0.f;
+}
+
+/**
+ * @brief Retrieve float array parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param required whether it is an error if the parameter has not been set
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals.
+ * @return whether the parameter has been found.
+ */
+int parser_get_param_float_array(const struct swift_params *params,
+                                 const char *name, int required,
+                                 int nval, float *values) {
+
+  char str[PARSER_MAX_LINE_SIZE];
+  char cpy[PARSER_MAX_LINE_SIZE];
+  char *cp = cpy;
+
+  for (int i = 0; i < params->paramCount; i++) {
+    if (!strcmp(name, params->data[i].name)) {
+      strcpy(cp, params->data[i].value);
+      cp = trim_both(cp);
+
+      /* Strip off []. */
+      if (cp[0] != '[')
+        error("Array '%s' does not start with '['", name);
+      cp++;
+      int l = strlen(cp);
+      if (cp[l-1] != ']')
+        error("Array '%s' does not end with ']'", name);
+      cp[l-1] = '\0';
+      cp = trim_both(cp);
+
+      /* Parse out values which should now be "v, v, v" with internal
+       * whitespace variations. */
+      char *p = strtok(cp, ",");
+      for (int k = 0; k < nval; k++) {
+        if (p != NULL) {
+          if (sscanf(p, " %f%s ", &values[k], str) != 1) {
+            error("Tried parsing float '%s' but found '%s' with "
+                  "illegal float characters '%s'.", name, p, str);
+          }
+        } else {
+          error("Array '%s' with value '%s' has too few values, expected %d",
+                name, params->data[i].value, nval);
+        }
+        if (k < nval - 1) p = strtok(NULL, ",");
+      }
+      return 1;
+    }
+  }
+  if (required)
+    error("Cannot find '%s' in the structure, in file '%s'.", name,
+          params->fileName);
+  return 0;
 }
 
 /**
@@ -771,7 +848,7 @@ void parser_write_params_to_file(const struct swift_params *params,
       }
 
       /* Remove white space from parameter name and write it to the file. */
-      token = strtok(NULL, " #\n");
+      token = trim_both(strtok(NULL, "#\n"));
 
       fprintf(file, "  %s%c %s\n", token, PARSER_VALUE_CHAR,
               params->data[i].value);
@@ -782,7 +859,7 @@ void parser_write_params_to_file(const struct swift_params *params,
   }
 
   /* End of file identifier in YAML. */
-  fprintf(file, PARSER_END_OF_FILE);
+  fprintf(file, "%s\n", PARSER_END_OF_FILE);
 
   fclose(file);
 }
