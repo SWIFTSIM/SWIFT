@@ -1417,11 +1417,6 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   if (ci->ti_old_multipole != e->ti_current)
     error("Interacting un-drifted multipole");
 
-  // if(ci - s->cells_top != cid_check) return;
-
-  for (int i = 0; i < ci->count; ++i)
-    if (ci->parts[i].id == 1000) printf("\n");
-
   /* Recover the local multipole */
   struct gravity_tensors *const multi_i = ci->multipole;
   // const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1],

@@ -1119,15 +1119,6 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           dt_kick_therm = (ti_step / 2) * time_base;
         }
 
-        if (p->id == 1000) {
-          message("a_grav=[%e %e %e]", p->gpart->a_grav[0], p->gpart->a_grav[1],
-                  p->gpart->a_grav[2]);
-          message("a_hydr=[%e %e %e]", p->a_hydro[0], p->a_hydro[1],
-                  p->a_hydro[2]);
-          message("dt_kick_grav=%e dt_kick_hydro=%e", dt_kick_grav,
-                  dt_kick_hydro);
-        }
-
         /* do the kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, cosmo,
                   hydro_props, ti_begin, ti_begin + ti_step / 2);
@@ -1292,15 +1283,6 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           dt_kick_hydro = (ti_step / 2) * time_base;
           dt_kick_grav = (ti_step / 2) * time_base;
           dt_kick_therm = (ti_step / 2) * time_base;
-        }
-
-        if (p->id == 1000) {
-          message("a_grav=[%e %e %e]", p->gpart->a_grav[0], p->gpart->a_grav[1],
-                  p->gpart->a_grav[2]);
-          message("a_hydr=[%e %e %e]", p->a_hydro[0], p->a_hydro[1],
-                  p->a_hydro[2]);
-          message("dt_kick_grav=%e dt_kick_hydro=%e", dt_kick_grav,
-                  dt_kick_hydro);
         }
 
         /* Finish the time-step with a second half-kick */
@@ -1468,11 +1450,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
-
-        if (p->id == 1000) {
-          message("new time_bin = %d max=%lld time_base=%e", p->time_bin,
-                  max_nr_timesteps, e->time_base);
-        }
 
         /* Number of updated particles */
         updated++;
