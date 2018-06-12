@@ -241,8 +241,6 @@ static INLINE void runner_dopair_grav_pp_full(
     const float dim[3], const struct engine *restrict e,
     struct gpart *restrict gparts_i, struct gpart *restrict gparts_j) {
 
-  TIMER_TIC;
-
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
 
@@ -334,8 +332,6 @@ static INLINE void runner_dopair_grav_pp_full(
     ci_cache->a_z[pid] = a_z;
     ci_cache->pot[pid] = pot;
   }
-
-  TIMER_TOC(timer_dopair_grav_pp_full);
 }
 
 /**
@@ -367,8 +363,6 @@ static INLINE void runner_dopair_grav_pp_truncated(
     const int gcount_j, const int gcount_padded_j, const float dim[3],
     const float r_s_inv, const struct engine *restrict e,
     struct gpart *restrict gparts_i, struct gpart *restrict gparts_j) {
-
-  TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -464,8 +458,6 @@ static INLINE void runner_dopair_grav_pp_truncated(
     ci_cache->a_z[pid] = a_z;
     ci_cache->pot[pid] = pot;
   }
-
-  TIMER_TOC(timer_dopair_grav_pp_trunc);
 }
 
 /**
@@ -495,8 +487,6 @@ static INLINE void runner_dopair_grav_pm_full(
     const int periodic, const float dim[3], const struct engine *restrict e,
     struct gpart *restrict gparts_i, const int gcount_i,
     const struct cell *restrict cj) {
-
-  TIMER_TIC;
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -580,8 +570,6 @@ static INLINE void runner_dopair_grav_pm_full(
       gparts_i[pid].num_interacted += cj->multipole->m_pole.num_gpart;
 #endif
   }
-
-  TIMER_TOC(timer_dopair_grav_pm_full);
 }
 
 /**
@@ -618,8 +606,6 @@ static INLINE void runner_dopair_grav_pm_truncated(
   if (!e->s->periodic)
     error("Calling truncated PP function in non-periodic setup.");
 #endif
-
-  TIMER_TIC;
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -701,8 +687,6 @@ static INLINE void runner_dopair_grav_pm_truncated(
       gparts_i[pid].num_interacted += cj->multipole->m_pole.num_gpart;
 #endif
   }
-
-  TIMER_TOC(timer_dopair_grav_pm_trunc);
 }
 
 /**
@@ -906,52 +890,26 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
   if (cj_active && symmetric)
     gravity_cache_write_back(cj_cache, cj->gparts, gcount_j);
 
-  TIMER_TOC(timer_dopair_grav_branch);
+  TIMER_TOC(timer_dopair_grav_pp);
 }
 
 /**
- * @brief Computes the interaction of all the particles in a cell using the
- * full Newtonian potential.
+ * @brief Compute the non-truncated gravity interactions between all particles
+ * of a cell and the particles of the other cell.
  *
- * @param r The #runner.
- * @param c The #cell.
+ * The calculation is performed non-symmetrically using the pre-filled
+ * #gravity_cache structures. The loop over the j cache should auto-vectorize.
  *
- * @todo Use a local cache for the particles.
- */
-static INLINE void runner_doself_grav_pp_full(struct runner *r,
-                                              struct cell *c) {
-
-  error("bb");
-
-  /* Some constants */
-  const struct engine *const e = r->e;
-  struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
-
-  /* Cell properties */
-  const int gcount = c->gcount;
-  struct gpart *restrict gparts = c->gparts;
-  const int c_active = cell_is_active_gravity(c, e);
-  const double loc[3] = {c->loc[0] + 0.5 * c->width[0],
-                         c->loc[1] + 0.5 * c->width[1],
-                         c->loc[2] + 0.5 * c->width[2]};
-
-  /* Anything to do here ?*/
-  if (!c_active) return;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that we fit in cache */
-  if (gcount > ci_cache->count)
-    error("Not enough space in the cache! gcount=%d", gcount);
-#endif
-
-  /* Computed the padded counts */
-  const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
-
-  gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, gparts, gcount,
-                                  gcount_padded, loc, c, e->gravity_properties);
-
-  /* Ok... Here we go ! */
-
+ * @param ci_cache #gravity_cache contaning the particles to be updated.
+ * @param gcount The number of particles in the cell.
+ * @param gcount_padded The number of particles in the cell padded to the
+ * vector length.
+ *
+ * @param e The #engine (for debugging checks only).
+ * @param gparts The #gpart in the cell (for debugging checks only).
+ */ static INLINE void runner_doself_grav_pp_full(
+    struct gravity_cache *restrict ci_cache, const int gcount,
+    const int gcount_padded, const struct engine *e, struct gpart *gparts) {
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount; pid++) {
 
@@ -1031,55 +989,35 @@ static INLINE void runner_doself_grav_pp_full(struct runner *r,
     ci_cache->a_z[pid] = a_z;
     ci_cache->pot[pid] = pot;
   }
-
-  /* Write back to the particles */
-  gravity_cache_write_back(ci_cache, gparts, gcount);
 }
 
 /**
- * @brief Computes the interaction of all the particles in a cell using the
- * truncated Newtonian potential.
+ * @brief Compute the truncated gravity interactions between all particles
+ * of a cell and the particles of the other cell.
  *
- * @param r The #runner.
- * @param c The #cell.
+ * The calculation is performed non-symmetrically using the pre-filled
+ * #gravity_cache structures. The loop over the j cache should auto-vectorize.
  *
- * @todo Use a local cache for the particles.
+ * This function only makes sense in periodic BCs.
+ *
+ * @param ci_cache #gravity_cache contaning the particles to be updated.
+ * @param gcount The number of particles in the cell.
+ * @param gcount_padded The number of particles in the cell padded to the
+ * vector length.
+ * @param r_s_inv The inverse of the gravity-mesh smoothing-scale.
+ *
+ * @param e The #engine (for debugging checks only).
+ * @param gparts The #gpart in the cell (for debugging checks only).
  */
-static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
-                                                   struct cell *c) {
-
-  /* Some constants */
-  const struct engine *const e = r->e;
-  const float r_s_inv = e->mesh->r_s_inv;
-
-  /* Caches to play with */
-  struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
-
-  /* Cell properties */
-  const int gcount = c->gcount;
-  struct gpart *restrict gparts = c->gparts;
-  const int c_active = cell_is_active_gravity(c, e);
-  const double loc[3] = {0., 0., 0.};
-  //{c->loc[0] + 0.5 * c->width[0],
-  //                      c->loc[1] + 0.5 * c->width[1],
-  //                       c->loc[2] + 0.5 * c->width[2]};
-
-  /* Anything to do here ?*/
-  if (!c_active) return;
+static INLINE void runner_doself_grav_pp_truncated(
+    struct gravity_cache *restrict ci_cache, const int gcount,
+    const int gcount_padded, const float r_s_inv, const struct engine *e,
+    struct gpart *gparts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that we fit in cache */
-  if (gcount > ci_cache->count)
-    error("Not enough space in the caches! gcount=%d", gcount);
+  if (!e->s->periodic)
+    error("Calling truncated PP function in non-periodic setup.");
 #endif
-
-  /* Computed the padded counts */
-  const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
-
-  gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, gparts, gcount,
-                                  gcount_padded, loc, c, e->gravity_properties);
-
-  /* Ok... Here we go ! */
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount; pid++) {
@@ -1161,24 +1099,29 @@ static INLINE void runner_doself_grav_pp_truncated(struct runner *r,
     ci_cache->a_z[pid] = a_z;
     ci_cache->pot[pid] = pot;
   }
-
-  /* Write back to the particles */
-  gravity_cache_write_back(ci_cache, gparts, gcount);
 }
 
 /**
- * @brief Computes the interaction of all the particles in a cell directly
- * (Switching function between truncated and full)
+ * @brief Computes the interaction of all the particles in a cell with all the
+ * other ones.
+ *
+ * This function switches between the full potential and the truncated one
+ * depending on needs.
+ *
+ * This function starts by constructing the require #gravity_cache for the
+ * cell and then call the specialised functions doing the actual work on
+ * the cache. It then write the data back to the particles.
  *
  * @param r The #runner.
  * @param c The #cell.
  */
 static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
-  /* Some properties of the space */
+  /* Recover some useful constants */
   const struct engine *e = r->e;
   const struct space *s = e->s;
   const int periodic = s->periodic;
+  const float r_s_inv = e->mesh->r_s_inv;
   const double r_s = e->mesh->r_s;
   const double min_trunc = e->gravity_properties->r_cut_min * r_s;
 
@@ -1197,20 +1140,56 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   /* Do we need to start by drifting things ? */
   if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
+  /* Start by constructing a cache for the particles */
+  struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
+
+  /* Shift to apply to the particles in the cell */
+  const double loc[3] = {c->loc[0] + 0.5 * c->width[0],
+                         c->loc[1] + 0.5 * c->width[1],
+                         c->loc[2] + 0.5 * c->width[2]};
+
+  /* Computed the padded counts */
+  const int gcount = c->gcount;
+  const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we fit in cache */
+  if (gcount > ci_cache->count)
+    error("Not enough space in the cache! gcount=%d", gcount);
+#endif
+
+  /* Fill the cache */
+  gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, c->gparts,
+                                  gcount, gcount_padded, loc, c,
+                                  e->gravity_properties);
+
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
-    runner_doself_grav_pp_full(r, c);
+
+    /* Not periodic -> Can always use Newtonian potential */
+    runner_doself_grav_pp_full(ci_cache, gcount, gcount_padded, e, c->gparts);
+
   } else {
 
     /* Get the maximal distance between any two particles */
     const double max_r = 2. * c->multipole->r_max;
 
     /* Do we need to use the truncated interactions ? */
-    if (max_r > min_trunc)
-      runner_doself_grav_pp_truncated(r, c);
-    else
-      runner_doself_grav_pp_full(r, c);
+    if (max_r > min_trunc) {
+
+      /* Periodic but far-away cells must use the truncated potential */
+      runner_doself_grav_pp_truncated(ci_cache, gcount, gcount_padded, r_s_inv,
+                                      e, c->gparts);
+
+    } else {
+
+      /* Periodic but close-by cells can use the full Newtonian potential */
+      runner_doself_grav_pp_full(ci_cache, gcount, gcount_padded, e, c->gparts);
+    }
   }
+
+  /* Write back to the particles */
+  gravity_cache_write_back(ci_cache, c->gparts, gcount);
 
   TIMER_TOC(timer_doself_grav_pp);
 }

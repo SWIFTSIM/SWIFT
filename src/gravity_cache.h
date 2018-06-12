@@ -175,8 +175,6 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
                             SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded, VEC_SIZE);
 
-  if (shift[0] != 0.) error("OO");
-
   /* Fill the input caches */
   for (int i = 0; i < gcount; ++i) {
     x[i] = (float)(gparts[i].x[0] - shift[0]);
@@ -191,6 +189,7 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     float dy = y[i] - CoM[1];
     float dz = z[i] - CoM[2];
 
+    /* Apply periodic BC */
     if (periodic) {
       dx = nearestf(dx, dim[0]);
       dy = nearestf(dy, dim[1]);
