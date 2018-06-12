@@ -59,7 +59,9 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
     error("c->field tensor not initialised");
 #endif
 
-  if (c->split) { /* Node case */
+  if (c->split) {
+
+    /* Node case */
 
     /* Add the field-tensor to all the 8 progenitors */
     for (int k = 0; k < 8; ++k) {
@@ -92,7 +94,9 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
       }
     }
 
-  } else { /* Leaf case */
+  } else {
+
+    /* Leaf case */
 
     /* We can abort early if no interactions via multipole happened */
     if (!c->multipole->pot.interacted) return;
@@ -166,14 +170,12 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
   if (cj->ti_old_multipole != e->ti_current)
     error(
         "Undrifted multipole cj->ti_old_multipole=%lld cj->nodeID=%d "
-        "ci->nodeID=%d "
-        "e->ti_current=%lld",
+        "ci->nodeID=%d e->ti_current=%lld",
         cj->ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 
   /* Let's interact at this level */
-  if (0)
-    gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
-                cj->multipole->CoM, props, periodic, dim, r_s_inv);
+  gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
+              cj->multipole->CoM, props, periodic, dim, r_s_inv);
 
   runner_dopair_grav_pp(r, ci, cj, 0);
 
@@ -874,7 +876,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
  *
  * @param e The #engine (for debugging checks only).
  * @param gparts The #gpart in the cell (for debugging checks only).
- */ static INLINE void runner_doself_grav_pp_full(
+ */
+static INLINE void runner_doself_grav_pp_full(
     struct gravity_cache *restrict ci_cache, const int gcount,
     const int gcount_padded, const struct engine *e, struct gpart *gparts) {
   /* Loop over all particles in ci... */

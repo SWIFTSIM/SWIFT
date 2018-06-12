@@ -2591,14 +2591,9 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
   struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
-  for (int k = 0; k < count; k++) {
 
-    if (parts[k].id == 1000) message("S (u) = %e", parts[k].entropy);
-
+  for (int k = 0; k < count; k++)
     hydro_convert_quantities(&parts[k], &xparts[k], cosmo);
-
-    if (parts[k].id == 1000) message("S = %e", parts[k].entropy);
-  }
 }
 
 /**
