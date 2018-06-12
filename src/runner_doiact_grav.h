@@ -30,8 +30,6 @@
 #include "space_getsid.h"
 #include "timers.h"
 
-extern int cid_check;
-
 static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                          struct cell *cj, int symmetric);
 
@@ -48,13 +46,6 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
 
   /* Some constants */
   const struct engine *e = r->e;
-  const struct space *s = e->s;
-  const int periodic = s->periodic;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
-  const float Omega_m = e->cosmology->Omega_m;
-  const float H0 = e->cosmology->H0;
-  const float G_newton = e->physical_constants->const_newton_G;
-  const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
 
   /* Cell properties */
   struct gpart *gparts = c->gparts;
@@ -70,8 +61,6 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
 
   if (c->split) { /* Node case */
 
-    message("aa");
-
     /* Add the field-tensor to all the 8 progenitors */
     for (int k = 0; k < 8; ++k) {
       struct cell *cp = c->progeny[k];
@@ -85,11 +74,10 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
         if (cp->multipole->pot.ti_init != e->ti_current)
           error("cp->field tensor not initialised");
 #endif
-        struct grav_tensor shifted_tensor;
-
         /* If the tensor received any contribution, push it down */
-        // MATTHIEU
-        if (1 || c->multipole->pot.interacted) {
+        if (c->multipole->pot.interacted) {
+
+          struct grav_tensor shifted_tensor;
 
           /* Shift the field tensor */
           gravity_L2L(&shifted_tensor, &c->multipole->pot, cp->multipole->CoM,
@@ -107,7 +95,7 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
   } else { /* Leaf case */
 
     /* We can abort early if no interactions via multipole happened */
-    // if (!c->multipole->pot.interacted) return;
+    if (!c->multipole->pot.interacted) return;
 
     if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
@@ -120,9 +108,6 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
       /* Update if active */
       if (gpart_is_active(gp, e)) {
 
-        if (e->s->parts[-gp->id_or_neg_offset].id == 1000)
-          message("After tree: pot=%e", gp->potential);
-
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (gp->ti_drift != e->ti_current)
@@ -132,24 +117,6 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
 #endif
         /* Apply the kernel */
         gravity_L2P(&c->multipole->pot, c->multipole->CoM, gp);
-
-        /* Apply periodic BC contribution to the potential */
-        if (with_cosmology && periodic) {
-          const float mass = gravity_get_mass(gp);
-          const float mass2 = mass * mass;
-
-          if (e->s->parts[-gp->id_or_neg_offset].id == 1000)
-            message("mass=%e Omega_m=%e H=%e rho_crit=%e", mass, Omega_m,
-                    e->cosmology->H, rho_crit0);
-
-          /* This correction term matches the one used in Gadget-2 */
-          /* The numerical constant is taken from Hernquist, Bouchet & Suto 1991
-           */
-          gp->potential -= 2.8372975f * cbrtf(mass2 * Omega_m * rho_crit0);
-        }
-
-        if (e->s->parts[-gp->id_or_neg_offset].id == 1000)
-          message("After correction: pot=%e", gp->potential);
       }
     }
   }
@@ -1198,15 +1165,20 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
  * @brief Computes the interaction of all the particles in a cell with all the
  * particles of another cell.
  *
+ * This function will try to recurse as far down the tree as possible and only
+ * default to direct summation if there is no better option.
+ *
+ * If using periodic BCs, we will abort the recursion if th distance between the
+ * cells is larger than the set threshold.
+ *
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The other #cell.
  * @param gettimer Are we timing this ?
- *
- * @todo Use a local cache for the particles.
  */
-static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
-                                      struct cell *cj, int gettimer) {
+static INLINE void runner_dopair_recursive_grav(struct runner *r,
+                                                struct cell *ci,
+                                                struct cell *cj, int gettimer) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1258,6 +1230,8 @@ static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
     dz = nearest(dz, dim[2]);
   }
   const double r2 = dx * dx + dy * dy + dz * dz;
+
+  /* Minimal distance between any 2 particles in the two cells */
   const double r_lr_check = sqrt(r2) - (multi_i->r_max + multi_j->r_max);
 
   /* Are we beyond the distance where the truncated forces are 0? */
@@ -1282,13 +1256,16 @@ static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
     /* MATTHIEU: make a symmetric M-M interaction function ! */
     runner_dopair_grav_mm(r, ci, cj);
     runner_dopair_grav_mm(r, cj, ci);
-  }
-  /* We have two leaves. Go P-P. */
-  else if (!ci->split && !cj->split) {
+
+  } else if (!ci->split && !cj->split) {
+
+    /* We have two leaves. Go P-P. */
     runner_dopair_grav_pp(r, ci, cj, 1);
-  }
-  /* Alright, we'll have to split and recurse. */
-  else {
+
+  } else {
+
+    /* Alright, we'll have to split and recurse. */
+    /* We know at least one of ci and cj is splittable */
 
     const double ri_max = multi_i->r_max;
     const double rj_max = multi_j->r_max;
@@ -1302,20 +1279,19 @@ static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
         /* Loop over ci's children */
         for (int k = 0; k < 8; k++) {
           if (ci->progeny[k] != NULL)
-            runner_dopair_grav(r, ci->progeny[k], cj, 0);
+            runner_dopair_recursive_grav(r, ci->progeny[k], cj, 0);
         }
 
-      } else if (cj->split) {
+      } else {
+        /* cj is split */
+
         /* MATTHIEU: This could maybe be replaced by P-M interactions ?  */
 
         /* Loop over cj's children */
         for (int k = 0; k < 8; k++) {
           if (cj->progeny[k] != NULL)
-            runner_dopair_grav(r, ci, cj->progeny[k], 0);
+            runner_dopair_recursive_grav(r, ci, cj->progeny[k], 0);
         }
-
-      } else {
-        error("Fundamental error in the logic");
       }
     } else {
 
@@ -1325,20 +1301,19 @@ static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
         /* Loop over cj's children */
         for (int k = 0; k < 8; k++) {
           if (cj->progeny[k] != NULL)
-            runner_dopair_grav(r, ci, cj->progeny[k], 0);
+            runner_dopair_recursive_grav(r, ci, cj->progeny[k], 0);
         }
 
-      } else if (ci->split) {
+      } else {
+        /* ci is split */
+
         /* MATTHIEU: This could maybe be replaced by P-M interactions ?  */
 
         /* Loop over ci's children */
         for (int k = 0; k < 8; k++) {
           if (ci->progeny[k] != NULL)
-            runner_dopair_grav(r, ci->progeny[k], cj, 0);
+            runner_dopair_recursive_grav(r, ci->progeny[k], cj, 0);
         }
-
-      } else {
-        error("Fundamental error in the logic");
       }
     }
   }
@@ -1347,16 +1322,17 @@ static INLINE void runner_dopair_grav(struct runner *r, struct cell *ci,
 }
 
 /**
- * @brief Computes the interaction of all the particles in a cell
+ * @brief Computes the interaction of all the particles in a cell.
+ *
+ * This function will try to recurse as far down the tree as possible and only
+ * default to direct summation if there is no better option.
  *
  * @param r The #runner.
  * @param c The first #cell.
  * @param gettimer Are we timing this ?
- *
- * @todo Use a local cache for the particles.
  */
-static INLINE void runner_doself_grav(struct runner *r, struct cell *c,
-                                      int gettimer) {
+static INLINE void runner_doself_recursive_grav(struct runner *r,
+                                                struct cell *c, int gettimer) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1378,12 +1354,12 @@ static INLINE void runner_doself_grav(struct runner *r, struct cell *c,
     for (int j = 0; j < 8; j++) {
       if (c->progeny[j] != NULL) {
 
-        runner_doself_grav(r, c->progeny[j], 0);
+        runner_doself_recursive_grav(r, c->progeny[j], 0);
 
         for (int k = j + 1; k < 8; k++) {
           if (c->progeny[k] != NULL) {
 
-            runner_dopair_grav(r, c->progeny[j], c->progeny[k], 0);
+            runner_dopair_recursive_grav(r, c->progeny[j], c->progeny[k], 0);
           }
         }
       }
