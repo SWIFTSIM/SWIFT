@@ -32,10 +32,12 @@
 /*! Conversion factor between Plummer softening and internal softening */
 #define kernel_gravity_softening_plummer_equivalent 2.8
 #define kernel_gravity_softening_plummer_equivalent_inv (1. / 2.8)
+#define kernel_gravity_softening_name "Gadget-2 (spline kernel)"
 #else
 /*! Conversion factor between Plummer softening and internal softening */
 #define kernel_gravity_softening_plummer_equivalent 3.
 #define kernel_gravity_softening_plummer_equivalent_inv (1. / 3.)
+#define kernel_gravity_softening_name "Wendland-C2"
 #endif /* GADGET2_SOFTENING_CORRECTION */
 
 /**

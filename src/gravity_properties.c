@@ -31,6 +31,7 @@
 #include "error.h"
 #include "gravity.h"
 #include "kernel_gravity.h"
+#include "kernel_long_gravity.h"
 
 #define gravity_props_default_a_smooth 1.25f
 #define gravity_props_default_r_cut_max 4.5f
@@ -112,6 +113,8 @@ void gravity_props_print(const struct gravity_props *p) {
 
   message("Self-gravity opening angle:  theta=%.4f", p->theta_crit);
 
+  message("Self-gravity softening: %s", kernel_gravity_softening_name);
+
   message(
       "Self-gravity comoving softening:    epsilon=%.4f (Plummer equivalent: "
       "%.4f)",
@@ -127,8 +130,11 @@ void gravity_props_print(const struct gravity_props *p) {
   message("Self-gravity mesh side-length: N=%d", p->mesh_size);
   message("Self-gravity mesh smoothing-scale: a_smooth=%f", p->a_smooth);
 
-  message("Self-gravity tree cut-off: r_cut_max=%f", p->r_cut_max);
-  message("Self-gravity truncation cut-off: r_cut_min=%f", p->r_cut_min);
+  message("Self-gravity tree cut-off ratio: r_cut_max=%f", p->r_cut_max);
+  message("Self-gravity truncation cut-off ratio: r_cut_min=%f", p->r_cut_min);
+
+  message("Self-gravity mesh truncation function: %s",
+          kernel_gravity_softening_name);
 
   message("Self-gravity tree update frequency: f=%f", p->rebuild_frequency);
 }
@@ -137,9 +143,9 @@ void gravity_props_print(const struct gravity_props *p) {
 void gravity_props_print_snapshot(hid_t h_grpgrav,
                                   const struct gravity_props *p) {
 
-  io_write_attribute_f(h_grpgrav, "Tree update frequency",
-                       p->rebuild_frequency);
   io_write_attribute_f(h_grpgrav, "Time integration eta", p->eta);
+  io_write_attribute_s(h_grpgrav, "Softening style",
+                       kernel_gravity_softening_name);
   io_write_attribute_f(
       h_grpgrav, "Comoving softening length",
       p->epsilon_comoving * kernel_gravity_softening_plummer_equivalent);
@@ -155,8 +161,12 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
   io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit);
   io_write_attribute_d(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
   io_write_attribute_f(h_grpgrav, "Mesh a_smooth", p->a_smooth);
-  io_write_attribute_f(h_grpgrav, "Mesh r_cut_max", p->r_cut_max);
-  io_write_attribute_f(h_grpgrav, "Mesh r_cut_min", p->r_cut_min);
+  io_write_attribute_f(h_grpgrav, "Mesh r_cut_max ratio", p->r_cut_max);
+  io_write_attribute_f(h_grpgrav, "Mesh r_cut_min ratio", p->r_cut_min);
+  io_write_attribute_f(h_grpgrav, "Tree update frequency",
+                       p->rebuild_frequency);
+  io_write_attribute_s(h_grpgrav, "Mesh truncation function",
+                       r kernel_gravity_softening_name);
 }
 #endif
 

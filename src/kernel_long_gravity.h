@@ -33,6 +33,12 @@
 
 #define GADGET2_LONG_RANGE_CORRECTION
 
+#ifdef GADGET2_LONG_RANGE_CORRECTION
+#define kernel_gravity_softening_name "Gadget-2 (error function)"
+#else
+#define kernel_gravity_softening_name "Exp-based Sigmoid"
+#endif
+
 /**
  * @brief Derivatives of the long-range truncation function \f$\chi(r,r_s)\f$ up
  * to 5th order.
