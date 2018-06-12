@@ -510,9 +510,9 @@ __attribute__((always_inline)) INLINE static void construct_1d_table_from_4d_ele
   //get_redshift_index(cosmo->z,&z_i,&d_z,cooling);
   //get_index_1d(cooling->nH, cooling->N_nH, log10(inn_h), &n_h_i, &d_n_h);
 
-  for(int i = 0; i < cooling->N_Temp; i++){
-  result_table[i] = 0.0;
     for(int j = 0; j < cooling->N_Elements; j++){
+  for(int i = 0; i < cooling->N_Temp; i++){
+  if (i == 0) result_table[i] = 0.0;
       index[0] = row_major_index_4d(z_i,   j, n_h_i,   i, cooling->N_Redshifts, cooling->N_Elements, cooling->N_nH, cooling->N_Temp);
       index[1] = row_major_index_4d(z_i,   j, n_h_i+1, i, cooling->N_Redshifts, cooling->N_Elements, cooling->N_nH, cooling->N_Temp);
       index[2] = row_major_index_4d(z_i+1, j, n_h_i,   i, cooling->N_Redshifts, cooling->N_Elements, cooling->N_nH, cooling->N_Temp);
@@ -522,13 +522,13 @@ __attribute__((always_inline)) INLINE static void construct_1d_table_from_4d_ele
                          (1 - d_z) * d_n_h       * table[index[1]] +
                          d_z       * (1 - d_n_h) * table[index[2]] +
                          d_z       * d_n_h       * table[index[3]];
-    }
 // #if SWIFT_DEBUG_CHECKS
     if (isnan(result_table[i])) printf("Eagle cooling.h 3 i partial sums %d %.5e %.5e %.5e %.5e %.5e \n",i, result_table[i],(1 - d_z) * (1 - d_n_h) * table[index[0]],
                        (1 - d_z) * (1 - d_n_h) * table[index[0]] + (1 - d_z) * d_n_h * table[index[1]],
                        (1 - d_z) * (1 - d_n_h) * table[index[0]] + (1 - d_z) * d_n_h * table[index[1]] + d_z * (1 - d_n_h) * table[index[2]],
                        (1 - d_z) * (1 - d_n_h) * table[index[0]] + (1 - d_z) * d_n_h * table[index[1]] + d_z * (1 - d_n_h) * table[index[2]] + d_z * d_n_h * table[index[3]]);
 // #endif
+    }
   }
 }
 
