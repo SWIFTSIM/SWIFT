@@ -350,8 +350,9 @@ static void parse_value(char *line, struct swift_params *params) {
     /* Take second token as the parameter value. */
     token = trim_both(strtok(NULL, "#\n"));
 
-    /* If second token is NULL then the line must be a section heading. */
-    if (token == NULL) {
+    /* If second token is NULL or empty then the line must be a section
+     * heading. */
+    if (token == NULL || strlen(token) == 0) {
       strcpy(tmpSectionName, tmpStr);
       strcat(tmpSectionName, PARSER_VALUE_STRING);
 

@@ -9,7 +9,7 @@ Scheduler:
 kernel: 4
 
 Simulation:    
-  no_of_time_steps:   10
+  no_of_time_steps:   10    
   max_h:              1.1255
   start_time:         1.23456789
 
@@ -17,6 +17,6 @@ IO:
   #Input file
   ic_file:            ic_file.ini
 
-#Box:
-#  sides: [2, 3, 4]
+Box:
+  sides: [2, 3, 4]
 ...

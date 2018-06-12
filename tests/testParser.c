@@ -55,12 +55,20 @@ int main(int argc, char *argv[]) {
   char ic_file[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(&param_file, "IO:ic_file", ic_file);
 
+  float sides[3];
+  parser_get_param_float_array(&param_file, "Box:sides", 1, 3, sides);
+
+  float optsides[5] = {1.f, 2.f, 3.f, 4.f, 5.f};
+  int haveopt = parser_get_param_float_array(&param_file, "Box:moresides",
+                                             0, 3, optsides);
+
   /* Print the variables to check their values are correct. */
   printf(
       "no_of_threads: %d, no_of_time_steps: %d, max_h: %f, start_time: %lf, "
       "ic_file: %s, kernel: %d optional: %d\n",
       no_of_threads, no_of_time_steps, max_h, start_time, ic_file, kernel,
       optional);
+  printf("sides of box: %f %f %f\n", sides[0], sides[1], sides[2]);
 
   assert(no_of_threads == 16);
   assert(no_of_time_steps == 10);
@@ -69,6 +77,16 @@ int main(int argc, char *argv[]) {
   assert(strcmp(ic_file, "ic_file.ini") == 0); /*strcmp returns 0 if correct.*/
   assert(kernel == 4);
   assert(optional == 1);
+  assert(sides[0] == 2);
+  assert(sides[1] == 3);
+  assert(sides[2] == 4);
+
+  assert(haveopt == 0);
+  assert(optsides[0] == 1);
+  assert(optsides[1] == 2);
+  assert(optsides[2] == 3);
+  assert(optsides[3] == 4);
+  assert(optsides[4] == 5);
 
   return 0;
 }
