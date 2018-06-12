@@ -173,7 +173,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_init_grav:
     case task_type_grav_top_level:
-    case task_type_grav_long_range:
     case task_type_grav_mm:
       return task_action_multipole;
       break;
@@ -181,6 +180,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_drift_gpart:
     case task_type_grav_down:
     case task_type_grav_mesh:
+    case task_type_grav_long_range:
       return task_action_gpart;
       break;
 
@@ -292,6 +292,7 @@ void task_unlock(struct task *t) {
 
     case task_type_drift_gpart:
     case task_type_grav_mesh:
+    case task_type_grav_long_range:
       cell_gunlocktree(ci);
       break;
 
@@ -323,7 +324,6 @@ void task_unlock(struct task *t) {
       cell_munlocktree(ci);
       break;
 
-    case task_type_grav_long_range:
     case task_type_grav_mm:
       cell_munlocktree(ci);
       break;
@@ -388,6 +388,7 @@ int task_lock(struct task *t) {
 
     case task_type_drift_gpart:
     case task_type_grav_mesh:
+    case task_type_grav_long_range:
       if (ci->ghold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
       break;
@@ -449,7 +450,6 @@ int task_lock(struct task *t) {
       }
       break;
 
-    case task_type_grav_long_range:
     case task_type_grav_mm:
       /* Lock the m-poles */
       if (ci->mhold) return 0;
