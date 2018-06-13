@@ -287,6 +287,72 @@ gravity_cache_populate_no_mpole(const timebin_t max_active_bin,
 }
 
 /**
+ * @brief Fills a #gravity_cache structure with some #gpart and make them use
+ * the multi-pole.
+ *
+ * @param max_active_bin The largest active bin in the current time-step.
+ * @param c The #gravity_cache to fill.
+ * @param gparts The #gpart array to read from.
+ * @param gcount The number of particles to read.
+ * @param gcount_padded The number of particle to read padded to the next
+ * multiple of the vector length.
+ * @param cell The cell we play with (to get reasonable padding positions).
+ * @param grav_props The global gravity properties.
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
+                                 struct gravity_cache *c,
+                                 const struct gpart *restrict gparts,
+                                 const int gcount, const int gcount_padded,
+                                 const struct cell *cell,
+                                 const struct gravity_props *grav_props) {
+
+  /* Make the compiler understand we are in happy vectorization land */
+  swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, c->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, c->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, c->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, active, c->active, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, use_mpole, c->use_mpole,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_assume_size(gcount_padded, VEC_SIZE);
+
+  /* Fill the input caches */
+  for (int i = 0; i < gcount; ++i) {
+    x[i] = (float)(gparts[i].x[0]);
+    y[i] = (float)(gparts[i].x[1]);
+    z[i] = (float)(gparts[i].x[2]);
+    epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
+    m[i] = gparts[i].mass;
+    active[i] = (int)(gparts[i].time_bin <= max_active_bin);
+    use_mpole[i] = 1;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gcount_padded < gcount) error("Padded counter smaller than counter");
+#endif
+
+  /* Particles used for padding should get impossible positions
+   * that have a reasonable magnitude. We use the cell width for this */
+  const float pos_padded[3] = {-2.f * (float)cell->width[0],
+                               -2.f * (float)cell->width[1],
+                               -2.f * (float)cell->width[2]};
+  const float eps_padded = epsilon[0];
+
+  /* Pad the caches */
+  for (int i = gcount; i < gcount_padded; ++i) {
+    x[i] = pos_padded[0];
+    y[i] = pos_padded[1];
+    z[i] = pos_padded[2];
+    epsilon[i] = eps_padded;
+    m[i] = 0.f;
+    active[i] = 0;
+    use_mpole[i] = 0;
+  }
+}
+
+/**
  * @brief Write the output cache values back to the active #gpart.
  *
  * This function obviously omits the padded values in the cache.

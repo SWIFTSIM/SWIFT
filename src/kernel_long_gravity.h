@@ -34,7 +34,7 @@
 #define GADGET2_LONG_RANGE_CORRECTION
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
-#define kernel_long_gravity_truncation_name "Gadget-2 (error function)"
+#define kernel_long_gravity_truncation_name "Gadget-like (using erfc())"
 #else
 #define kernel_long_gravity_truncation_name "Exp-based Sigmoid"
 #endif

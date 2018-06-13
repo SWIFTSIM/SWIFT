@@ -2379,8 +2379,16 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     }
 
     /* Recover the multipole information */
-    struct gravity_tensors *const multi_i = ci->multipole;
+    const struct gravity_tensors *const multi_i = ci->multipole;
     const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
+    const double r_max_i = multi_i->r_max;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (multi_i->r_max != multi_i->r_max_rebuild)
+      error(
+          "Multipole size not equal ot it's size after rebuild. But we just "
+          "rebuilt...");
+#endif
 
     /* Loop over every other cell */
     for (int ii = 0; ii < cdim[0]; ii++) {
@@ -2414,8 +2422,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const double r2 = dx * dx + dy * dy + dz * dz;
 
           /* Are the cells too close for a MM interaction ? */
-          if (!gravity_M2L_accept(multi_i->r_max_rebuild,
-                                  multi_j->r_max_rebuild, theta_crit2, r2)) {
+          if (!gravity_M2L_accept(r_max_i, multi_j->r_max, theta_crit2, r2)) {
 
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
@@ -3155,7 +3162,7 @@ void engine_maketasks(struct engine *e) {
 #else
   const int hydro_tasks_per_cell = 27 * 2;
 #endif
-  const int self_grav_tasks_per_cell = 27 * 2;
+  const int self_grav_tasks_per_cell = 125;
   const int ext_grav_tasks_per_cell = 1;
 
   if (e->policy & engine_policy_hydro)
@@ -3730,7 +3737,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_self_gravity) {
-    n1 += 32;
+    n1 += 125;
     n2 += 1;
 #ifdef WITH_MPI
     n2 += 2;

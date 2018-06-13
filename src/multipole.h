@@ -2397,7 +2397,8 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
  * multipoles.
  */
 __attribute__((always_inline)) INLINE static int gravity_M2L_accept(
-    double r_crit_a, double r_crit_b, double theta_crit2, double r2) {
+    const double r_crit_a, const double r_crit_b, const double theta_crit2,
+    const double r2) {
 
   const double size = r_crit_a + r_crit_b;
   const double size2 = size * size;
@@ -2410,8 +2411,7 @@ __attribute__((always_inline)) INLINE static int gravity_M2L_accept(
 
 /**
  * @brief Checks whether a particle-cell interaction can be appromixated by a
- * M2P
- * interaction using the distance and cell radius.
+ * M2P interaction using the distance and cell radius.
  *
  * We use the multipole acceptance criterion of Dehnen, 2002, JCoPh, Volume 179,
  * Issue 1, pp.27-42, equation 10.
@@ -2419,10 +2419,10 @@ __attribute__((always_inline)) INLINE static int gravity_M2L_accept(
  * @param r_max2 The square of the size of the multipole.
  * @param theta_crit2 The square of the critical opening angle.
  * @param r2 Square of the distance (periodically wrapped) between the
- * multipoles.
+ * particle and the multipole.
  */
 __attribute__((always_inline)) INLINE static int gravity_M2P_accept(
-    float r_max2, float theta_crit2, float r2) {
+    const float r_max2, const float theta_crit2, const float r2) {
 
   // MATTHIEU: Make this mass-dependent ?
 

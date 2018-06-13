@@ -192,4 +192,4 @@ ylim(0, 1)
 xticks([])
 yticks([])
 
-savefig("ZeldovichPancake_%.3d.png"%snap, dpi=200)
+savefig("ZeldovichPancake_%.4d.png"%snap, dpi=200)
