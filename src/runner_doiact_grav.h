@@ -30,9 +30,6 @@
 #include "space_getsid.h"
 #include "timers.h"
 
-static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
-                                         struct cell *cj, int symmetric);
-
 /**
  * @brief Recursively propagate the multipoles down the tree by applying the
  * L2L and L2P kernels.
@@ -46,10 +43,6 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
 
   /* Some constants */
   const struct engine *e = r->e;
-
-  /* Cell properties */
-  struct gpart *gparts = c->gparts;
-  const int gcount = c->gcount;
 
   TIMER_TIC;
 
@@ -103,6 +96,13 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
 
     if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
+    /* Cell properties */
+    struct gpart *gparts = c->gparts;
+    const int gcount = c->gcount;
+    const struct grav_tensor *pot = &c->multipole->pot;
+    const double CoM[3] = {c->multipole->CoM[0], c->multipole->CoM[1],
+                           c->multipole->CoM[2]};
+
     /* Apply accelerations to the particles */
     for (int i = 0; i < gcount; ++i) {
 
@@ -120,65 +120,12 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
           error("c->field tensor not initialised");
 #endif
         /* Apply the kernel */
-        gravity_L2P(&c->multipole->pot, c->multipole->CoM, gp);
+        gravity_L2P(pot, CoM, gp);
       }
     }
   }
 
   if (timer) TIMER_TOC(timer_dograv_down);
-}
-
-/**
- * @brief Computes the interaction of the field tensor in a cell with the
- * multipole of another cell.
- *
- * @param r The #runner.
- * @param ci The #cell with field tensor to interact.
- * @param cj The #cell with the multipole.
- */
-static INLINE void runner_dopair_grav_mm(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct cell *restrict cj) {
-
-  /* Some constants */
-  const struct engine *e = r->e;
-  const struct gravity_props *props = e->gravity_properties;
-  const int periodic = e->mesh->periodic;
-  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const float r_s_inv = e->mesh->r_s_inv;
-
-  TIMER_TIC;
-
-  /* Anything to do here? */
-  if (!cell_is_active_gravity(ci, e) || ci->nodeID != engine_rank) return;
-
-  /* Short-cut to the multipole */
-  const struct multipole *multi_j = &cj->multipole->m_pole;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ci == cj) error("Interacting a cell with itself using M2L");
-
-  if (multi_j->num_gpart == 0)
-    error("Multipole does not seem to have been set.");
-
-  if (ci->multipole->pot.ti_init != e->ti_current)
-    error("ci->grav tensor not initialised.");
-#endif
-
-  /* Do we need to drift the multipole ? */
-  if (cj->ti_old_multipole != e->ti_current)
-    error(
-        "Undrifted multipole cj->ti_old_multipole=%lld cj->nodeID=%d "
-        "ci->nodeID=%d e->ti_current=%lld",
-        cj->ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
-
-  /* Let's interact at this level */
-  gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
-              cj->multipole->CoM, props, periodic, dim, r_s_inv);
-
-  runner_dopair_grav_pp(r, ci, cj, 0);
-
-  TIMER_TOC(timer_dopair_grav_mm);
 }
 
 /**
@@ -1158,6 +1105,60 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   gravity_cache_write_back(ci_cache, c->gparts, gcount);
 
   TIMER_TOC(timer_doself_grav_pp);
+}
+
+/**
+ * @brief Computes the interaction of the field tensor in a cell with the
+ * multipole of another cell.
+ *
+ * @param r The #runner.
+ * @param ci The #cell with field tensor to interact.
+ * @param cj The #cell with the multipole.
+ */
+static INLINE void runner_dopair_grav_mm(struct runner *r,
+                                         struct cell *restrict ci,
+                                         struct cell *restrict cj) {
+
+  /* Some constants */
+  const struct engine *e = r->e;
+  const struct gravity_props *props = e->gravity_properties;
+  const int periodic = e->mesh->periodic;
+  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
+  const float r_s_inv = e->mesh->r_s_inv;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active_gravity(ci, e) || ci->nodeID != engine_rank) return;
+
+  /* Short-cut to the multipole */
+  const struct multipole *multi_j = &cj->multipole->m_pole;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci == cj) error("Interacting a cell with itself using M2L");
+
+  if (multi_j->num_gpart == 0)
+    error("Multipole does not seem to have been set.");
+
+  if (ci->multipole->pot.ti_init != e->ti_current)
+    error("ci->grav tensor not initialised.");
+#endif
+
+  /* Do we need to drift the multipole ? */
+  if (cj->ti_old_multipole != e->ti_current)
+    error(
+        "Undrifted multipole cj->ti_old_multipole=%lld cj->nodeID=%d "
+        "ci->nodeID=%d e->ti_current=%lld",
+        cj->ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
+
+  /* Let's interact at this level */
+  if (0)
+    gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
+                cj->multipole->CoM, props, periodic, dim, r_s_inv);
+
+  runner_dopair_grav_pp(r, ci, cj, 0);
+
+  TIMER_TOC(timer_dopair_grav_mm);
 }
 
 /**

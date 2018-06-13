@@ -2263,9 +2263,6 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gp->num_interacted += lb->num_interacted;
 #endif
 
-  // MATTHIEU
-  // return;
-
   /* Local accumulator */
   double a_grav[3] = {0., 0., 0.};
   double pot = 0.;
@@ -2431,7 +2428,6 @@ __attribute__((always_inline)) INLINE static int gravity_M2P_accept(
 
   /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
   return (r2 * theta_crit2 * 0.1 > r_max2);
-  // return 0;
 }
 
 #endif /* SWIFT_MULTIPOLE_H */
