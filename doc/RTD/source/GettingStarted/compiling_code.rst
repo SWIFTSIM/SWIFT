@@ -104,3 +104,5 @@ HDF5 library,
    
    ./configure --with-hdf5=/path/to/h5cc
 
+More information about what needs to be provided to these flags is given in
+``./configure --help``.
