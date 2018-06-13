@@ -551,63 +551,6 @@ float parser_get_param_float(const struct swift_params *params,
 }
 
 /**
- * @brief Retrieve float array parameter from structure.
- *
- * @param params Structure that holds the parameters
- * @param name Name of the parameter to be found
- * @param required whether it is an error if the parameter has not been set
- * @param nval number of values expected.
- * @param values Values of the parameter found, of size at least nvals.
- * @return whether the parameter has been found.
- */
-int parser_get_param_float_array(const struct swift_params *params,
-                                 const char *name, int required,
-                                 int nval, float *values) {
-
-  char str[PARSER_MAX_LINE_SIZE];
-  char cpy[PARSER_MAX_LINE_SIZE];
-  char *cp = cpy;
-
-  for (int i = 0; i < params->paramCount; i++) {
-    if (!strcmp(name, params->data[i].name)) {
-      strcpy(cp, params->data[i].value);
-      cp = trim_both(cp);
-
-      /* Strip off []. */
-      if (cp[0] != '[')
-        error("Array '%s' does not start with '['", name);
-      cp++;
-      int l = strlen(cp);
-      if (cp[l-1] != ']')
-        error("Array '%s' does not end with ']'", name);
-      cp[l-1] = '\0';
-      cp = trim_both(cp);
-
-      /* Parse out values which should now be "v, v, v" with internal
-       * whitespace variations. */
-      char *p = strtok(cp, ",");
-      for (int k = 0; k < nval; k++) {
-        if (p != NULL) {
-          if (sscanf(p, " %f%s ", &values[k], str) != 1) {
-            error("Tried parsing float '%s' but found '%s' with "
-                  "illegal float characters '%s'.", name, p, str);
-          }
-        } else {
-          error("Array '%s' with value '%s' has too few values, expected %d",
-                name, params->data[i].value, nval);
-        }
-        if (k < nval - 1) p = strtok(NULL, ",");
-      }
-      return 1;
-    }
-  }
-  if (required)
-    error("Cannot find '%s' in the structure, in file '%s'.", name,
-          params->fileName);
-  return 0;
-}
-
-/**
  * @brief Retrieve double parameter from structure.
  *
  * @param params Structure that holds the parameters
@@ -800,6 +743,108 @@ void parser_get_opt_param_string(const struct swift_params *params,
 
   strcpy(retParam, def);
 }
+
+/* Macro defining functions that get primitive types as simple one-line YAML
+ * arrays, that is SEC: [v1,v2,v3...] format. TYPE is the data type, float
+ * etc. FMT a format to parse a single value with the possibility of
+ * extraneous characters after the value, so " %f%s " for a float (spaces can
+ * be eaten so safest to have one at beginning and end) and DESC the type
+ * description i.e. "float".
+ */
+#define PARSER_GET_ARRAY(TYPE, FMT, DESC)                               \
+  int parser_get_param_##TYPE##_array(const struct swift_params *params,\
+                                   const char *name, int required,      \
+                                   int nval, TYPE *values) {            \
+    char str[PARSER_MAX_LINE_SIZE];                                     \
+    char cpy[PARSER_MAX_LINE_SIZE];                                     \
+    char *cp = cpy;                                                     \
+                                                                        \
+    for (int i = 0; i < params->paramCount; i++) {                      \
+      if (!strcmp(name, params->data[i].name)) {                        \
+        strcpy(cp, params->data[i].value);                              \
+        cp = trim_both(cp);                                             \
+                                                                        \
+        /* Strip off []. */                                             \
+        if (cp[0] != '[')                                               \
+          error("Array '%s' does not start with '['", name);            \
+        cp++;                                                           \
+        int l = strlen(cp);                                             \
+        if (cp[l-1] != ']')                                             \
+          error("Array '%s' does not end with ']'", name);              \
+        cp[l-1] = '\0';                                                 \
+        cp = trim_both(cp);                                             \
+                                                                        \
+        /* Parse out values which should now be "v, v, v" with          \
+         * internal     whitespace variations. */                       \
+        char *p = strtok(cp, ",");                                      \
+        for (int k = 0; k < nval; k++) {                                \
+          if (p != NULL) {                                              \
+            if (sscanf(p, FMT, &values[k], str) != 1) {                 \
+              error("Tried parsing " DESC " '%s' but found '%s' with "  \
+                    "illegal " DESC " characters '%s'.", name, p, str); \
+            }                                                           \
+          } else {                                                      \
+            error("Array '%s' with value '%s' has too few values, "     \
+                  "expected %d", name, params->data[i].value, nval);    \
+          }                                                             \
+          if (k < nval - 1) p = strtok(NULL, ",");                      \
+        }                                                               \
+        return 1;                                                       \
+      }                                                                 \
+    }                                                                   \
+    if (required)                                                       \
+      error("Cannot find '%s' in the structure, in file '%s'.", name,   \
+            params->fileName);                                          \
+    return 0;                                                           \
+  }
+
+/**
+ * @brief Retrieve int char parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param required whether it is an error if the parameter has not been set
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals.
+ * @return whether the parameter has been found.
+ */
+PARSER_GET_ARRAY(char, " %c%s ", "int");
+
+/**
+ * @brief Retrieve int array parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param required whether it is an error if the parameter has not been set
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals.
+ * @return whether the parameter has been found.
+ */
+PARSER_GET_ARRAY(int, " %d%s ", "int");
+
+/**
+ * @brief Retrieve float array parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param required whether it is an error if the parameter has not been set
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals.
+ * @return whether the parameter has been found.
+ */
+PARSER_GET_ARRAY(float, " %f%s ", "float");
+
+/**
+ * @brief Retrieve double array parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param required whether it is an error if the parameter has not been set
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals.
+ * @return whether the parameter has been found.
+ */
+PARSER_GET_ARRAY(double, " %lf%s ", "double");
 
 /**
  * @brief Prints the contents of the parameter structure.
