@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <time.h>
 
+// EAGLE defined constants
 #define eagle_element_name_length 20
 #define eagle_cmb_temperature 2.728
 #define eagle_compton_rate 1.0178e-37*2.728*2.728*2.728*2.728

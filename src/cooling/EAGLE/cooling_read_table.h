@@ -1,6 +1,12 @@
 #ifndef SWIFT_COOLING_EAGLE_READ_TABLES_H
 #define SWIFT_COOLING_EAGLE_READ_TABLES_H
 
+/*
+ * @brief Reads cooling header data into cooling data structure
+ *
+ * @param fname Filepath
+ * @param cooling Cooling data structure
+ */
 INLINE void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
   int i;
 
@@ -115,23 +121,5 @@ INLINE void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling
   fflush(stdout);
 
 }
-
-//void set_solar_metallicity(void) {
-//  int i;
-//
-//  printf("\n\nSolar abundances:\n\n");
-//
-//  /* set solar metallicity value */
-//  for (i = 0, SolarMetallicity = 1; i < cooling_N_SolarAbundances; i++) {
-//    printf("Solar abundance of %s = %g\n", cooling_SolarAbundanceNames[i],
-//             cooling_SolarAbundances[i]);
-//    if (strcmp(cooling_SolarAbundanceNames[i], "Hydrogen") == 0)
-//      SolarMetallicity -= cooling_SolarAbundances[i];
-//
-//    if (strcmp(cooling_SolarAbundanceNames[i], "Helium") == 0)
-//      SolarMetallicity -= cooling_SolarAbundances[i];
-//  }
-//  printf("\nSolarMetallicity = %g\n", SolarMetallicity);
-//}
 
 #endif /* SWIFT_COOLING_EAGLE_READ_TABLES_H */
