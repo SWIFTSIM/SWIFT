@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
 
   struct clocks_time tic, toc;
   struct engine e;
-  
+
   /* Structs used by the engine. Declare now to make sure these are always in
    * scope.  */
   struct chemistry_global_data chemistry;
