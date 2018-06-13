@@ -24,17 +24,15 @@
 // EAGLE defined constants
 #define eagle_element_name_length 20
 #define eagle_cmb_temperature 2.728
-#define eagle_compton_rate 1.0178e-37*2.728*2.728*2.728*2.728
+#define eagle_compton_rate 1.0178e-37 * 2.728 * 2.728 * 2.728 * 2.728
 #define eagle_metal_cooling_on 1
 #define eagle_max_iterations 15
 #define eagle_proton_mass_cgs 1.6726e-24
 
-
-
-/* 
+/*
  * @brief struct containing radiative and heating rates
  */
-//struct radiative_rates{
+// struct radiative_rates{
 //  float Cooling[NUMBER_OF_CTYPES];
 //  float Heating[NUMBER_OF_HTYPES];
 //  float TotalCoolingRate;
@@ -45,14 +43,17 @@
 
 /*
  * @brief struct containing cooling tables independent of redshift
- * 
+ *
  */
 struct cooling_tables_redshift_invariant {
-  float *metal_heating;			// size: [1][cooling_N_Temp][cooling_N_nH];
-  float *H_plus_He_heating;		// size: [1][cooling_N_He][cooling_N_Temp][cooling_N_nH];
-  float *H_plus_He_electron_abundance;	// size: [1][cooling_N_He][cooling_N_Temp][cooling_N_nH];
-  float *temperature;			// size: [1][cooling_N_He][cooling_N_Temp][cooling_N_nH];
-  float *electron_abundance;		// size: [1][cooling_N_Temp][cooling_N_nH];
+  float *metal_heating;      // size: [1][cooling_N_Temp][cooling_N_nH];
+  float *H_plus_He_heating;  // size:
+                             // [1][cooling_N_He][cooling_N_Temp][cooling_N_nH];
+  float *
+      H_plus_He_electron_abundance;  // size:
+                                     // [1][cooling_N_He][cooling_N_Temp][cooling_N_nH];
+  float *temperature;  // size: [1][cooling_N_He][cooling_N_Temp][cooling_N_nH];
+  float *electron_abundance;  // size: [1][cooling_N_Temp][cooling_N_nH];
 };
 
 /*
@@ -60,11 +61,20 @@ struct cooling_tables_redshift_invariant {
  *
  */
 struct cooling_tables {
-  float *metal_heating;			// size: [cooling_N_Redshifts][cooling_N_Temp][cooling_N_nH];
-  float *H_plus_He_heating;		// size: [cooling_N_Redshifts][cooling_N_He][cooling_N_Temp][cooling_N_nH];
-  float *H_plus_He_electron_abundance;	// size: [cooling_N_Redshifts][cooling_N_He][cooling_N_Temp][cooling_N_nH];
-  float *temperature;			// size: [cooling_N_Redshifts][cooling_N_He][cooling_N_Temp][cooling_N_nH];
-  float *electron_abundance;		// size: [cooling_N_Redshifts][cooling_N_Temp][cooling_N_nH];
+  float *metal_heating;  // size:
+                         // [cooling_N_Redshifts][cooling_N_Temp][cooling_N_nH];
+  float *
+      H_plus_He_heating;  // size:
+                          // [cooling_N_Redshifts][cooling_N_He][cooling_N_Temp][cooling_N_nH];
+  float *
+      H_plus_He_electron_abundance;  // size:
+                                     // [cooling_N_Redshifts][cooling_N_He][cooling_N_Temp][cooling_N_nH];
+  float *
+      temperature;  // size:
+                    // [cooling_N_Redshifts][cooling_N_He][cooling_N_Temp][cooling_N_nH];
+  float *
+      electron_abundance;  // size:
+                           // [cooling_N_Redshifts][cooling_N_Temp][cooling_N_nH];
 };
 
 /*
@@ -122,7 +132,6 @@ struct cooling_function_data {
   float sulphur_over_silicon_ratio;
 
   double delta_u;
-
 };
 
 /**
