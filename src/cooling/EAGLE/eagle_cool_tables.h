@@ -8,39 +8,11 @@
 #include <math.h>
 #include "error.h"
 
-inline int whatisopen(hid_t fid) {
-        ssize_t cnt;
-        int howmany;
-        int i;
-        H5I_type_t ot;
-        hid_t anobj;
-        hid_t *objs;
-        char name[1024];
-        herr_t status;
-
-        cnt = H5Fget_obj_count(fid, H5F_OBJ_ALL);
-
-        if (cnt <= 0) return cnt;
-
-        printf("%d object(s) open\n", (int) cnt);
-
-        objs = malloc(cnt * sizeof(hid_t));
-
-        howmany = H5Fget_obj_ids(fid, H5F_OBJ_ALL, cnt, objs);
-
-        printf("open objects:\n");
-
-        for (i = 0; i < howmany; i++ ) {
-             anobj = *objs++;
-             ot = H5Iget_type(anobj);
-             status = H5Iget_name(anobj, name, 1024);
-             printf(" %d: type %d, name %s\n",i,ot,name);
-        }
-
-        return howmany;
-}
-
-
+/*
+ * @brief String assignment function from EAGLE
+ *
+ * @param s String
+ */
 inline char *mystrdup(const char *s) {
   char *p;
 
@@ -50,11 +22,14 @@ inline char *mystrdup(const char *s) {
 }
 
 int row_major_index_2d(int, int, int, int);
-
 int row_major_index_3d(int, int, int, int, int, int);
-
 int row_major_index_4d(int, int, int, int, int, int, int, int);
 
+/*
+ * @brief Reads in EAGLE table redshift values
+ *
+ * @param cooling Cooling data structure
+ */
 inline void GetCoolingRedshifts(struct cooling_function_data *cooling) {
   FILE *infile;
 
@@ -80,6 +55,12 @@ inline void GetCoolingRedshifts(struct cooling_function_data *cooling) {
 
 }
 
+/*
+ * @brief Reads in EAGLE cooling table header
+ *
+ * @param fname Filepath
+ * @param cooling Cooling data structure
+ */
 inline void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
   int i;
 
@@ -211,9 +192,10 @@ inline void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling
 
 
 /*
- * ----------------------------------------------------------------------
- * Get the cooling table for photoionized cooling (before redshift ~9)
- * ----------------------------------------------------------------------
+ * @brief Get the cooling table for photoionized cooling (before redshift ~9)
+ *
+ * @param cooling_table_path Filepath
+ * @param cooling Cooling data structure
  */
 
 inline struct cooling_tables_redshift_invariant get_no_compt_table(char *cooling_table_path, const struct cooling_function_data *restrict cooling) {
@@ -336,9 +318,10 @@ inline struct cooling_tables_redshift_invariant get_no_compt_table(char *cooling
 }
 
 /*
- * ----------------------------------------------------------------------
- * Get the cooling table for collisional cooling (before reionisation)
- * ----------------------------------------------------------------------
+ * @brief Get the cooling table for collisional cooling (before reionisation)
+ *
+ * @param cooling_table_path Filepath
+ * @param cooling Cooling data structure
  */
 
 inline struct cooling_tables_redshift_invariant get_collisional_table(char *cooling_table_path, const struct cooling_function_data* restrict cooling) {
@@ -441,9 +424,10 @@ inline struct cooling_tables_redshift_invariant get_collisional_table(char *cool
 }
 
 /*
- * ----------------------------------------------------------------------
- * Get the cooling table for photodissociation 
- * ----------------------------------------------------------------------
+ * @brief Get the cooling table for photodissociation 
+ *
+ * @param cooling_table_path Filepath
+ * @param cooling Cooling data structure
  */
 
 inline struct cooling_tables_redshift_invariant get_photodis_table(char *cooling_table_path, const struct cooling_function_data* restrict cooling) {
@@ -555,9 +539,10 @@ inline struct cooling_tables_redshift_invariant get_photodis_table(char *cooling
 }
 
 /*
- * ----------------------------------------------------------------------
- * Get the cooling tables that bound the given redshift
- * ----------------------------------------------------------------------
+ * @brief Get the cooling tables dependent on redshift
+ *
+ * @param cooling_table_path Filepath
+ * @param cooling Cooling data structure
  */
 
 inline struct cooling_tables get_cooling_table(char *cooling_table_path, const struct cooling_function_data* restrict cooling) {
@@ -679,6 +664,12 @@ inline struct cooling_tables get_cooling_table(char *cooling_table_path, const s
   return cooling_table;
 }
 
+/*
+ * @brief Constructs the data structure containting all the cooling tables
+ *
+ * @param cooling_table_path Filepath
+ * @param cooling Cooling data structure
+ */
 inline struct eagle_cooling_table eagle_readtable(char *cooling_table_path, const struct cooling_function_data* restrict cooling){
 
   struct eagle_cooling_table table;
@@ -691,6 +682,12 @@ inline struct eagle_cooling_table eagle_readtable(char *cooling_table_path, cons
   return table;
 }
 
+/*
+ * @brief Finds the element index for the corresponding element in swift
+ *
+ * @param element_name Element string we want to match to element index
+ * @param cooling Cooling data structure
+ */
 inline int element_index(char *element_name, const struct cooling_function_data* restrict cooling) {
   int i;
 
@@ -701,7 +698,13 @@ inline int element_index(char *element_name, const struct cooling_function_data*
   return -1;
 }
 
-
+/*
+ * @brief Finds the element index for the corresponding element in EAGLE
+ *
+ * @param element_name Element string we want to match to element index
+ * @param size Number of elements tracked in EAGLE
+ * @param cooling Cooling data structure
+ */
 inline int get_element_index(char *table[20], int size, char *element_name) {
   int i;
 
@@ -712,6 +715,11 @@ inline int get_element_index(char *table[20], int size, char *element_name) {
   return -1;
 }
 
+/*
+ * @brief Makes an array of element names which are tracked in the EAGLE tables
+ *
+ * @param cooling Cooling data structure
+ */
 inline void MakeNamePointers(struct cooling_function_data* cooling) {
   int i, j, sili_index = 0;
   char ElementNames[cooling->N_Elements][eagle_element_name_length];
