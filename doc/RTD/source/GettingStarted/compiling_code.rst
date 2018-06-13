@@ -89,5 +89,18 @@ MacOS, so it is best to leave it out. To configure:
 
 .. code-block:: bash
 
-  ./configure —disable-compiler-warnings —disable-doxygen-doc
+  ./configure --disable-compiler-warnings --disable-doxygen-doc
+
+
+Trouble Finding Libraries
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If the configure script is having trouble finding your libraries for you, it
+may be that they are in nonstandard locations. You can link the specific
+library locations by using ``--with-<LIBRARY>=<PATH>``. For example for the
+HDF5 library,
+
+.. code-block:: bash
+   
+   ./configure --with-hdf5=/path/to/h5cc
 
