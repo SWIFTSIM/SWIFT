@@ -60,7 +60,8 @@ void parser_init(const char *file_name, struct swift_params *params);
 void parser_read_file(const char *file_name, struct swift_params *params);
 void parser_print_params(const struct swift_params *params);
 void parser_write_params_to_file(const struct swift_params *params,
-                                 const char *file_name);
+                                 const char *file_name,
+				 int write_all);
 void parser_set_param(struct swift_params *params, const char *desc);
 
 char parser_get_param_char(const struct swift_params *params, const char *name);
@@ -85,7 +86,8 @@ void parser_get_opt_param_string(const struct swift_params *params,
                                  const char *def);
 
 #if defined(HAVE_HDF5)
-void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp);
+void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp,
+				 int write_all);
 #endif
 
 /* Dump/restore. */

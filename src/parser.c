@@ -837,9 +837,10 @@ void parser_print_params(const struct swift_params *params) {
  *
  * @param params Structure that holds the parameters
  * @param file_name Name of file to be written
+ * @param write_used Write used fields or non used fields.
  */
 void parser_write_params_to_file(const struct swift_params *params,
-                                 const char *file_name) {
+                                 const char *file_name, int write_used) {
   FILE *file = fopen(file_name, "w");
   char section[PARSER_MAX_LINE_SIZE] = {0};
   char param_name[PARSER_MAX_LINE_SIZE] = {0};
@@ -849,7 +850,7 @@ void parser_write_params_to_file(const struct swift_params *params,
   fprintf(file, "%s\n", PARSER_START_OF_FILE);
 
   for (int i = 0; i < params->paramCount; i++) {
-    if (!params->data[i].used) {
+    if (write_used && !params->data[i].used) {
 #ifdef SWIFT_DEBUG_CHECKS
       message("Parameter `%s` was not used. "
 	      "Only the parameter used are written.",
@@ -857,6 +858,8 @@ void parser_write_params_to_file(const struct swift_params *params,
 #endif
       continue;
     }
+    else if (!write_used && params->data[i].used)
+      continue;
     /* Check that the parameter name contains a section name. */
     if (strchr(params->data[i].name, PARSER_VALUE_CHAR)) {
       /* Copy the parameter name into a temporary string and find the section
@@ -888,10 +891,21 @@ void parser_write_params_to_file(const struct swift_params *params,
 }
 
 #if defined(HAVE_HDF5)
-void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp) {
+
+/**
+ * @brief Write the contents of the parameter structure to a hdf5 file
+ *
+ * @param params Structure that holds the parameters
+ * @param grp HDF5 group
+ * @param write_used Write used fields or non used fields.
+ */
+void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp,
+				 int write_used) {
 
   for (int i = 0; i < params->paramCount; i++) {
-    if (!params->data[i].used)
+    if (write_used && !params->data[i].used)
+      continue;
+    else if (!write_used && params->data[i].used)
       continue;
     io_write_attribute_s(grp, params->data[i].name, params->data[i].value);
   }
