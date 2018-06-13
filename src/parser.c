@@ -635,10 +635,7 @@ int parser_get_opt_param_int(const struct swift_params *params,
   }
 
   /* Generate string for new parameter */
-  strcpy(str, name);
-  char str_tmp[PARSER_MAX_LINE_SIZE];
-  sprintf(str_tmp, ": %i", def);
-  strcat(str, str_tmp);
+  sprintf(str, "%s: %i", name, def);
 
   /* Add it to params */
   parser_set_param(tmp, str);
@@ -682,10 +679,7 @@ char parser_get_opt_param_char(const struct swift_params *params,
   }
 
   /* Generate string for new parameter */
-  strcpy(str, name);
-  char str_tmp[PARSER_MAX_LINE_SIZE];
-  sprintf(str_tmp, ": %c", def);
-  strcat(str, str_tmp);
+  sprintf(str, "%s: %c", name, def);
 
   /* Add it to params */
   parser_set_param(tmp, str);
@@ -729,10 +723,7 @@ float parser_get_opt_param_float(const struct swift_params *params,
   }
 
   /* Generate string for new parameter */
-  strcpy(str, name);
-  char str_tmp[PARSER_MAX_LINE_SIZE];
-  sprintf(str_tmp, ": %f", def);
-  strcat(str, str_tmp);
+  sprintf(str, "%s: %f", name, def);
 
   /* Add it to params */
   parser_set_param(tmp, str);
@@ -776,10 +767,7 @@ double parser_get_opt_param_double(const struct swift_params *params,
   }
 
   /* Generate string for new parameter */
-  strcpy(str, name);
-  char str_tmp[PARSER_MAX_LINE_SIZE];
-  sprintf(str_tmp, ": %lf", def);
-  strcat(str, str_tmp);
+  sprintf(str, "%s: %lf", name, def);
 
   /* Add it to params */
   parser_set_param(tmp, str);
@@ -815,10 +803,7 @@ void parser_get_opt_param_string(const struct swift_params *params,
 
   /* Generate string for new parameter */
   char str[PARSER_MAX_LINE_SIZE];
-  strcpy(str, name);
-  char str_tmp[PARSER_MAX_LINE_SIZE];
-  sprintf(str_tmp, ": %s", def);
-  strcat(str, str_tmp);
+  sprintf(str, "%s: %s", name, def);
 
   /* Add it to params */
   parser_set_param(tmp, str);
