@@ -86,6 +86,4 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
 void runner_do_drift_all_mapper(void *map_data, int num_elements,
                                 void *extra_data);
 
-
-
 #endif /* SWIFT_RUNNER_H */
