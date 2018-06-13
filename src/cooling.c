@@ -29,7 +29,6 @@
 #include "cooling.h"
 #include "restart.h"
 
-
 /**
  * @brief Initialises the cooling properties.
  *
