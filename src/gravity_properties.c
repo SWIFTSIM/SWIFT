@@ -53,10 +53,10 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   p->mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
   p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
                                            gravity_props_default_a_smooth);
-  p->r_cut_max = parser_get_opt_param_float(params, "Gravity:r_cut_max",
-                                            gravity_props_default_r_cut_max);
-  p->r_cut_min = parser_get_opt_param_float(params, "Gravity:r_cut_min",
-                                            gravity_props_default_r_cut_min);
+  p->r_cut_max_ratio = parser_get_opt_param_float(
+      params, "Gravity:r_cut_max", gravity_props_default_r_cut_max);
+  p->r_cut_min_ratio = parser_get_opt_param_float(
+      params, "Gravity:r_cut_min", gravity_props_default_r_cut_min);
 
   if (p->mesh_size % 2 != 0)
     error("The mesh side-length must be an even number.");
@@ -130,8 +130,9 @@ void gravity_props_print(const struct gravity_props *p) {
   message("Self-gravity mesh side-length: N=%d", p->mesh_size);
   message("Self-gravity mesh smoothing-scale: a_smooth=%f", p->a_smooth);
 
-  message("Self-gravity tree cut-off ratio: r_cut_max=%f", p->r_cut_max);
-  message("Self-gravity truncation cut-off ratio: r_cut_min=%f", p->r_cut_min);
+  message("Self-gravity tree cut-off ratio: r_cut_max=%f", p->r_cut_max_ratio);
+  message("Self-gravity truncation cut-off ratio: r_cut_min=%f",
+          p->r_cut_min_ratio);
 
   message("Self-gravity mesh truncation function: %s",
           kernel_long_gravity_truncation_name);
@@ -161,8 +162,8 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
   io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit);
   io_write_attribute_d(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
   io_write_attribute_f(h_grpgrav, "Mesh a_smooth", p->a_smooth);
-  io_write_attribute_f(h_grpgrav, "Mesh r_cut_max ratio", p->r_cut_max);
-  io_write_attribute_f(h_grpgrav, "Mesh r_cut_min ratio", p->r_cut_min);
+  io_write_attribute_f(h_grpgrav, "Mesh r_cut_max ratio", p->r_cut_max_ratio);
+  io_write_attribute_f(h_grpgrav, "Mesh r_cut_min ratio", p->r_cut_min_ratio);
   io_write_attribute_f(h_grpgrav, "Tree update frequency",
                        p->rebuild_frequency);
   io_write_attribute_s(h_grpgrav, "Mesh truncation function",

@@ -142,10 +142,9 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
 
   /* Some constants */
   const struct engine *e = r->e;
-  const struct space *s = e->s;
-  const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const struct gravity_props *props = e->gravity_properties;
+  const int periodic = e->mesh->periodic;
+  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const float r_s_inv = e->mesh->r_s_inv;
 
   TIMER_TIC;
@@ -681,12 +680,10 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
 
   /* Recover some useful constants */
   const struct engine *e = r->e;
-  const struct space *s = e->s;
-  const int periodic = s->periodic;
-  const float dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
-  const double r_s = e->mesh->r_s;
+  const int periodic = e->mesh->periodic;
+  const float dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const float r_s_inv = e->mesh->r_s_inv;
-  const double min_trunc = e->gravity_properties->r_cut_min * r_s;
+  const double min_trunc = e->mesh->r_cut_min;
 
   TIMER_TIC;
 
@@ -880,6 +877,7 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
 static INLINE void runner_doself_grav_pp_full(
     struct gravity_cache *restrict ci_cache, const int gcount,
     const int gcount_padded, const struct engine *e, struct gpart *gparts) {
+
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount; pid++) {
 
@@ -1089,11 +1087,9 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
   /* Recover some useful constants */
   const struct engine *e = r->e;
-  const struct space *s = e->s;
-  const int periodic = s->periodic;
+  const int periodic = e->mesh->periodic;
   const float r_s_inv = e->mesh->r_s_inv;
-  const double r_s = e->mesh->r_s;
-  const double min_trunc = e->gravity_properties->r_cut_min * r_s;
+  const double min_trunc = e->mesh->r_cut_min;
 
   TIMER_TIC;
 
@@ -1185,12 +1181,11 @@ static INLINE void runner_dopair_recursive_grav(struct runner *r,
 
   /* Some constants */
   const struct engine *e = r->e;
-  const struct space *s = e->s;
   const int nodeID = e->nodeID;
-  const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = e->mesh->periodic;
+  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double theta_crit2 = e->gravity_properties->theta_crit2;
-  const double max_distance = e->mesh->r_s * e->gravity_properties->r_cut_max;
+  const double max_distance = e->mesh->r_cut_max;
 
   /* Anything to do here? */
   if (!((cell_is_active_gravity(ci, e) && ci->nodeID == nodeID) ||
@@ -1391,24 +1386,18 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   /* Some constants */
   const struct engine *e = r->e;
-  const struct space *s = e->s;
-  const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int periodic = e->mesh->periodic;
+  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double theta_crit2 = e->gravity_properties->theta_crit2;
-  const double max_distance = e->mesh->r_s * e->gravity_properties->r_cut_max;
+  const double max_distance = e->mesh->r_cut_max;
 
-  /* const float u = 1.; */
-  /* float W; */
-  /* kernel_long_grav_force_eval(u, &W); */
-  /* message("a_smooth = %e, max_dist = %e, W=%e", */
-  /* 	  e->mesh->a_smooth, max_distance,W); */
+  const int cdim[3] = {e->s->cdim[0], e->s->cdim[1], e->s->cdim[2]};
 
   TIMER_TIC;
 
   /* Recover the list of top-level cells */
-  struct cell *cells = s->cells_top;
-  const int nr_cells = s->nr_cells;
+  struct cell *cells = e->s->cells_top;
+  const int nr_cells = e->s->nr_cells;
 
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e)) return;

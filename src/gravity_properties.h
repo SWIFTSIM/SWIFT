@@ -47,11 +47,11 @@ struct gravity_props {
 
   /*! Distance below which the truncated mesh force is Newtonian in units of
    * a_smooth */
-  float r_cut_min;
+  float r_cut_min_ratio;
 
   /*! Distance above which the truncated mesh force is negligible in units of
    * a_smooth */
-  float r_cut_max;
+  float r_cut_max_ratio;
 
   /*! Time integration dimensionless multiplier */
   float eta;

@@ -508,19 +508,29 @@ void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
  *
  * @param mesh The #pm_mesh to initialise.
  * @param props The propoerties of the gravity scheme.
- * @param box_size The (comoving) side-length of the simulation volume.
+ * @param dim The (comoving) side-lengths of the simulation volume.
  */
 void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
-                  double box_size) {
+                  double dim[3]) {
 
 #ifdef HAVE_FFTW
 
+  if (dim[0] != dim[1] || dim[0] != dim[1])
+    error("Doing mesh-gravity on a non-cubic domain");
+
   const int N = props->mesh_size;
+  const double box_size = dim[0];
+
+  mesh->periodic = 1;
   mesh->N = N;
-  mesh->box_size = box_size;
+  mesh->dim[0] = dim[0];
+  mesh->dim[1] = dim[1];
+  mesh->dim[2] = dim[2];
   mesh->cell_fac = N / box_size;
   mesh->r_s = props->a_smooth * box_size / N;
   mesh->r_s_inv = 1. / mesh->r_s;
+  mesh->r_cut_max = mesh->r_s * props->r_cut_max_ratio;
+  mesh->r_cut_min = mesh->r_s * props->r_cut_min_ratio;
 
   /* Allocate the memory for the combined density and potential array */
   mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
@@ -529,6 +539,30 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif
+}
+
+/**
+ * @brief Initialises the mesh for the case where we don't do mesh gravity
+ * calculations
+ *
+ * Crucially this set the 'periodic' propoerty to 0 and all the relevant values
+ * to a
+ * state where all calculations will default to pure non-periodic Newtonian.
+ *
+ * @param mesh The #pm_mesh to initialise.
+ * @param dim The (comoving) side-lengths of the simulation volume.
+ */
+void pm_mesh_init_no_mesh(struct pm_mesh* mesh, double dim[3]) {
+
+  bzero(mesh, sizeof(struct pm_mesh));
+
+  /* Fill in non-zero properties */
+  mesh->dim[0] = dim[0];
+  mesh->dim[1] = dim[1];
+  mesh->dim[2] = dim[2];
+  mesh->r_s = FLT_MAX;
+  mesh->r_cut_min = FLT_MAX;
+  mesh->r_cut_max = FLT_MAX;
 }
 
 /**

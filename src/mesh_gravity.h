@@ -34,14 +34,17 @@ struct gpart;
  */
 struct pm_mesh {
 
+  /*! Is the calculation using periodic BCs? */
+  int periodic;
+
   /*! Side-length of the mesh */
   int N;
 
   /*! Conversion factor between box and mesh size */
   double cell_fac;
 
-  /*! (Comoving) side-length of the volume covered by the mesh */
-  double box_size;
+  /*! (Comoving) side-length of the box along the three axis */
+  double dim[3];
 
   /*! Scale over which we smooth the forces */
   double r_s;
@@ -49,12 +52,19 @@ struct pm_mesh {
   /*! Inverse of the scale over which we smooth the forces */
   double r_s_inv;
 
+  /*! Distance beyond which tree forces are neglected */
+  double r_cut_max;
+
+  /*! Distance below which tree forces are Newtonian */
+  double r_cut_min;
+
   /*! Potential field */
   double *potential;
 };
 
 void pm_mesh_init(struct pm_mesh *mesh, const struct gravity_props *props,
-                  double box_size);
+                  double dim[3]);
+void pm_mesh_init_no_mesh(struct pm_mesh *mesh, double dim[3]);
 void pm_mesh_compute_potential(struct pm_mesh *mesh, const struct engine *e);
 void pm_mesh_interpolate_forces(const struct pm_mesh *mesh,
                                 const struct engine *e, struct gpart *gparts,
