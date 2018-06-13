@@ -84,13 +84,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_full(
  * @param h_inv Inverse of the softening length.
  * @param h_inv3 Cube of the inverse of the softening length.
  * @param mass Mass of the point-mass.
- * @param rlr_inv Inverse of the mesh smoothing scale.
+ * @param r_s_inv Inverse of the mesh smoothing scale.
  * @param f_ij (return) The force intensity.
  * @param pot_ij (return) The potential.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
     const float r2, const float h2, const float h_inv, const float h_inv3,
-    const float mass, const float rlr_inv, float *f_ij, float *pot_ij) {
+    const float mass, const float r_s_inv, float *f_ij, float *pot_ij) {
 
   /* Get the inverse distance */
   const float r_inv = 1.f / sqrtf(r2 + FLT_MIN);
@@ -117,7 +117,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
   }
 
   /* Get long-range correction */
-  const float u_lr = r * rlr_inv;
+  const float u_lr = r * r_s_inv;
   float corr_f_lr, corr_pot_lr;
   kernel_long_grav_force_eval(u_lr, &corr_f_lr);
   kernel_long_grav_pot_eval(u_lr, &corr_pot_lr);
@@ -153,12 +153,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
  * and its CoM as the "particle" property */
 #if SELF_GRAVITY_MULTIPOLE_ORDER < 3
 
-  float f_ij;
+  float f_ij, pot_ij;
   runner_iact_grav_pp_full(r2, h * h, h_inv, h_inv * h_inv * h_inv, m->M_000,
-                           &f_ij, pot);
+                           &f_ij, &pot_ij);
   *f_x = f_ij * r_x;
   *f_y = f_ij * r_y;
   *f_z = f_ij * r_z;
+  *pot = pot_ij;
 
 #else
 
@@ -217,7 +218,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
  * @param r2 Square of the distance vector to the multipole.
  * @param h The softening length.
  * @param h_inv Inverse of the softening length.
- * @param rlr_inv The inverse of the gravity mesh-smoothing scale.
+ * @param r_s_inv The inverse of the gravity mesh-smoothing scale.
  * @param m The multipole.
  * @param f_x (return) The x-component of the acceleration.
  * @param f_y (return) The y-component of the acceleration.
@@ -226,7 +227,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
     const float r_x, const float r_y, const float r_z, const float r2,
-    const float h, const float h_inv, const float rlr_inv,
+    const float h, const float h_inv, const float r_s_inv,
     const struct multipole *m, float *f_x, float *f_y, float *f_z, float *pot) {
 
 /* In the case where the order is < 3, then there is only a monopole term left.
@@ -234,12 +235,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
  * and its CoM as the "particle" property */
 #if SELF_GRAVITY_MULTIPOLE_ORDER < 3
 
-  float f_ij;
+  float f_ij, pot_ij;
   runner_iact_grav_pp_truncated(r2, h * h, h_inv, h_inv * h_inv * h_inv,
-                                m->M_000, rlr_inv, &f_ij, pot);
+                                m->M_000, r_s_inv, &f_ij, &pot_ij);
   *f_x = f_ij * r_x;
   *f_y = f_ij * r_y;
   *f_z = f_ij * r_z;
+  *pot = pot_ij;
 
 #else
 
@@ -249,7 +251,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
   /* Compute the derivatives of the potential */
   struct potential_derivatives_M2P d;
   compute_potential_derivatives_M2P(r_x, r_y, r_z, r2, r_inv, h, h_inv, 1,
-                                    rlr_inv, &d);
+                                    r_s_inv, &d);
 
   /* 1st order terms (monopole) */
   *f_x = m->M_000 * d.D_100;

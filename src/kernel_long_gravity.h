@@ -34,9 +34,9 @@
 #define GADGET2_LONG_RANGE_CORRECTION
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
-#define kernel_gravity_softening_name "Gadget-2 (error function)"
+#define kernel_long_gravity_truncation_name "Gadget-2 (error function)"
 #else
-#define kernel_gravity_softening_name "Exp-based Sigmoid"
+#define kernel_long_gravity_truncation_name "Exp-based Sigmoid"
 #endif
 
 /**

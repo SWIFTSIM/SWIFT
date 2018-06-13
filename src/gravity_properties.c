@@ -134,7 +134,7 @@ void gravity_props_print(const struct gravity_props *p) {
   message("Self-gravity truncation cut-off ratio: r_cut_min=%f", p->r_cut_min);
 
   message("Self-gravity mesh truncation function: %s",
-          kernel_gravity_softening_name);
+          kernel_long_gravity_truncation_name);
 
   message("Self-gravity tree update frequency: f=%f", p->rebuild_frequency);
 }
@@ -166,7 +166,7 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
   io_write_attribute_f(h_grpgrav, "Tree update frequency",
                        p->rebuild_frequency);
   io_write_attribute_s(h_grpgrav, "Mesh truncation function",
-                       r kernel_gravity_softening_name);
+                       kernel_long_gravity_truncation_name);
 }
 #endif
 
