@@ -1750,6 +1750,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct spart *sparts = c->sparts;
   struct xpart *xparts = c->xparts;
   struct engine *e = s->e;
+  const integertime_t ti_current = e->ti_current;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL);
@@ -1840,43 +1841,51 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
     }
 
-    /* Split the cell data. */
+    /* Split the cell's partcle data. */
     cell_split(c, c->parts - s->parts, c->sparts - s->sparts, buff, sbuff,
                gbuff);
 
-    /* Remove any progeny with zero parts. */
+    /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
                      *progeny_sbuff = sbuff;
+
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0 &&
-          c->progeny[k]->scount == 0) {
-        space_recycle(s, c->progeny[k]);
+
+      /* Get the progenitor */
+      struct cell *cp = c->progeny[k];
+
+      /* Remove any progeny with zero particles. */
+      if (cp->count == 0 && cp->gcount == 0 && cp->scount == 0) {
+
+        space_recycle(s, cp);
         c->progeny[k] = NULL;
+
       } else {
-        space_split_recursive(s, c->progeny[k], progeny_buff, progeny_sbuff,
+
+        /* Recurse */
+        space_split_recursive(s, cp, progeny_buff, progeny_sbuff,
                               progeny_gbuff);
-        progeny_buff += c->progeny[k]->count;
-        progeny_gbuff += c->progeny[k]->gcount;
-        progeny_sbuff += c->progeny[k]->scount;
-        h_max = max(h_max, c->progeny[k]->h_max);
-        ti_hydro_end_min =
-            min(ti_hydro_end_min, c->progeny[k]->ti_hydro_end_min);
-        ti_hydro_end_max =
-            max(ti_hydro_end_max, c->progeny[k]->ti_hydro_end_max);
-        ti_hydro_beg_max =
-            max(ti_hydro_beg_max, c->progeny[k]->ti_hydro_beg_max);
-        ti_gravity_end_min =
-            min(ti_gravity_end_min, c->progeny[k]->ti_gravity_end_min);
-        ti_gravity_end_max =
-            max(ti_gravity_end_max, c->progeny[k]->ti_gravity_end_max);
-        ti_gravity_beg_max =
-            max(ti_gravity_beg_max, c->progeny[k]->ti_gravity_beg_max);
-        if (c->progeny[k]->maxdepth > maxdepth)
-          maxdepth = c->progeny[k]->maxdepth;
+
+        /* Update the pointers in the buffers */
+        progeny_buff += cp->count;
+        progeny_gbuff += cp->gcount;
+        progeny_sbuff += cp->scount;
+
+        /* Update the cell-wide properties */
+        h_max = max(h_max, cp->h_max);
+        ti_hydro_end_min = min(ti_hydro_end_min, cp->ti_hydro_end_min);
+        ti_hydro_end_max = max(ti_hydro_end_max, cp->ti_hydro_end_max);
+        ti_hydro_beg_max = max(ti_hydro_beg_max, cp->ti_hydro_beg_max);
+        ti_gravity_end_min = min(ti_gravity_end_min, cp->ti_gravity_end_min);
+        ti_gravity_end_max = max(ti_gravity_end_max, cp->ti_gravity_end_max);
+        ti_gravity_beg_max = max(ti_gravity_beg_max, cp->ti_gravity_beg_max);
+
+        /* Increase the depth */
+        if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
       }
     }
 
-    /* Deal with multipole */
+    /* Deal with the multipole */
     if (s->gravity) {
 
       /* Reset everything */
@@ -1932,14 +1941,17 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Take minimum of both limits */
       c->multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+
+      /* Store the value at rebuild time */
       c->multipole->r_max_rebuild = c->multipole->r_max;
       c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
       c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
       c->multipole->CoM_rebuild[2] = c->multipole->CoM[2];
-    } /* Deal with gravity */
-  }
 
-  /* Otherwise, collect the data for this cell. */
+    } /* Deal with gravity */
+  }   /* Split or let it be? */
+
+  /* Otherwise, collect the data from the particles this cell. */
   else {
 
     /* Clear the progeny. */
@@ -1960,12 +1972,14 @@ void space_split_recursive(struct space *s, struct cell *c,
       hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
     }
-    /* parts: Reset x_diff */
+
+    /* xparts: Reset x_diff */
     for (int k = 0; k < count; k++) {
       xparts[k].x_diff[0] = 0.f;
       xparts[k].x_diff[1] = 0.f;
       xparts[k].x_diff[2] = 0.f;
     }
+
     /* gparts: Get dt_min/dt_max, reset x_diff. */
     for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1978,6 +1992,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       gparts[k].x_diff[1] = 0.f;
       gparts[k].x_diff[2] = 0.f;
     }
+
     /* sparts: Get dt_min/dt_max */
     for (int k = 0; k < scount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1989,32 +2004,26 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Convert into integer times */
-    ti_hydro_end_min = get_integer_time_end(e->ti_current, hydro_time_bin_min);
-    ti_hydro_end_max = get_integer_time_end(e->ti_current, hydro_time_bin_max);
+    ti_hydro_end_min = get_integer_time_end(ti_current, hydro_time_bin_min);
+    ti_hydro_end_max = get_integer_time_end(ti_current, hydro_time_bin_max);
     ti_hydro_beg_max =
-        get_integer_time_begin(e->ti_current + 1, hydro_time_bin_max);
-    ti_gravity_end_min =
-        get_integer_time_end(e->ti_current, gravity_time_bin_min);
-    ti_gravity_end_max =
-        get_integer_time_end(e->ti_current, gravity_time_bin_max);
+        get_integer_time_begin(ti_current + 1, hydro_time_bin_max);
+    ti_gravity_end_min = get_integer_time_end(ti_current, gravity_time_bin_min);
+    ti_gravity_end_max = get_integer_time_end(ti_current, gravity_time_bin_max);
     ti_gravity_beg_max =
-        get_integer_time_begin(e->ti_current + 1, gravity_time_bin_max);
+        get_integer_time_begin(ti_current + 1, gravity_time_bin_max);
 
     /* Construct the multipole and the centre of mass*/
     if (s->gravity) {
       if (gcount > 0) {
+
         gravity_P2M(c->multipole, c->gparts, c->gcount);
-        const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
-                              ? c->multipole->CoM[0] - c->loc[0]
-                              : c->loc[0] + c->width[0] - c->multipole->CoM[0];
-        const double dy = c->multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
-                              ? c->multipole->CoM[1] - c->loc[1]
-                              : c->loc[1] + c->width[1] - c->multipole->CoM[1];
-        const double dz = c->multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
-                              ? c->multipole->CoM[2] - c->loc[2]
-                              : c->loc[2] + c->width[2] - c->multipole->CoM[2];
-        c->multipole->r_max = sqrt(dx * dx + dy * dy + dz * dz);
+
       } else {
+
+        /* No gparts in that leaf cell */
+
+        /* Set the values to something sensible */
         gravity_multipole_init(&c->multipole->m_pole);
         if (c->nodeID == engine_rank) {
           c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
@@ -2023,6 +2032,8 @@ void space_split_recursive(struct space *s, struct cell *c,
           c->multipole->r_max = 0.;
         }
       }
+
+      /* Store the value at rebuild time */
       c->multipole->r_max_rebuild = c->multipole->r_max;
       c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
       c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
