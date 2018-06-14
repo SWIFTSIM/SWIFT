@@ -119,85 +119,91 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 
   /* convert position to cylindrical coordinates */
   const double R2 = x[0] * x[0] + x[1] * x[1];
-  const double Rinv = 1. / sqrt(R2);
-  const double R = R2 * Rinv;
-  const double phi = atan2(x[1], x[0]);
-  const double z = x[2];
-  const double z2 = z * z;
+  if (R2 == 0.0f) {
+    g->a_grav[0] = 0.0f;
+    g->a_grav[1] = 0.0f;
+    g->a_grav[2] = 0.0f;
+  } else {
+    const double Rinv = 1. / sqrt(R2);
+    const double R = R2 * Rinv;
+    const double phi = atan2(x[1], x[0]);
+    const double z = x[2];
+    const double z2 = z * z;
 
-  /* compute central potential contribution */
-  const double v_02 = potential->circular_velocity2;
-  const double R_c2 = potential->characteristic_radius2;
-  const double z_q2 = potential->vertical_scale_factor2;
-  const double fac = v_02 / ((R_c2 + R2) * z_q2 + z2);
-  const double dPhiCdr = fac * R * z_q2;
-  const double dPhiCdz = fac * z;
+    /* compute central potential contribution */
+    const double v_02 = potential->circular_velocity2;
+    const double R_c2 = potential->characteristic_radius2;
+    const double z_q2 = potential->vertical_scale_factor2;
+    const double fac = v_02 / ((R_c2 + R2) * z_q2 + z2);
+    const double dPhiCdr = fac * R * z_q2;
+    const double dPhiCdz = fac * z;
 
-  /* spiral arm contribution */
-  const double N = potential->number_of_arms;
-  const double alpha = potential->pitch_angle;
-  const double R_s = potential->scale_length;
-  const double rho_0 = potential->mid_plane_density;
-  const double r_0 = potential->mid_plane_radius;
-  const double H = potential->scale_height;
-  const double phi_p = potential->start_phi;
-  const double Omega = potential->pattern_speed;
+    /* spiral arm contribution */
+    const double N = potential->number_of_arms;
+    const double alpha = potential->pitch_angle;
+    const double R_s = potential->scale_length;
+    const double rho_0 = potential->mid_plane_density;
+    const double r_0 = potential->mid_plane_radius;
+    const double H = potential->scale_height;
+    const double phi_p = potential->start_phi;
+    const double Omega = potential->pattern_speed;
 
-  const double Gamma =
-      N * (phi - phi_p + Omega * time - log(R / r_0) / tan(alpha));
-  int in;
-  double dPhidr = 0.;
-  double dPhidphi = 0.;
-  double dPhidz = 0.;
-  for (in = 0; in < 3; ++in) {
-    const double Cn = C[in];
-    const double n = in + 1.;
-    const double Kn = n * N * Rinv / sin(alpha);
-    const double Kninv = 1. / Kn;
-    const double dKndr = -Kn * Rinv;
-    const double KnH = Kn * H;
-    const double KnH2 = KnH * KnH;
-    const double dKndrH = dKndr * H;
-    const double betan = KnH + 0.4 * KnH2;
-    const double betaninv = 1. / betan;
-    const double dbetandr = (1. + 0.8 * KnH) * dKndrH;
-    const double Dninv = (1. + 0.3 * KnH) / (1. + KnH + 0.3 * KnH2);
-    const double dDndr =
-        ((0.7 + 0.6 * KnH + 0.09 * KnH2) / (1. + 0.6 * KnH + 0.09 * KnH2)) *
-        dKndrH;
-    const double Knzbetan = Kn * z * betaninv;
-    const double sechKnzbetan = 1. / cosh(Knzbetan);
-    const double tanhKnzbetan = tanh(Knzbetan);
-    const double nGamma = n * Gamma;
-    const double tannGamma = tan(nGamma);
+    const double Gamma =
+        N * (phi - phi_p + Omega * time - log(R / r_0) / tan(alpha));
+    int in;
+    double dPhidr = 0.;
+    double dPhidphi = 0.;
+    double dPhidz = 0.;
+    for (in = 0; in < 3; ++in) {
+      const double Cn = C[in];
+      const double n = in + 1.;
+      const double Kn = n * N * Rinv / sin(alpha);
+      const double Kninv = 1. / Kn;
+      const double dKndr = -Kn * Rinv;
+      const double KnH = Kn * H;
+      const double KnH2 = KnH * KnH;
+      const double dKndrH = dKndr * H;
+      const double betan = KnH + 0.4 * KnH2;
+      const double betaninv = 1. / betan;
+      const double dbetandr = (1. + 0.8 * KnH) * dKndrH;
+      const double Dninv = (1. + 0.3 * KnH) / (1. + KnH + 0.3 * KnH2);
+      const double dDndr =
+          ((0.7 + 0.6 * KnH + 0.09 * KnH2) / (1. + 0.6 * KnH + 0.09 * KnH2)) *
+          dKndrH;
+      const double Knzbetan = Kn * z * betaninv;
+      const double sechKnzbetan = 1. / cosh(Knzbetan);
+      const double tanhKnzbetan = tanh(Knzbetan);
+      const double nGamma = n * Gamma;
+      const double tannGamma = tan(nGamma);
 
-    const double Phin =
-        (Cn * Dninv * Kninv) * cos(nGamma) * pow(sechKnzbetan, betan);
-    const double dPhindr =
-        Phin * (-1. / R_s - (Kninv + z * tanhKnzbetan) * dKndr +
-                n * N * tannGamma / tan(alpha) * Rinv - dDndr * Dninv +
-                (log(sechKnzbetan) + tanhKnzbetan * betaninv) * dbetandr);
-    const double dPhindphi = -n * N * tannGamma * Phin;
-    const double dPhindz = -Kn * tanhKnzbetan * Phin;
+      const double Phin =
+          (Cn * Dninv * Kninv) * cos(nGamma) * pow(sechKnzbetan, betan);
+      const double dPhindr =
+          Phin * (-1. / R_s - (Kninv + z * tanhKnzbetan) * dKndr +
+                  n * N * tannGamma / tan(alpha) * Rinv - dDndr * Dninv +
+                  (log(sechKnzbetan) + tanhKnzbetan * betaninv) * dbetandr);
+      const double dPhindphi = -n * N * tannGamma * Phin;
+      const double dPhindz = -Kn * tanhKnzbetan * Phin;
 
-    dPhidr += dPhindr;
-    dPhidphi += dPhindphi;
-    dPhidz += dPhindz;
+      dPhidr += dPhindr;
+      dPhidphi += dPhindphi;
+      dPhidz += dPhindz;
+    }
+
+    const double norm = -4. * M_PI * H * rho_0 * exp(-(R - r_0) / R_s);
+    dPhidr *= norm;
+    dPhidphi *= norm * Rinv;
+    dPhidz *= norm;
+
+    dPhidr += dPhiCdr * newton_G_inv;
+    dPhidz += dPhiCdz * newton_G_inv;
+
+    const double cosphi = x[0] * Rinv;
+    const double sinphi = x[1] * Rinv;
+    g->a_grav[0] = -dPhidr * cosphi + dPhidphi * sinphi;
+    g->a_grav[1] = -dPhidr * sinphi - dPhidphi * cosphi;
+    g->a_grav[2] = -dPhidz;
   }
-
-  const double norm = -4. * M_PI * H * rho_0 * exp(-(R - r_0) / R_s);
-  dPhidr *= norm;
-  dPhidphi *= norm * Rinv;
-  dPhidz *= norm;
-
-  dPhidr += dPhiCdr * newton_G_inv;
-  dPhidz += dPhiCdz * newton_G_inv;
-
-  const double cosphi = x[0] * Rinv;
-  const double sinphi = x[1] * Rinv;
-  g->a_grav[0] = -dPhidr * cosphi + dPhidphi * sinphi;
-  g->a_grav[1] = -dPhidr * sinphi - dPhidphi * cosphi;
-  g->a_grav[2] = -dPhidz;
 }
 
 /**
