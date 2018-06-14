@@ -46,6 +46,7 @@ Cosmology:
 Gravity:
   mesh_side_length:   16
   eta: 0.025
-  theta: 0.8
+  theta: 0.5
+  r_cut_max: 6.
   comoving_softening: 0.0001
   max_physical_softening: 0.0001

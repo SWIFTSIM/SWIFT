@@ -2427,7 +2427,7 @@ __attribute__((always_inline)) INLINE static int gravity_M2P_accept(
   // MATTHIEU: Make this mass-dependent ?
 
   /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
-  return (r2 * theta_crit2 * 0.1 > r_max2);
+  return (r2 * theta_crit2 > r_max2);
 }
 
 #endif /* SWIFT_MULTIPOLE_H */

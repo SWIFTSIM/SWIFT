@@ -136,6 +136,35 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
 }
 
 /**
+ * @param Zero all the output fields (acceleration and potential) of a
+ * #gravity_cache.
+ *
+ * @param c The #gravity_cache to zero.
+ * @param gcount_padded The padded size of the cache arrays.
+ */
+__attribute__((always_inline)) INLINE static void gravity_cache_zero_output(
+    struct gravity_cache *c, const int gcount_padded) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gcount_padded % VEC_SIZE != 0)
+    error("Padded gcount size not a multiple of the vector length");
+#endif
+
+  /* Make the compiler understand we are in happy vectorization land */
+  swift_declare_aligned_ptr(float, a_x, c->a_x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, a_y, c->a_y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, a_z, c->a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, pot, c->pot, SWIFT_CACHE_ALIGNMENT);
+  swift_assume_size(gcount_padded, VEC_SIZE);
+
+  /* Zero everything */
+  bzero(a_x, gcount_padded * sizeof(float));
+  bzero(a_y, gcount_padded * sizeof(float));
+  bzero(a_z, gcount_padded * sizeof(float));
+  bzero(pot, gcount_padded * sizeof(float));
+}
+
+/**
  * @brief Fills a #gravity_cache structure with some #gpart and shift them.
  *
  * Also checks whether the #gpart can use a M2P interaction instead of the
@@ -222,6 +251,9 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     active[i] = 0;
     use_mpole[i] = 0;
   }
+
+  /* Zero the output as well */
+  gravity_cache_zero_output(c, gcount_padded);
 }
 
 /**
@@ -284,6 +316,9 @@ gravity_cache_populate_no_mpole(const timebin_t max_active_bin,
     m[i] = 0.f;
     active[i] = 0;
   }
+
+  /* Zero the output as well */
+  gravity_cache_zero_output(c, gcount_padded);
 }
 
 /**
@@ -301,11 +336,15 @@ gravity_cache_populate_no_mpole(const timebin_t max_active_bin,
  */
 __attribute__((always_inline)) INLINE static void
 gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
+                                 const int periodic, const float dim[3],
                                  struct gravity_cache *c,
                                  const struct gpart *restrict gparts,
                                  const int gcount, const int gcount_padded,
-                                 const struct cell *cell,
+                                 const struct cell *cell, const float CoM[3],
+                                 const float r_max2,
                                  const struct gravity_props *grav_props) {
+
+  const float theta_crit2 = grav_props->theta_crit2;
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
@@ -327,6 +366,24 @@ gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
     m[i] = gparts[i].mass;
     active[i] = (int)(gparts[i].time_bin <= max_active_bin);
     use_mpole[i] = 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Distance to the CoM of the other cell. */
+    float dx = x[i] - CoM[0];
+    float dy = y[i] - CoM[1];
+    float dz = z[i] - CoM[2];
+
+    /* Apply periodic BC */
+    if (periodic) {
+      dx = nearestf(dx, dim[0]);
+      dy = nearestf(dy, dim[1]);
+      dz = nearestf(dz, dim[2]);
+    }
+    const float r2 = dx * dx + dy * dy + dz * dz;
+
+    if (!gravity_M2P_accept(r_max2, theta_crit2, r2))
+      error("Using m-pole where the test fails");
+#endif
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -350,6 +407,9 @@ gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
     active[i] = 0;
     use_mpole[i] = 0;
   }
+
+  /* Zero the output as well */
+  gravity_cache_zero_output(c, gcount_padded);
 }
 
 /**
