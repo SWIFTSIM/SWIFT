@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 James Willis (james.s.willis@durham.ac.uk)
- *               2017 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2017-2018 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -93,8 +93,8 @@ static char *trim_both(char *s) {
 }
 
 /**
- * @brief parse a YAML list of strings returning the strings in the given
- *        array.
+ * @brief parse a YAML list of strings returning a set of pointers to
+ *        the strings.
  *
  * It is assumed that the [] have been removed (also no lists in lists)
  * words are separated by commas and the strings may or may not be quoted.
@@ -105,61 +105,70 @@ static char *trim_both(char *s) {
  * Are supported as expected.
  *
  * @param line the line to parse.
- * @param nstring the maximum number of strings that can be returned.
- * @param len the length of a string in the result array.
- * @param result array of chars of length len to hold parsed strings.
- * @return the number of strings parsed.
+ * @param result array of pointers to the strings.
+ * @return the number of strings
  */
-static int parse_quoted_strings(const char *line, int nstring, int len,
-                                char *result) {
+static int parse_quoted_strings(const char *line, char ***result) {
 
-    char word[len+1];
+    char word[PARSER_MAX_LINE_SIZE];
     int nchar = 0;
     int nwords = 0;
     char quote = '\0';
 
+    /* Preallocate a number of pointers. */
+    char **strings;
+    strings = (char **)malloc( 10 * sizeof(char *));
+    int count = 10;
+
     word[0] = '\0';
     for (unsigned int i = 0; i < strlen(line); i++) {
-      if (nwords < nstring) {
-        char c = line[i];
-        if (c == '"' || c == '\'') {
-          if (c == quote) {
-            quote = '\0';
-          } else if (!quote) {
-            quote = c;
-          } else {
-            word[nchar++] = c;
-          }
-        } else if (c == ',') {
-          if (!quote) {
-            /* Save word. */
-            word[nchar++] = '\0';
-            strcpy(&result[nwords * len], word);
-            nwords++;
+      char c = line[i];
+      if (c == '"' || c == '\'') {
+        if (c == quote) {
+          quote = '\0';
+        } else if (!quote) {
+          quote = c;
+        } else {
+          word[nchar++] = c;
+        }
+      } else if (c == ',') {
+        if (!quote) {
 
-            /* Ready for next. */
-            nchar = 0;
-            word[0] = '\0';
-
-          } else {
-            word[nchar++] = c;
+          /* Save word. */
+          word[nchar++] = '\0';
+          if (count <= nwords) {
+            count += 10;
+            strings = (char **)realloc(strings, count * sizeof(char));
           }
+          strings[nwords] = (char *)malloc((strlen(word) + 1) * sizeof(char));
+          strcpy(strings[nwords], trim_both(word));
+          nwords++;
+
+          /* Ready for next. */
+          nchar = 0;
+          word[0] = '\0';
+
         } else {
           word[nchar++] = c;
         }
       } else {
-
-        /* Maximum number of strings supported. */
-        break;
+        word[nchar++] = c;
       }
     }
 
     /* Keep unfinished words. */
     if (nchar > 0) {
       word[nchar] = '\0';
-      strcpy(&result[nwords * len], word);
+      if (count <= nwords) {
+          count += 1;
+          strings = (char **)realloc(strings, count * sizeof(char));
+      }
+      strings[nwords] = (char *)malloc((strlen(word) + 1) * sizeof(char));
+      strcpy(strings[nwords], trim_both(word));
       nwords++;
     }
+
+    *result = strings;
     return nwords;
 }
 
@@ -913,14 +922,15 @@ PARSER_GET_ARRAY(double, " %lf%s ", "double");
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
  * @param required whether it is an error if the parameter has not been set
- * @param nval number of values expected.
- * @param maxlen the maximum length of a string.
- * @param values pointer to an array of size [nval][maxlen] for the strings.
+ * @param nval number of values located.
+ * @param values pointer to an array of [nval] pointers to the strings.
+ *        Note this must be freed by a call to
+ *        parser_free_param_string_array.
  * @return whether the parameter has been found.
  */
 int parser_get_param_string_array(const struct swift_params *params,
                                   const char *name, int required,
-                                  int nval, int maxlen, char *values) {
+                                  int *nval, char ***values) {
 
     char cpy[PARSER_MAX_LINE_SIZE];
 
@@ -940,17 +950,7 @@ int parser_get_param_string_array(const struct swift_params *params,
         cp[l-1] = '\0';
         cp = trim_both(cp);
 
-        int nfound = parse_quoted_strings(cp, nval, maxlen, values);
-        if (nfound != nval) {
-          error("Failed to find the expected number of values in string "
-                "array '%s', expected %d found %d", name, nval, nfound);
-        }
-
-        /* Clean up the strings. */
-        for (int k = 0; k < nfound; k++) {
-          cp = trim_both(&values[k * maxlen]);
-          memmove(&values[k*maxlen], cp, strlen(cp) + 1);
-        }
+        *nval = parse_quoted_strings(cp, values);
 
         return 1;
       }
@@ -959,6 +959,20 @@ int parser_get_param_string_array(const struct swift_params *params,
       error("Cannot find '%s' in the structure, in file '%s'.", name,
             params->fileName);
     return 0;
+}
+
+/**
+ * @brief Free string array allocated by parser_get_param_string_array.
+ *
+ * @param nval number of strings returned.
+ * @param values pointer to the returned values.
+ */
+void parser_free_param_string_array(int nval, char **values) {
+  for (int i = 0; i < nval; i++) {
+    free(values[i]);
+  }
+  free(values);
+  return;
 }
 
 /**

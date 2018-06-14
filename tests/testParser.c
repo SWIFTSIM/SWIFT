@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (C) 2016 James Willis (james.s.willis@durham.ac.uk).
+ *               2018 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -62,10 +63,13 @@ int main(int argc, char *argv[]) {
   int haveopt = parser_get_param_float_array(&param_file, "Box:moresides",
                                              0, 3, optsides);
 
-  char result[100][20];
-  parser_get_param_string_array(&param_file, "Words:list", 1, 8, 20,
-                                (char *)result);
-  for (int i = 0; i < 8; i++) printf("%s\n", result[i]);
+  char **result;
+  int nresult;
+  parser_get_param_string_array(&param_file, "Words:list", 1, &nresult,
+                                &result);
+  printf("List from Words:list parameter\n");
+  for (int i = 0; i < nresult; i++) printf("   %d: %s\n", i, result[i]);
+  parser_free_param_string_array(nresult, result);
 
 
   /* Print the variables to check their values are correct. */
