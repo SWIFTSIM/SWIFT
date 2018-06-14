@@ -444,11 +444,10 @@ static void parse_section_param(char *line, int *isFirstParam,
  * @param name Name of the parameter to be found
  * @return Value of the parameter found
  */
-int parser_get_param_int(const struct swift_params *params, const char *name) {
+int parser_get_param_int(struct swift_params *params, const char *name) {
 
   char str[PARSER_MAX_LINE_SIZE];
   int retParam = 0;
-  struct swift_params *tmp = (struct swift_params*) params;
 
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
@@ -461,7 +460,7 @@ int parser_get_param_int(const struct swift_params *params, const char *name) {
       }
 
       /* this parameter has been used */
-      tmp->data[i].used = 1;
+      params->data[i].used = 1;
 
       return retParam;
     }
@@ -479,12 +478,11 @@ int parser_get_param_int(const struct swift_params *params, const char *name) {
  * @param name Name of the parameter to be found
  * @return Value of the parameter found
  */
-char parser_get_param_char(const struct swift_params *params,
+char parser_get_param_char(struct swift_params *params,
                            const char *name) {
 
   char str[PARSER_MAX_LINE_SIZE];
   char retParam = 0;
-  struct swift_params *tmp = (struct swift_params*) params;
 
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
@@ -497,7 +495,7 @@ char parser_get_param_char(const struct swift_params *params,
       }
 
       /* this parameter has been used */
-      tmp->data[i].used = 1;
+      params->data[i].used = 1;
 
       return retParam;
     }
@@ -515,12 +513,11 @@ char parser_get_param_char(const struct swift_params *params,
  * @param name Name of the parameter to be found
  * @return Value of the parameter found
  */
-float parser_get_param_float(const struct swift_params *params,
+float parser_get_param_float(struct swift_params *params,
                              const char *name) {
 
   char str[PARSER_MAX_LINE_SIZE];
   float retParam = 0.f;
-  struct swift_params *tmp = (struct swift_params*) params;
 
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
@@ -533,7 +530,7 @@ float parser_get_param_float(const struct swift_params *params,
       }
 
       /* this parameter has been used */
-      tmp->data[i].used = 1;
+      params->data[i].used = 1;
 
       return retParam;
     }
@@ -551,12 +548,11 @@ float parser_get_param_float(const struct swift_params *params,
  * @param name Name of the parameter to be found
  * @return Value of the parameter found
  */
-double parser_get_param_double(const struct swift_params *params,
+double parser_get_param_double(struct swift_params *params,
                                const char *name) {
 
   char str[PARSER_MAX_LINE_SIZE];
   double retParam = 0.;
-  struct swift_params *tmp = (struct swift_params*) params;
 
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
@@ -569,7 +565,7 @@ double parser_get_param_double(const struct swift_params *params,
       }
 
       /* this parameter has been used */
-      tmp->data[i].used = 1;
+      params->data[i].used = 1;
 
       return retParam;
     }
@@ -587,14 +583,14 @@ double parser_get_param_double(const struct swift_params *params,
  * @param name Name of the parameter to be found
  * @param retParam (return) Value of the parameter found
  */
-void parser_get_param_string(const struct swift_params *params,
+void parser_get_param_string(struct swift_params *params,
                              const char *name, char *retParam) {
-  struct swift_params *tmp = (struct swift_params*) params;
+
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
       strcpy(retParam, params->data[i].value);
       /* this parameter has been used */
-      tmp->data[i].used = 1;
+      params->data[i].used = 1;
       return;
     }
   }
@@ -610,12 +606,11 @@ void parser_get_param_string(const struct swift_params *params,
  * @param def Default value of the parameter of not found.
  * @return Value of the parameter found
  */
-int parser_get_opt_param_int(const struct swift_params *params,
+int parser_get_opt_param_int(struct swift_params *params,
                              const char *name, int def) {
 
   char str[PARSER_MAX_LINE_SIZE];
   int retParam = 0;
-  struct swift_params *tmp = (struct swift_params*) params;
 
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
@@ -628,7 +623,7 @@ int parser_get_opt_param_int(const struct swift_params *params,
       }
 
       /* this parameter has been used */
-      tmp->data[i].used = 1;
+      params->data[i].used = 1;
       
       return retParam;
     }
@@ -638,10 +633,10 @@ int parser_get_opt_param_int(const struct swift_params *params,
   sprintf(str, "%s: %i", name, def);
 
   /* Add it to params */
-  parser_set_param(tmp, str);
+  parser_set_param(params, str);
 
   /* Set parameter as used */
-  tmp->data[params->paramCount-1].used = 1;
+  params->data[params->paramCount-1].used = 1;
   
   return def;
 }
@@ -654,12 +649,11 @@ int parser_get_opt_param_int(const struct swift_params *params,
  * @param def Default value of the parameter of not found.
  * @return Value of the parameter found
  */
-char parser_get_opt_param_char(const struct swift_params *params,
+char parser_get_opt_param_char(struct swift_params *params,
                                const char *name, char def) {
 
   char str[PARSER_MAX_LINE_SIZE];
   char retParam = 0;
-  struct swift_params *tmp = (struct swift_params*) params;
 
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
@@ -672,7 +666,7 @@ char parser_get_opt_param_char(const struct swift_params *params,
       }
 
       /* this parameter has been used */
-      tmp->data[i].used = 1;
+      params->data[i].used = 1;
 
       return retParam;
     }
@@ -682,10 +676,10 @@ char parser_get_opt_param_char(const struct swift_params *params,
   sprintf(str, "%s: %c", name, def);
 
   /* Add it to params */
-  parser_set_param(tmp, str);
+  parser_set_param(params, str);
 
   /* Set parameter as used */
-  tmp->data[params->paramCount-1].used = 1;
+  params->data[params->paramCount-1].used = 1;
 
   return def;
 }
@@ -698,12 +692,11 @@ char parser_get_opt_param_char(const struct swift_params *params,
  * @param def Default value of the parameter of not found.
  * @return Value of the parameter found
  */
-float parser_get_opt_param_float(const struct swift_params *params,
+float parser_get_opt_param_float(struct swift_params *params,
                                  const char *name, float def) {
 
   char str[PARSER_MAX_LINE_SIZE];
   float retParam = 0.f;
-  struct swift_params *tmp = (struct swift_params*) params;
 
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
@@ -716,7 +709,7 @@ float parser_get_opt_param_float(const struct swift_params *params,
       }
 
       /* this parameter has been used */
-      tmp->data[i].used = 1;
+      params->data[i].used = 1;
 
       return retParam;
     }
@@ -726,10 +719,10 @@ float parser_get_opt_param_float(const struct swift_params *params,
   sprintf(str, "%s: %f", name, def);
 
   /* Add it to params */
-  parser_set_param(tmp, str);
+  parser_set_param(params, str);
 
   /* Set parameter as used */
-  tmp->data[params->paramCount-1].used = 1;
+  params->data[params->paramCount-1].used = 1;
 
   return def;
 }
@@ -742,12 +735,11 @@ float parser_get_opt_param_float(const struct swift_params *params,
  * @param def Default value of the parameter of not found.
  * @return Value of the parameter found
  */
-double parser_get_opt_param_double(const struct swift_params *params,
+double parser_get_opt_param_double(struct swift_params *params,
                                    const char *name, double def) {
 
   char str[PARSER_MAX_LINE_SIZE];
   double retParam = 0.;
-  struct swift_params *tmp = (struct swift_params*) params;
 
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
@@ -760,7 +752,7 @@ double parser_get_opt_param_double(const struct swift_params *params,
       }
 
       /* this parameter has been used */
-      tmp->data[i].used = 1;
+      params->data[i].used = 1;
 
       return retParam;
     }
@@ -770,10 +762,10 @@ double parser_get_opt_param_double(const struct swift_params *params,
   sprintf(str, "%s: %lf", name, def);
 
   /* Add it to params */
-  parser_set_param(tmp, str);
+  parser_set_param(params, str);
 
   /* Set parameter as used */
-  tmp->data[params->paramCount-1].used = 1;
+  params->data[params->paramCount-1].used = 1;
 
   return def;
 }
@@ -786,16 +778,16 @@ double parser_get_opt_param_double(const struct swift_params *params,
  * @param def Default value of the parameter of not found.
  * @param retParam (return) Value of the parameter found
  */
-void parser_get_opt_param_string(const struct swift_params *params,
+void parser_get_opt_param_string(struct swift_params *params,
                                  const char *name, char *retParam,
                                  const char *def) {
-  struct swift_params *tmp = (struct swift_params*) params;
+
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
       strcpy(retParam, params->data[i].value);
 
       /* this parameter has been used */
-      tmp->data[i].used = 1;
+      params->data[i].used = 1;
 
       return;
     }
@@ -806,10 +798,10 @@ void parser_get_opt_param_string(const struct swift_params *params,
   sprintf(str, "%s: %s", name, def);
 
   /* Add it to params */
-  parser_set_param(tmp, str);
+  parser_set_param(params, str);
 
   /* Set parameter as used */
-  tmp->data[params->paramCount-1].used = 1;
+  params->data[params->paramCount-1].used = 1;
 
   strcpy(retParam, def);
 }

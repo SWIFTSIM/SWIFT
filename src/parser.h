@@ -64,24 +64,24 @@ void parser_write_params_to_file(const struct swift_params *params,
 				 int write_all);
 void parser_set_param(struct swift_params *params, const char *desc);
 
-char parser_get_param_char(const struct swift_params *params, const char *name);
-int parser_get_param_int(const struct swift_params *params, const char *name);
-float parser_get_param_float(const struct swift_params *params,
+char parser_get_param_char(struct swift_params *params, const char *name);
+int parser_get_param_int(struct swift_params *params, const char *name);
+float parser_get_param_float(struct swift_params *params,
                              const char *name);
-double parser_get_param_double(const struct swift_params *params,
+double parser_get_param_double(struct swift_params *params,
                                const char *name);
-void parser_get_param_string(const struct swift_params *params,
+void parser_get_param_string(struct swift_params *params,
                              const char *name, char *retParam);
 
-char parser_get_opt_param_char(const struct swift_params *params,
+char parser_get_opt_param_char(struct swift_params *params,
                                const char *name, char def);
-int parser_get_opt_param_int(const struct swift_params *params,
+int parser_get_opt_param_int(struct swift_params *params,
                              const char *name, int def);
-float parser_get_opt_param_float(const struct swift_params *params,
+float parser_get_opt_param_float(struct swift_params *params,
                                  const char *name, float def);
-double parser_get_opt_param_double(const struct swift_params *params,
+double parser_get_opt_param_double(struct swift_params *params,
                                    const char *name, double def);
-void parser_get_opt_param_string(const struct swift_params *params,
+void parser_get_opt_param_string(struct swift_params *params,
                                  const char *name, char *retParam,
                                  const char *def);
 

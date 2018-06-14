@@ -600,7 +600,7 @@ void write_output_single(struct engine* e, const char* baseName,
   struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
   const struct cooling_function_data* cooling = e->cooling_func;
-  const struct swift_params* params = e->parameter_file;
+  struct swift_params* params = e->parameter_file;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;

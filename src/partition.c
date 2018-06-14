@@ -1041,7 +1041,7 @@ void partition_initial_partition(struct partition *initial_partition,
  */
 void partition_init(struct partition *partition,
                     struct repartition *repartition,
-                    const struct swift_params *params, int nr_nodes) {
+                    struct swift_params *params, int nr_nodes) {
 
 #ifdef WITH_MPI
 

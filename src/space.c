@@ -2641,7 +2641,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * parts with a cutoff below half the cell width are then split
  * recursively.
  */
-void space_init(struct space *s, const struct swift_params *params,
+void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
                 size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
