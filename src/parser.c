@@ -43,7 +43,6 @@
 #define PARSER_END_OF_FILE "..."
 
 /* Private functions. */
-static int count_char(const char *str, char val);
 static int is_empty(const char *str);
 static int count_indentation(const char *str);
 static void parse_line(char *line, struct swift_params *params);
@@ -56,13 +55,24 @@ static void find_duplicate_section(const struct swift_params *params,
                                    const char *section_name);
 static int lineNumber = 0;
 
-// Functions to trim strings of spaces.
+/**
+ * @brief trim leading white space from a string.
+ *
+ * @param s the string.
+ * @result the result.
+ */
 static char *trim_leading(char *s) {
   if (s == NULL || strlen(s) < 2) return s;
   while(isspace(*s)) s++;
   return s;
 }
 
+/**
+ * @brief trim trailing white space from a string.
+ *
+ * @param s the string.
+ * @result the result.
+ */
 static char *trim_trailing(char *s) {
   if (s == NULL || strlen(s) < 2) return s;
   char *end = s + strlen(s) - 1;
@@ -71,9 +81,86 @@ static char *trim_trailing(char *s) {
   return s;
 }
 
-char *trim_both(char *s) {
+/**
+ * @brief trim leading and trailing white space from a string.
+ *
+ * @param s the string.
+ * @result the result.
+ */
+static char *trim_both(char *s) {
   if (s == NULL || strlen(s) < 2) return s;
   return trim_trailing(trim_leading(s));
+}
+
+/**
+ * @brief parse a YAML list of strings returning the strings in the given
+ *        array.
+ *
+ * It is assumed that the [] have been removed (also no lists in lists)
+ * words are separated by commas and the strings may or may not be quoted.
+ * So lines like:
+ *
+ *    'xyz', 'ABC', "ab'c", "de:f", "g,hi", "zzz", Hello World, again
+ *
+ * Are supported as expected.
+ *
+ * @param line the line to parse.
+ * @param nstring the maximum number of strings that can be returned.
+ * @param len the length of a string in the result array.
+ * @param result array of chars of length len to hold parsed strings.
+ * @return the number of strings parsed.
+ */
+static int parse_quoted_strings(const char *line, int nstring, int len,
+                                char *result) {
+
+    char word[len+1];
+    int nchar = 0;
+    int nwords = 0;
+    char quote = '\0';
+
+    word[0] = '\0';
+    for (unsigned int i = 0; i < strlen(line); i++) {
+      if (nwords < nstring) {
+        char c = line[i];
+        if (c == '"' || c == '\'') {
+          if (c == quote) {
+            quote = '\0';
+          } else if (!quote) {
+            quote = c;
+          } else {
+            word[nchar++] = c;
+          }
+        } else if (c == ',') {
+          if (!quote) {
+            /* Save word. */
+            word[nchar++] = '\0';
+            strcpy(&result[nwords * len], word);
+            nwords++;
+
+            /* Ready for next. */
+            nchar = 0;
+            word[0] = '\0';
+
+          } else {
+            word[nchar++] = c;
+          }
+        } else {
+          word[nchar++] = c;
+        }
+      } else {
+
+        /* Maximum number of strings supported. */
+        break;
+      }
+    }
+
+    /* Keep unfinished words. */
+    if (nchar > 0) {
+      word[nchar] = '\0';
+      strcpy(&result[nwords * len], word);
+      nwords++;
+    }
+    return nwords;
 }
 
 /**
@@ -176,26 +263,6 @@ void parser_set_param(struct swift_params *params, const char *namevalue) {
     if (params->paramCount == PARSER_MAX_NO_OF_PARAMS)
       error("Too many parameters, current maximum is %d.", params->paramCount);
   }
-}
-
-/**
- * @brief Counts the number of times a specific character appears in a string.
- *
- * @param str String to be checked
- * @param val Character to be counted
- *
- * @return Number of occurrences of val inside str
- */
-
-static int count_char(const char *str, char val) {
-  int count = 0;
-
-  /* Check if the line contains the character */
-  while (*str) {
-    if (*str++ == val) ++count;
-  }
-
-  return count;
 }
 
 /**
@@ -324,12 +391,6 @@ static void parse_value(char *line, struct swift_params *params) {
   char tmpSectionName[PARSER_MAX_LINE_SIZE];
 
   char *token;
-
-  /* Check for more than one value on the same line. */
-  if (count_char(line, PARSER_VALUE_CHAR) > 1) {
-    error("Invalid line:%d '%s', only one value allowed per line.", lineNumber,
-          line);
-  }
 
   /* Check that standalone parameters have correct indentation. */
   if (!inSection && *line == ' ') {
@@ -757,10 +818,10 @@ void parser_get_opt_param_string(const struct swift_params *params,
                                    int nval, TYPE *values) {            \
     char str[PARSER_MAX_LINE_SIZE];                                     \
     char cpy[PARSER_MAX_LINE_SIZE];                                     \
-    char *cp = cpy;                                                     \
                                                                         \
     for (int i = 0; i < params->paramCount; i++) {                      \
       if (!strcmp(name, params->data[i].name)) {                        \
+        char *cp = cpy;                                                 \
         strcpy(cp, params->data[i].value);                              \
         cp = trim_both(cp);                                             \
                                                                         \
@@ -845,6 +906,60 @@ PARSER_GET_ARRAY(float, " %f%s ", "float");
  * @return whether the parameter has been found.
  */
 PARSER_GET_ARRAY(double, " %lf%s ", "double");
+
+/**
+ * @brief Retrieve string array parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param required whether it is an error if the parameter has not been set
+ * @param nval number of values expected.
+ * @param maxlen the maximum length of a string.
+ * @param values pointer to an array of size [nval][maxlen] for the strings.
+ * @return whether the parameter has been found.
+ */
+int parser_get_param_string_array(const struct swift_params *params,
+                                  const char *name, int required,
+                                  int nval, int maxlen, char *values) {
+
+    char cpy[PARSER_MAX_LINE_SIZE];
+
+    for (int i = 0; i < params->paramCount; i++) {
+      if (!strcmp(name, params->data[i].name)) {
+        char *cp = cpy;
+        strcpy(cp, params->data[i].value);
+        cp = trim_both(cp);
+
+        /* Strip off []. */
+        if (cp[0] != '[')
+          error("Array '%s' does not start with '['", name);
+        cp++;
+        int l = strlen(cp);
+        if (cp[l-1] != ']')
+          error("Array '%s' does not end with ']'", name);
+        cp[l-1] = '\0';
+        cp = trim_both(cp);
+
+        int nfound = parse_quoted_strings(cp, nval, maxlen, values);
+        if (nfound != nval) {
+          error("Failed to find the expected number of values in string "
+                "array '%s', expected %d found %d", name, nval, nfound);
+        }
+
+        /* Clean up the strings. */
+        for (int k = 0; k < nfound; k++) {
+          cp = trim_both(&values[k * maxlen]);
+          memmove(&values[k*maxlen], cp, strlen(cp) + 1);
+        }
+
+        return 1;
+      }
+    }
+    if (required)
+      error("Cannot find '%s' in the structure, in file '%s'.", name,
+            params->fileName);
+    return 0;
+}
 
 /**
  * @brief Prints the contents of the parameter structure.

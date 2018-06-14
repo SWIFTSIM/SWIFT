@@ -62,6 +62,12 @@ int main(int argc, char *argv[]) {
   int haveopt = parser_get_param_float_array(&param_file, "Box:moresides",
                                              0, 3, optsides);
 
+  char result[100][20];
+  parser_get_param_string_array(&param_file, "Words:list", 1, 8, 20,
+                                (char *)result);
+  for (int i = 0; i < 8; i++) printf("%s\n", result[i]);
+
+
   /* Print the variables to check their values are correct. */
   printf(
       "no_of_threads: %d, no_of_time_steps: %d, max_h: %f, start_time: %lf, "

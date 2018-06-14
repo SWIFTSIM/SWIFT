@@ -19,4 +19,7 @@ IO:
 
 Box:
   sides: [2, 3, 4]
+
+Words:
+  list: ['xyz', 'ABC', "ab'c", "de:f", "g,hi", "zzz", Hello World, once-again]
 ...

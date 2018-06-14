@@ -98,6 +98,10 @@ int parser_get_param_double_array(const struct swift_params *params,
                                   const char *name, int required,
                                   int nval, double *values);
 
+int parser_get_param_string_array(const struct swift_params *params,
+                                  const char *name, int required,
+                                  int nval, int maxlen, char *values);
+
 #if defined(HAVE_HDF5)
 void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp);
 #endif
