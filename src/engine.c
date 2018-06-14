@@ -339,8 +339,9 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
           c->grav_mesh = scheduler_addtask(s, task_type_grav_mesh,
                                            task_subtype_none, 0, 0, c, NULL);
 
-        if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost_in);
-        if (periodic) scheduler_addunlock(s, c->grav_ghost_out, c->grav_down);
+        // if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost_in);
+        // if (periodic) scheduler_addunlock(s, c->grav_ghost_out,
+        // c->grav_down);
         if (periodic) scheduler_addunlock(s, c->drift_gpart, c->grav_mesh);
         if (periodic) scheduler_addunlock(s, c->grav_mesh, c->super->end_force);
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
@@ -2335,28 +2336,20 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
 
   struct engine *e = ((struct engine **)extra_data)[0];
-  struct task **ghosts = ((struct task ***)extra_data)[1];
-
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1,
-                             s->cdim[2] / 4 + 1};
   const double theta_crit2 = e->gravity_properties->theta_crit2;
   struct cell *cells = s->cells_top;
-  const int n_ghosts = cdim_ghost[0] * cdim_ghost[1] * cdim_ghost[2] * 2;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
-    const int i = cid / (cdim[1] * cdim[2]);
-    const int j = (cid / cdim[2]) % cdim[1];
-    const int k = cid % cdim[2];
 
     /* Get the cell */
     struct cell *ci = &cells[cid];
@@ -2369,14 +2362,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 
     /* If the cells is local build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
-
-    /* Deal with periodicity FFT task dependencies */
-    const int ghost_id = cell_getid(cdim_ghost, i / 4, j / 4, k / 4);
-    if (ghost_id > n_ghosts) error("Invalid ghost_id");
-    if (periodic) {
-      ci->grav_ghost_in = ghosts[2 * ghost_id + 0];
-      ci->grav_ghost_out = ghosts[2 * ghost_id + 1];
-    }
 
     /* Recover the multipole information */
     const struct gravity_tensors *const multi_i = ci->multipole;
@@ -2421,6 +2406,16 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           }
           const double r2 = dx * dx + dy * dy + dz * dz;
 
+          /* const int test = gravity_M2L_accept(r_max_i, multi_j->r_max,
+           * theta_crit2, r2); */
+
+          /* if(cid == 3 && cjd == 0) */
+          /*   error("cid=%d cjd=%d theta_crit2=%e r_max_i=%e r_max_j=%e, r2=%e
+           * CoM_i=[%e %e %e] CoM_j=[%e %e %e] test=%d", */
+          /* 	  cid, cjd, theta_crit2, r_max_i, multi_j->r_max, r2, CoM_i[0],
+           * CoM_i[1], CoM_i[2], */
+          /* 	  multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2], test); */
+
           /* Are the cells too close for a MM interaction ? */
           if (!gravity_M2L_accept(r_max_i, multi_j->r_max, theta_crit2, r2)) {
 
@@ -2446,60 +2441,17 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 void engine_make_self_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
-  const int periodic = s->periodic;
-  const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1,
-                             s->cdim[2] / 4 + 1};
+  /* struct scheduler *sched = &e->sched; */
+  /* const int periodic = s->periodic; */
+  /* const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1, */
+  /*                            s->cdim[2] / 4 + 1}; */
   struct task **ghosts = NULL;
-  const int n_ghosts = cdim_ghost[0] * cdim_ghost[1] * cdim_ghost[2] * 2;
-
-  /* Create the top-level task if periodic */
-  if (periodic) {
-
-    /* Create the FFT task for this MPI rank */
-    s->grav_top_level = scheduler_addtask(sched, task_type_grav_top_level,
-                                          task_subtype_none, 0, 0, NULL, NULL);
-
-    /* Create a grid of ghosts to deal with the dependencies */
-    if ((ghosts = (struct task **)malloc(n_ghosts * sizeof(struct task *))) ==
-        0)
-      error("Error allocating memory for gravity fft ghosts");
-
-    /* Make the ghosts implicit and add the dependencies */
-    for (int n = 0; n < n_ghosts / 2; ++n) {
-      ghosts[2 * n + 0] = scheduler_addtask(
-          sched, task_type_grav_ghost_in, task_subtype_none, 0, 1, NULL, NULL);
-      ghosts[2 * n + 1] = scheduler_addtask(
-          sched, task_type_grav_ghost_out, task_subtype_none, 0, 1, NULL, NULL);
-      scheduler_addunlock(sched, ghosts[2 * n + 0], s->grav_top_level);
-      scheduler_addunlock(sched, s->grav_top_level, ghosts[2 * n + 1]);
-    }
-  }
+  // const int n_ghosts = cdim_ghost[0] * cdim_ghost[1] * cdim_ghost[2] * 2;
 
   /* Cretae the multipole self and pair tasks. */
   void *extra_data[2] = {e, ghosts};
   threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
                  s->nr_cells, 1, 0, extra_data);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (periodic)
-    for (int i = 0; i < s->nr_cells; ++i) {
-      const struct cell *c = &s->cells_top[i];
-      /* Skip empty cells */
-      if (c->gcount == 0) continue;
-
-      /* Did we correctly attach the FFT task ghosts? */
-      if (c->nodeID == engine_rank &&
-          (c->grav_ghost_in == NULL || c->grav_ghost_out == NULL))
-        error("Invalid gravity_ghost for local cell");
-      if (c->nodeID != engine_rank &&
-          (c->grav_ghost_in != NULL || c->grav_ghost_out != NULL))
-        error("Invalid gravity_ghost for foreign cell");
-    }
-#endif
-
-  /* Clean up. */
-  if (periodic) free(ghosts);
 }
 
 /**
@@ -5019,6 +4971,8 @@ void engine_makeproxies(struct engine *e) {
   if (with_gravity) {
     const double distance = 2.5 * cells[0].width[0] / props->theta_crit;
     delta = (int)(distance / cells[0].width[0]) + 1;
+
+    // MATTHIEU: Check this calculation
   }
 
   /* Let's be verbose about this choice */
