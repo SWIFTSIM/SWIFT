@@ -31,6 +31,7 @@ examples/*/*.txt
 examples/*/*.dot
 examples/*/restart/*
 examples/*/used_parameters.yml
+examples/*/unused_parameters.yml
 examples/*/*/*.xmf
 examples/*/*/*.png
 examples/*/*/*.mp4
@@ -41,6 +42,7 @@ examples/*/*/*.hdf5
 examples/*/snapshots*
 examples/*/restart/*
 examples/*/*/used_parameters.yml
+examples/*/*/unused_parameters.yml
 examples/*/*.mpg
 examples/*/gravity_checks_*.dat
 

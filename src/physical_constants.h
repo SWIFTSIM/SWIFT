@@ -90,7 +90,7 @@ struct phys_const {
 };
 
 void phys_const_init(const struct unit_system* us,
-                     const struct swift_params* params,
+                     struct swift_params* params,
                      struct phys_const* internal_const);
 
 void phys_const_print(const struct phys_const* internal_const);

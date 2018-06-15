@@ -33,7 +33,7 @@
  * @param phys_const The physical constants in internal units.
  * @param data The properties to initialise.
  */
-void chemistry_init(const struct swift_params* parameter_file,
+void chemistry_init(struct swift_params* parameter_file,
                     const struct unit_system* us,
                     const struct phys_const* phys_const,
                     struct chemistry_global_data* data) {

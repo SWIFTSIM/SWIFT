@@ -178,7 +178,7 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
  */
 __attribute__((always_inline)) INLINE static void eos_init(
     struct eos_parameters *e, const struct phys_const *phys_const,
-    const struct unit_system *us, const struct swift_params *params) {}
+    const struct unit_system *us, struct swift_params *params) {}
 /**
  * @brief Print the equation of state
  *

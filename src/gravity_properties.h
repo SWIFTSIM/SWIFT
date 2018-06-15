@@ -83,7 +83,7 @@ struct gravity_props {
 
 void gravity_props_print(const struct gravity_props *p);
 void gravity_props_init(struct gravity_props *p,
-                        const struct swift_params *params,
+                        struct swift_params *params,
                         const struct cosmology *cosmo);
 void gravity_update(struct gravity_props *p, const struct cosmology *cosmo);
 

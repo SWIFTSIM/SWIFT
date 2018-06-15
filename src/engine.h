@@ -315,7 +315,7 @@ struct engine {
   struct sourceterms *sourceterms;
 
   /* The (parsed) parameter file */
-  const struct swift_params *parameter_file;
+  struct swift_params *parameter_file;
 
   /* Temporary struct to hold a group of deferable properties (in MPI mode
    * these are reduced together, but may not be required just yet). */
@@ -355,7 +355,7 @@ void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
-                 const struct swift_params *params, long long Ngas,
+                 struct swift_params *params, long long Ngas,
                  long long Ngparts, long long Nstars, int policy, int verbose,
                  struct repartition *reparttype,
                  const struct unit_system *internal_units,
@@ -367,7 +367,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct chemistry_global_data *chemistry,
                  struct sourceterms *sourceterms);
 void engine_config(int restart, struct engine *e,
-                   const struct swift_params *params, int nr_nodes, int nodeID,
+                   struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_threads, int with_aff, int verbose,
                    const char *restart_file);
 void engine_launch(struct engine *e);

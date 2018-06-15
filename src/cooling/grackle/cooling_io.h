@@ -133,7 +133,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
  * @param cooling The cooling properties to initialize
  */
 __attribute__((always_inline)) INLINE static void cooling_read_parameters(
-    const struct swift_params* parameter_file,
+    struct swift_params* parameter_file,
     struct cooling_function_data* cooling) {
 
   parser_get_param_string(parameter_file, "GrackleCooling:CloudyTable",

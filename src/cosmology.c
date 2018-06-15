@@ -387,7 +387,7 @@ void cosmology_init_tables(struct cosmology *c) {
  * @param phys_const The physical constants in the current system of units.
  * @param c The #cosmology to initialise.
  */
-void cosmology_init(const struct swift_params *params,
+void cosmology_init(struct swift_params *params,
                     const struct unit_system *us,
                     const struct phys_const *phys_const, struct cosmology *c) {
 
