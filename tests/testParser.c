@@ -60,7 +60,8 @@ int main(int argc, char *argv[]) {
       optional);
 
   /* Print the contents of the structure to a file in YAML format. */
-  parser_write_params_to_file(&param_file, "parser_output.yml");
+  parser_write_params_to_file(&param_file, "used_parser_output.yml", 1);
+  parser_write_params_to_file(&param_file, "unused_parser_output.yml", 0);
 
   assert(no_of_threads == 16);
   assert(no_of_time_steps == 10);
