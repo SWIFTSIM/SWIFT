@@ -2641,7 +2641,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * parts with a cutoff below half the cell width are then split
  * recursively.
  */
-void space_init(struct space *s, const struct swift_params *params,
+void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
                 size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
@@ -3108,7 +3108,7 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
     if (fabs(Omega_m - cosmo->Omega_m) > 1e-3)
       error(
           "The matter content of the simulation does not match the cosmology "
-          "in the parameter file comso.Omega_m=%e Omega_m=%e",
+          "in the parameter file cosmo.Omega_m=%e Omega_m=%e",
           cosmo->Omega_m, Omega_m);
   }
 }

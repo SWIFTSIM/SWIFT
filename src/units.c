@@ -78,7 +78,7 @@ void units_init(struct unit_system* us, double U_M_in_cgs, double U_L_in_cgs,
  * @param category The section of the parameter file to read from.
  */
 void units_init_from_params(struct unit_system* us,
-                            const struct swift_params* params,
+                            struct swift_params* params,
                             const char* category) {
 
   char buffer[200];
@@ -105,7 +105,7 @@ void units_init_from_params(struct unit_system* us,
  * @param def The default unit system to copy from if required.
  */
 void units_init_default(struct unit_system* us,
-                        const struct swift_params* params, const char* category,
+                        struct swift_params* params, const char* category,
                         const struct unit_system* def) {
 
   if (!def) error("Default unit_system not allocated");

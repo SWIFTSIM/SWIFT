@@ -73,7 +73,7 @@ static INLINE void chemistry_print_backend(
  * @param data The properties to initialise.
  */
 static INLINE void chemistry_init_backend(
-    const struct swift_params* parameter_file, const struct unit_system* us,
+    struct swift_params* parameter_file, const struct unit_system* us,
     const struct phys_const* phys_const, struct chemistry_global_data* data) {
 
   /* read parameters */

@@ -468,10 +468,6 @@ int main(int argc, char *argv[]) {
           "values.");
       for (int k = 0; k < nparams; k++) parser_set_param(params, cmdparams[k]);
     }
-
-    /* And dump the parameters as used. */
-    // parser_print_params(params);
-    parser_write_params_to_file(params, "used_parameters.yml");
   }
 #ifdef WITH_MPI
   /* Broadcast the parameter file */
@@ -913,6 +909,13 @@ int main(int argc, char *argv[]) {
   if (restart_genname(restart_dir, restart_name, e.nodeID, restart_file, 200) !=
       0)
     error("Failed to generate restart filename");
+
+  /* dump the parameters as used. */
+
+  /* used parameters */
+  parser_write_params_to_file(params, "used_parameters.yml", 1);
+  /* unused parameters */
+  parser_write_params_to_file(params, "unused_parameters.yml", 0);
 
   /* Main simulation loop */
   /* ==================== */

@@ -36,9 +36,6 @@ int main(int argc, char *argv[]) {
   /* Print the contents of the structure to stdout. */
   parser_print_params(&param_file);
 
-  /* Print the contents of the structure to a file in YAML format. */
-  parser_write_params_to_file(&param_file, "parser_output.yml");
-
   /* Retrieve parameters and store them in variables defined above.
    * Have to specify the name of the parameter as it appears in the
    * input file: testParserInput.yaml.*/
@@ -51,7 +48,7 @@ int main(int argc, char *argv[]) {
       parser_get_param_double(&param_file, "Simulation:start_time");
   const int kernel = parser_get_param_int(&param_file, "kernel");
 
-  const int optional = parser_get_opt_param_int(&param_file, "optional", 1);
+  const int optional = parser_get_opt_param_int(&param_file, "Simulation:optional", 1);
 
   char ic_file[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(&param_file, "IO:ic_file", ic_file);
@@ -79,6 +76,10 @@ int main(int argc, char *argv[]) {
       no_of_threads, no_of_time_steps, max_h, start_time, ic_file, kernel,
       optional);
   printf("sides of box: %f %f %f\n", sides[0], sides[1], sides[2]);
+
+  /* Print the contents of the structure to a file in YAML format. */
+  parser_write_params_to_file(&param_file, "used_parser_output.yml", 1);
+  parser_write_params_to_file(&param_file, "unused_parser_output.yml", 0);
 
   assert(no_of_threads == 16);
   assert(no_of_time_steps == 10);

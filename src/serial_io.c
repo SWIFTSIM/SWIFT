@@ -733,7 +733,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
   const struct cooling_function_data* cooling = e->cooling_func;
-  const struct swift_params* params = e->parameter_file;
+  struct swift_params* params = e->parameter_file;
   FILE* xmfFile = 0;
 
   /* Number of unassociated gparts */
@@ -879,7 +879,14 @@ void write_output_serial(struct engine* e, const char* baseName,
     h_grp =
         H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating parameters group");
-    parser_write_params_to_hdf5(e->parameter_file, h_grp);
+    parser_write_params_to_hdf5(e->parameter_file, h_grp, 1);
+    H5Gclose(h_grp);
+
+    /* Print the runtime unused parameters */
+    h_grp =
+      H5Gcreate(h_file, "/UnusedParameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating parameters group");
+    parser_write_params_to_hdf5(e->parameter_file, h_grp, 0);
     H5Gclose(h_grp);
 
     /* Print the system of Units used in the spashot */

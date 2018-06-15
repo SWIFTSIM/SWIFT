@@ -5422,7 +5422,7 @@ void engine_unpin(void) {
  * @param sourceterms The properties of the source terms function.
  */
 void engine_init(struct engine *e, struct space *s,
-                 const struct swift_params *params, long long Ngas,
+                 struct swift_params *params, long long Ngas,
                  long long Ngparts, long long Nstars, int policy, int verbose,
                  struct repartition *reparttype,
                  const struct unit_system *internal_units,
@@ -5553,7 +5553,7 @@ void engine_init(struct engine *e, struct space *s,
  * @param restart_file The name of our restart file.
  */
 void engine_config(int restart, struct engine *e,
-                   const struct swift_params *params, int nr_nodes, int nodeID,
+                   struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_threads, int with_aff, int verbose,
                    const char *restart_file) {
 
