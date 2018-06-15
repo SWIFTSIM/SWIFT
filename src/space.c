@@ -3108,7 +3108,7 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
     if (fabs(Omega_m - cosmo->Omega_m) > 1e-3)
       error(
           "The matter content of the simulation does not match the cosmology "
-          "in the parameter file comso.Omega_m=%e Omega_m=%e",
+          "in the parameter file cosmo.Omega_m=%e Omega_m=%e",
           cosmo->Omega_m, Omega_m);
   }
 }
