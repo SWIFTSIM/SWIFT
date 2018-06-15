@@ -435,9 +435,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   if (mode == 1) {
     /* Store mass flux */
     const float mflux_j = totflux[0];
-    pj->gravity.mflux[0] -= mflux_j * dx[0];
-    pj->gravity.mflux[1] -= mflux_j * dx[1];
-    pj->gravity.mflux[2] -= mflux_j * dx[2];
+    pj->gravity.mflux[0] += mflux_j * dx[0];
+    pj->gravity.mflux[1] += mflux_j * dx[1];
+    pj->gravity.mflux[2] += mflux_j * dx[2];
 
     pj->conserved.flux.mass += totflux[0];
     pj->conserved.flux.momentum[0] += totflux[1];
