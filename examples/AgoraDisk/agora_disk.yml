@@ -12,7 +12,7 @@ Scheduler:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   13.8262016  # The end time of the simulation (in internal units).
+  time_end:   0.5  # The end time of the simulation (in internal units).
   dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
   
