@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
   float rho, log_rho, log_u, P;
   struct unit_system us;
   const struct phys_const *phys_const = 0;  // Unused placeholder
-  const struct swift_params *params = 0;    // Unused placeholder
+  struct swift_params *params = 0;          // Unused placeholder
   const float J_kg_to_erg_g = 1e4;          // Convert J/kg to erg/g
   char filename[64];
   // Output table params

@@ -1021,13 +1021,13 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   parser_write_params_to_hdf5(e->parameter_file, h_grp, 1);
   H5Gclose(h_grp);
 
-  /* Print the runtime non used parameters */
+  /* Print the runtime unused parameters */
   h_grp =
-      H5Gcreate(h_file, "/NonUsedParameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5Gcreate(h_file, "/UnusedParameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating parameters group");
   parser_write_params_to_hdf5(e->parameter_file, h_grp, 0);
   H5Gclose(h_grp);
-  
+
   /* Print the system of Units used in the spashot */
   io_write_unit_system(h_file, snapshot_units, "Units");
 

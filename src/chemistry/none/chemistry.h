@@ -60,7 +60,7 @@ chemistry_get_element_name(enum chemistry_element elem) {
  * @param data The global chemistry information (to be filled).
  */
 static INLINE void chemistry_init_backend(
-    const struct swift_params* parameter_file, const struct unit_system* us,
+    struct swift_params* parameter_file, const struct unit_system* us,
     const struct phys_const* phys_const, struct chemistry_global_data* data) {}
 
 /**

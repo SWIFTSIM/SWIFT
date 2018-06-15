@@ -35,7 +35,7 @@
  * @param s The #space we run in.
  * @param potential The external potential properties to initialize
  */
-void potential_init(const struct swift_params* parameter_file,
+void potential_init(struct swift_params* parameter_file,
                     const struct phys_const* phys_const,
                     const struct unit_system* us, const struct space* s,
                     struct external_potential* potential) {
