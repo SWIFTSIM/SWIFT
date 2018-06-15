@@ -915,9 +915,9 @@ int main(int argc, char *argv[]) {
 
   /* used parameters */
   parser_write_params_to_file(params, "used_parameters.yml", 1);
-  /* non used parameters */
-  parser_write_params_to_file(params, "non_used_parameters.yml", 0);
- 
+  /* unused parameters */
+  parser_write_params_to_file(params, "unused_parameters.yml", 0);
+
   /* Main simulation loop */
   /* ==================== */
   int force_stop = 0;

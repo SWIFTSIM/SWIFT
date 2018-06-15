@@ -624,7 +624,7 @@ int parser_get_opt_param_int(struct swift_params *params,
 
       /* this parameter has been used */
       params->data[i].used = 1;
-      
+
       return retParam;
     }
   }
@@ -637,7 +637,7 @@ int parser_get_opt_param_int(struct swift_params *params,
 
   /* Set parameter as used */
   params->data[params->paramCount-1].used = 1;
-  
+
   return def;
 }
 
@@ -829,7 +829,7 @@ void parser_print_params(const struct swift_params *params) {
  *
  * @param params Structure that holds the parameters
  * @param file_name Name of file to be written
- * @param write_used Write used fields or non used fields.
+ * @param write_used Write used fields or unused fields.
  */
 void parser_write_params_to_file(const struct swift_params *params,
                                  const char *file_name, int write_used) {
@@ -845,8 +845,8 @@ void parser_write_params_to_file(const struct swift_params *params,
     if (write_used && !params->data[i].used) {
 #ifdef SWIFT_DEBUG_CHECKS
       message("Parameter `%s` was not used. "
-	      "Only the parameter used are written.",
-	      params->data[i].name);
+              "Only the parameter used are written.",
+              params->data[i].name);
 #endif
       continue;
     }
@@ -877,7 +877,7 @@ void parser_write_params_to_file(const struct swift_params *params,
   }
 
   /* End of file identifier in YAML. */
-  fprintf(file, PARSER_END_OF_FILE);
+  fprintf(file, "%s\n", PARSER_END_OF_FILE);
 
   fclose(file);
 }
@@ -889,10 +889,10 @@ void parser_write_params_to_file(const struct swift_params *params,
  *
  * @param params Structure that holds the parameters
  * @param grp HDF5 group
- * @param write_used Write used fields or non used fields.
+ * @param write_used Write used fields or unused fields.
  */
 void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp,
-				 int write_used) {
+                                 int write_used) {
 
   for (int i = 0; i < params->paramCount; i++) {
     if (write_used && !params->data[i].used)
