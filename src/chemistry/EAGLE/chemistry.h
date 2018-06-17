@@ -124,9 +124,10 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
  * @param phys_const The physical constants in internal units.
  * @param data The properties to initialise.
  */
-static INLINE void chemistry_init_backend(
-    struct swift_params* parameter_file, const struct unit_system* us,
-    const struct phys_const* phys_const, struct chemistry_global_data* data) {
+static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
+                                          const struct unit_system* us,
+                                          const struct phys_const* phys_const,
+                                          struct chemistry_global_data* data) {
 
   /* Read the total metallicity */
   data->initial_metal_mass_fraction_total =

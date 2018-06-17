@@ -38,8 +38,7 @@
  * @param params The parsed parameter file.
  * @param internal_const The physical constants to initialize.
  */
-void phys_const_init(const struct unit_system *us,
-                     struct swift_params *params,
+void phys_const_init(const struct unit_system *us, struct swift_params *params,
                      struct phys_const *internal_const) {
 
   /* Units are declared as {U_M, U_L, U_t, U_I, U_T} */

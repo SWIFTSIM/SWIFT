@@ -5421,10 +5421,9 @@ void engine_unpin(void) {
  * @param chemistry The chemistry information.
  * @param sourceterms The properties of the source terms function.
  */
-void engine_init(struct engine *e, struct space *s,
-                 struct swift_params *params, long long Ngas,
-                 long long Ngparts, long long Nstars, int policy, int verbose,
-                 struct repartition *reparttype,
+void engine_init(struct engine *e, struct space *s, struct swift_params *params,
+                 long long Ngas, long long Ngparts, long long Nstars,
+                 int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
@@ -5552,10 +5551,9 @@ void engine_init(struct engine *e, struct space *s,
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
  */
-void engine_config(int restart, struct engine *e,
-                   struct swift_params *params, int nr_nodes, int nodeID,
-                   int nr_threads, int with_aff, int verbose,
-                   const char *restart_file) {
+void engine_config(int restart, struct engine *e, struct swift_params *params,
+                   int nr_nodes, int nodeID, int nr_threads, int with_aff,
+                   int verbose, const char *restart_file) {
 
   /* Store the values and initialise global fields. */
   e->nodeID = nodeID;

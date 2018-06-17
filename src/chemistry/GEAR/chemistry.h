@@ -72,9 +72,10 @@ static INLINE void chemistry_print_backend(
  * @param phys_const The physical constants in internal units.
  * @param data The properties to initialise.
  */
-static INLINE void chemistry_init_backend(
-    struct swift_params* parameter_file, const struct unit_system* us,
-    const struct phys_const* phys_const, struct chemistry_global_data* data) {
+static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
+                                          const struct unit_system* us,
+                                          const struct phys_const* phys_const,
+                                          struct chemistry_global_data* data) {
 
   /* read parameters */
   data->initial_metallicity = parser_get_opt_param_float(
