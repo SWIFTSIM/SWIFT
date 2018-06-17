@@ -110,66 +110,66 @@ static char *trim_both(char *s) {
  */
 static int parse_quoted_strings(const char *line, char ***result) {
 
-    char word[PARSER_MAX_LINE_SIZE];
-    int nchar = 0;
-    int nwords = 0;
-    char quote = '\0';
+  char word[PARSER_MAX_LINE_SIZE];
+  int nchar = 0;
+  int nwords = 0;
+  char quote = '\0';
 
-    /* Preallocate a number of pointers. */
-    char **strings;
-    strings = (char **)malloc( 10 * sizeof(char *));
-    int count = 10;
+  /* Preallocate a number of pointers. */
+  char **strings;
+  strings = (char **)malloc(10 * sizeof(char *));
+  int count = 10;
 
-    word[0] = '\0';
-    for (unsigned int i = 0; i < strlen(line); i++) {
-      char c = line[i];
-      if (c == '"' || c == '\'') {
-        if (c == quote) {
-          quote = '\0';
-        } else if (!quote) {
-          quote = c;
-        } else {
-          word[nchar++] = c;
-        }
-      } else if (c == ',') {
-        if (!quote) {
-
-          /* Save word. */
-          word[nchar++] = '\0';
-          if (count <= nwords) {
-            count += 10;
-            strings = (char **)realloc(strings, count * sizeof(char));
-          }
-          strings[nwords] = (char *)malloc((strlen(word) + 1) * sizeof(char));
-          strcpy(strings[nwords], trim_both(word));
-          nwords++;
-
-          /* Ready for next. */
-          nchar = 0;
-          word[0] = '\0';
-
-        } else {
-          word[nchar++] = c;
-        }
+  word[0] = '\0';
+  for (unsigned int i = 0; i < strlen(line); i++) {
+    char c = line[i];
+    if (c == '"' || c == '\'') {
+      if (c == quote) {
+        quote = '\0';
+      } else if (!quote) {
+        quote = c;
       } else {
         word[nchar++] = c;
       }
-    }
+    } else if (c == ',') {
+      if (!quote) {
 
-    /* Keep unfinished words. */
-    if (nchar > 0) {
-      word[nchar] = '\0';
-      if (count <= nwords) {
-          count += 1;
+        /* Save word. */
+        word[nchar++] = '\0';
+        if (count <= nwords) {
+          count += 10;
           strings = (char **)realloc(strings, count * sizeof(char));
-      }
-      strings[nwords] = (char *)malloc((strlen(word) + 1) * sizeof(char));
-      strcpy(strings[nwords], trim_both(word));
-      nwords++;
-    }
+        }
+        strings[nwords] = (char *)malloc((strlen(word) + 1) * sizeof(char));
+        strcpy(strings[nwords], trim_both(word));
+        nwords++;
 
-    *result = strings;
-    return nwords;
+        /* Ready for next. */
+        nchar = 0;
+        word[0] = '\0';
+
+      } else {
+        word[nchar++] = c;
+      }
+    } else {
+      word[nchar++] = c;
+    }
+  }
+
+  /* Keep unfinished words. */
+  if (nchar > 0) {
+    word[nchar] = '\0';
+    if (count <= nwords) {
+      count += 1;
+      strings = (char **)realloc(strings, count * sizeof(char));
+    }
+    strings[nwords] = (char *)malloc((strlen(word) + 1) * sizeof(char));
+    strcpy(strings[nwords], trim_both(word));
+    nwords++;
+  }
+
+  *result = strings;
+  return nwords;
 }
 
 /**
