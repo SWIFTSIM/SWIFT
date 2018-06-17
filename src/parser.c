@@ -63,7 +63,7 @@ static int lineNumber = 0;
  */
 static char *trim_leading(char *s) {
   if (s == NULL || strlen(s) < 2) return s;
-  while(isspace(*s)) s++;
+  while (isspace(*s)) s++;
   return s;
 }
 
@@ -76,8 +76,8 @@ static char *trim_leading(char *s) {
 static char *trim_trailing(char *s) {
   if (s == NULL || strlen(s) < 2) return s;
   char *end = s + strlen(s) - 1;
-  while(isspace(*end)) end--;
-  *(end+1) = '\0';
+  while (isspace(*end)) end--;
+  *(end + 1) = '\0';
   return s;
 }
 
@@ -261,7 +261,7 @@ void parser_set_param(struct swift_params *params, const char *namevalue) {
     if (strcmp(name, params->data[i].name) == 0) {
       message("Value of '%s' changed from '%s' to '%s'", params->data[i].name,
               params->data[i].value, value);
-      strcpy(params->data[i].value, value);
+      strcpy(params->data[i].value, trim_both(value));
       updated = 1;
     }
   }
@@ -356,7 +356,7 @@ static void find_duplicate_section(const struct swift_params *params,
 
 static void parse_line(char *line, struct swift_params *params) {
   /* Parse line if it doesn't begin with a comment. */
-  if (*line != PARSER_COMMENT_CHAR) {
+  if (line[0] != PARSER_COMMENT_CHAR) {
     char trim_line[PARSER_MAX_LINE_SIZE];
     char tmp_str[PARSER_MAX_LINE_SIZE];
     char *token;
@@ -403,7 +403,7 @@ static void parse_value(char *line, struct swift_params *params) {
   char *token;
 
   /* Check that standalone parameters have correct indentation. */
-  if (!inSection && *line == ' ') {
+  if (!inSection && line[0] == ' ') {
     error(
         "Invalid line:%d '%s', standalone parameter defined with incorrect "
         "indentation.",
@@ -411,10 +411,11 @@ static void parse_value(char *line, struct swift_params *params) {
   }
 
   /* Check that it is a parameter inside a section.*/
-  if (*line == ' ' || *line == '\t') {
+  if (line[0] == ' ' || line[0] == '\t') {
     parse_section_param(line, &isFirstParam, section, params);
-  } else { /*Else it is the start of a new section or standalone parameter. */
-    /* Take first token as the parameter name. */
+  } else {
+    /* It is the start of a new section or standalone parameter.
+     * Take first token as the parameter name. */
     token = strtok(line, ":\t");
     strcpy(tmpStr, trim_trailing(token));
 
@@ -569,8 +570,7 @@ int parser_get_param_int(struct swift_params *params, const char *name) {
  * @param name Name of the parameter to be found
  * @return Value of the parameter found
  */
-char parser_get_param_char(struct swift_params *params,
-                           const char *name) {
+char parser_get_param_char(struct swift_params *params, const char *name) {
 
   char str[PARSER_MAX_LINE_SIZE];
   char retParam = 0;
@@ -604,8 +604,7 @@ char parser_get_param_char(struct swift_params *params,
  * @param name Name of the parameter to be found
  * @return Value of the parameter found
  */
-float parser_get_param_float(struct swift_params *params,
-                             const char *name) {
+float parser_get_param_float(struct swift_params *params, const char *name) {
 
   char str[PARSER_MAX_LINE_SIZE];
   float retParam = 0.f;
@@ -639,8 +638,7 @@ float parser_get_param_float(struct swift_params *params,
  * @param name Name of the parameter to be found
  * @return Value of the parameter found
  */
-double parser_get_param_double(struct swift_params *params,
-                               const char *name) {
+double parser_get_param_double(struct swift_params *params, const char *name) {
 
   char str[PARSER_MAX_LINE_SIZE];
   double retParam = 0.;
@@ -674,8 +672,8 @@ double parser_get_param_double(struct swift_params *params,
  * @param name Name of the parameter to be found
  * @param retParam (return) Value of the parameter found
  */
-void parser_get_param_string(struct swift_params *params,
-                             const char *name, char *retParam) {
+void parser_get_param_string(struct swift_params *params, const char *name,
+                             char *retParam) {
 
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
@@ -697,8 +695,8 @@ void parser_get_param_string(struct swift_params *params,
  * @param def Default value of the parameter of not found.
  * @return Value of the parameter found
  */
-int parser_get_opt_param_int(struct swift_params *params,
-                             const char *name, int def) {
+int parser_get_opt_param_int(struct swift_params *params, const char *name,
+                             int def) {
 
   char str[PARSER_MAX_LINE_SIZE];
   int retParam = 0;
@@ -727,7 +725,7 @@ int parser_get_opt_param_int(struct swift_params *params,
   parser_set_param(params, str);
 
   /* Set parameter as used */
-  params->data[params->paramCount-1].used = 1;
+  params->data[params->paramCount - 1].used = 1;
 
   return def;
 }
@@ -740,8 +738,8 @@ int parser_get_opt_param_int(struct swift_params *params,
  * @param def Default value of the parameter of not found.
  * @return Value of the parameter found
  */
-char parser_get_opt_param_char(struct swift_params *params,
-                               const char *name, char def) {
+char parser_get_opt_param_char(struct swift_params *params, const char *name,
+                               char def) {
 
   char str[PARSER_MAX_LINE_SIZE];
   char retParam = 0;
@@ -770,7 +768,7 @@ char parser_get_opt_param_char(struct swift_params *params,
   parser_set_param(params, str);
 
   /* Set parameter as used */
-  params->data[params->paramCount-1].used = 1;
+  params->data[params->paramCount - 1].used = 1;
 
   return def;
 }
@@ -783,8 +781,8 @@ char parser_get_opt_param_char(struct swift_params *params,
  * @param def Default value of the parameter of not found.
  * @return Value of the parameter found
  */
-float parser_get_opt_param_float(struct swift_params *params,
-                                 const char *name, float def) {
+float parser_get_opt_param_float(struct swift_params *params, const char *name,
+                                 float def) {
 
   char str[PARSER_MAX_LINE_SIZE];
   float retParam = 0.f;
@@ -813,7 +811,7 @@ float parser_get_opt_param_float(struct swift_params *params,
   parser_set_param(params, str);
 
   /* Set parameter as used */
-  params->data[params->paramCount-1].used = 1;
+  params->data[params->paramCount - 1].used = 1;
 
   return def;
 }
@@ -856,7 +854,7 @@ double parser_get_opt_param_double(struct swift_params *params,
   parser_set_param(params, str);
 
   /* Set parameter as used */
-  params->data[params->paramCount-1].used = 1;
+  params->data[params->paramCount - 1].used = 1;
 
   return def;
 }
@@ -869,9 +867,8 @@ double parser_get_opt_param_double(struct swift_params *params,
  * @param def Default value of the parameter of not found.
  * @param retParam (return) Value of the parameter found
  */
-void parser_get_opt_param_string(struct swift_params *params,
-                                 const char *name, char *retParam,
-                                 const char *def) {
+void parser_get_opt_param_string(struct swift_params *params, const char *name,
+                                 char *retParam, const char *def) {
 
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
@@ -961,11 +958,14 @@ void parser_get_opt_param_string(struct swift_params *params,
  * @param values Values of the parameter found, of size at least nvals.
  * @return whether the parameter has been found.
  */
-PARSER_GET_ARRAY(char, " %c%s ", "int");
+PARSER_GET_ARRAY(char, "%c", "int");
 
 /**
  * @brief Retrieve int array parameter from structure.
  *
+ * If optional is used then the values array should be set to
+ * any default values on entry. These will be saved and returned.
+ *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
  * @param required whether it is an error if the parameter has not been set
@@ -973,22 +973,13 @@ PARSER_GET_ARRAY(char, " %c%s ", "int");
  * @param values Values of the parameter found, of size at least nvals.
  * @return whether the parameter has been found.
  */
-PARSER_GET_ARRAY(int, " %d%s ", "int");
+PARSER_GET_ARRAY(int, "%d", "int");
 
 /**
  * @brief Retrieve float array parameter from structure.
  *
- * @param params Structure that holds the parameters
- * @param name Name of the parameter to be found
- * @param required whether it is an error if the parameter has not been set
- * @param nval number of values expected.
- * @param values Values of the parameter found, of size at least nvals.
- * @return whether the parameter has been found.
- */
-PARSER_GET_ARRAY(float, " %f%s ", "float");
-
-/**
- * @brief Retrieve double array parameter from structure.
+ * If optional is used then the values array should be set to
+ * any default values. These will be saved.
  *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
@@ -997,10 +988,30 @@ PARSER_GET_ARRAY(float, " %f%s ", "float");
  * @param values Values of the parameter found, of size at least nvals.
  * @return whether the parameter has been found.
  */
-PARSER_GET_ARRAY(double, " %lf%s ", "double");
+PARSER_GET_ARRAY(float, "%f", "float");
+
+/**
+ * @brief Retrieve double array parameter from structure.
+ *
+ * If optional is used then the values array should be set to
+ * any default values on entry. These will be saved and returned.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param required whether it is an error if the parameter has not been set
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals.
+ * @return whether the parameter has been found.
+ */
+PARSER_GET_ARRAY(double, "%lf", "double");
 
 /**
  * @brief Retrieve string array parameter from structure.
+ *
+ * If optional is used then the values array should be set to
+ * any default values on entry and nval to the number of values.
+ * These will be saved as the current value for this parameter,
+ * and returned unchanged.
  *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
