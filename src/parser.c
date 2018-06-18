@@ -551,8 +551,8 @@ PARSER_GET_VALUE(float, "%f", "float");
 PARSER_GET_VALUE(double, "%lf", "double");
 PARSER_SAVE_VALUE(char, char, "%c");
 PARSER_SAVE_VALUE(int, int, "%d");
-PARSER_SAVE_VALUE(float, float, "%f");
-PARSER_SAVE_VALUE(double, double, "%lf");
+PARSER_SAVE_VALUE(float, float, "%g");
+PARSER_SAVE_VALUE(double, double, "%g");
 PARSER_SAVE_VALUE(string, const char *, "%s");
 
 /**
@@ -798,8 +798,8 @@ PARSER_GET_ARRAY(float, "%f", "float");
 PARSER_GET_ARRAY(double, "%lf", "double");
 PARSER_SAVE_ARRAY(char, "%c");
 PARSER_SAVE_ARRAY(int, "%d");
-PARSER_SAVE_ARRAY(float, "%f");
-PARSER_SAVE_ARRAY(double, "%lf");
+PARSER_SAVE_ARRAY(float, "%g");
+PARSER_SAVE_ARRAY(double, "%g");
 
 /**
  * @brief Retrieve char array parameter from structure.
