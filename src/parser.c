@@ -34,6 +34,7 @@
 #include "common_io.h"
 #include "error.h"
 #include "restart.h"
+#include "tools.h"
 
 #define PARSER_COMMENT_STRING "#"
 #define PARSER_COMMENT_CHAR '#'
@@ -56,43 +57,6 @@ static void find_duplicate_params(const struct swift_params *params,
 static void find_duplicate_section(const struct swift_params *params,
                                    const char *section_name);
 static int lineNumber = 0;
-
-/**
- * @brief trim leading white space from a string.
- *
- * @param s the string.
- * @result the result.
- */
-static char *trim_leading(char *s) {
-  if (s == NULL || strlen(s) < 2) return s;
-  while (isspace(*s)) s++;
-  return s;
-}
-
-/**
- * @brief trim trailing white space from a string.
- *
- * @param s the string.
- * @result the result.
- */
-static char *trim_trailing(char *s) {
-  if (s == NULL || strlen(s) < 2) return s;
-  char *end = s + strlen(s) - 1;
-  while (isspace(*end)) end--;
-  *(end + 1) = '\0';
-  return s;
-}
-
-/**
- * @brief trim leading and trailing white space from a string.
- *
- * @param s the string.
- * @result the result.
- */
-static char *trim_both(char *s) {
-  if (s == NULL || strlen(s) < 2) return s;
-  return trim_trailing(trim_leading(s));
-}
 
 /**
  * @brief parse a YAML list of strings returning a set of pointers to
