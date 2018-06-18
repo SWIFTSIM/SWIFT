@@ -239,10 +239,21 @@ void parser_set_param(struct swift_params *params, const char *namevalue) {
     }
   }
   if (!updated) {
-    strcpy(params->section[params->sectionCount].name, section);
-    params->sectionCount++;
-    if (params->sectionCount == PARSER_MAX_NO_OF_SECTIONS)
-      error("Too many sections, current maximum is %d.", params->sectionCount);
+    /* Is this a new section? */
+    int newsection = 1;
+    for (int i = 0; i < params->sectionCount; i++) {
+      if (strcmp(section, params->section[i].name) == 0) {
+        newsection = 0;
+        break;
+      }
+    }
+    if (newsection) {
+      strcpy(params->section[params->sectionCount].name, section);
+      params->sectionCount++;
+      if (params->sectionCount == PARSER_MAX_NO_OF_SECTIONS)
+        error("Too many sections, current maximum is %d.",
+              params->sectionCount);
+    }
 
     strcpy(params->data[params->paramCount].name, name);
     strcpy(params->data[params->paramCount].value, value);
@@ -535,13 +546,13 @@ static void parse_section_param(char *line, int *isFirstParam,
   }
 
 // Set a parameter to a value and save for dumping.
-#define PARSER_SAVE_VALUE(PREFIX, TYPE, FMT)                       \
-  static void save_param_##PREFIX(struct swift_params *params,     \
-                                  const char *name, TYPE value) {  \
-      char str[PARSER_MAX_LINE_SIZE];                              \
-      sprintf(str, "%s: " FMT, name, value);                       \
-      parser_set_param(params, str);                               \
-      params->data[params->paramCount - 1].used = 1;               \
+#define PARSER_SAVE_VALUE(PREFIX, TYPE, FMT)                      \
+  static void save_param_##PREFIX(struct swift_params *params,    \
+                                  const char *name, TYPE value) { \
+    char str[PARSER_MAX_LINE_SIZE];                               \
+    sprintf(str, "%s: " FMT, name, value);                        \
+    parser_set_param(params, str);                                \
+    params->data[params->paramCount - 1].used = 1;                \
   }
 
 /* Instantiations. */
