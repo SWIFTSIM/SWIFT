@@ -1097,51 +1097,69 @@ void parser_print_params(const struct swift_params *params) {
 void parser_write_params_to_file(const struct swift_params *params,
                                  const char *file_name, int write_used) {
   FILE *file = fopen(file_name, "w");
-  char section[PARSER_MAX_LINE_SIZE] = {0};
   char param_name[PARSER_MAX_LINE_SIZE] = {0};
+  char section[PARSER_MAX_LINE_SIZE] = {0};
   char *token;
 
   /* Start of file identifier in YAML. */
   fprintf(file, "%s\n", PARSER_START_OF_FILE);
 
-  for (int i = 0; i < params->paramCount; i++) {
-    if (write_used && !params->data[i].used) {
-#ifdef SWIFT_DEBUG_CHECKS
-      message("Parameter `%s` was not used. "
-              "Only the parameter used are written.",
-              params->data[i].name);
-#endif
-      continue;
-    }
-    else if (!write_used && params->data[i].used)
-      continue;
-    /* Check that the parameter name contains a section name. */
-    if (strchr(params->data[i].name, PARSER_VALUE_CHAR)) {
-      /* Copy the parameter name into a temporary string and find the section
-       * name. */
-      strcpy(param_name, params->data[i].name);
-      token = strtok(param_name, PARSER_VALUE_STRING);
+  /* Flags to track which parameters are written. */
+  int *written = (int *)calloc(params->paramCount, sizeof(int));
+  int nwritten = 0;
 
-      /* If a new section name is found print it to the file. */
-      if (strcmp(token, section)) {
-        strcpy(section, token);
-        fprintf(file, "\n%s%c\n", section, PARSER_VALUE_CHAR);
+  /* Loop over all sections. These are not contiguous when storing optional
+   * values. */
+  for (int k = 0; k < params->sectionCount; k++) {
+    int first = 1;
+
+    /* Locate parameters in this section. */
+    for (int i = 0; i < params->paramCount; i++) {
+      if (!written[i] && ((write_used && params->data[i].used) ||
+                          (!write_used && !params->data[i].used))) {
+
+        /* Find section part of name, if have one. */
+        if (strchr(params->data[i].name, PARSER_VALUE_CHAR)) {
+          strcpy(param_name, params->data[i].name);
+          token = strtok(param_name, PARSER_VALUE_STRING);
+          strcpy(section, token);
+          strcat(section, PARSER_VALUE_STRING);
+
+          /* If in our section name print it to the file. */
+          if (strcmp(section, params->section[k].name) == 0) {
+            if (first) {
+              fprintf(file, "\n%s\n", section);
+              first = 0;
+            }
+
+            /* Remove white space from parameter name and write it to the
+             * file. */
+            token = trim_both(strtok(NULL, "#\n"));
+            fprintf(file, "  %s%c %s\n", token, PARSER_VALUE_CHAR,
+                    params->data[i].value);
+            written[i] = 1;
+            nwritten++;
+          }
+        }
       }
+    }
+  }
 
-      /* Remove white space from parameter name and write it to the file. */
-      token = trim_both(strtok(NULL, "#\n"));
-
-      fprintf(file, "  %s%c %s\n", token, PARSER_VALUE_CHAR,
-              params->data[i].value);
-    } else {
-      fprintf(file, "\n%s%c %s\n", params->data[i].name, PARSER_VALUE_CHAR,
-              params->data[i].value);
+  /* Write out any parameters outside of sections. */
+  if (nwritten < params->paramCount) {
+    for (int i = 0; i < params->paramCount; i++) {
+      if (!written[i] && ((write_used && params->data[i].used) ||
+                          (!write_used && !params->data[i].used))) {
+        fprintf(file, "\n%s%c %s\n", params->data[i].name, PARSER_VALUE_CHAR,
+                params->data[i].value);
+      }
     }
   }
 
   /* End of file identifier in YAML. */
   fprintf(file, "%s\n", PARSER_END_OF_FILE);
 
+  free(written);
   fclose(file);
 }
 
