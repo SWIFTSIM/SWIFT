@@ -88,6 +88,11 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
+/* Choke on FPEs */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
+  
   /* Initialise a few things to get us going */
   struct engine e;
   e.max_active_bin = num_time_bins;
@@ -95,16 +100,17 @@ int main(int argc, char *argv[]) {
   e.ti_current = 8;
   e.time_base = 1e-10;
 
-  struct space s;
-  s.periodic = 0;
-  s.width[0] = 0.2;
-  s.width[1] = 0.2;
-  s.width[2] = 0.2;
-  e.s = &s;
+  struct pm_mesh mesh;
+  mesh.periodic = 0;
+  mesh.dim[0] = 10.;
+  mesh.dim[1] = 10.;
+  mesh.dim[2] = 10.;
+  mesh.r_s_inv = 0.;
+  mesh.r_cut_min = 0.;
+  e.mesh = &mesh;
 
   struct gravity_props props;
   props.a_smooth = 1.25;
-  props.r_cut_min = 0.;
   props.theta_crit2 = 0.;
   props.epsilon_cur = eps;
   e.gravity_properties = &props;
@@ -113,7 +119,7 @@ int main(int argc, char *argv[]) {
   bzero(&r, sizeof(struct runner));
   r.e = &e;
 
-  const double rlr = props.a_smooth * s.width[0] * FLT_MAX;
+  const double rlr = FLT_MAX;
 
   /* Init the cache for gravity interaction */
   gravity_cache_init(&r.ci_gravity_cache, num_tests);
@@ -206,7 +212,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Now compute the forces */
-  runner_dopair_grav_pp(&r, &ci, &cj);
+  runner_dopair_grav_pp(&r, &ci, &cj, 1);
 
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {
@@ -248,7 +254,7 @@ int main(int argc, char *argv[]) {
   ci.multipole->m_pole.M_000 = 1.;
 
   /* Now compute the forces */
-  runner_dopair_grav_pp(&r, &ci, &cj);
+  runner_dopair_grav_pp(&r, &ci, &cj, 1);
 
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {
@@ -323,7 +329,7 @@ int main(int argc, char *argv[]) {
   gravity_multipole_print(&ci.multipole->m_pole);
 
   /* Compute the forces */
-  runner_dopair_grav_pp(&r, &ci, &cj);
+  runner_dopair_grav_pp(&r, &ci, &cj, 1);
 
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {

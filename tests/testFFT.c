@@ -20,7 +20,7 @@
 /* Some standard headers. */
 #include "../config.h"
 
-#ifndef HAVE_FFTW
+#ifndef HAVE_FFTW2
 
 int main(int argc, char *argv[]) { return 0; }
 

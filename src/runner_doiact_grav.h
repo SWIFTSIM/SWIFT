@@ -692,11 +692,11 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
 
   /* Fill the caches */
   gravity_cache_populate(e->max_active_bin, periodic, dim, ci_cache, ci->gparts,
-                         gcount_i, gcount_padded_i, shift_i, CoM_j,
-                         rmax2_j, ci, e->gravity_properties);
+                         gcount_i, gcount_padded_i, shift_i, CoM_j, rmax2_j, ci,
+                         e->gravity_properties);
   gravity_cache_populate(e->max_active_bin, periodic, dim, cj_cache, cj->gparts,
-                         gcount_j, gcount_padded_j, shift_j, CoM_i,
-                         rmax2_i, cj, e->gravity_properties);
+                         gcount_j, gcount_padded_j, shift_j, CoM_i, rmax2_i, cj,
+                         e->gravity_properties);
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
