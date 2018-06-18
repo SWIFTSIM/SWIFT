@@ -114,9 +114,7 @@ Restarts:
 DomainDecomposition:
   initial_type:     simple_metis # (Optional) The initial decomposition strategy: "grid",
                                  #            "simple_metis", "weighted_metis", or "vectorized".
-  initial_grid_x:   10      # (Optional) Grid size if the "grid" strategy is chosen.
-  initial_grid_y:   10      # ""
-  initial_grid_z:   10      # ""
+  initial_grid: [10,10,10] # (Optional) Grid sizes if the "grid" strategy is chosen.
 
   repartition_type: costs/costs # (Optional) The re-decomposition strategy, one of:
                             # "none/none", "costs/costs", "counts/none", "none/costs", "counts/costs",
