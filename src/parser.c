@@ -197,12 +197,19 @@ void parser_set_param(struct swift_params *params, const char *namevalue) {
   /* Get the various parts. */
   char name[PARSER_MAX_LINE_SIZE];
   char value[PARSER_MAX_LINE_SIZE];
+  char section[PARSER_MAX_LINE_SIZE];
   name[0] = '\0';
   value[0] = '\0';
 
   /* Name is part until second colon. */
   const char *p1 = strchr(namevalue, ':');
   if (p1 != NULL) {
+
+    /* Section is first part until a colon. */
+    memcpy(section, namevalue, p1 - namevalue);
+    section[p1 - namevalue] = ':';
+    section[p1 - namevalue + 1] = '\0';
+
     const char *p2 = strchr(p1 + 1, ':');
     if (p2 != NULL) {
       memcpy(name, namevalue, p2 - namevalue);
@@ -232,6 +239,11 @@ void parser_set_param(struct swift_params *params, const char *namevalue) {
     }
   }
   if (!updated) {
+    strcpy(params->section[params->sectionCount].name, section);
+    params->sectionCount++;
+    if (params->sectionCount == PARSER_MAX_NO_OF_SECTIONS)
+      error("Too many sections, current maximum is %d.", params->sectionCount);
+
     strcpy(params->data[params->paramCount].name, name);
     strcpy(params->data[params->paramCount].value, value);
     params->data[params->paramCount].used = 0;

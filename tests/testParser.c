@@ -52,6 +52,13 @@ int main(int argc, char *argv[]) {
   const int optional =
       parser_get_opt_param_int(&param_file, "Simulation:optional", 1);
 
+  /* Optional things not mentioned in parameter file. Should be in output
+   * files.*/
+  parser_get_opt_param_int(&param_file, "Virtual:param1", 1);
+  parser_get_opt_param_int(&param_file, "Virtual:param2", 2);
+  parser_get_opt_param_int(&param_file, "Virtual:param3", 3);
+  parser_get_opt_param_int(&param_file, "Virtual:param4", 4);
+
   char ic_file[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(&param_file, "IO:ic_file", ic_file);
 
