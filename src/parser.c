@@ -889,170 +889,336 @@ void parser_get_opt_param_string(struct swift_params *params, const char *name,
   parser_set_param(params, str);
 
   /* Set parameter as used */
-  params->data[params->paramCount-1].used = 1;
+  params->data[params->paramCount - 1].used = 1;
 
   strcpy(retParam, def);
 }
 
 /* Macro defining functions that get primitive types as simple one-line YAML
  * arrays, that is SEC: [v1,v2,v3...] format. TYPE is the data type, float
- * etc. FMT a format to parse a single value with the possibility of
- * extraneous characters after the value, so " %f%s " for a float (spaces can
- * be eaten so safest to have one at beginning and end) and DESC the type
- * description i.e. "float".
+ * etc. FMT a format to parse a single value, so "%f" for a float and DESC the
+ * type description i.e. "float".
  */
-#define PARSER_GET_ARRAY(TYPE, FMT, DESC)                               \
-  int parser_get_param_##TYPE##_array(const struct swift_params *params,\
-                                   const char *name, int required,      \
-                                   int nval, TYPE *values) {            \
-    char str[PARSER_MAX_LINE_SIZE];                                     \
-    char cpy[PARSER_MAX_LINE_SIZE];                                     \
-                                                                        \
-    for (int i = 0; i < params->paramCount; i++) {                      \
-      if (!strcmp(name, params->data[i].name)) {                        \
-        char *cp = cpy;                                                 \
-        strcpy(cp, params->data[i].value);                              \
-        cp = trim_both(cp);                                             \
-                                                                        \
-        /* Strip off []. */                                             \
-        if (cp[0] != '[')                                               \
-          error("Array '%s' does not start with '['", name);            \
-        cp++;                                                           \
-        int l = strlen(cp);                                             \
-        if (cp[l-1] != ']')                                             \
-          error("Array '%s' does not end with ']'", name);              \
-        cp[l-1] = '\0';                                                 \
-        cp = trim_both(cp);                                             \
-                                                                        \
-        /* Parse out values which should now be "v, v, v" with          \
-         * internal     whitespace variations. */                       \
-        char *p = strtok(cp, ",");                                      \
-        for (int k = 0; k < nval; k++) {                                \
-          if (p != NULL) {                                              \
-            if (sscanf(p, FMT, &values[k], str) != 1) {                 \
-              error("Tried parsing " DESC " '%s' but found '%s' with "  \
-                    "illegal " DESC " characters '%s'.", name, p, str); \
-            }                                                           \
-          } else {                                                      \
-            error("Array '%s' with value '%s' has too few values, "     \
-                  "expected %d", name, params->data[i].value, nval);    \
-          }                                                             \
-          if (k < nval - 1) p = strtok(NULL, ",");                      \
-        }                                                               \
-        return 1;                                                       \
-      }                                                                 \
-    }                                                                   \
-    if (required)                                                       \
-      error("Cannot find '%s' in the structure, in file '%s'.", name,   \
-            params->fileName);                                          \
-    return 0;                                                           \
+#define PARSER_GET_ARRAY(TYPE, FMT, DESC)                                      \
+  static int get_param_##TYPE##_array(struct swift_params *params,             \
+                                      const char *name, int required,          \
+                                      int nval, TYPE *values) {                \
+    char str[PARSER_MAX_LINE_SIZE];                                            \
+    char cpy[PARSER_MAX_LINE_SIZE];                                            \
+                                                                               \
+    for (int i = 0; i < params->paramCount; i++) {                             \
+      if (!strcmp(name, params->data[i].name)) {                               \
+        char *cp = cpy;                                                        \
+        strcpy(cp, params->data[i].value);                                     \
+        cp = trim_both(cp);                                                    \
+                                                                               \
+        /* Strip off []. */                                                    \
+        if (cp[0] != '[') error("Array '%s' does not start with '['", name);   \
+        cp++;                                                                  \
+        int l = strlen(cp);                                                    \
+        if (cp[l - 1] != ']') error("Array '%s' does not end with ']'", name); \
+        cp[l - 1] = '\0';                                                      \
+        cp = trim_both(cp);                                                    \
+                                                                               \
+        /* Format that captures spaces and trailing junk. */                   \
+        char fmt[20];                                                          \
+        sprintf(fmt, " %s%%s ", FMT);                                          \
+                                                                               \
+        /* Parse out values which should now be "v, v, v" with                 \
+         * internal     whitespace variations. */                              \
+        char *p = strtok(cp, ",");                                             \
+        for (int k = 0; k < nval; k++) {                                       \
+          if (p != NULL) {                                                     \
+            if (sscanf(p, fmt, &values[k], str) != 1) {                        \
+              error("Tried parsing " DESC                                      \
+                    " '%s' but found '%s' with "                               \
+                    "illegal " DESC " characters '%s'.",                       \
+                    name, p, str);                                             \
+            }                                                                  \
+          } else {                                                             \
+            error(                                                             \
+                "Array '%s' with value '%s' has too few values, "              \
+                "expected %d",                                                 \
+                name, params->data[i].value, nval);                            \
+          }                                                                    \
+          if (k < nval - 1) p = strtok(NULL, ",");                             \
+        }                                                                      \
+        params->data[i].used = 1;                                              \
+        return 1;                                                              \
+      }                                                                        \
+    }                                                                          \
+    if (required)                                                              \
+      error("Cannot find '%s' in the structure, in file '%s'.", name,          \
+            params->fileName);                                                 \
+    return 0;                                                                  \
   }
 
+// Set values of a default parameter so they will be saved correctly.
+#define PARSER_SAVE_ARRAY(TYPE, FMT)                                           \
+  static int save_param_##TYPE##_array(                                        \
+      struct swift_params *params, const char *name, int nval, TYPE *values) { \
+    /* Save values against the parameter. */                                   \
+    char str[PARSER_MAX_LINE_SIZE];                                            \
+    int k = sprintf(str, "%s: [", name);                                       \
+    for (int i = 0; i < nval - 1; i++)                                         \
+      k += sprintf(&str[k], FMT ", ", values[i]);                              \
+    sprintf(&str[k], FMT "]", values[nval - 1]);                               \
+    parser_set_param(params, str);                                             \
+    params->data[params->paramCount - 1].used = 1;                             \
+    return 0;                                                                  \
+  }
+
+/* Instantiations. */
+PARSER_GET_ARRAY(char, "%c", "char");
+PARSER_GET_ARRAY(int, "%d", "int");
+PARSER_GET_ARRAY(float, "%f", "float");
+PARSER_GET_ARRAY(double, "%lf", "double");
+PARSER_SAVE_ARRAY(char, "%c");
+PARSER_SAVE_ARRAY(int, "%d");
+PARSER_SAVE_ARRAY(float, "%f");
+PARSER_SAVE_ARRAY(double, "%lf");
+
 /**
- * @brief Retrieve int char parameter from structure.
+ * @brief Retrieve char array parameter from structure.
  *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
- * @param required whether it is an error if the parameter has not been set
  * @param nval number of values expected.
  * @param values Values of the parameter found, of size at least nvals.
+ */
+void parser_get_param_char_array(struct swift_params *params, const char *name,
+                                 int nval, char *values) {
+  get_param_char_array(params, name, 1, nval, values);
+}
+
+/**
+ * @brief Retrieve optional char array parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals. If the
+ *               parameter is not found these values will be returned
+ *               unmodified, so should be set to the default values.
  * @return whether the parameter has been found.
  */
-PARSER_GET_ARRAY(char, "%c", "int");
+int parser_get_opt_param_char_array(struct swift_params *params,
+                                    const char *name, int nval, char *values) {
+  if (get_param_char_array(params, name, 0, nval, values) != 1) {
+    save_param_char_array(params, name, nval, values);
+    return 0;
+  }
+  return 1;
+}
 
 /**
  * @brief Retrieve int array parameter from structure.
  *
- * If optional is used then the values array should be set to
- * any default values on entry. These will be saved and returned.
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals.
+ */
+void parser_get_param_int_array(struct swift_params *params, const char *name,
+                                int nval, int *values) {
+  get_param_int_array(params, name, 1, nval, values);
+}
+
+/**
+ * @brief Retrieve optional int array parameter from structure.
  *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
- * @param required whether it is an error if the parameter has not been set
  * @param nval number of values expected.
- * @param values Values of the parameter found, of size at least nvals.
+ * @param values Values of the parameter found, of size at least nvals. If the
+ *               parameter is not found these values will be returned
+ *               unmodified, so should be set to the default values.
  * @return whether the parameter has been found.
  */
-PARSER_GET_ARRAY(int, "%d", "int");
+int parser_get_opt_param_int_array(struct swift_params *params,
+                                   const char *name, int nval, int *values) {
+  if (get_param_int_array(params, name, 0, nval, values) != 1) {
+    save_param_int_array(params, name, nval, values);
+    return 0;
+  }
+  return 1;
+}
 
 /**
  * @brief Retrieve float array parameter from structure.
  *
- * If optional is used then the values array should be set to
- * any default values. These will be saved.
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals.
+ */
+void parser_get_param_float_array(struct swift_params *params, const char *name,
+                                  int nval, float *values) {
+  get_param_float_array(params, name, 1, nval, values);
+}
+
+/**
+ * @brief Retrieve optional float array parameter from structure.
  *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
- * @param required whether it is an error if the parameter has not been set
  * @param nval number of values expected.
- * @param values Values of the parameter found, of size at least nvals.
+ * @param values Values of the parameter found, of size at least nvals. If the
+ *               parameter is not found these values will be returned
+ *               unmodified, so should be set to the default values.
  * @return whether the parameter has been found.
  */
-PARSER_GET_ARRAY(float, "%f", "float");
+int parser_get_opt_param_float_array(struct swift_params *params,
+                                     const char *name, int nval,
+                                     float *values) {
+  if (get_param_float_array(params, name, 0, nval, values) != 1) {
+    save_param_float_array(params, name, nval, values);
+    return 0;
+  }
+  return 1;
+}
 
 /**
  * @brief Retrieve double array parameter from structure.
  *
- * If optional is used then the values array should be set to
- * any default values on entry. These will be saved and returned.
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals.
+ */
+void parser_get_param_double_array(struct swift_params *params,
+                                   const char *name, int nval, double *values) {
+  get_param_double_array(params, name, 1, nval, values);
+}
+
+/**
+ * @brief Retrieve optional double array parameter from structure.
  *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
- * @param required whether it is an error if the parameter has not been set
  * @param nval number of values expected.
- * @param values Values of the parameter found, of size at least nvals.
+ * @param values Values of the parameter found, of size at least nvals. If the
+ *               parameter is not found these values will be returned
+ *               unmodified, so should be set to the default values.
  * @return whether the parameter has been found.
  */
-PARSER_GET_ARRAY(double, "%lf", "double");
+int parser_get_opt_param_double_array(struct swift_params *params,
+                                      const char *name, int nval,
+                                      double *values) {
+  if (get_param_double_array(params, name, 0, nval, values) != 1) {
+    save_param_double_array(params, name, nval, values);
+    return 0;
+  }
+  return 1;
+}
 
 /**
  * @brief Retrieve string array parameter from structure.
  *
- * If optional is used then the values array should be set to
- * any default values on entry and nval to the number of values.
- * These will be saved as the current value for this parameter,
- * and returned unchanged.
- *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
- * @param required whether it is an error if the parameter has not been set
+ * @param required whether the parameter is required or not.
  * @param nval number of values located.
  * @param values pointer to an array of [nval] pointers to the strings.
  *        Note this must be freed by a call to
- *        parser_free_param_string_array.
- * @return whether the parameter has been found.
+ *        parser_free_param_string_array when no longer required.
+ * @result whether the parameter was found or not. Note if required
+ *        an error will be thrown.
  */
-int parser_get_param_string_array(const struct swift_params *params,
-                                  const char *name, int required,
-                                  int *nval, char ***values) {
+static int get_string_array(struct swift_params *params, const char *name,
+                            int required, int *nval, char ***values) {
 
-    char cpy[PARSER_MAX_LINE_SIZE];
+  char cpy[PARSER_MAX_LINE_SIZE];
 
-    for (int i = 0; i < params->paramCount; i++) {
-      if (!strcmp(name, params->data[i].name)) {
-        char *cp = cpy;
-        strcpy(cp, params->data[i].value);
-        cp = trim_both(cp);
+  for (int i = 0; i < params->paramCount; i++) {
+    if (!strcmp(name, params->data[i].name)) {
+      char *cp = cpy;
+      strcpy(cp, params->data[i].value);
+      cp = trim_both(cp);
 
-        /* Strip off []. */
-        if (cp[0] != '[')
-          error("Array '%s' does not start with '['", name);
-        cp++;
-        int l = strlen(cp);
-        if (cp[l-1] != ']')
-          error("Array '%s' does not end with ']'", name);
-        cp[l-1] = '\0';
-        cp = trim_both(cp);
+      /* Strip off []. XXX language extension, make this optional. */
+      if (cp[0] != '[') error("Array '%s' does not start with '['", name);
+      cp++;
+      int l = strlen(cp);
+      if (cp[l - 1] != ']') error("Array '%s' does not end with ']'", name);
+      cp[l - 1] = '\0';
+      cp = trim_both(cp);
 
-        *nval = parse_quoted_strings(cp, values);
+      *nval = parse_quoted_strings(cp, values);
 
-        return 1;
-      }
+      params->data[i].used = 1;
+      return 1;
     }
-    if (required)
-      error("Cannot find '%s' in the structure, in file '%s'.", name,
-            params->fileName);
-    return 0;
+  }
+  if (required)
+    error("Cannot find '%s' in the structure, in file '%s'.", name,
+          params->fileName);
+  return 0;
+}
+
+/**
+ * @brief Retrieve string array parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param nval number of values located.
+ * @param values pointer to an array of [nval] pointers to the strings.
+ *        Note this must be freed by a call to
+ *        parser_free_param_string_array when no longer required.
+ */
+void param_get_param_string_array(struct swift_params *params, const char *name,
+                                  int *nval, char ***values) {
+  get_string_array(params, name, 1, nval, values);
+}
+
+/**
+ * @brief Retrieve optional string array parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param nval number of values located.
+ * @param values pointer to an array of [nval] pointers to the strings.
+ *        Note this must be freed by a call to
+ *        parser_free_param_string_array when no longer required.
+ * @param ndef the number of default values.
+ * @param def the default values as an array of pointers to strings.
+ *        Note copied to values if used.
+ * @result whether the parameter was found or not.
+ */
+int param_get_opt_param_string_array(struct swift_params *params,
+                                     const char *name, int *nval,
+                                     char ***values, int ndef, char *def[]) {
+  if (get_string_array(params, name, 1, nval, values) == 1) return 1;
+
+  /* Not found, so save the default values against the parameter. Look for
+   * single quotes in value and use if not found, otherwise use double
+   * quotes. We don't support having both in a string. */
+  char cpy[PARSER_MAX_LINE_SIZE];
+  int k = sprintf(cpy, "%s: [", name);
+  int i = 0;
+  for (i = 0; i < ndef - 1; i++) {
+    if (strchr(def[i], '\'') == 0)
+      k += sprintf(&cpy[k], "'%s', ", def[i]);
+    else
+      k += sprintf(&cpy[k], "\"%s\", ", def[i]);
+  }
+  if (strchr(def[i], '\'') == 0)
+    sprintf(&cpy[k], "'%s']", def[i]);
+  else
+    sprintf(&cpy[k], "\"%s\"]", def[i]);
+  parser_set_param(params, cpy);
+
+  /* Now copy to output space. */
+  char **strings;
+  strings = (char **)malloc(ndef * sizeof(char *));
+  for (int j = 0; j < ndef; j++) {
+    strings[j] = (char *)malloc((strlen(def[j]) + 1) * sizeof(char));
+    strcpy(strings[j], trim_both(def[j]));
+  }
+  *values = strings;
+
+  params->data[params->paramCount - 1].used = 1;
+  return 0;
 }
 
 /**
