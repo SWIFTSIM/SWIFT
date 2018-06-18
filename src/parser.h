@@ -100,11 +100,12 @@ int parser_get_opt_param_double_array(struct swift_params *params,
                                       const char *name, int nval,
                                       double *values);
 
-int parser_get_param_string_array(struct swift_params *params, const char *name,
-                                  int required, int *nval, char ***values);
+void parser_get_param_string_array(struct swift_params *params,
+                                   const char *name, int *nval, char ***values);
 int parser_get_opt_param_string_array(struct swift_params *params,
-                                      const char *name, int required, int *nval,
-                                      char ***values, int ndef, char *def[]);
+                                      const char *name, int *nval,
+                                      char ***values, int ndef,
+                                      const char *def[]);
 
 void parser_free_param_string_array(int nval, char **values);
 

@@ -42,6 +42,8 @@
 #define PARSER_START_OF_FILE "---"
 #define PARSER_END_OF_FILE "..."
 
+#define CHUNK 10
+
 /* Private functions. */
 static int is_empty(const char *str);
 static int count_indentation(const char *str);
@@ -117,8 +119,8 @@ static int parse_quoted_strings(const char *line, char ***result) {
 
   /* Preallocate a number of pointers. */
   char **strings;
-  strings = (char **)malloc(10 * sizeof(char *));
-  int count = 10;
+  int count = CHUNK;
+  strings = (char **)malloc(count * sizeof(char *));
 
   word[0] = '\0';
   for (unsigned int i = 0; i < strlen(line); i++) {
@@ -137,8 +139,8 @@ static int parse_quoted_strings(const char *line, char ***result) {
         /* Save word. */
         word[nchar++] = '\0';
         if (count <= nwords) {
-          count += 10;
-          strings = (char **)realloc(strings, count * sizeof(char));
+          count += CHUNK;
+          strings = (char **)realloc(strings, count * sizeof(char *));
         }
         strings[nwords] = (char *)malloc((strlen(word) + 1) * sizeof(char));
         strcpy(strings[nwords], trim_both(word));
@@ -1129,6 +1131,7 @@ static int get_string_array(struct swift_params *params, const char *name,
                             int required, int *nval, char ***values) {
 
   char cpy[PARSER_MAX_LINE_SIZE];
+  *nval = 0;
 
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
@@ -1166,8 +1169,9 @@ static int get_string_array(struct swift_params *params, const char *name,
  *        Note this must be freed by a call to
  *        parser_free_param_string_array when no longer required.
  */
-void param_get_param_string_array(struct swift_params *params, const char *name,
-                                  int *nval, char ***values) {
+void parser_get_param_string_array(struct swift_params *params,
+                                   const char *name, int *nval,
+                                   char ***values) {
   get_string_array(params, name, 1, nval, values);
 }
 
@@ -1185,10 +1189,11 @@ void param_get_param_string_array(struct swift_params *params, const char *name,
  *        Note copied to values if used.
  * @result whether the parameter was found or not.
  */
-int param_get_opt_param_string_array(struct swift_params *params,
-                                     const char *name, int *nval,
-                                     char ***values, int ndef, char *def[]) {
-  if (get_string_array(params, name, 1, nval, values) == 1) return 1;
+int parser_get_opt_param_string_array(struct swift_params *params,
+                                      const char *name, int *nval,
+                                      char ***values, int ndef,
+                                      const char *def[]) {
+  if (get_string_array(params, name, 0, nval, values) == 1) return 1;
 
   /* Not found, so save the default values against the parameter. Look for
    * single quotes in value and use if not found, otherwise use double
@@ -1213,9 +1218,10 @@ int param_get_opt_param_string_array(struct swift_params *params,
   strings = (char **)malloc(ndef * sizeof(char *));
   for (int j = 0; j < ndef; j++) {
     strings[j] = (char *)malloc((strlen(def[j]) + 1) * sizeof(char));
-    strcpy(strings[j], trim_both(def[j]));
+    strcpy(strings[j], def[j]);
   }
   *values = strings;
+  *nval = ndef;
 
   params->data[params->paramCount - 1].used = 1;
   return 0;
