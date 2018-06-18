@@ -495,6 +495,54 @@ static void parse_section_param(char *line, int *isFirstParam,
   }
 }
 
+// Retrieve parameter value from structure. TYPE is the data type, float, int
+// etc. FMT the format required for that data type, i.e. %f, %d etc. and DESC
+// a one word description of the type, "float", "int" etc.
+#define PARSER_GET_VALUE(TYPE, FMT, DESC)                                     \
+  static int get_param_##TYPE(struct swift_params *params, const char *name,  \
+                              int required, TYPE *result) {                   \
+    char str[PARSER_MAX_LINE_SIZE];                                           \
+    for (int i = 0; i < params->paramCount; i++) {                            \
+      if (strcmp(name, params->data[i].name) == 0) {                          \
+        /* Check that exactly one number is parsed, capture junk. */          \
+        if (sscanf(params->data[i].value, " " FMT "%s ", result, str) != 1) { \
+          error("Tried parsing " DESC                                         \
+                " '%s' but found '%s' with "                                  \
+                "illegal trailing characters '%s'.",                          \
+                params->data[i].name, params->data[i].value, str);            \
+        }                                                                     \
+        /* This parameter has been used */                                    \
+        params->data[i].used = 1;                                             \
+        return 1;                                                             \
+      }                                                                       \
+    }                                                                         \
+    if (required)                                                             \
+      error("Cannot find '%s' in the structure, in file '%s'.", name,         \
+            params->fileName);                                                \
+    return 0;                                                                 \
+  }
+
+// Set a parameter to a value and save for dumping.
+#define PARSER_SAVE_VALUE(PREFIX, TYPE, FMT)                       \
+  static void save_param_##PREFIX(struct swift_params *params,     \
+                                  const char *name, TYPE value) {  \
+      char str[PARSER_MAX_LINE_SIZE];                              \
+      sprintf(str, "%s: " FMT, name, value);                       \
+      parser_set_param(params, str);                               \
+      params->data[params->paramCount - 1].used = 1;               \
+  }
+
+/* Instantiations. */
+PARSER_GET_VALUE(char, "%c", "char");
+PARSER_GET_VALUE(int, "%d", "int");
+PARSER_GET_VALUE(float, "%f", "float");
+PARSER_GET_VALUE(double, "%lf", "double");
+PARSER_SAVE_VALUE(char, char, "%c");
+PARSER_SAVE_VALUE(int, int, "%d");
+PARSER_SAVE_VALUE(float, float, "%f");
+PARSER_SAVE_VALUE(double, double, "%lf");
+PARSER_SAVE_VALUE(string, const char *, "%s");
+
 /**
  * @brief Retrieve integer parameter from structure.
  *
@@ -503,30 +551,9 @@ static void parse_section_param(char *line, int *isFirstParam,
  * @return Value of the parameter found
  */
 int parser_get_param_int(struct swift_params *params, const char *name) {
-
-  char str[PARSER_MAX_LINE_SIZE];
-  int retParam = 0;
-
-  for (int i = 0; i < params->paramCount; i++) {
-    if (!strcmp(name, params->data[i].name)) {
-      /* Check that exactly one number is parsed. */
-      if (sscanf(params->data[i].value, "%d%s", &retParam, str) != 1) {
-        error(
-            "Tried parsing int '%s' but found '%s' with illegal integer "
-            "characters '%s'.",
-            params->data[i].name, params->data[i].value, str);
-      }
-
-      /* this parameter has been used */
-      params->data[i].used = 1;
-
-      return retParam;
-    }
-  }
-
-  error("Cannot find '%s' in the structure, in file '%s'.", name,
-        params->fileName);
-  return 0;
+  int result = 0;
+  get_param_int(params, name, 1, &result);
+  return result;
 }
 
 /**
@@ -537,30 +564,9 @@ int parser_get_param_int(struct swift_params *params, const char *name) {
  * @return Value of the parameter found
  */
 char parser_get_param_char(struct swift_params *params, const char *name) {
-
-  char str[PARSER_MAX_LINE_SIZE];
-  char retParam = 0;
-
-  for (int i = 0; i < params->paramCount; i++) {
-    if (!strcmp(name, params->data[i].name)) {
-      /* Check that exactly one number is parsed. */
-      if (sscanf(params->data[i].value, "%c%s", &retParam, str) != 1) {
-        error(
-            "Tried parsing char '%s' but found '%s' with illegal char "
-            "characters '%s'.",
-            params->data[i].name, params->data[i].value, str);
-      }
-
-      /* this parameter has been used */
-      params->data[i].used = 1;
-
-      return retParam;
-    }
-  }
-
-  error("Cannot find '%s' in the structure, in file '%s'.", name,
-        params->fileName);
-  return 0;
+  char result = 0;
+  get_param_char(params, name, 1, &result);
+  return result;
 }
 
 /**
@@ -571,30 +577,9 @@ char parser_get_param_char(struct swift_params *params, const char *name) {
  * @return Value of the parameter found
  */
 float parser_get_param_float(struct swift_params *params, const char *name) {
-
-  char str[PARSER_MAX_LINE_SIZE];
-  float retParam = 0.f;
-
-  for (int i = 0; i < params->paramCount; i++) {
-    if (!strcmp(name, params->data[i].name)) {
-      /* Check that exactly one number is parsed. */
-      if (sscanf(params->data[i].value, "%f%s", &retParam, str) != 1) {
-        error(
-            "Tried parsing float '%s' but found '%s' with illegal float "
-            "characters '%s'.",
-            params->data[i].name, params->data[i].value, str);
-      }
-
-      /* this parameter has been used */
-      params->data[i].used = 1;
-
-      return retParam;
-    }
-  }
-
-  error("Cannot find '%s' in the structure, in file '%s'.", name,
-        params->fileName);
-  return 0.f;
+  float result = 0;
+  get_param_float(params, name, 1, &result);
+  return result;
 }
 
 /**
@@ -605,30 +590,9 @@ float parser_get_param_float(struct swift_params *params, const char *name) {
  * @return Value of the parameter found
  */
 double parser_get_param_double(struct swift_params *params, const char *name) {
-
-  char str[PARSER_MAX_LINE_SIZE];
-  double retParam = 0.;
-
-  for (int i = 0; i < params->paramCount; i++) {
-    if (!strcmp(name, params->data[i].name)) {
-      /* Check that exactly one number is parsed. */
-      if (sscanf(params->data[i].value, "%lf%s", &retParam, str) != 1) {
-        error(
-            "Tried parsing double '%s' but found '%s' with illegal double "
-            "characters '%s'.",
-            params->data[i].name, params->data[i].value, str);
-      }
-
-      /* this parameter has been used */
-      params->data[i].used = 1;
-
-      return retParam;
-    }
-  }
-
-  error("Cannot find '%s' in the structure, in file '%s'.", name,
-        params->fileName);
-  return 0.;
+  double result = 0;
+  get_param_double(params, name, 1, &result);
+  return result;
 }
 
 /**
@@ -663,36 +627,9 @@ void parser_get_param_string(struct swift_params *params, const char *name,
  */
 int parser_get_opt_param_int(struct swift_params *params, const char *name,
                              int def) {
-
-  char str[PARSER_MAX_LINE_SIZE];
-  int retParam = 0;
-
-  for (int i = 0; i < params->paramCount; i++) {
-    if (!strcmp(name, params->data[i].name)) {
-      /* Check that exactly one number is parsed. */
-      if (sscanf(params->data[i].value, "%d%s", &retParam, str) != 1) {
-        error(
-            "Tried parsing int '%s' but found '%s' with illegal integer "
-            "characters '%s'.",
-            params->data[i].name, params->data[i].value, str);
-      }
-
-      /* this parameter has been used */
-      params->data[i].used = 1;
-
-      return retParam;
-    }
-  }
-
-  /* Generate string for new parameter */
-  sprintf(str, "%s: %i", name, def);
-
-  /* Add it to params */
-  parser_set_param(params, str);
-
-  /* Set parameter as used */
-  params->data[params->paramCount - 1].used = 1;
-
+  int result = 0;
+  if (get_param_int(params, name, 0, &result)) return result;
+  save_param_int(params, name, def);
   return def;
 }
 
@@ -706,36 +643,9 @@ int parser_get_opt_param_int(struct swift_params *params, const char *name,
  */
 char parser_get_opt_param_char(struct swift_params *params, const char *name,
                                char def) {
-
-  char str[PARSER_MAX_LINE_SIZE];
-  char retParam = 0;
-
-  for (int i = 0; i < params->paramCount; i++) {
-    if (!strcmp(name, params->data[i].name)) {
-      /* Check that exactly one number is parsed. */
-      if (sscanf(params->data[i].value, "%c%s", &retParam, str) != 1) {
-        error(
-            "Tried parsing char '%s' but found '%s' with illegal char "
-            "characters '%s'.",
-            params->data[i].name, params->data[i].value, str);
-      }
-
-      /* this parameter has been used */
-      params->data[i].used = 1;
-
-      return retParam;
-    }
-  }
-
-  /* Generate string for new parameter */
-  sprintf(str, "%s: %c", name, def);
-
-  /* Add it to params */
-  parser_set_param(params, str);
-
-  /* Set parameter as used */
-  params->data[params->paramCount - 1].used = 1;
-
+  char result = 0;
+  if (get_param_char(params, name, 0, &result)) return result;
+  save_param_char(params, name, def);
   return def;
 }
 
@@ -749,36 +659,9 @@ char parser_get_opt_param_char(struct swift_params *params, const char *name,
  */
 float parser_get_opt_param_float(struct swift_params *params, const char *name,
                                  float def) {
-
-  char str[PARSER_MAX_LINE_SIZE];
-  float retParam = 0.f;
-
-  for (int i = 0; i < params->paramCount; i++) {
-    if (!strcmp(name, params->data[i].name)) {
-      /* Check that exactly one number is parsed. */
-      if (sscanf(params->data[i].value, "%f%s", &retParam, str) != 1) {
-        error(
-            "Tried parsing float '%s' but found '%s' with illegal float "
-            "characters '%s'.",
-            params->data[i].name, params->data[i].value, str);
-      }
-
-      /* this parameter has been used */
-      params->data[i].used = 1;
-
-      return retParam;
-    }
-  }
-
-  /* Generate string for new parameter */
-  sprintf(str, "%s: %f", name, def);
-
-  /* Add it to params */
-  parser_set_param(params, str);
-
-  /* Set parameter as used */
-  params->data[params->paramCount - 1].used = 1;
-
+  float result = 0;
+  if (get_param_float(params, name, 0, &result)) return result;
+  save_param_float(params, name, def);
   return def;
 }
 
@@ -792,36 +675,9 @@ float parser_get_opt_param_float(struct swift_params *params, const char *name,
  */
 double parser_get_opt_param_double(struct swift_params *params,
                                    const char *name, double def) {
-
-  char str[PARSER_MAX_LINE_SIZE];
-  double retParam = 0.;
-
-  for (int i = 0; i < params->paramCount; i++) {
-    if (!strcmp(name, params->data[i].name)) {
-      /* Check that exactly one number is parsed. */
-      if (sscanf(params->data[i].value, "%lf%s", &retParam, str) != 1) {
-        error(
-            "Tried parsing double '%s' but found '%s' with illegal double "
-            "characters '%s'.",
-            params->data[i].name, params->data[i].value, str);
-      }
-
-      /* this parameter has been used */
-      params->data[i].used = 1;
-
-      return retParam;
-    }
-  }
-
-  /* Generate string for new parameter */
-  sprintf(str, "%s: %lf", name, def);
-
-  /* Add it to params */
-  parser_set_param(params, str);
-
-  /* Set parameter as used */
-  params->data[params->paramCount - 1].used = 1;
-
+  double result = 0;
+  if (get_param_double(params, name, 0, &result)) return result;
+  save_param_double(params, name, def);
   return def;
 }
 
@@ -842,21 +698,10 @@ void parser_get_opt_param_string(struct swift_params *params, const char *name,
 
       /* this parameter has been used */
       params->data[i].used = 1;
-
       return;
     }
   }
-
-  /* Generate string for new parameter */
-  char str[PARSER_MAX_LINE_SIZE];
-  sprintf(str, "%s: %s", name, def);
-
-  /* Add it to params */
-  parser_set_param(params, str);
-
-  /* Set parameter as used */
-  params->data[params->paramCount - 1].used = 1;
-
+  save_param_string(params, name, def);
   strcpy(retParam, def);
 }
 
