@@ -346,7 +346,9 @@ gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
                                  const float r_max2,
                                  const struct gravity_props *grav_props) {
 
+#ifdef SWIFT_DEBUG_CHECKS
   const float theta_crit2 = grav_props->theta_crit2;
+#endif
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
