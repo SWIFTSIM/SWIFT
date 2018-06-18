@@ -4758,14 +4758,6 @@ void engine_unskip(struct engine *e) {
   ProfilerStop();
 #endif  // WITH_PROFILER
 
-  /* And the top level gravity FFT one when periodicity is on.*/
-  if (e->s->periodic && (e->policy & engine_policy_self_gravity)) {
-
-    /* Only if there are other tasks (i.e. something happens on this node) */
-    if (e->sched.active_count > 0)
-      scheduler_activate(&e->sched, e->s->grav_top_level);
-  }
-
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
