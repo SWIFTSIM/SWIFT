@@ -49,7 +49,7 @@
  * Similarly for dx < -b.
  *
  */
-__attribute__((always_inline)) INLINE static double nearest(
+__attribute__((always_inline, const)) INLINE static double nearest(
     const double dx, const double box_size) {
 
   return ((dx > 0.5 * box_size)
@@ -67,7 +67,7 @@ __attribute__((always_inline)) INLINE static double nearest(
  * Similarly for dx < -b.
  *
  */
-__attribute__((always_inline)) INLINE static float nearestf(
+__attribute__((always_inline, const)) INLINE static float nearestf(
     const float dx, const float box_size) {
 
   return ((dx > 0.5f * box_size)

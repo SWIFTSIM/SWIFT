@@ -108,7 +108,7 @@
  *
  * Computes \f$x^\gamma\f$.
  */
-__attribute__((always_inline)) INLINE static float pow_gamma(float x) {
+__attribute__((always_inline, const)) INLINE static float pow_gamma(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
@@ -141,7 +141,7 @@ __attribute__((always_inline)) INLINE static float pow_gamma(float x) {
  *
  * Computes \f$x^{(\gamma-1)}\f$.
  */
-__attribute__((always_inline)) INLINE static float pow_gamma_minus_one(
+__attribute__((always_inline, const)) INLINE static float pow_gamma_minus_one(
     float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
@@ -175,8 +175,8 @@ __attribute__((always_inline)) INLINE static float pow_gamma_minus_one(
  *
  * Computes \f$x^{-(\gamma-1)}\f$.
  */
-__attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
-    float x) {
+__attribute__((always_inline, const)) INLINE static float
+pow_minus_gamma_minus_one(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
@@ -212,7 +212,8 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
  * @param x Argument
  * @return One over the argument to the power given by the adiabatic index
  */
-__attribute__((always_inline)) INLINE static float pow_minus_gamma(float x) {
+__attribute__((always_inline, const)) INLINE static float pow_minus_gamma(
+    float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
@@ -252,8 +253,8 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma(float x) {
  * @param x Argument
  * @return Argument to the power two divided by the adiabatic index minus one
  */
-__attribute__((always_inline)) INLINE static float pow_two_over_gamma_minus_one(
-    float x) {
+__attribute__((always_inline, const)) INLINE static float
+pow_two_over_gamma_minus_one(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
@@ -292,7 +293,7 @@ __attribute__((always_inline)) INLINE static float pow_two_over_gamma_minus_one(
  * @return Argument to the power two times the adiabatic index divided by the
  * adiabatic index minus one
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 pow_two_gamma_over_gamma_minus_one(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
@@ -336,7 +337,7 @@ pow_two_gamma_over_gamma_minus_one(float x) {
  * @return Argument to the power the adiabatic index minus one divided by two
  * times the adiabatic index
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 pow_gamma_minus_one_over_two_gamma(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
@@ -373,7 +374,7 @@ pow_gamma_minus_one_over_two_gamma(float x) {
  * @return Inverse argument to the power the adiabatic index plus one divided by
  * two times the adiabatic index
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 pow_minus_gamma_plus_one_over_two_gamma(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
@@ -408,7 +409,8 @@ pow_minus_gamma_plus_one_over_two_gamma(float x) {
  * @param x Argument
  * @return Argument to the power one over the adiabatic index
  */
-__attribute__((always_inline)) INLINE static float pow_one_over_gamma(float x) {
+__attribute__((always_inline, const)) INLINE static float pow_one_over_gamma(
+    float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
@@ -441,8 +443,8 @@ __attribute__((always_inline)) INLINE static float pow_one_over_gamma(float x) {
  *
  * @param x Argument
  */
-__attribute__((always_inline)) INLINE static float pow_three_gamma_minus_two(
-    float x) {
+__attribute__((always_inline, const)) INLINE static float
+pow_three_gamma_minus_two(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
@@ -476,7 +478,7 @@ __attribute__((always_inline)) INLINE static float pow_three_gamma_minus_two(
  *
  * @param x Argument
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 pow_three_gamma_minus_five_over_two(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
