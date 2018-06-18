@@ -31,7 +31,7 @@
 #include <float.h>
 #include <math.h>
 
-//#define GADGET2_LONG_RANGE_CORRECTION
+#define GADGET2_LONG_RANGE_CORRECTION
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 #define kernel_long_gravity_truncation_name "Gadget-like (using erfc())"

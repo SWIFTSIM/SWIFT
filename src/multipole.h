@@ -2396,7 +2396,7 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
  * @param r2 Square of the distance (periodically wrapped) between the
  * multipoles.
  */
-__attribute__((always_inline)) INLINE static int gravity_M2L_accept(
+__attribute__((always_inline, const)) INLINE static int gravity_M2L_accept(
     const double r_crit_a, const double r_crit_b, const double theta_crit2,
     const double r2) {
 
@@ -2421,7 +2421,7 @@ __attribute__((always_inline)) INLINE static int gravity_M2L_accept(
  * @param r2 Square of the distance (periodically wrapped) between the
  * particle and the multipole.
  */
-__attribute__((always_inline)) INLINE static int gravity_M2P_accept(
+__attribute__((always_inline, const)) INLINE static int gravity_M2P_accept(
     const float r_max2, const float theta_crit2, const float r2) {
 
   // MATTHIEU: Make this mass-dependent ?

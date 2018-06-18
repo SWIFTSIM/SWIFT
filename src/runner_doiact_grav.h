@@ -621,9 +621,11 @@ static INLINE void runner_dopair_grav_pm_truncated(
  * @param ci The first #cell.
  * @param cj The other #cell.
  * @param symmetric Are we updating both cells (1) or just ci (0) ?
+ * @param Are we allowing the use of P2M interactions ?
  */
 static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
-                                         struct cell *cj, const int symmetric) {
+                                         struct cell *cj, const int symmetric,
+                                         const int allow_mpole) {
 
   /* Recover some useful constants */
   const struct engine *e = r->e;
@@ -691,12 +693,12 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
 #endif
 
   /* Fill the caches */
-  gravity_cache_populate(e->max_active_bin, periodic, dim, ci_cache, ci->gparts,
-                         gcount_i, gcount_padded_i, shift_i, CoM_j, rmax2_j, ci,
-                         e->gravity_properties);
-  gravity_cache_populate(e->max_active_bin, periodic, dim, cj_cache, cj->gparts,
-                         gcount_j, gcount_padded_j, shift_j, CoM_i, rmax2_i, cj,
-                         e->gravity_properties);
+  gravity_cache_populate(e->max_active_bin, allow_mpole, periodic, dim,
+                         ci_cache, ci->gparts, gcount_i, gcount_padded_i,
+                         shift_i, CoM_j, rmax2_j, ci, e->gravity_properties);
+  gravity_cache_populate(e->max_active_bin, allow_mpole, periodic, dim,
+                         cj_cache, cj->gparts, gcount_j, gcount_padded_j,
+                         shift_j, CoM_i, rmax2_i, cj, e->gravity_properties);
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
@@ -712,8 +714,9 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                  cj->gparts);
 
       /* Then the M2P */
-      runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                 periodic, dim, e, ci->gparts, gcount_i, cj);
+      if (allow_mpole)
+        runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
+                                   periodic, dim, e, ci->gparts, gcount_i, cj);
     }
     if (cj_active && symmetric) {
 
@@ -723,8 +726,9 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                  ci->gparts);
 
       /* Then the M2P */
-      runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
-                                 periodic, dim, e, cj->gparts, gcount_j, ci);
+      if (allow_mpole)
+        runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
+                                   periodic, dim, e, cj->gparts, gcount_j, ci);
     }
 
   } else { /* Periodic BC */
@@ -751,9 +755,10 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                         ci->gparts, cj->gparts);
 
         /* Then the M2P */
-        runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j,
-                                        multi_j, dim, r_s_inv, e, ci->gparts,
-                                        gcount_i, cj);
+        if (allow_mpole)
+          runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j,
+                                          multi_j, dim, r_s_inv, e, ci->gparts,
+                                          gcount_i, cj);
       }
       if (cj_active && symmetric) {
 
@@ -763,9 +768,10 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                         cj->gparts, ci->gparts);
 
         /* Then the M2P */
-        runner_dopair_grav_pm_truncated(cj_cache, gcount_padded_j, CoM_i,
-                                        multi_i, dim, r_s_inv, e, cj->gparts,
-                                        gcount_j, ci);
+        if (allow_mpole)
+          runner_dopair_grav_pm_truncated(cj_cache, gcount_padded_j, CoM_i,
+                                          multi_i, dim, r_s_inv, e, cj->gparts,
+                                          gcount_j, ci);
       }
 
     } else {
@@ -781,8 +787,10 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                    ci->gparts, cj->gparts);
 
         /* Then the M2P */
-        runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                   periodic, dim, e, ci->gparts, gcount_i, cj);
+        if (allow_mpole)
+          runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
+                                     periodic, dim, e, ci->gparts, gcount_i,
+                                     cj);
       }
       if (cj_active && symmetric) {
 
@@ -792,8 +800,10 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                    cj->gparts, ci->gparts);
 
         /* Then the M2P */
-        runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
-                                   periodic, dim, e, cj->gparts, gcount_j, ci);
+        if (allow_mpole)
+          runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
+                                     periodic, dim, e, cj->gparts, gcount_j,
+                                     ci);
       }
     }
   }
@@ -1337,7 +1347,7 @@ static INLINE void runner_dopair_recursive_grav(struct runner *r,
   } else if (!ci->split && !cj->split) {
 
     /* We have two leaves. Go P-P. */
-    runner_dopair_grav_pp(r, ci, cj, 1);
+    runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 1, /*allow_mpoles*/ 0);
 
   } else {
 
@@ -1546,13 +1556,13 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Call the PM interaction fucntion on the active sub-cells of ci */
 
       // runner_dopair_recursive_grav_pm(r, ci, cj);
-      runner_dopair_grav_mm(r, ci, cj);
-      // runner_dopair_grav_pp(r, ci, cj, 0);
+      // runner_dopair_grav_mm(r, ci, cj);
+      runner_dopair_grav_pp(r, ci, cj, 0, 1);
 
     } /* We are in charge of this pair */
   }   /* Loop over top-level cells */
 
-  message("cc=%d", cc);
+  // message("cc=%d", cc);
 
   if (timer) TIMER_TOC(timer_dograv_long_range);
 }

@@ -171,6 +171,7 @@ __attribute__((always_inline)) INLINE static void gravity_cache_zero_output(
  * more expensive P2P.
  *
  * @param max_active_bin The largest active bin in the current time-step.
+ * @param allow_mpole Are we allowing the use of multipoles?
  * @param periodic Are we using periodic BCs ?
  * @param dim The size of the simulation volume along each dimension.
  * @param c The #gravity_cache to fill.
@@ -185,10 +186,11 @@ __attribute__((always_inline)) INLINE static void gravity_cache_zero_output(
  * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static void gravity_cache_populate(
-    const timebin_t max_active_bin, const int periodic, const float dim[3],
-    struct gravity_cache *c, const struct gpart *restrict gparts,
-    const int gcount, const int gcount_padded, const double shift[3],
-    const float CoM[3], const float r_max2, const struct cell *cell,
+    const timebin_t max_active_bin, const int allow_mpole, const int periodic,
+    const float dim[3], struct gravity_cache *c,
+    const struct gpart *restrict gparts, const int gcount,
+    const int gcount_padded, const double shift[3], const float CoM[3],
+    const float r_max2, const struct cell *cell,
     const struct gravity_props *grav_props) {
 
   const float theta_crit2 = grav_props->theta_crit2;
@@ -227,7 +229,7 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
     /* Check whether we can use the multipole instead of P-P */
-    use_mpole[i] = gravity_M2P_accept(r_max2, theta_crit2, r2);
+    use_mpole[i] = allow_mpole && gravity_M2P_accept(r_max2, theta_crit2, r2);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS

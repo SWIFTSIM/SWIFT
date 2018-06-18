@@ -113,7 +113,8 @@ void gravity_props_print(const struct gravity_props *p) {
 
   message("Self-gravity opening angle:  theta=%.4f", p->theta_crit);
 
-  message("Self-gravity softening: %s", kernel_gravity_softening_name);
+  message("Self-gravity softening functional form: %s",
+          kernel_gravity_softening_name);
 
   message(
       "Self-gravity comoving softening:    epsilon=%.4f (Plummer equivalent: "
