@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
 #ifdef HAVE_FE_ENABLE_EXCEPT
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
-  
+
   /* Initialise a few things to get us going */
   struct engine e;
   e.max_active_bin = num_time_bins;

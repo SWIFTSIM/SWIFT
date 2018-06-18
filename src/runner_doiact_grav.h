@@ -751,10 +751,9 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                         ci->gparts, cj->gparts);
 
         /* Then the M2P */
-        if (0)
-          runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j,
-                                          multi_j, dim, r_s_inv, e, ci->gparts,
-                                          gcount_i, cj);
+        runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j,
+                                        multi_j, dim, r_s_inv, e, ci->gparts,
+                                        gcount_i, cj);
       }
       if (cj_active && symmetric) {
 
@@ -764,10 +763,9 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                         cj->gparts, ci->gparts);
 
         /* Then the M2P */
-        if (0)
-          runner_dopair_grav_pm_truncated(cj_cache, gcount_padded_j, CoM_i,
-                                          multi_i, dim, r_s_inv, e, cj->gparts,
-                                          gcount_j, ci);
+        runner_dopair_grav_pm_truncated(cj_cache, gcount_padded_j, CoM_i,
+                                        multi_i, dim, r_s_inv, e, cj->gparts,
+                                        gcount_j, ci);
       }
 
     } else {
@@ -783,10 +781,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                    ci->gparts, cj->gparts);
 
         /* Then the M2P */
-        if (0)
-          runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                     periodic, dim, e, ci->gparts, gcount_i,
-                                     cj);
+        runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
+                                   periodic, dim, e, ci->gparts, gcount_i, cj);
       }
       if (cj_active && symmetric) {
 
@@ -796,10 +792,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
                                    cj->gparts, ci->gparts);
 
         /* Then the M2P */
-        if (0)
-          runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
-                                     periodic, dim, e, cj->gparts, gcount_j,
-                                     ci);
+        runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
+                                   periodic, dim, e, cj->gparts, gcount_j, ci);
       }
     }
   }

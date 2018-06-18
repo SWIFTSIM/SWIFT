@@ -31,7 +31,7 @@
 #include <float.h>
 #include <math.h>
 
-#define GADGET2_LONG_RANGE_CORRECTION
+//#define GADGET2_LONG_RANGE_CORRECTION
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 #define kernel_long_gravity_truncation_name "Gadget-like (using erfc())"
@@ -121,7 +121,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_derivatives(
   const float x = c1 * r;
 
   /* e^(2r / r_s) */
-  const float exp_x = good_approx_expf(x);
+  const float exp_x = expf(x);  // good_approx_expf(x);
 
   /* 1 / alpha(w) */
   const float a_inv = 1.f + exp_x;
@@ -164,7 +164,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_pot_eval(
 #else
 
   const float x = 2.f * u;
-  const float exp_x = good_approx_expf(x);
+  const float exp_x = expf(x);  // good_approx_expf(x);
   const float alpha = 1.f / (1.f + exp_x);
 
   /* We want 2 - 2 exp(x) * alpha */
@@ -197,7 +197,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_force_eval(
 #else
 
   const float x = 2.f * u;
-  const float exp_x = good_approx_expf(x);
+  const float exp_x = expf(x);  // good_approx_expf(x);
   const float alpha = 1.f / (1.f + exp_x);
 
   /* We want 2*(x*alpha - x*alpha^2 - exp(x)*alpha + 1) */
