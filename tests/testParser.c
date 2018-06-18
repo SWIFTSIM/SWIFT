@@ -76,10 +76,6 @@ int main(int argc, char *argv[]) {
   parser_get_param_string_array(&param_file, "Words:list", &nvar_result,
                                 &var_result);
 
-  /* Print the contents of the structure to stdout now used. */
-  printf("\n--- Values after being used:\n");
-  parser_print_params(&param_file);
-
   printf("\nList from Words:list parameter\n");
   for (int i = 0; i < nvar_result; i++) printf("   %d: %s\n", i, var_result[i]);
   parser_free_param_string_array(nvar_result, var_result);
@@ -111,6 +107,10 @@ int main(int argc, char *argv[]) {
   printf("The alphabet: %s\n", alphabet);
   assert(strcmp("abcdefghijklmnopqrstuvwxyz", alphabet) == 0);
   parser_free_param_string_array(nvar_result, var_result);
+
+  /* Print the contents of the structure to stdout now used. */
+  printf("\n--- Values after being used:\n");
+  parser_print_params(&param_file);
 
   /* Print the variables to check their values are correct. */
   printf(
