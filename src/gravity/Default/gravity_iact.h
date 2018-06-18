@@ -152,7 +152,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
 /* In the case where the order is < 3, then there is only a monopole term left.
  * We can default to the normal P-P interaction with the mass of the multipole
  * and its CoM as the "particle" property */
-#if 1  // SELF_GRAVITY_MULTIPOLE_ORDER < 3
+#if SELF_GRAVITY_MULTIPOLE_ORDER < 3
 
   float f_ij, pot_ij;
   runner_iact_grav_pp_full(r2, h * h, h_inv, h_inv * h_inv * h_inv, m->M_000,
@@ -176,18 +176,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
   *f_x = m->M_000 * d.D_100;
   *f_y = m->M_000 * d.D_010;
   *f_z = m->M_000 * d.D_001;
-  *pot = -m->M_000 * d.D_000;
+  *pot = m->M_000 * d.D_000;
 
   /* 3rd order terms (quadrupole) */
   *f_x += m->M_200 * d.D_300 + m->M_020 * d.D_120 + m->M_002 * d.D_102;
   *f_y += m->M_200 * d.D_210 + m->M_020 * d.D_030 + m->M_002 * d.D_012;
   *f_z += m->M_200 * d.D_201 + m->M_020 * d.D_021 + m->M_002 * d.D_003;
-  *pot -= m->M_200 * d.D_100 + m->M_020 * d.D_020 + m->M_002 * d.D_002;
+  *pot += m->M_200 * d.D_100 + m->M_020 * d.D_020 + m->M_002 * d.D_002;
 
   *f_x += m->M_110 * d.D_210 + m->M_101 * d.D_201 + m->M_011 * d.D_111;
   *f_y += m->M_110 * d.D_120 + m->M_101 * d.D_111 + m->M_011 * d.D_021;
   *f_z += m->M_110 * d.D_111 + m->M_101 * d.D_102 + m->M_011 * d.D_012;
-  *pot -= m->M_110 * d.D_110 + m->M_101 * d.D_101 + m->M_011 * d.D_011;
+  *pot += m->M_110 * d.D_110 + m->M_101 * d.D_101 + m->M_011 * d.D_011;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
@@ -195,7 +195,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
   *f_x += m->M_300 * d.D_400 + m->M_030 * d.D_130 + m->M_003 * d.D_103;
   *f_y += m->M_300 * d.D_310 + m->M_030 * d.D_040 + m->M_003 * d.D_013;
   *f_z += m->M_300 * d.D_301 + m->M_030 * d.D_031 + m->M_003 * d.D_004;
-  *pot -= m->M_300 * d.D_100 + m->M_030 * d.D_030 + m->M_003 * d.D_003;
+  *pot += m->M_300 * d.D_100 + m->M_030 * d.D_030 + m->M_003 * d.D_003;
 #endif
 
   /* Take care of the the sign convention */
@@ -235,7 +235,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
 /* In the case where the order is < 3, then there is only a monopole term left.
  * We can default to the normal P-P interaction with the mass of the multipole
  * and its CoM as the "particle" property */
-#if 1  // SELF_GRAVITY_MULTIPOLE_ORDER < 3
+#if SELF_GRAVITY_MULTIPOLE_ORDER < 3
 
   float f_ij, pot_ij;
   runner_iact_grav_pp_truncated(r2, h * h, h_inv, h_inv * h_inv * h_inv,
@@ -265,12 +265,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
   *f_x += m->M_200 * d.D_300 + m->M_020 * d.D_120 + m->M_002 * d.D_102;
   *f_y += m->M_200 * d.D_210 + m->M_020 * d.D_030 + m->M_002 * d.D_012;
   *f_z += m->M_200 * d.D_201 + m->M_020 * d.D_021 + m->M_002 * d.D_003;
-  *pot -= m->M_200 * d.D_100 + m->M_020 * d.D_020 + m->M_002 * d.D_002;
+  *pot += m->M_200 * d.D_100 + m->M_020 * d.D_020 + m->M_002 * d.D_002;
 
   *f_x += m->M_110 * d.D_210 + m->M_101 * d.D_201 + m->M_011 * d.D_111;
   *f_y += m->M_110 * d.D_120 + m->M_101 * d.D_111 + m->M_011 * d.D_021;
   *f_z += m->M_110 * d.D_111 + m->M_101 * d.D_102 + m->M_011 * d.D_012;
-  *pot -= m->M_110 * d.D_110 + m->M_101 * d.D_101 + m->M_011 * d.D_011;
+  *pot += m->M_110 * d.D_110 + m->M_101 * d.D_101 + m->M_011 * d.D_011;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
@@ -278,7 +278,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
   *f_x += m->M_300 * d.D_400 + m->M_030 * d.D_130 + m->M_003 * d.D_103;
   *f_y += m->M_300 * d.D_310 + m->M_030 * d.D_040 + m->M_003 * d.D_013;
   *f_z += m->M_300 * d.D_301 + m->M_030 * d.D_031 + m->M_003 * d.D_004;
-  *pot -= m->M_300 * d.D_100 + m->M_030 * d.D_030 + m->M_003 * d.D_003;
+  *pot += m->M_300 * d.D_100 + m->M_030 * d.D_030 + m->M_003 * d.D_003;
 #endif
 
   /* Take care of the the sign convention */

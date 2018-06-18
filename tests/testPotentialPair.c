@@ -39,10 +39,17 @@ const double eps = 0.1;
  * @param a First value
  * @param b Second value
  * @param s String used to identify this check in messages
+ * @param rel_tol Maximal relative error
+ * @param limit Minimal value to consider in the tests
  */
-void check_value(double a, double b, const char *s) {
-  if (fabs(a - b) / fabs(a + b) > 2e-6 && fabs(a - b) > 1.e-6)
+void check_value_backend(double a, double b, const char *s, double rel_tol,
+                         double limit) {
+  if (fabs(a - b) / fabs(a + b) > rel_tol && fabs(a - b) > limit)
     error("Values are inconsistent: SWIFT:%12.15e true:%12.15e (%s)!", a, b, s);
+}
+
+void check_value(double a, double b, const char *s) {
+  check_value_backend(a, b, s, 2e-6, 1e-6);
 }
 
 /* Definitions of the potential and force that match
@@ -319,14 +326,14 @@ int main(int argc, char *argv[]) {
 
   message("\n\t\t truncated P-M interactions all good\n");
 
-  /***************************************/
-  /* Test the high-order PM interactions */
-  /***************************************/
+  /************************************************/
+  /* Test the high-order periodic PM interactions */
+  /************************************************/
 
   /* Reset the accelerations */
   for (int n = 0; n < num_tests; ++n) gravity_init_gpart(&cj.gparts[n]);
 
-#if 0  // SELF_GRAVITY_MULTIPOLE_ORDER >= 3
+#if SELF_GRAVITY_MULTIPOLE_ORDER >= 3
 
   /* Let's make ci more interesting */
   free(ci.gparts);
@@ -367,8 +374,6 @@ int main(int argc, char *argv[]) {
   gravity_reset(ci.multipole);
   gravity_P2M(ci.multipole, ci.gparts, ci.gcount);
 
-  // message("CoM=[%e %e %e]", ci.multipole->CoM[0], ci.multipole->CoM[1],
-  // ci.multipole->CoM[2]);
   gravity_multipole_print(&ci.multipole->m_pole);
 
   /* Compute the forces */
@@ -377,7 +382,6 @@ int main(int argc, char *argv[]) {
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {
     const struct gpart *gp = &cj.gparts[n];
-    const struct gravity_tensors *mpole = ci.multipole;
 
     double pot_true = 0, acc_true[3] = {0., 0., 0.};
 
@@ -395,12 +399,14 @@ int main(int argc, char *argv[]) {
       acc_true[2] -= acceleration(gp2->mass, d, epsilon, rlr) * dx[2] / d;
     }
 
-    message("x=%e f=%e f_true=%e pot=%e pot_true=%e %e %e",
-            gp->x[0] - mpole->CoM[0], gp->a_grav[0], acc_true[0], gp->potential,
-            pot_true, acc_true[1], acc_true[2]);
+    /* const struct gravity_tensors *mpole = ci.multipole; */
+    /* message("x=%e f=%e f_true=%e pot=%e pot_true=%e %e %e", */
+    /*         gp->x[0] - mpole->CoM[0], gp->a_grav[0], acc_true[0],
+     * gp->potential, */
+    /*         pot_true, acc_true[1], acc_true[2]); */
 
-    // check_value(gp->potential, pot_true, "potential");
-    // check_value(gp->a_grav[0], acc_true[0], "acceleration");
+    check_value_backend(gp->potential, pot_true, "potential", 1e-2, 1e-6);
+    check_value_backend(gp->a_grav[0], acc_true[0], "acceleration", 1e-2, 1e-6);
   }
 
   message("\n\t\t high-order P-M interactions all good\n");
