@@ -47,7 +47,8 @@ int main(int argc, char *argv[]) {
       parser_get_param_double(&param_file, "Simulation:start_time");
   const int kernel = parser_get_param_int(&param_file, "kernel");
 
-  const int optional = parser_get_opt_param_int(&param_file, "Simulation:optional", 1);
+  const int optional =
+      parser_get_opt_param_int(&param_file, "Simulation:optional", 1);
 
   char ic_file[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(&param_file, "IO:ic_file", ic_file);

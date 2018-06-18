@@ -37,8 +37,7 @@
 #define gravity_props_default_r_cut_min 0.1f
 #define gravity_props_default_rebuild_frequency 0.01f
 
-void gravity_props_init(struct gravity_props *p,
-                        struct swift_params *params,
+void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct cosmology *cosmo) {
 
   /* Tree updates */

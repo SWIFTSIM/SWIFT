@@ -468,7 +468,6 @@ int main(int argc, char *argv[]) {
           "values.");
       for (int k = 0; k < nparams; k++) parser_set_param(params, cmdparams[k]);
     }
-
   }
 #ifdef WITH_MPI
   /* Broadcast the parameter file */

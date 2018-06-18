@@ -59,9 +59,10 @@ chemistry_get_element_name(enum chemistry_element elem) {
  * @param phys_const The physical constants in internal units.
  * @param data The global chemistry information (to be filled).
  */
-static INLINE void chemistry_init_backend(
-    struct swift_params* parameter_file, const struct unit_system* us,
-    const struct phys_const* phys_const, struct chemistry_global_data* data) {}
+static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
+                                          const struct unit_system* us,
+                                          const struct phys_const* phys_const,
+                                          struct chemistry_global_data* data) {}
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.

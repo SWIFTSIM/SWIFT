@@ -89,8 +89,7 @@ struct phys_const {
   double const_earth_mass;
 };
 
-void phys_const_init(const struct unit_system* us,
-                     struct swift_params* params,
+void phys_const_init(const struct unit_system* us, struct swift_params* params,
                      struct phys_const* internal_const);
 
 void phys_const_print(const struct phys_const* internal_const);
