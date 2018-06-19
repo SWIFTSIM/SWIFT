@@ -95,9 +95,7 @@ InitialConditions:
   cleanup_h_factors:           0    # (Optional) Clean up the h-factors used in the ICs (e.g. in Gadget files).
   cleanup_smoothing_lengths:   0    # (Optional) Clean the values of the smoothing lengths that are read in to remove stupid values. Set to 1 to activate.
   smoothing_length_scaling:    1.   # (Optional) A scaling factor to apply to all smoothing lengths in the ICs.
-  shift_x:    0.                    # (Optional) A shift to apply to all particles read from the ICs (in internal units).
-  shift_y:    0.
-  shift_z:    0.
+  shift:      [0.0,0.0,0.0]         # (Optional) A shift to apply to all particles read from the ICs (in internal units).
   replicate:  2                     # (Optional) Replicate all particles along each axis a given integer number of times. Default 1.
 
 # Parameters controlling restarts
@@ -145,17 +143,14 @@ EoS:
 
 # Point mass external potentials
 PointMassPotential:
-  position_x:      50.      # location of external point mass (internal units)
-  position_y:      50.
-  position_z:      50.
-  mass:            1e10     # mass of external point mass (internal units)
-  timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
+  position:        [50.,50.0,50.]      # location of external point mass (internal units)
+  mass:            1e10                # mass of external point mass (internal units)
+  timestep_mult:   0.03                # Dimensionless pre-factor for the time-step condition
+  softening:       0.05                # For point-mass-softened option
 
 # Isothermal potential parameters
 IsothermalPotential:
-  position_x:      100.     # Location of centre of isothermal potential with respect to centre of the box (internal units)
-  position_y:      100.
-  position_z:      100.
+  position:        [100.,100.,100.]    # Location of centre of isothermal potential with respect to centre of the box (internal units)
   vrot:            200.     # Rotation speed of isothermal potential (internal units)
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
   epsilon:         0.1      # Softening size (internal units)

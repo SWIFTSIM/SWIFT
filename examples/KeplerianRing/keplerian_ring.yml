@@ -32,15 +32,11 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  initial_conditions.hdf5        # The file to read
-  shift_x:    0.                   # A shift to apply to all particles read from the ICs (in internal units).
-  shift_y:    0.
-  shift_z:    0.
+  shift:      [0.,0.,0.]                     # A shift to apply to all particles read from the ICs (in internal units).
 
 # External potential parameters
 PointMassPotential:
-  position_x:      5.     # location of external point mass in internal units
-  position_y:      5.     # here just take this to be the centre of the ring
-  position_z:      5.	
-  mass:            1.498351e7     # mass of external point mass in internal units
-  timestep_mult:   0.03     # controls time step
+  position:        [5.,5.,5.]  # location of external point mass in internal units
+  mass:            1.498351e7  # mass of external point mass in internal units
+  timestep_mult:   0.03        # controls time step
   softening:       0.05
