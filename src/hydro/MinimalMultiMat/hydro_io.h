@@ -69,8 +69,8 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
-  list[8] =
-      io_make_input_field("MaterialID", INT, 1, OPTIONAL, 1, parts, mat_id);
+  list[8] = io_make_input_field("MaterialID", INT, 1, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, parts, mat_id);
 }
 
 INLINE static void convert_S(const struct engine* e, const struct part* p,
