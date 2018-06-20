@@ -64,6 +64,7 @@ at the location of $a$ can be rewritten as
   &= \sum_\mathbf{n} \frac{1}{\mathbf{n}!} \mathbf{r}_a^{\mathbf{n}}
   \sum_\mathbf{m} \frac{1}{\mathbf{m}!}
   \left(-\mathbf{r}_b\right)^\mathbf{m} \nabla^{\mathbf{n}+\mathbf{m}} \varphi(\mathbf{R}),
+  \label{eq:fmm:expansion}
 \end{align}
 where we used the Taylor expansion of $\varphi$ around $\mathbf{R} \equiv
 \mathbf{z}_A - \mathbf{z}_B$ on the third line, used $\mathbf{r}_a
@@ -162,7 +163,24 @@ read:
   \frac{\mathbf{y}^\mathbf{m}}{\mathbf{m}!}\mathsf{F}_{\mathbf{m} +
     \mathbf{n}}(\mathbf{x}). \label{eq:fmm:L2L} 
 \end{align}
-All the kernels (Eqs.~\ref{eq:fmm:P2M}-\ref{eq:fmm:L2L}) are rather
+One final, useful expression that enters some interaction between
+tree-leaves is the P2M kernel that directly applies the potential due
+to a multipole expansion to a particle without using the expansion of
+the potential $\mathsf{F}$ at the centre of mass of the cell. This
+kernel is obtained by setting $\mathbf{r}_a$ to zero in
+eq.~\ref{eq:fmm:expansion}, re-defining
+$\mathbf{R}\equiv\mathbf{x}_{\rm a} - \mathbf{z}_{\rm B}$ and
+constructing the same $\mathsf{M}$ and $\mathsf{D}$ tensor than for
+the other kernels:
+\begin{align}
+  \phi_{Ba}(\mathbf{x}_a) &= G\sum_{\mathbf{m}}^p \mathsf{M}_{\mathbf{m}} \mathsf{D}_{\mathbf{m}}(\mathbf{R}),\\
+  a_x(\mathbf{x}_a) &= G\sum_{\mathbf{m}}^p \mathsf{M}_{\mathbf{m}} \mathsf{D}_{\mathbf{m}+\left(1,0,0\right)}(\mathbf{R}).
+  \label{eq:fmm:M2P}
+\end{align}
+A traditional tree-code uses solely that kernel to obtain the forces
+from the multipoles (or often just monopoles, i.e. setting $p=0$ throughout)
+to the particles.\\
+All the kernels (Eqs.~\ref{eq:fmm:P2M}-\ref{eq:fmm:M2P}) are rather
 straightforward to evaluate as they are only made of additions and
 multiplications (provided $\mathsf{D}$ can be evaluated quickly),
 which are extremely efficient instructions on modern architectures
