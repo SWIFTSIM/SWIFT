@@ -1062,8 +1062,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     /* Get its cell index */
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
-    ind[k] = index;
-    cell_counts[index]++;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -1075,6 +1073,9 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
             pos_z);
 #endif
+
+    ind[k] = index;
+    cell_counts[index]++;
 
     /* Compute minimal mass */
     min_mass = min(min_mass, hydro_get_mass(p));
@@ -1149,8 +1150,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     /* Get its cell index */
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
-    ind[k] = index;
-    cell_counts[index]++;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -1162,6 +1161,9 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
             pos_z);
 #endif
+
+    ind[k] = index;
+    cell_counts[index]++;
 
     /* Compute minimal mass */
     if (gp->type == swift_type_dark_matter) {
@@ -1238,8 +1240,6 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     /* Get its cell index */
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
-    ind[k] = index;
-    cell_counts[index]++;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -1251,6 +1251,9 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
             pos_z);
 #endif
+
+    ind[k] = index;
+    cell_counts[index]++;
 
     /* Compute minimal mass */
     min_mass = min(min_mass, sp->mass);
