@@ -9,7 +9,7 @@
 #        yield incorrect results. 
 #
 #######################################################################
-# This script is a copy of the AGORA project (give link)
+# This script is a copy of the AGORA project (https://bitbucket.org/mornkr/agora-analysis-script/)
 # modified in order to take into account SWIFT
 import matplotlib
 matplotlib.use('Agg')
@@ -64,8 +64,8 @@ dataset_num                      = 2             # 1/2         = 1st dataset(Gra
 yt_version_pre_3_2_3             = 0             # 0/1         = NO/YES to "Is the yt version being used pre yt-dev-3.2.3?"
 times                            = [0, 500]      # in Myr
 figure_width                     = 30            # in kpc
-n_ref                            = 32            # for SPH codes
-over_refine_factor               = 1             # for SPH codes
+n_ref                            = 8            # for SPH codes
+over_refine_factor               = 2             # for SPH codes
 aperture_size_SFR_map            = 750           # in pc       = Used if draw_SFR_map = 1, 750 matches Bigiel et al. (2008)
 young_star_cutoff_SFR_map        = 20            # in Myr      = Used if draw_SFR_map = 1
 young_star_cutoff_star_radius_DF = 20            # in Myr      = Used if draw_star_radius_DF = 1
@@ -105,10 +105,15 @@ marker_names             = ['s', 'o', 'p', 'v', '^', '<', '>', 'h', '*']
 # 	      [file_location[1]+'GADGET-3/AGORA_ISO_LOW_SF_SNII_Thermal_Chevalier_SFT10/snap_iso_sf_000.hdf5', file_location[1]+'GADGET-3/AGORA_ISO_LOW_SF_SNII_Thermal_Chevalier_SFT10/snap_iso_sf_010.hdf5'],
 # 	      [file_location[1]+'GEAR/snapshot_0000', file_location[1]+'GEAR/snapshot_0500'],
 # 	      [file_location[1]+'GIZMO/snapshot_temp_000', file_location[1]+'GIZMO/snapshot_temp_100']]]
+codes = ['SWIFT', 'GEAR']
+filenames = [[["./agora_disk_0000.hdf5", "./agora_disk_0050.hdf5"],
+              ["./snapshot_0000", "./snapshot_0500"]],
+	     [["./agora_disk_0000.hdf5", "./agora_disk_0050.hdf5"],
+	      ["./snapshot_0000", "./snapshot_0500"]]]
 
-codes = ["SWIFT"]
-filenames = [[["../agora_disk_0000.hdf5", "../agora_disk_0000.hdf5"]],
-             [["../agora_disk_0000.hdf5", "../agora_disk_0000.hdf5"]]]
+# codes = ["SWIFT"]
+# filenames = [[["./agora_disk_0000.hdf5", "./agora_disk_0050.hdf5"]],
+#             [["./agora_disk_0000.hdf5", "./agora_disk_0050.hdf5"]]]
 # codes = ['ART-I']
 # filenames = [[[file_location[0]+'ART-I/IC/AGORA_Galaxy_LOW.d', file_location[0]+'ART-I/t0.5Gyr/10MpcBox_csf512_02350.d']],
 # 	     [[file_location[1]+'ART-I/IC/AGORA_Galaxy_LOW.d', file_location[1]+'ART-I/t0.5Gyr/10MpcBox_csf512_02350.d']]]
@@ -131,8 +136,8 @@ filenames = [[["../agora_disk_0000.hdf5", "../agora_disk_0000.hdf5"]],
 # filenames = [[[file_location[0]+'GADGET-3/AGORA_ISO_LOW_DRY/snap_iso_dry_000.hdf5', file_location[0]+'GADGET-3/AGORA_ISO_LOW_DRY/snap_iso_dry_010.hdf5']],
 #  	     [[file_location[1]+'GADGET-3/AGORA_ISO_LOW_SF_SNII_Thermal_Chevalier_SFT10/snap_iso_sf_000.hdf5', file_location[1]+'GADGET-3/AGORA_ISO_LOW_SF_SNII_Thermal_Chevalier_SFT10/snap_iso_sf_010.hdf5']]]
 # codes = ['GEAR']
-# filenames = [[[file_location[0]+'GEAR/snapshot_0000', file_location[0]+'GEAR/snapshot_0500']],
-#  	     [[file_location[1]+'GEAR/snapshot_0000', file_location[1]+'GEAR/snapshot_0500']]]
+# filenames = [[['snapshot_0000', 'snapshot_0500']],
+#  	     [['snapshot_0000', 'snapshot_0500']]]
 # codes = ['GIZMO']
 # filenames = [[[file_location[0]+'GIZMO/snapshot_temp_000', file_location[0]+'GIZMO/snapshot_temp_100']],
 #   	     [[file_location[1]+'GIZMO/snapshot_temp_000', file_location[1]+'GIZMO/snapshot_temp_100']]]
@@ -485,9 +490,9 @@ for time in range(len(times)):
 			PartType_StarBeforeFiltered_to_use = "PartType4"
 			MassType_to_use = "Masses"
 		elif codes[code] == "SWIFT":
-			PartType_Gas_to_use = "PartType0"				
-			PartType_Star_to_use = "PartType4"				
-			PartType_StarBeforeFiltered_to_use = "PartType4"
+			PartType_Gas_to_use = "PartType0"
+			PartType_Star_to_use = "PartType2"
+			PartType_StarBeforeFiltered_to_use = "PartType2"
 			MassType_to_use = "Masses"
 		elif codes[code] == 'RAMSES': 
 			PartType_StarBeforeFiltered_to_use = "all"
