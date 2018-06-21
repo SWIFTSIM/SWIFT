@@ -301,16 +301,12 @@ void fof_search_cell(struct space *s, struct cell *c) {
         /* If the root ID of pj is lower than pi's root ID set pi's root to point to pj's. 
          * Otherwise set pj's to root to point to pi's.*/
         if (root_j < root_i) {
-          /* TODO: May need this atomic here:
-          *  atomic_cas(&group_id[root_i], group_id[root_i], root_j); */
-          group_id[root_i] = root_j;
+          atomic_min(&group_id[root_i], root_j);
           /* Update root_i on the fly. */
           root_i = root_j;
         }
         else
-          /* TODO: May need this atomic here:
-             atomic_cas(&group_id[root_j], group_id[root_j], root_i); */
-          group_id[root_j] = root_i;
+          atomic_min(&group_id[root_j], root_i);
 
       }
     }
@@ -389,16 +385,12 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
         /* If the root ID of pj is lower than pi's root ID set pi's root to point to pj's. 
          * Otherwise set pj's to root to point to pi's.*/
         if (root_j < root_i) {
-          /* TODO: May need this atomic here:
-             atomic_cas(&group_id[root_i], group_id[root_i], root_j); */
-          group_id[root_i] = root_j;
+          atomic_min(&group_id[root_i], root_j);
           /* Update root_i on the fly. */
           root_i = root_j;
         }
         else
-          /* TODO: May need this atomic here:
-             atomic_cas(&group_id[root_j], group_id[root_j], root_i); */
-          group_id[root_j] = root_i;
+          atomic_min(&group_id[root_j], root_i);
 
       }
     }
