@@ -2344,6 +2344,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double theta_crit2 = e->gravity_properties->theta_crit2;
   struct cell *cells = s->cells_top;
+  const double max_distance = e->mesh->r_cut_max;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -2406,15 +2407,12 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           }
           const double r2 = dx * dx + dy * dy + dz * dz;
 
-          /* const int test = gravity_M2L_accept(r_max_i, multi_j->r_max,
-           * theta_crit2, r2); */
+          /* Minimal distance between any pair of particles */
+          const double min_radius =
+              sqrt(r2) - (multi_i->r_max + multi_j->r_max);
 
-          /* if(cid == 3 && cjd == 0) */
-          /*   error("cid=%d cjd=%d theta_crit2=%e r_max_i=%e r_max_j=%e, r2=%e
-           * CoM_i=[%e %e %e] CoM_j=[%e %e %e] test=%d", */
-          /* 	  cid, cjd, theta_crit2, r_max_i, multi_j->r_max, r2, CoM_i[0],
-           * CoM_i[1], CoM_i[2], */
-          /* 	  multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2], test); */
+          /* Are we beyond the distance where the truncated forces are 0 ?*/
+          if (periodic && min_radius > max_distance) continue;
 
           /* Are the cells too close for a MM interaction ? */
           if (!gravity_M2L_accept(r_max_i, multi_j->r_max, theta_crit2, r2)) {
@@ -3114,7 +3112,7 @@ void engine_maketasks(struct engine *e) {
 #else
   const int hydro_tasks_per_cell = 27 * 2;
 #endif
-  const int self_grav_tasks_per_cell = 125;
+  const int self_grav_tasks_per_cell = 1250;
   const int ext_grav_tasks_per_cell = 1;
 
   if (e->policy & engine_policy_hydro)
@@ -3689,7 +3687,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_self_gravity) {
-    n1 += 125;
+    n1 += 1250;
     n2 += 1;
 #ifdef WITH_MPI
     n2 += 2;

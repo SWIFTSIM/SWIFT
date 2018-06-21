@@ -92,7 +92,7 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
     /* Leaf case */
 
     /* We can abort early if no interactions via multipole happened */
-    // if (!c->multipole->pot.interacted) return;
+    if (!c->multipole->pot.interacted) return;
 
     if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
@@ -1586,7 +1586,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       runner_dopair_recursive_grav_pm(r, ci, cj);
       // runner_dopair_grav_mm(r, ci, cj);
-      // runner_dopair_grav_pp(r, ci, cj, 0, 1);
+      //runner_dopair_grav_pp(r, ci, cj, 0, 1);
 
     } /* We are in charge of this pair */
   }   /* Loop over top-level cells */
