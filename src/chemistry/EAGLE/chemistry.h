@@ -79,6 +79,22 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     const struct cosmology* cosmo) {}
 
 /**
+ * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ * @param cd #chemistry_global_data containing chemistry informations.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_part_has_no_neighbours(struct part* restrict p,
+                                 struct xpart* restrict xp,
+                                 const struct chemistry_global_data* cd,
+                                 const struct cosmology* cosmo) {
+  error("Needs implementing!");
+}
+
+/**
  * @brief Sets the chemistry properties of the (x-)particles to a valid start
  * state.
  *
@@ -108,9 +124,10 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
  * @param phys_const The physical constants in internal units.
  * @param data The properties to initialise.
  */
-static INLINE void chemistry_init_backend(
-    const struct swift_params* parameter_file, const struct unit_system* us,
-    const struct phys_const* phys_const, struct chemistry_global_data* data) {
+static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
+                                          const struct unit_system* us,
+                                          const struct phys_const* phys_const,
+                                          struct chemistry_global_data* data) {
 
   /* Read the total metallicity */
   data->initial_metal_mass_fraction_total =

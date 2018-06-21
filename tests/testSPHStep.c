@@ -27,7 +27,7 @@
  */
 struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   size_t count = N * N * N;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
   struct part *part;
   struct xpart *xpart;
@@ -93,7 +93,7 @@ void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 
 /* Run a full time step integration for one cell */
-int main() {
+int main(int argc, char *argv[]) {
 
 #ifndef DEFAULT_SPH
   return 0;

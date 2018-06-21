@@ -36,14 +36,14 @@
 
 /* Local collections for MPI reduces. */
 struct mpicollectgroup1 {
-  size_t updates, g_updates, s_updates;
+  long long updates, g_updates, s_updates;
   integertime_t ti_hydro_end_min;
   integertime_t ti_gravity_end_min;
   int forcerebuild;
 };
 
 /* Forward declarations. */
-static void mpicollect_create_MPI_type();
+static void mpicollect_create_MPI_type(void);
 
 /**
  * @brief MPI datatype for the #mpicollectgroup1 structure.
@@ -60,7 +60,7 @@ static MPI_Op mpicollectgroup1_reduce_op;
 /**
  * @brief Perform any once only initialisations. Must be called once.
  */
-void collectgroup_init() {
+void collectgroup_init(void) {
 
 #ifdef WITH_MPI
   /* Initialise the MPI types. */
@@ -88,7 +88,6 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
   e->updates = grp1->updates;
   e->g_updates = grp1->g_updates;
   e->s_updates = grp1->s_updates;
-  e->forcerebuild = grp1->forcerebuild;
 }
 
 /**
@@ -211,7 +210,7 @@ static void mpicollectgroup1_reduce(void *in, void *inout, int *len,
 /**
  * @brief Registers any MPI collection types and reduction functions.
  */
-static void mpicollect_create_MPI_type() {
+static void mpicollect_create_MPI_type(void) {
 
   if (MPI_Type_contiguous(sizeof(struct mpicollectgroup1), MPI_BYTE,
                           &mpicollectgroup1_type) != MPI_SUCCESS ||

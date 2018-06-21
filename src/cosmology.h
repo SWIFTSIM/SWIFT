@@ -181,8 +181,7 @@ double cosmology_get_therm_kick_factor(const struct cosmology *cosmo,
 double cosmology_get_delta_time(const struct cosmology *c, double a1,
                                 double a2);
 
-void cosmology_init(const struct swift_params *params,
-                    const struct unit_system *us,
+void cosmology_init(struct swift_params *params, const struct unit_system *us,
                     const struct phys_const *phys_const, struct cosmology *c);
 
 void cosmology_init_no_cosmo(struct cosmology *c);

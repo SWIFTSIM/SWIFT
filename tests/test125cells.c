@@ -268,7 +268,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
 
   const size_t count = n * n * n;
   const double volume = size * size * size;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->parts, part_align,
@@ -637,8 +637,8 @@ int main(int argc, char *argv[]) {
   main_cell = cells[62];
 
   /* Construct the real solution */
-  struct solution_part *solution =
-      malloc(main_cell->count * sizeof(struct solution_part));
+  struct solution_part *solution = (struct solution_part *)malloc(
+      main_cell->count * sizeof(struct solution_part));
   get_solution(main_cell, solution, rho, vel, press, size);
 
   ticks timings[27];
@@ -759,7 +759,7 @@ int main(int argc, char *argv[]) {
 
     /* Dump if necessary */
     if (n == 0) {
-      sprintf(outputFileName, "swift_dopair_125_%s.dat",
+      sprintf(outputFileName, "swift_dopair_125_%.150s.dat",
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, solution, 0);
     }
@@ -876,7 +876,8 @@ int main(int argc, char *argv[]) {
   /* Output timing */
   message("Brute force calculation took : %15lli ticks.", toc - tic);
 
-  sprintf(outputFileName, "brute_force_125_%s.dat", outputFileNameExtension);
+  sprintf(outputFileName, "brute_force_125_%.150s.dat",
+          outputFileNameExtension);
   dump_particle_fields(outputFileName, main_cell, solution, 0);
 
   /* Clean things to make the sanitizer happy ... */

@@ -40,8 +40,9 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-void hydro_read_particles(struct part* parts, struct io_props* list,
-                          int* num_fields) {
+INLINE static void hydro_read_particles(struct part* parts,
+                                        struct io_props* list,
+                                        int* num_fields) {
 
   *num_fields = 8;
 
@@ -72,8 +73,8 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
  * @param p Particle.
  * @param ret (return) Internal energy of the particle
  */
-void convert_u(const struct engine* e, const struct part* p,
-               const struct xpart* xp, float* ret) {
+INLINE static void convert_u(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
 
   ret[0] = hydro_get_comoving_internal_energy(p);
 }
@@ -85,8 +86,8 @@ void convert_u(const struct engine* e, const struct part* p,
  * @param p Particle.
  * @param ret (return) Entropic function of the particle
  */
-void convert_A(const struct engine* e, const struct part* p,
-               const struct xpart* xp, float* ret) {
+INLINE static void convert_A(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
   ret[0] = hydro_get_comoving_entropy(p);
 }
 
@@ -97,8 +98,8 @@ void convert_A(const struct engine* e, const struct part* p,
  * @param p Particle.
  * @return Total energy of the particle
  */
-void convert_Etot(const struct engine* e, const struct part* p,
-                  const struct xpart* xp, float* ret) {
+INLINE static void convert_Etot(const struct engine* e, const struct part* p,
+                                const struct xpart* xp, float* ret) {
 #ifdef GIZMO_TOTAL_ENERGY
   ret[0] = p->conserved.energy;
 #else
@@ -112,8 +113,9 @@ void convert_Etot(const struct engine* e, const struct part* p,
 #endif
 }
 
-void convert_part_pos(const struct engine* e, const struct part* p,
-                      const struct xpart* xp, double* ret) {
+INLINE static void convert_part_pos(const struct engine* e,
+                                    const struct part* p,
+                                    const struct xpart* xp, double* ret) {
 
   if (e->s->periodic) {
     ret[0] = box_wrap(p->x[0], 0.0, e->s->dim[0]);
@@ -126,8 +128,9 @@ void convert_part_pos(const struct engine* e, const struct part* p,
   }
 }
 
-void convert_part_vel(const struct engine* e, const struct part* p,
-                      const struct xpart* xp, float* ret) {
+INLINE static void convert_part_vel(const struct engine* e,
+                                    const struct part* p,
+                                    const struct xpart* xp, float* ret) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology* cosmo = e->cosmology;
@@ -155,13 +158,14 @@ void convert_part_vel(const struct engine* e, const struct part* p,
   hydro_get_drifted_velocities(p, xp, dt_kick_hydro, dt_kick_grav, ret);
 
   /* Conversion from internal units to peculiar velocities */
-  ret[0] *= cosmo->a2_inv;
-  ret[1] *= cosmo->a2_inv;
-  ret[2] *= cosmo->a2_inv;
+  ret[0] *= cosmo->a_inv;
+  ret[1] *= cosmo->a_inv;
+  ret[2] *= cosmo->a_inv;
 }
 
-void convert_part_potential(const struct engine* e, const struct part* p,
-                            const struct xpart* xp, float* ret) {
+INLINE static void convert_part_potential(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
 
   if (p->gpart != NULL)
     ret[0] = gravity_get_comoving_potential(p->gpart);
@@ -176,8 +180,10 @@ void convert_part_potential(const struct engine* e, const struct part* p,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
-                           struct io_props* list, int* num_fields) {
+INLINE static void hydro_write_particles(const struct part* parts,
+                                         const struct xpart* xparts,
+                                         struct io_props* list,
+                                         int* num_fields) {
 
   *num_fields = 11;
 
@@ -215,7 +221,7 @@ void hydro_write_particles(const struct part* parts, const struct xpart* xparts,
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-void hydro_write_flavour(hid_t h_grpsph) {
+INLINE static void hydro_write_flavour(hid_t h_grpsph) {
   /* Gradient information */
   io_write_attribute_s(h_grpsph, "Gradient reconstruction model",
                        HYDRO_GRADIENT_IMPLEMENTATION);
@@ -239,6 +245,6 @@ void hydro_write_flavour(hid_t h_grpsph) {
  *
  * @return 1 if entropy is in 'internal energy', 0 otherwise.
  */
-int writeEntropyFlag() { return 0; }
+INLINE static int writeEntropyFlag(void) { return 0; }
 
 #endif /* SWIFT_GIZMO_MFV_HYDRO_IO_H */

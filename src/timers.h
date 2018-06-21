@@ -119,10 +119,10 @@ INLINE static ticks timers_toc(unsigned int t, ticks tic) {
 #endif
 
 /* Function prototypes. */
-void timers_reset_all();
+void timers_reset_all(void);
 void timers_reset(unsigned long long mask);
 void timers_open_file(int rank);
-void timers_close_file();
+void timers_close_file(void);
 void timers_print(int step);
 
 #endif /* SWIFT_TIMERS_H */

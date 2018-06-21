@@ -398,7 +398,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
   /* Re-set problematic values */
-  p->density.wcount = kernel_root * kernel_norm * h_inv_dim;
+  p->density.wcount = kernel_root * h_inv_dim;
   p->density.wcount_dh = 0.f;
   p->geometry.volume = 1.0f;
   p->geometry.matrix_E[0][0] = 1.0f;
@@ -421,8 +421,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 /**
  * @brief Prepare a particle for the gradient calculation.
  *
- * The name of this method is confusing, as this method is really called after
- * the density loop and before the gradient loop.
+ * This function is called after the density loop and before the gradient loop.
  *
  * We use it to set the physical timestep for the particle and to copy the
  * actual velocities, which we need to boost our interfaces during the flux
@@ -433,7 +432,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * @param xp The extended particle data to act upon.
  * @param cosmo The cosmological model.
  */
-__attribute__((always_inline)) INLINE static void hydro_prepare_force(
+__attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part* restrict p, struct xpart* restrict xp,
     const struct cosmology* cosmo) {
 
@@ -452,8 +451,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
  * Just a wrapper around hydro_gradients_finalize, which can be an empty method,
  * in which case no gradients are used.
  *
- * This method also initializes the force loop variables.
- *
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
@@ -461,6 +458,28 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   hydro_gradients_finalize(p);
 
+#ifdef GIZMO_LLOYD_ITERATION
+  /* reset the gradients to zero, as we don't want them */
+  hydro_gradients_init(p);
+#endif
+}
+
+/**
+ * @brief Prepare a particle for the force calculation.
+ *
+ * This function is called in the extra_ghost task to convert some quantities
+ * coming from the gradient loop over neighbours into quantities ready to be
+ * used in the force loop over neighbours.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void hydro_prepare_force(
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct cosmology* cosmo) {
+
+  /* Initialise values that are used in the force loop */
   p->gravity.mflux[0] = 0.0f;
   p->gravity.mflux[1] = 0.0f;
   p->gravity.mflux[2] = 0.0f;
@@ -470,11 +489,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->conserved.flux.momentum[1] = 0.0f;
   p->conserved.flux.momentum[2] = 0.0f;
   p->conserved.flux.energy = 0.0f;
-
-#ifdef GIZMO_LLOYD_ITERATION
-  /* reset the gradients to zero, as we don't want them */
-  hydro_gradients_init(p);
-#endif
 }
 
 /**
@@ -496,6 +510,18 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->force.h_dt = 0.0f;
 }
+
+/**
+ * @brief Resets the variables that are required for a gradient calculation.
+ *
+ * This function is called after hydro_prepare_gradient.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void hydro_reset_gradient(
+    struct part* restrict p) {}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a

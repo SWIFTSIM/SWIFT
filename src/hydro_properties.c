@@ -52,7 +52,7 @@
 void hydro_props_init(struct hydro_props *p,
                       const struct phys_const *phys_const,
                       const struct unit_system *us,
-                      const struct swift_params *params) {
+                      struct swift_params *params) {
 
   /* Kernel properties */
   p->eta_neighbours = parser_get_param_float(params, "SPH:resolution_eta");

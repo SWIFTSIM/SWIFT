@@ -63,7 +63,7 @@ void test_log_parts(struct dump *d) {
   /* Recover the last part from the dump. */
   bzero(&p, sizeof(struct part));
   size_t offset_old = offset;
-  int mask = logger_read_part(&p, &offset, d->data);
+  int mask = logger_read_part(&p, &offset, (const char *)d->data);
   printf(
       "Recovered part at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -76,7 +76,7 @@ void test_log_parts(struct dump *d) {
   /* Recover the second part from the dump (only position). */
   bzero(&p, sizeof(struct part));
   offset_old = offset;
-  mask = logger_read_part(&p, &offset, d->data);
+  mask = logger_read_part(&p, &offset, (const char *)d->data);
   printf(
       "Recovered part at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -89,7 +89,7 @@ void test_log_parts(struct dump *d) {
   /* Recover the first part from the dump. */
   bzero(&p, sizeof(struct part));
   offset_old = offset;
-  mask = logger_read_part(&p, &offset, d->data);
+  mask = logger_read_part(&p, &offset, (const char *)d->data);
   printf(
       "Recovered part at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -131,7 +131,7 @@ void test_log_gparts(struct dump *d) {
   /* Recover the last part from the dump. */
   bzero(&p, sizeof(struct gpart));
   size_t offset_old = offset;
-  int mask = logger_read_gpart(&p, &offset, d->data);
+  int mask = logger_read_gpart(&p, &offset, (const char *)d->data);
   printf(
       "Recovered gpart at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -144,7 +144,7 @@ void test_log_gparts(struct dump *d) {
   /* Recover the second part from the dump. */
   bzero(&p, sizeof(struct gpart));
   offset_old = offset;
-  mask = logger_read_gpart(&p, &offset, d->data);
+  mask = logger_read_gpart(&p, &offset, (const char *)d->data);
   printf(
       "Recovered gpart at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -157,7 +157,7 @@ void test_log_gparts(struct dump *d) {
   /* Recover the first part from the dump. */
   bzero(&p, sizeof(struct gpart));
   offset_old = offset;
-  mask = logger_read_gpart(&p, &offset, d->data);
+  mask = logger_read_gpart(&p, &offset, (const char *)d->data);
   printf(
       "Recovered gpart at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -189,7 +189,7 @@ void test_log_timestamps(struct dump *d) {
   /* Recover the three timestamps. */
   size_t offset_old = offset;
   t = 0;
-  int mask = logger_read_timestamp(&t, &offset, d->data);
+  int mask = logger_read_timestamp(&t, &offset, (const char *)d->data);
   printf("Recovered timestamp %020llu at offset %#016zx with mask %#04x.\n", t,
          offset_old, mask);
   if (t != 30) {
@@ -199,7 +199,7 @@ void test_log_timestamps(struct dump *d) {
 
   offset_old = offset;
   t = 0;
-  mask = logger_read_timestamp(&t, &offset, d->data);
+  mask = logger_read_timestamp(&t, &offset, (const char *)d->data);
   printf("Recovered timestamp %020llu at offset %#016zx with mask %#04x.\n", t,
          offset_old, mask);
   if (t != 20) {
@@ -209,7 +209,7 @@ void test_log_timestamps(struct dump *d) {
 
   offset_old = offset;
   t = 0;
-  mask = logger_read_timestamp(&t, &offset, d->data);
+  mask = logger_read_timestamp(&t, &offset, (const char *)d->data);
   printf("Recovered timestamp %020llu at offset %#016zx with mask %#04x.\n", t,
          offset_old, mask);
   if (t != 10) {

@@ -104,7 +104,7 @@ extern MPI_Datatype gpart_mpi_type;
 extern MPI_Datatype spart_mpi_type;
 extern MPI_Datatype multipole_mpi_type;
 
-void part_create_mpi_types();
+void part_create_mpi_types(void);
 #endif
 
 #endif /* SWIFT_PART_H */

@@ -34,15 +34,15 @@ struct clocks_time {
 
 void clocks_gettime(struct clocks_time *time);
 double clocks_diff(struct clocks_time *start, struct clocks_time *end);
-const char *clocks_getunit();
+const char *clocks_getunit(void);
 
 void clocks_set_cpufreq(unsigned long long freq);
-unsigned long long clocks_get_cpufreq();
+unsigned long long clocks_get_cpufreq(void);
 double clocks_from_ticks(ticks tics);
 ticks clocks_to_ticks(double interval);
 double clocks_diff_ticks(ticks tic, ticks toc);
-const char *clocks_get_timesincestart();
+const char *clocks_get_timesincestart(void);
 
-double clocks_get_cputime_used();
+double clocks_get_cputime_used(void);
 
 #endif /* SWIFT_CLOCKS_H */

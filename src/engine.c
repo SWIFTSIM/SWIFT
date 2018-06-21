@@ -3854,6 +3854,11 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
 
+  /* Clear the counters of updates since the last rebuild */
+  e->updates_since_rebuild = 0;
+  e->g_updates_since_rebuild = 0;
+  e->s_updates_since_rebuild = 0;
+
   /* Flag that a rebuild has taken place */
   e->step_props |= engine_step_prop_rebuild;
 
@@ -4108,13 +4113,13 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate particle counts.");
     if (in_ll[0] != (long long)e->collect_group1.updates)
-      error("Failed to get same updates, is %lld, should be %ld", in_ll[0],
+      error("Failed to get same updates, is %lld, should be %lld", in_ll[0],
             e->collect_group1.updates);
     if (in_ll[1] != (long long)e->collect_group1.g_updates)
-      error("Failed to get same g_updates, is %lld, should be %ld", in_ll[1],
+      error("Failed to get same g_updates, is %lld, should be %lld", in_ll[1],
             e->collect_group1.g_updates);
     if (in_ll[2] != (long long)e->collect_group1.s_updates)
-      error("Failed to get same s_updates, is %lld, should be %ld", in_ll[2],
+      error("Failed to get same s_updates, is %lld, should be %lld", in_ll[2],
             e->collect_group1.s_updates);
 
     int buff = 0;
@@ -4550,14 +4555,15 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10.5f %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
-           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
-           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-           e->s_updates, e->wallclock_time, e->step_props);
+    printf(
+        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+        e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
+        e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
+        e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
     fprintf(e->file_timesteps,
-            "  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+            "  %6d %14e %14e %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
             e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
             e->max_active_bin, e->updates, e->g_updates, e->s_updates,
             e->wallclock_time, e->step_props);
@@ -4644,17 +4650,23 @@ void engine_step(struct engine *e) {
     gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-  /* Let's trigger a non-SPH rebuild every-so-often for good measure */
-  if (!(e->policy & engine_policy_hydro) &&  // MATTHIEU improve this
-      (e->policy & engine_policy_self_gravity) && e->step % 20 == 0)
-    e->forcerebuild = 1;
-
   /* Collect the values of rebuild from all nodes and recover the (integer)
    * end of the next time-step. Do these together to reduce the collective MPI
    * calls per step, but some of the gathered information is not applied just
    * yet (in case we save a snapshot or drift). */
   engine_collect_end_of_step(e, 0);
   e->forcerebuild = e->collect_group1.forcerebuild;
+
+  /* Update the counters */
+  e->updates_since_rebuild += e->collect_group1.updates;
+  e->g_updates_since_rebuild += e->collect_group1.g_updates;
+  e->s_updates_since_rebuild += e->collect_group1.s_updates;
+
+  /* Trigger a tree-rebuild if we passed the frequency threshold */
+  if ((e->policy & engine_policy_self_gravity) &&
+      ((double)e->g_updates_since_rebuild >
+       ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
+    e->forcerebuild = 1;
 
   /* Save some statistics ? */
   if (e->ti_end_min >= e->ti_next_stats && e->ti_next_stats > 0)
@@ -5353,7 +5365,7 @@ void engine_dump_snapshot(struct engine *e) {
 /**
  * @brief Returns the initial affinity the main thread is using.
  */
-static cpu_set_t *engine_entry_affinity() {
+static cpu_set_t *engine_entry_affinity(void) {
 
   static int use_entry_affinity = 0;
   static cpu_set_t entry_affinity;
@@ -5372,7 +5384,7 @@ static cpu_set_t *engine_entry_affinity() {
  * @brief  Ensure the NUMA node on which we initialise (first touch) everything
  * doesn't change before engine_init allocates NUMA-local workers.
  */
-void engine_pin() {
+void engine_pin(void) {
 
 #ifdef HAVE_SETAFFINITY
   cpu_set_t *entry_affinity = engine_entry_affinity();
@@ -5394,7 +5406,7 @@ void engine_pin() {
 /**
  * @brief Unpins the main thread.
  */
-void engine_unpin() {
+void engine_unpin(void) {
 #ifdef HAVE_SETAFFINITY
   pthread_t main_thread = pthread_self();
   cpu_set_t *entry_affinity = engine_entry_affinity();
@@ -5430,10 +5442,9 @@ void engine_unpin() {
  * @param chemistry The chemistry information.
  * @param sourceterms The properties of the source terms function.
  */
-void engine_init(struct engine *e, struct space *s,
-                 const struct swift_params *params, long long Ngas,
-                 long long Ngparts, long long Nstars, int policy, int verbose,
-                 struct repartition *reparttype,
+void engine_init(struct engine *e, struct space *s, struct swift_params *params,
+                 long long Ngas, long long Ngparts, long long Nstars,
+                 int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
@@ -5561,10 +5572,9 @@ void engine_init(struct engine *e, struct space *s,
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
  */
-void engine_config(int restart, struct engine *e,
-                   const struct swift_params *params, int nr_nodes, int nodeID,
-                   int nr_threads, int with_aff, int verbose,
-                   const char *restart_file) {
+void engine_config(int restart, struct engine *e, struct swift_params *params,
+                   int nr_nodes, int nodeID, int nr_threads, int with_aff,
+                   int verbose, const char *restart_file) {
 
   /* Store the values and initialise global fields. */
   e->nodeID = nodeID;
@@ -6238,8 +6248,12 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   /* Get the counts of each particle types */
   const long long total_nr_dm_gparts =
       e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
-  float count_parts[swift_type_count] = {
-      e->total_nr_parts, total_nr_dm_gparts, 0.f, 0.f, e->total_nr_sparts, 0.f};
+  float count_parts[swift_type_count] = {(float)e->total_nr_parts,
+                                         (float)total_nr_dm_gparts,
+                                         0.f,
+                                         0.f,
+                                         (float)e->total_nr_sparts,
+                                         0.f};
 
   /* Count of particles for the two species */
   const float N_dm = count_parts[1];

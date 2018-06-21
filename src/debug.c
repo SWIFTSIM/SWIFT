@@ -642,7 +642,7 @@ void getProcMemUse(long *size, long *resident, long *share, long *trs,
 /**
  * @brief Print the current memory use of the process. A la "top".
  */
-void printProcMemUse() {
+void printProcMemUse(void) {
   long size;
   long resident;
   long share;

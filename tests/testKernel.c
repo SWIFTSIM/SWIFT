@@ -29,7 +29,7 @@
 
 const int numPoints = (1 << 28);
 
-int main() {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

@@ -59,7 +59,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->parts, part_align,
@@ -578,8 +578,9 @@ int main(int argc, char *argv[]) {
   runner->e = &engine;
 
   /* Create output file names. */
-  sprintf(swiftOutputFileName, "swift_dopair_%s.dat", outputFileNameExtension);
-  sprintf(bruteForceOutputFileName, "brute_force_pair_%s.dat",
+  sprintf(swiftOutputFileName, "swift_dopair_%.150s.dat",
+          outputFileNameExtension);
+  sprintf(bruteForceOutputFileName, "brute_force_pair_%.150s.dat",
           outputFileNameExtension);
 
   /* Delete files if they already exist. */
@@ -632,9 +633,9 @@ int main(int argc, char *argv[]) {
   finalise = &end_calculation_force;
 
   /* Create new output file names. */
-  sprintf(swiftOutputFileName, "swift_dopair2_force_%s.dat",
+  sprintf(swiftOutputFileName, "swift_dopair2_force_%.150s.dat",
           outputFileNameExtension);
-  sprintf(bruteForceOutputFileName, "brute_force_dopair2_%s.dat",
+  sprintf(bruteForceOutputFileName, "brute_force_dopair2_%.150s.dat",
           outputFileNameExtension);
 
   /* Delete files if they already exist. */

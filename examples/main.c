@@ -54,7 +54,7 @@ struct profiler prof;
 /**
  * @brief Help messages for the command line parameters.
  */
-void print_help_message() {
+void print_help_message(void) {
 
   printf("\nUsage: swift [OPTION]... PARAMFILE\n");
   printf("       swift_mpi [OPTION]... PARAMFILE\n\n");
@@ -90,6 +90,8 @@ void print_help_message() {
   printf("  %2s %14s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps. When unset use the time_end "
          "parameter to stop.");
+  printf("  %2s %14s %s\n", "-o", "{str}",
+         "Generate a default output parameter file.");
   printf("  %2s %14s %s\n", "-P", "{sec:par:val}",
          "Set parameter value and overwrites values read from the parameters "
          "file. Can be used more than once.");
@@ -195,6 +197,7 @@ int main(int argc, char *argv[]) {
   int nr_threads = 1;
   int with_verbose_timers = 0;
   int nparams = 0;
+  char output_parameters_filename[200] = "";
   char *cmdparams[PARSER_MAX_NO_OF_PARAMS];
   char paramFileName[200] = "";
   char restart_file[200] = "";
@@ -202,7 +205,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:rsSt:Tv:y:Y:")) != -1)
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tv:y:Y:")) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -256,6 +259,15 @@ int main(int argc, char *argv[]) {
         if (sscanf(optarg, "%d", &nsteps) != 1) {
           if (myrank == 0) printf("Error parsing fixed number of steps.\n");
           if (myrank == 0) print_help_message();
+          return 1;
+        }
+        break;
+      case 'o':
+        if (sscanf(optarg, "%s", output_parameters_filename) != 1) {
+          if (myrank == 0) {
+            printf("Error parsing output fields filename");
+            print_help_message();
+          }
           return 1;
         }
         break;
@@ -324,6 +336,15 @@ int main(int argc, char *argv[]) {
         return 1;
         break;
     }
+
+  /* Write output parameter file */
+  if (myrank == 0 && strcmp(output_parameters_filename, "") != 0) {
+    io_write_output_field_parameter(output_parameters_filename);
+    printf("End of run.\n");
+    return 0;
+  }
+
+  /* check inputs */
   if (optind == argc - 1) {
     if (!strcpy(paramFileName, argv[optind++]))
       error("Error reading parameter file name.");
@@ -447,10 +468,6 @@ int main(int argc, char *argv[]) {
           "values.");
       for (int k = 0; k < nparams; k++) parser_set_param(params, cmdparams[k]);
     }
-
-    /* And dump the parameters as used. */
-    // parser_print_params(&params);
-    parser_write_params_to_file(params, "used_parameters.yml");
   }
 #ifdef WITH_MPI
   /* Broadcast the parameter file */
@@ -713,6 +730,9 @@ int main(int argc, char *argv[]) {
           "ICs.",
           N_total[0], N_total[2], N_total[1]);
 
+    /* Verify that the fields to dump actually exist */
+    if (myrank == 0) io_check_output_fields(params, N_total);
+
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
@@ -811,6 +831,7 @@ int main(int argc, char *argv[]) {
                 &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
+
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -889,6 +910,13 @@ int main(int argc, char *argv[]) {
       0)
     error("Failed to generate restart filename");
 
+  /* dump the parameters as used. */
+
+  /* used parameters */
+  parser_write_params_to_file(params, "used_parameters.yml", 1);
+  /* unused parameters */
+  parser_write_params_to_file(params, "unused_parameters.yml", 0);
+
   /* Main simulation loop */
   /* ==================== */
   int force_stop = 0;
@@ -943,9 +971,10 @@ int main(int argc, char *argv[]) {
           /* Open file and position at end. */
           file_thread = fopen(dumpfile, "a");
 
-          fprintf(file_thread, " %03i 0 0 0 0 %lli %lli %zi %zi %zi 0 0 %lli\n",
-                  myrank, e.tic_step, e.toc_step, e.updates, e.g_updates,
-                  e.s_updates, cpufreq);
+          fprintf(file_thread,
+                  " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld\n", myrank,
+                  e.tic_step, e.toc_step, e.updates, e.g_updates, e.s_updates,
+                  cpufreq);
           int count = 0;
           for (int l = 0; l < e.sched.nr_tasks; l++) {
             if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
@@ -981,8 +1010,8 @@ int main(int argc, char *argv[]) {
       FILE *file_thread;
       file_thread = fopen(dumpfile, "w");
       /* Add some information to help with the plots */
-      fprintf(file_thread, " %i %i %i %i %lli %lli %zi %zi %zi %i %lli\n", -2,
-              -1, -1, 1, e.tic_step, e.toc_step, e.updates, e.g_updates,
+      fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n",
+              -2, -1, -1, 1, e.tic_step, e.toc_step, e.updates, e.g_updates,
               e.s_updates, 0, cpufreq);
       for (int l = 0; l < e.sched.nr_tasks; l++) {
         if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
@@ -1035,14 +1064,15 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10.5f %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
-           e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
-           e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
-           e.s_updates, e.wallclock_time, e.step_props);
+    printf(
+        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+        e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
+        e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
+        e.wallclock_time, e.step_props);
     fflush(stdout);
 
     fprintf(e.file_timesteps,
-            "  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+            "  %6d %14e %14e %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
             e.step, e.time, e.cosmology->a, e.time_step, e.min_active_bin,
             e.max_active_bin, e.updates, e.g_updates, e.s_updates,
             e.wallclock_time, e.step_props);

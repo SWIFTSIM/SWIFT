@@ -924,7 +924,7 @@ void test(double x, double y, double tol, double min, const char* name) {
   /*   message("'%s' (%e -- %e) OK!", name, x, y); */
 }
 
-int main() {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

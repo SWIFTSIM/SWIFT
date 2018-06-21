@@ -98,11 +98,10 @@ enum unit_conversion_factor {
 void units_init_cgs(struct unit_system*);
 void units_init(struct unit_system* us, double U_M_in_cgs, double U_L_in_cgs,
                 double U_t_in_cgs, double U_C_in_cgs, double U_T_in_cgs);
-void units_init_from_params(struct unit_system*, const struct swift_params*,
+void units_init_from_params(struct unit_system*, struct swift_params*,
                             const char* category);
-void units_init_default(struct unit_system* us,
-                        const struct swift_params* params, const char* category,
-                        const struct unit_system* def);
+void units_init_default(struct unit_system* us, struct swift_params* params,
+                        const char* category, const struct unit_system* def);
 
 int units_are_equal(const struct unit_system* a, const struct unit_system* b);
 

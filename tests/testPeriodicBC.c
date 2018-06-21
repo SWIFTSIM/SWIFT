@@ -78,7 +78,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
                        enum velocity_types vel) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->parts, part_align,
@@ -512,9 +512,9 @@ int main(int argc, char *argv[]) {
   }
 
   /* Create output file names. */
-  sprintf(swiftOutputFileName, "swift_periodic_BC_%s.dat",
+  sprintf(swiftOutputFileName, "swift_periodic_BC_%.150s.dat",
           outputFileNameExtension);
-  sprintf(bruteForceOutputFileName, "brute_force_periodic_BC_%s.dat",
+  sprintf(bruteForceOutputFileName, "brute_force_periodic_BC_%.150s.dat",
           outputFileNameExtension);
 
   /* Delete files if they already exist. */

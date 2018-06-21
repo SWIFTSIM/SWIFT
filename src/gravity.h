@@ -36,7 +36,7 @@ struct engine;
 struct space;
 
 void gravity_exact_force_ewald_init(double boxSize);
-void gravity_exact_force_ewald_free();
+void gravity_exact_force_ewald_free(void);
 void gravity_exact_force_ewald_evaluate(double rx, double ry, double rz,
                                         double corr_f[3], double *corr_p);
 void gravity_exact_force_compute(struct space *s, const struct engine *e);

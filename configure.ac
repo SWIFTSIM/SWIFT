@@ -19,9 +19,6 @@
 AC_INIT([SWIFT],[0.7.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
-#  Need to define this, instead of using fifth argument of AC_INIT, until 2.64.
-AC_DEFINE([PACKAGE_URL],["www.swiftsim.com"], [Package web pages])
-
 AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
@@ -628,53 +625,10 @@ AC_SUBST([FFTW_LIBS])
 AC_SUBST([FFTW_INCS])
 AM_CONDITIONAL([HAVEFFTW],[test -n "$FFTW_LIBS"])
 
-#  Check for tcmalloc a fast malloc that is part of the gperftools.
-have_tcmalloc="no"
-AC_ARG_WITH([tcmalloc],
-   [AS_HELP_STRING([--with-tcmalloc],
-      [use tcmalloc library or specify the directory with lib @<:@yes/no@:>@]
-   )],
-   [with_tcmalloc="$withval"],
-   [with_tcmalloc="no"]
-)
-if test "x$with_tcmalloc" != "xno"; then
-   if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
-      tclibs="-L$with_tcmalloc -ltcmalloc"
-   else
-      tclibs="-ltcmalloc"
-   fi
-   AC_CHECK_LIB([tcmalloc],[tc_cfree],[have_tcmalloc="yes"],[have_tcmalloc="no"],
-                $tclibs)
-
-   #  Could just have the minimal version.
-   if test "$have_tcmalloc" = "no"; then
-      if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
-         tclibs="-L$with_tcmalloc -ltcmalloc_minimal"
-      else
-         tclibs="-ltcmalloc_minimal"
-      fi
-      AC_CHECK_LIB([tcmalloc],[tc_cfree],[have_tcmalloc="yes"],[have_tcmalloc="no"],
-                   $tclibs)
-   fi
-
-   if test "$have_tcmalloc" = "yes"; then
-      TCMALLOC_LIBS="$tclibs"
-
-      # These are recommended for GCC.
-      if test "$ax_cv_c_compiler_vendor" = "gnu"; then
-         CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
-      fi
-   else
-      TCMALLOC_LIBS=""
-   fi
-fi
-AC_SUBST([TCMALLOC_LIBS])
-AM_CONDITIONAL([HAVETCMALLOC],[test -n "$TCMALLOC_LIBS"])
-
 #  Check for -lprofiler usually part of the gperftools along with tcmalloc.
 have_profiler="no"
 AC_ARG_WITH([profiler],
-   [AS_HELP_STRING([--with-profiler],
+   [AS_HELP_STRING([--with-profiler=PATH],
       [use cpu profiler library or specify the directory with lib @<:@yes/no@:>@]
    )],
    [with_profiler="$withval"],
@@ -700,15 +654,76 @@ fi
 AC_SUBST([PROFILER_LIBS])
 AM_CONDITIONAL([HAVEPROFILER],[test -n "$PROFILER_LIBS"])
 
+# Check for special allocators
+have_special_allocator="no"
+
+#  Check for tcmalloc a fast malloc that is part of the gperftools.
+have_tcmalloc="no"
+AC_ARG_WITH([tcmalloc],
+   [AS_HELP_STRING([--with-tcmalloc=PATH],
+      [use tcmalloc library or specify the directory with lib @<:@yes/no@:>@]
+   )],
+   [with_tcmalloc="$withval"],
+   [with_tcmalloc="no"]
+)
+if test "x$with_tcmalloc" != "xno" -a "x$have_special_allocator" != "xno"; then
+   AC_MSG_ERROR("Cannot activate more than one alternative malloc library")
+fi
+
+if test "x$with_tcmalloc" != "xno"; then
+   if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
+      tclibs="-L$with_tcmalloc -ltcmalloc"
+   else
+      tclibs="-ltcmalloc"
+   fi
+   AC_CHECK_LIB([tcmalloc],[tc_cfree],[have_tcmalloc="yes"],[have_tcmalloc="no"],
+                $tclibs)
+
+   #  Could just have the minimal version.
+   if test "$have_tcmalloc" = "no"; then
+      if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
+         tclibs="-L$with_tcmalloc -ltcmalloc_minimal"
+      else
+         tclibs="-ltcmalloc_minimal"
+      fi
+      AC_CHECK_LIB([tcmalloc],[tc_cfree],[have_tcmalloc="yes"],[have_tcmalloc="no"],
+                   $tclibs)
+   fi
+
+   if test "$have_tcmalloc" = "yes"; then
+      TCMALLOC_LIBS="$tclibs"
+
+      AC_DEFINE([HAVE_TCMALLOC],1,[The tcmalloc library appears to be present.])
+
+      have_special_allocator="tcmalloc"
+
+      # Prevent compilers that replace the calls with built-ins (GNU 99) from doing so.
+      case "$ax_cv_c_compiler_vendor" in
+        intel | gnu | clang)
+             CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+          ;;
+      esac
+
+   else
+      TCMALLOC_LIBS=""
+   fi
+fi
+AC_SUBST([TCMALLOC_LIBS])
+AM_CONDITIONAL([HAVETCMALLOC],[test -n "$TCMALLOC_LIBS"])
+
 #  Check for jemalloc another fast malloc that is good with contention.
 have_jemalloc="no"
 AC_ARG_WITH([jemalloc],
-   [AS_HELP_STRING([--with-jemalloc],
+   [AS_HELP_STRING([--with-jemalloc=PATH],
       [use jemalloc library or specify the directory with lib @<:@yes/no@:>@]
    )],
    [with_jemalloc="$withval"],
    [with_jemalloc="no"]
 )
+if test "x$with_jemalloc" != "xno" -a "x$have_special_allocator" != "xno"; then
+   AC_MSG_ERROR("Cannot activate more than one alternative malloc library")
+fi
+
 if test "x$with_jemalloc" != "xno"; then
    if test "x$with_jemalloc" != "xyes" -a "x$with_jemalloc" != "x"; then
       jelibs="-L$with_jemalloc -ljemalloc"
@@ -720,6 +735,18 @@ if test "x$with_jemalloc" != "xno"; then
 
    if test "$have_jemalloc" = "yes"; then
       JEMALLOC_LIBS="$jelibs"
+
+      AC_DEFINE([HAVE_JEMALLOC],1,[The jemalloc library appears to be present.])
+
+      have_special_allocator="jemalloc"
+
+      # Prevent compilers that replace the regular calls with built-ins (GNU 99) from doing so.
+      case "$ax_cv_c_compiler_vendor" in
+        intel | gnu | clang)
+             CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+          ;;
+      esac
+
    else
       JEMALLOC_LIBS=""
    fi
@@ -727,10 +754,48 @@ fi
 AC_SUBST([JEMALLOC_LIBS])
 AM_CONDITIONAL([HAVEJEMALLOC],[test -n "$JEMALLOC_LIBS"])
 
-#  Don't allow both tcmalloc and jemalloc.
-if test "x$have_tcmalloc" != "xno" -a "x$have_jemalloc" != "xno"; then
-   AC_MSG_ERROR([Cannot use tcmalloc at same time as jemalloc])
+#  Check for tbbmalloc, Intel's fast and parallel allocator
+have_tbbmalloc="no"
+AC_ARG_WITH([tbbmalloc],
+   [AS_HELP_STRING([--with-tbbmalloc=PATH],
+      [use tbbmalloc library or specify the directory with lib @<:@yes/no@:>@]
+   )],
+   [with_tbbmalloc="$withval"],
+   [with_tbbmalloc="no"]
+)
+if test "x$with_tbbmalloc" != "xno" -a "x$have_special_allocator" != "xno"; then
+   AC_MSG_ERROR("Cannot activate more than one alternative malloc library")
 fi
+
+if test "x$with_tbbmalloc" != "xno"; then
+   if test "x$with_tbbmalloc" != "xyes" -a "x$with_tbbmalloc" != "x"; then
+      tbblibs="-L$with_tbbmalloc -ltbbmalloc_proxy -ltbbmalloc"
+   else
+      tbblibs="-ltbbmalloc_proxy -ltbbmalloc"
+   fi
+   AC_CHECK_LIB([tbbmalloc],[scalable_malloc],[have_tbbmalloc="yes"],[have_tbbmalloc="no"],
+                $tbblibs)
+
+   if test "$have_tbbmalloc" = "yes"; then
+      TBBMALLOC_LIBS="$tbblibs"
+
+      AC_DEFINE([HAVE_TBBMALLOC],1,[The TBBmalloc library appears to be present.])
+
+      have_special_allocator="TBBmalloc"
+
+      # Prevent compilers that replace the calls with built-ins (GNU 99) from doing so.
+      case "$ax_cv_c_compiler_vendor" in
+        intel | gnu | clang)
+             CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+          ;;
+      esac
+
+   else
+      TBBMALLOC_LIBS=""
+   fi
+fi
+AC_SUBST([TBBMALLOC_LIBS])
+AM_CONDITIONAL([HAVETBBMALLOC],[test -n "$TBBMALLOC_LIBS"])
 
 # Check for HDF5. This is required.
 AX_LIB_HDF5
@@ -753,7 +818,8 @@ if test "$with_hdf5" = "yes"; then
 
     if test "$enable_parallel_hdf5" = "yes"; then
         AC_MSG_CHECKING([for HDF5 parallel support])
-# Check if the library is capable, the header should define H5_HAVE_PARALLEL.
+
+	# Check if the library is capable, the header should define H5_HAVE_PARALLEL.
 
         AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
         #include "hdf5.h"
@@ -814,6 +880,27 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
 
+# Special timers for the ARM v7 and ARM v8 platforms (taken from FFTW-3 to match their cycle.h)
+AC_ARG_ENABLE(armv8-pmccntr-el0, [AC_HELP_STRING([--enable-armv8-pmccntr-el0],[enable the cycle counter on ARMv8 via the PMCCNTR_EL0 register])], have_armv8pmccntrel0=$enableval)
+if test "$have_armv8pmccntrel0"x = "yes"x; then
+	AC_DEFINE(HAVE_ARMV8_PMCCNTR_EL0,1,[Define if you have enabled the PMCCNTR_EL0 cycle counter on ARMv8])
+fi
+
+AC_ARG_ENABLE(armv8-cntvct-el0, [AC_HELP_STRING([--enable-armv8-cntvct-el0],[enable the cycle counter on ARMv8 via the CNTVCT_EL0 register])], have_armv8cntvctel0=$enableval)
+if test "$have_armv8cntvctel0"x = "yes"x; then
+	AC_DEFINE(HAVE_ARMV8_CNTVCT_EL0,1,[Define if you have enabled the CNTVCT_EL0 cycle counter on ARMv8])
+fi
+
+AC_ARG_ENABLE(armv7a-cntvct, [AC_HELP_STRING([--enable-armv7a-cntvct],[enable the cycle counter on Armv7a via the CNTVCT register])], have_armv7acntvct=$enableval)
+if test "$have_armv7acntvct"x = "yes"x; then
+	AC_DEFINE(HAVE_ARMV7A_CNTVCT,1,[Define if you have enabled the CNTVCT cycle counter on ARMv7a])
+fi
+
+AC_ARG_ENABLE(armv7a-pmccntr, [AC_HELP_STRING([--enable-armv7a-pmccntr],[enable the cycle counter on Armv7a via the PMCCNTR register])], have_armv7apmccntr=$enableval)
+if test "$have_armv7apmccntr"x = "yes"x; then
+	AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
+fi
+
 # Add warning flags by default, if these can be used. Option =error adds
 # -Werror to GCC, clang and Intel.  Note do this last as compiler tests may
 # become errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
@@ -848,6 +935,11 @@ if test "$enable_warn" != "no"; then
           ;;
        esac
     fi
+
+    # We want strict-prototypes, but this must still work even if warnings
+    # are an error.
+    AX_CHECK_COMPILE_FLAG([-Wstrict-prototypes],[CFLAGS="$CFLAGS -Wstrict-prototypes"],
+                          [CFLAGS="$CFLAGS"],[$CFLAGS],[AC_LANG_SOURCE([int main(void){return 0;}])])
 fi
 
 # Various package configuration options.
@@ -1204,12 +1296,18 @@ AC_CONFIG_FILES([tests/testPeriodicBC.sh], [chmod +x tests/testPeriodicBC.sh])
 AC_CONFIG_FILES([tests/testPeriodicBCPerturbed.sh], [chmod +x tests/testPeriodicBCPerturbed.sh])
 AC_CONFIG_FILES([tests/testInteractions.sh], [chmod +x tests/testInteractions.sh])
 AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
+AC_CONFIG_FILES([tests/testSelectOutput.sh], [chmod +x tests/testSelectOutput.sh])
 
 # Save the compilation options
 AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
 
 # Make sure the latest git revision string gets included
 touch src/version.c
+
+#  Need to define this, instead of using fifth argument of AC_INIT, until
+#  2.64. Defer until now as this redefines PACKAGE_URL, which can emit a
+#  compilation error when testing with -Werror.
+AC_DEFINE([PACKAGE_URL],["www.swiftsim.com"], [Package web pages])
 
 # Generate output.
 AC_OUTPUT
@@ -1220,22 +1318,21 @@ AC_MSG_RESULT([
 
    $PACKAGE_NAME v.$PACKAGE_VERSION
 
-   Compiler         : $CC
-    - vendor        : $ax_cv_c_compiler_vendor
-    - version       : $ax_cv_c_compiler_version
-    - flags         : $CFLAGS
-   MPI enabled      : $enable_mpi
-   HDF5 enabled     : $with_hdf5
-    - parallel      : $have_parallel_hdf5
-   Metis enabled    : $have_metis
-   FFTW3 enabled    : $have_fftw
-   GSL enabled      : $have_gsl
-   libNUMA enabled  : $have_numa
-   GRACKLE enabled  : $have_grackle
-   Using tcmalloc   : $have_tcmalloc
-   Using jemalloc   : $have_jemalloc
-   CPU profiler     : $have_profiler
-   Pthread barriers : $have_pthread_barrier
+   Compiler           : $CC
+    - vendor          : $ax_cv_c_compiler_vendor
+    - version         : $ax_cv_c_compiler_version
+    - flags           : $CFLAGS
+   MPI enabled        : $enable_mpi
+   HDF5 enabled       : $with_hdf5
+    - parallel        : $have_parallel_hdf5
+   Metis enabled      : $have_metis
+   FFTW3 enabled      : $have_fftw
+   GSL enabled        : $have_gsl
+   libNUMA enabled    : $have_numa
+   GRACKLE enabled    : $have_grackle
+   Special allocators : $have_special_allocator
+   CPU profiler       : $have_profiler
+   Pthread barriers   : $have_pthread_barrier
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension

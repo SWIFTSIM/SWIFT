@@ -1,5 +1,3 @@
-.. _GettingStarted:
-
 What makes SWIFT different?
 ===========================
 

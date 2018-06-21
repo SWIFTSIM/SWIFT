@@ -146,8 +146,8 @@ void profiler_write_all_timing_info_headers(const struct engine *e,
 void profiler_write_timing_info(const struct engine *e, ticks time,
                                 FILE *file) {
 
-  fprintf(file, "  %6d %14e %14e %10zu %10zu %10zu %21.3f\n", e->step, e->time,
-          e->time_step, e->updates, e->g_updates, e->s_updates,
+  fprintf(file, "  %6d %14e %14e %10lld %10lld %10lld %21.3f\n", e->step,
+          e->time, e->time_step, e->updates, e->g_updates, e->s_updates,
           clocks_from_ticks(time));
   fflush(file);
 }

@@ -16,7 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #include "../config.h"
 
 #include <fenv.h>
@@ -42,7 +41,7 @@ void check_value(float a, float b, const char* s) {
  * @brief Check that the pre-defined adiabatic index constants contain correct
  * values
  */
-void check_constants() {
+void check_constants(void) {
   float val;
 
   val = 0.5 * (hydro_gamma + 1.0f) / hydro_gamma;
@@ -115,7 +114,7 @@ void check_functions(float x) {
 /**
  * @brief Check adiabatic index constants and power functions
  */
-int main() {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;

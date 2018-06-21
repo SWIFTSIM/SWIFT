@@ -82,7 +82,7 @@ double acceleration(double mass, double r, double H, double rlr) {
   return r * acc * (4. * x * S_prime(2 * x) - 2. * S(2. * x) + 2.);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -150,8 +150,10 @@ int main() {
   cj.ti_gravity_end_max = 8;
 
   /* Allocate multipoles */
-  ci.multipole = malloc(sizeof(struct gravity_tensors));
-  cj.multipole = malloc(sizeof(struct gravity_tensors));
+  ci.multipole =
+      (struct gravity_tensors *)malloc(sizeof(struct gravity_tensors));
+  cj.multipole =
+      (struct gravity_tensors *)malloc(sizeof(struct gravity_tensors));
   bzero(ci.multipole, sizeof(struct gravity_tensors));
   bzero(cj.multipole, sizeof(struct gravity_tensors));
 
