@@ -15,12 +15,14 @@ collisionless dynamics, the particles are a mere Monte-Carlo sampling
 of the underlying coarse-grained phase-space distribution which
 justifies the use of approximate method to evaluate
 Eq.~\ref{eq:fmm:n_body}. The \emph{Fast Multipole Method} (FMM)
-\citep{Greengard1987, Cheng1999}, popularized in the field and adapted
-specifically for gravity solvers by \cite{Dehnen2000, Dehnen2002}, is
-an $\mathcal{O}(N)$ method designed to solve Eq.~\ref{eq:fmm:n_body}
-by expanding the potential in Taylor series \emph{both} around
-$\mathbf{x}_i$ and $\mathbf{x}_j$ and grouping similar terms
-arising from nearby particles. \\
+\citep{Greengard1987, Cheng1999}, popularized in astronomy and adapted
+specifically for gravity solvers by \cite{Dehnen2000, Dehnen2002} (see
+also \cite{Warren1995} for related ideas), is an $\mathcal{O}(N)$
+method designed to solve Eq.~\ref{eq:fmm:n_body} by expanding the
+potential in Taylor series \emph{both} around $\mathbf{x}_a$ and
+$\mathbf{x}_b$ and grouping similar terms arising from nearby
+particles. For comparison, a \cite{Barnes1986} tree-code expands the
+potential only around $\mathbf{x}_b$.
 
 \subsubsection{Double expansion of the potential}
 
@@ -38,8 +40,8 @@ arising from nearby particles. \\
 
 In what follows, we use the compact multi-index notation of
 \cite{Dehnen2014} (repeated in appendix \ref{sec:multi_index_notation}
-for completeness) to simplify expressions and ease
-comparisons. $\mathbf{k}$, $\mathbf{m}$ and $\mathbf{n}$ are
+for completeness) to simplify expressions and ease comparisons with
+other published work. $\mathbf{k}$, $\mathbf{m}$ and $\mathbf{n}$ are
 multi-indices and $\mathbf{r}$, $\mathbf{R}$, $\mathbf{x}$,
 $\mathbf{y}$ and $\mathbf{z}$ are vectors, whilst $a$ and $b$ are
 particle indices. Note also that we make no assumption on the specific
