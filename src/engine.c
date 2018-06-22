@@ -3109,7 +3109,7 @@ void engine_maketasks(struct engine *e) {
 #else
   const int hydro_tasks_per_cell = 27 * 2;
 #endif
-  const int self_grav_tasks_per_cell = 1250;
+  const int self_grav_tasks_per_cell = 125;
   const int ext_grav_tasks_per_cell = 1;
 
   if (e->policy & engine_policy_hydro)
@@ -3677,7 +3677,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_self_gravity) {
-    n1 += 1250;
+    n1 += 125;
     n2 += 1;
 #ifdef WITH_MPI
     n2 += 2;
