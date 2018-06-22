@@ -23,7 +23,8 @@ TimeIntegration:
   dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
   
 Scheduler:
-  max_top_level_cells:    40
+  max_top_level_cells: 20
+  cell_split_size:     50
   
 # Parameters governing the snapshots
 Snapshots:
@@ -42,9 +43,10 @@ Statistics:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                    0.025     # Constant dimensionless multiplier for time integration.
-  theta:                  0.85      # Opening angle (Multipole acceptance criterion)
+  theta:                  0.7       # Opening angle (Multipole acceptance criterion)
   comoving_softening:     0.0026994 # Comoving softening length (in internal units).
   max_physical_softening: 0.0007    # Physical softening length (in internal units).
+  mesh_side_length:       64
 
 # Parameters related to the initial conditions
 InitialConditions:
