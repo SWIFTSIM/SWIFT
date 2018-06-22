@@ -295,20 +295,6 @@ void space_regrid(struct space *s, int verbose) {
         " - particles with velocities so large that they move by more than two "
         "box sizes per time-step.\n");
 
-  /* Check if we have enough cells for periodic gravity. */
-  if (s->gravity && s->periodic && (cdim[0] < 8 || cdim[1] < 8 || cdim[2] < 8))
-    error(
-        "Must have at least 8 cells in each spatial dimension when periodic "
-        "gravity is switched on.\nThis error is often caused by any of the "
-        "followings:\n"
-        " - too few particles to generate a sensible grid,\n"
-        " - the initial value of 'Scheduler:max_top_level_cells' is too "
-        "small,\n"
-        " - the (minimal) time-step is too large leading to particles with "
-        "predicted smoothing lengths too large for the box size,\n"
-        " - particles with velocities so large that they move by more than two "
-        "box sizes per time-step.\n");
-
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
  * Be prepared to do that. */
