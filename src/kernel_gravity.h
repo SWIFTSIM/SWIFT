@@ -26,8 +26,6 @@
 #include "inline.h"
 #include "minmax.h"
 
-//#define GADGET2_SOFTENING_CORRECTION
-
 #ifdef GADGET2_SOFTENING_CORRECTION
 /*! Conversion factor between Plummer softening and internal softening */
 #define kernel_gravity_softening_plummer_equivalent 2.8

@@ -119,52 +119,6 @@ __attribute__((always_inline)) INLINE static void CIC_set(
 }
 
 /**
- * @brief Assigns a given multipole to a density mesh using the CIC method.
- *
- * @param m The #multipole.
- * @param rho The density mesh.
- * @param N the size of the mesh along one axis.
- * @param fac The width of a mesh cell.
- * @param dim The dimensions of the simulation box.
- */
-INLINE static void multipole_to_mesh_CIC(const struct gravity_tensors* m,
-                                         double* rho, int N, double fac,
-                                         const double dim[3]) {
-  error("aa");
-  /* Box wrap the multipole's position */
-  const double CoM_x = box_wrap(m->CoM[0], 0., dim[0]);
-  const double CoM_y = box_wrap(m->CoM[1], 0., dim[1]);
-  const double CoM_z = box_wrap(m->CoM[2], 0., dim[2]);
-
-  /* Workout the CIC coefficients */
-  int i = (int)(fac * CoM_x);
-  if (i >= N) i = N - 1;
-  const double dx = fac * CoM_x - i;
-  const double tx = 1. - dx;
-
-  int j = (int)(fac * CoM_y);
-  if (j >= N) j = N - 1;
-  const double dy = fac * CoM_y - j;
-  const double ty = 1. - dy;
-
-  int k = (int)(fac * CoM_z);
-  if (k >= N) k = N - 1;
-  const double dz = fac * CoM_z - k;
-  const double tz = 1. - dz;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (i < 0 || i >= N) error("Invalid multipole position in x");
-  if (j < 0 || j >= N) error("Invalid multipole position in y");
-  if (k < 0 || k >= N) error("Invalid multipole position in z");
-#endif
-
-  const double mass = m->m_pole.M_000;
-
-  /* CIC ! */
-  CIC_set(rho, N, i, j, k, tx, ty, tz, dx, dy, dz, mass);
-}
-
-/**
  * @brief Assigns a given #gpart to a density mesh using the CIC method.
  *
  * @param gp The #gpart.
@@ -245,9 +199,9 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
   const double tz = 1. - dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (i < 0 || i >= N) error("Invalid multipole position in x");
-  if (j < 0 || j >= N) error("Invalid multipole position in y");
-  if (k < 0 || k >= N) error("Invalid multipole position in z");
+  if (i < 0 || i >= N) error("Invalid gpart position in x");
+  if (j < 0 || j >= N) error("Invalid gpart position in y");
+  if (k < 0 || k >= N) error("Invalid gpart position in z");
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -329,30 +283,14 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct engine* e) {
   const struct space* s = e->s;
   const double r_s = mesh->r_s;
   const double box_size = s->dim[0];
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
-  if (cdim[0] != cdim[1] || cdim[0] != cdim[2]) error("Non-square mesh");
   if (r_s <= 0.) error("Invalid value of a_smooth");
 
   /* Some useful constants */
   const int N = mesh->N;
   const int N_half = N / 2;
   const double cell_fac = N / box_size;
-
-/* Recover the list of top-level multipoles */
-/* const int nr_cells = s->nr_cells; */
-/* struct gravity_tensors* restrict multipoles = s->multipoles_top; */
-
-#ifdef SWIFT_DEBUG_CHECKS
-/* const struct cell* cells = s->cells_top; */
-/* const integertime_t ti_current = e->ti_current; */
-
-/* /\* Make sure everything has been drifted to the current point *\/ */
-/* for (int i = 0; i < nr_cells; ++i) */
-/*   if (cells[i].ti_old_multipole != ti_current) */
-/*     error("Top-level multipole %d not drifted", i); */
-#endif
 
   /* Use the memory allocated for the potential to temporarily store rho */
   double* restrict rho = mesh->potential;
@@ -371,11 +309,9 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct engine* e) {
   fftw_plan inverse_plan = fftw_plan_dft_c2r_3d(
       N, N, N, frho, rho, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
 
-  /* Do a CIC mesh assignment of the multipoles */
-  /* for (int i = 0; i < nr_cells; ++i) */
-  /*   multipole_to_mesh_CIC(&multipoles[i], rho, N, cell_fac, dim); */
   bzero(rho, N * N * N * sizeof(double));
 
+  /* Do a CIC mesh assignment of the gparts */
   for (size_t i = 0; i < e->s->nr_gparts; ++i)
     gpart_to_mesh_CIC(&e->s->gparts[i], rho, N, cell_fac, dim);
 

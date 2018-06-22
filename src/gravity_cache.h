@@ -136,7 +136,7 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
 }
 
 /**
- * @param Zero all the output fields (acceleration and potential) of a
+ * @brief Zero all the output fields (acceleration and potential) of a
  * #gravity_cache.
  *
  * @param c The #gravity_cache to zero.
@@ -328,12 +328,16 @@ gravity_cache_populate_no_mpole(const timebin_t max_active_bin,
  * the multi-pole.
  *
  * @param max_active_bin The largest active bin in the current time-step.
+ * @param periodic Are we using periodic BCs ?
+ * @param dim The size of the simulation volume along each dimension.
  * @param c The #gravity_cache to fill.
  * @param gparts The #gpart array to read from.
  * @param gcount The number of particles to read.
  * @param gcount_padded The number of particle to read padded to the next
  * multiple of the vector length.
  * @param cell The cell we play with (to get reasonable padding positions).
+ * @param CoM The position of the multipole.
+ * @param r_max2 The square of the multipole radius.
  * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static void

@@ -1376,7 +1376,7 @@ static INLINE void runner_dopair_recursive_grav(struct runner *r,
   } else if (!ci->split && !cj->split) {
 
     /* We have two leaves. Go P-P. */
-    runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 1, /*allow_mpoles*/ 0);
+    runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 1, /*allow_mpoles*/ 1);
 
   } else {
 
@@ -1584,10 +1584,8 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       /* Call the PM interaction fucntion on the active sub-cells of ci */
 
-      runner_dopair_recursive_grav_pm(r, ci, cj);
-      // runner_dopair_grav_mm(r, ci, cj);
-      //runner_dopair_grav_pp(r, ci, cj, 0, 1);
-
+      //runner_dopair_recursive_grav_pm(r, ci, cj);
+      runner_dopair_grav_mm(r, ci, cj);
     } /* We are in charge of this pair */
   }   /* Loop over top-level cells */
 
