@@ -1545,22 +1545,22 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     }
     const double r2_rebuild = dx_r * dx_r + dy_r * dy_r + dz_r * dz_r;
 
+    const double max_radius =
+        sqrt(r2_rebuild) - (multi_i->r_max_rebuild + multi_j->r_max_rebuild);
+
+    /* Are we beyond the distance where the truncated forces are 0 ?*/
+    if (periodic && max_radius > max_distance) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Need to account for the interactions we missed */
+      multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
+#endif
+      continue;
+    }
+
     /* Are we in charge of this cell pair? */
     if (gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
                            theta_crit2, r2_rebuild)) {
-
-      const double max_radius =
-          sqrt(r2_rebuild) - (multi_i->r_max_rebuild + multi_j->r_max_rebuild);
-
-      /* Are we beyond the distance where the truncated forces are 0 ?*/
-      if (periodic && max_radius > max_distance) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Need to account for the interactions we missed */
-        multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
-#endif
-        continue;
-      }
 
       /* Call the PM interaction fucntion on the active sub-cells of ci */
       runner_dopair_grav_mm(r, ci, cj);
