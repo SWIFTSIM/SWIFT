@@ -178,7 +178,7 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho, int N,
 void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
                         const double dim[3]) {
 
-  /* Box wrap the multipole's position */
+  /* Box wrap the gpart's position */
   const double pos_x = box_wrap(gp->x[0], 0., dim[0]);
   const double pos_y = box_wrap(gp->x[1], 0., dim[1]);
   const double pos_z = box_wrap(gp->x[2], 0., dim[2]);

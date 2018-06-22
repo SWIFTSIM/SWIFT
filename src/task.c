@@ -54,8 +54,7 @@ const char *taskID_names[task_type_count] = {
     "ghost_out",     "extra_ghost",    "drift_part",
     "drift_gpart",   "end_force",      "kick1",
     "kick2",         "timestep",       "send",
-    "recv",          "grav_top_level", "grav_long_range",
-    "grav_ghost_in", "grav_ghost_out", "grav_mm",
+    "recv",          "grav_long_range","grav_mm",
     "grav_down",     "grav_mesh",      "cooling",
     "sourceterms"};
 
@@ -172,7 +171,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_init_grav:
-    case task_type_grav_top_level:
     case task_type_grav_mm:
       return task_action_multipole;
       break;

@@ -339,9 +339,6 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
           c->grav_mesh = scheduler_addtask(s, task_type_grav_mesh,
                                            task_subtype_none, 0, 0, c, NULL);
 
-        // if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost_in);
-        // if (periodic) scheduler_addunlock(s, c->grav_ghost_out,
-        // c->grav_down);
         if (periodic) scheduler_addunlock(s, c->drift_gpart, c->grav_mesh);
         if (periodic) scheduler_addunlock(s, c->grav_mesh, c->super->end_force);
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
@@ -3556,13 +3553,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
     }
 
-    /* Periodic gravity stuff (Note this is not linked to a cell) ? */
-    else if (t->type == task_type_grav_top_level ||
-             t->type == task_type_grav_ghost_in ||
-             t->type == task_type_grav_ghost_out) {
-      scheduler_activate(s, t);
-    }
-
     /* Time-step? */
     else if (t->type == task_type_timestep) {
       t->ci->updated = 0;
@@ -4203,9 +4193,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_grav || t->type == task_type_end_force ||
         t->type == task_type_grav_long_range ||
-        t->type == task_type_grav_ghost_in ||
-        t->type == task_type_grav_ghost_out ||
-        t->type == task_type_grav_top_level || t->type == task_type_grav_down ||
+        t->type == task_type_grav_down ||
         t->type == task_type_cooling || t->type == task_type_sourceterms)
       t->skip = 1;
   }

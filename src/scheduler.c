@@ -263,7 +263,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
           if (type == task_type_self + k && subtype == task_subtype_grav)
             gravity_cluster[k] = 1;
         }
-        if (type == task_type_grav_top_level) gravity_cluster[2] = 1;
+        if (type == task_type_grav_mesh) gravity_cluster[2] = 1;
         if (type == task_type_grav_long_range) gravity_cluster[3] = 1;
       }
     }
@@ -304,7 +304,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
       fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
               subtaskID_names[task_subtype_grav]);
   if (gravity_cluster[2])
-    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_top_level]);
+    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_mesh]);
   if (gravity_cluster[3])
     fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_long_range]);
   fprintf(f, "\t};\n");
@@ -901,9 +901,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {
       scheduler_splittask_gravity(t, s);
-    } else if (t->type == task_type_grav_top_level ||
-               t->type == task_type_grav_ghost_in ||
-               t->type == task_type_grav_ghost_out) {
+    } else if (t->type == task_type_grav_mesh) {
       /* For future use */
     } else {
       error("Unexpected task sub-type");
