@@ -1584,7 +1584,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       /* Call the PM interaction fucntion on the active sub-cells of ci */
 
-      //runner_dopair_recursive_grav_pm(r, ci, cj);
+      // runner_dopair_recursive_grav_pm(r, ci, cj);
       runner_dopair_grav_mm(r, ci, cj);
     } /* We are in charge of this pair */
   }   /* Loop over top-level cells */

@@ -113,11 +113,16 @@ struct potential_derivatives_M2P {
   float D_102, D_012;
   float D_111;
 
-  /* 4th order terms (terms used in the trace of the octupole interaction) */
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+
+  /* 4th order terms */
   float D_400, D_040, D_004;
   float D_310, D_301;
   float D_130, D_031;
   float D_103, D_013;
+  float D_220, D_202, D_022;
+  float D_211, D_121, D_112;
+#endif
 };
 
 /**
@@ -498,8 +503,8 @@ compute_potential_derivatives_M2P(const float r_x, const float r_y,
   pot->D_012 = r_z2 * r_y * Dt_7 + r_y * Dt_5;
   pot->D_111 = r_x * r_y * r_z * Dt_7;
 
-  /* Selection of 4th order derivatives (the ones used by terms */
-  /* based on the trace of the octupole) */
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+  /* 4th order derivatives */
   pot->D_400 = r_x4 * Dt_9 + 6.f * r_x2 * Dt_7 + 3.f * Dt_5;
   pot->D_040 = r_y4 * Dt_9 + 6.f * r_y2 * Dt_7 + 3.f * Dt_5;
   pot->D_004 = r_z4 * Dt_9 + 6.f * r_z2 * Dt_7 + 3.f * Dt_5;
@@ -509,6 +514,13 @@ compute_potential_derivatives_M2P(const float r_x, const float r_y,
   pot->D_031 = r_y3 * r_z * Dt_9 + 3.f * r_y * r_z * Dt_7;
   pot->D_103 = r_z3 * r_x * Dt_9 + 3.f * r_z * r_x * Dt_7;
   pot->D_013 = r_z3 * r_y * Dt_9 + 3.f * r_z * r_y * Dt_7;
+  pot->D_220 = r_x2 * r_y2 * Dt_9 + r_x2 * Dt_7 + r_y2 * Dt_7 + Dt_5;
+  pot->D_202 = r_x2 * r_z2 * Dt_9 + r_x2 * Dt_7 + r_z2 * Dt_7 + Dt_5;
+  pot->D_022 = r_y2 * r_z2 * Dt_9 + r_y2 * Dt_7 + r_z2 * Dt_7 + Dt_5;
+  pot->D_211 = r_x2 * r_y * r_z * Dt_9 + r_y * r_z * Dt_7;
+  pot->D_121 = r_y2 * r_x * r_z * Dt_9 + r_x * r_z * Dt_7;
+  pot->D_112 = r_z2 * r_x * r_y * Dt_9 + r_x * r_y * Dt_7;
+#endif
 }
 
 #endif /* SWIFT_GRAVITY_DERIVATIVE_H */
