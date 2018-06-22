@@ -690,7 +690,7 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef WITH_MPI
-    if(periodic && with_self_gravity)
+    if (periodic && with_self_gravity)
       error("Periodic self-gravity over MPI temporarily disabled.");
 #endif
 
@@ -728,7 +728,6 @@ int main(int argc, char *argv[]) {
           "the "
           "ICs.",
           N_total[0], N_total[2], N_total[1]);
-
 
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);
