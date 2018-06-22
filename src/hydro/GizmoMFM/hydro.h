@@ -222,7 +222,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Final operation on the geometry. */
   /* we multiply with the smoothing kernel normalization ih3 and calculate the
    * volume */
-  const float volume = 1.0f / (ihdim * (p->geometry.volume + kernel_root));
+  const float volume_inv = ihdim * (p->geometry.volume + kernel_root);
+  const float volume = 1.0f / volume_inv;
   p->geometry.volume = volume;
 
   /* we multiply with the smoothing kernel normalization */
@@ -240,9 +241,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->geometry.centroid[1] *= kernel_norm;
   p->geometry.centroid[2] *= kernel_norm;
 
-  p->geometry.centroid[0] /= p->density.wcount;
-  p->geometry.centroid[1] /= p->density.wcount;
-  p->geometry.centroid[2] /= p->density.wcount;
+  const float wcount_inv = 1.0f / p->density.wcount;
+  p->geometry.centroid[0] *= wcount_inv;
+  p->geometry.centroid[1] *= wcount_inv;
+  p->geometry.centroid[2] *= wcount_inv;
 
   /* Check the condition number to see if we have a stable geometry. */
   float condition_number_E = 0.0f;
@@ -300,7 +302,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   momentum[0] = p->conserved.momentum[0];
   momentum[1] = p->conserved.momentum[1];
   momentum[2] = p->conserved.momentum[2];
-  p->rho = m / volume;
+  p->rho = m * volume_inv;
   if (m == 0.0f) {
     p->v[0] = 0.0f;
     p->v[1] = 0.0f;
@@ -328,7 +330,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* energy contains the total thermal energy, we want the specific energy.
      this is why we divide by the volume, and not by the density */
-  p->P = hydro_gamma_minus_one * energy / volume;
+  p->P = hydro_gamma_minus_one * energy * volume_inv;
 #endif
 
   /* sanity checks */
