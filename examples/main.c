@@ -689,6 +689,11 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
+#ifdef WITH_MPI
+    if(periodic && with_self_gravity)
+      error("Periodic self-gravity over MPI temporarily disabled.");
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check once and for all that we don't have unwanted links */
     if (!with_stars && !dry_run) {
@@ -723,6 +728,7 @@ int main(int argc, char *argv[]) {
           "the "
           "ICs.",
           N_total[0], N_total[2], N_total[1]);
+
 
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);
