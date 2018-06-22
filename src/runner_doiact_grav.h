@@ -355,15 +355,6 @@ static INLINE void runner_dopair_grav_pp_truncated(
       runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
                                     r_s_inv, &f_ij, &pot_ij);
 
-      /* if (e->s->parts[-gparts_i[pid].id_or_neg_offset].id == ICHECK) { */
-      /*   if (pjd < gcount_j) */
-      /*     message("Interacting with particle ID= %lld f_ij=%e", */
-      /*             e->s->parts[-gparts_j[pjd].id_or_neg_offset].id, f_ij); */
-      /*   // else */
-      /*   //  message("Interacting with particle ID= %lld (padded) f_ij=%e", */
-      /*   //  e->s->parts[-gparts_j[pjd].id_or_neg_offset].id, f_ij); */
-      /* } */
-
       /* Store it back */
       a_x += f_ij * dx;
       a_y += f_ij * dy;
@@ -602,13 +593,6 @@ static INLINE void runner_dopair_grav_pm_truncated(
     float f_x, f_y, f_z, pot_ij;
     runner_iact_grav_pm_truncated(dx, dy, dz, r2, h_i, h_inv_i, r_s_inv,
                                   multi_j, &f_x, &f_y, &f_z, &pot_ij);
-
-    /* if (e->s->parts[-gparts_i[pid].id_or_neg_offset].id == ICHECK) { */
-    /*   if (pid < gcount_i) */
-    /*     message("Interacting with m-pole f_ij=%e M_000=%e dx=[%e %e %e] %e
-     * %e", */
-    /*             f_x / dx, multi_j->M_000, dx, dy, dz, x_i, CoM_j[0]); */
-    /* } */
 
     /* Store it back */
     a_x[pid] += f_x;
@@ -1534,8 +1518,6 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   /* Flag that contributions will be recieved */
   multi_i->pot.interacted = 1;
 
-  int cc = 0;
-
   /* Loop over all the top-level cells and go for a M-M interaction if
    * well-separated */
   for (int n = 0; n < nr_cells; ++n) {
@@ -1580,16 +1562,12 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         continue;
       }
 
-      ++cc;
-
       /* Call the PM interaction fucntion on the active sub-cells of ci */
-
-      // runner_dopair_recursive_grav_pm(r, ci, cj);
       runner_dopair_grav_mm(r, ci, cj);
+      // runner_dopair_recursive_grav_pm(r, ci, cj);
+
     } /* We are in charge of this pair */
   }   /* Loop over top-level cells */
-
-  // message("cc=%d", cc);
 
   if (timer) TIMER_TOC(timer_dograv_long_range);
 }
