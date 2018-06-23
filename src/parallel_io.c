@@ -709,7 +709,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   struct unit_system* ic_units =
       (struct unit_system*)malloc(sizeof(struct unit_system));
   if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
-  io_read_unit_system(h_file, ic_units, mpi_rank);
+  io_read_unit_system(h_file, ic_units, internal_units, mpi_rank);
 
   /* Tell the user if a conversion will be needed */
   if (mpi_rank == 0) {

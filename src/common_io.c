@@ -250,13 +250,18 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
 
 /**
  * @brief Reads the Unit System from an IC file.
- * @param h_file The (opened) HDF5 file from which to read.
- * @param us The unit_system to fill.
- * @param mpi_rank The MPI rank we are on.
  *
- * If the 'Units' group does not exist in the ICs, cgs units will be assumed
+ * If the 'Units' group does not exist in the ICs, we will use the internal
+ * system of units.
+ *
+ * @param h_file The (opened) HDF5 file from which to read.
+ * @param ic_units The unit_system to fill.
+ * @param internal_units The internal system of units to copy if needed.
+ * @param mpi_rank The MPI rank we are on.
  */
-void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank) {
+void io_read_unit_system(hid_t h_file, struct unit_system* ic_units,
+                         const struct unit_system* internal_units,
+                         int mpi_rank) {
 
   /* First check if it exists as this is *not* required. */
   const htri_t exists = H5Lexists(h_file, "/Units", H5P_DEFAULT);
@@ -264,16 +269,12 @@ void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank) {
   if (exists == 0) {
 
     if (mpi_rank == 0)
-      message("'Units' group not found in ICs. Assuming CGS unit system.");
+      message("'Units' group not found in ICs. Assuming internal unit system.");
 
-    /* Default to CGS */
-    us->UnitMass_in_cgs = 1.;
-    us->UnitLength_in_cgs = 1.;
-    us->UnitTime_in_cgs = 1.;
-    us->UnitCurrent_in_cgs = 1.;
-    us->UnitTemperature_in_cgs = 1.;
+    units_copy(ic_units, internal_units);
 
     return;
+
   } else if (exists < 0) {
     error("Serious problem with 'Units' group in ICs. H5Lexists gives %d",
           exists);
@@ -284,15 +285,15 @@ void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank) {
 
   /* Ok, Read the damn thing */
   io_read_attribute(h_grp, "Unit length in cgs (U_L)", DOUBLE,
-                    &us->UnitLength_in_cgs);
+                    &ic_units->UnitLength_in_cgs);
   io_read_attribute(h_grp, "Unit mass in cgs (U_M)", DOUBLE,
-                    &us->UnitMass_in_cgs);
+                    &ic_units->UnitMass_in_cgs);
   io_read_attribute(h_grp, "Unit time in cgs (U_t)", DOUBLE,
-                    &us->UnitTime_in_cgs);
+                    &ic_units->UnitTime_in_cgs);
   io_read_attribute(h_grp, "Unit current in cgs (U_I)", DOUBLE,
-                    &us->UnitCurrent_in_cgs);
+                    &ic_units->UnitCurrent_in_cgs);
   io_read_attribute(h_grp, "Unit temperature in cgs (U_T)", DOUBLE,
-                    &us->UnitTemperature_in_cgs);
+                    &ic_units->UnitTemperature_in_cgs);
 
   /* Clean up */
   H5Gclose(h_grp);
