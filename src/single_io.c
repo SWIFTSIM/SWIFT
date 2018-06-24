@@ -71,40 +71,40 @@
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  * the part array will be written once the structures have been stabilized.
  */
-void readArray(hid_t h_grp, const struct io_props prop, size_t N,
+void readArray(hid_t h_grp, const struct io_props props, size_t N,
                const struct unit_system* internal_units,
                const struct unit_system* ic_units, int cleanup_h, double h,
                int cleanup_sqrt_a, double a) {
 
-  const size_t typeSize = io_sizeof_type(prop.type);
-  const size_t copySize = typeSize * prop.dimension;
-  const size_t num_elements = N * prop.dimension;
+  const size_t typeSize = io_sizeof_type(props.type);
+  const size_t copySize = typeSize * props.dimension;
+  const size_t num_elements = N * props.dimension;
 
   /* Check whether the dataspace exists or not */
-  const htri_t exist = H5Lexists(h_grp, prop.name, 0);
+  const htri_t exist = H5Lexists(h_grp, props.name, 0);
   if (exist < 0) {
-    error("Error while checking the existence of data set '%s'.", prop.name);
+    error("Error while checking the existence of data set '%s'.", props.name);
   } else if (exist == 0) {
-    if (prop.importance == COMPULSORY) {
-      error("Compulsory data set '%s' not present in the file.", prop.name);
+    if (props.importance == COMPULSORY) {
+      error("Compulsory data set '%s' not present in the file.", props.name);
     } else {
       /* message("Optional data set '%s' not present. Zeroing this particle
-       * prop...", name);	   */
+       * props...", name);	   */
 
       for (size_t i = 0; i < N; ++i)
-        memset(prop.field + i * prop.partSize, 0, copySize);
+        memset(props.field + i * props.partSize, 0, copySize);
 
       return;
     }
   }
 
   /* message("Reading %s '%s' array...", */
-  /*         prop.importance == COMPULSORY ? "compulsory" : "optional  ", */
-  /*         prop.name); */
+  /*         props.importance == COMPULSORY ? "compulsory" : "optional  ", */
+  /*         props.name); */
 
   /* Open data space */
-  const hid_t h_data = H5Dopen(h_grp, prop.name, H5P_DEFAULT);
-  if (h_data < 0) error("Error while opening data space '%s'.", prop.name);
+  const hid_t h_data = H5Dopen(h_grp, props.name, H5P_DEFAULT);
+  if (h_data < 0) error("Error while opening data space '%s'.", props.name);
 
   /* Allocate temporary buffer */
   void* temp = malloc(num_elements * typeSize);
@@ -113,18 +113,18 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
   /* Read HDF5 dataspace in temporary buffer */
   /* Dirty version that happens to work for vectors but should be improved */
   /* Using HDF5 dataspaces would be better */
-  const hid_t h_err = H5Dread(h_data, io_hdf5_type(prop.type), H5S_ALL, H5S_ALL,
+  const hid_t h_err = H5Dread(h_data, io_hdf5_type(props.type), H5S_ALL, H5S_ALL,
                               H5P_DEFAULT, temp);
-  if (h_err < 0) error("Error while reading data array '%s'.", prop.name);
+  if (h_err < 0) error("Error while reading data array '%s'.", props.name);
 
   /* Unit conversion if necessary */
   const double unit_factor =
-      units_conversion_factor(ic_units, internal_units, prop.units);
+      units_conversion_factor(ic_units, internal_units, props.units);
   if (unit_factor != 1. && exist != 0) {
 
     /* message("Converting ! factor=%e", factor); */
 
-    if (io_is_double_precision(prop.type)) {
+    if (io_is_double_precision(props.type)) {
       double* temp_d = (double*)temp;
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= unit_factor;
     } else {
@@ -134,13 +134,13 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
   }
 
   /* Clean-up h if necessary */
-  const float h_factor_exp = units_h_factor(internal_units, prop.units);
+  const float h_factor_exp = units_h_factor(internal_units, props.units);
   if (cleanup_h && h_factor_exp != 0.f && exist != 0) {
 
-    /* message("Multipltying '%s' by h^%f=%f", prop.name, h_factor_exp,
+    /* message("Multipltying '%s' by h^%f=%f", props.name, h_factor_exp,
      * h_factor); */
 
-    if (io_is_double_precision(prop.type)) {
+    if (io_is_double_precision(props.type)) {
       double* temp_d = (double*)temp;
       const double h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= h_factor;
@@ -152,9 +152,9 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
   }
 
   /* Clean-up a if necessary */
-  if (cleanup_sqrt_a && a != 1. && (strcmp(prop.name, "Velocities") == 0)) {
+  if (cleanup_sqrt_a && a != 1. && (strcmp(props.name, "Velocities") == 0)) {
 
-    if (io_is_double_precision(prop.type)) {
+    if (io_is_double_precision(props.type)) {
       double* temp_d = (double*)temp;
       const double vel_factor = sqrt(a);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= vel_factor;
@@ -168,7 +168,7 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
   /* Copy temporary buffer to particle data */
   char* temp_c = (char*)temp;
   for (size_t i = 0; i < N; ++i)
-    memcpy(prop.field + i * prop.partSize, &temp_c[i * copySize], copySize);
+    memcpy(props.field + i * props.partSize, &temp_c[i * copySize], copySize);
 
   /* Free and close everything */
   free(temp);
