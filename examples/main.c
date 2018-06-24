@@ -644,6 +644,8 @@ int main(int argc, char *argv[]) {
         params, "InitialConditions:cleanup_smoothing_lengths", 0);
     const int cleanup_h = parser_get_opt_param_int(
         params, "InitialConditions:cleanup_h_factors", 0);
+    const int cleanup_sqrt_a = parser_get_opt_param_int(
+        params, "InitialConditions:cleanup_velocity_factors", 0);
     const int generate_gas_in_ics = parser_get_opt_param_int(
         params, "InitialConditions:generate_gas_in_ics", 0);
     if (generate_gas_in_ics && flag_entropy_ICs)
@@ -653,6 +655,8 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
     if (myrank == 0 && cleanup_h)
       message("Cleaning up h-factors (h=%f)", cosmo.h);
+    if (myrank == 0 && cleanup_sqrt_a)
+      message("Cleaning up a-factors from velocity (a=%f)", cosmo.a);
     fflush(stdout);
 
     /* Get ready to read particles of all kinds */
@@ -666,20 +670,23 @@ int main(int argc, char *argv[]) {
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                      &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                      (with_external_gravity || with_self_gravity), with_stars,
-                     cleanup_h, cosmo.h, myrank, nr_nodes, MPI_COMM_WORLD,
-                     MPI_INFO_NULL, nr_threads, dry_run);
+                     cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
+                     nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                     dry_run);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                    &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cosmo.h, myrank, nr_nodes, MPI_COMM_WORLD,
-                   MPI_INFO_NULL, nr_threads, dry_run);
+                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
+                   nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                   dry_run);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                    &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cosmo.h, nr_threads, dry_run);
+                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
+                   dry_run);
 #endif
 #endif
     if (myrank == 0) {

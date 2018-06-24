@@ -77,7 +77,7 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
                      const struct io_props props, size_t N, long long offset,
                      const struct unit_system* internal_units,
                      const struct unit_system* ic_units, int cleanup_h,
-                     double h) {
+                     int cleanup_sqrt_a, double h, double a) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -141,17 +141,32 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
   /* Clean-up h if necessary */
   const float h_factor_exp = units_h_factor(internal_units, props.units);
   if (cleanup_h && h_factor_exp != 0.f) {
-    const double h_factor = pow(h, h_factor_exp);
 
     /* message("Multipltying '%s' by h^%f=%f", props.name, h_factor_exp,
      * h_factor); */
 
     if (io_is_double_precision(props.type)) {
       double* temp_d = (double*)temp;
+      const double h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= h_factor;
     } else {
       float* temp_f = (float*)temp;
+      const float h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= h_factor;
+    }
+  }
+
+  /* Clean-up a if necessary */
+  if (cleanup_sqrt_a && a != 1. && (strcmp(props.name, "Velocities") == 0)) {
+
+    if (io_is_double_precision(props.type)) {
+      double* temp_d = (double*)temp;
+      const double vel_factor = sqrt(a);
+      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= vel_factor;
+    } else {
+      float* temp_f = (float*)temp;
+      const float vel_factor = sqrt(a);
+      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= vel_factor;
     }
   }
 
@@ -183,7 +198,8 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
 void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
                int mpi_rank, long long offset,
                const struct unit_system* internal_units,
-               const struct unit_system* ic_units, int cleanup_h, double h) {
+               const struct unit_system* ic_units, int cleanup_h,
+               int cleanup_sqrt_a, double h, double a) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -273,7 +289,7 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
     /* Write the first chunk */
     const size_t this_chunk = (N > max_chunk_size) ? max_chunk_size : N;
     readArray_chunk(h_data, h_plist_id, props, this_chunk, offset,
-                    internal_units, ic_units, cleanup_h, h);
+                    internal_units, ic_units, cleanup_h, cleanup_sqrt_a, h, a);
 
     /* Compute how many items are left */
     if (N > max_chunk_size) {
@@ -601,7 +617,10 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  * @param with_gravity Are we running with gravity ?
  * @param with_stars Are we running with stars ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
+ * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
+ * IC velocities?
  * @param h The value of the reduced Hubble constant to use for correction.
+ * @param a The current value of the scale-factor.
  * @param mpi_rank The MPI rank of this node
  * @param mpi_size The number of MPI ranks
  * @param comm The MPI communicator
@@ -615,9 +634,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       struct spart** sparts, size_t* Ngas, size_t* Ngparts,
                       size_t* Nstars, int* periodic, int* flag_entropy,
                       int with_hydro, int with_gravity, int with_stars,
-                      int cleanup_h, double h, int mpi_rank, int mpi_size,
-                      MPI_Comm comm, MPI_Info info, int n_threads,
-                      int dry_run) {
+                      int cleanup_h, int cleanup_sqrt_a, double h, double a,
+                      int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
+                      int n_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -836,7 +855,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     if (!dry_run)
       for (int i = 0; i < num_fields; ++i)
         readArray(h_grp, list[i], Nparticles, N_total[ptype], mpi_rank,
-                  offset[ptype], internal_units, ic_units, cleanup_h, h);
+                  offset[ptype], internal_units, ic_units, cleanup_h,
+                  cleanup_sqrt_a, h, a);
 
     /* Close particle group */
     H5Gclose(h_grp);
