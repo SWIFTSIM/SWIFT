@@ -37,9 +37,11 @@ from scipy.stats import kde
 from subprocess import call
 #mylog.setLevel(1)
 
+with_cooling = 0
+
 draw_density_map                 = 1#1           # 0/1         = OFF/ON
 draw_temperature_map             = 1#1           # 0/1         = OFF/ON
-draw_cellsize_map                = 3#3           # 0/1/2/3     = OFF/ON/ON now with resolution map where particle_size is defined as [M/rho]^(1/3) for SPH/ON with both cell_size and resolution maps
+draw_cellsize_map                = 2#2           # 0/1/2/3     = OFF/ON/ON now with resolution map where particle_size is defined as [M/rho]^(1/3) for SPH/ON with both cell_size and resolution maps
 draw_elevation_map               = 1#1           # 0/1         = OFF/ON
 draw_metal_map                   = 0#0           # 0/1/2       = OFF/ON/ON with total metal mass in the simulation annotated (this will be inaccurate for SPH)
 draw_zvel_map                    = 0#0           # 0/1         = OFF/ON
@@ -64,8 +66,8 @@ dataset_num                      = 2             # 1/2         = 1st dataset(Gra
 yt_version_pre_3_2_3             = 0             # 0/1         = NO/YES to "Is the yt version being used pre yt-dev-3.2.3?"
 times                            = [0, 500]      # in Myr
 figure_width                     = 30            # in kpc
-n_ref                            = 8            # for SPH codes
-over_refine_factor               = 2             # for SPH codes
+n_ref                            = 64            # 8; for SPH codes
+over_refine_factor               = 1             # 2; for SPH codes
 aperture_size_SFR_map            = 750           # in pc       = Used if draw_SFR_map = 1, 750 matches Bigiel et al. (2008)
 young_star_cutoff_SFR_map        = 20            # in Myr      = Used if draw_SFR_map = 1
 young_star_cutoff_star_radius_DF = 20            # in Myr      = Used if draw_star_radius_DF = 1
@@ -160,32 +162,46 @@ def load_dataset(dataset_num, time, code, codes, filenames_entry):
 		from yt.frontends.gadget.definitions import gadget_header_specs
 		from yt.frontends.gadget.definitions import gadget_ptype_specs
 		from yt.frontends.gadget.definitions import gadget_field_specs
-		gadget_header_specs["chemistry"] = (('h1',  4, 'c'),('h2',  4, 'c'),('empty',  256, 'c'),)
+                if with_cooling:
+		        gadget_header_specs["chemistry"] = (('h1',  4, 'c'),('h2',  4, 'c'),('empty',  256, 'c'),)
+                        header_spec = "default+chemistry"
+                else:
+                        header_spec = "default"
 		gear_ptype_specs = ("Gas", "Stars", "Halo", "Disk", "Bulge", "Bndry")
 		if dataset_num == 1:
-			pf = GadgetDataset(filenames_entry[code][time], unit_base = gadget_default_unit_base, bounding_box=[[-1000.0, 1000.0], [-1000.0, 1000.0], [-1000.0, 1000.0]], header_spec="default+chemistry", 
+			pf = GadgetDataset(filenames_entry[code][time], unit_base = gadget_default_unit_base, bounding_box=[[-1000.0, 1000.0], [-1000.0, 1000.0], [-1000.0, 1000.0]], header_spec=header_spec, 
 			                   ptype_spec=gear_ptype_specs, n_ref=n_ref, over_refine_factor=over_refine_factor)
 		elif dataset_num == 2:
-			# For GEAR 2nd dataset (Grackle+SF+ThermalFbck), "Metals" is acutally 10-species field; check how metallicity field is added below. 
-			agora_gear  = ( "Coordinates",       
-					"Velocities",
-					"ParticleIDs",
-					"Mass",
-					("InternalEnergy", "Gas"),
-					("Density", "Gas"),
-					("SmoothingLength", "Gas"),
-					("Metals", "Gas"),
-					("StellarFormationTime", "Stars"),
-					("StellarInitMass", "Stars"),					
-					("StellarIDs", "Stars"),
-					("StellarDensity", "Stars"),
-					("StellarSmoothingLength", "Stars"),
-					("StellarMetals", "Stars"),
-					("Opt1", "Stars"),
-					("Opt2", "Stars"),
-					)
+			# For GEAR 2nd dataset (Grackle+SF+ThermalFbck), "Metals" is acutally 10-species field; check how metallicity field is added below.
+                        if with_cooling:
+			        agora_gear  = ( "Coordinates",       
+					        "Velocities",
+					        "ParticleIDs",
+					        "Mass",
+					        ("InternalEnergy", "Gas"),
+					        ("Density", "Gas"),
+					        ("SmoothingLength", "Gas"),
+					        ("Metals", "Gas"),
+					        ("StellarFormationTime", "Stars"),
+					        ("StellarInitMass", "Stars"),					
+					        ("StellarIDs", "Stars"),
+					        ("StellarDensity", "Stars"),
+					        ("StellarSmoothingLength", "Stars"),
+					        ("StellarMetals", "Stars"),
+					        ("Opt1", "Stars"),
+					        ("Opt2", "Stars"),
+				)
+                        else:
+			        agora_gear  = ( "Coordinates",       
+					        "Velocities",
+					        "ParticleIDs",
+					        "Mass",
+					        ("InternalEnergy", "Gas"),
+					        ("Density", "Gas"),
+					        ("SmoothingLength", "Gas"),
+				)
 			gadget_field_specs["agora_gear"] = agora_gear
-			pf = GadgetDataset(filenames_entry[code][time], unit_base = gadget_default_unit_base, bounding_box=[[-1000.0, 1000.0], [-1000.0, 1000.0], [-1000.0, 1000.0]], header_spec="default+chemistry", 
+			pf = GadgetDataset(filenames_entry[code][time], unit_base = gadget_default_unit_base, bounding_box=[[-1000.0, 1000.0], [-1000.0, 1000.0], [-1000.0, 1000.0]], header_spec=header_spec, 
 					   ptype_spec=gear_ptype_specs, field_spec="agora_gear", n_ref=n_ref, over_refine_factor=over_refine_factor)
 	elif codes[code] == 'GIZMO':
 		from yt.frontends.gadget.definitions import gadget_field_specs
