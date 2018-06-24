@@ -71,7 +71,10 @@
  * @param internal_units The #unit_system used internally.
  * @param ic_units The #unit_system used in the snapshots.
  * @param cleanup_h Are we removing h-factors from the ICs?
+ * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
+ * IC velocities?
  * @param h The value of the reduced Hubble constant to use for cleaning.
+ * @param a The current value of the scale-factor.
  */
 void readArray_chunk(hid_t h_data, hid_t h_plist_id,
                      const struct io_props props, size_t N, long long offset,
@@ -193,7 +196,10 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
  * @param internal_units The #unit_system used internally.
  * @param ic_units The #unit_system used in the ICs.
  * @param cleanup_h Are we removing h-factors from the ICs?
+ * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
+ * IC velocities?
  * @param h The value of the reduced Hubble constant to use for cleaning.
+ * @param a The current value of the scale-factor.
  */
 void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
                int mpi_rank, long long offset,
@@ -316,10 +322,6 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
   H5Pclose(h_plist_id);
   H5Dclose(h_data);
 }
-
-/*-----------------------------------------------------------------------------
- * Routines writing an output file
- *-----------------------------------------------------------------------------*/
 
 /**
  * @brief Prepares an array in the snapshot.

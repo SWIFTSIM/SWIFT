@@ -54,10 +54,6 @@
 #include "units.h"
 #include "xmf.h"
 
-/*-----------------------------------------------------------------------------
- * Routines reading an IC file
- *-----------------------------------------------------------------------------*/
-
 /**
  * @brief Reads a data array from a given HDF5 group.
  *
@@ -69,7 +65,10 @@
  * @param internal_units The #unit_system used internally
  * @param ic_units The #unit_system used in the ICs
  * @param cleanup_h Are we removing h-factors from the ICs?
+ * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
+ * IC velocities?
  * @param h The value of the reduced Hubble constant to use for cleaning.
+ * @param a The current value of the scale-factor.
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  * the part array will be written once the structures have been stabilized.
@@ -200,10 +199,6 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
   H5Sclose(h_memspace);
   H5Dclose(h_data);
 }
-
-/*-----------------------------------------------------------------------------
- * Routines writing an output file
- *-----------------------------------------------------------------------------*/
 
 void prepareArray(const struct engine* e, hid_t grp, char* fileName,
                   FILE* xmfFile, char* partTypeGroupName,

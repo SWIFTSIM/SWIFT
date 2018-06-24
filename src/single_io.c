@@ -53,10 +53,6 @@
 #include "units.h"
 #include "xmf.h"
 
-/*-----------------------------------------------------------------------------
- * Routines reading an IC file
- *-----------------------------------------------------------------------------*/
-
 /**
  * @brief Reads a data array from a given HDF5 group.
  *
@@ -66,15 +62,18 @@
  * @param internal_units The #unit_system used internally
  * @param ic_units The #unit_system used in the ICs
  * @param cleanup_h Are we removing h-factors from the ICs?
- * @param The value of the reduced Hubble constant.
+ * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
+ * IC velocities?
+ * @param h The value of the reduced Hubble constant.
+ * @param a The current value of the scale-factor.
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  * the part array will be written once the structures have been stabilized.
  */
 void readArray(hid_t h_grp, const struct io_props props, size_t N,
                const struct unit_system* internal_units,
-               const struct unit_system* ic_units, int cleanup_h, double h,
-               int cleanup_sqrt_a, double a) {
+               const struct unit_system* ic_units, int cleanup_h,
+               int cleanup_sqrt_a, double h, double a) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -113,8 +112,8 @@ void readArray(hid_t h_grp, const struct io_props props, size_t N,
   /* Read HDF5 dataspace in temporary buffer */
   /* Dirty version that happens to work for vectors but should be improved */
   /* Using HDF5 dataspaces would be better */
-  const hid_t h_err = H5Dread(h_data, io_hdf5_type(props.type), H5S_ALL, H5S_ALL,
-                              H5P_DEFAULT, temp);
+  const hid_t h_err = H5Dread(h_data, io_hdf5_type(props.type), H5S_ALL,
+                              H5S_ALL, H5P_DEFAULT, temp);
   if (h_err < 0) error("Error while reading data array '%s'.", props.name);
 
   /* Unit conversion if necessary */
@@ -174,10 +173,6 @@ void readArray(hid_t h_grp, const struct io_props props, size_t N,
   free(temp);
   H5Dclose(h_data);
 }
-
-/*-----------------------------------------------------------------------------
- * Routines writing an output file
- *-----------------------------------------------------------------------------*/
 
 /**
  * @brief Writes a data array in given HDF5 group.
