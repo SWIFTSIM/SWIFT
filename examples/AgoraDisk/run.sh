@@ -14,6 +14,14 @@ then
     ./getIC.sh $1.hdf5
 fi
 
+# Get the Grackle cooling table
+if [ ! -e CloudyData_UVB=HM2012.h5 ]
+then
+    echo "Fetching the Cloudy tables required by Grackle..."
+    ../getCoolingTable.sh
+fi
+
+
 cp $1.hdf5 agora_disk.hdf5
 ./change_type.py agora_disk.hdf5
 
