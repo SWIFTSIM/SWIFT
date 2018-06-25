@@ -11,6 +11,8 @@ Change particle types in order to match the implemented types
 # number of particle type
 N_type = 6
 
+debug = 0
+
 
 def getOption():
     if len(argv) != 2:
@@ -33,18 +35,27 @@ def changeType(f, old, new):
         raise IOError("Cannot find group '%s'" % old)
     old = f[old_group]
 
-    new = groupName(new)
-    if new not in f:
-        f.create_group(new)
-    new = f[new]
+    new_group = groupName(new)
+    if new_group not in f:
+        f.create_group(new_group)
+    new = f[new_group]
 
     for name in old:
+        if debug:
+            print("Moving '%s' from '%s' to '%s'"
+                  % (name, old_group, new_group))
+
         tmp = old[name][:]
         del old[name]
         if name in new:
-            tmp = np.append(new[name][:], tmp)
+            new_tmp = new[name][:]
+            if debug:
+                print("Found previous data:", tmp.shape, new_tmp.shape)
+            tmp = np.append(new[name][:], new_tmp, axis=0)
             del new[name]
 
+        if debug:
+            print("With new shape:", tmp.shape)
         new.create_dataset(name, tmp.shape)
         new[name][:] = tmp
 
