@@ -112,7 +112,6 @@ __attribute__((always_inline)) INLINE int row_major_index_4d(int i, int j,
                                                              int nz, int nw) {
   int index = i * ny * nz * nw + j * nz * nw + k * nw + l;
 #ifdef SWIFT_DEBUG_CHECKS
-  // printf("Eagle cooling.h j, ny %d %d\n",j,ny);
   assert(i < nx);
   assert(j < ny);
   assert(k < nz);
@@ -149,13 +148,6 @@ __attribute__((always_inline)) INLINE void get_index_1d(float *table,
     *dx = 1;
   } else {
     *i = (int)floor(((float)x - table[0]) * dxm1);
-    if (*i >= ntable || *i < 0) {
-      printf(
-          "Eagle cooling.h i, ntable, x, table[0], dxm1 %d %d %.5e %.5e %.5e "
-          "\n",
-          *i, ntable, x, table[0], dxm1);
-      fflush(stdout);
-    }
     *dx = ((float)x - table[*i]) * dxm1;
   }
 }
@@ -667,19 +659,13 @@ construct_1d_table_from_4d_H_He(
       x1 = pow(10.0, cooling->Therm[i]);
       y0 = x0 - u_ini - result_table[i - 1] * ratefact * dt;
       y1 = x1 - u_ini - result_table[i] * ratefact * dt;
-      // new_grad = (y1 - y0)/(x1 - x0);
       new_grad = log10(y1 / y0) / log10(x1 / x0);
-      // printf("Eagle cooling.h gradient max gradient y1 y0 x1 x0 u_ini lambda
-      // %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e \n", new_grad, old_grad, y1,
-      // y0, x1, x0, u_ini, result_table[i-1]*ratefact*dt);
       if (new_grad > old_grad) {
         *x_max_grad = 0.5 * (x0 + x1);
         old_grad = new_grad;
       }
     }
   }
-  // printf("Eagle cooling.h max gradient, guess, u_ini %.5e %.5e %.5e\n",
-  // old_grad, *x_max_grad, u_ini);
 }
 
 /*
@@ -1055,9 +1041,6 @@ __attribute__((always_inline)) INLINE static double eagle_metal_cooling_rate(
   int temp_i;
   float d_temp;
 
-#if SWIFT_DEBUG_CHECKS
-  if (isnan(u)) printf("u is nan id %llu\n", p->id);
-#endif
   temp = eagle_convert_u_to_temp_1d_table(u, &du, temp_table, p, cooling, cosmo,
                                           internal_const);
 
@@ -1230,9 +1213,6 @@ eagle_metal_cooling_rate_1d_table(
 
   *dlambda_du = 0.0;
 
-#if SWIFT_DEBUG_CHECKS
-  if (isnan(u)) printf("u is nan id %llu\n", p->id);
-#endif
   temp = eagle_convert_u_to_temp_1d_table(u, &du, temp_table, p, cooling, cosmo,
                                           internal_const);
 
@@ -1551,14 +1531,6 @@ __attribute__((always_inline)) INLINE static float bisection_iter(
           element_electron_abundance_table, temp_table, z_index, dz, n_h_i,
           d_n_h, He_i, d_He, p, cooling, cosmo, phys_const);
     }
-    // if ((x_b-shift)/log(10) > cooling->Therm[0]) {
-    //  x_b -= shift;
-    //  if (isnan(exp(x_b))) printf("4 u is nan id %llu\n",p->id);
-    //  f_b = eagle_cooling_rate_1d_table(exp(x_b), &dLambdaNet_du,
-    //  H_plus_He_heat_table, H_plus_He_electron_abundance_table,
-    //  element_cooling_table, element_electron_abundance_table, temp_table, p,
-    //  cooling, cosmo, phys_const);
-    //}
     i++;
   }
 #if SWIFT_DEBUG_CHECKS
@@ -1581,9 +1553,7 @@ __attribute__((always_inline)) INLINE static float bisection_iter(
       f_a = f_next;
     }
     i++;
-    // printf("Eagle cooling.h id x_a x_b f_a f_b i %llu %.5e %.5e %.5e %.5e
-    // %d\n", p->id, x_a, x_b, f_a, f_b, i );
-  } while (fabs(x_a - x_b) > 1.0e-2 && i < eagle_max_iterations);
+  } while (fabs(x_a - x_b) > 1.0e-2 && i < 50*eagle_max_iterations);
 
   return x_b;
 }
@@ -1862,26 +1832,19 @@ __attribute__((always_inline)) INLINE static float newton_iter(
 
     // check whether iterations go out of bounds of table,
     // can be used to try to prevent runaway
+    // Remove hardcoded bounds! 
     int table_out_of_bounds = 0;
-    // if (x > cooling->Therm[cooling->N_Temp - 1]*log(10) + 1) {
-    if (exp(x) > 1.0e19) {
+    if (x > log(1.0e19)) {
       // x = log(u_ini);
       table_out_of_bounds = 1;
     }
-    // if (x < cooling->Therm[0]*log(10) - 1) {
-    if (exp(x) < 1.0e9) {
+    if (x < log(1.0e9)) {
       // x = log(u_ini);
       table_out_of_bounds = 1;
     }
 
     residual = exp(x_old) - u_ini - LambdaNet * ratefact * dt;
     if (dt > 0 && *printflag == 1) {
-      // printf("z, n_h, x, x_old, u_ini, num, denom, LNet, dL_du  %.3e %.3e
-      // %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %d %d\n",
-      //  	  cosmo->z, inn_h, exp(x), exp(x_old), u_ini,(1.0 -
-      //  u_ini*exp(-x_old) - LambdaNet*ratefact*dt*exp(-x_old)),(1.0 -
-      //  dLambdaNet_du*ratefact*dt), LambdaNet, dLambdaNet_du, x - x_old, i,
-      //  table_out_of_bounds);
       table_out_of_bounds = 0;
     }
 
@@ -1935,8 +1898,6 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
   HeFrac = p->chemistry_data.metal_mass_fraction[chemistry_element_He] /
            (XH + p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
-  // printf("Eagle cooling.h density %.5e\n",
-  // hydro_get_physical_density(p,cosmo)*units_cgs_conversion_factor(us,UNIT_CONV_DENSITY));
 
   /* convert Hydrogen mass fraction in Hydrogen number density */
   inn_h =
@@ -2026,9 +1987,6 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
         u_temp = u_eq;
       if (isnan(u_temp)) u_temp = u_eq;
 
-      // printf("Eagle cooling.h id, u_temp, n_h, z %llu %.5e %.5e %.5e\n",
-      // p->id, u_temp, inn_h, cosmo->z);
-
       int printflag = 0;
       float relax_factor = 1.0;
       float x =
@@ -2038,17 +1996,9 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
                       n_h_i, d_n_h, He_i, d_He, p, cosmo, cooling, phys_const,
                       dt, &printflag, relax_factor);
       if (printflag == 1) {
-        // choose either a relax_factor < 1 to have better stability or
-        // bisection method
-        // relax_factor = 0.75;
-        x = newton_iter(log(u_temp), u_ini, H_plus_He_heat_table,
-                        H_plus_He_electron_abundance_table,
-                        element_cooling_table, element_electron_abundance_table,
-                        temp_table, z_index, dz, n_h_i, d_n_h, He_i, d_He, p,
-                        cosmo, cooling, phys_const, dt, &printflag,
-                        relax_factor);
-        // x =
-        // bisection_iter(log(u_temp),u_ini,H_plus_He_heat_table,H_plus_He_electron_abundance_table,element_cooling_table,element_electron_abundance_table,temp_table,z_index,dz,n_h_i,d_n_h,He_i,d_He,p,cosmo,cooling,phys_const,dt);
+        // newton method didn't work, so revert to bisection
+        x =
+         bisection_iter(log(u_temp),u_ini,H_plus_He_heat_table,H_plus_He_electron_abundance_table,element_cooling_table,element_electron_abundance_table,temp_table,z_index,dz,n_h_i,d_n_h,He_i,d_He,p,cosmo,cooling,phys_const,dt);
         n_eagle_cooling_rate_calls_4++;
         printflag = 2;
       }
@@ -2056,13 +2006,13 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     }
   }
 
+  const float hydro_du_dt = hydro_get_internal_energy_dt(p);
+
   // calculate du/dt
   float cooling_du_dt = 0.0;
   if (dt > 0) {
     cooling_du_dt = (u - u_ini) / dt / cooling->power_scale;
   }
-
-  const float hydro_du_dt = hydro_get_internal_energy_dt(p);
 
   /* Update the internal energy time derivative */
   hydro_set_internal_energy_dt(p, hydro_du_dt + cooling_du_dt);
@@ -2118,8 +2068,11 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static void cooling_first_init_part(
-    const struct part *restrict p, struct xpart *restrict xp,
-    const struct cooling_function_data *cooling) {
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, struct xpart* restrict xp) {
 
   xp->cooling_data.radiated_energy = 0.f;
 }

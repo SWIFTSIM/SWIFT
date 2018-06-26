@@ -750,7 +750,7 @@ double cosmology_get_delta_time(const struct cosmology *c,
   const double t2 = interp_table(c->time_interp_table, log_a_end,
                                  c->log_a_begin, c->log_a_end);
 
-  return t2 - t1;
+    return t2 - t1;
 }
 
 /**
