@@ -54,7 +54,7 @@ enum eos_planetary_type_id {
   eos_planetary_type_HM80 = 2,
   eos_planetary_type_ANEOS = 3,
   eos_planetary_type_SESAME = 4,
-} __attribute__((packed));
+};
 
 /**
  * @brief Minor type for the planetary equation of state.
@@ -104,7 +104,7 @@ enum eos_planetary_material_id {
   /*! SESAME iron */
   eos_planetary_id_SESAME_iron =
       eos_planetary_type_SESAME * eos_planetary_type_factor,
-} __attribute__((packed));
+};
 
 /* Individual EOS function headers. */
 #include "aneos.h"
@@ -132,7 +132,8 @@ __attribute__((always_inline)) INLINE static float
 gas_internal_energy_from_entropy(float density, float entropy,
                                  enum eos_planetary_material_id mat_id) {
 
-  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
   /* Select the material base type */
   switch (type) {
@@ -241,7 +242,8 @@ gas_internal_energy_from_entropy(float density, float entropy,
 __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
     float density, float entropy, enum eos_planetary_material_id mat_id) {
 
-  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
   /* Select the material base type */
   switch (type) {
@@ -344,7 +346,8 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
 __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
     float density, float P, enum eos_planetary_material_id mat_id) {
 
-  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
   /* Select the material base type */
   switch (type) {
@@ -445,7 +448,8 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
 __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
     float density, float entropy, enum eos_planetary_material_id mat_id) {
 
-  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
   /* Select the material base type */
   switch (type) {
@@ -549,8 +553,8 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
 __attribute__((always_inline)) INLINE static float
 gas_entropy_from_internal_energy(float density, float u,
                                  enum eos_planetary_material_id mat_id) {
-
-  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
   /* Select the material base type */
   switch (type) {
@@ -654,7 +658,8 @@ __attribute__((always_inline)) INLINE static float
 gas_pressure_from_internal_energy(float density, float u,
                                   enum eos_planetary_material_id mat_id) {
 
-  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
   /* Select the material base type */
   switch (type) {
@@ -762,7 +767,8 @@ __attribute__((always_inline)) INLINE static float
 gas_internal_energy_from_pressure(float density, float P,
                                   enum eos_planetary_material_id mat_id) {
 
-  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
   /* Select the material base type */
   switch (type) {
@@ -867,7 +873,8 @@ __attribute__((always_inline)) INLINE static float
 gas_soundspeed_from_internal_energy(float density, float u,
                                     enum eos_planetary_material_id mat_id) {
 
-  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
   /* Select the material base type */
   switch (type) {
@@ -975,7 +982,8 @@ gas_soundspeed_from_internal_energy(float density, float u,
 __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
     float density, float P, enum eos_planetary_material_id mat_id) {
 
-  const enum eos_planetary_type_id type = mat_id / eos_planetary_type_factor;
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
 
   /* Select the material base type */
   switch (type) {
