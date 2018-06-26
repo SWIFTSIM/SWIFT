@@ -1,0 +1,49 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{hyperref}
+
+\newcommand{\D}[2]{\frac{d#1}{d#2}}
+\newcommand{\LL}{\left(}
+\newcommand{\RR}{\right)}
+\title{Integration scheme for cooling}
+
+\begin{document}
+
+\maketitle
+
+We are solving
+\[u = u_0 + \lambda(u) dt,\]
+where $u_0$ is the initial internal energy at the beginning of the timestep, $dt$ the hydro timestep, and $\lambda$ the cooling rate, which for a given particle varies only with respect to $u$ throughout the duration of the timestep. To prevent the occurance of negative internal energies during the calculation we introduce $x = \log u$, so that we need to solve
+\begin{equation}\label{fx-eq}
+f(x) = e^x - u_0 - \lambda(e^x) dt = 0.
+\end{equation}
+Using Newton's method we obtain consecutive approximations of the root of $f$ by the formula $x_{n+1} = x_n - f(x_n)/f'(x_n)$. This leads to
+\[x_{n+1} = x_n - \frac{1 - u_0 e^{-x_n} -\lambda(e^{x_n})e^{-x_n}dt}{1 - \frac{d\lambda}{du}(e^{x_n}) dt},\]
+We obtain the gradient by
+\[\D \lambda u = \frac{\lambda(u_{high,n}) - \lambda(u_{low,n})}{u_{high,n} - u_{low,n}},\]
+where $u_{high,n}$ and $ u_{low,n}$ are values of the internal energy grid bracketing the current iteration of the value of the internal energy ($u_n = e^{x_n}$) in Newton's method (i.e. $u_{high,n} \ge u_n \ge u_{low,n}$). 
+
+%\begin{figure}
+%\begin{center}
+%\includegraphics[width = 0.7\textwidth]{typical_fx}
+%\caption{Relationship of $\log|f(x)|$ from Equation \ref{fx-eq} to the logarithm of temperature for multiple values $u_0$. Solid lines indicate where the value of $f(x)$ is negative, while for dashed lines $f(x)$ is positive. A hydrogen number density of $10^{-1}$ cm$^{-1}$, solar abundances and redshift 0 are used for evaluating the cooling rate.}
+%\label{fx}
+%\end{center}
+%\end{figure}
+
+The root of $f$ tends to be near the location of maximum gradient, so the initial guess for the Newton's method is chosen to be the location where $g(x) = e^x - u_0 - \lambda_h(e^x) dt$ has the greatest slope, with $\lambda_h$ being the contribution to the cooling from hydrogen and helium. Since the cooling rate is dominated by hydrogen and helium at lower temperatures, this is a suitable way of approximating the equilibrium temperature, and supplying a guess to the Newton iteration scheme. 
+
+A particle is considered to have converged if the relative error in the internal energy is sufficiently small. This can be formulated as 
+\begin{align*}
+\frac{u_{n+1} - u_n}{u_{n+1}} &< C \\
+u_{n+1} - u_n &< Cu_{n+1} \\
+\LL 1-C\RR u_{n+1} &< u_n \\
+\frac{u_{n+1}}{u_n} &< \frac{1}{1-C} \\
+x_{n+1} - x_n = \log\frac{u_{n+1}}{u_n} &< -\log\LL 1-C \RR \simeq C.
+\end{align*}
+Since the grid spacing in the internal energy of the Eagle tables is 0.045 in $\log_{10}u$ we take $C = 10^{-2}$. 
+
+\end{document}

@@ -235,6 +235,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
     struct part *restrict p, float du_dt) {
 
   p->entropy_dt = gas_entropy_from_internal_energy(p->rho, du_dt);
+  //if (p->id == 5643798559995) printf("Gadget2 particle id entropy entropy_dt du_dt %llu %.5e %.5e %.5e\n", p->id, p->entropy, p->entropy_dt, du_dt);
 }
 
 /**
@@ -255,12 +256,6 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* CFL condition */
   const float dt_cfl = 2.f * kernel_gamma * CFL * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
-  if (dt_cfl == 0.0)
-    printf(
-        "Gadget2 hydro.h id, kernel, cfl, scale factor, h, sound speed, v_sig, "
-        "u %llu %.5e %.5e %.5e %.5e %.5e %.5e %.5e\n",
-        p->id, kernel_gamma, CFL, cosmo->a, p->h, cosmo->a_factor_sound_speed,
-        p->force.v_sig, hydro_get_physical_internal_energy(p, cosmo));
 
   return dt_cfl;
 }
@@ -502,9 +497,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->entropy += p->entropy_dt * dt_therm;
   if (p->entropy < 0) {
     printf(
-        "Gadget2 hydro.h entropy less than zero old entropy, entropy, "
-        "entropy_dt, dt_therm %.5e %.5e %.5e %.5e\n",
-        entropy_old, p->entropy, p->entropy_dt, dt_therm);
+        "Gadget2 hydro.h entropy less than zero id, old entropy, entropy, "
+        "entropy_dt, dt_therm %llu %.5e %.5e %.5e %.5e\n",
+        p->id, entropy_old, p->entropy, p->entropy_dt, dt_therm);
     fflush(stdout);
   }
 

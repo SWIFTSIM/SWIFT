@@ -4766,7 +4766,7 @@ void engine_step(struct engine *e) {
         e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
         e->max_active_bin, e->updates, e->g_updates, e->s_updates,
         e->wallclock_time,
-        e->step_props, );  //, ((float) (n_eagle_cooling_rate_calls_1 -
+        e->step_props);  //, ((float) (n_eagle_cooling_rate_calls_1 -
                            //20*n_eagle_cooling_rate_calls_4))/((float)
                            //n_eagle_cooling_rate_calls_2),
                            //n_eagle_cooling_rate_calls_2,
