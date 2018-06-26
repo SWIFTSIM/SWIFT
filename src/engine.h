@@ -234,9 +234,6 @@ struct engine {
   /* The current step number. */
   int step;
 
-  /* The number of particles updated in the previous step. */
-  int count_step;
-
   /* Data for the threads' barrier. */
   swift_barrier_t wait_barrier;
   swift_barrier_t run_barrier;
@@ -282,11 +279,11 @@ struct engine {
 
   /* Linked list for cell-task association. */
   struct link *links;
-  int nr_links, size_links;
+  size_t nr_links, size_links;
 
   /* Average number of tasks per cell. Used to estimate the sizes
    * of the various task arrays. */
-  int tasks_per_cell;
+  size_t tasks_per_cell;
 
   /* Are we talkative ? */
   int verbose;

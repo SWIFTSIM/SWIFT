@@ -133,7 +133,7 @@ struct end_of_step_data {
 void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 
   /* Get the next free link. */
-  const int ind = atomic_inc(&e->nr_links);
+  const size_t ind = atomic_inc(&e->nr_links);
   if (ind >= e->size_links) {
     error("Link table overflow.");
   }
@@ -3105,15 +3105,15 @@ void engine_maketasks(struct engine *e) {
  * and 2 (density, force) self.
  */
 #ifdef EXTRA_HYDRO_LOOP
-  const int hydro_tasks_per_cell = 27 * 3;
+  const size_t hydro_tasks_per_cell = 27 * 3;
 #else
-  const int hydro_tasks_per_cell = 27 * 2;
+  const size_t hydro_tasks_per_cell = 27 * 2;
 #endif
-  const int self_grav_tasks_per_cell = 125;
-  const int ext_grav_tasks_per_cell = 1;
+  const size_t self_grav_tasks_per_cell = 125;
+  const size_t ext_grav_tasks_per_cell = 1;
 
   if (e->policy & engine_policy_hydro)
-    e->size_links += s->tot_cells * hydro_tasks_per_cell;
+      e->size_links += s->tot_cells * hydro_tasks_per_cell;
   if (e->policy & engine_policy_external_gravity)
     e->size_links += s->tot_cells * ext_grav_tasks_per_cell;
   if (e->policy & engine_policy_self_gravity)
@@ -5436,7 +5436,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_param_double(params, "Statistics:delta_time");
   e->ti_next_stats = 0;
   e->verbose = verbose;
-  e->count_step = 0;
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
   e->cosmology = cosmo;
