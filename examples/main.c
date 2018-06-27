@@ -192,6 +192,7 @@ int main(int argc, char *argv[]) {
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_stars = 0;
+  int with_fof = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
@@ -208,7 +209,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tv:xy:Y:")) != -1)
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tuv:xy:Y:")) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -298,6 +299,9 @@ int main(int argc, char *argv[]) {
       case 'T':
         with_verbose_timers = 1;
         break;
+      case 'u':
+        with_fof = 1;
+        break;
       case 'v':
         if (sscanf(optarg, "%d", &verbose) != 1) {
           if (myrank == 0) printf("Error parsing verbosity level (-v).\n");
@@ -379,6 +383,14 @@ int main(int argc, char *argv[]) {
     if (myrank == 0)
       printf(
           "Error: Cannot process stars without gravity, -g or -G must be "
+          "chosen.\n");
+    if (myrank == 0) print_help_message();
+    return 1;
+  }
+  if (with_fof && !with_external_gravity && !with_self_gravity) {
+    if (myrank == 0)
+      printf(
+          "Error: Cannot perform FOF search without gravity, -g or -G must be "
           "chosen.\n");
     if (myrank == 0) print_help_message();
     return 1;
@@ -889,9 +901,10 @@ int main(int argc, char *argv[]) {
     if (with_stars) engine_policies |= engine_policy_stars;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
+    if (with_fof) engine_policies |= engine_policy_fof;
 
     /* Initialise the FOF parameters. */
-    fof_init(&s, N_total[0], N_total[1]);
+    if (with_fof) fof_init(&s, N_total[0], N_total[1]);
       
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -973,6 +986,10 @@ int main(int argc, char *argv[]) {
     // velociraptor_invoke(&e);
     //}
 #endif
+  
+    /* Perform first FOF search after the first snapshot dump. */
+    if (e.policy & engine_policy_fof) fof_search_tree(&s);
+
   }
 
   /* Legend */
