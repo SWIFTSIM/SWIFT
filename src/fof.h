@@ -28,6 +28,7 @@
 #include "space.h"
 
 /* Function prototypes. */
+void fof_init(struct space *s, long long Ngas, long long Ngparts);
 void fof_search_serial(struct space *s);
 void fof_search_cell(struct space *s, struct cell *c);
 void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj);

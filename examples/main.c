@@ -823,6 +823,9 @@ int main(int argc, char *argv[]) {
     if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
     if (with_stars) engine_policies |= engine_policy_stars;
 
+    /* Initialise the FOF parameters. */
+    fof_init(&s, N_total[0], N_total[1]);
+      
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
