@@ -981,26 +981,27 @@ eagle_convert_temp_to_u_1d_table(double temp, float *temperature_table,
  */
 __attribute__((always_inline)) INLINE static double
 eagle_convert_u_to_temp_1d_table(
-    double u, float *delta_u, double *temperature_table,
+    double logu, float *delta_u, double *temperature_table,
     const struct part *restrict p,
     const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo,
     const struct phys_const *internal_const) {
 
   int u_i;
-  float d_u, logT, T;
+  float d_u, logT;//, T;
 
-  get_index_1d(cooling->Therm, cooling->N_Temp, log10(u), &u_i, &d_u);
+  get_index_1d(cooling->Therm, cooling->N_Temp, logu, &u_i, &d_u);
 
   logT = interpol_1d_dbl(temperature_table, u_i, d_u);
-  T = pow(10.0, logT);
+  //T = pow(10.0, logT);
 
-  if (u_i == 0 && d_u == 0) T *= u / pow(10.0, cooling->Therm[0]);
+  //if (u_i == 0 && d_u == 0) T *= u / pow(10.0, cooling->Therm[0]);
+  if (u_i == 0 && d_u == 0) logT += logu - cooling->Therm[0];
 
   *delta_u =
       pow(10.0, cooling->Therm[u_i + 1]) - pow(10.0, cooling->Therm[u_i]);
 
-  return T;
+  return logT;
 }
 
 /*
@@ -1022,7 +1023,7 @@ eagle_convert_u_to_temp_1d_table(
  * from each of the metals.
  */
 __attribute__((always_inline)) INLINE static double eagle_metal_cooling_rate(
-    double u, double *temp_table, int z_index, float dz, int n_h_i, float d_n_h,
+    double logu, double *temp_table, int z_index, float dz, int n_h_i, float d_n_h,
     int He_i, float d_He, const struct part *restrict p,
     const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo,
@@ -1041,10 +1042,11 @@ __attribute__((always_inline)) INLINE static double eagle_metal_cooling_rate(
   int temp_i;
   float d_temp;
 
-  temp = eagle_convert_u_to_temp_1d_table(u, &du, temp_table, p, cooling, cosmo,
+  temp = eagle_convert_u_to_temp_1d_table(logu, &du, temp_table, p, cooling, cosmo,
                                           internal_const);
 
-  get_index_1d(cooling->Temp, cooling->N_Temp, log10(temp), &temp_i, &d_temp);
+  //get_index_1d(cooling->Temp, cooling->N_Temp, log10(temp), &temp_i, &d_temp);
+  get_index_1d(cooling->Temp, cooling->N_Temp, temp, &temp_i, &d_temp);
 
   /* ------------------ */
   /* Metal-free cooling */
@@ -1189,7 +1191,7 @@ __attribute__((always_inline)) INLINE static double eagle_metal_cooling_rate(
  */
 __attribute__((always_inline)) INLINE static double
 eagle_metal_cooling_rate_1d_table(
-    double u, double *dlambda_du, double *H_plus_He_heat_table,
+    double logu, double *dlambda_du, double *H_plus_He_heat_table,
     double *H_plus_He_electron_abundance_table, double *element_cooling_table,
     double *element_electron_abundance_table, double *temp_table, int z_index,
     float dz, int n_h_i, float d_n_h, int He_i, float d_He,
@@ -1213,10 +1215,11 @@ eagle_metal_cooling_rate_1d_table(
 
   *dlambda_du = 0.0;
 
-  temp = eagle_convert_u_to_temp_1d_table(u, &du, temp_table, p, cooling, cosmo,
+  temp = eagle_convert_u_to_temp_1d_table(logu, &du, temp_table, p, cooling, cosmo,
                                           internal_const);
 
-  get_index_1d(cooling->Temp, cooling->N_Temp, log10(temp), &temp_i, &d_temp);
+  //get_index_1d(cooling->Temp, cooling->N_Temp, log10(temp), &temp_i, &d_temp);
+  get_index_1d(cooling->Temp, cooling->N_Temp, temp, &temp_i, &d_temp);
 
   /* ------------------ */
   /* Metal-free cooling */
@@ -1332,6 +1335,8 @@ eagle_metal_cooling_rate_1d_table(
     if (element_lambda != NULL) element_lambda[i + 2] = temp_lambda;
   }
 
+  //printf("Eagle cooling.h dlambda_du du %.5e %.5e\n", *dlambda_du, du);
+
   return cooling_rate;
 }
 
@@ -1370,43 +1375,15 @@ __attribute__((always_inline)) INLINE static double eagle_cooling_rate_1d_table(
     const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo,
     const struct phys_const *internal_const) {
-  double *element_lambda = NULL,
-         lambda_net1 = 0.0;  //, lambda_net2 = 0.0, delta, dLambdaNet_du_calc;
-  // float d_u;
-  // int u_i;
-  // get_index_1d(cooling->Therm, cooling->N_Temp, log10(u), &u_i, &d_u);
-  // if (u_i >= cooling->N_Temp-2){
-  //  delta = pow(10.0,cooling->Therm[cooling->N_Temp-2]) - u;
-  //} else {
-  //  delta = pow(10.0,cooling->Therm[u_i+1]) - pow(10.0,cooling->Therm[u_i]);
-  //}
+  double *element_lambda = NULL, lambda_net = 0.0;
 
-  // lambda_net1 =
-  // eagle_metal_cooling_rate_1d_table(pow(10.0,cooling->Therm[u_i]),
-  // dLambdaNet_du, H_plus_He_heat_table, H_plus_He_electron_abundance_table,
-  // element_cooling_table, element_electron_abundance_table, temp_table, p,
-  // cooling, cosmo, internal_const, element_lambda);
-  // lambda_net2 =
-  // eagle_metal_cooling_rate_1d_table(pow(10.0,cooling->Therm[u_i+1]),
-  // dLambdaNet_du, H_plus_He_heat_table, H_plus_He_electron_abundance_table,
-  // element_cooling_table, element_electron_abundance_table, temp_table, p,
-  // cooling, cosmo, internal_const, element_lambda);
-  //
-  // dLambdaNet_du_calc = (lambda_net2 - lambda_net1)/delta;
-
-  // printf( "Eagle cooling.h 2 dlambda_du, dlambda, du, index %0.5e %0.5e %.5e
-  // %d\n", dLambdaNet_du_calc, lambda_net2 - lambda_net1, delta, u_i);
-
-  lambda_net1 = eagle_metal_cooling_rate_1d_table(
-      u, dLambdaNet_du, H_plus_He_heat_table,
+  lambda_net = eagle_metal_cooling_rate_1d_table(
+      log10(u), dLambdaNet_du, H_plus_He_heat_table,
       H_plus_He_electron_abundance_table, element_cooling_table,
       element_electron_abundance_table, temp_table, z_index, dz, n_h_i, d_n_h,
       He_i, d_He, p, cooling, cosmo, internal_const, element_lambda);
 
-  // printf("Eagle cooling.h double check dlambda_du endpoints, lambda_nets %.5e
-  // %.5e\n", *dLambdaNet_du, dLambdaNet_du_calc);
-
-  return lambda_net1;
+  return lambda_net;
 }
 
 /*
@@ -1903,9 +1880,6 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   inn_h =
       chemistry_get_number_density(p, cosmo, chemistry_element_H, phys_const) *
       cooling->number_density_scale;
-  // float inn_h_eagle =
-  // hydro_get_physical_density(p,cosmo)*units_cgs_conversion_factor(us,UNIT_CONV_DENSITY)
-  // * XH / eagle_proton_mass_cgs;
   /* ratefact = inn_h * inn_h / rho; Might lead to round-off error: replaced by
    * equivalent expression  below */
   ratefact = inn_h * (XH / eagle_proton_mass_cgs);
@@ -1972,7 +1946,6 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
         He_i, d_He, p, cooling, cosmo, phys_const);
 
     double u_eq = 5.0e12;
-    u_temp = u_ini;
 
     if (dt > 0) {
       float u_temp_guess = u_ini + LambdaNet * ratefact * dt;
@@ -2007,6 +1980,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   }
 
   const float hydro_du_dt = hydro_get_internal_energy_dt(p);
+
 
   // calculate du/dt
   float cooling_du_dt = 0.0;

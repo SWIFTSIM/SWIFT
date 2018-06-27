@@ -593,15 +593,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf(w2);
 
   /* Predict the entropy */
-  float entropy_old = p->entropy;
   p->entropy += p->entropy_dt * dt_therm;
-  if (p->entropy < 0) {
-    printf(
-        "Gadget2 hydro.h entropy less than zero id, old entropy, entropy, "
-        "entropy_dt, dt_therm %llu %.5e %.5e %.5e %.5e\n",
-        p->id, entropy_old, p->entropy, p->entropy_dt, dt_therm);
-    fflush(stdout);
-  }
 
   /* Re-compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
