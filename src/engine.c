@@ -4679,10 +4679,7 @@ void engine_step(struct engine *e) {
   /* Perform a FOF search. */
   if(e->run_fof) {
     
-    ticks tic = getticks();
     fof_search_tree(e->s);
-    message("FOF search took: %.3f %s.",
-        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
     e->run_fof = 0;
   }
