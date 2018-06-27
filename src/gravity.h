@@ -19,11 +19,28 @@
 #ifndef SWIFT_GRAVITY_H
 #define SWIFT_GRAVITY_H
 
-#include "./const.h"
+/* Config parameters. */
+#include "../config.h"
+
+/* Local headers. */
+#include "const.h"
+#include "inline.h"
+#include "part.h"
 
 /* So far only one model here */
 /* Straight-forward import */
 #include "./gravity/Default/gravity.h"
 #include "./gravity/Default/gravity_iact.h"
+
+struct engine;
+struct space;
+
+void gravity_exact_force_ewald_init(double boxSize);
+void gravity_exact_force_ewald_free(void);
+void gravity_exact_force_ewald_evaluate(double rx, double ry, double rz,
+                                        double corr_f[3], double *corr_p);
+void gravity_exact_force_compute(struct space *s, const struct engine *e);
+void gravity_exact_force_check(struct space *s, const struct engine *e,
+                               float rel_tol);
 
 #endif

@@ -32,11 +32,13 @@ P = 1.           # Pressure
 gamma = 5./3.    # Gas adiabatic index
 fileName = "input.hdf5" 
 
-
 #---------------------------------------------------
 numPart = L**3
 mass = boxSize**3 * rho / numPart
 internalEnergy = P / ((gamma - 1.)*rho)
+
+# chemistry data
+he_density = rho * 0.24
 
 #Generate particles
 coords = zeros((numPart, 3))
@@ -45,6 +47,9 @@ m      = zeros((numPart, 1))
 h      = zeros((numPart, 1))
 u      = zeros((numPart, 1))
 ids    = zeros((numPart, 1), dtype='L')
+
+# chemistry data
+he = zeros((numPart, 1))
 
 for i in range(L):
     for j in range(L):
@@ -63,7 +68,8 @@ for i in range(L):
             h[index] = 2.251 * boxSize / L
             u[index] = internalEnergy
             ids[index] = index
-            
+            # chemistry data
+            he[index] = he_density
             
 
 #--------------------------------------------------
@@ -110,5 +116,8 @@ ds = grp.create_dataset('InternalEnergy', (numPart,1), 'f')
 ds[()] = u
 ds = grp.create_dataset('ParticleIDs', (numPart, 1), 'L')
 ds[()] = ids
+# chemistry
+ds = grp.create_dataset('HeDensity', (numPart, 1), 'f')
+ds[()] = he
 
 file.close()

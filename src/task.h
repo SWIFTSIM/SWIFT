@@ -34,6 +34,9 @@
 
 /**
  * @brief The different task types.
+ *
+ * Be sure to update the taskID_names array in tasks.c if you modify this list!
+ * Also update the python task plotting scripts!
  */
 enum task_types {
   task_type_none = 0,
@@ -42,16 +45,25 @@ enum task_types {
   task_type_pair,
   task_type_sub_self,
   task_type_sub_pair,
-  task_type_init,
+  task_type_init_grav,
+  task_type_ghost_in,
   task_type_ghost,
+  task_type_ghost_out,
   task_type_extra_ghost,
-  task_type_kick,
+  task_type_drift_part,
+  task_type_drift_gpart,
+  task_type_end_force,
+  task_type_kick1,
+  task_type_kick2,
+  task_type_timestep,
   task_type_send,
   task_type_recv,
-  task_type_grav_gather_m,
-  task_type_grav_fft,
+  task_type_grav_top_level,
+  task_type_grav_long_range,
+  task_type_grav_ghost_in,
+  task_type_grav_ghost_out,
   task_type_grav_mm,
-  task_type_grav_up,
+  task_type_grav_down,
   task_type_cooling,
   task_type_sourceterms,
   task_type_count
@@ -68,6 +80,11 @@ enum task_subtypes {
   task_subtype_grav,
   task_subtype_external_grav,
   task_subtype_tend,
+  task_subtype_xv,
+  task_subtype_rho,
+  task_subtype_gpart,
+  task_subtype_multipole,
+  task_subtype_spart,
   task_subtype_count
 } __attribute__((packed));
 
@@ -143,9 +160,6 @@ struct task {
   /*! Should the scheduler skip this task ? */
   char skip;
 
-  /*! Does this task require the particles to be tightly in the cell ? */
-  char tight;
-
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
 
@@ -153,9 +167,17 @@ struct task {
   /*! ID of the queue or runner owning this task */
   short int rid;
 
+  /*! Information about the direction of the pair task */
+  short int sid;
+
   /*! Start and end time of this task */
   ticks tic, toc;
 #endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* When was this task last run? */
+  integertime_t ti_run;
+#endif /* SWIFT_DEBUG_CHECKS */
 
 } SWIFT_STRUCT_ALIGN;
 

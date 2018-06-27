@@ -24,6 +24,7 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <float.h>
 #include <math.h>
 
 /* Local includes. */
@@ -84,7 +85,10 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
                     g->a_grav[2] * g->a_grav[2];
 
-  return potential->timestep_mult * sqrtf(a_2 / dota_2);
+  if (fabsf(dota_2) > 0.f)
+    return potential->timestep_mult * sqrtf(a_2 / dota_2);
+  else
+    return FLT_MAX;
 }
 
 /**
@@ -120,13 +124,14 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
  * @brief Computes the gravitational potential energy of a particle in a point
  * mass potential.
  *
+ * @param time The current time (unused here).
  * @param potential The #external_potential used in the run.
  * @param phys_const Physical constants in internal units.
  * @param g Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float
 external_gravity_get_potential_energy(
-    const struct external_potential* potential,
+    double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, const struct gpart* g) {
 
   const float dx = g->x[0] - potential->x;
@@ -147,9 +152,9 @@ external_gravity_get_potential_energy(
  * @param potential The external potential properties to initialize
  */
 static INLINE void potential_init_backend(
-    const struct swift_params* parameter_file,
-    const struct phys_const* phys_const, const struct UnitSystem* us,
-    const struct space* s, struct external_potential* potential) {
+    struct swift_params* parameter_file, const struct phys_const* phys_const,
+    const struct unit_system* us, const struct space* s,
+    struct external_potential* potential) {
 
   potential->x =
       parser_get_param_double(parameter_file, "PointMassPotential:position_x");

@@ -30,6 +30,45 @@
 /* Local headers. */
 #include "swift.h"
 
+#if defined(WITH_VECTORIZATION)
+#define DOSELF1 runner_doself1_branch_density
+#define DOSELF1_SUBSET runner_doself_subset_branch_density
+#define DOPAIR1_SUBSET runner_dopair_subset_branch_density
+#define DOPAIR1 runner_dopair1_branch_density
+#ifdef TEST_DOSELF_SUBSET
+#define DOSELF1_NAME "runner_doself_subset_branch_density"
+#else
+#define DOSELF1_NAME "runner_doself1_branch_density"
+#endif
+#ifdef TEST_DOPAIR_SUBSET
+#define DOPAIR1_NAME "runner_dopair_subset_branch_density"
+#else
+#define DOPAIR1_NAME "runner_dopair1_branch_density"
+#endif
+#endif
+
+#ifndef DOSELF1
+#define DOSELF1 runner_doself1_branch_density
+#define DOSELF1_SUBSET runner_doself_subset_branch_density
+#ifdef TEST_DOSELF_SUBSET
+#define DOSELF1_NAME "runner_doself_subset_branch_density"
+#else
+#define DOSELF1_NAME "runner_doself1_branch_density"
+#endif
+#endif
+
+#ifndef DOPAIR1
+#define DOPAIR1 runner_dopair1_branch_density
+#define DOPAIR1_SUBSET runner_dopair_subset_branch_density
+#ifdef TEST_DOPAIR_SUBSET
+#define DOPAIR1_NAME "runner_dopair1_subset_branch_density"
+#else
+#define DOPAIR1_NAME "runner_dopair1_branch_density"
+#endif
+#endif
+
+#define NODE_ID 0
+
 enum velocity_types {
   velocity_zero,
   velocity_random,
@@ -45,19 +84,21 @@ enum velocity_types {
  * @param offset The position of the cell offset from (0,0,0).
  * @param size The cell size.
  * @param h The smoothing length of the particles in units of the inter-particle
- *separation.
+ * separation.
  * @param density The density of the fluid.
  * @param partId The running counter of IDs.
  * @param pert The perturbation to apply to the particles in the cell in units
- *of the inter-particle separation.
+ * of the inter-particle separation.
  * @param vel The type of velocity field (0, random, divergent, rotating)
+ * @param h_pert The perturbation to apply to the smoothing length.
  */
 struct cell *make_cell(size_t n, double *offset, double size, double h,
                        double density, long long *partId, double pert,
-                       enum velocity_types vel) {
+                       enum velocity_types vel, double h_pert) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
-  struct cell *cell = malloc(sizeof(struct cell));
+  float h_max = 0.f;
+  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->parts, part_align,
@@ -102,11 +143,22 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
             part->v[2] = 0.f;
             break;
         }
-        part->h = size * h / (float)n;
+        if (h_pert)
+          part->h = size * h * random_uniform(1.f, h_pert) / (float)n;
+        else
+          part->h = size * h / (float)n;
+        h_max = fmaxf(h_max, part->h);
         part->id = ++(*partId);
 
-#ifdef GIZMO_SPH
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
+
+#ifdef SHADOWFAX_SPH
+        double anchor[3] = {0., 0., 0.};
+        double side[3] = {1., 1., 1.};
+        voronoi_cell_init(&part->cell, part->x, anchor, side);
+#endif
+
 #else
         part->mass = density * volume / count;
 #endif
@@ -116,8 +168,13 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->entropy_one_over_gamma = 1.f;
 #endif
 
-        part->ti_begin = 0;
-        part->ti_end = 1;
+        part->time_bin = 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        part->ti_drift = 8;
+        part->ti_kick = 8;
+#endif
+
         ++part;
       }
     }
@@ -125,9 +182,10 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   /* Cell properties */
   cell->split = 0;
-  cell->h_max = h;
+  cell->h_max = h_max;
   cell->count = count;
-  cell->dx_max = 0.;
+  cell->dx_max_part = 0.;
+  cell->dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
@@ -135,21 +193,23 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_end_min = 1;
-  cell->ti_end_max = 1;
+  cell->ti_old_part = 8;
+  cell->ti_hydro_end_min = 8;
+  cell->ti_hydro_end_max = 8;
+  cell->nodeID = NODE_ID;
 
   shuffle_particles(cell->parts, cell->count);
 
   cell->sorted = 0;
-  cell->sort = NULL;
-  cell->sortsize = 0;
+  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
 
   return cell;
 }
 
 void clean_up(struct cell *ci) {
   free(ci->parts);
-  free(ci->sort);
+  for (int k = 0; k < 13; k++)
+    if (ci->sort[k] != NULL) free(ci->sort[k]);
   free(ci);
 }
 
@@ -158,16 +218,20 @@ void clean_up(struct cell *ci) {
  */
 void zero_particle_fields(struct cell *c) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_init_part(&c->parts[pid]);
+    hydro_init_part(&c->parts[pid], NULL);
   }
 }
 
 /**
  * @brief Ends the loop by adding the appropriate coefficients
  */
-void end_calculation(struct cell *c) {
+void end_calculation(struct cell *c, const struct cosmology *cosmo) {
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_end_density(&c->parts[pid]);
+    hydro_end_density(&c->parts[pid], cosmo);
+
+    /* Recover the common "Neighbour number" definition */
+    c->parts[pid].density.wcount *= pow_dimension(c->parts[pid].h);
+    c->parts[pid].density.wcount *= kernel_norm;
   }
 }
 
@@ -196,15 +260,18 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2],
-            hydro_get_density(&main_cell->parts[pid]),
-#if defined(GIZMO_SPH)
+            hydro_get_comoving_density(&main_cell->parts[pid]),
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
             0.f,
+#elif defined(HOPKINS_PU_SPH)
+            main_cell->parts[pid].density.pressure_bar_dh,
 #else
             main_cell->parts[pid].density.rho_dh,
 #endif
             main_cell->parts[pid].density.wcount,
             main_cell->parts[pid].density.wcount_dh,
-#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH) || \
+    defined(HOPKINS_PU_SPH)
             main_cell->parts[pid].density.div_v,
             main_cell->parts[pid].density.rot_v[0],
             main_cell->parts[pid].density.rot_v[1],
@@ -233,8 +300,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               "%13e %13e %13e\n",
               cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
               cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-              cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
-#if defined(GIZMO_SPH)
+              cj->parts[pjd].v[2], hydro_get_comoving_density(&cj->parts[pjd]),
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
               0.f,
 #else
               main_cell->parts[pjd].density.rho_dh,
@@ -255,15 +322,30 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 }
 
 /* Just a forward declaration... */
-void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_doself1_density(struct runner *r, struct cell *ci);
+void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
+                                   struct cell *cj);
+void runner_doself1_branch_density(struct runner *r, struct cell *c);
+void runner_dopair_subset_branch_density(struct runner *r,
+                                         struct cell *restrict ci,
+                                         struct part *restrict parts_i,
+                                         int *restrict ind, int count,
+                                         struct cell *restrict cj);
+void runner_doself_subset_branch_density(struct runner *r,
+                                         struct cell *restrict ci,
+                                         struct part *restrict parts,
+                                         int *restrict ind, int count);
 
 /* And go... */
 int main(int argc, char *argv[]) {
+
+#ifdef HAVE_SETAFFINITY
+  engine_pin();
+#endif
+
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 1.;
-  double perturbation = 0.;
-  char outputFileNameExtension[200] = "";
+  double perturbation = 0., h_pert = 0.;
+  char outputFileNameExtension[100] = "";
   char outputFileName[200] = "";
   enum velocity_types vel = velocity_zero;
 
@@ -271,17 +353,22 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
-  /* Choke on FP-exceptions */
+/* Choke on FP-exceptions */
+#ifdef HAVE_FE_ENABLE_EXCEPT
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
 
   /* Get some randomness going */
   srand(0);
 
   char c;
-  while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:")) != -1) {
+  while ((c = getopt(argc, argv, "m:s:h:p:n:r:t:d:f:v:")) != -1) {
     switch (c) {
       case 'h':
         sscanf(optarg, "%lf", &h);
+        break;
+      case 'p':
+        sscanf(optarg, "%lf", &h_pert);
         break;
       case 's':
         sscanf(optarg, "%lf", &size);
@@ -318,6 +405,7 @@ int main(int argc, char *argv[]) {
         "runner_doself1_density()."
         "\n\nOptions:"
         "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
+        "\n-p                 - Random fractional change in h, h=h*random(1,p)"
         "\n-m rho             - Physical density in the cell"
         "\n-s size            - Physical size of the cell"
         "\n-d pert            - Perturbation to apply to the particles [0,1["
@@ -329,6 +417,9 @@ int main(int argc, char *argv[]) {
   }
 
   /* Help users... */
+  message("DOSELF1 function called: %s", DOSELF1_NAME);
+  message("DOPAIR1 function called: %s", DOPAIR1_NAME);
+  message("Vector size: %d", VEC_SIZE);
   message("Adiabatic index: ga = %f", hydro_gamma);
   message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
@@ -342,12 +433,29 @@ int main(int argc, char *argv[]) {
 
   /* Build the infrastructure */
   struct space space;
-  space.periodic = 0;
+  space.periodic = 1;
+  space.dim[0] = 3.;
+  space.dim[1] = 3.;
+  space.dim[2] = 3.;
+
+  struct hydro_props hp;
+  hp.eta_neighbours = h;
+  hp.h_tolerance = 1e0;
+  hp.h_max = FLT_MAX;
+  hp.max_smoothing_iterations = 1;
+  hp.CFL_condition = 0.1;
 
   struct engine engine;
   engine.s = &space;
   engine.time = 0.1f;
-  engine.ti_current = 1;
+  engine.ti_current = 8;
+  engine.max_active_bin = num_time_bins;
+  engine.hydro_properties = &hp;
+  engine.nodeID = NODE_ID;
+
+  struct cosmology cosmo;
+  cosmology_init_no_cosmo(&cosmo);
+  engine.cosmology = &cosmo;
 
   struct runner runner;
   runner.e = &engine;
@@ -360,16 +468,22 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 3; ++k) {
         double offset[3] = {i * size, j * size, k * size};
-        cells[i * 9 + j * 3 + k] = make_cell(particles, offset, size, h, rho,
-                                             &partId, perturbation, vel);
+        cells[i * 9 + j * 3 + k] =
+            make_cell(particles, offset, size, h, rho, &partId, perturbation,
+                      vel, h_pert);
 
-        runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0);
+        runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
+
+        runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
       }
     }
   }
 
   /* Store the main cell for future use */
   main_cell = cells[13];
+
+  ticks timings[27];
+  for (int i = 0; i < 27; i++) timings[i] = 0;
 
   ticks time = 0;
   for (size_t i = 0; i < runs; ++i) {
@@ -378,34 +492,82 @@ int main(int argc, char *argv[]) {
 
     const ticks tic = getticks();
 
-#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
+#ifdef WITH_VECTORIZATION
+    runner.ci_cache.count = 0;
+    cache_init(&runner.ci_cache, 512);
+    runner.cj_cache.count = 0;
+    cache_init(&runner.cj_cache, 512);
+#endif
+
+#if defined(TEST_DOSELF_SUBSET) || defined(TEST_DOPAIR_SUBSET)
+    int *pid = NULL;
+    int count = 0;
+    if ((pid = (int *)malloc(sizeof(int) * main_cell->count)) == NULL)
+      error("Can't allocate memory for pid.");
+    for (int k = 0; k < main_cell->count; k++)
+      if (part_is_active(&main_cell->parts[k], &engine)) {
+        pid[count] = k;
+        ++count;
+      }
+#endif
 
     /* Run all the pairs */
-    for (int j = 0; j < 27; ++j)
-      if (cells[j] != main_cell)
-        runner_dopair1_density(&runner, main_cell, cells[j]);
+    for (int j = 0; j < 27; ++j) {
+      if (cells[j] != main_cell) {
+        const ticks sub_tic = getticks();
+
+#ifdef TEST_DOPAIR_SUBSET
+        DOPAIR1_SUBSET(&runner, main_cell, main_cell->parts, pid, count,
+                       cells[j]);
+#else
+        DOPAIR1(&runner, main_cell, cells[j]);
+#endif
+
+        timings[j] += getticks() - sub_tic;
+      }
+    }
 
     /* And now the self-interaction */
-    runner_doself1_density(&runner, main_cell);
+    const ticks self_tic = getticks();
 
+#ifdef TEST_DOSELF_SUBSET
+    DOSELF1_SUBSET(&runner, main_cell, main_cell->parts, pid, count);
+#else
+    DOSELF1(&runner, main_cell);
 #endif
+
+    timings[13] += getticks() - self_tic;
 
     const ticks toc = getticks();
     time += toc - tic;
 
     /* Let's get physical ! */
-    end_calculation(main_cell);
+    end_calculation(main_cell, &cosmo);
 
     /* Dump if necessary */
     if (i % 50 == 0) {
-      sprintf(outputFileName, "swift_dopair_27_%s.dat",
+      sprintf(outputFileName, "swift_dopair_27_%.150s.dat",
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, cells);
     }
   }
 
   /* Output timing */
-  message("SWIFT calculation took       : %15lli ticks.", time / runs);
+  ticks corner_time = timings[0] + timings[2] + timings[6] + timings[8] +
+                      timings[18] + timings[20] + timings[24] + timings[26];
+
+  ticks edge_time = timings[1] + timings[3] + timings[5] + timings[7] +
+                    timings[9] + timings[11] + timings[15] + timings[17] +
+                    timings[19] + timings[21] + timings[23] + timings[25];
+
+  ticks face_time = timings[4] + timings[10] + timings[12] + timings[14] +
+                    timings[16] + timings[22];
+
+  message("Corner calculations took       : %15lli ticks.", corner_time / runs);
+  message("Edge calculations took         : %15lli ticks.", edge_time / runs);
+  message("Face calculations took         : %15lli ticks.", face_time / runs);
+  message("Self calculations took         : %15lli ticks.", timings[13] / runs);
+  message("SWIFT calculation took         : %15lli ticks.", time / runs);
 
   /* Now perform a brute-force version for accuracy tests */
 
@@ -414,8 +576,6 @@ int main(int argc, char *argv[]) {
 
   const ticks tic = getticks();
 
-#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
-
   /* Run all the brute-force pairs */
   for (int j = 0; j < 27; ++j)
     if (cells[j] != main_cell) pairs_all_density(&runner, main_cell, cells[j]);
@@ -423,15 +583,13 @@ int main(int argc, char *argv[]) {
   /* And now the self-interaction */
   self_all_density(&runner, main_cell);
 
-#endif
-
   const ticks toc = getticks();
 
   /* Let's get physical ! */
-  end_calculation(main_cell);
+  end_calculation(main_cell, &cosmo);
 
   /* Dump */
-  sprintf(outputFileName, "brute_force_27_%s.dat", outputFileNameExtension);
+  sprintf(outputFileName, "brute_force_27_%.150s.dat", outputFileNameExtension);
   dump_particle_fields(outputFileName, main_cell, cells);
 
   /* Output timing */

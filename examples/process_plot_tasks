@@ -40,6 +40,9 @@ fi
 NPROCS=$1
 TIMERANGE=$2
 
+#  Locate script.
+SCRIPTHOME=$(dirname "$0")
+
 #  Find all thread info files. Use version sort to get into correct order.
 files=$(ls -v thread_info-step*.dat)
 if test $? != 0; then
@@ -56,7 +59,8 @@ done
 
 #  And process them,
 echo "Processing thread info files..."
-echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "./plot_tasks.py \$0 \$2 $TIMERANGE"
+echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/plot_tasks.py --expand 1 --limit $TIMERANGE --width 16 --height 4 \$0 \$2 "
+echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/analyse_tasks.py \$0 > \$2.stats"
 
 echo "Writing output index.html file"
 #  Construct document - serial.
@@ -75,8 +79,21 @@ echo $list | xargs -n 3 | while read f s g; do
 <h2>Step $s</h2>
 EOF
     cat <<EOF >> index.html
-<a href="step${s}r${i}.png"><img src="step${s}r${i}.png" width=400px/></a>
+<a href="step${s}r${i}.html"><img src="step${s}r${i}.png" width=400px/></a>
 EOF
+    cat <<EOF > step${s}r${i}.html
+ <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<body>
+<img src="step${s}r${i}.png">
+<pre>
+EOF
+cat step${s}r${i}.stats >> step${s}r${i}.html
+cat <<EOF >> step${s}r${i}.html
+</body>
+</html>
+EOF
+
 done
 
 cat <<EOF >> index.html

@@ -40,16 +40,18 @@
 
 /* Local headers. */
 #include "atomic.h"
-#include "const.h"
 #include "cycle.h"
 #include "engine.h"
 #include "error.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
 #include "queue.h"
+#include "sort_part.h"
 #include "space.h"
+#include "space_getsid.h"
 #include "task.h"
 #include "timers.h"
+#include "version.h"
 
 /**
  * @brief Re-set the list of active tasks.
@@ -65,6 +67,11 @@ void scheduler_clear_active(struct scheduler *s) { s->active_count = 0; }
  */
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ta == NULL) error("Unlocking task is NULL.");
+  if (tb == NULL) error("Unlocked task is NULL.");
+#endif
+
   /* Get an index at which to store this unlock. */
   const int ind = atomic_inc(&s->nr_unlocks);
 
@@ -107,22 +114,218 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 }
 
 /**
- * @brief Split a task if too large.
+ * @brief Write a dot file with the task dependencies.
+ *
+ * Run plot_task_dependencies.sh for an example of how to use it
+ * to generate the figure.
+ *
+ * @param s The #scheduler we are working in.
+ * @param verbose Are we verbose about this?
+ */
+void scheduler_write_dependencies(struct scheduler *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Conservative number of dependencies per task type */
+  const int max_nber_dep = 128;
+
+  /* Number of possible relations between tasks */
+  const int nber_relation =
+      2 * task_type_count * task_subtype_count * max_nber_dep;
+
+  /* To get the table of max_nber_dep for a task:
+   * ind = (ta * task_subtype_count + sa) * max_nber_dep * 2
+   * where ta is the value of task_type and sa is the value of
+   * task_subtype  */
+  int *table = (int *)malloc(nber_relation * sizeof(int));
+  if (table == NULL)
+    error("Error allocating memory for task-dependency graph.");
+
+  /* Reset everything */
+  for (int i = 0; i < nber_relation; i++) table[i] = -1;
+
+  /* Create file */
+  char filename[200] = "dependency_graph.dot";
+  FILE *f = fopen(filename, "w");
+  if (f == NULL) error("Error opening dependency graph file.");
+
+  /* Write header */
+  fprintf(f, "digraph task_dep {\n");
+  fprintf(f, "label=\"Task dependencies for SWIFT %s\";\n", git_revision());
+  fprintf(f, "\t compound=true;\n");
+  fprintf(f, "\t ratio=0.66;\n");
+  fprintf(f, "\t node[nodesep=0.15];\n");
+
+  /* loop over all tasks */
+  for (int i = 0; i < s->nr_tasks; i++) {
+    const struct task *ta = &s->tasks[i];
+
+    /* and their dependencies */
+    for (int j = 0; j < ta->nr_unlock_tasks; j++) {
+      const struct task *tb = ta->unlock_tasks[j];
+
+      /* check if dependency already written */
+      int written = 0;
+
+      /* Current index */
+      int ind = ta->type * task_subtype_count + ta->subtype;
+      ind *= 2 * max_nber_dep;
+
+      int k = 0;
+      int *cur = &table[ind];
+      while (k < max_nber_dep) {
+
+        /* not written yet */
+        if (cur[0] == -1) {
+          cur[0] = tb->type;
+          cur[1] = tb->subtype;
+          break;
+        }
+
+        /* already written */
+        if (cur[0] == tb->type && cur[1] == tb->subtype) {
+          written = 1;
+          break;
+        }
+
+        k += 1;
+        cur = &cur[3];
+      }
+
+      /* max_nber_dep is too small */
+      if (k == max_nber_dep)
+        error("Not enough memory, please increase max_nber_dep");
+
+      /* Not written yet => write it */
+      if (!written) {
+
+        /* text to write */
+        char ta_name[200];
+        char tb_name[200];
+
+        /* construct line */
+        if (ta->subtype == task_subtype_none)
+          sprintf(ta_name, "%s", taskID_names[ta->type]);
+        else
+          sprintf(ta_name, "\"%s %s\"", taskID_names[ta->type],
+                  subtaskID_names[ta->subtype]);
+
+        if (tb->subtype == task_subtype_none)
+          sprintf(tb_name, "%s", taskID_names[tb->type]);
+        else
+          sprintf(tb_name, "\"%s %s\"", taskID_names[tb->type],
+                  subtaskID_names[tb->subtype]);
+
+        /* Write to the ffile */
+        fprintf(f, "\t %s->%s;\n", ta_name, tb_name);
+
+        /* Change colour of implicit tasks */
+        if (ta->implicit)
+          fprintf(f, "\t %s [style = filled];\n\t %s [color = lightgrey];\n",
+                  ta_name, ta_name);
+        if (tb->implicit)
+          fprintf(f, "\t %s [style = filled];\n\t %s [color = lightgrey];\n",
+                  tb_name, tb_name);
+
+        /* Change shape of MPI communications */
+        if (ta->type == task_type_send || ta->type == task_type_recv)
+          fprintf(f, "\t \"%s %s\" [shape = diamond];\n",
+                  taskID_names[ta->type], subtaskID_names[ta->subtype]);
+        if (tb->type == task_type_send || tb->type == task_type_recv)
+          fprintf(f, "\t \"%s %s\" [shape = diamond];\n",
+                  taskID_names[tb->type], subtaskID_names[tb->subtype]);
+      }
+    }
+  }
+
+  int density_cluster[4] = {0};
+  int gradient_cluster[4] = {0};
+  int force_cluster[4] = {0};
+  int gravity_cluster[4] = {0};
+
+  /* Check whether we need to construct a group of tasks */
+  for (int type = 0; type < task_type_count; ++type) {
+
+    for (int subtype = 0; subtype < task_subtype_count; ++subtype) {
+
+      const int ind = 2 * (type * task_subtype_count + subtype) * max_nber_dep;
+
+      /* Does this task/sub-task exist? */
+      if (table[ind] != -1) {
+
+        for (int k = 0; k < 4; ++k) {
+          if (type == task_type_self + k && subtype == task_subtype_density)
+            density_cluster[k] = 1;
+          if (type == task_type_self + k && subtype == task_subtype_gradient)
+            gradient_cluster[k] = 1;
+          if (type == task_type_self + k && subtype == task_subtype_force)
+            force_cluster[k] = 1;
+          if (type == task_type_self + k && subtype == task_subtype_grav)
+            gravity_cluster[k] = 1;
+        }
+        if (type == task_type_grav_top_level) gravity_cluster[2] = 1;
+        if (type == task_type_grav_long_range) gravity_cluster[3] = 1;
+      }
+    }
+  }
+
+  /* Make a cluster for the density tasks */
+  fprintf(f, "\t subgraph cluster0{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 4; ++k)
+    if (density_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_density]);
+  fprintf(f, "\t};\n");
+
+  /* Make a cluster for the force tasks */
+  fprintf(f, "\t subgraph cluster1{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 4; ++k)
+    if (force_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_force]);
+  fprintf(f, "\t};\n");
+
+  /* Make a cluster for the gradient tasks */
+  fprintf(f, "\t subgraph cluster2{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 4; ++k)
+    if (gradient_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_gradient]);
+  fprintf(f, "\t};\n");
+
+  /* Make a cluster for the gravity tasks */
+  fprintf(f, "\t subgraph cluster3{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 2; ++k)
+    if (gravity_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_grav]);
+  if (gravity_cluster[2])
+    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_top_level]);
+  if (gravity_cluster[3])
+    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_long_range]);
+  fprintf(f, "\t};\n");
+
+  /* Be clean */
+  fprintf(f, "}");
+  fclose(f);
+  free(table);
+
+  if (verbose)
+    message("Printing task graph took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+}
+
+/**
+ * @brief Split a hydrodynamic task if too large.
  *
  * @param t The #task
  * @param s The #scheduler we are working in.
  */
-static void scheduler_splittask(struct task *t, struct scheduler *s) {
-
-  /* Static constants. */
-  static const int pts[7][8] = {
-      {-1, 12, 10, 9, 4, 3, 1, 0},     {-1, -1, 11, 10, 5, 4, 2, 1},
-      {-1, -1, -1, 12, 7, 6, 4, 3},    {-1, -1, -1, -1, 8, 7, 5, 4},
-      {-1, -1, -1, -1, -1, 12, 10, 9}, {-1, -1, -1, -1, -1, -1, 11, 10},
-      {-1, -1, -1, -1, -1, -1, -1, 12}};
-  static const float sid_scale[13] = {
-      0.1897f, 0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.1897f,
-      0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.5788f};
+static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -132,10 +335,11 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
     redo = 0;
 
     /* Non-splittable task? */
-    if ((t->ci == NULL || (t->type == task_type_pair && t->cj == NULL)) ||
-        ((t->type == task_type_kick) && t->ci->nodeID != s->nodeID) ||
-        ((t->type == task_type_init) && t->ci->nodeID != s->nodeID)) {
+    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL) ||
+        t->ci->count == 0 || (t->cj != NULL && t->cj->count == 0)) {
       t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->cj = NULL;
       t->skip = 1;
       break;
     }
@@ -145,7 +349,6 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
       /* Get a handle on the cell involved. */
       struct cell *ci = t->ci;
-      const double hi = ci->dmin;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -153,13 +356,11 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         break;
       }
 
-      /* Is this cell even split? */
-      if (ci->split && ci->h_max * kernel_gamma * space_stretch < hi / 2) {
+      /* Is this cell even split and the task does not violate h ? */
+      if (cell_can_split_self_task(ci)) {
 
         /* Make a sub? */
-        if (scheduler_dosub &&
-            ((ci->count > 0 && ci->count < space_subsize / ci->count) ||
-             (ci->gcount > 0 && ci->gcount < space_subsize / ci->gcount))) {
+        if (scheduler_dosub && ci->count < space_subsize_self_hydro) {
 
           /* convert to a self-subtask. */
           t->type = task_type_sub_self;
@@ -175,36 +376,33 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
           while (ci->progeny[first_child] == NULL) first_child++;
           t->ci = ci->progeny[first_child];
           for (int k = first_child + 1; k < 8; k++)
-            if (ci->progeny[k] != NULL)
-              scheduler_splittask(
+            if (ci->progeny[k] != NULL && ci->progeny[k]->count)
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
-                                    ci->progeny[k], NULL, 0),
+                                    ci->progeny[k], NULL),
                   s);
 
-          /* Make a task for each pair of progeny unless it's ext. gravity. */
-          if (t->subtype != task_subtype_external_grav) {
-
-            for (int j = 0; j < 8; j++)
-              if (ci->progeny[j] != NULL)
-                for (int k = j + 1; k < 8; k++)
-                  if (ci->progeny[k] != NULL)
-                    scheduler_splittask(
-                        scheduler_addtask(s, task_type_pair, t->subtype,
-                                          pts[j][k], 0, ci->progeny[j],
-                                          ci->progeny[k], 0),
-                        s);
-          }
+          /* Make a task for each pair of progeny */
+          for (int j = 0; j < 8; j++)
+            if (ci->progeny[j] != NULL && ci->progeny[j]->count)
+              for (int k = j + 1; k < 8; k++)
+                if (ci->progeny[k] != NULL && ci->progeny[k]->count)
+                  scheduler_splittask_hydro(
+                      scheduler_addtask(s, task_type_pair, t->subtype,
+                                        sub_sid_flag[j][k], 0, ci->progeny[j],
+                                        ci->progeny[k]),
+                      s);
         }
-      }
+      } /* Cell is split */
 
-      /* Pair interaction? */
-    } else if (t->type == task_type_pair && t->subtype != task_subtype_grav) {
+    } /* Self interaction */
+
+    /* Pair interaction? */
+    else if (t->type == task_type_pair) {
 
       /* Get a handle on the cells involved. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
-      const double hi = ci->dmin;
-      const double hj = cj->dmin;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
@@ -215,17 +413,15 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       /* Get the sort ID, use space_getsid and not t->flags
          to make sure we get ci and cj swapped if needed. */
       double shift[3];
-      int sid = space_getsid(s->space, &ci, &cj, shift);
+      const int sid = space_getsid(s->space, &ci, &cj, shift);
 
       /* Should this task be split-up? */
-      if (ci->split && cj->split &&
-          ci->h_max * kernel_gamma * space_stretch < hi / 2 &&
-          cj->h_max * kernel_gamma * space_stretch < hj / 2) {
+      if (cell_can_split_pair_task(ci) && cell_can_split_pair_task(cj)) {
 
         /* Replace by a single sub-task? */
-        if (scheduler_dosub &&
-            ci->count * sid_scale[sid] < space_subsize / cj->count &&
-            sid != 0 && sid != 2 && sid != 6 && sid != 8) {
+        if (scheduler_dosub && /* Use division to avoid integer overflow. */
+            ci->count * sid_scale[sid] < space_subsize_pair_hydro / cj->count &&
+            !sort_is_corner(sid)) {
 
           /* Make this task a sub task. */
           t->type = task_type_sub_pair;
@@ -249,18 +445,17 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
               t->ci = ci->progeny[6];
               t->cj = cj->progeny[0];
               t->flags = 1;
-              t->tight = 1;
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 1, 0,
-                                    ci->progeny[7], cj->progeny[1], 1),
+                                    ci->progeny[7], cj->progeny[1]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
-                                    ci->progeny[6], cj->progeny[1], 1),
+                                    ci->progeny[6], cj->progeny[1]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 2, 0,
-                                    ci->progeny[7], cj->progeny[0], 1),
+                                    ci->progeny[7], cj->progeny[0]),
                   s);
               break;
 
@@ -268,25 +463,23 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
               t->ci = ci->progeny[6];
               t->cj = cj->progeny[1];
               t->flags = 2;
-              t->tight = 1;
               break;
 
             case 3: /* (  1 ,  0 ,  1 ) */
               t->ci = ci->progeny[5];
               t->cj = cj->progeny[0];
               t->flags = 3;
-              t->tight = 1;
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 3, 0,
-                                    ci->progeny[7], cj->progeny[2], 1),
+                                    ci->progeny[7], cj->progeny[2]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
-                                    ci->progeny[5], cj->progeny[2], 1),
+                                    ci->progeny[5], cj->progeny[2]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 6, 0,
-                                    ci->progeny[7], cj->progeny[0], 1),
+                                    ci->progeny[7], cj->progeny[0]),
                   s);
               break;
 
@@ -294,66 +487,65 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
               t->ci = ci->progeny[4];
               t->cj = cj->progeny[0];
               t->flags = 4;
-              t->tight = 1;
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 5, 0,
-                                    ci->progeny[5], cj->progeny[0], 1),
+                                    ci->progeny[5], cj->progeny[0]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 7, 0,
-                                    ci->progeny[6], cj->progeny[0], 1),
+                                    ci->progeny[6], cj->progeny[0]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 8, 0,
-                                    ci->progeny[7], cj->progeny[0], 1),
+                                    ci->progeny[7], cj->progeny[0]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 3, 0,
-                                    ci->progeny[4], cj->progeny[1], 1),
+                                    ci->progeny[4], cj->progeny[1]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 4, 0,
-                                    ci->progeny[5], cj->progeny[1], 1),
+                                    ci->progeny[5], cj->progeny[1]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 6, 0,
-                                    ci->progeny[6], cj->progeny[1], 1),
+                                    ci->progeny[6], cj->progeny[1]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 7, 0,
-                                    ci->progeny[7], cj->progeny[1], 1),
+                                    ci->progeny[7], cj->progeny[1]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 1, 0,
-                                    ci->progeny[4], cj->progeny[2], 1),
+                                    ci->progeny[4], cj->progeny[2]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 2, 0,
-                                    ci->progeny[5], cj->progeny[2], 1),
+                                    ci->progeny[5], cj->progeny[2]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 4, 0,
-                                    ci->progeny[6], cj->progeny[2], 1),
+                                    ci->progeny[6], cj->progeny[2]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 5, 0,
-                                    ci->progeny[7], cj->progeny[2], 1),
+                                    ci->progeny[7], cj->progeny[2]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
-                                    ci->progeny[4], cj->progeny[3], 1),
+                                    ci->progeny[4], cj->progeny[3]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 1, 0,
-                                    ci->progeny[5], cj->progeny[3], 1),
+                                    ci->progeny[5], cj->progeny[3]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 3, 0,
-                                    ci->progeny[6], cj->progeny[3], 1),
+                                    ci->progeny[6], cj->progeny[3]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 4, 0,
-                                    ci->progeny[7], cj->progeny[3], 1),
+                                    ci->progeny[7], cj->progeny[3]),
                   s);
               break;
 
@@ -361,18 +553,17 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
               t->ci = ci->progeny[4];
               t->cj = cj->progeny[1];
               t->flags = 5;
-              t->tight = 1;
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 5, 0,
-                                    ci->progeny[6], cj->progeny[3], 1),
+                                    ci->progeny[6], cj->progeny[3]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 2, 0,
-                                    ci->progeny[4], cj->progeny[3], 1),
+                                    ci->progeny[4], cj->progeny[3]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 8, 0,
-                                    ci->progeny[6], cj->progeny[1], 1),
+                                    ci->progeny[6], cj->progeny[1]),
                   s);
               break;
 
@@ -380,25 +571,23 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
               t->ci = ci->progeny[5];
               t->cj = cj->progeny[2];
               t->flags = 6;
-              t->tight = 1;
               break;
 
             case 7: /* (  1 , -1 ,  0 ) */
               t->ci = ci->progeny[4];
               t->cj = cj->progeny[3];
               t->flags = 6;
-              t->tight = 1;
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 8, 0,
-                                    ci->progeny[5], cj->progeny[2], 1),
+                                    ci->progeny[5], cj->progeny[2]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 7, 0,
-                                    ci->progeny[4], cj->progeny[2], 1),
+                                    ci->progeny[4], cj->progeny[2]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 7, 0,
-                                    ci->progeny[5], cj->progeny[3], 1),
+                                    ci->progeny[5], cj->progeny[3]),
                   s);
               break;
 
@@ -406,25 +595,23 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
               t->ci = ci->progeny[4];
               t->cj = cj->progeny[3];
               t->flags = 8;
-              t->tight = 1;
               break;
 
             case 9: /* (  0 ,  1 ,  1 ) */
               t->ci = ci->progeny[3];
               t->cj = cj->progeny[0];
               t->flags = 9;
-              t->tight = 1;
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 9, 0,
-                                    ci->progeny[7], cj->progeny[4], 1),
+                                    ci->progeny[7], cj->progeny[4]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
-                                    ci->progeny[3], cj->progeny[4], 1),
+                                    ci->progeny[3], cj->progeny[4]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 8, 0,
-                                    ci->progeny[7], cj->progeny[0], 1),
+                                    ci->progeny[7], cj->progeny[0]),
                   s);
               break;
 
@@ -432,66 +619,65 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
               t->ci = ci->progeny[2];
               t->cj = cj->progeny[0];
               t->flags = 10;
-              t->tight = 1;
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 11, 0,
-                                    ci->progeny[3], cj->progeny[0], 1),
+                                    ci->progeny[3], cj->progeny[0]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 7, 0,
-                                    ci->progeny[6], cj->progeny[0], 1),
+                                    ci->progeny[6], cj->progeny[0]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 6, 0,
-                                    ci->progeny[7], cj->progeny[0], 1),
+                                    ci->progeny[7], cj->progeny[0]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 9, 0,
-                                    ci->progeny[2], cj->progeny[1], 1),
+                                    ci->progeny[2], cj->progeny[1]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 10, 0,
-                                    ci->progeny[3], cj->progeny[1], 1),
+                                    ci->progeny[3], cj->progeny[1]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 8, 0,
-                                    ci->progeny[6], cj->progeny[1], 1),
+                                    ci->progeny[6], cj->progeny[1]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 7, 0,
-                                    ci->progeny[7], cj->progeny[1], 1),
+                                    ci->progeny[7], cj->progeny[1]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 1, 0,
-                                    ci->progeny[2], cj->progeny[4], 1),
+                                    ci->progeny[2], cj->progeny[4]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 2, 0,
-                                    ci->progeny[3], cj->progeny[4], 1),
+                                    ci->progeny[3], cj->progeny[4]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 10, 0,
-                                    ci->progeny[6], cj->progeny[4], 1),
+                                    ci->progeny[6], cj->progeny[4]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 11, 0,
-                                    ci->progeny[7], cj->progeny[4], 1),
+                                    ci->progeny[7], cj->progeny[4]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
-                                    ci->progeny[2], cj->progeny[5], 1),
+                                    ci->progeny[2], cj->progeny[5]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 1, 0,
-                                    ci->progeny[3], cj->progeny[5], 1),
+                                    ci->progeny[3], cj->progeny[5]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 9, 0,
-                                    ci->progeny[6], cj->progeny[5], 1),
+                                    ci->progeny[6], cj->progeny[5]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 10, 0,
-                                    ci->progeny[7], cj->progeny[5], 1),
+                                    ci->progeny[7], cj->progeny[5]),
                   s);
               break;
 
@@ -499,18 +685,17 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
               t->ci = ci->progeny[2];
               t->cj = cj->progeny[1];
               t->flags = 11;
-              t->tight = 1;
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 11, 0,
-                                    ci->progeny[6], cj->progeny[5], 1),
+                                    ci->progeny[6], cj->progeny[5]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 2, 0,
-                                    ci->progeny[2], cj->progeny[5], 1),
+                                    ci->progeny[2], cj->progeny[5]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 6, 0,
-                                    ci->progeny[6], cj->progeny[1], 1),
+                                    ci->progeny[6], cj->progeny[1]),
                   s);
               break;
 
@@ -518,66 +703,65 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
               t->ci = ci->progeny[1];
               t->cj = cj->progeny[0];
               t->flags = 12;
-              t->tight = 1;
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 11, 0,
-                                    ci->progeny[3], cj->progeny[0], 1),
+                                    ci->progeny[3], cj->progeny[0]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 5, 0,
-                                    ci->progeny[5], cj->progeny[0], 1),
+                                    ci->progeny[5], cj->progeny[0]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 2, 0,
-                                    ci->progeny[7], cj->progeny[0], 1),
+                                    ci->progeny[7], cj->progeny[0]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 9, 0,
-                                    ci->progeny[1], cj->progeny[2], 1),
+                                    ci->progeny[1], cj->progeny[2]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 12, 0,
-                                    ci->progeny[3], cj->progeny[2], 1),
+                                    ci->progeny[3], cj->progeny[2]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 8, 0,
-                                    ci->progeny[5], cj->progeny[2], 1),
+                                    ci->progeny[5], cj->progeny[2]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 5, 0,
-                                    ci->progeny[7], cj->progeny[2], 1),
+                                    ci->progeny[7], cj->progeny[2]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 3, 0,
-                                    ci->progeny[1], cj->progeny[4], 1),
+                                    ci->progeny[1], cj->progeny[4]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 6, 0,
-                                    ci->progeny[3], cj->progeny[4], 1),
+                                    ci->progeny[3], cj->progeny[4]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 12, 0,
-                                    ci->progeny[5], cj->progeny[4], 1),
+                                    ci->progeny[5], cj->progeny[4]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 11, 0,
-                                    ci->progeny[7], cj->progeny[4], 1),
+                                    ci->progeny[7], cj->progeny[4]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
-                                    ci->progeny[1], cj->progeny[6], 1),
+                                    ci->progeny[1], cj->progeny[6]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 3, 0,
-                                    ci->progeny[3], cj->progeny[6], 1),
+                                    ci->progeny[3], cj->progeny[6]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 9, 0,
-                                    ci->progeny[5], cj->progeny[6], 1),
+                                    ci->progeny[5], cj->progeny[6]),
                   s);
-              scheduler_splittask(
+              scheduler_splittask_hydro(
                   scheduler_addtask(s, task_type_pair, t->subtype, 12, 0,
-                                    ci->progeny[7], cj->progeny[6], 1),
+                                    ci->progeny[7], cj->progeny[6]),
                   s);
               break;
           } /* switch(sid) */
@@ -594,52 +778,102 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
         t->type = task_type_none;
 
         for (int j = 0; j < 8; j++)
-          if (ci->progeny[j] != NULL)
+          if (ci->progeny[j] != NULL && ci->progeny[j]->count)
             for (int k = 0; k < 8; k++)
-              if (cj->progeny[k] != NULL) {
+              if (cj->progeny[k] != NULL && cj->progeny[k]->count) {
                 struct task *tl =
                     scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
-                                      ci->progeny[j], cj->progeny[k], 0);
-                scheduler_splittask(tl, s);
+                                      ci->progeny[j], cj->progeny[k]);
+                scheduler_splittask_hydro(tl, s);
                 tl->flags = space_getsid(s->space, &t->ci, &t->cj, shift);
               }
+      }
+    } /* pair interaction? */
+  }   /* iterate over the current task. */
+}
 
-        /* Otherwise, if not spilt, stitch-up the sorting. */
-      } else {
+/**
+ * @brief Split a gravity task if too large.
+ *
+ * @param t The #task
+ * @param s The #scheduler we are working in.
+ */
+static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
-        /* Create the sort for ci. */
-        lock_lock(&ci->lock);
-        if (ci->sorts == NULL)
-          ci->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none,
-                                        1 << sid, 0, ci, NULL, 0);
-        else
-          ci->sorts->flags |= (1 << sid);
-        lock_unlock_blind(&ci->lock);
-        scheduler_addunlock(s, ci->sorts, t);
+  /* Iterate on this task until we're done with it. */
+  int redo = 1;
+  while (redo) {
 
-        /* Create the sort for cj. */
-        lock_lock(&cj->lock);
-        if (cj->sorts == NULL)
-          cj->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none,
-                                        1 << sid, 0, cj, NULL, 0);
-        else
-          cj->sorts->flags |= (1 << sid);
-        lock_unlock_blind(&cj->lock);
-        scheduler_addunlock(s, cj->sorts, t);
+    /* Reset the redo flag. */
+    redo = 0;
+
+    /* Non-splittable task? */
+    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->cj = NULL;
+      t->skip = 1;
+      break;
+    }
+
+    /* Self-interaction? */
+    if (t->type == task_type_self) {
+
+      /* Get a handle on the cell involved. */
+      struct cell *ci = t->ci;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
       }
 
-    } /* pair interaction? */
+      /* Should we split this task? */
+      if (ci->split && ci->gcount > space_subsize_self_grav) {
 
-    /* Long-range gravity interaction ? */
-    else if (t->type == task_type_grav_mm) {
+        /* Take a step back (we're going to recycle the current task)... */
+        redo = 1;
+
+        /* Add the self tasks. */
+        int first_child = 0;
+        while (ci->progeny[first_child] == NULL) first_child++;
+        t->ci = ci->progeny[first_child];
+        for (int k = first_child + 1; k < 8; k++)
+          if (ci->progeny[k] != NULL)
+            scheduler_splittask_gravity(
+                scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
+                                  ci->progeny[k], NULL),
+                s);
+
+        /* Make a task for each pair of progeny */
+        if (t->subtype != task_subtype_external_grav) {
+          for (int j = 0; j < 8; j++)
+            if (ci->progeny[j] != NULL)
+              for (int k = j + 1; k < 8; k++)
+                if (ci->progeny[k] != NULL)
+                  scheduler_splittask_gravity(
+                      scheduler_addtask(s, task_type_pair, t->subtype,
+                                        sub_sid_flag[j][k], 0, ci->progeny[j],
+                                        ci->progeny[k]),
+                      s);
+        }
+      } /* Cell is split */
+
+    } /* Self interaction */
+
+    /* Pair interaction? */
+    else if (t->type == task_type_pair) {
 
       /* Get a handle on the cells involved. */
       struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
 
-      /* Safety thing */
-      if (ci->gcount == 0) t->type = task_type_none;
-
-    } /* gravity interaction? */
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+    } /* pair interaction? */
   }   /* iterate over the current task. */
 }
 
@@ -659,7 +893,21 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
-    scheduler_splittask(t, s);
+
+    /* Invoke the correct splitting strategy */
+    if (t->subtype == task_subtype_density) {
+      scheduler_splittask_hydro(t, s);
+    } else if (t->subtype == task_subtype_external_grav) {
+      scheduler_splittask_gravity(t, s);
+    } else if (t->subtype == task_subtype_grav) {
+      scheduler_splittask_gravity(t, s);
+    } else if (t->type == task_type_grav_top_level ||
+               t->type == task_type_grav_ghost_in ||
+               t->type == task_type_grav_ghost_out) {
+      /* For future use */
+    } else {
+      error("Unexpected task sub-type");
+    }
   }
 }
 
@@ -672,7 +920,7 @@ void scheduler_splittasks(struct scheduler *s) {
 
   /* Call the mapper on each current task. */
   threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
-                 s->nr_tasks, sizeof(struct task), 1000, s);
+                 s->nr_tasks, sizeof(struct task), 0, s);
 }
 
 /**
@@ -682,20 +930,24 @@ void scheduler_splittasks(struct scheduler *s) {
  * @param type The type of the task.
  * @param subtype The sub-type of the task.
  * @param flags The flags of the task.
- * @param wait The number of unsatisfied dependencies of this task.
+ * @param implicit If true, only use this task to unlock dependencies, i.e.
+ *        this task is never enqueued.
  * @param ci The first cell to interact.
  * @param cj The second cell to interact.
- * @param tight
  */
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
-                               enum task_subtypes subtype, int flags, int wait,
-                               struct cell *ci, struct cell *cj, int tight) {
+                               enum task_subtypes subtype, int flags,
+                               int implicit, struct cell *ci, struct cell *cj) {
 
   /* Get the next free task. */
   const int ind = atomic_inc(&s->tasks_next);
 
   /* Overflow? */
-  if (ind >= s->size) error("Task list overflow.");
+  if (ind >= s->size)
+    error(
+        "Task list overflow (%d). Need to increase "
+        "Scheduler:tasks_per_cell.",
+        ind);
 
   /* Get a pointer to the new task. */
   struct task *t = &s->tasks[ind];
@@ -704,12 +956,11 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->type = type;
   t->subtype = subtype;
   t->flags = flags;
-  t->wait = wait;
+  t->wait = 0;
   t->ci = ci;
   t->cj = cj;
   t->skip = 1; /* Mark tasks as skip by default. */
-  t->tight = tight;
-  t->implicit = 0;
+  t->implicit = implicit;
   t->weight = 0;
   t->rank = 0;
   t->nr_unlock_tasks = 0;
@@ -736,18 +987,36 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
 void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Store the counts for each task. */
-  int *counts;
-  if ((counts = (int *)malloc(sizeof(int) * s->nr_tasks)) == NULL)
+  short int *counts;
+  if ((counts = (short int *)malloc(sizeof(short int) * s->nr_tasks)) == NULL)
     error("Failed to allocate temporary counts array.");
-  bzero(counts, sizeof(int) * s->nr_tasks);
-  for (int k = 0; k < s->nr_unlocks; k++) counts[s->unlock_ind[k]] += 1;
+  bzero(counts, sizeof(short int) * s->nr_tasks);
+  for (int k = 0; k < s->nr_unlocks; k++) {
+    counts[s->unlock_ind[k]] += 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we are not overflowing */
+    if (counts[s->unlock_ind[k]] < 0)
+      error("Task (type=%s/%s) unlocking more than %d other tasks!",
+            taskID_names[s->tasks[s->unlock_ind[k]].type],
+            subtaskID_names[s->tasks[s->unlock_ind[k]].subtype],
+            (1 << (8 * sizeof(short int) - 1)) - 1);
+#endif
+  }
 
   /* Compute the offset for each unlock block. */
   int *offsets;
   if ((offsets = (int *)malloc(sizeof(int) * (s->nr_tasks + 1))) == NULL)
     error("Failed to allocate temporary offsets array.");
   offsets[0] = 0;
-  for (int k = 0; k < s->nr_tasks; k++) offsets[k + 1] = offsets[k] + counts[k];
+  for (int k = 0; k < s->nr_tasks; k++) {
+    offsets[k + 1] = offsets[k] + counts[k];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we are not overflowing */
+    if (offsets[k + 1] < 0) error("Task unlock offset array overflowing");
+#endif
+  }
 
   /* Create and fill a temporary array with the sorted unlocks. */
   struct task **unlocks;
@@ -783,7 +1052,10 @@ void scheduler_set_unlocks(struct scheduler *s) {
     for (int i = 0; i < t->nr_unlock_tasks; i++) {
       for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
         if (t->unlock_tasks[i] == t->unlock_tasks[j])
-          error("duplicate unlock!");
+          error("duplicate unlock! t->type=%s/%s unlocking type=%s/%s",
+                taskID_names[t->type], subtaskID_names[t->subtype],
+                taskID_names[t->unlock_tasks[i]->type],
+                subtaskID_names[t->unlock_tasks[i]->subtype]);
       }
     }
   }
@@ -824,13 +1096,13 @@ void scheduler_ranktasks(struct scheduler *s) {
     }
 
   /* Main loop. */
-  for (int j = 0, rank = 0; left < nr_tasks; rank++) {
+  for (int j = 0, rank = 0; j < nr_tasks; rank++) {
 
     /* Did we get anything? */
     if (j == left) error("Unsatisfiable task dependencies detected.");
-    const int left_old = left;
 
     /* Unlock the next layer of tasks. */
+    const int left_old = left;
     for (; j < left_old; j++) {
       struct task *t = &tasks[tid[j]];
       t->rank = rank;
@@ -846,14 +1118,14 @@ void scheduler_ranktasks(struct scheduler *s) {
       }
     }
 
-    /* Move back to the old left (like Sanders). */
+    /* Move back to the old left (like Sanders!). */
     j = left_old;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the tasks were ranked correctly. */
   for (int k = 1; k < s->nr_tasks; k++)
-    if (tasks[tid[k - 1]].rank > tasks[tid[k - 1]].rank)
+    if (tasks[tid[k - 1]].rank > tasks[tid[k]].rank)
       error("Task ranking failed.");
 #endif
 }
@@ -870,12 +1142,10 @@ void scheduler_reset(struct scheduler *s, int size) {
   if (size > s->size) {
 
     /* Free existing task lists if necessary. */
-    if (s->tasks != NULL) free(s->tasks);
-    if (s->tasks_ind != NULL) free(s->tasks_ind);
-    if (s->tid_active != NULL) free(s->tid_active);
+    scheduler_free_tasks(s);
 
     /* Allocate the new lists. */
-    if (posix_memalign((void *)&s->tasks, task_align,
+    if (posix_memalign((void **)&s->tasks, task_align,
                        size * sizeof(struct task)) != 0)
       error("Failed to allocate task array.");
 
@@ -911,10 +1181,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
   int *tid = s->tasks_ind;
   struct task *tasks = s->tasks;
   const int nodeID = s->nodeID;
-  const float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788,
-                               0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
-                               0.5788, 0.4025, 0.5788};
-  const float wscale = 0.001;
+  const float wscale = 0.001f;
   const ticks tic = getticks();
 
   /* Run through the tasks backwards and set their weights. */
@@ -930,41 +1197,95 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * intrinsics_popcount(t->flags) * t->ci->count *
                (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
         break;
+
       case task_type_self:
-        cost = 1 * wscale * t->ci->count * t->ci->count;
-        break;
-      case task_type_pair:
-        if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-          cost = 3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+        if (t->subtype == task_subtype_grav)
+          cost = 1.f * (wscale * t->ci->gcount) * t->ci->gcount;
+        else if (t->subtype == task_subtype_external_grav)
+          cost = 1.f * wscale * t->ci->gcount;
         else
-          cost = 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+          cost = 1.f * (wscale * t->ci->count) * t->ci->count;
         break;
+
+      case task_type_pair:
+        if (t->subtype == task_subtype_grav) {
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
+            cost = 3.f * (wscale * t->ci->gcount) * t->cj->gcount;
+          else
+            cost = 2.f * (wscale * t->ci->gcount) * t->cj->gcount;
+        } else {
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
+            cost = 3.f * (wscale * t->ci->count) * t->cj->count *
+                   sid_scale[t->flags];
+          else
+            cost = 2.f * (wscale * t->ci->count) * t->cj->count *
+                   sid_scale[t->flags];
+        }
+        break;
+
       case task_type_sub_pair:
         if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
           if (t->flags < 0)
-            cost = 3 * wscale * t->ci->count * t->cj->count;
+            cost = 3.f * (wscale * t->ci->count) * t->cj->count;
           else
-            cost =
-                3 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+            cost = 3.f * (wscale * t->ci->count) * t->cj->count *
+                   sid_scale[t->flags];
         } else {
           if (t->flags < 0)
-            cost = 2 * wscale * t->ci->count * t->cj->count;
+            cost = 2.f * (wscale * t->ci->count) * t->cj->count;
           else
-            cost =
-                2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
+            cost = 2.f * (wscale * t->ci->count) * t->cj->count *
+                   sid_scale[t->flags];
         }
         break;
+
       case task_type_sub_self:
-        cost = 1 * wscale * t->ci->count * t->ci->count;
+        cost = 1.f * (wscale * t->ci->count) * t->ci->count;
         break;
       case task_type_ghost:
-        if (t->ci == t->ci->super) cost = wscale * t->ci->count;
+        if (t->ci == t->ci->super_hydro) cost = wscale * t->ci->count;
         break;
-      case task_type_kick:
+      case task_type_extra_ghost:
+        if (t->ci == t->ci->super_hydro) cost = wscale * t->ci->count;
+        break;
+      case task_type_drift_part:
         cost = wscale * t->ci->count;
         break;
-      case task_type_init:
-        cost = wscale * t->ci->count;
+      case task_type_drift_gpart:
+        cost = wscale * t->ci->gcount;
+        break;
+      case task_type_init_grav:
+        cost = wscale * t->ci->gcount;
+        break;
+      case task_type_grav_down:
+        cost = wscale * t->ci->gcount;
+        break;
+      case task_type_grav_long_range:
+        cost = wscale * t->ci->gcount;
+        break;
+      case task_type_end_force:
+        cost = wscale * t->ci->count + wscale * t->ci->gcount;
+        break;
+      case task_type_kick1:
+        cost = wscale * t->ci->count + wscale * t->ci->gcount;
+        break;
+      case task_type_kick2:
+        cost = wscale * t->ci->count + wscale * t->ci->gcount;
+        break;
+      case task_type_timestep:
+        cost = wscale * t->ci->count + wscale * t->ci->gcount;
+        break;
+      case task_type_send:
+        if (t->ci->count < 1e5)
+          cost = 10.f * (wscale * t->ci->count) * t->ci->count;
+        else
+          cost = 2e9;
+        break;
+      case task_type_recv:
+        if (t->ci->count < 1e5)
+          cost = 5.f * (wscale * t->ci->count) * t->ci->count;
+        else
+          cost = 1e9;
         break;
       default:
         cost = 0;
@@ -996,17 +1317,24 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 void scheduler_rewait_mapper(void *map_data, int num_elements,
                              void *extra_data) {
 
-  struct task *tasks = (struct task *)map_data;
+  struct scheduler *s = (struct scheduler *)extra_data;
+  const int *tid = (int *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
+    struct task *t = &s->tasks[tid[ind]];
 
+    /* Ignore skipped tasks. */
     if (t->skip) continue;
 
-    /* Skip sort tasks that have already been performed */
-    if (t->type == task_type_sort && t->flags == 0) {
-      error("Empty sort task encountered.");
-    }
+    /* Increment the task's own wait counter for the enqueueing. */
+    atomic_inc(&t->wait);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we don't have more waits that what can be stored. */
+    if (t->wait < 0)
+      error("Task unlocked by more than %d tasks!",
+            (1 << (8 * sizeof(t->wait) - 1)) - 1);
+#endif
 
     /* Sets the waits of the dependances */
     for (int k = 0; k < t->nr_unlock_tasks; k++) {
@@ -1037,66 +1365,29 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
 
-  /* Clear all the waits. */
-  for (int k = 0; k < s->nr_tasks; k++) s->tasks[k].wait = 1;
-
-  /* Re-wait the tasks. */
-  threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tasks, s->nr_tasks,
-                 sizeof(struct task), 1000, NULL);
-
-/* Check we have not missed an active task */
-#ifdef SWIFT_DEBUG_CHECKS
-
-  const int ti_current = s->space->e->ti_current;
-
-  if (ti_current > 0) {
-
-    for (int k = 0; k < s->nr_tasks; k++) {
-
-      struct task *t = &s->tasks[k];
-      struct cell *ci = t->ci;
-      struct cell *cj = t->cj;
-
-      if (cj == NULL) { /* self */
-
-        if (ci->ti_end_min == ti_current && t->skip &&
-            t->type != task_type_sort)
-          error(
-              "Task (type='%s/%s') should not have been skipped ti_current=%d "
-              "c->ti_end_min=%d",
-              taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-              ci->ti_end_min);
-
-        /* Special treatment for sort tasks */
-        if (ci->ti_end_min == ti_current && t->skip &&
-            t->type == task_type_sort && t->flags == 0)
-          error(
-              "Task (type='%s/%s') should not have been skipped ti_current=%d "
-              "c->ti_end_min=%d t->flags=%d",
-              taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-              ci->ti_end_min, t->flags);
-
-      } else { /* pair */
-
-        if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
-            t->skip)
-          error(
-              "Task (type='%s/%s') should not have been skipped ti_current=%d "
-              "ci->ti_end_min=%d cj->ti_end_min=%d",
-              taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
-              ci->ti_end_min, cj->ti_end_min);
-      }
-    }
+/* Reset all task debugging timers */
+#ifdef SWIFT_DEBUG_TASKS
+  for (int i = 0; i < s->nr_tasks; ++i) {
+    s->tasks[i].tic = 0;
+    s->tasks[i].toc = 0;
+    s->tasks[i].rid = -1;
   }
 #endif
 
+  /* Re-wait the tasks. */
+  if (s->active_count > 1000) {
+    threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
+                   s->active_count, sizeof(int), 0, s);
+  } else {
+    scheduler_rewait_mapper(s->tid_active, s->active_count, s);
+  }
+
   /* Loop over the tasks and enqueue whoever is ready. */
-  for (int k = 0; k < s->active_count; k++) {
-    struct task *t = &s->tasks[s->tid_active[k]];
-    if (atomic_dec(&t->wait) == 1 && !t->skip) {
-      scheduler_enqueue(s, t);
-      pthread_cond_signal(&s->sleep_cond);
-    }
+  if (s->active_count > 1000) {
+    threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tid_active,
+                   s->active_count, sizeof(int), 0, s);
+  } else {
+    scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
 
   /* Clear the list of active tasks. */
@@ -1124,6 +1415,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
+#ifdef SWIFT_DEBUG_CHECKS
+    t->ti_run = s->space->e->ti_current;
+#endif
+    t->skip = 1;
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
       struct task *t2 = t->unlock_tasks[j];
       if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
@@ -1133,7 +1428,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   /* Otherwise, look for a suitable queue. */
   else {
 #ifdef WITH_MPI
-    int err;
+    int err = MPI_SUCCESS;
 #endif
 
     /* Find the previous owner for each task type, and do
@@ -1141,10 +1436,23 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     switch (t->type) {
       case task_type_self:
       case task_type_sub_self:
+        if (t->subtype == task_subtype_grav ||
+            t->subtype == task_subtype_external_grav)
+          qid = t->ci->super_gravity->owner;
+        else
+          qid = t->ci->super_hydro->owner;
+        break;
       case task_type_sort:
       case task_type_ghost:
-      case task_type_kick:
-      case task_type_init:
+      case task_type_drift_part:
+        qid = t->ci->super_hydro->owner;
+        break;
+      case task_type_drift_gpart:
+        qid = t->ci->super_gravity->owner;
+        break;
+      case task_type_kick1:
+      case task_type_kick2:
+      case task_type_timestep:
         qid = t->ci->super->owner;
         break;
       case task_type_pair:
@@ -1157,19 +1465,37 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_recv:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
-          err = MPI_Irecv(t->buff, t->ci->pcell_size, MPI_INT, t->ci->nodeID,
-                          t->flags, MPI_COMM_WORLD, &t->req);
-        } else {
+          t->buff = (struct pcell_step *)malloc(sizeof(struct pcell_step) *
+                                                t->ci->pcell_size);
+          err = MPI_Irecv(
+              t->buff, t->ci->pcell_size * sizeof(struct pcell_step), MPI_BYTE,
+              t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else if (t->subtype == task_subtype_xv ||
+                   t->subtype == task_subtype_rho ||
+                   t->subtype == task_subtype_gradient) {
           err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
                           t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          // message( "receiving %i parts with tag=%i from %i to %i." ,
+          //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
+          // fflush(stdout);
+        } else if (t->subtype == task_subtype_gpart) {
+          err = MPI_Irecv(t->ci->gparts, t->ci->gcount, gpart_mpi_type,
+                          t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else if (t->subtype == task_subtype_spart) {
+          err = MPI_Irecv(t->ci->sparts, t->ci->scount, spart_mpi_type,
+                          t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else if (t->subtype == task_subtype_multipole) {
+          t->buff = (struct gravity_tensors *)malloc(
+              sizeof(struct gravity_tensors) * t->ci->pcell_size);
+          err = MPI_Irecv(
+              t->buff, sizeof(struct gravity_tensors) * t->ci->pcell_size,
+              MPI_BYTE, t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else {
+          error("Unknown communication sub-type");
         }
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit irecv for particle data.");
         }
-        // message( "receiving %i parts with tag=%i from %i to %i." ,
-        //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
-        // fflush(stdout);
         qid = 1 % s->nr_queues;
 #else
         error("SWIFT was not compiled with MPI support.");
@@ -1178,20 +1504,57 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_send:
 #ifdef WITH_MPI
         if (t->subtype == task_subtype_tend) {
-          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
-          cell_pack_ti_ends(t->ci, t->buff);
-          err = MPI_Isend(t->buff, t->ci->pcell_size, MPI_INT, t->cj->nodeID,
-                          t->flags, MPI_COMM_WORLD, &t->req);
+          t->buff = (struct pcell_step *)malloc(sizeof(struct pcell_step) *
+                                                t->ci->pcell_size);
+          cell_pack_end_step(t->ci, (struct pcell_step *)t->buff);
+          if ((t->ci->pcell_size * sizeof(struct pcell_step)) >
+              s->mpi_message_limit)
+            err = MPI_Isend(
+                t->buff, t->ci->pcell_size * sizeof(struct pcell_step),
+                MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          else
+            err = MPI_Issend(
+                t->buff, t->ci->pcell_size * sizeof(struct pcell_step),
+                MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else if (t->subtype == task_subtype_xv ||
+                   t->subtype == task_subtype_rho ||
+                   t->subtype == task_subtype_gradient) {
+          if ((t->ci->count * sizeof(struct part)) > s->mpi_message_limit)
+            err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
+                            t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          else
+            err = MPI_Issend(t->ci->parts, t->ci->count, part_mpi_type,
+                             t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          // message( "sending %i parts with tag=%i from %i to %i." ,
+          //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID );
+          // fflush(stdout);
+        } else if (t->subtype == task_subtype_gpart) {
+          if ((t->ci->gcount * sizeof(struct gpart)) > s->mpi_message_limit)
+            err = MPI_Isend(t->ci->gparts, t->ci->gcount, gpart_mpi_type,
+                            t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          else
+            err = MPI_Issend(t->ci->gparts, t->ci->gcount, gpart_mpi_type,
+                             t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else if (t->subtype == task_subtype_spart) {
+          if ((t->ci->scount * sizeof(struct spart)) > s->mpi_message_limit)
+            err = MPI_Isend(t->ci->sparts, t->ci->scount, spart_mpi_type,
+                            t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          else
+            err = MPI_Issend(t->ci->sparts, t->ci->scount, spart_mpi_type,
+                             t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        } else if (t->subtype == task_subtype_multipole) {
+          t->buff = (struct gravity_tensors *)malloc(
+              sizeof(struct gravity_tensors) * t->ci->pcell_size);
+          cell_pack_multipoles(t->ci, (struct gravity_tensors *)t->buff);
+          err = MPI_Isend(
+              t->buff, t->ci->pcell_size * sizeof(struct gravity_tensors),
+              MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         } else {
-          err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
-                          t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+          error("Unknown communication sub-type");
         }
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit isend for particle data.");
         }
-        // message( "sending %i parts with tag=%i from %i to %i." ,
-        //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID );
-        // fflush(stdout);
         qid = 0;
 #else
         error("SWIFT was not compiled with MPI support.");
@@ -1204,7 +1567,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     if (qid >= s->nr_queues) error("Bad computed qid.");
 
     /* If no previous owner, pick a random queue. */
-    if (qid < 0) qid = rand() % s->nr_queues;
+    /* Note that getticks() is random enough */
+    if (qid < 0) qid = getticks() % s->nr_queues;
 
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
@@ -1232,6 +1596,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
+    if (t2->skip) continue;
 
     const int res = atomic_dec(&t2->wait);
     if (res < 1) {
@@ -1403,8 +1768,8 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   lock_init(&s->lock);
 
   /* Allocate the queues. */
-  if ((s->queues = (struct queue *)malloc(sizeof(struct queue) * nr_queues)) ==
-      NULL)
+  if (posix_memalign((void **)&s->queues, queue_struct_align,
+                     sizeof(struct queue) * nr_queues) != 0)
     error("Failed to allocate queues.");
 
   /* Initialize each queue. */
@@ -1435,6 +1800,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->size = 0;
   s->tasks = NULL;
   s->tasks_ind = NULL;
+  pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
 }
 
@@ -1455,7 +1821,7 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
 
   for (int k = nr_tasks - 1; k >= 0; k--) {
     t = &tasks[tid[k]];
-    if (!((1 << t->type)) || t->skip) continue;
+    if (t->skip) continue;
     fprintf(file, "%d %s %s %d %d\n", k, taskID_names[t->type],
             subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait);
   }
@@ -1468,11 +1834,29 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
  */
 void scheduler_clean(struct scheduler *s) {
 
-  free(s->tasks);
-  free(s->tasks_ind);
+  scheduler_free_tasks(s);
   free(s->unlocks);
   free(s->unlock_ind);
-  free(s->tid_active);
   for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
   free(s->queues);
+}
+
+/**
+ * @brief Free the task arrays allocated by this #scheduler.
+ */
+void scheduler_free_tasks(struct scheduler *s) {
+
+  if (s->tasks != NULL) {
+    free(s->tasks);
+    s->tasks = NULL;
+  }
+  if (s->tasks_ind != NULL) {
+    free(s->tasks_ind);
+    s->tasks_ind = NULL;
+  }
+  if (s->tid_active != NULL) {
+    free(s->tid_active);
+    s->tid_active = NULL;
+  }
+  s->size = 0;
 }

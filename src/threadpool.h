@@ -22,25 +22,57 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Some standard headers. */
+/* Standard headers */
 #include <pthread.h>
+
+/* Local includes. */
+#include "barrier.h"
+#include "cycle.h"
+
+/* Local defines. */
+#define threadpool_log_initial_size 1000
+#define threadpool_default_chunk_ratio 7
 
 /* Function type for mappings. */
 typedef void (*threadpool_map_function)(void *map_data, int num_elements,
                                         void *extra_data);
 
+/* Data for threadpool logging. */
+struct mapper_log_entry {
+
+  /* ID of the thread executing the chunk. */
+  int tid;
+
+  /* Size of the chunk processed. */
+  int chunk_size;
+
+  /* Pointer to the mapper function. */
+  threadpool_map_function map_function;
+
+  /*! Start and end time of this task */
+  ticks tic, toc;
+};
+
+struct mapper_log {
+  /* Log of threadpool mapper calls. */
+  struct mapper_log_entry *log;
+
+  /* Size of the allocated log. */
+  int size;
+
+  /* Number of entries in the log. */
+  int count;
+};
+
 /* Data of a threadpool. */
 struct threadpool {
-
-  /* Number of threads in this pool. */
-  int num_threads;
 
   /* The threads themselves. */
   pthread_t *threads;
 
   /* This is where threads go to rest. */
-  pthread_mutex_t thread_mutex;
-  pthread_cond_t control_cond, thread_cond;
+  swift_barrier_t wait_barrier;
+  swift_barrier_t run_barrier;
 
   /* Current map data and count. */
   void *map_data, *map_extra_data;
@@ -48,8 +80,15 @@ struct threadpool {
       map_data_chunk;
   volatile threadpool_map_function map_function;
 
+  /* Number of threads in this pool. */
+  int num_threads;
+
   /* Counter for the number of threads that are done. */
-  volatile int num_threads_waiting, num_threads_running;
+  volatile int num_threads_running;
+
+#ifdef SWIFT_DEBUG_THREADPOOL
+  struct mapper_log *logs;
+#endif
 };
 
 /* Function prototypes. */
@@ -58,5 +97,10 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *map_data, size_t N, int stride, int chunk,
                     void *extra_data);
 void threadpool_clean(struct threadpool *tp);
+#ifdef SWIFT_DEBUG_THREADPOOL
+void threadpool_reset_log(struct threadpool *tp);
+void threadpool_dump_log(struct threadpool *tp, const char *filename,
+                         int reset);
+#endif
 
 #endif /* SWIFT_THREADPOOL_H */

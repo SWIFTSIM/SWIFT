@@ -29,7 +29,6 @@
 #include "../config.h"
 
 /* Local headers. */
-#include "const.h"
 #include "inline.h"
 #include "vector.h"
 
@@ -40,23 +39,26 @@
 
 #define hydro_dimension 3.f
 #define hydro_dimension_inv 0.3333333333f
-#define hydro_dimention_unit_sphere ((float)(4. * M_PI / 3.))
+#define hydro_dimension_unit_sphere ((float)(4. * M_PI / 3.))
+#define hydro_dimension_unit_sphere_inv ((float)(3. * M_1_PI / 4.))
 
 #elif defined(HYDRO_DIMENSION_2D)
 
 #define hydro_dimension 2.f
 #define hydro_dimension_inv 0.5f
-#define hydro_dimention_unit_sphere ((float)M_PI)
+#define hydro_dimension_unit_sphere ((float)M_PI)
+#define hydro_dimension_unit_sphere_inv ((float)M_1_PI)
 
 #elif defined(HYDRO_DIMENSION_1D)
 
 #define hydro_dimension 1.f
 #define hydro_dimension_inv 1.f
-#define hydro_dimention_unit_sphere 2.f
+#define hydro_dimension_unit_sphere 2.f
+#define hydro_dimension_unit_sphere_inv 0.5f
 
 #else
 
-#error "A problem dimensionality must be chosen in const.h !"
+#error "A problem dimensionality must be chosen in config.h !"
 
 #endif
 
@@ -107,6 +109,34 @@ __attribute__((always_inline)) INLINE static float pow_dimension_plus_one(
 #elif defined(HYDRO_DIMENSION_1D)
 
   return x * x;
+
+#else
+
+  error("The dimension is not defined !");
+  return 0.f;
+
+#endif
+}
+
+/**
+ * @brief Returns the argument to the power given by the dimension minus one
+ *
+ * Computes \f$x^{d-1}\f$.
+ */
+__attribute__((always_inline)) INLINE static float pow_dimension_minus_one(
+    float x) {
+
+#if defined(HYDRO_DIMENSION_3D)
+
+  return x * x;
+
+#elif defined(HYDRO_DIMENSION_2D)
+
+  return x;
+
+#elif defined(HYDRO_DIMENSION_1D)
+
+  return 1.f;
 
 #else
 
@@ -202,6 +232,35 @@ invert_dimension_by_dimension_matrix(float A[3][3]) {
 #endif
 }
 
+/**
+ * @brief Get the radius of a dimension sphere with the given volume
+ *
+ * @param volume Volume of the dimension sphere
+ * @return Radius of the dimension sphere
+ */
+__attribute__((always_inline)) INLINE static float get_radius_dimension_sphere(
+    float volume) {
+
+#if defined(HYDRO_DIMENSION_3D)
+
+  return cbrtf(volume * hydro_dimension_unit_sphere_inv);
+
+#elif defined(HYDRO_DIMENSION_2D)
+
+  return sqrtf(volume * hydro_dimension_unit_sphere_inv);
+
+#elif defined(HYDRO_DIMENSION_1D)
+
+  return volume * hydro_dimension_unit_sphere_inv;
+
+#else
+
+  error("The dimension is not defined !");
+  return 0.f;
+
+#endif
+}
+
 /* ------------------------------------------------------------------------- */
 #ifdef WITH_VECTORIZATION
 
@@ -216,11 +275,11 @@ __attribute__((always_inline)) INLINE static vector pow_dimension_vec(
 
 #if defined(HYDRO_DIMENSION_3D)
 
-  return (vector)(x.v * x.v * x.v);
+  return (vector)(vec_mul(vec_mul(x.v, x.v), x.v));
 
 #elif defined(HYDRO_DIMENSION_2D)
 
-  return (vector)(x.v * x.v);
+  return (vector)(vec_mul(x.v, x.v));
 
 #elif defined(HYDRO_DIMENSION_1D)
 
@@ -245,16 +304,16 @@ __attribute__((always_inline)) INLINE static vector pow_dimension_plus_one_vec(
 
 #if defined(HYDRO_DIMENSION_3D)
 
-  const vector x2 = (vector)(x.v * x.v);
-  return (vector)(x2.v * x2.v);
+  const vector x2 = (vector)(vec_mul(x.v, x.v));
+  return (vector)(vec_mul(x2.v, x2.v));
 
 #elif defined(HYDRO_DIMENSION_2D)
 
-  return (vector)(x.v * x.v * x.v);
+  return (vector)(vec_mul(x.v, vec_mul(x.v, x.v)));
 
 #elif defined(HYDRO_DIMENSION_1D)
 
-  return (vector)(x.v * x.v);
+  return (vector)(vec_mul(x.v, x.v));
 
 #else
 

@@ -1,6 +1,6 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.9885e39     # 10^6 solar masses
+  UnitMass_in_cgs:     1.98848e39    # 10^6 solar masses
   UnitLength_in_cgs:   3.0856776e21  # Kiloparsecs
   UnitVelocity_in_cgs: 1e5           # Kilometres per second
   UnitCurrent_in_cgs:  1   # Amperes
@@ -26,7 +26,6 @@ Snapshots:
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2349   # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
-  delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
 
 # Parameters related to the initial conditions
@@ -34,7 +33,7 @@ InitialConditions:
   file_name:  Hydrostatic.hdf5       # The file to read
  
 # External potential parameters
-SoftenedIsothermalPotential:
+IsothermalPotential:
   position_x:      0.     # location of centre of isothermal potential in internal units
   position_y:      0.
   position_z:      0.	

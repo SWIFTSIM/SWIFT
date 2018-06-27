@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 James Willis (james.s.willis@durham.ac.uk)
+ *               2017 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,6 +23,9 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Standard headers */
+#include <stdio.h>
+
 #if defined(HAVE_HDF5)
 #include <hdf5.h>
 #endif
@@ -35,6 +39,7 @@
 struct parameter {
   char name[PARSER_MAX_LINE_SIZE];
   char value[PARSER_MAX_LINE_SIZE];
+  int used;
 };
 
 struct section {
@@ -51,34 +56,38 @@ struct swift_params {
 };
 
 /* Public API. */
+void parser_init(const char *file_name, struct swift_params *params);
 void parser_read_file(const char *file_name, struct swift_params *params);
 void parser_print_params(const struct swift_params *params);
 void parser_write_params_to_file(const struct swift_params *params,
-                                 const char *file_name);
+                                 const char *file_name, int write_all);
+void parser_set_param(struct swift_params *params, const char *desc);
 
-char parser_get_param_char(const struct swift_params *params, const char *name);
-int parser_get_param_int(const struct swift_params *params, const char *name);
-float parser_get_param_float(const struct swift_params *params,
-                             const char *name);
-double parser_get_param_double(const struct swift_params *params,
-                               const char *name);
-void parser_get_param_string(const struct swift_params *params,
-                             const char *name, char *retParam);
+char parser_get_param_char(struct swift_params *params, const char *name);
+int parser_get_param_int(struct swift_params *params, const char *name);
+float parser_get_param_float(struct swift_params *params, const char *name);
+double parser_get_param_double(struct swift_params *params, const char *name);
+void parser_get_param_string(struct swift_params *params, const char *name,
+                             char *retParam);
 
-char parser_get_opt_param_char(const struct swift_params *params,
-                               const char *name, char def);
-int parser_get_opt_param_int(const struct swift_params *params,
-                             const char *name, int def);
-float parser_get_opt_param_float(const struct swift_params *params,
-                                 const char *name, float def);
-double parser_get_opt_param_double(const struct swift_params *params,
+char parser_get_opt_param_char(struct swift_params *params, const char *name,
+                               char def);
+int parser_get_opt_param_int(struct swift_params *params, const char *name,
+                             int def);
+float parser_get_opt_param_float(struct swift_params *params, const char *name,
+                                 float def);
+double parser_get_opt_param_double(struct swift_params *params,
                                    const char *name, double def);
-void parser_get_opt_param_string(const struct swift_params *params,
-                                 const char *name, char *retParam,
-                                 const char *def);
+void parser_get_opt_param_string(struct swift_params *params, const char *name,
+                                 char *retParam, const char *def);
 
 #if defined(HAVE_HDF5)
-void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp);
+void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp,
+                                 int write_all);
 #endif
+
+/* Dump/restore. */
+void parser_struct_dump(const struct swift_params *params, FILE *stream);
+void parser_struct_restore(const struct swift_params *params, FILE *stream);
 
 #endif /* SWIFT_PARSER_H */

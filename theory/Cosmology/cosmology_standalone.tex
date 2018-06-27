@@ -1,0 +1,50 @@
+\documentclass[fleqn, usenatbib, useAMS, a4paper]{mnras}
+\usepackage{graphicx}
+\usepackage{amsmath,paralist,xcolor,xspace,amssymb}
+\usepackage{times}
+\usepackage{comment}
+\usepackage[super]{nth}
+
+\newcommand{\todo}[1]{{\textcolor{red}{#1}}}
+\newcommand{\gadget}{{\sc Gadget}\xspace}
+\newcommand{\swift}{{\sc Swift}\xspace}
+\newcommand{\nbody}{$N$-body\xspace}
+\newcommand{\Lag}{\mathcal{L}}
+
+%opening
+\title{Cosmology equations in SWIFT}
+\author{Matthieu Schaller}
+\begin{document}
+
+\date{\today}
+
+\pagerange{\pageref{firstpage}--\pageref{lastpage}} \pubyear{2018}
+
+\maketitle
+
+\label{firstpage}
+
+\begin{abstract}
+Making cosmology great again.
+\end{abstract}
+
+\begin{keywords}
+\end{keywords}
+
+\section{Cosmology equations in \swift}
+\label{sec:cosmo}
+
+\input{flrw}
+
+\input{coordinates}
+
+\input{operators}
+
+\input{timesteps}
+
+\bibliographystyle{mnras}
+\bibliography{./bibliography.bib}
+
+\label{lastpage}
+
+\end{document}

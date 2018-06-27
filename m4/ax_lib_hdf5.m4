@@ -22,7 +22,10 @@
 #     yes  - do check for HDF5 library in standard locations.
 #     path - complete path to the HDF5 helper script h5cc or h5pcc.
 #
-#   SWIFT modification: HDF5 is required, so only path is described.
+#   SWIFT modifications: HDF5 is required, so only path is described,
+#   when the h5cc or h5pcc commands are not available, we check if
+#   HDF5 can be used anyway and no macros are defined except HAVE_HDF5
+#   and with_hdf5.
 #
 #   If HDF5 is successfully found, this macro calls
 #
@@ -155,11 +158,37 @@ if test "$with_hdf5" = "yes"; then
         AC_MSG_CHECKING([Using provided HDF5 C wrapper])
         AC_MSG_RESULT([$H5CC])
     fi
-    AC_MSG_CHECKING([for HDF5 libraries])
     if test ! -f "$H5CC" || test ! -x "$H5CC"; then
-        AC_MSG_RESULT([no])
-        AC_MSG_WARN(m4_case(m4_normalize([$1]),
-            [serial],  [
+
+dnl Check if we already have HDF5 for C.
+        AC_CHECK_HEADER([hdf5.h], [ac_cv_hhdf5_h=yes], [ac_cv_hhdf5_h=no], [AC_INCLUDES_DEFAULT])
+        AC_CHECK_LIB([hdf5], [H5Fcreate], [ac_cv_libhdf5=yes],
+                     [ac_cv_libhdf5=no])
+        if test "$ac_cv_hhdf5_h" = "yes" && test "$ac_cv_libhdf5" = "yes" ; then
+
+dnl Can compile and link, so we have a HDF5, just don't know which version.
+            AC_MSG_CHECKING([for HDF5 libraries])
+            AC_MSG_RESULT([yes])
+            with_hdf5="yes"
+            HDF5_VERSION="unknown"
+            HDF5_LIBS="-lhdf5"
+ 	    AC_SUBST([HDF5_VERSION])
+	    AC_SUBST([HDF5_CC])
+	    AC_SUBST([HDF5_CFLAGS])
+	    AC_SUBST([HDF5_CPPFLAGS])
+	    AC_SUBST([HDF5_LDFLAGS])
+	    AC_SUBST([HDF5_LIBS])
+	    AC_SUBST([HDF5_FC])
+	    AC_SUBST([HDF5_FFLAGS])
+	    AC_SUBST([HDF5_FLIBS])
+	    AC_DEFINE([HAVE_HDF5], [1], [Defined if you have HDF5 support])
+        else
+
+dnl Time to give up.
+            AC_MSG_CHECKING([for HDF5 libraries])
+            AC_MSG_RESULT([no])
+            AC_MSG_WARN(m4_case(m4_normalize([$1]),
+                    [serial],  [
 Unable to locate serial HDF5 compilation helper script 'h5cc'.
 Please specify --with-hdf5=<LOCATION> as the full path to h5cc.
 HDF5 support is being disabled.
@@ -172,9 +201,12 @@ Unable to locate HDF5 compilation helper scripts 'h5cc' or 'h5pcc'.
 Please specify --with-hdf5=<LOCATION> as the full path to h5cc or h5pcc.
 HDF5 support is being disabled.
 ]))
-        with_hdf5="no"
-        with_hdf5_fortran="no"
+            with_hdf5="no"
+            with_hdf5_fortran="no"
+        fi
     else
+        AC_MSG_CHECKING([for HDF5 libraries])
+
         dnl Get the h5cc output
         HDF5_SHOW=$(eval $H5CC -show)
 

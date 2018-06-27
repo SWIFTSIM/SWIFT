@@ -26,7 +26,7 @@
  * @brief Test the kick-drift-kick leapfrog integration
  * via a Sun-Earth simulation
  */
-int main() {
+int main(int argc, char *argv[]) {
 
   struct cell c;
   int i;
@@ -63,10 +63,10 @@ int main() {
 
   /* Create a particle */
   struct part *parts = NULL;
-  parts = malloc(sizeof(struct part));
+  parts = (struct part *)malloc(sizeof(struct part));
   bzero(parts, sizeof(struct part));
   struct xpart *xparts = NULL;
-  xparts = malloc(sizeof(struct xpart));
+  xparts = (struct xpart *)malloc(sizeof(struct xpart));
   bzero(xparts, sizeof(struct xpart));
 
   /* Put the particle on the orbit */
@@ -95,8 +95,8 @@ int main() {
   run.e = &eng;
 
   eng.time = 0.;
-  eng.timeBegin = 0.;
-  eng.timeEnd = N_orbits * T;
+  eng.time_begin = 0.;
+  eng.time_end = N_orbits * T;
   eng.dt_min = dt; /* This forces the time-step to be dt        */
   eng.dt_max = dt; /* irrespective of the state of the particle */
 
@@ -104,7 +104,7 @@ int main() {
   for (i = 0; i < N; i++) {
 
     /* Move forward in time */
-    eng.timeOld = eng.time;
+    eng.time_old = eng.time;
     eng.time += dt;
 
     /* Compute gravitational acceleration */
@@ -115,7 +115,7 @@ int main() {
     c.parts[0].a_hydro[1] = -(G * M_sun * c.parts[0].x[1] / r * r * r);
 
     /* Kick... */
-    runner_do_kick(&run, &c, 0);
+    runner_do_kick2(&run, &c, 0);
   }
 
   /* Clean-up */

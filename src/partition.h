@@ -39,19 +39,34 @@ struct partition {
   enum partition_type type;
   int grid[3];
 };
+
 /* Repartition type to use. */
 enum repartition_type {
   REPART_NONE = 0,
-  REPART_METIS_BOTH,
-  REPART_METIS_VERTEX,
-  REPART_METIS_EDGE,
-  REPART_METIS_VERTEX_EDGE
+  REPART_METIS_VERTEX_COSTS_EDGE_COSTS,
+  REPART_METIS_VERTEX_COUNTS,
+  REPART_METIS_EDGE_COSTS,
+  REPART_METIS_VERTEX_COUNTS_EDGE_COSTS,
+  REPART_METIS_VERTEX_COSTS_EDGE_TIMEBINS,
+  REPART_METIS_VERTEX_COUNTS_EDGE_TIMEBINS,
+  REPART_METIS_EDGE_TIMEBINS
+};
+
+/* Repartition preferences. */
+struct repartition {
+  enum repartition_type type;
+  float trigger;
+  float minfrac;
+
+  /* The partition as a cell list, if used. */
+  int ncelllist;
+  int *celllist;
 };
 
 /* Simple descriptions of types for reports. */
 extern const char *repartition_name[];
 
-void partition_repartition(enum repartition_type reparttype, int nodeID,
+void partition_repartition(struct repartition *reparttype, int nodeID,
                            int nr_nodes, struct space *s, struct task *tasks,
                            int nr_tasks);
 void partition_initial_partition(struct partition *initial_partition,
@@ -60,7 +75,14 @@ void partition_initial_partition(struct partition *initial_partition,
 int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeID,
                              struct space *s);
 void partition_init(struct partition *partition,
-                    enum repartition_type *reparttypestruct,
-                    const struct swift_params *params, int nr_nodes);
+                    struct repartition *repartition,
+                    struct swift_params *params, int nr_nodes);
+
+/* Dump/restore. */
+void partition_store_celllist(struct space *s, struct repartition *reparttype);
+void partition_restore_celllist(struct space *s,
+                                struct repartition *reparttype);
+void partition_struct_dump(struct repartition *reparttype, FILE *stream);
+void partition_struct_restore(struct repartition *reparttype, FILE *stream);
 
 #endif /* SWIFT_PARTITION_H */

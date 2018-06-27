@@ -20,14 +20,21 @@
 #ifndef SWIFT_INLINE_H
 #define SWIFT_INLINE_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /**
  * @brief Defines inline
  */
 #ifndef INLINE
+#ifdef __cplusplus
+#define INLINE inline
+#else
 #if __GNUC__ && !__GNUC_STDC_INLINE__
 #define INLINE extern inline
 #else
 #define INLINE inline
+#endif
 #endif
 #endif
 

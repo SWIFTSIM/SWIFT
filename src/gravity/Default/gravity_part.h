@@ -19,39 +19,64 @@
 #ifndef SWIFT_DEFAULT_GRAVITY_PART_H
 #define SWIFT_DEFAULT_GRAVITY_PART_H
 
-/* Some standard headers. */
-#include <stdlib.h>
-
 /* Gravity particle. */
 struct gpart {
 
-  /* Particle position. */
-  double x[3];
-
-  /* Offset between current position and position at last tree rebuild. */
-  float x_diff[3];
-
-  /* Particle velocity. */
-  float v_full[3];
-
-  /* Particle acceleration. */
-  float a_grav[3];
-
-  /* Particle mass. */
-  float mass;
-
-  /* Softening length */
-  float epsilon;
-
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /* Particle time of end of time-step. */
-  int ti_end;
-
-  /* Particle ID. If negative, it is the negative offset of the #part with
+  /*! Particle ID. If negative, it is the negative offset of the #part with
      which this gpart is linked. */
   long long id_or_neg_offset;
+
+  /*! Particle position. */
+  double x[3];
+
+  /*! Offset between current position and position at last tree rebuild. */
+  float x_diff[3];
+
+  /*! Particle velocity. */
+  float v_full[3];
+
+  /*! Particle acceleration. */
+  float a_grav[3];
+
+  /*! Particle mass. */
+  float mass;
+
+  /*! Gravitational potential */
+  float potential;
+
+  /*! Time-step length */
+  timebin_t time_bin;
+
+  /*! Type of the #gpart (DM, gas, star, ...) */
+  enum part_type type;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Numer of gparts this gpart interacted with */
+  long long num_interacted;
+
+  /* Time of the last drift */
+  integertime_t ti_drift;
+
+  /* Time of the last kick */
+  integertime_t ti_kick;
+
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+
+  /*! Acceleration taken from the mesh only */
+  float a_grav_PM[3];
+
+  /*! Potential taken from the mesh only */
+  float potential_PM;
+
+  /* Brute-force particle acceleration. */
+  double a_grav_exact[3];
+
+  /* Brute-force particle potential. */
+  double potential_exact;
+#endif
 
 } SWIFT_STRUCT_ALIGN;
 

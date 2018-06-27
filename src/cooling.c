@@ -22,6 +22,7 @@
 
 /* This object's header. */
 #include "cooling.h"
+#include "restart.h"
 
 /**
  * @brief Initialises the cooling properties.
@@ -33,8 +34,8 @@
  * @param phys_const The physical constants in internal units.
  * @param cooling The cooling properties to initialize
  */
-void cooling_init(const struct swift_params* parameter_file,
-                  const struct UnitSystem* us,
+void cooling_init(struct swift_params* parameter_file,
+                  const struct unit_system* us,
                   const struct phys_const* phys_const,
                   struct cooling_function_data* cooling) {
 
@@ -51,4 +52,29 @@ void cooling_init(const struct swift_params* parameter_file,
 void cooling_print(const struct cooling_function_data* cooling) {
 
   cooling_print_backend(cooling);
+}
+
+/**
+ * @brief Write a cooling struct to the given FILE as a stream of bytes.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ */
+void cooling_struct_dump(const struct cooling_function_data* cooling,
+                         FILE* stream) {
+  restart_write_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
+                       stream, "cooling", "cooling function");
+}
+
+/**
+ * @brief Restore a hydro_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ */
+void cooling_struct_restore(const struct cooling_function_data* cooling,
+                            FILE* stream) {
+  restart_read_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
+                      stream, NULL, "cooling function");
 }

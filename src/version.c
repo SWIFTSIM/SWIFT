@@ -21,9 +21,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Needed for gethostname() */
-#include <unistd.h>
-
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
@@ -40,11 +37,18 @@
 #include <fftw3.h>
 #endif
 
+#ifdef HAVE_LIBGSL
+#include <gsl/gsl_version.h>
+#endif
+
 /* Some standard headers. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /* This object's header. */
+#include "error.h"
 #include "version.h"
 
 /* Local headers. */
@@ -106,6 +110,59 @@ const char *git_branch(void) {
       sprintf(buf, "%s", "unknown");
     else
       sprintf(buf, "%s", branch);
+    initialised = 1;
+  }
+  return buf;
+}
+
+/**
+ * @brief Return the date of the commit in the git repository
+ *
+ * The date of the commit of the code we are running.
+ *
+ * @result git branch
+ */
+const char *git_date(void) {
+  static char buf[256];
+  static int initialised = 0;
+  static const char *date = GIT_DATE;
+  if (!initialised) {
+    if (strlen(date) == 0)
+      sprintf(buf, "%s", "unknown");
+    else
+      sprintf(buf, "%s", date);
+    initialised = 1;
+  }
+  return buf;
+}
+
+/**
+ * @brief Return the options passed to the 'configure' script
+ *
+ * @result List of configuration options within simple quotes (').
+ */
+const char *configuration_options(void) {
+  static char buf[1024];
+  static int initialised = 0;
+  static const char *config = SWIFT_CONFIG_FLAGS;
+  if (!initialised) {
+    snprintf(buf, 1024, "'%.1021s'", config);
+    initialised = 1;
+  }
+  return buf;
+}
+
+/**
+ * @brief Return the CFLAGS the code was compiled with
+ *
+ * @result List of CFLAGS within simple quotes (').
+ */
+const char *compilation_cflags(void) {
+  static char buf[1024];
+  static int initialised = 0;
+  static const char *cflags = SWIFT_CFLAGS;
+  if (!initialised) {
+    snprintf(buf, 1024, "'%.1021s'", cflags);
     initialised = 1;
   }
   return buf;
@@ -215,12 +272,12 @@ const char *mpi_version(void) {
 #else
   /* Use autoconf guessed value. */
   static char lib_version[60] = {0};
-  snprintf(lib_version, 60, "%s", SWIFT_MPI_LIBRARY);
+  snprintf(lib_version, 60, "%.60s", SWIFT_MPI_LIBRARY);
 #endif
 
   /* Numeric version. */
   MPI_Get_version(&std_version, &std_subversion);
-  snprintf(version, 80, "%s (MPI std v%i.%i)", lib_version, std_version,
+  snprintf(version, 80, "%.60s (MPI std v%i.%i)", lib_version, std_version,
            std_subversion);
 #else
   sprintf(version, "Code was not compiled with MPI support");
@@ -280,6 +337,58 @@ const char *fftw3_version(void) {
 }
 
 /**
+ * @brief return the GSL version used when SWIFT was built.
+ *
+ * @result description of the GSL version.
+ */
+const char *libgsl_version(void) {
+
+  static char version[256] = {0};
+#if defined(HAVE_LIBGSL)
+  sprintf(version, "%.255s", gsl_version);
+#else
+  sprintf(version, "Unknown version");
+#endif
+  return version;
+}
+
+/**
+ * @brief return the thread barrier used in SWIFT.
+ *
+ * @result description of the thread barriers
+ */
+const char *thread_barrier_version(void) {
+
+  static char version[256] = {0};
+#if defined(HAVE_PTHREAD_BARRIERS)
+  sprintf(version, "%s", "pthread");
+#else
+  sprintf(version, "homemade");
+#endif
+  return version;
+}
+
+/**
+ * @brief return the allocator library used in SWIFT.
+ *
+ * @result description of the allocation library
+ */
+const char *allocator_version(void) {
+
+  static char version[256] = {0};
+#if defined(HAVE_TBBMALLOC)
+  sprintf(version, "TBB malloc");
+#elif defined(HAVE_TCMALLOC)
+  sprintf(version, "tc-malloc");
+#elif defined(HAVE_JEMALLOC)
+  sprintf(version, "je-malloc");
+#else
+  sprintf(version, "Compiler version (probably glibc)");
+#endif
+  return version;
+}
+
+/**
  * @brief Prints a greeting message to the standard output containing code
  * version and revision number
  */
@@ -294,14 +403,21 @@ void greetings(void) {
   printf(" SPH With Inter-dependent Fine-grained Tasking\n\n");
 
   printf(" Version : %s\n", package_version());
-  printf(" Revision: %s, Branch: %s\n", git_revision(), git_branch());
-  printf(" Webpage : www.swiftsim.com\n\n");
+  printf(" Revision: %s, Branch: %s, Date: %s\n", git_revision(), git_branch(),
+         git_date());
+  printf(" Webpage : %s\n\n", PACKAGE_URL);
+  printf(" Config. options: %s\n\n", configuration_options());
   printf(" Compiler: %s, Version: %s\n", compiler_name(), compiler_version());
+  printf(" CFLAGS  : %s\n", compilation_cflags());
+  printf("\n");
 #ifdef HAVE_HDF5
   printf(" HDF5 library version: %s\n", hdf5_version());
 #endif
 #ifdef HAVE_FFTW
   printf(" FFTW library version: %s\n", fftw3_version());
+#endif
+#ifdef HAVE_LIBGSL
+  printf(" GSL  library version: %s\n", libgsl_version());
 #endif
 #ifdef WITH_MPI
   printf(" MPI library: %s\n", mpi_version());

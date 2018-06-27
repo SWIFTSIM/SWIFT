@@ -23,67 +23,218 @@
 #include <math.h>
 
 /* Includes. */
-#include "const.h"
 #include "inline.h"
-#include "vector.h"
+#include "minmax.h"
 
-/* The gravity kernel is defined as a degree 6 polynomial in the distance
-   r. The resulting value should be post-multiplied with r^-3, resulting
-   in a polynomial with terms ranging from r^-3 to r^3, which are
-   sufficient to model both the direct potential as well as the splines
-   near the origin.
-   As in the hydro case, the 1/h^3 needs to be multiplied in afterwards */
+//#define GADGET2_SOFTENING_CORRECTION
 
-/* Coefficients for the kernel. */
-#define kernel_grav_name "Gadget-2 softening kernel"
-#define kernel_grav_degree 6 /* Degree of the polynomial */
-#define kernel_grav_ivals 2  /* Number of branches */
-static const float
-    kernel_grav_coeffs[(kernel_grav_degree + 1) * (kernel_grav_ivals + 1)]
-    __attribute__((aligned(16))) = {32.f,
-                                    -38.4f,
-                                    0.f,
-                                    10.66666667f,
-                                    0.f,
-                                    0.f,
-                                    0.f, /* 0 < u < 0.5 */
-                                    -10.66666667f,
-                                    38.4f,
-                                    -48.f,
-                                    21.3333333f,
-                                    0.f,
-                                    0.f,
-                                    -0.066666667f, /* 0.5 < u < 1 */
-                                    0.f,
-                                    0.f,
-                                    0.f,
-                                    0.f,
-                                    0.f,
-                                    0.f,
-                                    0.f}; /* 1 < u */
+#ifdef GADGET2_SOFTENING_CORRECTION
+/*! Conversion factor between Plummer softening and internal softening */
+#define kernel_gravity_softening_plummer_equivalent 2.8
+#define kernel_gravity_softening_plummer_equivalent_inv (1. / 2.8)
+#else
+/*! Conversion factor between Plummer softening and internal softening */
+#define kernel_gravity_softening_plummer_equivalent 3.
+#define kernel_gravity_softening_plummer_equivalent_inv (1. / 3.)
+#endif /* GADGET2_SOFTENING_CORRECTION */
 
 /**
- * @brief Computes the gravity softening function.
+ * @brief Computes the gravity softening function for potential.
+ *
+ * This functions assumes 0 < u < 1.
  *
  * @param u The ratio of the distance to the softening length $u = x/h$.
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
-__attribute__((always_inline)) INLINE static void kernel_grav_eval(
+__attribute__((always_inline)) INLINE static void kernel_grav_pot_eval(
     float u, float *const W) {
 
-  /* Pick the correct branch of the kernel */
-  const int ind = (int)fminf(u * (float)kernel_grav_ivals, kernel_grav_ivals);
-  const float *const coeffs =
-      &kernel_grav_coeffs[ind * (kernel_grav_degree + 1)];
+#ifdef GADGET2_SOFTENING_CORRECTION
+  if (u < 0.5f)
+    *W = -2.8f + u * u * (5.333333333333f + u * u * (6.4f * u - 9.6f));
+  else
+    *W = -3.2f + 0.066666666667f / u +
+         u * u * (10.666666666667f +
+                  u * (-16.f + u * (9.6f - 2.133333333333f * u)));
+#else
 
-  /* First two terms of the polynomial ... */
-  float w = coeffs[0] * u + coeffs[1];
-
-  /* ... and the rest of them */
-  for (int k = 2; k <= kernel_grav_degree; k++) w = u * w + coeffs[k];
-
-  /* Return everything */
-  *W = w / (u * u * u);
+  /* W(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
+  *W = 3.f * u - 15.f;
+  *W = *W * u + 28.f;
+  *W = *W * u - 21.f;
+  *W = *W * u;
+  *W = *W * u + 7.f;
+  *W = *W * u;
+  *W = *W * u - 3.f;
+#endif
 }
 
-#endif  // SWIFT_KERNEL_GRAVITY_H
+/**
+ * @brief Computes the gravity softening function for forces.
+ *
+ * This functions assumes 0 < u < 1.
+ *
+ * @param u The ratio of the distance to the softening length $u = x/h$.
+ * @param W (return) The value of the kernel function $W(x,h)$.
+ */
+__attribute__((always_inline)) INLINE static void kernel_grav_force_eval(
+    float u, float *const W) {
+
+#ifdef GADGET2_SOFTENING_CORRECTION
+  if (u < 0.5f)
+    *W = 10.6666667f + u * u * (32.f * u - 38.4f);
+  else
+    *W = 21.3333333f - 48.f * u + 38.4f * u * u - 10.6666667f * u * u * u -
+         0.06666667f / (u * u * u);
+#else
+
+  /* W(u) = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */
+  *W = 21.f * u - 90.f;
+  *W = *W * u + 140.f;
+  *W = *W * u - 84.f;
+  *W = *W * u;
+  *W = *W * u + 14.f;
+#endif
+}
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+
+/**
+ * @brief Computes the gravity softening function for potential in double
+ * precision.
+ *
+ * This functions assumes 0 < u < 1.
+ *
+ * @param u The ratio of the distance to the softening length $u = x/h$.
+ * @param W (return) The value of the kernel function $W(x,h)$.
+ */
+__attribute__((always_inline)) INLINE static void kernel_grav_eval_pot_double(
+    double u, double *const W) {
+
+#ifdef GADGET2_SOFTENING_CORRECTION
+  if (u < 0.5)
+    *W = -2.8 + u * u * (5.333333333333 + u * u * (6.4 * u - 9.6));
+  else
+    *W = -3.2 + 0.066666666667 / u +
+         u * u *
+             (10.666666666667 + u * (-16.0 + u * (9.6 - 2.133333333333 * u)));
+#else
+
+  /* W(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
+  *W = 3. * u - 15.;
+  *W = *W * u + 28.;
+  *W = *W * u - 21.;
+  *W = *W * u;
+  *W = *W * u + 7.;
+  *W = *W * u;
+  *W = *W * u - 3;
+#endif
+}
+
+/**
+ * @brief Computes the gravity softening function for forces in double
+ * precision.
+ *
+ * This functions assumes 0 < u < 1.
+ *
+ * @param u The ratio of the distance to the softening length $u = x/h$.
+ * @param W (return) The value of the kernel function $W(x,h)$.
+ */
+__attribute__((always_inline)) INLINE static void kernel_grav_eval_force_double(
+    double u, double *const W) {
+
+#ifdef GADGET2_SOFTENING_CORRECTION
+  if (u < 0.5)
+    *W = 10.666666666667 + u * u * (32.0 * u - 38.4);
+  else
+    *W = 21.333333333333 - 48.0 * u + 38.4 * u * u -
+         10.666666666667 * u * u * u - 0.066666666667 / (u * u * u);
+#else
+
+  /* W(u) = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */
+  *W = 21. * u - 90.;
+  *W = *W * u + 140.;
+  *W = *W * u - 84.;
+  *W = *W * u;
+  *W = *W * u + 14.;
+#endif
+}
+#endif /* SWIFT_GRAVITY_FORCE_CHECKS */
+
+#undef GADGET2_SOFTENING_CORRECTION
+
+/************************************************/
+/* Derivatives of softening kernel used for FMM */
+/************************************************/
+
+__attribute__((always_inline)) INLINE static float D_soft_1(float u,
+                                                            float u_inv) {
+
+  /* phi(u) = -3u^7 + 15u^6 - 28u^5 + 21u^4 - 7u^2 + 3 */
+  float phi = -3.f * u + 15.f;
+  phi = phi * u - 28.f;
+  phi = phi * u + 21.f;
+  phi = phi * u;
+  phi = phi * u - 7.f;
+  phi = phi * u;
+  phi = phi * u + 3.f;
+
+  return phi;
+}
+
+__attribute__((always_inline)) INLINE static float D_soft_3(float u,
+                                                            float u_inv) {
+
+  /* phi'(u)/u = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */
+  float phi = 21.f * u - 90.f;
+  phi = phi * u + 140.f;
+  phi = phi * u - 84.f;
+  phi = phi * u;
+  phi = phi * u + 14.f;
+
+  return phi;
+}
+
+__attribute__((always_inline)) INLINE static float D_soft_5(float u,
+                                                            float u_inv) {
+
+  /* (phi'(u)/u)'/u = -105u^3 + 360u^2 - 420u + 168 */
+  float phi = -105.f * u + 360.f;
+  phi = phi * u - 420.f;
+  phi = phi * u + 168.f;
+
+  return phi;
+}
+
+__attribute__((always_inline)) INLINE static float D_soft_7(float u,
+                                                            float u_inv) {
+
+  /* ((phi'(u)/u)'/u)'/u = 315u - 720 + 420u^-1 */
+  return 315.f * u - 720.f + 420.f * u_inv;
+}
+
+__attribute__((always_inline)) INLINE static float D_soft_9(float u,
+                                                            float u_inv) {
+
+  /* (((phi'(u)/u)'/u)'/u)'/u = -315u^-1 + 420u^-3 */
+  float phi = 420.f * u_inv;
+  phi = phi * u_inv - 315.f;
+  phi = phi * u_inv;
+
+  return phi;
+}
+
+__attribute__((always_inline)) INLINE static float D_soft_11(float u,
+                                                             float u_inv) {
+
+  /* ((((phi'(u)/u)'/u)'/u)'/u)'/u = 315u^-3 - 1260u^-5 */
+  float phi = -1260.f * u_inv;
+  phi = phi * u_inv + 315.f;
+  phi = phi * u_inv;
+  phi = phi * u_inv;
+  phi = phi * u_inv;
+
+  return phi;
+}
+
+#endif /* SWIFT_KERNEL_GRAVITY_H */

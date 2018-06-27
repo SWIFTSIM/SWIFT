@@ -52,7 +52,7 @@
 
 /* Flags . */
 #define scheduler_flag_none 0
-#define scheduler_flag_steal 1
+#define scheduler_flag_steal (1 << 1)
 
 /* Data of a scheduler. */
 struct scheduler {
@@ -102,11 +102,18 @@ struct scheduler {
 
   /* The node we are working on. */
   int nodeID;
+
+  /* Maximum size of task messages, in bytes, to sent using non-buffered
+   * MPI. */
+  size_t mpi_message_limit;
+
+  /* 'Pointer' to the seed for the random number generator */
+  pthread_key_t local_seed_pointer;
 };
 
 /* Inlined functions (for speed). */
 /**
- * @brief Add a task to the list of active tasks.
+ * @brief Add a regular task to the list of active tasks.
  *
  * @param s The #scheduler.
  * @param t The task to be added.
@@ -114,9 +121,31 @@ struct scheduler {
 __attribute__((always_inline)) INLINE static void scheduler_activate(
     struct scheduler *s, struct task *t) {
   if (atomic_cas(&t->skip, 1, 0)) {
+    t->wait = 0;
     int ind = atomic_inc(&s->active_count);
     s->tid_active[ind] = t - s->tasks;
   }
+}
+
+/**
+ * @brief Search and add an MPI send task to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param nodeID The nodeID of the foreign cell.
+ *
+ * @return The #link to the MPI send task.
+ */
+__attribute__((always_inline)) INLINE static struct link *
+scheduler_activate_send(struct scheduler *s, struct link *link, int nodeID) {
+
+  struct link *l = NULL;
+  for (l = link; l != NULL && l->t->cj->nodeID != nodeID; l = l->next)
+    ;
+  if (l == NULL) error("Missing link to send task.");
+  scheduler_activate(s, l->t);
+  return l;
 }
 
 /* Function prototypes. */
@@ -132,8 +161,8 @@ void scheduler_reset(struct scheduler *s, int nr_tasks);
 void scheduler_ranktasks(struct scheduler *s);
 void scheduler_reweight(struct scheduler *s, int verbose);
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
-                               enum task_subtypes subtype, int flags, int wait,
-                               struct cell *ci, struct cell *cj, int tight);
+                               enum task_subtypes subtype, int flags,
+                               int implicit, struct cell *ci, struct cell *cj);
 void scheduler_splittasks(struct scheduler *s);
 struct task *scheduler_done(struct scheduler *s, struct task *t);
 struct task *scheduler_unlock(struct scheduler *s, struct task *t);
@@ -142,5 +171,7 @@ void scheduler_set_unlocks(struct scheduler *s);
 void scheduler_dump_queue(struct scheduler *s);
 void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
 void scheduler_clean(struct scheduler *s);
+void scheduler_free_tasks(struct scheduler *s);
+void scheduler_write_dependencies(struct scheduler *s, int verbose);
 
 #endif /* SWIFT_SCHEDULER_H */

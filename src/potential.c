@@ -23,6 +23,7 @@
 
 /* This object's header. */
 #include "potential.h"
+#include "restart.h"
 
 /**
  * @brief Initialises the external potential properties in the internal system
@@ -34,9 +35,9 @@
  * @param s The #space we run in.
  * @param potential The external potential properties to initialize
  */
-void potential_init(const struct swift_params* parameter_file,
+void potential_init(struct swift_params* parameter_file,
                     const struct phys_const* phys_const,
-                    const struct UnitSystem* us, const struct space* s,
+                    const struct unit_system* us, const struct space* s,
                     struct external_potential* potential) {
 
   potential_init_backend(parameter_file, phys_const, us, s, potential);
@@ -50,4 +51,30 @@ void potential_init(const struct swift_params* parameter_file,
 void potential_print(const struct external_potential* potential) {
 
   potential_print_backend(potential);
+}
+
+/**
+ * @brief Write an external_potential struct to the given FILE as a stream of
+ * bytes.
+ *
+ * @param potential the struct
+ * @param stream the file stream
+ */
+void potential_struct_dump(const struct external_potential* potential,
+                           FILE* stream) {
+  restart_write_blocks((void*)potential, sizeof(struct external_potential), 1,
+                       stream, "externalpotential", "external potential");
+}
+
+/**
+ * @brief Restore a external_potential struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param potential the struct
+ * @param stream the file stream
+ */
+void potential_struct_restore(const struct external_potential* potential,
+                              FILE* stream) {
+  restart_read_blocks((void*)potential, sizeof(struct external_potential), 1,
+                      stream, NULL, "external potential");
 }

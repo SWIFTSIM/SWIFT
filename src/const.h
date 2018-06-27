@@ -36,44 +36,6 @@
 /* Time integration constants. */
 #define const_max_u_change 0.1f
 
-/* Thermal energy per unit mass used as a constant for the isothermal EoS */
-#define const_isothermal_internal_energy 20.2615290634f
-
-/* Dimensionality of the problem */
-#define HYDRO_DIMENSION_3D
-//#define HYDRO_DIMENSION_2D
-//#define HYDRO_DIMENSION_1D
-
-/* Hydrodynamical adiabatic index. */
-#define HYDRO_GAMMA_5_3
-//#define HYDRO_GAMMA_7_5
-//#define HYDRO_GAMMA_4_3
-//#define HYDRO_GAMMA_2_1
-
-/* Equation of state choice */
-#define EOS_IDEAL_GAS
-//#define EOS_ISOTHERMAL_GAS
-
-/* Kernel function to use */
-#define CUBIC_SPLINE_KERNEL
-//#define QUARTIC_SPLINE_KERNEL
-//#define QUINTIC_SPLINE_KERNEL
-//#define WENDLAND_C2_KERNEL
-//#define WENDLAND_C4_KERNEL
-//#define WENDLAND_C6_KERNEL
-
-/* SPH variant to use */
-//#define MINIMAL_SPH
-#define GADGET2_SPH
-//#define HOPKINS_PE_SPH
-//#define DEFAULT_SPH
-//#define GIZMO_SPH
-
-/* Riemann solver to use (GIZMO_SPH only) */
-#define RIEMANN_SOLVER_EXACT
-//#define RIEMANN_SOLVER_TRRS
-//#define RIEMANN_SOLVER_HLLC
-
 /* Type of gradients to use (GIZMO_SPH only) */
 /* If no option is chosen, no gradients are used (first order scheme) */
 //#define GRADIENTS_SPH
@@ -84,30 +46,71 @@
 #define SLOPE_LIMITER_PER_FACE
 #define SLOPE_LIMITER_CELL_WIDE
 
-/* Self gravity stuff. */
-#define const_gravity_multipole_order 1
-#define const_gravity_a_smooth 1.25f
-#define const_gravity_r_cut 4.5f
-#define const_gravity_eta 0.025f
+/* Types of flux limiter to use (GIZMO_SPH only) */
+#define GIZMO_FLUX_LIMITER
 
-/* External gravity properties */
-#define EXTERNAL_POTENTIAL_NONE
-//#define EXTERNAL_POTENTIAL_POINTMASS
-//#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
-//#define EXTERNAL_POTENTIAL_SOFTENED_ISOTHERMAL_POTENTIAL
-//#define EXTERNAL_POTENTIAL_DISC_PATCH
+/* Options to control the movement of particles for GIZMO_SPH. */
+/* This option disables particle movement */
+//#define GIZMO_FIX_PARTICLES
+/* Try to keep cells regular by adding a correction velocity. */
+//#define GIZMO_STEER_MOTION
+/* Use the total energy instead of the thermal energy as conserved variable. */
+//#define GIZMO_TOTAL_ENERGY
+
+/* Options to control handling of unphysical values (GIZMO_SPH only). */
+/* In GIZMO, mass and energy (and hence density and pressure) can in principle
+   become negative, which will cause unwanted behaviour that can make the code
+   crash.
+   If no options are selected below, we assume (and pray) that this will not
+   happen, and add no restrictions to how these variables are treated. */
+/* Check for unphysical values and crash if they occur. */
+//#define GIZMO_UNPHYSICAL_ERROR
+/* Check for unphysical values and reset them to safe values. */
+#define GIZMO_UNPHYSICAL_RESCUE
+/* Show a warning message if an unphysical value was reset (only works if
+   GIZMO_UNPHYSICAL_RESCUE is also selected). */
+#ifdef SWIFT_DEBUG_CHECKS
+#define GIZMO_UNPHYSICAL_WARNING
+#endif
+
+/* Parameters that control how GIZMO handles pathological particle
+   configurations. */
+/* Show a warning message if a pathological configuration has been detected. */
+//#define GIZMO_PATHOLOGICAL_WARNING
+/* Crash if a pathological configuration has been detected. */
+//#define GIZMO_PATHOLOGICAL_ERROR
+/* Maximum allowed gradient matrix condition number. If the condition number of
+   the gradient matrix (defined in equation C1 in Hopkins, 2015) is larger than
+   this value, we artificially increase the number of neighbours to get a more
+   homogeneous sampling. */
+#define const_gizmo_max_condition_number 100.0f
+/* Correction factor applied to the particle wcount to force more neighbours if
+   the condition number is too large. */
+#define const_gizmo_w_correction_factor 0.9f
+/* Lower limit on the wcount correction factor. If the condition number is still
+   too high after this wcount correction has been applied, we give up on the
+   gradient matrix and use SPH gradients instead. */
+#define const_gizmo_min_wcorr 0.5f
+
+/* Types of gradients to use for SHADOWFAX_SPH */
+/* If no option is chosen, no gradients are used (first order scheme) */
+#define SHADOWFAX_GRADIENTS
+
+/* SHADOWFAX_SPH slope limiters */
+#define SHADOWFAX_SLOPE_LIMITER_PER_FACE
+#define SHADOWFAX_SLOPE_LIMITER_CELL_WIDE
+
+/* Options to control SHADOWFAX_SPH */
+/* This option disables cell movement */
+//#define SHADOWFAX_FIX_CELLS
+/* This option enables cell steering, i.e. trying to keep the cells regular by
+   adding a correction to the cell velocities.*/
+#define SHADOWFAX_STEER_CELL_MOTION
+/* This option evolves the total energy instead of the thermal energy */
+//#define SHADOWFAX_TOTAL_ENERGY
 
 /* Source terms */
 #define SOURCETERMS_NONE
 //#define SOURCETERMS_SN_FEEDBACK
-
-/* Cooling properties */
-#define COOLING_NONE
-//#define COOLING_CONST_DU
-//#define COOLING_CONST_LAMBDA
-//#define COOLING_GRACKLE
-
-/* Are we debugging ? */
-//#define SWIFT_DEBUG_CHECKS
 
 #endif /* SWIFT_CONST_H */

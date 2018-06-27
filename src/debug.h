@@ -19,6 +19,9 @@
 #ifndef SWIFT_DEBUG_H
 #define SWIFT_DEBUG_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Includes. */
 #include "cell.h"
 #include "part.h"
@@ -33,8 +36,10 @@ void printgParticle_single(struct gpart *gp);
 
 int checkSpacehmax(struct space *s);
 int checkCellhdxmax(const struct cell *c, int *depth);
+void dumpCells(const char *prefix, int super, int active, int mpiactive,
+               int pactive, struct space *s, int rank, int step);
 
-#ifdef HAVE_METIS
+#if defined(WITH_MPI) && defined(HAVE_METIS)
 #include "metis.h"
 void dumpMETISGraph(const char *prefix, idx_t nvtxs, idx_t ncon, idx_t *xadj,
                     idx_t *adjncy, idx_t *vwgt, idx_t *vsize, idx_t *adjwgt);
@@ -44,4 +49,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvtxs, idx_t ncon, idx_t *xadj,
 void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells);
 #endif
 
+void getProcMemUse(long *size, long *resident, long *share, long *trs,
+                   long *lrs, long *drs, long *dt);
+void printProcMemUse(void);
 #endif /* SWIFT_DEBUG_H */

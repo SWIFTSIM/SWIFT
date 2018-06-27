@@ -105,7 +105,7 @@ if test "$ac_test_CFLAGS" != "set"; then
                 echo "******************************************************"])
          ;;
 
-    intel) CFLAGS="-O3 -ansi_alias"
+    intel) CFLAGS="-O3 -ansi-alias"
 	if test "x$acx_maxopt_portable" = xno; then
 	  icc_archflag=unknown
 	  icc_flags=""
@@ -123,13 +123,16 @@ if test "$ac_test_CFLAGS" != "set"; then
 		    *0?6f?:*:*:*|?6f?:*:*:*|6f?:*:*:*|*1?66?:*:*:*) icc_flags="-xSSSE3 -xT -xB -xK" ;;
 		    *1?6[[7d]]?:*:*:*) icc_flags="-xSSE4.1 -xS -xT -xB -xK" ;;
 		    *1?6[[aef]]?:*:*:*|*2?6[[5cef]]?:*:*:*) icc_flags="-xSSE4.2 -xS -xT -xB -xK" ;;
-		    *2?6[[ad]]?:*:*:*) icc_flags="-xAVX -SSE4.2 -xS -xT -xB -xK" ;;
-		    *3?6[[ae]]?:*:*:*) icc_flags="-xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;;
-		    *3?6[[cf]]?:*:*:*|*4?6[[56]]?:*:*:*|*4?6[[ef]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;;
+		    *2?6[[ad]]?:*:*:*) icc_flags="-xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Sandy-bridge
+		    *3?6[[ae]]?:*:*:*) icc_flags="-xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; #Ivy-bridge
+		    *3?6[[cf]]?:*:*:*|*4?6[[56]]?:*:*:*|*4?6[[ef]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Haswell
+		    *3?6d?:*:*:*|*4?6[[7f]]?:*:*:*|*5?66?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Broadwell
+		    *4?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Skylake
+		    *5?6[[56]]?:*:*:*) icc_flags="-xCORE-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Skylake-AVX512
+		    *5?67?:*:*:*) icc_flags="-xMIC-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Knights-Landing
+		    *8?6[[de]]?:*:*:*|*9?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;;# Kabylake 
 		    *000?f[[346]]?:*:*:*|?f[[346]]?:*:*:*|f[[346]]?:*:*:*) icc_flags="-xSSE3 -xP -xO -xN -xW -xK" ;;
 		    *00??f??:*:*:*|??f??:*:*:*|?f??:*:*:*|f??:*:*:*) icc_flags="-xSSE2 -xN -xW -xK" ;;
-		    *5?6E?:*:*:*) icc_flags="-xCORE-AVX512" ;;
-		    *5?67?:*:*:*) icc_flags="-xMIC-AVX512" ;;
                   esac ;;
               esac ;;
           esac
@@ -146,6 +149,22 @@ if test "$ac_test_CFLAGS" != "set"; then
         fi
 	;;
 
+    clang)
+     # default optimization flags for clang on all systems
+     CFLAGS="-O3 -fomit-frame-pointer"
+
+     # Always good optimisation to have
+     AX_CHECK_COMPILE_FLAG(-fstrict-aliasing, CFLAGS="$CFLAGS -fstrict-aliasing")
+
+     # note that we enable "unsafe" fp optimization with other compilers, too
+     AX_CHECK_COMPILE_FLAG(-ffast-math, CFLAGS="$CFLAGS -ffast-math")
+
+     # not all codes will benefit from this.
+     AX_CHECK_COMPILE_FLAG(-funroll-loops, CFLAGS="$CFLAGS -funroll-loops")
+
+     AX_GCC_ARCHFLAG($acx_maxopt_portable)
+     ;;
+
     gnu)
      # default optimization flags for gcc on all systems
      CFLAGS="-O3 -fomit-frame-pointer"
@@ -155,7 +174,7 @@ if test "$ac_test_CFLAGS" != "set"; then
 
      #  -fstrict-aliasing for gcc-2.95+
      AX_CHECK_COMPILE_FLAG(-fstrict-aliasing,
-	CFLAGS="$CFLAGS -fstrict-aliasing")
+        CFLAGS="$CFLAGS -fstrict-aliasing")
 
      # note that we enable "unsafe" fp optimization with other compilers, too
      AX_CHECK_COMPILE_FLAG(-ffast-math, CFLAGS="$CFLAGS -ffast-math")

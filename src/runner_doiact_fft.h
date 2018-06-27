@@ -20,7 +20,14 @@
 #define SWIFT_RUNNER_DOIACT_FFT_H
 
 struct runner;
+struct gravity_tensors;
 
-void runner_do_grav_fft(struct runner *r);
+void runner_do_grav_fft(struct runner* r, int timer);
+
+void multipole_to_mesh_CIC(const struct gravity_tensors* m, double* rho, int N,
+                           double fac, const double dim[3]);
+
+void mesh_to_multipole_CIC(struct gravity_tensors* m, const double* pot, int N,
+                           double fac, const double dim[3]);
 
 #endif /* SWIFT_RUNNER_DOIACT_FFT_H */

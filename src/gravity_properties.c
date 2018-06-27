@@ -1,0 +1,179 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+
+/* This object's header. */
+#include "gravity_properties.h"
+
+/* Standard headers */
+#include <float.h>
+#include <math.h>
+
+/* Local headers. */
+#include "adiabatic_index.h"
+#include "common_io.h"
+#include "dimension.h"
+#include "error.h"
+#include "gravity.h"
+#include "kernel_gravity.h"
+
+#define gravity_props_default_a_smooth 1.25f
+#define gravity_props_default_r_cut_max 4.5f
+#define gravity_props_default_r_cut_min 0.1f
+#define gravity_props_default_rebuild_frequency 0.01f
+
+void gravity_props_init(struct gravity_props *p, struct swift_params *params,
+                        const struct cosmology *cosmo) {
+
+  /* Tree updates */
+  p->rebuild_frequency =
+      parser_get_opt_param_float(params, "Gravity:rebuild_frequency",
+                                 gravity_props_default_rebuild_frequency);
+
+  if (p->rebuild_frequency < 0.f || p->rebuild_frequency > 1.f)
+    error("Invalid tree rebuild frequency. Must be in [0., 1.]");
+
+  /* Tree-PM parameters */
+  p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
+                                           gravity_props_default_a_smooth);
+  p->r_cut_max = parser_get_opt_param_float(params, "Gravity:r_cut_max",
+                                            gravity_props_default_r_cut_max);
+  p->r_cut_min = parser_get_opt_param_float(params, "Gravity:r_cut_min",
+                                            gravity_props_default_r_cut_min);
+
+  if (p->a_smooth <= 0.)
+    error("The mesh smoothing scale 'a_smooth' must be > 0.");
+
+  /* Time integration */
+  p->eta = parser_get_param_float(params, "Gravity:eta");
+
+  /* Opening angle */
+  p->theta_crit = parser_get_param_double(params, "Gravity:theta");
+  if (p->theta_crit >= 1.) error("Theta too large. FMM won't converge.");
+  p->theta_crit2 = p->theta_crit * p->theta_crit;
+  p->theta_crit_inv = 1. / p->theta_crit;
+
+  /* Softening parameters */
+  p->epsilon_comoving =
+      parser_get_param_double(params, "Gravity:comoving_softening");
+  p->epsilon_max_physical =
+      parser_get_param_double(params, "Gravity:max_physical_softening");
+
+  /* Set the softening to the current time */
+  gravity_update(p, cosmo);
+}
+
+void gravity_update(struct gravity_props *p, const struct cosmology *cosmo) {
+
+  /* Current softening lengths */
+  double softening;
+  if (p->epsilon_comoving * cosmo->a > p->epsilon_max_physical)
+    softening = p->epsilon_max_physical / cosmo->a;
+  else
+    softening = p->epsilon_comoving;
+
+  /* Plummer equivalent -> internal */
+  softening *= kernel_gravity_softening_plummer_equivalent;
+
+  /* Store things */
+  p->epsilon_cur = softening;
+
+  /* Other factors */
+  p->epsilon_cur2 = softening * softening;
+  p->epsilon_cur_inv = 1. / softening;
+  p->epsilon_cur_inv3 = 1. / (softening * softening * softening);
+}
+
+void gravity_props_print(const struct gravity_props *p) {
+
+  message("Self-gravity scheme: FMM-MM with m-poles of order %d",
+          SELF_GRAVITY_MULTIPOLE_ORDER);
+
+  message("Self-gravity time integration: eta=%.4f", p->eta);
+
+  message("Self-gravity opening angle:  theta=%.4f", p->theta_crit);
+
+  message(
+      "Self-gravity comoving softening:    epsilon=%.4f (Plummer equivalent: "
+      "%.4f)",
+      p->epsilon_comoving * kernel_gravity_softening_plummer_equivalent,
+      p->epsilon_comoving);
+
+  message(
+      "Self-gravity maximal physical softening:    epsilon=%.4f (Plummer "
+      "equivalent: %.4f)",
+      p->epsilon_max_physical * kernel_gravity_softening_plummer_equivalent,
+      p->epsilon_max_physical);
+
+  message("Self-gravity mesh smoothing-scale: a_smooth=%f", p->a_smooth);
+
+  message("Self-gravity tree cut-off: r_cut_max=%f", p->r_cut_max);
+  message("Self-gravity truncation cut-off: r_cut_min=%f", p->r_cut_min);
+
+  message("Self-gravity tree update frequency: f=%f", p->rebuild_frequency);
+}
+
+#if defined(HAVE_HDF5)
+void gravity_props_print_snapshot(hid_t h_grpgrav,
+                                  const struct gravity_props *p) {
+
+  io_write_attribute_f(h_grpgrav, "Tree update frequency",
+                       p->rebuild_frequency);
+  io_write_attribute_f(h_grpgrav, "Time integration eta", p->eta);
+  io_write_attribute_f(
+      h_grpgrav, "Comoving softening length",
+      p->epsilon_comoving * kernel_gravity_softening_plummer_equivalent);
+  io_write_attribute_f(h_grpgrav,
+                       "Comoving Softening length (Plummer equivalent)",
+                       p->epsilon_comoving);
+  io_write_attribute_f(
+      h_grpgrav, "Maximal physical softening length",
+      p->epsilon_max_physical * kernel_gravity_softening_plummer_equivalent);
+  io_write_attribute_f(h_grpgrav,
+                       "Maximal physical softening length (Plummer equivalent)",
+                       p->epsilon_max_physical);
+  io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit);
+  io_write_attribute_d(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
+  io_write_attribute_f(h_grpgrav, "Mesh a_smooth", p->a_smooth);
+  io_write_attribute_f(h_grpgrav, "Mesh r_cut_max", p->r_cut_max);
+  io_write_attribute_f(h_grpgrav, "Mesh r_cut_min", p->r_cut_min);
+}
+#endif
+
+/**
+ * @brief Write a gravity_props struct to the given FILE as a stream of bytes.
+ *
+ * @param p the struct
+ * @param stream the file stream
+ */
+void gravity_props_struct_dump(const struct gravity_props *p, FILE *stream) {
+  restart_write_blocks((void *)p, sizeof(struct gravity_props), 1, stream,
+                       "gravity", "gravity props");
+}
+
+/**
+ * @brief Restore a gravity_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param p the struct
+ * @param stream the file stream
+ */
+void gravity_props_struct_restore(const struct gravity_props *p, FILE *stream) {
+  restart_read_blocks((void *)p, sizeof(struct gravity_props), 1, stream, NULL,
+                      "gravity props");
+}

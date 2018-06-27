@@ -1,6 +1,27 @@
+###############################################################################
+ # This file is part of SWIFT.
+ # Copyright (c) 2016 Stefan Arridge (stefan.arridge@durham.ac.uk)
+ # 
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU Lesser General Public License as published
+ # by the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ # 
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ # GNU General Public License for more details.
+ # 
+ # You should have received a copy of the GNU Lesser General Public License
+ # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ # 
+ ##############################################################################
+
 import numpy as np
 import h5py as h5
-import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Agg")
+from pylab import *
 import sys
 
 n_snaps = int(sys.argv[1])
@@ -17,14 +38,14 @@ H_0_cgs = 100. * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 #read some header/parameter information from the first snapshot
 
-filename = "Hydrostatic_000.hdf5"
+filename = "Hydrostatic_0000.hdf5"
 f = h5.File(filename,'r')
 params = f["Parameters"]
 unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
 unit_length_cgs = float(params.attrs["InternalUnitSystem:UnitLength_in_cgs"])
 unit_velocity_cgs = float(params.attrs["InternalUnitSystem:UnitVelocity_in_cgs"])
 unit_time_cgs = unit_length_cgs / unit_velocity_cgs
-v_c = float(params.attrs["SoftenedIsothermalPotential:vrot"])
+v_c = float(params.attrs["IsothermalPotential:vrot"])
 v_c_cgs = v_c * unit_velocity_cgs
 header = f["Header"]
 N = header.attrs["NumPart_Total"][0]
@@ -41,11 +62,12 @@ time_array_cgs = []
 
 for i in range(n_snaps):
 
-    filename = "Hydrostatic_%03d.hdf5" %i
+    filename = "Hydrostatic_%04d.hdf5" %i
     f = h5.File(filename,'r')
     coords_dset = f["PartType0/Coordinates"]
     coords = np.array(coords_dset)
-#translate coords by centre of box
+
+    #translate coords by centre of box
     header = f["Header"]
     snap_time = header.attrs["Time"]
     snap_time_cgs = snap_time * unit_time_cgs
@@ -73,7 +95,6 @@ for i in range(n_snaps):
     internal_energy_array = np.append(internal_energy_array,total_internal_energy)
 
 #put energies in units of v_c^2 and rescale by number of particles
-
 pe = potential_energy_array / (N*v_c**2)
 ke = kinetic_energy_array / (N*v_c**2)
 ie = internal_energy_array / (N*v_c**2)
@@ -82,14 +103,15 @@ te = pe + ke + ie
 dyn_time_cgs = r_vir_cgs / v_c_cgs
 time_array = time_array_cgs / dyn_time_cgs
 
-plt.plot(time_array,ke,label = "Kinetic Energy")
-plt.plot(time_array,pe,label = "Potential Energy")
-plt.plot(time_array,ie,label = "Internal Energy")
-plt.plot(time_array,te,label = "Total Energy")
-plt.legend(loc = "lower right")
-plt.xlabel(r"$t / t_{dyn}$")
-plt.ylabel(r"$E / v_c^2$")
-plt.title(r"$%d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" %(N,v_c))
-plt.ylim((-2,2))
-plt.savefig("energy_conservation.png",format = 'png')
+figure()
+plot(time_array,ke,label = "Kinetic Energy")
+plot(time_array,pe,label = "Potential Energy")
+plot(time_array,ie,label = "Internal Energy")
+plot(time_array,te,label = "Total Energy")
+legend(loc = "lower right")
+xlabel(r"$t / t_{dyn}$")
+ylabel(r"$E / v_c^2$")
+title(r"$%d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" %(N,v_c))
+ylim((-2,2))
+savefig("energy_conservation.png",format = 'png')
 

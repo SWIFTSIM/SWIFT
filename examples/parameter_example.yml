@@ -1,4 +1,4 @@
-# Define the system of units to use internally. 
+# Define the system of units to use internally.
 InternalUnitSystem:
   UnitMass_in_cgs:     1   # Grams
   UnitLength_in_cgs:   1   # Centimeters
@@ -6,28 +6,74 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
+# Values of some physical constants
+PhysicalConstants:
+  G:            6.67408e-8 # (Optional) Overwrite the value of Newton's constant used internally by the code.
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.0078125     # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_m:        0.307         # Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0455        # Baryon density parameter
+  Omega_r:        0.            # (Optional) Radiation density parameter
+  w_0:            -1.0          # (Optional) Dark-energy equation-of-state parameter at z=0.
+  w_a:            0.            # (Optional) Dark-energy equation-of-state time evolution parameter.
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_tolerance:           1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths.
+  h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
+  max_volume_change:     1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
+  max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
+  initial_temperature:   0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
+  minimal_temperature:   0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
+  H_mass_fraction:       0.76     # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy.
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:          0.025               # Constant dimensionless multiplier for time integration.
+  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
+  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
+  max_physical_softening: 0.0007    # Physical softening length (in internal units).
+  rebuild_frequency:      0.01      # (Optional) Frequency of the gravity-tree rebuild in units of the number of g-particles (this is the default value).
+  a_smooth:     1.25                # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
+  r_cut_max:    4.5                 # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
+  r_cut_min:    0.1                 # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
+
 # Parameters for the task scheduling
 Scheduler:
-  nr_queues:             0        # (Optional) The number of task queues to use. Use 0  to let the system decide.
-  cell_max_size:         8000000  # (Optional) Maximal number of interactions per task if we force the split (this is the default value).
-  cell_sub_size:         64000000 # (Optional) Maximal number of interactions per sub-task  (this is the default value).
-  cell_split_size:       400      # (Optional) Maximal number of particles per cell (this is the default value).
-  cell_max_count:        10000    # (Optional) Maximal number of particles per cell allowed before triggering a sanitizing (this is the default value).
-  max_top_level_cells:   12       # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
+  nr_queues:                 0         # (Optional) The number of task queues to use. Use 0  to let the system decide.
+  cell_max_size:             8000000   # (Optional) Maximal number of interactions per task if we force the split (this is the default value).
+  cell_sub_size_pair_hydro:  256000000 # (Optional) Maximal number of interactions per sub-pair hydro task  (this is the default value).
+  cell_sub_size_self_hydro:  32000     # (Optional) Maximal number of interactions per sub-self hydro task  (this is the default value).
+  cell_sub_size_pair_grav:   256000000 # (Optional) Maximal number of interactions per sub-pair gravity task  (this is the default value).
+  cell_sub_size_self_grav:   32000     # (Optional) Maximal number of interactions per sub-self gravity task  (this is the default value).
+  cell_split_size:           400       # (Optional) Maximal number of particles per cell (this is the default value).
+  max_top_level_cells:       12        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
+  tasks_per_cell:            0         # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
+  mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
-  time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1.    # The end time of the simulation (in internal units).
-  dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+  time_begin:        0.    # The starting time of the simulation (in internal units).
+  time_end:          1.    # The end time of the simulation (in internal units).
+  dt_min:            1e-6  # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+  max_dt_RMS_factor: 0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
 
 # Parameters governing the snapshots
 Snapshots:
   basename:   output      # Common part of the name of output files
-  time_first: 0.          # Time of the first output (in internal units)
+  scale_factor_first: 0.1 # (Optional) Scale-factor of the first snapshot if cosmological time-integration.
+  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
   compression: 0          # (Optional) Set the level of compression of the HDF5 datasets [0-9]. 0 does no compression.
+  label_delta: 1          # (Optional) Set the integer increment between snapshot output labels
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
   UnitLength_in_cgs:   1  # (Optional) Unit system for the outputs (Centimeters)
   UnitVelocity_in_cgs: 1  # (Optional) Unit system for the outputs (Centimeters per second)
@@ -36,36 +82,69 @@ Snapshots:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-2      # Time between statistics output
+  delta_time:           1e-2     # Time between statistics output
+  scale_factor_first:     0.1    # (Optional) Scale-factor of the first statistics dump if cosmological time-integration.
+  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
   energy_file_name:    energy    # (Optional) File name for energy output
-  timestep_file_name:  timesteps # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name 
-
-# Parameters for the hydrodynamics scheme
-SPH:
-  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
-  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
-  max_volume_change:     2.       # (Optional) Maximal allowed change of kernel volume over one time-step
+  timestep_file_name:  timesteps # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name
 
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  SedovBlast/sedov.hdf5 # The file to read
-  h_scaling:  1.                    # (Optional) A scaling factor to apply to all smoothing lengths in the ICs.
+  generate_gas_in_ics:         0    # (Optional) Generate gas particles from the DM-only ICs (e.g. from panphasia).
+  cleanup_h_factors:           0    # (Optional) Clean up the h-factors used in the ICs (e.g. in Gadget files).
+  cleanup_smoothing_lengths:   0    # (Optional) Clean the values of the smoothing lengths that are read in to remove stupid values. Set to 1 to activate.
+  smoothing_length_scaling:    1.   # (Optional) A scaling factor to apply to all smoothing lengths in the ICs.
   shift_x:    0.                    # (Optional) A shift to apply to all particles read from the ICs (in internal units).
   shift_y:    0.
   shift_z:    0.
+  replicate:  2                     # (Optional) Replicate all particles along each axis a given integer number of times. Default 1.
+
+# Parameters controlling restarts
+Restarts:
+  enable:      1        # (Optional) whether to enable dumping restarts at fixed intervals.
+  save:        1        # (Optional) whether to save copies of the previous set of restart files (named .prev)
+  onexit:      0        # (Optional) whether to dump restarts on exit (*needs enable*)
+  subdir:      restart  # (Optional) name of subdirectory for restart files.
+  basename:    swift    # (Optional) prefix used in naming restart files.
+  delta_hours: 6.0      # (Optional) decimal hours between dumps of restart files.
+  stop_steps:  100      # (Optional) how many steps to process before checking if the <subdir>/stop file exists. When present the application will attempt to exit early, dumping restart files first.
 
 # Parameters governing domain decomposition
 DomainDecomposition:
-  initial_type:       m     # (Optional) The initial strategy ("g", "m", "w", or "v").
-  initial_grid_x:    10     # (Optional) Grid size if the "g" strategy is chosen.
-  initial_grid_y:    10
-  initial_grid_z:    10
-  repartition_type:   b     # (Optional) The re-decomposition strategy ("n", "b", "v", "e" or "x").
- 
+  initial_type:     simple_metis # (Optional) The initial decomposition strategy: "grid",
+                                 #            "simple_metis", "weighted_metis", or "vectorized".
+  initial_grid_x:   10      # (Optional) Grid size if the "grid" strategy is chosen.
+  initial_grid_y:   10      # ""
+  initial_grid_z:   10      # ""
+
+  repartition_type: costs/costs # (Optional) The re-decomposition strategy, one of:
+                            # "none/none", "costs/costs", "counts/none", "none/costs", "counts/costs",
+                            # "costs/time" or "none/time".
+                            # These are vertex/edge weights with "costs" as task timing, "counts" as
+                            # sum of particles and "time" as the expected time of the next updates
+
+  trigger:          0.05    # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
+                            # new decomposition, or number of steps (>1) between decompositions
+  minfrac:          0.9     # (Optional) Fractional of all particles that should be updated in previous step when
+                            # using CPU time trigger
+
+# Parameters related to the equation of state ------------------------------------------
+
+EoS:
+  isothermal_internal_energy: 20.26784  # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
+
+  planetary_use_Til:    1   # (Optional) Whether to prepare the Tillotson EOS
+  planetary_use_HM80:   0   # (Optional) Whether to prepare the Hubbard & MacFarlane (1980) EOS
+  planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EOS
+  planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EOS
+                            # (Optional) Table file paths
+  planetary_HM80_HHe_table_file:    HM80_HHe.txt
+  planetary_HM80_ice_table_file:    HM80_ice.txt
+  planetary_HM80_rock_table_file:   HM80_rock.txt
+
 # Parameters related to external potentials --------------------------------------------
-  
+
 # Point mass external potentials
 PointMassPotential:
   position_x:      50.      # location of external point mass (internal units)
@@ -81,23 +160,23 @@ IsothermalPotential:
   position_z:      100.
   vrot:            200.     # Rotation speed of isothermal potential (internal units)
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
-
-# External potential parameters
-SoftenedIsothermalPotential:
-  position_x:      0.       # Location of centre of isothermal potential with respect to centre of the box (internal units)
-  position_y:      0.
-  position_z:      0.	
-  vrot:            200.     # rotation speed of isothermal potential (internal units)
   epsilon:         0.1      # Softening size (internal units)
-  timestep_mult:   0.03     # controls time step
-  
+
 # Disk-patch potential parameters
 DiscPatchPotential:
   surface_density: 10.      # Surface density of the disc (internal units)
   scale_height:    100.     # Scale height of the disc (internal units)
-  z_disc:          200.     # Position of the disc along the z-axis (internal units)
+  z_disc:          400.     # Position of the disc along the z-axis (internal units)
+  z_trunc:         300.     # (Optional) Distance from the disc along z-axis above which the potential gets truncated.
+  z_max:           380.     # (Optional) Distance from the disc along z-axis above which the potential is set to 0.
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
   growth_time:     5.       # (Optional) Time for the disc to grow to its final size (multiple of the dynamical time)
+
+# Sine Wave potential
+SineWavePotential:
+  amplitude:        10.     # Amplitude of the sine wave (internal units)
+  timestep_limit:   1.      # Time-step dimensionless pre-factor.
+  growth_time:      0.      # (Optional) Time for the potential to grow to its final size.
 
 # Parameters related to cooling function  ----------------------------------------------
 
@@ -114,4 +193,34 @@ LambdaCooling:
   mean_molecular_weight:       0.59  # Mean molecular weight
   hydrogen_mass_abundance:     0.75  # Hydrogen mass abundance (dimensionless)
   cooling_tstep_mult:          1.0   # Dimensionless pre-factor for the time-step condition
+
+# Cooling with Grackle 3.0
+GrackleCooling:
+  CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  WithUVbackground: 1                   # Enable or not the UV background
+  Redshift: 0                           # Redshift to use (-1 means time based redshift)
+  WithMetalCooling: 1                   # Enable or not the metal cooling
+  ProvideVolumetricHeatingRates: 0      # (optional) User provide volumetric heating rates
+  ProvideSpecificHeatingRates: 0        # (optional) User provide specific heating rates
+  SelfShieldingMethod: 0                # (optional) Grackle (<= 3) or Gear self shielding method
+  OutputMode: 0                         # (optional) Write in output corresponding primordial chemistry mode
+  MaxSteps: 10000                       # (optional) Max number of step when computing the initial composition
+  ConvergenceLimit: 1e-2                # (optional) Convergence threshold (relative) for initial composition
+
+# Parameters related to chemistry models  -----------------------------------------------
+
+# EAGLE model
+EAGLEChemistry:
+  InitMetallicity:         0.           # Inital fraction of particle mass in *all* metals
+  InitAbundance_Hydrogen:  0.752        # Inital fraction of particle mass in Hydrogen
+  InitAbundance_Helium:    0.248        # Inital fraction of particle mass in Helium
+  InitAbundance_Carbon:    0.000        # Inital fraction of particle mass in Carbon
+  InitAbundance_Nitrogen:  0.000        # Inital fraction of particle mass in Nitrogen
+  InitAbundance_Oxygen:    0.000        # Inital fraction of particle mass in Oxygen
+  InitAbundance_Neon:      0.000        # Inital fraction of particle mass in Neon
+  InitAbundance_Magnesium: 0.000        # Inital fraction of particle mass in Magnesium
+  InitAbundance_Silicon:   0.000        # Inital fraction of particle mass in Silicon
+  InitAbundance_Iron:      0.000        # Inital fraction of particle mass in Iron
+  CalciumOverSilicon:      0.0941736    # Constant ratio of Calcium over Silicon abundance
+  SulphurOverSilicon:      0.6054160    # Constant ratio of Sulphur over Silicon abundance
 

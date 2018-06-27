@@ -27,16 +27,22 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 
 /* This object's header. */
 #include "tools.h"
 
 /* Local includes. */
+#include "active.h"
 #include "cell.h"
+#include "chemistry.h"
+#include "cosmology.h"
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "part.h"
+#include "periodic.h"
 #include "runner.h"
 
 /**
@@ -71,6 +77,7 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
   // double maxratio = 1.0;
   double r2, dx[3], rho = 0.0;
   double rho_max = 0.0, rho_min = 100;
+  float a = 1.f, H = 0.f;
 
   /* Loop over all particle pairs. */
   for (j = 0; j < N; j++) {
@@ -91,7 +98,7 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
       r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
       if (r2 < parts[j].h * parts[j].h || r2 < parts[k].h * parts[k].h) {
         runner_iact_density(r2, NULL, parts[j].h, parts[k].h, &parts[j],
-                            &parts[k]);
+                            &parts[k], a, H);
         /* if ( parts[j].h / parts[k].h > maxratio )
             {
             maxratio = parts[j].h / parts[k].h;
@@ -130,12 +137,10 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
 void pairs_single_density(double *dim, long long int pid,
                           struct part *restrict parts, int N, int periodic) {
   int i, k;
-  // int mj, mk;
-  // double maxratio = 1.0;
   double r2, dx[3];
   float fdx[3];
   struct part p;
-  // double ih = 12.0/6.25;
+  float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
   for (k = 0; k < N && parts[k].id != pid; k++)
@@ -144,7 +149,7 @@ void pairs_single_density(double *dim, long long int pid,
   p = parts[k];
   printf("pairs_single: part[%i].id == %lli.\n", k, pid);
 
-  hydro_init_part(&p);
+  hydro_init_part(&p, NULL);
 
   /* Loop over all particle pairs. */
   for (k = 0; k < N; k++) {
@@ -161,7 +166,7 @@ void pairs_single_density(double *dim, long long int pid,
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     if (r2 < p.h * p.h) {
-      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k]);
+      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
       /* printf( "pairs_simple: interacting particles %lli [%i,%i,%i] and %lli
          [%i,%i,%i], r=%e.\n" ,
           pid , (int)(p.x[0]*ih) , (int)(p.x[1]*ih) , (int)(p.x[2]*ih) ,
@@ -181,6 +186,11 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
+  const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -188,6 +198,9 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
     pi = &ci->parts[i];
     hi = pi->h;
     hig2 = hi * hi * kernel_gamma2;
+
+    /* Skip inactive particles. */
+    if (!part_is_active(pi, e)) continue;
 
     for (int j = 0; j < cj->count; ++j) {
 
@@ -197,6 +210,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         dx[k] = ci->parts[i].x[k] - cj->parts[j].x[k];
+        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
@@ -204,7 +218,8 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hig2) {
 
         /* Interact */
-        runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj);
+        runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj, a, H);
+        runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
       }
     }
   }
@@ -216,6 +231,9 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
     hj = pj->h;
     hjg2 = hj * hj * kernel_gamma2;
 
+    /* Skip inactive particles. */
+    if (!part_is_active(pj, e)) continue;
+
     for (int i = 0; i < ci->count; ++i) {
 
       pi = &ci->parts[i];
@@ -224,6 +242,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         dx[k] = cj->parts[j].x[k] - ci->parts[i].x[k];
+        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
@@ -231,7 +250,8 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hjg2) {
 
         /* Interact */
-        runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi);
+        runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi, a, H);
+        runner_iact_nonsym_chemistry(r2, dx, hj, pi->h, pj, pi, a, H);
       }
     }
   }
@@ -241,6 +261,11 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
 
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
+  const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -248,6 +273,9 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
     pi = &ci->parts[i];
     hi = pi->h;
     hig2 = hi * hi * kernel_gamma2;
+
+    /* Skip inactive particles. */
+    if (!part_is_active(pi, e)) continue;
 
     for (int j = 0; j < cj->count; ++j) {
 
@@ -259,6 +287,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         dx[k] = ci->parts[i].x[k] - cj->parts[j].x[k];
+        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
@@ -266,7 +295,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hig2 || r2 < hjg2) {
 
         /* Interact */
-        runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj);
+        runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj, a, H);
       }
     }
   }
@@ -277,6 +306,9 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
     pj = &cj->parts[j];
     hj = pj->h;
     hjg2 = hj * hj * kernel_gamma2;
+
+    /* Skip inactive particles. */
+    if (!part_is_active(pj, e)) continue;
 
     for (int i = 0; i < ci->count; ++i) {
 
@@ -288,6 +320,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         dx[k] = cj->parts[j].x[k] - ci->parts[i].x[k];
+        dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
 
@@ -295,7 +328,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hjg2 || r2 < hig2) {
 
         /* Interact */
-        runner_iact_nonsym_force(r2, dx, hj, pi->h, pj, pi);
+        runner_iact_nonsym_force(r2, dx, hj, pi->h, pj, pi, a, H);
       }
     }
   }
@@ -304,6 +337,10 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
 void self_all_density(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
   struct part *pi, *pj;
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -328,21 +365,23 @@ void self_all_density(struct runner *r, struct cell *ci) {
       }
 
       /* Hit or miss? */
-      if (r2 < hig2) {
+      if (r2 < hig2 && part_is_active(pi, e)) {
 
         /* Interact */
-        runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj);
+        runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_chemistry(r2, dxi, hi, hj, pi, pj, a, H);
       }
 
       /* Hit or miss? */
-      if (r2 < hjg2) {
+      if (r2 < hjg2 && part_is_active(pj, e)) {
 
         dxi[0] = -dxi[0];
         dxi[1] = -dxi[1];
         dxi[2] = -dxi[2];
 
         /* Interact */
-        runner_iact_nonsym_density(r2, dxi, hj, hi, pj, pi);
+        runner_iact_nonsym_density(r2, dxi, hj, hi, pj, pi, a, H);
+        runner_iact_nonsym_chemistry(r2, dxi, hj, hi, pj, pi, a, H);
       }
     }
   }
@@ -351,6 +390,10 @@ void self_all_density(struct runner *r, struct cell *ci) {
 void self_all_force(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
   struct part *pi, *pj;
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
@@ -378,78 +421,22 @@ void self_all_force(struct runner *r, struct cell *ci) {
       if (r2 < hig2 || r2 < hjg2) {
 
         /* Interact */
-        runner_iact_force(r2, dxi, hi, hj, pi, pj);
+        runner_iact_force(r2, dxi, hi, hj, pi, pj, a, H);
       }
     }
   }
-}
-
-void pairs_single_grav(double *dim, long long int pid,
-                       struct gpart *restrict gparts, const struct part *parts,
-                       int N, int periodic) {
-
-  int i, k;
-  // int mj, mk;
-  // double maxratio = 1.0;
-  double r2, dx[3];
-  float fdx[3], a[3] = {0.0, 0.0, 0.0}, aabs[3] = {0.0, 0.0, 0.0};
-  struct gpart pi, pj;
-  // double ih = 12.0/6.25;
-
-  /* Find "our" part. */
-  for (k = 0; k < N; k++)
-    if ((gparts[k].id_or_neg_offset < 0 &&
-         parts[-gparts[k].id_or_neg_offset].id == pid) ||
-        gparts[k].id_or_neg_offset == pid)
-      break;
-  if (k == N) error("Part not found.");
-  pi = gparts[k];
-  pi.a_grav[0] = 0.0f;
-  pi.a_grav[1] = 0.0f;
-  pi.a_grav[2] = 0.0f;
-
-  /* Loop over all particle pairs. */
-  for (k = 0; k < N; k++) {
-    if (gparts[k].id_or_neg_offset == pi.id_or_neg_offset) continue;
-    pj = gparts[k];
-    for (i = 0; i < 3; i++) {
-      dx[i] = pi.x[i] - pj.x[i];
-      if (periodic) {
-        if (dx[i] < -dim[i] / 2)
-          dx[i] += dim[i];
-        else if (dx[i] > dim[i] / 2)
-          dx[i] -= dim[i];
-      }
-      fdx[i] = dx[i];
-    }
-    r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
-    runner_iact_grav_pp(0.f, r2, fdx, &pi, &pj);
-    a[0] += pi.a_grav[0];
-    a[1] += pi.a_grav[1];
-    a[2] += pi.a_grav[2];
-    aabs[0] += fabsf(pi.a_grav[0]);
-    aabs[1] += fabsf(pi.a_grav[1]);
-    aabs[2] += fabsf(pi.a_grav[2]);
-    pi.a_grav[0] = 0.0f;
-    pi.a_grav[1] = 0.0f;
-    pi.a_grav[2] = 0.0f;
-  }
-
-  /* Dump the result. */
-  message(
-      "acceleration on gpart %lli is a=[ %e %e %e ], |a|=[ %.2e %.2e %.2e ].\n",
-      parts[-pi.id_or_neg_offset].id, a[0], a[1], a[2], aabs[0], aabs[1],
-      aabs[2]);
 }
 
 /**
  * @brief Compute the force on a single particle brute-force.
  */
 void engine_single_density(double *dim, long long int pid,
-                           struct part *restrict parts, int N, int periodic) {
+                           struct part *restrict parts, int N, int periodic,
+                           const struct cosmology *cosmo) {
   double r2, dx[3];
   float fdx[3];
   struct part p;
+  float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
   int k;
@@ -459,7 +446,7 @@ void engine_single_density(double *dim, long long int pid,
   p = parts[k];
 
   /* Clear accumulators. */
-  hydro_init_part(&p);
+  hydro_init_part(&p, NULL);
 
   /* Loop over all particle pairs (force). */
   for (k = 0; k < N; k++) {
@@ -476,14 +463,14 @@ void engine_single_density(double *dim, long long int pid,
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     if (r2 < p.h * p.h * kernel_gamma2) {
-      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k]);
+      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
     }
   }
 
   /* Dump the result. */
-  hydro_end_density(&p);
+  hydro_end_density(&p, cosmo);
   message("part %lli (h=%e) has wcount=%e, rho=%e.", p.id, p.h,
-          p.density.wcount, hydro_get_density(&p));
+          p.density.wcount, hydro_get_comoving_density(&p));
   fflush(stdout);
 }
 
@@ -493,6 +480,7 @@ void engine_single_force(double *dim, long long int pid,
   double r2, dx[3];
   float fdx[3];
   struct part p;
+  float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
   for (k = 0; k < N && parts[k].id != pid; k++)
@@ -521,7 +509,7 @@ void engine_single_force(double *dim, long long int pid,
     if (r2 < p.h * p.h * kernel_gamma2 ||
         r2 < parts[k].h * parts[k].h * kernel_gamma2) {
       hydro_reset_acceleration(&p);
-      runner_iact_nonsym_force(r2, fdx, p.h, parts[k].h, &p, &parts[k]);
+      runner_iact_nonsym_force(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
     }
   }
 
@@ -552,69 +540,191 @@ void shuffle_particles(struct part *parts, const int count) {
 
       parts[i] = particle;
     }
-
-  } else
-    error("Array not big enough to shuffle!");
+  }
 }
 
 /**
- * @brief Computes the forces between all g-particles using the N^2 algorithm
+ * @brief Compares two values based on their relative difference: |a - b|/|a +
+ * b|
  *
- * Overwrites the accelerations of the gparts with the values.
- * Do not use for actual runs.
+ * @param a Value a
+ * @param b Value b
+ * @param threshold The limit on the relative difference between the two values
+ * @param absDiff Absolute difference: |a - b|
+ * @param absSum Absolute sum: |a + b|
+ * @param relDiff Relative difference: |a - b|/|a + b|
  *
- * @brief gparts The array of particles.
- * @brief gcount The number of particles.
+ * @return 1 if difference found, 0 otherwise
  */
-void gravity_n2(struct gpart *gparts, const int gcount,
-                const struct phys_const *constants, float rlr) {
+int compare_values(double a, double b, double threshold, double *absDiff,
+                   double *absSum, double *relDiff) {
 
-  const float rlr_inv = 1. / rlr;
-  const float max_d = const_gravity_r_cut * rlr;
-  const float max_d2 = max_d * max_d;
+  int result = 0;
+  *absDiff = 0.0, *absSum = 0.0, *relDiff = 0.0;
 
-  message("rlr_inv= %f", rlr_inv);
-  message("max_d: %f", max_d);
-
-  /* Reset everything */
-  for (int pid = 0; pid < gcount; pid++) {
-    struct gpart *restrict gpi = &gparts[pid];
-    gpi->a_grav[0] = 0.f;
-    gpi->a_grav[1] = 0.f;
-    gpi->a_grav[2] = 0.f;
+  *absDiff = fabs(a - b);
+  *absSum = fabs(a + b);
+  if (*absSum > 0.f) {
+    *relDiff = *absDiff / *absSum;
   }
 
-  /* Loop over all particles in ci... */
-  for (int pid = 0; pid < gcount; pid++) {
+  if (*relDiff > threshold) {
+    result = 1;
+  }
 
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gpi = &gparts[pid];
+  return result;
+}
 
-    for (int pjd = pid + 1; pjd < gcount; pjd++) {
+/**
+ * @brief Compares two particles' properties using the relative difference and a
+ * threshold.
+ *
+ * @param a Particle A
+ * @param b Particle B
+ * @param threshold The limit on the relative difference between the two values
+ *
+ * @return 1 if difference found, 0 otherwise
+ */
+int compare_particles(struct part a, struct part b, double threshold) {
 
-      /* Get a hold of the jth part in ci. */
-      struct gpart *restrict gpj = &gparts[pjd];
+#ifdef GADGET2_SPH
 
-      /* Compute the pairwise distance. */
-      const float dx[3] = {gpi->x[0] - gpj->x[0],   // x
-                           gpi->x[1] - gpj->x[1],   // y
-                           gpi->x[2] - gpj->x[2]};  // z
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  int result = 0;
+  double absDiff = 0.0, absSum = 0.0, relDiff = 0.0;
 
-      if (r2 < max_d2 || 1) {
-
-        /* Apply the gravitational acceleration. */
-        runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
-      }
+  for (int k = 0; k < 3; k++) {
+    if (compare_values(a.x[k], b.x[k], threshold, &absDiff, &absSum,
+                       &relDiff)) {
+      message(
+          "Relative difference (%e) larger than tolerance (%e) for x[%d] of "
+          "particle %lld.",
+          relDiff, threshold, k, a.id);
+      message("a = %e, b = %e", a.x[k], b.x[k]);
+      result = 1;
+    }
+  }
+  for (int k = 0; k < 3; k++) {
+    if (compare_values(a.v[k], b.v[k], threshold, &absDiff, &absSum,
+                       &relDiff)) {
+      message(
+          "Relative difference (%e) larger than tolerance (%e) for v[%d] of "
+          "particle %lld.",
+          relDiff, threshold, k, a.id);
+      message("a = %e, b = %e", a.v[k], b.v[k]);
+      result = 1;
+    }
+  }
+  for (int k = 0; k < 3; k++) {
+    if (compare_values(a.a_hydro[k], b.a_hydro[k], threshold, &absDiff, &absSum,
+                       &relDiff)) {
+      message(
+          "Relative difference (%e) larger than tolerance (%e) for a_hydro[%d] "
+          "of particle %lld.",
+          relDiff, threshold, k, a.id);
+      message("a = %e, b = %e", a.a_hydro[k], b.a_hydro[k]);
+      result = 1;
+    }
+  }
+  if (compare_values(a.rho, b.rho, threshold, &absDiff, &absSum, &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for rho of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.rho, b.rho);
+    result = 1;
+  }
+  if (compare_values(a.density.rho_dh, b.density.rho_dh, threshold, &absDiff,
+                     &absSum, &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for rho_dh of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.density.rho_dh, b.density.rho_dh);
+    result = 1;
+  }
+  if (compare_values(a.density.wcount, b.density.wcount, threshold, &absDiff,
+                     &absSum, &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for wcount of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.density.wcount, b.density.wcount);
+    result = 1;
+  }
+  if (compare_values(a.density.wcount_dh, b.density.wcount_dh, threshold,
+                     &absDiff, &absSum, &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for wcount_dh of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.density.wcount_dh, b.density.wcount_dh);
+    result = 1;
+  }
+  if (compare_values(a.force.h_dt, b.force.h_dt, threshold, &absDiff, &absSum,
+                     &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for h_dt of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.force.h_dt, b.force.h_dt);
+    result = 1;
+  }
+  if (compare_values(a.force.v_sig, b.force.v_sig, threshold, &absDiff, &absSum,
+                     &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for v_sig of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.force.v_sig, b.force.v_sig);
+    result = 1;
+  }
+  if (compare_values(a.entropy_dt, b.entropy_dt, threshold, &absDiff, &absSum,
+                     &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for entropy_dt of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.entropy_dt, b.entropy_dt);
+    result = 1;
+  }
+  if (compare_values(a.density.div_v, b.density.div_v, threshold, &absDiff,
+                     &absSum, &relDiff)) {
+    message(
+        "Relative difference (%e) larger than tolerance (%e) for div_v of "
+        "particle %lld.",
+        relDiff, threshold, a.id);
+    message("a = %e, b = %e", a.density.div_v, b.density.div_v);
+    result = 1;
+  }
+  for (int k = 0; k < 3; k++) {
+    if (compare_values(a.density.rot_v[k], b.density.rot_v[k], threshold,
+                       &absDiff, &absSum, &relDiff)) {
+      message(
+          "Relative difference (%e) larger than tolerance (%e) for rot_v[%d] "
+          "of particle %lld.",
+          relDiff, threshold, k, a.id);
+      message("a = %e, b = %e", a.density.rot_v[k], b.density.rot_v[k]);
+      result = 1;
     }
   }
 
-  /* Multiply by Newton's constant */
-  const double const_G = constants->const_newton_G;
-  for (int pid = 0; pid < gcount; pid++) {
-    struct gpart *restrict gpi = &gparts[pid];
-    gpi->a_grav[0] *= const_G;
-    gpi->a_grav[1] *= const_G;
-    gpi->a_grav[2] *= const_G;
-  }
+  return result;
+
+#else
+
+  error("Function not supported for this flavour of SPH");
+  return 0;
+
+#endif
+}
+
+/**
+ * @brief return the resident memory use of the process and its children.
+ *
+ * @result memory use in Kb.
+ */
+long get_maxrss() {
+  struct rusage usage;
+  getrusage(RUSAGE_SELF, &usage);
+  return usage.ru_maxrss;
 }

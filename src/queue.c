@@ -35,7 +35,6 @@
 
 /* Local headers. */
 #include "atomic.h"
-#include "const.h"
 #include "error.h"
 
 /**

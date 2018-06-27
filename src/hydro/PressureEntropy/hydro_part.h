@@ -30,6 +30,7 @@
  * Volume 428, Issue 4, pp. 2840-2856 with a simple Balsara viscosity term.
  */
 
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
@@ -38,8 +39,17 @@ struct xpart {
   /*! Offset between current position and position at last tree rebuild. */
   float x_diff[3];
 
+  /*! Offset between the current position and position at the last sort. */
+  float x_diff_sort[3];
+
   /*! Velocity at the last full step. */
   float v_full[3];
+
+  /*! Gravitational acceleration at the last full step. */
+  float a_grav[3];
+
+  /*! Entropy at the last full step. */
+  float entropy_full;
 
   /*! Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
@@ -48,6 +58,12 @@ struct xpart {
 
 /* Data of a single particle. */
 struct part {
+
+  /*! Particle ID. */
+  long long id;
+
+  /*! Pointer to corresponding gravity part. */
+  struct gpart* gpart;
 
   /*! Particle position. */
   double x[3];
@@ -63,12 +79,6 @@ struct part {
 
   /*! Particle mass. */
   float mass;
-
-  /*! Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /*! Particle time of end of time-step. */
-  int ti_end;
 
   /*! Particle density. */
   float rho;
@@ -132,11 +142,21 @@ struct part {
     } force;
   };
 
-  /*! Particle ID. */
-  long long id;
+  /* Chemistry information */
+  struct chemistry_part_data chemistry_data;
 
-  /*! Pointer to corresponding gravity part. */
-  struct gpart* gpart;
+  /* Time-step length */
+  timebin_t time_bin;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Time of the last drift */
+  integertime_t ti_drift;
+
+  /* Time of the last kick */
+  integertime_t ti_kick;
+
+#endif
 
 } SWIFT_STRUCT_ALIGN;
 

@@ -27,7 +27,7 @@
  */
 struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   size_t count = N * N * N;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
   struct part *part;
   struct xpart *xpart;
@@ -61,8 +61,7 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
             offset[2] * cellSize + z * cellSize / N + cellSize / (2 * N);
         part->h = h;
         part->id = x * N * N + y * N + z + id_offset;
-        part->ti_begin = 0;
-        part->ti_end = 1;
+        part->time_bin = 1;
         ++part;
       }
     }
@@ -72,17 +71,17 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   cell->h_max = h;
   cell->count = count;
   cell->gcount = 0;
-  cell->dx_max = 0.;
+  cell->dx_max_part = 0.;
+  cell->dx_max_sort = 0.;
   cell->width[0] = cellSize;
   cell->width[1] = cellSize;
   cell->width[2] = cellSize;
 
-  cell->ti_end_min = 1;
-  cell->ti_end_max = 1;
+  cell->ti_hydro_end_min = 1;
+  cell->ti_hydro_end_max = 1;
 
   cell->sorted = 0;
-  cell->sort = NULL;
-  cell->sortsize = 0;
+  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
 
   return cell;
 }
@@ -94,7 +93,7 @@ void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 
 /* Run a full time step integration for one cell */
-int main() {
+int main(int argc, char *argv[]) {
 
 #ifndef DEFAULT_SPH
   return 0;
@@ -212,7 +211,8 @@ int main() {
   for (int j = 0; j < 27; ++j) {
     free(cells[j]->parts);
     free(cells[j]->xparts);
-    free(cells[j]->sort);
+    for (int k = 0; k < 13; k++)
+      if (cells[j]->sort[k] != NULL) free(cells[j]->sort[k]);
     free(cells[j]);
   }
 

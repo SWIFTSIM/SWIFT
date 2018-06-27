@@ -21,18 +21,18 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
-
-/* Some standard headers. */
-#include <float.h>
-#include <stdio.h>
 
 /* This object's header. */
 #include "debug.h"
 
+/* Some standard headers. */
+#include <float.h>
+#include <stdio.h>
+#include <unistd.h>
+
 /* Local includes. */
+#include "active.h"
 #include "cell.h"
-#include "const.h"
 #include "engine.h"
 #include "hydro.h"
 #include "inline.h"
@@ -46,10 +46,18 @@
 #include "./hydro/Gadget2/hydro_debug.h"
 #elif defined(HOPKINS_PE_SPH)
 #include "./hydro/PressureEntropy/hydro_debug.h"
+#elif defined(HOPKINS_PU_SPH)
+#include "./hydro/PressureEnergy/hydro_debug.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_debug.h"
-#elif defined(GIZMO_SPH)
-#include "./hydro/Gizmo/hydro_debug.h"
+#elif defined(GIZMO_MFV_SPH)
+#include "./hydro/GizmoMFV/hydro_debug.h"
+#elif defined(GIZMO_MFM_SPH)
+#include "./hydro/GizmoMFM/hydro_debug.h"
+#elif defined(SHADOWFAX_SPH)
+#include "./hydro/Shadowswift/hydro_debug.h"
+#elif defined(MINIMAL_MULTI_MAT_SPH)
+#include "./hydro/MinimalMultiMat/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif
@@ -195,7 +203,8 @@ int checkSpacehmax(struct space *s) {
 
 /**
  * @brief Check if the h_max and dx_max values of a cell's hierarchy are
- * consistent with the particles. Report verbosely if not.
+ * consistent with the particles. Also checks if particles are correctly
+ * in a cell. Report verbosely if not.
  *
  * @param c the top cell of the hierarchy.
  * @param depth the recursion depth for use in messages. Set to 0 initially.
@@ -207,39 +216,59 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
 
   float h_max = 0.0f;
   float dx_max = 0.0f;
-  if (!c->split) {
-    const size_t nr_parts = c->count;
-    struct part *parts = c->parts;
-    for (size_t k = 0; k < nr_parts; k++) {
-      h_max = (h_max > parts[k].h) ? h_max : parts[k].h;
+  int result = 1;
+
+  const double loc_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
+  const double loc_max[3] = {c->loc[0] + c->width[0], c->loc[1] + c->width[1],
+                             c->loc[2] + c->width[2]};
+
+  const size_t nr_parts = c->count;
+  struct part *parts = c->parts;
+  struct xpart *xparts = c->xparts;
+  for (size_t k = 0; k < nr_parts; k++) {
+
+    struct part *const p = &parts[k];
+    struct xpart *const xp = &xparts[k];
+
+    if (p->x[0] < loc_min[0] || p->x[0] >= loc_max[0] || p->x[1] < loc_min[1] ||
+        p->x[1] >= loc_max[1] || p->x[2] < loc_min[2] ||
+        p->x[2] >= loc_max[2]) {
+
+      message(
+          "Inconsistent part position p->x=[%e %e %e], c->loc=[%e %e %e] "
+          "c->width=[%e %e %e]",
+          p->x[0], p->x[1], p->x[2], c->loc[0], c->loc[1], c->loc[2],
+          c->width[0], c->width[1], c->width[2]);
+
+      result = 0;
     }
-  } else {
-    for (int k = 0; k < 8; k++)
+
+    const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
+                      xp->x_diff[1] * xp->x_diff[1] +
+                      xp->x_diff[2] * xp->x_diff[2];
+
+    h_max = max(h_max, p->h);
+    dx_max = max(dx_max, sqrt(dx2));
+  }
+
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
         checkCellhdxmax(cp, depth);
-        dx_max = max(dx_max, cp->dx_max);
-        h_max = max(h_max, cp->h_max);
       }
+    }
   }
 
   /* Check. */
-  int result = 1;
   if (c->h_max != h_max) {
     message("%d Inconsistent h_max: cell %f != parts %f", *depth, c->h_max,
             h_max);
     message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
   }
-  if (c->dx_max != dx_max) {
-    message("%d Inconsistent dx_max: %f != %f", *depth, c->dx_max, dx_max);
-    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
-    result = 0;
-  }
-
-  /* Check rebuild criterion. */
-  if (h_max > c->dmin) {
-    message("%d Inconsistent c->dmin: %f > %f", *depth, h_max, c->dmin);
+  if (c->dx_max_part != dx_max) {
+    message("%d Inconsistent dx_max: %f != %f", *depth, c->dx_max_part, dx_max);
     message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
   }
@@ -247,7 +276,138 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   return result;
 }
 
-#ifdef HAVE_METIS
+/**
+ * @brief map function for dumping cells.
+ */
+static void dumpCells_map(struct cell *c, void *data) {
+  size_t *ldata = (size_t *)data;
+  FILE *file = (FILE *)ldata[0];
+  struct engine *e = (struct engine *)ldata[1];
+  float ntasks = c->nr_tasks;
+  int super = (int)ldata[2];
+  int active = (int)ldata[3];
+  int mpiactive = (int)ldata[4];
+  int pactive = (int)ldata[5];
+
+#if SWIFT_DEBUG_CHECKS
+  /* The c->nr_tasks field does not include all the tasks. So let's check this
+   * the hard way. Note pairs share the task 50/50 with the other cell. */
+  ntasks = 0.0f;
+  struct task *tasks = e->sched.tasks;
+  int nr_tasks = e->sched.nr_tasks;
+  for (int k = 0; k < nr_tasks; k++) {
+    if (tasks[k].cj == NULL) {
+      if (c == tasks[k].ci) {
+        ntasks = ntasks + 1.0f;
+      }
+    } else {
+      if (c == tasks[k].ci || c == tasks[k].cj) {
+        ntasks = ntasks + 0.5f;
+      }
+    }
+  }
+#endif
+
+  /* Only cells with particles are dumped. */
+  if (c->count > 0 || c->gcount > 0 || c->scount > 0) {
+
+    /* In MPI mode we may only output cells with foreign partners.
+     * These define the edges of the partitions. */
+    int ismpiactive = 0;
+#if WITH_MPI
+    ismpiactive = (c->send_xv != NULL);
+    if (mpiactive)
+      mpiactive = ismpiactive;
+    else
+      mpiactive = 1;
+#else
+    mpiactive = 1;
+#endif
+
+    /* Active cells, otherwise all. */
+    if (active)
+      active = cell_is_active_hydro(c, e);
+    else
+      active = 1;
+
+    /* So output local super cells that are active and have MPI
+     * tasks as requested. */
+    if (c->nodeID == e->nodeID &&
+        (!super || ((super && c->super == c) || (c->parent == NULL))) &&
+        active && mpiactive) {
+
+      /* If requested we work out how many particles are active in this cell. */
+      int pactcount = 0;
+      if (pactive) {
+        const struct part *parts = c->parts;
+        for (int k = 0; k < c->count; k++)
+          if (part_is_active(&parts[k], e)) pactcount++;
+        struct gpart *gparts = c->gparts;
+        for (int k = 0; k < c->gcount; k++)
+          if (gpart_is_active(&gparts[k], e)) pactcount++;
+        struct spart *sparts = c->sparts;
+        for (int k = 0; k < c->scount; k++)
+          if (spart_is_active(&sparts[k], e)) pactcount++;
+      }
+
+      fprintf(file,
+              "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d %6d %6d "
+              "%6.1f %20lld %6d %6d %6d %6d %6d %6d %6d\n",
+              c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
+              c->width[2], e->step, c->count, c->gcount, c->scount, pactcount,
+              c->depth, ntasks, c->ti_hydro_end_min,
+              get_time_bin(c->ti_hydro_end_min), (c->super == c),
+              (c->parent == NULL), cell_is_active_hydro(c, e), c->nodeID,
+              c->nodeID == e->nodeID, ismpiactive);
+    }
+  }
+}
+
+/**
+ * @brief Dump the location, depth, task counts and timebins and active state,
+ * for all cells to a simple text file. A more costly count of the active
+ * particles in a cell can also be output.
+ *
+ * @param prefix base output filename, result is written to
+ *               %prefix%_%rank%_%step%.dat
+ * @param super just output the super cells.
+ * @param active just output active cells.
+ * @param mpiactive just output MPI active cells, i.e. those with foreign cells.
+ * @param pactive also output a count of active particles.
+ * @param s the space holding the cells to dump.
+ * @param rank node ID of MPI rank, or 0 if not relevant.
+ * @param step the current engine step, or some unique integer.
+ */
+void dumpCells(const char *prefix, int super, int active, int mpiactive,
+               int pactive, struct space *s, int rank, int step) {
+
+  FILE *file = NULL;
+
+  /* Name of output file. */
+  char fname[200];
+  sprintf(fname, "%s_%03d_%03d.dat", prefix, rank, step);
+  file = fopen(fname, "w");
+
+  /* Header. */
+  fprintf(file,
+          "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
+          "%20s %6s %6s %6s %6s %6s %6s %6s\n",
+          "x", "y", "z", "xw", "yw", "zw", "step", "count", "gcount", "scount",
+          "actcount", "depth", "tasks", "ti_end_min", "timebin", "issuper",
+          "istop", "active", "rank", "local", "mpiactive");
+
+  size_t data[6];
+  data[0] = (size_t)file;
+  data[1] = (size_t)s->e;
+  data[2] = (size_t)super;
+  data[3] = (size_t)active;
+  data[4] = (size_t)mpiactive;
+  data[5] = (size_t)pactive;
+  space_map_cells_pre(s, 1, dumpCells_map, &data);
+  fclose(file);
+}
+
+#if defined(WITH_MPI) && defined(HAVE_METIS)
 
 /**
  * @brief Dump the METIS graph in standard format, simple format and weights
@@ -429,3 +589,69 @@ void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells) {
 }
 
 #endif /* HAVE_MPI */
+
+/**
+ * @brief parse the process /proc/self/statm file to get the process
+ *        memory use (in KB). Top field in ().
+ *
+ * @param size     total virtual memory (VIRT)
+ * @param resident resident non-swapped memory (RES)
+ * @param share    shared (mmap'd) memory  (SHR)
+ * @param trs      text (exe) resident set (CODE)
+ * @param lrs      library resident set
+ * @param drs      data+stack resident set (DATA)
+ * @param dt       dirty pages (nDRT)
+ */
+void getProcMemUse(long *size, long *resident, long *share, long *trs,
+                   long *lrs, long *drs, long *dt) {
+
+  /* Open the file. */
+  FILE *file = fopen("/proc/self/statm", "r");
+  if (file != NULL) {
+    int nscan = fscanf(file, "%ld %ld %ld %ld %ld %ld %ld", size, resident,
+                       share, trs, lrs, drs, dt);
+
+    if (nscan == 7) {
+      /* Convert pages into bytes. Usually 4096, but could be 512 on some
+       * systems so take care in conversion to KB. */
+      long sz = sysconf(_SC_PAGESIZE);
+      *size *= sz;
+      *resident *= sz;
+      *share *= sz;
+      *trs *= sz;
+      *lrs *= sz;
+      *drs *= sz;
+      *dt *= sz;
+
+      *size /= 1024;
+      *resident /= 1024;
+      *share /= 1024;
+      *trs /= 1024;
+      *lrs /= 1024;
+      *drs /= 1024;
+      *dt /= 1024;
+    } else {
+      error("Failed to read sufficient fields from /proc/self/statm");
+    }
+    fclose(file);
+  } else {
+    error("Failed to open /proc/self/statm");
+  }
+}
+
+/**
+ * @brief Print the current memory use of the process. A la "top".
+ */
+void printProcMemUse(void) {
+  long size;
+  long resident;
+  long share;
+  long trs;
+  long lrs;
+  long drs;
+  long dt;
+  getProcMemUse(&size, &resident, &share, &trs, &lrs, &drs, &dt);
+  printf("## VIRT = %ld , RES = %ld , SHR = %ld , CODE = %ld, DATA = %ld\n",
+         size, resident, share, trs, drs);
+  fflush(stdout);
+}

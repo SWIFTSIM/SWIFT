@@ -71,13 +71,16 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 /**
  * @brief Computes the gravitational potential energy due to nothing.
  *
+ * We return 0.
+ *
+ * @param time The current time.
  * @param potential The #external_potential used in the run.
  * @param phys_const Physical constants in internal units.
  * @param g Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float
 external_gravity_get_potential_energy(
-    const struct external_potential* potential,
+    double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, const struct gpart* g) {
 
   return 0.f;
@@ -95,9 +98,9 @@ external_gravity_get_potential_energy(
  * @param potential The external potential properties to initialize
  */
 static INLINE void potential_init_backend(
-    const struct swift_params* parameter_file,
-    const struct phys_const* phys_const, const struct UnitSystem* us,
-    const struct space* s, struct external_potential* potential) {}
+    struct swift_params* parameter_file, const struct phys_const* phys_const,
+    const struct unit_system* us, const struct space* s,
+    struct external_potential* potential) {}
 
 /**
  * @brief Prints the properties of the external potential to stdout.

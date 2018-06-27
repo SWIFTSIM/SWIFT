@@ -43,13 +43,16 @@
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
  * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
-    const struct UnitSystem* restrict us,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, float dt) {}
 
@@ -60,13 +63,15 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
  * @param us The internal system of units.
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
-    const struct UnitSystem* restrict us, const struct part* restrict p) {
+    const struct cosmology* restrict cosmo,
+    const struct unit_system* restrict us, const struct part* restrict p) {
 
   return FLT_MAX;
 }
@@ -77,11 +82,19 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  *
  * Nothing to do here.
  *
+ * @param phys_const The physical constant in internal units.
+ * @param us The unit system.
+ * @param cosmo The current cosmological model.
+ * @param data The properties of the cooling function.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
-__attribute__((always_inline)) INLINE static void cooling_init_part(
-    const struct part* restrict p, struct xpart* restrict xp) {}
+__attribute__((always_inline)) INLINE static void cooling_first_init_part(
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* data, const struct part* restrict p,
+    struct xpart* restrict xp) {}
 
 /**
  * @brief Returns the total radiated energy by this particle.
@@ -106,10 +119,11 @@ __attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
  * @param phys_const The physical constants in internal units.
  * @param cooling The cooling properties to initialize
  */
-static INLINE void cooling_init_backend(
-    const struct swift_params* parameter_file, const struct UnitSystem* us,
-    const struct phys_const* phys_const,
-    struct cooling_function_data* cooling) {}
+static INLINE void cooling_init_backend(struct swift_params* parameter_file,
+                                        const struct unit_system* us,
+                                        const struct phys_const* phys_const,
+                                        struct cooling_function_data* cooling) {
+}
 
 /**
  * @brief Prints the properties of the cooling model to stdout.

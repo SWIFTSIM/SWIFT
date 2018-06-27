@@ -21,41 +21,96 @@
 #define SWIFT_DEFAULT_GRAVITY_H
 
 #include <float.h>
+
+#include "cosmology.h"
+#include "gravity_properties.h"
+#include "kernel_gravity.h"
 #include "minmax.h"
+
+/**
+ * @brief Returns the mass of a particle
+ *
+ * @param gp The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float gravity_get_mass(
+    const struct gpart* restrict gp) {
+
+  return gp->mass;
+}
+
+/**
+ * @brief Returns the softening of a particle
+ *
+ * @param gp The particle of interest
+ * @param grav_props The global gravity properties.
+ */
+__attribute__((always_inline)) INLINE static float gravity_get_softening(
+    const struct gpart* gp, const struct gravity_props* restrict grav_props) {
+
+  return grav_props->epsilon_cur;
+}
+
+/**
+ * @brief Returns the comoving potential of a particle
+ *
+ * @param gp The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float
+gravity_get_comoving_potential(const struct gpart* restrict gp) {
+
+  return gp->potential;
+}
+
+/**
+ * @brief Returns the physical potential of a particle
+ *
+ * @param gp The particle of interest.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float
+gravity_get_physical_potential(const struct gpart* restrict gp,
+                               const struct cosmology* cosmo) {
+
+  return gp->potential * cosmo->a_inv;
+}
 
 /**
  * @brief Computes the gravity time-step of a given particle due to self-gravity
  *
+ * We use Gadget-2's type 0 time-step criterion.
+ *
  * @param gp Pointer to the g-particle data.
+ * @param a_hydro The accelerations coming from the hydro scheme (can be 0).
+ * @param grav_props Constants used in the gravity scheme.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
-gravity_compute_timestep_self(const struct gpart* const gp) {
+gravity_compute_timestep_self(const struct gpart* const gp,
+                              const float a_hydro[3],
+                              const struct gravity_props* restrict grav_props,
+                              const struct cosmology* cosmo) {
 
-  const float ac2 = gp->a_grav[0] * gp->a_grav[0] +
-                    gp->a_grav[1] * gp->a_grav[1] +
-                    gp->a_grav[2] * gp->a_grav[2];
+  /* Get physical acceleration (gravity contribution) */
+  float a_phys_x = gp->a_grav[0] * cosmo->a_factor_grav_accel;
+  float a_phys_y = gp->a_grav[1] * cosmo->a_factor_grav_accel;
+  float a_phys_z = gp->a_grav[2] * cosmo->a_factor_grav_accel;
 
-  const float ac = (ac2 > 0.f) ? sqrtf(ac2) : FLT_MIN;
+  /* Get physical acceleration (hydro contribution) */
+  a_phys_x += a_hydro[0] * cosmo->a_factor_hydro_accel;
+  a_phys_y += a_hydro[1] * cosmo->a_factor_hydro_accel;
+  a_phys_z += a_hydro[2] * cosmo->a_factor_hydro_accel;
 
-  const float dt = sqrtf(2.f * const_gravity_eta * gp->epsilon / ac);
+  const float ac2 =
+      a_phys_x * a_phys_x + a_phys_y * a_phys_y + a_phys_z * a_phys_z;
+
+  const float ac_inv = (ac2 > 0.f) ? 1.f / sqrtf(ac2) : FLT_MAX;
+
+  const float epsilon = gravity_get_softening(gp, grav_props);
+
+  const float dt = sqrtf(2. * kernel_gravity_softening_plummer_equivalent_inv *
+                         cosmo->a * grav_props->eta * epsilon * ac_inv);
 
   return dt;
-}
-
-/**
- * @brief Initialises the g-particles for the first time
- *
- * This function is called only once just after the ICs have been
- * read in to do some conversions.
- *
- * @param gp The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
-    struct gpart* gp) {
-
-  gp->ti_begin = 0;
-  gp->ti_end = 0;
-  gp->epsilon = 0.;  // MATTHIEU
 }
 
 /**
@@ -73,6 +128,18 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[0] = 0.f;
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
+  gp->potential = 0.f;
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  gp->potential_PM = 0.f;
+  gp->a_grav_PM[0] = 0.f;
+  gp->a_grav_PM[1] = 0.f;
+  gp->a_grav_PM[2] = 0.f;
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  gp->num_interacted = 0;
+#endif
 }
 
 /**
@@ -90,6 +157,14 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->a_grav[0] *= const_G;
   gp->a_grav[1] *= const_G;
   gp->a_grav[2] *= const_G;
+  gp->potential *= const_G;
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  gp->potential_PM *= const_G;
+  gp->a_grav_PM[0] *= const_G;
+  gp->a_grav_PM[1] *= const_G;
+  gp->a_grav_PM[2] *= const_G;
+#endif
 }
 
 /**
@@ -97,9 +172,34 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
  *
  * @param gp The particle to act upon
  * @param dt The time-step for this kick
- * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void gravity_kick_extra(
-    struct gpart* gp, float dt, float half_dt) {}
+    struct gpart* gp, float dt) {}
+
+/**
+ * @brief Sets the values to be predicted in the drifts to their values at a
+ * kick time
+ *
+ * @param gp The particle.
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_reset_predicted_values(struct gpart* gp) {}
+
+/**
+ * @brief Initialises the g-particles for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in to do some conversions.
+ *
+ * @param gp The particle to act upon
+ * @param grav_props The global properties of the gravity calculation.
+ */
+__attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
+    struct gpart* gp, const struct gravity_props* grav_props) {
+
+  gp->time_bin = 0;
+
+  gravity_init_gpart(gp);
+}
 
 #endif /* SWIFT_DEFAULT_GRAVITY_H */

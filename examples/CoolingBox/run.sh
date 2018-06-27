@@ -1,14 +1,27 @@
+
 #!/bin/bash
 
 # Generate the initial conditions if they are not present.
-echo "Generating initial conditions for the cooling box example..."
+if [ ! -e glassCube_32.hdf5 ]
+then
+    echo "Fetching initial glass file for the cooling box example..."
+    ./getGlass.sh
+fi
+if [ ! -e coolingBox.hdf5 ]
+then
+    echo "Generating initial conditions for the cooling box example..."
+    python makeIC.py
+fi
 
-python makeIC.py 10
+# Get the Grackle cooling table
+if [ ! -e CloudyData_UVB=HM2012.h5 ]
+then
+    echo "Fetching the Cloudy tables required by Grackle..."
+    ./getCoolingTable.sh
+fi
 
-../swift -s -C -t 16 coolingBox.yml 
+# Run SWIFT
+../swift -s -C -t 1 coolingBox.yml
 
-#-C 2>&1 | tee output.log
-
-python energy_plot.py 0
-
-#python test_energy_conservation.py 0
+# Check energy conservation and cooling rate
+python energy_plot.py

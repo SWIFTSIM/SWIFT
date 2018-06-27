@@ -2,8 +2,11 @@ import numpy as np
 import h5py as h5
 import matplotlib.pyplot as plt
 import sys
+import glob
 
-n_snaps = 101
+# Get the total number of snapshots
+file_list = glob.glob("CoolingHalo_*")
+n_snaps = len(file_list)
 
 #some constants
 OMEGA = 0.3 # Cosmological matter fraction at z = 0
@@ -17,7 +20,7 @@ H_0_cgs = 100. * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 #read some header/parameter information from the first snapshot
 
-filename = "CoolingHalo_000.hdf5"
+filename = "CoolingHalo_0000.hdf5"
 f = h5.File(filename,'r')
 params = f["Parameters"]
 unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
@@ -41,7 +44,7 @@ time_array_cgs = []
 
 for i in range(n_snaps):
 
-    filename = "CoolingHalo_%03d.hdf5" %i
+    filename = "CoolingHalo_%04d.hdf5" %i
     f = h5.File(filename,'r')
     coords_dset = f["PartType0/Coordinates"]
     coords = np.array(coords_dset)

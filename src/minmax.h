@@ -44,17 +44,31 @@
   })
 
 /**
- * @brief Limits the value of x to be between a and b
+ * @brief Minimum of three numbers
  *
- * Only wraps once. If x > 2b, the returned value will be larger than b.
- * Similarly for x < -b.
+ * This macro evaluates its arguments exactly once.
  */
-#define box_wrap(x, a, b)                               \
-  ({                                                    \
-    const __typeof__(x) _x = (x);                       \
-    const __typeof__(a) _a = (a);                       \
-    const __typeof__(b) _b = (b);                       \
-    _x < _a ? (_x + _b) : ((_x > _b) ? (_x - _b) : _x); \
+#define min3(x, y, z)                        \
+  ({                                         \
+    const __typeof__(x) _x = (x);            \
+    const __typeof__(y) _y = (y);            \
+    const __typeof__(z) _z = (z);            \
+    const __typeof__(x) _temp = min(_x, _y); \
+    min(_temp, _z);                          \
+  })
+
+/**
+ * @brief Maximum of three numbers
+ *
+ * This macro evaluates its arguments exactly once.
+ */
+#define max3(x, y, z)                        \
+  ({                                         \
+    const __typeof__(x) _x = (x);            \
+    const __typeof__(y) _y = (y);            \
+    const __typeof__(z) _z = (z);            \
+    const __typeof__(x) _temp = max(_x, _y); \
+    max(_temp, _z);                          \
   })
 
 #endif /* SWIFT_MINMAX_H */

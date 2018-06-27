@@ -16,9 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #ifndef SWIFT_HYDRO_PROPERTIES
 #define SWIFT_HYDRO_PROPERTIES
+
+/**
+ * @file hydro_properties.h
+ * @brief Contains all the constants and parameters of the hydro scheme
+ */
 
 /* Config parameters. */
 #include "../config.h"
@@ -28,37 +32,68 @@
 #endif
 
 /* Local includes. */
-#include "const.h"
 #include "parser.h"
+#include "physical_constants.h"
+#include "restart.h"
+#include "units.h"
 
 /**
  * @brief Contains all the constants and parameters of the hydro scheme
  */
 struct hydro_props {
 
-  /* Kernel properties */
+  /*! Resolution parameter */
   float eta_neighbours;
+
+  /*! Target weightd number of neighbours (for info only)*/
   float target_neighbours;
+
+  /*! Smoothing length tolerance */
+  float h_tolerance;
+
+  /*! Tolerance on neighbour number  (for info only)*/
   float delta_neighbours;
 
-  /* Kernel properties */
+  /*! Maximal smoothing length */
+  float h_max;
+
+  /*! Maximal number of iterations to converge h */
   int max_smoothing_iterations;
 
-  /* Time integration properties */
+  /*! Time integration properties */
   float CFL_condition;
+
+  /*! Maximal change of h over one time-step */
   float log_max_h_change;
 
-/* Viscosity parameters */
-#ifdef GADGET_SPH
-  float const_viscosity_alpha;
-#endif
+  /*! Minimal temperature allowed */
+  float minimal_temperature;
+
+  /*! Minimal internal energy per unit mass */
+  float minimal_internal_energy;
+
+  /*! Initial temperature */
+  float initial_temperature;
+
+  /*! Initial internal energy per unit mass */
+  float initial_internal_energy;
+
+  /*! Primoridal hydrogen mass fraction for initial energy conversion */
+  float hydrogen_mass_fraction;
 };
 
 void hydro_props_print(const struct hydro_props *p);
-void hydro_props_init(struct hydro_props *p, const struct swift_params *params);
+void hydro_props_init(struct hydro_props *p,
+                      const struct phys_const *phys_const,
+                      const struct unit_system *us,
+                      struct swift_params *params);
 
 #if defined(HAVE_HDF5)
 void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p);
 #endif
+
+/* Dump/restore. */
+void hydro_props_struct_dump(const struct hydro_props *p, FILE *stream);
+void hydro_props_struct_restore(const struct hydro_props *p, FILE *stream);
 
 #endif /* SWIFT_HYDRO_PROPERTIES */

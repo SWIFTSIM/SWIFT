@@ -45,7 +45,6 @@
  *
  * @param p The #proxy.
  */
-
 void proxy_cells_exch1(struct proxy *p) {
 
 #ifdef WITH_MPI
@@ -56,17 +55,17 @@ void proxy_cells_exch1(struct proxy *p) {
     p->size_pcells_out += p->cells_out[k]->pcell_size;
 
   /* Send the number of pcells. */
-  if (MPI_Isend(&p->size_pcells_out, 1, MPI_INT, p->nodeID,
-                p->mynodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
-                &p->req_cells_count_out) != MPI_SUCCESS)
-    error("Failed to isend nr of pcells.");
+  int err = MPI_Isend(&p->size_pcells_out, 1, MPI_INT, p->nodeID,
+                      p->mynodeID * proxy_tag_shift + proxy_tag_count,
+                      MPI_COMM_WORLD, &p->req_cells_count_out);
+  if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend nr of pcells.");
   // message( "isent pcell count (%i) from node %i to node %i." ,
   // p->size_pcells_out , p->mynodeID , p->nodeID ); fflush(stdout);
 
   /* Allocate and fill the pcell buffer. */
   if (p->pcells_out != NULL) free(p->pcells_out);
-  if ((p->pcells_out = malloc(sizeof(struct pcell) * p->size_pcells_out)) ==
-      NULL)
+  if (posix_memalign((void **)&p->pcells_out, SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(struct pcell) * p->size_pcells_out) != 0)
     error("Failed to allocate pcell_out buffer.");
   for (int ind = 0, k = 0; k < p->nr_cells_out; k++) {
     memcpy(&p->pcells_out[ind], p->cells_out[k]->pcell,
@@ -75,19 +74,20 @@ void proxy_cells_exch1(struct proxy *p) {
   }
 
   /* Send the pcell buffer. */
-  if (MPI_Isend(p->pcells_out, sizeof(struct pcell) * p->size_pcells_out,
-                MPI_BYTE, p->nodeID,
-                p->mynodeID * proxy_tag_shift + proxy_tag_cells, MPI_COMM_WORLD,
-                &p->req_cells_out) != MPI_SUCCESS)
-    error("Failed to pcell_out buffer.");
+  err = MPI_Isend(p->pcells_out, sizeof(struct pcell) * p->size_pcells_out,
+                  MPI_BYTE, p->nodeID,
+                  p->mynodeID * proxy_tag_shift + proxy_tag_cells,
+                  MPI_COMM_WORLD, &p->req_cells_out);
+
+  if (err != MPI_SUCCESS) mpi_error(err, "Failed to pcell_out buffer.");
   // message( "isent pcells (%i) from node %i to node %i." , p->size_pcells_out
   // , p->mynodeID , p->nodeID ); fflush(stdout);
 
   /* Receive the number of pcells. */
-  if (MPI_Irecv(&p->size_pcells_in, 1, MPI_INT, p->nodeID,
-                p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
-                &p->req_cells_count_in) != MPI_SUCCESS)
-    error("Failed to irecv nr of pcells.");
+  err = MPI_Irecv(&p->size_pcells_in, 1, MPI_INT, p->nodeID,
+                  p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
+                  &p->req_cells_count_in);
+  if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv nr of pcells.");
 // message( "irecv pcells count on node %i from node %i." , p->mynodeID ,
 // p->nodeID ); fflush(stdout);
 
@@ -102,16 +102,17 @@ void proxy_cells_exch2(struct proxy *p) {
 
   /* Re-allocate the pcell_in buffer. */
   if (p->pcells_in != NULL) free(p->pcells_in);
-  if ((p->pcells_in = (struct pcell *)malloc(sizeof(struct pcell) *
-                                             p->size_pcells_in)) == NULL)
+  if (posix_memalign((void **)&p->pcells_in, SWIFT_STRUCT_ALIGNMENT,
+                     sizeof(struct pcell) * p->size_pcells_in) != 0)
     error("Failed to allocate pcell_in buffer.");
 
   /* Receive the particle buffers. */
-  if (MPI_Irecv(p->pcells_in, sizeof(struct pcell) * p->size_pcells_in,
-                MPI_BYTE, p->nodeID,
-                p->nodeID * proxy_tag_shift + proxy_tag_cells, MPI_COMM_WORLD,
-                &p->req_cells_in) != MPI_SUCCESS)
-    error("Failed to irecv part data.");
+  int err = MPI_Irecv(p->pcells_in, sizeof(struct pcell) * p->size_pcells_in,
+                      MPI_BYTE, p->nodeID,
+                      p->nodeID * proxy_tag_shift + proxy_tag_cells,
+                      MPI_COMM_WORLD, &p->req_cells_in);
+
+  if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv part data.");
 // message( "irecv pcells (%i) on node %i from node %i." , p->size_pcells_in ,
 // p->mynodeID , p->nodeID ); fflush(stdout);
 
@@ -125,27 +126,45 @@ void proxy_cells_exch2(struct proxy *p) {
  *
  * @param p The #proxy.
  * @param c The #cell.
+ * @param type Why is this cell in the proxy (hdro, gravity, ...) ?
  */
+void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
 
-void proxy_addcell_in(struct proxy *p, struct cell *c) {
+  if (type == proxy_cell_type_none) error("Invalid type for proxy");
 
   /* Check if the cell is already registered with the proxy. */
   for (int k = 0; k < p->nr_cells_in; k++)
-    if (p->cells_in[k] == c) return;
+    if (p->cells_in[k] == c) {
+
+      /* Update the type */
+      p->cells_in_type[k] |= type;
+      return;
+    }
 
   /* Do we need to grow the number of in cells? */
   if (p->nr_cells_in == p->size_cells_in) {
+
     p->size_cells_in *= proxy_buffgrow;
-    struct cell **temp;
-    if ((temp = malloc(sizeof(struct cell *) * p->size_cells_in)) == NULL)
+
+    struct cell **temp_cell;
+    if ((temp_cell = (struct cell **)malloc(sizeof(struct cell *) *
+                                            p->size_cells_in)) == NULL)
       error("Failed to allocate incoming cell list.");
-    memcpy(temp, p->cells_in, sizeof(struct cell *) * p->nr_cells_in);
+    memcpy(temp_cell, p->cells_in, sizeof(struct cell *) * p->nr_cells_in);
     free(p->cells_in);
-    p->cells_in = temp;
+    p->cells_in = temp_cell;
+
+    int *temp_type;
+    if ((temp_type = (int *)malloc(sizeof(int) * p->size_cells_in)) == NULL)
+      error("Failed to allocate incoming cell type list.");
+    memcpy(temp_type, p->cells_in_type, sizeof(int) * p->nr_cells_in);
+    free(p->cells_in_type);
+    p->cells_in_type = temp_type;
   }
 
   /* Add the cell. */
   p->cells_in[p->nr_cells_in] = c;
+  p->cells_in_type[p->nr_cells_in] = type;
   p->nr_cells_in += 1;
 }
 
@@ -154,27 +173,44 @@ void proxy_addcell_in(struct proxy *p, struct cell *c) {
  *
  * @param p The #proxy.
  * @param c The #cell.
+ * @param type Why is this cell in the proxy (hdro, gravity, ...) ?
  */
+void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
 
-void proxy_addcell_out(struct proxy *p, struct cell *c) {
+  if (type == proxy_cell_type_none) error("Invalid type for proxy");
 
   /* Check if the cell is already registered with the proxy. */
   for (int k = 0; k < p->nr_cells_out; k++)
-    if (p->cells_out[k] == c) return;
+    if (p->cells_out[k] == c) {
+
+      /* Update the type */
+      p->cells_out_type[k] |= type;
+      return;
+    }
 
   /* Do we need to grow the number of out cells? */
   if (p->nr_cells_out == p->size_cells_out) {
     p->size_cells_out *= proxy_buffgrow;
-    struct cell **temp;
-    if ((temp = malloc(sizeof(struct cell *) * p->size_cells_out)) == NULL)
+
+    struct cell **temp_cell;
+    if ((temp_cell = (struct cell **)malloc(sizeof(struct cell *) *
+                                            p->size_cells_out)) == NULL)
       error("Failed to allocate outgoing cell list.");
-    memcpy(temp, p->cells_out, sizeof(struct cell *) * p->nr_cells_out);
+    memcpy(temp_cell, p->cells_out, sizeof(struct cell *) * p->nr_cells_out);
     free(p->cells_out);
-    p->cells_out = temp;
+    p->cells_out = temp_cell;
+
+    int *temp_type;
+    if ((temp_type = (int *)malloc(sizeof(int) * p->size_cells_out)) == NULL)
+      error("Failed to allocate outgoing cell type list.");
+    memcpy(temp_type, p->cells_out_type, sizeof(int) * p->nr_cells_out);
+    free(p->cells_out_type);
+    p->cells_out_type = temp_type;
   }
 
   /* Add the cell. */
   p->cells_out[p->nr_cells_out] = c;
+  p->cells_out_type[p->nr_cells_out] = type;
   p->nr_cells_out += 1;
 }
 
@@ -183,7 +219,6 @@ void proxy_addcell_out(struct proxy *p, struct cell *c) {
  *
  * @param p The #proxy.
  */
-
 void proxy_parts_exch1(struct proxy *p) {
 
 #ifdef WITH_MPI
@@ -191,7 +226,8 @@ void proxy_parts_exch1(struct proxy *p) {
   /* Send the number of particles. */
   p->buff_out[0] = p->nr_parts_out;
   p->buff_out[1] = p->nr_gparts_out;
-  if (MPI_Isend(p->buff_out, 2, MPI_INT, p->nodeID,
+  p->buff_out[2] = p->nr_sparts_out;
+  if (MPI_Isend(p->buff_out, 3, MPI_INT, p->nodeID,
                 p->mynodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_out) != MPI_SUCCESS)
     error("Failed to isend nr of parts.");
@@ -218,13 +254,22 @@ void proxy_parts_exch1(struct proxy *p) {
     if (MPI_Isend(p->gparts_out, p->nr_gparts_out, gpart_mpi_type, p->nodeID,
                   p->mynodeID * proxy_tag_shift + proxy_tag_gparts,
                   MPI_COMM_WORLD, &p->req_gparts_out) != MPI_SUCCESS)
-      error("Failed to isend part data.");
+      error("Failed to isend gpart data.");
+    // message( "isent gpart data (%i) to node %i." , p->nr_parts_out ,
+    // p->nodeID ); fflush(stdout);
+  }
+
+  if (p->nr_sparts_out > 0) {
+    if (MPI_Isend(p->sparts_out, p->nr_sparts_out, spart_mpi_type, p->nodeID,
+                  p->mynodeID * proxy_tag_shift + proxy_tag_sparts,
+                  MPI_COMM_WORLD, &p->req_sparts_out) != MPI_SUCCESS)
+      error("Failed to isend spart data.");
     // message( "isent gpart data (%i) to node %i." , p->nr_parts_out ,
     // p->nodeID ); fflush(stdout);
   }
 
   /* Receive the number of particles. */
-  if (MPI_Irecv(p->buff_in, 2, MPI_INT, p->nodeID,
+  if (MPI_Irecv(p->buff_in, 3, MPI_INT, p->nodeID,
                 p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_in) != MPI_SUCCESS)
     error("Failed to irecv nr of parts.");
@@ -241,8 +286,9 @@ void proxy_parts_exch2(struct proxy *p) {
   /* Unpack the incomming parts counts. */
   p->nr_parts_in = p->buff_in[0];
   p->nr_gparts_in = p->buff_in[1];
+  p->nr_sparts_in = p->buff_in[2];
 
-  /* Is there enough space in the buffer? */
+  /* Is there enough space in the buffers? */
   if (p->nr_parts_in > p->size_parts_in) {
     do {
       p->size_parts_in *= proxy_buffgrow;
@@ -263,6 +309,15 @@ void proxy_parts_exch2(struct proxy *p) {
     if ((p->gparts_in = (struct gpart *)malloc(sizeof(struct gpart) *
                                                p->size_gparts_in)) == NULL)
       error("Failed to re-allocate gparts_in buffers.");
+  }
+  if (p->nr_sparts_in > p->size_sparts_in) {
+    do {
+      p->size_sparts_in *= proxy_buffgrow;
+    } while (p->nr_sparts_in > p->size_sparts_in);
+    free(p->sparts_in);
+    if ((p->sparts_in = (struct spart *)malloc(sizeof(struct spart) *
+                                               p->size_sparts_in)) == NULL)
+      error("Failed to re-allocate sparts_in buffers.");
   }
 
   /* Receive the particle buffers. */
@@ -285,6 +340,14 @@ void proxy_parts_exch2(struct proxy *p) {
     // message( "irecv gpart data (%i) from node %i." , p->nr_gparts_in ,
     // p->nodeID ); fflush(stdout);
   }
+  if (p->nr_sparts_in > 0) {
+    if (MPI_Irecv(p->sparts_in, p->nr_sparts_in, spart_mpi_type, p->nodeID,
+                  p->nodeID * proxy_tag_shift + proxy_tag_sparts,
+                  MPI_COMM_WORLD, &p->req_sparts_in) != MPI_SUCCESS)
+      error("Failed to irecv spart data.");
+    // message( "irecv gpart data (%i) from node %i." , p->nr_gparts_in ,
+    // p->nodeID ); fflush(stdout);
+  }
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -299,7 +362,6 @@ void proxy_parts_exch2(struct proxy *p) {
  * @param xparts Pointer to an array of #xpart to send.
  * @param N The number of parts.
  */
-
 void proxy_parts_load(struct proxy *p, const struct part *parts,
                       const struct xpart *xparts, int N) {
 
@@ -308,8 +370,8 @@ void proxy_parts_load(struct proxy *p, const struct part *parts,
     do {
       p->size_parts_out *= proxy_buffgrow;
     } while (p->nr_parts_out + N > p->size_parts_out);
-    struct part *tp;
-    struct xpart *txp;
+    struct part *tp = NULL;
+    struct xpart *txp = NULL;
     if ((tp = (struct part *)malloc(sizeof(struct part) * p->size_parts_out)) ==
             NULL ||
         (txp = (struct xpart *)malloc(sizeof(struct xpart) *
@@ -332,13 +394,12 @@ void proxy_parts_load(struct proxy *p, const struct part *parts,
 }
 
 /**
- * @brief Load parts onto a proxy for exchange.
+ * @brief Load gparts onto a proxy for exchange.
  *
  * @param p The #proxy.
  * @param gparts Pointer to an array of #gpart to send.
- * @param N The number of parts.
+ * @param N The number of gparts.
  */
-
 void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N) {
 
   /* Is there enough space in the buffer? */
@@ -363,13 +424,42 @@ void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N) {
 }
 
 /**
+ * @brief Load sparts onto a proxy for exchange.
+ *
+ * @param p The #proxy.
+ * @param sparts Pointer to an array of #spart to send.
+ * @param N The number of sparts.
+ */
+void proxy_sparts_load(struct proxy *p, const struct spart *sparts, int N) {
+
+  /* Is there enough space in the buffer? */
+  if (p->nr_sparts_out + N > p->size_sparts_out) {
+    do {
+      p->size_sparts_out *= proxy_buffgrow;
+    } while (p->nr_sparts_out + N > p->size_sparts_out);
+    struct spart *tp;
+    if ((tp = (struct spart *)malloc(sizeof(struct spart) *
+                                     p->size_sparts_out)) == NULL)
+      error("Failed to re-allocate sparts_out buffers.");
+    memcpy(tp, p->sparts_out, sizeof(struct spart) * p->nr_sparts_out);
+    free(p->sparts_out);
+    p->sparts_out = tp;
+  }
+
+  /* Copy the parts and xparts data to the buffer. */
+  memcpy(&p->sparts_out[p->nr_sparts_out], sparts, sizeof(struct spart) * N);
+
+  /* Increase the counters. */
+  p->nr_sparts_out += N;
+}
+
+/**
  * @brief Initialize the given proxy.
  *
  * @param p The #proxy.
  * @param mynodeID The node this proxy is running on.
  * @param nodeID The node with which this proxy will communicate.
  */
-
 void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
 
   /* Set the nodeID. */
@@ -382,6 +472,9 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
     if ((p->cells_in =
              (struct cell **)malloc(sizeof(void *) * p->size_cells_in)) == NULL)
       error("Failed to allocate cells_in buffer.");
+    if ((p->cells_in_type = (int *)malloc(sizeof(int) * p->size_cells_in)) ==
+        NULL)
+      error("Failed to allocate cells_in_type buffer.");
   }
   p->nr_cells_in = 0;
   if (p->cells_out == NULL) {
@@ -389,6 +482,9 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
     if ((p->cells_out = (struct cell **)malloc(sizeof(void *) *
                                                p->size_cells_out)) == NULL)
       error("Failed to allocate cells_out buffer.");
+    if ((p->cells_out_type = (int *)malloc(sizeof(int) * p->size_cells_out)) ==
+        NULL)
+      error("Failed to allocate cells_out_type buffer.");
   }
   p->nr_cells_out = 0;
 
@@ -427,4 +523,20 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
       error("Failed to allocate gparts_out buffers.");
   }
   p->nr_gparts_out = 0;
+
+  /* Allocate the spart send and receive buffers, if needed. */
+  if (p->sparts_in == NULL) {
+    p->size_sparts_in = proxy_buffinit;
+    if ((p->sparts_in = (struct spart *)malloc(sizeof(struct spart) *
+                                               p->size_sparts_in)) == NULL)
+      error("Failed to allocate sparts_in buffers.");
+  }
+  p->nr_sparts_in = 0;
+  if (p->sparts_out == NULL) {
+    p->size_sparts_out = proxy_buffinit;
+    if ((p->sparts_out = (struct spart *)malloc(sizeof(struct spart) *
+                                                p->size_sparts_out)) == NULL)
+      error("Failed to allocate sparts_out buffers.");
+  }
+  p->nr_sparts_out = 0;
 }

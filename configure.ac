@@ -16,10 +16,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.4.0])
+AC_INIT([SWIFT],[0.7.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+swift_config_flags="$*"
+
+AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([subdir-objects])
 
 # Add local macro collection.
 AC_CONFIG_MACRO_DIR([m4])
@@ -35,12 +38,62 @@ AX_CHECK_ENABLE_DEBUG
 AC_PROG_CC
 AM_PROG_CC_C_O
 
+
+# Master subgrid options
+# If you add a restriction (e.g. no cooling, chemistry or hydro)
+# you will need to check for overwrite after reading the additional options.
+# As an example for this, see the call to AC_ARG_WITH for cooling.
+AC_ARG_WITH([subgrid],
+	[AS_HELP_STRING([--with-subgrid=<subgrid>],
+		[Master switch for subgrid methods. Inexperienced user should start from here @<:@none, GEAR, EAGLE default: none@:>@]
+	)],
+	[with_subgrid="$withval"],
+	[with_subgrid=none]
+)
+
+# Default values
+with_subgrid_cooling=none
+with_subgrid_chemistry=none
+with_subgrid_hydro=none
+
+case "$with_subgrid" in
+   yes)
+      AC_MSG_ERROR([Invalid option. A subgrid model must be chosen.])
+   ;;
+   none)
+   ;;
+   GEAR)
+	with_subgrid_cooling=grackle
+	with_subgrid_chemistry=GEAR
+	with_subgrid_hydro=gadget2
+   ;;
+   EAGLE)
+	with_subgrid_cooling=EAGLE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_hydro=gadget2
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
+   ;;
+esac
+
+
+
+# If debug is selected then we also define SWIFT_DEVELOP_MODE to control
+# any developer code options.
+if test "x$ax_enable_debug" != "xno"; then
+   AC_DEFINE([SWIFT_DEVELOP_MODE],1,[Enable developer code options])
+fi
+
 # Enable POSIX and platform extension preprocessor macros.
 AC_USE_SYSTEM_EXTENSIONS
 
 # Check for compiler version and vendor.
 AX_COMPILER_VENDOR
 AX_COMPILER_VERSION
+
+#  Restrict support.
+AC_C_RESTRICT
 
 # Interprocedural optimization support. Needs special handling for linking and
 # archiving as well as compilation with Intels, needs to be done before
@@ -99,8 +152,9 @@ if test "$enable_mpi" = "yes"; then
        AC_PATH_PROG([MPIRUN],[mpirun],[notfound])
     fi
     if test "$MPIRUN" = "notfound"; then
+       # This may not be fatal (some systems do not allow mpirun on
+       # development nodes)., so push on.
        AC_MSG_WARN([Cannot find mpirun command on PATH, thread support may not be correct])
-       enable_mpi="no"
     else
        # Special options we know about.
        # Intel: -mt_mpi
@@ -145,7 +199,7 @@ if test "$enable_mpi" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
 
-# Indicate that MPIRUN can be modified by an environement variable
+# Indicate that MPIRUN can be modified by an environment variable
 AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 
 # Add libtool support (now that CC is defined).
@@ -181,6 +235,84 @@ AC_ARG_ENABLE([task-debugging],
 if test "$enable_task_debugging" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
 fi
+
+# Check if threadpool debugging is on.
+AC_ARG_ENABLE([threadpool-debugging],
+   [AS_HELP_STRING([--enable-threadpool-debugging],
+     [Store threadpool mapper timing information and generate threadpool dump files @<:@yes/no@:>@]
+   )],
+   [enable_threadpool_debugging="$enableval"],
+   [enable_threadpool_debugging="no"]
+)
+if test "$enable_threadpool_debugging" = "yes"; then
+   AC_DEFINE([SWIFT_DEBUG_THREADPOOL],1,[Enable threadpool debugging])
+   LDFLAGS="$LDFLAGS -rdynamic"
+fi
+
+# Check if the general timers are switched on.
+AC_ARG_ENABLE([timers],
+   [AS_HELP_STRING([--enable-timers],
+     [Activate the basic timers @<:@yes/no@:>@]
+   )],
+   [enable_timers="$enableval"],
+   [enable_timers="no"]
+)
+if test "$enable_timers" = "yes"; then
+   AC_DEFINE([SWIFT_USE_TIMERS],1,[Enable individual timers])
+fi
+
+# Check if expensive debugging is on.
+AC_ARG_ENABLE([debugging-checks],
+   [AS_HELP_STRING([--enable-debugging-checks],
+     [Activate expensive consistency checks @<:@yes/no@:>@]
+   )],
+   [enable_debugging_checks="$enableval"],
+   [enable_debugging_checks="no"]
+)
+if test "$enable_debugging_checks" = "yes"; then
+   AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
+fi
+
+# Check whether we want to default to naive cell interactions
+AC_ARG_ENABLE([naive-interactions],
+   [AS_HELP_STRING([--enable-naive-interactions],
+     [Activate use of naive cell interaction functions @<:@yes/no@:>@]
+   )],
+   [enable_naive_interactions="$enableval"],
+   [enable_naive_interactions="no"]
+)
+if test "$enable_naive_interactions" = "yes"; then
+   AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS],1,[Enable use of naive cell interaction functions])
+fi
+
+# Check if gravity force checks are on for some particles.
+AC_ARG_ENABLE([gravity-force-checks],
+   [AS_HELP_STRING([--enable-gravity-force-checks],
+     [Activate expensive brute-force gravity checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [gravity_force_checks="$enableval"],
+   [gravity_force_checks="no"]
+)
+if test "$gravity_force_checks" == "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-gravity-force-checks!)
+elif test "$gravity_force_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_GRAVITY_FORCE_CHECKS], [$enableval] ,[Enable gravity brute-force checks])
+fi
+
+# Check if we want to zero the gravity forces for all particles below some ID.
+AC_ARG_ENABLE([no-gravity-below-id],
+   [AS_HELP_STRING([--enable-no-gravity-below-id],
+     [Zeros the gravitational acceleration of all particles with an ID smaller than @<:@N@:>@]
+   )],
+   [no_gravity_below_id="$enableval"],
+   [no_gravity_below_id="no"]
+)
+if test "$no_gravity_below_id" == "yes"; then
+   AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-no-gravity-below-id!)
+elif test "$no_gravity_below_id" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
+fi
+
 
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN
@@ -278,6 +410,32 @@ if test "$enable_san" = "yes"; then
    fi
 fi
 
+# Add the undefined sanitizer option to flags. Only useful for GCC
+# version 4.9 and later and clang to detected undefined code behaviour
+# such as integer overflow and memory alignment issues.
+AC_ARG_ENABLE([undefined-sanitizer],
+   [AS_HELP_STRING([--enable-undefined-sanitizer],
+     [Enable detection of code that causes undefined behaviour @<:@no/yes@:>@]
+   )],
+   [enable_ubsan="$enableval"],
+   [enable_ubsan="no"]
+)
+
+if test "$enable_ubsan" = "yes"; then
+   if test "$ax_cv_c_compiler_vendor" = "gnu"; then
+      AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [4.9.0],
+                          [enable_ubsan="yes"], [enable_ubsan="no"] )
+   elif test "$ax_cv_c_compiler_vendor" = "clang"; then
+      AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [3.7.0],
+                          [enable_ubsan="yes"], [enable_ubsan="no"] )
+   fi
+   if test "$enable_ubsan" = "yes"; then
+      CFLAGS="$CFLAGS -fsanitize=undefined"
+      AC_MSG_RESULT([added undefined sanitizer support])
+   else
+      AC_MSG_WARN([Compiler does not support undefined sanitizer option])
+   fi
+fi
 
 # Autoconf stuff.
 AC_PROG_INSTALL
@@ -287,6 +445,52 @@ AC_HEADER_STDC
 # Check for the libraries we will need.
 AC_CHECK_LIB(m,sqrt,,AC_MSG_ERROR(something is wrong with the math library!))
 
+# Check for GSL. We test for this in the standard directories by default,
+# and only disable if using --with-gsl=no or --without-gsl. When a value
+# is given GSL must be found.
+have_gsl="no"
+AC_ARG_WITH([gsl],
+    [AS_HELP_STRING([--with-gsl=PATH],
+       [root directory where GSL is installed @<:@yes/no@:>@]
+    )],
+    [with_gsl="$withval"],
+    [with_gsl="test"]
+)
+if test "x$with_gsl" != "xno"; then
+   if test "x$with_gsl" != "xyes" -a "x$with_gsl" != "xtest" -a "x$with_gsl" != "x"; then
+      GSL_LIBS="-L$with_gsl/lib -lgsl -lgslcblas"
+      GSL_INCS="-I$with_gsl/include"
+   else
+      GSL_LIBS="-lgsl -lgslcblas"
+      GSL_INCS=""
+   fi
+   #  GSL is not specified, so just check if we have it.
+   if test "x$with_gsl" = "xtest"; then
+      AC_CHECK_LIB([gslcblas],[cblas_dgemm],[have_gsl="yes"],[have_gsl="no"],$GSL_LIBS)
+      if test "x$have_gsl" != "xno"; then
+         AC_DEFINE([HAVE_LIBGSLCBLAS],1,[The GSL CBLAS library appears to be present.])
+         AC_CHECK_LIB([gsl],[gsl_integration_qag],
+            AC_DEFINE([HAVE_LIBGSL],1,[The GSL library appears to be present.]),
+            [have_gsl="no"],$GSL_LIBS)
+      fi
+   else
+      AC_CHECK_LIB([gslcblas],[cblas_dgemm],
+         AC_DEFINE([HAVE_LIBGSLCBLAS],1,[The GSL CBLAS library appears to be present.]),
+         AC_MSG_ERROR(something is wrong with the GSL CBLAS library!), $GSL_LIBS)
+      AC_CHECK_LIB([gsl],[gsl_integration_qag],
+         AC_DEFINE([HAVE_LIBGSL],1,[The GSL library appears to be present.]),
+         AC_MSG_ERROR(something is wrong with the GSL library!), $GSL_LIBS)
+      have_gsl="yes"
+   fi
+   if test "$have_gsl" = "no"; then
+      GSL_LIBS=""
+      GSL_INCS=""
+   fi
+fi
+AC_SUBST([GSL_LIBS])
+AC_SUBST([GSL_INCS])
+AM_CONDITIONAL([HAVEGSL],[test -n "$GSL_LIBS"])
+
 # Check for pthreads.
 AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     CC="$PTHREAD_CC" LDFLAGS="$LDFLAGS $PTHREAD_LIBS $LIBS"],
@@ -295,8 +499,21 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     or use CPPFLAGS and LDFLAGS if the library is installed in a
     non-standard location.]))
 
+# Check whether POSIX thread barriers are implemented (e.g. OSX does not have them)
+have_pthread_barrier="no"
+AC_CHECK_LIB(pthread, pthread_barrier_init,
+	     have_pthread_barrier="yes",
+	     AC_MSG_WARN(POSIX implementation does not have barriers. SWIFT will use home-made ones.))
+if test "x$have_pthread_barrier" == "xyes"; then
+  AC_DEFINE([HAVE_PTHREAD_BARRIERS], [1], [The posix library implements barriers])
+fi
 
-# Check for metis. Note AX_LIB_METIS exists, but cannot be configured
+# Check whether POSIX file allocation functions exist (e.g. OSX does not have them)
+AC_CHECK_LIB(pthread, posix_fallocate,
+	     AC_DEFINE([HAVE_POSIX_FALLOCATE], [1], [The posix library implements file allocation functions.]),
+	     AC_MSG_WARN(POSIX implementation does not have file allocation functions.))
+
+# Check for METIS. Note AX_LIB_METIS exists, but cannot be configured
 # to be default off (i.e. given no option it tries to locate METIS), so we
 # don't use that.
 have_metis="no"
@@ -304,7 +521,7 @@ AC_ARG_WITH([metis],
     [AS_HELP_STRING([--with-metis=PATH],
        [root directory where metis is installed @<:@yes/no@:>@]
     )],
-    [],
+    [with_metis="$withval"],
     [with_metis="no"]
 )
 if test "x$with_metis" != "xno"; then
@@ -324,17 +541,137 @@ AC_SUBST([METIS_LIBS])
 AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
 
+# METIS fixed width integer printing can require this, so define. Only needed
+# for some non C99 compilers, i.e. C++ pre C++11.
+AH_VERBATIM([__STDC_FORMAT_MACROS],
+            [/* Needed to get PRIxxx macros from stdint.h when not using C99 */
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS 1
+#endif])
+
+# Check for grackle.
+have_grackle="no"
+AC_ARG_WITH([grackle],
+    [AS_HELP_STRING([--with-grackle=PATH],
+       [root directory where grackle is installed @<:@yes/no@:>@]
+    )],
+    [with_grackle="$withval"],
+    [with_grackle="no"]
+)
+if test "x$with_grackle" != "xno"; then
+   AC_PROG_FC
+   AC_FC_LIBRARY_LDFLAGS
+   if test "x$with_grackle" != "xyes" -a "x$with_grackle" != "x"; then
+      GRACKLE_LIBS="-L$with_grackle/lib -lgrackle"
+      GRACKLE_INCS="-I$with_grackle/include"
+   else
+      GRACKLE_LIBS="-lgrackle"
+      GRACKLE_INCS=""
+   fi
+
+   have_grackle="yes"
+
+   AC_CHECK_LIB(
+      [grackle],
+      [initialize_chemistry_data],
+      [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.])
+        AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
+      ],
+      [AC_MSG_ERROR(Cannot find grackle library!)],
+      [$GRACKLE_LIBS $GRACKLE_INCS $FCLIBS]
+   )
+fi
+AC_SUBST([GRACKLE_LIBS])
+AC_SUBST([GRACKLE_INCS])
+AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
+
+# Check for FFTW. We test for this in the standard directories by default,
+# and only disable if using --with-fftw=no or --without-fftw. When a value
+# is given GSL must be found.
+have_fftw="no"
+AC_ARG_WITH([fftw],
+    [AS_HELP_STRING([--with-fftw=PATH],
+       [root directory where fftw is installed @<:@yes/no@:>@]
+    )],
+    [with_fftw="$withval"],
+    [with_fftw="test"]
+)
+if test "x$with_fftw" != "xno"; then
+   if test "x$with_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
+      FFTW_LIBS="-L$with_fftw/lib -lfftw3"
+      FFTW_INCS="-I$with_fftw/include"
+   else
+      FFTW_LIBS="-lfftw3"
+      FFTW_INCS=""
+   fi
+   #  FFTW is not specified, so just check if we have it.
+   if test "x$with_fftw" = "xtest"; then
+      AC_CHECK_LIB([fftw3],[fftw_malloc],[have_fftw="yes"],[have_fftw="no"],$FFTW_LIBS)
+      if test "x$have_fftw" != "xno"; then
+      	 AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.])
+      fi
+   else
+      AC_CHECK_LIB([fftw3],[fftw_malloc],
+         AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.]),
+         AC_MSG_ERROR(something is wrong with the FFTW library!), $FFTW_LIBS)
+      have_fftw="yes"
+   fi
+   if test "$have_fftw" = "no"; then
+      FFTW_LIBS=""
+      FFTW_INCS=""
+   fi
+fi
+AC_SUBST([FFTW_LIBS])
+AC_SUBST([FFTW_INCS])
+AM_CONDITIONAL([HAVEFFTW],[test -n "$FFTW_LIBS"])
+
+#  Check for -lprofiler usually part of the gperftools along with tcmalloc.
+have_profiler="no"
+AC_ARG_WITH([profiler],
+   [AS_HELP_STRING([--with-profiler=PATH],
+      [use cpu profiler library or specify the directory with lib @<:@yes/no@:>@]
+   )],
+   [with_profiler="$withval"],
+   [with_profiler="no"]
+)
+if test "x$with_profiler" != "xno"; then
+   if test "x$with_profiler" != "xyes" -a "x$with_profiler" != "x"; then
+      proflibs="-L$with_profiler -lprofiler"
+   else
+      proflibs="-lprofiler"
+   fi
+   AC_CHECK_LIB([profiler],[ProfilerFlush],
+    [have_profiler="yes" 
+      AC_DEFINE([WITH_PROFILER],1,[Link against the gperftools profiling library.])],
+    [have_profiler="no"], $proflibs)
+
+   if test "$have_profiler" = "yes"; then
+      PROFILER_LIBS="$proflibs"
+   else
+      PROFILER_LIBS=""
+   fi
+fi
+AC_SUBST([PROFILER_LIBS])
+AM_CONDITIONAL([HAVEPROFILER],[test -n "$PROFILER_LIBS"])
+
+# Check for special allocators
+have_special_allocator="no"
+
 #  Check for tcmalloc a fast malloc that is part of the gperftools.
 have_tcmalloc="no"
 AC_ARG_WITH([tcmalloc],
-   [AS_HELP_STRING([--with-tcmalloc],
+   [AS_HELP_STRING([--with-tcmalloc=PATH],
       [use tcmalloc library or specify the directory with lib @<:@yes/no@:>@]
    )],
    [with_tcmalloc="$withval"],
    [with_tcmalloc="no"]
 )
+if test "x$with_tcmalloc" != "xno" -a "x$have_special_allocator" != "xno"; then
+   AC_MSG_ERROR("Cannot activate more than one alternative malloc library")
+fi
+
 if test "x$with_tcmalloc" != "xno"; then
-   if test "x$with_tcmalloc" != "xyes" && test "x$with_tcmalloc" != "x"; then
+   if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
       tclibs="-L$with_tcmalloc -ltcmalloc"
    else
       tclibs="-ltcmalloc"
@@ -344,7 +681,7 @@ if test "x$with_tcmalloc" != "xno"; then
 
    #  Could just have the minimal version.
    if test "$have_tcmalloc" = "no"; then
-      if test "x$with_tcmalloc" != "xyes" && test "x$with_tcmalloc" != "x"; then
+      if test "x$with_tcmalloc" != "xyes" -a "x$with_tcmalloc" != "x"; then
          tclibs="-L$with_tcmalloc -ltcmalloc_minimal"
       else
          tclibs="-ltcmalloc_minimal"
@@ -356,10 +693,17 @@ if test "x$with_tcmalloc" != "xno"; then
    if test "$have_tcmalloc" = "yes"; then
       TCMALLOC_LIBS="$tclibs"
 
-      # These are recommended for GCC.
-      if test "$ax_cv_c_compiler_vendor" = "gnu"; then
-         CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
-      fi
+      AC_DEFINE([HAVE_TCMALLOC],1,[The tcmalloc library appears to be present.])
+
+      have_special_allocator="tcmalloc"
+
+      # Prevent compilers that replace the calls with built-ins (GNU 99) from doing so.
+      case "$ax_cv_c_compiler_vendor" in
+        intel | gnu | clang)
+             CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+          ;;
+      esac
+
    else
       TCMALLOC_LIBS=""
    fi
@@ -367,36 +711,94 @@ fi
 AC_SUBST([TCMALLOC_LIBS])
 AM_CONDITIONAL([HAVETCMALLOC],[test -n "$TCMALLOC_LIBS"])
 
-#  Check for -lprofiler usually part of the gperftools along with tcmalloc.
-have_profiler="no"
-AC_ARG_WITH([profiler],
-   [AS_HELP_STRING([--with-profiler],
-      [use cpu profiler library or specify the directory with lib @<:@yes/no@:>@]
+#  Check for jemalloc another fast malloc that is good with contention.
+have_jemalloc="no"
+AC_ARG_WITH([jemalloc],
+   [AS_HELP_STRING([--with-jemalloc=PATH],
+      [use jemalloc library or specify the directory with lib @<:@yes/no@:>@]
    )],
-   [with_profiler="$withval"],
-   [with_profiler="yes"]
+   [with_jemalloc="$withval"],
+   [with_jemalloc="no"]
 )
-if test "x$with_profiler" != "xno"; then
-   if test "x$with_profiler" != "xyes" && test "x$with_profiler" != "x"; then
-      proflibs="-L$with_profiler -lprofiler"
-   else
-      proflibs="-lprofiler"
-   fi
-   AC_CHECK_LIB([profiler],[ProfilerFlush],[have_profiler="yes"],[have_profiler="no"],
-                $proflibs)
+if test "x$with_jemalloc" != "xno" -a "x$have_special_allocator" != "xno"; then
+   AC_MSG_ERROR("Cannot activate more than one alternative malloc library")
+fi
 
-   if test "$have_profiler" = "yes"; then
-      PROFILER_LIBS="$proflibs"
+if test "x$with_jemalloc" != "xno"; then
+   if test "x$with_jemalloc" != "xyes" -a "x$with_jemalloc" != "x"; then
+      jelibs="-L$with_jemalloc -ljemalloc"
    else
-      PROFILER_LIBS=""
+      jelibs="-ljemalloc"
+   fi
+   AC_CHECK_LIB([jemalloc],[malloc_usable_size],[have_jemalloc="yes"],[have_jemalloc="no"],
+                $jelibs)
+
+   if test "$have_jemalloc" = "yes"; then
+      JEMALLOC_LIBS="$jelibs"
+
+      AC_DEFINE([HAVE_JEMALLOC],1,[The jemalloc library appears to be present.])
+
+      have_special_allocator="jemalloc"
+
+      # Prevent compilers that replace the regular calls with built-ins (GNU 99) from doing so.
+      case "$ax_cv_c_compiler_vendor" in
+        intel | gnu | clang)
+             CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+          ;;
+      esac
+
+   else
+      JEMALLOC_LIBS=""
    fi
 fi
-AC_SUBST([PROFILER_LIBS])
-AM_CONDITIONAL([HAVEPROFILER],[test -n "$PROFILER_LIBS"])
+AC_SUBST([JEMALLOC_LIBS])
+AM_CONDITIONAL([HAVEJEMALLOC],[test -n "$JEMALLOC_LIBS"])
+
+#  Check for tbbmalloc, Intel's fast and parallel allocator
+have_tbbmalloc="no"
+AC_ARG_WITH([tbbmalloc],
+   [AS_HELP_STRING([--with-tbbmalloc=PATH],
+      [use tbbmalloc library or specify the directory with lib @<:@yes/no@:>@]
+   )],
+   [with_tbbmalloc="$withval"],
+   [with_tbbmalloc="no"]
+)
+if test "x$with_tbbmalloc" != "xno" -a "x$have_special_allocator" != "xno"; then
+   AC_MSG_ERROR("Cannot activate more than one alternative malloc library")
+fi
+
+if test "x$with_tbbmalloc" != "xno"; then
+   if test "x$with_tbbmalloc" != "xyes" -a "x$with_tbbmalloc" != "x"; then
+      tbblibs="-L$with_tbbmalloc -ltbbmalloc_proxy -ltbbmalloc"
+   else
+      tbblibs="-ltbbmalloc_proxy -ltbbmalloc"
+   fi
+   AC_CHECK_LIB([tbbmalloc],[scalable_malloc],[have_tbbmalloc="yes"],[have_tbbmalloc="no"],
+                $tbblibs)
+
+   if test "$have_tbbmalloc" = "yes"; then
+      TBBMALLOC_LIBS="$tbblibs"
+
+      AC_DEFINE([HAVE_TBBMALLOC],1,[The TBBmalloc library appears to be present.])
+
+      have_special_allocator="TBBmalloc"
+
+      # Prevent compilers that replace the calls with built-ins (GNU 99) from doing so.
+      case "$ax_cv_c_compiler_vendor" in
+        intel | gnu | clang)
+             CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+          ;;
+      esac
+
+   else
+      TBBMALLOC_LIBS=""
+   fi
+fi
+AC_SUBST([TBBMALLOC_LIBS])
+AM_CONDITIONAL([HAVETBBMALLOC],[test -n "$TBBMALLOC_LIBS"])
 
 # Check for HDF5. This is required.
 AX_LIB_HDF5
-
 if test "$with_hdf5" != "yes"; then
     AC_MSG_ERROR([Could not find a working HDF5 library])
 fi
@@ -404,8 +806,6 @@ fi
 # We want to know if this HDF5 supports MPI and whether we should use it.
 # The default is to use MPI support if it is available, i.e. this is
 # a parallel HDF5.
-# To do this need to ask the HDF5 compiler about its configuration,
-# -showconfig should have yes/no.
 have_parallel_hdf5="no"
 if test "$with_hdf5" = "yes"; then
     AC_ARG_ENABLE([parallel-hdf5],
@@ -418,7 +818,15 @@ if test "$with_hdf5" = "yes"; then
 
     if test "$enable_parallel_hdf5" = "yes"; then
         AC_MSG_CHECKING([for HDF5 parallel support])
-        parallel=`$H5CC -showconfig | grep "Parallel HDF5:" | awk '{print $3}'`
+
+	# Check if the library is capable, the header should define H5_HAVE_PARALLEL.
+
+        AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+        #include "hdf5.h"
+        #ifndef H5_HAVE_PARALLEL
+        # error macro not defined
+        #endif
+        ]])], [parallel="yes"], [parallel="no"])
         if test "$parallel" = "yes"; then
             have_parallel_hdf5="yes"
             AC_DEFINE([HAVE_PARALLEL_HDF5],1,[HDF5 library supports parallel access])
@@ -427,6 +835,10 @@ if test "$with_hdf5" = "yes"; then
     fi
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
+
+# Check for floating-point execeptions
+AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
+    [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
 
 # Check for setaffinity.
 AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[1],
@@ -444,19 +856,10 @@ if test "$ac_cv_func_pthread_setaffinity_np" = "yes"; then
   fi
 fi
 
-# Check for FFTW
-have_fftw3="no"
-AC_CHECK_HEADER([fftw3.h])
-if test "$ac_cv_header_fftw3_h" = "yes"; then
-   AC_CHECK_LIB([fftw3],[fftw_malloc], [AC_DEFINE([HAVE_FFTW],
-   [1],[Defined if FFTW 3.x exists.])] )
-   FFTW_LIBS="-lfftw3"
-   have_fftw3="yes"
-fi
-AC_SUBST([FFTW_LIBS])
 
-# Check for Intel intrinsics header optionally used by vector.h.
+# Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
+AC_CHECK_HEADERS([altivec.h])
 
 # Check for timing functions needed by cycle.h.
 AC_HEADER_TIME
@@ -477,6 +880,27 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
 
+# Special timers for the ARM v7 and ARM v8 platforms (taken from FFTW-3 to match their cycle.h)
+AC_ARG_ENABLE(armv8-pmccntr-el0, [AC_HELP_STRING([--enable-armv8-pmccntr-el0],[enable the cycle counter on ARMv8 via the PMCCNTR_EL0 register])], have_armv8pmccntrel0=$enableval)
+if test "$have_armv8pmccntrel0"x = "yes"x; then
+	AC_DEFINE(HAVE_ARMV8_PMCCNTR_EL0,1,[Define if you have enabled the PMCCNTR_EL0 cycle counter on ARMv8])
+fi
+
+AC_ARG_ENABLE(armv8-cntvct-el0, [AC_HELP_STRING([--enable-armv8-cntvct-el0],[enable the cycle counter on ARMv8 via the CNTVCT_EL0 register])], have_armv8cntvctel0=$enableval)
+if test "$have_armv8cntvctel0"x = "yes"x; then
+	AC_DEFINE(HAVE_ARMV8_CNTVCT_EL0,1,[Define if you have enabled the CNTVCT_EL0 cycle counter on ARMv8])
+fi
+
+AC_ARG_ENABLE(armv7a-cntvct, [AC_HELP_STRING([--enable-armv7a-cntvct],[enable the cycle counter on Armv7a via the CNTVCT register])], have_armv7acntvct=$enableval)
+if test "$have_armv7acntvct"x = "yes"x; then
+	AC_DEFINE(HAVE_ARMV7A_CNTVCT,1,[Define if you have enabled the CNTVCT cycle counter on ARMv7a])
+fi
+
+AC_ARG_ENABLE(armv7a-pmccntr, [AC_HELP_STRING([--enable-armv7a-pmccntr],[enable the cycle counter on Armv7a via the PMCCNTR register])], have_armv7apmccntr=$enableval)
+if test "$have_armv7apmccntr"x = "yes"x; then
+	AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
+fi
+
 # Add warning flags by default, if these can be used. Option =error adds
 # -Werror to GCC, clang and Intel.  Note do this last as compiler tests may
 # become errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
@@ -493,10 +917,10 @@ if test "$enable_warn" != "no"; then
     # We will do this by hand instead and only default to the macro for unknown compilers
     case "$ax_cv_c_compiler_vendor" in
           gnu | clang)
-             CFLAGS="$CFLAGS -Wall -Wextra -Wno-unused-parameter"
+             CFLAGS="$CFLAGS -Wall -Wextra -Wno-unused-parameter -Wshadow"
           ;;
 	  intel)
-             CFLAGS="$CFLAGS -w2 -Wunused-variable"
+             CFLAGS="$CFLAGS -w2 -Wunused-variable -Wshadow"
           ;;
 	  *)
 	     AX_CFLAGS_WARN_ALL
@@ -511,7 +935,346 @@ if test "$enable_warn" != "no"; then
           ;;
        esac
     fi
+
+    # We want strict-prototypes, but this must still work even if warnings
+    # are an error.
+    AX_CHECK_COMPILE_FLAG([-Wstrict-prototypes],[CFLAGS="$CFLAGS -Wstrict-prototypes"],
+                          [CFLAGS="$CFLAGS"],[$CFLAGS],[AC_LANG_SOURCE([int main(void){return 0;}])])
 fi
+
+# Various package configuration options.
+
+# Hydro scheme.
+AC_ARG_WITH([hydro],
+   [AS_HELP_STRING([--with-hydro=<scheme>],
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, default, gizmo-mfv, gizmo-mfm, shadowfax, minimal-multi-mat, debug default: gadget2@:>@]
+   )],
+   [with_hydro="$withval"],
+   [with_hydro="gadget2"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_hydro" != "gadget2"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-hydro together])
+   else
+      with_hydro="$with_subgrid_hydro"
+   fi
+fi
+
+case "$with_hydro" in
+   gadget2)
+      AC_DEFINE([GADGET2_SPH], [1], [Gadget-2 SPH])
+   ;;
+   minimal)
+      AC_DEFINE([MINIMAL_SPH], [1], [Minimal SPH])
+   ;;
+   pressure-entropy)
+      AC_DEFINE([HOPKINS_PE_SPH], [1], [Pressure-Entropy SPH])
+   ;;
+   pressure-energy)
+      AC_DEFINE([HOPKINS_PU_SPH], [1], [Pressure-Energy SPH])
+   ;;
+   default)
+      AC_DEFINE([DEFAULT_SPH], [1], [Default SPH])
+   ;;
+   gizmo-mfv)
+      AC_DEFINE([GIZMO_MFV_SPH], [1], [GIZMO MFV SPH])
+   ;;
+   gizmo-mfm)
+      AC_DEFINE([GIZMO_MFM_SPH], [1], [GIZMO MFM SPH])
+   ;;
+   shadowfax)
+      AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])
+   ;;
+   minimal-multi-mat)
+      AC_DEFINE([MINIMAL_MULTI_MAT_SPH], [1], [Minimal Multiple Material SPH])
+   ;;
+
+   *)
+      AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
+   ;;
+esac
+
+# Check if debugging interactions is switched on.
+AC_ARG_ENABLE([debug-interactions],
+   [AS_HELP_STRING([--enable-debug-interactions],
+     [Activate interaction debugging, logging a maximum of @<:@N@:>@ neighbours. Defaults to 256 if no value set.]
+   )],
+   [enable_debug_interactions="$enableval"],
+   [enable_debug_interactions="no"]
+)
+if test "$enable_debug_interactions" != "no"; then
+  if test "$with_hydro" = "gadget2"; then
+      AC_DEFINE([DEBUG_INTERACTIONS_SPH],1,[Enable interaction debugging])
+    if test "$enable_debug_interactions" == "yes"; then
+      AC_DEFINE([MAX_NUM_OF_NEIGHBOURS],256,[The maximum number of particle neighbours to be logged])
+      [enable_debug_interactions="yes (Logging up to 256 neighbours)"]
+    else
+      AC_DEFINE_UNQUOTED([MAX_NUM_OF_NEIGHBOURS], [$enableval] ,[The maximum number of particle neighbours to be logged])
+      [enable_debug_interactions="yes (Logging up to $enableval neighbours)"]
+    fi
+  else
+    [enable_debug_interactions="no (only available for gadget2 hydro scheme)"]
+  fi
+fi
+
+# SPH Kernel function
+AC_ARG_WITH([kernel],
+   [AS_HELP_STRING([--with-kernel=<kernel>],
+      [Kernel function to use @<:@cubic-spline, quartic-spline, quintic-spline, wendland-C2, wendland-C4, wendland-C6 default: cubic-spline@:>@]
+   )],
+   [with_kernel="$withval"],
+   [with_kernel="cubic-spline"]
+)
+case "$with_kernel" in
+   cubic-spline)
+      AC_DEFINE([CUBIC_SPLINE_KERNEL], [1], [Cubic spline kernel])
+   ;;
+   quartic-spline)
+      AC_DEFINE([QUARTIC_SPLINE_KERNEL], [1], [Quartic spline kernel])
+   ;;
+   quintic-spline)
+      AC_DEFINE([QUINTIC_SPLINE_KERNEL], [1], [Quintic spline kernel])
+   ;;
+   wendland-C2)
+      AC_DEFINE([WENDLAND_C2_KERNEL], [1], [Wendland-C2 kernel])
+   ;;
+   wendland-C4)
+      AC_DEFINE([WENDLAND_C4_KERNEL], [1], [Wendland-C4 kernel])
+   ;;
+   wendland-C6)
+      AC_DEFINE([WENDLAND_C6_KERNEL], [1], [Wendland-C6 kernel])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown kernel function: $with_kernel])
+   ;;
+esac
+
+#  Dimensionality of the hydro scheme.
+AC_ARG_WITH([hydro-dimension],
+   [AS_HELP_STRING([--with-hydro-dimension=<dim>],
+      [dimensionality of problem @<:@3/2/1 default: 3@:>@]
+   )],
+   [with_dimension="$withval"],
+   [with_dimension="3"]
+)
+case "$with_dimension" in
+   1)
+      AC_DEFINE([HYDRO_DIMENSION_1D], [1], [1D solver])
+   ;;
+   2)
+      AC_DEFINE([HYDRO_DIMENSION_2D], [2], [2D solver])
+   ;;
+   3)
+      AC_DEFINE([HYDRO_DIMENSION_3D], [3], [3D solver])
+   ;;
+   *)
+      AC_MSG_ERROR([Dimensionality must be 1, 2 or 3])
+   ;;
+esac
+
+#  Equation of state
+AC_ARG_WITH([equation-of-state],
+   [AS_HELP_STRING([--with-equation-of-state=<EoS>],
+      [equation of state @<:@ideal-gas, isothermal-gas, planetary default: ideal-gas@:>@]
+   )],
+   [with_eos="$withval"],
+   [with_eos="ideal-gas"]
+)
+case "$with_eos" in
+   ideal-gas)
+      AC_DEFINE([EOS_IDEAL_GAS], [1], [Ideal gas equation of state])
+   ;;
+   isothermal-gas)
+      AC_DEFINE([EOS_ISOTHERMAL_GAS], [1], [Isothermal gas equation of state])
+   ;;
+   planetary)
+      AC_DEFINE([EOS_PLANETARY], [1], [All planetary equations of state])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown equation of state: $with_eos])
+   ;;
+esac
+
+#  Adiabatic index
+AC_ARG_WITH([adiabatic-index],
+   [AS_HELP_STRING([--with-adiabatic-index=<gamma>],
+      [adiabatic index @<:@5/3, 7/5, 4/3, 2 default: 5/3@:>@]
+   )],
+   [with_gamma="$withval"],
+   [with_gamma="5/3"]
+)
+case "$with_gamma" in
+   5/3)
+      AC_DEFINE([HYDRO_GAMMA_5_3], [5./3.], [Adiabatic index is 5/3])
+   ;;
+   7/5)
+      AC_DEFINE([HYDRO_GAMMA_7_5], [7./5.], [Adiabatic index is 7/5])
+   ;;
+   4/3)
+      AC_DEFINE([HYDRO_GAMMA_4_3], [4./3.], [Adiabatic index is 4/3])
+   ;;
+   2)
+      AC_DEFINE([HYDRO_GAMMA_2_1], [2.], [Adiabatic index is 2])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown adiabatic index: $with_gamma])
+   ;;
+esac
+
+#  Riemann solver
+AC_ARG_WITH([riemann-solver],
+   [AS_HELP_STRING([--with-riemann-solver=<solver>],
+      [riemann solver (gizmo-sph only) @<:@none, exact, trrs, hllc, default: none@:>@]
+   )],
+   [with_riemann="$withval"],
+   [with_riemann="none"]
+)
+case "$with_riemann" in
+   none)
+      AC_DEFINE([RIEMANN_SOLVER_NONE], [1], [No Riemann solver])
+   ;;
+   exact)
+      AC_DEFINE([RIEMANN_SOLVER_EXACT], [1], [Exact Riemann solver])
+   ;;
+   trrs)
+      AC_DEFINE([RIEMANN_SOLVER_TRRS], [1], [Two Rarefaction Riemann Solver])
+   ;;
+   hllc)
+      AC_DEFINE([RIEMANN_SOLVER_HLLC], [1], [Harten-Lax-van Leer-Contact Riemann solver])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown Riemann solver: $with_riemann])
+   ;;
+esac
+
+#  Cooling function
+AC_ARG_WITH([cooling],
+   [AS_HELP_STRING([--with-cooling=<function>],
+      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle, grackle1, grackle2, grackle3 default: none@:>@]
+   )],
+   [with_cooling="$withval"],
+   [with_cooling="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_cooling" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-cooling together])
+   else
+      with_cooling="$with_subgrid_cooling"
+   fi
+fi
+
+case "$with_cooling" in
+   none)
+      AC_DEFINE([COOLING_NONE], [1], [No cooling function])
+   ;;
+   const-du)
+      AC_DEFINE([COOLING_CONST_DU], [1], [Const du/dt cooling function])
+   ;;
+   const-lambda)
+      AC_DEFINE([COOLING_CONST_LAMBDA], [1], [Const Lambda cooling function])
+   ;;
+   grackle)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [0], [Grackle chemistry network, mode 0])
+   ;;
+   grackle1)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [1], [Grackle chemistry network, mode 1])
+   ;;
+   grackle2)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [2], [Grackle chemistry network, mode 2])
+   ;;
+   grackle3)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [3], [Grackle chemistry network, mode 3])
+   ;;
+   EAGLE)
+      AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown cooling function: $with_cooling])
+   ;;
+esac
+
+#  chemistry function
+AC_ARG_WITH([chemistry],
+   [AS_HELP_STRING([--with-chemistry=<function>],
+      [chemistry function @<:@none, GEAR, EAGLE default: none@:>@]
+   )],
+   [with_chemistry="$withval"],
+   [with_chemistry="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_chemistry" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-chemistry together])
+   else
+      with_chemistry="$with_subgrid_chemistry"
+   fi
+fi
+
+case "$with_chemistry" in
+   none)
+      AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
+   ;;
+   GEAR)
+      AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
+   ;;
+   EAGLE)
+      AC_DEFINE([CHEMISTRY_EAGLE], [1], [Chemistry taken from the EAGLE model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown chemistry function: $with_chemistry])
+   ;;
+esac
+
+#  External potential
+AC_ARG_WITH([ext-potential],
+   [AS_HELP_STRING([--with-ext-potential=<pot>],
+      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, softened-isothermal, disc-patch, sine-wave, default: none@:>@]
+   )],
+   [with_potential="$withval"],
+   [with_potential="none"]
+)
+case "$with_potential" in
+   none)
+      AC_DEFINE([EXTERNAL_POTENTIAL_NONE], [1], [No external potential])
+   ;;
+   point-mass)
+      AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS], [1], [Point-mass external potential])
+   ;;
+   isothermal)
+      AC_DEFINE([EXTERNAL_POTENTIAL_ISOTHERMAL], [1], [Isothermal external potential])
+   ;;
+   disc-patch)
+      AC_DEFINE([EXTERNAL_POTENTIAL_DISC_PATCH], [1], [Disc-patch external potential])
+   ;;
+   sine-wave)
+      AC_DEFINE([EXTERNAL_POTENTIAL_SINE_WAVE], [1], [Sine wave external potential in 1D])
+   ;;
+   point-mass-ring)
+      AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_RING], [1], [Point mass potential for Keplerian Ring (Hopkins 2015).])
+   ;;
+   point-mass-softened)
+      AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_SOFT], [1], [Softened point-mass potential with form 1/(r^2 + softening^2).])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown external potential: $with_potential])
+   ;;
+esac
+
+#  Gravity multipole order
+AC_ARG_WITH([multipole-order],
+   [AS_HELP_STRING([--with-multipole-order=<order>],
+      [order of the multipole and gravitational field expansion @<:@ default: 5@:>@]
+   )],
+   [with_multipole_order="$withval"],
+   [with_multipole_order="5"]
+)
+AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Multipole order])
 
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
@@ -524,29 +1287,72 @@ AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
-AC_CONFIG_FILES([tests/testPair.sh], [chmod +x tests/testPair.sh])
-AC_CONFIG_FILES([tests/testPairPerturbed.sh], [chmod +x tests/testPairPerturbed.sh])
+AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
 AC_CONFIG_FILES([tests/test27cellsPerturbed.sh], [chmod +x tests/test27cellsPerturbed.sh])
 AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
+AC_CONFIG_FILES([tests/test125cellsPerturbed.sh], [chmod +x tests/test125cellsPerturbed.sh])
+AC_CONFIG_FILES([tests/testPeriodicBC.sh], [chmod +x tests/testPeriodicBC.sh])
+AC_CONFIG_FILES([tests/testPeriodicBCPerturbed.sh], [chmod +x tests/testPeriodicBCPerturbed.sh])
+AC_CONFIG_FILES([tests/testInteractions.sh], [chmod +x tests/testInteractions.sh])
 AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
+AC_CONFIG_FILES([tests/testSelectOutput.sh], [chmod +x tests/testSelectOutput.sh])
 
-# Report general configuration.
-AC_MSG_RESULT([
-   Compiler        : $CC
-    - vendor       : $ax_cv_c_compiler_vendor
-    - version      : $ax_cv_c_compiler_version
-    - flags        : $CFLAGS
-   MPI enabled     : $enable_mpi
-   HDF5 enabled    : $with_hdf5
-    - parallel     : $have_parallel_hdf5
-   Metis enabled   : $have_metis
-   FFTW3 enabled   : $have_fftw3
-   libNUMA enabled : $have_numa
-   Using tcmalloc  : $have_tcmalloc
-   CPU profiler    : $have_profiler
-   Task debugging  : $enable_task_debugging
-])
+# Save the compilation options
+AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
+
+# Make sure the latest git revision string gets included
+touch src/version.c
+
+#  Need to define this, instead of using fifth argument of AC_INIT, until
+#  2.64. Defer until now as this redefines PACKAGE_URL, which can emit a
+#  compilation error when testing with -Werror.
+AC_DEFINE([PACKAGE_URL],["www.swiftsim.com"], [Package web pages])
 
 # Generate output.
 AC_OUTPUT
+
+# Report general configuration.
+AC_MSG_RESULT([
+ ------- Summary --------
+
+   $PACKAGE_NAME v.$PACKAGE_VERSION
+
+   Compiler           : $CC
+    - vendor          : $ax_cv_c_compiler_vendor
+    - version         : $ax_cv_c_compiler_version
+    - flags           : $CFLAGS
+   MPI enabled        : $enable_mpi
+   HDF5 enabled       : $with_hdf5
+    - parallel        : $have_parallel_hdf5
+   Metis enabled      : $have_metis
+   FFTW3 enabled      : $have_fftw
+   GSL enabled        : $have_gsl
+   libNUMA enabled    : $have_numa
+   GRACKLE enabled    : $have_grackle
+   Special allocators : $have_special_allocator
+   CPU profiler       : $have_profiler
+   Pthread barriers   : $have_pthread_barrier
+
+   Hydro scheme       : $with_hydro
+   Dimensionality     : $with_dimension
+   Kernel function    : $with_kernel
+   Equation of state  : $with_eos
+   Adiabatic index    : $with_gamma
+   Riemann solver     : $with_riemann
+   Cooling function   : $with_cooling
+   Chemistry          : $with_chemistry
+
+   External potential  : $with_potential
+   Multipole order     : $with_multipole_order
+   No gravity below ID : $no_gravity_below_id
+
+   Individual timers     : $enable_timers
+   Task debugging        : $enable_task_debugging
+   Threadpool debugging  : $enable_threadpool_debugging
+   Debugging checks      : $enable_debugging_checks
+   Interaction debugging : $enable_debug_interactions
+   Naive interactions    : $enable_naive_interactions
+   Gravity checks        : $gravity_force_checks
+
+ ------------------------])

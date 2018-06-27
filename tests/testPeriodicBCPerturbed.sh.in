@@ -1,0 +1,30 @@
+#!/bin/bash
+
+for v in {0..3}
+do
+    echo ""
+	
+    rm -f brute_force_periodic_BC_perturbed.dat swift_periodic_BC_perturbed.dat
+
+    echo "Running ./testPeriodicBC -n 6 -r 1 -d 0.1 -f perturbed -v $v"
+    ./testPeriodicBC -n 6 -r 1 -d 0.1 -f perturbed -v $v
+
+    if [ -e brute_force_periodic_BC_perturbed.dat ]
+    then
+	if python @srcdir@/difffloat.py brute_force_periodic_BC_perturbed.dat swift_periodic_BC_perturbed.dat @srcdir@/tolerance_periodic_BC_perturbed.dat
+	then
+	    echo "Accuracy test passed"
+	else
+	    echo "Accuracy test failed"
+	    exit 1
+	fi
+    else
+	echo "Error Missing test output file"
+	exit 1
+    fi
+
+    echo "------------"
+    
+done
+
+exit $?

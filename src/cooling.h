@@ -27,9 +27,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Local headers. */
-#include "const.h"
-
 /* Import the right cooling definition */
 #if defined(COOLING_NONE)
 #include "./cooling/none/cooling.h"
@@ -39,16 +36,24 @@
 #include "./cooling/const_lambda/cooling.h"
 #elif defined(COOLING_GRACKLE)
 #include "./cooling/grackle/cooling.h"
+#elif defined(COOLING_EAGLE)
+#include "./cooling/EAGLE/cooling.h"
 #else
 #error "Invalid choice of cooling function."
 #endif
 
 /* Common functions */
-void cooling_init(const struct swift_params* parameter_file,
-                  const struct UnitSystem* us,
+void cooling_init(struct swift_params* parameter_file,
+                  const struct unit_system* us,
                   const struct phys_const* phys_const,
                   struct cooling_function_data* cooling);
 
 void cooling_print(const struct cooling_function_data* cooling);
+
+/* Dump/restore. */
+void cooling_struct_dump(const struct cooling_function_data* cooling,
+                         FILE* stream);
+void cooling_struct_restore(const struct cooling_function_data* cooling,
+                            FILE* stream);
 
 #endif /* SWIFT_COOLING_H */

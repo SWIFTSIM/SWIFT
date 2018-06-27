@@ -105,7 +105,7 @@ void check_riemann_solution(struct riemann_statevector* WL,
 /**
  * @brief Check the TRRS Riemann solver on the Toro test problems
  */
-void check_riemann_trrs() {
+void check_riemann_trrs(void) {
   struct riemann_statevector WL, WR, Whalf;
 
   /* Test 1 */
@@ -232,7 +232,7 @@ void check_riemann_trrs() {
 /**
  * @brief Check the symmetry of the TRRS Riemann solver
  */
-void check_riemann_symmetry() {
+void check_riemann_symmetry(void) {
   float WL[5], WR[5], Whalf1[5], Whalf2[5], n_unit1[3], n_unit2[3], n_norm,
       vij[3], totflux1[5], totflux2[5];
 
@@ -274,11 +274,11 @@ void check_riemann_symmetry() {
         Whalf2[1], Whalf2[2], Whalf2[3], Whalf2[4]);
     error("Asymmetry in solution!");
   } else {
-    message(
-        "Solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
-        "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
-        Whalf1[0], Whalf1[1], Whalf1[2], Whalf1[3], Whalf1[4], Whalf2[0],
-        Whalf2[1], Whalf2[2], Whalf2[3], Whalf2[4]);
+    /* message( */
+    /*     "Solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == " */
+    /*     "[%.3e,%.3e,%.3e,%.3e,%.3e]\n", */
+    /*     Whalf1[0], Whalf1[1], Whalf1[2], Whalf1[3], Whalf1[4], Whalf2[0], */
+    /*     Whalf2[1], Whalf2[2], Whalf2[3], Whalf2[4]); */
   }
 
   vij[0] = random_uniform(-10.0f, 10.0f);
@@ -300,18 +300,18 @@ void check_riemann_symmetry() {
         totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]);
     error("Asymmetry in solution!");
   } else {
-    message(
-        "Solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
-        "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
-        totflux1[0], totflux1[1], totflux1[2], totflux1[3], totflux1[4],
-        totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]);
+    /* message( */
+    /*     "Solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == " */
+    /*     "[%.3e,%.3e,%.3e,%.3e,%.3e]\n", */
+    /*     totflux1[0], totflux1[1], totflux1[2], totflux1[3], totflux1[4], */
+    /*     totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]); */
   }
 }
 
 /**
  * @brief Check the TRRS Riemann solver
  */
-int main() {
+int main(int argc, char* argv[]) {
 
   /* check the TRRS Riemann solver */
   check_riemann_trrs();

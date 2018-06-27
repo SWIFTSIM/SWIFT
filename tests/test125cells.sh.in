@@ -7,14 +7,24 @@ do
 
 	rm -f brute_force_125_standard.dat swift_dopair_125_standard.dat
 
+	echo "Running ./test125cells -n 6 -r 1 -v $v -p $p -f standard"
 	./test125cells -n 6 -r 1 -v $v -p $p -f standard
 
 	if [ -e brute_force_125_standard.dat ]
 	then
-	    python @srcdir@/difffloat.py brute_force_125_standard.dat swift_dopair_125_standard.dat @srcdir@/tolerance_125.dat 6
+	    if python @srcdir@/difffloat.py brute_force_125_standard.dat swift_dopair_125_standard.dat @srcdir@/tolerance_125_normal.dat 6
+	    then
+		echo "Accuracy test passed"
+	    else
+		echo "Accuracy test failed"
+		exit 1
+	    fi
 	else
+	    echo "Error Missing test output file"
 	    exit 1
         fi
+
+	echo "------------"
 
     done
 done

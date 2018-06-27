@@ -45,12 +45,12 @@ static unsigned long long clocks_cpufreq = 0;
 static ticks clocks_start = 0;
 
 /* The units of any returned times. */
-static char *clocks_units[] = {"ms", "ticks"};
+static const char *clocks_units[] = {"ms", "~ms"};
 static int clocks_units_index = 0;
 static double clocks_units_scale = 1000.0;
 
 /* Local prototypes. */
-static void clocks_estimate_cpufreq();
+static void clocks_estimate_cpufreq(void);
 
 /**
  * @brief Get the current time.
@@ -113,7 +113,7 @@ void clocks_set_cpufreq(unsigned long long freq) {
  *
  * @result the CPU frequency.
  */
-unsigned long long clocks_get_cpufreq() {
+unsigned long long clocks_get_cpufreq(void) {
 
   if (clocks_cpufreq > 0) return clocks_cpufreq;
 
@@ -132,7 +132,7 @@ unsigned long long clocks_get_cpufreq() {
  * file (probably a overestimate) or finally just use a value of 1 with
  * time units of ticks.
  */
-static void clocks_estimate_cpufreq() {
+static void clocks_estimate_cpufreq(void) {
 
 #ifdef HAVE_CLOCK_GETTIME
   /* Try to time a nanosleep() in ticks. */
@@ -176,11 +176,12 @@ static void clocks_estimate_cpufreq() {
   }
 #endif
 
-  /* If all fails just report ticks in any times. */
+  /* If all fails just report ticks for a notional 2.6GHz machine. */
   if (clocks_cpufreq == 0) {
-    clocks_cpufreq = 1;
+    unsigned long long maxfreq = 2600000;
+    clocks_cpufreq = maxfreq * 1000;
     clocks_units_index = 1;
-    clocks_units_scale = 1.0;
+    clocks_units_scale = 1000.0;
   }
 }
 
@@ -217,6 +218,22 @@ double clocks_from_ticks(ticks tics) {
 }
 
 /**
+ * @brief Convert a number of milli seconds into ticks, if possible.
+ *
+ * Only an approximation as based on how well we have estimated the
+ * rtc frequency. Should be good for machines that support constant_rtc
+ * and clock_gettime(), and reasonable for most Linux machines, otherwise
+ * a guess will just be returned. See clocks_getunit() for the actual units.
+ *
+ * @param ms a number of "milliseconds" to convert to ticks
+ *
+ * @result the number of ticks, if possible.
+ */
+ticks clocks_to_ticks(double ms) {
+  return (ticks)(ms * (double)clocks_get_cpufreq() / clocks_units_scale);
+}
+
+/**
  * @brief return the time units.
  *
  * Normally "ms" for milliseconds, but can be "ticks" when no conversion
@@ -224,7 +241,7 @@ double clocks_from_ticks(ticks tics) {
  *
  * @result the current time units.
  */
-const char *clocks_getunit() { return clocks_units[clocks_units_index]; }
+const char *clocks_getunit(void) { return clocks_units[clocks_units_index]; }
 
 /**
  * @brief returns the time since the start of the execution in seconds
@@ -235,7 +252,7 @@ const char *clocks_getunit() { return clocks_units[clocks_units_index]; }
  *
  * @result the time since the start of the execution
  */
-const char *clocks_get_timesincestart() {
+const char *clocks_get_timesincestart(void) {
 
   static char buffer[40];
 
@@ -243,4 +260,23 @@ const char *clocks_get_timesincestart() {
           clocks_diff_ticks(getticks(), clocks_start) / 1000.0);
 
   return buffer;
+}
+
+/**
+ * @brief return the cpu time used.
+ *
+ * Uses the times(2) function to access the user cpu times and returns the sum
+ * of these for the process tree, i.e. current process plus "waited-for"
+ * children. This may be pthread implementation specific as to what that
+ * exactly means. Note we do not include the system time as that includes
+ * spin times and we don't want to give credit for that.
+ *
+ * @result cpu time used in sysconf(_SC_CLK_TCK) ticks, usually 100/s not our
+ *         usual ticks.
+ */
+double clocks_get_cputime_used(void) {
+
+  struct tms tmstic;
+  times(&tmstic);
+  return (double)(tmstic.tms_utime + tmstic.tms_cutime);
 }

@@ -39,14 +39,14 @@ H_0_cgs = 100. * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 #read some header/parameter information from the first snapshot
 
-filename = "CoolingHalo_000.hdf5"
+filename = "CoolingHalo_0000.hdf5"
 f = h5.File(filename,'r')
 params = f["Parameters"]
 unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
 unit_length_cgs = float(params.attrs["InternalUnitSystem:UnitLength_in_cgs"])
 unit_velocity_cgs = float(params.attrs["InternalUnitSystem:UnitVelocity_in_cgs"])
 unit_time_cgs = unit_length_cgs / unit_velocity_cgs
-v_c = float(params.attrs["SoftenedIsothermalPotential:vrot"])
+v_c = float(params.attrs["IsothermalPotential:vrot"])
 v_c_cgs = v_c * unit_velocity_cgs
 lambda_cgs = float(params.attrs["LambdaCooling:lambda_cgs"])
 X_H = float(params.attrs["LambdaCooling:hydrogen_mass_abundance"])
@@ -60,7 +60,7 @@ M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 for i in range(n_snaps):
 
-    filename = "CoolingHalo_%03d.hdf5" %i
+    filename = "CoolingHalo_%04d.hdf5" %i
     f = h5.File(filename,'r')
     coords_dset = f["PartType0/Coordinates"]
     coords = np.array(coords_dset)

@@ -41,9 +41,13 @@ struct sourceterms {
 #include "sourceterms/sn_feedback/sn_feedback.h"
 #endif
 
-void sourceterms_init(const struct swift_params* parameter_file,
-                      struct UnitSystem* us, struct sourceterms* source);
+void sourceterms_init(struct swift_params* parameter_file,
+                      struct unit_system* us, struct sourceterms* source);
 void sourceterms_print(struct sourceterms* source);
+
+/* Dump/restore. */
+void sourceterms_struct_dump(const struct sourceterms* source, FILE* stream);
+void sourceterms_struct_restore(const struct sourceterms* source, FILE* stream);
 
 /**
  * @brief Routines related to source terms

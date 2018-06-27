@@ -27,30 +27,37 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Local includes. */
-#include "const.h"
-
 /* Import the right external potential definition */
 #if defined(EXTERNAL_POTENTIAL_NONE)
 #include "./potential/none/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_POINTMASS)
 #include "./potential/point_mass/potential.h"
-#elif defined(EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL)
+#elif defined(EXTERNAL_POTENTIAL_ISOTHERMAL)
 #include "./potential/isothermal/potential.h"
-#elif defined(EXTERNAL_POTENTIAL_SOFTENED_ISOTHERMAL_POTENTIAL)
-#include "./potential/softened_isothermal/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_DISC_PATCH)
 #include "./potential/disc_patch/potential.h"
+#elif defined(EXTERNAL_POTENTIAL_SINE_WAVE)
+#include "./potential/sine_wave/potential.h"
+#elif defined(EXTERNAL_POTENTIAL_POINTMASS_RING)
+#include "./potential/point_mass_ring/potential.h"
+#elif defined(EXTERNAL_POTENTIAL_POINTMASS_SOFT)
+#include "./potential/point_mass_softened/potential.h"
 #else
 #error "Invalid choice of external potential"
 #endif
 
 /* Now, some generic functions, defined in the source file */
-void potential_init(const struct swift_params* parameter_file,
+void potential_init(struct swift_params* parameter_file,
                     const struct phys_const* phys_const,
-                    const struct UnitSystem* us, const struct space* s,
+                    const struct unit_system* us, const struct space* s,
                     struct external_potential* potential);
 
 void potential_print(const struct external_potential* potential);
+
+/* Dump/restore. */
+void potential_struct_dump(const struct external_potential* potential,
+                           FILE* stream);
+void potential_struct_restore(const struct external_potential* potential,
+                              FILE* stream);
 
 #endif /* SWIFT_POTENTIAL_H */

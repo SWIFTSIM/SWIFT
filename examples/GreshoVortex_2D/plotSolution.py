@@ -31,6 +31,7 @@ P0 = 0.           # Constant additional pressure (should have no impact on the d
 import matplotlib
 matplotlib.use("Agg")
 from pylab import *
+from scipy import stats
 import h5py
 
 # Plot parameters
@@ -82,7 +83,7 @@ solution_s = solution_P / solution_rho**gas_gamma
 solution_u = solution_P /((gas_gamma - 1.)*solution_rho)
 
 # Read the simulation data
-sim = h5py.File("gresho_%03d.hdf5"%snap, "r")
+sim = h5py.File("gresho_%04d.hdf5"%snap, "r")
 boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
@@ -104,6 +105,26 @@ u = sim["/PartType0/InternalEnergy"][:]
 S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 
+# Bin te data
+r_bin_edge = np.arange(0., 1., 0.02)
+r_bin = 0.5*(r_bin_edge[1:] + r_bin_edge[:-1])
+rho_bin,_,_ = stats.binned_statistic(r, rho, statistic='mean', bins=r_bin_edge)
+v_bin,_,_ = stats.binned_statistic(r, v_phi, statistic='mean', bins=r_bin_edge)
+P_bin,_,_ = stats.binned_statistic(r, P, statistic='mean', bins=r_bin_edge)
+S_bin,_,_ = stats.binned_statistic(r, S, statistic='mean', bins=r_bin_edge)
+u_bin,_,_ = stats.binned_statistic(r, u, statistic='mean', bins=r_bin_edge)
+rho2_bin,_,_ = stats.binned_statistic(r, rho**2, statistic='mean', bins=r_bin_edge)
+v2_bin,_,_ = stats.binned_statistic(r, v_phi**2, statistic='mean', bins=r_bin_edge)
+P2_bin,_,_ = stats.binned_statistic(r, P**2, statistic='mean', bins=r_bin_edge)
+S2_bin,_,_ = stats.binned_statistic(r, S**2, statistic='mean', bins=r_bin_edge)
+u2_bin,_,_ = stats.binned_statistic(r, u**2, statistic='mean', bins=r_bin_edge)
+rho_sigma_bin = np.sqrt(rho2_bin - rho_bin**2)
+v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
+P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
+S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
+u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
+
+
 # Plot the interesting quantities
 figure()
 
@@ -113,6 +134,7 @@ subplot(231)
 
 plot(r, v_phi, '.', color='r', ms=0.5)
 plot(solution_r, solution_v_phi, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(r_bin, v_bin, yerr=v_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 plot([0.2, 0.2], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 plot([0.4, 0.4], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
@@ -125,6 +147,7 @@ subplot(232)
 
 plot(r, rho, '.', color='r', ms=0.5)
 plot(solution_r, solution_rho, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(r_bin, rho_bin, yerr=rho_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 plot([0.2, 0.2], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 plot([0.4, 0.4], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
@@ -138,6 +161,7 @@ subplot(233)
 
 plot(r, P, '.', color='r', ms=0.5)
 plot(solution_r, solution_P, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(r_bin, P_bin, yerr=P_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 plot([0.2, 0.2], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 plot([0.4, 0.4], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
@@ -150,6 +174,7 @@ subplot(234)
 
 plot(r, u, '.', color='r', ms=0.5)
 plot(solution_r, solution_u, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(r_bin, u_bin, yerr=u_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 plot([0.2, 0.2], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 plot([0.4, 0.4], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
@@ -163,6 +188,7 @@ subplot(235)
 
 plot(r, S, '.', color='r', ms=0.5)
 plot(solution_r, solution_s, '--', color='k', alpha=0.8, lw=1.2)
+errorbar(r_bin, S_bin, yerr=S_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 plot([0.2, 0.2], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 plot([0.4, 0.4], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
