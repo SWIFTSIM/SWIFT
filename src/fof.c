@@ -27,6 +27,16 @@
 #include "threadpool.h"
 #include "engine.h"
 
+/* Initialises parameters for the FOF search. */
+void fof_init(struct space *s, long long Ngas, long long Ngparts) {
+
+  /* Calculate the particle linking length based upon the mean inter-particle
+   * spacing of the DM particles. */
+  const int total_nr_dmparts = Ngparts - Ngas;
+  const double l_x = 0.2 * (s->dim[0] / cbrt(total_nr_dmparts));
+  s->l_x2 = l_x * l_x;
+}
+
 /* Finds the root ID of the group a particle exists in. */
 __attribute__((always_inline)) INLINE static int fof_find(const int i,
                                                           int *group_id) {
