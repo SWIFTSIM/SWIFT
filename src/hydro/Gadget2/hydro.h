@@ -65,7 +65,7 @@ hydro_get_physical_internal_energy(const struct part *restrict p,
   float u =
       gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv, p->entropy);
   if (u < 0) {
-    printf("Gadget 2 hydro.h u, rho, a3_inv, entropy %.5e %.5e %.5e %.5e \n", u,
+    printf("Gadget 2 hydro.h id u, rho, a3_inv, entropy %llu %.5e %.5e %.5e %.5e \n", p->id, u,
            p->rho, cosmo->a3_inv, p->entropy);
     fflush(stdout);
   }
@@ -493,15 +493,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf(w2);
 
   /* Predict the entropy */
-  float entropy_old = p->entropy;
   p->entropy += p->entropy_dt * dt_therm;
-  if (p->entropy < 0) {
-    printf(
-        "Gadget2 hydro.h entropy less than zero id, old entropy, entropy, "
-        "entropy_dt, dt_therm %llu %.5e %.5e %.5e %.5e\n",
-        p->id, entropy_old, p->entropy, p->entropy_dt, dt_therm);
-    fflush(stdout);
-  }
 
   /* Re-compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
@@ -549,9 +541,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float dt_grav, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-  /* Do not decrease the entropy by more than a factor of 2 */
-  if (dt_therm > 0. && p->entropy_dt * dt_therm < -0.5f * xp->entropy_full) {
-    p->entropy_dt = -0.5f * xp->entropy_full / dt_therm;
+  /* Do not decrease the entropy by more than a factor of 2 
+   * Note: factor 0.49 used to prevent negative entropy occuring
+   * due to rounding error */
+  if (dt_therm > 0. && p->entropy_dt * dt_therm < -0.49f * xp->entropy_full) {
+    p->entropy_dt = -0.49f * xp->entropy_full / dt_therm;
   }
   xp->entropy_full += p->entropy_dt * dt_therm;
 
