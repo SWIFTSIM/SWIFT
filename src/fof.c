@@ -521,22 +521,30 @@ void fof_search_tree_mapper(void *map_data, int num_elements,
     /* Get the cell. */
     struct cell *restrict ci = &cells[ind];
     
-    /* Skip empty cells. */
-    if(ci->gcount == 0) continue;
+    /* Only perform FOF search on local cells. */
+    if(ci->nodeID == engine_rank) {
 
-    /* Perform FOF search on local particles within the cell. */
-    rec_fof_search_self(ci, s, dim, search_r2);
-
-    /* Loop over all top-level cells skipping over the cells already searched.
-    */
-    for (size_t cjd = offset[ind] + 1; cjd < nr_cells; cjd++) {
-
-      struct cell *restrict cj = &s->cells_top[cjd];
-      
       /* Skip empty cells. */
-      if(cj->gcount == 0) continue;
+      if(ci->gcount == 0) continue;
 
-      rec_fof_search_pair(ci, cj, s, dim, search_r2);
+      /* Perform FOF search on local particles within the cell. */
+      rec_fof_search_self(ci, s, dim, search_r2);
+
+      /* Loop over all top-level cells skipping over the cells already searched.
+      */
+      for (size_t cjd = offset[ind] + 1; cjd < nr_cells; cjd++) {
+
+        struct cell *restrict cj = &s->cells_top[cjd];
+
+        /* Only perform FOF search on local cells. */
+        if(cj->nodeID == engine_rank) {
+          
+          /* Skip empty cells. */
+          if(cj->gcount == 0) continue;
+
+          rec_fof_search_pair(ci, cj, s, dim, search_r2);
+        }
+      }
     }
   }
 }
@@ -548,13 +556,26 @@ void fof_search_tree(struct space *s) {
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_cells = s->nr_cells;
   struct gpart *gparts = s->gparts;
-  int *group_id = s->group_id;
+  int *group_id;
   int *group_size;
   float *group_mass;
   int num_groups = 0;
 
   message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts,
           s->l_x2);
+
+  /* Allocate and initialise array of particle group IDs. */
+  if(s->group_id != NULL) free(s->group_id);
+
+  if (posix_memalign((void **)&s->group_id, 32, nr_gparts * sizeof(int)) != 0)
+    error("Failed to allocate list of particle group IDs for FOF search.");
+
+  /* Initial group ID is particle offset into array. */
+  for (size_t i = 0; i < nr_gparts; i++) s->group_id[i] = i;
+
+  group_id = s->group_id;
+  
+  message("Rank: %d, Allocated group_id array of size %ld", engine_rank, s->nr_gparts);
 
   /* Allocate and initialise a group size array. */
   if (posix_memalign((void **)&group_size, 32, nr_gparts * sizeof(int)) != 0)

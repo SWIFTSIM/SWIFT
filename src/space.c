@@ -2843,13 +2843,6 @@ void space_init(struct space *s, struct swift_params *params,
     bzero(s->xparts, Npart * sizeof(struct xpart));
   }
 
-  /* Allocate and initialise array of particle group IDs. */
-  if (posix_memalign((void **)&s->group_id, 32, Ngpart * sizeof(int)) != 0)
-    error("Failed to allocate list of particle group IDs for FOF search.");
-
-  /* Initial group ID is particle offset into array. */
-  for (size_t i = 0; i < Ngpart; i++) s->group_id[i] = i;
-
   hydro_space_init(&s->hs, s);
 
   /* Init the space lock. */
