@@ -104,7 +104,8 @@ const char *engine_policy_names[] = {"none",
                                      "reconstruct multi-poles",
                                      "cooling",
                                      "sourceterms",
-                                     "stars"};
+                                     "stars",
+                                     "fof search"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -4361,16 +4362,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_parts(s, e->verbose);
   space_init_gparts(s, e->verbose);
 
-  message("Performing Friends Of Friends search.");
-
-
-  ticks tic = getticks();
-  fof_search_tree(s);
-  message("Serial tree FOF search took: %.3f %s.",
-          clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  message("Friends Of Friends search finished.");
-
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e);
@@ -4665,10 +4656,14 @@ void engine_step(struct engine *e) {
   if (e->ti_end_min >= e->ti_next_snapshot && e->ti_next_snapshot > 0)
     e->dump_snapshot = 1;
 
+  /* Do we want to perform a FOF search? */
+  if ((e->policy & engine_policy_fof) && e->dump_snapshot)
+    e->run_fof = 1;
+
   /* Drift everybody (i.e. what has not yet been drifted) */
   /* to the current time */
   int drifted_all =
-      (e->dump_snapshot || e->forcerebuild || e->forcerepart || e->save_stats);
+      (e->dump_snapshot || e->forcerebuild || e->forcerepart || e->save_stats || e->run_fof);
   if (drifted_all) engine_drift_all(e);
 
   /* Write a snapshot ? */
@@ -4679,6 +4674,17 @@ void engine_step(struct engine *e) {
 
     /* ... and find the next output time */
     engine_compute_next_snapshot_time(e);
+  }
+
+  /* Perform a FOF search. */
+  if(e->run_fof) {
+    
+    ticks tic = getticks();
+    fof_search_tree(e->s);
+    message("FOF search took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    e->run_fof = 0;
   }
 
   /* Save some  statistics */
@@ -5586,6 +5592,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->restart_file = restart_file;
   e->restart_next = 0;
   e->restart_dt = 0;
+  e->run_fof = 0;
   engine_rank = nodeID;
 
   /* Get the number of queues */

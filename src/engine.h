@@ -70,9 +70,10 @@ enum engine_policy {
   engine_policy_reconstruct_mpoles = (1 << 12),
   engine_policy_cooling = (1 << 13),
   engine_policy_sourceterms = (1 << 14),
-  engine_policy_stars = (1 << 15)
+  engine_policy_stars = (1 << 15),
+  engine_policy_fof = (1 << 16)
 };
-#define engine_maxpolicy 15
+#define engine_maxpolicy 16
 extern const char *engine_policy_names[];
 
 /**
@@ -216,6 +217,9 @@ struct engine {
   int snapshot_label_delta;
   struct unit_system *snapshot_units;
   int snapshot_output_count;
+
+  /* FOF information */
+  int run_fof;
 
   /* Statistics information */
   double a_first_statistics;
