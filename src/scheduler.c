@@ -1189,34 +1189,40 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     for (int j = 0; j < t->nr_unlock_tasks; j++)
       if (t->unlock_tasks[j]->weight > t->weight)
         t->weight = t->unlock_tasks[j]->weight;
-    int cost = 0;
+    float cost = 0;
+
+    const float count_i = t->ci->count;
+    const float count_j = (t->cj != NULL) ? t->cj->count : 0.f;
+    const float gcount_i = t->ci->gcount;
+    const float gcount_j = (t->cj != NULL) ? t->cj->gcount : 0.f;
+
     switch (t->type) {
       case task_type_sort:
-        cost = wscale * intrinsics_popcount(t->flags) * t->ci->count *
+        cost = wscale * intrinsics_popcount(t->flags) * count_i *
                (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
         break;
 
       case task_type_self:
         if (t->subtype == task_subtype_grav)
-          cost = 1.f * (wscale * t->ci->gcount) * t->ci->gcount;
+          cost = 1.f * (wscale * gcount_i) * gcount_i;
         else if (t->subtype == task_subtype_external_grav)
-          cost = 1.f * wscale * t->ci->gcount;
+          cost = 1.f * wscale * gcount_i;
         else
-          cost = 1.f * (wscale * t->ci->count) * t->ci->count;
+          cost = 1.f * (wscale * count_i) * count_i;
         break;
 
       case task_type_pair:
         if (t->subtype == task_subtype_grav) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-            cost = 3.f * (wscale * t->ci->gcount) * t->cj->gcount;
+            cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
-            cost = 2.f * (wscale * t->ci->gcount) * t->cj->gcount;
+            cost = 2.f * (wscale * gcount_i) * gcount_j;
         } else {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-            cost = 3.f * (wscale * t->ci->count) * t->cj->count *
+            cost = 3.f * (wscale * count_i) * count_j *
                    sid_scale[t->flags];
           else
-            cost = 2.f * (wscale * t->ci->count) * t->cj->count *
+            cost = 2.f * (wscale * count_i) * count_j *
                    sid_scale[t->flags];
         }
         break;
@@ -1224,64 +1230,64 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_sub_pair:
         if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
           if (t->flags < 0)
-            cost = 3.f * (wscale * t->ci->count) * t->cj->count;
+            cost = 3.f * (wscale * count_i) * count_j;
           else
-            cost = 3.f * (wscale * t->ci->count) * t->cj->count *
+            cost = 3.f * (wscale * count_i) * count_j *
                    sid_scale[t->flags];
         } else {
           if (t->flags < 0)
-            cost = 2.f * (wscale * t->ci->count) * t->cj->count;
+            cost = 2.f * (wscale * count_i) * count_j;
           else
-            cost = 2.f * (wscale * t->ci->count) * t->cj->count *
+            cost = 2.f * (wscale * count_i) * count_j *
                    sid_scale[t->flags];
         }
         break;
 
       case task_type_sub_self:
-        cost = 1.f * (wscale * t->ci->count) * t->ci->count;
+        cost = 1.f * (wscale * count_i) * count_i;
         break;
       case task_type_ghost:
-        if (t->ci == t->ci->super_hydro) cost = wscale * t->ci->count;
+        if (t->ci == t->ci->super_hydro) cost = wscale * count_i;
         break;
       case task_type_extra_ghost:
-        if (t->ci == t->ci->super_hydro) cost = wscale * t->ci->count;
+        if (t->ci == t->ci->super_hydro) cost = wscale * count_i;
         break;
       case task_type_drift_part:
-        cost = wscale * t->ci->count;
+        cost = wscale * count_i;
         break;
       case task_type_drift_gpart:
-        cost = wscale * t->ci->gcount;
+        cost = wscale * gcount_i;
         break;
       case task_type_init_grav:
-        cost = wscale * t->ci->gcount;
+        cost = wscale * gcount_i;
         break;
       case task_type_grav_down:
-        cost = wscale * t->ci->gcount;
+        cost = wscale * gcount_i;
         break;
       case task_type_grav_long_range:
-        cost = wscale * t->ci->gcount;
+        cost = wscale * gcount_i;
         break;
       case task_type_end_force:
-        cost = wscale * t->ci->count + wscale * t->ci->gcount;
+        cost = wscale * count_i + wscale * gcount_i;
         break;
       case task_type_kick1:
-        cost = wscale * t->ci->count + wscale * t->ci->gcount;
+        cost = wscale * count_i + wscale * gcount_i;
         break;
       case task_type_kick2:
-        cost = wscale * t->ci->count + wscale * t->ci->gcount;
+        cost = wscale * count_i + wscale * gcount_i;
         break;
       case task_type_timestep:
-        cost = wscale * t->ci->count + wscale * t->ci->gcount;
+        cost = wscale * count_i + wscale * gcount_i;
         break;
       case task_type_send:
-        if (t->ci->count < 1e5)
-          cost = 10.f * (wscale * t->ci->count) * t->ci->count;
+        if (count_i < 1e5)
+          cost = 10.f * (wscale * count_i) * count_i;
         else
           cost = 2e9;
         break;
       case task_type_recv:
-        if (t->ci->count < 1e5)
-          cost = 5.f * (wscale * t->ci->count) * t->ci->count;
+        if (count_i < 1e5)
+          cost = 5.f * (wscale * count_i) * count_i;
         else
           cost = 1e9;
         break;
@@ -1289,10 +1295,14 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = 0;
         break;
     }
+
+    /* Note if the cost is > 1e9 we cap it as we don't
+       care. That's large compared to other possible
+       costs.  */
 #if defined(WITH_MPI) && defined(HAVE_METIS)
-    t->cost = cost;
+    t->cost = (cost < 1e9) ? cost : 1e9;
 #endif
-    t->weight += cost;
+    t->weight += (cost < 1e9) ? cost : 1e9;
   }
 
   if (verbose)
