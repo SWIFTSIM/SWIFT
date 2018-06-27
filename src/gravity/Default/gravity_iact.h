@@ -191,7 +191,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
 
 #endif
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 2nd order contributions */
   *f_x += m->M_002 * d.D_102 + m->M_011 * d.D_111 + m->M_020 * d.D_120 +
@@ -205,7 +205,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
 
 #endif
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
   /* 3rd order contributions */
   *f_x += m->M_003 * d.D_103 + m->M_012 * d.D_112 + m->M_021 * d.D_121 +
@@ -303,7 +303,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
 
 #endif
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 2nd order contributions */
   *f_x += m->M_002 * d.D_102 + m->M_011 * d.D_111 + m->M_020 * d.D_120 +
@@ -317,7 +317,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
 
 #endif
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
   /* 3rd order contributions */
   *f_x += m->M_003 * d.D_103 + m->M_012 * d.D_112 + m->M_021 * d.D_121 +
