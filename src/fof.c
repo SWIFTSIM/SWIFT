@@ -570,6 +570,7 @@ void fof_search_tree(struct space *s) {
   int *group_size;
   float *group_mass;
   int num_groups = 0;
+  ticks tic = getticks();
 
   message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts,
           s->l_x2);
@@ -644,6 +645,8 @@ void fof_search_tree(struct space *s) {
   free(group_size);
   free(group_mass);
 
+  message("FOF search took: %.3f %s.",
+      clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /* Dump FOF group data. */
