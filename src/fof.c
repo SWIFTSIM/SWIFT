@@ -262,7 +262,6 @@ void fof_search_cell(struct space *s, struct cell *c) {
 
   const size_t count = c->gcount;
   struct gpart *gparts = c->gparts;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double l_x2 = s->l_x2;
   int *group_id = s->group_id;
 
@@ -293,17 +292,13 @@ void fof_search_cell(struct space *s, struct cell *c) {
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
 
-      /* Compute pairwise distance, remembering to account for boundary
-       * conditions. */
+      /* Compute the pairwise distance */
       float dx[3], r2 = 0.0f;
       dx[0] = pix - pjx;
       dx[1] = piy - pjy;
       dx[2] = piz - pjz;
 
-      for (int k = 0; k < 3; k++) {
-        dx[k] = nearest(dx[k], dim[k]);
-        r2 += dx[k] * dx[k];
-      }
+      for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
 
       /* Hit or miss? */
       if (r2 < l_x2) {
