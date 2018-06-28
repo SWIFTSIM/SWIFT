@@ -3113,7 +3113,7 @@ void engine_maketasks(struct engine *e) {
   const size_t ext_grav_tasks_per_cell = 1;
 
   if (e->policy & engine_policy_hydro)
-      e->size_links += s->tot_cells * hydro_tasks_per_cell;
+    e->size_links += s->tot_cells * hydro_tasks_per_cell;
   if (e->policy & engine_policy_external_gravity)
     e->size_links += s->tot_cells * ext_grav_tasks_per_cell;
   if (e->policy & engine_policy_self_gravity)

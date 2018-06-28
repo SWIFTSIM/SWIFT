@@ -1219,11 +1219,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * (wscale * gcount_i) * gcount_j;
         } else {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-            cost = 3.f * (wscale * count_i) * count_j *
-                   sid_scale[t->flags];
+            cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           else
-            cost = 2.f * (wscale * count_i) * count_j *
-                   sid_scale[t->flags];
+            cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
         }
         break;
 
@@ -1232,14 +1230,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           if (t->flags < 0)
             cost = 3.f * (wscale * count_i) * count_j;
           else
-            cost = 3.f * (wscale * count_i) * count_j *
-                   sid_scale[t->flags];
+            cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
         } else {
           if (t->flags < 0)
             cost = 2.f * (wscale * count_i) * count_j;
           else
-            cost = 2.f * (wscale * count_i) * count_j *
-                   sid_scale[t->flags];
+            cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
         }
         break;
 
@@ -1296,9 +1292,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
     }
 
-    /* Note if the cost is > 1e9 we cap it as we don't
-       care. That's large compared to other possible
-       costs.  */
+/* Note if the cost is > 1e9 we cap it as we don't
+   care. That's large compared to other possible
+   costs.  */
 #if defined(WITH_MPI) && defined(HAVE_METIS)
     t->cost = (cost < 1e9) ? cost : 1e9;
 #endif
