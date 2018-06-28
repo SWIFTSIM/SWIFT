@@ -772,4 +772,3 @@ char *trim_both(char *s) {
   if (s == NULL || strlen(s) < 2) return s;
   return trim_trailing(trim_leading(s));
 }
-

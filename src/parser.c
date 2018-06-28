@@ -729,62 +729,61 @@ void parser_get_opt_param_string(struct swift_params *params, const char *name,
 }
 
 /* Macro defining functions that get primitive types as simple one-line YAML
- * arrays, that is SEC: [v1,v2,v3...] format. TYPE is the data type, float
- * etc. FMT a format to parse a single value, so "%f" for a float and DESC the
- * type description i.e. "float".
+ * arrays, that is SEC: [v1,v2,v3...] format, with the extension that the []
+ * are optional. TYPE is the data type, float etc. FMT a format to parse a
+ * single value, so "%f" for a float and DESC the type description
+ * i.e. "float".
  */
-#define PARSER_GET_ARRAY(TYPE, FMT, DESC)                                      \
-  static int get_param_##TYPE##_array(struct swift_params *params,             \
-                                      const char *name, int required,          \
-                                      int nval, TYPE *values) {                \
-    char str[PARSER_MAX_LINE_SIZE];                                            \
-    char cpy[PARSER_MAX_LINE_SIZE];                                            \
-                                                                               \
-    for (int i = 0; i < params->paramCount; i++) {                             \
-      if (!strcmp(name, params->data[i].name)) {                               \
-        char *cp = cpy;                                                        \
-        strcpy(cp, params->data[i].value);                                     \
-        cp = trim_both(cp);                                                    \
-                                                                               \
-        /* Strip off []. */                                                    \
-        if (cp[0] != '[') error("Array '%s' does not start with '['", name);   \
-        cp++;                                                                  \
-        int l = strlen(cp);                                                    \
-        if (cp[l - 1] != ']') error("Array '%s' does not end with ']'", name); \
-        cp[l - 1] = '\0';                                                      \
-        cp = trim_both(cp);                                                    \
-                                                                               \
-        /* Format that captures spaces and trailing junk. */                   \
-        char fmt[20];                                                          \
-        sprintf(fmt, " %s%%s ", FMT);                                          \
-                                                                               \
-        /* Parse out values which should now be "v, v, v" with                 \
-         * internal     whitespace variations. */                              \
-        char *p = strtok(cp, ",");                                             \
-        for (int k = 0; k < nval; k++) {                                       \
-          if (p != NULL) {                                                     \
-            if (sscanf(p, fmt, &values[k], str) != 1) {                        \
-              error("Tried parsing " DESC                                      \
-                    " '%s' but found '%s' with "                               \
-                    "illegal " DESC " characters '%s'.",                       \
-                    name, p, str);                                             \
-            }                                                                  \
-          } else {                                                             \
-            error(                                                             \
-                "Array '%s' with value '%s' has too few values, "              \
-                "expected %d",                                                 \
-                name, params->data[i].value, nval);                            \
-          }                                                                    \
-          if (k < nval - 1) p = strtok(NULL, ",");                             \
-        }                                                                      \
-        params->data[i].used = 1;                                              \
-        return 1;                                                              \
-      }                                                                        \
-    }                                                                          \
-    if (required)                                                              \
-      error("Cannot find '%s' in the structure, in file '%s'.", name,          \
-            params->fileName);                                                 \
-    return 0;                                                                  \
+#define PARSER_GET_ARRAY(TYPE, FMT, DESC)                             \
+  static int get_param_##TYPE##_array(struct swift_params *params,    \
+                                      const char *name, int required, \
+                                      int nval, TYPE *values) {       \
+    char str[PARSER_MAX_LINE_SIZE];                                   \
+    char cpy[PARSER_MAX_LINE_SIZE];                                   \
+                                                                      \
+    for (int i = 0; i < params->paramCount; i++) {                    \
+      if (!strcmp(name, params->data[i].name)) {                      \
+        char *cp = cpy;                                               \
+        strcpy(cp, params->data[i].value);                            \
+        cp = trim_both(cp);                                           \
+                                                                      \
+        /* Strip off [], if present. */                               \
+        if (cp[0] == '[') cp++;                                       \
+        int l = strlen(cp);                                           \
+        if (cp[l - 1] == ']') cp[l - 1] = '\0';                       \
+        cp = trim_both(cp);                                           \
+                                                                      \
+        /* Format that captures spaces and trailing junk. */          \
+        char fmt[20];                                                 \
+        sprintf(fmt, " %s%%s ", FMT);                                 \
+                                                                      \
+        /* Parse out values which should now be "v, v, v" with        \
+         * internal     whitespace variations. */                     \
+        char *p = strtok(cp, ",");                                    \
+        for (int k = 0; k < nval; k++) {                              \
+          if (p != NULL) {                                            \
+            if (sscanf(p, fmt, &values[k], str) != 1) {               \
+              error("Tried parsing " DESC                             \
+                    " '%s' but found '%s' with "                      \
+                    "illegal " DESC " characters '%s'.",              \
+                    name, p, str);                                    \
+            }                                                         \
+          } else {                                                    \
+            error(                                                    \
+                "Array '%s' with value '%s' has too few values, "     \
+                "expected %d",                                        \
+                name, params->data[i].value, nval);                   \
+          }                                                           \
+          if (k < nval - 1) p = strtok(NULL, ",");                    \
+        }                                                             \
+        params->data[i].used = 1;                                     \
+        return 1;                                                     \
+      }                                                               \
+    }                                                                 \
+    if (required)                                                     \
+      error("Cannot find '%s' in the structure, in file '%s'.", name, \
+            params->fileName);                                        \
+    return 0;                                                         \
   }
 
 // Set values of a default parameter so they will be saved correctly.
@@ -971,12 +970,10 @@ static int get_string_array(struct swift_params *params, const char *name,
       strcpy(cp, params->data[i].value);
       cp = trim_both(cp);
 
-      /* Strip off []. XXX language extension, make this optional. */
-      if (cp[0] != '[') error("Array '%s' does not start with '['", name);
-      cp++;
+      /* Strip off [], if present. */
+      if (cp[0] == '[') cp++;
       int l = strlen(cp);
-      if (cp[l - 1] != ']') error("Array '%s' does not end with ']'", name);
-      cp[l - 1] = '\0';
+      if (cp[l - 1] == ']') cp[l - 1] = '\0';
       cp = trim_both(cp);
 
       *nval = parse_quoted_strings(cp, values);

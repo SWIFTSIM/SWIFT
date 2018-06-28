@@ -85,7 +85,19 @@ int main(int argc, char *argv[]) {
 
   printf("\nList from Words:list parameter\n");
   for (int i = 0; i < nvar_result; i++) printf("   %d: %s\n", i, var_result[i]);
+
+  /* Get same list without []. */
+  char **var_result2;
+  int nvar_result2;
+  parser_get_param_string_array(&param_file, "Words:nonstdlist", &nvar_result2,
+                                &var_result2);
+
+  assert(nvar_result == nvar_result2);
+  for (int i = 0; i < nvar_result; i++)
+    assert(strcmp(var_result[i], var_result2[i]) == 0);
+
   parser_free_param_string_array(nvar_result, var_result);
+  parser_free_param_string_array(nvar_result2, var_result2);
 
   const char *optwords[4] = {"Word1", "Word2", "Word3", "Word4"};
   int noptwords = 4;
