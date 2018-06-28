@@ -414,15 +414,29 @@ void fof_search_tree_serial(struct space *s) {
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_cells = s->nr_cells;
   struct gpart *gparts = s->gparts;
-  int *group_id = s->group_id;
+  int *group_id;
   int *group_size;
   float *group_mass;
   int num_groups = 0;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->l_x2;
+  ticks tic = getticks();
 
   message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts,
           s->l_x2);
+
+  /* Allocate and initialise array of particle group IDs. */
+  if(s->group_id != NULL) free(s->group_id);
+
+  if (posix_memalign((void **)&s->group_id, 32, nr_gparts * sizeof(int)) != 0)
+    error("Failed to allocate list of particle group IDs for FOF search.");
+
+  /* Initial group ID is particle offset into array. */
+  for (size_t i = 0; i < nr_gparts; i++) s->group_id[i] = i;
+
+  group_id = s->group_id;
+  
+  message("Rank: %d, Allocated group_id array of size %ld", engine_rank, s->nr_gparts);
 
   /* Allocate and initialise a group size array. */
   if (posix_memalign((void **)&group_size, 32, nr_gparts * sizeof(int)) != 0)
@@ -440,23 +454,30 @@ void fof_search_tree_serial(struct space *s) {
   for (size_t cid = 0; cid < nr_cells; cid++) {
 
     struct cell *restrict ci = &s->cells_top[cid];
+    
+    /* Only perform FOF search on local cells. */
+    if(ci->nodeID == engine_rank) {
 
-    /* Skip empty cells. */
-    if(ci->gcount == 0) continue;
-
-    /* Perform FOF search on local particles within the cell. */
-    rec_fof_search_self(ci, s, dim, search_r2);
-
-    /* Loop over all top-level cells skipping over the cells already searched.
-    */
-    for (size_t cjd = cid + 1; cjd < nr_cells; cjd++) {
-
-      struct cell *restrict cj = &s->cells_top[cjd];
-      
       /* Skip empty cells. */
-      if(cj->gcount == 0) continue;
+      if(ci->gcount == 0) continue;
 
-      rec_fof_search_pair(ci, cj, s, dim, search_r2);
+      /* Perform FOF search on local particles within the cell. */
+      rec_fof_search_self(ci, s, dim, search_r2);
+
+      /* Loop over all top-level cells skipping over the cells already searched.
+      */
+      for (size_t cjd = cid + 1; cjd < nr_cells; cjd++) {
+
+        struct cell *restrict cj = &s->cells_top[cjd];
+
+        /* Only perform FOF search on local cells. */
+        if(cj->nodeID == engine_rank) {
+          /* Skip empty cells. */
+          if(cj->gcount == 0) continue;
+
+          rec_fof_search_pair(ci, cj, s, dim, search_r2);
+        }
+      }
     }   
   }
 
@@ -501,6 +522,9 @@ void fof_search_tree_serial(struct space *s) {
 
   free(group_size);
   free(group_mass);
+  
+  message("Serial FOF search took: %.3f %s.",
+      clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
