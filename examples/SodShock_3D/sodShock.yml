@@ -32,5 +32,4 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./sodShock.hdf5       # The file to read
-  shift: [1.,1.,0.]
 
