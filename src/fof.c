@@ -282,6 +282,12 @@ void fof_search_cell(struct space *s, struct cell *c) {
 
     for (size_t j = i + 1; j < count; j++) {
 
+      /* Find the root of pj. */
+      const int root_j = fof_find(offset[j], group_id);
+
+      /* Skip particles in the same group. */
+      if (root_i == root_j) continue;
+
       struct gpart *pj = &gparts[j];
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -298,12 +304,6 @@ void fof_search_cell(struct space *s, struct cell *c) {
         dx[k] = nearest(dx[k], dim[k]);
         r2 += dx[k] * dx[k];
       }
-
-      /* Find the root of pj. */
-      const int root_j = fof_find(offset[j], group_id);
-
-      /* Skip particles in the same group. */
-      if (root_i == root_j) continue;
 
       /* Hit or miss? */
       if (r2 < l_x2) {
@@ -368,20 +368,19 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
     
     for (size_t j = 0; j < count_j; j++) {
 
-      struct gpart *pj = &gparts_j[j];
-
       /* Find the root of pj. */
       const int root_j = fof_find(offset_j[j], group_id);
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
 
-      /* Compute pairwise distance, remembering to account for boundary
-       * conditions. */
+      struct gpart *pj = &gparts_j[j];
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
 
+      /* Compute pairwise distance, remembering to account for boundary
+       * conditions. */
       float dx[3], r2 = 0.0f;
       dx[0] = pix - pjx;
       dx[1] = piy - pjy;
