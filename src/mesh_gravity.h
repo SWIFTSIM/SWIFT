@@ -24,6 +24,7 @@
 
 /* Local headers */
 #include "gravity_properties.h"
+#include "restart.h"
 
 /* Forward declarations */
 struct engine;
@@ -70,5 +71,9 @@ void pm_mesh_interpolate_forces(const struct pm_mesh *mesh,
                                 const struct engine *e, struct gpart *gparts,
                                 int gcount);
 void pm_mesh_clean(struct pm_mesh *mesh);
+
+/* Dump/restore. */
+void pm_mesh_struct_dump(const struct pm_mesh *p, FILE *stream);
+void pm_mesh_struct_restore(struct pm_mesh *p, FILE *stream);
 
 #endif /* SWIFT_MESH_GRAVITY_H */

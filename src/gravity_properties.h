@@ -27,9 +27,11 @@
 #endif
 
 /* Local includes. */
-#include "cosmology.h"
-#include "parser.h"
 #include "restart.h"
+
+/* Forward declarations */
+struct cosmology;
+struct swift_params;
 
 /**
  * @brief Contains all the constants and parameters of the self-gravity scheme
@@ -96,6 +98,6 @@ void gravity_props_print_snapshot(hid_t h_grpsph,
 
 /* Dump/restore. */
 void gravity_props_struct_dump(const struct gravity_props *p, FILE *stream);
-void gravity_props_struct_restore(const struct gravity_props *p, FILE *stream);
+void gravity_props_struct_restore(struct gravity_props *p, FILE *stream);
 
 #endif /* SWIFT_GRAVITY_PROPERTIES */

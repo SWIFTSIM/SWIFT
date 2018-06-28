@@ -509,3 +509,39 @@ void pm_mesh_clean(struct pm_mesh* mesh) {
   if (mesh->potential) free(mesh->potential);
   mesh->potential = 0;
 }
+
+/**
+ * @brief Write a #pm_mesh struct to the given FILE as a stream of bytes.
+ *
+ * @param p the struct
+ * @param stream the file stream
+ */
+void pm_mesh_struct_dump(const struct pm_mesh* mesh, FILE* stream) {
+  restart_write_blocks((void*)mesh, sizeof(struct pm_mesh), 1, stream,
+                       "gravity", "gravity props");
+}
+
+/**
+ * @brief Restore a #pm_mesh struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param p the struct
+ * @param stream the file stream
+ */
+void pm_mesh_struct_restore(struct pm_mesh* mesh, FILE* stream) {
+
+  restart_read_blocks((void*)mesh, sizeof(struct pm_mesh), 1, stream, NULL,
+                      "gravity props");
+
+  const int N = mesh->N;
+
+  /* Allocate the memory for the combined density and potential array */
+  mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
+  if (mesh->potential == NULL)
+    error("Error allocating memory for the long-range gravity mesh.");
+
+#ifdef HAVE_FFTW
+#else
+  error("No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
+}

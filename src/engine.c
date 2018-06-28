@@ -6295,6 +6295,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   phys_const_struct_dump(e->physical_constants, stream);
   hydro_props_struct_dump(e->hydro_properties, stream);
   gravity_props_struct_dump(e->gravity_properties, stream);
+  pm_mesh_struct_dump(e->mesh, stream);
   potential_struct_dump(e->external_potential, stream);
   cooling_struct_dump(e->cooling_func, stream);
   chemistry_struct_dump(e->chemistry, stream);
@@ -6363,6 +6364,10 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct gravity_props *)malloc(sizeof(struct gravity_props));
   gravity_props_struct_restore(gravity_properties, stream);
   e->gravity_properties = gravity_properties;
+
+  struct pm_mesh *mesh = (struct pm_mesh *)malloc(sizeof(struct pm_mesh));
+  pm_mesh_struct_restore(mesh, stream);
+  e->mesh = mesh;
 
   struct external_potential *external_potential =
       (struct external_potential *)malloc(sizeof(struct external_potential));
