@@ -23,13 +23,15 @@
 
 /* Includes. */
 #include "common_io.h"
-#include "engine.h"
-#include "logger_struct.h"
-#include "part.h"
+#include "inline.h"
+#include "timeline.h"
 #include "units.h"
 
 /* Forward declaration */
 struct dump;
+struct part;
+struct gpart;
+struct engine;
 
 /**
  * Logger entries contain messages representing the particle data at a given
@@ -97,6 +99,80 @@ struct dump;
 #define logger_header_number_size 2
 
 extern char logger_version[logger_version_size];
+
+#define LOGGER_STRING_LENGTH 200
+
+/* parameters of the logger */
+struct logger_parameters {
+  /* size of a label in bytes */
+  size_t label_size;
+
+  /* size of an offset in bytes */
+  size_t offset_size;
+
+  /* size of a mask in bytes */
+  size_t mask_size;
+
+  /* size of a number in bytes */
+  size_t number_size;
+
+  /* size of a data type in bytes */
+  size_t data_type_size;
+  
+  /* number of different mask */
+  size_t nber_mask;
+
+  /* value of each masks */
+  size_t *masks;
+
+  /* data size of each mask */
+  size_t *masks_data_size;
+  
+  /* label of each mask */
+  char *masks_name;
+
+};
+
+
+/* structure containing global data */
+struct logger {
+  /* Number of particle steps between dumping a chunk of data */
+  short int delta_step;
+
+  /* Logger basename */
+  char base_name[LOGGER_STRING_LENGTH];  
+
+  /* File name of the dump file */
+  struct dump *dump;
+
+  /* timestamp offset for logger*/
+  size_t timestamp_offset;
+
+  /* size of the buffer */
+  size_t buffer_size;
+
+  /* scaling factor when buffer is too small */
+  float buffer_scale;
+
+  /* logger parameters */
+  struct logger_parameters *params;
+
+} SWIFT_STRUCT_ALIGN;
+
+/* required structure for each particle type */
+struct logger_part_data {
+  /* Number of particle updates since last output */
+  short int last_output;
+
+  /* offset of last particle log entry */
+  size_t last_offset;
+};
+
+INLINE static  void logger_part_data_init(
+    struct logger_part_data *logger ) {
+  logger->last_offset = 0;
+  logger->last_output = SHRT_MAX;
+}
 
 enum logger_datatype {
   logger_data_int,
