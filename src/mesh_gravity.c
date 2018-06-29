@@ -513,7 +513,7 @@ void pm_mesh_clean(struct pm_mesh* mesh) {
 /**
  * @brief Write a #pm_mesh struct to the given FILE as a stream of bytes.
  *
- * @param p the struct
+ * @param mesh the struct
  * @param stream the file stream
  */
 void pm_mesh_struct_dump(const struct pm_mesh* mesh, FILE* stream) {
@@ -525,7 +525,7 @@ void pm_mesh_struct_dump(const struct pm_mesh* mesh, FILE* stream) {
  * @brief Restore a #pm_mesh struct from the given FILE as a stream of
  * bytes.
  *
- * @param p the struct
+ * @param mesh the struct
  * @param stream the file stream
  */
 void pm_mesh_struct_restore(struct pm_mesh* mesh, FILE* stream) {
