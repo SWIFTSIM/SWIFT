@@ -485,7 +485,7 @@ float units_general_a_factor(const struct unit_system* us,
 void units_general_cgs_conversion_string(char* buffer,
                                          const struct unit_system* us,
                                          const float baseUnitsExponants[5]) {
-  char temp[14];
+  char temp[20];
   const double a_exp = units_general_a_factor(us, baseUnitsExponants);
   const double h_exp = units_general_h_factor(us, baseUnitsExponants);
 
@@ -518,7 +518,7 @@ void units_general_cgs_conversion_string(char* buffer,
     sprintf(temp, "h^%d ", (int)h_exp);
   else
     sprintf(temp, "h^%7.4f ", h_exp);
-  strncat(buffer, temp, 12);
+  strcat(buffer, temp);
 
   /* Add conversion units */
   for (int i = 0; i < 5; ++i)
@@ -536,11 +536,11 @@ void units_general_cgs_conversion_string(char* buffer,
         sprintf(temp, "%s^%7.4f ",
                 units_get_base_unit_internal_symbol((enum base_units)i),
                 baseUnitsExponants[i]);
-      strncat(buffer, temp, 12);
+      strcat(buffer, temp);
     }
 
   /* Add CGS units */
-  strncat(buffer, " [ ", 3);
+  strcat(buffer, " [ ");
 
   for (int i = 0; i < 5; ++i) {
     if (baseUnitsExponants[i] != 0) {
@@ -557,11 +557,11 @@ void units_general_cgs_conversion_string(char* buffer,
         sprintf(temp, "%s^%7.4f ",
                 units_get_base_unit_cgs_symbol((enum base_units)i),
                 baseUnitsExponants[i]);
-      strncat(buffer, temp, 12);
+      strcat(buffer, temp);
     }
   }
 
-  strncat(buffer, "]", 2);
+  strcat(buffer, "]");
 }
 
 /**
