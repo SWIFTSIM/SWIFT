@@ -34,7 +34,6 @@ InitialConditions:
  
 # External potential parameters
 IsothermalPotential:
-  position:        [0.,0.,0.] # Location of centre of isothermal potential in internal units
   vrot:            200.   # Rotation speed of isothermal potential in internal units
   timestep_mult:   0.03   # Controls time step
   epsilon:         1.0    # Softening for the isothermal potential

@@ -32,7 +32,6 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  initial_conditions.hdf5        # The file to read
-  shift:      [0.,0.,0.]                     # A shift to apply to all particles read from the ICs (in internal units).
 
 # External potential parameters
 PointMassPotential:

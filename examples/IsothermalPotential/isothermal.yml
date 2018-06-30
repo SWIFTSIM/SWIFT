@@ -30,7 +30,6 @@ InitialConditions:
  
 # External potential parameters
 IsothermalPotential:
-  position:        [0.,0.,0.] # location of centre of isothermal potential in internal units
   vrot:            200.       # rotation speed of isothermal potential in internal units
   timestep_mult:   0.01       # controls time step
   epsilon:         0.         # No softening at the centre of the halo
