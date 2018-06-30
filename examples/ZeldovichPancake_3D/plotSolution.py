@@ -86,10 +86,8 @@ phi = sim["/PartType0/Potential"][:]
 
 x -= 0.5 * boxSize
 
-if snap > 40:
-    filename_g = "snapshot_%03d.hdf5"%(snap+1)
-else:
-    filename_g = "snapshot_%03d.hdf5"%(snap)
+# Check for Gadget solution
+filename_g = "snapshot_%03d.hdf5"%(snap)
 if os.path.exists(filename_g):
     sim_g = h5py.File(filename_g, "r")
     x_g = sim_g["/PartType0/Coordinates"][:,0]
