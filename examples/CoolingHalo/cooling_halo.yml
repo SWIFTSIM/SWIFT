@@ -31,15 +31,9 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  CoolingHalo.hdf5       # The file to read
-  shift_x:    0.                  # A shift to apply to all particles read from the ICs (in internal units).
-  shift_y:    0.
-  shift_z:    0.
  
 # External potential parameters
 IsothermalPotential:
-  position_x:      0.     # location of centre of isothermal potential in internal units
-  position_y:      0.
-  position_z:      0.	
   vrot:            200.     # rotation speed of isothermal potential in internal units
   timestep_mult:   0.03     # controls time step
   epsilon:         0.1    #softening for the isothermal potential

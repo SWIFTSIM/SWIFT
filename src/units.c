@@ -129,6 +129,21 @@ void units_init_default(struct unit_system* us, struct swift_params* params,
 }
 
 /**
+ * @brief Copy the content of a #unit_system to another one.
+ *
+ * @param dest The destination of the copy.
+ * @param src The source of the copy.
+ */
+void units_copy(struct unit_system* dest, const struct unit_system* src) {
+
+  dest->UnitMass_in_cgs = src->UnitMass_in_cgs;
+  dest->UnitLength_in_cgs = src->UnitLength_in_cgs;
+  dest->UnitTime_in_cgs = src->UnitTime_in_cgs;
+  dest->UnitCurrent_in_cgs = src->UnitCurrent_in_cgs;
+  dest->UnitTemperature_in_cgs = src->UnitTemperature_in_cgs;
+}
+
+/**
  * @brief Returns the base unit conversion factor for a given unit system
  * @param us The unit_system used
  * @param baseUnit The base unit

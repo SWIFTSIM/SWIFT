@@ -103,6 +103,7 @@ void units_init_from_params(struct unit_system*, struct swift_params*,
 void units_init_default(struct unit_system* us, struct swift_params* params,
                         const char* category, const struct unit_system* def);
 
+void units_copy(struct unit_system* dest, const struct unit_system* src);
 int units_are_equal(const struct unit_system* a, const struct unit_system* b);
 
 /* Base units */

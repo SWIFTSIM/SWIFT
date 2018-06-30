@@ -518,7 +518,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
     /* Read the unit system used in the ICs */
     if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
-    io_read_unit_system(h_file, ic_units, mpi_rank);
+    io_read_unit_system(h_file, ic_units, internal_units, mpi_rank);
 
     if (units_are_equal(ic_units, internal_units)) {
 

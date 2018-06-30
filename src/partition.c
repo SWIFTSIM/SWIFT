@@ -1095,12 +1095,8 @@ void partition_init(struct partition *partition,
 
   /* In case of grid, read more parameters */
   if (part_type[0] == 'g') {
-    partition->grid[0] = parser_get_opt_param_int(
-        params, "DomainDecomposition:initial_grid_x", partition->grid[0]);
-    partition->grid[1] = parser_get_opt_param_int(
-        params, "DomainDecomposition:initial_grid_y", partition->grid[1]);
-    partition->grid[2] = parser_get_opt_param_int(
-        params, "DomainDecomposition:initial_grid_z", partition->grid[2]);
+    parser_get_opt_param_int_array(params, "DomainDecomposition:initial_grid",
+                                   3, partition->grid);
   }
 
   /* Now let's check what the user wants as a repartition strategy */

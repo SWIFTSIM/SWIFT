@@ -273,6 +273,18 @@ if test "$enable_debugging_checks" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
 fi
 
+# Check if using our custom icbrtf is enalbled.
+AC_ARG_ENABLE([custom-icbrtf],
+   [AS_HELP_STRING([--enable-custom-icbrtf],
+     [Use SWIFT's custom icbrtf function instead of the system cbrtf @<:@yes/no@:>@]
+   )],
+   [enable_custom_icbrtf="$enableval"],
+   [enable_custom_icbrtf="no"]
+)
+if test "$enable_custom_icbrtf" = "yes"; then
+   AC_DEFINE([WITH_ICBRTF],1,[Enable custom icbrtf])
+fi
+
 # Check whether we want to default to naive cell interactions
 AC_ARG_ENABLE([naive-interactions],
    [AS_HELP_STRING([--enable-naive-interactions],
@@ -1354,5 +1366,6 @@ AC_MSG_RESULT([
    Interaction debugging : $enable_debug_interactions
    Naive interactions    : $enable_naive_interactions
    Gravity checks        : $gravity_force_checks
+   Custom icbrtf         : $enable_custom_icbrtf
 
  ------------------------])
