@@ -300,7 +300,7 @@ def write_block(f, part_type, pos, vel, ids, mass, int_energy, smoothing, other=
     else:
         data = default_data
 
-    particles = f.create_group(f"PartType{part_type}")
+    particles = f.create_group("PartType" + str(part_type))
 
     for name, value in data.items():
         particles.create_dataset(name, data=value)
