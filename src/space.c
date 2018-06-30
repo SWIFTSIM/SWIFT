@@ -2362,8 +2362,8 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct cooling_function_data *cool_func = e->cooling_func;
 
+  /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
-    /* Convert velocities to internal units */
     p[k].v[0] *= a_factor_vel;
     p[k].v[1] *= a_factor_vel;
     p[k].v[2] *= a_factor_vel;
@@ -2377,6 +2377,10 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     p[k].x[1] = p[k].x[2] = 0.f;
     p[k].v[1] = p[k].v[2] = 0.f;
 #endif
+  }
+
+  /* Initialise the rest */
+  for (int k = 0; k < count; k++) {
 
     hydro_first_init_part(&p[k], &xp[k]);
 
@@ -2431,8 +2435,8 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
   const float a_factor_vel = cosmo->a;
   const struct gravity_props *grav_props = s->e->gravity_properties;
 
+  /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
-    /* Convert velocities to internal units */
     gp[k].v_full[0] *= a_factor_vel;
     gp[k].v_full[1] *= a_factor_vel;
     gp[k].v_full[2] *= a_factor_vel;
@@ -2446,6 +2450,10 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
     gp[k].x[1] = gp[k].x[2] = 0.f;
     gp[k].v_full[1] = gp[k].v_full[2] = 0.f;
 #endif
+  }
+
+  /* Initialise the rest */
+  for (int k = 0; k < count; k++) {
 
     gravity_first_init_gpart(&gp[k], grav_props);
 
@@ -2487,8 +2495,9 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const struct cosmology *cosmo = s->e->cosmology;
   const float a_factor_vel = cosmo->a;
 
+  /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
-    /* Convert velocities to internal units */
+
     sp[k].v[0] *= a_factor_vel;
     sp[k].v[1] *= a_factor_vel;
     sp[k].v[2] *= a_factor_vel;
@@ -2502,6 +2511,10 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
     sp[k].x[1] = sp[k].x[2] = 0.f;
     sp[k].v[1] = sp[k].v[2] = 0.f;
 #endif
+  }
+
+  /* Initialise the rest */
+  for (int k = 0; k < count; k++) {
 
     star_first_init_spart(&sp[k]);
 
