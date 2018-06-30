@@ -39,7 +39,7 @@
 #define gravity_props_default_rebuild_frequency 0.01f
 
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
-                        const struct cosmology *cosmo) {
+                        const struct cosmology *cosmo, int with_cosmology) {
 
   /* Tree updates */
   p->rebuild_frequency =
@@ -74,10 +74,16 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   p->theta_crit_inv = 1. / p->theta_crit;
 
   /* Softening parameters */
-  p->epsilon_comoving =
-      parser_get_param_double(params, "Gravity:comoving_softening");
-  p->epsilon_max_physical =
-      parser_get_param_double(params, "Gravity:max_physical_softening");
+  if (with_cosmology) {
+    p->epsilon_comoving =
+        parser_get_param_double(params, "Gravity:comoving_softening");
+    p->epsilon_max_physical =
+        parser_get_param_double(params, "Gravity:max_physical_softening");
+  } else {
+    p->epsilon_max_physical =
+        parser_get_param_double(params, "Gravity:max_physical_softening");
+    p->epsilon_comoving = p->epsilon_max_physical;
+  }
 
   /* Set the softening to the current time */
   gravity_update(p, cosmo);

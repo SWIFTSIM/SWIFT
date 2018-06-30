@@ -633,7 +633,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
-      gravity_props_init(&gravity_properties, params, &cosmo);
+      gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology);
 
     /* Read particles and space information from (GADGET) ICs */
     char ICfileName[200] = "";
