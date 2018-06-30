@@ -59,4 +59,6 @@ SPH:
 InitialConditions:
   file_name:  ./EAGLE_ICs_6.hdf5     # The file to read
   cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
+  cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
+
 

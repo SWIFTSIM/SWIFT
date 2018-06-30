@@ -55,6 +55,8 @@ SPH:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./EAGLE_ICs_25.hdf5     # The file to read
+  file_name:  ./EAGLE_ICs_25.hdf5    # The file to read
   cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
+  cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
+
 
