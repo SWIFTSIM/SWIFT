@@ -120,7 +120,7 @@ static INLINE double E(double Or, double Om, double Ok, double Ol, double w0,
 double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (a < a_begin) error("Error a can't be smaller than a_begin");
+  if (a < c->a_begin) error("Error a can't be smaller than a_begin");
 #endif
 
   /* Time between a_begin and a */
