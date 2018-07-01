@@ -119,6 +119,10 @@ static INLINE double E(double Or, double Om, double Ok, double Ol, double w0,
  */
 double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (a < a_begin) error("Error a can't be smaller than a_begin");
+#endif
+
   /* Time between a_begin and a */
   const double delta_t =
       interp_table(c->time_interp_table, log(a), c->log_a_begin, c->log_a_end);
@@ -506,6 +510,10 @@ double cosmology_get_drift_factor(const struct cosmology *c,
                                   integertime_t ti_start,
                                   integertime_t ti_end) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end < ti_start) error("ti_end must be >= ti_start");
+#endif
+
   const double a_start = c->log_a_begin + ti_start * c->time_base;
   const double a_end = c->log_a_begin + ti_end * c->time_base;
 
@@ -530,6 +538,10 @@ double cosmology_get_grav_kick_factor(const struct cosmology *c,
                                       integertime_t ti_start,
                                       integertime_t ti_end) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end < ti_start) error("ti_end must be >= ti_start");
+#endif
+
   const double a_start = c->log_a_begin + ti_start * c->time_base;
   const double a_end = c->log_a_begin + ti_end * c->time_base;
 
@@ -553,6 +565,10 @@ double cosmology_get_grav_kick_factor(const struct cosmology *c,
 double cosmology_get_hydro_kick_factor(const struct cosmology *c,
                                        integertime_t ti_start,
                                        integertime_t ti_end) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end < ti_start) error("ti_end must be >= ti_start");
+#endif
 
   const double a_start = c->log_a_begin + ti_start * c->time_base;
   const double a_end = c->log_a_begin + ti_end * c->time_base;
@@ -579,6 +595,10 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
                                        integertime_t ti_start,
                                        integertime_t ti_end) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end < ti_start) error("ti_end must be >= ti_start");
+#endif
+
   const double a_start = c->log_a_begin + ti_start * c->time_base;
   const double a_end = c->log_a_begin + ti_end * c->time_base;
 
@@ -600,11 +620,18 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
 double cosmology_get_delta_time(const struct cosmology *c, double a1,
                                 double a2) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (a2 < a1) error("Incorrect arguments. a2 must be >= a1");
+  if (a1 < c->a_begin)
+    error("Value of a1 smaller than a_begin(%e)", c->a_begin);
+  if (a2 > c->a_end) error("Value of a2 larger than a_end(%e)", c->a_end);
+#endif
+
   /* Time between a_begin and a1 */
   const double t1 =
       interp_table(c->time_interp_table, log(a1), c->log_a_begin, c->log_a_end);
 
-  /* Time between a_begin and a1 */
+  /* Time between a_begin and a2 */
   const double t2 =
       interp_table(c->time_interp_table, log(a2), c->log_a_begin, c->log_a_end);
 
