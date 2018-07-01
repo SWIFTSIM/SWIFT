@@ -611,29 +611,30 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
 }
 
 /**
- * @brief Compute the cosmic time (in internal units) between two scale-factors.
+ * @brief Compute the cosmic time (in internal units) between two points
+ * on the integer time line.
  *
  * @brief c The current #cosmology.
- * @brief a1 The first scale-factor.
- * @brief a2 The second scale-factor.
+ * @param ti_start the (integer) time of the start.
+ * @param ti_end the (integer) time of the end.
  */
-double cosmology_get_delta_time(const struct cosmology *c, double a1,
-                                double a2) {
+double cosmology_get_delta_time(const struct cosmology *c,
+                                integertime_t ti_start, integertime_t ti_end) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (a2 < a1) error("Incorrect arguments. a2 must be >= a1");
-  if (a1 < c->a_begin)
-    error("Value of a1 smaller than a_begin(%e)", c->a_begin);
-  if (a2 > c->a_end) error("Value of a2 larger than a_end(%e)", c->a_end);
+  if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
 
-  /* Time between a_begin and a1 */
-  const double t1 =
-      interp_table(c->time_interp_table, log(a1), c->log_a_begin, c->log_a_end);
+  const double log_a_start = c->log_a_begin + ti_start * c->time_base;
+  const double log_a_end = c->log_a_begin + ti_end * c->time_base;
 
-  /* Time between a_begin and a2 */
-  const double t2 =
-      interp_table(c->time_interp_table, log(a2), c->log_a_begin, c->log_a_end);
+  /* Time between a_begin and a_start */
+  const double t1 = interp_table(c->time_interp_table, log_a_start,
+                                 c->log_a_begin, c->log_a_end);
+
+  /* Time between a_begin and a_end */
+  const double t2 = interp_table(c->time_interp_table, log_a_end,
+                                 c->log_a_begin, c->log_a_end);
 
   return t2 - t1;
 }
