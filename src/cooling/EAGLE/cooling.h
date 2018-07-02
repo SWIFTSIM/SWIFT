@@ -664,6 +664,7 @@ construct_1d_table_from_4d_H_He(
         *x_max_grad = 0.5 * (x0 + x1);
         old_grad = new_grad;
       }
+      //printf("Eagle cooling.h id grad max_grad x_max_grad %llu %.5e %.5e %.5e\n", p->id, new_grad, old_grad, *x_max_grad);
     }
   }
 }
@@ -737,6 +738,39 @@ __attribute__((always_inline)) INLINE static void construct_1d_table_from_4d(
           table[index[6]], table[index[7]]);
 #endif
   }
+}
+
+/*
+ * @brief calculates heating due to helium reionization
+ *
+ * @param z redshift
+ * @param dz redshift offset
+ */
+__attribute__((always_inline)) INLINE double eagle_helium_reionization_extraheat(double z, double dz, const struct cooling_function_data *restrict cooling) {
+
+  double extra_heating = 0.0;
+
+/* dz is the change in redshift (start to finish) and hence *should* be < 0 */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (dz > 0) {
+    error(" formulation of helium reionization expects dz<0, whereas you have "
+        "dz=%e\n", dz);
+  }
+#endif
+
+  /* Helium reionization */
+  if (cooling->he_reion == 1) {
+    double he_reion_erg_pG = cooling->he_reion_ev_pH * eagle_ev_to_erg / eagle_proton_mass_cgs;
+    extra_heating += he_reion_erg_pG *
+                     (erf((z - dz - cooling->he_reion_z_center) /
+                          (pow(2., 0.5) * cooling->he_reion_z_sigma)) -
+                      erf((z - cooling->he_reion_z_center) /
+                          (pow(2., 0.5) * cooling->he_reion_z_sigma))) /
+                     2.0;
+  } else
+  extra_heating = 0.0;
+
+  return extra_heating;
 }
 
 /*
@@ -1492,14 +1526,29 @@ __attribute__((always_inline)) INLINE static float bisection_iter(
   float shift = 0.3;
   double log10_e = 0.4342944819032518;
 
+  float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+
+  /* convert Hydrogen mass fraction in Hydrogen number density */
+  double inn_h =
+      chemistry_get_number_density(p, cosmo, chemistry_element_H, phys_const) *
+      cooling->number_density_scale;
+
+  /* ratefact = inn_h * inn_h / rho; Might lead to round-off error: replaced by
+   * equivalent expression  below */
+  double ratefact = inn_h * (XH / eagle_proton_mass_cgs);
+  
+  /* set helium and hydrogen reheating term */
+  double LambdaTune = 0.0;
+  if (cooling -> he_reion == 1) LambdaTune = eagle_helium_reionization_extraheat(z_index, dz, cooling); 
+
   x_a = x_init;
   x_b = cooling->Therm[0] / log10_e;
-  f_a = eagle_cooling_rate_1d_table(
+  f_a = (LambdaTune / (dt * ratefact)) + eagle_cooling_rate_1d_table(
       x_a, &dLambdaNet_du, H_plus_He_heat_table,
       H_plus_He_electron_abundance_table, element_cooling_table,
       element_electron_abundance_table, temp_table, z_index, dz, n_h_i, d_n_h,
       He_i, d_He, p, cooling, cosmo, phys_const, abundance_ratio);
-  f_b = eagle_cooling_rate_1d_table(
+  f_b = (LambdaTune / (dt * ratefact)) + eagle_cooling_rate_1d_table(
       x_b, &dLambdaNet_du, H_plus_He_heat_table,
       H_plus_He_electron_abundance_table, element_cooling_table,
       element_electron_abundance_table, temp_table, z_index, dz, n_h_i, d_n_h,
@@ -1508,7 +1557,7 @@ __attribute__((always_inline)) INLINE static float bisection_iter(
   while (f_a * f_b >= 0 & i < 10 * eagle_max_iterations) {
     if ((x_a + shift) / log(10) < cooling->Therm[cooling->N_Temp - 1]) {
       x_a += shift;
-      f_a = eagle_cooling_rate_1d_table(
+      f_a = (LambdaTune / (dt * ratefact)) + eagle_cooling_rate_1d_table(
           x_a, &dLambdaNet_du, H_plus_He_heat_table,
           H_plus_He_electron_abundance_table, element_cooling_table,
           element_electron_abundance_table, temp_table, z_index, dz, n_h_i,
@@ -1523,7 +1572,7 @@ __attribute__((always_inline)) INLINE static float bisection_iter(
   i = 0;
   do {
     x_next = 0.5 * (x_a + x_b);
-    f_next = eagle_cooling_rate_1d_table(
+    f_next = (LambdaTune / (dt * ratefact)) + eagle_cooling_rate_1d_table(
         x_next, &dLambdaNet_du, H_plus_He_heat_table,
         H_plus_He_electron_abundance_table, element_cooling_table,
         element_electron_abundance_table, temp_table, z_index, dz, n_h_i, d_n_h,
@@ -1537,6 +1586,8 @@ __attribute__((always_inline)) INLINE static float bisection_iter(
     }
     i++;
   } while (fabs(x_a - x_b) > 1.0e-2 && i < 50*eagle_max_iterations);
+  
+  if (i >= 50*eagle_max_iterations) n_eagle_cooling_rate_calls_4++;
 
   return x_b;
 }
@@ -1594,14 +1645,14 @@ __attribute__((always_inline)) INLINE static float brent_iter(
   double ratefact = inn_h * (XH / eagle_proton_mass_cgs);
 
   /* set helium and hydrogen reheating term */
-  // LambdaTune = eagle_helium_reionization_extraheat(z_index, dz); // INCLUDE
-  // HELIUM REIONIZATION????
-  // if (zold > z_index) {
-  //  LambdaCumul += LambdaTune;
-  //  printf(" EagleDoCooling %d %g %g %g\n", z_index, dz, LambdaTune,
-  //  LambdaCumul);
-  //  zold = z_index;
-  //}
+  float LambdaTune = eagle_helium_reionization_extraheat(z_index, dz, cooling); 
+  static double zold = 100;
+   if (zold > z_index) {
+    float LambdaCumul = 0.0;
+    LambdaCumul += LambdaTune;
+    printf(" EagleDoCooling %d %g %g %g\n", z_index, dz, LambdaTune, LambdaCumul);
+    zold = z_index;
+  }
 
   int i = 0;
   x_a = x_init;
@@ -1773,14 +1824,14 @@ __attribute__((always_inline)) INLINE static float newton_iter(
   double ratefact = inn_h * (XH / eagle_proton_mass_cgs);
 
   /* set helium and hydrogen reheating term */
-  // LambdaTune = eagle_helium_reionization_extraheat(z_index, dz); // INCLUDE
-  // HELIUM REIONIZATION????
-  // if (zold > z_index) {
-  //  LambdaCumul += LambdaTune;
-  //  printf(" EagleDoCooling %d %g %g %g\n", z_index, dz, LambdaTune,
-  //  LambdaCumul);
-  //  zold = z_index;
-  //}
+   double LambdaTune = eagle_helium_reionization_extraheat(z_index, dz, cooling); 
+   static double zold = 100;
+   if (zold > z_index) {
+    float LambdaCumul = 0.0;
+    LambdaCumul += LambdaTune;
+    printf(" EagleDoCooling %d %g %g %g\n", z_index, dz, LambdaTune, LambdaCumul);
+    zold = z_index;
+  }
 
   x_old = x_init;
   x = x_old;
@@ -1789,17 +1840,12 @@ __attribute__((always_inline)) INLINE static float newton_iter(
   do /* iterate to convergence */
   {
     x_old = x;
-    // this version is needed when reionization is included...
-    // LambdaNet = (LambdaTune / (dt * ratefact)) +
-    // eagle_cooling_rate_1d_table(exp(x_old), &dLambdaNet_du,
-    // H_plus_He_heat_table, H_plus_He_electron_abundance_table,
-    // element_cooling_table, element_electron_abundance_table, temp_table,
-    // z_index, dz, n_h_i, d_n_h, He_i, d_He, p, cooling, cosmo, phys_const);
-    LambdaNet = eagle_cooling_rate_1d_table(
-		    x_old, &dLambdaNet_du, H_plus_He_heat_table,
-		    H_plus_He_electron_abundance_table, element_cooling_table,
-		    element_electron_abundance_table, temp_table, z_index, dz, n_h_i, d_n_h,
-		    He_i, d_He, p, cooling, cosmo, phys_const, abundance_ratio);
+    LambdaNet = (LambdaTune / (dt * ratefact)) +
+        eagle_cooling_rate_1d_table(
+        x_old, &dLambdaNet_du, H_plus_He_heat_table,
+        H_plus_He_electron_abundance_table, element_cooling_table,
+        element_electron_abundance_table, temp_table, z_index, dz, n_h_i, d_n_h,
+        He_i, d_He, p, cooling, cosmo, phys_const, abundance_ratio);
     n_eagle_cooling_rate_calls_1++;
 
     // Newton iterate the variable.
@@ -1923,13 +1969,12 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 	 * equivalent expression  below */
 	ratefact = inn_h * (XH / eagle_proton_mass_cgs);
 	/* set helium and hydrogen reheating term */
-	// LambdaTune = eagle_helium_reionization_extraheat(z_index, dz); // INCLUDE
-	// HELIUM REIONIZATION????
+	LambdaTune = eagle_helium_reionization_extraheat(z_index, dz, cooling);
 	if (zold > z_index) {
-		LambdaCumul += LambdaTune;
-		printf(" EagleDoCooling %d %g %g %g\n", z_index, dz, LambdaTune,
-				LambdaCumul);
-		zold = z_index;
+	  LambdaCumul += LambdaTune;
+	  printf(" EagleDoCooling %d %g %g %g\n", z_index, dz, LambdaTune,
+	  		LambdaCumul);
+	  zold = z_index;
 	}
 
 	int He_i, n_h_i;
@@ -1951,14 +1996,12 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 		u = u_old + ratefact * LambdaNet * dt;
 	} else {
 		// construct 1d table of cooling rates wrt temperature
-		double H_plus_He_heat_table[176];  // WARNING sort out how it is
-		// declared/allocated
-		double H_plus_He_electron_abundance_table[176];  // WARNING sort out how it
-		// is declared/allocated
-		double element_cooling_table[176];             // WARNING sort out how it is
-		// declared/allocated
-		double element_electron_abundance_table[176];  // WARNING sort out how it is
-		// declared/allocated
+		double H_plus_He_heat_table[176]; 
+		double H_plus_He_electron_abundance_table[176]; 
+		double element_cooling_table[176];             
+		double element_electron_abundance_table[176]; 
+
+		// element cooling
 		construct_1d_table_from_4d_H_He(
 				p, cooling, cosmo, phys_const,
 				cooling->table.element_cooling.H_plus_He_heating, z_index, dz, He_i,
@@ -2012,7 +2055,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     		    // newton method didn't work, so revert to bisection
     		    x =
     		     bisection_iter(log_u_temp,u_ini,H_plus_He_heat_table,H_plus_He_electron_abundance_table,element_cooling_table,element_electron_abundance_table,temp_table,z_index,dz,n_h_i,d_n_h,He_i,d_He,p,cosmo,cooling,phys_const,abundance_ratio,dt);
-    		    n_eagle_cooling_rate_calls_4++;
+    		    //n_eagle_cooling_rate_calls_4++;
     		    printflag = 2;
     		  }
     		  u = exp(x);
@@ -2125,6 +2168,15 @@ static INLINE void cooling_init_backend(
       parameter_file, "EAGLEChemistry:CalciumOverSilicon");
   cooling->sulphur_over_silicon_ratio = parser_get_param_float(
       parameter_file, "EAGLEChemistry:SulphurOverSilicon");
+  cooling->he_reion = parser_get_param_float(
+      parameter_file, "EagleCooling:he_reion");
+  cooling->he_reion_z_center = parser_get_param_float(
+      parameter_file, "EagleCooling:he_reion_z_center");
+  cooling->he_reion_z_sigma = parser_get_param_float(
+      parameter_file, "EagleCooling:he_reion_z_sigma");
+  cooling->he_reion_ev_pH = parser_get_param_float(
+      parameter_file, "EagleCooling:he_reion_ev_pH");
+
   GetCoolingRedshifts(cooling);
   sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
   ReadCoolingHeader(fname, cooling);
