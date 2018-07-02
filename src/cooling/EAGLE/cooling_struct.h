@@ -28,6 +28,7 @@
 #define eagle_metal_cooling_on 1
 #define eagle_max_iterations 15
 #define eagle_proton_mass_cgs 1.6726e-24
+#define eagle_ev_to_erg 1.60217646e-12
 
 /*
  * @brief struct containing radiative and heating rates
@@ -130,6 +131,11 @@ struct cooling_function_data {
   float reionisation_redshift;
   float calcium_over_silicon_ratio;
   float sulphur_over_silicon_ratio;
+
+  int he_reion;
+  float he_reion_ev_pH;
+  float he_reion_z_center;
+  float he_reion_z_sigma;
 
   double delta_u;
 };
