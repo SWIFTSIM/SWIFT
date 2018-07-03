@@ -44,10 +44,10 @@ const double const_newton_G_cgs = 6.67408e-8;
 /*! Speed of light in vacuum [cm s^-1] */
 const double const_speed_light_c_cgs = 2.99792458e10;
 
-/*! Planck's constant [g cm^-2 s^-1] */
+/*! Planck's constant [g cm^2 s^-1] */
 const double const_planck_h_cgs = 6.626070040e-27;
 
-/*! Planck's reduced constant [g cm^-2 s^-1] */
+/*! Planck's reduced constant [g cm^2 s^-1] */
 const double const_planck_hbar_cgs = 1.054571800e-27;
 
 /*! Boltzmann's constant [g cm^2 s^-2 K^-1] */
@@ -62,7 +62,7 @@ const double const_thomson_cross_section_cgs = 6.6524587158e-25;
 /*! Stefan-Boltzmann constant [g s^-3 K^-4] */
 const double const_stefan_boltzmann_cgs = 5.670367e-5;
 
-/*! Elementary charge [A s^-1] */
+/*! Elementary charge [A s] */
 const double const_electron_charge_cgs = 1.6021766208e-19;
 
 /*! Electron-Volt [g cm^2 s^-2] */
