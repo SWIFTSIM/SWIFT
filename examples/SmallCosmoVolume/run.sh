@@ -7,5 +7,5 @@ then
     ./getIC.sh
 fi
 
-../swift -a -c -G -t 16 small_cosmo_volume.yml 2>&1 | tee output.log
+../swift -c -G -t 8 small_cosmo_volume.yml 2>&1 | tee output.log
 
