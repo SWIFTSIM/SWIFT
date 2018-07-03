@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Now compute the forces */
-  runner_dopair_grav_pp(&r, &ci, &cj, 1);
+  runner_dopair_grav_pp(&r, &ci, &cj, 1, 1);
 
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {
@@ -268,7 +268,7 @@ int main(int argc, char *argv[]) {
   ci.multipole->m_pole.M_000 = 1.;
 
   /* Now compute the forces */
-  runner_dopair_grav_pp(&r, &ci, &cj, 1);
+  runner_dopair_grav_pp(&r, &ci, &cj, 1, 1);
 
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {
@@ -290,6 +290,8 @@ int main(int argc, char *argv[]) {
 
   message("\n\t\t basic P-M interactions all good\n");
 
+#ifndef GADGET2_LONG_RANGE_CORRECTION
+
   /* Reset the accelerations */
   for (int n = 0; n < num_tests; ++n) gravity_init_gpart(&cj.gparts[n]);
 
@@ -304,7 +306,7 @@ int main(int argc, char *argv[]) {
   props.epsilon_cur = FLT_MIN; /* No softening */
 
   /* Now compute the forces */
-  runner_dopair_grav_pp(&r, &ci, &cj, 1);
+  runner_dopair_grav_pp(&r, &ci, &cj, 1, 1);
 
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {
@@ -317,14 +319,16 @@ int main(int argc, char *argv[]) {
     double acc_true = acceleration(mpole->m_pole.M_000,
                                    gp->x[0] - mpole->CoM[0], epsilon, rlr);
 
-    /* message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] -
-     * mpole->CoM[0], gp->a_grav[0], acc_true, gp->potential, pot_true); */
+    message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] - mpole->CoM[0],
+            gp->a_grav[0], acc_true, gp->potential, pot_true);
 
     check_value(gp->potential, pot_true, "potential");
     check_value(gp->a_grav[0], acc_true, "acceleration");
   }
 
   message("\n\t\t truncated P-M interactions all good\n");
+
+#endif
 
   /************************************************/
   /* Test the high-order periodic PM interactions */
@@ -377,7 +381,7 @@ int main(int argc, char *argv[]) {
   gravity_multipole_print(&ci.multipole->m_pole);
 
   /* Compute the forces */
-  runner_dopair_grav_pp(&r, &ci, &cj, 1);
+  runner_dopair_grav_pp(&r, &ci, &cj, 1, 1);
 
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {
