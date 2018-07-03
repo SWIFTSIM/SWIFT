@@ -52,6 +52,9 @@ void velociraptor_init(struct engine *e) {
     if (posix_memalign((void **)&(e->stf_units), 32,
                        sizeof(struct unit_system)) != 0)
         error("Failed to allocate VELOCIraptor unit system.");
+    if (posix_memalign((void **)&(e->stf_conv_fac), 32,
+                       sizeof(struct unitinfo)) != 0)
+        error("Failed to allocate VELOCIraptor conversion factors.");
 
     /* Initialize velociraptor unit system and constants */
     units_init(e->stf_units, e->parameter_file, "VelociraptorUnitSystem");
@@ -75,12 +78,13 @@ void velociraptor_init(struct engine *e) {
     message("w_de: %e", cosmo_info.w_de);
 
     /* Set unit conversions. */
-    unit_info.lengthtokpc = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_LENGTH); /* 1kpc <=> 3.086e21cm */
-    unit_info.velocitytokms = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_SPEED); /* 1km/s <=> 1e5cm/s */
-    unit_info.masstosolarmass = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_MASS); /* 1M_sol <=> 1.99e33g */
-    unit_info.energyperunitmass = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_ENERGY_PER_UNIT_MASS); /* Conversion for gravitational potential. */
-    unit_info.gravity = vel_const.const_newton_G; /* TODO: G = 6.67408e-8 (cgs) */
-    unit_info.hubbleunit = e->cosmology->H; /* TODO: double check this. */
+    e->stf_conv_fac->lengthtokpc = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_LENGTH); /* 1kpc <=> 3.086e21cm */
+    e->stf_conv_fac->velocitytokms = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_SPEED); /* 1km/s <=> 1e5cm/s */
+    e->stf_conv_fac->masstosolarmass = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_MASS); /* 1M_sol <=> 1.99e33g */
+    e->stf_conv_fac->energyperunitmass = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_ENERGY_PER_UNIT_MASS); /* Conversion for gravitational potential. */
+    e->stf_conv_fac->gravity = vel_const.const_newton_G; /* TODO: G = 6.67408e-8 (cgs) */
+    e->stf_conv_fac->hubbleunit = e->cosmology->H; /* TODO: double check this. */
+    unit_info = *e->stf_conv_fac;
 
     message("Length conversion factor: %e", unit_info.lengthtokpc);
     message("Velocity conversion factor: %e", unit_info.velocitytokms);
@@ -160,6 +164,7 @@ void velociraptor_invoke(struct engine *e) {
     const int nr_cells = s->nr_cells;
     int *cell_node_ids;
     float *internal_energies;
+    struct unitinfo *conv_fac = e->stf_conv_fac;
 
     /* Allow thread to run on any core for the duration of the call to VELOCIraptor so that 
      * when OpenMP threads are spawned they can run on any core on the processor. */
@@ -188,9 +193,6 @@ void velociraptor_invoke(struct engine *e) {
                        nr_hydro_parts * sizeof(float)) != 0)
         error("Failed to allocate array of internal energies for VELOCIraptor.");
     
-    const float energy_scale = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_ENERGY); /* Conversion for particle internal energy. */
-    for(int i=0; i<nr_hydro_parts; i++) internal_energies[i] = hydro_get_physical_internal_energy(&parts[i], e->cosmology) * energy_scale;    
-
     message("MPI rank %d sending %lld gparts to VELOCIraptor.", e->nodeID, nr_gparts);
     
     //for(int i=0; i<nr_gparts; i++) message("Potential: %f", gparts[i].potential);
@@ -206,13 +208,48 @@ void velociraptor_invoke(struct engine *e) {
              e->time);
     }
 
-    if(!InvokeVelociraptor(nr_gparts, nr_hydro_parts, gparts, parts, internal_energies, cell_node_ids, outputFileName)) error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
+    struct swift_vel_part *swift_parts;
+
+    /* Calculate and store the internal energies of gas particles and pass them to VELOCIraptor. */
+    if (posix_memalign((void **)&swift_parts, part_align,
+                       nr_gparts * sizeof(struct swift_vel_part)) != 0)
+        error("Failed to allocate array of particles for VELOCIraptor.");
+    
+    bzero(swift_parts, nr_gparts * sizeof(struct swift_vel_part));
+
+    const float energy_scale = 1.0;
+    message("Energy scaling factor: %f", energy_scale);
+    
+    for(int i=0; i<nr_gparts; i++) {
+      swift_parts[i].x[0] = gparts[i].x[0] * conv_fac->lengthtokpc;
+      swift_parts[i].x[1] = gparts[i].x[1] * conv_fac->lengthtokpc;
+      swift_parts[i].x[2] = gparts[i].x[2] * conv_fac->lengthtokpc;
+      swift_parts[i].v[0] = gparts[i].v_full[0] * conv_fac->velocitytokms;
+      swift_parts[i].v[1] = gparts[i].v_full[1] * conv_fac->velocitytokms;
+      swift_parts[i].v[2] = gparts[i].v_full[2] * conv_fac->velocitytokms;
+      swift_parts[i].mass = gparts[i].mass * conv_fac->masstosolarmass;
+      swift_parts[i].potential = gparts[i].potential * conv_fac->energyperunitmass;
+      swift_parts[i].type = gparts[i].type;
+      
+      if(gparts[i].type == swift_type_gas) {  
+        swift_parts[i].id = parts[-gparts[i].id_or_neg_offset].id;
+        swift_parts[i].u = hydro_get_physical_internal_energy(&parts[-gparts[i].id_or_neg_offset], e->cosmology) * energy_scale;
+      }
+      else {
+        swift_parts[i].id = gparts[i].id_or_neg_offset;
+        swift_parts[i].u = 0.f;
+      }
+
+    }
+
+    if(!InvokeVelociraptor(nr_gparts, nr_hydro_parts, swift_parts, cell_node_ids, outputFileName)) error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
     
     /* Reset the pthread affinity mask after VELOCIraptor returns. */
     pthread_setaffinity_np(thread, sizeof(cpu_set_t), engine_entry_affinity());
     
     /* Free cell node ids after VELOCIraptor has copied them. */
     free(cell_node_ids);
+    free(swift_parts);
     
     message("VELOCIraptor took %.3f %s on rank %d.",
             clocks_from_ticks(getticks() - tic), clocks_getunit(), e->nodeID);

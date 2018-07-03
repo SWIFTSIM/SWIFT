@@ -200,6 +200,7 @@ struct engine {
   
   /* The STF system of units */
   struct unit_system *stf_units;
+  struct unitinfo *stf_conv_fac;
 
   /* Snapshot information */
   double a_first_snapshot;
