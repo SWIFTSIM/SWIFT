@@ -614,7 +614,7 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
  * @brief Compute the cosmic time (in internal units) between two points
  * on the integer time line.
  *
- * @brief c The current #cosmology.
+ * @param c The current #cosmology.
  * @param ti_start the (integer) time of the start.
  * @param ti_end the (integer) time of the end.
  */

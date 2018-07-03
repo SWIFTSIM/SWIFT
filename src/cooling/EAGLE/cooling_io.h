@@ -41,7 +41,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
- * @param parts The particle array.
+ * @param xparts The extended data particle array.
  * @param list The list of i/o properties to write.
  * @param cooling The #cooling_function_data
  *

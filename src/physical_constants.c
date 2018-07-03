@@ -78,6 +78,11 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
       const_thomson_cross_section_cgs /
       units_general_cgs_conversion_factor(us, dimension_thomson);
 
+  const float dimension_stefan[5] = {1, 0, -3, 0, -4};
+  internal_const->const_stefan_boltzmann =
+      const_stefan_boltzmann_cgs /
+      units_general_cgs_conversion_factor(us, dimension_stefan);
+
   const float dimension_ev[5] = {1, 2, -2, 0, 0};
   internal_const->const_electron_volt =
       const_electron_volt_cgs /
@@ -116,6 +121,11 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
   internal_const->const_light_year =
       const_light_year_cgs /
       units_general_cgs_conversion_factor(us, dimension_length);
+
+  const float dimension_temperature[5] = {0, 0, 0, 0, 1};
+  internal_const->const_T_CMB_0 =
+      const_T_CMB_0_cgs /
+      units_general_cgs_conversion_factor(us, dimension_temperature);
 }
 
 /**
