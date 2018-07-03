@@ -106,6 +106,8 @@ tests/test125cellsPerturbed.sh
 tests/testParser.sh
 tests/testReading.sh
 tests/testSelectOutput.sh
+tests/unused_parser_output.yml
+tests/used_parser_output.yml
 tests/testAdiabaticIndex
 tests/testRiemannExact
 tests/testRiemannTRRS
@@ -124,6 +126,7 @@ tests/testEOS
 tests/testEOS*.txt
 tests/testEOS*.png
 tests/testUtilities
+tests/testCbrt
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf
