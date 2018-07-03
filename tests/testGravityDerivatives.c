@@ -956,7 +956,7 @@ int main(int argc, char* argv[]) {
     /* Compute all derivatives */
     struct potential_derivatives_M2L pot;
     compute_potential_derivatives_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
-                                      &pot);
+                                      /*periodic*/ 0, /* 1/r_s */ 0., &pot);
 
     /* Minimal value we care about */
     const double min = 1e-9;

@@ -130,6 +130,7 @@ int main(int argc, char *argv[]) {
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
+  struct pm_mesh mesh;
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
@@ -632,7 +633,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
-      gravity_props_init(&gravity_properties, params, &cosmo);
+      gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology);
 
     /* Read particles and space information from (GADGET) ICs */
     char ICfileName[200] = "";
@@ -643,6 +644,8 @@ int main(int argc, char *argv[]) {
         params, "InitialConditions:cleanup_smoothing_lengths", 0);
     const int cleanup_h = parser_get_opt_param_int(
         params, "InitialConditions:cleanup_h_factors", 0);
+    const int cleanup_sqrt_a = parser_get_opt_param_int(
+        params, "InitialConditions:cleanup_velocity_factors", 0);
     const int generate_gas_in_ics = parser_get_opt_param_int(
         params, "InitialConditions:generate_gas_in_ics", 0);
     if (generate_gas_in_ics && flag_entropy_ICs)
@@ -652,6 +655,8 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
     if (myrank == 0 && cleanup_h)
       message("Cleaning up h-factors (h=%f)", cosmo.h);
+    if (myrank == 0 && cleanup_sqrt_a)
+      message("Cleaning up a-factors from velocity (a=%f)", cosmo.a);
     fflush(stdout);
 
     /* Get ready to read particles of all kinds */
@@ -665,20 +670,23 @@ int main(int argc, char *argv[]) {
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                      &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                      (with_external_gravity || with_self_gravity), with_stars,
-                     cleanup_h, cosmo.h, myrank, nr_nodes, MPI_COMM_WORLD,
-                     MPI_INFO_NULL, nr_threads, dry_run);
+                     cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
+                     nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                     dry_run);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                    &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cosmo.h, myrank, nr_nodes, MPI_COMM_WORLD,
-                   MPI_INFO_NULL, nr_threads, dry_run);
+                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
+                   nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                   dry_run);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                    &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cosmo.h, nr_threads, dry_run);
+                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
+                   dry_run);
 #endif
 #endif
     if (myrank == 0) {
@@ -688,11 +696,9 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
-#ifndef HAVE_FFTW
-    /* Need the FFTW library if periodic and self gravity. */
-    if (with_self_gravity && periodic)
-      error(
-          "No FFTW library found. Cannot compute periodic long-range forces.");
+#ifdef WITH_MPI
+    if (periodic && with_self_gravity)
+      error("Periodic self-gravity over MPI temporarily disabled.");
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -732,6 +738,19 @@ int main(int argc, char *argv[]) {
 
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);
+
+    /* Initialise the long-range gravity mesh */
+    if (with_self_gravity && periodic) {
+#ifdef HAVE_FFTW
+      pm_mesh_init(&mesh, &gravity_properties, dim);
+#else
+      /* Need the FFTW library if periodic and self gravity. */
+      error(
+          "No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
+    } else {
+      pm_mesh_init_no_mesh(&mesh, dim);
+    }
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -827,7 +846,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
-                &hydro_properties, &gravity_properties, &potential,
+                &hydro_properties, &gravity_properties, &mesh, &potential,
                 &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
@@ -1096,6 +1115,7 @@ int main(int argc, char *argv[]) {
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(&cosmo);
+  if (with_self_gravity) pm_mesh_clean(&mesh);
   engine_clean(&e);
   free(params);
 

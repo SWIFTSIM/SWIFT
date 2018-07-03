@@ -1281,10 +1281,10 @@ esac
 #  Gravity multipole order
 AC_ARG_WITH([multipole-order],
    [AS_HELP_STRING([--with-multipole-order=<order>],
-      [order of the multipole and gravitational field expansion @<:@ default: 5@:>@]
+      [order of the multipole and gravitational field expansion @<:@ default: 4@:>@]
    )],
    [with_multipole_order="$withval"],
-   [with_multipole_order="5"]
+   [with_multipole_order="4"]
 )
 AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Multipole order])
 

@@ -47,6 +47,7 @@
 #include "lock.h"
 #include "logger.h"
 #include "map.h"
+#include "mesh_gravity.h"
 #include "multipole.h"
 #include "parallel_io.h"
 #include "parser.h"

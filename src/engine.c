@@ -64,6 +64,7 @@
 #include "debug.h"
 #include "error.h"
 #include "gravity.h"
+#include "gravity_cache.h"
 #include "hydro.h"
 #include "map.h"
 #include "memswap.h"
@@ -132,7 +133,7 @@ struct end_of_step_data {
 void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 
   /* Get the next free link. */
-  const int ind = atomic_inc(&e->nr_links);
+  const size_t ind = atomic_inc(&e->nr_links);
   if (ind >= e->size_links) {
     error("Link table overflow.");
   }
@@ -333,8 +334,13 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         c->grav_down = scheduler_addtask(s, task_type_grav_down,
                                          task_subtype_none, 0, 0, c, NULL);
 
-        if (periodic) scheduler_addunlock(s, c->init_grav, c->grav_ghost_in);
-        if (periodic) scheduler_addunlock(s, c->grav_ghost_out, c->grav_down);
+        /* Gravity mesh force propagation */
+        if (periodic)
+          c->grav_mesh = scheduler_addtask(s, task_type_grav_mesh,
+                                           task_subtype_none, 0, 0, c, NULL);
+
+        if (periodic) scheduler_addunlock(s, c->drift_gpart, c->grav_mesh);
+        if (periodic) scheduler_addunlock(s, c->grav_mesh, c->super->end_force);
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->super->end_force);
@@ -2327,28 +2333,21 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
 
   struct engine *e = ((struct engine **)extra_data)[0];
-  struct task **ghosts = ((struct task ***)extra_data)[1];
-
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1,
-                             s->cdim[2] / 4 + 1};
   const double theta_crit2 = e->gravity_properties->theta_crit2;
   struct cell *cells = s->cells_top;
-  const int n_ghosts = cdim_ghost[0] * cdim_ghost[1] * cdim_ghost[2] * 2;
+  const double max_distance = e->mesh->r_cut_max;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
-    const int i = cid / (cdim[1] * cdim[2]);
-    const int j = (cid / cdim[2]) % cdim[1];
-    const int k = cid % cdim[2];
 
     /* Get the cell */
     struct cell *ci = &cells[cid];
@@ -2362,17 +2361,17 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     /* If the cells is local build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
 
-    /* Deal with periodicity FFT task dependencies */
-    const int ghost_id = cell_getid(cdim_ghost, i / 4, j / 4, k / 4);
-    if (ghost_id > n_ghosts) error("Invalid ghost_id");
-    if (periodic) {
-      ci->grav_ghost_in = ghosts[2 * ghost_id + 0];
-      ci->grav_ghost_out = ghosts[2 * ghost_id + 1];
-    }
-
     /* Recover the multipole information */
-    struct gravity_tensors *const multi_i = ci->multipole;
+    const struct gravity_tensors *const multi_i = ci->multipole;
     const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
+    const double r_max_i = multi_i->r_max;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (multi_i->r_max != multi_i->r_max_rebuild)
+      error(
+          "Multipole size not equal ot it's size after rebuild. But we just "
+          "rebuilt...");
+#endif
 
     /* Loop over every other cell */
     for (int ii = 0; ii < cdim[0]; ii++) {
@@ -2405,9 +2404,15 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           }
           const double r2 = dx * dx + dy * dy + dz * dz;
 
+          /* Minimal distance between any pair of particles */
+          const double min_radius =
+              sqrt(r2) - (multi_i->r_max + multi_j->r_max);
+
+          /* Are we beyond the distance where the truncated forces are 0 ?*/
+          if (periodic && min_radius > max_distance) continue;
+
           /* Are the cells too close for a MM interaction ? */
-          if (!gravity_M2L_accept(multi_i->r_max_rebuild,
-                                  multi_j->r_max_rebuild, theta_crit2, r2)) {
+          if (!gravity_M2L_accept(r_max_i, multi_j->r_max, theta_crit2, r2)) {
 
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
@@ -2431,60 +2436,17 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 void engine_make_self_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
-  const int periodic = s->periodic;
-  const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1,
-                             s->cdim[2] / 4 + 1};
+  /* struct scheduler *sched = &e->sched; */
+  /* const int periodic = s->periodic; */
+  /* const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1, */
+  /*                            s->cdim[2] / 4 + 1}; */
   struct task **ghosts = NULL;
-  const int n_ghosts = cdim_ghost[0] * cdim_ghost[1] * cdim_ghost[2] * 2;
-
-  /* Create the top-level task if periodic */
-  if (periodic) {
-
-    /* Create the FFT task for this MPI rank */
-    s->grav_top_level = scheduler_addtask(sched, task_type_grav_top_level,
-                                          task_subtype_none, 0, 0, NULL, NULL);
-
-    /* Create a grid of ghosts to deal with the dependencies */
-    if ((ghosts = (struct task **)malloc(n_ghosts * sizeof(struct task *))) ==
-        0)
-      error("Error allocating memory for gravity fft ghosts");
-
-    /* Make the ghosts implicit and add the dependencies */
-    for (int n = 0; n < n_ghosts / 2; ++n) {
-      ghosts[2 * n + 0] = scheduler_addtask(
-          sched, task_type_grav_ghost_in, task_subtype_none, 0, 1, NULL, NULL);
-      ghosts[2 * n + 1] = scheduler_addtask(
-          sched, task_type_grav_ghost_out, task_subtype_none, 0, 1, NULL, NULL);
-      scheduler_addunlock(sched, ghosts[2 * n + 0], s->grav_top_level);
-      scheduler_addunlock(sched, s->grav_top_level, ghosts[2 * n + 1]);
-    }
-  }
+  // const int n_ghosts = cdim_ghost[0] * cdim_ghost[1] * cdim_ghost[2] * 2;
 
   /* Cretae the multipole self and pair tasks. */
   void *extra_data[2] = {e, ghosts};
   threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
                  s->nr_cells, 1, 0, extra_data);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (periodic)
-    for (int i = 0; i < s->nr_cells; ++i) {
-      const struct cell *c = &s->cells_top[i];
-      /* Skip empty cells */
-      if (c->gcount == 0) continue;
-
-      /* Did we correctly attach the FFT task ghosts? */
-      if (c->nodeID == engine_rank &&
-          (c->grav_ghost_in == NULL || c->grav_ghost_out == NULL))
-        error("Invalid gravity_ghost for local cell");
-      if (c->nodeID != engine_rank &&
-          (c->grav_ghost_in != NULL || c->grav_ghost_out != NULL))
-        error("Invalid gravity_ghost for foreign cell");
-    }
-#endif
-
-  /* Clean up. */
-  if (periodic) free(ghosts);
 }
 
 /**
@@ -3143,12 +3105,12 @@ void engine_maketasks(struct engine *e) {
  * and 2 (density, force) self.
  */
 #ifdef EXTRA_HYDRO_LOOP
-  const int hydro_tasks_per_cell = 27 * 3;
+  const size_t hydro_tasks_per_cell = 27 * 3;
 #else
-  const int hydro_tasks_per_cell = 27 * 2;
+  const size_t hydro_tasks_per_cell = 27 * 2;
 #endif
-  const int self_grav_tasks_per_cell = 27 * 2;
-  const int ext_grav_tasks_per_cell = 1;
+  const size_t self_grav_tasks_per_cell = 125;
+  const size_t ext_grav_tasks_per_cell = 1;
 
   if (e->policy & engine_policy_hydro)
     e->size_links += s->tot_cells * hydro_tasks_per_cell;
@@ -3585,17 +3547,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Gravity stuff ? */
-    else if (t->type == task_type_grav_down ||
+    else if (t->type == task_type_grav_down || t->type == task_type_grav_mesh ||
              t->type == task_type_grav_long_range ||
              t->type == task_type_init_grav) {
       if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
-    }
-
-    /* Periodic gravity stuff (Note this is not linked to a cell) ? */
-    else if (t->type == task_type_grav_top_level ||
-             t->type == task_type_grav_ghost_in ||
-             t->type == task_type_grav_ghost_out) {
-      scheduler_activate(s, t);
     }
 
     /* Time-step? */
@@ -3722,7 +3677,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_self_gravity) {
-    n1 += 32;
+    n1 += 125;
     n2 += 1;
 #ifdef WITH_MPI
     n2 += 2;
@@ -3809,6 +3764,10 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
 
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
+
+  /* Re-compute the mesh forces */
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+    pm_mesh_compute_potential(e->mesh, e);
 
   /* Re-compute the maximal RMS displacement constraint */
   if (e->policy & engine_policy_cosmology)
@@ -4234,10 +4193,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_grav || t->type == task_type_end_force ||
         t->type == task_type_grav_long_range ||
-        t->type == task_type_grav_ghost_in ||
-        t->type == task_type_grav_ghost_out ||
-        t->type == task_type_grav_top_level || t->type == task_type_grav_down ||
-        t->type == task_type_cooling || t->type == task_type_sourceterms)
+        t->type == task_type_grav_down || t->type == task_type_cooling ||
+        t->type == task_type_sourceterms)
       t->skip = 1;
   }
 
@@ -4787,14 +4744,6 @@ void engine_unskip(struct engine *e) {
   ProfilerStop();
 #endif  // WITH_PROFILER
 
-  /* And the top level gravity FFT one when periodicity is on.*/
-  if (e->s->periodic && (e->policy & engine_policy_self_gravity)) {
-
-    /* Only if there are other tasks (i.e. something happens on this node) */
-    if (e->sched.active_count > 0)
-      scheduler_activate(&e->sched, e->s->grav_top_level);
-  }
-
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -5000,6 +4949,8 @@ void engine_makeproxies(struct engine *e) {
   if (with_gravity) {
     const double distance = 2.5 * cells[0].width[0] / props->theta_crit;
     delta = (int)(distance / cells[0].width[0]) + 1;
+
+    // MATTHIEU: Check this calculation
   }
 
   /* Let's be verbose about this choice */
@@ -5416,6 +5367,7 @@ void engine_unpin(void) {
  * @param cosmo The #cosmology used for this run.
  * @param hydro The #hydro_props used for this run.
  * @param gravity The #gravity_props used for this run.
+ * @param mesh The #pm_mesh used for the long-range periodic forces.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
  * @param chemistry The chemistry information.
@@ -5427,7 +5379,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
-                 struct gravity_props *gravity,
+                 struct gravity_props *gravity, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
                  const struct chemistry_global_data *chemistry,
@@ -5484,12 +5436,12 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_param_double(params, "Statistics:delta_time");
   e->ti_next_stats = 0;
   e->verbose = verbose;
-  e->count_step = 0;
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
   e->cosmology = cosmo;
   e->hydro_properties = hydro;
   e->gravity_properties = gravity;
+  e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
   e->chemistry = chemistry;
@@ -6243,11 +6195,11 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const float vel_norm_b = vel_norm[0] + vel_norm[4];
 
   /* Mesh forces smoothing scale */
-  float a_smooth;
+  float r_s;
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic == 1)
-    a_smooth = e->gravity_properties->a_smooth * e->s->dim[0] / e->s->cdim[0];
+    r_s = e->mesh->r_s;
   else
-    a_smooth = FLT_MAX;
+    r_s = FLT_MAX;
 
   float dt_dm = FLT_MAX, dt_b = FLT_MAX;
 
@@ -6264,7 +6216,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     const float rms_vel_dm = vel_norm_dm / N_dm;
 
     /* Time-step based on maximum displacement */
-    dt_dm = a * a * min(a_smooth, d_dm) / sqrtf(rms_vel_dm);
+    dt_dm = a * a * min(r_s, d_dm) / sqrtf(rms_vel_dm);
   }
 
   /* Baryon case */
@@ -6280,7 +6232,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     const float rms_vel_b = vel_norm_b / N_b;
 
     /* Time-step based on maximum displacement */
-    dt_b = a * a * min(a_smooth, d_b) / sqrtf(rms_vel_b);
+    dt_b = a * a * min(r_s, d_b) / sqrtf(rms_vel_b);
   }
 
   /* Use the minimum */
@@ -6343,6 +6295,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   phys_const_struct_dump(e->physical_constants, stream);
   hydro_props_struct_dump(e->hydro_properties, stream);
   gravity_props_struct_dump(e->gravity_properties, stream);
+  pm_mesh_struct_dump(e->mesh, stream);
   potential_struct_dump(e->external_potential, stream);
   cooling_struct_dump(e->cooling_func, stream);
   chemistry_struct_dump(e->chemistry, stream);
@@ -6411,6 +6364,10 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct gravity_props *)malloc(sizeof(struct gravity_props));
   gravity_props_struct_restore(gravity_properties, stream);
   e->gravity_properties = gravity_properties;
+
+  struct pm_mesh *mesh = (struct pm_mesh *)malloc(sizeof(struct pm_mesh));
+  pm_mesh_struct_restore(mesh, stream);
+  e->mesh = mesh;
 
   struct external_potential *external_potential =
       (struct external_potential *)malloc(sizeof(struct external_potential));

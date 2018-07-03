@@ -54,7 +54,6 @@
 #include "hydro_properties.h"
 #include "kick.h"
 #include "minmax.h"
-#include "runner_doiact_fft.h"
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
 #include "sort_part.h"
@@ -95,7 +94,6 @@
 #undef FUNCTION_TASK_LOOP
 
 /* Import the gravity loop functions. */
-#include "runner_doiact_fft.h"
 #include "runner_doiact_grav.h"
 
 /**
@@ -175,6 +173,41 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   }
 
   if (timer) TIMER_TOC(timer_dograv_external);
+}
+
+/**
+ * @brief Calculate gravity accelerations from the periodic mesh
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
+
+  struct gpart *restrict gparts = c->gparts;
+  const int gcount = c->gcount;
+  const struct engine *e = r->e;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!e->s->periodic) error("Calling mesh forces in non-periodic mode.");
+#endif
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active_gravity(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_grav_mesh(r, c->progeny[k], 0);
+  } else {
+
+    /* Get the forces from the gravity mesh */
+    pm_mesh_interpolate_forces(e->mesh, e, gparts, gcount);
+  }
+
+  if (timer) TIMER_TOC(timer_dograv_mesh);
 }
 
 /**
@@ -880,15 +913,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-#ifdef SWIFT_DEBUG_CHECKS
     if (count) {
       error("Smoothing length failed to converge on %i particles.", count);
     }
-#else
-    if (count) {
-      error("Smoothing length failed to converge on %i particles.", count);
-    }
-#endif
 
     /* Be clean */
     free(pid);
@@ -1623,6 +1650,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const struct space *s = e->s;
   const struct cosmology *cosmo = e->cosmology;
   const int count = c->count;
   const int gcount = c->gcount;
@@ -1630,7 +1658,12 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct gpart *restrict gparts = c->gparts;
   struct spart *restrict sparts = c->sparts;
-  const double const_G = e->physical_constants->const_newton_G;
+  const int periodic = s->periodic;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const float Omega_m = e->cosmology->Omega_m;
+  const float H0 = e->cosmology->H0;
+  const float G_newton = e->physical_constants->const_newton_G;
+  const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
 
   TIMER_TIC;
 
@@ -1665,7 +1698,18 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (gpart_is_active(gp, e)) {
 
         /* Finish the force calculation */
-        gravity_end_force(gp, const_G);
+        gravity_end_force(gp, G_newton);
+
+        /* Apply periodic BC contribution to the potential */
+        if (with_cosmology && periodic) {
+          const float mass = gravity_get_mass(gp);
+          const float mass2 = mass * mass;
+
+          /* This correction term matches the one used in Gadget-2 */
+          /* The numerical constant is taken from Hernquist, Bouchet & Suto 1991
+           */
+          gp->potential -= 2.8372975f * cbrtf(mass2 * Omega_m * rho_crit0);
+        }
 
 #ifdef SWIFT_NO_GRAVITY_BELOW_ID
 
@@ -2054,7 +2098,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_doself2_branch_force(r, ci);
           else if (t->subtype == task_subtype_grav)
-            runner_doself_grav(r, ci, 1);
+            runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
@@ -2071,7 +2115,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
-            runner_dopair_grav(r, ci, cj, 1);
+            runner_dopair_recursive_grav(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2169,8 +2213,8 @@ void *runner_main(void *data) {
         case task_type_grav_down:
           runner_do_grav_down(r, t->ci, 1);
           break;
-        case task_type_grav_top_level:
-          runner_do_grav_fft(r, 1);
+        case task_type_grav_mesh:
+          runner_do_grav_mesh(r, t->ci, 1);
           break;
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);

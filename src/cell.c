@@ -2302,6 +2302,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->end_force != NULL) scheduler_activate(s, c->end_force);
     if (c->grav_down != NULL) scheduler_activate(s, c->grav_down);
+    if (c->grav_mesh != NULL) scheduler_activate(s, c->grav_mesh);
     if (c->grav_long_range != NULL) scheduler_activate(s, c->grav_long_range);
   }
 

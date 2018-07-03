@@ -91,6 +91,11 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
+/* Choke on FPEs */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
+
   /* Initialise a few things to get us going */
   struct engine e;
   e.max_active_bin = num_time_bins;
@@ -98,11 +103,14 @@ int main(int argc, char *argv[]) {
   e.ti_current = 8;
   e.time_base = 1e-10;
 
-  struct space s;
-  s.width[0] = 0.2;
-  s.width[1] = 0.2;
-  s.width[2] = 0.2;
-  e.s = &s;
+  struct pm_mesh mesh;
+  mesh.periodic = 0;
+  mesh.dim[0] = 10.;
+  mesh.dim[1] = 10.;
+  mesh.dim[2] = 10.;
+  mesh.r_s_inv = 0.;
+  mesh.r_cut_min = 0.;
+  e.mesh = &mesh;
 
   struct gravity_props props;
   props.a_smooth = 1.25;
@@ -113,7 +121,7 @@ int main(int argc, char *argv[]) {
   bzero(&r, sizeof(struct runner));
   r.e = &e;
 
-  const double rlr = props.a_smooth * s.width[0];
+  const double rlr = FLT_MAX;
 
   /* Init the cache for gravity interaction */
   gravity_cache_init(&r.ci_gravity_cache, num_tests * 2);
@@ -168,7 +176,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Now compute the forces */
-  runner_doself_grav_pp_truncated(&r, &c);
+  runner_doself_grav_pp(&r, &c);
 
   /* Verify everything */
   for (int n = 1; n < num_tests + 1; ++n) {

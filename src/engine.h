@@ -39,6 +39,7 @@
 #include "collectgroup.h"
 #include "cooling_struct.h"
 #include "gravity_properties.h"
+#include "mesh_gravity.h"
 #include "parser.h"
 #include "partition.h"
 #include "potential.h"
@@ -233,9 +234,6 @@ struct engine {
   /* The current step number. */
   int step;
 
-  /* The number of particles updated in the previous step. */
-  int count_step;
-
   /* Data for the threads' barrier. */
   swift_barrier_t wait_barrier;
   swift_barrier_t run_barrier;
@@ -281,11 +279,11 @@ struct engine {
 
   /* Linked list for cell-task association. */
   struct link *links;
-  int nr_links, size_links;
+  size_t nr_links, size_links;
 
   /* Average number of tasks per cell. Used to estimate the sizes
    * of the various task arrays. */
-  int tasks_per_cell;
+  size_t tasks_per_cell;
 
   /* Are we talkative ? */
   int verbose;
@@ -301,6 +299,9 @@ struct engine {
 
   /* Properties of the self-gravity scheme */
   struct gravity_props *gravity_properties;
+
+  /* The mesh used for long-range gravity forces */
+  struct pm_mesh *mesh;
 
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
@@ -360,7 +361,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
-                 struct gravity_props *gravity,
+                 struct gravity_props *gravity, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
                  const struct chemistry_global_data *chemistry,

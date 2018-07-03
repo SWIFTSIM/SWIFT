@@ -416,9 +416,9 @@ int gravity_exact_force_file_exits(const struct engine *e) {
   /* File name */
   char file_name[100];
   if (e->s->periodic)
-    sprintf(file_name, "gravity_checks_exact_periodic_step%d.dat", e->step);
+    sprintf(file_name, "gravity_checks_exact_periodic_step%.4d.dat", e->step);
   else
-    sprintf(file_name, "gravity_checks_exact_step%d.dat", e->step);
+    sprintf(file_name, "gravity_checks_exact_step%.4d.dat", e->step);
 
   /* Does the file exist ? */
   if (access(file_name, R_OK | W_OK) == 0) {
@@ -647,7 +647,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
   /* File name */
   char file_name_swift[100];
-  sprintf(file_name_swift, "gravity_checks_swift_step%d_order%d.dat", e->step,
+  sprintf(file_name_swift, "gravity_checks_swift_step%.4d_order%d.dat", e->step,
           SELF_GRAVITY_MULTIPOLE_ORDER);
 
   /* Creare files and write header */
@@ -703,10 +703,10 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
     char file_name_exact[100];
     if (s->periodic)
-      sprintf(file_name_exact, "gravity_checks_exact_periodic_step%d.dat",
+      sprintf(file_name_exact, "gravity_checks_exact_periodic_step%.4d.dat",
               e->step);
     else
-      sprintf(file_name_exact, "gravity_checks_exact_step%d.dat", e->step);
+      sprintf(file_name_exact, "gravity_checks_exact_step%.4d.dat", e->step);
 
     FILE *file_exact = fopen(file_name_exact, "w");
     fprintf(file_exact, "# Gravity accuracy test - EXACT FORCES\n");

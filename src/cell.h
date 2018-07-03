@@ -261,6 +261,9 @@ struct cell {
   /*! Task computing long range non-periodic gravity interactions */
   struct task *grav_long_range;
 
+  /*! Task propagating the mesh forces to the particles */
+  struct task *grav_mesh;
+
   /*! Task propagating the multipole to the particles */
   struct task *grav_down;
 

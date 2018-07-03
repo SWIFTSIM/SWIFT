@@ -332,3 +332,59 @@ if order > 0:
 print ""
 print "-------------------------------------------------"
 
+print "gravity_M2P():"
+print "-------------------------------------------------\n"
+
+if order > 0:
+    print "#if SELF_GRAVITY_MULTIPOLE_ORDER > %d\n"%(order-1)
+    
+print "/* %s order contributions */"%(ordinal(order))
+
+    
+for r in range(4):
+    if r == 0:
+        print "*f_x =",
+    if r == 1:
+        print "*f_y =",
+    if r == 2:
+        print "*f_z =",
+    if r == 3:
+        print "*pot =",
+        
+    first = True
+    for i in range(order+1):
+        for j in range(order+1):
+            for k in range(order+1):
+                if i + j + k == order:
+                    if first:
+                        first = False
+                    else:
+                        print "+",
+                    if r == 0:
+                        ii = i+1
+                        jj = j
+                        kk = k
+                    if r == 1:
+                        ii = i
+                        jj = j+1
+                        kk = k
+                    if r == 2:
+                        ii = i
+                        jj = j
+                        kk = k+1
+                    if r == 3:
+                        ii = i
+                        jj = j
+                        kk = k
+                    print "m->M_%d%d%d * d.D_%d%d%d"%(i,j,k,ii,jj,kk),
+                    
+    print ";"
+        
+print ""
+
+if order > 0:
+    print "#endif"
+
+print ""
+print "-------------------------------------------------"
+
