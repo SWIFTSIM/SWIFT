@@ -116,9 +116,6 @@ struct pcell {
   /*! Number of #spart in this cell. */
   int scount;
 
-  /*! tag used for MPI communication. */
-  int tag;
-
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
 

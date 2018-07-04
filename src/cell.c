@@ -185,7 +185,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
   pc->count = c->count;
   pc->gcount = c->gcount;
   pc->scount = c->scount;
-  c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
+
 #ifdef SWIFT_DEBUG_CHECKS
   pc->cellID = c->cellID;
 #endif
@@ -196,8 +196,9 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
     if (c->progeny[k] != NULL) {
       pc->progeny[k] = count;
       count += cell_pack(c->progeny[k], &pc[count]);
-    } else
+    } else {
       pc->progeny[k] = -1;
+    }
 
   /* Return the number of packed cells used. */
   c->pcell_size = count;
@@ -235,7 +236,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->count = pc->count;
   c->gcount = pc->gcount;
   c->scount = pc->scount;
-  c->tag = pc->tag;
 #ifdef SWIFT_DEBUG_CHECKS
   c->cellID = pc->cellID;
 #endif
