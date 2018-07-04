@@ -1292,10 +1292,9 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Make sure this cell has a valid tag. */
-      if (ci->tag < 0) error("Trying to send from untagged cell.");
-#endif  // SWIFT_DEBUG_CHECKS
+      /* Create a tag for this cell. */
+      if (ci->tag < 0 && (ci->tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
+        error("Ran out of cell tags.");
 
       t_xv = scheduler_addtask(
           s, task_type_send, task_subtype_xv,
@@ -1389,10 +1388,9 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_grav == NULL) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Make sure this cell has a valid tag. */
-      if (ci->tag < 0) error("Trying to send from untagged cell.");
-#endif  // SWIFT_DEBUG_CHECKS
+      /* Create a tag for this cell. */
+      if (ci->tag < 0 && (ci->tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
+        error("Ran out of cell tags.");
 
       t_grav = scheduler_addtask(
           s, task_type_send, task_subtype_gpart,
@@ -1455,10 +1453,9 @@ void engine_addtasks_send_timestep(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_ti == NULL) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Make sure this cell has a valid tag. */
-      if (ci->tag < 0) error("Trying to send from untagged cell.");
-#endif  // SWIFT_DEBUG_CHECKS
+      /* Create a tag for this cell. */
+      if (ci->tag < 0 && (ci->tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
+        error("Ran out of cell tags.");
 
       t_ti = scheduler_addtask(
           s, task_type_send, task_subtype_tend,
