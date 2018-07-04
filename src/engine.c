@@ -1292,13 +1292,21 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
 
-      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv,
-                               6 * ci->tag + 0, 0, ci, cj);
-      t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
-                                6 * ci->tag + 1, 0, ci, cj);
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure this cell has a valid tag. */
+      if (ci->tag < 0) error("Trying to send from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
+      t_xv = scheduler_addtask(
+          s, task_type_send, task_subtype_xv,
+          engine_tasks_per_tag * ci->tag + engine_task_tag_xv, 0, ci, cj);
+      t_rho = scheduler_addtask(
+          s, task_type_send, task_subtype_rho,
+          engine_tasks_per_tag * ci->tag + engine_task_tag_rho, 0, ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
-      t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
-                                     6 * ci->tag + 3, 0, ci, cj);
+      t_gradient = scheduler_addtask(
+          s, task_type_send, task_subtype_gradient,
+          engine_tasks_per_tag * ci->tag + engine_task_tag_grad, 0, ci, cj);
 #endif
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -1381,8 +1389,14 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_grav == NULL) {
 
-      t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
-                                 6 * ci->tag + 4, 0, ci, cj);
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure this cell has a valid tag. */
+      if (ci->tag < 0) error("Trying to send from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
+      t_grav = scheduler_addtask(
+          s, task_type_send, task_subtype_gpart,
+          engine_tasks_per_tag * ci->tag + engine_task_tag_grav, 0, ci, cj);
 
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->super_gravity->grav_down);
@@ -1441,8 +1455,14 @@ void engine_addtasks_send_timestep(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_ti == NULL) {
 
-      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
-                               6 * ci->tag + 2, 0, ci, cj);
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure this cell has a valid tag. */
+      if (ci->tag < 0) error("Trying to send from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
+      t_ti = scheduler_addtask(
+          s, task_type_send, task_subtype_tend,
+          engine_tasks_per_tag * ci->tag + engine_task_tag_ti, 0, ci, cj);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
       scheduler_addunlock(s, ci->super->timestep, t_ti);
@@ -1482,14 +1502,21 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
   /* Have we reached a level where there are any hydro tasks ? */
   if (t_xv == NULL && c->density != NULL) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
     /* Create the tasks. */
-    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, 6 * c->tag + 0,
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv,
+                             engine_tasks_per_tag * c->tag + engine_task_tag_xv,
                              0, c, NULL);
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
-                              6 * c->tag + 1, 0, c, NULL);
+                              6 * c->tag + engine_task_tag_rho, 0, c, NULL);
 #ifdef EXTRA_HYDRO_LOOP
-    t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
-                                   6 * c->tag + 3, 0, c, NULL);
+    t_gradient = scheduler_addtask(
+        s, task_type_recv, task_subtype_gradient,
+        engine_tasks_per_tag * c->tag + engine_task_tag_grad, 0, c, NULL);
 #endif
   }
 
@@ -1543,9 +1570,15 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   /* Have we reached a level where there are any gravity tasks ? */
   if (t_grav == NULL && c->grav != NULL) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
     /* Create the tasks. */
-    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
-                               6 * c->tag + 4, 0, c, NULL);
+    t_grav = scheduler_addtask(
+        s, task_type_recv, task_subtype_gpart,
+        engine_tasks_per_tag * c->tag + engine_task_tag_grav, 0, c, NULL);
   }
 
   c->recv_grav = t_grav;
@@ -1580,8 +1613,14 @@ void engine_addtasks_recv_timestep(struct engine *e, struct cell *c,
   /* Have we reached a level where there are any self/pair tasks ? */
   if (t_ti == NULL && (c->grav != NULL || c->density != NULL)) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
-                             6 * c->tag + 2, 0, c, NULL);
+                             engine_tasks_per_tag * c->tag + engine_task_tag_ti,
+                             0, c, NULL);
   }
 
   c->recv_ti = t_ti;
