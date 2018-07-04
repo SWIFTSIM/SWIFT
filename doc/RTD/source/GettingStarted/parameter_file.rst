@@ -1,6 +1,8 @@
 .. Parameter File
    Loic Hausammann, 1 june 2018
 
+.. _Parameter_File_label:
+
 Parameter File
 ==============
 
