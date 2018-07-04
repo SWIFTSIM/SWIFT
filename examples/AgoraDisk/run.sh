@@ -21,12 +21,11 @@ then
     ../getCoolingTable.sh
 fi
 
-
 cp $1.hdf5 agora_disk.hdf5
 ./change_type.py agora_disk.hdf5
 
 # Run SWIFT
-../swift -C -s -G -t 8 agora_disk.yml 2>&1 | tee output.log
+../swift -C -s -G -t 4 agora_disk.yml 2>&1 | tee output.log
 exit
 
 echo "Changing smoothing length to be Gadget compatible"
