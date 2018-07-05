@@ -421,8 +421,8 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        the old partition on entry.
  */
 static void pick_parmetis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int refine,
-                          float itr, int *celllist) {
+                          double *vertexw, double *edgew, int refine, float itr,
+                          int *celllist) {
   int res;
   MPI_Comm comm;
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
@@ -605,7 +605,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Dump graphs to disk files for testing. ParMETIS xadj isn't right for
      * a dump, so make a serial-like version. */
     /*{
-      idx_t *tmp_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1));
+      idx_t *tmp_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions +
+    1));
       tmp_xadj[0] = 0;
       for (int k = 0; k < ncells; k++) tmp_xadj[k + 1] = tmp_xadj[k] + 26;
       dumpParMETISGraph("parmetis_graph", ncells, 1, tmp_xadj, full_adjncy,
@@ -727,10 +728,10 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Balance between cuts and movement. */
     real_t itr_real_t = itr;
-    if (ParMETIS_V3_AdaptiveRepart(vtxdist, xadj, adjncy, weights_v, NULL, weights_e,
-                                   &wgtflag, &numflag, &ncon, &nparts, tpwgts,
-                                   ubvec, &itr_real_t, options, &edgecut, regionid,
-                                   &comm) != METIS_OK)
+    if (ParMETIS_V3_AdaptiveRepart(vtxdist, xadj, adjncy, weights_v, NULL,
+                                   weights_e, &wgtflag, &numflag, &ncon,
+                                   &nparts, tpwgts, ubvec, &itr_real_t, options,
+                                   &edgecut, regionid, &comm) != METIS_OK)
       error("Call to ParMETIS_V3_AdaptiveRepart failed.");
   } else {
 
@@ -770,9 +771,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Receive from other ranks. */
     for (int rank = 1, j = nvt; rank < nregions; rank++) {
       nvt = vtxdist[rank + 1] - vtxdist[rank];
-      res = MPI_Irecv((void *)&remoteids[j], nvt, IDX_T, rank, 1, comm, &reqs[rank]);
-      if (res != MPI_SUCCESS)
-        mpi_error(res, "Failed to receive new regionids");
+      res = MPI_Irecv((void *)&remoteids[j], nvt, IDX_T, rank, 1, comm,
+                      &reqs[rank]);
+      if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive new regionids");
       j += nvt;
     }
 
@@ -825,7 +826,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if (permute) {
       int *permcelllist = NULL;
       if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
-          error("Failed to allocate perm celllist array");
+        error("Failed to allocate perm celllist array");
       permute_regions(newcelllist, celllist, nregions, ncells, permcelllist);
 
       /* And keep. */
@@ -1016,10 +1017,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   /* Calculations all done, now everyone gets a copy. */
   int res = MPI_Bcast(celllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
-
 }
 #endif
-
 
 #if defined(WITH_MPI) && defined(HAVE_PARMETIS)
 /**
@@ -1279,7 +1278,8 @@ static void repart_edge_parmetis(int bothweights, int timebins,
 
     /* Not refining, so use METIS. */
     if (bothweights)
-      pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
+      pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+                 repartition->celllist);
     else
       pick_metis(nodeID, s, nr_nodes, NULL, weights_e, repartition->celllist);
   }

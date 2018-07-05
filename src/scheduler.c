@@ -1295,8 +1295,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
     }
 
-    /* Note if the cost is > 1e9 we cap it as we don't care. That's large
-     * compared to other possible costs.  */
+/* Note if the cost is > 1e9 we cap it as we don't care. That's large
+ * compared to other possible costs.  */
 #if defined(WITH_MPI) && defined(HAVE_METIS)
     if (partcost) t->cost = (cost < 1e9) ? cost : 1e9;
 #endif
