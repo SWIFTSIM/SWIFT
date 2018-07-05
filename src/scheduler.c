@@ -1191,6 +1191,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       if (t->unlock_tasks[j]->weight > t->weight)
         t->weight = t->unlock_tasks[j]->weight;
     int cost = 0;
+    int partcost = 1;
     switch (t->type) {
       case task_type_sort:
         cost = wscale * intrinsics_popcount(t->flags) * t->ci->count *
@@ -1275,12 +1276,14 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * t->ci->count + wscale * t->ci->gcount;
         break;
       case task_type_send:
+        partcost = 0;
         if (t->ci->count < 1e5)
           cost = 10.f * (wscale * t->ci->count) * t->ci->count;
         else
           cost = 2e9;
         break;
       case task_type_recv:
+        partcost = 0;
         if (t->ci->count < 1e5)
           cost = 5.f * (wscale * t->ci->count) * t->ci->count;
         else
@@ -1291,7 +1294,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
     }
 #if defined(WITH_MPI) && defined(HAVE_PARMETIS)
-    t->cost = cost;
+    if (partcost) t->cost = cost;
 #endif
     t->weight += cost;
   }
