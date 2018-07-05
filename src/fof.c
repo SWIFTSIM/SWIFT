@@ -27,6 +27,8 @@
 #include "threadpool.h"
 #include "engine.h"
 
+MPI_Datatype fof_mpi_type;
+
 /* Initialises parameters for the FOF search. */
 void fof_init(struct space *s, long long Ngas, long long Ngparts) {
 
@@ -35,6 +37,15 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts) {
   const int total_nr_dmparts = Ngparts - Ngas;
   const double l_x = 0.2 * (s->dim[0] / cbrt(total_nr_dmparts));
   s->l_x2 = l_x * l_x;
+
+#ifdef WITH_MPI
+  if (MPI_Type_contiguous(sizeof(struct fof_mpi) / sizeof(unsigned char), MPI_BYTE,
+        &fof_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&fof_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for fof.");
+  }
+#endif
+
 }
 
 /* Finds the root ID of the group a particle exists in. */
@@ -125,6 +136,38 @@ static void rec_fof_search_pair(struct cell *ci, struct cell *cj, struct space *
    * length and not the same cell. */
   else if (ci != cj)
     fof_search_pair_cells(s, ci, cj);
+  else if (ci == cj) error("Pair FOF called on same cell!!!");
+
+}
+
+/* Recurse on a pair of cells (one local, one foreign( and perform a FOF search between cells that are within
+ * range. */
+static void rec_fof_search_pair_foreign(struct cell *ci, struct cell *cj, struct space *s,
+                           const double *dim,
+                           const double search_r2) {
+
+  /* Find the shortest distance between cells, remembering to account for
+   * boundary conditions. */
+  const double r2 = cell_min_dist(ci, cj, dim);
+
+  /* Return if cells are out of range of each other. */
+  if (r2 > search_r2) return;
+
+  /* Recurse on both cells if they are both split. */
+  if (ci->split && cj->split) {
+    for (int k = 0; k < 8; k++) {
+      if (ci->progeny[k] != NULL) {
+
+        for (int l = 0; l < 8; l++)
+          if (cj->progeny[l] != NULL)
+            rec_fof_search_pair_foreign(ci->progeny[k], cj->progeny[l], s, dim, search_r2);
+      }
+    }
+  }
+  /* Perform FOF search between pairs of cells that are within the linking
+   * length and not the same cell. */
+  else if (ci != cj)
+    fof_search_pair_cells_foreign(s, ci, cj);
   else if (ci == cj) error("Pair FOF called on same cell!!!");
 
 }
@@ -401,6 +444,98 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
   }
 }
 
+/* Perform a FOF search between a local and foreign cell using the Union-Find algorithm. 
+ * Communicate any links found between particles to the appropriate node.*/
+void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell *cj) {
+
+  const size_t count_i = ci->gcount;
+  const size_t count_j = cj->gcount;
+  struct gpart *gparts_i = ci->gparts;
+  struct gpart *gparts_j = cj->gparts;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double l_x2 = s->l_x2;
+  int *group_id = s->group_id;
+  
+  /* Make a list of particle offsets into the global gparts array. */
+  int *const offset_i = group_id + (ptrdiff_t)(gparts_i - s->gparts);
+
+  /* Account for boundary conditions.*/
+  double shift[3] = {0.0, 0.0, 0.0};
+
+  struct fof_mpi *fof_send;
+  
+  if (posix_memalign((void**)&fof_send, SWIFT_STRUCT_ALIGNMENT,
+                       count_i * count_j * sizeof(struct fof_mpi)) != 0)
+    error("Error while allocating memory for FOF MPI communication");
+
+  //bzero(fof_send, count_i * count_j* sizeof(struct part));
+
+  int send_count = 0;
+
+  /* Get the relative distance between the pairs, wrapping. */
+  const int periodic = s->periodic;
+  double diff[3];
+  for (int k = 0; k < 3; k++) {
+    diff[k] = cj->loc[k] - ci->loc[k];
+    if (periodic && diff[k] < -dim[k] / 2)
+      shift[k] = dim[k];
+    else if (periodic && diff[k] > dim[k] / 2)
+      shift[k] = -dim[k];
+    else
+      shift[k] = 0.0;
+    diff[k] += shift[k];
+  }
+
+  /* Loop over particles and find which particles belong in the same group. */
+  for (size_t i = 0; i < count_i; i++) {
+
+    struct gpart *pi = &gparts_i[i];
+    const double pix = pi->x[0] - shift[0];
+    const double piy = pi->x[1] - shift[1];
+    const double piz = pi->x[2] - shift[2];
+
+    /* Find the root of pi. */
+    int root_i = fof_find(offset_i[i], group_id);
+    
+    for (size_t j = 0; j < count_j; j++) {
+
+      struct gpart *pj = &gparts_j[j];
+      const double pjx = pj->x[0];
+      const double pjy = pj->x[1];
+      const double pjz = pj->x[2];
+
+      /* Compute pairwise distance, remembering to account for boundary
+       * conditions. */
+      float dx[3], r2 = 0.0f;
+      dx[0] = pix - pjx;
+      dx[1] = piy - pjy;
+      dx[2] = piz - pjz;
+
+      for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
+
+      /* Hit or miss? */
+      if (r2 < l_x2) {
+
+        /* Store the particle IDs and group ID for communication. */
+        fof_send[send_count].local_pid = pi->id_or_neg_offset;        
+        fof_send[send_count].foreign_pid = pj->id_or_neg_offset;        
+        fof_send[send_count++].root_i = root_i;
+      }
+    }
+  }
+
+  if(send_count > 0)
+    message("Rank: %d sending %d links to rank %d for testing.", engine_rank, send_count, cj->nodeID);
+
+  //MPI_Request request;
+
+  /* Send communication of linked particles to other rank.*/
+  //MPI_Isend(fof_send, send_count, fof_mpi_type, cj->nodeID, 0, MPI_COMM_WORLD, &request);
+
+  free(fof_send);
+
+}
+
 /* Perform a FOF search on gravity particles using the cells and applying the
  * Union-Find algorithm.*/
 void fof_search_tree_serial(struct space *s) {
@@ -577,6 +712,50 @@ void fof_search_tree_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief Search foreign cells for links and communicate any found to the appropriate node.
+ *
+ * @param s Pointer to a #space.
+ */
+void fof_search_foreign_cells(struct space *s) {
+
+  struct cell *cells = s->cells_top;
+  const size_t nr_cells = s->nr_cells;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double search_r2 = s->l_x2;
+
+  message("Searching foreign cells for links.");
+
+  /* Loop over cells and find which cells are in range of each other to perform
+   * the FOF search. */
+  for (size_t cid = 0; cid < nr_cells; cid++) {
+
+    struct cell *restrict ci = &cells[cid];
+    
+    /* Only search local cells for foreign neighbours. */
+    if(ci->nodeID == engine_rank) {
+
+      /* Skip empty cells. */
+      if(ci->gcount == 0) continue;
+
+      /* Loop over all top-level cells skipping over the cells already searched.
+      */
+      for (size_t cjd = cid + 1; cjd < nr_cells; cjd++) {
+
+        struct cell *restrict cj = &cells[cjd];
+
+        /* Only perform pair FOF search between a local and foreign cell. */
+        if(cj->nodeID != engine_rank) {
+          /* Skip empty cells. */
+          if(cj->gcount == 0) continue;
+
+          rec_fof_search_pair_foreign(ci, cj, s, dim, search_r2);
+        }
+      }
+    }
+  }
+}
+
 /* Perform a FOF search on gravity particles using the cells and applying the
  * Union-Find algorithm.*/
 void fof_search_tree(struct space *s) {
@@ -620,6 +799,9 @@ void fof_search_tree(struct space *s) {
   /* Activate all the regular tasks */
   threadpool_map(&s->e->threadpool, fof_search_tree_mapper, s->cells_top,
                  nr_cells, sizeof(struct cell), 1, s);
+
+  /* Find any particle links with other nodes. */
+  fof_search_foreign_cells(s);
 
   /* Calculate the total number of particles in each group, group mass and the total number of groups. */
   for (size_t i = 0; i < nr_gparts; i++) {
