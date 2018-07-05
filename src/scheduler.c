@@ -1191,9 +1191,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         t->weight = t->unlock_tasks[j]->weight;
     float cost = 0;
 
-    const float count_i = t->ci->count;
+    const float count_i = (t->ci != NULL) ? t->ci->count : 0.f;
     const float count_j = (t->cj != NULL) ? t->cj->count : 0.f;
-    const float gcount_i = t->ci->gcount;
+    const float gcount_i = (t->ci != NULL) ? t->ci->gcount : 0.f;
     const float gcount_j = (t->cj != NULL) ? t->cj->gcount : 0.f;
 
     switch (t->type) {
