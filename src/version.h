@@ -36,6 +36,7 @@ const char* hdf5_version(void);
 const char* fftw3_version(void);
 const char* libgsl_version(void);
 const char* thread_barrier_version(void);
+const char* allocator_version(void);
 void greetings(void);
 
 #endif /* SWIFT_VERSION_H */

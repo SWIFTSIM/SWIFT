@@ -24,7 +24,6 @@
 #include "../config.h"
 
 /* Local includes. */
-#include "part.h"
 #include "units.h"
 
 #define FIELD_BUFFER_SIZE 200
@@ -33,11 +32,12 @@
 #define IO_BUFFER_ALIGNMENT 1024
 
 /* Avoid cyclic inclusion problems */
+struct part;
+struct gpart;
+struct spart;
 struct io_props;
 struct engine;
 struct threadpool;
-
-#if defined(HAVE_HDF5)
 
 /**
  * @brief The different types of data used in the GADGET IC files.
@@ -56,9 +56,9 @@ enum IO_DATA_TYPE {
   CHAR
 };
 
+#if defined(HAVE_HDF5)
+
 hid_t io_hdf5_type(enum IO_DATA_TYPE type);
-size_t io_sizeof_type(enum IO_DATA_TYPE type);
-int io_is_double_precision(enum IO_DATA_TYPE type);
 
 void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                        void* data);
@@ -75,7 +75,9 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 void io_write_code_description(hid_t h_file);
 void io_write_engine_policy(hid_t h_file, const struct engine* e);
 
-void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank);
+void io_read_unit_system(hid_t h_file, struct unit_system* ic_units,
+                         const struct unit_system* internal_units,
+                         int mpi_rank);
 void io_write_unit_system(hid_t h_grp, const struct unit_system* us,
                           const char* groupName);
 
@@ -85,6 +87,9 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                          const struct unit_system* snapshot_units);
 
 #endif /* defined HDF5 */
+
+size_t io_sizeof_type(enum IO_DATA_TYPE type);
+int io_is_double_precision(enum IO_DATA_TYPE type);
 
 void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
                           struct gpart* const dmparts, size_t Ndm);
@@ -96,5 +101,10 @@ void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,
 void io_duplicate_star_gparts(struct threadpool* tp, struct spart* const sparts,
                               struct gpart* const gparts, size_t Nstars,
                               size_t Ndm);
+
+void io_check_output_fields(const struct swift_params* params,
+                            const long long N_total[3]);
+
+void io_write_output_field_parameter(const char* filename);
 
 #endif /* SWIFT_COMMON_IO_H */

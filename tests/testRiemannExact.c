@@ -16,26 +16,89 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
+/* Some standard headers. */
+#include <fenv.h>
+#include <stdio.h>
 #include <string.h>
-#include "error.h"
-#include "riemann/riemann_exact.h"
-#include "tools.h"
 
-int opposite(float a, float b) {
-  if ((a - b)) {
-    return fabs((a + b) / (a - b)) < 1.e-4;
-  } else {
-    return a == 0.0f;
+/* Force use of exact Riemann solver */
+#undef RIEMANN_SOLVER_TRRS
+#undef RIEMANN_SOLVER_HLLC
+#undef RIEMANN_SOLVER_EXACT
+#define RIEMANN_SOLVER_EXACT 1
+
+/* Local headers. */
+#include "riemann/riemann_exact.h"
+#include "swift.h"
+
+const float max_abs_error = 1e-3f;
+const float max_rel_error = 1e-2f;
+const float min_threshold = 1e-2f;
+
+/**
+ * @brief Checks whether two numbers are opposite of each others.
+ */
+int are_symmetric(float a, float b) {
+
+  /* Check that the signs are different */
+  if ((a * b) > 0.f) {
+    message("Identical signs a=%.8e b=%.8e", a, b);
+    return 0;
   }
+
+  const float abs_a = fabsf(a);
+  const float abs_b = fabsf(b);
+
+  const float abs_error = fabsf(abs_a - abs_b);
+
+  /* Avoid FPEs... */
+  if (fabsf(abs_a + abs_b) == 0.f) {
+    return 1;
+  }
+
+  /* Avoid things close to 0 */
+  if ((abs_a < min_threshold) || (abs_b < min_threshold)) {
+    return 1;
+  }
+
+  const float rel_error = 0.5f * abs_error / fabsf(abs_a + abs_b);
+
+  /* Check that we do not breach the relative error limit */
+  if (rel_error > max_rel_error) {
+    message("Relative error too large a=%.8e b=%.8e rel=%.8e", a, b, rel_error);
+    return 0;
+  }
+
+  /* All good */
+  return 1;
 }
 
 int equal(float a, float b) {
-  if ((a + b)) {
-    return fabs((a - b) / (a + b)) < 1.e-4;
-  } else {
-    return a == 0.0f;
+
+  const float abs_error = fabsf(a - b);
+
+  /* Avoid FPEs... */
+  if (fabsf(a + b) == 0.f) {
+    return 1;
   }
+
+  /* Avoid things close to 0 */
+  if ((fabsf(a) < min_threshold) || (fabsf(b) < min_threshold)) {
+    return 1;
+  }
+
+  const float rel_error = 0.5f * abs_error / fabsf(a + b);
+
+  /* Check that we do not breach the relative error limit */
+  if (rel_error > max_rel_error) {
+    message("Relative error too large a=%.8e b=%.8e rel=%.8e", a, b, rel_error);
+    return 0;
+  }
+
+  /* All good */
+  return 1;
 }
 
 /**
@@ -46,7 +109,8 @@ int equal(float a, float b) {
  * @param s String used to identify this check in messages
  */
 void check_value(float a, float b, const char* s) {
-  if (fabsf(a - b) / fabsf(a + b) > 1.e-5f && fabsf(a - b) > 1.e-5f) {
+  if (fabsf(a + b) != 0.f && fabsf(a - b) / fabsf(a + b) > max_rel_error &&
+      fabsf(a - b) > max_abs_error) {
     error("Values are inconsistent: %g %g (%s)!", a, b, s);
   } else {
     message("Values are consistent: %g %g (%s).", a, b, s);
@@ -105,7 +169,7 @@ void check_riemann_solution(struct riemann_statevector* WL,
 /**
  * @brief Check the exact Riemann solver on the Toro test problems
  */
-void check_riemann_exact() {
+void check_riemann_exact(void) {
   struct riemann_statevector WL, WR, Whalf;
 
   /* Test 1 */
@@ -232,7 +296,7 @@ void check_riemann_exact() {
 /**
  * @brief Check the symmetry of the TRRS Riemann solver
  */
-void check_riemann_symmetry() {
+void check_riemann_symmetry(void) {
   float WL[5], WR[5], Whalf1[5], Whalf2[5], n_unit1[3], n_unit2[3], n_norm,
       vij[3], totflux1[5], totflux2[5];
 
@@ -295,17 +359,22 @@ void check_riemann_symmetry() {
   riemann_solve_for_flux(WL, WR, n_unit1, vij, totflux1);
   riemann_solve_for_flux(WR, WL, n_unit2, vij, totflux2);
 
-  if (!opposite(totflux1[0], totflux2[0]) ||
-      !opposite(totflux1[1], totflux2[1]) ||
-      !opposite(totflux1[2], totflux2[2]) ||
-      !opposite(totflux1[3], totflux2[3]) ||
-      !opposite(totflux1[4], totflux2[4])) {
+  if (!are_symmetric(totflux1[0], totflux2[0]) ||
+      !are_symmetric(totflux1[1], totflux2[1]) ||
+      !are_symmetric(totflux1[2], totflux2[2]) ||
+      !are_symmetric(totflux1[3], totflux2[3]) ||
+      !are_symmetric(totflux1[4], totflux2[4])) {
+    message("WL=[%.8e, %.8e, %.8e, %.8e, %.8e]", WL[0], WL[1], WL[2], WL[3],
+            WL[4]);
+    message("WR=[%.8e, %.8e, %.8e, %.8e, %.8e]", WR[0], WR[1], WR[2], WR[3],
+            WR[4]);
+    message("n_unit1=[%.8e, %.8e, %.8e]", n_unit1[0], n_unit1[1], n_unit1[2]);
+    message("vij=[%.8e, %.8e, %.8e]\n", vij[0], vij[1], vij[2]);
     message(
         "Flux solver asymmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
         "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
         totflux1[0], totflux1[1], totflux1[2], totflux1[3], totflux1[4],
         totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]);
-    message("Asymmetry in flux solution!");
     /* This asymmetry is to be expected, since we do an iteration. Are the
        results at least consistent? */
     check_value(totflux1[0], totflux2[0], "Mass flux");
@@ -313,6 +382,7 @@ void check_riemann_symmetry() {
     check_value(totflux1[2], totflux2[2], "Momentum[1] flux");
     check_value(totflux1[3], totflux2[3], "Momentum[2] flux");
     check_value(totflux1[4], totflux2[4], "Energy flux");
+    error("Asymmetry in flux solution!");
   } else {
     /* message( */
     /*     "Flux solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == " */
@@ -325,14 +395,29 @@ void check_riemann_symmetry() {
 /**
  * @brief Check the exact Riemann solver
  */
-int main() {
+int main(int argc, char* argv[]) {
+
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
+
+/* Choke on FP-exceptions */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
+
+  /* Get some randomness going */
+  const int seed = time(NULL);
+  message("Seed = %d", seed);
+  srand(seed);
 
   /* check the exact Riemann solver */
   check_riemann_exact();
 
   /* symmetry test */
-  int i;
-  for (i = 0; i < 100; ++i) check_riemann_symmetry();
+  for (int i = 0; i < 100000; ++i) {
+    check_riemann_symmetry();
+  }
 
   return 0;
 }

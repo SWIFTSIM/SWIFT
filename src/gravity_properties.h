@@ -27,25 +27,33 @@
 #endif
 
 /* Local includes. */
-#include "cosmology.h"
-#include "parser.h"
 #include "restart.h"
+
+/* Forward declarations */
+struct cosmology;
+struct swift_params;
 
 /**
  * @brief Contains all the constants and parameters of the self-gravity scheme
  */
 struct gravity_props {
 
+  /*! Frequency of tree-rebuild in units of #gpart updates. */
+  float rebuild_frequency;
+
+  /*! Periodic long-range mesh side-length */
+  int mesh_size;
+
   /*! Mesh smoothing scale in units of top-level cell size */
   float a_smooth;
 
   /*! Distance below which the truncated mesh force is Newtonian in units of
    * a_smooth */
-  float r_cut_min;
+  float r_cut_min_ratio;
 
   /*! Distance above which the truncated mesh force is negligible in units of
    * a_smooth */
-  float r_cut_max;
+  float r_cut_max_ratio;
 
   /*! Time integration dimensionless multiplier */
   float eta;
@@ -79,9 +87,8 @@ struct gravity_props {
 };
 
 void gravity_props_print(const struct gravity_props *p);
-void gravity_props_init(struct gravity_props *p,
-                        const struct swift_params *params,
-                        const struct cosmology *cosmo);
+void gravity_props_init(struct gravity_props *p, struct swift_params *params,
+                        const struct cosmology *cosmo, int with_cosmology);
 void gravity_update(struct gravity_props *p, const struct cosmology *cosmo);
 
 #if defined(HAVE_HDF5)
@@ -91,6 +98,6 @@ void gravity_props_print_snapshot(hid_t h_grpsph,
 
 /* Dump/restore. */
 void gravity_props_struct_dump(const struct gravity_props *p, FILE *stream);
-void gravity_props_struct_restore(const struct gravity_props *p, FILE *stream);
+void gravity_props_struct_restore(struct gravity_props *p, FILE *stream);
 
 #endif /* SWIFT_GRAVITY_PROPERTIES */

@@ -20,7 +20,7 @@
 #define SWIFT_CHEMISTRY_EAGLE_H
 
 /**
- * @file src/chemistry/gear/chemistry.h
+ * @file src/chemistry/EAGLE/chemistry.h
  * @brief Empty infrastructure for the cases without chemistry function
  */
 
@@ -57,10 +57,10 @@ chemistry_get_element_name(enum chemistry_element elem) {
  * the various smooth metallicity tasks
  *
  * @param p The particle to act upon
- * @param cd #chemistry_data containing chemistry informations.
+ * @param cd #chemistry_global_data containing chemistry informations.
  */
 __attribute__((always_inline)) INLINE static void chemistry_init_part(
-    struct part* restrict p, const struct chemistry_data* cd) {}
+    struct part* restrict p, const struct chemistry_global_data* cd) {}
 
 /**
  * @brief Finishes the smooth metal calculation.
@@ -71,24 +71,46 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  * This function requires the #hydro_end_density to have been called.
  *
  * @param p The particle to act upon.
- * @param cd #chemistry_data containing chemistry informations.
+ * @param cd #chemistry_global_data containing chemistry informations.
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_density(
-    struct part* restrict p, const struct chemistry_data* cd,
+    struct part* restrict p, const struct chemistry_global_data* cd,
     const struct cosmology* cosmo) {}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ * @param cd #chemistry_global_data containing chemistry informations.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_part_has_no_neighbours(struct part* restrict p,
+                                 struct xpart* restrict xp,
+                                 const struct chemistry_global_data* cd,
+                                 const struct cosmology* cosmo) {
+  error("Needs implementing!");
+}
 
 /**
  * @brief Sets the chemistry properties of the (x-)particles to a valid start
  * state.
  *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
+ * @param data The global chemistry information.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
- * @param data The global chemistry information.
  */
 __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct chemistry_data* data) {
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct chemistry_global_data* data, struct part* restrict p,
+    struct xpart* restrict xp) {
 
   p->chemistry_data.metal_mass_fraction_total =
       data->initial_metal_mass_fraction_total;
@@ -105,9 +127,10 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
  * @param phys_const The physical constants in internal units.
  * @param data The properties to initialise.
  */
-static INLINE void chemistry_init_backend(
-    const struct swift_params* parameter_file, const struct unit_system* us,
-    const struct phys_const* phys_const, struct chemistry_data* data) {
+static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
+                                          const struct unit_system* us,
+                                          const struct phys_const* phys_const,
+                                          struct chemistry_global_data* data) {
 
   /* Read the total metallicity */
   data->initial_metal_mass_fraction_total =
@@ -117,7 +140,7 @@ static INLINE void chemistry_init_backend(
   for (int elem = 0; elem < chemistry_element_count; ++elem) {
     char buffer[50];
     sprintf(buffer, "EAGLEChemistry:InitAbundance_%s",
-            chemistry_get_element_name(elem));
+            chemistry_get_element_name((enum chemistry_element)elem));
 
     data->initial_metal_mass_fraction[elem] =
         parser_get_param_float(parameter_file, buffer);
@@ -133,9 +156,11 @@ static INLINE void chemistry_init_backend(
 /**
  * @brief Prints the properties of the chemistry model to stdout.
  *
- * @brief The #chemistry_data containing information about the current model.
+ * @brief The #chemistry_global_data containing information about the current
+ * model.
  */
-static INLINE void chemistry_print_backend(const struct chemistry_data* data) {
+static INLINE void chemistry_print_backend(
+    const struct chemistry_global_data* data) {
 
   message("Chemistry model is 'EAGLE' tracking %d elements.",
           chemistry_element_count);

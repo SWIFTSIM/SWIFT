@@ -40,19 +40,29 @@ $\Psi \equiv \frac{1}{2}a\dot{a}\mathbf{r}_i^2$ and obtain
   -\frac{\phi'}{a},\\
   \phi' &= a\phi + \frac{1}{2}a^2\ddot{a}\mathbf{r}_i'^2.\nonumber
 \end{align}
-Finally, we introduce the velocities $\mathbf{v}' \equiv
-a^2\dot{\mathbf{r}'}$ that are used internally by the code. Note that these
-velocities \emph{do not} have a physical interpretation. We caution that they
-are not the peculiar velocities, nor the Hubble flow, nor the total
-velocities\footnote{One additional inconvenience of our choice of
+Finally, we introduce the velocities
+$\mathbf{v}' \equiv a^2\dot{\mathbf{r}'}$ that are used internally by
+the code. Note that these velocities \emph{do not} have a physical
+interpretation. We caution that they are not the peculiar velocities
+($\mathbf{v}_{\rm p} \equiv a\dot{\mathbf{r}'} =
+\frac{1}{a}\mathbf{v}'$), nor the Hubble flow
+($\mathbf{v}_{\rm H} \equiv \dot{a}\mathbf{r}'$), nor the total
+velocities
+($\mathbf{v}_{\rm tot} \equiv \mathbf{v}_{\rm p} + \mathbf{v}_{\rm H}
+= \dot{a}\mathbf{r}' + \frac{1}{a}\mathbf{v}'$) and also differ from
+the convention used in \gadget snapshots
+($\sqrt{a} \dot{\mathbf{r}'}$) and other related simulation
+codes\footnote{One additional inconvenience of our choice of
   generalised coordinates is that our velocities $\mathbf{v}'$ and
   sound-speed $c'$ do not have the same dependencies on the
   scale-factor. The signal velocity entering the time-step calculation
-  will hence read $v_{\rm sig} = a\dot{\mathbf{r}'} + c = \frac{1}{a} \left(
+  will hence read
+  $v_{\rm sig} = a\dot{\mathbf{r}'} + c = \frac{1}{a} \left(
     |\mathbf{v}'| + a^{(5 - 3\gamma)/2}c'\right)$.}.
-This choice implies that $\dot{v}' = a \ddot{r}$. Using the SPH
-definition of density, $\rho_i =
-\sum_jm_jW(\mathbf{r}_{j}'-\mathbf{r}_{i}',h_i') =
+% This choice implies that $\dot{v}' = a \ddot{r}$.
+
+Using the SPH definition of density,
+$\rho_i' = \sum_jm_jW(\mathbf{r}_{j}'-\mathbf{r}_{i}',h_i') =
 \sum_jm_jW_{ij}'(h_i')$, we can follow \cite{Price2012} and apply the
 Euler-Lagrange equations to write
 \begin{alignat}{3}

@@ -4,22 +4,75 @@
 For completeness, we give here the full expression for the first few
 derivatives of the potential that are used in our FMM scheme. We use
 the notation $\mathbf{r}=(r_x, r_y, r_z)$, $r = |\mathbf{r}|$, $u=r/H$
-and $x=2r/r_s$. We also assume $H \ll r_s$. We can construct the higher order derivatives by
-successively applying the "chain rule". We show representative
-examples of the first few relevant ones here split by order. We start
-by constructing derivatives of the truncated potentials:
-
+and $x=2r/r_s$. We also assume $H \ll r_s$. We can construct the
+higher order derivatives by successively applying the "chain rule". We
+show representative examples of the first few relevant ones here split
+by order. We start by constructing derivatives of the truncated
+potentials. The first step is the construction of derivatives of the
+long-range truncation function. We define
+\begin{equation}
+  \alpha(w) \equiv \left(1 + e^w\right)^{-1} \nonumber
+\end{equation}
+and compute its derivatives in terms of powers of $\alpha$ (note the
+difference in notation between powers $\alpha^n$ and n-th derivatives
+$\alpha^{(n)}$)\footnote{This can be computed by \textsc{Mathematica}
+  using the expression \texttt{Apart[D[1/(1 + Exp[w]), {w, n}]]} for
+  the n-th derivative.}:
 \begin{align}
-  \alpha(x) &= \left(1 + e^x\right)^{-1}  \nonumber \\
-  \chi(r, r_s) &= 2\left(1 - e^{2r/r_s}\alpha(2r/r_s) \right) \nonumber \\
-  \chi'(r, r_s) &= \frac{2}{r_s}\left(2\alpha(x)^2 - 2\alpha(x)\right) \nonumber \\
-  \chi''(r, r_s) &= \frac{4}{r_s^2}\left(4\alpha(x)^3 - 6\alpha(x)^2 + 2\alpha(x)\right) \nonumber \\
-  \chi^{(3)}(r, r_s) &= \frac{8}{r_s^3} \left(12\alpha(x)^4 - 24\alpha(x)^3 + 14\alpha(x)^2 -2 \alpha(x)\right) \nonumber \\
-  \chi^{(4)}(r, r_s) &= \frac{16}{r_s^4} \left(48\alpha(x)^5 - 120\alpha(x)^4 + 100\alpha(x)^3 -30 \alpha(x)^2 + 2\alpha(x)\right) \nonumber \\ 
-  \chi^{(5)}(r, r_s) &= \frac{32}{r_s^5} \left(240\alpha(x)^6 - 720\alpha(x)^5 + 780\alpha(x)^4 - 360\alpha(x)^3 + 62\alpha(x)^2 - 2\alpha(x) \right) \nonumber
+  \alpha^{(0)}(w) &= +\alpha(w), \nonumber\\
+  \alpha^{(1)}(w) &= -\alpha(w) + \alpha^2(w),  \nonumber\\
+  \alpha^{(2)}(w) &= +\alpha(w) - 3\alpha^2(w) + 2\alpha^3(w),  \nonumber\\
+  \alpha^{(3)}(w) &= -\alpha(w) + 7\alpha^2(w) - 12\alpha^3(w) + 6\alpha^4(w),   \nonumber\\
+  \alpha^{(4)}(w) &= +\alpha(w) - 15\alpha^2(w) + 50\alpha^3(w) - 60\alpha^4(w) + 24\alpha^5(w),    \nonumber\\
+  \alpha^{(5)}(w) &= -\alpha(w) + 31\alpha^2(w) -180\alpha^3(w) + 390\alpha^4(w) -360\alpha^5(w) + 120\alpha^6(w).\nonumber                                      
 \end{align}
-We can now construct common quantities that appear in derivatives of
-multiple orders:
+We can then construct our sigmoid $\sigma(w) \equiv e^w\alpha(w)$ and
+its derivatives, again in terms of powers of $\alpha(w)$ only:
+\begin{align}
+  \sigma^{(0)}(w) &= e^w\alpha(w), \nonumber\\
+  \sigma^{(1)}(w) &= e^w\left(\alpha^{(1)}(w) + \alpha(w) \right) \nonumber\\
+                  &= e^w \alpha^2(w), \nonumber \\
+  \sigma^{(2)}(w) &= e^w\left(\alpha(w) +2\alpha^{(1)}(w) + \alpha^{(2)}(w)  \right) \nonumber\\
+                  &= e^w \left(2\alpha^3(w) - \alpha^2(w)\right), \nonumber \\
+  \sigma^{(3)}(w) &= e^w\left(\alpha(w) + 3\alpha^{(1)}(w) + 3\alpha^{(2)}(w) + \alpha^{(3)}(w)  \right) \nonumber\\
+                  &= e^w \left(6\alpha^4(w) - 6\alpha^3(w) + \alpha^2(w)\right), \nonumber \\
+  \sigma^{(4)}(w) &= e^w\left(\alpha(w) + 4\alpha^{(1)}(w) + 6\alpha^{(2)}(w) + 4\alpha^{(3)}(w) + \alpha^{(4)}(w)  \right) \nonumber\\
+                  &= e^w \left(24\alpha^5(w) - 36\alpha^4(w) + 14\alpha^3(w) - \alpha^2(w)\right), \nonumber \\
+  \sigma^{(5)}(w) &= e^w\left(\alpha(w) + 5\alpha^{(1)}(w) + 10\alpha^{(2)}(w) + 10\alpha^{(3)}(w) + 5\alpha^{(4)}(w) + \alpha^{(5)}(w)  \right) \nonumber\\
+                  &= e^w \left(120\alpha^6(w) - 240\alpha^5(w) + 150\alpha^4(w) - 30\alpha^3(w) + \alpha^2(w)\right). \nonumber 
+\end{align}
+We can finally construct our long-range truncation function
+$\chi(r,r_s) \equiv 2 - 2\sigma(2r/r_s)$ and its derivatives
+\begin{align}
+  \chi(r,r_s) &= 2 - 2e^{2r/r_s} \alpha(2r/r_s), \nonumber \\
+  \frac{\partial}{\partial r} \chi(r, r_s) &= -2 \left(\frac{2}{r_s}\right)^1 \sigma^{(1)}\left(\frac{2r}{r_s}\right) = -2 \left(\frac{2}{r_s}\right)^1 e^{\frac{2r}{r_s}} \alpha^2 \left(\frac{2r}{r_s}\right), \nonumber\\
+  \frac{\partial^2}{\partial r^2} \chi(r, r_s) &= -2 \left(\frac{2}{r_s}\right)^2 \sigma^{(2)}\left(\frac{2r}{r_s}\right) = -2 \left(\frac{2}{r_s}\right)^2  e^{\frac{2r}{r_s}} \left[2\alpha^3 \left(\frac{2r}{r_s}\right) - \alpha^2 \left(\frac{2r}{r_s}\right) \right], \nonumber\\
+  \frac{\partial^3}{\partial r^3} \chi(r, r_s) &= -2 \left(\frac{2}{r_s}\right)^3 \sigma^{(3)}\left(\frac{2r}{r_s}\right) = -2 \left(\frac{2}{r_s}\right)^3  e^{\frac{2r}{r_s}} \left[6\alpha^4 \left(\frac{2r}{r_s}\right) - 6\alpha^3 \left(\frac{2r}{r_s}\right) + \alpha^2 \left(\frac{2r}{r_s}\right) \right],\nonumber \\
+  \frac{\partial^4}{\partial r^4} \chi(r, r_s) &= -2 \left(\frac{2}{r_s}\right)^4 \sigma^{(4)}\left(\frac{2r}{r_s}\right) = -2 \left(\frac{2}{r_s}\right)^4  e^{\frac{2r}{r_s}} \left[24\alpha^5 \left(\frac{2r}{r_s}\right) - 36\alpha^4 \left(\frac{2r}{r_s}\right) + 14\alpha^3 \left(\frac{2r}{r_s}\right) - \alpha^2 \left(\frac{2r}{r_s}\right) \right],\nonumber \\
+  \frac{\partial^5}{\partial r^5} \chi(r, r_s) &= -2 \left(\frac{2}{r_s}\right)^5 \sigma^{(5)}\left(\frac{2r}{r_s}\right) = -2 \left(\frac{2}{r_s}\right)^5  e^{\frac{2r}{r_s}} \left[120\alpha^6 \left(\frac{2r}{r_s}\right) - 240\alpha^5 \left(\frac{2r}{r_s}\right) + 150\alpha^4 \left(\frac{2r}{r_s}\right) - 30\alpha^3 \left(\frac{2r}{r_s}\right) + \alpha^2 \left(\frac{2r}{r_s}\right) \right].\nonumber
+\end{align}
+In the Newtonian limit ($r_s\rightarrow\infty$) the first expression
+reduces to $\chi(r,r_s) = 1$ whilst all higher-order derivatives
+vanish. In the limit $r\rightarrow\infty$ (and $r_s < \infty$), all terms vanish. All these
+derivatives can be computed easily as they are simple polynomials of
+$\alpha(2r/r_s)$. They involve one exponential and one inversion for
+the initial calculation of $\alpha$ and all the other terms can be
+obtained very eeficiently on modern architectures as they only involve
+\emph{fused-multiple-add} operations.We can now construct common
+quantities that appear in derivatives of multiple orders of the
+truncated an softened gravity field $\varphi (\mathbf{r}, r_s, H)
+\equiv \frac{1}{r}\chi(r,r_s)$:
+
+
+% \begin{align}
+%   \alpha(x) &= \left(1 + e^x\right)^{-1}  \nonumber \\
+%   \chi(r, r_s) &= 2\left(1 - e^{2r/r_s}\alpha(2r/r_s) \right) \nonumber \\
+%   \chi'(r, r_s) &= \frac{2}{r_s}\left(2\alpha(x)^2 - 2\alpha(x)\right) \nonumber \\
+%   \chi''(r, r_s) &= \frac{4}{r_s^2}\left(4\alpha(x)^3 - 6\alpha(x)^2 + 2\alpha(x)\right) \nonumber \\
+%   \chi^{(3)}(r, r_s) &= \frac{8}{r_s^3} \left(12\alpha(x)^4 - 24\alpha(x)^3 + 14\alpha(x)^2 -2 \alpha(x)\right) \nonumber \\
+%   \chi^{(4)}(r, r_s) &= \frac{16}{r_s^4} \left(48\alpha(x)^5 - 120\alpha(x)^4 + 100\alpha(x)^3 -30 \alpha(x)^2 + 2\alpha(x)\right) \nonumber \\ 
+%   \chi^{(5)}(r, r_s) &= \frac{32}{r_s^5} \left(240\alpha(x)^6 - 720\alpha(x)^5 + 780\alpha(x)^4 - 360\alpha(x)^3 + 62\alpha(x)^2 - 2\alpha(x) \right) \nonumber
+% \end{align}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{align}

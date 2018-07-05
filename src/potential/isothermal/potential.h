@@ -42,7 +42,7 @@
 struct external_potential {
 
   /*! Position of the centre of potential */
-  double x, y, z;
+  double x[3];
 
   /*! Rotation velocity */
   double vrot;
@@ -73,9 +73,9 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
     const struct phys_const* restrict phys_const,
     const struct gpart* restrict g) {
 
-  const float dx = g->x[0] - potential->x;
-  const float dy = g->x[1] - potential->y;
-  const float dz = g->x[2] - potential->z;
+  const float dx = g->x[0] - potential->x[0];
+  const float dy = g->x[1] - potential->x[1];
+  const float dz = g->x[2] - potential->x[2];
 
   const float r2_plus_epsilon2_inv =
       1.f / (dx * dx + dy * dy + dz * dz + potential->epsilon2);
@@ -115,9 +115,9 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* g) {
 
-  const float dx = g->x[0] - potential->x;
-  const float dy = g->x[1] - potential->y;
-  const float dz = g->x[2] - potential->z;
+  const float dx = g->x[0] - potential->x[0];
+  const float dy = g->x[1] - potential->x[1];
+  const float dz = g->x[2] - potential->x[2];
   const float r2_plus_epsilon2_inv =
       1.f / (dx * dx + dy * dy + dz * dz + potential->epsilon2);
 
@@ -144,9 +144,9 @@ external_gravity_get_potential_energy(
     double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, const struct gpart* g) {
 
-  const float dx = g->x[0] - potential->x;
-  const float dy = g->x[1] - potential->y;
-  const float dz = g->x[2] - potential->z;
+  const float dx = g->x[0] - potential->x[0];
+  const float dy = g->x[1] - potential->x[1];
+  const float dz = g->x[2] - potential->x[2];
 
   return -0.5f * potential->vrot * potential->vrot *
          logf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
@@ -162,19 +162,16 @@ external_gravity_get_potential_energy(
  * @param potential The external potential properties to initialize
  */
 static INLINE void potential_init_backend(
-    const struct swift_params* parameter_file,
-    const struct phys_const* phys_const, const struct unit_system* us,
-    const struct space* s, struct external_potential* potential) {
+    struct swift_params* parameter_file, const struct phys_const* phys_const,
+    const struct unit_system* us, const struct space* s,
+    struct external_potential* potential) {
 
-  potential->x =
-      s->dim[0] / 2. +
-      parser_get_param_double(parameter_file, "IsothermalPotential:position_x");
-  potential->y =
-      s->dim[1] / 2. +
-      parser_get_param_double(parameter_file, "IsothermalPotential:position_y");
-  potential->z =
-      s->dim[2] / 2. +
-      parser_get_param_double(parameter_file, "IsothermalPotential:position_z");
+  parser_get_param_double_array(parameter_file, "IsothermalPotential:position",
+                                3, potential->x);
+  potential->x[0] += s->dim[0] / 2.;
+  potential->x[1] += s->dim[1] / 2.;
+  potential->x[2] += s->dim[2] / 2.;
+
   potential->vrot =
       parser_get_param_double(parameter_file, "IsothermalPotential:vrot");
   potential->timestep_mult = parser_get_param_float(
@@ -198,7 +195,7 @@ static INLINE void potential_print_backend(
       "External potential is 'Isothermal' with properties are (x,y,z) = (%e, "
       "%e, %e), vrot = %e "
       "timestep multiplier = %e, epsilon = %e",
-      potential->x, potential->y, potential->z, potential->vrot,
+      potential->x[0], potential->x[1], potential->x[2], potential->vrot,
       potential->timestep_mult, sqrtf(potential->epsilon2));
 }
 

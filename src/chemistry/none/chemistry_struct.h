@@ -34,7 +34,7 @@ enum chemistry_element { chemistry_element_count = 0 };
  *
  * Nothing here.
  */
-struct chemistry_data {};
+struct chemistry_global_data {};
 
 /**
  * @brief Chemistry properties carried by the #part.

@@ -95,7 +95,7 @@ void multiply_matrices(float A[3][3], float B[3][3], float C[3][3]) {
 #endif
 }
 
-int main() {
+int main(int argc, char* argv[]) {
 
   float A[3][3], B[3][3], C[3][3];
   setup_matrix(A);

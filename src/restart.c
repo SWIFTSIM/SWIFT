@@ -220,7 +220,10 @@ void restart_read_blocks(void *ptr, size_t size, size_t nblocks, FILE *stream,
             errstr, head.len, nblocks * size);
 
     /* Return label, if required. */
-    if (label != NULL) strncpy(label, head.label, LABLEN);
+    if (label != NULL) {
+      head.label[LABLEN] = '\0';
+      strncpy(label, head.label, LABLEN + 1);
+    }
 
     nread = fread(ptr, size, nblocks, stream);
     if (nread != nblocks)

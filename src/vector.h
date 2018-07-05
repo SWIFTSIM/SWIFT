@@ -327,7 +327,9 @@
 #define vec_set(a, b, c, d) _mm_set_ps(d, c, b, a)
 #define vec_dbl_set(a, b) _mm_set_pd(b, a)
 #define vec_add(a, b) _mm_add_ps(a, b)
+#define vec_mask_add(a, b, mask) vec_add(a, vec_and(b, mask.v))
 #define vec_sub(a, b) _mm_sub_ps(a, b)
+#define vec_mask_sub(a, b, mask) vec_sub(a, vec_and(b, mask.v))
 #define vec_mul(a, b) _mm_mul_ps(a, b)
 #define vec_div(a, b) _mm_div_ps(a, b)
 #define vec_sqrt(a) _mm_sqrt_ps(a)
@@ -340,9 +342,27 @@
 #define vec_floor(a) _mm_floor_ps(a)
 #define vec_cmp_gt(a, b) _mm_cmpgt_ps(a, b)
 #define vec_cmp_lt(a, b) _mm_cmplt_ps(a, b)
-#define vec_cmp_lte(a, b) _mm_cmp_ps(a, b, _CMP_LE_OQ)
+#define vec_cmp_lte(a, b) _mm_cmple_ps(a, b)
+#define vec_cmp_gte(a, b) _mm_cmpge_ps(a, b)
 #define vec_cmp_result(a) _mm_movemask_ps(a)
+#define vec_is_mask_true(a) _mm_movemask_ps(a.v)
 #define vec_and(a, b) _mm_and_ps(a, b)
+#define vec_mask_and(a, b) _mm_and_ps(a.v, b.v)
+#define vec_and_mask(a, mask) _mm_and_ps(a, mask.v)
+#define vec_init_mask_true(mask) mask.m = vec_setint1(0xFFFFFFFF)
+#define vec_create_mask(mask, cond) mask.v = cond
+#define vec_combine_masks(mask1, mask2) \
+  ({ mask1.v = vec_mask_and(mask1, mask2); })
+#define vec_zero_mask(mask) mask.v = vec_setzero()
+#define vec_pad_mask(mask, pad) \
+  for (int i = VEC_SIZE - (pad); i < VEC_SIZE; i++) mask.i[i] = 0
+/* If SSE4.1 doesn't exist on architecture use alternative blend strategy. */
+#ifdef HAVE_SSE4_1
+#define vec_blend(mask, a, b) _mm_blendv_ps(a, b, mask.v)
+#else
+#define vec_blend(mask, a, b) \
+  _mm_or_ps(_mm_and_ps(mask.v, b), _mm_andnot_ps(mask.v, a))
+#endif
 #define vec_todbl_lo(a) _mm_cvtps_pd(a)
 #define vec_todbl_hi(a) _mm_cvtps_pd(_mm_movehl_ps(a, a))
 #define vec_dbl_tofloat(a, b) _mm_movelh_ps(_mm_cvtpd_ps(a), _mm_cvtpd_ps(b))
@@ -364,10 +384,23 @@
   a.v = _mm_hadd_ps(a.v, a.v); \
   b += a.f[0] + a.f[1];
 
+/* Performs a horizontal maximum on the vector and takes the maximum of the
+ * result with a float, b. */
+#define VEC_HMAX(a, b)                                     \
+  {                                                        \
+    for (int k = 0; k < VEC_SIZE; k++) b = max(b, a.f[k]); \
+  }
+
 /* Create an FMA using vec_add and vec_mul if AVX2 is not present. */
 #ifndef vec_fma
 #define vec_fma(a, b, c) vec_add(vec_mul(a, b), c)
 #endif
+
+/* Create a negated FMA using vec_sub and vec_mul if AVX2 is not present. */
+#ifndef vec_fnma
+#define vec_fnma(a, b, c) vec_sub(c, vec_mul(a, b))
+#endif
+
 #else
 #define VEC_SIZE 4
 #endif /* HAVE_SSE2 */
@@ -460,7 +493,7 @@ __attribute__((always_inline)) INLINE vector vector_set1(const float x) {
  * @return temp set #vector.
  * @return A #vector filled with zeros.
  */
-__attribute__((always_inline)) INLINE vector vector_setzero() {
+__attribute__((always_inline)) INLINE vector vector_setzero(void) {
 
   vector temp;
   temp.v = vec_setzero();

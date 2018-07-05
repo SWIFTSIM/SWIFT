@@ -49,10 +49,12 @@
  * Similarly for dx < -b.
  *
  */
-__attribute__((always_inline)) INLINE static double nearest(double dx,
-                                                            double box_size) {
-  return dx > 0.5 * box_size ? (dx - box_size)
-                             : ((dx < -0.5 * box_size) ? (dx + box_size) : dx);
+__attribute__((always_inline, const)) INLINE static double nearest(
+    const double dx, const double box_size) {
+
+  return ((dx > 0.5 * box_size)
+              ? (dx - box_size)
+              : ((dx < -0.5 * box_size) ? (dx + box_size) : dx));
 }
 
 /**
@@ -65,11 +67,12 @@ __attribute__((always_inline)) INLINE static double nearest(double dx,
  * Similarly for dx < -b.
  *
  */
-__attribute__((always_inline)) INLINE static float nearestf(float dx,
-                                                            float box_size) {
-  return dx > 0.5f * box_size
-             ? (dx - box_size)
-             : ((dx < -0.5f * box_size) ? (dx + box_size) : dx);
+__attribute__((always_inline, const)) INLINE static float nearestf(
+    const float dx, const float box_size) {
+
+  return ((dx > 0.5f * box_size)
+              ? (dx - box_size)
+              : ((dx < -0.5f * box_size) ? (dx + box_size) : dx));
 }
 
 #endif /* SWIFT_PERIODIC_H */

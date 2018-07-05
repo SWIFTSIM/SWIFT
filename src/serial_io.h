@@ -39,8 +39,9 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     struct spart** sparts, size_t* Ngas, size_t* Ngparts,
                     size_t* Nstars, int* periodic, int* flag_entropy,
                     int with_hydro, int with_gravity, int with_stars,
-                    int cleanup_h, double h, int mpi_rank, int mpi_size,
-                    MPI_Comm comm, MPI_Info info, int nr_threads, int dry_run);
+                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
+                    int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
+                    int nr_threads, int dry_run);
 
 void write_output_serial(struct engine* e, const char* baseName,
                          const struct unit_system* internal_units,

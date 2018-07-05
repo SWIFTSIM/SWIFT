@@ -33,8 +33,8 @@
 #include "./chemistry/none/chemistry.h"
 #include "./chemistry/none/chemistry_iact.h"
 #elif defined(CHEMISTRY_GEAR)
-#include "./chemistry/gear/chemistry.h"
-#include "./chemistry/gear/chemistry_iact.h"
+#include "./chemistry/GEAR/chemistry.h"
+#include "./chemistry/GEAR/chemistry_iact.h"
 #elif defined(CHEMISTRY_EAGLE)
 #include "./chemistry/EAGLE/chemistry.h"
 #include "./chemistry/EAGLE/chemistry_iact.h"
@@ -43,17 +43,17 @@
 #endif
 
 /* Common functions */
-void chemistry_init(const struct swift_params* parameter_file,
+void chemistry_init(struct swift_params* parameter_file,
                     const struct unit_system* us,
                     const struct phys_const* phys_const,
-                    struct chemistry_data* data);
+                    struct chemistry_global_data* data);
 
-void chemistry_print(const struct chemistry_data* data);
+void chemistry_print(const struct chemistry_global_data* data);
 
 /* Dump/restore. */
-void chemistry_struct_dump(const struct chemistry_data* chemistry,
+void chemistry_struct_dump(const struct chemistry_global_data* chemistry,
                            FILE* stream);
-void chemistry_struct_restore(const struct chemistry_data* chemistry,
+void chemistry_struct_restore(const struct chemistry_global_data* chemistry,
                               FILE* stream);
 
 #endif /* SWIFT_CHEMISTRY_H */

@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ * Copyright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ *               2018 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -29,6 +30,7 @@
 #include "adiabatic_index.h"
 #include "error.h"
 #include "minmax.h"
+#include "riemann_checks.h"
 #include "riemann_vacuum.h"
 
 #ifndef EOS_IDEAL_GAS
@@ -52,7 +54,7 @@
  * @param n_unit Normal vector of the interface
  */
 __attribute__((always_inline)) INLINE static void riemann_solver_solve(
-    float* WL, float* WR, float* Whalf, float* n_unit) {
+    const float* WL, const float* WR, float* Whalf, const float* n_unit) {
   float aL, aR;
   float PLR;
   float vL, vR;
@@ -160,7 +162,12 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
 }
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    float* Wi, float* Wj, float* n_unit, float* vij, float* totflux) {
+    const float* Wi, const float* Wj, const float* n_unit, const float* vij,
+    float* totflux) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_input(Wi, Wj, n_unit, vij);
+#endif
 
   float Whalf[5];
   float flux[5][3];
@@ -206,6 +213,70 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
       flux[3][0] * n_unit[0] + flux[3][1] * n_unit[1] + flux[3][2] * n_unit[2];
   totflux[4] =
       flux[4][0] * n_unit[0] + flux[4][1] * n_unit[1] + flux[4][2] * n_unit[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_output(Wi, Wj, n_unit, vij, totflux);
+#endif
+}
+
+__attribute__((always_inline)) INLINE static void
+riemann_solve_for_middle_state_flux(const float* Wi, const float* Wj,
+                                    const float* n_unit, const float* vij,
+                                    float* totflux) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_input(Wi, Wj, n_unit, vij);
+#endif
+
+  if (Wi[0] == 0.0f || Wj[0] == 0.0f) {
+    totflux[0] = 0.0f;
+    totflux[1] = 0.0f;
+    totflux[2] = 0.0f;
+    totflux[3] = 0.0f;
+    totflux[4] = 0.0f;
+    return;
+  }
+
+  /* calculate the velocities along the interface normal */
+  const float vL = Wi[1] * n_unit[0] + Wi[2] * n_unit[1] + Wi[3] * n_unit[2];
+  const float vR = Wj[1] * n_unit[0] + Wj[2] * n_unit[1] + Wj[3] * n_unit[2];
+
+  /* calculate the sound speeds */
+  const float aL = sqrtf(hydro_gamma * Wi[4] / Wi[0]);
+  const float aR = sqrtf(hydro_gamma * Wj[4] / Wj[0]);
+
+  if (riemann_is_vacuum(Wi, Wj, vL, vR, aL, aR)) {
+    totflux[0] = 0.0f;
+    totflux[1] = 0.0f;
+    totflux[2] = 0.0f;
+    totflux[3] = 0.0f;
+    totflux[4] = 0.0f;
+    return;
+  }
+
+  /* calculate the velocity and pressure in the intermediate state */
+  const float PLR = pow_gamma_minus_one_over_two_gamma(Wi[4] / Wj[4]);
+  const float ustar = (PLR * vL / aL + vR / aR +
+                       hydro_two_over_gamma_minus_one * (PLR - 1.0f)) /
+                      (PLR / aL + 1.0f / aR);
+  const float pstar =
+      0.5f *
+      (Wi[4] * pow_two_gamma_over_gamma_minus_one(
+                   1.0f + hydro_gamma_minus_one_over_two / aL * (vL - ustar)) +
+       Wj[4] * pow_two_gamma_over_gamma_minus_one(
+                   1.0f + hydro_gamma_minus_one_over_two / aR * (ustar - vR)));
+
+  totflux[0] = 0.0f;
+  totflux[1] = pstar * n_unit[0];
+  totflux[2] = pstar * n_unit[1];
+  totflux[3] = pstar * n_unit[2];
+  const float vface =
+      vij[0] * n_unit[0] + vij[1] * n_unit[1] + vij[2] * n_unit[2];
+  totflux[4] = pstar * (ustar + vface);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_output(Wi, Wj, n_unit, vij, totflux);
+#endif
 }
 
 #endif /* SWIFT_RIEMANN_TRRS_H */

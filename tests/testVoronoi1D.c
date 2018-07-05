@@ -16,10 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #include "hydro/Shadowswift/voronoi1d_algorithm.h"
 
-int main() {
+int main(int argc, char *argv[]) {
 
   double box_anchor[1] = {-0.5};
   double box_side[1] = {2.};

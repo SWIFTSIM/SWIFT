@@ -46,12 +46,18 @@
 #include "./hydro/Gadget2/hydro_debug.h"
 #elif defined(HOPKINS_PE_SPH)
 #include "./hydro/PressureEntropy/hydro_debug.h"
+#elif defined(HOPKINS_PU_SPH)
+#include "./hydro/PressureEnergy/hydro_debug.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_debug.h"
-#elif defined(GIZMO_SPH)
-#include "./hydro/Gizmo/hydro_debug.h"
+#elif defined(GIZMO_MFV_SPH)
+#include "./hydro/GizmoMFV/hydro_debug.h"
+#elif defined(GIZMO_MFM_SPH)
+#include "./hydro/GizmoMFM/hydro_debug.h"
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_debug.h"
+#elif defined(MINIMAL_MULTI_MAT_SPH)
+#include "./hydro/MinimalMultiMat/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif
@@ -305,8 +311,8 @@ static void dumpCells_map(struct cell *c, void *data) {
   /* Only cells with particles are dumped. */
   if (c->count > 0 || c->gcount > 0 || c->scount > 0) {
 
-/* In MPI mode we may only output cells with foreign partners.
- * These define the edges of the partitions. */
+    /* In MPI mode we may only output cells with foreign partners.
+     * These define the edges of the partitions. */
     int ismpiactive = 0;
 #if WITH_MPI
     ismpiactive = (c->send_xv != NULL);
@@ -370,8 +376,8 @@ static void dumpCells_map(struct cell *c, void *data) {
  * @param rank node ID of MPI rank, or 0 if not relevant.
  * @param step the current engine step, or some unique integer.
  */
-void dumpCells(const char *prefix, int super, int active, int mpiactive, int pactive, 
-               struct space *s, int rank, int step) {
+void dumpCells(const char *prefix, int super, int active, int mpiactive,
+               int pactive, struct space *s, int rank, int step) {
 
   FILE *file = NULL;
 
@@ -635,7 +641,7 @@ void getProcMemUse(long *size, long *resident, long *share, long *trs,
 /**
  * @brief Print the current memory use of the process. A la "top".
  */
-void printProcMemUse() {
+void printProcMemUse(void) {
   long size;
   long resident;
   long share;

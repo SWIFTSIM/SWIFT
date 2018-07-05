@@ -51,17 +51,27 @@
 #elif defined(HOPKINS_PE_SPH)
 #include "./hydro/PressureEntropy/hydro_part.h"
 #define hydro_need_extra_init_loop 1
+#elif defined(HOPKINS_PU_SPH)
+#include "./hydro/PressureEnergy/hydro_part.h"
+#define hydro_need_extra_init_loop 0
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_part.h"
 #define hydro_need_extra_init_loop 0
-#elif defined(GIZMO_SPH)
-#include "./hydro/Gizmo/hydro_part.h"
+#elif defined(GIZMO_MFV_SPH)
+#include "./hydro/GizmoMFV/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
+#elif defined(GIZMO_MFM_SPH)
+#include "./hydro/GizmoMFM/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
+#elif defined(MINIMAL_MULTI_MAT_SPH)
+#include "./hydro/MinimalMultiMat/hydro_part.h"
+#define hydro_need_extra_init_loop 0
 #else
 #error "Invalid choice of SPH variant"
 #endif
@@ -80,6 +90,8 @@ void part_relink_parts_to_gparts(struct gpart *gparts, size_t N,
                                  struct part *parts);
 void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
                                   struct spart *sparts);
+void part_relink_all_parts_to_gparts(struct gpart *gparts, size_t N,
+                                     struct part *parts, struct spart *sparts);
 void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct spart *sparts, size_t nr_parts, size_t nr_gparts,
                        size_t nr_sparts, int verbose);
@@ -92,7 +104,7 @@ extern MPI_Datatype gpart_mpi_type;
 extern MPI_Datatype spart_mpi_type;
 extern MPI_Datatype multipole_mpi_type;
 
-void part_create_mpi_types();
+void part_create_mpi_types(void);
 #endif
 
 #endif /* SWIFT_PART_H */

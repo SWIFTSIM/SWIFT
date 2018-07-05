@@ -54,7 +54,7 @@ struct profiler prof;
 /**
  * @brief Help messages for the command line parameters.
  */
-void print_help_message() {
+void print_help_message(void) {
 
   printf("\nUsage: swift [OPTION]... PARAMFILE\n");
   printf("       swift_mpi [OPTION]... PARAMFILE\n\n");
@@ -90,6 +90,8 @@ void print_help_message() {
   printf("  %2s %14s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps. When unset use the time_end "
          "parameter to stop.");
+  printf("  %2s %14s %s\n", "-o", "{str}",
+         "Generate a default output parameter file.");
   printf("  %2s %14s %s\n", "-P", "{sec:par:val}",
          "Set parameter value and overwrites values read from the parameters "
          "file. Can be used more than once.");
@@ -124,10 +126,11 @@ int main(int argc, char *argv[]) {
 
   /* Structs used by the engine. Declare now to make sure these are always in
    * scope.  */
-  struct chemistry_data chemistry;
+  struct chemistry_global_data chemistry;
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
+  struct pm_mesh mesh;
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
@@ -195,6 +198,7 @@ int main(int argc, char *argv[]) {
   int nr_threads = 1;
   int with_verbose_timers = 0;
   int nparams = 0;
+  char output_parameters_filename[200] = "";
   char *cmdparams[PARSER_MAX_NO_OF_PARAMS];
   char paramFileName[200] = "";
   char restart_file[200] = "";
@@ -202,7 +206,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:P:rsSt:Tv:y:Y:")) != -1)
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tv:y:Y:")) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -256,6 +260,15 @@ int main(int argc, char *argv[]) {
         if (sscanf(optarg, "%d", &nsteps) != 1) {
           if (myrank == 0) printf("Error parsing fixed number of steps.\n");
           if (myrank == 0) print_help_message();
+          return 1;
+        }
+        break;
+      case 'o':
+        if (sscanf(optarg, "%s", output_parameters_filename) != 1) {
+          if (myrank == 0) {
+            printf("Error parsing output fields filename");
+            print_help_message();
+          }
           return 1;
         }
         break;
@@ -324,6 +337,15 @@ int main(int argc, char *argv[]) {
         return 1;
         break;
     }
+
+  /* Write output parameter file */
+  if (myrank == 0 && strcmp(output_parameters_filename, "") != 0) {
+    io_write_output_field_parameter(output_parameters_filename);
+    printf("End of run.\n");
+    return 0;
+  }
+
+  /* check inputs */
   if (optind == argc - 1) {
     if (!strcpy(paramFileName, argv[optind++]))
       error("Error reading parameter file name.");
@@ -447,10 +469,6 @@ int main(int argc, char *argv[]) {
           "values.");
       for (int k = 0; k < nparams; k++) parser_set_param(params, cmdparams[k]);
     }
-
-    /* And dump the parameters as used. */
-    // parser_print_params(&params);
-    parser_write_params_to_file(params, "used_parameters.yml");
   }
 #ifdef WITH_MPI
   /* Broadcast the parameter file */
@@ -590,7 +608,7 @@ int main(int argc, char *argv[]) {
 
     /* Not restarting so look for the ICs. */
     /* Initialize unit system and constants */
-    units_init(&us, params, "InternalUnitSystem");
+    units_init_from_params(&us, params, "InternalUnitSystem");
     phys_const_init(&us, params, &prog_const);
     if (myrank == 0 && verbose > 0) {
       message("Internal unit system: U_M = %e g.", us.UnitMass_in_cgs);
@@ -611,11 +629,11 @@ int main(int argc, char *argv[]) {
     /* Initialise the hydro properties */
     if (with_hydro)
       hydro_props_init(&hydro_properties, &prog_const, &us, params);
-    if (with_hydro) eos_init(&eos, params);
+    if (with_hydro) eos_init(&eos, &prog_const, &us, params);
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
-      gravity_props_init(&gravity_properties, params, &cosmo);
+      gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology);
 
     /* Read particles and space information from (GADGET) ICs */
     char ICfileName[200] = "";
@@ -626,6 +644,8 @@ int main(int argc, char *argv[]) {
         params, "InitialConditions:cleanup_smoothing_lengths", 0);
     const int cleanup_h = parser_get_opt_param_int(
         params, "InitialConditions:cleanup_h_factors", 0);
+    const int cleanup_sqrt_a = parser_get_opt_param_int(
+        params, "InitialConditions:cleanup_velocity_factors", 0);
     const int generate_gas_in_ics = parser_get_opt_param_int(
         params, "InitialConditions:generate_gas_in_ics", 0);
     if (generate_gas_in_ics && flag_entropy_ICs)
@@ -635,6 +655,8 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
     if (myrank == 0 && cleanup_h)
       message("Cleaning up h-factors (h=%f)", cosmo.h);
+    if (myrank == 0 && cleanup_sqrt_a)
+      message("Cleaning up a-factors from velocity (a=%f)", cosmo.a);
     fflush(stdout);
 
     /* Get ready to read particles of all kinds */
@@ -642,25 +664,30 @@ int main(int argc, char *argv[]) {
     double dim[3] = {0., 0., 0.};
     int periodic = 0;
     if (myrank == 0) clocks_gettime(&tic);
+#if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                      &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                      (with_external_gravity || with_self_gravity), with_stars,
-                     cleanup_h, cosmo.h, myrank, nr_nodes, MPI_COMM_WORLD,
-                     MPI_INFO_NULL, nr_threads, dry_run);
+                     cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
+                     nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                     dry_run);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                    &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cosmo.h, myrank, nr_nodes, MPI_COMM_WORLD,
-                   MPI_INFO_NULL, nr_threads, dry_run);
+                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
+                   nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                   dry_run);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                    &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cosmo.h, nr_threads, dry_run);
+                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
+                   dry_run);
+#endif
 #endif
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -668,6 +695,11 @@ int main(int argc, char *argv[]) {
               clocks_diff(&tic, &toc), clocks_getunit());
       fflush(stdout);
     }
+
+#ifdef WITH_MPI
+    if (periodic && with_self_gravity)
+      error("Periodic self-gravity over MPI temporarily disabled.");
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check once and for all that we don't have unwanted links */
@@ -703,6 +735,22 @@ int main(int argc, char *argv[]) {
           "the "
           "ICs.",
           N_total[0], N_total[2], N_total[1]);
+
+    /* Verify that the fields to dump actually exist */
+    if (myrank == 0) io_check_output_fields(params, N_total);
+
+    /* Initialise the long-range gravity mesh */
+    if (with_self_gravity && periodic) {
+#ifdef HAVE_FFTW
+      pm_mesh_init(&mesh, &gravity_properties, dim);
+#else
+      /* Need the FFTW library if periodic and self gravity. */
+      error(
+          "No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
+    } else {
+      pm_mesh_init_no_mesh(&mesh, dim);
+    }
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -796,12 +844,13 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_init(&e, &s, params, N_total[0], N_total[1], engine_policies,
-                talking, &reparttype, &us, &prog_const, &cosmo,
-                &hydro_properties, &gravity_properties, &potential,
+    engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
+                engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
+                &hydro_properties, &gravity_properties, &mesh, &potential,
                 &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
+
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -841,7 +890,7 @@ int main(int argc, char *argv[]) {
 
 /* Initialise the table of Ewald corrections for the gravity checks */
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  if (periodic) gravity_exact_force_ewald_init(e.s->dim[0]);
+  if (s.periodic) gravity_exact_force_ewald_init(e.s->dim[0]);
 #endif
 
 /* Init the runner history. */
@@ -879,6 +928,13 @@ int main(int argc, char *argv[]) {
   if (restart_genname(restart_dir, restart_name, e.nodeID, restart_file, 200) !=
       0)
     error("Failed to generate restart filename");
+
+  /* dump the parameters as used. */
+
+  /* used parameters */
+  parser_write_params_to_file(params, "used_parameters.yml", 1);
+  /* unused parameters */
+  parser_write_params_to_file(params, "unused_parameters.yml", 0);
 
   /* Main simulation loop */
   /* ==================== */
@@ -934,9 +990,10 @@ int main(int argc, char *argv[]) {
           /* Open file and position at end. */
           file_thread = fopen(dumpfile, "a");
 
-          fprintf(file_thread, " %03i 0 0 0 0 %lli %lli %zi %zi %zi 0 0 %lli\n",
-                  myrank, e.tic_step, e.toc_step, e.updates, e.g_updates,
-                  e.s_updates, cpufreq);
+          fprintf(file_thread,
+                  " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld\n", myrank,
+                  e.tic_step, e.toc_step, e.updates, e.g_updates, e.s_updates,
+                  cpufreq);
           int count = 0;
           for (int l = 0; l < e.sched.nr_tasks; l++) {
             if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
@@ -972,8 +1029,8 @@ int main(int argc, char *argv[]) {
       FILE *file_thread;
       file_thread = fopen(dumpfile, "w");
       /* Add some information to help with the plots */
-      fprintf(file_thread, " %i %i %i %i %lli %lli %zi %zi %zi %i %lli\n", -2,
-              -1, -1, 1, e.tic_step, e.toc_step, e.updates, e.g_updates,
+      fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n",
+              -2, -1, -1, 1, e.tic_step, e.toc_step, e.updates, e.g_updates,
               e.s_updates, 0, cpufreq);
       for (int l = 0; l < e.sched.nr_tasks; l++) {
         if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
@@ -1026,14 +1083,15 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10.5f %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
-           e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
-           e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
-           e.s_updates, e.wallclock_time, e.step_props);
+    printf(
+        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+        e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
+        e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
+        e.wallclock_time, e.step_props);
     fflush(stdout);
 
     fprintf(e.file_timesteps,
-            "  %6d %14e %14e %14e %4d %4d %12zu %12zu %12zu %21.3f %6d\n",
+            "  %6d %14e %14e %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
             e.step, e.time, e.cosmology->a, e.time_step, e.min_active_bin,
             e.max_active_bin, e.updates, e.g_updates, e.s_updates,
             e.wallclock_time, e.step_props);
@@ -1056,6 +1114,8 @@ int main(int argc, char *argv[]) {
 
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
+  if (with_cosmology) cosmology_clean(&cosmo);
+  if (with_self_gravity) pm_mesh_clean(&mesh);
   engine_clean(&e);
   free(params);
 

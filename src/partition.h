@@ -73,7 +73,7 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeID,
                              struct space *s);
 void partition_init(struct partition *partition,
                     struct repartition *repartition,
-                    const struct swift_params *params, int nr_nodes);
+                    struct swift_params *params, int nr_nodes);
 
 /* Dump/restore. */
 void partition_store_celllist(struct space *s, struct repartition *reparttype);

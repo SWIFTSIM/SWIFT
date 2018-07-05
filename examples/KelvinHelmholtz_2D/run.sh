@@ -8,7 +8,8 @@ then
 fi
 
 # Run SWIFT
-../swift -s -t 1 kelvinHelmholtz.yml 2>&1 | tee output.log
+../swift -s -t 4 kelvinHelmholtz.yml 2>&1 | tee output.log
 
 # Plot the solution
 python plotSolution.py 6
+python makeMovie.py

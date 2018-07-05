@@ -43,7 +43,7 @@
 #endif
 
 /* Common functions */
-void cooling_init(const struct swift_params* parameter_file,
+void cooling_init(struct swift_params* parameter_file,
                   const struct unit_system* us,
                   const struct phys_const* phys_const,
                   struct cooling_function_data* cooling);

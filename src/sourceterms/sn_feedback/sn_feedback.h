@@ -171,7 +171,7 @@ __attribute__((always_inline)) INLINE static void supernova_feedback_apply(
  */
 
 __attribute__((always_inline)) INLINE static void supernova_init(
-    const struct swift_params* parameter_file, struct unit_system* us,
+    struct swift_params* parameter_file, struct unit_system* us,
     struct sourceterms* source) {
   source->supernova.time = parser_get_param_double(parameter_file, "SN:time");
   source->supernova.energy =

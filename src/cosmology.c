@@ -119,6 +119,10 @@ static INLINE double E(double Or, double Om, double Ok, double Ol, double w0,
  */
 double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (a < c->a_begin) error("Error a can't be smaller than a_begin");
+#endif
+
   /* Time between a_begin and a */
   const double delta_t =
       interp_table(c->time_interp_table, log(a), c->log_a_begin, c->log_a_end);
@@ -387,8 +391,7 @@ void cosmology_init_tables(struct cosmology *c) {
  * @param phys_const The physical constants in the current system of units.
  * @param c The #cosmology to initialise.
  */
-void cosmology_init(const struct swift_params *params,
-                    const struct unit_system *us,
+void cosmology_init(struct swift_params *params, const struct unit_system *us,
                     const struct phys_const *phys_const, struct cosmology *c) {
 
   /* Read in the cosmological parameters */
@@ -507,6 +510,10 @@ double cosmology_get_drift_factor(const struct cosmology *c,
                                   integertime_t ti_start,
                                   integertime_t ti_end) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end < ti_start) error("ti_end must be >= ti_start");
+#endif
+
   const double a_start = c->log_a_begin + ti_start * c->time_base;
   const double a_end = c->log_a_begin + ti_end * c->time_base;
 
@@ -531,6 +538,10 @@ double cosmology_get_grav_kick_factor(const struct cosmology *c,
                                       integertime_t ti_start,
                                       integertime_t ti_end) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end < ti_start) error("ti_end must be >= ti_start");
+#endif
+
   const double a_start = c->log_a_begin + ti_start * c->time_base;
   const double a_end = c->log_a_begin + ti_end * c->time_base;
 
@@ -554,6 +565,10 @@ double cosmology_get_grav_kick_factor(const struct cosmology *c,
 double cosmology_get_hydro_kick_factor(const struct cosmology *c,
                                        integertime_t ti_start,
                                        integertime_t ti_end) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end < ti_start) error("ti_end must be >= ti_start");
+#endif
 
   const double a_start = c->log_a_begin + ti_start * c->time_base;
   const double a_end = c->log_a_begin + ti_end * c->time_base;
@@ -580,6 +595,10 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
                                        integertime_t ti_start,
                                        integertime_t ti_end) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end < ti_start) error("ti_end must be >= ti_start");
+#endif
+
   const double a_start = c->log_a_begin + ti_start * c->time_base;
   const double a_end = c->log_a_begin + ti_end * c->time_base;
 
@@ -592,22 +611,30 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
 }
 
 /**
- * @brief Compute the cosmic time (in internal units) between two scale-factors.
+ * @brief Compute the cosmic time (in internal units) between two points
+ * on the integer time line.
  *
- * @brief c The current #cosmology.
- * @brief a1 The first scale-factor.
- * @brief a2 The second scale-factor.
+ * @param c The current #cosmology.
+ * @param ti_start the (integer) time of the start.
+ * @param ti_end the (integer) time of the end.
  */
-double cosmology_get_delta_time(const struct cosmology *c, double a1,
-                                double a2) {
+double cosmology_get_delta_time(const struct cosmology *c,
+                                integertime_t ti_start, integertime_t ti_end) {
 
-  /* Time between a_begin and a1 */
-  const double t1 =
-      interp_table(c->time_interp_table, log(a1), c->log_a_begin, c->log_a_end);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end < ti_start) error("ti_end must be >= ti_start");
+#endif
 
-  /* Time between a_begin and a1 */
-  const double t2 =
-      interp_table(c->time_interp_table, log(a2), c->log_a_begin, c->log_a_end);
+  const double log_a_start = c->log_a_begin + ti_start * c->time_base;
+  const double log_a_end = c->log_a_begin + ti_end * c->time_base;
+
+  /* Time between a_begin and a_start */
+  const double t1 = interp_table(c->time_interp_table, log_a_start,
+                                 c->log_a_begin, c->log_a_end);
+
+  /* Time between a_begin and a_end */
+  const double t2 = interp_table(c->time_interp_table, log_a_end,
+                                 c->log_a_begin, c->log_a_end);
 
   return t2 - t1;
 }
@@ -642,8 +669,12 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "a_end", c->a_end);
   io_write_attribute_d(h_grp, "time_beg [internal units]", c->time_begin);
   io_write_attribute_d(h_grp, "time_end [internal units]", c->time_end);
+  io_write_attribute_d(h_grp, "Universe age [internal units]", c->time);
+  io_write_attribute_d(h_grp, "Lookback time [internal units]",
+                       c->lookback_time);
   io_write_attribute_d(h_grp, "h", c->h);
   io_write_attribute_d(h_grp, "H0 [internal units]", c->H0);
+  io_write_attribute_d(h_grp, "H [internal units]", c->H);
   io_write_attribute_d(h_grp, "Hubble time [internal units]", c->Hubble_time);
   io_write_attribute_d(h_grp, "Omega_m", c->Omega_m);
   io_write_attribute_d(h_grp, "Omega_r", c->Omega_r);
@@ -652,6 +683,11 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "Omega_lambda", c->Omega_lambda);
   io_write_attribute_d(h_grp, "w_0", c->w_0);
   io_write_attribute_d(h_grp, "w_a", c->w_a);
+  io_write_attribute_d(h_grp, "w", c->w);
+  io_write_attribute_d(h_grp, "Redshift", c->z);
+  io_write_attribute_d(h_grp, "Scale-factor", c->a);
+  io_write_attribute_d(h_grp, "Critical density [internal units]",
+                       c->critical_density);
 }
 #endif
 

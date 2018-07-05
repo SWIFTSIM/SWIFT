@@ -25,6 +25,10 @@
 /* Local includes. */
 #include "common_io.h"
 #include "inline.h"
+#include "part.h"
+
+/* Standard includes. */
+#include <string.h>
 
 /**
  * @brief The two sorts of data present in the GADGET IC files: compulsory to

@@ -33,7 +33,7 @@
 #include <math.h>
 
 /* Local headers. */
-#include "debug.h"
+#include "cbrt.h"
 #include "error.h"
 #include "inline.h"
 
@@ -42,6 +42,7 @@
 
 #define hydro_gamma 1.66666666666666667f
 #define hydro_gamma_minus_one 0.66666666666666667f
+#define hydro_gamma_plus_one 2.66666666666666667f
 #define hydro_one_over_gamma_minus_one 1.5f
 #define hydro_gamma_plus_one_over_two_gamma 0.8f
 #define hydro_gamma_minus_one_over_two_gamma 0.2f
@@ -56,6 +57,7 @@
 
 #define hydro_gamma 1.4f
 #define hydro_gamma_minus_one 0.4f
+#define hydro_gamma_plus_one 2.4f
 #define hydro_one_over_gamma_minus_one 2.5f
 #define hydro_gamma_plus_one_over_two_gamma 0.857142857f
 #define hydro_gamma_minus_one_over_two_gamma 0.142857143f
@@ -70,6 +72,7 @@
 
 #define hydro_gamma 1.33333333333333333f
 #define hydro_gamma_minus_one 0.33333333333333333f
+#define hydro_gamma_plus_one 2.33333333333333333f
 #define hydro_one_over_gamma_minus_one 3.f
 #define hydro_gamma_plus_one_over_two_gamma 0.875f
 #define hydro_gamma_minus_one_over_two_gamma 0.125f
@@ -84,6 +87,7 @@
 
 #define hydro_gamma 2.f
 #define hydro_gamma_minus_one 1.f
+#define hydro_gamma_plus_one 3.f
 #define hydro_one_over_gamma_minus_one 1.f
 #define hydro_gamma_plus_one_over_two_gamma 0.75f
 #define hydro_gamma_minus_one_over_two_gamma 0.25f
@@ -105,12 +109,17 @@
  *
  * Computes \f$x^\gamma\f$.
  */
-__attribute__((always_inline)) INLINE static float pow_gamma(float x) {
+__attribute__((always_inline, const)) INLINE static float pow_gamma(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
-  const float cbrt = cbrtf(x); /* x^(1/3) */
-  return cbrt * cbrt * x;      /* x^(5/3) */
+#ifdef WITH_ICBRTF
+  const float icbrt = icbrtf(x); /* x^(-1/3) */
+  return icbrt * x * x;          /* x^(5/3) */
+#else
+  const float cbrt = cbrtf(x);                 /* x^(1/3) */
+  return cbrt * cbrt * x;                      /* x^(5/3) */
+#endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_7_5)
 
@@ -118,7 +127,12 @@ __attribute__((always_inline)) INLINE static float pow_gamma(float x) {
 
 #elif defined(HYDRO_GAMMA_4_3)
 
-  return cbrtf(x) * x; /* x^(4/3) */
+#ifdef WITH_ICBRTF
+  const float icbrt = icbrtf(x);               /* x^(-1/3) */
+  return icbrt * icbrt * x * x;                /* x^(4/3) */
+#else
+  return cbrtf(x) * x;                   /* x^(4/3) */
+#endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_2_1)
 
@@ -138,13 +152,18 @@ __attribute__((always_inline)) INLINE static float pow_gamma(float x) {
  *
  * Computes \f$x^{(\gamma-1)}\f$.
  */
-__attribute__((always_inline)) INLINE static float pow_gamma_minus_one(
+__attribute__((always_inline, const)) INLINE static float pow_gamma_minus_one(
     float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
-  const float cbrt = cbrtf(x); /* x^(1/3) */
-  return cbrt * cbrt;          /* x^(2/3) */
+#ifdef WITH_ICBRTF
+  const float icbrt = icbrtf(x); /* x^(-1/3) */
+  return x * icbrt;              /* x^(2/3) */
+#else
+  const float cbrt = cbrtf(x);                 /* x^(1/3) */
+  return cbrt * cbrt;                          /* x^(2/3) */
+#endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_7_5)
 
@@ -152,7 +171,12 @@ __attribute__((always_inline)) INLINE static float pow_gamma_minus_one(
 
 #elif defined(HYDRO_GAMMA_4_3)
 
-  return cbrtf(x); /* x^(1/3) */
+#ifdef WITH_ICBRTF
+  const float icbrt = icbrtf(x);               /* x^(-1/3) */
+  return x * icbrt * icbrt;                    /* x^(1/3) */
+#else
+  return cbrtf(x);                       /* x^(1/3) */
+#endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_2_1)
 
@@ -172,13 +196,18 @@ __attribute__((always_inline)) INLINE static float pow_gamma_minus_one(
  *
  * Computes \f$x^{-(\gamma-1)}\f$.
  */
-__attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
-    float x) {
+__attribute__((always_inline, const)) INLINE static float
+pow_minus_gamma_minus_one(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
-  const float cbrt_inv = 1.f / cbrtf(x); /* x^(-1/3) */
-  return cbrt_inv * cbrt_inv;            /* x^(-2/3) */
+#ifdef WITH_ICBRTF
+  const float icbrt = icbrtf(x); /* x^(-1/3) */
+  return icbrt * icbrt;          /* x^(-2/3) */
+#else
+  const float cbrt_inv = 1.f / cbrtf(x);       /* x^(-1/3) */
+  return cbrt_inv * cbrt_inv;                  /* x^(-2/3) */
+#endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_7_5)
 
@@ -186,7 +215,11 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
 
 #elif defined(HYDRO_GAMMA_4_3)
 
-  return 1.f / cbrtf(x); /* x^(-1/3) */
+#ifdef WITH_ICBRTF
+  return icbrtf(x);                            /* x^(-1/3) */
+#else
+  return 1.f / cbrtf(x);                 /* x^(-1/3) */
+#endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_2_1)
 
@@ -209,13 +242,20 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
  * @param x Argument
  * @return One over the argument to the power given by the adiabatic index
  */
-__attribute__((always_inline)) INLINE static float pow_minus_gamma(float x) {
+__attribute__((always_inline, const)) INLINE static float pow_minus_gamma(
+    float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
+#ifdef WITH_ICBRTF
+  const float icbrt = icbrtf(x);      /* x^(-1/3) */
+  const float icbrt2 = icbrt * icbrt; /* x^(-2/3) */
+  return icbrt * icbrt2 * icbrt2;     /* x^(-5/3) */
+#else
   const float cbrt_inv = 1.f / cbrtf(x);       /* x^(-1/3) */
   const float cbrt_inv2 = cbrt_inv * cbrt_inv; /* x^(-2/3) */
   return cbrt_inv * cbrt_inv2 * cbrt_inv2;     /* x^(-5/3) */
+#endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_7_5)
 
@@ -223,7 +263,11 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma(float x) {
 
 #elif defined(HYDRO_GAMMA_4_3)
 
-  const float cbrt_inv = 1.f / cbrtf(x);       /* x^(-1/3) */
+#ifdef WITH_ICBRTF
+  const float cbrt_inv = icbrtf(x);            /* x^(-1/3) */
+#else
+  const float cbrt_inv = 1.f / cbrtf(x); /* x^(-1/3) */
+#endif  // WITH_ICBRTF
   const float cbrt_inv2 = cbrt_inv * cbrt_inv; /* x^(-2/3) */
   return cbrt_inv2 * cbrt_inv2;                /* x^(-4/3) */
 
@@ -249,8 +293,8 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma(float x) {
  * @param x Argument
  * @return Argument to the power two divided by the adiabatic index minus one
  */
-__attribute__((always_inline)) INLINE static float pow_two_over_gamma_minus_one(
-    float x) {
+__attribute__((always_inline, const)) INLINE static float
+pow_two_over_gamma_minus_one(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
@@ -289,7 +333,7 @@ __attribute__((always_inline)) INLINE static float pow_two_over_gamma_minus_one(
  * @return Argument to the power two times the adiabatic index divided by the
  * adiabatic index minus one
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 pow_two_gamma_over_gamma_minus_one(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
@@ -333,7 +377,7 @@ pow_two_gamma_over_gamma_minus_one(float x) {
  * @return Argument to the power the adiabatic index minus one divided by two
  * times the adiabatic index
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 pow_gamma_minus_one_over_two_gamma(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
@@ -370,7 +414,7 @@ pow_gamma_minus_one_over_two_gamma(float x) {
  * @return Inverse argument to the power the adiabatic index plus one divided by
  * two times the adiabatic index
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 pow_minus_gamma_plus_one_over_two_gamma(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
@@ -405,7 +449,8 @@ pow_minus_gamma_plus_one_over_two_gamma(float x) {
  * @param x Argument
  * @return Argument to the power one over the adiabatic index
  */
-__attribute__((always_inline)) INLINE static float pow_one_over_gamma(float x) {
+__attribute__((always_inline, const)) INLINE static float pow_one_over_gamma(
+    float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
@@ -438,8 +483,8 @@ __attribute__((always_inline)) INLINE static float pow_one_over_gamma(float x) {
  *
  * @param x Argument
  */
-__attribute__((always_inline)) INLINE static float pow_three_gamma_minus_two(
-    float x) {
+__attribute__((always_inline, const)) INLINE static float
+pow_three_gamma_minus_two(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
@@ -473,7 +518,7 @@ __attribute__((always_inline)) INLINE static float pow_three_gamma_minus_two(
  *
  * @param x Argument
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 pow_three_gamma_minus_five_over_two(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)

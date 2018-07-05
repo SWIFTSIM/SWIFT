@@ -55,12 +55,11 @@ enum {
   timer_dopair_density,
   timer_dopair_gradient,
   timer_dopair_force,
-  timer_dopair_grav_branch,
   timer_dopair_grav_mm,
-  timer_dopair_grav_pm,
   timer_dopair_grav_pp,
   timer_dograv_external,
   timer_dograv_down,
+  timer_dograv_mesh,
   timer_dograv_top_level,
   timer_dograv_long_range,
   timer_dosource,
@@ -119,10 +118,10 @@ INLINE static ticks timers_toc(unsigned int t, ticks tic) {
 #endif
 
 /* Function prototypes. */
-void timers_reset_all();
+void timers_reset_all(void);
 void timers_reset(unsigned long long mask);
 void timers_open_file(int rank);
-void timers_close_file();
+void timers_close_file(void);
 void timers_print(int step);
 
 #endif /* SWIFT_TIMERS_H */

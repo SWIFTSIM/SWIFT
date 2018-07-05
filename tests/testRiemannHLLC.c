@@ -16,18 +16,76 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
+/* Some standard headers. */
+#include <fenv.h>
+#include <math.h>
+#include <stdio.h>
 #include <string.h>
-#include "error.h"
-#include "riemann/riemann_hllc.h"
-#include "tools.h"
 
-int consistent_with_zero(float val) { return fabs(val) < 1.e-4; }
+/* Force use of the HLLC Riemann solver */
+#undef RIEMANN_SOLVER_TRRS
+#undef RIEMANN_SOLVER_EXACT
+#undef RIEMANN_SOLVER_HLLC
+#define RIEMANN_SOLVER_HLLC 1
+
+/* Local headers. */
+#include "riemann/riemann_hllc.h"
+#include "swift.h"
+
+const float max_abs_error = 1e-3f;
+const float max_rel_error = 1e-3f;
+const float min_threshold = 1e-2f;
 
 /**
- * @brief Check the symmetry of the TRRS Riemann solver
+ * @brief Checks whether two numbers are opposite of each others.
  */
-void check_riemann_symmetry() {
+int are_symmetric(float a, float b) {
+
+  /* Check that the signs are different */
+  if ((a * b) > 0.f) {
+    message("Identical signs a=%.8e b=%.8e", a, b);
+    return 0;
+  }
+
+  const float abs_a = fabsf(a);
+  const float abs_b = fabsf(b);
+
+  const float abs_error = fabsf(abs_a - abs_b);
+
+  /* Check that we do not breach the absolute error limit */
+  if (abs_error > max_abs_error) {
+    message("Absolute error too large a=%.8e b=%.8e abs=%.8e", a, b, abs_error);
+    return 0;
+  }
+
+  /* Avoid FPEs... */
+  if (fabsf(abs_a + abs_b) == 0.f) {
+    return 1;
+  }
+
+  /* Avoid things close to 0 */
+  if ((abs_a < min_threshold) || (abs_b < min_threshold)) {
+    return 1;
+  }
+
+  const float rel_error = 0.5f * abs_error / fabsf(abs_a + abs_b);
+
+  /* Check that we do not breach the relative error limit */
+  if (rel_error > max_rel_error) {
+    message("Relative error too large a=%.8e b=%.8e rel=%.8e", a, b, rel_error);
+    return 0;
+  }
+
+  /* All good */
+  return 1;
+}
+
+/**
+ * @brief Check the symmetry of the HLLC Riemann solver for a random setup
+ */
+void check_riemann_symmetry(void) {
   float WL[5], WR[5], n_unit1[3], n_unit2[3], n_norm, vij[3], totflux1[5],
       totflux2[5];
 
@@ -63,14 +121,20 @@ void check_riemann_symmetry() {
   riemann_solve_for_flux(WL, WR, n_unit1, vij, totflux1);
   riemann_solve_for_flux(WR, WL, n_unit2, vij, totflux2);
 
-  if (!consistent_with_zero(totflux1[0] + totflux2[0]) ||
-      !consistent_with_zero(totflux1[1] + totflux2[1]) ||
-      !consistent_with_zero(totflux1[2] + totflux2[2]) ||
-      !consistent_with_zero(totflux1[3] + totflux2[3]) ||
-      !consistent_with_zero(totflux1[4] + totflux2[4])) {
+  if (!are_symmetric(totflux1[0], totflux2[0]) ||
+      !are_symmetric(totflux1[1], totflux2[1]) ||
+      !are_symmetric(totflux1[2], totflux2[2]) ||
+      !are_symmetric(totflux1[3], totflux2[3]) ||
+      !are_symmetric(totflux1[4], totflux2[4])) {
+    message("WL=[%.8e, %.8e, %.8e, %.8e, %.8e]", WL[0], WL[1], WL[2], WL[3],
+            WL[4]);
+    message("WR=[%.8e, %.8e, %.8e, %.8e, %.8e]", WR[0], WR[1], WR[2], WR[3],
+            WR[4]);
+    message("n_unit1=[%.8e, %.8e, %.8e]", n_unit1[0], n_unit1[1], n_unit1[2]);
+    message("vij=[%.8e, %.8e, %.8e]\n", vij[0], vij[1], vij[2]);
     message(
-        "Flux solver asymmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
-        "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
+        "Flux solver asymmetric: [%.6e,%.6e,%.6e,%.6e,%.6e] == "
+        "[%.6e,%.6e,%.6e,%.6e,%.6e]\n",
         totflux1[0], totflux1[1], totflux1[2], totflux1[3], totflux1[4],
         totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]);
     error("Asymmetry in flux solution!");
@@ -86,11 +150,26 @@ void check_riemann_symmetry() {
 /**
  * @brief Check the HLLC Riemann solver
  */
-int main() {
+int main(int argc, char *argv[]) {
 
-  int i;
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
+
+/* Choke on FP-exceptions */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
+
+  /* Get some randomness going */
+  const int seed = time(NULL);
+  message("Seed = %d", seed);
+  srand(seed);
+
   /* symmetry test */
-  for (i = 0; i < 100; i++) check_riemann_symmetry();
+  for (int i = 0; i < 100000; i++) {
+    check_riemann_symmetry();
+  }
 
   return 0;
 }

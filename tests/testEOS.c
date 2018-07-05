@@ -1,0 +1,278 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2018 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
+#include <fenv.h>
+#include <float.h>
+#include <limits.h>
+#include <math.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+/* Conditional headers. */
+#ifdef HAVE_LIBZ
+#include <zlib.h>
+#endif
+
+/* Local headers. */
+#include "equation_of_state.h"
+#include "swift.h"
+
+/* Engine policy flags. */
+#ifndef ENGINE_POLICY
+#define ENGINE_POLICY engine_policy_none
+#endif
+
+/**
+ * @brief Write a list of densities, energies, and resulting pressures to file
+ *  from an equation of state.
+ *
+ *                      WORK IN PROGRESS
+ *
+ * So far only does the Hubbard & MacFarlane (1980) equations of state.
+ *
+ * Usage:
+ *      $  ./testEOS  (mat_id)  (do_output)
+ *
+ * Sys args (optional):
+ *      mat_id | int | Material ID, see equation_of_state.h for the options.
+ *          Default: 201 (= id_HM80_ice).
+ *
+ *      do_output | int | Set 1 to write the output file of rho, u, P values,
+ *          set 0 for no output. Default: 0.
+ *
+ * Output text file contains:
+ *  header
+ *  num_rho num_u   mat_id                      # Header values
+ *  rho_0   rho_1   rho_2   ...   rho_num_rho   # Array of densities, rho
+ *  u_0     u_1     u_2     ...   u_num_u       # Array of energies, u
+ *  P_0_0   P_0_1   ...     P_0_num_u           # Array of pressures, P(rho, u)
+ *  P_1_0   ...     ...     P_1_num_u
+ *  ...     ...     ...     ...
+ *  P_num_rho_0     ...     P_num_rho_num_u
+ *
+ * Note that the values tested extend beyond the range that most EOS are
+ * designed for (e.g. outside table limits), to help test the EOS in case of
+ * unexpected particle behaviour.
+ *
+ */
+
+#ifdef EOS_PLANETARY
+int main(int argc, char *argv[]) {
+  float rho, log_rho, log_u, P;
+  struct unit_system us;
+  const struct phys_const *phys_const = 0;  // Unused placeholder
+  struct swift_params *params = 0;          // Unused placeholder
+  const float J_kg_to_erg_g = 1e4;          // Convert J/kg to erg/g
+  char filename[64];
+  // Output table params
+  const int num_rho = 100, num_u = 100;
+  float log_rho_min = logf(1e-4), log_rho_max = logf(30.f),
+        log_u_min = logf(1e4), log_u_max = logf(1e10),
+        log_rho_step = (log_rho_max - log_rho_min) / (num_rho - 1.f),
+        log_u_step = (log_u_max - log_u_min) / (num_u - 1.f);
+  float A1_rho[num_rho], A1_u[num_u];
+  // Sys args
+  int mat_id, do_output;
+  // Default sys args
+  const int mat_id_def = eos_planetary_id_HM80_ice;
+  const int do_output_def = 0;
+
+  // Check the number of system arguments and use defaults if not provided
+  switch (argc) {
+    case 1:
+      // Default both
+      mat_id = mat_id_def;
+      do_output = do_output_def;
+      break;
+
+    case 2:
+      // Read mat_id, default do_output
+      mat_id = atoi(argv[1]);
+      do_output = do_output_def;
+      break;
+
+    case 3:
+      // Read both
+      mat_id = atoi(argv[1]);
+      do_output = atoi(argv[2]);
+      break;
+
+    default:
+      error("Invalid number of system arguments!\n");
+      mat_id = mat_id_def;  // Ignored, just here to keep the compiler happy
+      do_output = do_output_def;
+  };
+
+  /* Greeting message */
+  printf("This is %s\n", package_description());
+
+  // Check material ID
+  // Material base type
+  switch ((int)(mat_id / eos_planetary_type_factor)) {
+    // Tillotson
+    case eos_planetary_type_Til:
+      switch (mat_id) {
+        case eos_planetary_id_Til_iron:
+          printf("  Tillotson iron \n");
+          break;
+
+        case eos_planetary_id_Til_granite:
+          printf("  Tillotson granite \n");
+          break;
+
+        case eos_planetary_id_Til_water:
+          printf("  Tillotson water \n");
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d \n", mat_id);
+      };
+      break;
+
+    // Hubbard & MacFarlane (1980)
+    case eos_planetary_type_HM80:
+      switch (mat_id) {
+        case eos_planetary_id_HM80_HHe:
+          printf("  Hubbard & MacFarlane (1980) hydrogen-helium atmosphere \n");
+          break;
+
+        case eos_planetary_id_HM80_ice:
+          printf("  Hubbard & MacFarlane (1980) ice mix \n");
+          break;
+
+        case eos_planetary_id_HM80_rock:
+          printf("  Hubbard & MacFarlane (1980) rock mix \n");
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d \n", mat_id);
+      };
+      break;
+
+    // ANEOS
+    case eos_planetary_type_ANEOS:
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_iron:
+          printf("  ANEOS iron \n");
+          break;
+
+        case eos_planetary_id_MANEOS_forsterite:
+          printf("  MANEOS forsterite \n");
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d \n", mat_id);
+      };
+      break;
+
+    // SESAME
+    case eos_planetary_type_SESAME:
+      switch (mat_id) {
+        case eos_planetary_id_SESAME_iron:
+          printf("  SESAME iron \n");
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d \n", mat_id);
+      };
+      break;
+
+    default:
+      error("Unknown material type! mat_id = %d \n", mat_id);
+  }
+
+  // Convert to internal units (Earth masses and radii)
+  units_init(&us, 5.9724e27, 6.3710e8, 1.f, 1.f, 1.f);
+  log_rho_min -= logf(units_cgs_conversion_factor(&us, UNIT_CONV_DENSITY));
+  log_rho_max -= logf(units_cgs_conversion_factor(&us, UNIT_CONV_DENSITY));
+  log_u_min += logf(J_kg_to_erg_g / units_cgs_conversion_factor(
+                                        &us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
+  log_u_max += logf(J_kg_to_erg_g / units_cgs_conversion_factor(
+                                        &us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
+
+  // Initialise the EOS materials
+  eos_init(&eos, phys_const, &us, params);
+
+  // Output file
+  sprintf(filename, "testEOS_rho_u_P_%d.txt", mat_id);
+  FILE *f = fopen(filename, "w");
+  if (f == NULL) {
+    printf("Could not open output file!\n");
+    exit(EXIT_FAILURE);
+  }
+
+  if (do_output == 1) {
+    fprintf(f, "Density  Sp.Int.Energy  mat_id \n");
+    fprintf(f, "%d      %d            %d \n", num_rho, num_u, mat_id);
+  }
+
+  // Densities
+  log_rho = log_rho_min;
+  for (int i = 0; i < num_rho; i++) {
+    A1_rho[i] = exp(log_rho);
+    log_rho += log_rho_step;
+
+    if (do_output == 1)
+      fprintf(f, "%.6e ",
+              A1_rho[i] * units_cgs_conversion_factor(&us, UNIT_CONV_DENSITY));
+  }
+  if (do_output == 1) fprintf(f, "\n");
+
+  // Sp. int. energies
+  log_u = log_u_min;
+  for (int i = 0; i < num_u; i++) {
+    A1_u[i] = exp(log_u);
+    log_u += log_u_step;
+
+    if (do_output == 1)
+      fprintf(f, "%.6e ", A1_u[i] * units_cgs_conversion_factor(
+                                        &us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
+  }
+  if (do_output == 1) fprintf(f, "\n");
+
+  // Pressures
+  for (int i = 0; i < num_rho; i++) {
+    rho = A1_rho[i];
+
+    for (int j = 0; j < num_u; j++) {
+      P = gas_pressure_from_internal_energy(rho, A1_u[j], mat_id);
+
+      if (do_output == 1)
+        fprintf(f, "%.6e ",
+                P * units_cgs_conversion_factor(&us, UNIT_CONV_PRESSURE));
+    }
+
+    if (do_output == 1) fprintf(f, "\n");
+  }
+  fclose(f);
+
+  return 0;
+}
+#else
+int main(int argc, char *argv[]) { return 0; }
+#endif

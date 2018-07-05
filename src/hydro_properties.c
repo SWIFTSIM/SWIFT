@@ -28,6 +28,7 @@
 #include "adiabatic_index.h"
 #include "common_io.h"
 #include "dimension.h"
+#include "equation_of_state.h"
 #include "error.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
@@ -40,10 +41,18 @@
 #define hydro_props_default_min_temp 0.f
 #define hydro_props_default_H_fraction 0.76
 
+/**
+ * @brief Initialize the global properties of the hydro scheme.
+ *
+ * @param p The #hydro_props.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param us The internal unit system.
+ * @param params The parsed parameters.
+ */
 void hydro_props_init(struct hydro_props *p,
                       const struct phys_const *phys_const,
                       const struct unit_system *us,
-                      const struct swift_params *params) {
+                      struct swift_params *params) {
 
   /* Kernel properties */
   p->eta_neighbours = parser_get_param_float(params, "SPH:resolution_eta");
@@ -127,6 +136,11 @@ void hydro_props_init(struct hydro_props *p,
   p->minimal_internal_energy = u_min / mean_molecular_weight;
 }
 
+/**
+ * @brief Print the global properties of the hydro scheme.
+ *
+ * @param p The #hydro_props.
+ */
 void hydro_props_print(const struct hydro_props *p) {
 
   /* Print equation of state first */
