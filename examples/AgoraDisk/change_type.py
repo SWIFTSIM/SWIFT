@@ -51,7 +51,7 @@ def changeType(f, old, new):
             new_tmp = new[name][:]
             if debug:
                 print("Found previous data:", tmp.shape, new_tmp.shape)
-            tmp = np.append(new[name][:], new_tmp, axis=0)
+            tmp = np.append(tmp, new_tmp, axis=0)
             del new[name]
 
         if debug:
