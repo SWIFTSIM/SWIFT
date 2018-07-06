@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_SHADOWSWIFT_HYDRO_H
+#define SWIFT_SHADOWSWIFT_HYDRO_H
 
 #include <float.h>
 #include "adiabatic_index.h"
@@ -287,6 +289,40 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.v_full[1] = xp->v_full[1];
   p->force.v_full[2] = xp->v_full[2];
 }
+
+/**
+ * @brief Prepare a particle for the gradient calculation.
+ *
+ * This function is called after the density loop and before the gradient loop.
+ *
+ * We use it to set the physical timestep for the particle and to copy the
+ * actual velocities, which we need to boost our interfaces during the flux
+ * calculation. We also initialize the variables used for the time step
+ * calculation.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct cosmology* cosmo) {
+
+  /* Initialize time step criterion variables */
+  p->timestepvars.vmax = 0.;
+}
+
+/**
+ * @brief Resets the variables that are required for a gradient calculation.
+ *
+ * This function is called after hydro_prepare_gradient.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void hydro_reset_gradient(
+    struct part* restrict p) {}
 
 /**
  * @brief Finishes the gradient calculation.
@@ -799,3 +835,5 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
 
   return cosmo->a3_inv * p->primitives.rho;
 }
+
+#endif /* SWIFT_SHADOWSWIFT_HYDRO_H */
