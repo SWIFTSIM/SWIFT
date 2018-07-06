@@ -182,12 +182,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   if (hnew < p->h) {
     /* Iteration succesful: we accept, but manually set h to a smaller value
        for the next time step */
-    p->density.wcount = 1.0f;
+    const float hinvdim = pow_dimension(1.0f / p->h);
+    p->density.wcount = hinvdim;
     p->h = 1.1f * hnew;
   } else {
     /* Iteration not succesful: we force h to become 1.1*hnew */
     p->density.wcount = 0.0f;
-    p->density.wcount_dh = 1.0f / (1.1f * hnew - p->h);
+    p->density.wcount_dh = p->h / (1.1f * hnew - p->h);
     return;
   }
   volume = p->cell.volume;
