@@ -108,9 +108,9 @@ marker_names             = ['s', 'o', 'p', 'v', '^', '<', '>', 'h', '*']
 #             [file_location[1]+'GEAR/snapshot_0000', file_location[1]+'GEAR/snapshot_0500'],
 #             [file_location[1]+'GIZMO/snapshot_temp_000', file_location[1]+'GIZMO/snapshot_temp_100']]]
 codes = ['SWIFT', 'GEAR']
-filenames = [[["./agora_disk_IC.hdf5", "./agora_disk_IC.hdf5"],
+filenames = [[["./agora_disk_IC.hdf5", "./agora_disk_500Myr.hdf5"],
               ["./snapshot_0000", "./snapshot_0500"]],
-             [["./agora_disk_500Myr.hdf5", "./agora_disk_500Myr.hdf5"],
+             [["./agora_disk_IC.hdf5", "./agora_disk_500Myr.hdf5"],
               ["./snapshot_0000", "./snapshot_0500"]]]
 
 # codes = ["SWIFT"]
