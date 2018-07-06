@@ -1991,6 +1991,7 @@ INCLUDE_FILE_PATTERNS  =
 
 PREDEFINED             = "__attribute__(x)= "
 PREDEFINED             += HAVE_HDF5
+PREDEFINED             += HAVE_FFTW
 PREDEFINED             += WITH_MPI
 PREDEFINED             += WITH_VECTORIZATION
 PREDEFINED             += __GNUC__
