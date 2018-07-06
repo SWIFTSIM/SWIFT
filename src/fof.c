@@ -210,7 +210,7 @@ void fof_search_serial(struct space *s) {
   int *group_size;
   int num_groups = 0;
 
-  message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts,
+  message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
           l_x2);
 
   /* Allocate and initialise a group size array. */
@@ -293,7 +293,7 @@ void fof_search_serial(struct space *s) {
 
   message(
       "No. of groups: %d. No. of particles in groups: %d. No. of particles not "
-      "in groups: %ld.",
+      "in groups: %zu.",
       num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
   message("Biggest group size: %d with ID: %d", max_group_size, max_group_id);
 
@@ -551,7 +551,7 @@ void fof_search_tree_serial(struct space *s) {
   const double search_r2 = s->l_x2;
   ticks tic = getticks();
 
-  message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts,
+  message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
           s->l_x2);
 
   /* Allocate and initialise array of particle group IDs. */
@@ -565,7 +565,7 @@ void fof_search_tree_serial(struct space *s) {
 
   group_id = s->group_id;
   
-  message("Rank: %d, Allocated group_id array of size %ld", engine_rank, s->nr_gparts);
+  message("Rank: %d, Allocated group_id array of size %zu", engine_rank, s->nr_gparts);
 
   /* Allocate and initialise a group size array. */
   if (posix_memalign((void **)&group_size, 32, nr_gparts * sizeof(int)) != 0)
@@ -644,7 +644,7 @@ void fof_search_tree_serial(struct space *s) {
 
   message(
       "No. of groups: %d. No. of particles in groups: %d. No. of particles not "
-      "in groups: %ld.",
+      "in groups: %zu.",
       num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
   message("Biggest group size: %d with ID: %d", max_group_size, max_group_id);
   message("Biggest group by mass: %f with ID: %d", max_group_mass, max_group_mass_id);
@@ -769,7 +769,7 @@ void fof_search_tree(struct space *s) {
   int num_groups = 0;
   ticks tic = getticks();
 
-  message("Searching %ld gravity particles for links with l_x2: %lf", nr_gparts,
+  message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
           s->l_x2);
 
   /* Allocate and initialise array of particle group IDs. */
@@ -783,7 +783,7 @@ void fof_search_tree(struct space *s) {
 
   group_id = s->group_id;
   
-  message("Rank: %d, Allocated group_id array of size %ld", engine_rank, s->nr_gparts);
+  message("Rank: %d, Allocated group_id array of size %zu", engine_rank, s->nr_gparts);
 
   /* Allocate and initialise a group size array. */
   if (posix_memalign((void **)&group_size, 32, nr_gparts * sizeof(int)) != 0)
@@ -837,7 +837,7 @@ void fof_search_tree(struct space *s) {
 
   message(
       "No. of groups: %d. No. of particles in groups: %d. No. of particles not "
-      "in groups: %ld.",
+      "in groups: %zu.",
       num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
   message("Biggest group size: %d with ID: %d", max_group_size, max_group_id);
   message("Biggest group by mass: %f with ID: %d", max_group_mass, max_group_mass_id);
@@ -858,7 +858,7 @@ void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_id,
   fprintf(file, "#-------------------------------\n");
 
   for (size_t i = 0; i < nr_gparts; i++) {
-    fprintf(file, "  %7ld %7d %7d\n", i, group_id[i], group_size[i]);
+    fprintf(file, "  %7zu %7d %7d\n", i, group_id[i], group_size[i]);
   }
 
   fclose(file);
