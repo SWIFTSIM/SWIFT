@@ -183,9 +183,6 @@ double cosmology_get_therm_kick_factor(const struct cosmology *cosmo,
 double cosmology_get_delta_time(const struct cosmology *c,
                                 integertime_t ti_start, integertime_t ti_end);
 
-double cosmology_get_delta_time(const struct cosmology *c, double a1,
-                                double a2);
-
 double cosmology_get_a_from_z(const struct cosmology *c,
 			      double redshift);
 

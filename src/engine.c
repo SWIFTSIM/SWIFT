@@ -6740,7 +6740,7 @@ void engine_read_next_statistics_time(struct engine *e) {
  * @param e The #engine.
  * @param params The #swift_params.
  */
-void engine_read_outputlist_files(struct engine *e, const struct swift_params *params) {
+void engine_read_outputlist_files(struct engine *e, struct swift_params *params) {
   char filename[PARSER_MAX_LINE_SIZE];
   struct outputlist *list;
 

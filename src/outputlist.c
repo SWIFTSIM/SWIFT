@@ -73,7 +73,7 @@ void outputlist_read_file(struct outputlist *outputlist, const char* filename,
   line[strcspn(line, "\n")] = 0;
 
   /* Find type of data in file */
-  int type;
+  int type = -1;
   if (!strcmp(line, "# Redshift"))
     type = OUTPUTLIST_REDSHIFT;
   else if (!strcmp(line, "# Time"))
