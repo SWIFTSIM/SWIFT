@@ -561,7 +561,7 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
     struct task *t = &tasks[j];
 
     /* Skip un-interesting tasks. */
-    if (t->cost == 0) continue;
+    if (t->cost == 0.f) continue;
 
     /* Get the task weight based on costs. */
     double w = (double)t->cost;

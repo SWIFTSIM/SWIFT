@@ -393,8 +393,7 @@ void read_ic_single(const char* fileName,
                     numParticles_highWord);
 
   for (int ptype = 0; ptype < swift_type_count; ++ptype)
-    N[ptype] = (numParticles[ptype]) +
-               (numParticles_highWord[ptype] << 32);
+    N[ptype] = (numParticles[ptype]) + (numParticles_highWord[ptype] << 32);
 
   /* Get the box size if not cubic */
   dim[0] = boxSize[0];

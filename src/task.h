@@ -136,11 +136,11 @@ struct task {
   int rank;
 
   /*! Weight of the task */
-  int weight;
+  float weight;
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
   /*! Individual cost estimate for this task. */
-  int cost;
+  float cost;
 #endif
 
   /*! Number of tasks unlocked by this one */

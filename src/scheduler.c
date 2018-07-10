@@ -1185,11 +1185,11 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
   /* Run through the tasks backwards and set their weights. */
   for (int k = nr_tasks - 1; k >= 0; k--) {
     struct task *t = &tasks[tid[k]];
-    t->weight = 0;
+    t->weight = 0.f;
     for (int j = 0; j < t->nr_unlock_tasks; j++)
       if (t->unlock_tasks[j]->weight > t->weight)
         t->weight = t->unlock_tasks[j]->weight;
-    float cost = 0;
+    float cost = 0.f;
 
     const float count_i = (t->ci != NULL) ? t->ci->count : 0.f;
     const float count_j = (t->cj != NULL) ? t->cj->count : 0.f;
@@ -1292,13 +1292,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
     }
 
-/* Note if the cost is > 1e9 we cap it as we don't
-   care. That's large compared to other possible
-   costs.  */
 #if defined(WITH_MPI) && defined(HAVE_METIS)
-    t->cost = (cost < 1e9) ? cost : 1e9;
+    t->cost = cost;
 #endif
-    t->weight += (cost < 1e9) ? cost : 1e9;
+    t->weight += cost;
   }
 
   if (verbose)
