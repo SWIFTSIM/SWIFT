@@ -37,8 +37,13 @@ from scipy.stats import kde
 from subprocess import call
 #mylog.setLevel(1)
 
-with_cooling = 0
+import sys
 
+if "-C" in sys.argv:
+    with_cooling = 1
+else:
+    with_cooling = 0
+    
 draw_density_map                 = 1#1           # 0/1         = OFF/ON
 draw_temperature_map             = 1#1           # 0/1         = OFF/ON
 draw_cellsize_map                = 2#2           # 0/1/2/3     = OFF/ON/ON now with resolution map where particle_size is defined as [M/rho]^(1/3) for SPH/ON with both cell_size and resolution maps

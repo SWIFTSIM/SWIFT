@@ -1,17 +1,25 @@
 #!/bin/bash
 
-if [ "$#" -ne 1 ]; then
-    echo "You need to provide the resolution (e.g. ./run.sh low)."
-    echo "The possible options are low, med and high."
-    exit
+# currently only the low resolution is available
+sim=low
+
+# enable cooling or not
+cooling=0
+
+set -e
+
+flag=
+
+if [ $cooling -eq 1 ]
+then
+    flag=-C
 fi
 
-
 # Generate the initial conditions if they are not present.
-if [ ! -e $1.hdf5 ]
+if [ ! -e $sim.hdf5 ]
 then
     echo "Fetching initial glass file for the Sedov blast example..."
-    ./getIC.sh $1.hdf5
+    ./getIC.sh $sim.hdf5
 fi
 
 # Get the Grackle cooling table
@@ -21,22 +29,19 @@ then
     ../getCoolingTable.sh
 fi
 
-cp $1.hdf5 agora_disk.hdf5
+cp $sim.hdf5 agora_disk.hdf5
 python3 change_type.py agora_disk.hdf5
 
 # Run SWIFT
-../swift -C -s -G -t 4 agora_disk.yml 2>&1 | tee output.log
+#../swift $flag -s -G -t 4 agora_disk.yml 2>&1 | tee output.log
 
 
 echo "Changing smoothing length to be Gadget compatible"
 python cleanup_swift.py agora_disk_0000.hdf5 agora_disk_IC.hdf5
 python cleanup_swift.py agora_disk_0050.hdf5 agora_disk_500Myr.hdf5
 
-if [ ! -e snapshot_0000 ] || [ ! -e snapshot_0500 ]
-then
-    echo "Fetching Gear solution..."
-    ./getSolution.sh -c
-fi
+echo "Fetching Gear solution..."
+./getSolution.sh $flag
 
 echo "Plotting..."
-python plot_solution.py
+python plot_solution.py $flag

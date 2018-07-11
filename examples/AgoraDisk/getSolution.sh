@@ -16,7 +16,7 @@ while getopts "h?c" opt; do
 	    show_help
 	    exit
 	    ;;
-	c)
+	C)
 	    with_cooling=1
 	    ;;
     esac
