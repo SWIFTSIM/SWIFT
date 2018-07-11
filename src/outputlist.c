@@ -104,7 +104,7 @@ void outputlist_read_file(struct outputlist *outputlist, const char* filename,
 
     /* Transform input into correct time (e.g. ages or scale factor) */
     if (type == OUTPUTLIST_REDSHIFT)
-      *time = cosmology_get_a_from_z(cosmo, *time);
+      *time = cosmology_get_a_from_z(*time);
 
     if (cosmo && type == OUTPUTLIST_AGE)
       *time = cosmology_get_scale_factor(cosmo, *time);

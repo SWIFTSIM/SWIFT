@@ -5833,7 +5833,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
     e->ti_current = 0;
   }
 
-  engine_read_outputlist_files(e, params);
+  engine_init_outputlists(e, params);
 }
 
 /**
@@ -6735,12 +6735,12 @@ void engine_read_next_statistics_time(struct engine *e) {
 }
 
 /**
-  * @brief Read all the outputlist files
+  * @brief Initialize all the outputlist required by the engine
  *
  * @param e The #engine.
  * @param params The #swift_params.
  */
-void engine_read_outputlist_files(struct engine *e, struct swift_params *params) {
+void engine_init_outputlists(struct engine *e, struct swift_params *params) {
   char filename[PARSER_MAX_LINE_SIZE];
   struct outputlist *list;
 

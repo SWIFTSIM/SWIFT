@@ -377,7 +377,7 @@ void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
-void engine_read_outputlist_files(struct engine *e, struct swift_params *params);
+void engine_init_outputlists(struct engine *e, struct swift_params *params);
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
                  int policy, int verbose, struct repartition *reparttype,
