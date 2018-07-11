@@ -669,10 +669,9 @@ double cosmology_get_delta_time(const struct cosmology *c,
 /**
  * @brief Compute the scale factor from the redshift.
  *
- * @brief c The current #cosmology.
  * @brief redshift The redshift to compute.
  */
-double cosmology_get_a_from_z(const struct cosmology *c, double redshift) {
+double cosmology_get_a_from_z(double redshift) {
   return 1. / (1. + redshift);
 }
 
