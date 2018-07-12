@@ -42,6 +42,16 @@
 #include "error.h"
 #include "space.h"
 
+/**
+ * @brief Eschange tags between nodes.
+ *
+ * Note that this function assumes that the cell structures have already
+ * been exchanged, e.g. via #proxy_cells_exchange.
+ *
+ * @param proxies The list of #proxy that will send/recv tags
+ * @param num_proxies The number of proxies.
+ * @param s The space into which the tags will be unpacked.
+ */
 void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                          struct space *s) {
 
