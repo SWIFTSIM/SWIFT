@@ -484,6 +484,8 @@ int cell_slocktree(struct cell *c);
 void cell_sunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
+int cell_pack_tags(const struct cell *c, int *tags);
+int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step(struct cell *c, struct pcell_step *pcell);
 int cell_unpack_end_step(struct cell *c, struct pcell_step *pcell);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);

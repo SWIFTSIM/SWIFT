@@ -211,6 +211,40 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
 }
 
 /**
+ * @brief Pack the tag of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param tags Pointer to an array of packed tags.
+ *
+ * @return The number of packed tags.
+ */
+int cell_pack_tags(const struct cell *c, int *tags) {
+
+#ifdef WITH_MPI
+
+  /* Start by packing the data of the current cell. */
+  tags[0] = c->tag;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      count += cell_pack_tags(c->progeny[k], &tags[count]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->pcell_size != count) error("Inconsistent tag and pcell count!");
+#endif  // SWIFT_DEBUG_CHECKS
+
+  /* Return the number of packed tags used. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
  * @brief Unpack the data of a given cell and its sub-cells.
  *
  * @param pc An array of packed #pcell.
@@ -275,6 +309,43 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
 
   /* Return the total number of unpacked cells. */
   c->pcell_size = count;
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the tags of a given cell and its sub-cells.
+ *
+ * @param tags An array of tags.
+ * @param c The #cell in which to unpack the tags.
+ *
+ * @return The number of tags created.
+ */
+int cell_unpack_tags(const int *tags, struct cell *restrict c) {
+
+#ifdef WITH_MPI
+
+  /* Unpack the current pcell. */
+  c->tag = tags[0];
+
+  /* Number of new cells created. */
+  int count = 1;
+
+  /* Fill the progeny recursively, depth-first. */
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_tags(&tags[count], c->progeny[k]);
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->pcell_size != count) error("Inconsistent tag and pcell count!");
+#endif  // SWIFT_DEBUG_CHECKS
+
+  /* Return the total number of unpacked tags. */
   return count;
 
 #else
