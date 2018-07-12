@@ -101,8 +101,11 @@ void proxy_parts_exchange_first(struct proxy *p);
 void proxy_parts_exchange_second(struct proxy *p);
 void proxy_addcell_in(struct proxy *p, struct cell *c, int type);
 void proxy_addcell_out(struct proxy *p, struct cell *c, int type);
-void proxy_cells_exchange(struct proxy *proxies, int num_proxies, struct space *s);
+void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
+                          struct space *s);
 void proxy_cells_exchange_first(struct proxy *p);
 void proxy_cells_exchange_second(struct proxy *p);
+void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
+                         struct space *s);
 
 #endif /* SWIFT_PROXY_H */

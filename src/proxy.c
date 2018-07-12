@@ -38,10 +38,112 @@
 #include "proxy.h"
 
 /* Local headers. */
-#include "error.h"
 #include "cell.h"
+#include "error.h"
 #include "space.h"
 
+void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
+                         struct space *s) {
+
+#ifdef WITH_MPI
+
+  /* Run through the cells and get the size of the tags that will be sent off.
+   */
+  int count_out = 0;
+  int offset[s->nr_cells];
+  for (int k = 0; k < s->nr_cells; k++) {
+    offset[k] = count_out;
+    if (s->cells_top[k].sendto) count_out += s->cells_top[k].pcell_size;
+  }
+
+  /* Run through the proxies and get the count of incoming tags. */
+  int count_in = 0;
+  for (int k = 0; k < num_proxies; k++) {
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      offset[proxies[k].cells_in[j] - s->cells_top] = count_in;
+      count_in += proxies[k].cells_in[j]->pcell_size;
+    }
+  }
+
+  /* Allocate the tags. */
+  int *tags_in = NULL;
+  int *tags_out = NULL;
+  if (posix_memalign((void **)&tags_in, SWIFT_CACHE_ALIGNMENT,
+                     sizeof(int) * count_in) != 0 ||
+      posix_memalign((void **)&tags_out, SWIFT_CACHE_ALIGNMENT,
+                     sizeof(int) * count_out) != 0)
+    error("Failed to allocate tags buffers.");
+
+  /* Pack the local tags. */
+  for (int k = 0; k < s->nr_cells; k++)
+    if (s->cells_top[k].sendto) {
+      cell_pack_tags(&s->cells_top[k], &tags_out[offset[k]]);
+    }
+
+  /* Allocate the incoming and outgoing request handles. */
+  int num_reqs_out = 0;
+  int num_reqs_in = 0;
+  for (int k = 0; k < num_proxies; k++) {
+    num_reqs_in += proxies[k].nr_cells_in;
+    num_reqs_out += proxies[k].nr_cells_out;
+  }
+  MPI_Request *reqs_in;
+  int *cids_in;
+  if ((reqs_in = (MPI_Request *)malloc(sizeof(MPI_Request) *
+                                       (num_reqs_in + num_reqs_out))) == NULL ||
+      (cids_in = (int *)malloc(sizeof(int) * (num_reqs_in + num_reqs_out))) ==
+          NULL)
+    error("Failed to allocate MPI_Request arrays.");
+  MPI_Request *reqs_out = &reqs_in[num_reqs_in];
+  int *cids_out = &cids_in[num_reqs_in];
+
+  /* Emit the sends and recvs. */
+  for (int send_rid = 0, recv_rid = 0, k = 0; k < num_proxies; k++) {
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      const int cid = proxies[k].cells_in[j] - s->cells_top;
+      cids_in[recv_rid] = cid;
+      int err = MPI_Irecv(
+          &tags_in[offset[cid]], proxies[k].cells_in[j]->pcell_size, MPI_INT,
+          proxies[k].nodeID, cid, MPI_COMM_WORLD, &reqs_in[recv_rid]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv tags.");
+      recv_rid += 1;
+    }
+    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
+      const int cid = proxies[k].cells_out[j] - s->cells_top;
+      cids_out[send_rid] = cid;
+      int err = MPI_Isend(
+          &tags_out[offset[cid]], proxies[k].cells_out[j]->pcell_size, MPI_INT,
+          proxies[k].nodeID, cid, MPI_COMM_WORLD, &reqs_out[send_rid]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend tags.");
+      send_rid += 1;
+    }
+  }
+
+  /* Wait for each recv and unpack the tags into the local cells. */
+  for (int k = 0; k < num_reqs_in; k++) {
+    int pid = MPI_UNDEFINED;
+    MPI_Status status;
+    if (MPI_Waitany(num_reqs_in, reqs_in, &pid, &status) != MPI_SUCCESS ||
+        pid == MPI_UNDEFINED)
+      error("MPI_Waitany failed.");
+    const int cid = cids_in[pid];
+    cell_unpack_tags(&tags_in[offset[cid]], &s->cells_top[cid]);
+  }
+
+  /* Wait for all the sends to have completed. */
+  if (MPI_Waitall(num_reqs_out, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+    error("MPI_Waitall on sends failed.");
+
+  /* Clean up. */
+  free(tags_in);
+  free(tags_out);
+  free(reqs_in);
+  free(cids_in);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
 
 /**
  * @brief Exchange the cell structures with all proxies.
@@ -50,12 +152,14 @@
  * @param num_proxies The number of proxies.
  * @param s The space into which the particles will be unpacked.
  */
-void proxy_cells_exchange(struct proxy *proxies, int num_proxies, struct space *s) {
+void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
+                          struct space *s) {
 
 #ifdef WITH_MPI
 
   MPI_Request *reqs;
-  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 2 * num_proxies)) == NULL)
+  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 2 * num_proxies)) ==
+      NULL)
     error("Failed to allocate request buffers.");
   MPI_Request *reqs_in = reqs;
   MPI_Request *reqs_out = &reqs[num_proxies];
@@ -67,7 +171,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies, struct space *
   for (int k = 0; k < s->nr_cells; k++) {
     offset[k] = count_out;
     if (s->cells_top[k].sendto)
-      count_out += (s->cells_top[k].pcell_size = cell_getsize(&s->cells_top[k]));
+      count_out +=
+          (s->cells_top[k].pcell_size = cell_getsize(&s->cells_top[k]));
   }
 
   /* Allocate the pcells. */
@@ -131,7 +236,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies, struct space *
   /* Clean up. */
   free(reqs);
   free(pcells);
-  
+
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
