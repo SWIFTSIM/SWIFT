@@ -1651,7 +1651,7 @@ void engine_exchange_cells(struct engine *e) {
   struct space *s = e->s;
   const int nr_proxies = e->nr_proxies;
   const ticks tic = getticks();
-  
+
   /* Exchange the cell structure with neighbouring ranks. */
   proxy_cells_exchange(e->proxies, e->nr_proxies, e->s);
 
