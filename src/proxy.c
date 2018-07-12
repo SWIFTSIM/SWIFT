@@ -39,13 +39,114 @@
 
 /* Local headers. */
 #include "error.h"
+#include "cell.h"
+#include "space.h"
+
 
 /**
- * @brief Exchange cells with a remote node.
+ * @brief Exchange the cell structures with all proxies.
+ *
+ * @param proxies The list of #proxy that will send/recv cells.
+ * @param num_proxies The number of proxies.
+ * @param s The space into which the particles will be unpacked.
+ */
+void proxy_cells_exchange(struct proxy *proxies, int num_proxies, struct space *s) {
+
+#ifdef WITH_MPI
+
+  MPI_Request *reqs;
+  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 2 * num_proxies)) == NULL)
+    error("Failed to allocate request buffers.");
+  MPI_Request *reqs_in = reqs;
+  MPI_Request *reqs_out = &reqs[num_proxies];
+
+  /* Run through the cells and get the size of the ones that will be sent off.
+   */
+  int count_out = 0;
+  int offset[s->nr_cells];
+  for (int k = 0; k < s->nr_cells; k++) {
+    offset[k] = count_out;
+    if (s->cells_top[k].sendto)
+      count_out += (s->cells_top[k].pcell_size = cell_getsize(&s->cells_top[k]));
+  }
+
+  /* Allocate the pcells. */
+  struct pcell *pcells = NULL;
+  if (posix_memalign((void **)&pcells, SWIFT_CACHE_ALIGNMENT,
+                     sizeof(struct pcell) * count_out) != 0)
+    error("Failed to allocate pcell buffer.");
+
+  /* Pack the cells. */
+  for (int k = 0; k < s->nr_cells; k++)
+    if (s->cells_top[k].sendto) {
+      cell_pack(&s->cells_top[k], &pcells[offset[k]]);
+      s->cells_top[k].pcell = &pcells[offset[k]];
+    }
+
+  /* Launch the first part of the exchange. */
+  for (int k = 0; k < num_proxies; k++) {
+    proxy_cells_exchange_first(&proxies[k]);
+    reqs_in[k] = proxies[k].req_cells_count_in;
+    reqs_out[k] = proxies[k].req_cells_count_out;
+  }
+
+  /* Wait for each count to come in and start the recv. */
+  for (int k = 0; k < num_proxies; k++) {
+    int pid = MPI_UNDEFINED;
+    MPI_Status status;
+    if (MPI_Waitany(num_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
+        pid == MPI_UNDEFINED)
+      error("MPI_Waitany failed.");
+    // message( "request from proxy %i has arrived." , pid );
+    proxy_cells_exchange_second(&proxies[pid]);
+  }
+
+  /* Wait for all the sends to have finished too. */
+  if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+    error("MPI_Waitall on sends failed.");
+
+  /* Set the requests for the cells. */
+  for (int k = 0; k < num_proxies; k++) {
+    reqs_in[k] = proxies[k].req_cells_in;
+    reqs_out[k] = proxies[k].req_cells_out;
+  }
+
+  /* Wait for each pcell array to come in from the proxies. */
+  for (int k = 0; k < num_proxies; k++) {
+    int pid = MPI_UNDEFINED;
+    MPI_Status status;
+    if (MPI_Waitany(num_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
+        pid == MPI_UNDEFINED)
+      error("MPI_Waitany failed.");
+    // message( "cell data from proxy %i has arrived." , pid );
+    for (int count = 0, j = 0; j < proxies[pid].nr_cells_in; j++)
+      count += cell_unpack(&proxies[pid].pcells_in[count],
+                           proxies[pid].cells_in[j], s);
+  }
+
+  /* Wait for all the sends to have finished too. */
+  if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+    error("MPI_Waitall on sends failed.");
+
+  /* Clean up. */
+  free(reqs);
+  free(pcells);
+  
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Exchange cells with a remote node, first part.
+ *
+ * The first part of the transaction sends the local cell count and the packed
+ * #pcell array to the destination node, and enqueues an @c MPI_Irecv for
+ * the foreign cell counts.
  *
  * @param p The #proxy.
  */
-void proxy_cells_exch1(struct proxy *p) {
+void proxy_cells_exchange_first(struct proxy *p) {
 
 #ifdef WITH_MPI
 
@@ -96,7 +197,16 @@ void proxy_cells_exch1(struct proxy *p) {
 #endif
 }
 
-void proxy_cells_exch2(struct proxy *p) {
+/**
+ * @brief Exchange cells with a remote node, second part.
+ *
+ * Once the incomming cell count has been received, allocate a buffer
+ * for the foreign packed #pcell array and emit the @c MPI_Irecv for
+ * it.
+ *
+ * @param p The #proxy.
+ */
+void proxy_cells_exchange_second(struct proxy *p) {
 
 #ifdef WITH_MPI
 

@@ -1649,80 +1649,11 @@ void engine_exchange_cells(struct engine *e) {
 #ifdef WITH_MPI
 
   struct space *s = e->s;
-  struct cell *cells = s->cells_top;
-  const int nr_cells = s->nr_cells;
   const int nr_proxies = e->nr_proxies;
-  int offset[nr_cells];
-  MPI_Request reqs_in[engine_maxproxies];
-  MPI_Request reqs_out[engine_maxproxies];
-  MPI_Status status;
   const ticks tic = getticks();
-
-  /* Run through the cells and get the size of the ones that will be sent off.
-   */
-  int count_out = 0;
-  for (int k = 0; k < nr_cells; k++) {
-    offset[k] = count_out;
-    if (cells[k].sendto)
-      count_out += (cells[k].pcell_size = cell_getsize(&cells[k]));
-  }
-
-  /* Allocate the pcells. */
-  struct pcell *pcells = NULL;
-  if (posix_memalign((void **)&pcells, SWIFT_CACHE_ALIGNMENT,
-                     sizeof(struct pcell) * count_out) != 0)
-    error("Failed to allocate pcell buffer.");
-
-  /* Pack the cells. */
-  cell_next_tag = 0;
-  for (int k = 0; k < nr_cells; k++)
-    if (cells[k].sendto) {
-      cell_pack(&cells[k], &pcells[offset[k]]);
-      cells[k].pcell = &pcells[offset[k]];
-    }
-
-  /* Launch the proxies. */
-  for (int k = 0; k < nr_proxies; k++) {
-    proxy_cells_exch1(&e->proxies[k]);
-    reqs_in[k] = e->proxies[k].req_cells_count_in;
-    reqs_out[k] = e->proxies[k].req_cells_count_out;
-  }
-
-  /* Wait for each count to come in and start the recv. */
-  for (int k = 0; k < nr_proxies; k++) {
-    int pid = MPI_UNDEFINED;
-    if (MPI_Waitany(nr_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
-        pid == MPI_UNDEFINED)
-      error("MPI_Waitany failed.");
-    // message( "request from proxy %i has arrived." , pid );
-    proxy_cells_exch2(&e->proxies[pid]);
-  }
-
-  /* Wait for all the sends to have finished too. */
-  if (MPI_Waitall(nr_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
-    error("MPI_Waitall on sends failed.");
-
-  /* Set the requests for the cells. */
-  for (int k = 0; k < nr_proxies; k++) {
-    reqs_in[k] = e->proxies[k].req_cells_in;
-    reqs_out[k] = e->proxies[k].req_cells_out;
-  }
-
-  /* Wait for each pcell array to come in from the proxies. */
-  for (int k = 0; k < nr_proxies; k++) {
-    int pid = MPI_UNDEFINED;
-    if (MPI_Waitany(nr_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
-        pid == MPI_UNDEFINED)
-      error("MPI_Waitany failed.");
-    // message( "cell data from proxy %i has arrived." , pid );
-    for (int count = 0, j = 0; j < e->proxies[pid].nr_cells_in; j++)
-      count += cell_unpack(&e->proxies[pid].pcells_in[count],
-                           e->proxies[pid].cells_in[j], e->s);
-  }
-
-  /* Wait for all the sends to have finished too. */
-  if (MPI_Waitall(nr_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
-    error("MPI_Waitall on sends failed.");
+  
+  /* Exchange the cell structure with neighbouring ranks. */
+  proxy_cells_exchange(e->proxies, e->nr_proxies, e->s);
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
@@ -1781,9 +1712,6 @@ void engine_exchange_cells(struct engine *e) {
   s->nr_parts_foreign = parts - s->parts_foreign;
   s->nr_gparts_foreign = gparts - s->gparts_foreign;
   s->nr_sparts_foreign = sparts - s->sparts_foreign;
-
-  /* Free the pcell buffer. */
-  free(pcells);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1908,7 +1836,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
   MPI_Request reqs_in[4 * engine_maxproxies];
   MPI_Request reqs_out[4 * engine_maxproxies];
   for (int k = 0; k < e->nr_proxies; k++) {
-    proxy_parts_exch1(&e->proxies[k]);
+    proxy_parts_exchange_first(&e->proxies[k]);
     reqs_in[k] = e->proxies[k].req_parts_count_in;
     reqs_out[k] = e->proxies[k].req_parts_count_out;
   }
@@ -1921,7 +1849,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     // message( "request from proxy %i has arrived." , pid );
-    proxy_parts_exch2(&e->proxies[pid]);
+    proxy_parts_exchange_second(&e->proxies[pid]);
   }
 
   /* Wait for all the sends to have finished too. */

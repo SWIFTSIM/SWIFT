@@ -22,6 +22,7 @@
 /* Includes. */
 #include "cell.h"
 #include "part.h"
+#include "space.h"
 
 /* Some constants. */
 #define proxy_buffgrow 1.5
@@ -96,11 +97,12 @@ void proxy_parts_load(struct proxy *p, const struct part *parts,
                       const struct xpart *xparts, int N);
 void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N);
 void proxy_sparts_load(struct proxy *p, const struct spart *sparts, int N);
-void proxy_parts_exch1(struct proxy *p);
-void proxy_parts_exch2(struct proxy *p);
+void proxy_parts_exchange_first(struct proxy *p);
+void proxy_parts_exchange_second(struct proxy *p);
 void proxy_addcell_in(struct proxy *p, struct cell *c, int type);
 void proxy_addcell_out(struct proxy *p, struct cell *c, int type);
-void proxy_cells_exch1(struct proxy *p);
-void proxy_cells_exch2(struct proxy *p);
+void proxy_cells_exchange(struct proxy *proxies, int num_proxies, struct space *s);
+void proxy_cells_exchange_first(struct proxy *p);
+void proxy_cells_exchange_second(struct proxy *p);
 
 #endif /* SWIFT_PROXY_H */
