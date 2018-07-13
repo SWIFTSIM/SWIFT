@@ -7,10 +7,10 @@ with_cooling=0
 function show_help {
     echo "Valid options are:"
     echo "\t -h \t Show this help"
-    echo "\t -c \t Download solution with cooling"
+    echo "\t -C \t Download solution with cooling"
 }
 
-while getopts "h?c" opt; do
+while getopts "h?C" opt; do
     case "$opt" in
 	h|\?)
 	    show_help
