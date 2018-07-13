@@ -2748,6 +2748,22 @@ void engine_link_gravity_tasks(struct engine *e) {
         engine_make_self_gravity_dependencies(sched, t, t->cj);
       }
     }
+
+    /* Otherwise M-M interaction? */
+    else if (t->type == task_type_grav_mm) {
+
+      if (t->ci->nodeID == nodeID) {
+
+        scheduler_addunlock(sched, t->ci->super_gravity->init_grav, t);
+        scheduler_addunlock(sched, t, t->ci->super_gravity->grav_down);
+      }
+      if (t->cj->nodeID == nodeID &&
+          t->ci->super_gravity != t->cj->super_gravity) {
+
+        scheduler_addunlock(sched, t->cj->super_gravity->init_grav, t);
+        scheduler_addunlock(sched, t, t->cj->super_gravity->grav_down);
+      }
+    }
   }
 }
 
