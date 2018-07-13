@@ -9,7 +9,7 @@ then
 fi
 
 rm -rf keplerian_ring_*.hdf5
-../swift -n 1 -g -s -t 1 -v 1 keplerian_ring.yml 2>&1 | tee output.log
+../swift -g -s -t 1 -v 1 keplerian_ring.yml 2>&1 | tee output.log
 
 echo
 echo
