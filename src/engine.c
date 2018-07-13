@@ -3551,6 +3551,21 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
     }
 
+    else if (t->type == task_type_grav_mm) {
+
+      /* Local pointers. */
+      const struct cell *ci = t->ci;
+      const struct cell *cj = t->cj;
+      const int ci_nodeID = ci->nodeID;
+      const int cj_nodeID = cj->nodeID;
+      const int ci_active_gravity = cell_is_active_gravity(ci, e);
+      const int cj_active_gravity = cell_is_active_gravity(cj, e);
+
+      if ((ci_active_gravity && ci_nodeID == engine_rank) ||
+          (cj_active_gravity && cj_nodeID == engine_rank))
+        scheduler_activate(s, t);
+    }
+
     /* Time-step? */
     else if (t->type == task_type_timestep) {
       t->ci->updated = 0;
