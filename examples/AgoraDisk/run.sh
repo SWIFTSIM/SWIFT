@@ -35,18 +35,18 @@ fi
 # copy the initial conditions
 cp $sim.hdf5 agora_disk.hdf5
 # Update the particle types
-python3 change_type.py agora_disk.hdf5
+python3 changeType.py agora_disk.hdf5
 
 # Run SWIFT
-../swift $flag -s -G -t 4 agora_disk.yml 2>&1 | tee output.log
+#../swift $flag -s -G -t 4 agora_disk.yml 2>&1 | tee output.log
 
 
 echo "Changing smoothing length to be Gadget compatible"
-python3 cleanup_swift.py agora_disk_0000.hdf5 agora_disk_IC.hdf5
-python3 cleanup_swift.py agora_disk_0050.hdf5 agora_disk_500Myr.hdf5
+python3 cleanupSwift.py agora_disk_0000.hdf5 agora_disk_IC.hdf5
+python3 cleanupSwift.py agora_disk_0050.hdf5 agora_disk_500Myr.hdf5
 
 echo "Fetching GEAR solution..."
 ./getSolution.sh $flag
 
 echo "Plotting..."
-python3 plot_solution.py $flag
+python3 plotSolution.py $flag
