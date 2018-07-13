@@ -2683,37 +2683,41 @@ void engine_link_gravity_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int nr_tasks = sched->nr_tasks;
-
+  
   for (int k = 0; k < nr_tasks; k++) {
 
     /* Get a pointer to the task. */
     struct task *t = &sched->tasks[k];
 
+    /* Get the cells we act on */
+    const struct cell *ci = t->ci;
+    const struct cell *cj = t->cj;
+    
     /* Self-interaction for self-gravity? */
     if (t->type == task_type_self && t->subtype == task_subtype_grav) {
 
-      engine_make_self_gravity_dependencies(sched, t, t->ci);
+      engine_make_self_gravity_dependencies(sched, t, ci);
     }
 
     /* Self-interaction for external gravity ? */
     if (t->type == task_type_self && t->subtype == task_subtype_external_grav) {
 
-      engine_make_external_gravity_dependencies(sched, t, t->ci);
+      engine_make_external_gravity_dependencies(sched, t, ci);
 
     }
 
     /* Otherwise, pair interaction? */
     else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
 
-      if (t->ci->nodeID == nodeID) {
+      if (ci->nodeID == nodeID) {
 
-        engine_make_self_gravity_dependencies(sched, t, t->ci);
+        engine_make_self_gravity_dependencies(sched, t, ci);
       }
 
-      if (t->cj->nodeID == nodeID &&
-          t->ci->super_gravity != t->cj->super_gravity) {
+      if (cj->nodeID == nodeID &&
+          ci->super_gravity != cj->super_gravity) {
 
-        engine_make_self_gravity_dependencies(sched, t, t->cj);
+        engine_make_self_gravity_dependencies(sched, t, cj);
       }
 
     }
@@ -2721,8 +2725,8 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Otherwise, sub-self interaction? */
     else if (t->type == task_type_sub_self && t->subtype == task_subtype_grav) {
 
-      if (t->ci->nodeID == nodeID) {
-        engine_make_self_gravity_dependencies(sched, t, t->ci);
+      if (ci->nodeID == nodeID) {
+        engine_make_self_gravity_dependencies(sched, t, ci);
       }
     }
 
@@ -2730,38 +2734,38 @@ void engine_link_gravity_tasks(struct engine *e) {
     else if (t->type == task_type_sub_self &&
              t->subtype == task_subtype_external_grav) {
 
-      if (t->ci->nodeID == nodeID) {
-        engine_make_external_gravity_dependencies(sched, t, t->ci);
+      if (ci->nodeID == nodeID) {
+        engine_make_external_gravity_dependencies(sched, t, ci);
       }
     }
 
     /* Otherwise, sub-pair interaction? */
     else if (t->type == task_type_sub_pair && t->subtype == task_subtype_grav) {
 
-      if (t->ci->nodeID == nodeID) {
+      if (ci->nodeID == nodeID) {
 
-        engine_make_self_gravity_dependencies(sched, t, t->ci);
+        engine_make_self_gravity_dependencies(sched, t, ci);
       }
-      if (t->cj->nodeID == nodeID &&
-          t->ci->super_gravity != t->cj->super_gravity) {
+      if (cj->nodeID == nodeID &&
+          ci->super_gravity != cj->super_gravity) {
 
-        engine_make_self_gravity_dependencies(sched, t, t->cj);
+        engine_make_self_gravity_dependencies(sched, t, cj);
       }
     }
 
     /* Otherwise M-M interaction? */
     else if (t->type == task_type_grav_mm) {
 
-      if (t->ci->nodeID == nodeID) {
+      if (ci->nodeID == nodeID) {
 
-        scheduler_addunlock(sched, t->ci->super_gravity->init_grav, t);
-        scheduler_addunlock(sched, t, t->ci->super_gravity->grav_down);
+        scheduler_addunlock(sched, ci->super_gravity->init_grav, t);
+        scheduler_addunlock(sched, t, ci->super_gravity->grav_down);
       }
-      if (t->cj->nodeID == nodeID &&
-          t->ci->super_gravity != t->cj->super_gravity) {
+      if (cj->nodeID == nodeID &&
+          ci->super_gravity != cj->super_gravity) {
 
-        scheduler_addunlock(sched, t->cj->super_gravity->init_grav, t);
-        scheduler_addunlock(sched, t, t->cj->super_gravity->grav_down);
+        scheduler_addunlock(sched, cj->super_gravity->init_grav, t);
+        scheduler_addunlock(sched, t, cj->super_gravity->grav_down);
       }
     }
   }
