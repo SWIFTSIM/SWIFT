@@ -26,7 +26,7 @@ import matplotlib.gridspec as gridspec
 from yt.mods import *
 from yt.units.yt_array import YTQuantity
 from mpl_toolkits.axes_grid1 import AxesGrid
-from mpl_toolkits.axes_grid1.anchored_artists import AnchoredText
+from matplotlib.offsetbox import AnchoredText
 from matplotlib.ticker import MaxNLocator
 from yt.fields.particle_fields import add_volume_weighted_smoothed_field
 from yt.fields.particle_fields import add_nearest_neighbor_field
@@ -418,7 +418,7 @@ for time in range(len(times)):
                 density_DF_1st_xs.append([])
                 density_DF_1st_profiles.append([])
                 if draw_density_DF == 2 and dataset_num == 1:
-                        print "This won't work; resetting draw_density_DF to 1..."
+                        print("This won't work; resetting draw_density_DF to 1...")
                         draw_density_DF == 1
         if draw_star_radius_DF >= 1:
                 star_radius_DF_xs.append([])
@@ -1569,7 +1569,7 @@ for time in range(len(times)):
                                                 density_DF_1st_xs[time].append(p61.profiles[0].x.in_units('g/cm**3').d)
                                                 density_DF_1st_profiles[time].append(p61.profiles[0]["Mass_2"].in_units('Msun').d)
                                 else:
-                                        print "This won't work; consider setting dataset_num to 2..."
+                                        print("This won't work; consider setting dataset_num to 2...")
                                         continue
 
                 # CYLINDRICAL RADIUS DF + RADIALLY-BINNED GAS SURFACE DENSITY

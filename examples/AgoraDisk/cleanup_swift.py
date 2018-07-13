@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # ./translate_particles.py filename output_name
 from h5py import File
