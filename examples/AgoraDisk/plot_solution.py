@@ -114,9 +114,9 @@ marker_names             = ['s', 'o', 'p', 'v', '^', '<', '>', 'h', '*']
 #             [file_location[1]+'GIZMO/snapshot_temp_000', file_location[1]+'GIZMO/snapshot_temp_100']]]
 codes = ['SWIFT', 'GEAR']
 filenames = [[["./agora_disk_IC.hdf5", "./agora_disk_500Myr.hdf5"],
-              ["./snapshot_0000", "./snapshot_0500"]],
+              ["./snapshot_0000.hdf5", "./snapshot_0500.hdf5"]],
              [["./agora_disk_IC.hdf5", "./agora_disk_500Myr.hdf5"],
-              ["./snapshot_0000", "./snapshot_0500"]]]
+              ["./snapshot_0000.hdf5", "./snapshot_0500.hdf5"]]]
 
 # codes = ["SWIFT"]
 # filenames = [[["./agora_disk_0000.hdf5", "./agora_disk_0050.hdf5"]],
@@ -164,50 +164,51 @@ def load_dataset(dataset_num, time, code, codes, filenames_entry):
         elif codes[code] == "SWIFT":
                 pf = load(filenames_entry[code][time], unit_base = gadget_default_unit_base, bounding_box=[[-2000.0, 2000.0], [-2000.0, 2000.0], [-2000.0, 2000.0]], n_ref=n_ref, over_refine_factor=over_refine_factor)
         elif codes[code] == 'GEAR':
-                from yt.frontends.gadget.definitions import gadget_header_specs
-                from yt.frontends.gadget.definitions import gadget_ptype_specs
-                from yt.frontends.gadget.definitions import gadget_field_specs
-                if with_cooling:
-                        gadget_header_specs["chemistry"] = (('h1',  4, 'c'),('h2',  4, 'c'),('empty',  256, 'c'),)
-                        header_spec = "default+chemistry"
-                else:
-                        header_spec = "default"
-                gear_ptype_specs = ("Gas", "Stars", "Halo", "Disk", "Bulge", "Bndry")
-                if dataset_num == 1:
-                        pf = GadgetDataset(filenames_entry[code][time], unit_base = gadget_default_unit_base, bounding_box=[[-1000.0, 1000.0], [-1000.0, 1000.0], [-1000.0, 1000.0]], header_spec=header_spec,
-                                           ptype_spec=gear_ptype_specs, n_ref=n_ref, over_refine_factor=over_refine_factor)
-                elif dataset_num == 2:
-                        # For GEAR 2nd dataset (Grackle+SF+ThermalFbck), "Metals" is acutally 10-species field; check how metallicity field is added below.
-                        if with_cooling:
-                                agora_gear  = ( "Coordinates",
-                                                "Velocities",
-                                                "ParticleIDs",
-                                                "Mass",
-                                                ("InternalEnergy", "Gas"),
-                                                ("Density", "Gas"),
-                                                ("SmoothingLength", "Gas"),
-                                                ("Metals", "Gas"),
-                                                ("StellarFormationTime", "Stars"),
-                                                ("StellarInitMass", "Stars"),
-                                                ("StellarIDs", "Stars"),
-                                                ("StellarDensity", "Stars"),
-                                                ("StellarSmoothingLength", "Stars"),
-                                                ("StellarMetals", "Stars"),
-                                                ("Opt1", "Stars"),
-                                                ("Opt2", "Stars"),
-                                )
-                        else:
-                                agora_gear  = ( "Coordinates",
-                                                "Velocities",
-                                                "ParticleIDs",
-                                                "Mass",
-                                                ("InternalEnergy", "Gas"),
-                                                ("Density", "Gas"),
-                                                ("SmoothingLength", "Gas"),
-                                )
-                        gadget_field_specs["agora_gear"] = agora_gear
-                        pf = GadgetDataset(filenames_entry[code][time], unit_base = gadget_default_unit_base, bounding_box=[[-1000.0, 1000.0], [-1000.0, 1000.0], [-1000.0, 1000.0]], header_spec=header_spec,
-                                           ptype_spec=gear_ptype_specs, field_spec="agora_gear", n_ref=n_ref, over_refine_factor=over_refine_factor)
+                pf = load(filenames_entry[code][time], unit_base = gadget_default_unit_base, bounding_box=[[-2000.0, 2000.0], [-2000.0, 2000.0], [-2000.0, 2000.0]], n_ref=n_ref, over_refine_factor=over_refine_factor) 
+               # from yt.frontends.gadget.definitions import gadget_header_specs
+               #  from yt.frontends.gadget.definitions import gadget_ptype_specs
+               #  from yt.frontends.gadget.definitions import gadget_field_specs
+               #  if with_cooling:
+               #          gadget_header_specs["chemistry"] = (('h1',  4, 'c'),('h2',  4, 'c'),('empty',  256, 'c'),)
+               #          header_spec = "default+chemistry"
+               #  else:
+               #          header_spec = "default"
+               #  gear_ptype_specs = ("Gas", "Stars", "Halo", "Disk", "Bulge", "Bndry")
+               #  if dataset_num == 1:
+               #          pf = GadgetDataset(filenames_entry[code][time], unit_base = gadget_default_unit_base, bounding_box=[[-1000.0, 1000.0], [-1000.0, 1000.0], [-1000.0, 1000.0]], header_spec=header_spec,
+               #                             ptype_spec=gear_ptype_specs, n_ref=n_ref, over_refine_factor=over_refine_factor)
+               #  elif dataset_num == 2:
+               #          # For GEAR 2nd dataset (Grackle+SF+ThermalFbck), "Metals" is acutally 10-species field; check how metallicity field is added below.
+               #          if with_cooling:
+               #                  agora_gear  = ( "Coordinates",
+               #                                  "Velocities",
+               #                                  "ParticleIDs",
+               #                                  "Mass",
+               #                                  ("InternalEnergy", "Gas"),
+               #                                  ("Density", "Gas"),
+               #                                  ("SmoothingLength", "Gas"),
+               #                                  ("Metals", "Gas"),
+               #                                  ("StellarFormationTime", "Stars"),
+               #                                  ("StellarInitMass", "Stars"),
+               #                                  ("StellarIDs", "Stars"),
+               #                                  ("StellarDensity", "Stars"),
+               #                                  ("StellarSmoothingLength", "Stars"),
+               #                                  ("StellarMetals", "Stars"),
+               #                                  ("Opt1", "Stars"),
+               #                                  ("Opt2", "Stars"),
+               #                  )
+               #          else:
+               #                  agora_gear  = ( "Coordinates",
+               #                                  "Velocities",
+               #                                  "ParticleIDs",
+               #                                  "Mass",
+               #                                  ("InternalEnergy", "Gas"),
+               #                                  ("Density", "Gas"),
+               #                                  ("SmoothingLength", "Gas"),
+               #                  )
+               #          gadget_field_specs["agora_gear"] = agora_gear
+               #          pf = GadgetDataset(filenames_entry[code][time], unit_base = gadget_default_unit_base, bounding_box=[[-1000.0, 1000.0], [-1000.0, 1000.0], [-1000.0, 1000.0]], header_spec=header_spec,
+               #                             ptype_spec=gear_ptype_specs, field_spec="agora_gear", n_ref=n_ref, over_refine_factor=over_refine_factor)
         elif codes[code] == 'GIZMO':
                 from yt.frontends.gadget.definitions import gadget_field_specs
                 if dataset_num == 1:
@@ -514,6 +515,11 @@ for time in range(len(times)):
                         PartType_Gas_to_use = "PartType0"
                         PartType_Star_to_use = "PartType2"
                         PartType_StarBeforeFiltered_to_use = "PartType2"
+                        MassType_to_use = "Masses"
+                elif codes[code] == "GEAR":
+                        PartType_Gas_to_use = "PartType0"
+                        PartType_Star_to_use = "PartType1"
+                        PartType_StarBeforeFiltered_to_use = "PartType1"
                         MassType_to_use = "Masses"
                 elif codes[code] == 'RAMSES':
                         PartType_StarBeforeFiltered_to_use = "all"
