@@ -521,6 +521,8 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 int cell_has_tasks(struct cell *c);
+int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
+                         const struct engine *e, const struct space *s);
 
 /* Inlined functions (for speed). */
 

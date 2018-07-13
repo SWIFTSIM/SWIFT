@@ -2384,10 +2384,16 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
+
+    /* Super-pointer for hydro */
     if (e->policy & engine_policy_hydro) cell_set_super_hydro(c, NULL);
-    if (e->policy &
-        (engine_policy_self_gravity | engine_policy_external_gravity))
+
+    /* Super-pointer for gravity */
+    if ((e->policy & engine_policy_self_gravity) ||
+        (e->policy & engine_policy_external_gravity))
       cell_set_super_gravity(c, NULL);
+
+    /* Super-pointer for common operations */
     cell_set_super(c, NULL);
   }
 }
@@ -2761,4 +2767,39 @@ void cell_check_timesteps(struct cell *c) {
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
+}
+
+/**
+ * @brief Can we use the MM interactions fo a given pair of cells?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param e The #engine.
+ * @param s The #space.
+ */
+int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
+                         const struct engine *e, const struct space *s) {
+
+  const double theta_crit2 = e->gravity_properties->theta_crit2;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+
+  /* Recover the multipole information */
+  const struct gravity_tensors *const multi_i = ci->multipole;
+  const struct gravity_tensors *const multi_j = cj->multipole;
+
+  /* Get the distance between the CoMs */
+  double dx = multi_i->CoM[0] - multi_j->CoM[0];
+  double dy = multi_i->CoM[1] - multi_j->CoM[1];
+  double dz = multi_i->CoM[2] - multi_j->CoM[2];
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+  const double r2 = dx * dx + dy * dy + dz * dz;
+
+  return gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2);
 }

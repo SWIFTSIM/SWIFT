@@ -2219,6 +2219,9 @@ void *runner_main(void *data) {
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);
           break;
+        case task_type_grav_mm:
+          runner_dopair_grav_mm_symmetric(r, t->ci, t->cj);
+          break;
         case task_type_cooling:
           runner_do_cooling(r, t->ci, 1);
           break;

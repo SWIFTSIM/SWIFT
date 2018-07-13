@@ -2339,7 +2339,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
   struct cell *cells = s->cells_top;
   const double max_distance = e->mesh->r_cut_max;
 
@@ -2364,7 +2363,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     /* Recover the multipole information */
     const struct gravity_tensors *const multi_i = ci->multipole;
     const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
-    const double r_max_i = multi_i->r_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (multi_i->r_max != multi_i->r_max_rebuild)
@@ -2412,7 +2410,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           if (periodic && min_radius > max_distance) continue;
 
           /* Are the cells too close for a MM interaction ? */
-          if (!gravity_M2L_accept(r_max_i, multi_j->r_max, theta_crit2, r2)) {
+          if (!cell_can_use_pair_mm(ci, cj, e, s)) {
 
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
@@ -3678,7 +3676,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
   }
   if (e->policy & engine_policy_self_gravity) {
     n1 += 125;
-    n2 += 1;
+    n2 += 8;
 #ifdef WITH_MPI
     n2 += 2;
 #endif
@@ -4192,7 +4190,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_kick1 || t->type == task_type_kick2 ||
         t->type == task_type_timestep || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_grav || t->type == task_type_end_force ||
-        t->type == task_type_grav_long_range ||
+        t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
         t->type == task_type_grav_down || t->type == task_type_cooling ||
         t->type == task_type_sourceterms)
       t->skip = 1;

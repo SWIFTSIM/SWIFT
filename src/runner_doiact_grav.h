@@ -1476,6 +1476,27 @@ static INLINE void runner_doself_recursive_grav(struct runner *r,
 }
 
 /**
+ * @brief Call the non-symmetric M-M calculation on two cells if active.
+ *
+ * @param r The #runner object.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+void runner_dopair_grav_mm_symmetric(struct runner *r, struct cell *ci,
+                                     struct cell *cj) {
+
+  const struct engine *e = r->e;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!cell_is_active_gravity(ci, e) && !cell_is_active_gravity(cj, e))
+    error("Running M-M task with two inactive cells.");
+#endif
+
+  if (cell_is_active_gravity(ci, e)) runner_dopair_grav_mm(r, ci, cj);
+  if (cell_is_active_gravity(cj, e)) runner_dopair_grav_mm(r, cj, ci);
+}
+
+/**
  * @brief Performs all M-M interactions between a given top-level cell and all
  * the other top-levels that are far enough.
  *
