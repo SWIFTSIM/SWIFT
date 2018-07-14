@@ -2637,6 +2637,13 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t->subtype == task_subtype_external_grav) {
         error("Found a sub-pair/external-gravity task...");
       }
+
+      /* Link M-M tasks to cells */
+    } else if (t->type == task_type_grav_mm) {
+      atomic_inc(&ci->nr_tasks);
+      atomic_inc(&cj->nr_tasks);
+      engine_addlink(e, &ci->grav, t);
+      engine_addlink(e, &cj->grav, t);
     }
   }
 }
