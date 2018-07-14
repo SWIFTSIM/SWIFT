@@ -1325,6 +1325,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_grav_long_range:
         cost = wscale * gcount_i;
         break;
+      case task_type_grav_mm:
+        cost = wscale * (gcount_i + gcount_j);
+        break;
       case task_type_end_force:
         cost = wscale * count_i + wscale * gcount_i;
         break;

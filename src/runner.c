@@ -998,9 +998,13 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
     if (c != NULL) {
+
+      /* Hydro tasks */
       if (e->policy & engine_policy_hydro) runner_do_unskip_hydro(c, e);
-      if (e->policy &
-          (engine_policy_self_gravity | engine_policy_external_gravity))
+
+      /* All gravity tasks */
+      if ((e->policy & engine_policy_self_gravity) ||
+          (e->policy & engine_policy_external_gravity))
         runner_do_unskip_gravity(c, e);
     }
   }
