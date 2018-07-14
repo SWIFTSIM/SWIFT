@@ -3839,7 +3839,7 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
    * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_old,
+  space_check_drift_point(e->s, e->ti_current,
                           e->policy & engine_policy_self_gravity);
 #endif
 
@@ -3873,25 +3873,32 @@ void engine_prepare(struct engine *e) {
   TIMER_TIC2;
   const ticks tic = getticks();
 
+  /* Unskip active tasks and check for rebuild */
+  if (!e->forcerepart) engine_unskip(e);
+
+  /* Do we need repartitioning ? */
+  if (e->forcerepart) engine_repartition(e);
+
+  /* Do we need rebuilding ? */
+  if (e->forcerebuild) {
+
+    /* Let's start by drifting everybody to the current time */
+    engine_drift_all(e);
+
+    /* And rebuild */
+    engine_rebuild(e, 0);
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (e->forcerepart || e->forcerebuild) {
     /* Check that all cells have been drifted to the current time.
      * That can include cells that have not previously been active on this
      * rank. Skip if haven't got any cells (yet). */
     if (e->s->cells_top != NULL)
-      space_check_drift_point(e->s, e->ti_old,
+      space_check_drift_point(e->s, e->ti_current,
                               e->policy & engine_policy_self_gravity);
   }
 #endif
-
-  /* Do we need repartitioning ? */
-  if (e->forcerepart) engine_repartition(e);
-
-  /* Do we need rebuilding ? */
-  if (e->forcerebuild) engine_rebuild(e, 0);
-
-  /* Unskip active tasks and check for rebuild */
-  engine_unskip(e);
 
   /* Re-rank the tasks every now and then. XXX this never executes. */
   if (e->tasks_age % engine_tasksreweight == 1) {
@@ -4174,8 +4181,6 @@ void engine_print_stats(struct engine *e) {
               e->ti_current * e->time_base + e->time_begin);
   }
 #endif
-
-  e->save_stats = 0;
 
   struct statistics stats;
   stats_init(&stats);
@@ -4562,29 +4567,40 @@ void engine_step(struct engine *e) {
     e->time_step = (e->ti_current - e->ti_old) * e->time_base;
   }
 
+  /*****************************************************/
+  /* OK, we now know what the next end of time-step is */
+  /*****************************************************/
+
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)
     gravity_update(e->gravity_properties, e->cosmology);
 
-  /* Prepare the tasks to be launched, rebuild or repartition if needed. */
-  engine_prepare(e);
-
-#ifdef WITH_MPI
-  /* Repartition the space amongst the nodes? */
-  engine_repartition_trigger(e);
-#endif
+  /* Trigger a tree-rebuild if we passed the frequency threshold */
+  if ((e->policy & engine_policy_self_gravity) &&
+      ((double)e->g_updates_since_rebuild >
+       ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
+    e->forcerebuild = 1;
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
-  if (e->policy & engine_policy_drift_all) engine_drift_all(e);
+  if (e->policy & engine_policy_drift_all && !e->forcerebuild)
+    engine_drift_all(e);
 
   /* Are we reconstructing the multipoles or drifting them ?*/
-  if (e->policy & engine_policy_self_gravity) {
+  if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild) {
 
     if (e->policy & engine_policy_reconstruct_mpoles)
       engine_reconstruct_multipoles(e);
     else
       engine_drift_top_multipoles(e);
   }
+
+#ifdef WITH_MPI
+  /* Repartition the space amongst the nodes? */
+  engine_repartition_trigger(e);
+#endif
+
+  /* Prepare the tasks to be launched, rebuild or repartition if needed. */
+  engine_prepare(e);
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
@@ -4623,50 +4639,139 @@ void engine_step(struct engine *e) {
     gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
-  /* Collect the values of rebuild from all nodes and recover the (integer)
-   * end of the next time-step. Do these together to reduce the collective MPI
-   * calls per step, but some of the gathered information is not applied just
-   * yet (in case we save a snapshot or drift). */
+  /* Collect information about the next time-step */
   engine_collect_end_of_step(e, 0);
   e->forcerebuild = e->collect_group1.forcerebuild;
 
-  /* Update the counters */
+  /* Now apply all the collected time step updates and particle counts. */
+  collectgroup1_apply(&e->collect_group1, e);
   e->updates_since_rebuild += e->collect_group1.updates;
   e->g_updates_since_rebuild += e->collect_group1.g_updates;
   e->s_updates_since_rebuild += e->collect_group1.s_updates;
 
-  /* Trigger a tree-rebuild if we passed the frequency threshold */
-  if ((e->policy & engine_policy_self_gravity) &&
-      ((double)e->g_updates_since_rebuild >
-       ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
-    e->forcerebuild = 1;
+  /********************************************************/
+  /* OK, we are done with the regular stuff. Time for i/o */
+  /********************************************************/
+
+  /* Create a restart file if needed. */
+  engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
 
   /* Save some statistics ? */
-  if (e->ti_end_min >= e->ti_next_stats && e->ti_next_stats > 0)
-    e->save_stats = 1;
+  int save_stats = 0;
+  if (e->ti_end_min >= e->ti_next_stats && e->ti_next_stats > 0) save_stats = 1;
 
   /* Do we want a snapshot? */
+  int dump_snapshot = 0;
   if (e->ti_end_min >= e->ti_next_snapshot && e->ti_next_snapshot > 0)
-    e->dump_snapshot = 1;
+    dump_snapshot = 1;
 
-  /* Drift everybody (i.e. what has not yet been drifted) */
-  /* to the current time */
-  int drifted_all =
-      (e->dump_snapshot || e->forcerebuild || e->forcerepart || e->save_stats);
-  if (drifted_all) engine_drift_all(e);
+  /* Store information before attempting extra dump-related drifts */
+  integertime_t ti_current = e->ti_current;
+  timebin_t max_active_bin = e->max_active_bin;
+  double time = e->time;
 
-  /* Write a snapshot ? */
-  if (e->dump_snapshot) {
+  /* Write some form of output */
+  if (dump_snapshot && save_stats) {
+
+    /* If both, need to figure out which one occurs first */
+    if (e->ti_next_stats == e->ti_next_snapshot) {
+
+      /* Let's fake that we are at the common dump time */
+      e->ti_current = e->ti_next_snapshot;
+      e->max_active_bin = 0;
+      if (!(e->policy & engine_policy_cosmology))
+        e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+
+      /* Drift everyone */
+      engine_drift_all(e);
+
+      /* Dump everything */
+      engine_print_stats(e);
+      engine_dump_snapshot(e);
+
+    } else if (e->ti_next_stats < e->ti_next_snapshot) {
+
+      /* Let's fake that we are at the stats dump time */
+      e->ti_current = e->ti_next_stats;
+      e->max_active_bin = 0;
+      if (!(e->policy & engine_policy_cosmology))
+        e->time = e->ti_next_stats * e->time_base + e->time_begin;
+
+      /* Drift everyone */
+      engine_drift_all(e);
+
+      /* Dump stats */
+      engine_print_stats(e);
+
+      /* Let's fake that we are at the snapshot dump time */
+      e->ti_current = e->ti_next_snapshot;
+      e->max_active_bin = 0;
+      if (!(e->policy & engine_policy_cosmology))
+        e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+
+      /* Drift everyone */
+      engine_drift_all(e);
+
+      /* Dump snapshot */
+      engine_dump_snapshot(e);
+
+    } else if (e->ti_next_stats > e->ti_next_snapshot) {
+
+      /* Let's fake that we are at the snapshot dump time */
+      e->ti_current = e->ti_next_snapshot;
+      e->max_active_bin = 0;
+      if (!(e->policy & engine_policy_cosmology))
+        e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+
+      /* Drift everyone */
+      engine_drift_all(e);
+
+      /* Dump snapshot */
+      engine_dump_snapshot(e);
+
+      /* Let's fake that we are at the stats dump time */
+      e->ti_current = e->ti_next_stats;
+      e->max_active_bin = 0;
+      if (!(e->policy & engine_policy_cosmology))
+        e->time = e->ti_next_stats * e->time_base + e->time_begin;
+
+      /* Drift everyone */
+      engine_drift_all(e);
+
+      /* Dump stats */
+      engine_print_stats(e);
+    }
+
+    /* Let's compute the time of the next outputs */
+    engine_compute_next_snapshot_time(e);
+    engine_compute_next_statistics_time(e);
+
+  } else if (dump_snapshot) {
+
+    /* Let's fake that we are at the snapshot dump time */
+    e->ti_current = e->ti_next_snapshot;
+    e->max_active_bin = 0;
+    if (!(e->policy & engine_policy_cosmology))
+      e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+
+    /* Drift everyone */
+    engine_drift_all(e);
 
     /* Dump... */
     engine_dump_snapshot(e);
 
     /* ... and find the next output time */
     engine_compute_next_snapshot_time(e);
-  }
+  } else if (save_stats) {
 
-  /* Save some  statistics */
-  if (e->save_stats) {
+    /* Let's fake that we are at the stats dump time */
+    e->ti_current = e->ti_next_stats;
+    e->max_active_bin = 0;
+    if (!(e->policy & engine_policy_cosmology))
+      e->time = e->ti_next_stats * e->time_base + e->time_begin;
+
+    /* Drift everyone */
+    engine_drift_all(e);
 
     /* Dump */
     engine_print_stats(e);
@@ -4675,8 +4780,10 @@ void engine_step(struct engine *e) {
     engine_compute_next_statistics_time(e);
   }
 
-  /* Now apply all the collected time step updates and particle counts. */
-  collectgroup1_apply(&e->collect_group1, e);
+  /* Restore the information we stored */
+  e->ti_current = ti_current;
+  e->max_active_bin = max_active_bin;
+  e->time = time;
 
   TIMER_TOC2(timer_step);
 
@@ -4687,9 +4794,6 @@ void engine_step(struct engine *e) {
   /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
 #endif
-
-  /* Final job is to create a restart file if needed. */
-  engine_dump_restarts(e, drifted_all, e->restart_onexit && engine_is_done(e));
 }
 
 /**
@@ -5317,8 +5421,6 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 #endif
 
-  e->dump_snapshot = 0;
-
   /* Flag that we dumped a snapshot */
   e->step_props |= engine_step_prop_snapshot;
 
@@ -5552,8 +5654,6 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->nr_proxies = 0;
   e->forcerebuild = 1;
   e->forcerepart = 0;
-  e->dump_snapshot = 0;
-  e->save_stats = 0;
   e->step_props = engine_step_prop_none;
   e->links = NULL;
   e->nr_links = 0;

@@ -237,7 +237,7 @@ void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const ticks tic = getticks();
-  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
@@ -413,9 +413,9 @@ void space_regrid(struct space *s, int verbose) {
           c->super = c;
           c->super_hydro = c;
           c->super_gravity = c;
-          c->ti_old_part = ti_old;
-          c->ti_old_gpart = ti_old;
-          c->ti_old_multipole = ti_old;
+          c->ti_old_part = ti_current;
+          c->ti_old_gpart = ti_current;
+          c->ti_old_multipole = ti_current;
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
 
@@ -513,7 +513,7 @@ void space_rebuild(struct space *s, int verbose) {
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   struct cell *restrict cells_top = s->cells_top;
-  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the particles and get their cell index. Allocates
      an index that is larger than the number of particles to avoid
@@ -905,9 +905,9 @@ void space_rebuild(struct space *s, int verbose) {
   struct spart *sfinger = s->sparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
-    c->ti_old_part = ti_old;
-    c->ti_old_gpart = ti_old;
-    c->ti_old_multipole = ti_old;
+    c->ti_old_part = ti_current;
+    c->ti_old_gpart = ti_current;
+    c->ti_old_multipole = ti_current;
     if (c->nodeID == engine_rank) {
       c->parts = finger;
       c->xparts = xfinger;

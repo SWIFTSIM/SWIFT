@@ -268,12 +268,6 @@ struct engine {
   int forcerepart;
   struct repartition *reparttype;
 
-  /* Need to dump some statistics ? */
-  int save_stats;
-
-  /* Need to dump a snapshot ? */
-  int dump_snapshot;
-
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
 
