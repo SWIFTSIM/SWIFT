@@ -2240,7 +2240,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         cell_activate_subcell_grav_tasks(ci, cj, s);
       } else if (t->type == task_type_grav_mm) {
         cell_activate_grav_mm_task(ci, cj, s);
-        scheduler_activate(s, t);
       }
     }
 
