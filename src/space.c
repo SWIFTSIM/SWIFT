@@ -196,6 +196,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->xparts = NULL;
     c->gparts = NULL;
     c->sparts = NULL;
+    c->do_sub_sort = 0;
+    c->do_grav_sub_drift = 0;
+    c->do_sub_drift = 0;
     if (s->gravity) bzero(c->multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
       if (c->sort[i] != NULL) {
@@ -1823,6 +1826,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->super = NULL;
       cp->super_hydro = NULL;
       cp->super_gravity = NULL;
+      cp->do_sub_sort = 0;
+      cp->do_grav_sub_drift = 0;
+      cp->do_sub_drift = 0;
 #ifdef SWIFT_DEBUG_CHECKS
       cp->cellID = last_cell_id++;
 #endif
