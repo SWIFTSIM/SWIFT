@@ -317,9 +317,13 @@ void task_unlock(struct task *t) {
       cell_munlocktree(ci);
       break;
 
-    case task_type_grav_mm:
     case task_type_grav_long_range:
       cell_munlocktree(ci);
+      break;
+
+    case task_type_grav_mm:
+      cell_munlocktree(ci);
+      cell_munlocktree(cj);
       break;
 
     default:
@@ -444,11 +448,19 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_grav_long_range:
-    case task_type_grav_mm:
       /* Lock the m-poles */
       if (ci->mhold) return 0;
       if (cell_mlocktree(ci) != 0) return 0;
       break;
+
+    case task_type_grav_mm:
+      /* Lock both m-poles */
+      if (ci->mhold || cj->mhold) return 0;
+      if (cell_mlocktree(ci) != 0) return 0;
+      if (cell_mlocktree(cj) != 0) {
+        cell_munlocktree(ci);
+        return 0;
+      }
 
     default:
       break;
