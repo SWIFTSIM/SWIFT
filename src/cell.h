@@ -225,6 +225,9 @@ struct cell {
   /*! The multipole initialistation task */
   struct task *init_grav;
 
+  /*! Implicit task for the gravity initialisation */
+  struct task *init_grav_out;
+
   /*! Dependency implicit task for the ghost  (in->ghost->out)*/
   struct task *ghost_in;
 
@@ -257,6 +260,9 @@ struct cell {
 
   /*! Task computing long range non-periodic gravity interactions */
   struct task *grav_long_range;
+
+  /*! Implicit task for the down propagation */
+  struct task *grav_down_in;
 
   /*! Task propagating the mesh forces to the particles */
   struct task *grav_mesh;

@@ -334,6 +334,12 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         c->grav_down = scheduler_addtask(s, task_type_grav_down,
                                          task_subtype_none, 0, 0, c, NULL);
 
+        /* Implicit tasks for the up and down passes */
+        c->init_grav_out = scheduler_addtask(s, task_type_init_grav_out,
+                                             task_subtype_none, 0, 1, c, NULL);
+        c->grav_down_in = scheduler_addtask(s, task_type_grav_down_in,
+                                            task_subtype_none, 0, 1, c, NULL);
+
         /* Gravity mesh force propagation */
         if (periodic)
           c->grav_mesh = scheduler_addtask(s, task_type_grav_mesh,
@@ -344,17 +350,41 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->super->end_force);
+
+        scheduler_addunlock(s, c->init_grav, c->init_grav_out);
+        scheduler_addunlock(s, c->grav_down_in, c->grav_down);
       }
     }
 
-  } else { /* We are above the super-cell so need to go deeper */
-
-    /* Recurse. */
-    if (c->split)
-      for (int k = 0; k < 8; k++)
-        if (c->progeny[k] != NULL)
-          engine_make_hierarchical_tasks_gravity(e, c->progeny[k]);
   }
+
+  /* We are below the super-cell */
+  else if (c->super_gravity != NULL) {
+
+    // MATTHIEU stop the recursion below the level where there are tasks
+
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+
+      if (is_self_gravity) {
+
+        c->init_grav_out = scheduler_addtask(s, task_type_init_grav_out,
+                                             task_subtype_none, 0, 1, c, NULL);
+
+        c->grav_down_in = scheduler_addtask(s, task_type_grav_down_in,
+                                            task_subtype_none, 0, 1, c, NULL);
+
+        scheduler_addunlock(s, c->parent->init_grav_out, c->init_grav_out);
+        scheduler_addunlock(s, c->grav_down_in, c->parent->grav_down_in);
+      }
+    }
+  }
+
+  /* Recurse. */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_make_hierarchical_tasks_gravity(e, c->progeny[k]);
 }
 
 void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
@@ -2649,38 +2679,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Creates the dependency network for the gravity tasks of a given cell.
- *
- * @param sched The #scheduler.
- * @param gravity The gravity task to link.
- * @param c The cell.
- */
-static inline void engine_make_self_gravity_dependencies(
-    struct scheduler *sched, struct task *gravity, struct cell *c) {
-
-  /* init --> gravity --> grav_down --> kick */
-  scheduler_addunlock(sched, c->super_gravity->drift_gpart, gravity);
-  scheduler_addunlock(sched, c->super_gravity->init_grav, gravity);
-  scheduler_addunlock(sched, gravity, c->super_gravity->grav_down);
-}
-
-/**
- * @brief Creates the dependency network for the external gravity tasks of a
- * given cell.
- *
- * @param sched The #scheduler.
- * @param gravity The gravity task to link.
- * @param c The cell.
- */
-static inline void engine_make_external_gravity_dependencies(
-    struct scheduler *sched, struct task *gravity, struct cell *c) {
-
-  /* init --> external gravity --> kick */
-  scheduler_addunlock(sched, c->super_gravity->drift_gpart, gravity);
-  scheduler_addunlock(sched, gravity, c->super->end_force);
-}
-
-/**
  * @brief Creates all the task dependencies for the gravity
  *
  * @param e The #engine
@@ -2699,77 +2697,119 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Get the cells we act on */
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
+    const enum task_types t_type = t->type;
+    const enum task_subtypes t_subtype = t->subtype;
 
     /* Self-interaction for self-gravity? */
-    if (t->type == task_type_self && t->subtype == task_subtype_grav) {
+    if (t_type == task_type_self && t_subtype == task_subtype_grav) {
 
-      engine_make_self_gravity_dependencies(sched, t, ci);
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci->nodeID != nodeID) error("Non-local self task");
+#endif
+
+      /* drift ---+-> gravity --> grav_down */
+      /* init  --/    */
+      scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
+      scheduler_addunlock(sched, ci->init_grav_out, t);
+      scheduler_addunlock(sched, t, ci->grav_down_in);
     }
 
     /* Self-interaction for external gravity ? */
-    if (t->type == task_type_self && t->subtype == task_subtype_external_grav) {
+    if (t_type == task_type_self && t_subtype == task_subtype_external_grav) {
 
-      engine_make_external_gravity_dependencies(sched, t, ci);
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci->nodeID != nodeID) error("Non-local self task");
+#endif
 
+      /* drift -----> gravity --> end_force */
+      scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
+      scheduler_addunlock(sched, t, ci->end_force);
     }
 
     /* Otherwise, pair interaction? */
-    else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
+    else if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
 
       if (ci->nodeID == nodeID) {
 
-        engine_make_self_gravity_dependencies(sched, t, ci);
+        /* drift ---+-> gravity --> grav_down */
+        /* init  --/    */
+        scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
+        scheduler_addunlock(sched, ci->init_grav_out, t);
+        scheduler_addunlock(sched, t, ci->grav_down_in);
       }
+      if (cj->nodeID == nodeID) {
 
-      if (cj->nodeID == nodeID && ci->super_gravity != cj->super_gravity) {
-
-        engine_make_self_gravity_dependencies(sched, t, cj);
+        /* drift ---+-> gravity --> grav_down */
+        /* init  --/    */
+        if (ci->super_gravity != cj->super_gravity) /* Avoid double unlock */
+          scheduler_addunlock(sched, cj->super_gravity->drift_gpart, t);
+        scheduler_addunlock(sched, cj->init_grav_out, t);
+        scheduler_addunlock(sched, t, cj->grav_down_in);
       }
-
     }
 
     /* Otherwise, sub-self interaction? */
-    else if (t->type == task_type_sub_self && t->subtype == task_subtype_grav) {
+    else if (t_type == task_type_sub_self && t_subtype == task_subtype_grav) {
 
-      if (ci->nodeID == nodeID) {
-        engine_make_self_gravity_dependencies(sched, t, ci);
-      }
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci->nodeID != nodeID) error("Non-local sub-self task");
+#endif
+      /* drift ---+-> gravity --> grav_down */
+      /* init  --/    */
+      scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
+      scheduler_addunlock(sched, ci->init_grav_out, t);
+      scheduler_addunlock(sched, t, ci->grav_down_in);
     }
 
     /* Sub-self-interaction for external gravity ? */
-    else if (t->type == task_type_sub_self &&
-             t->subtype == task_subtype_external_grav) {
+    else if (t_type == task_type_sub_self &&
+             t_subtype == task_subtype_external_grav) {
 
-      if (ci->nodeID == nodeID) {
-        engine_make_external_gravity_dependencies(sched, t, ci);
-      }
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci->nodeID != nodeID) error("Non-local sub-self task");
+#endif
+
+      /* drift -----> gravity --> end_force */
+      scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
+      scheduler_addunlock(sched, t, ci->end_force);
     }
 
     /* Otherwise, sub-pair interaction? */
-    else if (t->type == task_type_sub_pair && t->subtype == task_subtype_grav) {
+    else if (t_type == task_type_sub_pair && t_subtype == task_subtype_grav) {
 
       if (ci->nodeID == nodeID) {
 
-        engine_make_self_gravity_dependencies(sched, t, ci);
+        /* drift ---+-> gravity --> grav_down */
+        /* init  --/    */
+        scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
+        scheduler_addunlock(sched, ci->init_grav_out, t);
+        scheduler_addunlock(sched, t, ci->grav_down_in);
       }
-      if (cj->nodeID == nodeID && ci->super_gravity != cj->super_gravity) {
+      if (cj->nodeID == nodeID) {
 
-        engine_make_self_gravity_dependencies(sched, t, cj);
+        /* drift ---+-> gravity --> grav_down */
+        /* init  --/    */
+        if (ci->super_gravity != cj->super_gravity) /* Avoid double unlock */
+          scheduler_addunlock(sched, cj->super_gravity->drift_gpart, t);
+        scheduler_addunlock(sched, cj->init_grav_out, t);
+        scheduler_addunlock(sched, t, cj->grav_down_in);
       }
     }
 
     /* Otherwise M-M interaction? */
-    else if (t->type == task_type_grav_mm) {
+    else if (t_type == task_type_grav_mm) {
 
       if (ci->nodeID == nodeID) {
 
-        scheduler_addunlock(sched, ci->super_gravity->init_grav, t);
-        scheduler_addunlock(sched, t, ci->super_gravity->grav_down);
+        /* init -----> gravity --> grav_down */
+        scheduler_addunlock(sched, ci->init_grav_out, t);
+        scheduler_addunlock(sched, t, ci->grav_down_in);
       }
-      if (cj->nodeID == nodeID && ci->super_gravity != cj->super_gravity) {
+      if (cj->nodeID == nodeID) {
 
-        scheduler_addunlock(sched, cj->super_gravity->init_grav, t);
-        scheduler_addunlock(sched, t, cj->super_gravity->grav_down);
+        /* init -----> gravity --> grav_down */
+        scheduler_addunlock(sched, cj->init_grav_out, t);
+        scheduler_addunlock(sched, t, cj->grav_down_in);
       }
     }
   }
@@ -3571,7 +3611,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* Gravity stuff ? */
     else if (t->type == task_type_grav_down || t->type == task_type_grav_mesh ||
              t->type == task_type_grav_long_range ||
-             t->type == task_type_init_grav) {
+             t->type == task_type_init_grav ||
+             t->type == task_type_init_grav_out ||
+             t->type == task_type_grav_down_in) {
       if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
     }
 

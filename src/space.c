@@ -175,6 +175,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->gcount = 0;
     c->scount = 0;
     c->init_grav = NULL;
+    c->init_grav_out = NULL;
     c->extra_ghost = NULL;
     c->ghost_in = NULL;
     c->ghost_out = NULL;
@@ -188,6 +189,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->cooling = NULL;
     c->sourceterms = NULL;
     c->grav_long_range = NULL;
+    c->grav_down_in = NULL;
     c->grav_down = NULL;
     c->super = c;
     c->super_hydro = c;
