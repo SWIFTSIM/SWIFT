@@ -1536,6 +1536,10 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
                                    multi_i->CoM_rebuild[1],
                                    multi_i->CoM_rebuild[2]};
 
+  /* Find this cell's top-level (great-)parent */
+  struct cell *top = ci;
+  while(top->parent != NULL) top = top->parent;
+
   /* Flag that contributions will be recieved */
   multi_i->pot.interacted = 1;
 
@@ -1548,7 +1552,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     const struct gravity_tensors *const multi_j = cj->multipole;
 
     /* Avoid self contributions */
-    if (ci == cj) continue;
+    if (top == cj) continue;
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
