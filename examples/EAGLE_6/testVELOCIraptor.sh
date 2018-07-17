@@ -33,9 +33,11 @@ if [ "$RUN_DM" = "1" ]; then
     rm vel_outputs_new/vel_$TEST*
 
     # Run test using SWIFT + VELOCIraptor
+    echo "Running: mpirun -np 1 ../swift_mpi -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_dmonly"
     mpirun -np 1 ../swift_mpi -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_dmonly
 
     # Run test using VELOCIraptor
+    echo "Running: mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./vel_outputs_new/vel_$TEST"
     mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./vel_outputs_new/vel_$TEST
 
     # Create info file for python comparison script
@@ -73,9 +75,11 @@ if [ "$RUN_GAS" = "1" ]; then
     rm vel_outputs_new/vel_$TEST*
 
     # Run test using SWIFT + VELOCIraptor
+    echo "Running: mpirun -np 1 ../swift_mpi -s -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_gas"
     mpirun -np 1 ../swift_mpi -s -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_gas
 
     # Run test using VELOCIraptor
+    echo "Running: mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./vel_outputs_new/vel_$TEST"
     mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./vel_outputs_new/vel_$TEST
 
     # Create info file for python comparison script
