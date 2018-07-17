@@ -139,7 +139,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part* p, const struct hydro_space* hs) {
 
-  p->density.wcount = 0.0f;
+  /* make sure we don't enter the no neighbour case in runner.c */
+  p->density.wcount = 1.0f;
   p->density.wcount_dh = 0.0f;
 
   voronoi_cell_init(&p->cell, p->x, hs->anchor, hs->side);
