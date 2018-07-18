@@ -346,7 +346,7 @@ void fof_search_serial(struct space *s) {
     if(group_index[i] == i) num_groups++;
   }
 
-  fof_dump_group_data("fof_output_serial.dat", nr_gparts, group_index, group_size);
+  //fof_dump_group_data("fof_output_serial.dat", nr_gparts, group_index, group_size, group_id);
 
   int num_parts_in_groups = 0;
   int max_group_size = 0, max_group_index = 0;
@@ -674,6 +674,7 @@ void fof_search_tree_serial(struct space *s) {
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_cells = s->nr_cells;
   struct gpart *gparts = s->gparts;
+  long long *group_id;
   int *group_index;
   int *group_size;
   float *group_mass;
@@ -687,14 +688,20 @@ void fof_search_tree_serial(struct space *s) {
 
   /* Allocate and initialise array of particle group IDs. */
   if(s->fof_data.group_index != NULL) free(s->fof_data.group_index);
+  if(s->fof_data.group_id != NULL) free(s->fof_data.group_id);
 
   if (posix_memalign((void **)&s->fof_data.group_index, 32, nr_gparts * sizeof(int)) != 0)
-    error("Failed to allocate list of particle group IDs for FOF search.");
+    error("Failed to allocate list of particle group indices for FOF search.");
 
+  if (posix_memalign((void **)&s->fof_data.group_id, 32, nr_gparts * sizeof(int)) != 0)
+    error("Failed to allocate list of particle group IDs for FOF search.");
+  
   /* Initial group ID is particle offset into array. */
   for (size_t i = 0; i < nr_gparts; i++) s->fof_data.group_index[i] = i;
-
+  for (size_t i = 0; i < nr_gparts; i++) s->fof_data.group_id[i] = gparts[i].id_or_neg_offset;
+  
   group_index = s->fof_data.group_index;
+  group_id = s->fof_data.group_id;
   
   message("Rank: %d, Allocated group_index array of size %zu", engine_rank, s->nr_gparts);
 
@@ -747,10 +754,11 @@ void fof_search_tree_serial(struct space *s) {
     group_size[root]++;
     group_mass[root] += gparts[i].mass;
     if(group_index[i] == i) num_groups++;
+    group_id[i] = group_id[root - node_offset];
   }
 
   fof_dump_group_data("fof_output_tree_serial.dat", nr_gparts, group_index,
-                      group_size);
+                      group_size, group_id);
 
   int num_parts_in_groups = 0;
   int max_group_size = 0, max_group_index = 0, max_group_mass_id = 0;
@@ -1077,7 +1085,7 @@ void fof_search_tree(struct space *s) {
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_cells = s->nr_cells;
   struct gpart *gparts = s->gparts;
-  //long long *group_id;
+  long long *group_id;
   int *group_index;
   int *group_size;
   float *group_mass;
@@ -1117,14 +1125,20 @@ void fof_search_tree(struct space *s) {
 
   /* Allocate and initialise array of particle group IDs. */
   if(s->fof_data.group_index != NULL) free(s->fof_data.group_index);
+  if(s->fof_data.group_id != NULL) free(s->fof_data.group_id);
 
   if (posix_memalign((void **)&s->fof_data.group_index, 32, nr_gparts * sizeof(int)) != 0)
+    error("Failed to allocate list of particle group indices for FOF search.");
+  
+  if (posix_memalign((void **)&s->fof_data.group_id, 32, nr_gparts * sizeof(long long)) != 0)
     error("Failed to allocate list of particle group IDs for FOF search.");
 
   /* Initial group ID is particle offset into array. */
   for (size_t i = 0; i < nr_gparts; i++) s->fof_data.group_index[i] = node_offset + i;
+  for (size_t i = 0; i < nr_gparts; i++) s->fof_data.group_id[i] = gparts[i].id_or_neg_offset;
 
   group_index = s->fof_data.group_index;
+  group_id = s->fof_data.group_id;
   
   message("Rank: %d, Allocated group_index array of size %zu", engine_rank, s->nr_gparts);
 
@@ -1156,13 +1170,15 @@ void fof_search_tree(struct space *s) {
     group_size[root - node_offset]++;
     group_mass[root - node_offset] += gparts[i].mass;
     if(group_index[i] == i + node_offset) num_groups++;
+    group_id[i] = group_id[root - node_offset];
   }
 
   fof_dump_group_data("fof_search_tree_local.dat", nr_gparts, group_index,
-      group_size);
+      group_size, group_id);
 
 #ifdef WITH_MPI
   int *global_group_index, *global_group_size;
+  long long *global_group_id;
   int total_num_groups = 0;
   
   if (s->e->nr_nodes > 1) {
@@ -1170,17 +1186,22 @@ void fof_search_tree(struct space *s) {
     MPI_Reduce(&num_groups, &total_num_groups, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
     if (posix_memalign((void **)&global_group_index, 32, s->e->total_nr_gparts * sizeof(int)) != 0)
-      error("Failed to allocate list of global group IDs for FOF search.");
+      error("Failed to allocate list of global group indices for FOF search.");
     
     if (posix_memalign((void **)&global_group_size, 32, s->e->total_nr_gparts * sizeof(int)) != 0)
       error("Failed to allocate list of global group sizes for FOF search.");
+    
+    if (posix_memalign((void **)&global_group_id, 32, s->e->total_nr_gparts * sizeof(long long)) != 0)
+      error("Failed to allocate list of global group IDs for FOF search.");
 
     bzero(global_group_index, s->e->total_nr_gparts * sizeof(int));
     bzero(global_group_size, s->e->total_nr_gparts * sizeof(int));
+    bzero(global_group_id, s->e->total_nr_gparts * sizeof(long long));
 
     int displ[2] = {0, nr_gparts};
 
     MPI_Gatherv(group_index, nr_gparts, MPI_INT, global_group_index, global_nr_gparts, displ, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gatherv(group_id, nr_gparts, MPI_LONG_LONG, global_group_id, global_nr_gparts, displ, MPI_LONG_LONG, 0, MPI_COMM_WORLD);
 
     total_num_groups = 0;
 
@@ -1202,7 +1223,7 @@ void fof_search_tree(struct space *s) {
       }
   
       fof_dump_group_data(output_file_name, s->e->total_nr_gparts, global_group_index,
-          global_group_size);
+          global_group_size, global_group_id);
     }
 
   }
@@ -1252,33 +1273,33 @@ void fof_search_tree(struct space *s) {
       clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
-void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_index,
-                         int *group_size) {
-
-  FILE *file = fopen(out_file, "w");
-  fprintf(file, "# %7s %7s %7s\n", "ID", "Root ID", "Group Size");
-  fprintf(file, "#---------------------------------------\n");
-
-  for (size_t i = 0; i < nr_gparts; i++) {
-    const int root = fof_find(i, group_index);
-    fprintf(file, "  %7zu %7d %7d\n", i, root, group_size[i]);
-  }
-
-  fclose(file);
-}
-
-/* Dump FOF group data. */
 //void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_index,
-//                         int *group_size, struct gpart *gparts) {
+//                         int *group_size) {
 //
 //  FILE *file = fopen(out_file, "w");
-//  fprintf(file, "# %7s %7s %7s %7s\n", "ID", "Root ID", "Group Size", "Group ID");
+//  fprintf(file, "# %7s %7s %7s\n", "ID", "Root ID", "Group Size");
 //  fprintf(file, "#---------------------------------------\n");
 //
 //  for (size_t i = 0; i < nr_gparts; i++) {
 //    const int root = fof_find(i, group_index);
-//    fprintf(file, "  %7zu %7d %7d    %10lld\n", i, root, group_size[i], gparts[root].id_or_neg_offset);
+//    fprintf(file, "  %7zu %7d %7d\n", i, root, group_size[i]);
 //  }
 //
 //  fclose(file);
 //}
+
+/* Dump FOF group data. */
+void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_index,
+                         int *group_size, long long *group_id) {
+
+  FILE *file = fopen(out_file, "w");
+  fprintf(file, "# %7s %7s %7s %7s\n", "ID", "Root ID", "Group Size", "Group ID");
+  fprintf(file, "#---------------------------------------\n");
+
+  for (size_t i = 0; i < nr_gparts; i++) {
+    const int root = fof_find(i, group_index);
+    fprintf(file, "  %7zu %7d %7d    %10lld\n", i, root, group_size[i], group_id[i]);
+  }
+
+  fclose(file);
+}
