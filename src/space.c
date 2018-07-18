@@ -3366,7 +3366,8 @@ void space_clean(struct space *s) {
   free(s->xparts);
   free(s->gparts);
   free(s->sparts);
-  free(s->group_id);
+  free(s->fof_data.group_id);
+  free(s->fof_data.group_index);
 }
 
 /**

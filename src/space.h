@@ -35,10 +35,18 @@
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
+//#include "fof.h"
 
 /* Avoid cyclic inclusions */
 struct cell;
 struct cosmology;
+
+struct fof {
+
+  long long *group_id;
+  int *group_index;
+
+} SWIFT_STRUCT_ALIGN;
 
 /* Some constants. */
 #define space_cellallocchunk 1000
@@ -188,8 +196,8 @@ struct space {
   double l_x2;
   
   /*! The FOF group data. */
-  int *group_id;
-  
+  struct fof fof_data;
+
   /*! List of cell indices. */
   int *cell_index;
 
