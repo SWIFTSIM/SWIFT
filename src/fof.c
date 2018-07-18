@@ -80,6 +80,31 @@ __attribute__((always_inline)) INLINE static int fof_find(const int i,
   return root;
 }
 
+#ifdef WITH_MPI
+/* Finds the root ID of the group a particle exists in. */
+__attribute__((always_inline)) INLINE static int fof_find_global(const int i,
+                                                          int *group_id) {
+
+  int root = i;
+  /* TODO: May need this atomic here:
+   * while (root != atomic_cas(&group_id[root], group_id[root], group_id[root])) 
+   *   root = atomic_cas(&group_id[root], group_id[root], group_id[root]); */
+  while (root != group_id[root]) {
+    root = group_id[root];
+  }
+
+  /* Perform path compression. */
+  // int index = i;
+  // while(index != root) {
+  //  int next = group_id[index];
+  //  group_id[index] = root;
+  //  index = next;
+  //}
+
+  return root;
+}
+#endif
+
 /* Find the shortest distance between cells, remembering to account for boundary
  * conditions. */
 __attribute__((always_inline)) INLINE static double cell_min_dist(
@@ -568,7 +593,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
           (*send_count)++;
           local_send_count++;
 
-          fprintf(fof_file, "  %7zu %7zu %7d\n", pi->id_or_neg_offset, pj->id_or_neg_offset, root_i);
+          //fprintf(fof_file, "  %7zu %7zu %7d\n", pi->id_or_neg_offset, pj->id_or_neg_offset, root_i);
         }
       }
     }
@@ -624,7 +649,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
           fof_send[*send_count].root_i = root_j;
           (*send_count)++;
           local_send_count++;
-          fprintf(fof_file, "  %7zu %7zu %7d\n", pj->id_or_neg_offset, pi->id_or_neg_offset, root_j);
+          //fprintf(fof_file, "  %7zu %7zu %7d\n", pj->id_or_neg_offset, pi->id_or_neg_offset, root_j);
         }
       }
     }
@@ -984,35 +1009,59 @@ void fof_search_foreign_cells(struct space *s) {
 
   message("Rank: %d Searching received links....", engine_rank);
 
-  for(int i=0; i<send_count; i++ ) {
+  if(engine_rank != 0) {
 
-    for(int j = 0; j<interface_cell_count; j++) {
+    int found_count = 0;
+    int link_count = 0;
 
-      struct cell *c = interface_cells[j];
+    for(int i=0; i<send_count; i++ ) {
 
-      struct gpart *gparts = c->gparts;
+      int found  = 0;
 
-      /* Make a list of particle offsets into the global gparts array. */
-      int *const offset = s->group_id + (ptrdiff_t)(gparts - s->gparts);
+      for(int j = 0; j<interface_cell_count; j++) {
 
-      for(int k=0; k<c->gcount; k++) {
+        struct cell *c = interface_cells[j];
 
-        struct gpart *gp = &gparts[k];
+        struct gpart *gparts = c->gparts;
 
-        if(gp->id_or_neg_offset == fof_recv[i].foreign_pid) {
+        /* Make a list of particle offsets into the global gparts array. */
+        int *const offset = s->group_id + (ptrdiff_t)(gparts - s->gparts);
 
-          int local_root = fof_find(offset[k] - node_offset, s->group_id);
+        for(int k=0; k<c->gcount; k++) {
 
-          if(fof_recv[i].root_i < local_root) {
+          struct gpart *gp = &gparts[k];
 
-            s->group_id[local_root - node_offset] = fof_recv[i].root_i;
+          if(gp->id_or_neg_offset == fof_recv[i].foreign_pid) {
 
-            message("Rank: %d Particle %lld found new group with root: %d, previous group: %d, i=%d, j=%d, k=%d", engine_rank, gp->id_or_neg_offset, fof_recv[i].root_i, local_root, i,j,k);
-            //break;
+            found_count++;
+            found = 1;
+
+            int local_root = fof_find(offset[k] - node_offset, s->group_id);
+
+            if(local_root == fof_recv[i].root_i) continue;
+
+            if(fof_recv[i].root_i < local_root) {
+
+              s->group_id[local_root - node_offset] = fof_recv[i].root_i;
+
+              //message("Rank: %d Particle %lld found new group with root: %d, previous group: %d, i=%d, j=%d, k=%d", engine_rank, gp->id_or_neg_offset, fof_recv[i].root_i, local_root, i,j,k);
+              
+              link_count++;
+            }
+            
+            break;
           }
+
         }
+        if(found == 1) break;
       }
+        
+      if(found == 0) error("Rank: %d could not find particle locally. PID: %lld", engine_rank, fof_recv[i].foreign_pid);
+      
     }
+
+    message("Send count: %zu, found count: %d, link count: %d", send_count, found_count, link_count);
+
   }
   
   message("Rank: %d Finished searching received links....", engine_rank);
@@ -1034,6 +1083,8 @@ void fof_search_tree(struct space *s) {
   int num_groups = 0;
   ticks tic = getticks();
 
+  char output_file_name[128] = "fof_output_tree";
+
   message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
           s->l_x2);
 
@@ -1041,18 +1092,24 @@ void fof_search_tree(struct space *s) {
 
 #ifdef WITH_MPI
   int *global_nr_gparts;
+  if (s->e->nr_nodes > 1) {
 
-  if (posix_memalign((void**)&global_nr_gparts, SWIFT_STRUCT_ALIGNMENT,
-                       s->e->nr_nodes * sizeof(int)) != 0)
-    error("Error while allocating memory for global_nr_gparts array.");
-  
-  bzero(global_nr_gparts, s->e->nr_nodes * sizeof(int));
+    if (posix_memalign((void**)&global_nr_gparts, SWIFT_STRUCT_ALIGNMENT,
+          s->e->nr_nodes * sizeof(int)) != 0)
+      error("Error while allocating memory for global_nr_gparts array.");
 
-  MPI_Allgather(&s->nr_gparts, 1, MPI_INT, global_nr_gparts, s->e->nr_nodes - 1, MPI_INT, MPI_COMM_WORLD);
+    bzero(global_nr_gparts, s->e->nr_nodes * sizeof(int));
 
-  message("No. of particles: [%d, %d]", global_nr_gparts[0], global_nr_gparts[1]);
+    MPI_Allgather(&s->nr_gparts, 1, MPI_INT, global_nr_gparts, s->e->nr_nodes - 1, MPI_INT, MPI_COMM_WORLD);
 
-  for(int i = 0; i<engine_rank; i++) node_offset += global_nr_gparts[i];
+    message("No. of particles: [%d, %d]", global_nr_gparts[0], global_nr_gparts[1]);
+
+    for(int i = 0; i<engine_rank; i++) node_offset += global_nr_gparts[i];
+  }
+
+  sprintf(output_file_name + strlen(output_file_name), "_%d_mpi_ranks.dat", s->e->nr_nodes);
+#else
+  sprintf(output_file_name + strlen(output_file_name), ".dat");
 #endif
 
   message("Node offset: %d", node_offset);
@@ -1086,8 +1143,10 @@ void fof_search_tree(struct space *s) {
                  nr_cells, sizeof(struct cell), 1, s);
 
 #ifdef WITH_MPI
-  /* Find any particle links with other nodes. */
-  fof_search_foreign_cells(s);
+  if (s->e->nr_nodes > 1) {
+    /* Find any particle links with other nodes. */
+    fof_search_foreign_cells(s);
+  }
 #endif
 
   /* Calculate the total number of particles in each group, group mass and the total number of groups. */
@@ -1098,40 +1157,53 @@ void fof_search_tree(struct space *s) {
     if(group_id[i] == i + node_offset) num_groups++;
   }
 
+  fof_dump_group_data("fof_search_tree_local.dat", nr_gparts, group_id,
+      group_size);
+
 #ifdef WITH_MPI
+  int *global_group_id, *global_group_size;
   int total_num_groups = 0;
-  MPI_Reduce(&num_groups, &total_num_groups, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  
+  if (s->e->nr_nodes > 1) {
 
-  fof_dump_group_data("fof_output_tree_serial.dat", nr_gparts, group_id,
-                      group_size);
+    MPI_Reduce(&num_groups, &total_num_groups, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
-  int *global_group_id;
+    if (posix_memalign((void **)&global_group_id, 32, s->e->total_nr_gparts * sizeof(int)) != 0)
+      error("Failed to allocate list of global group IDs for FOF search.");
+    
+    if (posix_memalign((void **)&global_group_size, 32, s->e->total_nr_gparts * sizeof(int)) != 0)
+      error("Failed to allocate list of global group sizes for FOF search.");
 
-  if (posix_memalign((void **)&global_group_id, 32, s->e->total_nr_gparts * sizeof(int)) != 0)
-    error("Failed to allocate list of global group IDs for FOF search.");
+    bzero(global_group_id, s->e->total_nr_gparts * sizeof(int));
+    bzero(global_group_size, s->e->total_nr_gparts * sizeof(int));
 
-  bzero(global_group_id, s->e->total_nr_gparts * sizeof(int));
+    int displ[2] = {0, nr_gparts};
 
-  int displ[2] = {0, nr_gparts};
+    MPI_Gatherv(group_id, nr_gparts, MPI_INT, global_group_id, global_nr_gparts, displ, MPI_INT, 0, MPI_COMM_WORLD);
 
-  MPI_Gatherv(group_id, nr_gparts, MPI_INT, global_group_id, global_nr_gparts, displ, MPI_INT, 0, MPI_COMM_WORLD);
-
-  total_num_groups = 0;
-
-  if(engine_rank == 0) {
-    fof_file = fopen("global_group_id.dat", "w");
-    fprintf(fof_file, "# %7s %7s\n", "Index", "Group ID");
-    fprintf(fof_file, "#-------------------------------\n");
+    total_num_groups = 0;
 
     for (size_t i = 0; i < s->e->total_nr_gparts; i++) {
-      
-      fprintf(fof_file, "  %7zu %7d \n", i, global_group_id[i]);
+      const int root = fof_find_global(i, global_group_id);
+      //const int root = fof_find(i, global_group_id);
+      global_group_size[root]++;
+      if(global_group_id[i] == i) total_num_groups++;
     }
-  }
 
-  for (size_t i = 0; i < s->e->total_nr_gparts; i++) {
-    //const int root = fof_find(i, global_group_id);
-    if(global_group_id[i] == i) total_num_groups++;
+    if(engine_rank == 0) {
+      fof_file = fopen("global_group_id.dat", "w");
+      fprintf(fof_file, "# %7s %7s\n", "Index", "Group ID");
+      fprintf(fof_file, "#-------------------------------\n");
+
+      for (size_t i = 0; i < s->e->total_nr_gparts; i++) {
+
+        fprintf(fof_file, "  %7zu %7d \n", i, global_group_id[i]);
+      }
+  
+      fof_dump_group_data(output_file_name, s->e->total_nr_gparts, global_group_id,
+          global_group_size);
+    }
+
   }
 #endif /* WITH_MPI */
 
@@ -1168,9 +1240,11 @@ void fof_search_tree(struct space *s) {
   free(group_mass);
 
 #ifdef WITH_MPI
-  if(engine_rank == 0) message("Total number of groups: %d", total_num_groups);
-  free(global_nr_gparts);
-  free(global_group_id);
+  if (s->e->nr_nodes > 1) {
+    if(engine_rank == 0) message("Total number of groups: %d", total_num_groups);
+    free(global_nr_gparts);
+    free(global_group_id);
+  }
 #endif /* WITH_MPI */
 
   message("FOF search took: %.3f %s.",
@@ -1186,7 +1260,8 @@ void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_id,
   fprintf(file, "#-------------------------------\n");
 
   for (size_t i = 0; i < nr_gparts; i++) {
-    fprintf(file, "  %7zu %7d %7d\n", i, group_id[i], group_size[i]);
+    const int root = fof_find(i, group_id);
+    fprintf(file, "  %7zu %7d %7d\n", i, root, group_size[i]);
   }
 
   fclose(file);
