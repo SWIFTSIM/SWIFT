@@ -31,7 +31,7 @@
 struct fof_mpi {
   
   /* The local particle ID of the sending rank.*/
-  //long long local_pid;
+  long long local_pid;
 
   /* The foreign particle ID of the receiving rank.*/
   long long foreign_pid;
