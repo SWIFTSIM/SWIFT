@@ -375,6 +375,7 @@ void fof_search_cell(struct space *s, struct cell *c) {
   struct gpart *gparts = c->gparts;
   const double l_x2 = s->l_x2;
   int *group_index = s->fof_data.group_index;
+  //long long *group_id = s->fof_data.group_id;
 
   /* Make a list of particle offsets into the global gparts array. */
   int *const offset = group_index + (ptrdiff_t)(gparts - s->gparts);
@@ -416,13 +417,17 @@ void fof_search_cell(struct space *s, struct cell *c) {
 
         /* If the root ID of pj is lower than pi's root ID set pi's root to point to pj's. 
          * Otherwise set pj's to root to point to pi's.*/
+        //if (group_id[root_j - node_offset] < group_id[root_i - node_offset]) {
         if (root_j < root_i) {
           atomic_min(&group_index[root_i - node_offset], root_j);
           /* Update root_i on the fly. */
           root_i = root_j;
+          //group_id[root_i - node_offset] = group_id[root_j - node_offset];
         }
-        else
+        else {
           atomic_min(&group_index[root_j - node_offset], root_i);
+          //group_id[root_j - node_offset] = group_id[root_i - node_offset];
+        }
 
       }
     }
@@ -439,6 +444,7 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double l_x2 = s->l_x2;
   int *group_index = s->fof_data.group_index;
+  //long long *group_id = s->fof_data.group_id;
   
   /* Make a list of particle offsets into the global gparts array. */
   int *const offset_i = group_index + (ptrdiff_t)(gparts_i - s->gparts);
@@ -499,13 +505,17 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
 
         /* If the root ID of pj is lower than pi's root ID set pi's root to point to pj's. 
          * Otherwise set pj's to root to point to pi's.*/
+        //if (group_id[root_j - node_offset] < group_id[root_i - node_offset]) {
         if (root_j < root_i) {
           atomic_min(&group_index[root_i - node_offset], root_j);
           /* Update root_i on the fly. */
           root_i = root_j;
+          //group_id[root_i - node_offset] = group_id[root_j - node_offset];
         }
-        else
+        else {
           atomic_min(&group_index[root_j - node_offset], root_i);
+          //group_id[root_j - node_offset] = group_id[root_i - node_offset];
+        }
 
       }
     }
@@ -587,7 +597,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
         if (r2 < l_x2) {
 
           /* Store the particle IDs and group ID for communication. */
-          //fof_send[send_count].local_pid = pi->id_or_neg_offset;        
+          fof_send[*send_count].local_pid = pi->id_or_neg_offset;        
           fof_send[*send_count].foreign_pid = pj->id_or_neg_offset;        
           fof_send[*send_count].root_i = root_i;
           (*send_count)++;
@@ -644,7 +654,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
         if (r2 < l_x2) {
 
           /* Store the particle IDs and group ID for communication. */
-          //fof_send[send_count].local_pid = pi->id_or_neg_offset;        
+          fof_send[*send_count].local_pid = pi->id_or_neg_offset;        
           fof_send[*send_count].foreign_pid = pi->id_or_neg_offset; 
           fof_send[*send_count].root_i = root_j;
           (*send_count)++;
@@ -1017,10 +1027,37 @@ void fof_search_foreign_cells(struct space *s) {
 
   message("Rank: %d Searching received links....", engine_rank);
 
-  if(engine_rank != 0) {
+  int found_count = 0;
+  int link_count = 0;
+  int double_link_count = 0;
 
-    int found_count = 0;
-    int link_count = 0;
+  if(engine_rank == 0) {
+    
+    MPI_Status stat1, stat2;
+    MPI_Recv(&send_count, 1, MPI_INT, 1, MPI_RANK_1_SEND_TAG, MPI_COMM_WORLD, &stat1);
+    MPI_Recv(fof_recv, send_count, fof_mpi_type, 1, MPI_RANK_1_SEND_TAG, MPI_COMM_WORLD, &stat2);
+
+    for(int i=0; i<send_count; i++ ) {
+ 
+      int local_root = fof_find(fof_recv[i].foreign_pid - node_offset, s->fof_data.group_index);
+
+      //if(local_root == fof_recv[i].root_i) continue;
+
+      if(fof_recv[i].root_i < local_root) {
+   
+        s->fof_data.group_index[local_root - node_offset] = fof_recv[i].root_i;
+
+        //message("Rank: %d Particle %lld found new group with root: %d, previous group: %d, i=%d, j=%d, k=%d", engine_rank, gp->id_or_neg_offset, fof_recv[i].root_i, local_root, i,j,k);
+
+        link_count++;
+
+      }
+
+    }
+    message("Send count: %zu, found count: %d, link count: %d, double link count: %d", send_count, found_count, link_count, double_link_count);
+  }
+
+  if(engine_rank != 0) {
 
     for(int i=0; i<send_count; i++ ) {
 
@@ -1050,28 +1087,48 @@ void fof_search_foreign_cells(struct space *s) {
 
             if(fof_recv[i].root_i < local_root) {
 
-              s->fof_data.group_index[local_root - node_offset] = fof_recv[i].root_i;
+              if(local_root < node_offset) {
+                //message("Already linked to group on lower rank. Need to link to new lower root on other rank. Current root: %d, new root on lower rank: %d", local_root, fof_recv[i].root_i);
 
-              //message("Rank: %d Particle %lld found new group with root: %d, previous group: %d, i=%d, j=%d, k=%d", engine_rank, gp->id_or_neg_offset, fof_recv[i].root_i, local_root, i,j,k);
-              
-              link_count++;
+                fof_send[double_link_count].foreign_pid = local_root;
+                fof_send[double_link_count].root_i = fof_recv[i].root_i;
+
+                double_link_count++;
+              }
+              else {
+
+                s->fof_data.group_index[local_root - node_offset] = fof_recv[i].root_i;
+
+                //message("Rank: %d Particle %lld found new group with root: %d, previous group: %d, i=%d, j=%d, k=%d", engine_rank, gp->id_or_neg_offset, fof_recv[i].root_i, local_root, i,j,k);
+
+                link_count++;
+                
+                if(s->fof_data.group_index[local_root - node_offset] >= node_offset) {
+                  error("Particle not linked to rank 0. root still: %d, local_root: %d, fof_recv[%d].root_i: %d", s->fof_data.group_index[local_root - node_offset], local_root, i, fof_recv[i].root_i);
+                }
+              }
             }
-            
+
             break;
           }
 
         }
         if(found == 1) break;
       }
-        
+
       if(found == 0) error("Rank: %d could not find particle locally. PID: %lld", engine_rank, fof_recv[i].foreign_pid);
-      
+
     }
 
-    message("Send count: %zu, found count: %d, link count: %d", send_count, found_count, link_count);
-
   }
-  
+
+    message("Send count: %zu, found count: %d, link count: %d, double link count: %d", send_count, found_count, link_count, double_link_count);
+
+    if(engine_rank == 1) {
+      MPI_Send(&double_link_count, 1, MPI_INT, 0, MPI_RANK_1_SEND_TAG, MPI_COMM_WORLD);
+      MPI_Send(fof_send, double_link_count, fof_mpi_type, 0, MPI_RANK_1_SEND_TAG, MPI_COMM_WORLD);
+    }
+
   message("Rank: %d Finished searching received links....", engine_rank);
 
   fclose(fof_file);
@@ -1226,6 +1283,15 @@ void fof_search_tree(struct space *s) {
           global_group_size, global_group_id);
     }
 
+  }
+#else
+  fof_file = fopen("serial_group_index.dat", "w");
+  fprintf(fof_file, "# %7s %7s\n", "Index", "Group ID");
+  fprintf(fof_file, "#-------------------------------\n");
+
+  for (size_t i = 0; i < nr_gparts; i++) {
+
+    fprintf(fof_file, "  %7zu %7d \n", i, group_index[i]);
   }
 #endif /* WITH_MPI */
 
