@@ -117,7 +117,7 @@ DomainDecomposition:
   initial_grid: [10,10,10]  # (Optional) Grid sizes if the "grid" strategy is chosen.
 
   repartition_type: costs/costs # (Optional) The re-decomposition strategy, one of:
-                            # "none/none", "costs/costs", "none/costs" or "costs/time".
+                            # "none/none", "costs/costs", "none/costs", "costs/none" or "costs/time".
                             # These are vertex/edge weights with "costs" as task timing
                             # and "time" as the expected time of the next updates
 

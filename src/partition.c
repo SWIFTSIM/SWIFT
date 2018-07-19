@@ -69,8 +69,8 @@ const char *repartition_name[] = {
     "no",
     "ParMETIS edge and vertex task cost weights",
     "ParMETIS task cost edge weights",
-    "ParMETIS vertex task costs and edge delta timebin weights",
-    "ParMETIS edge delta timebin weights",
+    "ParMETIS task cost vertex weights",
+    "ParMETIS vertex task costs and edge delta timebin weights"
 };
 
 /* Local functions, if needed. */
@@ -707,8 +707,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   /* Common parameters. */
   idx_t options[4];
   options[0] = 1;
-  options[1] = 0;
-  options[2] = -1;
+  options[1] = 7;
+  options[2] = 0;
 
   idx_t edgecut;
   idx_t ncon = 1;
@@ -1025,9 +1025,9 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
  * @brief Repartition the cells amongst the nodes using weights of
  *        various kinds.
  *
- * @param bothweights whether vertex and edge weights will be used, otherwise
- *                    only edge weights will be used.
- * @param timebins use timebins as edge weights.
+ * @param vweights whether vertex weights will be used.
+ * @param eweights whether weights will be used.
+ * @param timebins use timebins as the edge weights.
  * @param repartition the partition struct of the local engine.
  * @param nodeID our nodeID.
  * @param nr_nodes the number of nodes.
@@ -1035,7 +1035,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
  */
-static void repart_edge_parmetis(int bothweights, int timebins,
+static void repart_edge_parmetis(int vweights, int eweights, int timebins,
                                  struct repartition *repartition, int nodeID,
                                  int nr_nodes, struct space *s,
                                  struct task *tasks, int nr_tasks) {
@@ -1055,14 +1055,16 @@ static void repart_edge_parmetis(int bothweights, int timebins,
   /* Allocate and init weights. */
   double *weights_v = NULL;
   double *weights_e = NULL;
-  if (bothweights) {
+  if (vweights) {
     if ((weights_v = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
       error("Failed to allocate vertex weights arrays.");
     bzero(weights_v, sizeof(double) * nr_cells);
   }
-  if ((weights_e = (double *)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
-    error("Failed to allocate edge weights arrays.");
-  bzero(weights_e, sizeof(double) * 26 * nr_cells);
+  if (eweights) {
+    if ((weights_e = (double *)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
+      error("Failed to allocate edge weights arrays.");
+    bzero(weights_e, sizeof(double) * 26 * nr_cells);
+  }
 
   /* Loop over the tasks... */
   for (int j = 0; j < nr_tasks; j++) {
@@ -1098,7 +1100,7 @@ static void repart_edge_parmetis(int bothweights, int timebins,
         t->type == task_type_grav_long_range) {
 
       /* Particle updates add only to vertex weight. */
-      if (bothweights) weights_v[cid] += w;
+      if (vweights) weights_v[cid] += w;
     }
 
     /* Self interaction? */
@@ -1106,7 +1108,7 @@ static void repart_edge_parmetis(int bothweights, int timebins,
              (t->type == task_type_sub_self && cj == NULL &&
               ci->nodeID == nodeID)) {
       /* Self interactions add only to vertex weight. */
-      if (bothweights) weights_v[cid] += w;
+      if (vweights) weights_v[cid] += w;
 
     }
 
@@ -1115,7 +1117,7 @@ static void repart_edge_parmetis(int bothweights, int timebins,
       /* In-cell pair? */
       if (ci == cj) {
         /* Add weight to vertex for ci. */
-        if (bothweights) weights_v[cid] += w;
+        if (vweights) weights_v[cid] += w;
 
       }
 
@@ -1125,50 +1127,53 @@ static void repart_edge_parmetis(int bothweights, int timebins,
         int cjd = cj - cells;
 
         /* Local cells add weight to vertices. */
-        if (bothweights && ci->nodeID == nodeID) {
+        if (vweights && ci->nodeID == nodeID) {
           weights_v[cid] += 0.5 * w;
           if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
         }
 
-        /* Find indices of ci/cj neighbours. Note with gravity these cells may
-         * not be neighbours, in that case we ignore any edge weight for that
-         * pair. */
-        int ik = -1;
-        for (int k = 26 * cid; k < 26 * nr_cells; k++) {
-          if (inds[k] == cjd) {
-            ik = k;
-            break;
+        if (eweights) {
+
+          /* Find indices of ci/cj neighbours. Note with gravity these cells may
+           * not be neighbours, in that case we ignore any edge weight for that
+           * pair. */
+          int ik = -1;
+          for (int k = 26 * cid; k < 26 * nr_cells; k++) {
+            if (inds[k] == cjd) {
+              ik = k;
+              break;
+            }
           }
-        }
 
-        /* cj */
-        int jk = -1;
-        for (int k = 26 * cjd; k < 26 * nr_cells; k++) {
-          if (inds[k] == cid) {
-            jk = k;
-            break;
+          /* cj */
+          int jk = -1;
+          for (int k = 26 * cjd; k < 26 * nr_cells; k++) {
+            if (inds[k] == cid) {
+              jk = k;
+              break;
+            }
           }
-        }
-        if (ik != -1 && jk != -1) {
+          if (ik != -1 && jk != -1) {
 
-          if (timebins) {
-            /* Add weights to edge for all cells based on the expected
-             * interaction time (calculated as the time to the last expected
-             * time) as we want to avoid having active cells on the edges, so
-             * we cut for that. Note that weight is added to the local and
-             * remote cells, as we want to keep both away from any cuts, this
-             * can overflow int, so take care. */
-            int dti = num_time_bins - get_time_bin(ci->ti_hydro_end_min);
-            int dtj = num_time_bins - get_time_bin(cj->ti_hydro_end_min);
-            double dt = (double)(1 << dti) + (double)(1 << dtj);
-            weights_e[ik] += dt;
-            weights_e[jk] += dt;
+            if (timebins) {
+              /* Add weights to edge for all cells based on the expected
+               * interaction time (calculated as the time to the last expected
+               * time) as we want to avoid having active cells on the edges, so
+               * we cut for that. Note that weight is added to the local and
+               * remote cells, as we want to keep both away from any cuts, this
+               * can overflow int, so take care. */
+              int dti = num_time_bins - get_time_bin(ci->ti_hydro_end_min);
+              int dtj = num_time_bins - get_time_bin(cj->ti_hydro_end_min);
+              double dt = (double)(1 << dti) + (double)(1 << dtj);
+              weights_e[ik] += dt;
+              weights_e[jk] += dt;
 
-          } else {
+            } else {
 
-            /* Add weights from task costs to the edge. */
-            weights_e[ik] += w;
-            weights_e[jk] += w;
+              /* Add weights from task costs to the edge. */
+              weights_e[ik] += w;
+              weights_e[jk] += w;
+            }
           }
         }
       }
@@ -1177,16 +1182,18 @@ static void repart_edge_parmetis(int bothweights, int timebins,
 
   /* Merge the weights arrays across all nodes. */
   int res;
-  if (bothweights) {
+  if (vweights) {
     res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_v, weights_v,
                      nr_cells, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS)
       mpi_error(res, "Failed to allreduce vertex weights.");
   }
 
-  res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_e, weights_e,
-                   26 * nr_cells, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-  if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights.");
+  if (eweights) {
+    res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_e, weights_e,
+                     26 * nr_cells, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights.");
+  }
 
   /* Allocate cell list for the partition. If not already done. */
   int refine = 1;
@@ -1205,7 +1212,7 @@ static void repart_edge_parmetis(int bothweights, int timebins,
    * vertex and edges weights to be similar so they balance. */
   double wminv = 0.0;
   double wmaxv = 0.0;
-  if (bothweights) {
+  if (vweights) {
     wminv = weights_v[0];
     wmaxv = weights_v[0];
     for (int k = 0; k < nr_cells; k++) {
@@ -1214,37 +1221,43 @@ static void repart_edge_parmetis(int bothweights, int timebins,
     }
   }
 
-  double wmine = weights_e[0];
-  double wmaxe = weights_e[0];
-  for (int k = 0; k < 26 * nr_cells; k++) {
-    wmaxe = weights_e[k] > wmaxe ? weights_e[k] : wmaxe;
-    wmine = weights_e[k] < wmine ? weights_e[k] : wmine;
+  double wmine = 0.0;
+  double wmaxe = 0.0;
+  if (eweights) {
+    wmine = weights_e[0];
+    wmaxe = weights_e[0];
+    for (int k = 0; k < 26 * nr_cells; k++) {
+      wmaxe = weights_e[k] > wmaxe ? weights_e[k] : wmaxe;
+      wmine = weights_e[k] < wmine ? weights_e[k] : wmine;
+    }
   }
 
-  if (bothweights) {
+  if (vweights) {
 
-    /* Make range the same in both weights systems. */
-    if ((wmaxv - wminv) > (wmaxe - wmine)) {
-      double wscale = 1.0;
-      if ((wmaxe - wmine) > 0.0) {
-        wscale = (wmaxv - wminv) / (wmaxe - wmine);
+    if (vweights && eweights) {
+      /* Make range the same in both weights systems. */
+      if ((wmaxv - wminv) > (wmaxe - wmine)) {
+        double wscale = 1.0;
+        if ((wmaxe - wmine) > 0.0) {
+          wscale = (wmaxv - wminv) / (wmaxe - wmine);
+        }
+        for (int k = 0; k < 26 * nr_cells; k++) {
+          weights_e[k] = (weights_e[k] - wmine) * wscale + wminv;
+        }
+        wmine = wminv;
+        wmaxe = wmaxv;
+        
+      } else {
+        double wscale = 1.0;
+        if ((wmaxv - wminv) > 0.0) {
+          wscale = (wmaxe - wmine) / (wmaxv - wminv);
+        }
+        for (int k = 0; k < nr_cells; k++) {
+          weights_v[k] = (weights_v[k] - wminv) * wscale + wmine;
+        }
+        wminv = wmine;
+        wmaxv = wmaxe;
       }
-      for (int k = 0; k < 26 * nr_cells; k++) {
-        weights_e[k] = (weights_e[k] - wmine) * wscale + wminv;
-      }
-      wmine = wminv;
-      wmaxe = wmaxv;
-
-    } else {
-      double wscale = 1.0;
-      if ((wmaxv - wminv) > 0.0) {
-        wscale = (wmaxe - wmine) / (wmaxv - wminv);
-      }
-      for (int k = 0; k < nr_cells; k++) {
-        weights_v[k] = (weights_v[k] - wminv) * wscale + wmine;
-      }
-      wminv = wmine;
-      wmaxv = wmaxe;
     }
 
     /* Scale to the ParMETIS range. */
@@ -1257,31 +1270,27 @@ static void repart_edge_parmetis(int bothweights, int timebins,
     }
   }
 
-  /* Scale to the ParMETIS range. */
-  double wscale = 1.0;
-  if ((wmaxe - wmine) > 0.0) {
-    wscale = (parmetis_maxweight - 1.0) / (wmaxe - wmine);
-  }
-  for (int k = 0; k < 26 * nr_cells; k++) {
-    weights_e[k] = (weights_e[k] - wmine) * wscale + 1.0;
+
+  if (eweights) {
+
+    /* Scale to the ParMETIS range. */
+    double wscale = 1.0;
+    if ((wmaxe - wmine) > 0.0) {
+      wscale = (parmetis_maxweight - 1.0) / (wmaxe - wmine);
+    }
+    for (int k = 0; k < 26 * nr_cells; k++) {
+      weights_e[k] = (weights_e[k] - wmine) * wscale + 1.0;
+    }
   }
 
   /* And repartition/ partition, using both weights or not as requested. */
   if (refine) {
-    if (bothweights)
-      pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
-                    repartition->itr, repartition->celllist);
-    else
-      pick_parmetis(nodeID, s, nr_nodes, NULL, weights_e, refine,
-                    repartition->itr, repartition->celllist);
+    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
+                  repartition->itr, repartition->celllist);
   } else {
 
     /* Not refining, so use METIS. */
-    if (bothweights)
-      pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
-                 repartition->celllist);
-    else
-      pick_metis(nodeID, s, nr_nodes, NULL, weights_e, repartition->celllist);
+    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
   }
 
   /* Check that all cells have good values. All nodes have same copy, so just
@@ -1320,8 +1329,8 @@ static void repart_edge_parmetis(int bothweights, int timebins,
 
   /* Clean up. */
   free(inds);
-  if (bothweights) free(weights_v);
-  free(weights_e);
+  if (vweights) free(weights_v);
+  if (eweights) free(weights_e);
 }
 #endif
 
@@ -1345,16 +1354,20 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 #if defined(WITH_MPI) && defined(HAVE_PARMETIS)
 
   if (reparttype->type == REPART_PARMETIS_VERTEX_EDGE_COSTS) {
-    repart_edge_parmetis(1, 0, reparttype, nodeID, nr_nodes, s, tasks,
-                         nr_tasks);
+      repart_edge_parmetis(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
+                           nr_tasks);
 
   } else if (reparttype->type == REPART_PARMETIS_EDGE_COSTS) {
-    repart_edge_parmetis(0, 0, reparttype, nodeID, nr_nodes, s, tasks,
-                         nr_tasks);
+      repart_edge_parmetis(0, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
+                           nr_tasks);
+
+  } else if (reparttype->type == REPART_PARMETIS_VERTEX_COSTS) {
+      repart_edge_parmetis(1, 0, 0, reparttype, nodeID, nr_nodes, s, tasks,
+                           nr_tasks);
 
   } else if (reparttype->type == REPART_PARMETIS_VERTEX_COSTS_TIMEBINS) {
-    repart_edge_parmetis(1, 1, reparttype, nodeID, nr_nodes, s, tasks,
-                         nr_tasks);
+      repart_edge_parmetis(1, 1, 1, reparttype, nodeID, nr_nodes, s, tasks,
+                           nr_tasks);
 
   } else if (reparttype->type == REPART_NONE) {
     /* Doing nothing. */
@@ -1579,6 +1592,9 @@ void partition_init(struct partition *partition,
   } else if (strcmp("none/costs", part_type) == 0) {
     repartition->type = REPART_PARMETIS_EDGE_COSTS;
 
+  } else if (strcmp("costs/none", part_type) == 0) {
+    repartition->type = REPART_PARMETIS_VERTEX_COSTS;
+
   } else if (strcmp("costs/time", part_type) == 0) {
     repartition->type = REPART_PARMETIS_VERTEX_COSTS_TIMEBINS;
 
@@ -1586,7 +1602,7 @@ void partition_init(struct partition *partition,
     message("Invalid choice of re-partition type '%s'.", part_type);
     error(
         "Permitted values are: 'none/none', 'costs/costs', 'none/costs' "
-        "or 'costs/time'");
+        "'costs/none' or 'costs/time'");
 #else
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
