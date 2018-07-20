@@ -1047,9 +1047,10 @@ void fof_search_foreign_cells(struct space *s) {
    
         s->fof_data.group_index[local_root - node_offset] = fof_recv[i].root_i;
 
-        //message("Rank: %d Particle %lld found new group with root: %d, previous group: %d, i=%d, j=%d, k=%d", engine_rank, gp->id_or_neg_offset, fof_recv[i].root_i, local_root, i,j,k);
+        message("Rank: %d Particle %lld found new group with root: %d, previous group: %d", engine_rank, s->gparts[local_root].id_or_neg_offset, fof_recv[i].root_i, local_root);
 
         link_count++;
+        message("Rank: %d New group: %d", engine_rank, fof_find(local_root, s->fof_data.group_index));
 
       }
 
@@ -1107,6 +1108,15 @@ void fof_search_foreign_cells(struct space *s) {
                   error("Particle not linked to rank 0. root still: %d, local_root: %d, fof_recv[%d].root_i: %d", s->fof_data.group_index[local_root - node_offset], local_root, i, fof_recv[i].root_i);
                 }
               }
+            }
+            else {
+              message("Root on other node needs updating. Foreign root: %d, local root: %d", fof_recv[i].root_i, local_root);
+
+              fof_send[double_link_count].foreign_pid = fof_recv[i].root_i;
+              fof_send[double_link_count].root_i = local_root;
+
+              double_link_count++;
+
             }
 
             break;
