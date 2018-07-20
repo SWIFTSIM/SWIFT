@@ -347,8 +347,8 @@ void read_ic_single(const char* fileName,
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
   /* GADGET has 6 particle types. We only keep the type 0 & 1 for now...*/
-  int numParticles[swift_type_count] = {0};
-  int numParticles_highWord[swift_type_count] = {0};
+  long long numParticles[swift_type_count] = {0};
+  long long numParticles_highWord[swift_type_count] = {0};
   size_t N[swift_type_count] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
@@ -388,13 +388,12 @@ void read_ic_single(const char* fileName,
   io_read_attribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy_temp);
   *flag_entropy = flag_entropy_temp[0];
   io_read_attribute(h_grp, "BoxSize", DOUBLE, boxSize);
-  io_read_attribute(h_grp, "NumPart_Total", UINT, numParticles);
-  io_read_attribute(h_grp, "NumPart_Total_HighWord", UINT,
+  io_read_attribute(h_grp, "NumPart_Total", LONGLONG, numParticles);
+  io_read_attribute(h_grp, "NumPart_Total_HighWord", LONGLONG,
                     numParticles_highWord);
 
   for (int ptype = 0; ptype < swift_type_count; ++ptype)
-    N[ptype] = ((long long)numParticles[ptype]) +
-               ((long long)numParticles_highWord[ptype] << 32);
+    N[ptype] = (numParticles[ptype]) + (numParticles_highWord[ptype] << 32);
 
   /* Get the box size if not cubic */
   dim[0] = boxSize[0];

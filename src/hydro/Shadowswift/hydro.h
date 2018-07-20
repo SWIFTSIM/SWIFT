@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_SHADOWSWIFT_HYDRO_H
+#define SWIFT_SHADOWSWIFT_HYDRO_H
 
 #include <float.h>
 #include "adiabatic_index.h"
@@ -41,15 +43,23 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 
   const float CFL_condition = hydro_properties->CFL_condition;
 
-  float R = get_radius_dimension_sphere(p->cell.volume);
+  float vrel[3];
+  vrel[0] = p->primitives.v[0] - xp->v_full[0];
+  vrel[1] = p->primitives.v[1] - xp->v_full[1];
+  vrel[2] = p->primitives.v[2] - xp->v_full[2];
+  float vmax =
+      sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
+      sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+  vmax = max(vmax, p->timestepvars.vmax);
 
-  if (p->timestepvars.vmax == 0.) {
-    /* vmax can be zero in vacuum. We force the time step to become the maximal
-       time step in this case */
-    return FLT_MAX;
-  } else {
-    return CFL_condition * R / fabsf(p->timestepvars.vmax);
+  const float psize =
+      cosmo->a *
+      powf(p->cell.volume / hydro_dimension_unit_sphere, hydro_dimension_inv);
+  float dt = FLT_MAX;
+  if (vmax > 0.) {
+    dt = psize / vmax;
   }
+  return CFL_condition * dt;
 }
 
 /**
@@ -102,7 +112,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->conserved.momentum[2] = mass * p->primitives.v[2];
 
 #ifdef EOS_ISOTHERMAL_GAS
-  p->conserved.energy = mass * const_isothermal_internal_energy;
+  p->conserved.energy = mass * gas_internal_energy_from_entropy(0.f, 0.f);
 #else
   p->conserved.energy *= mass;
 #endif
@@ -117,12 +127,21 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->v[0] = 0.;
   p->v[1] = 0.;
   p->v[2] = 0.;
+#else
+  p->v[0] = p->primitives.v[0];
+  p->v[1] = p->primitives.v[1];
+  p->v[2] = p->primitives.v[2];
 #endif
 
   /* set the initial velocity of the cells */
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
+
+  /* ignore accelerations present in the initial condition */
+  p->a_hydro[0] = 0.0f;
+  p->a_hydro[1] = 0.0f;
+  p->a_hydro[2] = 0.0f;
 }
 
 /**
@@ -137,7 +156,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part* p, const struct hydro_space* hs) {
 
-  p->density.wcount = 0.0f;
+  /* make sure we don't enter the no neighbour case in runner.c */
+  p->density.wcount = 1.0f;
   p->density.wcount_dh = 0.0f;
 
   voronoi_cell_init(&p->cell, p->x, hs->anchor, hs->side);
@@ -180,12 +200,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   if (hnew < p->h) {
     /* Iteration succesful: we accept, but manually set h to a smaller value
        for the next time step */
-    p->density.wcount = 1.0f;
+    const float hinvdim = pow_dimension(1.0f / p->h);
+    p->density.wcount = hinvdim;
     p->h = 1.1f * hnew;
   } else {
     /* Iteration not succesful: we force h to become 1.1*hnew */
     p->density.wcount = 0.0f;
-    p->density.wcount_dh = 1.0f / (1.1f * hnew - p->h);
+    p->density.wcount_dh = p->h / (1.1f * hnew - p->h);
     return;
   }
   volume = p->cell.volume;
@@ -286,7 +307,47 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.v_full[0] = xp->v_full[0];
   p->force.v_full[1] = xp->v_full[1];
   p->force.v_full[2] = xp->v_full[2];
+
+  p->conserved.flux.mass = 0.0f;
+  p->conserved.flux.momentum[0] = 0.0f;
+  p->conserved.flux.momentum[1] = 0.0f;
+  p->conserved.flux.momentum[2] = 0.0f;
+  p->conserved.flux.energy = 0.0f;
 }
+
+/**
+ * @brief Prepare a particle for the gradient calculation.
+ *
+ * This function is called after the density loop and before the gradient loop.
+ *
+ * We use it to set the physical timestep for the particle and to copy the
+ * actual velocities, which we need to boost our interfaces during the flux
+ * calculation. We also initialize the variables used for the time step
+ * calculation.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct cosmology* cosmo) {
+
+  /* Initialize time step criterion variables */
+  p->timestepvars.vmax = 0.;
+}
+
+/**
+ * @brief Resets the variables that are required for a gradient calculation.
+ *
+ * This function is called after hydro_prepare_gradient.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void hydro_reset_gradient(
+    struct part* restrict p) {}
 
 /**
  * @brief Finishes the gradient calculation.
@@ -385,53 +446,36 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part* p, struct xpart* xp, float dt, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {
 
-  float vcell[3];
-
   /* Update the conserved variables. We do this here and not in the kick,
      since we need the updated variables below. */
-  p->conserved.mass += p->conserved.flux.mass;
-  p->conserved.momentum[0] += p->conserved.flux.momentum[0];
-  p->conserved.momentum[1] += p->conserved.flux.momentum[1];
-  p->conserved.momentum[2] += p->conserved.flux.momentum[2];
-  p->conserved.energy += p->conserved.flux.energy;
+  p->conserved.mass += p->conserved.flux.mass * dt;
+  p->conserved.momentum[0] += p->conserved.flux.momentum[0] * dt;
+  p->conserved.momentum[1] += p->conserved.flux.momentum[1] * dt;
+  p->conserved.momentum[2] += p->conserved.flux.momentum[2] * dt;
 
 #ifdef EOS_ISOTHERMAL_GAS
   /* reset the thermal energy */
-  p->conserved.energy = p->conserved.mass * const_isothermal_internal_energy;
-
-#ifdef SHADOWFAX_TOTAL_ENERGY
-  p->conserved.energy += 0.5f * (p->conserved.momentum[0] * p->primitives.v[0] +
-                                 p->conserved.momentum[1] * p->primitives.v[1] +
-                                 p->conserved.momentum[2] * p->primitives.v[2]);
+  p->conserved.energy =
+      p->conserved.mass * gas_internal_energy_from_entropy(0.f, 0.f);
+#else
+  p->conserved.energy += p->conserved.flux.energy * dt;
 #endif
 
-#endif
+#if defined(SHADOWFAX_FIX_CELLS)
+  p->v[0] = 0.0f;
+  p->v[1] = 0.0f;
+  p->v[2] = 0.0f;
+#else
+  if (p->conserved.mass > 0.0f && p->primitives.rho > 0.0f) {
 
-  /* reset fluxes */
-  /* we can only do this here, since we need to keep the fluxes for inactive
-     particles */
-  p->conserved.flux.mass = 0.0f;
-  p->conserved.flux.momentum[0] = 0.0f;
-  p->conserved.flux.momentum[1] = 0.0f;
-  p->conserved.flux.momentum[2] = 0.0f;
-  p->conserved.flux.energy = 0.0f;
+    const float inverse_mass = 1.f / p->conserved.mass;
 
-  if (p->conserved.mass > 0.) {
-    /* We want the cell velocity to be as close as possible to the fluid
-       velocity */
-    vcell[0] = p->conserved.momentum[0] / p->conserved.mass;
-    vcell[1] = p->conserved.momentum[1] / p->conserved.mass;
-    vcell[2] = p->conserved.momentum[2] / p->conserved.mass;
-  } else {
-    vcell[0] = 0.;
-    vcell[1] = 0.;
-    vcell[2] = 0.;
-  }
+    /* Normal case: set particle velocity to fluid velocity. */
+    p->v[0] = p->conserved.momentum[0] * inverse_mass;
+    p->v[1] = p->conserved.momentum[1] * inverse_mass;
+    p->v[2] = p->conserved.momentum[2] * inverse_mass;
 
 #ifdef SHADOWFAX_STEER_CELL_MOTION
-  /* To prevent stupid things like cell crossovers or generators that move
-     outside their cell, we steer the motion of the cell somewhat */
-  if (p->primitives.rho) {
     float centroid[3], d[3];
     float volume, csnd, R, vfac, fac, dnrm;
     voronoi_get_centroid(&p->cell, centroid);
@@ -449,32 +493,29 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       } else {
         vfac = csnd / dnrm;
       }
-    } else {
-      vfac = 0.0f;
+      p->v[0] += vfac * d[0];
+      p->v[1] += vfac * d[1];
+      p->v[2] += vfac * d[2];
     }
-    vcell[0] += vfac * d[0];
-    vcell[1] += vfac * d[1];
-    vcell[2] += vfac * d[2];
+#endif
+
+  } else {
+    p->v[0] = 0.;
+    p->v[1] = 0.;
+    p->v[2] = 0.;
   }
 #endif
 
-#if defined(SHADOWFAX_FIX_CELLS)
-  xp->v_full[0] = 0.;
-  xp->v_full[1] = 0.;
-  xp->v_full[2] = 0.;
+  /* Now make sure all velocity variables are up to date. */
+  xp->v_full[0] = p->v[0];
+  xp->v_full[1] = p->v[1];
+  xp->v_full[2] = p->v[2];
 
-  p->v[0] = 0.;
-  p->v[1] = 0.;
-  p->v[2] = 0.;
-#else
-  xp->v_full[0] = vcell[0];
-  xp->v_full[1] = vcell[1];
-  xp->v_full[2] = vcell[2];
-
-  p->v[0] = xp->v_full[0];
-  p->v[1] = xp->v_full[1];
-  p->v[2] = xp->v_full[2];
-#endif
+  if (p->gpart) {
+    p->gpart->v_full[0] = p->v[0];
+    p->gpart->v_full[1] = p->v[1];
+    p->gpart->v_full[2] = p->v[2];
+  }
 }
 
 /**
@@ -799,3 +840,5 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
 
   return cosmo->a3_inv * p->primitives.rho;
 }
+
+#endif /* SWIFT_SHADOWSWIFT_HYDRO_H */

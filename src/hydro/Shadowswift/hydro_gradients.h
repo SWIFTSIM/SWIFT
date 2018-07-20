@@ -86,7 +86,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
     struct part* pi, struct part* pj, float hi, float hj, const float* dx,
-    float r, float* xij_i, float* Wi, float* Wj, float mindt) {
+    float r, float* xij_i, float* Wi, float* Wj) {
 
   float dWi[5], dWj[5];
   float xij_j[3];
@@ -131,59 +131,6 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
            pj->primitives.gradients.P[2] * xij_j[2];
 
   hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, r);
-
-  /* time */
-  dWi[0] -= 0.5 * mindt * (Wi[1] * pi->primitives.gradients.rho[0] +
-                           Wi[2] * pi->primitives.gradients.rho[1] +
-                           Wi[3] * pi->primitives.gradients.rho[2] +
-                           Wi[0] * (pi->primitives.gradients.v[0][0] +
-                                    pi->primitives.gradients.v[1][1] +
-                                    pi->primitives.gradients.v[2][2]));
-  dWi[1] -= 0.5 * mindt * (Wi[1] * pi->primitives.gradients.v[0][0] +
-                           Wi[2] * pi->primitives.gradients.v[0][1] +
-                           Wi[3] * pi->primitives.gradients.v[0][2] +
-                           pi->primitives.gradients.P[0] / Wi[0]);
-  dWi[2] -= 0.5 * mindt * (Wi[1] * pi->primitives.gradients.v[1][0] +
-                           Wi[2] * pi->primitives.gradients.v[1][1] +
-                           Wi[3] * pi->primitives.gradients.v[1][2] +
-                           pi->primitives.gradients.P[1] / Wi[0]);
-  dWi[3] -= 0.5 * mindt * (Wi[1] * pi->primitives.gradients.v[2][0] +
-                           Wi[2] * pi->primitives.gradients.v[2][1] +
-                           Wi[3] * pi->primitives.gradients.v[2][2] +
-                           pi->primitives.gradients.P[2] / Wi[0]);
-  dWi[4] -=
-      0.5 * mindt * (Wi[1] * pi->primitives.gradients.P[0] +
-                     Wi[2] * pi->primitives.gradients.P[1] +
-                     Wi[3] * pi->primitives.gradients.P[2] +
-                     hydro_gamma * Wi[4] * (pi->primitives.gradients.v[0][0] +
-                                            pi->primitives.gradients.v[1][1] +
-                                            pi->primitives.gradients.v[2][2]));
-
-  dWj[0] -= 0.5 * mindt * (Wj[1] * pj->primitives.gradients.rho[0] +
-                           Wj[2] * pj->primitives.gradients.rho[1] +
-                           Wj[3] * pj->primitives.gradients.rho[2] +
-                           Wj[0] * (pj->primitives.gradients.v[0][0] +
-                                    pj->primitives.gradients.v[1][1] +
-                                    pj->primitives.gradients.v[2][2]));
-  dWj[1] -= 0.5 * mindt * (Wj[1] * pj->primitives.gradients.v[0][0] +
-                           Wj[2] * pj->primitives.gradients.v[0][1] +
-                           Wj[3] * pj->primitives.gradients.v[0][2] +
-                           pj->primitives.gradients.P[0] / Wj[0]);
-  dWj[2] -= 0.5 * mindt * (Wj[1] * pj->primitives.gradients.v[1][0] +
-                           Wj[2] * pj->primitives.gradients.v[1][1] +
-                           Wj[3] * pj->primitives.gradients.v[1][2] +
-                           pj->primitives.gradients.P[1] / Wj[0]);
-  dWj[3] -= 0.5 * mindt * (Wj[1] * pj->primitives.gradients.v[2][0] +
-                           Wj[2] * pj->primitives.gradients.v[2][1] +
-                           Wj[3] * pj->primitives.gradients.v[2][2] +
-                           pj->primitives.gradients.P[2] / Wj[0]);
-  dWj[4] -=
-      0.5 * mindt * (Wj[1] * pj->primitives.gradients.P[0] +
-                     Wj[2] * pj->primitives.gradients.P[1] +
-                     Wj[3] * pj->primitives.gradients.P[2] +
-                     hydro_gamma * Wj[4] * (pj->primitives.gradients.v[0][0] +
-                                            pj->primitives.gradients.v[1][1] +
-                                            pj->primitives.gradients.v[2][2]));
 
   Wi[0] += dWi[0];
   Wi[1] += dWi[1];
