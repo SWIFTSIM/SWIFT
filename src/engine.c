@@ -351,7 +351,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->super->end_force);
 
-	/* Link in the implicit tasks */
+        /* Link in the implicit tasks */
         scheduler_addunlock(s, c->init_grav, c->init_grav_out);
         scheduler_addunlock(s, c->grav_down_in, c->grav_down);
       }

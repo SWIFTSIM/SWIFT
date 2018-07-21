@@ -1532,7 +1532,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   /* Find this cell's top-level (great-)parent */
   struct cell *top = ci;
-  while(top->parent != NULL) top = top->parent;
+  while (top->parent != NULL) top = top->parent;
 
   /* Flag that contributions will be recieved */
   struct gravity_tensors *const multi_i = ci->multipole;
@@ -1541,8 +1541,8 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   /* Recover the top-level multipole (for distance checks) */
   struct gravity_tensors *const multi_top = top->multipole;
   const double CoM_rebuild_top[3] = {multi_top->CoM_rebuild[0],
-				     multi_top->CoM_rebuild[1],
-				     multi_top->CoM_rebuild[2]};
+                                     multi_top->CoM_rebuild[1],
+                                     multi_top->CoM_rebuild[2]};
 
   /* Loop over all the top-level cells and go for a M-M interaction if
    * well-separated */
