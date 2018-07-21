@@ -803,8 +803,11 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
  */
 static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
+/* Temporarily prevent MPI here */
+#ifndef WITH_MPI
   const struct space *sp = s->space;
   const struct engine *e = sp->e;
+#endif
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -833,6 +836,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         t->skip = 1;
         break;
       }
+
+/* Temporarily prevent MPI here */
+#ifndef WITH_MPI
 
       /* Should we split this task? */
       if (ci->split) {
@@ -872,6 +878,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           } /* Self-gravity only */
         }   /* Make tasks explicitly */
       }     /* Cell is split */
+#endif      /* WITH_MPI */
     }       /* Self interaction */
 
     /* Pair interaction? */
@@ -886,6 +893,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         t->skip = 1;
         break;
       }
+
+/* Temporarily prevent MPI here */
+#ifndef WITH_MPI
 
       /* Should we replace it with an M-M task? */
       if (cell_can_use_pair_mm(ci, cj, e, sp)) {
@@ -936,8 +946,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           }
         } /* Split the pair */
       }
-    } /* pair interaction? */
-  }   /* iterate over the current task. */
+#endif /* WITH_MPI */
+    }  /* pair interaction? */
+  }    /* iterate over the current task. */
 }
 
 /**
