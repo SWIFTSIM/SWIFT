@@ -17,7 +17,6 @@ Cosmology:
   
 Scheduler:
   max_top_level_cells:    8
-  cell_split_size:        50
   
 # Parameters governing the time integration
 TimeIntegration:
