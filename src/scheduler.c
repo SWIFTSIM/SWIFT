@@ -849,6 +849,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           int first_child = 0;
           while (ci->progeny[first_child] == NULL) first_child++;
           t->ci = ci->progeny[first_child];
+
           for (int k = first_child + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
               scheduler_splittask_gravity(
@@ -1057,10 +1058,10 @@ void scheduler_set_unlocks(struct scheduler *s) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that we are not overflowing */
     if (counts[s->unlock_ind[k]] < 0)
-      error("Task (type=%s/%s) unlocking more than %d other tasks!",
+      error("Task (type=%s/%s) unlocking more than %lld other tasks!",
             taskID_names[s->tasks[s->unlock_ind[k]].type],
             subtaskID_names[s->tasks[s->unlock_ind[k]].subtype],
-            (1 << (8 * sizeof(short int) - 1)) - 1);
+            (1LL << (8 * sizeof(short int) - 1)) - 1);
 #endif
   }
 
@@ -1398,9 +1399,9 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that we don't have more waits that what can be stored. */
     if (t->wait < 0)
-      error("Task (type=%s/%s) unlocked by more than %d tasks!",
+      error("Task (type=%s/%s) unlocked by more than %lld tasks!",
             taskID_names[t->type], subtaskID_names[t->subtype],
-            (1 << (8 * sizeof(t->wait) - 1)) - 1);
+            (1LL << (8 * sizeof(t->wait) - 1)) - 1);
 #endif
 
     /* Sets the waits of the dependances */
