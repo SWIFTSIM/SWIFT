@@ -106,7 +106,8 @@ const char *engine_policy_names[] = {"none",
                                      "reconstruct multi-poles",
                                      "cooling",
                                      "sourceterms",
-                                     "stars"};
+                                     "stars",
+                                     "structure finding"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
