@@ -12,7 +12,7 @@ StructureFinding:
   basename:             ./halo/stf       # Common part of the name of output files.
   output_time_format:   0                # Specifies format of delta_time. 0 for simulation steps and 1 for simulation time intervals.
   time_first:           0.               # Time of the first structure finding output (in internal units).
-  delta_time:           5                # Time difference between consecutive structure finding outputs (in internal units). Can either be given in simulation steps or simulation time intervals.
+  delta_time:           250               # Time difference between consecutive structure finding outputs (in internal units). Can either be given in simulation steps or simulation time intervals.
 
 # Define the system of units to use int VELOCIraptor. 
 VelociraptorUnitSystem:
