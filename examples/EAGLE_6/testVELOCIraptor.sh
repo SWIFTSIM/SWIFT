@@ -1,8 +1,8 @@
 #!/bin/bash
 
-SCRIPT_PATH=/home/james/Work/VELOCIraptor-dev/VELOCIraptor-STF/stf/examples
-TREEFROG_PATH=/home/james/Work/VELOCIraptor-STF/stf/bin
-VELOCIRAPTOR_PATH=/home/james/Work/VELOCIraptor-STF/stf
+VELOCIRAPTOR_PATH=/cosma5/data/dp004/dc-will2/VELOCIraptor-STF/stf
+SCRIPT_PATH=$VELOCIRAPTOR_PATH/examples
+TREEFROG_PATH=$VELOCIRAPTOR_PATH/bin
 
 # List each test that should be run
 declare -a DM_TEST_LIST=(6dfof_dmonly_sub)
