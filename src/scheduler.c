@@ -841,7 +841,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 #ifndef WITH_MPI
 
       /* Should we split this task? */
-      if (ci->split) {
+      if (cell_can_split_self_gravity_task(ci)) {
 
         if (scheduler_dosub && ci->gcount < space_subsize_self_grav) {
 
@@ -906,7 +906,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       }
 
       /* Should this task be split-up? */
-      if (ci->split && cj->split) {
+      if (cell_can_split_pair_gravity_task(ci) && cell_can_split_pair_gravity_task(cj)) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub && /* Use division to avoid integer overflow. */
