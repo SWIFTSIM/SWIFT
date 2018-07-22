@@ -607,7 +607,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_gravity_tas
     const struct cell *c) {
 
   /* Is the cell split ? */
-  return c->split;
+  return c->split && c->depth < space_subdepth_grav;
 }
 
 /**
@@ -620,7 +620,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_gravity_tas
     const struct cell *c) {
 
   /* Is the cell split ? */
-  return c->split;
+  return c->split && c->depth < space_subdepth_grav;
 }
 
 /**

@@ -66,6 +66,7 @@ int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
 int space_subsize_self_hydro = space_subsize_self_hydro_default;
 int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
+int space_subdepth_grav = space_subdepth_grav_default;
 int space_maxsize = space_maxsize_default;
 #ifdef SWIFT_DEBUG_CHECKS
 int last_cell_id;
