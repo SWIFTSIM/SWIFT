@@ -40,10 +40,7 @@
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_000(double r_x, double r_y, double r_z, double r_inv) {
-
-  return r_inv;
-}
+double D_000(double r_x, double r_y, double r_z, double r_inv) { return r_inv; }
 
 /*************************/
 /* 1st order derivatives */
@@ -57,7 +54,7 @@ INLINE static double D_000(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_100(double r_x, double r_y, double r_z, double r_inv) {
+double D_100(double r_x, double r_y, double r_z, double r_inv) {
 
   return -r_x * r_inv * r_inv * r_inv;
 }
@@ -70,7 +67,7 @@ INLINE static double D_100(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_010(double r_x, double r_y, double r_z, double r_inv) {
+double D_010(double r_x, double r_y, double r_z, double r_inv) {
 
   return -r_y * r_inv * r_inv * r_inv;
 }
@@ -83,7 +80,7 @@ INLINE static double D_010(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_001(double r_x, double r_y, double r_z, double r_inv) {
+double D_001(double r_x, double r_y, double r_z, double r_inv) {
 
   return -r_z * r_inv * r_inv * r_inv;
 }
@@ -100,7 +97,7 @@ INLINE static double D_001(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_200(double r_x, double r_y, double r_z, double r_inv) {
+double D_200(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv3 = r_inv * r_inv2;
   const double r_inv5 = r_inv3 * r_inv2;
@@ -115,7 +112,7 @@ INLINE static double D_200(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_020(double r_x, double r_y, double r_z, double r_inv) {
+double D_020(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv3 = r_inv * r_inv2;
   const double r_inv5 = r_inv3 * r_inv2;
@@ -130,7 +127,7 @@ INLINE static double D_020(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_002(double r_x, double r_y, double r_z, double r_inv) {
+double D_002(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv3 = r_inv * r_inv2;
   const double r_inv5 = r_inv3 * r_inv2;
@@ -146,7 +143,7 @@ INLINE static double D_002(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_110(double r_x, double r_y, double r_z, double r_inv) {
+double D_110(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv5 = r_inv2 * r_inv2 * r_inv;
   return 3. * r_x * r_y * r_inv5;
@@ -161,7 +158,7 @@ INLINE static double D_110(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_101(double r_x, double r_y, double r_z, double r_inv) {
+double D_101(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv5 = r_inv2 * r_inv2 * r_inv;
   return 3. * r_x * r_z * r_inv5;
@@ -176,7 +173,7 @@ INLINE static double D_101(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_011(double r_x, double r_y, double r_z, double r_inv) {
+double D_011(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv5 = r_inv2 * r_inv2 * r_inv;
   return 3. * r_y * r_z * r_inv5;
@@ -194,7 +191,7 @@ INLINE static double D_011(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_300(double r_x, double r_y, double r_z, double r_inv) {
+double D_300(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv5 = r_inv2 * r_inv2 * r_inv;
   const double r_inv7 = r_inv5 * r_inv2;
@@ -209,7 +206,7 @@ INLINE static double D_300(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_030(double r_x, double r_y, double r_z, double r_inv) {
+double D_030(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv5 = r_inv2 * r_inv2 * r_inv;
   const double r_inv7 = r_inv5 * r_inv2;
@@ -224,7 +221,7 @@ INLINE static double D_030(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_003(double r_x, double r_y, double r_z, double r_inv) {
+double D_003(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv5 = r_inv2 * r_inv2 * r_inv;
   const double r_inv7 = r_inv5 * r_inv2;
@@ -240,7 +237,7 @@ INLINE static double D_003(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_210(double r_x, double r_y, double r_z, double r_inv) {
+double D_210(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv5 = r_inv2 * r_inv2 * r_inv;
   const double r_inv7 = r_inv5 * r_inv2;
@@ -256,7 +253,7 @@ INLINE static double D_210(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_201(double r_x, double r_y, double r_z, double r_inv) {
+double D_201(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv5 = r_inv2 * r_inv2 * r_inv;
   const double r_inv7 = r_inv5 * r_inv2;
@@ -272,7 +269,7 @@ INLINE static double D_201(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_120(double r_x, double r_y, double r_z, double r_inv) {
+double D_120(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv5 = r_inv2 * r_inv2 * r_inv;
   const double r_inv7 = r_inv5 * r_inv2;
@@ -288,7 +285,7 @@ INLINE static double D_120(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_021(double r_x, double r_y, double r_z, double r_inv) {
+double D_021(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv5 = r_inv2 * r_inv2 * r_inv;
   const double r_inv7 = r_inv5 * r_inv2;
@@ -304,7 +301,7 @@ INLINE static double D_021(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_102(double r_x, double r_y, double r_z, double r_inv) {
+double D_102(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv5 = r_inv2 * r_inv2 * r_inv;
   const double r_inv7 = r_inv5 * r_inv2;
@@ -320,7 +317,7 @@ INLINE static double D_102(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_012(double r_x, double r_y, double r_z, double r_inv) {
+double D_012(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv2 = r_inv * r_inv;
   const double r_inv5 = r_inv2 * r_inv2 * r_inv;
   const double r_inv7 = r_inv5 * r_inv2;
@@ -336,7 +333,7 @@ INLINE static double D_012(double r_x, double r_y, double r_z, double r_inv) {
  * @param r_z z-coordinate of the distance vector (\f$ r_z \f$).
  * @param r_inv Inverse of the norm of the distance vector (\f$ |r|^{-1} \f$)
  */
-INLINE static double D_111(double r_x, double r_y, double r_z, double r_inv) {
+double D_111(double r_x, double r_y, double r_z, double r_inv) {
   const double r_inv3 = r_inv * r_inv * r_inv;
   const double r_inv7 = r_inv3 * r_inv3 * r_inv;
   return -15. * r_x * r_y * r_z * r_inv7;
@@ -351,7 +348,7 @@ INLINE static double D_111(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_004(double r_x, double r_y, double r_z, double r_inv) {
+double D_004(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_z * r_z * r_z * r_z) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
@@ -366,7 +363,7 @@ INLINE static double D_004(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_013(double r_x, double r_y, double r_z, double r_inv) {
+double D_013(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_y * r_z * r_z * r_z) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
@@ -380,7 +377,7 @@ INLINE static double D_013(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_022(double r_x, double r_y, double r_z, double r_inv) {
+double D_022(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_y * r_y * r_z * r_z) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -397,7 +394,7 @@ INLINE static double D_022(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_031(double r_x, double r_y, double r_z, double r_inv) {
+double D_031(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_y * r_y * r_y * r_z) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
@@ -410,7 +407,7 @@ INLINE static double D_031(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_040(double r_x, double r_y, double r_z, double r_inv) {
+double D_040(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_y * r_y * r_y * r_y) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
@@ -425,7 +422,7 @@ INLINE static double D_040(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_103(double r_x, double r_y, double r_z, double r_inv) {
+double D_103(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_x * r_z * r_z * r_z) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
@@ -439,7 +436,7 @@ INLINE static double D_103(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_112(double r_x, double r_y, double r_z, double r_inv) {
+double D_112(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_x * r_y * r_z * r_z) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -453,7 +450,7 @@ INLINE static double D_112(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_121(double r_x, double r_y, double r_z, double r_inv) {
+double D_121(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_x * r_y * r_y * r_z) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -467,7 +464,7 @@ INLINE static double D_121(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_130(double r_x, double r_y, double r_z, double r_inv) {
+double D_130(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_x * r_y * r_y * r_y) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
@@ -481,7 +478,7 @@ INLINE static double D_130(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_202(double r_x, double r_y, double r_z, double r_inv) {
+double D_202(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_x * r_x * r_z * r_z) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -498,7 +495,7 @@ INLINE static double D_202(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_211(double r_x, double r_y, double r_z, double r_inv) {
+double D_211(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_x * r_x * r_y * r_z) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -512,7 +509,7 @@ INLINE static double D_211(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_220(double r_x, double r_y, double r_z, double r_inv) {
+double D_220(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_x * r_x * r_y * r_y) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -529,7 +526,7 @@ INLINE static double D_220(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_301(double r_x, double r_y, double r_z, double r_inv) {
+double D_301(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_x * r_x * r_x * r_z) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
@@ -543,7 +540,7 @@ INLINE static double D_301(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_310(double r_x, double r_y, double r_z, double r_inv) {
+double D_310(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_x * r_x * r_x * r_y) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 3.0 *
@@ -556,7 +553,7 @@ INLINE static double D_310(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_400(double r_x, double r_y, double r_z, double r_inv) {
+double D_400(double r_x, double r_y, double r_z, double r_inv) {
   return +105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * (r_x * r_x * r_x * r_x) -
          15. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * 6.0 *
@@ -574,7 +571,7 @@ INLINE static double D_400(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_005(double r_x, double r_y, double r_z, double r_inv) {
+double D_005(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_z * r_z * r_z * r_z * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -590,7 +587,7 @@ INLINE static double D_005(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_014(double r_x, double r_y, double r_z, double r_inv) {
+double D_014(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_y * r_z * r_z * r_z * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -606,7 +603,7 @@ INLINE static double D_014(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_023(double r_x, double r_y, double r_z, double r_inv) {
+double D_023(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_y * r_y * r_z * r_z * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -624,7 +621,7 @@ INLINE static double D_023(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_032(double r_x, double r_y, double r_z, double r_inv) {
+double D_032(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_y * r_y * r_y * r_z * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -642,7 +639,7 @@ INLINE static double D_032(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_041(double r_x, double r_y, double r_z, double r_inv) {
+double D_041(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_y * r_y * r_y * r_y * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -657,7 +654,7 @@ INLINE static double D_041(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_050(double r_x, double r_y, double r_z, double r_inv) {
+double D_050(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_y * r_y * r_y * r_y * r_y) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -673,7 +670,7 @@ INLINE static double D_050(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_104(double r_x, double r_y, double r_z, double r_inv) {
+double D_104(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_z * r_z * r_z * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -689,7 +686,7 @@ INLINE static double D_104(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_113(double r_x, double r_y, double r_z, double r_inv) {
+double D_113(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_y * r_z * r_z * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -703,7 +700,7 @@ INLINE static double D_113(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_122(double r_x, double r_y, double r_z, double r_inv) {
+double D_122(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_y * r_y * r_z * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -720,7 +717,7 @@ INLINE static double D_122(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_131(double r_x, double r_y, double r_z, double r_inv) {
+double D_131(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_y * r_y * r_y * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -734,7 +731,7 @@ INLINE static double D_131(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_140(double r_x, double r_y, double r_z, double r_inv) {
+double D_140(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_y * r_y * r_y * r_y) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -750,7 +747,7 @@ INLINE static double D_140(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_203(double r_x, double r_y, double r_z, double r_inv) {
+double D_203(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_x * r_z * r_z * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -768,7 +765,7 @@ INLINE static double D_203(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_212(double r_x, double r_y, double r_z, double r_inv) {
+double D_212(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_x * r_y * r_z * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -785,7 +782,7 @@ INLINE static double D_212(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_221(double r_x, double r_y, double r_z, double r_inv) {
+double D_221(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_x * r_y * r_y * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -802,7 +799,7 @@ INLINE static double D_221(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_230(double r_x, double r_y, double r_z, double r_inv) {
+double D_230(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_x * r_y * r_y * r_y) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -820,7 +817,7 @@ INLINE static double D_230(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_302(double r_x, double r_y, double r_z, double r_inv) {
+double D_302(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_z * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -838,7 +835,7 @@ INLINE static double D_302(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_311(double r_x, double r_y, double r_z, double r_inv) {
+double D_311(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_y * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -852,7 +849,7 @@ INLINE static double D_311(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_320(double r_x, double r_y, double r_z, double r_inv) {
+double D_320(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_y * r_y) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -870,7 +867,7 @@ INLINE static double D_320(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_401(double r_x, double r_y, double r_z, double r_inv) {
+double D_401(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_x * r_z) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -886,7 +883,7 @@ INLINE static double D_401(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_410(double r_x, double r_y, double r_z, double r_inv) {
+double D_410(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_x * r_y) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -901,7 +898,7 @@ INLINE static double D_410(double r_x, double r_y, double r_z, double r_inv) {
  *
  * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)
  */
-INLINE static double D_500(double r_x, double r_y, double r_z, double r_inv) {
+double D_500(double r_x, double r_y, double r_z, double r_inv) {
   return -945. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
              r_inv * r_inv * r_inv * (r_x * r_x * r_x * r_x * r_x) +
          105. * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv * r_inv *
@@ -924,7 +921,7 @@ void test(double x, double y, double tol, double min, const char* name) {
   /*   message("'%s' (%e -- %e) OK!", name, x, y); */
 }
 
-int main() {
+int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -956,7 +953,7 @@ int main() {
     /* Compute all derivatives */
     struct potential_derivatives_M2L pot;
     compute_potential_derivatives_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
-                                      &pot);
+                                      /*periodic*/ 0, /* 1/r_s */ 0., &pot);
 
     /* Minimal value we care about */
     const double min = 1e-9;

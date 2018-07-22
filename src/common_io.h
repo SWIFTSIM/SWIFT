@@ -77,7 +77,9 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 void io_write_code_description(hid_t h_file);
 void io_write_engine_policy(hid_t h_file, const struct engine* e);
 
-void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank);
+void io_read_unit_system(hid_t h_file, struct unit_system* ic_units,
+                         const struct unit_system* internal_units,
+                         int mpi_rank);
 void io_write_unit_system(hid_t h_grp, const struct unit_system* us,
                           const char* groupName);
 
@@ -101,5 +103,10 @@ void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,
 void io_duplicate_star_gparts(struct threadpool* tp, struct spart* const sparts,
                               struct gpart* const gparts, size_t Nstars,
                               size_t Ndm);
+
+void io_check_output_fields(const struct swift_params* params,
+                            const long long N_total[3]);
+
+void io_write_output_field_parameter(const char* filename);
 
 #endif /* SWIFT_COMMON_IO_H */

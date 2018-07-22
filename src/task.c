@@ -48,15 +48,11 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",          "sort",           "self",
-    "pair",          "sub_self",       "sub_pair",
-    "init_grav",     "ghost_in",       "ghost",
-    "ghost_out",     "extra_ghost",    "drift_part",
-    "drift_gpart",   "end_force",      "kick1",
-    "kick2",         "timestep",       "send",
-    "recv",          "grav_top_level", "grav_long_range",
-    "grav_ghost_in", "grav_ghost_out", "grav_mm",
-    "grav_down",     "cooling",        "sourceterms"};
+    "none",        "sort",       "self",        "pair",      "sub_self",
+    "sub_pair",    "init_grav",  "ghost_in",    "ghost",     "ghost_out",
+    "extra_ghost", "drift_part", "drift_gpart", "end_force", "kick1",
+    "kick2",       "timestep",   "send",        "recv",      "grav_long_range",
+    "grav_mm",     "grav_down",  "grav_mesh",   "cooling",   "sourceterms"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
@@ -171,14 +167,14 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_init_grav:
-    case task_type_grav_top_level:
-    case task_type_grav_long_range:
     case task_type_grav_mm:
       return task_action_multipole;
       break;
 
     case task_type_drift_gpart:
     case task_type_grav_down:
+    case task_type_grav_mesh:
+    case task_type_grav_long_range:
       return task_action_gpart;
       break;
 
@@ -289,6 +285,7 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
+    case task_type_grav_mesh:
       cell_gunlocktree(ci);
       break;
 
@@ -320,8 +317,8 @@ void task_unlock(struct task *t) {
       cell_munlocktree(ci);
       break;
 
-    case task_type_grav_long_range:
     case task_type_grav_mm:
+    case task_type_grav_long_range:
       cell_munlocktree(ci);
       break;
 
@@ -384,6 +381,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
+    case task_type_grav_mesh:
       if (ci->ghold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
       break;

@@ -78,7 +78,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
                        enum velocity_types vel) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->parts, part_align,
@@ -129,7 +129,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         h_max = fmax(h_max, part->h);
         part->id = ++(*partId);
 
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 
 #ifdef SHADOWFAX_SPH
@@ -237,7 +237,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2],
             hydro_get_comoving_density(&main_cell->parts[pid]),
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
             main_cell->parts[pid].density.rho_dh,
@@ -512,9 +512,9 @@ int main(int argc, char *argv[]) {
   }
 
   /* Create output file names. */
-  sprintf(swiftOutputFileName, "swift_periodic_BC_%s.dat",
+  sprintf(swiftOutputFileName, "swift_periodic_BC_%.150s.dat",
           outputFileNameExtension);
-  sprintf(bruteForceOutputFileName, "brute_force_periodic_BC_%s.dat",
+  sprintf(bruteForceOutputFileName, "brute_force_periodic_BC_%.150s.dat",
           outputFileNameExtension);
 
   /* Delete files if they already exist. */

@@ -39,6 +39,7 @@
 #include "collectgroup.h"
 #include "cooling_struct.h"
 #include "gravity_properties.h"
+#include "mesh_gravity.h"
 #include "parser.h"
 #include "partition.h"
 #include "potential.h"
@@ -187,13 +188,18 @@ struct engine {
   integertime_t ti_beg_max;
 
   /* Number of particles updated in the previous step */
-  size_t updates, g_updates, s_updates;
+  long long updates, g_updates, s_updates;
+
+  /* Number of updates since the last rebuild */
+  long long updates_since_rebuild;
+  long long g_updates_since_rebuild;
+  long long s_updates_since_rebuild;
 
   /* Properties of the previous step */
   int step_props;
 
   /* Total numbers of particles in the system. */
-  long long total_nr_parts, total_nr_gparts;
+  long long total_nr_parts, total_nr_gparts, total_nr_sparts;
 
   /* The internal system of units */
   const struct unit_system *internal_units;
@@ -212,6 +218,7 @@ struct engine {
 
   char snapshot_base_name[PARSER_MAX_LINE_SIZE];
   int snapshot_compression;
+  int snapshot_label_delta;
   struct unit_system *snapshot_units;
   int snapshot_output_count;
 
@@ -243,9 +250,6 @@ struct engine {
 
   /* The current step number. */
   int step;
-
-  /* The number of particles updated in the previous step. */
-  int count_step;
 
   /* Data for the threads' barrier. */
   swift_barrier_t wait_barrier;
@@ -292,11 +296,11 @@ struct engine {
 
   /* Linked list for cell-task association. */
   struct link *links;
-  int nr_links, size_links;
+  size_t nr_links, size_links;
 
   /* Average number of tasks per cell. Used to estimate the sizes
    * of the various task arrays. */
-  int tasks_per_cell;
+  size_t tasks_per_cell;
 
   /* Are we talkative ? */
   int verbose;
@@ -313,6 +317,9 @@ struct engine {
   /* Properties of the self-gravity scheme */
   struct gravity_props *gravity_properties;
 
+  /* The mesh used for long-range gravity forces */
+  struct pm_mesh *mesh;
+
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
 
@@ -326,7 +333,7 @@ struct engine {
   struct sourceterms *sourceterms;
 
   /* The (parsed) parameter file */
-  const struct swift_params *parameter_file;
+  struct swift_params *parameter_file;
 
   /* Temporary struct to hold a group of deferable properties (in MPI mode
    * these are reduced together, but may not be required just yet). */
@@ -365,22 +372,20 @@ void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
-void engine_init(struct engine *e, struct space *s,
-                 const struct swift_params *params, long long Ngas,
-                 long long Ndm, int policy, int verbose,
-                 struct repartition *reparttype,
+void engine_init(struct engine *e, struct space *s, struct swift_params *params,
+                 long long Ngas, long long Ngparts, long long Nstars,
+                 int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
-                 struct gravity_props *gravity,
+                 struct gravity_props *gravity, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
                  const struct chemistry_global_data *chemistry,
                  struct sourceterms *sourceterms);
-void engine_config(int restart, struct engine *e,
-                   const struct swift_params *params, int nr_nodes, int nodeID,
-                   int nr_threads, int with_aff, int verbose,
-                   const char *restart_file);
+void engine_config(int restart, struct engine *e, struct swift_params *params,
+                   int nr_nodes, int nodeID, int nr_threads, int with_aff,
+                   int verbose, const char *restart_file);
 void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
@@ -400,8 +405,8 @@ void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
-void engine_pin();
-void engine_unpin();
+void engine_pin(void);
+void engine_unpin(void);
 void engine_clean(struct engine *e);
 int engine_estimate_nr_tasks(struct engine *e);
 

@@ -24,7 +24,7 @@ import sys
 # Generates a swift IC file for the Kelvin-Helmholtz vortex in a periodic box
 
 # Parameters
-L2    = 128       # Particles along one edge in the low-density region
+L2    = 256       # Particles along one edge in the low-density region
 gamma = 5./3.     # Gas adiabatic index
 P1    = 2.5       # Central region pressure
 P2    = 2.5       # Outskirts pressure

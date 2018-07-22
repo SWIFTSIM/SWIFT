@@ -23,6 +23,7 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <ctype.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -727,4 +728,47 @@ long get_maxrss() {
   struct rusage usage;
   getrusage(RUSAGE_SELF, &usage);
   return usage.ru_maxrss;
+}
+
+/**
+ * @brief trim leading white space from a string.
+ *
+ * Returns pointer to first character.
+ *
+ * @param s the string.
+ * @result the result.
+ */
+char *trim_leading(char *s) {
+  if (s == NULL || strlen(s) < 2) return s;
+  while (isspace(*s)) s++;
+  return s;
+}
+
+/**
+ * @brief trim trailing white space from a string.
+ *
+ * Modifies the string by adding a NULL to the end.
+ *
+ * @param s the string.
+ * @result the result.
+ */
+char *trim_trailing(char *s) {
+  if (s == NULL || strlen(s) < 2) return s;
+  char *end = s + strlen(s) - 1;
+  while (isspace(*end)) end--;
+  *(end + 1) = '\0';
+  return s;
+}
+
+/**
+ * @brief trim leading and trailing white space from a string.
+ *
+ * Can modify the string by adding a NULL to the end.
+ *
+ * @param s the string.
+ * @result the result.
+ */
+char *trim_both(char *s) {
+  if (s == NULL || strlen(s) < 2) return s;
+  return trim_trailing(trim_leading(s));
 }

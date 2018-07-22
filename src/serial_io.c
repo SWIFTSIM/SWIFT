@@ -49,13 +49,10 @@
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "part_type.h"
 #include "stars_io.h"
 #include "units.h"
 #include "xmf.h"
-
-/*-----------------------------------------------------------------------------
- * Routines reading an IC file
- *-----------------------------------------------------------------------------*/
 
 /**
  * @brief Reads a data array from a given HDF5 group.
@@ -68,7 +65,10 @@
  * @param internal_units The #unit_system used internally
  * @param ic_units The #unit_system used in the ICs
  * @param cleanup_h Are we removing h-factors from the ICs?
+ * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
+ * IC velocities?
  * @param h The value of the reduced Hubble constant to use for cleaning.
+ * @param a The current value of the scale-factor.
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  * the part array will be written once the structures have been stabilized.
@@ -76,7 +76,8 @@
 void readArray(hid_t grp, const struct io_props props, size_t N,
                long long N_total, long long offset,
                const struct unit_system* internal_units,
-               const struct unit_system* ic_units, int cleanup_h, double h) {
+               const struct unit_system* ic_units, int cleanup_h,
+               int cleanup_sqrt_a, double h, double a) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -158,17 +159,32 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
   /* Clean-up h if necessary */
   const float h_factor_exp = units_h_factor(internal_units, props.units);
   if (cleanup_h && h_factor_exp != 0.f && exist != 0) {
-    const double h_factor = pow(h, h_factor_exp);
 
     /* message("Multipltying '%s' by h^%f=%f", props.name, h_factor_exp,
      * h_factor); */
 
     if (io_is_double_precision(props.type)) {
       double* temp_d = (double*)temp;
+      const double h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= h_factor;
     } else {
       float* temp_f = (float*)temp;
+      const float h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= h_factor;
+    }
+  }
+
+  /* Clean-up a if necessary */
+  if (cleanup_sqrt_a && a != 1. && (strcmp(props.name, "Velocities") == 0)) {
+
+    if (io_is_double_precision(props.type)) {
+      double* temp_d = (double*)temp;
+      const double vel_factor = sqrt(a);
+      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= vel_factor;
+    } else {
+      float* temp_f = (float*)temp;
+      const float vel_factor = sqrt(a);
+      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= vel_factor;
     }
   }
 
@@ -183,10 +199,6 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
   H5Sclose(h_memspace);
   H5Dclose(h_data);
 }
-
-/*-----------------------------------------------------------------------------
- * Routines writing an output file
- *-----------------------------------------------------------------------------*/
 
 void prepareArray(const struct engine* e, hid_t grp, char* fileName,
                   FILE* xmfFile, char* partTypeGroupName,
@@ -232,6 +244,11 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
   if (h_err < 0)
     error("Error while setting chunk size (%llu, %llu) for field '%s'.",
           chunk_shape[0], chunk_shape[1], props.name);
+
+  /* Impose check-sum to verify data corruption */
+  h_err = H5Pset_fletcher32(h_prop);
+  if (h_err < 0)
+    error("Error while setting checksum options for field '%s'.", props.name);
 
   /* Impose data compression */
   if (e->snapshot_compression > 0) {
@@ -387,7 +404,10 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param with_gravity Are we reading/creating #gpart arrays ?
  * @param with_stars Are we reading star particles ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
+ * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
+ * IC velocities?
  * @param h The value of the reduced Hubble constant to use for correction.
+ * @param a The current value of the scale-factor.
  * @param mpi_rank The MPI rank of this node
  * @param mpi_size The number of MPI ranks
  * @param comm The MPI communicator
@@ -408,8 +428,9 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     struct spart** sparts, size_t* Ngas, size_t* Ngparts,
                     size_t* Nstars, int* periodic, int* flag_entropy,
                     int with_hydro, int with_gravity, int with_stars,
-                    int cleanup_h, double h, int mpi_rank, int mpi_size,
-                    MPI_Comm comm, MPI_Info info, int n_threads, int dry_run) {
+                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
+                    int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
+                    int n_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -497,7 +518,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
     /* Read the unit system used in the ICs */
     if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
-    io_read_unit_system(h_file, ic_units, mpi_rank);
+    io_read_unit_system(h_file, ic_units, internal_units, mpi_rank);
 
     if (units_are_equal(ic_units, internal_units)) {
 
@@ -650,7 +671,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
         if (!dry_run)
           for (int i = 0; i < num_fields; ++i)
             readArray(h_grp, list[i], Nparticles, N_total[ptype], offset[ptype],
-                      internal_units, ic_units, cleanup_h, h);
+                      internal_units, ic_units, cleanup_h, cleanup_sqrt_a, h,
+                      a);
 
         /* Close particle group */
         H5Gclose(h_grp);
@@ -727,6 +749,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
   const struct cooling_function_data* cooling = e->cooling_func;
+  struct swift_params* params = e->parameter_file;
   FILE* xmfFile = 0;
 
   /* Number of unassociated gparts */
@@ -734,8 +757,12 @@ void write_output_serial(struct engine* e, const char* baseName,
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           e->snapshot_output_count);
+  if (e->snapshot_label_delta == 1)
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->snapshot_output_count);
+  else
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
+             e->snapshot_output_count * e->snapshot_label_delta);
 
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas, Ndm, 0, 0, Nstars, 0};
@@ -868,7 +895,14 @@ void write_output_serial(struct engine* e, const char* baseName,
     h_grp =
         H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating parameters group");
-    parser_write_params_to_hdf5(e->parameter_file, h_grp);
+    parser_write_params_to_hdf5(e->parameter_file, h_grp, 1);
+    H5Gclose(h_grp);
+
+    /* Print the runtime unused parameters */
+    h_grp = H5Gcreate(h_file, "/UnusedParameters", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating parameters group");
+    parser_write_params_to_hdf5(e->parameter_file, h_grp, 0);
     H5Gclose(h_grp);
 
     /* Print the system of Units used in the spashot */
@@ -1001,11 +1035,20 @@ void write_output_serial(struct engine* e, const char* baseName,
             error("Particle Type %d not yet supported. Aborting", ptype);
         }
 
-        /* Write everything */
-        for (int i = 0; i < num_fields; ++i)
-          writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
-                     Nparticles, N_total[ptype], mpi_rank, offset[ptype],
-                     internal_units, snapshot_units);
+        /* Write everything that is not cancelled */
+        for (int i = 0; i < num_fields; ++i) {
+
+          /* Did the user cancel this field? */
+          char field[PARSER_MAX_LINE_SIZE];
+          sprintf(field, "SelectOutput:%s_%s", list[i].name,
+                  part_type_names[ptype]);
+          int should_write = parser_get_opt_param_int(params, field, 1);
+
+          if (should_write)
+            writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
+                       Nparticles, N_total[ptype], mpi_rank, offset[ptype],
+                       internal_units, snapshot_units);
+        }
 
         /* Free temporary array */
         if (dmparts) {

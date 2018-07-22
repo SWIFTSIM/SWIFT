@@ -38,7 +38,7 @@
 void dump_mapper(void *map_data, int num_elements, void *extra_data) {
   struct dump *d = (struct dump *)extra_data;
   size_t offset;
-  char *out_string = dump_get(d, 7, &offset);
+  char *out_string = (char *)dump_get(d, 7, &offset);
   char out_buff[8];
   /* modulo due to bug in gcc, should be removed */
   snprintf(out_buff, 8, "%06zi\n", (offset / 7) % 1000000);
@@ -98,6 +98,8 @@ int main(int argc, char *argv[]) {
 }
 
 #else
+
+#include <stdio.h>
 
 int main(int argc, char *argv[]) {
   printf("No posix_fallocate, not testing anything.\n");

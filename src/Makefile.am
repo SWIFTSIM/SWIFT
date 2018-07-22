@@ -25,7 +25,7 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 GIT_CMD = @GIT_CMD@
 
 # Additional dependencies for shared libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(GRACKLE_LIB) $(GSL_LIBS)
+EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIB) $(GSL_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)
@@ -47,7 +47,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     sourceterms.h sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
     gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
-    chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h velociraptor_interface.h
+    chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
+    mesh_gravity.h cbrt.h velociraptor_interface.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
@@ -55,15 +56,15 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potential.c hydro_properties.c \
-    runner_doiact_fft.c threadpool.c cooling.c sourceterms.c \
+    threadpool.c cooling.c sourceterms.c \
     statistics.c runner_doiact_vec.c profiler.c dump.c logger.c \
     part_type.c xmf.c gravity_properties.c gravity.c \
     collectgroup.c hydro_space.c equation_of_state.c \
-    chemistry.c cosmology.c restart.c velociraptor_interface.c
+    chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
-		 kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h runner_doiact_fft.h \
+		 kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h  \
                  runner_doiact_nosort.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
 		 dimension.h part_type.h periodic.h memswap.h dump.h logger.h sign.h \
 		 gravity.h gravity_io.h gravity_cache.h \
@@ -81,17 +82,28 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h \
 		 hydro/PressureEntropy/hydro.h hydro/PressureEntropy/hydro_iact.h hydro/PressureEntropy/hydro_io.h \
                  hydro/PressureEntropy/hydro_debug.h hydro/PressureEntropy/hydro_part.h \
-		 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h \
-                 hydro/Gizmo/hydro_io.h hydro/Gizmo/hydro_debug.h \
-                 hydro/Gizmo/hydro_part.h \
-                 hydro/Gizmo/hydro_gradients_gizmo.h \
-                 hydro/Gizmo/hydro_gradients.h \
-                 hydro/Gizmo/hydro_gradients_sph.h \
-                 hydro/Gizmo/hydro_slope_limiters_cell.h \
-                 hydro/Gizmo/hydro_slope_limiters_face.h \
-                 hydro/Gizmo/hydro_slope_limiters.h \
-                 hydro/Gizmo/hydro_unphysical.h \
-                 hydro/Gizmo/hydro_velocities.h \
+		 hydro/GizmoMFV/hydro.h hydro/GizmoMFV/hydro_iact.h \
+                 hydro/GizmoMFV/hydro_io.h hydro/GizmoMFV/hydro_debug.h \
+                 hydro/GizmoMFV/hydro_part.h \
+                 hydro/GizmoMFV/hydro_gradients_gizmo.h \
+                 hydro/GizmoMFV/hydro_gradients.h \
+                 hydro/GizmoMFV/hydro_gradients_sph.h \
+                 hydro/GizmoMFV/hydro_slope_limiters_cell.h \
+                 hydro/GizmoMFV/hydro_slope_limiters_face.h \
+                 hydro/GizmoMFV/hydro_slope_limiters.h \
+                 hydro/GizmoMFV/hydro_unphysical.h \
+                 hydro/GizmoMFV/hydro_velocities.h \
+		 hydro/GizmoMFM/hydro.h hydro/GizmoMFM/hydro_iact.h \
+                 hydro/GizmoMFM/hydro_io.h hydro/GizmoMFM/hydro_debug.h \
+                 hydro/GizmoMFM/hydro_part.h \
+                 hydro/GizmoMFM/hydro_gradients_gizmo.h \
+                 hydro/GizmoMFM/hydro_gradients.h \
+                 hydro/GizmoMFM/hydro_gradients_sph.h \
+                 hydro/GizmoMFM/hydro_slope_limiters_cell.h \
+                 hydro/GizmoMFM/hydro_slope_limiters_face.h \
+                 hydro/GizmoMFM/hydro_slope_limiters.h \
+                 hydro/GizmoMFM/hydro_unphysical.h \
+                 hydro/GizmoMFM/hydro_velocities.h \
                  hydro/Shadowswift/hydro_debug.h \
                  hydro/Shadowswift/hydro_gradients.h hydro/Shadowswift/hydro.h \
                  hydro/Shadowswift/hydro_iact.h \

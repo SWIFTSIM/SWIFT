@@ -31,22 +31,38 @@
 #include "error.h"
 #include "gravity.h"
 #include "kernel_gravity.h"
+#include "kernel_long_gravity.h"
 
 #define gravity_props_default_a_smooth 1.25f
 #define gravity_props_default_r_cut_max 4.5f
 #define gravity_props_default_r_cut_min 0.1f
+#define gravity_props_default_rebuild_frequency 0.01f
 
-void gravity_props_init(struct gravity_props *p,
-                        const struct swift_params *params,
-                        const struct cosmology *cosmo) {
+void gravity_props_init(struct gravity_props *p, struct swift_params *params,
+                        const struct cosmology *cosmo, int with_cosmology) {
+
+  /* Tree updates */
+  p->rebuild_frequency =
+      parser_get_opt_param_float(params, "Gravity:rebuild_frequency",
+                                 gravity_props_default_rebuild_frequency);
+
+  if (p->rebuild_frequency < 0.f || p->rebuild_frequency > 1.f)
+    error("Invalid tree rebuild frequency. Must be in [0., 1.]");
 
   /* Tree-PM parameters */
+  p->mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
   p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
                                            gravity_props_default_a_smooth);
-  p->r_cut_max = parser_get_opt_param_float(params, "Gravity:r_cut_max",
-                                            gravity_props_default_r_cut_max);
-  p->r_cut_min = parser_get_opt_param_float(params, "Gravity:r_cut_min",
-                                            gravity_props_default_r_cut_min);
+  p->r_cut_max_ratio = parser_get_opt_param_float(
+      params, "Gravity:r_cut_max", gravity_props_default_r_cut_max);
+  p->r_cut_min_ratio = parser_get_opt_param_float(
+      params, "Gravity:r_cut_min", gravity_props_default_r_cut_min);
+
+  if (p->mesh_size % 2 != 0)
+    error("The mesh side-length must be an even number.");
+
+  if (p->a_smooth <= 0.)
+    error("The mesh smoothing scale 'a_smooth' must be > 0.");
 
   /* Time integration */
   p->eta = parser_get_param_float(params, "Gravity:eta");
@@ -58,10 +74,16 @@ void gravity_props_init(struct gravity_props *p,
   p->theta_crit_inv = 1. / p->theta_crit;
 
   /* Softening parameters */
-  p->epsilon_comoving =
-      parser_get_param_double(params, "Gravity:comoving_softening");
-  p->epsilon_max_physical =
-      parser_get_param_double(params, "Gravity:max_physical_softening");
+  if (with_cosmology) {
+    p->epsilon_comoving =
+        parser_get_param_double(params, "Gravity:comoving_softening");
+    p->epsilon_max_physical =
+        parser_get_param_double(params, "Gravity:max_physical_softening");
+  } else {
+    p->epsilon_max_physical =
+        parser_get_param_double(params, "Gravity:max_physical_softening");
+    p->epsilon_comoving = p->epsilon_max_physical;
+  }
 
   /* Set the softening to the current time */
   gravity_update(p, cosmo);
@@ -97,6 +119,9 @@ void gravity_props_print(const struct gravity_props *p) {
 
   message("Self-gravity opening angle:  theta=%.4f", p->theta_crit);
 
+  message("Self-gravity softening functional form: %s",
+          kernel_gravity_softening_name);
+
   message(
       "Self-gravity comoving softening:    epsilon=%.4f (Plummer equivalent: "
       "%.4f)",
@@ -109,10 +134,17 @@ void gravity_props_print(const struct gravity_props *p) {
       p->epsilon_max_physical * kernel_gravity_softening_plummer_equivalent,
       p->epsilon_max_physical);
 
+  message("Self-gravity mesh side-length: N=%d", p->mesh_size);
   message("Self-gravity mesh smoothing-scale: a_smooth=%f", p->a_smooth);
 
-  message("Self-gravity tree cut-off: r_cut_max=%f", p->r_cut_max);
-  message("Self-gravity truncation cut-off: r_cut_min=%f", p->r_cut_min);
+  message("Self-gravity tree cut-off ratio: r_cut_max=%f", p->r_cut_max_ratio);
+  message("Self-gravity truncation cut-off ratio: r_cut_min=%f",
+          p->r_cut_min_ratio);
+
+  message("Self-gravity mesh truncation function: %s",
+          kernel_long_gravity_truncation_name);
+
+  message("Self-gravity tree update frequency: f=%f", p->rebuild_frequency);
 }
 
 #if defined(HAVE_HDF5)
@@ -120,6 +152,8 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
                                   const struct gravity_props *p) {
 
   io_write_attribute_f(h_grpgrav, "Time integration eta", p->eta);
+  io_write_attribute_s(h_grpgrav, "Softening style",
+                       kernel_gravity_softening_name);
   io_write_attribute_f(
       h_grpgrav, "Comoving softening length",
       p->epsilon_comoving * kernel_gravity_softening_plummer_equivalent);
@@ -135,8 +169,12 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
   io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit);
   io_write_attribute_d(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
   io_write_attribute_f(h_grpgrav, "Mesh a_smooth", p->a_smooth);
-  io_write_attribute_f(h_grpgrav, "Mesh r_cut_max", p->r_cut_max);
-  io_write_attribute_f(h_grpgrav, "Mesh r_cut_min", p->r_cut_min);
+  io_write_attribute_f(h_grpgrav, "Mesh r_cut_max ratio", p->r_cut_max_ratio);
+  io_write_attribute_f(h_grpgrav, "Mesh r_cut_min ratio", p->r_cut_min_ratio);
+  io_write_attribute_f(h_grpgrav, "Tree update frequency",
+                       p->rebuild_frequency);
+  io_write_attribute_s(h_grpgrav, "Mesh truncation function",
+                       kernel_long_gravity_truncation_name);
 }
 #endif
 
@@ -158,7 +196,7 @@ void gravity_props_struct_dump(const struct gravity_props *p, FILE *stream) {
  * @param p the struct
  * @param stream the file stream
  */
-void gravity_props_struct_restore(const struct gravity_props *p, FILE *stream) {
+void gravity_props_struct_restore(struct gravity_props *p, FILE *stream) {
   restart_read_blocks((void *)p, sizeof(struct gravity_props), 1, stream, NULL,
                       "gravity props");
 }

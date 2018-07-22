@@ -49,10 +49,12 @@
  *
  * Keep in mind that this function only works when the underlying data
  * is aligned to the vector length, e.g. with the @c
- * __attribute__((aligned(32)))
- * syntax!
+ * __attribute__((aligned(32))) syntax!
  * Furthermore, register re-labeling only seems to work when the code is
  * compiled with @c -funroll-loops.
+ *
+ * Note that GCC (at least until 7.3) produces incorrect AVX512 code here
+ * by automatically assuming alignment.
  *
  * @param void_a Pointer to the first element.
  * @param void_b Pointer to the second element.
@@ -61,7 +63,7 @@
 __attribute__((always_inline)) inline void memswap(void *void_a, void *void_b,
                                                    size_t bytes) {
   char *a = (char *)void_a, *b = (char *)void_b;
-#ifdef __AVX512F__
+#if defined(__AVX512F__) && defined(__INTEL_COMPILER)
   swap_loop(__m512i, a, b, bytes);
 #endif
 #ifdef __AVX__

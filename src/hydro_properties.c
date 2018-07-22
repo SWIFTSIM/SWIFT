@@ -52,7 +52,7 @@
 void hydro_props_init(struct hydro_props *p,
                       const struct phys_const *phys_const,
                       const struct unit_system *us,
-                      const struct swift_params *params) {
+                      struct swift_params *params) {
 
   /* Kernel properties */
   p->eta_neighbours = parser_get_param_float(params, "SPH:resolution_eta");
@@ -72,6 +72,7 @@ void hydro_props_init(struct hydro_props *p,
   /* change the meaning of target_neighbours and delta_neighbours */
   p->target_neighbours = 1.0f;
   p->delta_neighbours = 0.0f;
+  p->eta_neighbours = 1.0f;
 #endif
 
   /* Maximal smoothing length */

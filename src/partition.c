@@ -561,7 +561,7 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
     struct task *t = &tasks[j];
 
     /* Skip un-interesting tasks. */
-    if (t->cost == 0) continue;
+    if (t->cost == 0.f) continue;
 
     /* Get the task weight based on costs. */
     double w = (double)t->cost;
@@ -1041,7 +1041,7 @@ void partition_initial_partition(struct partition *initial_partition,
  */
 void partition_init(struct partition *partition,
                     struct repartition *repartition,
-                    const struct swift_params *params, int nr_nodes) {
+                    struct swift_params *params, int nr_nodes) {
 
 #ifdef WITH_MPI
 
@@ -1095,12 +1095,8 @@ void partition_init(struct partition *partition,
 
   /* In case of grid, read more parameters */
   if (part_type[0] == 'g') {
-    partition->grid[0] = parser_get_opt_param_int(
-        params, "DomainDecomposition:initial_grid_x", partition->grid[0]);
-    partition->grid[1] = parser_get_opt_param_int(
-        params, "DomainDecomposition:initial_grid_y", partition->grid[1]);
-    partition->grid[2] = parser_get_opt_param_int(
-        params, "DomainDecomposition:initial_grid_z", partition->grid[2]);
+    parser_get_opt_param_int_array(params, "DomainDecomposition:initial_grid",
+                                   3, partition->grid);
   }
 
   /* Now let's check what the user wants as a repartition strategy */

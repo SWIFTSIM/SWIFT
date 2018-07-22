@@ -146,6 +146,24 @@ struct space {
   /*! The top-level FFT task */
   struct task *grav_top_level;
 
+  /*! Minimal mass of all the #part */
+  float min_part_mass;
+
+  /*! Minimal mass of all the dark-matter #gpart */
+  float min_gpart_mass;
+
+  /*! Minimal mass of all the #spart */
+  float min_spart_mass;
+
+  /*! Sum of the norm of the velocity of all the #part */
+  float sum_part_vel_norm;
+
+  /*! Sum of the norm of the velocity of all the dark-matter #gpart */
+  float sum_gpart_vel_norm;
+
+  /*! Sum of the norm of the velocity of all the #spart */
+  float sum_spart_vel_norm;
+
   /*! General-purpose lock for this space. */
   swift_lock_type lock;
 
@@ -182,9 +200,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
 void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t sparts_offset);
 void space_getcells(struct space *s, int nr_cells, struct cell **cells);
-int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
-                 double *shift);
-void space_init(struct space *s, const struct swift_params *params,
+void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
                 size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
@@ -218,9 +234,9 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
                                  struct cell *cells, int verbose);
 void space_synchronize_particle_positions(struct space *s);
-void space_do_parts_sort();
-void space_do_gparts_sort();
-void space_do_sparts_sort();
+void space_do_parts_sort(void);
+void space_do_gparts_sort(void);
+void space_do_sparts_sort(void);
 void space_first_init_parts(struct space *s, int verbose);
 void space_first_init_gparts(struct space *s, int verbose);
 void space_first_init_sparts(struct space *s, int verbose);

@@ -58,6 +58,9 @@ struct phys_const {
   /*! Thomson cross-section */
   double const_thomson_cross_section;
 
+  /*! Stefan-Boltzmann constant */
+  double const_stefan_boltzmann;
+
   /*! Charge of the electron  */
   double const_electron_charge;
 
@@ -87,10 +90,12 @@ struct phys_const {
 
   /*! Mass of the Earth */
   double const_earth_mass;
+
+  /*! Temperature of the CMB at present day */
+  double const_T_CMB_0;
 };
 
-void phys_const_init(const struct unit_system* us,
-                     const struct swift_params* params,
+void phys_const_init(const struct unit_system* us, struct swift_params* params,
                      struct phys_const* internal_const);
 
 void phys_const_print(const struct phys_const* internal_const);

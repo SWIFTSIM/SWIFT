@@ -59,7 +59,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->parts, part_align,
@@ -94,7 +94,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->id = ++(*partId);
 
 /* Set the mass */
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 
 #ifdef SHADOWFAX_SPH
@@ -105,12 +105,12 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
 #else
         part->mass = density * volume / count;
-#endif /* GIZMO_SPH */
+#endif /* GIZMO_MFV_SPH */
 
 /* Set the thermodynamic variable */
 #if defined(GADGET2_SPH)
         part->entropy = 1.f;
-#elif defined(MINIMAL_SPH)
+#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH)
         part->u = 1.f;
 #elif defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;
@@ -194,13 +194,13 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo) {
     p->density.rot_v[1] = 0.f;
     p->density.rot_v[2] = 0.f;
     p->density.div_v = 0.f;
-#endif
+#endif /* GADGET-2 */
 #ifdef MINIMAL_SPH
     p->rho = 1.f;
     p->density.rho_dh = 0.f;
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
-#endif
+#endif /* MINIMAL */
 #ifdef HOPKINS_PE_SPH
     p->rho = 1.f;
     p->rho_bar = 1.f;
@@ -208,7 +208,15 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo) {
     p->density.pressure_dh = 0.f;
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
-#endif
+#endif /* PRESSURE-ENTROPY */
+#ifdef HOPKINS_PU_SPH
+    p->rho = 1.f;
+    p->pressure_bar = 0.6666666;
+    p->density.rho_dh = 0.f;
+    p->density.pressure_bar_dh = 0.f;
+    p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
+    p->density.wcount_dh = 0.f;
+#endif /* PRESSURE-ENERGY */
 
     /* And prepare for a round of force tasks. */
     hydro_prepare_force(p, xp, cosmo);
@@ -570,8 +578,9 @@ int main(int argc, char *argv[]) {
   runner->e = &engine;
 
   /* Create output file names. */
-  sprintf(swiftOutputFileName, "swift_dopair_%s.dat", outputFileNameExtension);
-  sprintf(bruteForceOutputFileName, "brute_force_pair_%s.dat",
+  sprintf(swiftOutputFileName, "swift_dopair_%.150s.dat",
+          outputFileNameExtension);
+  sprintf(bruteForceOutputFileName, "brute_force_pair_%.150s.dat",
           outputFileNameExtension);
 
   /* Delete files if they already exist. */
@@ -624,9 +633,9 @@ int main(int argc, char *argv[]) {
   finalise = &end_calculation_force;
 
   /* Create new output file names. */
-  sprintf(swiftOutputFileName, "swift_dopair2_force_%s.dat",
+  sprintf(swiftOutputFileName, "swift_dopair2_force_%.150s.dat",
           outputFileNameExtension);
-  sprintf(bruteForceOutputFileName, "brute_force_dopair2_%s.dat",
+  sprintf(bruteForceOutputFileName, "brute_force_dopair2_%.150s.dat",
           outputFileNameExtension);
 
   /* Delete files if they already exist. */

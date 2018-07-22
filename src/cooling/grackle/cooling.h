@@ -771,7 +771,7 @@ __attribute__((always_inline)) INLINE static void cooling_init_grackle(
  * @param cooling The cooling properties to initialize
  */
 __attribute__((always_inline)) INLINE static void cooling_init_backend(
-    const struct swift_params* parameter_file, const struct unit_system* us,
+    struct swift_params* parameter_file, const struct unit_system* us,
     const struct phys_const* phys_const,
     struct cooling_function_data* cooling) {
 

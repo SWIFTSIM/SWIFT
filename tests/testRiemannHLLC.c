@@ -24,6 +24,12 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Force use of the HLLC Riemann solver */
+#undef RIEMANN_SOLVER_TRRS
+#undef RIEMANN_SOLVER_EXACT
+#undef RIEMANN_SOLVER_HLLC
+#define RIEMANN_SOLVER_HLLC 1
+
 /* Local headers. */
 #include "riemann/riemann_hllc.h"
 #include "swift.h"
@@ -79,7 +85,7 @@ int are_symmetric(float a, float b) {
 /**
  * @brief Check the symmetry of the HLLC Riemann solver for a random setup
  */
-void check_riemann_symmetry() {
+void check_riemann_symmetry(void) {
   float WL[5], WR[5], n_unit1[3], n_unit2[3], n_norm, vij[3], totflux1[5],
       totflux2[5];
 
@@ -144,7 +150,7 @@ void check_riemann_symmetry() {
 /**
  * @brief Check the HLLC Riemann solver
  */
-int main() {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
