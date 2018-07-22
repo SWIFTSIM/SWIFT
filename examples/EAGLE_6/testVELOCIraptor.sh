@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VELOCIRAPTOR_PATH=/cosma5/data/dp004/dc-will2/VELOCIraptor-STF/stf
+VELOCIRAPTOR_PATH=/cosma7/data/dp004/dc-will2/VELOCIraptor-STF/stf
 SCRIPT_PATH=$VELOCIRAPTOR_PATH/examples
 TREEFROG_PATH=$VELOCIRAPTOR_PATH/bin
 
@@ -24,8 +24,10 @@ if [ "$RUN_DM" = "1" ]; then
 
     # Create output directory
     OUTPUT=halo_1_mpi_1_$TEST
+    VEL_OUTPUT=vel_output_1_mpi_1_$TEST
 
     if [ ! -d $OUTPUT ]; then mkdir $OUTPUT; fi
+    if [ ! -d $VEL_OUTPUT ]; then mkdir $VEL_OUTPUT; fi
 
     # Remove old comparison files
     rm catcomp*
@@ -38,11 +40,11 @@ if [ "$RUN_DM" = "1" ]; then
 
     # Run test using VELOCIraptor
     echo "Running: mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./vel_outputs_new/vel_$TEST"
-    mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./vel_outputs_new/vel_$TEST
+    mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST
 
     # Create info file for python comparison script
     echo -e $INFO_FILE_TEXT > infoFile_$TEST.txt
-    echo "vel_$TEST vel_outputs_new/vel_$TEST" >> infoFile_$TEST.txt
+    echo "vel_$TEST $VEL_OUTPUT/vel_$TEST" >> infoFile_$TEST.txt
     echo "stf_$TEST $OUTPUT/stf_0000.VELOCIraptor" >> infoFile_$TEST.txt
 
     # Run comparison script on VELOCIraptor output
@@ -66,8 +68,10 @@ if [ "$RUN_GAS" = "1" ]; then
 
     # Create output directory
     OUTPUT=halo_1_mpi_1_$TEST
+    VEL_OUTPUT=vel_output_1_mpi_1_$TEST
 
     if [ ! -d $OUTPUT ]; then mkdir $OUTPUT; fi
+    if [ ! -d $VEL_OUTPUT ]; then mkdir $VEL_OUTPUT; fi
 
     # Remove old comparison files
     rm catcomp*
@@ -80,11 +84,11 @@ if [ "$RUN_GAS" = "1" ]; then
 
     # Run test using VELOCIraptor
     echo "Running: mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./vel_outputs_new/vel_$TEST"
-    mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./vel_outputs_new/vel_$TEST
+    mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST
 
     # Create info file for python comparison script
     echo -e $INFO_FILE_TEXT > infoFile_$TEST.txt
-    echo "vel_$TEST vel_outputs_new/vel_$TEST" >> infoFile_$TEST.txt
+    echo "vel_$TEST $VEL_OUTPUT/vel_$TEST" >> infoFile_$TEST.txt
     echo "stf_$TEST $OUTPUT/stf_0000.VELOCIraptor" >> infoFile_$TEST.txt
 
     # Run comparison script on VELOCIraptor output
