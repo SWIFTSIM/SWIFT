@@ -360,7 +360,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       }
 
       /* Is this cell even split and the task does not violate h ? */
-      if (cell_can_split_self_task(ci)) {
+      if (cell_can_split_self_hydro_task(ci)) {
 
         /* Make a sub? */
         if (scheduler_dosub && ci->count < space_subsize_self_hydro) {
@@ -419,7 +419,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       const int sid = space_getsid(s->space, &ci, &cj, shift);
 
       /* Should this task be split-up? */
-      if (cell_can_split_pair_task(ci) && cell_can_split_pair_task(cj)) {
+      if (cell_can_split_pair_hydro_task(ci) && cell_can_split_pair_hydro_task(cj)) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub && /* Use division to avoid integer overflow. */

@@ -568,7 +568,7 @@ __attribute__((always_inline)) INLINE static int cell_can_recurse_in_self_task(
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_can_split_pair_task(
+__attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
     const struct cell *c) {
 
   /* Is the cell split ? */
@@ -585,7 +585,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_task(
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_can_split_self_task(
+__attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
     const struct cell *c) {
 
   /* Is the cell split ? */
