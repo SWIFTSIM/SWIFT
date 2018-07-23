@@ -2672,12 +2672,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       }
 #endif
 
-      /* Link M-M tasks to cells */
-    /* } else if (t_type == task_type_grav_mm) { */
-    /*   atomic_inc(&ci->nr_tasks); */
-    /*   atomic_inc(&cj->nr_tasks); */
-    /*   engine_addlink(e, &ci->grav, t); */
-    /*   engine_addlink(e, &cj->grav, t); */
+      /* Note that we do not need to link the M-M tasks */
+      /* since we already did so when splitting the gravity */
+      /* tasks. */
     }
   }
 }
@@ -2704,11 +2701,20 @@ void engine_link_gravity_tasks(struct engine *e) {
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
+    /* Node ID (if running with MPI) */
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
     /* Self-interaction for self-gravity? */
     if (t_type == task_type_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci->nodeID != nodeID) error("Non-local self task");
+      if (ci_nodeID != nodeID) error("Non-local self task");
 #endif
 
       /* drift ---+-> gravity --> grav_down */
@@ -2722,7 +2728,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     if (t_type == task_type_self && t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci->nodeID != nodeID) error("Non-local self task");
+      if (ci_nodeID != nodeID) error("Non-local self task");
 #endif
 
       /* drift -----> gravity --> end_force */
@@ -2733,7 +2739,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Otherwise, pair interaction? */
     else if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
 
-      if (ci->nodeID == nodeID) {
+      if (ci_nodeID == nodeID) {
 
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
@@ -2741,7 +2747,7 @@ void engine_link_gravity_tasks(struct engine *e) {
         scheduler_addunlock(sched, ci->init_grav_out, t);
         scheduler_addunlock(sched, t, ci->grav_down_in);
       }
-      if (cj->nodeID == nodeID) {
+      if (cj_nodeID == nodeID) {
 
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
@@ -2756,7 +2762,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     else if (t_type == task_type_sub_self && t_subtype == task_subtype_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci->nodeID != nodeID) error("Non-local sub-self task");
+      if (ci_nodeID != nodeID) error("Non-local sub-self task");
 #endif
       /* drift ---+-> gravity --> grav_down */
       /* init  --/    */
@@ -2770,7 +2776,7 @@ void engine_link_gravity_tasks(struct engine *e) {
              t_subtype == task_subtype_external_grav) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci->nodeID != nodeID) error("Non-local sub-self task");
+      if (ci_nodeID != nodeID) error("Non-local sub-self task");
 #endif
 
       /* drift -----> gravity --> end_force */
@@ -2781,7 +2787,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Otherwise, sub-pair interaction? */
     else if (t_type == task_type_sub_pair && t_subtype == task_subtype_grav) {
 
-      if (ci->nodeID == nodeID) {
+      if (ci_nodeID == nodeID) {
 
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
@@ -2789,7 +2795,7 @@ void engine_link_gravity_tasks(struct engine *e) {
         scheduler_addunlock(sched, ci->init_grav_out, t);
         scheduler_addunlock(sched, t, ci->grav_down_in);
       }
-      if (cj->nodeID == nodeID) {
+      if (cj_nodeID == nodeID) {
 
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
@@ -2803,13 +2809,13 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Otherwise M-M interaction? */
     else if (t_type == task_type_grav_mm) {
 
-      if (ci->nodeID == nodeID) {
+      if (ci_nodeID == nodeID) {
 
         /* init -----> gravity --> grav_down */
         scheduler_addunlock(sched, ci->init_grav_out, t);
         scheduler_addunlock(sched, t, ci->grav_down_in);
       }
-      if (cj->nodeID == nodeID) {
+      if (cj_nodeID == nodeID) {
 
         /* init -----> gravity --> grav_down */
         scheduler_addunlock(sched, cj->init_grav_out, t);
