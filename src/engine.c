@@ -2673,11 +2673,11 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 #endif
 
       /* Link M-M tasks to cells */
-    } else if (t_type == task_type_grav_mm) {
-      atomic_inc(&ci->nr_tasks);
-      atomic_inc(&cj->nr_tasks);
-      engine_addlink(e, &ci->grav, t);
-      engine_addlink(e, &cj->grav, t);
+    /* } else if (t_type == task_type_grav_mm) { */
+    /*   atomic_inc(&ci->nr_tasks); */
+    /*   atomic_inc(&cj->nr_tasks); */
+    /*   engine_addlink(e, &ci->grav, t); */
+    /*   engine_addlink(e, &cj->grav, t); */
     }
   }
 }
@@ -3040,8 +3040,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
         scheduler_addunlock(sched, t2, t->ci->super->end_force);
-      } else
-        error("oo");
+      }
 #endif
     }
 

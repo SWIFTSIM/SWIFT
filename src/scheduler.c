@@ -53,6 +53,8 @@
 #include "timers.h"
 #include "version.h"
 
+void engine_addlink(struct engine *e, struct link **l, struct task *t);
+
 /**
  * @brief Re-set the list of active tasks.
  */
@@ -806,7 +808,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 /* Temporarily prevent MPI here */
 #ifndef WITH_MPI
   const struct space *sp = s->space;
-  const struct engine *e = sp->e;
+  struct engine *e = sp->e;
 #endif
 
   /* Iterate on this task until we're done with it. */
@@ -885,8 +887,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
     else if (t->type == task_type_pair) {
 
       /* Get a handle on the cells involved. */
-      const struct cell *ci = t->ci;
-      const struct cell *cj = t->cj;
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
@@ -902,6 +904,10 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
         t->type = task_type_grav_mm;
         t->subtype = task_subtype_none;
+	atomic_inc(&ci->nr_tasks);
+	atomic_inc(&cj->nr_tasks);
+	engine_addlink(e, &ci->grav, t);
+	engine_addlink(e, &cj->grav, t);
         break;
       }
 
