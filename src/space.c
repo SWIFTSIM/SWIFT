@@ -2758,10 +2758,13 @@ void space_init(struct space *s, struct swift_params *params,
                                space_subsize_self_grav_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
+  space_subdepth_grav = parser_get_opt_param_int(
+      params, "Scheduler:cell_subdepth_grav", space_subdepth_grav_default);
 
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
             space_splitsize);
+    message("subdepth_grav set to %d", space_subdepth_grav);
     message("sub_size_pair_hydro set to %d, sub_size_self_hydro set to %d",
             space_subsize_pair_hydro, space_subsize_self_hydro);
     message("sub_size_pair_grav set to %d, sub_size_self_grav set to %d",
