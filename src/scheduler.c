@@ -1066,13 +1066,20 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
  */
 void scheduler_set_unlocks(struct scheduler *s) {
 
+  /* Extract constant information and make non-volatile pointers */
+  const int nr_tasks = s->nr_tasks;
+  const int nr_unlocks = s->nr_unlocks;
+  int* unlock_ind = (int*) s->unlock_ind;
+  struct task **unlocks = (struct task **) s->unlocks;
+
   /* Store the counts for each task. */
-  short int *counts;
-  if ((counts = (short int *)malloc(sizeof(short int) * s->nr_tasks)) == NULL)
+  int *counts;
+  if (posix_memalign((void **) &counts, 64, sizeof(int) * nr_tasks) != 0)
     error("Failed to allocate temporary counts array.");
-  bzero(counts, sizeof(short int) * s->nr_tasks);
-  for (int k = 0; k < s->nr_unlocks; k++) {
-    counts[s->unlock_ind[k]] += 1;
+  swift_align_information(int, counts, 64);
+  bzero(counts, sizeof(int) * nr_tasks);
+  for (int k = 0; k < nr_unlocks; k++) {
+    counts[unlock_ind[k]] += 1;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that we are not overflowing */
@@ -1086,10 +1093,10 @@ void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Compute the offset for each unlock block. */
   int *offsets;
-  if ((offsets = (int *)malloc(sizeof(int) * (s->nr_tasks + 1))) == NULL)
+  if (posix_memalign((void **) &offsets, 64, sizeof(int) * (nr_tasks + 1)) != 0)
     error("Failed to allocate temporary offsets array.");
   offsets[0] = 0;
-  for (int k = 0; k < s->nr_tasks; k++) {
+  for (int k = 0; k < nr_tasks; k++) {
     offsets[k + 1] = offsets[k] + counts[k];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1099,30 +1106,31 @@ void scheduler_set_unlocks(struct scheduler *s) {
   }
 
   /* Create and fill a temporary array with the sorted unlocks. */
-  struct task **unlocks;
-  if ((unlocks = (struct task **)malloc(sizeof(struct task *) *
-                                        s->size_unlocks)) == NULL)
+  struct task **new_unlocks;
+  if (posix_memalign((void **) &new_unlocks, 64, sizeof(struct task *) * s->size_unlocks) != 0)
     error("Failed to allocate temporary unlocks array.");
-  for (int k = 0; k < s->nr_unlocks; k++) {
-    const int ind = s->unlock_ind[k];
-    unlocks[offsets[ind]] = s->unlocks[k];
+  for (int k = 0; k < nr_unlocks; k++) {
+    const int ind = unlock_ind[k];
+    new_unlocks[offsets[ind]] = unlocks[k];
     offsets[ind] += 1;
   }
 
   /* Swap the unlocks. */
   free(s->unlocks);
-  s->unlocks = unlocks;
+  s->unlocks = new_unlocks;
 
   /* Re-set the offsets. */
   offsets[0] = 0;
-  for (int k = 1; k < s->nr_tasks; k++)
+  for (int k = 1; k < nr_tasks; k++)
     offsets[k] = offsets[k - 1] + counts[k - 1];
 
   /* Set the unlocks in the tasks. */
-  for (int k = 0; k < s->nr_tasks; k++) {
+  swift_align_information(int, counts, 64);
+  swift_align_information(int, offsets, 64);
+  for (int k = 0; k < nr_tasks; k++) {
     struct task *t = &s->tasks[k];
     t->nr_unlock_tasks = counts[k];
-    t->unlock_tasks = &s->unlocks[offsets[k]];
+    t->unlock_tasks = &new_unlocks[offsets[k]];
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
