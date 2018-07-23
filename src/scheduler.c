@@ -53,8 +53,6 @@
 #include "timers.h"
 #include "version.h"
 
-void engine_addlink(struct engine *e, struct link **l, struct task *t);
-
 /**
  * @brief Re-set the list of active tasks.
  */
@@ -904,6 +902,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
         t->type = task_type_grav_mm;
         t->subtype = task_subtype_none;
+
+	/* Since this task will not be split, we can already link it */
 	atomic_inc(&ci->nr_tasks);
 	atomic_inc(&cj->nr_tasks);
 	engine_addlink(e, &ci->grav, t);
@@ -984,7 +984,9 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     } else if (t->type == task_type_grav_mesh) {
       /* For future use */
     } else {
+#ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type");
+#endif
     }
   }
 }
