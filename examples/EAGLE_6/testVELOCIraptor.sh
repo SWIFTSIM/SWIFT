@@ -8,6 +8,7 @@ TREEFROG_PATH=$VELOCIRAPTOR_PATH/bin
 declare -a DM_TEST_LIST=(6dfof_dmonly_sub)
 declare -a GAS_TEST_LIST=(6dfof_gas_sub)
 INFO_FILE_TEXT="$TREEFROG_PATH/treefrog \n-s 2 -d 2 -F 0 -B 2 -m -1 -N 1 -T -1\n2 # No. of outputs to compare"
+NUM_MPI_PROC=1
 
 # Check for command line arguments
 while getopts 'g:s:' opt ; do
@@ -23,8 +24,8 @@ if [ "$RUN_DM" = "1" ]; then
   do
 
     # Create output directory
-    OUTPUT=halo_1_mpi_1_$TEST
-    VEL_OUTPUT=vel_output_1_mpi_1_$TEST
+    OUTPUT=halo_$NUM_MPI_PROC"_mpi_1_"$TEST
+    VEL_OUTPUT=vel_output_$NUM_MPI_PROC"_mpi_1_"$TEST
 
     if [ ! -d $OUTPUT ]; then mkdir $OUTPUT; fi
     if [ ! -d $VEL_OUTPUT ]; then mkdir $VEL_OUTPUT; fi
@@ -32,15 +33,15 @@ if [ "$RUN_DM" = "1" ]; then
     # Remove old comparison files
     rm catcomp*
     rm $OUTPUT/stf* 
-    rm vel_outputs_new/vel_$TEST*
+    rm $VEL_OUTPUT/vel_$TEST*
 
     # Run test using SWIFT + VELOCIraptor
-    echo "Running: mpirun -np 1 ../swift_mpi -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_dmonly"
-    mpirun -np 1 ../swift_mpi -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_dmonly
+    echo "Running: mpirun -np $NUM_MPI_PROC ../swift_mpi -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_dmonly"
+    mpirun -np $NUM_MPI_PROC ../swift_mpi -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_dmonly
 
     # Run test using VELOCIraptor
-    echo "Running: mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./vel_outputs_new/vel_$TEST"
-    mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST
+    echo "Running: mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST"
+    mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST
 
     # Create info file for python comparison script
     echo -e $INFO_FILE_TEXT > infoFile_$TEST.txt
@@ -67,8 +68,8 @@ if [ "$RUN_GAS" = "1" ]; then
   do
 
     # Create output directory
-    OUTPUT=halo_1_mpi_1_$TEST
-    VEL_OUTPUT=vel_output_1_mpi_1_$TEST
+    OUTPUT=halo_$NUM_MPI_PROC"_mpi_1_"$TEST
+    VEL_OUTPUT=vel_output_$NUM_MPI_PROC"_mpi_1_"$TEST
 
     if [ ! -d $OUTPUT ]; then mkdir $OUTPUT; fi
     if [ ! -d $VEL_OUTPUT ]; then mkdir $VEL_OUTPUT; fi
@@ -76,15 +77,15 @@ if [ "$RUN_GAS" = "1" ]; then
     # Remove old comparison files
     rm catcomp*
     rm $OUTPUT/stf* 
-    rm vel_outputs_new/vel_$TEST*
+    rm $VEL_OUTPUT/vel_$TEST*
 
     # Run test using SWIFT + VELOCIraptor
-    echo "Running: mpirun -np 1 ../swift_mpi -s -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_gas"
-    mpirun -np 1 ../swift_mpi -s -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_gas
+    echo "Running: mpirun -np $NUM_MPI_PROC ../swift_mpi -s -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_gas"
+    mpirun -np $NUM_MPI_PROC ../swift_mpi -s -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_gas
 
     # Run test using VELOCIraptor
-    echo "Running: mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./vel_outputs_new/vel_$TEST"
-    mpirun -np 1 $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST
+    echo "Running: mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST"
+    mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST
 
     # Create info file for python comparison script
     echo -e $INFO_FILE_TEXT > infoFile_$TEST.txt
