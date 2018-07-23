@@ -2596,78 +2596,84 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
   struct scheduler *const sched = &e->sched;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct task *const t = &((struct task *)map_data)[ind];
+    struct task *t = &((struct task *)map_data)[ind];
 
-    struct cell *const ci = t->ci;
-    struct cell *const cj = t->cj;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const enum task_types t_type = t->type;
+    const enum task_subtypes t_subtype = t->subtype;
 
     /* Link sort tasks to all the higher sort task. */
-    if (t->type == task_type_sort) {
+    if (t_type == task_type_sort) {
       for (struct cell *finger = t->ci->parent; finger != NULL;
            finger = finger->parent)
         if (finger->sorts != NULL) scheduler_addunlock(sched, t, finger->sorts);
     }
 
     /* Link self tasks to cells. */
-    else if (t->type == task_type_self) {
+    else if (t_type == task_type_self) {
       atomic_inc(&ci->nr_tasks);
-      if (t->subtype == task_subtype_density) {
+      if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
       }
-      if (t->subtype == task_subtype_grav) {
+      if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
       }
-      if (t->subtype == task_subtype_external_grav) {
+      if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav, t);
       }
 
       /* Link pair tasks to cells. */
-    } else if (t->type == task_type_pair) {
+    } else if (t_type == task_type_pair) {
       atomic_inc(&ci->nr_tasks);
       atomic_inc(&cj->nr_tasks);
-      if (t->subtype == task_subtype_density) {
+      if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
         engine_addlink(e, &cj->density, t);
       }
-      if (t->subtype == task_subtype_grav) {
+      if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
         engine_addlink(e, &cj->grav, t);
       }
-      if (t->subtype == task_subtype_external_grav) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (t_subtype == task_subtype_external_grav) {
         error("Found a pair/external-gravity task...");
       }
+#endif
 
       /* Link sub-self tasks to cells. */
-    } else if (t->type == task_type_sub_self) {
+    } else if (t_type == task_type_sub_self) {
       atomic_inc(&ci->nr_tasks);
-      if (t->subtype == task_subtype_density) {
+      if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
       }
-      if (t->subtype == task_subtype_grav) {
+      if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
       }
-      if (t->subtype == task_subtype_external_grav) {
+      if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav, t);
       }
 
       /* Link sub-pair tasks to cells. */
-    } else if (t->type == task_type_sub_pair) {
+    } else if (t_type == task_type_sub_pair) {
       atomic_inc(&ci->nr_tasks);
       atomic_inc(&cj->nr_tasks);
-      if (t->subtype == task_subtype_density) {
+      if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
         engine_addlink(e, &cj->density, t);
       }
-      if (t->subtype == task_subtype_grav) {
+      if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
         engine_addlink(e, &cj->grav, t);
       }
-      if (t->subtype == task_subtype_external_grav) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (t_subtype == task_subtype_external_grav) {
         error("Found a sub-pair/external-gravity task...");
       }
+#endif
 
       /* Link M-M tasks to cells */
-    } else if (t->type == task_type_grav_mm) {
+    } else if (t_type == task_type_grav_mm) {
       atomic_inc(&ci->nr_tasks);
       atomic_inc(&cj->nr_tasks);
       engine_addlink(e, &ci->grav, t);
@@ -3203,6 +3209,7 @@ void engine_maketasks(struct engine *e) {
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
+  if (e->policy & engine_policy_hydro)
   threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
                  sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
