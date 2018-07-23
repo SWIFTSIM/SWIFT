@@ -358,10 +358,8 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
     }
   }
 
-  /* We are below the super-cell */
-  else if (c->super_gravity != NULL) {
-
-    // MATTHIEU stop the recursion below the level where there are tasks
+  /* We are below the super-cell but not below the maximal splitting depth */
+  else if (c->super_gravity != NULL && c->depth <= space_subdepth_grav) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
@@ -380,8 +378,8 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
     }
   }
 
-  /* Recurse. */
-  if (c->split)
+  /* Recurse but not below the maximal splitting depth */
+  if (c->split && c->depth <= space_subdepth_grav)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_make_hierarchical_tasks_gravity(e, c->progeny[k]);
