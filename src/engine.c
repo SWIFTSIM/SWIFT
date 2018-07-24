@@ -2368,13 +2368,23 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
+  const double theta_crit = e->gravity_properties->theta_crit;
   const double max_distance = e->mesh->r_cut_max;
+
+  /* Compute how many cells away we need to walk */
+  const double distance = 2.5 * cells[0].width[0] / theta_crit;
+  const int delta = (int)(distance / cells[0].width[0]) + 1;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
+
+    /* Integer indices of the cell in the top-level grid */
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
 
     /* Get the cell */
     struct cell *ci = &cells[cid];
@@ -2399,10 +2409,19 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           "rebuilt...");
 #endif
 
-    /* Loop over every other cell */
-    for (int ii = 0; ii < cdim[0]; ii++) {
-      for (int jj = 0; jj < cdim[1]; jj++) {
-        for (int kk = 0; kk < cdim[2]; kk++) {
+    /* Loop over every other cell within (Manhattan) range delta */
+    for (int x = -delta; x <= delta; x++) {
+      int ii = i + x;
+      if (ii >= cdim[0]) ii -= cdim[0];
+      if (ii < 0) ii += cdim[0];
+      for (int y = -delta; y <= delta; y++) {
+	int jj = j + y;
+	if (jj >= cdim[1]) jj -= cdim[1];
+	if (jj < 0) jj += cdim[1];
+	for (int z = -delta; z <= delta; z++) {
+	  int kk = k + z;
+	  if (kk >= cdim[2]) kk -= cdim[2];
+	  if (kk < 0) kk += cdim[2];
 
           /* Get the cell */
           const int cjd = cell_getid(cdim, ii, jj, kk);
@@ -2462,14 +2481,9 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 void engine_make_self_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
-  /* struct scheduler *sched = &e->sched; */
-  /* const int periodic = s->periodic; */
-  /* const int cdim_ghost[3] = {s->cdim[0] / 4 + 1, s->cdim[1] / 4 + 1, */
-  /*                            s->cdim[2] / 4 + 1}; */
   struct task **ghosts = NULL;
-  // const int n_ghosts = cdim_ghost[0] * cdim_ghost[1] * cdim_ghost[2] * 2;
 
-  /* Cretae the multipole self and pair tasks. */
+  /* Create the multipole self and pair tasks. */
   void *extra_data[2] = {e, ghosts};
   threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
                  s->nr_cells, 1, 0, extra_data);
@@ -3145,8 +3159,11 @@ void engine_maketasks(struct engine *e) {
                    s->nr_cells, 1, 0, e);
   }
 
+  ticks tic2 = getticks();
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity) engine_make_self_gravity_tasks(e);
+  message("Make self-gravity tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Add the external gravity tasks. */
   if (e->policy & engine_policy_external_gravity)
@@ -3219,7 +3236,7 @@ void engine_maketasks(struct engine *e) {
   threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
                  sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
-  ticks tic2 = getticks();
+  tic2 = getticks();
   /* Add the dependencies for the gravity stuff */
   if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
     engine_link_gravity_tasks(e);
@@ -5164,8 +5181,6 @@ void engine_makeproxies(struct engine *e) {
   if (with_gravity) {
     const double distance = 2.5 * cells[0].width[0] / props->theta_crit;
     delta = (int)(distance / cells[0].width[0]) + 1;
-
-    // MATTHIEU: Check this calculation
   }
 
   /* Let's be verbose about this choice */
