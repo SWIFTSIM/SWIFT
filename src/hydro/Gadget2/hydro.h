@@ -295,6 +295,7 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_physical_internal_energy_dt(const struct part *restrict p,
                                       const struct cosmology *cosmo) {
 
+
   return gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv,
                                           p->entropy_dt);
 }

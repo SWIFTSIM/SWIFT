@@ -538,8 +538,8 @@ inline struct cooling_tables_redshift_invariant get_photodis_table(
       for (k = 0; k < cooling->N_nH; k++) {
         table_index = row_major_index_2d(j, k, cooling->N_Temp, cooling->N_nH);
         cooling_index = row_major_index_3d(
-            specs, j, k, cooling->N_Elements, cooling->N_Temp,
-            cooling->N_nH);  // Redshift invariant table!!!
+            specs, k, j, cooling->N_Elements, cooling->N_nH,
+            cooling->N_Temp);  // Redshift invariant table!!!
         cooling_table.metal_heating[cooling_index] =
             -net_cooling_rate[table_index];
       }
@@ -571,8 +571,8 @@ inline struct cooling_tables_redshift_invariant get_photodis_table(
         table_index = row_major_index_3d(i, j, k, cooling->N_He,
                                          cooling->N_Temp, cooling->N_nH);
         cooling_index =
-            row_major_index_3d(i, j, k, cooling->N_He, cooling->N_Temp,
-                               cooling->N_nH);  // Redshift invariant table!!!
+            row_major_index_3d(k, i, j, cooling->N_nH, cooling->N_He,
+                               cooling->N_Temp);  // Redshift invariant table!!!
         cooling_table.H_plus_He_heating[cooling_index] =
             -he_net_cooling_rate[table_index];
         cooling_table.H_plus_He_electron_abundance[cooling_index] =
@@ -687,8 +687,6 @@ inline struct cooling_tables get_cooling_table(
           cooling_index = row_major_index_4d(
               z_index, specs, i, j, cooling->N_Redshifts, cooling->N_Elements,
               cooling->N_nH, cooling->N_Temp);
-          // cooling_index =
-          // row_major_index_3d(specs,j,i,cooling->N_Elements,cooling->N_Temp,cooling->N_nH);
           cooling_table.metal_heating[cooling_index] =
               -net_cooling_rate[table_index];
         }
@@ -722,8 +720,6 @@ inline struct cooling_tables get_cooling_table(
           cooling_index =
               row_major_index_4d(z_index, k, i, j, cooling->N_Redshifts,
                                  cooling->N_nH, cooling->N_He, cooling->N_Temp);
-          // cooling_index =
-          // row_major_index_3d(i,j,k,cooling->N_He,cooling->N_Temp,cooling->N_nH);
           cooling_table.H_plus_He_heating[cooling_index] =
               -he_net_cooling_rate[table_index];
           cooling_table.H_plus_He_electron_abundance[cooling_index] =
@@ -745,8 +741,6 @@ inline struct cooling_tables get_cooling_table(
         table_index = row_major_index_2d(i, j, cooling->N_Temp, cooling->N_nH);
         cooling_index = row_major_index_3d(z_index, j, i, cooling->N_Redshifts,
                                            cooling->N_nH, cooling->N_Temp);
-        // cooling_index =
-        // row_major_index_2d(i,j,cooling->N_Temp,cooling->N_nH);
         cooling_table.electron_abundance[cooling_index] =
             electron_abundance[table_index];
       }
