@@ -1556,7 +1556,7 @@ DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
 AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
 # Handle .in files.
-AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/CoolingTest_Alexei/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
 AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])

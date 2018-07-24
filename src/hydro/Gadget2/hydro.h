@@ -312,7 +312,6 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_comoving_internal_energy_dt(struct part *restrict p, float du_dt) {
 
   p->entropy_dt = gas_entropy_from_internal_energy(p->rho, du_dt);
-  //if (p->id == 5643798559995) printf("Gadget2 particle id entropy entropy_dt du_dt %llu %.5e %.5e %.5e\n", p->id, p->entropy, p->entropy_dt, du_dt);
 }
 
 /**
