@@ -4743,7 +4743,7 @@ void engine_step(struct engine *e) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d %.5e %6d %6d %.5e %6d\n",
+        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d %.3e %d %d %.3e %d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->wallclock_time,
@@ -4758,7 +4758,7 @@ void engine_step(struct engine *e) {
 
     fprintf(
         e->file_timesteps,
-        "  %6d %14e %14e %14e %4d %4d %12lld %12lld %12lld %21.3f %6d %.5e %6d %6d %.5e %6d\n",
+        "  %6d %14e %14e %14e %4d %4d %12lld %12lld %12lld %21.3f %6d %.3e %d %d %.3e %d\n",
         e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
         e->max_active_bin, e->updates, e->g_updates, e->s_updates,
         e->wallclock_time,
