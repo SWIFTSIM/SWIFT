@@ -1466,7 +1466,7 @@ void cell_activate_sorts_up(struct cell *c, struct scheduler *s) {
          parent != NULL && !parent->do_sub_sort; parent = parent->parent) {
       parent->do_sub_sort = 1;
       if (parent == c->super_hydro) {
-	if(parents->sorts == NULL) error("Trying to activate un-existing parents->sorts");
+	if(parent->sorts == NULL) error("Trying to activate un-existing parents->sorts");
         scheduler_activate(s, parent->sorts);
         if (parent->nodeID == engine_rank) cell_activate_drift_part(parent, s);
         break;
