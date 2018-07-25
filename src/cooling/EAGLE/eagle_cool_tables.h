@@ -685,8 +685,8 @@ inline struct cooling_tables get_cooling_table(
           table_index =
               row_major_index_2d(j, i, cooling->N_Temp, cooling->N_nH);
           cooling_index = row_major_index_4d(
-              z_index, specs, i, j, cooling->N_Redshifts, cooling->N_Elements,
-              cooling->N_nH, cooling->N_Temp);
+              z_index, i, j, specs, cooling->N_Redshifts,
+              cooling->N_nH, cooling->N_Temp, cooling->N_Elements);
           cooling_table.metal_heating[cooling_index] =
               -net_cooling_rate[table_index];
         }

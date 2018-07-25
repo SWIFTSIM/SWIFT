@@ -887,18 +887,26 @@ construct_1d_print_table_from_4d_elements(
   for (int j = 0; j < cooling->N_Elements; j++) {
     for (int i = index_low; i < index_high; i++) {
       if (j == 0) result_table[i] = 0.0;
-      index[0] = row_major_index_4d(x_i, j, y_i, i, n_x,
-                                    cooling->N_Elements, n_y,
-                                    array_size);
-      index[1] = row_major_index_4d(x_i, j, y_i + 1, i, n_x,
-                                    cooling->N_Elements, n_y,
-                                    array_size);
-      index[2] = row_major_index_4d(x_i + 1, j, y_i, i, n_x,
-                                    cooling->N_Elements, n_y,
-                                    array_size);
-      index[3] = row_major_index_4d(x_i + 1, j, y_i + 1, i,
-                                    n_x, cooling->N_Elements,
-                                    n_y, array_size);
+      index[0] = row_major_index_4d(x_i, y_i, i, j, n_x,
+                                    n_y, array_size, cooling->N_Elements);
+      index[1] = row_major_index_4d(x_i, y_i+1, i, j, n_x,
+                                    n_y, array_size, cooling->N_Elements);
+      index[2] = row_major_index_4d(x_i+1, y_i, i, j, n_x,
+                                    n_y, array_size, cooling->N_Elements);
+      index[3] = row_major_index_4d(x_i+1, y_i+1, i, j, n_x,
+                                    n_y, array_size, cooling->N_Elements);
+      //index[0] = row_major_index_4d(x_i, j, y_i, i, n_x,
+      //                              cooling->N_Elements, n_y,
+      //                              array_size);
+      //index[1] = row_major_index_4d(x_i, j, y_i + 1, i, n_x,
+      //                              cooling->N_Elements, n_y,
+      //                              array_size);
+      //index[2] = row_major_index_4d(x_i + 1, j, y_i, i, n_x,
+      //                              cooling->N_Elements, n_y,
+      //                              array_size);
+      //index[3] = row_major_index_4d(x_i + 1, j, y_i + 1, i,
+      //                              n_x, cooling->N_Elements,
+      //                              n_y, array_size);
 
       result_table[i+array_size*j] = ((1 - d_x) * (1 - d_y) * table[index[0]] +
                          (1 - d_x) * d_y * table[index[1]] +
@@ -968,18 +976,26 @@ construct_1d_table_from_4d_elements(
   for (int j = 0; j < cooling->N_Elements; j++) {
     for (int i = index_low; i < index_high; i++) {
       if (j == 0) result_table[i] = 0.0;
-      index[0] = row_major_index_4d(x_i, j, y_i, i, n_x,
-                                    cooling->N_Elements, n_y,
-                                    array_size);
-      index[1] = row_major_index_4d(x_i, j, y_i + 1, i, n_x,
-                                    cooling->N_Elements, n_y,
-                                    array_size);
-      index[2] = row_major_index_4d(x_i + 1, j, y_i, i, n_x,
-                                    cooling->N_Elements, n_y,
-                                    array_size);
-      index[3] = row_major_index_4d(x_i + 1, j, y_i + 1, i,
-                                    n_x, cooling->N_Elements,
-                                    n_y, array_size);
+      index[0] = row_major_index_4d(x_i, y_i, i, j, n_x,
+                                    n_y, array_size, cooling->N_Elements);
+      index[1] = row_major_index_4d(x_i, y_i+1, i, j, n_x,
+                                    n_y, array_size, cooling->N_Elements);
+      index[2] = row_major_index_4d(x_i+1, y_i, i, j, n_x,
+                                    n_y, array_size, cooling->N_Elements);
+      index[3] = row_major_index_4d(x_i+1, y_i+1, i, j, n_x,
+                                    n_y, array_size, cooling->N_Elements);
+      //index[0] = row_major_index_4d(x_i, j, y_i, i, n_x,
+      //                              cooling->N_Elements, n_y,
+      //                              array_size);
+      //index[1] = row_major_index_4d(x_i, j, y_i + 1, i, n_x,
+      //                              cooling->N_Elements, n_y,
+      //                              array_size);
+      //index[2] = row_major_index_4d(x_i + 1, j, y_i, i, n_x,
+      //                              cooling->N_Elements, n_y,
+      //                              array_size);
+      //index[3] = row_major_index_4d(x_i + 1, j, y_i + 1, i,
+      //                              n_x, cooling->N_Elements,
+      //                              n_y, array_size);
 
       result_table[i] += ((1 - d_x) * (1 - d_y) * table[index[0]] +
                          (1 - d_x) * d_y * table[index[1]] +
@@ -1477,17 +1493,17 @@ __attribute__((always_inline)) INLINE static double eagle_metal_cooling_rate(
 
   for (i = 0; i < cooling->N_Elements; i++) {
     temp_lambda =
-        interpol_4d(cooling->table.element_cooling.metal_heating, z_index, i,
-                    n_h_i, temp_i, dz, 0.0, d_n_h, d_temp, cooling->N_Redshifts,
-                    cooling->N_Elements, cooling->N_nH, cooling->N_Temp) *
+        interpol_4d(cooling->table.element_cooling.metal_heating, z_index,
+                    n_h_i, temp_i, i, dz, d_n_h, d_temp, 0.0, cooling->N_Redshifts,
+                    cooling->N_nH, cooling->N_Temp, cooling->N_Elements) *
         (h_plus_he_electron_abundance / solar_electron_abundance)*
 	solar_ratio[i+2];
-    elem_cool1 = interpol_4d(cooling->table.element_cooling.metal_heating, z_index, i,
-                    n_h_i, temp_i, dz, 0.0, d_n_h, 0.0, cooling->N_Redshifts,
-                    cooling->N_Elements, cooling->N_nH, cooling->N_Temp);
-    elem_cool2 = interpol_4d(cooling->table.element_cooling.metal_heating, z_index, i,
-                    n_h_i, temp_i+1, dz, 0.0, d_n_h, 0.0, cooling->N_Redshifts,
-                    cooling->N_Elements, cooling->N_nH, cooling->N_Temp);
+    elem_cool1 = interpol_4d(cooling->table.element_cooling.metal_heating, z_index,
+                    n_h_i, temp_i, i, dz, d_n_h, 0.0, 0.0, cooling->N_Redshifts,
+                    cooling->N_nH, cooling->N_Temp, cooling->N_Elements);
+    elem_cool2 = interpol_4d(cooling->table.element_cooling.metal_heating, z_index,
+                    n_h_i, temp_i+1, i, dz, d_n_h, 0.0, 0.0, cooling->N_Redshifts,
+                    cooling->N_nH, cooling->N_Temp, cooling->N_Elements);
     cooling_rate += temp_lambda;
     *dlambda_du +=
         (elem_cool2 * h_plus_he_electron_abundance2 /
