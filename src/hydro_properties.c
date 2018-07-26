@@ -123,7 +123,7 @@ void hydro_props_init(struct hydro_props *p,
 
   /* Compute the minimal energy (Note the temp. read is in internal units) */
   double u_min = phys_const->const_boltzmann_k / phys_const->const_proton_mass;
-  u_min *= p->initial_temperature;
+  u_min *= p->minimal_temperature;
   u_min *= hydro_one_over_gamma_minus_one;
 
   /* Correct for hydrogen mass fraction */
