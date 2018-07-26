@@ -96,6 +96,9 @@
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
 
+/* Import the star loop functions. */
+#include "runner_doiact_star.h"
+
 /**
  * @brief Perform source terms
  *
@@ -131,6 +134,220 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_dosource);
 }
+
+/**
+ * @brief Intermediate task after the density to check that the smoothing
+ * lengths are correct.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
+
+  struct spart *restrict sparts = c->sparts;
+  const struct engine *e = r->e;
+  const struct space *s = e->s;
+  const struct cosmology *cosmo = e->cosmology;
+  const float star_h_max = e->star_properties->h_max;
+  const float eps = e->star_properties->h_tolerance;
+  const float star_eta_dim =
+      pow_dimension(e->star_properties->eta_neighbours);
+  const int max_smoothing_iter = e->star_properties->max_smoothing_iterations;
+  int redo = 0, count = 0;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active_star(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_star_ghost(r, c->progeny[k], 0);
+  } else {
+
+    /* Init the list of active particles that have to be updated. */
+    int *sid = NULL;
+    if ((sid = (int *)malloc(sizeof(int) * c->scount)) == NULL)
+      error("Can't allocate memory for pid.");
+    for (int k = 0; k < c->scount; k++)
+      if (spart_is_active(&sparts[k], e)) {
+        sid[count] = k;
+        ++count;
+      }
+
+    /* While there are particles that need to be updated... */
+    for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
+         num_reruns++) {
+
+      /* Reset the redo-count. */
+      redo = 0;
+
+      /* Loop over the remaining active parts in this cell. */
+      for (int i = 0; i < count; i++) {
+
+        /* Get a direct pointer on the part. */
+        struct spart *sp = &sparts[sid[i]];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Is this part within the timestep? */
+        if (!spart_is_active(sp, e)) error("Ghost applied to inactive particle");
+#endif
+
+        /* Get some useful values */
+        const float h_old = sp->h;
+        const float h_old_dim = pow_dimension(h_old);
+        const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
+        float h_new;
+        int has_no_neighbours = 0;
+
+        if (sp->wcount == 0.f) { /* No neighbours case */
+
+          /* Flag that there were no neighbours */
+          has_no_neighbours = 1;
+
+          /* Double h and try again */
+          h_new = 2.f * h_old;
+        } else {
+
+          /* Finish the density calculation */
+          star_end_density(p, cosmo);
+
+          /* Compute one step of the Newton-Raphson scheme */
+          const float n_sum = sp->wcount * h_old_dim;
+          const float n_target = star_eta_dim;
+          const float f = n_sum - n_target;
+          const float f_prime =
+              sp->wcount_dh * h_old_dim +
+              hydro_dimension * sp->wcount * h_old_dim_minus_one;
+
+          /* Avoid floating point exception from f_prime = 0 */
+          h_new = h_old - f / (f_prime + FLT_MIN);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
+            error(
+                "Smoothing length correction not going in the right direction");
+#endif
+
+          /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
+          h_new = min(h_new, 2.f * h_old);
+          h_new = max(h_new, 0.5f * h_old);
+        }
+
+        /* Check whether the particle has an inappropriate smoothing length */
+        if (fabsf(h_new - h_old) > eps * h_old) {
+
+          /* Ok, correct then */
+          sp->h = h_new;
+
+          /* If below the absolute maximum, try again */
+          if (sp->h < star_h_max) {
+
+            /* Flag for another round of fun */
+            sid[redo] = sid[i];
+            redo += 1;
+
+            /* Re-initialise everything */
+            star_init_spart(sp, hs);
+
+            /* Off we go ! */
+            continue;
+
+          } else {
+
+            /* Ok, this particle is a lost cause... */
+            sp->h = star_h_max;
+
+            /* Do some damage control if no neighbours at all were found */
+            if (has_no_neighbours) {
+              star_spart_has_no_neighbours(sp, cosmo);
+            }
+          }
+        }
+
+/* We now have a particle whose smoothing length has converged */
+
+        /* As of here, particle force variables will be set. */
+
+        /* Compute variables required for the force loop */
+        star_prepare_force(sp, cosmo);
+
+        /* The particle force values are now set.  Do _NOT_
+           try to read any particle density variables! */
+
+        /* Prepare the particle for the force loop over neighbours */
+        star_reset_acceleration(sp);
+
+      }
+
+      /* We now need to treat the particles whose smoothing length had not
+       * converged again */
+
+      /* Re-set the counter for the next loop (potentially). */
+      count = redo;
+      if (count > 0) {
+
+        /* Climb up the cell hierarchy. */
+        for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+
+          /* Run through this cell's density interactions. */
+          for (struct link *l = finger->density; l != NULL; l = l->next) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (l->t->ti_run < r->e->ti_current)
+              error("Density task should have been run.");
+#endif
+
+            /* Self-interaction? */
+            if (l->t->type == task_type_self)
+              runner_doself_subset_star_density(r, finger, parts, pid, count);
+
+            /* Otherwise, pair interaction? */
+            else if (l->t->type == task_type_pair) {
+
+              /* Left or right? */
+              if (l->t->ci == finger)
+                runner_dopair_subset_star_density(r, finger, parts, pid,
+                                                    count, l->t->cj);
+              else
+                runner_dopair_subset_star_density(r, finger, parts, pid,
+                                                    count, l->t->ci);
+            }
+
+            /* Otherwise, sub-self interaction? */
+            else if (l->t->type == task_type_sub_self)
+              runner_dosub_subset_density(r, finger, parts, pid, count, NULL,
+                                          -1, 1);
+
+            /* Otherwise, sub-pair interaction? */
+            else if (l->t->type == task_type_sub_pair) {
+
+              /* Left or right? */
+              if (l->t->ci == finger)
+                runner_dosub_subset_density(r, finger, parts, pid, count,
+                                            l->t->cj, -1, 1);
+              else
+                runner_dosub_subset_density(r, finger, parts, pid, count,
+                                            l->t->ci, -1, 1);
+            }
+          }
+        }
+      }
+    }
+
+    if (count) {
+      error("Smoothing length failed to converge on %i particles.", count);
+    }
+
+    /* Be clean */
+    free(sid);
+  }
+
+  if (timer) TIMER_TOC(timer_do_star_ghost);
+}
+
 
 /**
  * @brief Calculate gravity acceleration from external potential
@@ -2145,6 +2362,8 @@ void *runner_main(void *data) {
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
+	  else if (t->subtype == task_subtype_star_density)
+	    runner_doself_star_density(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2160,6 +2379,8 @@ void *runner_main(void *data) {
             runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
+	  else if (t->subtype == task_subtype_star_density)
+	    runner_dopair_star_density(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
