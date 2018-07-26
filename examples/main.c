@@ -135,6 +135,7 @@ int main(int argc, char *argv[]) {
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
+  struct stars_props stars_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct sourceterms sourceterms;
@@ -673,6 +674,12 @@ int main(int argc, char *argv[]) {
     else
       bzero(&eos, sizeof(struct eos_parameters));
 
+    /* Initialise the stars properties */
+    if (with_stars)
+      stars_props_init(&stars_properties, &prog_const, &us, params, &hydro_properties);
+    else
+      bzero(&stars_properties, sizeof(struct stars_props));
+
     /* Initialise the gravity properties */
     if (with_self_gravity)
       gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology);
@@ -886,7 +893,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
-                &hydro_properties, &gravity_properties, &mesh, &potential,
+                &hydro_properties, &gravity_properties, &stars_properties, &mesh, &potential,
                 &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);

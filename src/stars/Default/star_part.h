@@ -76,4 +76,32 @@ struct spart {
 
 } SWIFT_STRUCT_ALIGN;
 
+
+/**
+ * @brief Contains all the constants and parameters of the stars scheme
+ */
+struct stars_props {
+
+  /*! Resolution parameter */
+  float eta_neighbours;
+
+  /*! Target weightd number of neighbours (for info only)*/
+  float target_neighbours;
+
+  /*! Smoothing length tolerance */
+  float h_tolerance;
+
+  /*! Tolerance on neighbour number  (for info only)*/
+  float delta_neighbours;
+
+  /*! Maximal smoothing length */
+  float h_max;
+
+  /*! Maximal number of iterations to converge h */
+  int max_smoothing_iterations;
+
+  /*! Maximal change of h over one time-step */
+  float log_max_h_change;
+};
+
 #endif /* SWIFT_DEFAULT_STAR_PART_H */

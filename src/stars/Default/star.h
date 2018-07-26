@@ -53,7 +53,7 @@ __attribute__((always_inline)) INLINE static void star_first_init_spart(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void star_init_spart(
-    struct spart* sp) {
+  struct spart* sp, const struct stars_props *stars_properties) {
 
 #ifdef DEBUG_INTERACTIONS_SPH
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS; ++i) sp->ids_ngbs_density[i] = -1;
@@ -98,7 +98,7 @@ __attribute__((always_inline)) INLINE static void star_kick_extra(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void star_end_density(
-    struct spart* sp) {
+    struct spart* sp, const struct cosmology* cosmo) {
 
   /* Some smoothing length multiples. */
   const float h = sp->h;
@@ -143,7 +143,7 @@ __attribute__((always_inline)) INLINE static void star_spart_has_no_neighbours(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void star_prepare_force(
-    struct part *restrict sp, const struct cosmology *cosmo) {}
+    struct spart *restrict sp, const struct cosmology *cosmo) {}
 
 
 /**

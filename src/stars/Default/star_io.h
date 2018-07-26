@@ -19,6 +19,7 @@
 #ifndef SWIFT_DEFAULT_STAR_IO_H
 #define SWIFT_DEFAULT_STAR_IO_H
 
+#include "star_part.h"
 #include "io_properties.h"
 
 /**
@@ -68,6 +69,119 @@ INLINE static void star_write_particles(const struct spart* sparts,
       io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, sparts, mass);
   list[3] = io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
                                  sparts, id);
+}
+
+/**
+ * @brief Initialize the global properties of the stars scheme.
+ *
+ * @param p The #stars_props.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param us The internal unit system.
+ * @param params The parsed parameters.
+ */
+INLINE static void stars_props_init(struct stars_props *sp,
+                      const struct phys_const *phys_const,
+                      const struct unit_system *us,
+		      struct swift_params *params,
+		      const struct hydro_props *p) {
+
+  /* Kernel properties */
+  sp->eta_neighbours = parser_get_param_float(params, "Stars:resolution_eta");
+
+  /* Tolerance for the smoothing length Newton-Raphson scheme */
+  sp->h_tolerance = parser_get_opt_param_float(params, "Stars:h_tolerance",
+					       p->h_tolerance);
+
+  /* Get derived properties */
+  sp->target_neighbours = pow_dimension(sp->eta_neighbours) * kernel_norm;
+  const float delta_eta = sp->eta_neighbours * (1.f + sp->h_tolerance);
+  sp->delta_neighbours =
+      (pow_dimension(delta_eta) - pow_dimension(sp->eta_neighbours)) *
+      kernel_norm;
+
+  /* Maximal smoothing length */
+  sp->h_max = parser_get_opt_param_float(params, "Stars:h_max",
+					 sp->h_max);
+
+  /* Number of iterations to converge h */
+  sp->max_smoothing_iterations = parser_get_opt_param_int(
+      params, "Stars:max_ghost_iterations", p->max_smoothing_iterations);
+
+  /* Time integration properties */
+  const float max_volume_change = parser_get_opt_param_float(
+      params, "Stars:max_volume_change", -1);
+  if (max_volume_change == -1)
+    sp->log_max_h_change = p->log_max_h_change;
+  else
+    sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
+
+}
+
+/**
+ * @brief Print the global properties of the stars scheme.
+ *
+ * @param p The #stars_props.
+ */
+void stars_props_print(const struct stars_props *sp) {
+
+  /* Now stars */
+  message("Stars kernel: %s with eta=%f (%.2f neighbours).", kernel_name,
+          sp->eta_neighbours, sp->target_neighbours);
+
+  message("Stars relative tolerance in h: %.5f (+/- %.4f neighbours).",
+          sp->h_tolerance, sp->delta_neighbours);
+
+  message(
+      "Stars integration: Max change of volume: %.2f "
+      "(max|dlog(h)/dt|=%f).",
+      pow_dimension(expf(sp->log_max_h_change)), sp->log_max_h_change);
+
+  message("Maximal smoothing length allowed: %.4f", sp->h_max);
+
+  message("Maximal iterations in ghost task set to %d",
+	  sp->max_smoothing_iterations);
+
+}
+
+#if defined(HAVE_HDF5)
+void stars_props_print_snapshot(hid_t h_grpstars, const struct stars_props *sp) {
+
+  io_write_attribute_s(h_grpstars, "Kernel function", kernel_name);
+  io_write_attribute_f(h_grpstars, "Kernel target N_ngb", sp->target_neighbours);
+  io_write_attribute_f(h_grpstars, "Kernel delta N_ngb", sp->delta_neighbours);
+  io_write_attribute_f(h_grpstars, "Kernel eta", sp->eta_neighbours);
+  io_write_attribute_f(h_grpstars, "Smoothing length tolerance", sp->h_tolerance);
+  io_write_attribute_f(h_grpstars, "Maximal smoothing length", sp->h_max);
+  io_write_attribute_f(h_grpstars, "Volume log(max(delta h))",
+                       sp->log_max_h_change);
+  io_write_attribute_f(h_grpstars, "Volume max change time-step",
+                       pow_dimension(expf(sp->log_max_h_change)));
+  io_write_attribute_i(h_grpstars, "Max ghost iterations",
+                       sp->max_smoothing_iterations);
+}
+#endif
+
+/**
+ * @brief Write a #stars_props struct to the given FILE as a stream of bytes.
+ *
+ * @param p the struct
+ * @param stream the file stream
+ */
+void stars_props_struct_dump(const struct stars_props *p, FILE *stream) {
+  restart_write_blocks((void *)p, sizeof(struct stars_props), 1, stream,
+                       "starsprops", "stars props");
+}
+
+/**
+ * @brief Restore a stars_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param p the struct
+ * @param stream the file stream
+ */
+void stars_props_struct_restore(const struct stars_props *p, FILE *stream) {
+  restart_read_blocks((void *)p, sizeof(struct stars_props), 1, stream, NULL,
+                      "stars props");
 }
 
 #endif /* SWIFT_DEFAULT_STAR_IO_H */

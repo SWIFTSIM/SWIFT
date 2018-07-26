@@ -149,11 +149,12 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const struct space *s = e->s;
   const struct cosmology *cosmo = e->cosmology;
-  const float star_h_max = e->star_properties->h_max;
-  const float eps = e->star_properties->h_tolerance;
+  const struct stars_props *stars_properties = e->stars_properties;
+  const float star_h_max = e->stars_properties->h_max;
+  const float eps = e->stars_properties->h_tolerance;
   const float star_eta_dim =
-      pow_dimension(e->star_properties->eta_neighbours);
-  const int max_smoothing_iter = e->star_properties->max_smoothing_iterations;
+      pow_dimension(e->stars_properties->eta_neighbours);
+  const int max_smoothing_iter = e->stars_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
 
   TIMER_TIC;
@@ -212,7 +213,7 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Finish the density calculation */
-          star_end_density(p, cosmo);
+          star_end_density(sp, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = sp->wcount * h_old_dim;
@@ -250,7 +251,7 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
             redo += 1;
 
             /* Re-initialise everything */
-            star_init_spart(sp, hs);
+            star_init_spart(sp, stars_properties);
 
             /* Off we go ! */
             continue;

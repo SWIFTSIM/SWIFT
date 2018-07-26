@@ -323,6 +323,9 @@ struct engine {
   /* Properties of the hydro scheme */
   const struct hydro_props *hydro_properties;
 
+  /* Properties of the star model */
+  const struct stars_props *stars_properties;
+
   /* Properties of the self-gravity scheme */
   struct gravity_props *gravity_properties;
 
