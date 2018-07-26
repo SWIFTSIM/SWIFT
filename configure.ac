@@ -950,11 +950,15 @@ case "$with_subgrid" in
 	with_subgrid_cooling=grackle
 	with_subgrid_chemistry=GEAR
 	with_subgrid_hydro=gadget2
+	with_subgrid_stars=GEAR
+	with_subgrid_feedback=thermal
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_hydro=gadget2
+	with_subgrid_stars=none
+	with_subgrid_feedback=none
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -1306,6 +1310,64 @@ case "$with_chemistry" in
    ;;
 esac
 
+# Stellar model.
+AC_ARG_WITH([stars],
+   [AS_HELP_STRING([--with-stars=<model>],
+      [Stellar model to use @<:@none, GEAR, debug default: none@:>@]
+   )],
+   [with_stars="$withval"],
+   [with_stars="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_stars" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-stars together])
+   else
+      with_stars="$with_subgrid_stars"
+   fi
+fi
+
+case "$with_stars" in
+   GEAR)
+      AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
+   ;;
+   none)
+   ;;
+
+   *)
+      AC_MSG_ERROR([Unknown stellar model: $with_stars])
+   ;;
+esac
+
+# Feedback model
+AC_ARG_WITH([feedback],
+   [AS_HELP_STRING([--with-feedback=<model>],
+      [Feedback model to use @<:@none, thermal, debug default: none@:>@]
+   )],
+   [with_feedback="$withval"],
+   [with_feedback="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_feedback" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-feedback together])
+   else
+      with_feedback="$with_subgrid_feedback"
+   fi
+fi
+
+case "$with_feedback" in
+   thermal)
+      AC_DEFINE([FEEDBACK_THERMAL], [1], [Thermal Blastwave])
+   ;;
+   none)
+   ;;
+
+   *)
+      AC_MSG_ERROR([Unknown feedback model: $with_feedback])
+   ;;
+esac
+
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
@@ -1426,6 +1488,8 @@ AC_MSG_RESULT([
 
    Cooling function   : $with_cooling
    Chemistry          : $with_chemistry
+   Stellar model      : $with_stars
+   Feedback model     : $with_feedback
 
    Individual timers     : $enable_timers
    Task debugging        : $enable_task_debugging
