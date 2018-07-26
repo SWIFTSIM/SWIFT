@@ -538,9 +538,9 @@ static void parse_section_param(char *line, int *isFirstParam,
 	/* Ensure same behavior if called multiple times for same parameter */\
 	if (default_value != NULL && params->data[i].is_default &&            \
 	    *default_value != *result)					      \
-	  error("Cannot parse the same parameter twice but with different "   \
-		"default values. Got " FMT " and " FMT,			      \
-		*default_value, *result);     				      \
+	  error("Tried parsing %s but cannot parse the same parameter "       \
+		"twice with different default values. Got " FMT " and "       \
+		FMT, name, *default_value, *result);			      \
         /* This parameter has been used */                                    \
         params->data[i].used = 1;                                             \
         return 1;                                                             \
@@ -773,13 +773,22 @@ void parser_get_opt_param_string(struct swift_params *params, const char *name,
          * internal     whitespace variations. */                     \
         char *p = strtok(cp, ",");                                    \
         for (int k = 0; k < nval; k++) {                              \
-          if (p != NULL) {                                            \
-            if (sscanf(p, fmt, &values[k], str) != 1) {               \
+          if (p != NULL) {					      \
+	    /* Check if same default value */			      \
+	    TYPE cur_val;					      \
+            if (sscanf(p, fmt, &cur_val, str) != 1) {		      \
               error("Tried parsing " DESC                             \
                     " '%s' but found '%s' with "                      \
                     "illegal " DESC " characters '%s'.",              \
                     name, p, str);                                    \
-            }                                                         \
+            }							      \
+	    if (!required && params->data[i].is_default &&	      \
+		cur_val != values[k])				      \
+	      error("Tried parsing %s but cannot parse the "	      \
+		    "same parameter twice with different "	      \
+		    "default values. Got " FMT " and " FMT,	      \
+		    name, cur_val, values[k]);			      \
+	    values[k] = cur_val;				      \
           } else {                                                    \
             error(                                                    \
                 "Array '%s' with value '%s' has too few values, "     \
