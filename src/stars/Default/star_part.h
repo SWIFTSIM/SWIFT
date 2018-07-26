@@ -44,8 +44,17 @@ struct spart {
   /*! Star mass */
   float mass;
 
+  /* Particle cutoff radius. */
+  float h;
+
   /*! Particle time bin */
   timebin_t time_bin;
+
+  /* Number of neighbours. */
+  float wcount;
+
+  /* Number of neighbours spatial derivative. */
+  float wcount_dh;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -55,6 +64,14 @@ struct spart {
   /* Time of the last kick */
   integertime_t ti_kick;
 
+#endif
+
+#ifdef DEBUG_INTERACTIONS_STARS
+  /*! List of interacting particles in the density SELF and PAIR */
+  long long ids_ngbs_density[MAX_NUM_OF_NEIGHBOURS];
+
+  /*! Number of interactions in the density SELF and PAIR */
+  int num_ngb_density;
 #endif
 
 } SWIFT_STRUCT_ALIGN;

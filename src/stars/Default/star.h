@@ -53,7 +53,16 @@ __attribute__((always_inline)) INLINE static void star_first_init_spart(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void star_init_spart(
-    struct spart* sp) {}
+    struct spart* sp) {
+
+#ifdef DEBUG_INTERACTIONS_SPH
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS; ++i) sp->ids_ngbs_density[i] = -1;
+  sp->num_ngb_density = 0;
+#endif
+
+  sp->wcount = 0.f;
+  sp->wcount_dh = 0.f;
+}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
@@ -82,5 +91,77 @@ __attribute__((always_inline)) INLINE static void star_end_force(
  */
 __attribute__((always_inline)) INLINE static void star_kick_extra(
     struct spart* sp, float dt) {}
+
+/**
+ * @brief Finishes the calculation of density on stars
+ *
+ * @param sp The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void star_end_density(
+    struct spart* sp) {
+
+  /* Some smoothing length multiples. */
+  const float h = sp->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+
+  /* Final operation on the density (add self-contribution). */
+  sp->wcount += kernel_root;
+  sp->wcount_dh -= hydro_dimension * kernel_root;
+
+  /* Finish the calculation by inserting the missing h-factors */
+  sp->wcount *= h_inv_dim;
+  sp->wcount_dh *= h_inv_dim_plus_one;
+}
+
+
+/**
+ * @brief Sets all particle fields to sensible values when the #spart has 0 ngbs.
+ *
+ * @param sp The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void star_spart_has_no_neighbours(
+    struct spart *restrict sp, const struct cosmology *cosmo) {
+
+  /* Some smoothing length multiples. */
+  const float h = sp->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  /* Re-set problematic values */
+  sp->wcount = kernel_root * h_inv_dim;
+  sp->wcount_dh = 0.f;
+}
+
+/**
+ * @brief Prepare a particle for the force calculation.
+ *
+ *
+ * @param sp The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void star_prepare_force(
+    struct part *restrict sp, const struct cosmology *cosmo) {}
+
+
+/**
+ * @brief Reset acceleration fields of a particle
+ *
+ * Resets all star acceleration and time derivative fields in preparation
+ * for the sums taking place in the variaous force tasks
+ *
+ * @param sp The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void star_reset_acceleration(
+    struct spart *restrict p) {
+
+#ifdef DEBUG_INTERACTIONS_SPH
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS; ++i) sp->ids_ngbs_force[i] = -1;
+  sp->num_ngb_force = 0;
+#endif
+
+}
 
 #endif /* SWIFT_DEFAULT_STAR_H */
