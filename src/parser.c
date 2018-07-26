@@ -451,6 +451,7 @@ static void parse_value(char *line, struct swift_params *params) {
       strcpy(params->data[params->paramCount].name, tmpStr);
       strcpy(params->data[params->paramCount].value, token);
       params->data[params->paramCount].used = 0;
+      params->data[params->paramCount].is_default = 0;
       if (params->paramCount == PARSER_MAX_NO_OF_PARAMS - 1) {
         error(
             "Maximal number of parameters in parameter file reached. Aborting "
@@ -523,7 +524,7 @@ static void parse_section_param(char *line, int *isFirstParam,
 // a one word description of the type, "float", "int" etc.
 #define PARSER_GET_VALUE(TYPE, FMT, DESC)                                     \
   static int get_param_##TYPE(struct swift_params *params, const char *name,  \
-                              int required, TYPE *result) {                   \
+                              const TYPE *default_value, TYPE *result) {      \
     char str[PARSER_MAX_LINE_SIZE];                                           \
     for (int i = 0; i < params->paramCount; i++) {                            \
       if (strcmp(name, params->data[i].name) == 0) {                          \
@@ -534,12 +535,18 @@ static void parse_section_param(char *line, int *isFirstParam,
                 "illegal trailing characters '%s'.",                          \
                 params->data[i].name, params->data[i].value, str);            \
         }                                                                     \
+	/* Ensure same behavior if called multiple times for same parameter */\
+	if (default_value != NULL && params->data[i].is_default &&            \
+	    *default_value != *result)					      \
+	  error("Cannot parse the same parameter twice but with different "   \
+		"default values. Got " FMT " and " FMT,			      \
+		*default_value, *result);     				      \
         /* This parameter has been used */                                    \
         params->data[i].used = 1;                                             \
         return 1;                                                             \
       }                                                                       \
     }                                                                         \
-    if (required)                                                             \
+    if (default_value == NULL)                                                \
       error("Cannot find '%s' in the structure, in file '%s'.", name,         \
             params->fileName);                                                \
     return 0;                                                                 \
@@ -575,7 +582,7 @@ PARSER_SAVE_VALUE(string, const char *, "%s");
  */
 int parser_get_param_int(struct swift_params *params, const char *name) {
   int result = 0;
-  get_param_int(params, name, 1, &result);
+  get_param_int(params, name, NULL, &result);
   return result;
 }
 
@@ -588,7 +595,7 @@ int parser_get_param_int(struct swift_params *params, const char *name) {
  */
 char parser_get_param_char(struct swift_params *params, const char *name) {
   char result = 0;
-  get_param_char(params, name, 1, &result);
+  get_param_char(params, name, NULL, &result);
   return result;
 }
 
@@ -601,7 +608,7 @@ char parser_get_param_char(struct swift_params *params, const char *name) {
  */
 float parser_get_param_float(struct swift_params *params, const char *name) {
   float result = 0;
-  get_param_float(params, name, 1, &result);
+  get_param_float(params, name, NULL, &result);
   return result;
 }
 
@@ -614,7 +621,7 @@ float parser_get_param_float(struct swift_params *params, const char *name) {
  */
 double parser_get_param_double(struct swift_params *params, const char *name) {
   double result = 0;
-  get_param_double(params, name, 1, &result);
+  get_param_double(params, name, NULL, &result);
   return result;
 }
 
@@ -651,8 +658,9 @@ void parser_get_param_string(struct swift_params *params, const char *name,
 int parser_get_opt_param_int(struct swift_params *params, const char *name,
                              int def) {
   int result = 0;
-  if (get_param_int(params, name, 0, &result)) return result;
+  if (get_param_int(params, name, &def, &result)) return result;
   save_param_int(params, name, def);
+  params->data[params->paramCount - 1].is_default = 1;
   return def;
 }
 
@@ -667,8 +675,9 @@ int parser_get_opt_param_int(struct swift_params *params, const char *name,
 char parser_get_opt_param_char(struct swift_params *params, const char *name,
                                char def) {
   char result = 0;
-  if (get_param_char(params, name, 0, &result)) return result;
+  if (get_param_char(params, name, &def, &result)) return result;
   save_param_char(params, name, def);
+  params->data[params->paramCount - 1].is_default = 1;
   return def;
 }
 
@@ -683,8 +692,9 @@ char parser_get_opt_param_char(struct swift_params *params, const char *name,
 float parser_get_opt_param_float(struct swift_params *params, const char *name,
                                  float def) {
   float result = 0;
-  if (get_param_float(params, name, 0, &result)) return result;
+  if (get_param_float(params, name, &def, &result)) return result;
   save_param_float(params, name, def);
+  params->data[params->paramCount - 1].is_default = 1;
   return def;
 }
 
@@ -699,8 +709,9 @@ float parser_get_opt_param_float(struct swift_params *params, const char *name,
 double parser_get_opt_param_double(struct swift_params *params,
                                    const char *name, double def) {
   double result = 0;
-  if (get_param_double(params, name, 0, &result)) return result;
+  if (get_param_double(params, name, &def, &result)) return result;
   save_param_double(params, name, def);
+  params->data[params->paramCount - 1].is_default = 1;
   return def;
 }
 
@@ -725,6 +736,7 @@ void parser_get_opt_param_string(struct swift_params *params, const char *name,
     }
   }
   save_param_string(params, name, def);
+  params->data[params->paramCount - 1].is_default = 1;
   strcpy(retParam, def);
 }
 
@@ -839,6 +851,7 @@ int parser_get_opt_param_char_array(struct swift_params *params,
                                     const char *name, int nval, char *values) {
   if (get_param_char_array(params, name, 0, nval, values) != 1) {
     save_param_char_array(params, name, nval, values);
+    params->data[params->paramCount - 1].is_default = 1;
     return 0;
   }
   return 1;
@@ -872,6 +885,7 @@ int parser_get_opt_param_int_array(struct swift_params *params,
                                    const char *name, int nval, int *values) {
   if (get_param_int_array(params, name, 0, nval, values) != 1) {
     save_param_int_array(params, name, nval, values);
+    params->data[params->paramCount - 1].is_default = 1;
     return 0;
   }
   return 1;
@@ -906,6 +920,7 @@ int parser_get_opt_param_float_array(struct swift_params *params,
                                      float *values) {
   if (get_param_float_array(params, name, 0, nval, values) != 1) {
     save_param_float_array(params, name, nval, values);
+    params->data[params->paramCount - 1].is_default = 1;
     return 0;
   }
   return 1;
@@ -940,6 +955,7 @@ int parser_get_opt_param_double_array(struct swift_params *params,
                                       double *values) {
   if (get_param_double_array(params, name, 0, nval, values) != 1) {
     save_param_double_array(params, name, nval, values);
+    params->data[params->paramCount - 1].is_default = 1;
     return 0;
   }
   return 1;
@@ -1041,6 +1057,7 @@ int parser_get_opt_param_string_array(struct swift_params *params,
   else
     sprintf(&cpy[k], "\"%s\"]", def[i]);
   parser_set_param(params, cpy);
+  params->data[params->paramCount - 1].is_default = 1;
 
   /* Now copy to output space. */
   char **strings;
