@@ -40,7 +40,6 @@ struct parameter {
   char name[PARSER_MAX_LINE_SIZE];
   char value[PARSER_MAX_LINE_SIZE];
   short int used;
-  short int is_default;
 };
 
 struct section {

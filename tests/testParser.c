@@ -51,9 +51,6 @@ int main(int argc, char *argv[]) {
 
   int optional =
       parser_get_opt_param_int(&param_file, "Simulation:optional", 1);
-  /* Check if we can get it again (with the same default value) */
-  optional =
-    parser_get_opt_param_int(&param_file, "Simulation:optional", 1);
 
   /* Optional things not mentioned in parameter file. Should be in output
    * files.*/
@@ -62,9 +59,6 @@ int main(int argc, char *argv[]) {
   parser_get_opt_param_int(&param_file, "Virtual:param3", 3);
   parser_get_opt_param_int(&param_file, "Virtual:param4", 4);
 
-  /* Check if we can get it again (with the same default value) */
-  parser_get_opt_param_int(&param_file, "Virtual:param1", 1);
-  
   char ic_file[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(&param_file, "IO:ic_file", ic_file);
 
@@ -81,10 +75,7 @@ int main(int argc, char *argv[]) {
   parser_get_param_double_array(&param_file, "Box:dsides", 3, dsides);
   
   int optsides[5] = {1, 2, 3, 4, 5};
-  const int haveopt1 =
-      parser_get_opt_param_int_array(&param_file, "Box:moresides", 5, optsides);
-  /* Check if we can get it again (with the same default value) */
-  const int haveopt2 =
+  int haveopt =
       parser_get_opt_param_int_array(&param_file, "Box:moresides", 5, optsides);
 
   char **var_result;
@@ -110,11 +101,7 @@ int main(int argc, char *argv[]) {
 
   const char *optwords[4] = {"Word1", "Word2", "Word3", "Word4"};
   int noptwords = 4;
-  const int haveoptwords1 = parser_get_opt_param_string_array(
-      &param_file, "Simulation:optwords", &nvar_result, &var_result, noptwords,
-      optwords);
-  /* Check if we can get it again (with the same default value) */
-  const int haveoptwords2 = parser_get_opt_param_string_array(
+  int haveoptwords = parser_get_opt_param_string_array(
       &param_file, "Simulation:optwords", &nvar_result, &var_result, noptwords,
       optwords);
   printf("\nList from Simulation:optwords parameter (%d of %d)\n", nvar_result,
@@ -181,16 +168,14 @@ int main(int argc, char *argv[]) {
   assert(dsides[1] == 3.0);
   assert(dsides[2] == 4.0);
 
-  assert(haveopt1 == 0);
-  assert(haveopt2 == 1);
+  assert(haveopt == 0);
   assert(optsides[0] == 1);
   assert(optsides[1] == 2);
   assert(optsides[2] == 3);
   assert(optsides[3] == 4);
   assert(optsides[4] == 5);
 
-  assert(haveoptwords1 == 0);
-  assert(haveoptwords2 == 1);
+  assert(haveoptwords == 0);
 
   return 0;
 }

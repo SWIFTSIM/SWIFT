@@ -5354,6 +5354,7 @@ void engine_unpin(void) {
  * is completed by a call to engine_config().
  *
  * @param e The #engine.
+ * @param basename The snapshots basename
  * @param s The #space in which this #runner will run.
  * @param params The parsed parameter file.
  * @param Ngas total number of gas particles in the simulation.
@@ -5373,7 +5374,7 @@ void engine_unpin(void) {
  * @param chemistry The chemistry information.
  * @param sourceterms The properties of the source terms function.
  */
-void engine_init(struct engine *e, struct space *s, struct swift_params *params,
+void engine_init(struct engine *e, const char* basename, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
                  int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
@@ -5415,7 +5416,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->delta_time_snapshot =
       parser_get_param_double(params, "Snapshots:delta_time");
   e->ti_next_snapshot = 0;
-  parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
+  strcpy(e->snapshot_base_name, basename);
   e->snapshot_compression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
   e->snapshot_label_delta =
