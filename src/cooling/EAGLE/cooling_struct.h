@@ -137,6 +137,10 @@ struct cooling_function_data {
   float he_reion_z_center;
   float he_reion_z_sigma;
 
+  int index_z, low_z_index, high_z_index;
+  float delta_z_table;
+
+
   double delta_u;
 };
 
