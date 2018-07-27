@@ -48,8 +48,8 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
       const_newton_G_cgs / units_general_cgs_conversion_factor(us, dimension_G);
 
   /* Overwrite G if present in the file */
-  internal_const->const_newton_G = parser_get_opt_param_double(
-      params, "PhysicalConstants:G", internal_const->const_newton_G);
+  //internal_const->const_newton_G = parser_get_opt_param_double(
+  //    params, "PhysicalConstants:G", internal_const->const_newton_G);
 
   const float dimension_c[5] = {0, 1, -1, 0, 0}; /* [cm s^-1] */
   internal_const->const_speed_light_c =

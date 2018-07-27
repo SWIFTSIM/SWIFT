@@ -82,8 +82,7 @@ void velociraptor_init(struct engine *e) {
     e->stf_conv_fac->velocitytokms = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_SPEED); /* 1km/s <=> 1e5cm/s */
     e->stf_conv_fac->masstosolarmass = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_MASS); /* 1M_sol <=> 1.99e33g */
     e->stf_conv_fac->energyperunitmass = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_ENERGY_PER_UNIT_MASS); /* Conversion for gravitational potential. */
-    //e->stf_conv_fac->gravity = vel_const.const_newton_G; /* TODO: G = 6.67408e-8 (cgs) */
-    e->stf_conv_fac->gravity = 4.302051e-06; /* TODO: G = 6.67408e-8 (cgs) */
+    e->stf_conv_fac->gravity = vel_const.const_newton_G; /* TODO: G = 6.67408e-8 (cgs) */
     e->stf_conv_fac->hubbleunit = e->cosmology->H; /* TODO: double check this. */
     unit_info = *e->stf_conv_fac;
 

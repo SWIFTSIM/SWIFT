@@ -412,7 +412,7 @@ void engine_clean(struct engine *e);
 int engine_estimate_nr_tasks(struct engine *e);
 
 #ifdef HAVE_SETAFFINITY
-cpu_set_t *engine_entry_affinity();
+cpu_set_t *engine_entry_affinity(void);
 #endif
 
 /* Struct dump/restore support. */
