@@ -125,25 +125,59 @@ __attribute__((always_inline)) INLINE static int fof_find_global(const int i,
 //
 //}
 
-//__attribute__((always_inline)) INLINE static void fof_union(const int root_i, const int root_j,
-//                                                          int *group_index) {
-//
-//  int result = 0;
-//
-//  do {
-//    int root_i_new = fof_find(root_i - node_offset, group_index);
-//    const int root_j_new = fof_find(root_j - node_offset, group_index);
-//
-//    if(root_i_new == root_j_new) return;
-//
-//    if(root_j_new < root_i_new) {
-//      result = update_root(&group_index[root_i_new - node_offset], root_j_new);
-//    }
-//    else {
-//      result = update_root(&group_index[root_j_new - node_offset], root_i_new);
-//    }
-//  } while (result != 1);
-//}
+/* Updates the root and checks that its value has not been changed since being read. */
+__attribute__((always_inline)) INLINE static int update_root(
+    volatile int* address, int y) {
+
+  int* int_ptr = (int*)address;
+
+  int test_val, old_val, new_val;
+  old_val = *address;
+
+  test_val = old_val;
+  new_val = min(old_val, y);
+
+  /* atomic_cas returns old_val if *int_ptr has not changed since being read.*/
+  old_val = atomic_cas(int_ptr, test_val, new_val);
+
+  if(test_val == old_val) return 1;
+  else return 0;
+
+}
+
+__attribute__((always_inline)) INLINE static void fof_union(int *root_i, const int root_j,
+                                                          int *group_index) {
+
+  int result = 0;
+
+  /* Loop until the root can be set to a new value. */
+  do {
+    int root_i_new = fof_find(*root_i - node_offset, group_index);
+    const int root_j_new = fof_find(root_j - node_offset, group_index);
+
+    /* Skip particles in the same group. */
+    if(root_i_new == root_j_new) return;
+
+    /* If the root ID of pj is lower than pi's root ID set pi's root to point to pj's. 
+     * Otherwise set pj's to root to point to pi's.*/
+    if(root_j_new < root_i_new) {
+      
+      /* Updates the root and checks that its value has not been changed since being read. */
+      result = update_root(&group_index[root_i_new - node_offset], root_j_new);
+      
+      /* Update root_i on the fly. */
+      *root_i = root_j_new;
+    }
+    else {
+      
+      /* Updates the root and checks that its value has not been changed since being read. */
+      result = update_root(&group_index[root_j_new - node_offset], root_i_new);
+      
+      /* Update root_i on the fly. */
+      *root_i = root_i_new;
+    }
+  } while (result != 1);
+}
 
 void fof_print_group_list(struct space *s, const size_t nr_gparts, int *group_size, int *group_index, long long *group_id, const int find_group_size, char *out_file, int (*fof_find_func)(int, int *)) {
 
@@ -380,27 +414,7 @@ void fof_search_cell(struct space *s, struct cell *c) {
 
       /* Hit or miss? */
       if (r2 < l_x2) {
-
-        //if (lock_lock(&s->lock) == 0) {
-        //  fof_union(root_i, root_j, group_index);
-        //}
-        //if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
-
-        /* If the root ID of pj is lower than pi's root ID set pi's root to point to pj's. 
-         * Otherwise set pj's to root to point to pi's.*/
-        if (root_j < root_i) {
-          //message("Particle %lld found new group, from part: %lld r2:%f. Group ID: %d root_i: %d, group ID: %d root_j: %d", pi->id_or_neg_offset, pj->id_or_neg_offset, r2, group_index[root_i - node_offset], root_i, group_index[root_j - node_offset], root_j);
-
-          atomic_min(&group_index[root_i - node_offset], root_j);
-          /* Update root_i on the fly. */
-          root_i = root_j;
-        }
-        else {
-          //message("Particle %lld found new group, from part: %lld r2: %f. Group ID: %d root_j: %d, group ID: %d root_i: %d", pj->id_or_neg_offset, pi->id_or_neg_offset, r2, group_index[root_j - node_offset], root_j, group_index[root_i - node_offset], root_i);
-
-
-          atomic_min(&group_index[root_j - node_offset], root_i);
-        }
+        fof_union(&root_i, root_j, group_index);
       }
     }
   }
@@ -474,29 +488,7 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
 
       /* Hit or miss? */
       if (r2 < l_x2) {
-
-        //if (lock_lock(&s->lock) == 0) {
-        //  fof_union(root_i, root_j, group_index);
-        //}
-        //if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
-
-        /* If the root ID of pj is lower than pi's root ID set pi's root to point to pj's. 
-         * Otherwise set pj's to root to point to pi's.*/
-        //if (group_id[root_j - node_offset] < group_id[root_i - node_offset]) {
-        if (root_j < root_i) {
-          //message("Particle %lld found new group with part: %lld r2: %f. Group ID: %d root_i: %d, group ID: %d root_j: %d", pi->id_or_neg_offset, pj->id_or_neg_offset, r2, group_index[root_i - node_offset], root_i, group_index[root_j - node_offset], root_j);
-
-          atomic_min(&group_index[root_i - node_offset], root_j);
-          /* Update root_i on the fly. */
-          root_i = root_j;
-          //group_id[root_i - node_offset] = group_id[root_j - node_offset];
-        }
-        else {
-          //message("Particle %lld found new group with part: %lld r2: %f. Group ID: %d root_j: %d, group ID: %d root_i: %d", pj->id_or_neg_offset, pi->id_or_neg_offset, r2, group_index[root_j - node_offset], root_j, group_index[root_i - node_offset], root_i);
-          atomic_min(&group_index[root_j - node_offset], root_i);
-          //group_id[root_j - node_offset] = group_id[root_i - node_offset];
-        }
-
+        fof_union(&root_i, root_j, group_index);
       }
     }
   }
