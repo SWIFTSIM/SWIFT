@@ -3159,11 +3159,8 @@ void engine_maketasks(struct engine *e) {
                    s->nr_cells, 1, 0, e);
   }
 
-  ticks tic2 = getticks();
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity) engine_make_self_gravity_tasks(e);
-  message("Make self-gravity tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Add the external gravity tasks. */
   if (e->policy & engine_policy_external_gravity)
@@ -3171,7 +3168,6 @@ void engine_maketasks(struct engine *e) {
 
   if (e->sched.nr_tasks == 0 && (s->nr_gparts > 0 || s->nr_parts > 0))
     error("We have particles but no hydro or gravity tasks were created.");
-
 
   /* Free the old list of cell-task links. */
   if (e->links != NULL) free(e->links);
@@ -3236,14 +3232,9 @@ void engine_maketasks(struct engine *e) {
   threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
                  sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
-  tic2 = getticks();
   /* Add the dependencies for the gravity stuff */
   if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
     engine_link_gravity_tasks(e);
-
-  message("Linking gravity tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
 
 #ifdef WITH_MPI
 
@@ -3297,30 +3288,14 @@ void engine_maketasks(struct engine *e) {
   }
 #endif
 
-  tic2 = getticks();
-
   /* Set the unlocks per task. */
   scheduler_set_unlocks(sched);
-
-  message("Setting task unlocks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
 
   /* Rank the tasks. */
   scheduler_ranktasks(sched);
 
-  message("Ranking tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-
-  tic2 = getticks();
-
   /* Weight the tasks. */
   scheduler_reweight(sched, e->verbose);
-
-  message("Reweighting tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Set the tasks age. */
   e->tasks_age = 0;
@@ -3966,6 +3941,10 @@ void engine_prepare(struct engine *e) {
 
   /* Unskip active tasks and check for rebuild */
   if (!e->forcerepart) engine_unskip(e);
+
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &e->forcerebuild, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+#endif
 
   /* Do we need repartitioning ? */
   if (e->forcerepart) engine_repartition(e);
