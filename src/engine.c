@@ -2374,7 +2374,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   /* Compute how many cells away we need to walk */
   const double distance = 2.5 * cells[0].width[0] / theta_crit;
   int delta = (int)(distance / cells[0].width[0]) + 1;
-  if (delta >= cdim[0]) delta = cdim[0] - 1;
+  if (delta >= cdim[0] / 2) delta = cdim[0] / 2;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -2404,6 +2404,10 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
 
 #ifdef SWIFT_DEBUG_CHECKS
+    if(cell_getid(cdim, i, j, k) != cid)
+      error("Incorrect calculation of indices (i,j,k)=(%d,%d,%d) cid=%d",
+	    i, j, k, cid);
+
     if (multi_i->r_max != multi_i->r_max_rebuild)
       error(
           "Multipole size not equal ot it's size after rebuild. But we just "
@@ -2414,19 +2418,29 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     for (int x = -delta; x <= delta; x++) {
       int ii = i + x;
       if (ii >= cdim[0]) ii -= cdim[0];
-      if (ii < 0) ii += cdim[0];
+      else if (ii < 0) ii += cdim[0];
       for (int y = -delta; y <= delta; y++) {
 	int jj = j + y;
 	if (jj >= cdim[1]) jj -= cdim[1];
-	if (jj < 0) jj += cdim[1];
+	else if (jj < 0) jj += cdim[1];
 	for (int z = -delta; z <= delta; z++) {
 	  int kk = k + z;
 	  if (kk >= cdim[2]) kk -= cdim[2];
-	  if (kk < 0) kk += cdim[2];
+	  else if (kk < 0) kk += cdim[2];
 
           /* Get the cell */
           const int cjd = cell_getid(cdim, ii, jj, kk);
           struct cell *cj = &cells[cjd];
+
+#ifdef SWIFT_DEBUG_CHECKS
+	  const int iii = cjd / (cdim[1] * cdim[2]);
+	  const int jjj = (cjd / cdim[2]) % cdim[1];
+	  const int kkk = cjd % cdim[2];
+
+	  if(ii != iii || jj != jjj || kk != kkk)
+	    error("Incorrect calculation of indices (iii,jjj,kkk)=(%d,%d,%d) cjd=%d",
+		  iii, jjj, kkk, cjd);
+#endif
 
           /* Avoid duplicates of local pairs*/
           if (cid <= cjd && cj->nodeID == nodeID) continue;
