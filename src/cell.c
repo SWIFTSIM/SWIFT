@@ -1406,14 +1406,16 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
   /* Set the do_sub_drifts all the way up and activate the super drift
      if this has not yet been done. */
   if (c == c->super_hydro) {
-    if(c->drift_part == NULL) error("Trying to activate un-existing c->drift_part");
+    if (c->drift_part == NULL)
+      error("Trying to activate un-existing c->drift_part");
     scheduler_activate(s, c->drift_part);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !parent->do_sub_drift; parent = parent->parent) {
       parent->do_sub_drift = 1;
       if (parent == c->super_hydro) {
-	if(parent->drift_part == NULL) error("Trying to activate un-existing parent->drift_part");
+        if (parent->drift_part == NULL)
+          error("Trying to activate un-existing parent->drift_part");
         scheduler_activate(s, parent->drift_part);
         break;
       }
@@ -1435,12 +1437,13 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
   /* Set the do_grav_sub_drifts all the way up and activate the super drift
      if this has not yet been done. */
   if (c == c->super_gravity) {
-    
+
     /* Lock the cell and actuivate things */
-    if(lock_lock(&c->lock) != 0) error("Error trying to lock cell");
-    if(c->drift_gpart == NULL) error("Trying to activate un-existing c->drift_gpart");
-    if(c->drift_gpart != NULL) scheduler_activate(s, c->drift_gpart);
-    if(lock_unlock(&c->lock) != 0) error("Error trying to unlock cell");
+    if (lock_lock(&c->lock) != 0) error("Error trying to lock cell");
+    if (c->drift_gpart == NULL)
+      error("Trying to activate un-existing c->drift_gpart");
+    if (c->drift_gpart != NULL) scheduler_activate(s, c->drift_gpart);
+    if (lock_unlock(&c->lock) != 0) error("Error trying to unlock cell");
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !parent->do_grav_sub_drift;
@@ -1448,11 +1451,15 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
       parent->do_grav_sub_drift = 1;
       if (parent == c->super_gravity) {
 
-	/* Lock the cell and actuivate things */
-	if(lock_lock(&parent->lock) != 0) error("Error trying to lock parent cell");
-	if(parent->drift_gpart == NULL) error("Trying to activate un-existing parent->drift_gpart");
-        if(parent->drift_gpart != NULL)scheduler_activate(s, parent->drift_gpart);
-	if(lock_unlock(&parent->lock) != 0) error("Error trying to unlock parent cell");
+        /* Lock the cell and actuivate things */
+        if (lock_lock(&parent->lock) != 0)
+          error("Error trying to lock parent cell");
+        if (parent->drift_gpart == NULL)
+          error("Trying to activate un-existing parent->drift_gpart");
+        if (parent->drift_gpart != NULL)
+          scheduler_activate(s, parent->drift_gpart);
+        if (lock_unlock(&parent->lock) != 0)
+          error("Error trying to unlock parent cell");
         break;
       }
     }
@@ -1465,7 +1472,7 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
 void cell_activate_sorts_up(struct cell *c, struct scheduler *s) {
 
   if (c == c->super_hydro) {
-    if(c->sorts == NULL) error("Trying to activate un-existing c->sorts");
+    if (c->sorts == NULL) error("Trying to activate un-existing c->sorts");
     scheduler_activate(s, c->sorts);
     if (c->nodeID == engine_rank) cell_activate_drift_part(c, s);
   } else {
@@ -1474,7 +1481,8 @@ void cell_activate_sorts_up(struct cell *c, struct scheduler *s) {
          parent != NULL && !parent->do_sub_sort; parent = parent->parent) {
       parent->do_sub_sort = 1;
       if (parent == c->super_hydro) {
-	if(parent->sorts == NULL) error("Trying to activate un-existing parents->sorts");
+        if (parent->sorts == NULL)
+          error("Trying to activate un-existing parents->sorts");
         scheduler_activate(s, parent->sorts);
         if (parent->nodeID == engine_rank) cell_activate_drift_part(parent, s);
         break;

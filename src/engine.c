@@ -2404,9 +2404,9 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if(cell_getid(cdim, i, j, k) != cid)
-      error("Incorrect calculation of indices (i,j,k)=(%d,%d,%d) cid=%d",
-	    i, j, k, cid);
+    if (cell_getid(cdim, i, j, k) != cid)
+      error("Incorrect calculation of indices (i,j,k)=(%d,%d,%d) cid=%d", i, j,
+            k, cid);
 
     if (multi_i->r_max != multi_i->r_max_rebuild)
       error(
@@ -2417,29 +2417,37 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     /* Loop over every other cell within (Manhattan) range delta */
     for (int x = -delta; x <= delta; x++) {
       int ii = i + x;
-      if (ii >= cdim[0]) ii -= cdim[0];
-      else if (ii < 0) ii += cdim[0];
+      if (ii >= cdim[0])
+        ii -= cdim[0];
+      else if (ii < 0)
+        ii += cdim[0];
       for (int y = -delta; y <= delta; y++) {
-	int jj = j + y;
-	if (jj >= cdim[1]) jj -= cdim[1];
-	else if (jj < 0) jj += cdim[1];
-	for (int z = -delta; z <= delta; z++) {
-	  int kk = k + z;
-	  if (kk >= cdim[2]) kk -= cdim[2];
-	  else if (kk < 0) kk += cdim[2];
+        int jj = j + y;
+        if (jj >= cdim[1])
+          jj -= cdim[1];
+        else if (jj < 0)
+          jj += cdim[1];
+        for (int z = -delta; z <= delta; z++) {
+          int kk = k + z;
+          if (kk >= cdim[2])
+            kk -= cdim[2];
+          else if (kk < 0)
+            kk += cdim[2];
 
           /* Get the cell */
           const int cjd = cell_getid(cdim, ii, jj, kk);
           struct cell *cj = &cells[cjd];
 
 #ifdef SWIFT_DEBUG_CHECKS
-	  const int iii = cjd / (cdim[1] * cdim[2]);
-	  const int jjj = (cjd / cdim[2]) % cdim[1];
-	  const int kkk = cjd % cdim[2];
+          const int iii = cjd / (cdim[1] * cdim[2]);
+          const int jjj = (cjd / cdim[2]) % cdim[1];
+          const int kkk = cjd % cdim[2];
 
-	  if(ii != iii || jj != jjj || kk != kkk)
-	    error("Incorrect calculation of indices (iii,jjj,kkk)=(%d,%d,%d) cjd=%d",
-		  iii, jjj, kkk, cjd);
+          if (ii != iii || jj != jjj || kk != kkk)
+            error(
+                "Incorrect calculation of indices (iii,jjj,kkk)=(%d,%d,%d) "
+                "cjd=%d",
+                iii, jjj, kkk, cjd);
 #endif
 
           /* Avoid duplicates of local pairs*/
@@ -2730,7 +2738,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
-    /* Node ID (if running with MPI) */
+/* Node ID (if running with MPI) */
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -3244,8 +3252,8 @@ void engine_maketasks(struct engine *e) {
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
   if (e->policy & engine_policy_hydro)
-  threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
-                 sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
+    threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
+                   sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
   /* Add the dependencies for the gravity stuff */
   if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
@@ -3958,7 +3966,8 @@ void engine_prepare(struct engine *e) {
   if (!e->forcerepart) engine_unskip(e);
 
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, &e->forcerebuild, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &e->forcerebuild, 1, MPI_INT, MPI_MAX,
+                MPI_COMM_WORLD);
 #endif
 
   /* Do we need repartitioning ? */

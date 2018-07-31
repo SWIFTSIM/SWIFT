@@ -419,7 +419,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       const int sid = space_getsid(s->space, &ci, &cj, shift);
 
       /* Should this task be split-up? */
-      if (cell_can_split_pair_hydro_task(ci) && cell_can_split_pair_hydro_task(cj)) {
+      if (cell_can_split_pair_hydro_task(ci) &&
+          cell_can_split_pair_hydro_task(cj)) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub && /* Use division to avoid integer overflow. */
@@ -903,16 +904,17 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         t->type = task_type_grav_mm;
         t->subtype = task_subtype_none;
 
-	/* Since this task will not be split, we can already link it */
-	atomic_inc(&ci->nr_tasks);
-	atomic_inc(&cj->nr_tasks);
-	engine_addlink(e, &ci->grav, t);
-	engine_addlink(e, &cj->grav, t);
+        /* Since this task will not be split, we can already link it */
+        atomic_inc(&ci->nr_tasks);
+        atomic_inc(&cj->nr_tasks);
+        engine_addlink(e, &ci->grav, t);
+        engine_addlink(e, &cj->grav, t);
         break;
       }
 
       /* Should this task be split-up? */
-      if (cell_can_split_pair_gravity_task(ci) && cell_can_split_pair_gravity_task(cj)) {
+      if (cell_can_split_pair_gravity_task(ci) &&
+          cell_can_split_pair_gravity_task(cj)) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub && /* Use division to avoid integer overflow. */

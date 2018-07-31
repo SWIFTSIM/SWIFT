@@ -538,8 +538,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_can_recurse_in_pair_hydro_task(
-    const struct cell *c) {
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
@@ -555,8 +555,8 @@ __attribute__((always_inline)) INLINE static int cell_can_recurse_in_pair_hydro_
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_can_recurse_in_self_hydro_task(
-    const struct cell *c) {
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->h_max_old < 0.5f * c->dmin);
@@ -596,15 +596,14 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
   return c->split && (space_stretch * kernel_gamma * c->h_max < 0.5f * c->dmin);
 }
 
-
 /**
  * @brief Can a pair gravity task associated with a cell be split into smaller
  * sub-tasks.
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_can_split_pair_gravity_task(
-    const struct cell *c) {
+__attribute__((always_inline)) INLINE static int
+cell_can_split_pair_gravity_task(const struct cell *c) {
 
   /* Is the cell split ? */
   return c->split && c->depth < space_subdepth_grav;
@@ -616,8 +615,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_gravity_tas
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_can_split_self_gravity_task(
-    const struct cell *c) {
+__attribute__((always_inline)) INLINE static int
+cell_can_split_self_gravity_task(const struct cell *c) {
 
   /* Is the cell split ? */
   return c->split && c->depth < space_subdepth_grav;
