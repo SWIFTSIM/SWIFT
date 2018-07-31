@@ -26,6 +26,7 @@
 /* Local headers. */
 #include "threadpool.h"
 #include "engine.h"
+#include "proxy.h"
 #include "mpi.h"
 
 #define MPI_RANK_0_SEND_TAG 666
@@ -106,24 +107,6 @@ __attribute__((always_inline)) INLINE static int fof_find_global(const int i,
   return root;
 }
 #endif
-
-//__attribute__((always_inline)) INLINE static int update_root_new(
-//    volatile int* address, int y) {
-//
-//  int* int_ptr = (int*)address;
-//
-//  int test_val, old_val;//, new_val;
-//  old_val = *address;
-//
-//  if(fof_find(old_val - node_offset, (int *)address) != old_val) return 0;
-//
-//  test_val = old_val;
-//  old_val = atomic_cas(int_ptr, test_val, y);
-//
-//  if(test_val == old_val) return 1;
-//  else return 0;
-//
-//}
 
 /* Updates the root and checks that its value has not been changed since being read. */
 __attribute__((always_inline)) INLINE static int update_root(
@@ -842,6 +825,7 @@ void fof_search_tree_mapper(void *map_data, int num_elements,
  */
 void fof_search_foreign_cells(struct space *s) {
 
+  struct engine *e = s->e;
   struct cell *cells = s->cells_top;
   const size_t nr_cells = s->nr_cells;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -886,14 +870,7 @@ void fof_search_foreign_cells(struct space *s) {
   struct fof_mpi *fof_recv;
   struct cell **interface_cells;
   int interface_cell_count = 0;
-  int *cell_added;
   
-  if (posix_memalign((void**)&cell_added, SWIFT_STRUCT_ALIGNMENT,
-                       nr_cells * sizeof(int)) != 0)
-    error("Error while allocating memory for cell_added array");
-  
-  bzero(cell_added, nr_cells * sizeof(int));
-
   if (posix_memalign((void**)&fof_send, SWIFT_STRUCT_ALIGNMENT,
                        nr_links * sizeof(struct fof_mpi)) != 0)
     error("Error while allocating memory for FOF MPI communication");
@@ -912,38 +889,35 @@ void fof_search_foreign_cells(struct space *s) {
   fprintf(fof_file, "# %7s %7s %7s\n", "Local PID", "Foreign PID", "Root ID");
   fprintf(fof_file, "#-------------------------------\n");
 
-  /* Loop over cells and find which cells are in range of each other to perform
-   * the FOF search. */
-  for (size_t cid = 0; cid < nr_cells; cid++) {
+  /* Loop over cells_in and cells_out for each proxy and find which cells are in range of each other to perform
+   * the FOF search. Store local cells that are touching foreign cells in a list. */
+  for(int i=0; i<e->nr_proxies; i++) {
+  
+    message("Rank %d, proxy: %d has %d cells_out and %d cells_in.", engine_rank, i, e->proxies[i].nr_cells_out, e->proxies[i].nr_cells_in);
 
-    struct cell *restrict ci = &cells[cid];
+    for(int j=0; j<e->proxies[i].nr_cells_out; j++) {
 
-    /* Skip empty cells. */
-    if(ci->gcount == 0) continue;
+      struct cell *restrict local_cell = e->proxies[i].cells_out[j];
+      int found = 0;
 
-    /* Loop over all top-level cells skipping over the cells already searched.
-    */
-    for (size_t cjd = cid + 1; cjd < nr_cells; cjd++) {
+      /* Skip empty cells. */
+      if(local_cell->gcount == 0) continue;
 
-      struct cell *restrict cj = &cells[cjd];
-
-      /* Only perform pair FOF search between a local and foreign cell. */
-      if((ci->nodeID == engine_rank && cj->nodeID != engine_rank) || (ci->nodeID != engine_rank && cj->nodeID == engine_rank)) {
+      for(int k=0; k<e->proxies[i].nr_cells_in; k++) {
+      
+        struct cell *restrict foreign_cell = e->proxies[i].cells_in[k];
+      
         /* Skip empty cells. */
-        if(cj->gcount == 0) continue;
+        if(foreign_cell->gcount == 0) continue;
+        
+        rec_fof_search_pair_foreign(local_cell, foreign_cell, s, dim, search_r2, &send_count, fof_send);
 
-        rec_fof_search_pair_foreign(ci, cj, s, dim, search_r2, &send_count, fof_send);
-
-        const double r2 = cell_min_dist(ci, cj, dim);
-        if(r2 < search_r2) {
-
-          if(ci->nodeID == engine_rank && cell_added[cid] == 0) {
-            interface_cells[interface_cell_count++] = ci;
-            cell_added[cid]++;
-          }
-          if(cj->nodeID == engine_rank && cell_added[cjd] == 0) {
-            interface_cells[interface_cell_count++] = cj;
-            cell_added[cjd]++;
+        /* Check if local cell has already been added to the local list of cells. */
+        if(!found) {
+          const double r2 = cell_min_dist(local_cell, foreign_cell, dim);
+          if(r2 < search_r2) {        
+            interface_cells[interface_cell_count++] = local_cell;
+            found = 1;
           }
         }
       }
@@ -1275,40 +1249,40 @@ void fof_search_tree(struct space *s) {
     
       fof_print_group_list(s, s->e->total_nr_gparts, global_group_size, global_group_index, global_group_id, MPI_GROUP_SIZE, "2_mpi_rank_group_ids.dat", &fof_find_global);
 
-      for (size_t i = 0; i < s->e->total_nr_gparts; i++) {
-       
-        if(i >= nr_gparts) {
-          message("Particle %lld not on rank %d", PART_ID, engine_rank);
-          break;
-        } 
-        if(gparts[i].id_or_neg_offset == PART_ID) {
-          const int root_i = fof_find(i, global_group_index);
-          message("Particle %lld is on rank %d, group size: %d, root: %zu, loc: [%lf,%lf,%lf]", PART_ID, engine_rank, group_size[root_i], i, gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]);
-          break;
-        }
-        
-      }
+      //for (size_t i = 0; i < s->e->total_nr_gparts; i++) {
+      // 
+      //  if(i >= nr_gparts) {
+      //    message("Particle %lld not on rank %d", PART_ID, engine_rank);
+      //    break;
+      //  } 
+      //  if(gparts[i].id_or_neg_offset == PART_ID) {
+      //    const int root_i = fof_find(i, global_group_index);
+      //    message("Particle %lld is on rank %d, group size: %d, root: %zu, loc: [%lf,%lf,%lf]", PART_ID, engine_rank, group_size[root_i], i, gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]);
+      //    break;
+      //  }
+      //  
+      //}
       
     }
 
-    int find_root = 0;
-    for (size_t i = 0; i < nr_gparts; i++) {
+    //int find_root = 0;
+    //for (size_t i = 0; i < nr_gparts; i++) {
 
-      if(gparts[i].id_or_neg_offset == PART_ID) {
-        const int root_i = fof_find(i, group_index);
-        find_root = root_i;
-        message("Particle %lld is on rank %d, group size: %d, root: %d, loc: [%lf,%lf,%lf]", PART_ID, engine_rank, group_size[root_i - node_offset], root_i, gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]);
-        break;
-      }
-    }
-    
-    for (size_t i = 0; i < nr_gparts; i++) {
+    //  if(gparts[i].id_or_neg_offset == PART_ID) {
+    //    const int root_i = fof_find(i, group_index);
+    //    find_root = root_i;
+    //    message("Particle %lld is on rank %d, group size: %d, root: %d, loc: [%lf,%lf,%lf]", PART_ID, engine_rank, group_size[root_i - node_offset], root_i, gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]);
+    //    break;
+    //  }
+    //}
+    //
+    //for (size_t i = 0; i < nr_gparts; i++) {
 
-      if(find_root == fof_find(i, group_index)) {
-        message("Particle %lld is on rank %d, group size: %d, loc: [%lf,%lf,%lf]", gparts[i].id_or_neg_offset, engine_rank, group_size[find_root - node_offset], gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]);
-        //break;
-      }
-    }
+    //  if(find_root == fof_find(i, group_index)) {
+    //    message("Particle %lld is on rank %d, group size: %d, loc: [%lf,%lf,%lf]", gparts[i].id_or_neg_offset, engine_rank, group_size[find_root - node_offset], gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]);
+    //    //break;
+    //  }
+    //}
 
   }
   else {
