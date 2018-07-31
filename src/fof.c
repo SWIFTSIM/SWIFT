@@ -49,6 +49,9 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts) {
   s->l_x2 = l_x * l_x;
 
 #ifdef WITH_MPI
+  /* Check size of linking length against the top-level cell dimensions. */
+  if(l_x > s->width[0]) error("Linking length greater than the width of a top-level cell. Need to check more than one layer of top-level cells for links.");
+  
   if (MPI_Type_contiguous(sizeof(struct fof_mpi) / sizeof(unsigned char), MPI_BYTE,
         &fof_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&fof_mpi_type) != MPI_SUCCESS) {
