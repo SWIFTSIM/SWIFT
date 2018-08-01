@@ -5835,8 +5835,6 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     if (e->delta_time_statistics <= 1.)
       error("Time between statistics (%e) must be > 1.",
             e->delta_time_statistics);
-
-
     
     if (e->a_first_snapshot < e->cosmology->a_begin)
       error(
@@ -6391,6 +6389,7 @@ void engine_clean(struct engine *e) {
   free(e->runners);
   free(e->snapshot_units);
   free(e->links);
+  free(e->cellloc);
   scheduler_clean(&e->sched);
   space_clean(e->s);
   threadpool_clean(&e->threadpool);

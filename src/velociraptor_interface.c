@@ -119,16 +119,17 @@ void velociraptor_init(struct engine *e) {
     sim_info.icellwidth[2] = s->iwidth[2] / unit_info.lengthtokpc;
    
     /* Allocate and populate top-level cell locations. */
-    /* JSW TODO: Remember to free at the end of the simulation. */
-    if (posix_memalign((void **)&(sim_info.cellloc), 32,
+    if (posix_memalign((void **)&(e->cellloc), 32,
                        s->nr_cells * sizeof(struct cell_loc)) != 0)
         error("Failed to allocate top-level cell locations for VELOCIraptor.");
 
     for(int i=0; i<s->nr_cells; i++) {
-        sim_info.cellloc[i].loc[0] = unit_info.lengthtokpc * s->cells_top[i].loc[0];
-        sim_info.cellloc[i].loc[1] = unit_info.lengthtokpc * s->cells_top[i].loc[1];
-        sim_info.cellloc[i].loc[2] = unit_info.lengthtokpc * s->cells_top[i].loc[2];
+        e->cellloc[i].loc[0] = unit_info.lengthtokpc * s->cells_top[i].loc[0];
+        e->cellloc[i].loc[1] = unit_info.lengthtokpc * s->cells_top[i].loc[1];
+        e->cellloc[i].loc[2] = unit_info.lengthtokpc * s->cells_top[i].loc[2];
     }
+
+    sim_info.cellloc = e->cellloc;
 
     char configfilename[PARSER_MAX_LINE_SIZE], outputFileName[FILENAME_BUFFER_SIZE];
     parser_get_param_string(e->parameter_file, "StructureFinding:config_file_name", configfilename);
@@ -164,12 +165,11 @@ void velociraptor_invoke(struct engine *e) {
     const size_t nr_hydro_parts = s->nr_parts;
     const int nr_cells = s->nr_cells;
     int *cell_node_ids;
-    float *internal_energies;
     struct unitinfo *conv_fac = e->stf_conv_fac;
 
     /* Allow thread to run on any core for the duration of the call to VELOCIraptor so that 
      * when OpenMP threads are spawned they can run on any core on the processor. */
-    const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN) / 2;
+    const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
     cpu_set_t cpuset;
     pthread_t thread = pthread_self();
 
@@ -189,15 +189,8 @@ void velociraptor_invoke(struct engine *e) {
     
     for(int i=0; i<nr_cells; i++) cell_node_ids[i] = s->cells_top[i].nodeID;    
 
-    /* Calculate and store the internal energies of gas particles and pass them to VELOCIraptor. */
-    if (posix_memalign((void **)&internal_energies, 32,
-                       nr_hydro_parts * sizeof(float)) != 0)
-        error("Failed to allocate array of internal energies for VELOCIraptor.");
-    
     message("MPI rank %d sending %lld gparts to VELOCIraptor.", e->nodeID, nr_gparts);
     
-    //for(int i=0; i<nr_gparts; i++) message("Potential: %f", gparts[i].potential);
-
     /* Append base name with either the step number or time depending on what format is specified in the parameter file. */
     char outputFileName[FILENAME_BUFFER_SIZE];
     if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_STEPS) {
@@ -209,9 +202,9 @@ void velociraptor_invoke(struct engine *e) {
              e->time);
     }
 
+    /* Allocate and populate an array of swift_vel_parts to be passed to VELOCIraptor. */
     struct swift_vel_part *swift_parts;
 
-    /* Calculate and store the internal energies of gas particles and pass them to VELOCIraptor. */
     if (posix_memalign((void **)&swift_parts, part_align,
                        nr_gparts * sizeof(struct swift_vel_part)) != 0)
         error("Failed to allocate array of particles for VELOCIraptor.");
@@ -223,7 +216,8 @@ void velociraptor_invoke(struct engine *e) {
     
     message("Energy scaling factor: %f", energy_scale);
     message("a^2: %f", a2);
-    
+   
+    /* Convert particle properties into VELOCIraptor units */ 
     for(int i=0; i<nr_gparts; i++) {
       swift_parts[i].x[0] = gparts[i].x[0] * conv_fac->lengthtokpc;
       swift_parts[i].x[1] = gparts[i].x[1] * conv_fac->lengthtokpc;
@@ -235,6 +229,7 @@ void velociraptor_invoke(struct engine *e) {
       swift_parts[i].potential = gparts[i].potential * conv_fac->energyperunitmass;
       swift_parts[i].type = gparts[i].type;
       
+      /* Set gas particle IDs from their hydro counterparts and set internal energies. */
       if(gparts[i].type == swift_type_gas) {  
         swift_parts[i].id = parts[-gparts[i].id_or_neg_offset].id;
         swift_parts[i].u = hydro_get_physical_internal_energy(&parts[-gparts[i].id_or_neg_offset], e->cosmology) * energy_scale;
@@ -246,6 +241,7 @@ void velociraptor_invoke(struct engine *e) {
 
     }
 
+    /* Call VELOCIraptor. */
     if(!InvokeVelociraptor(nr_gparts, nr_hydro_parts, swift_parts, cell_node_ids, outputFileName)) error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
     
     /* Reset the pthread affinity mask after VELOCIraptor returns. */
@@ -256,5 +252,5 @@ void velociraptor_invoke(struct engine *e) {
     free(swift_parts);
     
     message("VELOCIraptor took %.3f %s on rank %d.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit(), e->nodeID);
+            clocks_from_ticks(getticks() - tic), clocks_getunit(), engine_rank);
 }

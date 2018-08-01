@@ -208,6 +208,9 @@ struct engine {
   struct unit_system *stf_units;
   struct unitinfo *stf_conv_fac;
 
+  /* Top-level cell locations for VELOCIraptor. */
+  struct cell_loc *cellloc;
+
   /* Snapshot information */
   double a_first_snapshot;
   double time_first_snapshot;
