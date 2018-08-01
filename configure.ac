@@ -993,6 +993,18 @@ if test "$enable_debug_interactions" != "no"; then
   fi
 fi
 
+# Check if VELOCIraptor is enabled.
+AC_ARG_ENABLE([velociraptor],
+   [AS_HELP_STRING([--enable-velociraptor],
+                   [Activate structure finding with VELOCIraptor.]
+   )],
+   [enable_velociraptor="$enableval"],
+   [enable_velociraptor="no"]
+)
+if test "$enable_velociraptor" != "no"; then
+      AC_DEFINE([WITH_VELOCIRAPTOR],1,[Enable VELOCIRaptor])
+fi
+
 # SPH Kernel function
 AC_ARG_WITH([kernel],
    [AS_HELP_STRING([--with-kernel=<kernel>],
@@ -1344,6 +1356,7 @@ AC_MSG_RESULT([
    Special allocators : $have_special_allocator
    CPU profiler       : $have_profiler
    Pthread barriers   : $have_pthread_barrier
+   VELOCIraptor       : $enable_velociraptor
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension

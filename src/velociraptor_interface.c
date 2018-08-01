@@ -43,6 +43,8 @@
  *
  */
 void velociraptor_init(struct engine *e) {
+
+#ifdef WITH_VELOCIRAPTOR
     struct space *s = e->s;
     struct cosmoinfo cosmo_info;
     struct unitinfo unit_info;
@@ -146,6 +148,9 @@ void velociraptor_init(struct engine *e) {
 
     /* Initialise VELOCIraptor. */
     if(!InitVelociraptor(configfilename, outputFileName, cosmo_info, unit_info, sim_info)) error("Exiting. VELOCIraptor initialisation failed.");
+#else
+  error("SWIFT not configure to run with VELOCIraptor.");
+#endif /* WITH_VELOCIRAPTOR */
 
 }
 
@@ -157,6 +162,7 @@ void velociraptor_init(struct engine *e) {
  */
 void velociraptor_invoke(struct engine *e) {
 
+#ifdef WITH_VELOCIRAPTOR
     struct space *s = e->s;
     struct gpart *gparts = s->gparts;
     struct part *parts = s->parts;
@@ -242,7 +248,7 @@ void velociraptor_invoke(struct engine *e) {
 
     /* Call VELOCIraptor. */
     if(!InvokeVelociraptor(nr_gparts, nr_hydro_parts, swift_parts, cell_node_ids, outputFileName)) error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
-    
+
     /* Reset the pthread affinity mask after VELOCIraptor returns. */
     pthread_setaffinity_np(thread, sizeof(cpu_set_t), engine_entry_affinity());
     
@@ -252,4 +258,7 @@ void velociraptor_invoke(struct engine *e) {
     
     message("VELOCIraptor took %.3f %s on rank %d.",
             clocks_from_ticks(getticks() - tic), clocks_getunit(), engine_rank);
+#else
+    error("SWIFT not configure to run with VELOCIraptor.");
+#endif /* WITH_VELOCIRAPTOR */
 }
