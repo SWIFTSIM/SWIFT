@@ -169,7 +169,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->force = NULL;
     c->grav = NULL;
     c->dx_max_part = 0.0f;
-    c->dx_max_gpart = 0.0f;
     c->dx_max_sort = 0.0f;
     c->sorted = 0;
     c->count = 0;
@@ -1823,7 +1822,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->split = 0;
       cp->h_max = 0.f;
       cp->dx_max_part = 0.f;
-      cp->dx_max_gpart = 0.f;
       cp->dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
@@ -1977,7 +1975,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       xparts[k].x_diff[2] = 0.f;
     }
 
-    /* gparts: Get dt_min/dt_max, reset x_diff. */
+    /* gparts: Get dt_min/dt_max. */
     for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (gparts[k].time_bin == time_bin_inhibited)
@@ -1985,9 +1983,6 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
       gravity_time_bin_min = min(gravity_time_bin_min, gparts[k].time_bin);
       gravity_time_bin_max = max(gravity_time_bin_max, gparts[k].time_bin);
-      gparts[k].x_diff[0] = 0.f;
-      gparts[k].x_diff[1] = 0.f;
-      gparts[k].x_diff[2] = 0.f;
     }
 
     /* sparts: Get dt_min/dt_max */

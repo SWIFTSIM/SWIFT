@@ -29,9 +29,6 @@ struct gpart {
   /*! Particle position. */
   double x[3];
 
-  /*! Offset between current position and position at last tree rebuild. */
-  float x_diff[3];
-
   /*! Particle velocity. */
   float v_full[3];
 
@@ -75,6 +72,6 @@ struct gpart {
   double potential_exact;
 #endif
 
-} SWIFT_STRUCT_ALIGN;
+};
 
 #endif /* SWIFT_DEFAULT_GRAVITY_PART_H */
