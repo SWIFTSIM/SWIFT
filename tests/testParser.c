@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
       parser_get_param_double(&param_file, "Simulation:start_time");
   const int kernel = parser_get_param_int(&param_file, "kernel");
 
-  int optional =
+  const int optional =
       parser_get_opt_param_int(&param_file, "Simulation:optional", 1);
 
   /* Optional things not mentioned in parameter file. Should be in output
