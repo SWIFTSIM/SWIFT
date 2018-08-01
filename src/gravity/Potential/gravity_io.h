@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_GRAVITY_IO_H
-#define SWIFT_DEFAULT_GRAVITY_IO_H
+#ifndef SWIFT_POTENTIAL_GRAVITY_IO_H
+#define SWIFT_POTENTIAL_GRAVITY_IO_H
 
 #include "io_properties.h"
 
@@ -119,4 +119,4 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
                                  gparts, potential);
 }
 
-#endif /* SWIFT_DEFAULT_GRAVITY_IO_H */
+#endif /* SWIFT_POTENTIAL_GRAVITY_IO_H */

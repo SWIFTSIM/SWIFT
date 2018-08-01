@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_GRAVITY_PART_H
-#define SWIFT_DEFAULT_GRAVITY_PART_H
+#ifndef SWIFT_POTENTIAL_GRAVITY_PART_H
+#define SWIFT_POTENTIAL_GRAVITY_PART_H
 
 /* Gravity particle. */
 struct gpart {
@@ -77,4 +77,4 @@ struct gpart {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_DEFAULT_GRAVITY_PART_H */
+#endif /* SWIFT_POTENTIAL_GRAVITY_PART_H */

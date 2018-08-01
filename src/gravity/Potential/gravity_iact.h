@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_GRAVITY_IACT_H
-#define SWIFT_DEFAULT_GRAVITY_IACT_H
+#ifndef SWIFT_POTENTIAL_GRAVITY_IACT_H
+#define SWIFT_POTENTIAL_GRAVITY_IACT_H
 
 /* Includes. */
 #include "kernel_gravity.h"
@@ -347,4 +347,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
 #endif
 }
 
-#endif /* SWIFT_DEFAULT_GRAVITY_IACT_H */
+#endif /* SWIFT_POTENTIAL_GRAVITY_IACT_H */
