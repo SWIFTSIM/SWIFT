@@ -288,7 +288,7 @@ static void rec_fof_search_pair_foreign(struct cell *ci, struct cell *cj, struct
   /* Perform FOF search between pairs of cells that are within the linking
    * length and not the same cell. */
   else if (ci != cj)
-    fof_search_pair_cells_foreign(s, ci, cj, send_count, fof_send);
+    fof_search_pair_cells_foreign_new(s, ci, cj, send_count, fof_send);
   else if (ci == cj) error("Pair FOF called on same cell!!!");
 
 }
@@ -614,12 +614,168 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
 
           //message("Particle %lld in range of foreign particle %lld. Group ID: %d root_j: %d", pj->id_or_neg_offset, pi->id_or_neg_offset, group_index[root_j - node_offset], root_j);
           /* Store the particle IDs and group ID for communication. */
-          fof_send[*send_count].local_pid = pi->id_or_neg_offset;        
+          fof_send[*send_count].local_pid = pj->id_or_neg_offset;        
           fof_send[*send_count].foreign_pid = pi->id_or_neg_offset; 
           fof_send[*send_count].root_i = root_j;
           (*send_count)++;
           local_send_count++;
           //fprintf(fof_file, "  %7zu %7zu %7d\n", pj->id_or_neg_offset, pi->id_or_neg_offset, root_j);
+        }
+      }
+    }
+
+  }
+
+  //if(local_send_count > 0) {
+
+  //  if(ci_local) 
+  //    message("Rank: %d sending %zu links to rank %d for testing. ci: (%lf,%lf,%lf) -> cj: (%lf,%lf,%lf).", engine_rank, local_send_count, cj->nodeID, ci->loc[0], ci->loc[1], ci->loc[2], cj->loc[0], cj->loc[1], cj->loc[2]);
+  //  
+  //  if(cj_local) 
+  //    message("Rank: %d sending %zu links to rank %d for testing. cj: (%lf,%lf,%lf) -> ci: (%lf,%lf,%lf).", engine_rank, local_send_count, ci->nodeID, cj->loc[0], cj->loc[1], cj->loc[2], ci->loc[0], ci->loc[1], ci->loc[2]);
+  //}
+
+}
+
+/* Perform a FOF search between a local and foreign cell using the Union-Find algorithm. 
+ * Communicate any links found between particles to the appropriate node.*/
+void fof_search_pair_cells_foreign_new(struct space *s, struct cell *ci, struct cell *cj, size_t *send_count, struct fof_mpi *fof_send ) {
+
+  const size_t count_i = ci->gcount;
+  const size_t count_j = cj->gcount;
+  struct gpart *gparts_i = ci->gparts;
+  struct gpart *gparts_j = cj->gparts;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double l_x2 = s->l_x2;
+  int *group_index = s->fof_data.group_index;
+  
+  /* Make a list of particle offsets into the global gparts array. */
+  int *const offset_i = group_index + (ptrdiff_t)(gparts_i - s->gparts);
+  int *const offset_j = group_index + (ptrdiff_t)(gparts_j - s->gparts);
+
+  /* Account for boundary conditions.*/
+  double shift[3] = {0.0, 0.0, 0.0};
+
+  /* Check whether cells are local to the node. */
+  const int ci_local = (ci->nodeID == engine_rank);
+  const int cj_local = (cj->nodeID == engine_rank);
+
+  if((ci_local && cj_local) || (!ci_local && !cj_local)) error("FOF search of foreign cells called on two local cells or two foreign cells.");
+
+  size_t local_send_count = 0;
+
+  /* Get the relative distance between the pairs, wrapping. */
+  const int periodic = s->periodic;
+  double diff[3];
+  
+  if(ci_local) {
+
+    for (int k = 0; k < 3; k++) {
+      diff[k] = cj->loc[k] - ci->loc[k];
+      if (periodic && diff[k] < -dim[k] / 2)
+        shift[k] = dim[k];
+      else if (periodic && diff[k] > dim[k] / 2)
+        shift[k] = -dim[k];
+      else
+        shift[k] = 0.0;
+      diff[k] += shift[k];
+    }
+
+    /* Loop over particles and find which particles belong in the same group. */
+    for (size_t i = 0; i < count_i; i++) {
+
+      struct gpart *pi = &gparts_i[i];
+      const double pix = pi->x[0] - shift[0];
+      const double piy = pi->x[1] - shift[1];
+      const double piz = pi->x[2] - shift[2];
+
+      /* Find the root of pi. */
+      const int root_i = fof_find(offset_i[i] - node_offset, group_index);
+
+      for (size_t j = 0; j < count_j; j++) {
+
+        struct gpart *pj = &gparts_j[j];
+        const double pjx = pj->x[0];
+        const double pjy = pj->x[1];
+        const double pjz = pj->x[2];
+
+        /* Compute pairwise distance, remembering to account for boundary
+         * conditions. */
+        float dx[3], r2 = 0.0f;
+        dx[0] = pix - pjx;
+        dx[1] = piy - pjy;
+        dx[2] = piz - pjz;
+
+        for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
+
+        /* Hit or miss? */
+        if (r2 < l_x2) {
+
+          /* Store the particle IDs and group ID for communication. */
+          fof_send[*send_count].local_pid = root_i;        
+          fof_send[*send_count].foreign_pid = pj->root;        
+          //fof_send[*send_count].root_i = root_i;
+          (*send_count)++;
+          local_send_count++;
+
+          //fprintf(fof_file, "  %7d <-> %7d\n", root_i, pj->root);
+        }
+      }
+    }
+
+  }
+
+  if(cj_local) {
+
+    for (int k = 0; k < 3; k++) {
+      diff[k] = ci->loc[k] - cj->loc[k];
+      if (periodic && diff[k] < -dim[k] / 2)
+        shift[k] = dim[k];
+      else if (periodic && diff[k] > dim[k] / 2)
+        shift[k] = -dim[k];
+      else
+        shift[k] = 0.0;
+      diff[k] += shift[k];
+    }
+
+    /* Loop over particles and find which particles belong in the same group. */
+    for (size_t j = 0; j < count_j; j++) {
+
+      struct gpart *pj = &gparts_j[j];
+      const double pjx = pj->x[0] - shift[0];
+      const double pjy = pj->x[1] - shift[1];
+      const double pjz = pj->x[2] - shift[2];
+
+      /* Find the root of pj. */
+      int root_j = fof_find(offset_j[j] - node_offset, group_index);
+
+      for (size_t i = 0; i < count_i; i++) {
+
+        struct gpart *pi = &gparts_i[i];
+        const double pix = pi->x[0];
+        const double piy = pi->x[1];
+        const double piz = pi->x[2];
+
+        /* Compute pairwise distance, remembering to account for boundary
+         * conditions. */
+        float dx[3], r2 = 0.0f;
+        dx[0] = pjx - pix;
+        dx[1] = pjy - piy;
+        dx[2] = pjz - piz;
+
+        for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
+
+        /* Hit or miss? */
+        if (r2 < l_x2) {
+
+          /* Store the particle IDs and group ID for communication. */
+          fof_send[*send_count].local_pid = root_j;        
+          fof_send[*send_count].foreign_pid = pi->root; 
+          //fof_send[*send_count].root_i = root_j;
+          (*send_count)++;
+          local_send_count++;
+          //fprintf(fof_file, "  %7d <-> %7d\n", root_j, pi->root);
+          
         }
       }
     }
@@ -830,6 +986,7 @@ void fof_search_foreign_cells(struct space *s) {
 
   struct engine *e = s->e;
   struct cell *cells = s->cells_top;
+  int *group_index = s->fof_data.group_index;
   const size_t nr_cells = s->nr_cells;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->l_x2;
@@ -913,7 +1070,7 @@ void fof_search_foreign_cells(struct space *s) {
         /* Skip empty cells. */
         if(foreign_cell->gcount == 0) continue;
         
-        rec_fof_search_pair_foreign(local_cell, foreign_cell, s, dim, search_r2, &send_count, fof_send);
+        //rec_fof_search_pair_foreign(local_cell, foreign_cell, s, dim, search_r2, &send_count, fof_send);
 
         /* Check if local cell has already been added to the local list of cells. */
         if(!found) {
@@ -928,6 +1085,130 @@ void fof_search_foreign_cells(struct space *s) {
   }
 
   message("No. of interface cells: %d", interface_cell_count);
+
+  /* Set the root of outgoing particles. */
+  for(int i=0; i<e->nr_proxies; i++) {
+  
+    for(int j=0; j<e->proxies[i].nr_cells_out; j++) {
+
+      struct cell *restrict local_cell = e->proxies[i].cells_out[j];
+      struct gpart *gparts = local_cell->gparts;
+  
+      /* Make a list of particle offsets into the global gparts array. */
+      int *const offset = group_index + (ptrdiff_t)(gparts - s->gparts);
+
+      /* Set each particle's root after the local FOF.*/
+      for(int k=0; k<local_cell->gcount; k++) {
+        const int root = fof_find(offset[k] - node_offset, group_index);  
+        gparts[k].root = root;
+      }
+    }
+  }
+
+  struct scheduler *sched = &e->sched;
+  struct task *tasks = sched->tasks;
+  int nr_sends = 0, nr_recvs = 0;
+
+  for(int i=0; i<sched->nr_tasks; i++) {
+  
+    if(tasks[i].type == task_type_send) {
+      scheduler_activate(sched,&tasks[i]);
+      nr_sends++;
+    }
+
+    if(tasks[i].type == task_type_recv) {
+      scheduler_activate(sched,&tasks[i]);
+      nr_recvs++;
+    } 
+  }
+ 
+  engine_launch(e);
+
+  for(int i=0; i<e->nr_proxies; i++) {
+  
+    for(int j=0; j<e->proxies[i].nr_cells_in; j++) {
+
+      struct cell *restrict foreign_cell = e->proxies[i].cells_in[j];
+      struct gpart *gparts = foreign_cell->gparts;
+  
+      for(int k=0; k<foreign_cell->gcount; k++) {
+        if(gparts[k].root >= node_offset && gparts[k].root < node_offset + s->nr_gparts) error("Rank %d received foreign particle with local root: %d", engine_rank, gparts[k].root);
+      }
+    }
+  }
+
+  size_t link_count_new = 0;
+
+  for(int i=0; i<interface_cell_count; i++) {
+
+    struct cell *restrict local_cell = interface_cells[i];
+      
+    /* Skip empty cells. */
+    if(local_cell->gcount == 0) continue;
+
+    for(int j=0; j<e->nr_proxies; j++) {
+
+      for(int k=0; k<e->proxies[j].nr_cells_in; k++) {
+
+        struct cell *restrict foreign_cell = e->proxies[j].cells_in[k];
+
+        /* Skip empty cells. */
+        if(foreign_cell->gcount == 0) continue;
+
+        rec_fof_search_pair_foreign(local_cell, foreign_cell, s, dim, search_r2, &link_count_new, fof_send);
+
+      }
+    }
+  }
+
+  message("Rank %d found %zu links between local and foreign groups.", engine_rank, link_count_new);
+
+  struct fof_mpi *fof_list;
+  int list_count = 0;
+  
+  if (posix_memalign((void**)&fof_list, SWIFT_STRUCT_ALIGNMENT,
+                       link_count_new * sizeof(struct fof_mpi)) != 0)
+    error("Error while allocating memory for FOF MPI communication");
+
+  for(int i=0; i<link_count_new; i++) {
+    
+    int found = 0;
+    int local_root = fof_send[i].local_pid;
+    int foreign_root = fof_send[i].foreign_pid;
+
+    for(int j=0; j<list_count; j++) {
+      if(fof_list[j].local_pid == local_root && fof_list[j].foreign_pid == foreign_root) {
+        found = 1;
+        break;
+      }
+    }
+
+    if(!found) {
+      fof_list[list_count].local_pid = local_root;
+      fof_list[list_count++].foreign_pid = foreign_root;
+    }
+
+  }
+
+  message("Rank %d found %d unique group links.", engine_rank, list_count);
+ 
+  struct fof_mpi *global_fof_list;
+  int global_list_count = 0;
+
+  MPI_Allreduce(&list_count, &global_list_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+ 
+  message("Global list count: %d", global_list_count);
+
+  if (posix_memalign((void**)&global_fof_list, SWIFT_STRUCT_ALIGNMENT,
+                       global_list_count * sizeof(struct fof_mpi)) != 0)
+    error("Error while allocating memory for FOF MPI communication");
+ 
+  MPI_Allgather(fof_list, list_count, fof_mpi_type, global_fof_list, list_count, fof_mpi_type, MPI_COMM_WORLD);
+
+  for(int i=0; i<global_list_count; i++) {
+    fprintf(fof_file, "  %7lld <-> %7lld\n", global_fof_list[i].local_pid, global_fof_list[i].foreign_pid);
+    //message("Rank %d. Global FOF list: %lld <-> %lld", engine_rank, global_fof_list[i].local_pid, global_fof_list[i].foreign_pid);
+  }
 
   if (posix_memalign((void**)&fof_recv, SWIFT_STRUCT_ALIGNMENT,
                        send_count * sizeof(struct fof_mpi)) != 0)
