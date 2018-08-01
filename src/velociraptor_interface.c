@@ -131,9 +131,9 @@ void velociraptor_init(struct engine *e) {
 
     sim_info.cellloc = e->cellloc;
 
-    char configfilename[PARSER_MAX_LINE_SIZE], outputFileName[FILENAME_BUFFER_SIZE];
+    char configfilename[PARSER_MAX_LINE_SIZE], outputFileName[PARSER_MAX_LINE_SIZE + 128];
     parser_get_param_string(e->parameter_file, "StructureFinding:config_file_name", configfilename);
-    snprintf(outputFileName, FILENAME_BUFFER_SIZE, "%s.VELOCIraptor", e->stfBaseName);
+    snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s.VELOCIraptor", e->stfBaseName);
     
     message("Config file name: %s", configfilename);
     message("Period: %e", sim_info.period);
@@ -163,7 +163,7 @@ void velociraptor_invoke(struct engine *e) {
     const size_t nr_gparts = s->nr_gparts;
     const size_t nr_hydro_parts = s->nr_parts;
     const int nr_cells = s->nr_cells;
-    int *cell_node_ids;
+    int *cell_node_ids = NULL;
     struct unitinfo *conv_fac = e->stf_conv_fac;
 
     /* Allow thread to run on any core for the duration of the call to VELOCIraptor so that 
@@ -188,21 +188,21 @@ void velociraptor_invoke(struct engine *e) {
     
     for(int i=0; i<nr_cells; i++) cell_node_ids[i] = s->cells_top[i].nodeID;    
 
-    message("MPI rank %d sending %lld gparts to VELOCIraptor.", e->nodeID, nr_gparts);
+    message("MPI rank %d sending %zu gparts to VELOCIraptor.", engine_rank, nr_gparts);
     
     /* Append base name with either the step number or time depending on what format is specified in the parameter file. */
-    char outputFileName[FILENAME_BUFFER_SIZE];
+    char outputFileName[PARSER_MAX_LINE_SIZE + 128];
     if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_STEPS) {
-        snprintf(outputFileName, FILENAME_BUFFER_SIZE, "%s_%04i.VELOCIraptor", e->stfBaseName,
+        snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor", e->stfBaseName,
              e->step);
     }
     else if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) {
-        snprintf(outputFileName, FILENAME_BUFFER_SIZE, "%s_%04e.VELOCIraptor", e->stfBaseName,
+        snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04e.VELOCIraptor", e->stfBaseName,
              e->time);
     }
 
     /* Allocate and populate an array of swift_vel_parts to be passed to VELOCIraptor. */
-    struct swift_vel_part *swift_parts;
+    struct swift_vel_part *swift_parts = NULL;
 
     if (posix_memalign((void **)&swift_parts, part_align,
                        nr_gparts * sizeof(struct swift_vel_part)) != 0)
@@ -217,7 +217,7 @@ void velociraptor_invoke(struct engine *e) {
     message("a^2: %f", a2);
    
     /* Convert particle properties into VELOCIraptor units */ 
-    for(int i=0; i<nr_gparts; i++) {
+    for(size_t i=0; i<nr_gparts; i++) {
       swift_parts[i].x[0] = gparts[i].x[0] * conv_fac->lengthtokpc;
       swift_parts[i].x[1] = gparts[i].x[1] * conv_fac->lengthtokpc;
       swift_parts[i].x[2] = gparts[i].x[2] * conv_fac->lengthtokpc;
