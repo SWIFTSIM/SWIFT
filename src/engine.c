@@ -4447,6 +4447,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+  /* Update the softening lengths */
+  if (e->policy & engine_policy_self_gravity)
+    gravity_update(e->gravity_properties, e->cosmology);
+
   /* Start by setting the particles in a good state */
   if (e->nodeID == 0) message("Setting particles to a valid state...");
   engine_first_init_particles(e);
@@ -6022,9 +6026,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
         "dt=%e",
         e->time_base);
 
-  if (e->dt_max > (e->time_end - e->time_begin) && e->nodeID == 0)
-    error("Maximal time-step size larger than the simulation run time t=%e",
-          e->time_end - e->time_begin);
+  if (!(e->policy & engine_policy_cosmology))
+    if (e->dt_max > (e->time_end - e->time_begin) && e->nodeID == 0)
+      error("Maximal time-step size larger than the simulation run time t=%e",
+	    e->time_end - e->time_begin);
 
   /* Deal with outputs */
   if (e->policy & engine_policy_cosmology) {
