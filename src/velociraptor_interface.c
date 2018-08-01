@@ -67,7 +67,7 @@ void velociraptor_init(struct engine *e) {
     cosmo_info.Omega_b = e->cosmology->Omega_b;
     cosmo_info.Omega_Lambda = e->cosmology->Omega_lambda;
     cosmo_info.Omega_cdm = e->cosmology->Omega_m - e->cosmology->Omega_b;
-    cosmo_info.w_de = e->cosmology->w_0;
+    cosmo_info.w_de = e->cosmology->w;
 
     message("Scale factor: %e", cosmo_info.atime);
     message("Little h: %e", cosmo_info.littleh);
@@ -103,7 +103,8 @@ void velociraptor_init(struct engine *e) {
     else sim_info.period = 0.0;
     sim_info.zoomhigresolutionmass = -1.0; /* Placeholder. */
     sim_info.interparticlespacing = sim_info.period / cbrt(total_nr_dmparts);
-    sim_info.icosmologicalsim = (e->policy & engine_policy_cosmology);
+    if(e->policy & engine_policy_cosmology) sim_info.icosmologicalsim = 1;
+    else sim_info.icosmologicalsim = 0;
     sim_info.spacedimension[0] = unit_info.lengthtokpc * s->dim[0];
     sim_info.spacedimension[1] = unit_info.lengthtokpc * s->dim[1];
     sim_info.spacedimension[2] = unit_info.lengthtokpc * s->dim[2];
@@ -218,15 +219,18 @@ void velociraptor_invoke(struct engine *e) {
     bzero(swift_parts, nr_gparts * sizeof(struct swift_vel_part));
 
     const float energy_scale = 1.0;
+    const float a2 = e->cosmology->a * e->cosmology->a;
+    
     message("Energy scaling factor: %f", energy_scale);
+    message("a^2: %f", a2);
     
     for(int i=0; i<nr_gparts; i++) {
       swift_parts[i].x[0] = gparts[i].x[0] * conv_fac->lengthtokpc;
       swift_parts[i].x[1] = gparts[i].x[1] * conv_fac->lengthtokpc;
       swift_parts[i].x[2] = gparts[i].x[2] * conv_fac->lengthtokpc;
-      swift_parts[i].v[0] = gparts[i].v_full[0] * conv_fac->velocitytokms;
-      swift_parts[i].v[1] = gparts[i].v_full[1] * conv_fac->velocitytokms;
-      swift_parts[i].v[2] = gparts[i].v_full[2] * conv_fac->velocitytokms;
+      swift_parts[i].v[0] = gparts[i].v_full[0] * conv_fac->velocitytokms / a2;
+      swift_parts[i].v[1] = gparts[i].v_full[1] * conv_fac->velocitytokms / a2;
+      swift_parts[i].v[2] = gparts[i].v_full[2] * conv_fac->velocitytokms / a2;
       swift_parts[i].mass = gparts[i].mass * conv_fac->masstosolarmass;
       swift_parts[i].potential = gparts[i].potential * conv_fac->energyperunitmass;
       swift_parts[i].type = gparts[i].type;
