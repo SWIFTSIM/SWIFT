@@ -1265,6 +1265,8 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
 /**
  * @brief Computes the cell index of all the particles.
  *
+ * Also computes the minimal mass of all #part.
+ *
  * @param s The #space.
  * @param ind The array of indices to fill.
  * @param cell_counts The cell counters to update.
@@ -1298,6 +1300,8 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
 /**
  * @brief Computes the cell index of all the g-particles.
  *
+ * Also computes the minimal mass of all dark-matter #gpart.
+ *
  * @param s The #space.
  * @param gind The array of indices to fill.
  * @param cell_counts The cell counters to update.
@@ -1330,6 +1334,8 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
 
 /**
  * @brief Computes the cell index of all the s-particles.
+ *
+ * Also computes the minimal mass of all #spart.
  *
  * @param s The #space.
  * @param sind The array of indices to fill.

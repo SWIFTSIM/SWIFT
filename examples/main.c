@@ -714,7 +714,7 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef WITH_MPI
-    if (periodic && with_self_gravity && nr_nodes > 1)
+    if (periodic && with_self_gravity)
       error("Periodic self-gravity over MPI temporarily disabled.");
 #endif
 
