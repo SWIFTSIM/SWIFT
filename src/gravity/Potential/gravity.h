@@ -157,25 +157,26 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
 /**
  * @brief Finishes the gravity calculation.
  *
- * Multiplies the forces and accelerations by the appropiate constants
+ * Multiplies the forces and accelerations by the appropiate constants.
+ * Applies cosmological correction for periodic BCs.
  *
  * @param gp The particle to act upon
- * @param const_G Newton's constant in internal units
+ * @param const_G Newton's constant in internal units.
+ * @param potential_normalisation Term to be added to all the particles.
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
-								    struct gpart* gp, float const_G, float Omega_m, float rho_crit0, const int periodic_cosmology) {
+    struct gpart* gp, float const_G, const float potential_normalisation,
+    const int periodic) {
+
+  /* Apply the periodic correction to the peculiar potential */
+  if(periodic)
+    gp->potential += potential_normalisation;
 
   /* Let's get physical... */
   gp->a_grav[0] *= const_G;
   gp->a_grav[1] *= const_G;
   gp->a_grav[2] *= const_G;
   gp->potential *= const_G;
-
-  /* Apply the cosmological correction to the potential */
-  if(periodic_cosmology) {
-    const float mass2 = gp->mass * gp->mass;
-    gp->potential -= 2.8372975f * cbrtf(mass2 * Omega_m * rho_crit0);
-  }
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM *= const_G;

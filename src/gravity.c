@@ -152,6 +152,7 @@ void gravity_exact_force_ewald_init(double boxSize) {
     bzero(fewald_z, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
     bzero(potewald, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
 
+    /* Hernquist, Bouchet & Suto, 1991, Eq. 2.10 and just below Eq. 2.15 */
     potewald[0][0][0] = 2.8372975f;
 
     /* Compute the values in one of the octants */

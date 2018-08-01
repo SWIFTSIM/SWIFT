@@ -161,13 +161,16 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
 /**
  * @brief Finishes the gravity calculation.
  *
- * Multiplies the forces and accelerations by the appropiate constants
+ * Multiplies the forces and accelerations by the appropiate constants.
+ * Applies cosmological correction for periodic BCs.
  *
  * @param gp The particle to act upon
- * @param const_G Newton's constant in internal units
+ * @param const_G Newton's constant in internal units.
+ * @param potential_normalisation Term to be added to all the particles.
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
-    struct gpart* gp, float const_G) {
+    struct gpart* gp, float const_G, const float potential_normalisation,
+    const int periodic) {
 
   /* Let's get physical... */
   gp->a_grav[0] *= const_G;

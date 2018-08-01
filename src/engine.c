@@ -6075,6 +6075,16 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           e->time_first_statistics, e->time_begin);
   }
 
+  /* Get the total mass */
+  e->total_mass = 0.;
+  for (size_t i = 0; i < e->s->nr_gparts; ++i)
+    e->total_mass += e->s->gparts[i].mass;
+
+/* Reduce the total mass */
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &e->total_mass, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
   /* Find the time of the first snapshot  output */
   engine_compute_next_snapshot_time(e);
 

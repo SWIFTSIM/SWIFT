@@ -200,6 +200,9 @@ struct engine {
   /* Total numbers of particles in the system. */
   long long total_nr_parts, total_nr_gparts, total_nr_sparts;
 
+  /* Total mass in the simulation */
+  double total_mass;
+
   /* The internal system of units */
   const struct unit_system *internal_units;
 

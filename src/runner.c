@@ -1663,12 +1663,10 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict gparts = c->gparts;
   struct spart *restrict sparts = c->sparts;
   const int periodic = s->periodic;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
-  const int with_periodic_cosmology = periodic && with_cosmology;
-  const float Omega_m = e->cosmology->Omega_m;
-  const float H0 = e->cosmology->H0;
   const float G_newton = e->physical_constants->const_newton_G;
-  const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
+  const double r_s = e->mesh->r_s;
+  const double volume = s->dim[0] * s->dim[1] * s->dim[2];
+  const float potential_normalisation = 4. * M_PI * e->total_mass * r_s * r_s / volume;
 
   TIMER_TIC;
 
@@ -1703,7 +1701,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (gpart_is_active(gp, e)) {
 
         /* Finish the force calculation */
-        gravity_end_force(gp, G_newton, Omega_m, rho_crit0, with_periodic_cosmology);
+        gravity_end_force(gp, G_newton, potential_normalisation, periodic);
 
 #ifdef SWIFT_NO_GRAVITY_BELOW_ID
 
