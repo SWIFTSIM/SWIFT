@@ -72,6 +72,6 @@ struct gpart {
   double potential_exact;
 #endif
 
-};
+} SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_DEFAULT_GRAVITY_PART_H */
