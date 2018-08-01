@@ -51,6 +51,18 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 }
 
 /**
+ * @brief Add a contribution to this particle's potential.
+ *
+ * @param gp The particle.
+ * @param pot The contribution to add.
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_add_comoving_potential(struct gpart* restrict gp, float pot) {
+
+  gp->potential += pot;
+}
+
+/**
  * @brief Returns the comoving potential of a particle
  *
  * @param gp The particle of interest

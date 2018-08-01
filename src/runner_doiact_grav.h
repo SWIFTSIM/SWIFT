@@ -24,6 +24,7 @@
 #include "active.h"
 #include "cell.h"
 #include "gravity.h"
+#include "gravity_iact.h"
 #include "gravity_cache.h"
 #include "inline.h"
 #include "part.h"
@@ -1009,15 +1010,6 @@ static INLINE void runner_doself_grav_pp_truncated(
       float f_ij, pot_ij;
       runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
                                     r_s_inv, &f_ij, &pot_ij);
-
-      /* if (e->s->parts[-gparts[pid].id_or_neg_offset].id == ICHECK) { */
-      /*   if (pjd < gcount) */
-      /*     message("Interacting with particle ID= %lld f_ij=%e", */
-      /*             e->s->parts[-gparts[pjd].id_or_neg_offset].id, f_ij); */
-      /*   // else */
-      /*   //  message("Interacting with particle ID= %lld (padded) f_ij=%e", */
-      /*   //  e->s->parts[-gparts[pjd].id_or_neg_offset].id, f_ij); */
-      /* } */
 
       /* Store it back */
       a_x += f_ij * dx;

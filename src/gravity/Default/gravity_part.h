@@ -41,9 +41,6 @@ struct gpart {
   /*! Particle mass. */
   float mass;
 
-  /*! Gravitational potential */
-  float potential;
-
   /*! Time-step length */
   timebin_t time_bin;
 

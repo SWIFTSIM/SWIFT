@@ -64,12 +64,14 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
-		 kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h  \
+		 gravity_iact.h kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h  \
                  runner_doiact_nosort.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
 		 dimension.h part_type.h periodic.h memswap.h dump.h logger.h sign.h \
 		 gravity.h gravity_io.h gravity_cache.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
+		 gravity/Potential/gravity.h gravity/Potential/gravity_iact.h gravity/Potential/gravity_io.h \
+		 gravity/Potential/gravity_debug.h gravity/Potential/gravity_part.h  \
 		 sourceterms.h \
 		 equation_of_state.h \
 		 equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h \

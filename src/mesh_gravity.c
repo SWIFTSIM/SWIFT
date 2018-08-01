@@ -254,7 +254,7 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
   /* ---- */
 
   /* Store things back */
-  gp->potential += p;
+  gravity_add_comoving_potential(gp, p);
   gp->a_grav[0] += fac * a[0];
   gp->a_grav[1] += fac * a[1];
   gp->a_grav[2] += fac * a[2];

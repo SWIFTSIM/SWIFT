@@ -31,6 +31,7 @@
 #include "align.h"
 #include "const.h"
 #include "error.h"
+#include "gravity.h"
 #include "gravity_derivatives.h"
 #include "gravity_properties.h"
 #include "gravity_softened_derivatives.h"
@@ -2380,7 +2381,7 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gp->a_grav[0] += a_grav[0];
   gp->a_grav[1] += a_grav[1];
   gp->a_grav[2] += a_grav[2];
-  gp->potential += pot;
+  gravity_add_comoving_potential(gp, pot);
 }
 
 /**

@@ -1654,7 +1654,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
-  const struct space *s = e->s;
+  //const struct space *s = e->s;
   const struct cosmology *cosmo = e->cosmology;
   const int count = c->count;
   const int gcount = c->gcount;
@@ -1662,12 +1662,12 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct gpart *restrict gparts = c->gparts;
   struct spart *restrict sparts = c->sparts;
-  const int periodic = s->periodic;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
-  const float Omega_m = e->cosmology->Omega_m;
-  const float H0 = e->cosmology->H0;
+  //const int periodic = s->periodic;
+  //const int with_cosmology = e->policy & engine_policy_cosmology;
+  //const float Omega_m = e->cosmology->Omega_m;
+  //const float H0 = e->cosmology->H0;
   const float G_newton = e->physical_constants->const_newton_G;
-  const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
+  //const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
 
   TIMER_TIC;
 
@@ -1704,16 +1704,17 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
         /* Finish the force calculation */
         gravity_end_force(gp, G_newton);
 
-        /* Apply periodic BC contribution to the potential */
-        if (with_cosmology && periodic) {
-          const float mass = gravity_get_mass(gp);
-          const float mass2 = mass * mass;
+	// MATTHIEU: Move this and change it!
+        /* /\* Apply periodic BC contribution to the potential *\/ */
+        /* if (with_cosmology && periodic) { */
+        /*   const float mass = gravity_get_mass(gp); */
+        /*   const float mass2 = mass * mass; */
 
-          /* This correction term matches the one used in Gadget-2 */
-          /* The numerical constant is taken from Hernquist, Bouchet & Suto 1991
-           */
-          gp->potential -= 2.8372975f * cbrtf(mass2 * Omega_m * rho_crit0);
-        }
+        /*   /\* This correction term matches the one used in Gadget-2 *\/ */
+        /*   /\* The numerical constant is taken from Hernquist, Bouchet & Suto 1991 */
+        /*    *\/ */
+        /*   gp->potential -= 2.8372975f * cbrtf(mass2 * Omega_m * rho_crit0); */
+        /* } */
 
 #ifdef SWIFT_NO_GRAVITY_BELOW_ID
 
