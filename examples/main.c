@@ -932,7 +932,7 @@ int main(int argc, char *argv[]) {
     engine_print_stats(&e);
   
     /* Call VELOCIraptor for the first time after the first snapshot dump. */
-    if (e.policy & engine_policy_structure_finding) velociraptor_invoke(&e);
+    //if (e.policy & engine_policy_structure_finding) velociraptor_invoke(&e);
 
   }
 
@@ -1124,6 +1124,12 @@ int main(int argc, char *argv[]) {
   engine_drift_all(&e);
   engine_print_stats(&e);
   engine_dump_snapshot(&e);
+
+  /* Call VELOCIraptor at the end of the run to find groups. */
+  if (e.policy & engine_policy_structure_finding) {
+    velociraptor_init(&e);
+    velociraptor_invoke(&e);
+  }
 
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)

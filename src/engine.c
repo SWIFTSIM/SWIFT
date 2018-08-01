@@ -4650,7 +4650,7 @@ void engine_step(struct engine *e) {
 
   /* Perform structure finding? */
   if (e->run_stf) {
-    velociraptor_invoke(e);
+    //velociraptor_invoke(e);
     
     /* ... and find the next output time */
     if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) engine_compute_next_stf_time(e);
@@ -5560,7 +5560,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     parser_get_param_string(params, "StructureFinding:basename", e->stfBaseName);
     e->timeFirstSTFOutput = parser_get_param_double(params, "StructureFinding:time_first");
     e->a_first_stf = parser_get_opt_param_double(params, "StructureFinding:a_time_first", 0.1);
-    velociraptor_init(e);
+    //velociraptor_init(e);
     e->stf_output_freq_format = parser_get_param_int(params, "StructureFinding:output_time_format");
     if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_STEPS) {
       e->deltaTimeSTF = (double)parser_get_param_int(params, "StructureFinding:delta_time");
