@@ -38,6 +38,8 @@
 #include "runner.h"
 #include "space.h"
 
+#ifdef HAVE_FFTW
+
 /**
  * @brief Returns 1D index of a 3D NxNxN array using row-major style.
  *
@@ -263,6 +265,8 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
   gp->a_grav_PM[2] = fac * a[2];
 #endif
 }
+
+#endif
 
 /**
  * @brief Compute the potential, including periodic correction on the mesh.
@@ -532,7 +536,7 @@ void pm_mesh_struct_restore(struct pm_mesh* mesh, FILE* stream) {
 
   restart_read_blocks((void*)mesh, sizeof(struct pm_mesh), 1, stream, NULL,
                       "gravity props");
-
+#ifdef HAVE_FFTW
   const int N = mesh->N;
 
   /* Allocate the memory for the combined density and potential array */
@@ -540,7 +544,6 @@ void pm_mesh_struct_restore(struct pm_mesh* mesh, FILE* stream) {
   if (mesh->potential == NULL)
     error("Error allocating memory for the long-range gravity mesh.");
 
-#ifdef HAVE_FFTW
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif

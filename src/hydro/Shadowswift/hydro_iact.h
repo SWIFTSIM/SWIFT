@@ -143,7 +143,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float vmax, dvdotdx;
   float vi[3], vj[3], vij[3];
   float Wi[5], Wj[5];
-  float dti, dtj, mindt;
   float n_unit[3];
 
   A = voronoi_get_face(&pi->cell, pj->id, xij_i);
@@ -168,9 +167,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   Wj[3] = pj->primitives.v[2];
   Wj[4] = pj->primitives.P;
 
-  dti = pi->force.dt;
-  dtj = pj->force.dt;
-
   /* calculate the maximal signal velocity */
   vmax = 0.0f;
   if (Wi[0] > 0.) {
@@ -191,10 +187,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   if (mode == 1) {
     pj->timestepvars.vmax = fmaxf(pj->timestepvars.vmax, vmax);
   }
-
-  /* The flux will be exchanged using the smallest time step of the two
-   * particles */
-  mindt = fminf(dti, dtj);
 
   /* compute the normal vector of the interface */
   for (k = 0; k < 3; ++k) {
@@ -219,13 +211,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   Wj[2] -= vij[1];
   Wj[3] -= vij[2];
 
-  hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj, mindt);
+  hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
 
   /* we don't need to rotate, we can use the unit vector in the Riemann problem
    * itself (see GIZMO) */
 
   if (Wi[0] < 0.0f || Wj[0] < 0.0f || Wi[4] < 0.0f || Wj[4] < 0.0f) {
-    printf("mindt: %g\n", mindt);
     printf("WL: %g %g %g %g %g\n", pi->primitives.rho, pi->primitives.v[0],
            pi->primitives.v[1], pi->primitives.v[2], pi->primitives.P);
 #ifdef USE_GRADIENTS
@@ -266,20 +257,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* Update conserved variables */
   /* eqn. (16) */
-  pi->conserved.flux.mass -= mindt * A * totflux[0];
-  pi->conserved.flux.momentum[0] -= mindt * A * totflux[1];
-  pi->conserved.flux.momentum[1] -= mindt * A * totflux[2];
-  pi->conserved.flux.momentum[2] -= mindt * A * totflux[3];
-  pi->conserved.flux.energy -= mindt * A * totflux[4];
+  pi->conserved.flux.mass -= A * totflux[0];
+  pi->conserved.flux.momentum[0] -= A * totflux[1];
+  pi->conserved.flux.momentum[1] -= A * totflux[2];
+  pi->conserved.flux.momentum[2] -= A * totflux[3];
+  pi->conserved.flux.energy -= A * totflux[4];
 
 #ifndef SHADOWFAX_TOTAL_ENERGY
   float ekin = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
                        pi->primitives.v[1] * pi->primitives.v[1] +
                        pi->primitives.v[2] * pi->primitives.v[2]);
-  pi->conserved.flux.energy += mindt * A * totflux[1] * pi->primitives.v[0];
-  pi->conserved.flux.energy += mindt * A * totflux[2] * pi->primitives.v[1];
-  pi->conserved.flux.energy += mindt * A * totflux[3] * pi->primitives.v[2];
-  pi->conserved.flux.energy -= mindt * A * totflux[0] * ekin;
+  pi->conserved.flux.energy += A * totflux[1] * pi->primitives.v[0];
+  pi->conserved.flux.energy += A * totflux[2] * pi->primitives.v[1];
+  pi->conserved.flux.energy += A * totflux[3] * pi->primitives.v[2];
+  pi->conserved.flux.energy -= A * totflux[0] * ekin;
 #endif
 
   /* here is how it works:
@@ -295,20 +286,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
      ==> we update particle j if (MODE IS 1) OR (j IS INACTIVE)
   */
   if (mode == 1 || pj->force.active == 0) {
-    pj->conserved.flux.mass += mindt * A * totflux[0];
-    pj->conserved.flux.momentum[0] += mindt * A * totflux[1];
-    pj->conserved.flux.momentum[1] += mindt * A * totflux[2];
-    pj->conserved.flux.momentum[2] += mindt * A * totflux[3];
-    pj->conserved.flux.energy += mindt * A * totflux[4];
+    pj->conserved.flux.mass += A * totflux[0];
+    pj->conserved.flux.momentum[0] += A * totflux[1];
+    pj->conserved.flux.momentum[1] += A * totflux[2];
+    pj->conserved.flux.momentum[2] += A * totflux[3];
+    pj->conserved.flux.energy += A * totflux[4];
 
 #ifndef SHADOWFAX_TOTAL_ENERGY
     ekin = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
                    pj->primitives.v[1] * pj->primitives.v[1] +
                    pj->primitives.v[2] * pj->primitives.v[2]);
-    pj->conserved.flux.energy -= mindt * A * totflux[1] * pj->primitives.v[0];
-    pj->conserved.flux.energy -= mindt * A * totflux[2] * pj->primitives.v[1];
-    pj->conserved.flux.energy -= mindt * A * totflux[3] * pj->primitives.v[2];
-    pj->conserved.flux.energy += mindt * A * totflux[0] * ekin;
+    pj->conserved.flux.energy -= A * totflux[1] * pj->primitives.v[0];
+    pj->conserved.flux.energy -= A * totflux[2] * pj->primitives.v[1];
+    pj->conserved.flux.energy -= A * totflux[3] * pj->primitives.v[2];
+    pj->conserved.flux.energy += A * totflux[0] * ekin;
 #endif
   }
 }
