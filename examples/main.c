@@ -1125,7 +1125,7 @@ int main(int argc, char *argv[]) {
   engine_print_stats(&e);
   engine_dump_snapshot(&e);
 
-#ifdef WITH_VELOCIRAPTOR
+#ifdef HAVE_VELOCIRAPTOR
   /* Call VELOCIraptor at the end of the run to find groups. */
   if (e.policy & engine_policy_structure_finding) {
     velociraptor_init(&e);
