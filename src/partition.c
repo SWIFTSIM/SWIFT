@@ -58,9 +58,6 @@
 #include "space.h"
 #include "tools.h"
 
-/* Maximum weight used for METIS. */
-#define metis_maxweight 10000.0f
-
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
     "axis aligned grids of cells", "vectorized point associated cells",
@@ -1198,15 +1195,14 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   /* Merge the weights arrays across all nodes. */
   int res;
   if (vweights) {
-    res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_v, weights_v,
-                     nr_cells, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to allreduce vertex weights.");
+    res = MPI_Allreduce(MPI_IN_PLACE, weights_v, nr_cells, MPI_DOUBLE, MPI_SUM,
+                        MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce vertex weights.");
   }
 
   if (eweights) {
-    res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_e, weights_e,
-                     26 * nr_cells, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    res = MPI_Allreduce(MPI_IN_PLACE, weights_e, 26 * nr_cells, MPI_DOUBLE,
+                        MPI_SUM, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights.");
   }
 
@@ -1224,79 +1220,27 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
 #endif
 
-  /* We need to rescale the weights into the range of an integer for
-   * METIS (that is the range of idx_t). Also we would like the range of
-   * vertex and edges weights to be similar so they balance. */
-  double wminv = 0.0;
-  double wmaxv = 0.0;
+  /* We need to rescale the sum of the weights so that the sums of the two
+   * types of weights are less than IDX_MAX, that is the range of idx_t. */
   if (vweights) {
-    wminv = weights_v[0];
-    wmaxv = weights_v[0];
-    for (int k = 0; k < nr_cells; k++) {
-      wmaxv = weights_v[k] > wmaxv ? weights_v[k] : wmaxv;
-      wminv = weights_v[k] < wminv ? weights_v[k] : wminv;
+    double sum = 0.0;
+    for (int k = 0; k < nr_cells; k++) sum += weights_v[k];
+
+    if (sum > (double)IDX_MAX) {
+      double scale = (double)(IDX_MAX - 1000) / sum;
+      for (int k = 0; k < nr_cells; k++) weights_v[k] *= scale;
+
+      /* Keep edge weights in balance to these. */
+      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
     }
   }
-
-  double wmine = 0.0;
-  double wmaxe = 0.0;
   if (eweights) {
-    wmine = weights_e[0];
-    wmaxe = weights_e[0];
-    for (int k = 0; k < 26 * nr_cells; k++) {
-      wmaxe = weights_e[k] > wmaxe ? weights_e[k] : wmaxe;
-      wmine = weights_e[k] < wmine ? weights_e[k] : wmine;
-    }
-  }
+    double sum = 0.0;
+    for (int k = 0; k < 26 * nr_cells; k++) sum += weights_e[k];
 
-  if (vweights) {
-
-    if (vweights && eweights) {
-      /* Make range the same in both weights systems. */
-      if ((wmaxv - wminv) > (wmaxe - wmine)) {
-        double wscale = 1.0;
-        if ((wmaxe - wmine) > 0.0) {
-          wscale = (wmaxv - wminv) / (wmaxe - wmine);
-        }
-        for (int k = 0; k < 26 * nr_cells; k++) {
-          weights_e[k] = (weights_e[k] - wmine) * wscale + wminv;
-        }
-        wmine = wminv;
-        wmaxe = wmaxv;
-
-      } else {
-        double wscale = 1.0;
-        if ((wmaxv - wminv) > 0.0) {
-          wscale = (wmaxe - wmine) / (wmaxv - wminv);
-        }
-        for (int k = 0; k < nr_cells; k++) {
-          weights_v[k] = (weights_v[k] - wminv) * wscale + wmine;
-        }
-        wminv = wmine;
-        wmaxv = wmaxe;
-      }
-    }
-
-    /* Scale to the METIS range. */
-    double wscale = 1.0;
-    if ((wmaxv - wminv) > 0.0) {
-      wscale = (metis_maxweight - 1.0) / (wmaxv - wminv);
-    }
-    for (int k = 0; k < nr_cells; k++) {
-      weights_v[k] = (weights_v[k] - wminv) * wscale + 1.0;
-    }
-  }
-
-
-  if (eweights) {
-
-    /* Scale to the METIS range. */
-    double wscale = 1.0;
-    if ((wmaxe - wmine) > 0.0) {
-      wscale = (metis_maxweight - 1.0) / (wmaxe - wmine);
-    }
-    for (int k = 0; k < 26 * nr_cells; k++) {
-      weights_e[k] = (weights_e[k] - wmine) * wscale + 1.0;
+    if (sum > (double)IDX_MAX) {
+      double scale = (double)(IDX_MAX - 1000) / sum;
+      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
     }
   }
 
