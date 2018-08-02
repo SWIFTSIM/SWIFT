@@ -38,6 +38,7 @@ extern const char *initial_partition_name[];
 struct partition {
   enum partition_type type;
   int grid[3];
+  int usemetis;
 };
 
 /* Repartition type to use. */
@@ -55,6 +56,7 @@ struct repartition {
   float trigger;
   float minfrac;
   float itr;
+  int usemetis;
   int adaptive;
 
   /* The partition as a cell-list. */

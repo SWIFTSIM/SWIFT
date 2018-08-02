@@ -60,17 +60,18 @@
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
-    "axis aligned grids of cells", "vectorized point associated cells",
-    "memory balanced, using METIS particle weighted cells",
-    "similar sized regions, using METIS unweighted cells"};
+    "axis aligned grids of cells",
+    "vectorized point associated cells",
+    "memory balanced, using particle weighted cells",
+    "similar sized regions, using unweighted cells"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
-    "no",
-    "METIS edge and vertex task cost weights",
-    "METIS task cost edge weights",
-    "METIS task cost vertex weights",
-    "METIS vertex task costs and edge delta timebin weights"
+    "none",
+    "edge and vertex task cost weights",
+    "task cost edge weights",
+    "task cost vertex weights",
+    "vertex task costs and edge delta timebin weights"
 };
 
 /* Local functions, if needed. */
@@ -871,7 +872,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 }
 #endif
 
-#if defined(WITH_MPI) && defined(HAVE_METIS) && !defined(HAVE_PARMETIS)
+#if defined(WITH_MPI) && defined(HAVE_METIS)
 /**
  * @brief Partition the given space into a number of connected regions.
  *
@@ -1246,9 +1247,13 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
-  pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
-                repartition->adaptive, repartition->itr,
-                repartition->celllist);
+  if (repartition->usemetis) {
+    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
+  } else {
+    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
+                  repartition->adaptive, repartition->itr,
+                  repartition->celllist);
+  }
 #else
   pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
 #endif
@@ -1423,7 +1428,11 @@ void partition_initial_partition(struct partition *initial_partition,
     if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
+  if (initial_partition->usemetis) {
+    pick_metis(nodeID, s, nr_nodes, weights, NULL, celllist);
+  } else {
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL, 0, 0, 0.0f, celllist);
+  }
 #else
     pick_metis(nodeID, s, nr_nodes, weights, NULL, celllist);
 #endif
@@ -1595,13 +1604,18 @@ void partition_init(struct partition *partition,
         "Invalid DomainDecomposition:minfrac, must be greater than 0 and less "
         "than equal to 1");
 
+  /* Use METIS or ParMETIS when ParMETIS is also available. */
+  repartition->usemetis =
+      parser_get_opt_param_int(params, "DomainDecomposition:usemetis", 0);
+  partition->usemetis = repartition->usemetis;
+
   /* Use adaptive or simple refinement when repartitioning. */
-  repartition->adaptive = 
-      parser_get_opt_param_int(params, "DomainDecomposition:adaptive", 1   );
+  repartition->adaptive =
+      parser_get_opt_param_int(params, "DomainDecomposition:adaptive", 1);
 
   /* Ratio of interprocess communication time to data redistribution time. */
   repartition->itr =
-      parser_get_opt_param_float(params, "DomainDecomposition:itr", 0.1f);
+      parser_get_opt_param_float(params, "DomainDecomposition:itr", 100.0f);
 
   /* Clear the celllist for use. */
   repartition->ncelllist = 0;
