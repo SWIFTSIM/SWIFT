@@ -138,7 +138,7 @@ struct task {
   /*! Weight of the task */
   float weight;
 
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /*! Individual cost estimate for this task. */
   float cost;
 #endif

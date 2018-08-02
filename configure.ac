@@ -484,7 +484,41 @@ AC_CHECK_LIB(pthread, posix_fallocate,
 	     AC_DEFINE([HAVE_POSIX_FALLOCATE], [1], [The posix library implements file allocation functions.]),
 	     AC_MSG_WARN(POSIX implementation does not have file allocation functions.))
 
-# Check for PARMETIS.
+# Check for METIS.
+have_metis="no"
+AC_ARG_WITH([metis],
+    [AS_HELP_STRING([--with-metis=PATH],
+       [root directory where METIS is installed @<:@yes/no@:>@]
+    )],
+    [with_metis="$withval"],
+    [with_metis="no"]
+)
+
+METIS_LIBS=""
+if test "x$with_metis" != "xno"; then
+
+# Check if we have METIS.
+   if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
+      METIS_LIBS="-L$with_metis/lib -lmetis"
+      METIS_INCS="-I$with_metis/include"
+   else
+      METIS_LIBS="-lmetis"
+      METIS_INCS=""
+   fi
+   AC_CHECK_LIB([metis],[METIS_PartGraphKway], [have_metis="yes"],
+                [have_metis="no"], $METIS_LIBS)
+   if test "$have_metis" == "yes"; then
+      AC_DEFINE([HAVE_METIS],1,[The METIS library is present.])
+   else
+      AC_MSG_ERROR("Failed to find a METIS library")
+   fi
+fi
+
+AC_SUBST([METIS_LIBS])
+AC_SUBST([METIS_INCS])
+AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
+
+# Check for ParMETIS note we can have both as ParMETIS uses METIS.
 have_parmetis="no"
 AC_ARG_WITH([parmetis],
     [AS_HELP_STRING([--with-parmetis=PATH],
@@ -493,19 +527,6 @@ AC_ARG_WITH([parmetis],
     [with_parmetis="$withval"],
     [with_parmetis="no"]
 )
-
-# Don't proceed with old --with-metis option.
-used_metis="no"
-AC_ARG_WITH([metis],
-    [AS_HELP_STRING([--with-metis],
-       [no longer supported, use --with-parmetis]
-    )],
-    [used_metis="yes"],
-    [:]
-)
-if test "x$used_metis" != "xno"; then
-   AC_MSG_ERROR([Using unsupported --with-metis option, use --with-parmetis])
-fi
 
 if test "x$with_parmetis" != "xno"; then
 
@@ -531,7 +552,7 @@ if test "x$with_parmetis" != "xno"; then
          PARMETIS_INCS=""
       fi
       AC_CHECK_LIB([parmetis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
-                   [have_parmetis="no"], $PARMETIS_LIBS)
+                   [have_parmetis="no"], [$METIS_LIBS $PARMETIS_LIBS])
 
    fi
    if test "$have_parmetis" == "yes"; then
@@ -1369,7 +1390,7 @@ AC_MSG_RESULT([
    MPI enabled        : $enable_mpi
    HDF5 enabled       : $with_hdf5
     - parallel        : $have_parallel_hdf5
-   ParMetis enabled   : $have_parmetis
+   METIS/ParMETIS     : $have_metis / $have_parmetis
    FFTW3 enabled      : $have_fftw
    GSL enabled        : $have_gsl
    libNUMA enabled    : $have_numa

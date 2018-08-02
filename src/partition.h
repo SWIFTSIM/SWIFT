@@ -27,8 +27,8 @@
 enum partition_type {
   INITPART_GRID = 0,
   INITPART_VECTORIZE,
-  INITPART_PARMETIS_WEIGHT,
-  INITPART_PARMETIS_NOWEIGHT
+  INITPART_METIS_WEIGHT,
+  INITPART_METIS_NOWEIGHT
 };
 
 /* Simple descriptions of types for reports. */
@@ -43,10 +43,10 @@ struct partition {
 /* Repartition type to use. */
 enum repartition_type {
   REPART_NONE = 0,
-  REPART_PARMETIS_VERTEX_EDGE_COSTS,
-  REPART_PARMETIS_EDGE_COSTS,
-  REPART_PARMETIS_VERTEX_COSTS,
-  REPART_PARMETIS_VERTEX_COSTS_TIMEBINS
+  REPART_METIS_VERTEX_EDGE_COSTS,
+  REPART_METIS_EDGE_COSTS,
+  REPART_METIS_VERTEX_COSTS,
+  REPART_METIS_VERTEX_COSTS_TIMEBINS
 };
 
 /* Repartition preferences. */
@@ -55,6 +55,7 @@ struct repartition {
   float trigger;
   float minfrac;
   float itr;
+  int adaptive;
 
   /* The partition as a cell-list. */
   int ncelllist;

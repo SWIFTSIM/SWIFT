@@ -439,8 +439,8 @@ void space_regrid(struct space *s, int verbose) {
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");
         struct partition initial_partition;
-#ifdef HAVE_PARMETIS
-        initial_partition.type = INITPART_PARMETIS_NOWEIGHT;
+#if defined(HAVE_PARMETIS) || defined(HAVE_METIS)
+        initial_partition.type = INITPART_METIS_NOWEIGHT;
 #else
         initial_partition.type = INITPART_VECTORIZE;
 #endif

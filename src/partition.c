@@ -24,7 +24,7 @@
  *  a grid of cells into geometrically connected regions and distributing
  *  these around a number of MPI nodes.
  *
- *  Currently supported partitioning types: grid, vectorise and ParMETIS.
+ *  Currently supported partitioning types: grid, vectorise and METIS/ParMETIS.
  */
 
 /* Config parameters. */
@@ -40,9 +40,12 @@
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
-/* ParMETIS headers only used when MPI is also available. */
+/* METIS/ParMETIS headers only used when MPI is also available. */
 #ifdef HAVE_PARMETIS
 #include <parmetis.h>
+#endif
+#ifdef HAVE_METIS
+#include <metis.h>
 #endif
 #endif
 
@@ -55,22 +58,22 @@
 #include "space.h"
 #include "tools.h"
 
-/* Maximum weight used for ParMETIS. */
-#define parmetis_maxweight 10000.0f
+/* Maximum weight used for METIS. */
+#define metis_maxweight 10000.0f
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
     "axis aligned grids of cells", "vectorized point associated cells",
-    "memory balanced, using ParMETIS particle weighted cells",
-    "similar sized regions, using ParMETIS unweighted cells"};
+    "memory balanced, using METIS particle weighted cells",
+    "similar sized regions, using METIS unweighted cells"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
     "no",
-    "ParMETIS edge and vertex task cost weights",
-    "ParMETIS task cost edge weights",
-    "ParMETIS task cost vertex weights",
-    "ParMETIS vertex task costs and edge delta timebin weights"
+    "METIS edge and vertex task cost weights",
+    "METIS task cost edge weights",
+    "METIS task cost vertex weights",
+    "METIS vertex task costs and edge delta timebin weights"
 };
 
 /* Local functions, if needed. */
@@ -154,19 +157,19 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
 }
 #endif
 
-/* ParMETIS support
- * ================
+/* METIS/ParMETIS support (optional)
+ * =================================
  *
- * ParMETIS partitions using a multi-level k-way scheme. We support using this
- * in a unweighted scheme, which works well and seems to be guaranteed, and a
- * weighted by the number of particles scheme. Note ParMETIS is optional.
+ * METIS/ParMETIS partitions using a multi-level k-way scheme. We support
+ * using this in a unweighted scheme, which works well and seems to be
+ * guaranteed, and a weighted by the number of particles scheme.
  *
  * Repartitioning is based on ParMETIS and uses weights determined from the
  * estimated costs that a cells tasks will take or the relative time bins of
  * the cells next updates.
  */
 
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Fill the adjncy array defining the graph of cells in a space.
  *
@@ -238,7 +241,7 @@ static void graph_init(struct space *s, idx_t *adjncy, idx_t *xadj) {
 }
 #endif
 
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Accumulate the counts of particles per cell.
  *
@@ -270,9 +273,9 @@ static void accumulate_counts(struct space *s, double *counts) {
 }
 #endif
 
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
- * @brief Apply ParMETIS cell-list partitioning to a cell structure.
+ * @brief Apply METIS cell-list partitioning to a cell structure.
  *
  * @param s the space containing the cells to split into regions.
  * @param nregions number of regions.
@@ -283,11 +286,11 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
   /* To check or visualise the partition dump all the cells. */
-  /* dumpCellRanks("parmetis_partition", s->cells_top, s->nr_cells);*/
+  /* dumpCellRanks("metis_partition", s->cells_top, s->nr_cells);*/
 }
 #endif
 
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
 /* qsort support. */
 struct indexval {
@@ -413,16 +416,19 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        in CSR format, so same as adjncy array. Need to be in the range of
  *        idx_t.
  * @param refine whether to refine an existing partition, or create a new one.
+ * @param adaptive whether to use an adaptive reparitition of an existing
+ *        partition or simple refinement. Adaptive repartition is controlled
+ *        by the itr parameter.
  * @param itr the ratio of inter-process communication time to data
  *            redistribution time. Used to weight repartitioning edge cuts
- *            when refine is true.
+ *            when refine and adaptive are true.
  * @param celllist on exit this contains the ids of the selected regions,
  *        sizeof number of cells. If refine is 1, then this should contain
  *        the old partition on entry.
  */
 static void pick_parmetis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int refine, float itr,
-                          int *celllist) {
+                          double *vertexw, double *edgew, int refine,
+                          int adaptive, float itr, int *celllist) {
   int res;
   MPI_Comm comm;
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
@@ -726,13 +732,25 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
      * present on their expected ranks. */
     options[3] = PARMETIS_PSR_UNCOUPLED;
 
-    /* Balance between cuts and movement. */
-    real_t itr_real_t = itr;
-    if (ParMETIS_V3_AdaptiveRepart(vtxdist, xadj, adjncy, weights_v, NULL,
-                                   weights_e, &wgtflag, &numflag, &ncon,
-                                   &nparts, tpwgts, ubvec, &itr_real_t, options,
-                                   &edgecut, regionid, &comm) != METIS_OK)
-      error("Call to ParMETIS_V3_AdaptiveRepart failed.");
+    /* Choice is whether to use an adaptive repartition or a simple
+     * refinement. */
+    if (adaptive) {
+
+        /* Balance between cuts and movement. */
+        real_t itr_real_t = itr;
+        if (ParMETIS_V3_AdaptiveRepart(vtxdist, xadj, adjncy, weights_v, NULL,
+                                       weights_e, &wgtflag, &numflag, &ncon,
+                                       &nparts, tpwgts, ubvec, &itr_real_t, options,
+                                       &edgecut, regionid, &comm) != METIS_OK)
+            error("Call to ParMETIS_V3_AdaptiveRepart failed.");
+    } else {
+
+        if (ParMETIS_V3_RefineKway(vtxdist, xadj, adjncy, weights_v, weights_e,
+                                   &wgtflag, &numflag, &ncon, &nparts, tpwgts,
+                                   ubvec, options, &edgecut, regionid,
+                                   &comm) != METIS_OK)
+            error("Call to ParMETIS_V3_RefineKway failed.");
+    }
   } else {
 
     /* Create a new partition. */
@@ -856,16 +874,13 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 }
 #endif
 
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+#if defined(WITH_MPI) && defined(HAVE_METIS) && !defined(HAVE_PARMETIS)
 /**
  * @brief Partition the given space into a number of connected regions.
  *
  * Split the space using METIS to derive a partitions using the given edge and
  * vertex weights. If no weights are given then an unweighted partition is
- * performed. Tests show that METIS gives a better global solution than
- * ParMETIS, at least with the options set in this routine (which cannot be
- * repeated using ParMETIS, the options array is not used in the same way),
- * so this should be used when creating initial partitions.
+ * performed.
  *
  * @param nodeID the rank of our node.
  * @param s the space of cells to partition.
@@ -1020,7 +1035,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 }
 #endif
 
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Repartition the cells amongst the nodes using weights of
  *        various kinds.
@@ -1035,10 +1050,10 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
  */
-static void repart_edge_parmetis(int vweights, int eweights, int timebins,
-                                 struct repartition *repartition, int nodeID,
-                                 int nr_nodes, struct space *s,
-                                 struct task *tasks, int nr_tasks) {
+static void repart_edge_metis(int vweights, int eweights, int timebins,
+                              struct repartition *repartition, int nodeID,
+                              int nr_nodes, struct space *s,
+                              struct task *tasks, int nr_tasks) {
 
   /* Create weight arrays using task ticks for vertices and edges (edges
    * assume the same graph structure as used in the part_ calls). */
@@ -1196,6 +1211,7 @@ static void repart_edge_parmetis(int vweights, int eweights, int timebins,
   }
 
   /* Allocate cell list for the partition. If not already done. */
+#ifdef HAVE_PARMETIS
   int refine = 1;
   if (repartition->ncelllist != s->nr_cells) {
     refine = 0;
@@ -1206,9 +1222,10 @@ static void repart_edge_parmetis(int vweights, int eweights, int timebins,
       error("Failed to allocate celllist");
     repartition->ncelllist = s->nr_cells;
   }
+#endif
 
   /* We need to rescale the weights into the range of an integer for
-   * ParMETIS (that is the range of idx_t). Also we would like the range of
+   * METIS (that is the range of idx_t). Also we would like the range of
    * vertex and edges weights to be similar so they balance. */
   double wminv = 0.0;
   double wmaxv = 0.0;
@@ -1246,7 +1263,7 @@ static void repart_edge_parmetis(int vweights, int eweights, int timebins,
         }
         wmine = wminv;
         wmaxe = wmaxv;
-        
+
       } else {
         double wscale = 1.0;
         if ((wmaxv - wminv) > 0.0) {
@@ -1260,10 +1277,10 @@ static void repart_edge_parmetis(int vweights, int eweights, int timebins,
       }
     }
 
-    /* Scale to the ParMETIS range. */
+    /* Scale to the METIS range. */
     double wscale = 1.0;
     if ((wmaxv - wminv) > 0.0) {
-      wscale = (parmetis_maxweight - 1.0) / (wmaxv - wminv);
+      wscale = (metis_maxweight - 1.0) / (wmaxv - wminv);
     }
     for (int k = 0; k < nr_cells; k++) {
       weights_v[k] = (weights_v[k] - wminv) * wscale + 1.0;
@@ -1273,10 +1290,10 @@ static void repart_edge_parmetis(int vweights, int eweights, int timebins,
 
   if (eweights) {
 
-    /* Scale to the ParMETIS range. */
+    /* Scale to the METIS range. */
     double wscale = 1.0;
     if ((wmaxe - wmine) > 0.0) {
-      wscale = (parmetis_maxweight - 1.0) / (wmaxe - wmine);
+      wscale = (metis_maxweight - 1.0) / (wmaxe - wmine);
     }
     for (int k = 0; k < 26 * nr_cells; k++) {
       weights_e[k] = (weights_e[k] - wmine) * wscale + 1.0;
@@ -1284,14 +1301,13 @@ static void repart_edge_parmetis(int vweights, int eweights, int timebins,
   }
 
   /* And repartition/ partition, using both weights or not as requested. */
-  if (refine) {
-    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
-                  repartition->itr, repartition->celllist);
-  } else {
-
-    /* Not refining, so use METIS. */
-    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
-  }
+#ifdef HAVE_PARMETIS
+  pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
+                repartition->adaptive, repartition->itr,
+                repartition->celllist);
+#else
+  pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
+#endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
    * check on one. */
@@ -1351,22 +1367,22 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
                            int nr_nodes, struct space *s, struct task *tasks,
                            int nr_tasks) {
 
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
-  if (reparttype->type == REPART_PARMETIS_VERTEX_EDGE_COSTS) {
-      repart_edge_parmetis(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
+  if (reparttype->type == REPART_METIS_VERTEX_EDGE_COSTS) {
+      repart_edge_metis(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
+                        nr_tasks);
+
+  } else if (reparttype->type == REPART_METIS_EDGE_COSTS) {
+      repart_edge_metis(0, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
+                        nr_tasks);
+
+  } else if (reparttype->type == REPART_METIS_VERTEX_COSTS) {
+      repart_edge_metis(1, 0, 0, reparttype, nodeID, nr_nodes, s, tasks,
                            nr_tasks);
 
-  } else if (reparttype->type == REPART_PARMETIS_EDGE_COSTS) {
-      repart_edge_parmetis(0, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
-                           nr_tasks);
-
-  } else if (reparttype->type == REPART_PARMETIS_VERTEX_COSTS) {
-      repart_edge_parmetis(1, 0, 0, reparttype, nodeID, nr_nodes, s, tasks,
-                           nr_tasks);
-
-  } else if (reparttype->type == REPART_PARMETIS_VERTEX_COSTS_TIMEBINS) {
-      repart_edge_parmetis(1, 1, 1, reparttype, nodeID, nr_nodes, s, tasks,
+  } else if (reparttype->type == REPART_METIS_VERTEX_COSTS_TIMEBINS) {
+      repart_edge_metis(1, 1, 1, reparttype, nodeID, nr_nodes, s, tasks,
                            nr_tasks);
 
   } else if (reparttype->type == REPART_NONE) {
@@ -1376,7 +1392,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
     error("Impossible repartition type");
   }
 #else
-  error("SWIFT was not compiled with ParMETIS support.");
+  error("SWIFT was not compiled with METIS or ParMETIS support.");
 #endif
 }
 
@@ -1433,18 +1449,18 @@ void partition_initial_partition(struct partition *initial_partition,
       return;
     }
 
-  } else if (initial_partition->type == INITPART_PARMETIS_WEIGHT ||
-             initial_partition->type == INITPART_PARMETIS_NOWEIGHT) {
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
-    /* Simple k-way partition selected by ParMETIS using cell particle counts
-     * as weights or not. Should be best when starting with a inhomogeneous
-     * dist.
+  } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
+             initial_partition->type == INITPART_METIS_NOWEIGHT) {
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+    /* Simple k-way partition selected by METIS using cell particle
+     * counts as weights or not. Should be best when starting with a
+     * inhomogeneous dist.
      */
 
     /* Space for particles per cell counts, which will be used as weights or
      * not. */
     double *weights = NULL;
-    if (initial_partition->type == INITPART_PARMETIS_WEIGHT) {
+    if (initial_partition->type == INITPART_METIS_WEIGHT) {
       if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
         error("Failed to allocate weights buffer.");
       bzero(weights, sizeof(double) * s->nr_cells);
@@ -1453,8 +1469,8 @@ void partition_initial_partition(struct partition *initial_partition,
       accumulate_counts(s, weights);
 
       /* Get all the counts from all the nodes. */
-      if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE, MPI_SUM,
-                        MPI_COMM_WORLD) != MPI_SUCCESS)
+      if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE,
+                        MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
         error("Failed to allreduce particle cell weights.");
     }
 
@@ -1462,7 +1478,11 @@ void partition_initial_partition(struct partition *initial_partition,
     int *celllist = NULL;
     if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
+#ifdef HAVE_PARMETIS
+    pick_parmetis(nodeID, s, nr_nodes, weights, NULL, 0, 0, 0.0f, celllist);
+#else
     pick_metis(nodeID, s, nr_nodes, weights, NULL, celllist);
+#endif
 
     /* And apply to our cells */
     split_metis(s, nr_nodes, celllist);
@@ -1479,7 +1499,7 @@ void partition_initial_partition(struct partition *initial_partition,
     if (weights != NULL) free(weights);
     free(celllist);
 #else
-    error("SWIFT was not compiled with METIS support");
+    error("SWIFT was not compiled with METIS or ParMETIS support");
 #endif
 
   } else if (initial_partition->type == INITPART_VECTORIZE) {
@@ -1525,7 +1545,7 @@ void partition_init(struct partition *partition,
 #ifdef WITH_MPI
 
 /* Defaults make use of METIS if available */
-#ifdef HAVE_PARMETIS
+#if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
   const char *default_repart = "costs/costs";
   const char *default_part = "memory";
 #else
@@ -1551,12 +1571,12 @@ void partition_init(struct partition *partition,
     case 'v':
       partition->type = INITPART_VECTORIZE;
       break;
-#ifdef HAVE_PARMETIS
+#if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
     case 'r':
-      partition->type = INITPART_PARMETIS_NOWEIGHT;
+      partition->type = INITPART_METIS_NOWEIGHT;
       break;
     case 'm':
-      partition->type = INITPART_PARMETIS_WEIGHT;
+      partition->type = INITPART_METIS_WEIGHT;
       break;
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
@@ -1568,7 +1588,7 @@ void partition_init(struct partition *partition,
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
           "Permitted values are: 'grid' or 'vectorized' when compiled "
-          "without ParMETIS.");
+          "without METIS or ParMETIS.");
 #endif
   }
 
@@ -1585,18 +1605,18 @@ void partition_init(struct partition *partition,
   if (strcmp("none/none", part_type) == 0) {
     repartition->type = REPART_NONE;
 
-#ifdef HAVE_PARMETIS
+#if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
   } else if (strcmp("costs/costs", part_type) == 0) {
-    repartition->type = REPART_PARMETIS_VERTEX_EDGE_COSTS;
+    repartition->type = REPART_METIS_VERTEX_EDGE_COSTS;
 
   } else if (strcmp("none/costs", part_type) == 0) {
-    repartition->type = REPART_PARMETIS_EDGE_COSTS;
+    repartition->type = REPART_METIS_EDGE_COSTS;
 
   } else if (strcmp("costs/none", part_type) == 0) {
-    repartition->type = REPART_PARMETIS_VERTEX_COSTS;
+    repartition->type = REPART_METIS_VERTEX_COSTS;
 
   } else if (strcmp("costs/time", part_type) == 0) {
-    repartition->type = REPART_PARMETIS_VERTEX_COSTS_TIMEBINS;
+    repartition->type = REPART_METIS_VERTEX_COSTS_TIMEBINS;
 
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
@@ -1606,7 +1626,8 @@ void partition_init(struct partition *partition,
 #else
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
-    error("Permitted values are: 'none/none' when compiled without ParMETIS.");
+    error("Permitted values are: 'none/none' when compiled without "
+          "METIS or ParMETIS.");
 #endif
   }
 
@@ -1629,6 +1650,10 @@ void partition_init(struct partition *partition,
     error(
         "Invalid DomainDecomposition:minfrac, must be greater than 0 and less "
         "than equal to 1");
+
+  /* Use adaptive or simple refinement when repartitioning. */
+  repartition->adaptive = 
+      parser_get_opt_param_int(params, "DomainDecomposition:adaptive", 1   );
 
   /* Ratio of interprocess communication time to data redistribution time. */
   repartition->itr =
