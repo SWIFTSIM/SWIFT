@@ -204,10 +204,6 @@ struct engine {
   /* The internal system of units */
   const struct unit_system *internal_units;
   
-  /* The STF system of units */
-  struct unit_system *stf_units;
-  struct unitinfo *stf_conv_fac;
-
   /* Top-level cell locations for VELOCIraptor. */
   struct cell_loc *cellloc;
 
