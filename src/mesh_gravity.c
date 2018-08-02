@@ -278,13 +278,14 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
  * Note that there is no multiplication by G_newton at this stage.
  *
  * @param mesh The #pm_mesh used to store the potential.
- * @param e The #engine from which to compute the forces.
+ * @param s The #space containing the particles.
+ * @param verbose Are we talkative?
  */
-void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct engine* e) {
+void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
+			       int verbose) {
 
 #ifdef HAVE_FFTW
 
-  const struct space* s = e->s;
   const double r_s = mesh->r_s;
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -313,13 +314,23 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct engine* e) {
   fftw_plan inverse_plan = fftw_plan_dft_c2r_3d(
       N, N, N, frho, rho, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
 
+  const ticks tic = getticks();
+
+  /* Zero everything */
   bzero(rho, N * N * N * sizeof(double));
 
   /* Do a CIC mesh assignment of the gparts */
-  for (size_t i = 0; i < e->s->nr_gparts; ++i)
-    gpart_to_mesh_CIC(&e->s->gparts[i], rho, N, cell_fac, dim);
+  for (size_t i = 0; i < s->nr_gparts; ++i)
+    gpart_to_mesh_CIC(&s->gparts[i], rho, N, cell_fac, dim);
 
+  if(verbose)
+    message("gpart assignment took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+  /* message("\n\n\n DENSITY"); */
   /* print_array(rho, N); */
+
+  const ticks tic2 = getticks();
 
   /* Fourier transform to go to magic-land */
   fftw_execute(forward_plan);
@@ -395,6 +406,10 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct engine* e) {
   /* This array is now again NxNxN real numbers */
   /* Let's store it in the structure */
   mesh->potential = rho;
+
+  if(verbose)
+    message("Fourier-space PM took %.3f %s.", clocks_from_ticks(getticks() - tic2),
+            clocks_getunit());
 
   /* message("\n\n\n POTENTIAL"); */
   /* print_array(potential, N); */
