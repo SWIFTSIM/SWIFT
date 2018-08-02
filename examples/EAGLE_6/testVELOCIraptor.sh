@@ -40,8 +40,8 @@ if [ "$RUN_DM" = "1" ]; then
     mpirun -np $NUM_MPI_PROC ../swift_mpi -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_dmonly
 
     # Run test using VELOCIraptor
-    echo "Running: mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST"
-    mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST
+    echo "Running: mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/stf_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST"
+    mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C ./stf_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST
 
     # Create info file for python comparison script
     echo -e $INFO_FILE_TEXT > infoFile_$TEST.txt
@@ -84,8 +84,8 @@ if [ "$RUN_GAS" = "1" ]; then
     mpirun -np $NUM_MPI_PROC ../swift_mpi -s -G -t 8 eagle_6.yml -x -n 5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_gas
 
     # Run test using VELOCIraptor
-    echo "Running: mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST"
-    mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C $VELOCIRAPTOR_PATH/vel_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST
+    echo "Running: mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C ./stf_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST"
+    mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C ./stf_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST
 
     # Create info file for python comparison script
     echo -e $INFO_FILE_TEXT > infoFile_$TEST.txt
