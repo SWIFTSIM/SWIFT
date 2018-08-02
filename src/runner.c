@@ -224,7 +224,6 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Avoid floating point exception from f_prime = 0 */
           h_new = h_old - f / (f_prime + FLT_MIN);
-
 #ifdef SWIFT_DEBUG_CHECKS
           if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
             error(
@@ -2429,6 +2428,9 @@ void *runner_main(void *data) {
           runner_do_extra_ghost(r, ci, 1);
           break;
 #endif
+        case task_type_star_ghost:
+	  runner_do_star_ghost(r, ci, 1);
+	  break;
         case task_type_drift_part:
           runner_do_drift_part(r, ci, 1);
           break;

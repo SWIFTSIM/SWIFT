@@ -934,7 +934,7 @@ void runner_dosub_subset_star_density(struct runner *r, struct cell *ci, struct 
     }
 
     /* Otherwise, compute the pair directly. */
-    else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
+    else if (cell_is_active_star(ci, e) || cell_is_active_star(cj, e)) {
 
       /* Do any of the cells need to be drifted first? */
       if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");

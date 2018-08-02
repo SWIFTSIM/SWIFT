@@ -1271,6 +1271,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     const float count_j = (t->cj != NULL) ? t->cj->count : 0.f;
     const float gcount_i = (t->ci != NULL) ? t->ci->gcount : 0.f;
     const float gcount_j = (t->cj != NULL) ? t->cj->gcount : 0.f;
+    const float scount_i = (t->ci != NULL) ? t->ci->scount : 0.f;
 
     switch (t->type) {
       case task_type_sort:
@@ -1324,6 +1325,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_extra_ghost:
         if (t->ci == t->ci->super_hydro) cost = wscale * count_i;
         break;
+      case task_type_star_ghost:
+        if (t->ci == t->ci->super_hydro) cost = wscale * scount_i;
+	break;
       case task_type_drift_part:
         cost = wscale * count_i;
         break;
