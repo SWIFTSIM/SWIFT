@@ -2374,7 +2374,19 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   /* Compute how many cells away we need to walk */
   const double distance = 2.5 * cells[0].width[0] / theta_crit;
   int delta = (int)(distance / cells[0].width[0]) + 1;
-  if (delta >= cdim[0] / 2) delta = cdim[0] / 2;
+  int delta_m = delta;
+  int delta_p = delta;
+
+  /* Special case where every cell is in range of every other one */
+  if(delta >= cdim[0] / 2) {
+    if(cdim[0] % 2 == 0) {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2 - 1;
+    } else {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2;
+    }
+  }
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -2415,19 +2427,19 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 #endif
 
     /* Loop over every other cell within (Manhattan) range delta */
-    for (int x = -delta; x <= delta; x++) {
+    for (int x = -delta_m; x <= delta_p; x++) {
       int ii = i + x;
       if (ii >= cdim[0])
         ii -= cdim[0];
       else if (ii < 0)
         ii += cdim[0];
-      for (int y = -delta; y <= delta; y++) {
+      for (int y = -delta_m; y <= delta_p; y++) {
         int jj = j + y;
         if (jj >= cdim[1])
           jj -= cdim[1];
         else if (jj < 0)
           jj += cdim[1];
-        for (int z = -delta; z <= delta; z++) {
+        for (int z = -delta_m; z <= delta_p; z++) {
           int kk = k + z;
           if (kk >= cdim[2])
             kk -= cdim[2];
