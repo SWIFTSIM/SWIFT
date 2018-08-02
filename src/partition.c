@@ -872,7 +872,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 }
 #endif
 
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Partition the given space into a number of connected regions.
  *
