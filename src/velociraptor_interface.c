@@ -50,18 +50,6 @@ void velociraptor_init(struct engine *e) {
     struct unitinfo unit_info;
     struct siminfo sim_info;
     
-    struct phys_const vel_const;
-    if (posix_memalign((void **)&(e->stf_units), 32,
-                       sizeof(struct unit_system)) != 0)
-        error("Failed to allocate VELOCIraptor unit system.");
-    if (posix_memalign((void **)&(e->stf_conv_fac), 32,
-                       sizeof(struct unitinfo)) != 0)
-        error("Failed to allocate VELOCIraptor conversion factors.");
-
-    /* Initialize velociraptor unit system and constants */
-    units_init_from_params(e->stf_units, e->parameter_file, "VelociraptorUnitSystem");
-    phys_const_init(e->stf_units, e->parameter_file, &vel_const);
-
     /* Set cosmological constants. */
     cosmo_info.atime = e->cosmology->a;
     cosmo_info.littleh = e->cosmology->h;
@@ -80,13 +68,12 @@ void velociraptor_init(struct engine *e) {
     message("w_de: %e", cosmo_info.w_de);
 
     /* Set unit conversions. */
-    e->stf_conv_fac->lengthtokpc = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_LENGTH); /* 1kpc <=> 3.086e21cm */
-    e->stf_conv_fac->velocitytokms = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_SPEED); /* 1km/s <=> 1e5cm/s */
-    e->stf_conv_fac->masstosolarmass = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_MASS); /* 1M_sol <=> 1.99e33g */
-    e->stf_conv_fac->energyperunitmass = units_conversion_factor(e->internal_units, e->stf_units, UNIT_CONV_ENERGY_PER_UNIT_MASS); /* Conversion for gravitational potential. */
-    e->stf_conv_fac->gravity = vel_const.const_newton_G; /* TODO: G = 6.67408e-8 (cgs) */
-    e->stf_conv_fac->hubbleunit = e->cosmology->H; /* TODO: double check this. */
-    unit_info = *e->stf_conv_fac;
+    unit_info.lengthtokpc = 1.0;
+    unit_info.velocitytokms = 1.0;
+    unit_info.masstosolarmass = 1.0;    
+    unit_info.energyperunitmass = 1.0;
+    unit_info.gravity = e->physical_constants->const_newton_G;
+    unit_info.hubbleunit = e->cosmology->H; /* TODO: double check this. */
 
     message("Length conversion factor: %e", unit_info.lengthtokpc);
     message("Velocity conversion factor: %e", unit_info.velocitytokms);
@@ -170,7 +157,6 @@ void velociraptor_invoke(struct engine *e) {
     const size_t nr_hydro_parts = s->nr_parts;
     const int nr_cells = s->nr_cells;
     int *cell_node_ids = NULL;
-    struct unitinfo *conv_fac = e->stf_conv_fac;
 
     /* Allow thread to run on any core for the duration of the call to VELOCIraptor so that 
      * when OpenMP threads are spawned they can run on any core on the processor. */
@@ -224,14 +210,14 @@ void velociraptor_invoke(struct engine *e) {
    
     /* Convert particle properties into VELOCIraptor units */ 
     for(size_t i=0; i<nr_gparts; i++) {
-      swift_parts[i].x[0] = gparts[i].x[0] * conv_fac->lengthtokpc;
-      swift_parts[i].x[1] = gparts[i].x[1] * conv_fac->lengthtokpc;
-      swift_parts[i].x[2] = gparts[i].x[2] * conv_fac->lengthtokpc;
-      swift_parts[i].v[0] = gparts[i].v_full[0] * conv_fac->velocitytokms / a2;
-      swift_parts[i].v[1] = gparts[i].v_full[1] * conv_fac->velocitytokms / a2;
-      swift_parts[i].v[2] = gparts[i].v_full[2] * conv_fac->velocitytokms / a2;
-      swift_parts[i].mass = gparts[i].mass * conv_fac->masstosolarmass;
-      swift_parts[i].potential = gparts[i].potential * conv_fac->energyperunitmass;
+      swift_parts[i].x[0] = gparts[i].x[0];
+      swift_parts[i].x[1] = gparts[i].x[1];
+      swift_parts[i].x[2] = gparts[i].x[2];
+      swift_parts[i].v[0] = gparts[i].v_full[0] / a2;
+      swift_parts[i].v[1] = gparts[i].v_full[1] / a2;
+      swift_parts[i].v[2] = gparts[i].v_full[2] / a2;
+      swift_parts[i].mass = gparts[i].mass;
+      swift_parts[i].potential = gparts[i].potential;
       swift_parts[i].type = gparts[i].type;
       
       /* Set gas particle IDs from their hydro counterparts and set internal energies. */
