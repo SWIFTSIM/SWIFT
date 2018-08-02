@@ -33,7 +33,7 @@ INLINE static void star_read_particles(struct spart* sparts,
                                        struct io_props* list, int* num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 4;
+  *num_fields = 5;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -44,6 +44,8 @@ INLINE static void star_read_particles(struct spart* sparts,
                                 sparts, mass);
   list[3] = io_make_input_field("ParticleIDs", LONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, sparts, id);
+  list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
+                                UNIT_CONV_LENGTH, sparts, h);
 }
 
 /**
@@ -58,7 +60,7 @@ INLINE static void star_write_particles(const struct spart* sparts,
                                         int* num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 4;
+  *num_fields = 5;
 
   /* List what we want to read */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -69,6 +71,8 @@ INLINE static void star_write_particles(const struct spart* sparts,
       io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, sparts, mass);
   list[3] = io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
                                  sparts, id);
+  list[4] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
+                                 sparts, h);
 }
 
 /**
@@ -122,7 +126,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
  *
  * @param p The #stars_props.
  */
-void stars_props_print(const struct stars_props *sp) {
+INLINE static void stars_props_print(const struct stars_props *sp) {
 
   /* Now stars */
   message("Stars kernel: %s with eta=%f (%.2f neighbours).", kernel_name,
@@ -144,7 +148,7 @@ void stars_props_print(const struct stars_props *sp) {
 }
 
 #if defined(HAVE_HDF5)
-void stars_props_print_snapshot(hid_t h_grpstars, const struct stars_props *sp) {
+INLINE static void stars_props_print_snapshot(hid_t h_grpstars, const struct stars_props *sp) {
 
   io_write_attribute_s(h_grpstars, "Kernel function", kernel_name);
   io_write_attribute_f(h_grpstars, "Kernel target N_ngb", sp->target_neighbours);
@@ -167,7 +171,7 @@ void stars_props_print_snapshot(hid_t h_grpstars, const struct stars_props *sp) 
  * @param p the struct
  * @param stream the file stream
  */
-void stars_props_struct_dump(const struct stars_props *p, FILE *stream) {
+INLINE static void stars_props_struct_dump(const struct stars_props *p, FILE *stream) {
   restart_write_blocks((void *)p, sizeof(struct stars_props), 1, stream,
                        "starsprops", "stars props");
 }
@@ -179,7 +183,7 @@ void stars_props_struct_dump(const struct stars_props *p, FILE *stream) {
  * @param p the struct
  * @param stream the file stream
  */
-void stars_props_struct_restore(const struct stars_props *p, FILE *stream) {
+INLINE static void stars_props_struct_restore(const struct stars_props *p, FILE *stream) {
   restart_read_blocks((void *)p, sizeof(struct stars_props), 1, stream, NULL,
                       "stars props");
 }

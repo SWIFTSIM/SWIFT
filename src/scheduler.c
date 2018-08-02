@@ -1525,6 +1525,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_sort:
       case task_type_ghost:
+      case task_type_star_ghost:
       case task_type_drift_part:
         qid = t->ci->super_hydro->owner;
         break;

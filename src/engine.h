@@ -97,6 +97,7 @@ enum engine_step_properties {
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost 1000
+#define engine_max_sparts_per_ghost 1000
 
 /**
  * @brief The rank of the engine as a global variable (for messages).
@@ -394,7 +395,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
-                 struct gravity_props *gravity, struct pm_mesh *mesh,
+                 struct gravity_props *gravity, const struct stars_props *stars,
+		 struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
                  const struct chemistry_global_data *chemistry,

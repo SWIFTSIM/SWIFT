@@ -147,7 +147,6 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct spart *restrict sparts = c->sparts;
   const struct engine *e = r->e;
-  const struct space *s = e->s;
   const struct cosmology *cosmo = e->cosmology;
   const struct stars_props *stars_properties = e->stars_properties;
   const float star_h_max = e->stars_properties->h_max;
@@ -171,7 +170,7 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
     /* Init the list of active particles that have to be updated. */
     int *sid = NULL;
     if ((sid = (int *)malloc(sizeof(int) * c->scount)) == NULL)
-      error("Can't allocate memory for pid.");
+      error("Can't allocate memory for sid.");
     for (int k = 0; k < c->scount; k++)
       if (spart_is_active(&sparts[k], e)) {
         sid[count] = k;
@@ -303,23 +302,23 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Self-interaction? */
             if (l->t->type == task_type_self)
-              runner_doself_subset_star_density(r, finger, parts, pid, count);
+              runner_doself_subset_branch_star_density(r, finger, sparts, sid, count);
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dopair_subset_star_density(r, finger, parts, pid,
+                runner_dopair_subset_branch_star_density(r, finger, sparts, sid,
                                                     count, l->t->cj);
               else
-                runner_dopair_subset_star_density(r, finger, parts, pid,
+                runner_dopair_subset_branch_star_density(r, finger, sparts, sid,
                                                     count, l->t->ci);
             }
 
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
-              runner_dosub_subset_density(r, finger, parts, pid, count, NULL,
+              runner_dosub_subset_star_density(r, finger, sparts, sid, count, NULL,
                                           -1, 1);
 
             /* Otherwise, sub-pair interaction? */
@@ -327,10 +326,10 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dosub_subset_density(r, finger, parts, pid, count,
+                runner_dosub_subset_star_density(r, finger, sparts, sid, count,
                                             l->t->cj, -1, 1);
               else
-                runner_dosub_subset_density(r, finger, parts, pid, count,
+                runner_dosub_subset_star_density(r, finger, sparts, sid, count,
                                             l->t->ci, -1, 1);
             }
           }

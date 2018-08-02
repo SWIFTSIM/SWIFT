@@ -282,6 +282,15 @@ struct cell {
   /*! Task propagating the multipole to the particles */
   struct task *grav_down;
 
+  /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
+  struct task *star_ghost_in;
+
+  /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
+  struct task *star_ghost_out;
+
+  /*! The star ghost task itself */
+  struct task *star_ghost;
+
   /*! Task for cooling */
   struct task *cooling;
 
