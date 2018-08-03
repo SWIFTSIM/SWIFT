@@ -157,14 +157,14 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 libswiftsim_la_SOURCES = $(AM_SOURCES)
 libswiftsim_la_CFLAGS = $(AM_CFLAGS)
 libswiftsim_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS)
-libswiftsim_la_LIBADD = $(GRACKLE_LIBS)
+libswiftsim_la_LIBADD = $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS)
 
 # Sources and flags for MPI library
 libswiftsim_mpi_la_SOURCES = $(AM_SOURCES)
 libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS)
 libswiftsim_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 libswiftsim_mpi_la_SHORTNAME = mpi
-libswiftsim_mpi_la_LIBADD = $(GRACKLE_LIBS)
+libswiftsim_mpi_la_LIBADD = $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS)
 
 
 # Versioning. If any sources change then update the version_string.h file with

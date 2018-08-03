@@ -786,7 +786,6 @@ if test "x$with_velociraptor" != "xno"; then
    if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
       VELOCIRAPTOR_LIBS="-L$with_velociraptor -lstf -lstdc++ -lhdf5_cpp"
       CFLAGS="$CFLAGS -fopenmp"
-      LIBS="$LIBS $VELOCIRAPTOR_LIBS"
    else
       VELOCIRAPTOR_LIBS=""
    fi
