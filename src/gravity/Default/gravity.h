@@ -170,7 +170,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
  * @param gp The particle to act upon
  * @param const_G Newton's constant in internal units.
  * @param potential_normalisation Term to be added to all the particles.
- * @param Are we using periodic BCs?
+ * @param periodic Are we using periodic BCs?
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
     struct gpart* gp, float const_G, const float potential_normalisation,
