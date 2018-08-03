@@ -205,7 +205,7 @@ struct engine {
   const struct unit_system *internal_units;
   
   /* Top-level cell locations for VELOCIraptor. */
-  struct cell_loc *cellloc;
+  struct cell_loc *cell_loc;
 
   /* Snapshot information */
   double a_first_snapshot;

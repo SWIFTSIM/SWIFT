@@ -1,11 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
- *                    Angus Lepper (angus.lepper@ed.ac.uk)
- *               2016 John A. Regan (john.a.regan@durham.ac.uk)
- *                    Tom Theuns (tom.theuns@durham.ac.uk)
+ * Copyright (c) 2018 James Willis (james.s.willis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -58,7 +53,7 @@ struct siminfo {
     int numcells;
 
     /*! Locations of top-level cells. */
-    struct cell_loc *cellloc;
+    struct cell_loc *cell_loc;
     
     /*! Top-level cell width. */
     double cellwidth[3];

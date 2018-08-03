@@ -22,8 +22,7 @@
 /* SWIFT/VELOCIraptor particle. */
 struct swift_vel_part {
 
-  /*! Particle ID. If negative, it is the negative offset of the #part with
-     which this gpart is linked. */
+  /*! Particle ID. */
   long long id;
 
   /*! Particle position. */

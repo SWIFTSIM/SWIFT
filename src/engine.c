@@ -6389,7 +6389,7 @@ void engine_clean(struct engine *e) {
   free(e->runners);
   free(e->snapshot_units);
   free(e->links);
-  free(e->cellloc);
+  free(e->cell_loc);
   scheduler_clean(&e->sched);
   space_clean(e->s);
   threadpool_clean(&e->threadpool);

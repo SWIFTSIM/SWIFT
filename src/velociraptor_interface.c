@@ -1,11 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
- *                    Angus Lepper (angus.lepper@ed.ac.uk)
- *               2016 John A. Regan (john.a.regan@durham.ac.uk)
- *                    Tom Theuns (tom.theuns@durham.ac.uk)
+ * Copyright (c) 2018 James Willis (james.s.willis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -108,17 +103,17 @@ void velociraptor_init(struct engine *e) {
     sim_info.icellwidth[2] = s->iwidth[2] / unit_info.lengthtokpc;
    
     /* Allocate and populate top-level cell locations. */
-    if (posix_memalign((void **)&(e->cellloc), 32,
+    if (posix_memalign((void **)&(e->cell_loc), 32,
                        s->nr_cells * sizeof(struct cell_loc)) != 0)
         error("Failed to allocate top-level cell locations for VELOCIraptor.");
 
     for(int i=0; i<s->nr_cells; i++) {
-        e->cellloc[i].loc[0] = unit_info.lengthtokpc * s->cells_top[i].loc[0];
-        e->cellloc[i].loc[1] = unit_info.lengthtokpc * s->cells_top[i].loc[1];
-        e->cellloc[i].loc[2] = unit_info.lengthtokpc * s->cells_top[i].loc[2];
+        e->cell_loc[i].loc[0] = unit_info.lengthtokpc * s->cells_top[i].loc[0];
+        e->cell_loc[i].loc[1] = unit_info.lengthtokpc * s->cells_top[i].loc[1];
+        e->cell_loc[i].loc[2] = unit_info.lengthtokpc * s->cells_top[i].loc[2];
     }
 
-    sim_info.cellloc = e->cellloc;
+    sim_info.cell_loc = e->cell_loc;
 
     char configfilename[PARSER_MAX_LINE_SIZE], outputFileName[PARSER_MAX_LINE_SIZE + 128];
     parser_get_param_string(e->parameter_file, "StructureFinding:config_file_name", configfilename);
@@ -131,7 +126,7 @@ void velociraptor_init(struct engine *e) {
     message("Cosmological: %d", sim_info.icosmologicalsim);
     message("Space dimensions: (%e,%e,%e)", sim_info.spacedimension[0], sim_info.spacedimension[1], sim_info.spacedimension[2]);
     message("No. of top-level cells: %d", sim_info.numcells);
-    message("Top-level cell locations range: (%e,%e,%e) -> (%e,%e,%e)", sim_info.cellloc[0].loc[0], sim_info.cellloc[0].loc[1], sim_info.cellloc[0].loc[2], sim_info.cellloc[sim_info.numcells - 1].loc[0], sim_info.cellloc[sim_info.numcells - 1].loc[1], sim_info.cellloc[sim_info.numcells - 1].loc[2]);
+    message("Top-level cell locations range: (%e,%e,%e) -> (%e,%e,%e)", sim_info.cell_loc[0].loc[0], sim_info.cell_loc[0].loc[1], sim_info.cell_loc[0].loc[2], sim_info.cell_loc[sim_info.numcells - 1].loc[0], sim_info.cell_loc[sim_info.numcells - 1].loc[1], sim_info.cell_loc[sim_info.numcells - 1].loc[2]);
 
     /* Initialise VELOCIraptor. */
     if(!InitVelociraptor(configfilename, outputFileName, cosmo_info, unit_info, sim_info)) error("Exiting. VELOCIraptor initialisation failed.");

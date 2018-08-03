@@ -71,6 +71,7 @@
 #include "timers.h"
 #include "tools.h"
 #include "units.h"
+#include "velociraptor_interface.h"
 #include "version.h"
 
 #endif /* SWIFT_SWIFT_H */

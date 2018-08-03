@@ -42,7 +42,6 @@
 
 /* Local headers. */
 #include "swift.h"
-#include "velociraptor_interface.h"
 
 /* Engine policy flags. */
 #ifndef ENGINE_POLICY
