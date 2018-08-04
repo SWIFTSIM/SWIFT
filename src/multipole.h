@@ -240,30 +240,31 @@ INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
   m->CoM[2] += dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if(m->m_pole.vel[0] > m->m_pole.max_delta_vel[0]) 
+  if (m->m_pole.vel[0] > m->m_pole.max_delta_vel[0])
     error("Invalid maximal velocity");
-  if(m->m_pole.vel[0] < m->m_pole.min_delta_vel[0]) 
+  if (m->m_pole.vel[0] < m->m_pole.min_delta_vel[0])
     error("Invalid minimal velocity");
-  if(m->m_pole.vel[1] > m->m_pole.max_delta_vel[1]) 
+  if (m->m_pole.vel[1] > m->m_pole.max_delta_vel[1])
     error("Invalid maximal velocity");
-  if(m->m_pole.vel[1] < m->m_pole.min_delta_vel[1]) 
+  if (m->m_pole.vel[1] < m->m_pole.min_delta_vel[1])
     error("Invalid minimal velocity");
-  if(m->m_pole.vel[2] > m->m_pole.max_delta_vel[2]) 
+  if (m->m_pole.vel[2] > m->m_pole.max_delta_vel[2])
     error("Invalid maximal velocity");
-  if(m->m_pole.vel[2] < m->m_pole.min_delta_vel[2]) 
+  if (m->m_pole.vel[2] < m->m_pole.min_delta_vel[2])
     error("Invalid minimal velocity");
 #endif
 
   /* Maximal distance covered by any particle */
   float dv[3];
   dv[0] = max(m->m_pole.max_delta_vel[0] - m->m_pole.vel[0],
-	      m->m_pole.vel[0] - m->m_pole.min_delta_vel[0]);
+              m->m_pole.vel[0] - m->m_pole.min_delta_vel[0]);
   dv[1] = max(m->m_pole.max_delta_vel[1] - m->m_pole.vel[1],
-	      m->m_pole.vel[1] - m->m_pole.min_delta_vel[1]);
+              m->m_pole.vel[1] - m->m_pole.min_delta_vel[1]);
   dv[2] = max(m->m_pole.max_delta_vel[2] - m->m_pole.vel[2],
-	      m->m_pole.vel[2] - m->m_pole.min_delta_vel[2]);
+              m->m_pole.vel[2] - m->m_pole.min_delta_vel[2]);
 
-  const float max_delta_vel = sqrt(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+  const float max_delta_vel =
+      sqrt(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
   const float x_diff = max_delta_vel * dt;
 
   /* Conservative change in maximal radius containing all gpart */

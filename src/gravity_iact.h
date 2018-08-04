@@ -36,5 +36,4 @@
 #error "Invalid choice of gravity variant"
 #endif
 
-
 #endif

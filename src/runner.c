@@ -1666,7 +1666,8 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   const float G_newton = e->physical_constants->const_newton_G;
   const double r_s = e->mesh->r_s;
   const double volume = s->dim[0] * s->dim[1] * s->dim[2];
-  const float potential_normalisation = 4. * M_PI * e->total_mass * r_s * r_s / volume;
+  const float potential_normalisation =
+      4. * M_PI * e->total_mass * r_s * r_s / volume;
 
   TIMER_TIC;
 

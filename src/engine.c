@@ -2378,8 +2378,8 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   int delta_p = delta;
 
   /* Special case where every cell is in range of every other one */
-  if(delta >= cdim[0] / 2) {
-    if(cdim[0] % 2 == 0) {
+  if (delta >= cdim[0] / 2) {
+    if (cdim[0] % 2 == 0) {
       delta_m = cdim[0] / 2;
       delta_p = cdim[0] / 2 - 1;
     } else {
@@ -6029,7 +6029,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   if (!(e->policy & engine_policy_cosmology))
     if (e->dt_max > (e->time_end - e->time_begin) && e->nodeID == 0)
       error("Maximal time-step size larger than the simulation run time t=%e",
-	    e->time_end - e->time_begin);
+            e->time_end - e->time_begin);
 
   /* Deal with outputs */
   if (e->policy & engine_policy_cosmology) {
@@ -6082,7 +6082,8 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
 /* Reduce the total mass */
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, &e->total_mass, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &e->total_mass, 1, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
 #endif
 
   /* Find the time of the first snapshot  output */

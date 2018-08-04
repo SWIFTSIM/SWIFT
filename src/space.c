@@ -1903,17 +1903,17 @@ void space_split_recursive(struct space *s, struct cell *c,
           CoM[1] += m->CoM[1] * m->m_pole.M_000;
           CoM[2] += m->CoM[2] * m->m_pole.M_000;
 
-	  vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
-	  vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;	  
-	  vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+          vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+          vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+          vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
 
-	  max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
-	  max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
-	  max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+          max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+          max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+          max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
 
-	  min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
-	  min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
-	  min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
+          min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+          min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+          min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
         }
       }
 

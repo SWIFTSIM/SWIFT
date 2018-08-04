@@ -282,7 +282,7 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
  * @param verbose Are we talkative?
  */
 void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
-			       int verbose) {
+                               int verbose) {
 
 #ifdef HAVE_FFTW
 
@@ -323,9 +323,9 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   for (size_t i = 0; i < s->nr_gparts; ++i)
     gpart_to_mesh_CIC(&s->gparts[i], rho, N, cell_fac, dim);
 
-  if(verbose)
-    message("gpart assignment took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+  if (verbose)
+    message("gpart assignment took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* message("\n\n\n DENSITY"); */
   /* print_array(rho, N); */
@@ -407,9 +407,9 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   /* Let's store it in the structure */
   mesh->potential = rho;
 
-  if(verbose)
-    message("Fourier-space PM took %.3f %s.", clocks_from_ticks(getticks() - tic2),
-            clocks_getunit());
+  if (verbose)
+    message("Fourier-space PM took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* message("\n\n\n POTENTIAL"); */
   /* print_array(potential, N); */

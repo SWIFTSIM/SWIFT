@@ -1453,7 +1453,7 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
         if (parent->drift_gpart == NULL)
           error("Trying to activate un-existing parent->drift_gpart");
 #endif
-	scheduler_activate(s, parent->drift_gpart);
+        scheduler_activate(s, parent->drift_gpart);
         break;
       }
     }
@@ -2706,8 +2706,7 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
     dt_drift = (ti_current - ti_old_multipole) * e->time_base;
 
   /* Drift the multipole */
-  if (ti_current > ti_old_multipole)
-    gravity_drift(c->multipole, dt_drift);
+  if (ti_current > ti_old_multipole) gravity_drift(c->multipole, dt_drift);
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -2748,8 +2747,7 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
   else
     dt_drift = (ti_current - ti_old_multipole) * e->time_base;
 
-  if (ti_current > ti_old_multipole)
-    gravity_drift(c->multipole, dt_drift);
+  if (ti_current > ti_old_multipole) gravity_drift(c->multipole, dt_drift);
 
   /* Update the time of the last drift */
   c->ti_old_multipole = ti_current;

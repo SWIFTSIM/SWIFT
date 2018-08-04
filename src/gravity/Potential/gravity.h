@@ -169,8 +169,7 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
     const int periodic) {
 
   /* Apply the periodic correction to the peculiar potential */
-  if(periodic)
-    gp->potential += potential_normalisation;
+  if (periodic) gp->potential += potential_normalisation;
 
   /* Let's get physical... */
   gp->a_grav[0] *= const_G;
