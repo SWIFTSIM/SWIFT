@@ -2707,7 +2707,7 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
 
   /* Drift the multipole */
   if (ti_current > ti_old_multipole)
-    gravity_drift(c->multipole, dt_drift, 0.f /*c->dx_max_gpart*/);
+    gravity_drift(c->multipole, dt_drift);
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -2749,7 +2749,7 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
     dt_drift = (ti_current - ti_old_multipole) * e->time_base;
 
   if (ti_current > ti_old_multipole)
-    gravity_drift(c->multipole, dt_drift, 0.f /*c->dx_max_gpart*/);
+    gravity_drift(c->multipole, dt_drift);
 
   /* Update the time of the last drift */
   c->ti_old_multipole = ti_current;
