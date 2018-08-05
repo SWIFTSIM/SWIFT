@@ -1731,6 +1731,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int count = c->count;
   const int gcount = c->gcount;
   const int scount = c->scount;
+  const int with_gravity = s->gravity;
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
@@ -1792,8 +1793,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   }
 
   /* Split or let it be? */
-  if (count > space_splitsize || gcount > space_splitsize ||
-      scount > space_splitsize) {
+  if ((with_gravity && gcount > space_splitsize) ||
+      (!with_gravity && (count > space_splitsize || scount > space_splitsize))) {
 
     /* No longer just a leaf. */
     c->split = 1;
