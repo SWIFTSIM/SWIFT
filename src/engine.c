@@ -346,7 +346,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                            task_subtype_none, 0, 0, c, NULL);
 
         if (periodic) scheduler_addunlock(s, c->drift_gpart, c->grav_mesh);
-        if (periodic) scheduler_addunlock(s, c->grav_mesh, c->super->end_force);
+        if (periodic) scheduler_addunlock(s, c->grav_mesh, c->grav_down);
         scheduler_addunlock(s, c->init_grav, c->grav_long_range);
         scheduler_addunlock(s, c->grav_long_range, c->grav_down);
         scheduler_addunlock(s, c->grav_down, c->super->end_force);
@@ -3188,14 +3188,25 @@ void engine_maketasks(struct engine *e) {
   /* Re-set the scheduler. */
   scheduler_reset(sched, engine_estimate_nr_tasks(e));
 
+  ticks tic2 = getticks();
+
   /* Construct the firt hydro loop over neighbours */
-  if (e->policy & engine_policy_hydro) {
+  if (e->policy & engine_policy_hydro)
     threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
                    s->nr_cells, 1, 0, e);
-  }
+
+  if(e->verbose)
+    message("Making hydro tasks took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
 
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity) engine_make_self_gravity_tasks(e);
+
+  if(e->verbose)
+    message("Making gravity tasks took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Add the external gravity tasks. */
   if (e->policy & engine_policy_external_gravity)
@@ -3234,8 +3245,15 @@ void engine_maketasks(struct engine *e) {
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
+  tic2 = getticks();
+
   /* Split the tasks. */
   scheduler_splittasks(sched);
+
+  if(e->verbose)
+    message("Splitting tasks took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that we are not left with invalid tasks */
@@ -3245,20 +3263,34 @@ void engine_maketasks(struct engine *e) {
   }
 #endif
 
+  tic2 = getticks();
+
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
   threadpool_map(&e->threadpool, engine_count_and_link_tasks_mapper,
                  sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
+  if(e->verbose)
+    message("Counting and linking tasks took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
   /* Now that the self/pair tasks are at the right level, set the super
    * pointers. */
   threadpool_map(&e->threadpool, cell_set_super_mapper, cells, nr_cells,
                  sizeof(struct cell), 0, e);
 
+  if(e->verbose)
+    message("Setting super-pointers took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
   /* Append hierarchical tasks to each cell. */
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
                  nr_cells, sizeof(struct cell), 0, e);
+
+  tic2 = getticks();
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
@@ -3267,9 +3299,19 @@ void engine_maketasks(struct engine *e) {
     threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
                    sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
+  if(e->verbose)
+    message("Making extra hydroloop tasks took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
   /* Add the dependencies for the gravity stuff */
   if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
     engine_link_gravity_tasks(e);
+
+  if(e->verbose)
+    message("Linking gravity tasks took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
 #ifdef WITH_MPI
 
@@ -3323,14 +3365,32 @@ void engine_maketasks(struct engine *e) {
   }
 #endif
 
+  tic2 = getticks();
+
   /* Set the unlocks per task. */
   scheduler_set_unlocks(sched);
+
+  if(e->verbose)
+    message("Setting unlocks took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
 
   /* Rank the tasks. */
   scheduler_ranktasks(sched);
 
+  if(e->verbose)
+    message("Ranking the tasks took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
   /* Weight the tasks. */
   scheduler_reweight(sched, e->verbose);
+
+  if(e->verbose)
+    message("Reweighting tasks took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Set the tasks age. */
   e->tasks_age = 0;
