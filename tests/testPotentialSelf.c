@@ -78,8 +78,9 @@ double acceleration(double mass, double r, double H, double rlr) {
   if (u > 1.)
     acc = -mass / (r * r * r);
   else
-    acc = -mass * (21. * u * u * u * u * u - 90. * u * u * u * u +
-                   140. * u * u * u - 84. * u * u + 14.) /
+    acc = -mass *
+          (21. * u * u * u * u * u - 90. * u * u * u * u + 140. * u * u * u -
+           84. * u * u + 14.) /
           (H * H * H);
 
   return r * acc * (4. * x * S_prime(2 * x) - 2. * S(2. * x) + 2.);

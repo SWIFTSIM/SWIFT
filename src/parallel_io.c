@@ -490,9 +490,10 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
   else
     H5Sselect_none(h_filespace);
 
-/* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
- * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize, */
-/* 	  (int)(N * props.dimension * typeSize), offset); */
+    /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
+     * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize,
+     */
+    /* 	  (int)(N * props.dimension * typeSize), offset); */
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -1180,8 +1181,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
    * broadcast from there */
   MPI_Bcast(&N_total, 6, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
-/* Now everybody konws its offset and the total number of
- * particles of each type */
+  /* Now everybody konws its offset and the total number of
+   * particles of each type */
 
 #ifdef IO_SPEED_MEASUREMENT
   ticks tic = getticks();
