@@ -4708,7 +4708,7 @@ void engine_step(struct engine *e) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+	"  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->wallclock_time, e->step_props);
@@ -4722,6 +4722,10 @@ void engine_step(struct engine *e) {
     fflush(e->file_timesteps);
   }
 
+  /* We need some cells to exist but not the whole task stuff. */
+  if(e->restarting)
+    space_rebuild(e->s, e->verbose);
+
   /* Move forward in time */
   e->ti_old = e->ti_current;
   e->ti_current = e->ti_end_min;
@@ -4730,6 +4734,11 @@ void engine_step(struct engine *e) {
   e->step += 1;
   e->step_props = engine_step_prop_none;
 
+  /* When restarting, move everyone to the current time. */
+  if(e->restarting)
+    engine_drift_all(e);
+
+  /* Get the physical value of the time and time-step size */
   if (e->policy & engine_policy_cosmology) {
     e->time_old = e->time;
     cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
@@ -4982,9 +4991,6 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
   if (e->restart_dump) {
     ticks tic = getticks();
 
-    if(e->nodeID == 0)
-      message("Writing restart files");
-
     /* Dump when the time has arrived, or we are told to. */
     int dump = ((tic > e->restart_next) || force);
 
@@ -4994,6 +5000,10 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
     MPI_Bcast(&dump, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
     if (dump) {
+
+      if(e->nodeID == 0)
+	message("Writing restart files");
+
       /* Clean out the previous saved files, if found. Do this now as we are
        * MPI synchronized. */
       restart_remove_previous(e->restart_file);
