@@ -306,7 +306,11 @@ int main(int argc, char *argv[]) {
         }
         break;
       case 'x':
+#ifdef HAVE_VELOCIRAPTOR
         with_structure_finding = 1;
+#else
+	error("Error: (-x) needs to have the code compiled with VELOCIraptor linked in.");
+#endif
         break;
       case 'y':
         if (sscanf(optarg, "%d", &dump_tasks) != 1) {
@@ -715,6 +719,11 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
     if (periodic && with_self_gravity)
       error("Periodic self-gravity over MPI temporarily disabled.");
+#endif
+
+#if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
+    if(with_structure_finding)
+      error("VEOCIraptor not yet enabled over MPI.");
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
