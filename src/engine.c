@@ -4982,6 +4982,9 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
   if (e->restart_dump) {
     ticks tic = getticks();
 
+    if(e->nodeID == 0)
+      message("Writing restart files");
+
     /* Dump when the time has arrived, or we are told to. */
     int dump = ((tic > e->restart_next) || force);
 
