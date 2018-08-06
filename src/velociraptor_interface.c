@@ -22,7 +22,6 @@
 
 /* Some standard headers. */
 #include <errno.h>
-#include <libgen.h>
 #include <unistd.h>
 
 /* This object's header. */

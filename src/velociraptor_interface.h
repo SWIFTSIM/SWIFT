@@ -29,12 +29,49 @@
 
 /* Structure for passing cosmological information to VELOCIraptor. */
 struct cosmoinfo {
-    double atime, littleh, Omega_m, Omega_b, Omega_Lambda, Omega_cdm, w_de;
+
+  /*! Current expansion factor of the Universe. (cosmology.a) */
+  double atime;
+
+  /*! Reduced Hubble constant (H0 / (100km/s/Mpc) (cosmology.h) */
+  double littleh;
+
+  /*! Matter density parameter (cosmology.Omega_m) */
+  double Omega_m;
+
+  /*! Baryon density parameter (cosmology.Omega_b) */
+  double Omega_b;
+  
+  /*! Radiation constant density parameter (cosmology.Omega_lambda) */
+  double Omega_Lambda;
+
+  /*! Dark matter density parameter (cosmology.Omega_m - cosmology.Omega_b) */
+  double Omega_cdm;
+
+  /*! Dark-energy equation of state at the current time (cosmology.w)*/
+  double w_de;
 };
 
 /* Structure for passing unit information to VELOCIraptor. */
 struct unitinfo {
-    double lengthtokpc,velocitytokms,masstosolarmass,energyperunitmass,gravity,hubbleunit;
+
+  /* Length conversion factor to kpc. */
+  double lengthtokpc;
+  
+  /* Velocity conversion factor to km/s. */
+  double velocitytokms;
+  
+  /* Mass conversion factor to solar masses. */
+  double masstosolarmass;
+  
+  /* Potential conversion factor. */
+  double energyperunitmass;
+
+  /*! Newton's gravitationl constant (phys_const.const_newton_G)*/
+  double gravity;
+
+  /*! Hubble constant at the current redshift (cosmology.H) */
+  double hubbleunit;
 };
 
 /* Structure to hold the location of a top-level cell. */
