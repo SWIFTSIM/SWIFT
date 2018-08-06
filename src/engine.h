@@ -70,9 +70,10 @@ enum engine_policy {
   engine_policy_reconstruct_mpoles = (1 << 12),
   engine_policy_cooling = (1 << 13),
   engine_policy_sourceterms = (1 << 14),
-  engine_policy_stars = (1 << 15)
+  engine_policy_stars = (1 << 15),
+  engine_policy_structure_finding = (1 << 16)
 };
-#define engine_maxpolicy 15
+#define engine_maxpolicy 16
 extern const char *engine_policy_names[];
 
 /**
@@ -205,6 +206,9 @@ struct engine {
 
   /* The internal system of units */
   const struct unit_system *internal_units;
+  
+  /* Top-level cell locations for VELOCIraptor. */
+  struct cell_loc *cell_loc;
 
   /* Snapshot information */
   double a_first_snapshot;
@@ -219,6 +223,18 @@ struct engine {
   int snapshot_label_delta;
   struct unit_system *snapshot_units;
   int snapshot_output_count;
+
+  /* Structure finding information */
+  int stf_output_freq_format;
+  double a_first_stf;
+  double timeFirstSTFOutput;
+  double deltaTimeSTF;
+  int deltaStepSTF;
+  
+  /* Integer time of the next stf output */
+  integertime_t ti_nextSTF;
+  
+  char stfBaseName[PARSER_MAX_LINE_SIZE];
 
   /* Statistics information */
   double a_first_statistics;
@@ -348,6 +364,7 @@ struct engine {
 void engine_addlink(struct engine *e, struct link **l, struct task *t);
 void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
+void engine_compute_next_stf_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
@@ -393,6 +410,10 @@ void engine_pin(void);
 void engine_unpin(void);
 void engine_clean(struct engine *e);
 int engine_estimate_nr_tasks(struct engine *e);
+
+#ifdef HAVE_SETAFFINITY
+cpu_set_t *engine_entry_affinity(void);
+#endif
 
 /* Struct dump/restore support. */
 void engine_struct_dump(struct engine *e, FILE *stream);

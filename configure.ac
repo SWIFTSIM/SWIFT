@@ -771,6 +771,38 @@ if test "$with_hdf5" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
 
+# Check for VELOCIraptor.
+have_velociraptor="no"
+AC_ARG_WITH([velociraptor],
+    [AS_HELP_STRING([--with-velociraptor=PATH],
+       [Directory where velociraptor library exists @<:@yes/no@:>@]
+    )],
+    [with_velociraptor="$withval"],
+    [with_velociraptor="no"]
+)
+if test "x$with_velociraptor" != "xno"; then
+   AC_PROG_FC
+   AC_FC_LIBRARY_LDFLAGS
+   if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
+      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lstf -lstdc++ -lhdf5_cpp"
+      CFLAGS="$CFLAGS -fopenmp"
+   else
+      VELOCIRAPTOR_LIBS=""
+   fi
+
+   have_velociraptor="yes"
+
+   AC_CHECK_LIB(
+      [stf],
+      [InitVelociraptor],
+      [AC_DEFINE([HAVE_VELOCIRAPTOR],1,[The VELOCIraptor library appears to be present.])],
+      [AC_MSG_ERROR(Cannot find VELOCIraptor library at $with_velociraptor)],
+      [$VELOCIRAPTOR_LIBS $HDF5_LDFLAGS $HDF5_LIBS $GSL_LIBS]
+   )
+fi
+AC_SUBST([VELOCIRAPTOR_LIBS])
+AM_CONDITIONAL([HAVEVELOCIRAPTOR],[test -n "$VELOCIRAPTOR_LIBS"])
+
 # Check for floating-point execeptions
 AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
     [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
@@ -1348,21 +1380,22 @@ AC_MSG_RESULT([
 
    $PACKAGE_NAME v.$PACKAGE_VERSION
 
-   Compiler           : $CC
-    - vendor          : $ax_cv_c_compiler_vendor
-    - version         : $ax_cv_c_compiler_version
-    - flags           : $CFLAGS
-   MPI enabled        : $enable_mpi
-   HDF5 enabled       : $with_hdf5
-    - parallel        : $have_parallel_hdf5
-   Metis enabled      : $have_metis
-   FFTW3 enabled      : $have_fftw
-   GSL enabled        : $have_gsl
-   libNUMA enabled    : $have_numa
-   GRACKLE enabled    : $have_grackle
-   Special allocators : $have_special_allocator
-   CPU profiler       : $have_profiler
-   Pthread barriers   : $have_pthread_barrier
+   Compiler             : $CC
+    - vendor            : $ax_cv_c_compiler_vendor
+    - version           : $ax_cv_c_compiler_version
+    - flags             : $CFLAGS
+   MPI enabled          : $enable_mpi
+   HDF5 enabled         : $with_hdf5
+    - parallel          : $have_parallel_hdf5
+   Metis enabled        : $have_metis
+   FFTW3 enabled        : $have_fftw
+   GSL enabled          : $have_gsl
+   libNUMA enabled      : $have_numa
+   GRACKLE enabled      : $have_grackle
+   Special allocators   : $have_special_allocator
+   CPU profiler         : $have_profiler
+   Pthread barriers     : $have_pthread_barrier
+   VELOCIraptor enabled : $have_velociraptor
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension

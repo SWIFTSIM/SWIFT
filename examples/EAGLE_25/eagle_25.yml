@@ -6,6 +6,16 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
+# Structure finding options
+StructureFinding:
+  config_file_name:     stf_input.cfg    # Name of the STF config file.
+  basename:             ./stf         # Common part of the name of output files.
+  output_time_format:   0             # Specifies the frequency format of structure finding. 0 for simulation steps (delta_step) and 1 for simulation time intervals (delta_time).
+  scale_factor_first:   0.92          # Scale-factor of the first snaphot (cosmological run)
+  time_first:           0.01        # Time of the first structure finding output (in internal units).
+  delta_step:           1000          # Time difference between consecutive structure finding outputs (in internal units) in simulation steps.
+  delta_time:           1.10          # Time difference between consecutive structure finding outputs (in internal units) in simulation time intervals.
+
 # Cosmological parameters
 Cosmology:
   h:              0.6777        # Reduced Hubble constant

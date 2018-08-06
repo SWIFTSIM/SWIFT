@@ -85,6 +85,7 @@
 #include "tools.h"
 #include "units.h"
 #include "version.h"
+#include "velociraptor_interface.h"
 
 /* Particle cache size. */
 #define CACHE_SIZE 512
@@ -105,7 +106,8 @@ const char *engine_policy_names[] = {"none",
                                      "reconstruct multi-poles",
                                      "cooling",
                                      "sourceterms",
-                                     "stars"};
+                                     "stars",
+                                     "structure finding"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -4859,6 +4861,15 @@ void engine_step(struct engine *e) {
   if (e->ti_end_min >= e->ti_next_snapshot && e->ti_next_snapshot > 0)
     dump_snapshot = 1;
 
+  /* Do we want to perform structure finding? */
+  int run_stf = 0;
+  if ((e->policy & engine_policy_structure_finding)) {
+    if(e->stf_output_freq_format == STEPS && e->step % e->deltaStepSTF == 0)
+      run_stf = 1;
+    else if(e->stf_output_freq_format == TIME && e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
+      run_stf = 1;
+  }
+
   /* Store information before attempting extra dump-related drifts */
   integertime_t ti_current = e->ti_current;
   timebin_t max_active_bin = e->max_active_bin;
@@ -4972,6 +4983,17 @@ void engine_step(struct engine *e) {
 
     /* and move on */
     engine_compute_next_statistics_time(e);
+  }
+
+  /* Perform structure finding? */
+  if (run_stf) {
+
+    // MATTHIEU: Add a drift_all here. And check the order with the order i/o options.
+
+    velociraptor_invoke(e);
+    
+    /* ... and find the next output time */
+    if(e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
   }
 
   /* Restore the information we stored */
@@ -5630,7 +5652,7 @@ void engine_dump_snapshot(struct engine *e) {
 /**
  * @brief Returns the initial affinity the main thread is using.
  */
-static cpu_set_t *engine_entry_affinity(void) {
+cpu_set_t *engine_entry_affinity(void) {
 
   static int use_entry_affinity = 0;
   static cpu_set_t entry_affinity;
@@ -5862,7 +5884,24 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->restart_file = restart_file;
   e->restart_next = 0;
   e->restart_dt = 0;
+  e->timeFirstSTFOutput = 0;
   engine_rank = nodeID;
+
+  /* Initialise VELOCIraptor. */
+  if (e->policy & engine_policy_structure_finding) {
+    parser_get_param_string(params, "StructureFinding:basename", e->stfBaseName);
+    e->timeFirstSTFOutput = parser_get_param_double(params, "StructureFinding:time_first");
+    e->a_first_stf = parser_get_opt_param_double(params, "StructureFinding:scale_factor_first", 0.1);
+    //velociraptor_init(e);
+    e->stf_output_freq_format = parser_get_param_int(params, "StructureFinding:output_time_format");
+    if(e->stf_output_freq_format == STEPS) {
+      e->deltaStepSTF = parser_get_param_int(params, "StructureFinding:delta_step");
+    }
+    else if(e->stf_output_freq_format == TIME) {
+      e->deltaTimeSTF = parser_get_param_double(params, "StructureFinding:delta_time");
+    }
+    else error("Invalid flag (%d) set for output time format of structure finding.", e->stf_output_freq_format);
+  }
 
   /* Get the number of queues */
   int nr_queues =
@@ -6129,7 +6168,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     if (e->delta_time_statistics <= 1.)
       error("Time between statistics (%e) must be > 1.",
             e->delta_time_statistics);
-
+    
     if (e->a_first_snapshot < e->cosmology->a_begin)
       error(
           "Scale-factor of first snapshot (%e) must be after the simulation "
@@ -6141,6 +6180,18 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           "Scale-factor of first stats output (%e) must be after the "
           "simulation start a=%e.",
           e->a_first_statistics, e->cosmology->a_begin);
+    
+    if ((e->policy & engine_policy_structure_finding) && (e->stf_output_freq_format == TIME)) {
+      
+      if (e->deltaTimeSTF <= 1.)
+        error("Time between STF (%e) must be > 1.", e->deltaTimeSTF);
+
+      if (e->a_first_stf < e->cosmology->a_begin)
+        error(
+            "Scale-factor of first stf output (%e) must be after the simulation "
+            "start a=%e.",
+            e->a_first_stf, e->cosmology->a_begin);
+    }
   } else {
 
     if (e->delta_time_snapshot <= 0.)
@@ -6149,8 +6200,9 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
     if (e->delta_time_statistics <= 0.)
       error("Time between statistics (%e) must be positive.",
-            e->delta_time_statistics);
+          e->delta_time_statistics);
 
+    /* Find the time of the first output */
     if (e->time_first_snapshot < e->time_begin)
       error(
           "Time of first snapshot (%e) must be after the simulation start "
@@ -6162,6 +6214,26 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           "Time of first stats output (%e) must be after the simulation start "
           "t=%e.",
           e->time_first_statistics, e->time_begin);
+
+    if ((e->policy & engine_policy_structure_finding) && (e->stf_output_freq_format == TIME)) {
+
+      if (e->deltaTimeSTF <= 0.)
+        error("Time between STF (%e) must be positive.",
+            e->deltaTimeSTF);
+
+      if (e->timeFirstSTFOutput < e->time_begin)
+        error(
+            "Time of first STF (%e) must be after the simulation start t=%e.",
+            e->timeFirstSTFOutput, e->time_begin);
+    }
+  }
+
+  if (e->policy & engine_policy_structure_finding) {
+    /* Find the time of the first stf output */
+    if(e->stf_output_freq_format == TIME) { 
+      engine_compute_next_stf_time(e);
+      message("Next STF step will be: %lld", e->ti_nextSTF);
+    }
   }
 
   /* Get the total mass */
@@ -6474,6 +6546,61 @@ void engine_compute_next_statistics_time(struct engine *e) {
 }
 
 /**
+ * @brief Computes the next time (on the time line) for structure finding
+ *
+ * @param e The #engine.
+ */
+void engine_compute_next_stf_time(struct engine *e) {
+
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->deltaTimeSTF;
+  else
+    time_end = e->time_end + e->deltaTimeSTF;
+
+  /* Find next snasphot above current time */
+  double time = e->timeFirstSTFOutput;
+  
+  while (time < time_end) {
+
+    /* Output time on the integer timeline */
+    if (e->policy & engine_policy_cosmology)
+      e->ti_nextSTF = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_nextSTF = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (e->ti_nextSTF > e->ti_current) break;
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->deltaTimeSTF;
+    else
+      time += e->deltaTimeSTF;
+  }
+
+  /* Deal with last snapshot */
+  if (e->ti_nextSTF >= max_nr_timesteps) {
+    e->ti_nextSTF = -1;
+    if (e->verbose) message("No further output time.");
+  } else {
+
+    /* Be nice, talk... */
+    if (e->policy & engine_policy_cosmology) {
+      const float next_snapshot_time =
+          exp(e->ti_nextSTF * e->time_base) * e->cosmology->a_begin;
+      if (e->verbose)
+        message("Next output time set to a=%e.", next_snapshot_time);
+    } else {
+      const float next_snapshot_time =
+          e->ti_nextSTF * e->time_base + e->time_begin;
+      if (e->verbose)
+        message("Next output time set to t=%e.", next_snapshot_time);
+    }
+  }
+}
+
+/**
  * @brief Computes the maximal time-step allowed by the max RMS displacement
  * condition.
  *
@@ -6607,6 +6734,7 @@ void engine_clean(struct engine *e) {
   free(e->runners);
   free(e->snapshot_units);
   free(e->links);
+  free(e->cell_loc);
   scheduler_clean(&e->sched);
   space_clean(e->s);
   threadpool_clean(&e->threadpool);
