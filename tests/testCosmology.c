@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2018 Loic Hausamman (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
   struct unit_system us;
   units_init_cgs(&us);
 
-  /* initialization of phys_const */ 
+  /* initialization of phys_const */
   struct phys_const phys_const;
   phys_const_init(&us, &params, &phys_const);
 
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
 
   message("Start checking computation...");
 
-  for(int i=0; i < N_CHECK; i++) {
+  for (int i = 0; i < N_CHECK; i++) {
     double a = 0.1 + 0.9 * i / (N_CHECK - 1.);
     /* Compute a(t(a)) and check if same results */
     double tmp = cosmology_get_time_since_big_bang(&cosmo, a);

@@ -183,8 +183,6 @@ double cosmology_get_therm_kick_factor(const struct cosmology *cosmo,
 double cosmology_get_delta_time(const struct cosmology *c,
                                 integertime_t ti_start, integertime_t ti_end);
 
-double cosmology_get_a_from_z(double redshift);
-
 double cosmology_get_scale_factor(const struct cosmology *cosmo, double t);
 
 double cosmology_get_time_since_big_bang(const struct cosmology *c, double a);
@@ -195,7 +193,6 @@ void cosmology_init_no_cosmo(struct cosmology *c);
 
 void cosmology_print(const struct cosmology *c);
 void cosmology_clean(struct cosmology *c);
-
 
 #ifdef HAVE_HDF5
 void cosmology_write_model(hid_t h_grp, const struct cosmology *c);

@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2018 Loic Hausamman (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -37,11 +36,11 @@ struct outputlist {
   size_t size;
 };
 
-
-void outputlist_read_file(struct outputlist *outputlist, const char* filename, struct cosmology *cosmo);
+void outputlist_read_file(struct outputlist *outputlist, const char *filename,
+                          struct cosmology *cosmo);
 void outputlist_print(const struct outputlist *outputlist);
 void outputlist_clean(struct outputlist *outputlist);
 void outputlist_struct_dump(struct outputlist *list, FILE *stream);
-void outputlist_struct_restore(struct outputlist * list, FILE *stream);
+void outputlist_struct_restore(struct outputlist *list, FILE *stream);
 
-#endif // SWIFT_OUTPUTLIST_H
+#endif /* SWIFT_OUTPUTLIST_H */

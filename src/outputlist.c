@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2018 Loic Hausamman (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -39,11 +38,11 @@
  * @param filename The file to read.
  * @param cosmo The #cosmology model.
  */
-void outputlist_read_file(struct outputlist *outputlist, const char* filename,
-			struct cosmology *cosmo) {
+void outputlist_read_file(struct outputlist *outputlist, const char *filename,
+                          struct cosmology *cosmo) {
 
   /* Open file */
-  FILE* file = fopen(filename, "r");
+  FILE *file = fopen(filename, "r");
   if (file == NULL) error("Error opening file '%s'", filename);
 
   /* Declare reading variables */
@@ -60,13 +59,15 @@ void outputlist_read_file(struct outputlist *outputlist, const char* filename,
 
   /* Return to start of file and initialize time array */
   fseek(file, 0, SEEK_SET);
-  outputlist->times = (double *) malloc(sizeof(double) * nber_line);
+  outputlist->times = (double *)malloc(sizeof(double) * nber_line);
   if (!outputlist->times)
-    error("Unable to malloc outputlist time array. "
-	  "Try reducing the number of lines in %s", filename);
+    error(
+        "Unable to malloc outputlist time array. "
+        "Try reducing the number of lines in %s",
+        filename);
 
   /* Read header */
-  if((read = getline(&line, &len, file)) == -1)
+  if ((read = getline(&line, &len, file)) == -1)
     error("Unable to read header in file '%s'", filename);
 
   /* Remove end of line character */
@@ -81,14 +82,14 @@ void outputlist_read_file(struct outputlist *outputlist, const char* filename,
   else if (!strcmp(line, "# Scale Factor"))
     type = OUTPUTLIST_SCALE_FACTOR;
   else
-    error("Unable to interpret the header (%s) in file '%s'",
-	  line, filename);
+    error("Unable to interpret the header (%s) in file '%s'", line, filename);
 
   if (!cosmo &&
       (type == OUTPUTLIST_SCALE_FACTOR || type == OUTPUTLIST_REDSHIFT))
-    error("Unable to compute a redshift or a scale factor without cosmology. "
-	  "Please change the header in '%s'", filename);
-    
+    error(
+        "Unable to compute a redshift or a scale factor without cosmology. "
+        "Please change the header in '%s'",
+        filename);
 
   /* Read file */
   size_t ind = 0;
@@ -97,14 +98,13 @@ void outputlist_read_file(struct outputlist *outputlist, const char* filename,
     /* Write data to outputlist */
     if (sscanf(line, "%lf", time) != 1) {
       error(
-            "Tried parsing double but found '%s' with illegal double "
-            "characters in file '%s'.",
-	    line, filename);
+          "Tried parsing double but found '%s' with illegal double "
+          "characters in file '%s'.",
+          line, filename);
     }
 
     /* Transform input into correct time (e.g. ages or scale factor) */
-    if (type == OUTPUTLIST_REDSHIFT)
-      *time = cosmology_get_a_from_z(*time);
+    if (type == OUTPUTLIST_REDSHIFT) *time = 1. / (1. + *time);
 
     if (cosmo && type == OUTPUTLIST_AGE)
       *time = cosmology_get_scale_factor(cosmo, *time);
@@ -123,7 +123,7 @@ void outputlist_print(const struct outputlist *outputlist) {
 
   printf("/*\t Time Array\t */\n");
   printf("Number of Line: %lu\n", outputlist->size);
-  for(size_t ind = 0; ind < outputlist->size; ind++) {
+  for (size_t ind = 0; ind < outputlist->size; ind++) {
     printf("\t%lf\n", outputlist->times[ind]);
   }
 }
@@ -139,19 +139,21 @@ void outputlist_clean(struct outputlist *outputlist) {
  * @brief Dump an #outputlist in a restart file
  */
 void outputlist_struct_dump(struct outputlist *list, FILE *stream) {
-  restart_write_blocks(list, sizeof(struct outputlist), 1, stream, "outputlist", "outputlist struct");
+  restart_write_blocks(list, sizeof(struct outputlist), 1, stream, "outputlist",
+                       "outputlist struct");
 
-  restart_write_blocks(list->times, list->size, sizeof(double), stream, "outputlist", "times");
+  restart_write_blocks(list->times, list->size, sizeof(double), stream,
+                       "outputlist", "times");
 }
-
 
 /**
  * @brief Restore an #outputlist from a restart file
  */
-void outputlist_struct_restore(struct outputlist * list, FILE *stream) {
-  restart_read_blocks(list, sizeof(struct outputlist), 1, stream, NULL, "outputlist struct");
-  
-  list->times = (double *) malloc(sizeof(double) * list->size);
-  restart_read_blocks(list->times, list->size, sizeof(double), stream, NULL, "times");
+void outputlist_struct_restore(struct outputlist *list, FILE *stream) {
+  restart_read_blocks(list, sizeof(struct outputlist), 1, stream, NULL,
+                      "outputlist struct");
 
+  list->times = (double *)malloc(sizeof(double) * list->size);
+  restart_read_blocks(list->times, list->size, sizeof(double), stream, NULL,
+                      "times");
 }

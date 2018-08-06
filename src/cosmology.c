@@ -309,7 +309,7 @@ void cosmology_init_tables(struct cosmology *c) {
   c->time_interp_table =
       (double *)malloc(cosmology_table_length * sizeof(double));
   c->scale_factor_interp_table =
-    (double *)malloc(cosmology_table_length * sizeof(double));
+      (double *)malloc(cosmology_table_length * sizeof(double));
 
   /* Prepare a table of scale factors for the integral bounds */
   const double delta_a =
@@ -376,7 +376,8 @@ void cosmology_init_tables(struct cosmology *c) {
 
   /* Inverse t(a) */
   const double time_init = c->time_interp_table_offset;
-  const double delta_t = (c->universe_age_at_present_day - time_init) / cosmology_table_length;
+  const double delta_t =
+      (c->universe_age_at_present_day - time_init) / cosmology_table_length;
 
   int i_prev = 0;
   for (int i = 0; i < cosmology_table_length; i++) {
@@ -384,7 +385,8 @@ void cosmology_init_tables(struct cosmology *c) {
     double time_interp = delta_t * i;
 
     /* Find next time in time_interp_table */
-    while (i_prev < cosmology_table_length && c->time_interp_table[i_prev] <= time_interp) {
+    while (i_prev < cosmology_table_length &&
+           c->time_interp_table[i_prev] <= time_interp) {
       i_prev++;
     }
 
@@ -394,7 +396,9 @@ void cosmology_init_tables(struct cosmology *c) {
     scale += i_prev;
 
     /* Compute interpolated scale factor */
-    double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) / cosmology_table_length;
+    double log_a =
+        c->log_a_begin +
+        scale * (c->log_a_end - c->log_a_begin) / cosmology_table_length;
     c->scale_factor_interp_table[i] = exp(log_a) - c->a_begin;
   }
 
@@ -665,16 +669,6 @@ double cosmology_get_delta_time(const struct cosmology *c,
   return t2 - t1;
 }
 
-
-/**
- * @brief Compute the scale factor from the redshift.
- *
- * @brief redshift The redshift to compute.
- */
-double cosmology_get_a_from_z(double redshift) {
-  return 1. / (1. + redshift);
-}
-
 /**
  * @brief Compute scale factor from time since big bang (in internal units).
  *
@@ -689,7 +683,7 @@ double cosmology_get_scale_factor(const struct cosmology *c, double t) {
   /* scale factor between time_begin and t */
   const double a =
       interp_table(c->scale_factor_interp_table, t, c->time_interp_table_offset,
-		   c->universe_age_at_present_day);
+                   c->universe_age_at_present_day);
   return a + c->a_begin;
 }
 
