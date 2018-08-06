@@ -207,11 +207,11 @@ void velociraptor_invoke(struct engine *e) {
       swift_parts[i].x[0] = gparts[i].x[0];
       swift_parts[i].x[1] = gparts[i].x[1];
       swift_parts[i].x[2] = gparts[i].x[2];
-      swift_parts[i].v[0] = gparts[i].v_full[0] / a2;
+      swift_parts[i].v[0] = gparts[i].v_full[0] / a2; //MATTHIEU: Check this a^2 !!
       swift_parts[i].v[1] = gparts[i].v_full[1] / a2;
       swift_parts[i].v[2] = gparts[i].v_full[2] / a2;
-      swift_parts[i].mass = gparts[i].mass;
-      swift_parts[i].potential = gparts[i].potential;
+      swift_parts[i].mass = gravity_get_mass(&gparts[i]);
+      swift_parts[i].potential = gravity_get_comoving_potential(&gparts[i]); //MATTHIEU: Need factors here?
       swift_parts[i].type = gparts[i].type;
       
       /* Set gas particle IDs from their hydro counterparts and set internal energies. */
@@ -219,11 +219,13 @@ void velociraptor_invoke(struct engine *e) {
         swift_parts[i].id = parts[-gparts[i].id_or_neg_offset].id;
         swift_parts[i].u = hydro_get_physical_internal_energy(&parts[-gparts[i].id_or_neg_offset], e->cosmology) * energy_scale;
       }
-      else {
+      else if (gparts[i].type == swift_type_dark_matter) {
         swift_parts[i].id = gparts[i].id_or_neg_offset;
         swift_parts[i].u = 0.f;
       }
-
+      else {
+	error("Particle type not handled by velociraptor (yet?) !");
+      }
     }
 
     /* Call VELOCIraptor. */
