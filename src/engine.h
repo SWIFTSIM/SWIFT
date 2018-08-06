@@ -227,6 +227,7 @@ struct engine {
   double a_first_stf;
   double timeFirstSTFOutput;
   double deltaTimeSTF;
+  int deltaStepSTF;
   
   /* Integer time of the next stf output */
   integertime_t ti_nextSTF;

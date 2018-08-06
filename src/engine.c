@@ -4780,7 +4780,7 @@ void engine_step(struct engine *e) {
 
   /* Do we want to perform structure finding? */
   if ((e->policy & engine_policy_structure_finding)) {
-    if(e->stf_output_freq_format == STEPS && e->step%(int)e->deltaTimeSTF == 0) 
+    if(e->stf_output_freq_format == STEPS && e->step%e->deltaStepSTF == 0) 
       e->run_stf = 1;
     else if(e->stf_output_freq_format == TIME && e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
       e->run_stf = 1; 
@@ -5791,6 +5791,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->restart_dt = 0;
   e->timeFirstSTFOutput = 0;
   e->deltaTimeSTF = 0;
+  e->deltaStepSTF = 0;
   e->stf_output_freq_format = 0;
   e->ti_nextSTF = 0;
   e->run_stf = 0;
@@ -5804,7 +5805,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     //velociraptor_init(e);
     e->stf_output_freq_format = parser_get_param_int(params, "StructureFinding:output_time_format");
     if(e->stf_output_freq_format == STEPS) {
-      e->deltaTimeSTF = parser_get_param_int(params, "StructureFinding:delta_step");
+      e->deltaStepSTF = parser_get_param_int(params, "StructureFinding:delta_step");
     }
     else if(e->stf_output_freq_format == TIME) {
       e->deltaTimeSTF = parser_get_param_double(params, "StructureFinding:delta_time");
@@ -6089,9 +6090,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           "simulation start a=%e.",
           e->a_first_statistics, e->cosmology->a_begin);
     
-    if (e->policy & engine_policy_structure_finding) {
+    if ((e->policy & engine_policy_structure_finding) && (e->stf_output_freq_format == TIME)) {
+      
       if (e->deltaTimeSTF <= 1.)
-        error("Time between snapshots (%e) must be > 1.", e->deltaTimeSTF);
+        error("Time between STF (%e) must be > 1.", e->deltaTimeSTF);
 
       if (e->a_first_stf < e->cosmology->a_begin)
         error(
@@ -6122,7 +6124,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           "t=%e.",
           e->time_first_statistics, e->time_begin);
 
-    if (e->policy & engine_policy_structure_finding) {
+    if ((e->policy & engine_policy_structure_finding) && (e->stf_output_freq_format == TIME)) {
 
       if (e->deltaTimeSTF <= 0.)
         error("Time between STF (%e) must be positive.",
