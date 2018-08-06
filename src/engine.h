@@ -268,12 +268,6 @@ struct engine {
   int forcerepart;
   struct repartition *reparttype;
 
-  /* Need to dump some statistics ? */
-  int save_stats;
-
-  /* Need to dump a snapshot ? */
-  int dump_snapshot;
-
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
 
@@ -345,6 +339,7 @@ struct engine {
 };
 
 /* Function prototypes. */
+void engine_addlink(struct engine *e, struct link **l, struct task *t);
 void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);

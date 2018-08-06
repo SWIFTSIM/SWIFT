@@ -968,7 +968,7 @@ static void runner_do_unskip_gravity(struct cell *c, struct engine *e) {
   if (!cell_is_active_gravity(c, e)) return;
 
   /* Recurse */
-  if (c->split) {
+  if (c->split && c->depth < space_subdepth_grav) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
@@ -998,9 +998,13 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
     if (c != NULL) {
+
+      /* Hydro tasks */
       if (e->policy & engine_policy_hydro) runner_do_unskip_hydro(c, e);
-      if (e->policy &
-          (engine_policy_self_gravity | engine_policy_external_gravity))
+
+      /* All gravity tasks */
+      if ((e->policy & engine_policy_self_gravity) ||
+          (e->policy & engine_policy_external_gravity))
         runner_do_unskip_gravity(c, e);
     }
   }
@@ -2218,6 +2222,9 @@ void *runner_main(void *data) {
           break;
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);
+          break;
+        case task_type_grav_mm:
+          runner_dopair_grav_mm_symmetric(r, t->ci, t->cj);
           break;
         case task_type_cooling:
           runner_do_cooling(r, t->ci, 1);

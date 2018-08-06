@@ -48,11 +48,15 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",        "sort",       "self",        "pair",      "sub_self",
-    "sub_pair",    "init_grav",  "ghost_in",    "ghost",     "ghost_out",
-    "extra_ghost", "drift_part", "drift_gpart", "end_force", "kick1",
-    "kick2",       "timestep",   "send",        "recv",      "grav_long_range",
-    "grav_mm",     "grav_down",  "grav_mesh",   "cooling",   "sourceterms"};
+    "none",       "sort",          "self",
+    "pair",       "sub_self",      "sub_pair",
+    "init_grav",  "init_grav_out", "ghost_in",
+    "ghost",      "ghost_out",     "extra_ghost",
+    "drift_part", "drift_gpart",   "end_force",
+    "kick1",      "kick2",         "timestep",
+    "send",       "recv",          "grav_long_range",
+    "grav_mm",    "grav_down_in",  "grav_down",
+    "grav_mesh",  "cooling",       "sourceterms"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
@@ -317,9 +321,13 @@ void task_unlock(struct task *t) {
       cell_munlocktree(ci);
       break;
 
-    case task_type_grav_mm:
     case task_type_grav_long_range:
       cell_munlocktree(ci);
+      break;
+
+    case task_type_grav_mm:
+      cell_munlocktree(ci);
+      cell_munlocktree(cj);
       break;
 
     default:
@@ -444,11 +452,19 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_grav_long_range:
-    case task_type_grav_mm:
       /* Lock the m-poles */
       if (ci->mhold) return 0;
       if (cell_mlocktree(ci) != 0) return 0;
       break;
+
+    case task_type_grav_mm:
+      /* Lock both m-poles */
+      if (ci->mhold || cj->mhold) return 0;
+      if (cell_mlocktree(ci) != 0) return 0;
+      if (cell_mlocktree(cj) != 0) {
+        cell_munlocktree(ci);
+        return 0;
+      }
 
     default:
       break;
