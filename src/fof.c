@@ -1027,7 +1027,6 @@ void fof_search_foreign_cells(struct space *s) {
   message("Rank: %d, Total no. of possible links: %zu, cells touching: %d", engine_rank, nr_links, count);
 
   struct fof_mpi *fof_send;
-  struct fof_mpi *fof_recv;
   struct cell **interface_cells;
   int interface_cell_count = 0;
   
@@ -1039,8 +1038,6 @@ void fof_search_foreign_cells(struct space *s) {
                        count * sizeof(struct cell *)) != 0)
     error("Error while allocating memory for interface cells");
   
-  size_t send_count = 0;
-
   char fof_filename[200] = "part_links";
   sprintf(fof_filename + strlen(fof_filename), "_%d.dat",
       engine_rank);
@@ -1192,7 +1189,7 @@ void fof_search_foreign_cells(struct space *s) {
 
   message("Rank %d found %d unique group links.", engine_rank, list_count);
  
-  struct fof_mpi *global_fof_list;
+  struct fof_mpi *global_fof_list, *global_fof_list_offset;
   int global_list_count = 0;
 
   MPI_Allreduce(&list_count, &global_list_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -1202,6 +1199,10 @@ void fof_search_foreign_cells(struct space *s) {
   if (posix_memalign((void**)&global_fof_list, SWIFT_STRUCT_ALIGNMENT,
                        global_list_count * sizeof(struct fof_mpi)) != 0)
     error("Error while allocating memory for FOF MPI communication");
+  
+  if (posix_memalign((void**)&global_fof_list_offset, SWIFT_STRUCT_ALIGNMENT,
+                       global_list_count * sizeof(struct fof_mpi)) != 0)
+    error("Error while allocating memory for FOF MPI communication");
  
   MPI_Allgather(fof_list, list_count, fof_mpi_type, global_fof_list, list_count, fof_mpi_type, MPI_COMM_WORLD);
 
@@ -1209,168 +1210,81 @@ void fof_search_foreign_cells(struct space *s) {
     fprintf(fof_file, "  %7lld <-> %7lld\n", global_fof_list[i].local_pid, global_fof_list[i].foreign_pid);
     //message("Rank %d. Global FOF list: %lld <-> %lld", engine_rank, global_fof_list[i].local_pid, global_fof_list[i].foreign_pid);
   }
-
-  if (posix_memalign((void**)&fof_recv, SWIFT_STRUCT_ALIGNMENT,
-                       send_count * sizeof(struct fof_mpi)) != 0)
-    error("Error while allocating memory for FOF MPI communication");
-
-  MPI_Request send_request, recv_request;
-
-  message("Rank: %d sending %zu links to rank %d for testing.", engine_rank, send_count, 1);
-
-  /* Send communication of linked particles to other rank.*/
-  if(engine_rank == 0) {
-    MPI_Isend(fof_send, send_count, fof_mpi_type, 1, MPI_RANK_0_SEND_TAG, MPI_COMM_WORLD, &send_request);
-    MPI_Irecv(fof_recv, send_count, fof_mpi_type, 1, MPI_RANK_1_SEND_TAG, MPI_COMM_WORLD, &recv_request);
-  }
-  else if (engine_rank == 1) {
-    MPI_Isend(fof_send, send_count, fof_mpi_type, 0, MPI_RANK_1_SEND_TAG, MPI_COMM_WORLD, &send_request);
-    MPI_Irecv(fof_recv, send_count, fof_mpi_type, 0, MPI_RANK_0_SEND_TAG, MPI_COMM_WORLD, &recv_request);
-  }
-
-  int res = 0, err = 0;
-  MPI_Status stat;
-
-  message("Rank: %d Testing asynchronous sends and receives", engine_rank);
-
-  while(!res) {
-    if ((err = MPI_Test(&send_request, &res, &stat)) != MPI_SUCCESS) {
-      char buff[MPI_MAX_ERROR_STRING];
-      int len;
-      MPI_Error_string(err, buff, &len);
-      error("Failed to test request on send on rank: %d, %s.",
-          engine_rank, buff);
-    }
-  }
   
-  res = 0; 
-  
-  while(!res) {
-    if ((err = MPI_Test(&recv_request, &res, &stat)) != MPI_SUCCESS) {
-      char buff[MPI_MAX_ERROR_STRING];
-      int len;
-      MPI_Error_string(err, buff, &len);
-      error("Failed to test request on recv on rank: %d, %s.",
-          engine_rank, buff);
-    }
+  for(int i=0; i<global_list_count; i++) {
+    global_fof_list_offset[i].local_pid = i;
+    global_fof_list_offset[i].foreign_pid = i;
   }
 
-  message("Rank: %d Finished testing asynchronous sends and receives", engine_rank);
+  for(int i=0; i<global_list_count; i++) {
+    int group_i = global_fof_list[i].local_pid;
+    int group_j = global_fof_list[i].foreign_pid;
 
-  message("Rank: %d Searching received links....", engine_rank);
+    int min_root = min(group_i, group_j);
 
-  int found_count = 0;
-  int link_count = 0;
-  int double_link_count = 0;
+    //if(group_j < group_i) {
+      
+      //min_root = group_j;
 
-  if(engine_rank == 0) {
-    
-    MPI_Status stat1, stat2;
-    MPI_Recv(&send_count, 1, MPI_INT, 1, MPI_RANK_1_SEND_TAG, MPI_COMM_WORLD, &stat1);
-    MPI_Recv(fof_recv, send_count, fof_mpi_type, 1, MPI_RANK_1_SEND_TAG, MPI_COMM_WORLD, &stat2);
+      for(int j=i + 1; j<global_list_count; j++) {
+        int root_i = global_fof_list[j].local_pid;
+        int root_j = global_fof_list[j].foreign_pid;
 
-    for(int i=0; i<send_count; i++ ) {
- 
-      int local_root = fof_find(fof_recv[i].foreign_pid - node_offset, s->fof_data.group_index);
-
-      //if(local_root == fof_recv[i].root_i) continue;
-
-      if(fof_recv[i].root_i < local_root) {
-   
-        s->fof_data.group_index[local_root - node_offset] = fof_recv[i].root_i;
-
-        message("Rank: %d Particle %lld found new group with root: %d, previous group: %d", engine_rank, s->gparts[local_root].id_or_neg_offset, fof_recv[i].root_i, local_root);
-
-        link_count++;
-        message("Rank: %d New group: %d", engine_rank, fof_find(local_root, s->fof_data.group_index));
-
-      }
-
-    }
-    message("Send count: %zu, found count: %d, link count: %d, double link count: %d", send_count, found_count, link_count, double_link_count);
-  }
-
-  if(engine_rank != 0) {
-
-    for(int i=0; i<send_count; i++ ) {
-
-      int found  = 0;
-
-      for(int j = 0; j<interface_cell_count; j++) {
-
-        struct cell *c = interface_cells[j];
-
-        struct gpart *gparts = c->gparts;
-
-        /* Make a list of particle offsets into the global gparts array. */
-        int *const offset = s->fof_data.group_index + (ptrdiff_t)(gparts - s->gparts);
-
-        for(int k=0; k<c->gcount; k++) {
-
-          struct gpart *gp = &gparts[k];
-
-          if(gp->id_or_neg_offset == fof_recv[i].foreign_pid) {
-
-            found_count++;
-            found = 1;
-
-            int local_root = fof_find(offset[k] - node_offset, s->fof_data.group_index);
-
-            if(local_root == fof_recv[i].root_i) continue;
-
-            if(fof_recv[i].root_i < local_root) {
-
-              if(local_root < node_offset) {
-                //message("Already linked to group on lower rank. Need to link to new lower root on other rank. Current root: %d, new root on lower rank: %d", local_root, fof_recv[i].root_i);
-
-                fof_send[double_link_count].foreign_pid = local_root;
-                fof_send[double_link_count++].root_i = fof_recv[i].root_i;
-
-                //message("Rank: %d Particle %lld found new group with root: %d, previous group: %d, i=%d, j=%d, k=%d", engine_rank, gp->id_or_neg_offset, fof_recv[i].root_i, local_root, i,j,k);
-
-              }
-              else {
-
-                s->fof_data.group_index[local_root - node_offset] = fof_recv[i].root_i;
-
-                //message("Rank: %d Particle %lld found new group with root: %d, previous group: %d, i=%d, j=%d, k=%d", engine_rank, gp->id_or_neg_offset, fof_recv[i].root_i, local_root, i,j,k);
-
-                link_count++;
-                
-                if(s->fof_data.group_index[local_root - node_offset] >= node_offset) {
-                  error("Particle not linked to rank 0. root still: %d, local_root: %d, fof_recv[%d].root_i: %d", s->fof_data.group_index[local_root - node_offset], local_root, i, fof_recv[i].root_i);
-                }
-              }
-            }
-            else {
-              //message("Root on other node needs updating. Foreign root: %d, local root: %d", fof_recv[i].root_i, local_root);
-
-              fof_send[double_link_count].foreign_pid = fof_recv[i].root_i;
-              fof_send[double_link_count++].root_i = local_root;
-
-            }
-
-            break;
-          }
-
+        if(root_i == group_j) {
+          if(root_j < min_root) min_root = root_j;
         }
-        if(found == 1) break;
+        else if(root_j == group_j) {
+          if(root_i < min_root) min_root = root_i;
+        }
       }
 
-      if(found == 0) error("Rank: %d could not find particle locally. PID: %lld", engine_rank, fof_recv[i].foreign_pid);
+      //if( group_i >= node_offset && group_i < node_offset + s->nr_gparts) {
+      //  message("Rank %d. Group %d links to %d.", engine_rank,group_i, min_root);
+      //}
 
+    //}
+    //else {
+      //min_root = group_i;
+      
+      for(int j=i + 1; j<global_list_count; j++) {
+        int root_i = global_fof_list[j].local_pid;
+        int root_j = global_fof_list[j].foreign_pid;
+
+        if(root_i == group_i) {
+          if(root_j < min_root) min_root = root_j;
+        }
+        else if(root_j == group_i) {
+          if(root_i < min_root) min_root = root_i;
+        }
+      }
+
+      //if( group_j >= node_offset && group_j < node_offset + s->nr_gparts) {
+      //  message("Rank %d. Group %d links to %d.", engine_rank, group_j, min_root);
+      //}
+    //}
+   
+    if(((group_j >= node_offset && group_j < node_offset + s->nr_gparts) ||
+       (group_i >= node_offset && group_i < node_offset + s->nr_gparts) ) &&
+       (group_i != min_root && group_j != min_root) ) {
+      message("Rank %d. Link %d <-> %d has common lowest root: %d", engine_rank, group_i, group_j, min_root);
     }
 
+    if((group_j >= node_offset && group_j < node_offset + s->nr_gparts) &&
+       (group_j != min_root)) {
+      int root = fof_find(group_j - node_offset, group_index);
+
+      group_index[root - node_offset] = min_root;
+    }
+    
+    if((group_i >= node_offset && group_i < node_offset + s->nr_gparts) &&
+       (group_i != min_root)) {
+      int root = fof_find(group_i - node_offset, group_index);
+
+      group_index[root - node_offset] = min_root;
+    }
+    //global_fof_list[i].local_pid = min_root;
+    //global_fof_list[i].foreign_pid = min_root;
   }
-
-    message("Send count: %zu, found count: %d, link count: %d, double link count: %d", send_count, found_count, link_count, double_link_count);
-
-    if(engine_rank == 1) {
-      MPI_Send(&double_link_count, 1, MPI_INT, 0, MPI_RANK_1_SEND_TAG, MPI_COMM_WORLD);
-      MPI_Send(fof_send, double_link_count, fof_mpi_type, 0, MPI_RANK_1_SEND_TAG, MPI_COMM_WORLD);
-    }
-
-  message("Rank: %d Finished searching received links....", engine_rank);
 
   fclose(fof_file);
 
