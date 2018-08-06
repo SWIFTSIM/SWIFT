@@ -1154,7 +1154,7 @@ void engine_repartition(struct engine *e) {
   fflush(stdout);
 
   /* Check that all cells have been drifted to the current time */
-  space_check_drift_point(e->s, e->ti_old,
+  space_check_drift_point(e->s, e->ti_current,
                           e->policy & engine_policy_self_gravity);
 #endif
 
@@ -4038,6 +4038,8 @@ void engine_prepare(struct engine *e) {
   TIMER_TIC2;
   const ticks tic = getticks();
 
+  int drifted_all = 0;
+
   /* Unskip active tasks and check for rebuild */
   if (!e->forcerepart && !e->restarting) engine_unskip(e);
 
@@ -4047,13 +4049,21 @@ void engine_prepare(struct engine *e) {
 #endif
 
   /* Do we need repartitioning ? */
-  if (e->forcerepart) engine_repartition(e);
+  if (e->forcerepart) {
+
+    /* Let's start by drifting everybody to the current time */
+    engine_drift_all(e);
+    drifted_all = 1;
+
+    /* And repartition */
+    engine_repartition(e);
+  }
 
   /* Do we need rebuilding ? */
   if (e->forcerebuild) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!e->restarting) engine_drift_all(e);
+    if (!e->restarting && !drifted_all) engine_drift_all(e);
 
     /* And rebuild */
     engine_rebuild(e, 0);
