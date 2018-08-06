@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
 
   /* Check if we can read it again */
   const int optional2 =
-    parser_get_opt_param_int(&param_file, "Simulation:optional", 1);
+      parser_get_opt_param_int(&param_file, "Simulation:optional", 1);
 
   /* Optional things not mentioned in parameter file. Should be in output
    * files.*/
@@ -71,16 +71,16 @@ int main(int argc, char *argv[]) {
 
   char csides[3];
   parser_get_param_char_array(&param_file, "Box:csides", 3, csides);
-  
+
   int isides[3];
   parser_get_param_int_array(&param_file, "Box:isides", 3, isides);
-  
+
   float fsides[3];
   parser_get_param_float_array(&param_file, "Box:fsides", 3, fsides);
-  
+
   double dsides[3];
   parser_get_param_double_array(&param_file, "Box:dsides", 3, dsides);
-  
+
   int optsides[5] = {1, 2, 3, 4, 5};
   int haveopt1 =
       parser_get_opt_param_int_array(&param_file, "Box:moresides", 5, optsides);

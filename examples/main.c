@@ -309,7 +309,9 @@ int main(int argc, char *argv[]) {
 #ifdef HAVE_VELOCIRAPTOR
         with_structure_finding = 1;
 #else
-	error("Error: (-x) needs to have the code compiled with VELOCIraptor linked in.");
+        error(
+            "Error: (-x) needs to have the code compiled with VELOCIraptor "
+            "linked in.");
 #endif
         break;
       case 'y':
@@ -492,15 +494,17 @@ int main(int argc, char *argv[]) {
   if (access(dirp, W_OK | X_OK) != 0) {
     error("Cannot write snapshots in directory %s (%s)", dirp, strerror(errno));
   }
- 
-  /* Check that we can write the structure finding catalogues by testing if the output
+
+  /* Check that we can write the structure finding catalogues by testing if the
+   * output
    * directory exists and is searchable and writable. */
-  if(with_structure_finding) { 
+  if (with_structure_finding) {
     char stfbasename[PARSER_MAX_LINE_SIZE];
     parser_get_param_string(params, "StructureFinding:basename", stfbasename);
     const char *stfdirp = dirname(stfbasename);
     if (access(stfdirp, W_OK | X_OK) != 0) {
-      error("Cannot write stf catalogues in directory %s (%s)", stfdirp, strerror(errno));
+      error("Cannot write stf catalogues in directory %s (%s)", stfdirp,
+            strerror(errno));
     }
   }
 
@@ -722,8 +726,7 @@ int main(int argc, char *argv[]) {
 #endif
 
 #if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
-    if(with_structure_finding)
-      error("VEOCIraptor not yet enabled over MPI.");
+    if (with_structure_finding) error("VEOCIraptor not yet enabled over MPI.");
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -866,7 +869,8 @@ int main(int argc, char *argv[]) {
     if (with_cooling) engine_policies |= engine_policy_cooling;
     if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
     if (with_stars) engine_policies |= engine_policy_stars;
-    if (with_structure_finding) engine_policies |= engine_policy_structure_finding;
+    if (with_structure_finding)
+      engine_policies |= engine_policy_structure_finding;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -938,10 +942,9 @@ int main(int argc, char *argv[]) {
     /* Write the state of the system before starting time integration. */
     engine_dump_snapshot(&e);
     engine_print_stats(&e);
-  
-    /* Call VELOCIraptor for the first time after the first snapshot dump. */
-    //if (e.policy & engine_policy_structure_finding) velociraptor_invoke(&e);
 
+    /* Call VELOCIraptor for the first time after the first snapshot dump. */
+    // if (e.policy & engine_policy_structure_finding) velociraptor_invoke(&e);
   }
 
   /* Legend */
@@ -1122,11 +1125,12 @@ int main(int argc, char *argv[]) {
         e.wallclock_time, e.step_props);
     fflush(stdout);
 
-    fprintf(e.file_timesteps,
-            "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
-            e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step, e.min_active_bin,
-            e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-            e.wallclock_time, e.step_props);
+    fprintf(
+        e.file_timesteps,
+        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+        e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
+        e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
+        e.wallclock_time, e.step_props);
     fflush(e.file_timesteps);
   }
 

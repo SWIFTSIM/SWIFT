@@ -206,7 +206,7 @@ struct engine {
 
   /* The internal system of units */
   const struct unit_system *internal_units;
-  
+
   /* Top-level cell locations for VELOCIraptor. */
   struct cell_loc *cell_loc;
 
@@ -230,10 +230,10 @@ struct engine {
   double timeFirstSTFOutput;
   double deltaTimeSTF;
   int deltaStepSTF;
-  
+
   /* Integer time of the next stf output */
   integertime_t ti_nextSTF;
-  
+
   char stfBaseName[PARSER_MAX_LINE_SIZE];
 
   /* Statistics information */

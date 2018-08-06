@@ -323,7 +323,8 @@ int main(int argc, char *argv[]) {
                                    gp->x[0] - mpole->CoM[0], epsilon, rlr);
     check_value(gp->a_grav[0], acc_true, "acceleration");
 
-    /* message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] - mpole->CoM[0], */
+    /* message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] -
+     * mpole->CoM[0], */
     /*         gp->a_grav[0], acc_true, gp->potential, pot_true); */
   }
 

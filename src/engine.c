@@ -84,8 +84,8 @@
 #include "timers.h"
 #include "tools.h"
 #include "units.h"
-#include "version.h"
 #include "velociraptor_interface.h"
+#include "version.h"
 
 /* Particle cache size. */
 #define CACHE_SIZE 512
@@ -2667,11 +2667,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
-      }
-      else if (t_subtype == task_subtype_grav) {
+      } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
-      }
-      else if (t_subtype == task_subtype_external_grav) {
+      } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav, t);
       }
 
@@ -2683,8 +2681,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
         engine_addlink(e, &cj->density, t);
-      }
-      else if (t_subtype == task_subtype_grav) {
+      } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
         engine_addlink(e, &cj->grav, t);
       }
@@ -2700,11 +2697,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
-      }
-      else if (t_subtype == task_subtype_grav) {
+      } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
-      }
-      else if (t_subtype == task_subtype_external_grav) {
+      } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav, t);
       }
 
@@ -2716,8 +2711,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
         engine_addlink(e, &cj->density, t);
-      }
-      else if (t_subtype == task_subtype_grav) {
+      } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
         engine_addlink(e, &cj->grav, t);
       }
@@ -4720,24 +4714,24 @@ void engine_step(struct engine *e) {
 
     /* Print some information to the screen */
     printf(
-	"  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
-    if(!e->restarting)
+    if (!e->restarting)
       fprintf(e->file_timesteps,
-	      "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
-	      e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step, e->min_active_bin,
-	      e->max_active_bin, e->updates, e->g_updates, e->s_updates,
-	      e->wallclock_time, e->step_props);
+              "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f "
+              "%6d\n",
+              e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
+              e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
+              e->s_updates, e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
 
   /* We need some cells to exist but not the whole task stuff. */
-  if(e->restarting)
-    space_rebuild(e->s, e->verbose);
+  if (e->restarting) space_rebuild(e->s, e->verbose);
 
   /* Move forward in time */
   e->ti_old = e->ti_current;
@@ -4748,8 +4742,7 @@ void engine_step(struct engine *e) {
   e->step_props = engine_step_prop_none;
 
   /* When restarting, move everyone to the current time. */
-  if(e->restarting)
-    engine_drift_all(e);
+  if (e->restarting) engine_drift_all(e);
 
   /* Get the physical value of the time and time-step size */
   if (e->policy & engine_policy_cosmology) {
@@ -4864,9 +4857,10 @@ void engine_step(struct engine *e) {
   /* Do we want to perform structure finding? */
   int run_stf = 0;
   if ((e->policy & engine_policy_structure_finding)) {
-    if(e->stf_output_freq_format == STEPS && e->step % e->deltaStepSTF == 0)
+    if (e->stf_output_freq_format == STEPS && e->step % e->deltaStepSTF == 0)
       run_stf = 1;
-    else if(e->stf_output_freq_format == TIME && e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
+    else if (e->stf_output_freq_format == TIME &&
+             e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
       run_stf = 1;
   }
 
@@ -4988,12 +4982,13 @@ void engine_step(struct engine *e) {
   /* Perform structure finding? */
   if (run_stf) {
 
-    // MATTHIEU: Add a drift_all here. And check the order with the order i/o options.
+    // MATTHIEU: Add a drift_all here. And check the order with the order i/o
+    // options.
 
     velociraptor_invoke(e);
-    
+
     /* ... and find the next output time */
-    if(e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
+    if (e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
   }
 
   /* Restore the information we stored */
@@ -5034,8 +5029,7 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 #endif
     if (dump) {
 
-      if(e->nodeID == 0)
-	message("Writing restart files");
+      if (e->nodeID == 0) message("Writing restart files");
 
       /* Clean out the previous saved files, if found. Do this now as we are
        * MPI synchronized. */
@@ -5889,18 +5883,25 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
   /* Initialise VELOCIraptor. */
   if (e->policy & engine_policy_structure_finding) {
-    parser_get_param_string(params, "StructureFinding:basename", e->stfBaseName);
-    e->timeFirstSTFOutput = parser_get_param_double(params, "StructureFinding:time_first");
-    e->a_first_stf = parser_get_opt_param_double(params, "StructureFinding:scale_factor_first", 0.1);
-    //velociraptor_init(e);
-    e->stf_output_freq_format = parser_get_param_int(params, "StructureFinding:output_time_format");
-    if(e->stf_output_freq_format == STEPS) {
-      e->deltaStepSTF = parser_get_param_int(params, "StructureFinding:delta_step");
-    }
-    else if(e->stf_output_freq_format == TIME) {
-      e->deltaTimeSTF = parser_get_param_double(params, "StructureFinding:delta_time");
-    }
-    else error("Invalid flag (%d) set for output time format of structure finding.", e->stf_output_freq_format);
+    parser_get_param_string(params, "StructureFinding:basename",
+                            e->stfBaseName);
+    e->timeFirstSTFOutput =
+        parser_get_param_double(params, "StructureFinding:time_first");
+    e->a_first_stf = parser_get_opt_param_double(
+        params, "StructureFinding:scale_factor_first", 0.1);
+    // velociraptor_init(e);
+    e->stf_output_freq_format =
+        parser_get_param_int(params, "StructureFinding:output_time_format");
+    if (e->stf_output_freq_format == STEPS) {
+      e->deltaStepSTF =
+          parser_get_param_int(params, "StructureFinding:delta_step");
+    } else if (e->stf_output_freq_format == TIME) {
+      e->deltaTimeSTF =
+          parser_get_param_double(params, "StructureFinding:delta_time");
+    } else
+      error(
+          "Invalid flag (%d) set for output time format of structure finding.",
+          e->stf_output_freq_format);
   }
 
   /* Get the number of queues */
@@ -6100,10 +6101,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
               engine_step_prop_snapshot, engine_step_prop_restarts);
 
       fprintf(e->file_timesteps,
-              "# %6s %14s %14s %10s %14s %9s %12s %12s %12s %16s [%s] %6s\n", "Step",
-              "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins", "Updates",
-              "g-Updates", "s-Updates", "Wall-clock time", clocks_getunit(),
-              "Props");
+              "# %6s %14s %14s %10s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
+              "Step", "Time", "Scale-factor", "Redshift", "Time-step",
+              "Time-bins", "Updates", "g-Updates", "s-Updates",
+              "Wall-clock time", clocks_getunit(), "Props");
       fflush(e->file_timesteps);
     }
   }
@@ -6168,7 +6169,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     if (e->delta_time_statistics <= 1.)
       error("Time between statistics (%e) must be > 1.",
             e->delta_time_statistics);
-    
+
     if (e->a_first_snapshot < e->cosmology->a_begin)
       error(
           "Scale-factor of first snapshot (%e) must be after the simulation "
@@ -6180,15 +6181,17 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           "Scale-factor of first stats output (%e) must be after the "
           "simulation start a=%e.",
           e->a_first_statistics, e->cosmology->a_begin);
-    
-    if ((e->policy & engine_policy_structure_finding) && (e->stf_output_freq_format == TIME)) {
-      
+
+    if ((e->policy & engine_policy_structure_finding) &&
+        (e->stf_output_freq_format == TIME)) {
+
       if (e->deltaTimeSTF <= 1.)
         error("Time between STF (%e) must be > 1.", e->deltaTimeSTF);
 
       if (e->a_first_stf < e->cosmology->a_begin)
         error(
-            "Scale-factor of first stf output (%e) must be after the simulation "
+            "Scale-factor of first stf output (%e) must be after the "
+            "simulation "
             "start a=%e.",
             e->a_first_stf, e->cosmology->a_begin);
     }
@@ -6200,7 +6203,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
     if (e->delta_time_statistics <= 0.)
       error("Time between statistics (%e) must be positive.",
-          e->delta_time_statistics);
+            e->delta_time_statistics);
 
     /* Find the time of the first output */
     if (e->time_first_snapshot < e->time_begin)
@@ -6215,22 +6218,21 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           "t=%e.",
           e->time_first_statistics, e->time_begin);
 
-    if ((e->policy & engine_policy_structure_finding) && (e->stf_output_freq_format == TIME)) {
+    if ((e->policy & engine_policy_structure_finding) &&
+        (e->stf_output_freq_format == TIME)) {
 
       if (e->deltaTimeSTF <= 0.)
-        error("Time between STF (%e) must be positive.",
-            e->deltaTimeSTF);
+        error("Time between STF (%e) must be positive.", e->deltaTimeSTF);
 
       if (e->timeFirstSTFOutput < e->time_begin)
-        error(
-            "Time of first STF (%e) must be after the simulation start t=%e.",
-            e->timeFirstSTFOutput, e->time_begin);
+        error("Time of first STF (%e) must be after the simulation start t=%e.",
+              e->timeFirstSTFOutput, e->time_begin);
     }
   }
 
   if (e->policy & engine_policy_structure_finding) {
     /* Find the time of the first stf output */
-    if(e->stf_output_freq_format == TIME) { 
+    if (e->stf_output_freq_format == TIME) {
       engine_compute_next_stf_time(e);
       message("Next STF step will be: %lld", e->ti_nextSTF);
     }
@@ -6561,7 +6563,7 @@ void engine_compute_next_stf_time(struct engine *e) {
 
   /* Find next snasphot above current time */
   double time = e->timeFirstSTFOutput;
-  
+
   while (time < time_end) {
 
     /* Output time on the integer timeline */

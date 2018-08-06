@@ -524,36 +524,39 @@ static void parse_section_param(char *line, int *isFirstParam,
 // Retrieve parameter value from structure. TYPE is the data type, float, int
 // etc. FMT the format required for that data type, i.e. %f, %d etc. and DESC
 // a one word description of the type, "float", "int" etc.
-#define PARSER_GET_VALUE(TYPE, FMT, DESC)                                     \
-  static int get_param_##TYPE(struct swift_params *params, const char *name,  \
-                              TYPE *def, TYPE *result) {	              \
-    char str[PARSER_MAX_LINE_SIZE];                                           \
-    for (int i = 0; i < params->paramCount; i++) {                            \
-      if (strcmp(name, params->data[i].name) == 0) {                          \
-        /* Check that exactly one number is parsed, capture junk. */          \
-        if (sscanf(params->data[i].value, " " FMT "%s ", result, str) != 1) { \
-          error("Tried parsing " DESC                                         \
-                " '%s' but found '%s' with "                                  \
-                "illegal trailing characters '%s'.",                          \
-                params->data[i].name, params->data[i].value, str);            \
-        }                                                                     \
-	/* Ensure same behavior if called multiple times for same parameter */\
-	if (params->data[i].is_default && def == NULL)	 		      \
-	  error("Tried parsing %s again but cannot parse a default "	      \
-		"parameter as mandatory", name);			      \
-	if (params->data[i].is_default && *def != *result)		      \
-	  error("Tried parsing %s again but cannot parse a parameter with "   \
-		"two different default value (" FMT "!=" FMT ")",	      \
-		name, *def, *result);					      \
-        /* This parameter has been used */                                    \
-        params->data[i].used = 1;                                             \
-        return 1;                                                             \
-      }                                                                       \
-    }                                                                         \
-    if (def == NULL)	  						      \
-      error("Cannot find '%s' in the structure, in file '%s'.", name,         \
-            params->fileName);                                                \
-    return 0;                                                                 \
+#define PARSER_GET_VALUE(TYPE, FMT, DESC)                                      \
+  static int get_param_##TYPE(struct swift_params *params, const char *name,   \
+                              TYPE *def, TYPE *result) {                       \
+    char str[PARSER_MAX_LINE_SIZE];                                            \
+    for (int i = 0; i < params->paramCount; i++) {                             \
+      if (strcmp(name, params->data[i].name) == 0) {                           \
+        /* Check that exactly one number is parsed, capture junk. */           \
+        if (sscanf(params->data[i].value, " " FMT "%s ", result, str) != 1) {  \
+          error("Tried parsing " DESC                                          \
+                " '%s' but found '%s' with "                                   \
+                "illegal trailing characters '%s'.",                           \
+                params->data[i].name, params->data[i].value, str);             \
+        }                                                                      \
+        /* Ensure same behavior if called multiple times for same parameter */ \
+        if (params->data[i].is_default && def == NULL)                         \
+          error(                                                               \
+              "Tried parsing %s again but cannot parse a default "             \
+              "parameter as mandatory",                                        \
+              name);                                                           \
+        if (params->data[i].is_default && *def != *result)                     \
+          error(                                                               \
+              "Tried parsing %s again but cannot parse a parameter with "      \
+              "two different default value (" FMT "!=" FMT ")",                \
+              name, *def, *result);                                            \
+        /* This parameter has been used */                                     \
+        params->data[i].used = 1;                                              \
+        return 1;                                                              \
+      }                                                                        \
+    }                                                                          \
+    if (def == NULL)                                                           \
+      error("Cannot find '%s' in the structure, in file '%s'.", name,          \
+            params->fileName);                                                 \
+    return 0;                                                                  \
   }
 
 // Set a parameter to a value and save for dumping.
@@ -564,7 +567,7 @@ static void parse_section_param(char *line, int *isFirstParam,
     sprintf(str, "%s: " FMT, name, value);                        \
     parser_set_param(params, str);                                \
     params->data[params->paramCount - 1].used = 1;                \
-    params->data[params->paramCount - 1].is_default = 0;	  \
+    params->data[params->paramCount - 1].is_default = 0;          \
   }
 
 /* Instantiations. */
@@ -643,8 +646,10 @@ void parser_get_param_string(struct swift_params *params, const char *name,
   for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
       if (params->data[i].is_default)
-	error("Tried parsing %s again but cannot parse a "
-	      "default parameter as mandatory", name);
+        error(
+            "Tried parsing %s again but cannot parse a "
+            "default parameter as mandatory",
+            name);
       strcpy(retParam, params->data[i].value);
       /* this parameter has been used */
       params->data[i].used = 1;
@@ -740,9 +745,10 @@ void parser_get_opt_param_string(struct swift_params *params, const char *name,
 
       /* Ensure same behavior if called multiple times for same parameter */
       if (params->data[i].is_default && !strcmp(def, retParam))
-	error("Tried parsing %s again but cannot parse a parameter with "
-	      "two different default value ('%s' != '%s')",
-	      name, def, retParam);
+        error(
+            "Tried parsing %s again but cannot parse a parameter with "
+            "two different default value ('%s' != '%s')",
+            name, def, retParam);
       /* this parameter has been used */
       params->data[i].used = 1;
       return;
@@ -768,9 +774,11 @@ void parser_get_opt_param_string(struct swift_params *params, const char *name,
                                                                       \
     for (int i = 0; i < params->paramCount; i++) {                    \
       if (!strcmp(name, params->data[i].name)) {                      \
-	if (params->data[i].is_default && required)		      \
-	  error("Tried parsing %s again but cannot parse a default "  \
-		"parameter as mandatory", name);		      \
+        if (params->data[i].is_default && required)                   \
+          error(                                                      \
+              "Tried parsing %s again but cannot parse a default "    \
+              "parameter as mandatory",                               \
+              name);                                                  \
         char *cp = cpy;                                               \
         strcpy(cp, params->data[i].value);                            \
         cp = trim_both(cp);                                           \
@@ -789,19 +797,21 @@ void parser_get_opt_param_string(struct swift_params *params, const char *name,
          * internal     whitespace variations. */                     \
         char *p = strtok(cp, ",");                                    \
         for (int k = 0; k < nval; k++) {                              \
-          if (p != NULL) {					      \
-	    TYPE tmp_value;					      \
-            if (sscanf(p, fmt, &tmp_value, str) != 1) {		      \
+          if (p != NULL) {                                            \
+            TYPE tmp_value;                                           \
+            if (sscanf(p, fmt, &tmp_value, str) != 1) {               \
               error("Tried parsing " DESC                             \
                     " '%s' but found '%s' with "                      \
                     "illegal " DESC " characters '%s'.",              \
                     name, p, str);                                    \
-            }							      \
-	    if (params->data[i].is_default && tmp_value != values[k]) \
-	      error("Tried parsing %s again but cannot parse a "      \
-		    "parameter with two different default value "     \
-		    "(" FMT "!=" FMT ")", name, tmp_value, values[k]);\
-	    values[k] = tmp_value;				      \
+            }                                                         \
+            if (params->data[i].is_default && tmp_value != values[k]) \
+              error(                                                  \
+                  "Tried parsing %s again but cannot parse a "        \
+                  "parameter with two different default value "       \
+                  "(" FMT "!=" FMT ")",                               \
+                  name, tmp_value, values[k]);                        \
+            values[k] = tmp_value;                                    \
           } else {                                                    \
             error(                                                    \
                 "Array '%s' with value '%s' has too few values, "     \
@@ -832,7 +842,7 @@ void parser_get_opt_param_string(struct swift_params *params, const char *name,
     sprintf(&str[k], FMT "]", values[nval - 1]);                               \
     parser_set_param(params, str);                                             \
     params->data[params->paramCount - 1].used = 1;                             \
-    params->data[params->paramCount - 1].is_default = 0;		       \
+    params->data[params->paramCount - 1].is_default = 0;                       \
     return 0;                                                                  \
   }
 

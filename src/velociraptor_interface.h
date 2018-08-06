@@ -41,7 +41,7 @@ struct cosmoinfo {
 
   /*! Baryon density parameter (cosmology.Omega_b) */
   double Omega_b;
-  
+
   /*! Radiation constant density parameter (cosmology.Omega_lambda) */
   double Omega_Lambda;
 
@@ -57,13 +57,13 @@ struct unitinfo {
 
   /* Length conversion factor to kpc. */
   double lengthtokpc;
-  
+
   /* Velocity conversion factor to km/s. */
   double velocitytokms;
-  
+
   /* Mass conversion factor to solar masses. */
   double masstosolarmass;
-  
+
   /* Potential conversion factor. */
   double energyperunitmass;
 
@@ -76,34 +76,38 @@ struct unitinfo {
 
 /* Structure to hold the location of a top-level cell. */
 struct cell_loc {
-    
-    /* Coordinates x,y,z */
-    double loc[3];
 
+  /* Coordinates x,y,z */
+  double loc[3];
 };
 
 /* Structure for passing simulation information to VELOCIraptor. */
 struct siminfo {
-    double period, zoomhigresolutionmass, interparticlespacing, spacedimension[3];
-    
-    /* Number of top-cells. */
-    int numcells;
+  double period, zoomhigresolutionmass, interparticlespacing, spacedimension[3];
 
-    /*! Locations of top-level cells. */
-    struct cell_loc *cell_loc;
-    
-    /*! Top-level cell width. */
-    double cellwidth[3];
-    
-    /*! Inverse of the top-level cell width. */
-    double icellwidth[3];
+  /* Number of top-cells. */
+  int numcells;
 
-    int icosmologicalsim;
+  /*! Locations of top-level cells. */
+  struct cell_loc *cell_loc;
+
+  /*! Top-level cell width. */
+  double cellwidth[3];
+
+  /*! Inverse of the top-level cell width. */
+  double icellwidth[3];
+
+  int icosmologicalsim;
 };
 
 /* VELOCIraptor interface. */
-int InitVelociraptor(char* config_name, char* output_name, struct cosmoinfo cosmo_info, struct unitinfo unit_info, struct siminfo sim_info);
-int InvokeVelociraptor(const size_t num_gravity_parts, const size_t num_hydro_parts, struct swift_vel_part *swift_parts, const int *cell_node_ids, char* output_name);
+int InitVelociraptor(char *config_name, char *output_name,
+                     struct cosmoinfo cosmo_info, struct unitinfo unit_info,
+                     struct siminfo sim_info);
+int InvokeVelociraptor(const size_t num_gravity_parts,
+                       const size_t num_hydro_parts,
+                       struct swift_vel_part *swift_parts,
+                       const int *cell_node_ids, char *output_name);
 
 /* VELOCIraptor wrapper functions. */
 void velociraptor_init(struct engine *e);

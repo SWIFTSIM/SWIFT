@@ -690,7 +690,8 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
               "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
               "%16.8e %16.8e %16.8e\n",
               id, gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav[0],
-              gpi->a_grav[1], gpi->a_grav[2], gpi->potential, gpi->a_grav_PM[0],
+              gpi->a_grav[1], gpi->a_grav[2],
+              gravity_get_comoving_potential(gpi), gpi->a_grav_PM[0],
               gpi->a_grav_PM[1], gpi->a_grav_PM[2], gpi->potential_PM);
     }
   }
