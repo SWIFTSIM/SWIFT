@@ -711,8 +711,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   /* Common parameters. */
   idx_t options[4];
   options[0] = 1;
-  options[1] = 7;
-  options[2] = 0;
+  options[1] = 0;
 
   idx_t edgecut;
   idx_t ncon = 1;
@@ -729,6 +728,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Refine an existing partition, uncouple as we do not have the cells
      * present on their expected ranks. */
     options[3] = PARMETIS_PSR_UNCOUPLED;
+
+    /* Seed for randoms. */
+    options[2] = clocks_random_seed();
 
     /* Choice is whether to use an adaptive repartition or a simple
      * refinement. */
@@ -751,11 +753,31 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
   } else {
 
-    /* Create a new partition. */
-    if (ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, weights_v, weights_e,
-                             &wgtflag, &numflag, &ncon, &nparts, tpwgts, ubvec,
-                             options, &edgecut, regionid, &comm) != METIS_OK)
-      error("Call to ParMETIS_V3_PartKway failed.");
+    /* Create a new partition. Use a number of guesses as that is similar to
+     * the way that serial METIS works (serial METIS usually gives the best
+     * quality partitions). */
+    idx_t best_edgecut = 0;
+    idx_t *best_regionid = NULL;
+    if ((best_regionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
+      error("Failed to allocate best_regionid array");
+
+    for (int i = 0; i < 10; i++) {
+      options[2] = clocks_random_seed();
+
+      if (ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, weights_v, weights_e,
+                               &wgtflag, &numflag, &ncon, &nparts, tpwgts, ubvec,
+                               options, &edgecut, regionid, &comm) != METIS_OK)
+        error("Call to ParMETIS_V3_PartKway failed.");
+
+      if (i == 0 || (best_edgecut > edgecut)) {
+        best_edgecut = edgecut;
+        memcpy(best_regionid, regionid, sizeof(idx_t) * (nverts + 1));
+      }
+    }
+
+    /* Keep the best edgecut. */
+    memcpy(regionid, best_regionid, sizeof(idx_t) * (nverts + 1));
+    free(best_regionid);
   }
 
   /* Need to gather all the regionid arrays from the ranks. */
@@ -1230,8 +1252,6 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   if (vweights) for (int k = 0; k < nr_cells; k++) vsum += weights_v[k];
   double esum = 0.0;
   if (eweights) for (int k = 0; k < 26 * nr_cells; k++) esum += weights_e[k];
-  message("initial: esum = %e", esum);
-  message("initial: vsum = %e", vsum);
 
   double vscale = 1.0;
   double escale = 1.0;
@@ -1245,8 +1265,6 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
       vsum = esum;
     }
   }
-  message("time: esum = %e, escale = %e", esum, escale);
-  message("time: vsum = %e, vscale = %e", vsum, vscale);
 
   /* Now make sure sum of weights are in the range of idx_t. */
   if (vweights) {
@@ -1262,14 +1280,12 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
         }
       }
     }
-    message("final: vsum = %e, vscale = %e", vsum, vscale);
     if (vscale != 1.0) for (int k = 0; k < nr_cells; k++) weights_v[k] *= vscale;
   }
 
   if (eweights) {
     if (esum > (double)IDX_MAX)
       escale = (double)(IDX_MAX - 1000) / esum;
-    message("final: esum = %e, escale = %e", esum, escale);
     if (escale != 1.0) for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= escale;
   }
 
