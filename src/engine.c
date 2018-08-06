@@ -4714,11 +4714,12 @@ void engine_step(struct engine *e) {
         e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
-    fprintf(e->file_timesteps,
-            "  %6d %14e %14e %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
-            e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
-            e->max_active_bin, e->updates, e->g_updates, e->s_updates,
-            e->wallclock_time, e->step_props);
+    if(!e->restarting)
+      fprintf(e->file_timesteps,
+	      "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+	      e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step, e->min_active_bin,
+	      e->max_active_bin, e->updates, e->g_updates, e->s_updates,
+	      e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
 
@@ -6050,8 +6051,8 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
               engine_step_prop_snapshot, engine_step_prop_restarts);
 
       fprintf(e->file_timesteps,
-              "# %6s %14s %14s %14s %9s %12s %12s %12s %16s [%s] %6s\n", "Step",
-              "Time", "Scale-factor", "Time-step", "Time-bins", "Updates",
+              "# %6s %14s %14s %10s %14s %9s %12s %12s %12s %16s [%s] %6s\n", "Step",
+              "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins", "Updates",
               "g-Updates", "s-Updates", "Wall-clock time", clocks_getunit(),
               "Props");
       fflush(e->file_timesteps);
