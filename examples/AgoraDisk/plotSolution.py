@@ -82,8 +82,8 @@ mean_dispersion_time_range       = [50, 500]     # in Myr      = Used if add_mea
 mean_dispersion_density_range    = [1e-25, 1e-22]# in g/cm3    = Used if add_mean_fractional_dispersion = 1, for draw_density_DF
 disk_normal_vector               = [0., 0., 1.]
 
-gadget_default_unit_base = {'UnitLength_in_cm'         : 3.08568e+21,
-                            'UnitMass_in_g'            :   1.989e+43,
+gadget_default_unit_base = {'UnitLength_in_cm'         : 3.08567758e+21,
+                            'UnitMass_in_g'            :    1.98848e+43,
                             'UnitVelocity_in_cm_per_s' :      100000}
 color_names              = ['red', 'magenta', 'orange', 'gold', 'green', 'cyan', 'blue', 'blueviolet', 'black']
 linestyle_names          = ['-']

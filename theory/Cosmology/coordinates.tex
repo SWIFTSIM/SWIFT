@@ -38,11 +38,14 @@ $\Psi \equiv \frac{1}{2}a\dot{a}\mathbf{r}_i^2$ and obtain
   \Lag &= \frac{1}{2}m_ia^2 \dot{\mathbf{r}}_i^2 -
   \frac{1}{\gamma-1}m_iA_i'\left(\frac{\rho_i'}{a^3}\right)^{\gamma-1}
   -\frac{\phi'}{a},\\
-  \phi' &= a\phi + \frac{1}{2}a^2\ddot{a}\mathbf{r}_i'^2.\nonumber
+  \phi' &= a\phi + \frac{1}{2}a^2\ddot{a}\mathbf{r}_i'^2,\nonumber
 \end{align}
-Finally, we introduce the velocities
-$\mathbf{v}' \equiv a^2\dot{\mathbf{r}'}$ that are used internally by
-the code. Note that these velocities \emph{do not} have a physical
+and call $\phi'$ the peculiar potential.  Finally, we introduce the
+velocities used internally by the code:
+\begin{equation}
+  \mathbf{v}' \equiv a^2\dot{\mathbf{r}'}.
+\end{equation}
+Note that these velocities \emph{do not} have a physical
 interpretation. We caution that they are not the peculiar velocities
 ($\mathbf{v}_{\rm p} \equiv a\dot{\mathbf{r}'} =
 \frac{1}{a}\mathbf{v}'$), nor the Hubble flow
@@ -59,7 +62,9 @@ codes\footnote{One additional inconvenience of our choice of
   will hence read
   $v_{\rm sig} = a\dot{\mathbf{r}'} + c = \frac{1}{a} \left(
     |\mathbf{v}'| + a^{(5 - 3\gamma)/2}c'\right)$.}.
-% This choice implies that $\dot{v}' = a \ddot{r}$.
+This choice implies that $\dot{\mathbf{v}'} = 2H\mathbf{v}' +  a^2\ddot{\mathbf{r}'}$.
+
+\subsubsection{SPH equations}
 
 Using the SPH definition of density,
 $\rho_i' = \sum_jm_jW(\mathbf{r}_{j}'-\mathbf{r}_{i}',h_i') =
@@ -134,3 +139,4 @@ then
 \end{equation}
 indicating that the entropy evolves with the same scale-factor
 dependence as the comoving positions (eq.~\ref{eq:cosmo_eom_r}).
+

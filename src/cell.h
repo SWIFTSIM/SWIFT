@@ -148,9 +148,6 @@ struct pcell_step {
 
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
-
-  /*! Maximal distance any #gpart has travelled since last rebuild */
-  float dx_max_gpart;
 };
 
 /**
@@ -358,9 +355,6 @@ struct cell {
 
   /*! Maximum part movement in this cell since last construction. */
   float dx_max_part;
-
-  /*! Maximum gpart movement in this cell since last construction. */
-  float dx_max_gpart;
 
   /*! Nr of #part in this cell. */
   int count;

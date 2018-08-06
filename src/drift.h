@@ -56,11 +56,6 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   gp->x[0] += gp->v_full[0] * dt_drift;
   gp->x[1] += gp->v_full[1] * dt_drift;
   gp->x[2] += gp->v_full[2] * dt_drift;
-
-  /* Compute offset since last cell construction */
-  gp->x_diff[0] -= gp->v_full[0] * dt_drift;
-  gp->x_diff[1] -= gp->v_full[1] * dt_drift;
-  gp->x_diff[2] -= gp->v_full[2] * dt_drift;
 }
 
 /**

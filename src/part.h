@@ -77,7 +77,13 @@
 #endif
 
 /* Import the right gravity particle definition */
+#if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_part.h"
+#elif defined(POTENTIAL_GRAVITY)
+#include "./gravity/Potential/gravity_part.h"
+#else
+#error "Invalid choice of gravity variant"
+#endif
 
 /* Import the right star particle definition */
 #include "./stars/Default/star_part.h"
