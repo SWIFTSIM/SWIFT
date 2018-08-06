@@ -264,6 +264,9 @@ struct engine {
   /* Wallclock time of the last time-step */
   float wallclock_time;
 
+  /* Are we in the process of restaring a simulation? */
+  int restarting;
+
   /* Force the engine to rebuild? */
   int forcerebuild;
 

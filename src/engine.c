@@ -3962,6 +3962,7 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
 
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
+  e->restarting = 0;
 
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
@@ -4038,7 +4039,7 @@ void engine_prepare(struct engine *e) {
   const ticks tic = getticks();
 
   /* Unskip active tasks and check for rebuild */
-  if (!e->forcerepart) engine_unskip(e);
+  if (!e->forcerepart && !e->restarting) engine_unskip(e);
 
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, &e->forcerebuild, 1, MPI_INT, MPI_MAX,
@@ -4052,7 +4053,7 @@ void engine_prepare(struct engine *e) {
   if (e->forcerebuild) {
 
     /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e);
+    if (!e->restarting) engine_drift_all(e);
 
     /* And rebuild */
     engine_rebuild(e, 0);
@@ -5825,6 +5826,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->nr_proxies = 0;
   e->forcerebuild = 1;
   e->forcerepart = 0;
+  e->restarting = restart;
   e->step_props = engine_step_prop_none;
   e->links = NULL;
   e->nr_links = 0;
