@@ -1221,28 +1221,56 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
 #endif
 
-  /* We need to rescale the sum of the weights so that the sums of the two
-   * types of weights are less than IDX_MAX, that is the range of idx_t. */
-  if (vweights) {
-    double sum = 0.0;
-    for (int k = 0; k < nr_cells; k++) sum += weights_v[k];
+ /* We need to rescale the sum of the weights so that the sums of the two
+  * types of weights are less than IDX_MAX, that is the range of idx_t.  Also
+  * we would like to balance edges and vertices when the edge weights are
+  * timebins, as these have no reason to have equivalent scales, so we use an
+  * equipartition. */
+  double vsum = 0.0;
+  if (vweights) for (int k = 0; k < nr_cells; k++) vsum += weights_v[k];
+  double esum = 0.0;
+  if (eweights) for (int k = 0; k < 26 * nr_cells; k++) esum += weights_e[k];
+  message("initial: esum = %e", esum);
+  message("initial: vsum = %e", vsum);
 
-    if (sum > (double)IDX_MAX) {
-      double scale = (double)(IDX_MAX - 1000) / sum;
-      for (int k = 0; k < nr_cells; k++) weights_v[k] *= scale;
-
-      /* Keep edge weights in balance to these. */
-      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
+  double vscale = 1.0;
+  double escale = 1.0;
+  if (timebins && eweights) {
+    /* Make sums the same. */
+    if (vsum > esum) {
+      escale = vsum / esum;
+      esum = vsum;
+    } else {
+      vscale = esum / vsum;
+      vsum = esum;
     }
   }
-  if (eweights) {
-    double sum = 0.0;
-    for (int k = 0; k < 26 * nr_cells; k++) sum += weights_e[k];
+  message("time: esum = %e, escale = %e", esum, escale);
+  message("time: vsum = %e, vscale = %e", vsum, vscale);
 
-    if (sum > (double)IDX_MAX) {
-      double scale = (double)(IDX_MAX - 1000) / sum;
-      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
+  /* Now make sure sum of weights are in the range of idx_t. */
+  if (vweights) {
+    if (vsum > (double)IDX_MAX) {
+      vscale = (double)(IDX_MAX - 1000) / vsum;
+
+      if (!timebins && eweights) {
+        /* Keep edge weights in proportion. */
+        esum = 0.0;
+        for (int k = 0; k < 26 * nr_cells; k++) {
+          weights_e[k] *= vscale;
+          esum += weights_e[k];
+        }
+      }
     }
+    message("final: vsum = %e, vscale = %e", vsum, vscale);
+    if (vscale != 1.0) for (int k = 0; k < nr_cells; k++) weights_v[k] *= vscale;
+  }
+
+  if (eweights) {
+    if (esum > (double)IDX_MAX)
+      escale = (double)(IDX_MAX - 1000) / esum;
+    message("final: esum = %e, escale = %e", esum, escale);
+    if (escale != 1.0) for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= escale;
   }
 
   /* And repartition/ partition, using both weights or not as requested. */
