@@ -5559,11 +5559,11 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   if (e->policy & engine_policy_structure_finding) {
     parser_get_param_string(params, "StructureFinding:basename", e->stfBaseName);
     e->timeFirstSTFOutput = parser_get_param_double(params, "StructureFinding:time_first");
-    e->a_first_stf = parser_get_opt_param_double(params, "StructureFinding:a_time_first", 0.1);
+    e->a_first_stf = parser_get_opt_param_double(params, "StructureFinding:scale_factor_first", 0.1);
     //velociraptor_init(e);
     e->stf_output_freq_format = parser_get_param_int(params, "StructureFinding:output_time_format");
     if(e->stf_output_freq_format == STEPS) {
-      e->deltaTimeSTF = (double)parser_get_param_int(params, "StructureFinding:delta_time");
+      e->deltaTimeSTF = parser_get_param_int(params, "StructureFinding:delta_step");
     }
     else if(e->stf_output_freq_format == TIME) {
       e->deltaTimeSTF = parser_get_param_double(params, "StructureFinding:delta_time");

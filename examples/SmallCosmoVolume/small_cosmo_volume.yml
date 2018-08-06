@@ -10,17 +10,11 @@ InternalUnitSystem:
 StructureFinding:
   config_file_name:     stf_input_6dfof_dmonly_sub.cfg  # Name of the STF config file.
   basename:             ./stf                           # Common part of the name of output files.
-  output_time_format:   0                               # Specifies format of delta_time. 0 for simulation steps and 1 for simulation time intervals.
+  output_time_format:   0                               # Specifies the frequency format of structure finding. 0 for simulation steps (delta_step) and 1 for simulation time intervals (delta_time).
+  scale_factor_first:   0.92                            # Scale-factor of the first snaphot (cosmological run)
   time_first:           0.                              # Time of the first structure finding output (in internal units).
-  delta_time:           1000                            # Time difference between consecutive structure finding outputs (in internal units). Can either be given in simulation steps or simulation time intervals.
-
-# Define the system of units to use int VELOCIraptor. 
-VelociraptorUnitSystem:
-  UnitMass_in_cgs:     1.989e33      # M_sun in grams
-  UnitLength_in_cgs:   3.085678e21   # kpc in centimeters
-  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
-  UnitCurrent_in_cgs:  1             # Amperes
-  UnitTemp_in_cgs:     1             # Kelvin
+  delta_step:           1000                            # Time difference between consecutive structure finding outputs (in internal units) in simulation steps.
+  delta_time:           1e-4                            # Time difference between consecutive structure finding outputs (in internal units) in simulation time intervals.
 
 # WMAP9 cosmology
 Cosmology:
