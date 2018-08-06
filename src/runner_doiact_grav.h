@@ -1476,6 +1476,27 @@ static INLINE void runner_doself_recursive_grav(struct runner *r,
 }
 
 /**
+ * @brief Call the non-symmetric M-M calculation on two cells if active.
+ *
+ * @param r The #runner object.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+void runner_dopair_grav_mm_symmetric(struct runner *r, struct cell *ci,
+                                     struct cell *cj) {
+
+  const struct engine *e = r->e;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!cell_is_active_gravity(ci, e) && !cell_is_active_gravity(cj, e))
+    error("Running M-M task with two inactive cells.");
+#endif
+
+  if (cell_is_active_gravity(ci, e)) runner_dopair_grav_mm(r, ci, cj);
+  if (cell_is_active_gravity(cj, e)) runner_dopair_grav_mm(r, cj, ci);
+}
+
+/**
  * @brief Performs all M-M interactions between a given top-level cell and all
  * the other top-levels that are far enough.
  *
@@ -1509,14 +1530,19 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   if (ci->ti_old_multipole != e->ti_current)
     error("Interacting un-drifted multipole");
 
-  /* Recover the local multipole */
-  struct gravity_tensors *const multi_i = ci->multipole;
-  const double CoM_rebuild_i[3] = {multi_i->CoM_rebuild[0],
-                                   multi_i->CoM_rebuild[1],
-                                   multi_i->CoM_rebuild[2]};
+  /* Find this cell's top-level (great-)parent */
+  struct cell *top = ci;
+  while (top->parent != NULL) top = top->parent;
 
   /* Flag that contributions will be recieved */
+  struct gravity_tensors *const multi_i = ci->multipole;
   multi_i->pot.interacted = 1;
+
+  /* Recover the top-level multipole (for distance checks) */
+  struct gravity_tensors *const multi_top = top->multipole;
+  const double CoM_rebuild_top[3] = {multi_top->CoM_rebuild[0],
+                                     multi_top->CoM_rebuild[1],
+                                     multi_top->CoM_rebuild[2]};
 
   /* Loop over all the top-level cells and go for a M-M interaction if
    * well-separated */
@@ -1527,15 +1553,15 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     const struct gravity_tensors *const multi_j = cj->multipole;
 
     /* Avoid self contributions */
-    if (ci == cj) continue;
+    if (top == cj) continue;
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     /* Get the distance between the CoMs at the last rebuild*/
-    double dx_r = CoM_rebuild_i[0] - multi_j->CoM_rebuild[0];
-    double dy_r = CoM_rebuild_i[1] - multi_j->CoM_rebuild[1];
-    double dz_r = CoM_rebuild_i[2] - multi_j->CoM_rebuild[2];
+    double dx_r = CoM_rebuild_top[0] - multi_j->CoM_rebuild[0];
+    double dy_r = CoM_rebuild_top[1] - multi_j->CoM_rebuild[1];
+    double dz_r = CoM_rebuild_top[2] - multi_j->CoM_rebuild[2];
 
     /* Apply BC */
     if (periodic) {
@@ -1546,7 +1572,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     const double r2_rebuild = dx_r * dx_r + dy_r * dy_r + dz_r * dz_r;
 
     const double max_radius =
-        sqrt(r2_rebuild) - (multi_i->r_max_rebuild + multi_j->r_max_rebuild);
+        sqrt(r2_rebuild) - (multi_top->r_max_rebuild + multi_j->r_max_rebuild);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (periodic && max_radius > max_distance) {
@@ -1559,7 +1585,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     }
 
     /* Are we in charge of this cell pair? */
-    if (gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
+    if (gravity_M2L_accept(multi_top->r_max_rebuild, multi_j->r_max_rebuild,
                            theta_crit2, r2_rebuild)) {
 
       /* Call the PM interaction fucntion on the active sub-cells of ci */

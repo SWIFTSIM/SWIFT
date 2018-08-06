@@ -66,6 +66,7 @@ int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
 int space_subsize_self_hydro = space_subsize_self_hydro_default;
 int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
+int space_subdepth_grav = space_subdepth_grav_default;
 int space_maxsize = space_maxsize_default;
 #ifdef SWIFT_DEBUG_CHECKS
 int last_cell_id;
@@ -175,6 +176,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->gcount = 0;
     c->scount = 0;
     c->init_grav = NULL;
+    c->init_grav_out = NULL;
     c->extra_ghost = NULL;
     c->ghost_in = NULL;
     c->ghost_out = NULL;
@@ -188,7 +190,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->cooling = NULL;
     c->sourceterms = NULL;
     c->grav_long_range = NULL;
+    c->grav_down_in = NULL;
     c->grav_down = NULL;
+    c->grav_mesh = NULL;
     c->super = c;
     c->super_hydro = c;
     c->super_gravity = c;
@@ -196,6 +200,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->xparts = NULL;
     c->gparts = NULL;
     c->sparts = NULL;
+    c->do_sub_sort = 0;
+    c->do_grav_sub_drift = 0;
+    c->do_sub_drift = 0;
     if (s->gravity) bzero(c->multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
       if (c->sort[i] != NULL) {
@@ -237,7 +244,7 @@ void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const ticks tic = getticks();
-  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
@@ -413,9 +420,9 @@ void space_regrid(struct space *s, int verbose) {
           c->super = c;
           c->super_hydro = c;
           c->super_gravity = c;
-          c->ti_old_part = ti_old;
-          c->ti_old_gpart = ti_old;
-          c->ti_old_multipole = ti_old;
+          c->ti_old_part = ti_current;
+          c->ti_old_gpart = ti_current;
+          c->ti_old_multipole = ti_current;
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
 
@@ -513,7 +520,7 @@ void space_rebuild(struct space *s, int verbose) {
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   struct cell *restrict cells_top = s->cells_top;
-  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the particles and get their cell index. Allocates
      an index that is larger than the number of particles to avoid
@@ -905,9 +912,9 @@ void space_rebuild(struct space *s, int verbose) {
   struct spart *sfinger = s->sparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
-    c->ti_old_part = ti_old;
-    c->ti_old_gpart = ti_old;
-    c->ti_old_multipole = ti_old;
+    c->ti_old_part = ti_current;
+    c->ti_old_gpart = ti_current;
+    c->ti_old_multipole = ti_current;
     if (c->nodeID == engine_rank) {
       c->parts = finger;
       c->xparts = xfinger;
@@ -1823,6 +1830,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->super = NULL;
       cp->super_hydro = NULL;
       cp->super_gravity = NULL;
+      cp->do_sub_sort = 0;
+      cp->do_grav_sub_drift = 0;
+      cp->do_sub_drift = 0;
 #ifdef SWIFT_DEBUG_CHECKS
       cp->cellID = last_cell_id++;
 #endif
@@ -2749,10 +2759,13 @@ void space_init(struct space *s, struct swift_params *params,
                                space_subsize_self_grav_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
+  space_subdepth_grav = parser_get_opt_param_int(
+      params, "Scheduler:cell_subdepth_grav", space_subdepth_grav_default);
 
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
             space_splitsize);
+    message("subdepth_grav set to %d", space_subdepth_grav);
     message("sub_size_pair_hydro set to %d, sub_size_self_hydro set to %d",
             space_subsize_pair_hydro, space_subsize_self_hydro);
     message("sub_size_pair_grav set to %d, sub_size_self_grav set to %d",
