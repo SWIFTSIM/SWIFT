@@ -4851,18 +4851,19 @@ void engine_step(struct engine *e) {
   if (e->ti_end_min >= e->ti_next_snapshot && e->ti_next_snapshot > 0)
     dump_snapshot = 1;
 
+  /* Do we want to perform structure finding? */
+  int run_stf = 0;
+  if ((e->policy & engine_policy_structure_finding)) {
+    if(e->stf_output_freq_format == STEPS && e->step % e->deltaStepSTF == 0)
+      run_stf = 1;
+    else if(e->stf_output_freq_format == TIME && e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
+      run_stf = 1;
+  }
+
   /* Store information before attempting extra dump-related drifts */
   integertime_t ti_current = e->ti_current;
   timebin_t max_active_bin = e->max_active_bin;
   double time = e->time;
-
-  /* Do we want to perform structure finding? */
-  if ((e->policy & engine_policy_structure_finding)) {
-    if(e->stf_output_freq_format == STEPS && e->step%e->deltaStepSTF == 0) 
-      e->run_stf = 1;
-    else if(e->stf_output_freq_format == TIME && e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
-      e->run_stf = 1; 
-  }
 
   /* Write some form of output */
   if (dump_snapshot && save_stats) {
@@ -4975,13 +4976,14 @@ void engine_step(struct engine *e) {
   }
 
   /* Perform structure finding? */
-  if (e->run_stf) {
-    //velociraptor_invoke(e);
+  if (run_stf) {
+
+    // MATTHIEU: Add a drift_all here. And check the order with the order i/o options.
+
+    velociraptor_invoke(e);
     
     /* ... and find the next output time */
     if(e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
-    
-    e->run_stf = 0;
   }
 
   /* Restore the information we stored */
@@ -5873,11 +5875,6 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->restart_next = 0;
   e->restart_dt = 0;
   e->timeFirstSTFOutput = 0;
-  e->deltaTimeSTF = 0;
-  e->deltaStepSTF = 0;
-  e->stf_output_freq_format = 0;
-  e->ti_nextSTF = 0;
-  e->run_stf = 0;
   engine_rank = nodeID;
 
   /* Initialise VELOCIraptor. */

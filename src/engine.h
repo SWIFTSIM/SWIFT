@@ -225,7 +225,6 @@ struct engine {
   int snapshot_output_count;
 
   /* Structure finding information */
-  int run_stf;
   int stf_output_freq_format;
   double a_first_stf;
   double timeFirstSTFOutput;
