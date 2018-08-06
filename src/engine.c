@@ -2662,13 +2662,14 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     /* Link self tasks to cells. */
     else if (t_type == task_type_self) {
       atomic_inc(&ci->nr_tasks);
+
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
       }
-      if (t_subtype == task_subtype_grav) {
+      else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
       }
-      if (t_subtype == task_subtype_external_grav) {
+      else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav, t);
       }
 
@@ -2676,16 +2677,17 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     } else if (t_type == task_type_pair) {
       atomic_inc(&ci->nr_tasks);
       atomic_inc(&cj->nr_tasks);
+
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
         engine_addlink(e, &cj->density, t);
       }
-      if (t_subtype == task_subtype_grav) {
+      else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
         engine_addlink(e, &cj->grav, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
-      if (t_subtype == task_subtype_external_grav) {
+      else if (t_subtype == task_subtype_external_grav) {
         error("Found a pair/external-gravity task...");
       }
 #endif
@@ -2693,13 +2695,14 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       /* Link sub-self tasks to cells. */
     } else if (t_type == task_type_sub_self) {
       atomic_inc(&ci->nr_tasks);
+
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
       }
-      if (t_subtype == task_subtype_grav) {
+      else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
       }
-      if (t_subtype == task_subtype_external_grav) {
+      else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav, t);
       }
 
@@ -2707,16 +2710,17 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     } else if (t_type == task_type_sub_pair) {
       atomic_inc(&ci->nr_tasks);
       atomic_inc(&cj->nr_tasks);
+
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
         engine_addlink(e, &cj->density, t);
       }
-      if (t_subtype == task_subtype_grav) {
+      else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
         engine_addlink(e, &cj->grav, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
-      if (t_subtype == task_subtype_external_grav) {
+      else if (t_subtype == task_subtype_external_grav) {
         error("Found a sub-pair/external-gravity task...");
       }
 #endif
