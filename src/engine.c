@@ -4616,9 +4616,9 @@ void engine_step(struct engine *e) {
 
   /* Do we want to perform structure finding? */
   if ((e->policy & engine_policy_structure_finding)) {
-    if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_STEPS && e->step%(int)e->deltaTimeSTF == 0) 
+    if(e->stf_output_freq_format == STEPS && e->step%(int)e->deltaTimeSTF == 0) 
       e->run_stf = 1;
-    else if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME && e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
+    else if(e->stf_output_freq_format == TIME && e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
       e->run_stf = 1; 
   }
 
@@ -4653,7 +4653,7 @@ void engine_step(struct engine *e) {
     //velociraptor_invoke(e);
     
     /* ... and find the next output time */
-    if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) engine_compute_next_stf_time(e);
+    if(e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
     
     e->run_stf = 0;
   }
@@ -5562,10 +5562,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     e->a_first_stf = parser_get_opt_param_double(params, "StructureFinding:a_time_first", 0.1);
     //velociraptor_init(e);
     e->stf_output_freq_format = parser_get_param_int(params, "StructureFinding:output_time_format");
-    if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_STEPS) {
+    if(e->stf_output_freq_format == STEPS) {
       e->deltaTimeSTF = (double)parser_get_param_int(params, "StructureFinding:delta_time");
     }
-    else if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) {
+    else if(e->stf_output_freq_format == TIME) {
       e->deltaTimeSTF = parser_get_param_double(params, "StructureFinding:delta_time");
     }
     else error("Invalid flag (%d) set for output time format of structure finding.", e->stf_output_freq_format);
@@ -5896,7 +5896,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
   if (e->policy & engine_policy_structure_finding) {
     /* Find the time of the first stf output */
-    if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) { 
+    if(e->stf_output_freq_format == TIME) { 
       engine_compute_next_stf_time(e);
       message("Next STF step will be: %lld", e->ti_nextSTF);
     }

@@ -30,8 +30,6 @@
 #define PARTICLE_GROUP_BUFFER_SIZE 50
 #define FILENAME_BUFFER_SIZE 150
 #define IO_BUFFER_ALIGNMENT 1024
-#define IO_STF_OUTPUT_FREQ_FORMAT_STEPS 0
-#define IO_STF_OUTPUT_FREQ_FORMAT_TIME 1
 
 /* Avoid cyclic inclusion problems */
 struct part;
@@ -56,6 +54,15 @@ enum IO_DATA_TYPE {
   FLOAT,
   DOUBLE,
   CHAR
+};
+
+/**
+ * @brief The different formats for when to run structure finding.
+ *
+ */
+enum IO_STF_OUTPUT_FORMAT {
+  STEPS = 0,
+  TIME
 };
 
 #if defined(HAVE_HDF5)

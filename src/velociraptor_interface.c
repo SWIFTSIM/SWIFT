@@ -178,11 +178,11 @@ void velociraptor_invoke(struct engine *e) {
     
     /* Append base name with either the step number or time depending on what format is specified in the parameter file. */
     char outputFileName[PARSER_MAX_LINE_SIZE + 128];
-    if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_STEPS) {
+    if(e->stf_output_freq_format == STEPS) {
         snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor", e->stfBaseName,
              e->step);
     }
-    else if(e->stf_output_freq_format == IO_STF_OUTPUT_FREQ_FORMAT_TIME) {
+    else if(e->stf_output_freq_format == TIME) {
         snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04e.VELOCIraptor", e->stfBaseName,
              e->time);
     }
