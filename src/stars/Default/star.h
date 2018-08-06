@@ -53,7 +53,7 @@ __attribute__((always_inline)) INLINE static void star_first_init_spart(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void star_init_spart(
-  struct spart* sp, const struct stars_props *stars_properties) {
+  struct spart* sp) {
 
 #ifdef DEBUG_INTERACTIONS_SPH
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS; ++i) sp->ids_ngbs_density[i] = -1;

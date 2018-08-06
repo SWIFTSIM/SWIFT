@@ -2669,6 +2669,32 @@ void space_init_gparts(struct space *s, int verbose) {
             clocks_getunit());
 }
 
+void space_init_sparts_mapper(void *restrict map_data, int scount,
+                             void *restrict extra_data) {
+
+  struct spart *restrict sparts = (struct spart *)map_data;
+  for (int k = 0; k < scount; k++) star_init_spart(&sparts[k]);
+}
+
+/**
+ * @brief Calls the #spart initialisation function on all particles in the space.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_init_sparts(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  if (s->nr_sparts > 0)
+    threadpool_map(&s->e->threadpool, space_init_sparts_mapper, s->sparts,
+                   s->nr_sparts, sizeof(struct spart), 0, NULL);
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+
 void space_convert_quantities_mapper(void *restrict map_data, int count,
                                      void *restrict extra_data) {
   struct space *s = (struct space *)extra_data;

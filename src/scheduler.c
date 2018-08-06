@@ -315,7 +315,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   fprintf(f, "\t};\n");
 
   /* Make a cluster for the density tasks */
-  fprintf(f, "\t subgraph cluster0{\n");
+  fprintf(f, "\t subgraph cluster4{\n");
   fprintf(f, "\t\t label=\"\";\n");
   for (int k = 0; k < 4; ++k)
     if (star_density_cluster[k])

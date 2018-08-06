@@ -78,8 +78,9 @@ void runner_doself_star_density(struct runner *r, struct cell *c, int timer) {
         error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2)
+      if (r2 < hig2) {
 	runner_iact_nonsym_star_density(r2, dx, hi, hj, si, pj, a, H);
+      }
     } /* loop over the parts in ci. */
   }   /* loop over the sparts in ci. */
 

@@ -149,12 +149,12 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct stars_props *stars_properties = e->stars_properties;
-  const float star_h_max = e->stars_properties->h_max;
-  const float eps = e->stars_properties->h_tolerance;
+  const float star_h_max = stars_properties->h_max;
+  const float eps = stars_properties->h_tolerance;
   const float star_eta_dim =
-      pow_dimension(e->stars_properties->eta_neighbours);
-  const int max_smoothing_iter = e->stars_properties->max_smoothing_iterations;
-  int redo = 0, count = 0;
+      pow_dimension(stars_properties->eta_neighbours);
+  const int max_smoothing_iter = stars_properties->max_smoothing_iterations;
+  int redo = 0, scount = 0;
 
   TIMER_TIC;
 
@@ -173,19 +173,19 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
       error("Can't allocate memory for sid.");
     for (int k = 0; k < c->scount; k++)
       if (spart_is_active(&sparts[k], e)) {
-        sid[count] = k;
-        ++count;
+        sid[scount] = k;
+        ++scount;
       }
 
     /* While there are particles that need to be updated... */
-    for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
+    for (int num_reruns = 0; scount > 0 && num_reruns < max_smoothing_iter;
          num_reruns++) {
 
       /* Reset the redo-count. */
       redo = 0;
 
       /* Loop over the remaining active parts in this cell. */
-      for (int i = 0; i < count; i++) {
+      for (int i = 0; i < scount; i++) {
 
         /* Get a direct pointer on the part. */
         struct spart *sp = &sparts[sid[i]];
@@ -249,7 +249,7 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
             redo += 1;
 
             /* Re-initialise everything */
-            star_init_spart(sp, stars_properties);
+            star_init_spart(sp);
 
             /* Off we go ! */
             continue;
@@ -266,7 +266,7 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
           }
         }
 
-/* We now have a particle whose smoothing length has converged */
+	/* We now have a particle whose smoothing length has converged */
 
         /* As of here, particle force variables will be set. */
 
@@ -285,8 +285,8 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
        * converged again */
 
       /* Re-set the counter for the next loop (potentially). */
-      count = redo;
-      if (count > 0) {
+      scount = redo;
+      if (scount > 0) {
 
         /* Climb up the cell hierarchy. */
         for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
@@ -301,7 +301,7 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Self-interaction? */
             if (l->t->type == task_type_self)
-              runner_doself_subset_branch_star_density(r, finger, sparts, sid, count);
+              runner_doself_subset_branch_star_density(r, finger, sparts, sid, scount);
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
@@ -309,15 +309,15 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dopair_subset_branch_star_density(r, finger, sparts, sid,
-                                                    count, l->t->cj);
+                                                    scount, l->t->cj);
               else
                 runner_dopair_subset_branch_star_density(r, finger, sparts, sid,
-                                                    count, l->t->ci);
+                                                    scount, l->t->ci);
             }
 
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
-              runner_dosub_subset_star_density(r, finger, sparts, sid, count, NULL,
+              runner_dosub_subset_star_density(r, finger, sparts, sid, scount, NULL,
                                           -1, 1);
 
             /* Otherwise, sub-pair interaction? */
@@ -325,10 +325,10 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dosub_subset_star_density(r, finger, sparts, sid, count,
+                runner_dosub_subset_star_density(r, finger, sparts, sid, scount,
                                             l->t->cj, -1, 1);
               else
-                runner_dosub_subset_star_density(r, finger, sparts, sid, count,
+                runner_dosub_subset_star_density(r, finger, sparts, sid, scount,
                                             l->t->ci, -1, 1);
             }
           }
@@ -336,13 +336,19 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-    if (count) {
-      error("Smoothing length failed to converge on %i particles.", count);
+    if (scount) {
+      error("Smoothing length failed to converge on %i particles.", scount);
     }
 
     /* Be clean */
     free(sid);
   }
+
+  /* Reset the data for next loop */
+  for (int k = 0; k < c->scount; k++)
+    if (spart_is_active(&sparts[k], e)) {
+      star_init_spart(&sparts[k]);
+    }
 
   if (timer) TIMER_TOC(timer_do_star_ghost);
 }

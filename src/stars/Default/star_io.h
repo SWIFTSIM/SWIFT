@@ -105,7 +105,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
 
   /* Maximal smoothing length */
   sp->h_max = parser_get_opt_param_float(params, "Stars:h_max",
-					 sp->h_max);
+					 p->h_max);
 
   /* Number of iterations to converge h */
   sp->max_smoothing_iterations = parser_get_opt_param_int(
