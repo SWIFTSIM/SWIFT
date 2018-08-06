@@ -1482,8 +1482,8 @@ static INLINE void runner_doself_recursive_grav(struct runner *r,
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-void runner_dopair_grav_mm_symmetric(struct runner *r, struct cell *ci,
-                                     struct cell *cj) {
+static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r, struct cell *ci,
+						   struct cell *cj) {
 
   const struct engine *e = r->e;
 
