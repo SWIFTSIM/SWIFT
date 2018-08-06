@@ -25,6 +25,7 @@
 #include "cell.h"
 #include "gravity.h"
 #include "gravity_cache.h"
+#include "gravity_iact.h"
 #include "inline.h"
 #include "part.h"
 #include "space_getsid.h"
@@ -1010,15 +1011,6 @@ static INLINE void runner_doself_grav_pp_truncated(
       runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
                                     r_s_inv, &f_ij, &pot_ij);
 
-      /* if (e->s->parts[-gparts[pid].id_or_neg_offset].id == ICHECK) { */
-      /*   if (pjd < gcount) */
-      /*     message("Interacting with particle ID= %lld f_ij=%e", */
-      /*             e->s->parts[-gparts[pjd].id_or_neg_offset].id, f_ij); */
-      /*   // else */
-      /*   //  message("Interacting with particle ID= %lld (padded) f_ij=%e", */
-      /*   //  e->s->parts[-gparts[pjd].id_or_neg_offset].id, f_ij); */
-      /* } */
-
       /* Store it back */
       a_x += f_ij * dx;
       a_y += f_ij * dy;
@@ -1482,8 +1474,8 @@ static INLINE void runner_doself_recursive_grav(struct runner *r,
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-void runner_dopair_grav_mm_symmetric(struct runner *r, struct cell *ci,
-                                     struct cell *cj) {
+static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r, struct cell *ci,
+						   struct cell *cj) {
 
   const struct engine *e = r->e;
 

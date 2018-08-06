@@ -169,7 +169,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->force = NULL;
     c->grav = NULL;
     c->dx_max_part = 0.0f;
-    c->dx_max_gpart = 0.0f;
     c->dx_max_sort = 0.0f;
     c->sorted = 0;
     c->count = 0;
@@ -1732,6 +1731,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int count = c->count;
   const int gcount = c->gcount;
   const int scount = c->scount;
+  const int with_gravity = s->gravity;
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
@@ -1793,8 +1793,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   }
 
   /* Split or let it be? */
-  if (count > space_splitsize || gcount > space_splitsize ||
-      scount > space_splitsize) {
+  if ((with_gravity && gcount > space_splitsize) ||
+      (!with_gravity &&
+       (count > space_splitsize || scount > space_splitsize))) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -1823,7 +1824,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->split = 0;
       cp->h_max = 0.f;
       cp->dx_max_part = 0.f;
-      cp->dx_max_gpart = 0.f;
       cp->dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
@@ -1888,22 +1888,53 @@ void space_split_recursive(struct space *s, struct cell *c,
       /* Reset everything */
       gravity_reset(c->multipole);
 
-      /* Compute CoM of all progenies */
+      /* Compute CoM and bulk velocity from all progenies */
       double CoM[3] = {0., 0., 0.};
+      double vel[3] = {0., 0., 0.};
+      float max_delta_vel[3] = {0.f, 0.f, 0.f};
+      float min_delta_vel[3] = {0.f, 0.f, 0.f};
       double mass = 0.;
 
       for (int k = 0; k < 8; ++k) {
         if (c->progeny[k] != NULL) {
           const struct gravity_tensors *m = c->progeny[k]->multipole;
+
+          mass += m->m_pole.M_000;
+
           CoM[0] += m->CoM[0] * m->m_pole.M_000;
           CoM[1] += m->CoM[1] * m->m_pole.M_000;
           CoM[2] += m->CoM[2] * m->m_pole.M_000;
-          mass += m->m_pole.M_000;
+
+          vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+          vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+          vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+
+          max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+          max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+          max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+
+          min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+          min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+          min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
         }
       }
-      c->multipole->CoM[0] = CoM[0] / mass;
-      c->multipole->CoM[1] = CoM[1] / mass;
-      c->multipole->CoM[2] = CoM[2] / mass;
+
+      /* Final operation on the CoM and bulk velocity */
+      const double inv_mass = 1. / mass;
+      c->multipole->CoM[0] = CoM[0] * inv_mass;
+      c->multipole->CoM[1] = CoM[1] * inv_mass;
+      c->multipole->CoM[2] = CoM[2] * inv_mass;
+      c->multipole->m_pole.vel[0] = vel[0] * inv_mass;
+      c->multipole->m_pole.vel[1] = vel[1] * inv_mass;
+      c->multipole->m_pole.vel[2] = vel[2] * inv_mass;
+
+      /* Min max velocity along each axis */
+      c->multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+      c->multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+      c->multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+      c->multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+      c->multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+      c->multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
 
       /* Now shift progeny multipoles and add them up */
       struct multipole temp;
@@ -1925,6 +1956,7 @@ void space_split_recursive(struct space *s, struct cell *c,
           r_max = max(r_max, cp->multipole->r_max + sqrt(r2));
         }
       }
+
       /* Alternative upper limit of max CoM<->gpart distance */
       const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
                             ? c->multipole->CoM[0] - c->loc[0]
@@ -1944,6 +1976,11 @@ void space_split_recursive(struct space *s, struct cell *c,
       c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
       c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
       c->multipole->CoM_rebuild[2] = c->multipole->CoM[2];
+
+      /* We know the first-order multipole (dipole) is 0. */
+      c->multipole->m_pole.M_100 = 0.f;
+      c->multipole->m_pole.M_010 = 0.f;
+      c->multipole->m_pole.M_001 = 0.f;
 
     } /* Deal with gravity */
   }   /* Split or let it be? */
@@ -1977,7 +2014,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       xparts[k].x_diff[2] = 0.f;
     }
 
-    /* gparts: Get dt_min/dt_max, reset x_diff. */
+    /* gparts: Get dt_min/dt_max. */
     for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (gparts[k].time_bin == time_bin_inhibited)
@@ -1985,9 +2022,6 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
       gravity_time_bin_min = min(gravity_time_bin_min, gparts[k].time_bin);
       gravity_time_bin_max = max(gravity_time_bin_max, gparts[k].time_bin);
-      gparts[k].x_diff[0] = 0.f;
-      gparts[k].x_diff[1] = 0.f;
-      gparts[k].x_diff[2] = 0.f;
     }
 
     /* sparts: Get dt_min/dt_max */

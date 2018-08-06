@@ -31,6 +31,7 @@
 #include "align.h"
 #include "const.h"
 #include "error.h"
+#include "gravity.h"
 #include "gravity_derivatives.h"
 #include "gravity_properties.h"
 #include "gravity_softened_derivatives.h"
@@ -107,10 +108,16 @@ struct grav_tensor {
 
 struct multipole {
 
-  /* Bulk velocity */
+  /*! Bulk velocity */
   float vel[3];
 
-  /* 0th order terms */
+  /*! Maximal velocity along each axis of all #gpart */
+  float max_delta_vel[3];
+
+  /*! Minimal velocity along each axis of all #gpart */
+  float min_delta_vel[3];
+
+  /* 0th order term */
   float M_000;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
@@ -214,14 +221,15 @@ INLINE static void gravity_reset(struct gravity_tensors *m) {
 /**
  * @brief Drifts a #multipole forward in time.
  *
+ * This uses a first-order approximation in time. We only move the CoM
+ * using the bulk velocity measured at the last rebuild.
+ *
  * @param m The #multipole.
  * @param dt The drift time-step.
- * @param x_diff The maximal distance moved by any particle since the last
- * rebuild.
  */
-INLINE static void gravity_drift(struct gravity_tensors *m, double dt,
-                                 float x_diff) {
+INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
 
+  /* Motion of the centre of mass */
   const double dx = m->m_pole.vel[0] * dt;
   const double dy = m->m_pole.vel[1] * dt;
   const double dz = m->m_pole.vel[2] * dt;
@@ -231,8 +239,36 @@ INLINE static void gravity_drift(struct gravity_tensors *m, double dt,
   m->CoM[1] += dy;
   m->CoM[2] += dz;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (m->m_pole.vel[0] > m->m_pole.max_delta_vel[0])
+    error("Invalid maximal velocity");
+  if (m->m_pole.vel[0] < m->m_pole.min_delta_vel[0])
+    error("Invalid minimal velocity");
+  if (m->m_pole.vel[1] > m->m_pole.max_delta_vel[1])
+    error("Invalid maximal velocity");
+  if (m->m_pole.vel[1] < m->m_pole.min_delta_vel[1])
+    error("Invalid minimal velocity");
+  if (m->m_pole.vel[2] > m->m_pole.max_delta_vel[2])
+    error("Invalid maximal velocity");
+  if (m->m_pole.vel[2] < m->m_pole.min_delta_vel[2])
+    error("Invalid minimal velocity");
+#endif
+
+  /* Maximal distance covered by any particle */
+  float dv[3];
+  dv[0] = max(m->m_pole.max_delta_vel[0] - m->m_pole.vel[0],
+              m->m_pole.vel[0] - m->m_pole.min_delta_vel[0]);
+  dv[1] = max(m->m_pole.max_delta_vel[1] - m->m_pole.vel[1],
+              m->m_pole.vel[1] - m->m_pole.min_delta_vel[1]);
+  dv[2] = max(m->m_pole.max_delta_vel[2] - m->m_pole.vel[2],
+              m->m_pole.vel[2] - m->m_pole.min_delta_vel[2]);
+
+  const float max_delta_vel =
+      sqrt(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+  const float x_diff = max_delta_vel * dt;
+
   /* Conservative change in maximal radius containing all gpart */
-  m->r_max = m->r_max_rebuild + x_diff;
+  m->r_max += x_diff;
 }
 
 /**
@@ -469,16 +505,8 @@ INLINE static void gravity_multipole_print(const struct multipole *m) {
 INLINE static void gravity_multipole_add(struct multipole *ma,
                                          const struct multipole *mb) {
 
-  const float M_000 = ma->M_000 + mb->M_000;
-  const float inv_M_000 = 1.f / M_000;
-
-  /* Add the bulk velocities */
-  ma->vel[0] = (ma->vel[0] * ma->M_000 + mb->vel[0] * mb->M_000) * inv_M_000;
-  ma->vel[1] = (ma->vel[1] * ma->M_000 + mb->vel[1] * mb->M_000) * inv_M_000;
-  ma->vel[2] = (ma->vel[2] * ma->M_000 + mb->vel[2] * mb->M_000) * inv_M_000;
-
-  /* Add 0th order terms */
-  ma->M_000 = M_000;
+  /* Add 0th order term */
+  ma->M_000 += mb->M_000;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   /* Add 1st order terms */
@@ -553,11 +581,6 @@ INLINE static void gravity_multipole_add(struct multipole *ma,
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
 #endif
-
-  // MATTHIEU
-  ma->M_100 = 0.f;
-  ma->M_010 = 0.f;
-  ma->M_001 = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
   ma->num_gpart += mb->num_gpart;
@@ -1025,6 +1048,9 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
 
   /* Prepare some local counters */
   double r_max2 = 0.;
+  float max_delta_vel[3] = {0., 0., 0.};
+  float min_delta_vel[3] = {0., 0., 0.};
+
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   double M_100 = 0., M_010 = 0., M_001 = 0.;
 #endif
@@ -1066,6 +1092,16 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
 
     /* Maximal distance CoM<->gpart */
     r_max2 = max(r_max2, dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+
+    /* Store the vector of the maximal vel difference */
+    max_delta_vel[0] = max(gparts[k].v_full[0], max_delta_vel[0]);
+    max_delta_vel[1] = max(gparts[k].v_full[1], max_delta_vel[1]);
+    max_delta_vel[2] = max(gparts[k].v_full[2], max_delta_vel[2]);
+
+    /* Store the vector of the minimal vel difference */
+    min_delta_vel[0] = min(gparts[k].v_full[0], min_delta_vel[0]);
+    min_delta_vel[1] = min(gparts[k].v_full[1], min_delta_vel[1]);
+    min_delta_vel[2] = min(gparts[k].v_full[2], min_delta_vel[2]);
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
     const double m = gparts[k].mass;
@@ -1149,7 +1185,9 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
   }
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  M_100 = M_010 = M_001 = 0.f; /* Matthieu */
+
+  /* We know the first-order multipole (dipole) is 0. */
+  M_100 = M_010 = M_001 = 0.f;
 #endif
 
   /* Store the data on the multipole. */
@@ -1161,6 +1199,12 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
   multi->m_pole.vel[0] = vel[0];
   multi->m_pole.vel[1] = vel[1];
   multi->m_pole.vel[2] = vel[2];
+  multi->m_pole.max_delta_vel[0] = max_delta_vel[0];
+  multi->m_pole.max_delta_vel[1] = max_delta_vel[1];
+  multi->m_pole.max_delta_vel[2] = max_delta_vel[2];
+  multi->m_pole.min_delta_vel[0] = min_delta_vel[0];
+  multi->m_pole.min_delta_vel[1] = min_delta_vel[1];
+  multi->m_pole.min_delta_vel[2] = min_delta_vel[2];
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
@@ -1259,10 +1303,6 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
 INLINE static void gravity_M2M(struct multipole *m_a,
                                const struct multipole *m_b,
                                const double pos_a[3], const double pos_b[3]) {
-  /* Shift bulk velocity */
-  m_a->vel[0] = m_b->vel[0];
-  m_a->vel[1] = m_b->vel[1];
-  m_a->vel[2] = m_b->vel[2];
 
   /* Shift 0th order term */
   m_a->M_000 = m_b->M_000;
@@ -2380,7 +2420,7 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gp->a_grav[0] += a_grav[0];
   gp->a_grav[1] += a_grav[1];
   gp->a_grav[2] += a_grav[2];
-  gp->potential += pot;
+  gravity_add_comoving_potential(gp, pot);
 }
 
 /**

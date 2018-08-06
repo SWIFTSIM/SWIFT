@@ -1,10 +1,18 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.989e43  # 10^10 M_su in grams
-  UnitLength_in_cgs:   3.085678e24  # Mpc in centimeters
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
   UnitVelocity_in_cgs: 1e5   # km/s in centimeters per second
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
+
+Cosmology:
+  Omega_m: 1.
+  Omega_lambda: 0.
+  Omega_b: 1.
+  h: 1.
+  a_begin: 0.00990099
+  a_end: 1.0
 
 # Parameters governing the time integration
 TimeIntegration:
@@ -20,11 +28,11 @@ Snapshots:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          10. # Time between statistics output
+  delta_time:          1.02 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation 
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
 
 # Parameters related to the initial conditions
@@ -36,14 +44,6 @@ Scheduler:
   cell_split_size:     50
   tasks_per_cell:      125
   
-Cosmology:
-  Omega_m: 1.
-  Omega_lambda: 0.
-  Omega_b: 1.
-  h: 1.
-  a_begin: 0.00990099
-  a_end: 1.0
-
 Gravity:
   mesh_side_length:   16
   eta: 0.025

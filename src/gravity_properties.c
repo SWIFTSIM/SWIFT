@@ -112,6 +112,8 @@ void gravity_update(struct gravity_props *p, const struct cosmology *cosmo) {
 
 void gravity_props_print(const struct gravity_props *p) {
 
+  message("Self-gravity scheme: %s", GRAVITY_IMPLEMENTATION);
+
   message("Self-gravity scheme: FMM-MM with m-poles of order %d",
           SELF_GRAVITY_MULTIPOLE_ORDER);
 
@@ -167,6 +169,7 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
                        "Maximal physical softening length (Plummer equivalent)",
                        p->epsilon_max_physical);
   io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit);
+  io_write_attribute_s(h_grpgrav, "Scheme", GRAVITY_IMPLEMENTATION);
   io_write_attribute_d(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
   io_write_attribute_f(h_grpgrav, "Mesh a_smooth", p->a_smooth);
   io_write_attribute_f(h_grpgrav, "Mesh r_cut_max ratio", p->r_cut_max_ratio);

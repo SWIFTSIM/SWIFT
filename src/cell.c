@@ -264,7 +264,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->depth = c->depth + 1;
       temp->split = 0;
       temp->dx_max_part = 0.f;
-      temp->dx_max_gpart = 0.f;
       temp->dx_max_sort = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
@@ -302,7 +301,6 @@ int cell_pack_end_step(struct cell *restrict c,
   pcells[0].ti_gravity_end_min = c->ti_gravity_end_min;
   pcells[0].ti_gravity_end_max = c->ti_gravity_end_max;
   pcells[0].dx_max_part = c->dx_max_part;
-  pcells[0].dx_max_gpart = c->dx_max_gpart;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -339,7 +337,6 @@ int cell_unpack_end_step(struct cell *restrict c,
   c->ti_gravity_end_min = pcells[0].ti_gravity_end_min;
   c->ti_gravity_end_max = pcells[0].ti_gravity_end_max;
   c->dx_max_part = pcells[0].dx_max_part;
-  c->dx_max_gpart = pcells[0].dx_max_gpart;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -1456,7 +1453,7 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
         if (parent->drift_gpart == NULL)
           error("Trying to activate un-existing parent->drift_gpart");
 #endif
-	scheduler_activate(s, parent->drift_gpart);
+        scheduler_activate(s, parent->drift_gpart);
         break;
       }
     }
@@ -2609,8 +2606,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   struct gpart *const gparts = c->gparts;
   struct spart *const sparts = c->sparts;
 
-  float dx_max = 0.f, dx2_max = 0.f;
-
   /* Drift irrespective of cell flags? */
   force |= c->do_grav_drift;
 
@@ -2632,14 +2627,8 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
         /* Recurse */
         cell_drift_gpart(cp, e, force);
-
-        /* Update */
-        dx_max = max(dx_max, cp->dx_max_gpart);
       }
     }
-
-    /* Store the values */
-    c->dx_max_gpart = dx_max;
 
     /* Update the time of the last drift */
     c->ti_old_gpart = ti_current;
@@ -2664,12 +2653,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       /* Drift... */
       drift_gpart(gp, dt_drift, ti_old_gpart, ti_current);
 
-      /* Compute (square of) motion since last cell construction */
-      const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
-                        gp->x_diff[1] * gp->x_diff[1] +
-                        gp->x_diff[2] * gp->x_diff[2];
-      dx2_max = max(dx2_max, dx2);
-
       /* Init gravity force fields. */
       if (gpart_is_active(gp, e)) {
         gravity_init_gpart(gp);
@@ -2688,12 +2671,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Note: no need to compute dx_max as all spart have a gpart */
     }
-
-    /* Now, get the maximal particle motion from its square */
-    dx_max = sqrtf(dx2_max);
-
-    /* Store the values */
-    c->dx_max_gpart = dx_max;
 
     /* Update the time of the last drift */
     c->ti_old_gpart = ti_current;
@@ -2729,8 +2706,7 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
     dt_drift = (ti_current - ti_old_multipole) * e->time_base;
 
   /* Drift the multipole */
-  if (ti_current > ti_old_multipole)
-    gravity_drift(c->multipole, dt_drift, c->dx_max_gpart);
+  if (ti_current > ti_old_multipole) gravity_drift(c->multipole, dt_drift);
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -2771,8 +2747,7 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
   else
     dt_drift = (ti_current - ti_old_multipole) * e->time_base;
 
-  if (ti_current > ti_old_multipole)
-    gravity_drift(c->multipole, dt_drift, c->dx_max_gpart);
+  if (ti_current > ti_old_multipole) gravity_drift(c->multipole, dt_drift);
 
   /* Update the time of the last drift */
   c->ti_old_multipole = ti_current;

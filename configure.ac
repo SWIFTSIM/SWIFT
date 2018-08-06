@@ -949,7 +949,26 @@ case "$with_subgrid" in
    ;;
 esac
 
+# Gravity scheme.
+AC_ARG_WITH([gravity],
+   [AS_HELP_STRING([--with-gravity=<scheme>],
+      [Gravity scheme to use @<:@default, with-potential, default: default@:>@]
+   )],
+   [with_gravity="$withval"],
+   [with_gravity="default"]
+)
 
+case "$with_gravity" in
+   with-potential)
+      AC_DEFINE([POTENTIAL_GRAVITY], [1], [Gravity scheme with potential calculation])
+   ;;
+   default)
+      AC_DEFINE([DEFAULT_GRAVITY], [1], [Default gravity scheme])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown gravity scheme: $with_gravity])
+   ;;
+esac
 
 # Hydro scheme.
 AC_ARG_WITH([hydro],
@@ -1384,12 +1403,14 @@ AC_MSG_RESULT([
    Equation of state  : $with_eos
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
-   Cooling function   : $with_cooling
-   Chemistry          : $with_chemistry
 
-   External potential  : $with_potential
+   Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order
    No gravity below ID : $no_gravity_below_id
+   External potential  : $with_potential
+
+   Cooling function   : $with_cooling
+   Chemistry          : $with_chemistry
 
    Individual timers     : $enable_timers
    Task debugging        : $enable_task_debugging
