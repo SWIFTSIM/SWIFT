@@ -291,6 +291,9 @@ struct cell {
   /*! The star ghost task itself */
   struct task *star_ghost;
 
+  /*! Linked list of the tasks computing this cell's star density. */
+  struct link *star_density;
+
   /*! Task for cooling */
   struct task *cooling;
 

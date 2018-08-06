@@ -62,7 +62,8 @@ const char *taskID_names[task_type_count] = {
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
     "none", "density", "gradient", "force", "grav",      "external_grav",
-    "tend", "xv",      "rho",      "gpart", "multipole", "spart"};
+    "tend", "xv",      "rho",      "gpart", "multipole", "spart",
+    "star_density"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -136,6 +137,10 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         case task_subtype_force:
           return task_action_part;
           break;
+
+        case task_subtype_star_density:
+	  return task_action_all;
+	  break;
 
         case task_subtype_grav:
         case task_subtype_external_grav:

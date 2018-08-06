@@ -72,8 +72,8 @@ void runner_doself_star_density(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      if (si->ti_drift != e->ti_current)
-        error("Particle si not drifted to current time");
+      /* if (si->ti_drift != e->ti_current) */
+      /*   error("Particle si not drifted to current time"); */
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
@@ -148,8 +148,8 @@ void runner_dosubpair_star_density(struct runner *r, struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      if (si->ti_drift != e->ti_current)
-        error("Particle si not drifted to current time");
+      /* if (si->ti_drift != e->ti_current) */
+      /*   error("Particle si not drifted to current time"); */
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
@@ -237,8 +237,8 @@ void runner_dopair_subset_star_density(struct runner *r, struct cell *restrict c
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      if (spi->ti_drift != e->ti_current)
-        error("Particle pi not drifted to current time");
+      /* if (spi->ti_drift != e->ti_current) */
+      /*   error("Particle pi not drifted to current time"); */
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
@@ -309,8 +309,8 @@ void runner_doself_subset_star_density(struct runner *r, struct cell *restrict c
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      if (spi->ti_drift != e->ti_current)
-        error("Particle pi not drifted to current time");
+      /* if (spi->ti_drift != e->ti_current) */
+      /*   error("Particle pi not drifted to current time"); */
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
@@ -945,4 +945,396 @@ void runner_dosub_subset_star_density(struct runner *r, struct cell *ci, struct 
   } /* otherwise, pair interaction. */
 
   if (gettimer) TIMER_TOC(timer_dosub_subset);
+}
+
+
+/**
+ * @brief Determine which version of runner_doself needs to be called depending on the
+ * optimisation level.
+ *
+ * @param r #runner
+ * @param c #cell c
+ *
+ */
+void runner_doself_branch_star_density(struct runner *r, struct cell *c) {
+
+  const struct engine *restrict e = r->e;
+
+  /* Anything to do here? */
+  if (!cell_is_active_star(c, e)) return;
+
+  /* Did we mess up the recursion? */
+  if (c->h_max_old * kernel_gamma > c->dmin)
+    error("Cell smaller than smoothing length");
+
+  /* /\* Check that cells are drifted. *\/ */
+  /* if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell."); */
+
+  runner_doself_star_density(r, c, 1);
+}
+
+
+/**
+ * @brief Determine which version of DOPAIR1 needs to be called depending on the
+ * orientation of the cells or whether DOPAIR1 needs to be called at all.
+ *
+ * @param r #runner
+ * @param ci #cell ci
+ * @param cj #cell cj
+ *
+ */
+void runner_dopair_branch_star_density(struct runner *r, struct cell *ci, struct cell *cj) {
+
+  const struct engine *restrict e = r->e;
+
+  /* Anything to do here? */
+  if (!cell_is_active_star(ci, e) && !cell_is_active_star(cj, e)) return;
+
+  /* /\* Check that cells are drifted. *\/ */
+  /* if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e)) */
+  /*   error("Interacting undrifted cells."); */
+
+  /* Get the sort ID. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  /* Have the cells been sorted? */
+  if (!(ci->sorted & (1 << sid)) ||
+      ci->dx_max_sort_old > space_maxreldx * ci->dmin)
+    error("Interacting unsorted cells.");
+  if (!(cj->sorted & (1 << sid)) ||
+      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells.");
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Pick-out the sorted lists. */
+  const struct entry *restrict sort_i = ci->sort[sid];
+  const struct entry *restrict sort_j = cj->sort[sid];
+
+  /* Check that the dx_max_sort values in the cell are indeed an upper
+     bound on particle movement. */
+  for (int pid = 0; pid < ci->count; pid++) {
+    const struct part *p = &ci->parts[sort_i[pid].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
+            1.0e-4 * max(fabsf(d), ci->dx_max_sort_old) &&
+        fabsf(d - sort_i[pid].d) - ci->dx_max_sort > ci->width[0] * 1.0e-10)
+      error(
+          "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
+          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
+          "ci->dx_max_sort_old=%e",
+          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->dx_max_sort,
+          ci->dx_max_sort_old);
+  }
+  for (int pjd = 0; pjd < cj->count; pjd++) {
+    const struct part *p = &cj->parts[sort_j[pjd].i];
+    const float d = p->x[0] * runner_shift[sid][0] +
+                    p->x[1] * runner_shift[sid][1] +
+                    p->x[2] * runner_shift[sid][2];
+    if ((fabsf(d - sort_j[pjd].d) - cj->dx_max_sort) >
+            1.0e-4 * max(fabsf(d), cj->dx_max_sort_old) &&
+        (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort) > cj->width[0] * 1.0e-10)
+      error(
+          "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
+          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "
+          "cj->dx_max_sort_old=%e",
+          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
+          cj->dx_max_sort_old);
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
+
+  runner_dopair_star_density(r, ci, cj, 1);
+}
+
+/**
+ * @brief Compute grouped sub-cell interactions for pairs
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param sid The direction linking the cells
+ * @param gettimer Do we have a timer ?
+ *
+ * @todo Hard-code the sid on the recursive calls to avoid the
+ * redundant computations to find the sid on-the-fly.
+ */
+void runner_dosub_pair_star_density(struct runner *r, struct cell *ci, struct cell *cj, int sid,
+                 int gettimer) {
+
+  struct space *s = r->e->s;
+  const struct engine *e = r->e;
+
+  TIMER_TIC;
+
+  /* Should we even bother? */
+  if (!cell_is_active_star(ci, e) && !cell_is_active_star(cj, e)) return;
+  if (ci->scount == 0 || cj->scount == 0) return;
+
+  /* Get the type of pair if not specified explicitly. */
+  double shift[3];
+  sid = space_getsid(s, &ci, &cj, shift);
+
+  /* Recurse? */
+  if (cell_can_recurse_in_pair_task(ci) && cell_can_recurse_in_pair_task(cj)) {
+
+    /* Different types of flags. */
+    switch (sid) {
+
+      /* Regular sub-cell interactions of a single cell. */
+      case 0: /* (  1 ,  1 ,  1 ) */
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        break;
+
+      case 1: /* (  1 ,  1 ,  0 ) */
+        if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[0], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[1], -1, 0);
+        break;
+
+      case 2: /* (  1 ,  1 , -1 ) */
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        break;
+
+      case 3: /* (  1 ,  0 ,  1 ) */
+        if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[0], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[2], -1, 0);
+        break;
+
+      case 4: /* (  1 ,  0 ,  0 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[0], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[1], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[2], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[3], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[0], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[1], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[3], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[0], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[2], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[3], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[1], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[2], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[3] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[3], -1, 0);
+        break;
+
+      case 5: /* (  1 ,  0 , -1 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[1], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[3], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[3], -1, 0);
+        break;
+
+      case 6: /* (  1 , -1 ,  1 ) */
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        break;
+
+      case 7: /* (  1 , -1 ,  0 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[2], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[3], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[3], -1, 0);
+        break;
+
+      case 8: /* (  1 , -1 , -1 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[3], -1, 0);
+        break;
+
+      case 9: /* (  0 ,  1 ,  1 ) */
+        if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[0], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[4], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[4], -1, 0);
+        break;
+
+      case 10: /* (  0 ,  1 ,  0 ) */
+        if (ci->progeny[2] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[2], cj->progeny[0], -1, 0);
+        if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[2], cj->progeny[1], -1, 0);
+        if (ci->progeny[2] != NULL && cj->progeny[4] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[2], cj->progeny[4], -1, 0);
+        if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[2], cj->progeny[5], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[0], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[1], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[4], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[5] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[5], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[0], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[4] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[4], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[5], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[1], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[4], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[5] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[5], -1, 0);
+        break;
+
+      case 11: /* (  0 ,  1 , -1 ) */
+        if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[2], cj->progeny[1], -1, 0);
+        if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[2], cj->progeny[5], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[5], -1, 0);
+        break;
+
+      case 12: /* (  0 ,  0 ,  1 ) */
+        if (ci->progeny[1] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[1], cj->progeny[0], -1, 0);
+        if (ci->progeny[1] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[1], cj->progeny[2], -1, 0);
+        if (ci->progeny[1] != NULL && cj->progeny[4] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[1], cj->progeny[4], -1, 0);
+        if (ci->progeny[1] != NULL && cj->progeny[6] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[1], cj->progeny[6], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[0], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[2], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[4], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[6] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[6], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[0], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[4] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[4], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[6] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[6], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[2], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[4], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[6] != NULL)
+          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[6], -1, 0);
+        break;
+    }
+
+  }
+
+  /* Otherwise, compute the pair directly. */
+  else if (cell_is_active_star(ci, e) || cell_is_active_star(cj, e)) {
+
+    /* /\* Make sure both cells are drifted to the current timestep. *\/ */
+    /* if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e)) */
+    /*   error("Interacting undrifted cells."); */
+
+    /* Do any of the cells need to be sorted first? */
+    if (!(ci->sorted & (1 << sid)) ||
+        ci->dx_max_sort_old > ci->dmin * space_maxreldx)
+      error("Interacting unsorted cell.");
+    if (!(cj->sorted & (1 << sid)) ||
+        cj->dx_max_sort_old > cj->dmin * space_maxreldx)
+      error("Interacting unsorted cell.");
+
+    /* Compute the interactions. */
+    runner_dopair_branch_star_density(r, ci, cj);
+  }
+
+  if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);
+}
+
+
+/**
+ * @brief Compute grouped sub-cell interactions for self tasks
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param gettimer Do we have a timer ?
+ */
+void runner_dosub_self_star_density(struct runner *r, struct cell *ci, int gettimer) {
+
+  TIMER_TIC;
+
+  /* Should we even bother? */
+  if (ci->scount == 0 || !cell_is_active_star(ci, r->e)) return;
+
+  /* Recurse? */
+  if (cell_can_recurse_in_self_task(ci)) {
+
+    /* Loop over all progeny. */
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL) {
+        runner_dosub_self_star_density(r, ci->progeny[k], 0);
+        for (int j = k + 1; j < 8; j++)
+          if (ci->progeny[j] != NULL)
+            runner_dosub_pair_star_density(r, ci->progeny[k], ci->progeny[j], -1, 0);
+      }
+  }
+
+  /* Otherwise, compute self-interaction. */
+  else {
+
+    /* /\* Check that cells are drifted. *\/ */
+    /* if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell."); */
+
+    runner_doself_branch_star_density(r, ci);
+  }
+
+  if (gettimer) TIMER_TOC(timer_dosub_self_star_density);
 }

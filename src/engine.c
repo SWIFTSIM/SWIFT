@@ -2658,6 +2658,85 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Constructs the top-level pair tasks for the star loop over
+ * neighbours
+ *
+ * Here we construct all the tasks for all possible neighbouring non-empty
+ * local cells in the hierarchy. No dependencies are being added thus far.
+ * Additional loop over neighbours can later be added by simply duplicating
+ * all the tasks created by this function.
+ *
+ * @param map_data Offset of first two indices disguised as a pointer.
+ * @param num_elements Number of cells to traverse.
+ * @param extra_data The #engine.
+ */
+void engine_make_starloop_tasks_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
+
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Skip cells without star particles */
+    if (ci->scount == 0) continue;
+
+    /* If the cells is local build a self-interaction */
+    if (ci->nodeID == nodeID)
+      scheduler_addtask(sched, task_type_self, task_subtype_star_density, 0, 0, ci,
+                        NULL);
+
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          struct cell *cj = &cells[cjd];
+
+          /* Is that neighbour local and does it have particles ? */
+          if (cid >= cjd || cj->scount == 0 ||
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
+
+          /* Construct the pair task */
+          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+          scheduler_addtask(sched, task_type_pair, task_subtype_star_density, sid, 0,
+                            ci, cj);
+        }
+      }
+    }
+  }
+}
+
+
+/**
  * @brief Counts the tasks associated with one cell and constructs the links
  *
  * For each hydrodynamic and gravity task, construct the links with
@@ -2696,6 +2775,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav, t);
       }
+      if (t->subtype == task_subtype_star_density) {
+	engine_addlink(e, &ci->star_density, t);
+      }
 
       /* Link pair tasks to cells. */
     } else if (t_type == task_type_pair) {
@@ -2714,6 +2796,10 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         error("Found a pair/external-gravity task...");
       }
 #endif
+      if (t->subtype == task_subtype_star_density) {
+        engine_addlink(e, &ci->star_density, t);
+        engine_addlink(e, &cj->star_density, t);
+      }
 
       /* Link sub-self tasks to cells. */
     } else if (t_type == task_type_sub_self) {
@@ -2725,6 +2811,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav, t);
+      }
+      if (t->subtype == task_subtype_star_density) {
+        engine_addlink(e, &ci->star_density, t);
       }
 
       /* Link sub-pair tasks to cells. */
@@ -2739,8 +2828,16 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav, t);
         engine_addlink(e, &cj->grav, t);
       }
+<<<<<<< HEAD
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
+=======
+      if (t->subtype == task_subtype_star_density) {
+        engine_addlink(e, &ci->star_density, t);
+        engine_addlink(e, &cj->star_density, t);
+      }
+      if (t->subtype == task_subtype_external_grav) {
+>>>>>>> star smoothing length close to be implemented
         error("Found a sub-pair/external-gravity task...");
       }
 #endif
@@ -2954,7 +3051,7 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
  * @param density The density task to link.
  * @param c The cell.
  */
-static inline void engine_make_stars_loops_dependencies(struct scheduler *sched,
+static inline void engine_make_star_loops_dependencies(struct scheduler *sched,
                                                         struct task *density,
                                                         struct cell *c) {
   /* density loop --> ghost */
@@ -3214,6 +3311,111 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Duplicates the first hydro loop and construct all the
+ * dependencies for the hydro part
+ *
+ * This is done by looping over all the previously constructed tasks
+ * and adding another task involving the same cells but this time
+ * corresponding to the second hydro loop over neighbours.
+ * With all the relevant tasks for a given cell available, we construct
+ * all the dependencies for that cell.
+ */
+void engine_link_star_tasks_mapper(void *map_data, int num_elements,
+			   void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &((struct task *)map_data)[ind];
+
+    /* Self-interaction? */
+    if (t->type == task_type_self && t->subtype == task_subtype_star_density) {
+
+      /* Make the self-density tasks depend on the drift only. */
+      scheduler_addunlock(sched, t->ci->super->drift_part, t);
+
+      /* Now, build all the dependencies for the hydro */
+      engine_make_star_loops_dependencies(sched, t, t->ci);
+      scheduler_addunlock(sched, t->ci->star_ghost_out, t->ci->super->end_force);
+    }
+
+    /* Otherwise, pair interaction? */
+    else if (t->type == task_type_pair && t->subtype == task_subtype_star_density) {
+
+      /* Make all density tasks depend on the drift and the sorts. */
+      if (t->ci->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->ci->super->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->sorts, t);
+      if (t->ci->super != t->cj->super) {
+        if (t->cj->nodeID == engine_rank)
+          scheduler_addunlock(sched, t->cj->super->drift_part, t);
+        scheduler_addunlock(sched, t->cj->super->sorts, t);
+      }
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_star_loops_dependencies(sched, t, t->ci);
+      }
+      if (t->cj->nodeID == nodeID) {
+        if (t->ci->super_hydro != t->cj->super)
+          engine_make_star_loops_dependencies(sched, t, t->cj);
+        if (t->ci->super != t->cj->super)
+          scheduler_addunlock(sched, t, t->cj->super->end_force);
+      }
+
+    }
+
+    /* Otherwise, sub-self interaction? */
+    else if (t->type == task_type_sub_self &&
+             t->subtype == task_subtype_star_density) {
+
+      /* Make all density tasks depend on the drift and sorts. */
+      scheduler_addunlock(sched, t->ci->super->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->sorts, t);
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_star_loops_dependencies(sched, t, t->ci);
+        scheduler_addunlock(sched, t, t->ci->super->end_force);
+      } else
+        error("oo");
+    }
+
+    /* Otherwise, sub-pair interaction? */
+    else if (t->type == task_type_sub_pair &&
+             t->subtype == task_subtype_star_density) {
+
+      /* Make all density tasks depend on the drift. */
+      if (t->ci->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->ci->super->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super->sorts, t);
+      if (t->ci->super != t->cj->super) {
+        if (t->cj->nodeID == engine_rank)
+          scheduler_addunlock(sched, t->cj->super->drift_part, t);
+        scheduler_addunlock(sched, t->cj->super->sorts, t);
+      }
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_star_loops_dependencies(sched, t, t->ci);
+        scheduler_addunlock(sched, t, t->ci->super->end_force);
+      }
+      if (t->cj->nodeID == nodeID) {
+        if (t->ci->super != t->cj->super)
+          engine_make_star_loops_dependencies(sched, t, t->cj);
+        if (t->ci->super != t->cj->super)
+          scheduler_addunlock(sched, t, t->cj->super->end_force);
+      }
+    }
+  }
+}
+
+/**
  * @brief Fill the #space's task list.
  *
  * @param e The #engine we are working with.
@@ -3225,14 +3427,19 @@ void engine_maketasks(struct engine *e) {
   struct cell *cells = s->cells_top;
   const int nr_cells = s->nr_cells;
   const ticks tic = getticks();
-
-  /* Re-set the scheduler. */
+ 
+ /* Re-set the scheduler. */
   scheduler_reset(sched, engine_estimate_nr_tasks(e));
 
+<<<<<<< HEAD
   ticks tic2 = getticks();
 
   /* Construct the firt hydro loop over neighbours */
   if (e->policy & engine_policy_hydro)
+=======
+  /* Construct the first hydro loop over neighbours */
+  if (e->policy & engine_policy_hydro) {
+>>>>>>> star smoothing length close to be implemented
     threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
                    s->nr_cells, 1, 0, e);
 
@@ -3241,6 +3448,12 @@ void engine_maketasks(struct engine *e) {
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
+
+  /* Construct the star hydro loop over neighbours */
+  if (e->policy & engine_policy_stars) {
+    threadpool_map(&e->threadpool, engine_make_starloop_tasks_mapper, NULL,
+                   s->nr_cells, 1, 0, e);
+  }
 
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity) engine_make_self_gravity_tasks(e);
@@ -3358,11 +3571,19 @@ void engine_maketasks(struct engine *e) {
   if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
     engine_link_gravity_tasks(e);
 
+<<<<<<< HEAD
   if (e->verbose)
     message("Linking gravity tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
+=======
+  if (e->policy & engine_policy_stars)
+    threadpool_map(&e->threadpool, engine_link_star_tasks_mapper, sched->tasks,
+		   sched->nr_tasks, sizeof(struct task), 0, e);
+>>>>>>> star smoothing length close to be implemented
 
 #ifdef WITH_MPI
+  if (e->policy & engine_policy_stars)
+    error("Cannot run stars with MPI");
 
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
@@ -3482,7 +3703,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       if (ci->nodeID != engine_rank) error("Non-local self task found");
 
-      /* Activate the hydro drift */
+       /* Activate the hydro drift */
       if (t->type == task_type_self && t->subtype == task_subtype_density) {
         if (cell_is_active_hydro(ci, e)) {
           scheduler_activate(s, t);
@@ -3519,6 +3740,24 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 #endif
+
+      /* Activate the star density */
+      else if (t->type == task_type_self &&
+               t->subtype == task_subtype_star_density) {
+        if (cell_is_active_star(ci, e)) {
+	  scheduler_activate(s, t);
+          cell_activate_drift_part(ci, s);
+	}
+      }
+
+      /* Store current values of dx_max and h_max. */
+      else if (t->type == task_type_sub_self &&
+               t->subtype == task_subtype_star_density) {
+        if (cell_is_active_star(ci, e)) {
+          scheduler_activate(s, t);
+          cell_activate_subcell_hydro_tasks(ci, NULL, s);
+        }
+      }
 
       /* Activate the gravity drift */
       else if (t->type == task_type_self && t->subtype == task_subtype_grav) {
@@ -3558,14 +3797,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Only activate tasks that involve a local active cell. */
       if ((t->subtype == task_subtype_density ||
            t->subtype == task_subtype_gradient ||
-           t->subtype == task_subtype_force) &&
+           t->subtype == task_subtype_force ||
+	   t->subtype == task_subtype_star_density) &&
           ((ci_active_hydro && ci->nodeID == engine_rank) ||
            (cj_active_hydro && cj->nodeID == engine_rank))) {
 
         scheduler_activate(s, t);
 
         /* Set the correct sorting flags */
-        if (t->type == task_type_pair && t->subtype == task_subtype_density) {
+        if (t->type == task_type_pair && (t->subtype == task_subtype_density ||
+					  t->subtype == task_subtype_star_density)) {
 
           /* Store some values. */
           atomic_or(&ci->requires_sorts, 1 << t->flags);
@@ -3585,7 +3826,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Store current values of dx_max and h_max. */
         else if (t->type == task_type_sub_pair &&
-                 t->subtype == task_subtype_density) {
+                 (t->subtype == task_subtype_density ||
+		  t->subtype == task_subtype_star_density)) {
           cell_activate_subcell_hydro_tasks(t->ci, t->cj, s);
         }
       }
@@ -3702,6 +3944,90 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 #endif
       }
+
+      /* Only interested in star_density tasks as of here. */
+      if (t->subtype == task_subtype_star_density) {
+
+        /* Too much particle movement? */
+        if (cell_need_rebuild_for_pair(ci, cj)) *rebuild_space = 1;
+
+#ifdef WITH_MPI
+	error("MPI with stars not implemented");
+        /* /\* Activate the send/recv tasks. *\/ */
+        /* if (ci->nodeID != engine_rank) { */
+
+        /*   /\* If the local cell is active, receive data from the foreign cell. *\/ */
+        /*   if (cj_active_hydro) { */
+        /*     scheduler_activate(s, ci->recv_xv); */
+        /*     if (ci_active_hydro) { */
+        /*       scheduler_activate(s, ci->recv_rho); */
+        /*     } */
+        /*   } */
+
+        /*   /\* If the foreign cell is active, we want its ti_end values. *\/ */
+        /*   if (ci_active_hydro) scheduler_activate(s, ci->recv_ti); */
+
+        /*   /\* Is the foreign cell active and will need stuff from us? *\/ */
+        /*   if (ci_active_hydro) { */
+
+        /*     struct link *l = */
+        /*         scheduler_activate_send(s, cj->send_xv, ci->nodeID); */
+
+        /*     /\* Drift the cell which will be sent at the level at which it is */
+        /*        sent, i.e. drift the cell specified in the send task (l->t) */
+        /*        itself. *\/ */
+        /*     cell_activate_drift_part(l->t->ci, s); */
+
+        /*     /\* If the local cell is also active, more stuff will be needed. *\/ */
+        /*     if (cj_active_hydro) { */
+        /*       scheduler_activate_send(s, cj->send_rho, ci->nodeID); */
+
+        /*     } */
+        /*   } */
+
+        /*   /\* If the local cell is active, send its ti_end values. *\/ */
+        /*   if (cj_active_hydro) */
+        /*     scheduler_activate_send(s, cj->send_ti, ci->nodeID); */
+
+        /* } else if (cj->nodeID != engine_rank) { */
+
+        /*   /\* If the local cell is active, receive data from the foreign cell. *\/ */
+        /*   if (ci_active_hydro) { */
+        /*     scheduler_activate(s, cj->recv_xv); */
+        /*     if (cj_active_hydro) { */
+        /*       scheduler_activate(s, cj->recv_rho); */
+        /*     } */
+        /*   } */
+
+        /*   /\* If the foreign cell is active, we want its ti_end values. *\/ */
+        /*   if (cj_active_hydro) scheduler_activate(s, cj->recv_ti); */
+
+        /*   /\* Is the foreign cell active and will need stuff from us? *\/ */
+        /*   if (cj_active_hydro) { */
+
+        /*     struct link *l = */
+        /*         scheduler_activate_send(s, ci->send_xv, cj->nodeID); */
+
+        /*     /\* Drift the cell which will be sent at the level at which it is */
+        /*        sent, i.e. drift the cell specified in the send task (l->t) */
+        /*        itself. *\/ */
+        /*     cell_activate_drift_part(l->t->ci, s); */
+
+        /*     /\* If the local cell is also active, more stuff will be needed. *\/ */
+        /*     if (ci_active_hydro) { */
+
+        /*       scheduler_activate_send(s, ci->send_rho, cj->nodeID); */
+
+        /*     } */
+        /*   } */
+
+        /*   /\* If the local cell is active, send its ti_end values. *\/ */
+        /*   if (ci_active_hydro) */
+        /*     scheduler_activate_send(s, ci->send_ti, cj->nodeID); */
+        /* } */
+#endif
+      }
+
 
       /* Only interested in gravity tasks as of here. */
       if (t->subtype == task_subtype_grav) {

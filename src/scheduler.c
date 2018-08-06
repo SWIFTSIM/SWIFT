@@ -241,7 +241,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   int density_cluster[4] = {0};
   int gradient_cluster[4] = {0};
   int force_cluster[4] = {0};
-  int gravity_cluster[5] = {0};
+  int star_density_cluster[4] = {0};
 
   /* Check whether we need to construct a group of tasks */
   for (int type = 0; type < task_type_count; ++type) {
@@ -262,6 +262,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
             force_cluster[k] = 1;
           if (type == task_type_self + k && subtype == task_subtype_grav)
             gravity_cluster[k] = 1;
+	  if (type == task_type_self + k && subtype == task_subtype_star_density)
+	    star_density_cluster[k] = 1;
         }
         if (type == task_type_grav_mesh) gravity_cluster[2] = 1;
         if (type == task_type_grav_long_range) gravity_cluster[3] = 1;
@@ -310,6 +312,15 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
     fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_long_range]);
   if (gravity_cluster[4])
     fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_mm]);
+  fprintf(f, "\t};\n");
+
+  /* Make a cluster for the density tasks */
+  fprintf(f, "\t subgraph cluster0{\n");
+  fprintf(f, "\t\t label=\"\";\n");
+  for (int k = 0; k < 4; ++k)
+    if (star_density_cluster[k])
+      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
+              subtaskID_names[task_subtype_star_density]);
   fprintf(f, "\t};\n");
 
   /* Be clean */
@@ -976,6 +987,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     } else if (t->subtype == task_subtype_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->type == task_type_grav_mesh) {
+      /* For future use */
+    } else if (t->subtype == task_subtype_star_density) {
       /* For future use */
     } else {
 #ifdef SWIFT_DEBUG_CHECKS

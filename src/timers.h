@@ -93,6 +93,7 @@ enum {
   timer_doself_subset_star_density,
   timer_dopair_subset_star_density,
   timer_dosubpair_star_density,
+  timer_dosub_self_star_density,
   timer_count,
 };
 
