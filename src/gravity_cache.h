@@ -429,7 +429,7 @@ gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
  * @param gparts The #gpart array to write to.
  * @param gcount The number of particles to write.
  */
-__attribute__((always_inline)) INLINE void gravity_cache_write_back(
+__attribute__((always_inline)) INLINE static void gravity_cache_write_back(
     const struct gravity_cache *c, struct gpart *restrict gparts,
     const int gcount) {
 
@@ -446,7 +446,7 @@ __attribute__((always_inline)) INLINE void gravity_cache_write_back(
       gparts[i].a_grav[0] += a_x[i];
       gparts[i].a_grav[1] += a_y[i];
       gparts[i].a_grav[2] += a_z[i];
-      gparts[i].potential += pot[i];
+      gravity_add_comoving_potential(&gparts[i], pot[i]);
     }
   }
 }

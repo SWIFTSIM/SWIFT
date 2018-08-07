@@ -968,7 +968,7 @@ static void runner_do_unskip_gravity(struct cell *c, struct engine *e) {
   if (!cell_is_active_gravity(c, e)) return;
 
   /* Recurse */
-  if (c->split) {
+  if (c->split && c->depth < space_subdepth_grav) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
@@ -998,9 +998,13 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
     if (c != NULL) {
+
+      /* Hydro tasks */
       if (e->policy & engine_policy_hydro) runner_do_unskip_hydro(c, e);
-      if (e->policy &
-          (engine_policy_self_gravity | engine_policy_external_gravity))
+
+      /* All gravity tasks */
+      if ((e->policy & engine_policy_self_gravity) ||
+          (e->policy & engine_policy_external_gravity))
         runner_do_unskip_gravity(c, e);
     }
   }
@@ -1659,11 +1663,11 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict gparts = c->gparts;
   struct spart *restrict sparts = c->sparts;
   const int periodic = s->periodic;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
-  const float Omega_m = e->cosmology->Omega_m;
-  const float H0 = e->cosmology->H0;
   const float G_newton = e->physical_constants->const_newton_G;
-  const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
+  const double r_s = e->mesh->r_s;
+  const double volume = s->dim[0] * s->dim[1] * s->dim[2];
+  const float potential_normalisation =
+      4. * M_PI * e->total_mass * r_s * r_s / volume;
 
   TIMER_TIC;
 
@@ -1698,18 +1702,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (gpart_is_active(gp, e)) {
 
         /* Finish the force calculation */
-        gravity_end_force(gp, G_newton);
-
-        /* Apply periodic BC contribution to the potential */
-        if (with_cosmology && periodic) {
-          const float mass = gravity_get_mass(gp);
-          const float mass2 = mass * mass;
-
-          /* This correction term matches the one used in Gadget-2 */
-          /* The numerical constant is taken from Hernquist, Bouchet & Suto 1991
-           */
-          gp->potential -= 2.8372975f * cbrtf(mass2 * Omega_m * rho_crit0);
-        }
+        gravity_end_force(gp, G_newton, potential_normalisation, periodic);
 
 #ifdef SWIFT_NO_GRAVITY_BELOW_ID
 
@@ -2218,6 +2211,9 @@ void *runner_main(void *data) {
           break;
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);
+          break;
+        case task_type_grav_mm:
+          runner_dopair_grav_mm_symmetric(r, t->ci, t->cj);
           break;
         case task_type_cooling:
           runner_do_cooling(r, t->ci, 1);

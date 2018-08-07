@@ -66,6 +66,7 @@ int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
 int space_subsize_self_hydro = space_subsize_self_hydro_default;
 int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
+int space_subdepth_grav = space_subdepth_grav_default;
 int space_maxsize = space_maxsize_default;
 #ifdef SWIFT_DEBUG_CHECKS
 int last_cell_id;
@@ -168,13 +169,13 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->force = NULL;
     c->grav = NULL;
     c->dx_max_part = 0.0f;
-    c->dx_max_gpart = 0.0f;
     c->dx_max_sort = 0.0f;
     c->sorted = 0;
     c->count = 0;
     c->gcount = 0;
     c->scount = 0;
     c->init_grav = NULL;
+    c->init_grav_out = NULL;
     c->extra_ghost = NULL;
     c->ghost_in = NULL;
     c->ghost_out = NULL;
@@ -188,7 +189,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->cooling = NULL;
     c->sourceterms = NULL;
     c->grav_long_range = NULL;
+    c->grav_down_in = NULL;
     c->grav_down = NULL;
+    c->grav_mesh = NULL;
     c->super = c;
     c->super_hydro = c;
     c->super_gravity = c;
@@ -196,6 +199,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->xparts = NULL;
     c->gparts = NULL;
     c->sparts = NULL;
+    c->do_sub_sort = 0;
+    c->do_grav_sub_drift = 0;
+    c->do_sub_drift = 0;
     if (s->gravity) bzero(c->multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
       if (c->sort[i] != NULL) {
@@ -237,7 +243,7 @@ void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const ticks tic = getticks();
-  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
@@ -413,9 +419,9 @@ void space_regrid(struct space *s, int verbose) {
           c->super = c;
           c->super_hydro = c;
           c->super_gravity = c;
-          c->ti_old_part = ti_old;
-          c->ti_old_gpart = ti_old;
-          c->ti_old_multipole = ti_old;
+          c->ti_old_part = ti_current;
+          c->ti_old_gpart = ti_current;
+          c->ti_old_multipole = ti_current;
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
 
@@ -513,7 +519,7 @@ void space_rebuild(struct space *s, int verbose) {
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   struct cell *restrict cells_top = s->cells_top;
-  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the particles and get their cell index. Allocates
      an index that is larger than the number of particles to avoid
@@ -905,9 +911,9 @@ void space_rebuild(struct space *s, int verbose) {
   struct spart *sfinger = s->sparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
-    c->ti_old_part = ti_old;
-    c->ti_old_gpart = ti_old;
-    c->ti_old_multipole = ti_old;
+    c->ti_old_part = ti_current;
+    c->ti_old_gpart = ti_current;
+    c->ti_old_multipole = ti_current;
     if (c->nodeID == engine_rank) {
       c->parts = finger;
       c->xparts = xfinger;
@@ -1725,6 +1731,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int count = c->count;
   const int gcount = c->gcount;
   const int scount = c->scount;
+  const int with_gravity = s->gravity;
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
@@ -1786,8 +1793,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   }
 
   /* Split or let it be? */
-  if (count > space_splitsize || gcount > space_splitsize ||
-      scount > space_splitsize) {
+  if ((with_gravity && gcount > space_splitsize) ||
+      (!with_gravity &&
+       (count > space_splitsize || scount > space_splitsize))) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -1816,13 +1824,15 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->split = 0;
       cp->h_max = 0.f;
       cp->dx_max_part = 0.f;
-      cp->dx_max_gpart = 0.f;
       cp->dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->super = NULL;
       cp->super_hydro = NULL;
       cp->super_gravity = NULL;
+      cp->do_sub_sort = 0;
+      cp->do_grav_sub_drift = 0;
+      cp->do_sub_drift = 0;
 #ifdef SWIFT_DEBUG_CHECKS
       cp->cellID = last_cell_id++;
 #endif
@@ -1878,22 +1888,53 @@ void space_split_recursive(struct space *s, struct cell *c,
       /* Reset everything */
       gravity_reset(c->multipole);
 
-      /* Compute CoM of all progenies */
+      /* Compute CoM and bulk velocity from all progenies */
       double CoM[3] = {0., 0., 0.};
+      double vel[3] = {0., 0., 0.};
+      float max_delta_vel[3] = {0.f, 0.f, 0.f};
+      float min_delta_vel[3] = {0.f, 0.f, 0.f};
       double mass = 0.;
 
       for (int k = 0; k < 8; ++k) {
         if (c->progeny[k] != NULL) {
           const struct gravity_tensors *m = c->progeny[k]->multipole;
+
+          mass += m->m_pole.M_000;
+
           CoM[0] += m->CoM[0] * m->m_pole.M_000;
           CoM[1] += m->CoM[1] * m->m_pole.M_000;
           CoM[2] += m->CoM[2] * m->m_pole.M_000;
-          mass += m->m_pole.M_000;
+
+          vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+          vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+          vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+
+          max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+          max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+          max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+
+          min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+          min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+          min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
         }
       }
-      c->multipole->CoM[0] = CoM[0] / mass;
-      c->multipole->CoM[1] = CoM[1] / mass;
-      c->multipole->CoM[2] = CoM[2] / mass;
+
+      /* Final operation on the CoM and bulk velocity */
+      const double inv_mass = 1. / mass;
+      c->multipole->CoM[0] = CoM[0] * inv_mass;
+      c->multipole->CoM[1] = CoM[1] * inv_mass;
+      c->multipole->CoM[2] = CoM[2] * inv_mass;
+      c->multipole->m_pole.vel[0] = vel[0] * inv_mass;
+      c->multipole->m_pole.vel[1] = vel[1] * inv_mass;
+      c->multipole->m_pole.vel[2] = vel[2] * inv_mass;
+
+      /* Min max velocity along each axis */
+      c->multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+      c->multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+      c->multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+      c->multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+      c->multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+      c->multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
 
       /* Now shift progeny multipoles and add them up */
       struct multipole temp;
@@ -1915,6 +1956,7 @@ void space_split_recursive(struct space *s, struct cell *c,
           r_max = max(r_max, cp->multipole->r_max + sqrt(r2));
         }
       }
+
       /* Alternative upper limit of max CoM<->gpart distance */
       const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
                             ? c->multipole->CoM[0] - c->loc[0]
@@ -1934,6 +1976,11 @@ void space_split_recursive(struct space *s, struct cell *c,
       c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
       c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
       c->multipole->CoM_rebuild[2] = c->multipole->CoM[2];
+
+      /* We know the first-order multipole (dipole) is 0. */
+      c->multipole->m_pole.M_100 = 0.f;
+      c->multipole->m_pole.M_010 = 0.f;
+      c->multipole->m_pole.M_001 = 0.f;
 
     } /* Deal with gravity */
   }   /* Split or let it be? */
@@ -1967,7 +2014,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       xparts[k].x_diff[2] = 0.f;
     }
 
-    /* gparts: Get dt_min/dt_max, reset x_diff. */
+    /* gparts: Get dt_min/dt_max. */
     for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (gparts[k].time_bin == time_bin_inhibited)
@@ -1975,9 +2022,6 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
       gravity_time_bin_min = min(gravity_time_bin_min, gparts[k].time_bin);
       gravity_time_bin_max = max(gravity_time_bin_max, gparts[k].time_bin);
-      gparts[k].x_diff[0] = 0.f;
-      gparts[k].x_diff[1] = 0.f;
-      gparts[k].x_diff[2] = 0.f;
     }
 
     /* sparts: Get dt_min/dt_max */
@@ -2749,10 +2793,13 @@ void space_init(struct space *s, struct swift_params *params,
                                space_subsize_self_grav_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
+  space_subdepth_grav = parser_get_opt_param_int(
+      params, "Scheduler:cell_subdepth_grav", space_subdepth_grav_default);
 
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
             space_splitsize);
+    message("subdepth_grav set to %d", space_subdepth_grav);
     message("sub_size_pair_hydro set to %d, sub_size_self_hydro set to %d",
             space_subsize_pair_hydro, space_subsize_self_hydro);
     message("sub_size_pair_grav set to %d, sub_size_self_grav set to %d",

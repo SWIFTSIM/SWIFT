@@ -264,7 +264,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->depth = c->depth + 1;
       temp->split = 0;
       temp->dx_max_part = 0.f;
-      temp->dx_max_gpart = 0.f;
       temp->dx_max_sort = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
@@ -302,7 +301,6 @@ int cell_pack_end_step(struct cell *restrict c,
   pcells[0].ti_gravity_end_min = c->ti_gravity_end_min;
   pcells[0].ti_gravity_end_max = c->ti_gravity_end_max;
   pcells[0].dx_max_part = c->dx_max_part;
-  pcells[0].dx_max_gpart = c->dx_max_gpart;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -339,7 +337,6 @@ int cell_unpack_end_step(struct cell *restrict c,
   c->ti_gravity_end_min = pcells[0].ti_gravity_end_min;
   c->ti_gravity_end_max = pcells[0].ti_gravity_end_max;
   c->dx_max_part = pcells[0].dx_max_part;
-  c->dx_max_gpart = pcells[0].dx_max_gpart;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -1406,12 +1403,20 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
   /* Set the do_sub_drifts all the way up and activate the super drift
      if this has not yet been done. */
   if (c == c->super_hydro) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->drift_part == NULL)
+      error("Trying to activate un-existing c->drift_part");
+#endif
     scheduler_activate(s, c->drift_part);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !parent->do_sub_drift; parent = parent->parent) {
       parent->do_sub_drift = 1;
       if (parent == c->super_hydro) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->drift_part == NULL)
+          error("Trying to activate un-existing parent->drift_part");
+#endif
         scheduler_activate(s, parent->drift_part);
         break;
       }
@@ -1433,6 +1438,10 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
   /* Set the do_grav_sub_drifts all the way up and activate the super drift
      if this has not yet been done. */
   if (c == c->super_gravity) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->drift_gpart == NULL)
+      error("Trying to activate un-existing c->drift_gpart");
+#endif
     scheduler_activate(s, c->drift_gpart);
   } else {
     for (struct cell *parent = c->parent;
@@ -1440,6 +1449,10 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
          parent = parent->parent) {
       parent->do_grav_sub_drift = 1;
       if (parent == c->super_gravity) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->drift_gpart == NULL)
+          error("Trying to activate un-existing parent->drift_gpart");
+#endif
         scheduler_activate(s, parent->drift_gpart);
         break;
       }
@@ -1453,6 +1466,9 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
 void cell_activate_sorts_up(struct cell *c, struct scheduler *s) {
 
   if (c == c->super_hydro) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->sorts == NULL) error("Trying to activate un-existing c->sorts");
+#endif
     scheduler_activate(s, c->sorts);
     if (c->nodeID == engine_rank) cell_activate_drift_part(c, s);
   } else {
@@ -1461,6 +1477,10 @@ void cell_activate_sorts_up(struct cell *c, struct scheduler *s) {
          parent != NULL && !parent->do_sub_sort; parent = parent->parent) {
       parent->do_sub_sort = 1;
       if (parent == c->super_hydro) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->sorts == NULL)
+          error("Trying to activate un-existing parents->sorts");
+#endif
         scheduler_activate(s, parent->sorts);
         if (parent->nodeID == engine_rank) cell_activate_drift_part(parent, s);
         break;
@@ -1522,7 +1542,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     if (ci->count == 0 || !cell_is_active_hydro(ci, e)) return;
 
     /* Recurse? */
-    if (cell_can_recurse_in_self_task(ci)) {
+    if (cell_can_recurse_in_self_hydro_task(ci)) {
 
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
@@ -1553,8 +1573,8 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     int sid = space_getsid(s->space, &ci, &cj, shift);
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_task(ci) &&
-        cell_can_recurse_in_pair_task(cj)) {
+    if (cell_can_recurse_in_pair_hydro_task(ci) &&
+        cell_can_recurse_in_pair_hydro_task(cj)) {
 
       /* Different types of flags. */
       switch (sid) {
@@ -1850,6 +1870,26 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
   } /* Otherwise, pair interation */
 }
 
+void cell_activate_grav_mm_task(struct cell *ci, struct cell *cj,
+                                struct scheduler *s) {
+  /* Some constants */
+  const struct engine *e = s->space->e;
+
+  /* Anything to do here? */
+  if (!cell_is_active_gravity(ci, e) && !cell_is_active_gravity(cj, e))
+    error("Inactive MM task being activated");
+
+  /* Atomically drift the multipole in ci */
+  lock_lock(&ci->mlock);
+  if (ci->ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
+  if (lock_unlock(&ci->mlock) != 0) error("Impossible to unlock m-pole");
+
+  /* Atomically drift the multipole in cj */
+  lock_lock(&cj->mlock);
+  if (cj->ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
+  if (lock_unlock(&cj->mlock) != 0) error("Impossible to unlock m-pole");
+}
+
 /**
  * @brief Traverse a sub-cell task and activate the gravity drift tasks that
  * are required by a self gravity task.
@@ -1863,9 +1903,6 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
   /* Some constants */
   const struct space *sp = s->space;
   const struct engine *e = sp->e;
-  const int periodic = sp->periodic;
-  const double dim[3] = {sp->dim[0], sp->dim[1], sp->dim[2]};
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
 
   /* Self interaction? */
   if (cj == NULL) {
@@ -1911,27 +1948,8 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     if (cj->ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
     if (lock_unlock(&cj->mlock) != 0) error("Impossible to unlock m-pole");
 
-    /* Recover the multipole information */
-    struct gravity_tensors *const multi_i = ci->multipole;
-    struct gravity_tensors *const multi_j = cj->multipole;
-    const double ri_max = multi_i->r_max;
-    const double rj_max = multi_j->r_max;
-
-    /* Get the distance between the CoMs */
-    double dx = multi_i->CoM[0] - multi_j->CoM[0];
-    double dy = multi_i->CoM[1] - multi_j->CoM[1];
-    double dz = multi_i->CoM[2] - multi_j->CoM[2];
-
-    /* Apply BC */
-    if (periodic) {
-      dx = nearest(dx, dim[0]);
-      dy = nearest(dy, dim[1]);
-      dz = nearest(dz, dim[2]);
-    }
-    const double r2 = dx * dx + dy * dy + dz * dz;
-
     /* Can we use multipoles ? */
-    if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) {
+    if (cell_can_use_pair_mm(ci, cj, e, sp)) {
 
       /* Ok, no need to drift anything */
       return;
@@ -1947,6 +1965,12 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     }
     /* Ok, we can still recurse */
     else {
+
+      /* Recover the multipole information */
+      struct gravity_tensors *const multi_i = ci->multipole;
+      struct gravity_tensors *const multi_j = cj->multipole;
+      const double ri_max = multi_i->r_max;
+      const double rj_max = multi_j->r_max;
 
       if (ri_max > rj_max) {
         if (ci->split) {
@@ -2216,22 +2240,26 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
     const int ci_active = cell_is_active_gravity(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_gravity(cj, e) : 0;
 
     /* Only activate tasks that involve a local active cell. */
-    if ((ci_active && ci->nodeID == nodeID) ||
-        (cj_active && cj->nodeID == nodeID)) {
+    if ((ci_active && ci_nodeID == nodeID) ||
+        (cj_active && cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
 
       /* Set the drifting flags */
       if (t->type == task_type_self &&
           t->subtype == task_subtype_external_grav) {
-        cell_activate_subcell_external_grav_tasks(t->ci, s);
+        cell_activate_subcell_external_grav_tasks(ci, s);
       } else if (t->type == task_type_self && t->subtype == task_subtype_grav) {
-        cell_activate_subcell_grav_tasks(t->ci, NULL, s);
+        cell_activate_subcell_grav_tasks(ci, NULL, s);
       } else if (t->type == task_type_pair) {
-        cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
+        cell_activate_subcell_grav_tasks(ci, cj, s);
+      } else if (t->type == task_type_grav_mm) {
+        cell_activate_grav_mm_task(ci, cj, s);
       }
     }
 
@@ -2239,7 +2267,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
-      if (ci->nodeID != nodeID) {
+      if (ci_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
@@ -2252,7 +2280,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
-          scheduler_activate_send(s, cj->send_grav, ci->nodeID);
+          scheduler_activate_send(s, cj->send_grav, ci_nodeID);
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
@@ -2261,9 +2289,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (cj_active) scheduler_activate_send(s, cj->send_ti, ci->nodeID);
+        if (cj_active) scheduler_activate_send(s, cj->send_ti, ci_nodeID);
 
-      } else if (cj->nodeID != nodeID) {
+      } else if (cj_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
@@ -2276,7 +2304,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
 
-          scheduler_activate_send(s, ci->send_grav, cj->nodeID);
+          scheduler_activate_send(s, ci->send_grav, cj_nodeID);
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
@@ -2285,7 +2313,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (ci_active) scheduler_activate_send(s, ci->send_ti, cj->nodeID);
+        if (ci_active) scheduler_activate_send(s, ci->send_ti, cj_nodeID);
       }
 #endif
     }
@@ -2295,11 +2323,13 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
   if (c->nodeID == nodeID && cell_is_active_gravity(c, e)) {
 
     if (c->init_grav != NULL) scheduler_activate(s, c->init_grav);
+    if (c->init_grav_out != NULL) scheduler_activate(s, c->init_grav_out);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->end_force != NULL) scheduler_activate(s, c->end_force);
     if (c->grav_down != NULL) scheduler_activate(s, c->grav_down);
+    if (c->grav_down_in != NULL) scheduler_activate(s, c->grav_down_in);
     if (c->grav_mesh != NULL) scheduler_activate(s, c->grav_mesh);
     if (c->grav_long_range != NULL) scheduler_activate(s, c->grav_long_range);
   }
@@ -2384,10 +2414,16 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
+
+    /* Super-pointer for hydro */
     if (e->policy & engine_policy_hydro) cell_set_super_hydro(c, NULL);
-    if (e->policy &
-        (engine_policy_self_gravity | engine_policy_external_gravity))
+
+    /* Super-pointer for gravity */
+    if ((e->policy & engine_policy_self_gravity) ||
+        (e->policy & engine_policy_external_gravity))
       cell_set_super_gravity(c, NULL);
+
+    /* Super-pointer for common operations */
     cell_set_super(c, NULL);
   }
 }
@@ -2570,8 +2606,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   struct gpart *const gparts = c->gparts;
   struct spart *const sparts = c->sparts;
 
-  float dx_max = 0.f, dx2_max = 0.f;
-
   /* Drift irrespective of cell flags? */
   force |= c->do_grav_drift;
 
@@ -2593,14 +2627,8 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
         /* Recurse */
         cell_drift_gpart(cp, e, force);
-
-        /* Update */
-        dx_max = max(dx_max, cp->dx_max_gpart);
       }
     }
-
-    /* Store the values */
-    c->dx_max_gpart = dx_max;
 
     /* Update the time of the last drift */
     c->ti_old_gpart = ti_current;
@@ -2625,12 +2653,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       /* Drift... */
       drift_gpart(gp, dt_drift, ti_old_gpart, ti_current);
 
-      /* Compute (square of) motion since last cell construction */
-      const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
-                        gp->x_diff[1] * gp->x_diff[1] +
-                        gp->x_diff[2] * gp->x_diff[2];
-      dx2_max = max(dx2_max, dx2);
-
       /* Init gravity force fields. */
       if (gpart_is_active(gp, e)) {
         gravity_init_gpart(gp);
@@ -2649,12 +2671,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Note: no need to compute dx_max as all spart have a gpart */
     }
-
-    /* Now, get the maximal particle motion from its square */
-    dx_max = sqrtf(dx2_max);
-
-    /* Store the values */
-    c->dx_max_gpart = dx_max;
 
     /* Update the time of the last drift */
     c->ti_old_gpart = ti_current;
@@ -2690,8 +2706,7 @@ void cell_drift_all_multipoles(struct cell *c, const struct engine *e) {
     dt_drift = (ti_current - ti_old_multipole) * e->time_base;
 
   /* Drift the multipole */
-  if (ti_current > ti_old_multipole)
-    gravity_drift(c->multipole, dt_drift, c->dx_max_gpart);
+  if (ti_current > ti_old_multipole) gravity_drift(c->multipole, dt_drift);
 
   /* Are we not in a leaf ? */
   if (c->split) {
@@ -2732,8 +2747,7 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
   else
     dt_drift = (ti_current - ti_old_multipole) * e->time_base;
 
-  if (ti_current > ti_old_multipole)
-    gravity_drift(c->multipole, dt_drift, c->dx_max_gpart);
+  if (ti_current > ti_old_multipole) gravity_drift(c->multipole, dt_drift);
 
   /* Update the time of the last drift */
   c->ti_old_multipole = ti_current;
@@ -2761,4 +2775,39 @@ void cell_check_timesteps(struct cell *c) {
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
+}
+
+/**
+ * @brief Can we use the MM interactions fo a given pair of cells?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param e The #engine.
+ * @param s The #space.
+ */
+int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
+                         const struct engine *e, const struct space *s) {
+
+  const double theta_crit2 = e->gravity_properties->theta_crit2;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+
+  /* Recover the multipole information */
+  const struct gravity_tensors *const multi_i = ci->multipole;
+  const struct gravity_tensors *const multi_j = cj->multipole;
+
+  /* Get the distance between the CoMs */
+  double dx = multi_i->CoM[0] - multi_j->CoM[0];
+  double dy = multi_i->CoM[1] - multi_j->CoM[1];
+  double dz = multi_i->CoM[2] - multi_j->CoM[2];
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+  const double r2 = dx * dx + dy * dy + dz * dz;
+
+  return gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2);
 }

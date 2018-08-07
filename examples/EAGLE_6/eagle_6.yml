@@ -1,10 +1,20 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.989e43      # 10^10 M_sun in grams
-  UnitLength_in_cgs:   3.085678e24   # Mpc in centimeters
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
   UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
+
+# Structure finding options
+StructureFinding:
+  config_file_name:     stf_input.cfg # Name of the STF config file.
+  basename:             ./stf         # Common part of the name of output files.
+  output_time_format:   0             # Specifies the frequency format of structure finding. 0 for simulation steps (delta_step) and 1 for simulation time intervals (delta_time).
+  scale_factor_first:   0.92          # Scale-factor of the first snaphot (cosmological run)
+  time_first:           0.01        # Time of the first structure finding output (in internal units).
+  delta_step:           1000          # Time difference between consecutive structure finding outputs (in internal units) in simulation steps.
+  delta_time:           1.10          # Time difference between consecutive structure finding outputs (in internal units) in simulation time intervals.
 
 # Cosmological parameters
 Cosmology:
@@ -17,7 +27,6 @@ Cosmology:
   
 Scheduler:
   max_top_level_cells:    8
-  cell_split_size:        50
   
 # Parameters governing the time integration
 TimeIntegration:
@@ -29,9 +38,9 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   basename:            eagle # Common part of the name of output files
-  scale_factor_first:  0.92  # Scale-factor of the first snaphot (cosmological run)
+  scale_factor_first:  0.91  # Scale-factor of the first snaphot (cosmological run)
   time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
-  delta_time:          1.10  # Time difference between consecutive outputs (in internal units)
+  delta_time:          1.01  # Time difference between consecutive outputs (in internal units)
   compression:         1
 
 # Parameters governing the conserved quantities statistics

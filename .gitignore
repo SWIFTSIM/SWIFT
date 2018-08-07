@@ -42,6 +42,11 @@ examples/*/*/*.hdf5
 examples/*/snapshots*
 examples/*/restart/*
 examples/*/*/used_parameters.yml
+examples/*/err_file*
+examples/*/out_file*
+examples/*/stf_output*
+examples/*/stf_ouput*
+examples/*/log*
 examples/*/*/unused_parameters.yml
 examples/*/*.mpg
 examples/*/gravity_checks_*.dat

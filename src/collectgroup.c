@@ -88,6 +88,7 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
   e->updates = grp1->updates;
   e->g_updates = grp1->g_updates;
   e->s_updates = grp1->s_updates;
+  e->forcerebuild = grp1->forcerebuild;
 }
 
 /**

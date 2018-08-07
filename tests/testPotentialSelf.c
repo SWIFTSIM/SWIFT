@@ -184,13 +184,15 @@ int main(int argc, char *argv[]) {
 
     const double epsilon = gravity_get_softening(gp, &props);
 
+#if defined(POTENTIAL_GRAVITY)
     double pot_true = potential(c.gparts[0].mass, gp->x[0], epsilon, rlr);
+    check_value(gp->potential, pot_true, "potential");
+#endif
+
     double acc_true = acceleration(c.gparts[0].mass, gp->x[0], epsilon, rlr);
+    check_value(gp->a_grav[0], acc_true, "acceleration");
 
     // message("x=%e f=%e f_true=%e", gp->x[0], gp->a_grav[0], acc_true);
-
-    check_value(gp->potential, pot_true, "potential");
-    check_value(gp->a_grav[0], acc_true, "acceleration");
   }
 
   free(c.gparts);

@@ -148,9 +148,6 @@ struct pcell_step {
 
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
-
-  /*! Maximal distance any #gpart has travelled since last rebuild */
-  float dx_max_gpart;
 };
 
 /**
@@ -225,6 +222,9 @@ struct cell {
   /*! The multipole initialistation task */
   struct task *init_grav;
 
+  /*! Implicit task for the gravity initialisation */
+  struct task *init_grav_out;
+
   /*! Dependency implicit task for the ghost  (in->ghost->out)*/
   struct task *ghost_in;
 
@@ -257,6 +257,9 @@ struct cell {
 
   /*! Task computing long range non-periodic gravity interactions */
   struct task *grav_long_range;
+
+  /*! Implicit task for the down propagation */
+  struct task *grav_down_in;
 
   /*! Task propagating the mesh forces to the particles */
   struct task *grav_mesh;
@@ -352,9 +355,6 @@ struct cell {
 
   /*! Maximum part movement in this cell since last construction. */
   float dx_max_part;
-
-  /*! Maximum gpart movement in this cell since last construction. */
-  float dx_max_gpart;
 
   /*! Nr of #part in this cell. */
   int count;
@@ -521,6 +521,8 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 int cell_has_tasks(struct cell *c);
+int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
+                         const struct engine *e, const struct space *s);
 
 /* Inlined functions (for speed). */
 
@@ -530,8 +532,8 @@ int cell_has_tasks(struct cell *c);
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_can_recurse_in_pair_task(
-    const struct cell *c) {
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
@@ -547,20 +549,20 @@ __attribute__((always_inline)) INLINE static int cell_can_recurse_in_pair_task(
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_can_recurse_in_self_task(
-    const struct cell *c) {
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->h_max_old < 0.5f * c->dmin);
 }
 
 /**
- * @brief Can a pair task associated with a cell be split into smaller
+ * @brief Can a pair hydro task associated with a cell be split into smaller
  * sub-tasks.
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_can_split_pair_task(
+__attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
     const struct cell *c) {
 
   /* Is the cell split ? */
@@ -572,18 +574,46 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_task(
 }
 
 /**
- * @brief Can a self task associated with a cell be split into smaller
+ * @brief Can a self hydro task associated with a cell be split into smaller
  * sub-tasks.
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_can_split_self_task(
+__attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
     const struct cell *c) {
 
   /* Is the cell split ? */
+  /* If so, is the cut-off radius with some leeway smaller than */
+  /* the sub-cell sizes ? */
   /* Note: No need for more checks here as all the sub-pairs and sub-self */
   /* tasks will be created. So no need to check for h_max */
   return c->split && (space_stretch * kernel_gamma * c->h_max < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a pair gravity task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_split_pair_gravity_task(const struct cell *c) {
+
+  /* Is the cell split ? */
+  return c->split && c->depth < space_subdepth_grav;
+}
+
+/**
+ * @brief Can a self gravity task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_split_self_gravity_task(const struct cell *c) {
+
+  /* Is the cell split ? */
+  return c->split && c->depth < space_subdepth_grav;
 }
 
 /**

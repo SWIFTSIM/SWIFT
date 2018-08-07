@@ -49,7 +49,11 @@ int main(int argc, char *argv[]) {
       parser_get_param_double(&param_file, "Simulation:start_time");
   const int kernel = parser_get_param_int(&param_file, "kernel");
 
-  const int optional =
+  const int optional1 =
+      parser_get_opt_param_int(&param_file, "Simulation:optional", 1);
+
+  /* Check if we can read it again */
+  const int optional2 =
       parser_get_opt_param_int(&param_file, "Simulation:optional", 1);
 
   /* Optional things not mentioned in parameter file. Should be in output
@@ -58,6 +62,9 @@ int main(int argc, char *argv[]) {
   parser_get_opt_param_int(&param_file, "Virtual:param2", 2);
   parser_get_opt_param_int(&param_file, "Virtual:param3", 3);
   parser_get_opt_param_int(&param_file, "Virtual:param4", 4);
+
+  /* Check if we can read it again */
+  parser_get_opt_param_int(&param_file, "Virtual:param1", 1);
 
   char ic_file[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(&param_file, "IO:ic_file", ic_file);
@@ -75,7 +82,10 @@ int main(int argc, char *argv[]) {
   parser_get_param_double_array(&param_file, "Box:dsides", 3, dsides);
 
   int optsides[5] = {1, 2, 3, 4, 5};
-  int haveopt =
+  int haveopt1 =
+      parser_get_opt_param_int_array(&param_file, "Box:moresides", 5, optsides);
+  /* Check if we can read it again */
+  int haveopt2 =
       parser_get_opt_param_int_array(&param_file, "Box:moresides", 5, optsides);
 
   char **var_result;
@@ -101,7 +111,11 @@ int main(int argc, char *argv[]) {
 
   const char *optwords[4] = {"Word1", "Word2", "Word3", "Word4"};
   int noptwords = 4;
-  int haveoptwords = parser_get_opt_param_string_array(
+  int haveoptwords1 = parser_get_opt_param_string_array(
+      &param_file, "Simulation:optwords", &nvar_result, &var_result, noptwords,
+      optwords);
+  /* Check if we can read it again */
+  int haveoptwords2 = parser_get_opt_param_string_array(
       &param_file, "Simulation:optwords", &nvar_result, &var_result, noptwords,
       optwords);
   printf("\nList from Simulation:optwords parameter (%d of %d)\n", nvar_result,
@@ -137,7 +151,7 @@ int main(int argc, char *argv[]) {
       "no_of_threads: %d, no_of_time_steps: %d, max_h: %f, start_time: %lf,"
       " ic_file: %s, kernel: %d optional: %d\n",
       no_of_threads, no_of_time_steps, max_h, start_time, ic_file, kernel,
-      optional);
+      optional1);
   printf("Box: [%d, %d, %d]\n", isides[0], isides[1], isides[2]);
 
   /* Print the contents of the structure to a file in YAML format. */
@@ -150,7 +164,8 @@ int main(int argc, char *argv[]) {
   assert(fabs(start_time - 1.23456789) < 0.00001);
   assert(strcmp(ic_file, "ic_file.ini") == 0); /*strcmp returns 0 if correct.*/
   assert(kernel == 4);
-  assert(optional == 1);
+  assert(optional1 == 1);
+  assert(optional2 == 1);
 
   assert(csides[0] == 'a');
   assert(csides[1] == 'b');
@@ -168,14 +183,16 @@ int main(int argc, char *argv[]) {
   assert(dsides[1] == 3.0);
   assert(dsides[2] == 4.0);
 
-  assert(haveopt == 0);
+  assert(haveopt1 == 0);
+  assert(haveopt2 == 1);
   assert(optsides[0] == 1);
   assert(optsides[1] == 2);
   assert(optsides[2] == 3);
   assert(optsides[3] == 4);
   assert(optsides[4] == 5);
 
-  assert(haveoptwords == 0);
+  assert(haveoptwords1 == 0);
+  assert(haveoptwords2 == 1);
 
   return 0;
 }

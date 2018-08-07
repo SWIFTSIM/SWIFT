@@ -62,7 +62,14 @@
 #error "Invalid choice of SPH variant"
 #endif
 
+/* Import the right gravity definition */
+#if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_debug.h"
+#elif defined(POTENTIAL_GRAVITY)
+#include "./gravity/Potential/gravity_debug.h"
+#else
+#error "Invalid choice of gravity variant"
+#endif
 
 /**
  * @brief Looks for the particle with the given id and prints its information to

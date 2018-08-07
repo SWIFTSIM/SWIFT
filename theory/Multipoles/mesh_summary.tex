@@ -97,3 +97,21 @@ The truncation function in Fourier space reads
 \caption{cc}
 \label{fig:fmm:potential_long}
 \end{figure}
+
+
+\subsubsection{Normalisation of the potential}
+
+The gravitational potential computed by the combination of the mesh
+and multipole method needs to be corrected to obtain the zero point of
+the peculiar potential. Learning from the Ewald summation technique
+(see Sec.~\ref{ssec:exact_forces}), we notice that of the three terms
+entering the calculation of the potential with periodic boundary
+conditions (see Eq. 2.11 of \cite{Hernquist1991}), the last two are
+computed by the mesh and tree respectively. The only reamining term is
+the constant
+\begin{equation}
+  \frac{4\pi r_s^2}{L^3}\sum_a m_a,
+\end{equation}
+where the sum runs over all particles and $L$ is the comoving
+side-length of the simulation volume. This constant is added to the
+potential of all the particles in the simulation.

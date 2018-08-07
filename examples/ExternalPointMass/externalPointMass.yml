@@ -1,7 +1,7 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e33    # M_sun
-  UnitLength_in_cgs:   3.0856776e21  # kpc
+  UnitLength_in_cgs:   3.08567758e21 # kpc
   UnitVelocity_in_cgs: 1e5           # km/s
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
