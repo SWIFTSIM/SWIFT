@@ -203,29 +203,31 @@ void outputlist_init(struct outputlist **list, const struct engine *e,
   sprintf(param_name, "%s:output_list_on", name);
   int outputlist_on = parser_get_opt_param_int(params, param_name, 0);
 
+  /* Check if read outputlist */
+  if (!outputlist_on)
+    return;
+
   /* Read outputlist for snapshots */
-  if (outputlist_on) {
-    *list = (struct outputlist *)malloc(sizeof(struct outputlist));
+  *list = (struct outputlist *)malloc(sizeof(struct outputlist));
 
-    /* Read filename */
-    char filename[PARSER_MAX_LINE_SIZE];
-    sprintf(param_name, "%s:output_list", name);
-    parser_get_param_string(params, param_name, filename);
+  /* Read filename */
+  char filename[PARSER_MAX_LINE_SIZE];
+  sprintf(param_name, "%s:output_list", name);
+  parser_get_param_string(params, param_name, filename);
 
-    message("Reading %s output file.", name);
-    outputlist_read_file(*list, filename, cosmo);
+  message("Reading %s output file.", name);
+  outputlist_read_file(*list, filename, cosmo);
+    
+  if ((*list)->size < 2)
+    error("You need to provide more snapshots in '%s'", filename);
 
-    if ((*list)->size < 2)
-      error("You need to provide more snapshots in '%s'", filename);
-
-    /* Set data for later checks */
-    if (cosmo) {
-      *delta_time = (*list)->times[1] / (*list)->times[0];
-      *time_first = (*list)->times[0];
-    } else {
-      *delta_time = (*list)->times[1] - (*list)->times[0];
-      *time_first = (*list)->times[0];
-    }
+  /* Set data for later checks */
+  if (cosmo) {
+    *delta_time = (*list)->times[1] / (*list)->times[0];
+    *time_first = (*list)->times[0];
+  } else {
+    *delta_time = (*list)->times[1] - (*list)->times[0];
+    *time_first = (*list)->times[0];
   }
 }
 

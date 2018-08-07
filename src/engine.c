@@ -5766,9 +5766,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_opt_param_double(params, "Snapshots:time_first", 0.);
   e->delta_time_snapshot =
       parser_get_param_double(params, "Snapshots:delta_time");
-  e->outputlist_snapshots = NULL;
-  e->outputlist_stats = NULL;
-  e->outputlist_stf = NULL;
   e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
@@ -5908,6 +5905,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
       error(
           "Invalid flag (%d) set for output time format of structure finding.",
           e->stf_output_freq_format);
+
+    /* overwrite input if outputlist */
+    if (e->outputlist_stf)
+      e->stf_output_freq_format = TIME;
   }
 
   /* Get the number of queues */
@@ -6634,33 +6635,42 @@ void engine_compute_next_stf_time(struct engine *e) {
 void engine_init_outputlists(struct engine *e, struct swift_params *params) {
   /* Deal with snapshots */
   double snaps_time_first;
+  e->outputlist_snapshots = NULL;
   outputlist_init(&e->outputlist_snapshots, e, "Snapshots",
-                  &e->delta_time_snapshot, &snaps_time_first);
+		  &e->delta_time_snapshot, &snaps_time_first);
 
-  if (e->policy & engine_policy_cosmology)
-    e->a_first_snapshot = snaps_time_first;
-  else
-    e->time_first_snapshot = snaps_time_first;
+  if (e->outputlist_snapshots) {
+    if (e->policy & engine_policy_cosmology)
+      e->a_first_snapshot = snaps_time_first;
+    else
+      e->time_first_snapshot = snaps_time_first;
+  }
 
   /* Deal with stats */
   double stats_time_first;
+  e->outputlist_stats = NULL;
   outputlist_init(&e->outputlist_stats, e, "Statistics",
-                  &e->delta_time_statistics, &stats_time_first);
+		  &e->delta_time_statistics, &stats_time_first);
 
-  if (e->policy & engine_policy_cosmology)
-    e->a_first_statistics = stats_time_first;
-  else
-    e->time_first_statistics = stats_time_first;
+  if (e->outputlist_stats) {
+    if (e->policy & engine_policy_cosmology)
+      e->a_first_statistics = stats_time_first;
+    else
+      e->time_first_statistics = stats_time_first;
+  }
 
   /* Deal with stf */
   double stf_time_first;
+  e->outputlist_stf = NULL;
   outputlist_init(&e->outputlist_stf, e, "StructureFinding", &e->deltaTimeSTF,
                   &stf_time_first);
 
-  if (e->policy & engine_policy_cosmology)
-    e->a_first_stf = stf_time_first;
-  else
-    e->timeFirstSTFOutput = stats_time_first;
+  if (e->outputlist_stf) {
+    if (e->policy & engine_policy_cosmology)
+      e->a_first_stf = stf_time_first;
+    else
+      e->timeFirstSTFOutput = stats_time_first;
+  }
 }
 
 /**
