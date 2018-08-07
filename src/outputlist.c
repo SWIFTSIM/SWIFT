@@ -63,7 +63,7 @@ void outputlist_read_file(struct outputlist *outputlist, const char *filename,
   outputlist->times = (double *)malloc(sizeof(double) * nber_line);
   if (!outputlist->times)
     error(
-        "Unable to malloc outputlist time array. "
+        "Unable to malloc outputlist. "
         "Try reducing the number of lines in %s",
         filename);
 
@@ -114,6 +114,9 @@ void outputlist_read_file(struct outputlist *outputlist, const char *filename,
     ind += 1;
   }
 
+  /* set current indice to 0 */
+  outputlist->cur_ind = 0;
+
   fclose(file);
 }
 
@@ -126,7 +129,7 @@ void outputlist_read_file(struct outputlist *outputlist, const char *filename,
  * @param name The name of the output (e.g. 'stats', 'snapshots', 'stf')
  * @param ti_next updated to the next output time
  */
-void outputlist_read_next_time(const struct outputlist *t, const struct engine *e, const char* name, integertime_t *ti_next) {
+void outputlist_read_next_time(struct outputlist *t, const struct engine *e, const char* name, integertime_t *ti_next) {
   int is_cosmo = e->policy & engine_policy_cosmology;
 
   /* Find upper-bound on last output */
@@ -137,8 +140,8 @@ void outputlist_read_next_time(const struct outputlist *t, const struct engine *
     time_end = e->time_end;
 
   /* Find next snasphot above current time */
-  double time = t->times[0];
-  size_t ind = 0;
+  double time = t->times[t->cur_ind];
+  size_t ind = t->cur_ind;
   while (time < time_end) {
 
     /* Output time on the integer timeline */
@@ -154,6 +157,7 @@ void outputlist_read_next_time(const struct outputlist *t, const struct engine *
     if (ind == t->size) break;
 
     time = t->times[ind];
+    t->cur_ind = ind;
   }
 
   /* Deal with last statistics */
@@ -231,7 +235,10 @@ void outputlist_print(const struct outputlist *outputlist) {
   printf("/*\t Time Array\t */\n");
   printf("Number of Line: %lu\n", outputlist->size);
   for (size_t ind = 0; ind < outputlist->size; ind++) {
-    printf("\t%lf\n", outputlist->times[ind]);
+    if (ind == outputlist->cur_ind)
+      printf("\t%lf <-- Current\n", outputlist->times[ind]);
+    else
+      printf("\t%lf\n", outputlist->times[ind]);
   }
 }
 

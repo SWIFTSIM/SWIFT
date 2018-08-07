@@ -27,20 +27,34 @@
 
 struct engine;
 
-enum OUTPUTLIST_TYPE {
+/**
+ * @brief the different outputlist type
+ */
+enum output_list_type {
   OUTPUTLIST_AGE,
   OUTPUTLIST_REDSHIFT,
   OUTPUTLIST_SCALE_FACTOR,
 };
 
+
+/**
+ * @brief the array containing the output times
+ */
 struct outputlist {
+
+  /* Time array */
   double *times;
+
+  /* Size of the time array */
   size_t size;
+
+  /* Current index */
+  size_t cur_ind;
 };
 
 void outputlist_read_file(struct outputlist *outputlist, const char *filename,
                           struct cosmology *cosmo);
-void outputlist_read_next_time(const struct outputlist *t, const struct engine *e, const char* name, integertime_t *ti_next);
+void outputlist_read_next_time(struct outputlist *t, const struct engine *e, const char* name, integertime_t *ti_next);
 void outputlist_init(struct outputlist **list, const struct engine *e,
 		     char* name, double *delta_time, double *time_first);
 void outputlist_print(const struct outputlist *outputlist);
