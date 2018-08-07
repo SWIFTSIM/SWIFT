@@ -114,7 +114,7 @@ struct cell *make_cell(size_t n, size_t n_star, double *offset, double size, dou
   }
 
   /* Construct the sparts */
-  if (posix_memalign((void **)&cell->sparts, part_align,
+  if (posix_memalign((void **)&cell->sparts, spart_align,
                      scount * sizeof(struct spart)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)scount);
   }
@@ -150,7 +150,6 @@ struct cell *make_cell(size_t n, size_t n_star, double *offset, double size, dou
 	spart->ti_drift = 8;
 	spart->ti_kick = 8;
 #endif
-
 	++spart;
       }
     }
@@ -401,13 +400,14 @@ int main(int argc, char *argv[]) {
   struct cell *cells[27];
   struct cell *main_cell;
   static long long partId = 0;
-  long long spartId = particles * particles * particles * 27 ;
+  long long spartId = particles * particles * particles * 27;
+
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 3; ++k) {
         double offset[3] = {i * size, j * size, k * size};
         cells[i * 9 + j * 3 + k] =
-	  make_cell(particles, sparticles, offset, size, h, &partId, &spartId + 1, perturbation, h_pert);
+	  make_cell(particles, sparticles, offset, size, h, &partId, &spartId, perturbation, h_pert);
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 

@@ -369,7 +369,6 @@ void pairs_all_star_density(struct runner *r, struct cell *ci, struct cell *cj) 
 
       /* Hit or miss? */
       if (r2 < hig2) {
-
         /* Interact */
         runner_iact_nonsym_star_density(r2, dx, hi, pj->h, spi, pj, a, H);
       }
@@ -400,7 +399,6 @@ void pairs_all_star_density(struct runner *r, struct cell *ci, struct cell *cj) 
 
       /* Hit or miss? */
       if (r2 < hjg2) {
-
         /* Interact */
         runner_iact_nonsym_star_density(r2, dx, hj, pi->h, spj, pi, a, H);
       }
@@ -502,7 +500,7 @@ void self_all_force(struct runner *r, struct cell *ci) {
 }
 
 void self_all_star_density(struct runner *r, struct cell *ci) {
-  float r2, hi, hj, hig2, dxi[3];  //, dxj[3];
+  float r2, hi, hj, hig2, dxi[3];
   struct spart *spi;
   struct part *pj;
   const struct engine *e = r->e;
@@ -534,7 +532,6 @@ void self_all_star_density(struct runner *r, struct cell *ci) {
 
       /* Hit or miss? */
       if (r2 > 0.f && r2 < hig2) {
-
         /* Interact */
         runner_iact_nonsym_star_density(r2, dxi, hi, hj, spi, pj, a, H);
       }

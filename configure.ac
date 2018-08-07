@@ -1038,6 +1038,25 @@ case "$with_hydro" in
    ;;
 esac
 
+# Check if debugging interactions stars is switched on.
+AC_ARG_ENABLE([debug-interactions-stars],
+   [AS_HELP_STRING([--enable-debug-interactions-stars],
+     [Activate interaction debugging for stars, logging a maximum of @<:@N@:>@ neighbours. Defaults to 256 if no value set.]
+   )],
+   [enable_debug_interactions_stars="$enableval"],
+   [enable_debug_interactions_stars="no"]
+)
+if test "$enable_debug_interactions_stars" != "no"; then
+    AC_DEFINE([DEBUG_INTERACTIONS_STARS],1,[Enable interaction debugging for stars])
+    if test "$enable_debug_interactions_stars" == "yes"; then
+      AC_DEFINE([MAX_NUM_OF_NEIGHBOURS_STARS],256,[The maximum number of particle neighbours to be logged for stars])
+      [enable_debug_interactions_stars="yes (Logging up to 256 neighbours)"]
+    else
+      AC_DEFINE_UNQUOTED([MAX_NUM_OF_NEIGHBOURS_STARS], [$enableval] ,[The maximum number of particle neighbours to be logged for stars])
+      [enable_debug_interactions_stars="yes (Logging up to $enableval neighbours)"]
+    fi
+fi
+
 # Check if debugging interactions is switched on.
 AC_ARG_ENABLE([debug-interactions],
    [AS_HELP_STRING([--enable-debug-interactions],
@@ -1060,6 +1079,7 @@ if test "$enable_debug_interactions" != "no"; then
     [enable_debug_interactions="no (only available for gadget2 hydro scheme)"]
   fi
 fi
+
 
 # SPH Kernel function
 AC_ARG_WITH([kernel],

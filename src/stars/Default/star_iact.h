@@ -27,11 +27,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_star_densit
 
   /* Compute contribution to the number of neighbours */
   si->wcount += wi;
-  si->wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+  si->wcount_dh -= (hydro_dimension * wi + ui * wi_dx);    
 
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
-  if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
+  if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS_STARS)
     si->ids_ngbs_density[si->num_ngb_density] = pj->id;
   ++si->num_ngb_density;
 #endif

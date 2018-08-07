@@ -156,7 +156,7 @@ void runner_dosubpair_star_density(struct runner *r, struct cell *restrict ci,
 #endif
 
       if (r2 < hig2)
-	runner_iact_nonsym_star_density(r2, dx, hj, hi, si, pj, a, H);
+	runner_iact_nonsym_star_density(r2, dx, hi, hj, si, pj, a, H);
 
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
