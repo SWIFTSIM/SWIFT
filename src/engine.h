@@ -214,8 +214,9 @@ struct engine {
   double a_first_snapshot;
   double time_first_snapshot;
   double delta_time_snapshot;
+
+  /* Outputlist for the snapshots */
   struct outputlist *outputlist_snapshots;
-  struct outputlist *outputlist_stats;
 
   /* Integer time of the next snapshot */
   integertime_t ti_next_snapshot;
@@ -233,6 +234,9 @@ struct engine {
   double deltaTimeSTF;
   int deltaStepSTF;
 
+  /* Outputlist for the structure finding */
+  struct outputlist *outputlist_stf;
+
   /* Integer time of the next stf output */
   integertime_t ti_nextSTF;
 
@@ -243,6 +247,9 @@ struct engine {
   double time_first_statistics;
   double delta_time_statistics;
 
+  /* Outputlist for the stats */
+  struct outputlist *outputlist_stats;
+  
   /* Integer time of the next statistics dump */
   integertime_t ti_next_stats;
 

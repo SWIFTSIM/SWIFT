@@ -5768,6 +5768,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_param_double(params, "Snapshots:delta_time");
   e->outputlist_snapshots = NULL;
   e->outputlist_stats = NULL;
+  e->outputlist_stf = NULL;
   e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
@@ -6571,6 +6572,12 @@ void engine_compute_next_statistics_time(struct engine *e) {
  * @param e The #engine.
  */
 void engine_compute_next_stf_time(struct engine *e) {
+  /* Do outputlist file case */
+  if (e->outputlist_stf) {
+    outputlist_read_next_time(e->outputlist_stf, e,
+			      "stf", &e->ti_nextSTF);
+    return;
+  }
 
   /* Find upper-bound on last output */
   double time_end;
@@ -6646,7 +6653,17 @@ void engine_init_outputlists(struct engine *e, struct swift_params *params) {
     e->a_first_statistics = stats_time_first;
   else
     e->time_first_statistics = stats_time_first;
-    
+
+  /* Deal with stf */
+  double stf_time_first;
+  outputlist_init(&e->outputlist_stf, e, "StructureFinding", &e->deltaTimeSTF,
+		  &stf_time_first);
+
+  if (e->policy & engine_policy_cosmology)
+    e->a_first_stf = stf_time_first;
+  else
+    e->timeFirstSTFOutput = stats_time_first;
+  
 }
 
 /**
@@ -6790,6 +6807,10 @@ void engine_clean(struct engine *e) {
     outputlist_clean(e->outputlist_stats);
     free(e->outputlist_stats);
   }
+  if (e->outputlist_stf) {
+    outputlist_clean(e->outputlist_stf);
+    free(e->outputlist_stf);
+  }
   free(e->links);
   free(e->cell_loc);
   scheduler_clean(&e->sched);
@@ -6835,6 +6856,8 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   if (e->outputlist_snapshots)
     outputlist_struct_dump(e->outputlist_snapshots, stream);
   if (e->outputlist_stats) outputlist_struct_dump(e->outputlist_stats, stream);
+  if (e->outputlist_stf)
+    outputlist_struct_dump(e->outputlist_stf, stream);
 }
 
 /**
@@ -6942,6 +6965,13 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct outputlist *) malloc(sizeof(struct outputlist));
     outputlist_struct_restore(outputlist_stats, stream);
     e->outputlist_stats = outputlist_stats;
+  }
+
+  if (e->outputlist_stf) {
+    struct outputlist *outputlist_stf =
+      (struct outputlist *) malloc(sizeof(struct outputlist));
+    outputlist_struct_restore(outputlist_stf, stream);
+    e->outputlist_stf = outputlist_stf;
   }
 
   /* Want to force a rebuild before using this engine. Wait to repartition.*/

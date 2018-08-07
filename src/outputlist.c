@@ -184,7 +184,15 @@ void outputlist_read_next_time(struct outputlist *t, const struct engine *e, con
   }
 }
 
-
+/**
+ * @brief initialize an output list
+ *
+ * @param list The output list to initialize
+ * @param e The #engine
+ * @param name The name of the section in params
+ * @param delta_time updated to the initial delta time
+ * @param time_first updated to the time of first output (scale factor or cosmic time)
+ */
 void outputlist_init(struct outputlist **list, const struct engine *e, char* name,
 		     double *delta_time, double *time_first) {
   struct swift_params *params = e->parameter_file;
@@ -195,7 +203,7 @@ void outputlist_init(struct outputlist **list, const struct engine *e, char* nam
 
   /* Read output on/off */
   char param_name[PARSER_MAX_LINE_SIZE];
-  sprintf(param_name, "%s:outputlist_on", name);
+  sprintf(param_name, "%s:output_list_on", name);
   int outputlist_on =
       parser_get_opt_param_int(params, param_name, 0);
 
@@ -223,7 +231,6 @@ void outputlist_init(struct outputlist **list, const struct engine *e, char* nam
       *time_first = (*list)->times[0];
     }
   }
-
 
 }
 
