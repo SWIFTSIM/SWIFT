@@ -29,6 +29,21 @@
 
 /* Local includes. */
 #include "common_io.h"
+#include "engine.h"
+#include "swift_velociraptor_part.h"
+
+#ifdef HAVE_VELOCIRAPTOR
+
+/* VELOCIraptor interface. */
+int InitVelociraptor(char *config_name, char *output_name,
+                     struct cosmoinfo cosmo_info, struct unitinfo unit_info,
+                     struct siminfo sim_info);
+int InvokeVelociraptor(const size_t num_gravity_parts,
+                       const size_t num_hydro_parts,
+                       struct swift_vel_part *swift_parts,
+                       const int *cell_node_ids, char *output_name);
+
+#endif /* HAVE_VELOCIRAPTOR */
 
 /**
  * @brief Initialise VELOCIraptor with input and output file names along with
