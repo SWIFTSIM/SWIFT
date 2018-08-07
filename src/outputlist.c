@@ -24,6 +24,7 @@
 #include "outputlist.h"
 
 /* Local includes. */
+#include "engine.h"
 #include "cosmology.h"
 #include "error.h"
 #include "restart.h"
@@ -114,6 +115,112 @@ void outputlist_read_file(struct outputlist *outputlist, const char *filename,
   }
 
   fclose(file);
+}
+
+
+/**
+ * @brief Read the next time for an output
+ *
+ * @param t The #outputlist
+ * @param e The #engine.
+ * @param name The name of the output (e.g. 'stats', 'snapshots', 'stf')
+ * @param ti_next updated to the next output time
+ */
+void outputlist_read_next_time(const struct outputlist *t, const struct engine *e, const char* name, integertime_t *ti_next) {
+  int is_cosmo = e->policy & engine_policy_cosmology;
+
+  /* Find upper-bound on last output */
+  double time_end;
+  if (is_cosmo)
+    time_end = e->cosmology->a_end;
+  else
+    time_end = e->time_end;
+
+  /* Find next snasphot above current time */
+  double time = t->times[0];
+  size_t ind = 0;
+  while (time < time_end) {
+
+    /* Output time on the integer timeline */
+    if (is_cosmo)
+      *ti_next = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      *ti_next = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (*ti_next > e->ti_current) break;
+
+    ind += 1;
+    if (ind == t->size) break;
+
+    time = t->times[ind];
+  }
+
+  /* Deal with last statistics */
+  if (*ti_next >= max_nr_timesteps || ind == t->size ||
+      time >= time_end) {
+    *ti_next = -1;
+    if (e->verbose) message("No further output time for %s.", name);
+  } else {
+
+    /* Be nice, talk... */
+    if (is_cosmo) {
+      const double next_time =
+          exp(*ti_next * e->time_base) * e->cosmology->a_begin;
+      if (e->verbose)
+        message("Next output time for %s set to a=%e.",
+                name, next_time);
+    } else {
+      const double next_time =
+          *ti_next * e->time_base + e->time_begin;
+      if (e->verbose)
+        message("Next output time for %s set to t=%e.",
+                name, next_time);
+    }
+  }
+}
+
+
+void outputlist_init(struct outputlist **list, const struct engine *e, char* name,
+		     double *delta_time, double *time_first) {
+  struct swift_params *params = e->parameter_file;
+
+  /* get cosmo */
+  struct cosmology *cosmo = NULL;
+  if (e->policy & engine_policy_cosmology) cosmo = e->cosmology;
+
+  /* Read output on/off */
+  char param_name[PARSER_MAX_LINE_SIZE];
+  sprintf(param_name, "%s:outputlist_on", name);
+  int outputlist_on =
+      parser_get_opt_param_int(params, param_name, 0);
+
+  /* Read outputlist for snapshots */
+  if (outputlist_on) {
+    *list = (struct outputlist *)malloc(sizeof(struct outputlist));
+
+    /* Read filename */
+    char filename[PARSER_MAX_LINE_SIZE];
+    sprintf(param_name, "%s:output_list", name);
+    parser_get_param_string(params, param_name, filename);
+
+    message("Reading %s output file.", name);
+    outputlist_read_file(*list, filename, cosmo);
+
+    if ((*list)->size < 2)
+      error("You need to provide more snapshots in '%s'", filename);
+
+    /* Set data for later checks */
+    if (cosmo) {
+      *delta_time = (*list)->times[1] / (*list)->times[0];
+      *time_first = (*list)->times[0];
+    } else {
+      *delta_time = (*list)->times[1] - (*list)->times[0];
+      *time_first = (*list)->times[0];
+    }
+  }
+
+
 }
 
 /**

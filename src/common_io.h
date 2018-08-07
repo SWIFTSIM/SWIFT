@@ -62,17 +62,6 @@ enum IO_DATA_TYPE {
  */
 enum IO_STF_OUTPUT_FORMAT { STEPS = 0, TIME };
 
-enum TIME_ARRAY_TYPE {
-  TIME_ARRAY_AGE,
-  TIME_ARRAY_REDSHIFT,
-  TIME_ARRAY_SCALE_FACTOR,
-};
-
-struct time_array {
-  double times[TIME_ARRAY_MAX_SIZE];
-  size_t size;
-};
-
 #if defined(HAVE_HDF5)
 
 hid_t io_hdf5_type(enum IO_DATA_TYPE type);

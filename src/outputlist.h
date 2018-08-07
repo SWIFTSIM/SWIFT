@@ -25,6 +25,8 @@
 /* Local includes */
 #include "cosmology.h"
 
+struct engine;
+
 enum OUTPUTLIST_TYPE {
   OUTPUTLIST_AGE,
   OUTPUTLIST_REDSHIFT,
@@ -38,6 +40,9 @@ struct outputlist {
 
 void outputlist_read_file(struct outputlist *outputlist, const char *filename,
                           struct cosmology *cosmo);
+void outputlist_read_next_time(const struct outputlist *t, const struct engine *e, const char* name, integertime_t *ti_next);
+void outputlist_init(struct outputlist **list, const struct engine *e,
+		     char* name, double *delta_time, double *time_first);
 void outputlist_print(const struct outputlist *outputlist);
 void outputlist_clean(struct outputlist *outputlist);
 void outputlist_struct_dump(struct outputlist *list, FILE *stream);
