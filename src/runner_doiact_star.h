@@ -78,7 +78,7 @@ void runner_doself_star_density(struct runner *r, struct cell *c, int timer) {
         error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2) {
+      if (r2 > 0.f && r2 < hig2) {
 	runner_iact_nonsym_star_density(r2, dx, hi, hj, si, pj, a, H);
       }
     } /* loop over the parts in ci. */
@@ -89,7 +89,7 @@ void runner_doself_star_density(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Calculate the number density of #part around the #spart
+ * @brief Calculate the number density of cj #part around the ci #spart
  *
  * @param r runner task
  * @param c cell
@@ -968,9 +968,6 @@ void runner_doself_branch_star_density(struct runner *r, struct cell *c) {
   if (c->h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
-  /* /\* Check that cells are drifted. *\/ */
-  /* if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell."); */
-
   runner_doself_star_density(r, c, 1);
 }
 
@@ -1281,9 +1278,9 @@ void runner_dosub_pair_star_density(struct runner *r, struct cell *ci, struct ce
   /* Otherwise, compute the pair directly. */
   else if (cell_is_active_star(ci, e) || cell_is_active_star(cj, e)) {
 
-    /* /\* Make sure both cells are drifted to the current timestep. *\/ */
-    /* if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e)) */
-    /*   error("Interacting undrifted cells."); */
+    /* Make sure both cells are drifted to the current timestep. */
+    if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
+      error("Interacting undrifted cells.");
 
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid)) ||
@@ -1329,10 +1326,7 @@ void runner_dosub_self_star_density(struct runner *r, struct cell *ci, int getti
   }
 
   /* Otherwise, compute self-interaction. */
-  else {
-
-    /* /\* Check that cells are drifted. *\/ */
-    /* if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell."); */
+ else {
 
     runner_doself_branch_star_density(r, ci);
   }

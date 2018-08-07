@@ -61,6 +61,7 @@
 #include "scheduler.h"
 #include "space.h"
 #include "space_getsid.h"
+#include "stars.h"
 #include "timers.h"
 #include "tools.h"
 
@@ -2874,6 +2875,8 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_spart(sp, dt_drift, ti_old_gpart, ti_current);
+      if (spart_is_active(sp, e))
+	star_init_spart(sp);
 
       /* Note: no need to compute dx_max as all spart have a gpart */
     }

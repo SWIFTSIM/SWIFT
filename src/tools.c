@@ -45,6 +45,7 @@
 #include "part.h"
 #include "periodic.h"
 #include "runner.h"
+#include "stars.h"
 
 /**
  *  Factorize a given integer, attempts to keep larger pair of factors.
@@ -335,6 +336,78 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 }
 
+void pairs_all_star_density(struct runner *r, struct cell *ci, struct cell *cj) {
+
+  float r2, dx[3];
+  const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+
+  /* Implements a double-for loop and checks every interaction */
+  for (int i = 0; i < ci->scount; ++i) {
+    struct spart *spi = &ci->sparts[i];
+
+    float hi = spi->h;
+    float hig2 = hi * hi * kernel_gamma2;
+
+    /* Skip inactive particles. */
+    if (!spart_is_active(spi, e)) continue;
+
+    for (int j = 0; j < cj->count; ++j) {
+
+      struct part *pj = &cj->parts[j];
+
+      /* Pairwise distance */
+      r2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        dx[k] = spi->x[k] - pj->x[k];
+        dx[k] = nearest(dx[k], dim[k]);
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hig2) {
+
+        /* Interact */
+        runner_iact_nonsym_star_density(r2, dx, hi, pj->h, spi, pj, a, H);
+      }
+    }
+  }
+
+  /* Reverse double-for loop and checks every interaction */
+  for (int j = 0; j < cj->scount; ++j) {
+
+    struct spart *spj = &cj->sparts[j];
+    float hj = spj->h;
+    float hjg2 = hj * hj * kernel_gamma2;
+
+    /* Skip inactive particles. */
+    if (!spart_is_active(spj, e)) continue;
+
+    for (int i = 0; i < ci->count; ++i) {
+
+      struct part *pi = &ci->parts[i];
+
+      /* Pairwise distance */
+      r2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        dx[k] = spj->x[k] - pi->x[k];
+        dx[k] = nearest(dx[k], dim[k]);
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hjg2) {
+
+        /* Interact */
+        runner_iact_nonsym_star_density(r2, dx, hj, pi->h, spj, pi, a, H);
+      }
+    }
+  }
+}
+
 void self_all_density(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
   struct part *pi, *pj;
@@ -424,6 +497,48 @@ void self_all_force(struct runner *r, struct cell *ci) {
         /* Interact */
         runner_iact_force(r2, dxi, hi, hj, pi, pj, a, H);
       }
+    }
+  }
+}
+
+void self_all_star_density(struct runner *r, struct cell *ci) {
+  float r2, hi, hj, hig2, dxi[3];  //, dxj[3];
+  struct spart *spi;
+  struct part *pj;
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+
+  /* Implements a double-for loop and checks every interaction */
+  for (int i = 0; i < ci->scount; ++i) {
+
+    spi = &ci->sparts[i];
+    hi = spi->h;
+    hig2 = hi * hi * kernel_gamma2;
+
+    if (!spart_is_active(spi, e))
+      continue;
+
+    for (int j = 0; j < ci->count; ++j) {
+
+      pj = &ci->parts[j];
+      hj = pj->h;
+
+      /* Pairwise distance */
+      r2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        dxi[k] = spi->x[k] - pj->x[k];
+        r2 += dxi[k] * dxi[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 > 0.f && r2 < hig2) {
+
+        /* Interact */
+        runner_iact_nonsym_star_density(r2, dxi, hi, hj, spi, pj, a, H);
+      }
+
     }
   }
 }
@@ -540,6 +655,23 @@ void shuffle_particles(struct part *parts, const int count) {
       parts[j] = parts[i];
 
       parts[i] = particle;
+    }
+  }
+}
+
+/**
+ * @brief Randomly shuffle an array of sparticles.
+ */
+void shuffle_sparticles(struct spart *sparts, const int scount) {
+  if (scount > 1) {
+    for (int i = 0; i < scount - 1; i++) {
+      int j = i + random_uniform(0., (double)(scount - 1 - i));
+
+      struct spart sparticle = sparts[j];
+
+      sparts[j] = sparts[i];
+
+      sparts[i] = sparticle;
     }
   }
 }

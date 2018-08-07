@@ -63,12 +63,18 @@ tests/brute_force_perturbed.dat
 tests/swift_dopair_perturbed.dat
 tests/test27cells
 tests/test27cells_subset
+tests/test27cellsStars
+tests/test27cellsStars_subset
 tests/testPeriodicBC
 tests/test125cells
 tests/brute_force_27_standard.dat
 tests/swift_dopair_27_standard.dat
 tests/brute_force_27_perturbed.dat
 tests/swift_dopair_27_perturbed.dat
+tests/star_brute_force_27_standard.dat
+tests/swift_star_dopair_27_standard.dat
+tests/star_brute_force_27_perturbed.dat
+tests/swift_star_dopair_27_perturbed.dat
 tests/brute_force_125_standard.dat
 tests/swift_dopair_125_standard.dat
 tests/brute_force_125_perturbed.dat
@@ -106,6 +112,8 @@ tests/testPeriodicBC.sh
 tests/testPeriodicBCPerturbed.sh
 tests/test27cells.sh
 tests/test27cellsPerturbed.sh
+tests/test27cellsStars.sh
+tests/test27cellsStarsPerturbed.sh
 tests/test125cells.sh
 tests/test125cellsPerturbed.sh
 tests/testParser.sh

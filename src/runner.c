@@ -344,12 +344,6 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
     free(sid);
   }
 
-  /* Reset the data for next loop */
-  for (int k = 0; k < c->scount; k++)
-    if (spart_is_active(&sparts[k], e)) {
-      star_init_spart(&sparts[k]);
-    }
-
   if (timer) TIMER_TOC(timer_do_star_ghost);
 }
 

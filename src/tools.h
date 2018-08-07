@@ -40,11 +40,14 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj);
 void self_all_density(struct runner *r, struct cell *ci);
 void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj);
 void self_all_force(struct runner *r, struct cell *ci);
+void pairs_all_star_density(struct runner *r, struct cell *ci, struct cell *cj);
+void self_all_star_density(struct runner *r, struct cell *ci);
 
 void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic);
 
 double random_uniform(double a, double b);
 void shuffle_particles(struct part *parts, const int count);
+void shuffle_sparticles(struct spart *sparts, const int scount);
 void gravity_n2(struct gpart *gparts, const int gcount,
                 const struct phys_const *constants,
                 const struct gravity_props *gravity_properties, float rlr);
