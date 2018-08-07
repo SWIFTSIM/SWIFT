@@ -204,8 +204,7 @@ void outputlist_init(struct outputlist **list, const struct engine *e,
   int outputlist_on = parser_get_opt_param_int(params, param_name, 0);
 
   /* Check if read outputlist */
-  if (!outputlist_on)
-    return;
+  if (!outputlist_on) return;
 
   /* Read outputlist for snapshots */
   *list = (struct outputlist *)malloc(sizeof(struct outputlist));
@@ -217,7 +216,7 @@ void outputlist_init(struct outputlist **list, const struct engine *e,
 
   message("Reading %s output file.", name);
   outputlist_read_file(*list, filename, cosmo);
-    
+
   if ((*list)->size < 2)
     error("You need to provide more snapshots in '%s'", filename);
 

@@ -5907,8 +5907,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           e->stf_output_freq_format);
 
     /* overwrite input if outputlist */
-    if (e->outputlist_stf)
-      e->stf_output_freq_format = TIME;
+    if (e->outputlist_stf) e->stf_output_freq_format = TIME;
   }
 
   /* Get the number of queues */
@@ -6637,7 +6636,7 @@ void engine_init_outputlists(struct engine *e, struct swift_params *params) {
   double snaps_time_first;
   e->outputlist_snapshots = NULL;
   outputlist_init(&e->outputlist_snapshots, e, "Snapshots",
-		  &e->delta_time_snapshot, &snaps_time_first);
+                  &e->delta_time_snapshot, &snaps_time_first);
 
   if (e->outputlist_snapshots) {
     if (e->policy & engine_policy_cosmology)
@@ -6650,7 +6649,7 @@ void engine_init_outputlists(struct engine *e, struct swift_params *params) {
   double stats_time_first;
   e->outputlist_stats = NULL;
   outputlist_init(&e->outputlist_stats, e, "Statistics",
-		  &e->delta_time_statistics, &stats_time_first);
+                  &e->delta_time_statistics, &stats_time_first);
 
   if (e->outputlist_stats) {
     if (e->policy & engine_policy_cosmology)
