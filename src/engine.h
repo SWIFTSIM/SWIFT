@@ -249,7 +249,7 @@ struct engine {
 
   /* Outputlist for the stats */
   struct outputlist *outputlist_stats;
-  
+
   /* Integer time of the next statistics dump */
   integertime_t ti_next_stats;
 

@@ -6443,8 +6443,8 @@ void engine_print_policy(struct engine *e) {
 void engine_compute_next_snapshot_time(struct engine *e) {
   /* Do outputlist file case */
   if (e->outputlist_snapshots) {
-    outputlist_read_next_time(e->outputlist_snapshots, e,
-			      "snapshots", &e->ti_next_snapshot);
+    outputlist_read_next_time(e->outputlist_snapshots, e, "snapshots",
+                              &e->ti_next_snapshot);
     return;
   }
 
@@ -6499,7 +6499,6 @@ void engine_compute_next_snapshot_time(struct engine *e) {
   }
 }
 
-
 /**
  * @brief Computes the next time (on the time line) for a statistics dump
  *
@@ -6508,8 +6507,8 @@ void engine_compute_next_snapshot_time(struct engine *e) {
 void engine_compute_next_statistics_time(struct engine *e) {
   /* Do outputlist file case */
   if (e->outputlist_stats) {
-    outputlist_read_next_time(e->outputlist_stats, e,
-			      "stats", &e->ti_next_stats);
+    outputlist_read_next_time(e->outputlist_stats, e, "stats",
+                              &e->ti_next_stats);
     return;
   }
 
@@ -6558,7 +6557,7 @@ void engine_compute_next_statistics_time(struct engine *e) {
                 next_statistics_time);
     } else {
       const double next_statistics_time =
-	e->ti_next_stats * e->time_base + e->time_begin;
+          e->ti_next_stats * e->time_base + e->time_begin;
       if (e->verbose)
         message("Next output time for stats set to t=%e.",
                 next_statistics_time);
@@ -6574,8 +6573,7 @@ void engine_compute_next_statistics_time(struct engine *e) {
 void engine_compute_next_stf_time(struct engine *e) {
   /* Do outputlist file case */
   if (e->outputlist_stf) {
-    outputlist_read_next_time(e->outputlist_stf, e,
-			      "stf", &e->ti_nextSTF);
+    outputlist_read_next_time(e->outputlist_stf, e, "stf", &e->ti_nextSTF);
     return;
   }
 
@@ -6636,9 +6634,9 @@ void engine_compute_next_stf_time(struct engine *e) {
 void engine_init_outputlists(struct engine *e, struct swift_params *params) {
   /* Deal with snapshots */
   double snaps_time_first;
-  outputlist_init(&e->outputlist_snapshots, e, "Snapshots", &e->delta_time_snapshot,
-		  &snaps_time_first);
-  
+  outputlist_init(&e->outputlist_snapshots, e, "Snapshots",
+                  &e->delta_time_snapshot, &snaps_time_first);
+
   if (e->policy & engine_policy_cosmology)
     e->a_first_snapshot = snaps_time_first;
   else
@@ -6646,8 +6644,8 @@ void engine_init_outputlists(struct engine *e, struct swift_params *params) {
 
   /* Deal with stats */
   double stats_time_first;
-  outputlist_init(&e->outputlist_stats, e, "Statistics", &e->delta_time_statistics,
-		  &stats_time_first);
+  outputlist_init(&e->outputlist_stats, e, "Statistics",
+                  &e->delta_time_statistics, &stats_time_first);
 
   if (e->policy & engine_policy_cosmology)
     e->a_first_statistics = stats_time_first;
@@ -6657,13 +6655,12 @@ void engine_init_outputlists(struct engine *e, struct swift_params *params) {
   /* Deal with stf */
   double stf_time_first;
   outputlist_init(&e->outputlist_stf, e, "StructureFinding", &e->deltaTimeSTF,
-		  &stf_time_first);
+                  &stf_time_first);
 
   if (e->policy & engine_policy_cosmology)
     e->a_first_stf = stf_time_first;
   else
     e->timeFirstSTFOutput = stats_time_first;
-  
 }
 
 /**
@@ -6856,8 +6853,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   if (e->outputlist_snapshots)
     outputlist_struct_dump(e->outputlist_snapshots, stream);
   if (e->outputlist_stats) outputlist_struct_dump(e->outputlist_stats, stream);
-  if (e->outputlist_stf)
-    outputlist_struct_dump(e->outputlist_stf, stream);
+  if (e->outputlist_stf) outputlist_struct_dump(e->outputlist_stf, stream);
 }
 
 /**
@@ -6955,21 +6951,21 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
   if (e->outputlist_snapshots) {
     struct outputlist *outputlist_snapshots =
-      (struct outputlist *) malloc(sizeof(struct outputlist));
+        (struct outputlist *)malloc(sizeof(struct outputlist));
     outputlist_struct_restore(outputlist_snapshots, stream);
     e->outputlist_snapshots = outputlist_snapshots;
   }
 
   if (e->outputlist_stats) {
     struct outputlist *outputlist_stats =
-      (struct outputlist *) malloc(sizeof(struct outputlist));
+        (struct outputlist *)malloc(sizeof(struct outputlist));
     outputlist_struct_restore(outputlist_stats, stream);
     e->outputlist_stats = outputlist_stats;
   }
 
   if (e->outputlist_stf) {
     struct outputlist *outputlist_stf =
-      (struct outputlist *) malloc(sizeof(struct outputlist));
+        (struct outputlist *)malloc(sizeof(struct outputlist));
     outputlist_struct_restore(outputlist_stf, stream);
     e->outputlist_stf = outputlist_stf;
   }

@@ -24,8 +24,8 @@
 #include "outputlist.h"
 
 /* Local includes. */
-#include "engine.h"
 #include "cosmology.h"
+#include "engine.h"
 #include "error.h"
 #include "restart.h"
 
@@ -120,7 +120,6 @@ void outputlist_read_file(struct outputlist *outputlist, const char *filename,
   fclose(file);
 }
 
-
 /**
  * @brief Read the next time for an output
  *
@@ -129,7 +128,8 @@ void outputlist_read_file(struct outputlist *outputlist, const char *filename,
  * @param name The name of the output (e.g. 'stats', 'snapshots', 'stf')
  * @param ti_next updated to the next output time
  */
-void outputlist_read_next_time(struct outputlist *t, const struct engine *e, const char* name, integertime_t *ti_next) {
+void outputlist_read_next_time(struct outputlist *t, const struct engine *e,
+                               const char *name, integertime_t *ti_next) {
   int is_cosmo = e->policy & engine_policy_cosmology;
 
   /* Find upper-bound on last output */
@@ -161,8 +161,7 @@ void outputlist_read_next_time(struct outputlist *t, const struct engine *e, con
   }
 
   /* Deal with last statistics */
-  if (*ti_next >= max_nr_timesteps || ind == t->size ||
-      time >= time_end) {
+  if (*ti_next >= max_nr_timesteps || ind == t->size || time >= time_end) {
     *ti_next = -1;
     if (e->verbose) message("No further output time for %s.", name);
   } else {
@@ -172,14 +171,11 @@ void outputlist_read_next_time(struct outputlist *t, const struct engine *e, con
       const double next_time =
           exp(*ti_next * e->time_base) * e->cosmology->a_begin;
       if (e->verbose)
-        message("Next output time for %s set to a=%e.",
-                name, next_time);
+        message("Next output time for %s set to a=%e.", name, next_time);
     } else {
-      const double next_time =
-          *ti_next * e->time_base + e->time_begin;
+      const double next_time = *ti_next * e->time_base + e->time_begin;
       if (e->verbose)
-        message("Next output time for %s set to t=%e.",
-                name, next_time);
+        message("Next output time for %s set to t=%e.", name, next_time);
     }
   }
 }
@@ -191,10 +187,11 @@ void outputlist_read_next_time(struct outputlist *t, const struct engine *e, con
  * @param e The #engine
  * @param name The name of the section in params
  * @param delta_time updated to the initial delta time
- * @param time_first updated to the time of first output (scale factor or cosmic time)
+ * @param time_first updated to the time of first output (scale factor or cosmic
+ * time)
  */
-void outputlist_init(struct outputlist **list, const struct engine *e, char* name,
-		     double *delta_time, double *time_first) {
+void outputlist_init(struct outputlist **list, const struct engine *e,
+                     char *name, double *delta_time, double *time_first) {
   struct swift_params *params = e->parameter_file;
 
   /* get cosmo */
@@ -204,8 +201,7 @@ void outputlist_init(struct outputlist **list, const struct engine *e, char* nam
   /* Read output on/off */
   char param_name[PARSER_MAX_LINE_SIZE];
   sprintf(param_name, "%s:output_list_on", name);
-  int outputlist_on =
-      parser_get_opt_param_int(params, param_name, 0);
+  int outputlist_on = parser_get_opt_param_int(params, param_name, 0);
 
   /* Read outputlist for snapshots */
   if (outputlist_on) {
@@ -231,7 +227,6 @@ void outputlist_init(struct outputlist **list, const struct engine *e, char* nam
       *time_first = (*list)->times[0];
     }
   }
-
 }
 
 /**
