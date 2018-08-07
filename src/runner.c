@@ -1664,12 +1664,17 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   struct spart *restrict sparts = c->sparts;
   const int periodic = s->periodic;
   const float G_newton = e->physical_constants->const_newton_G;
-  const double r_s = e->mesh->r_s;
-  const double volume = s->dim[0] * s->dim[1] * s->dim[2];
-  const float potential_normalisation =
-      4. * M_PI * e->total_mass * r_s * r_s / volume;
 
   TIMER_TIC;
+
+  /* Potential normalisation in the case of periodic gravity */
+  float potential_normalisation = 0.;
+  if (periodic && (e->policy & engine_policy_self_gravity)) {
+    const double volume = s->dim[0] * s->dim[1] * s->dim[2];
+    const double r_s = e->mesh->r_s;
+    potential_normalisation =
+      4. * M_PI * e->total_mass * r_s * r_s / volume;
+  }
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) return;
