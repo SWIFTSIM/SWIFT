@@ -52,11 +52,11 @@ struct output_list {
 };
 
 void output_list_read_file(struct output_list *outputlist, const char *filename,
-                          struct cosmology *cosmo);
+                           struct cosmology *cosmo);
 void output_list_read_next_time(struct output_list *t, const struct engine *e,
-                               const char *name, integertime_t *ti_next);
+                                const char *name, integertime_t *ti_next);
 void output_list_init(struct output_list **list, const struct engine *e,
-                     char *name, double *delta_time, double *time_first);
+                      char *name, double *delta_time, double *time_first);
 void output_list_print(const struct output_list *outputlist);
 void output_list_clean(struct output_list *outputlist);
 void output_list_struct_dump(struct output_list *list, FILE *stream);

@@ -6444,7 +6444,7 @@ void engine_compute_next_snapshot_time(struct engine *e) {
   /* Do outputlist file case */
   if (e->output_list_snapshots) {
     output_list_read_next_time(e->output_list_snapshots, e, "snapshots",
-                              &e->ti_next_snapshot);
+                               &e->ti_next_snapshot);
     return;
   }
 
@@ -6508,7 +6508,7 @@ void engine_compute_next_statistics_time(struct engine *e) {
   /* Do output_list file case */
   if (e->output_list_stats) {
     output_list_read_next_time(e->output_list_stats, e, "stats",
-                              &e->ti_next_stats);
+                               &e->ti_next_stats);
     return;
   }
 
@@ -6636,7 +6636,7 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
   double snaps_time_first;
   e->output_list_snapshots = NULL;
   output_list_init(&e->output_list_snapshots, e, "Snapshots",
-                  &e->delta_time_snapshot, &snaps_time_first);
+                   &e->delta_time_snapshot, &snaps_time_first);
 
   if (e->output_list_snapshots) {
     if (e->policy & engine_policy_cosmology)
@@ -6649,7 +6649,7 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
   double stats_time_first;
   e->output_list_stats = NULL;
   output_list_init(&e->output_list_stats, e, "Statistics",
-                  &e->delta_time_statistics, &stats_time_first);
+                   &e->delta_time_statistics, &stats_time_first);
 
   if (e->output_list_stats) {
     if (e->policy & engine_policy_cosmology)
@@ -6662,7 +6662,7 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
   double stf_time_first;
   e->output_list_stf = NULL;
   output_list_init(&e->output_list_stf, e, "StructureFinding", &e->deltaTimeSTF,
-                  &stf_time_first);
+                   &stf_time_first);
 
   if (e->output_list_stf) {
     if (e->policy & engine_policy_cosmology)
@@ -6861,7 +6861,8 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
-  if (e->output_list_stats) output_list_struct_dump(e->output_list_stats, stream);
+  if (e->output_list_stats)
+    output_list_struct_dump(e->output_list_stats, stream);
   if (e->output_list_stf) output_list_struct_dump(e->output_list_stf, stream);
 }
 

@@ -40,7 +40,7 @@
  * @param cosmo The #cosmology model.
  */
 void output_list_read_file(struct output_list *outputlist, const char *filename,
-                          struct cosmology *cosmo) {
+                           struct cosmology *cosmo) {
 
   /* Open file */
   FILE *file = fopen(filename, "r");
@@ -129,7 +129,7 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
  * @param ti_next updated to the next output time
  */
 void output_list_read_next_time(struct output_list *t, const struct engine *e,
-                               const char *name, integertime_t *ti_next) {
+                                const char *name, integertime_t *ti_next) {
   int is_cosmo = e->policy & engine_policy_cosmology;
 
   /* Find upper-bound on last output */
@@ -191,7 +191,7 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
  * time)
  */
 void output_list_init(struct output_list **list, const struct engine *e,
-                     char *name, double *delta_time, double *time_first) {
+                      char *name, double *delta_time, double *time_first) {
   struct swift_params *params = e->parameter_file;
 
   /* get cosmo */
@@ -256,8 +256,8 @@ void output_list_clean(struct output_list *outputlist) {
  * @brief Dump an #output_list in a restart file
  */
 void output_list_struct_dump(struct output_list *list, FILE *stream) {
-  restart_write_blocks(list, sizeof(struct output_list), 1, stream, "output_list",
-                       "output_list struct");
+  restart_write_blocks(list, sizeof(struct output_list), 1, stream,
+                       "output_list", "output_list struct");
 
   restart_write_blocks(list->times, list->size, sizeof(double), stream,
                        "output_list", "times");
