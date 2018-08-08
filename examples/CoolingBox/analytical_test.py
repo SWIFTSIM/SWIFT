@@ -49,7 +49,6 @@ def convert_u_to_temp_sol(u,rho):
 	n = 2.0*0.752*rho/m_p + 0.248*rho/(4.0*m_p)
 	pressure = u*rho*(gamma - 1.0)
 	temp = pressure/(k_b*n)
-	#temp = pressure/(k_b*rho/(0.59*m_p))
 	return temp
 
 # File containing the total energy
@@ -92,7 +91,10 @@ rho = rho*unit_mass/(unit_length**3)
 rho_mat = rho_mat*unit_mass/(unit_length**3)
 
 # Read snapshots
-nsnap = 501
+if len(sys.argv) >= 4:
+	nsnap = int(sys.argv[4])
+else:
+	nsnap = 501
 npart = 4096
 u_snapshots_cgs = zeros(nsnap)
 u_part_snapshots_cgs = zeros((nsnap,npart))
@@ -147,8 +149,6 @@ for j in range(int(nt-1)):
 	#lambda_sol[j] = Lambda_net
 	u = u_next
 	
-print(u, Lambda_net)
-
 mean_temp = np.zeros(nsnap)
 mean_u = np.zeros(nsnap)
 for j in range(nsnap):

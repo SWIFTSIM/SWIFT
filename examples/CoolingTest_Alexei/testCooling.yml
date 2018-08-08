@@ -86,8 +86,8 @@ EAGLEChemistry:
 
 EagleCooling:
   filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/
-  reionisation_redshift:   8.898
-  he_reion:                1
+  reionisation_redshift:   20
+  he_reion:                0
   he_reion_z_center:       3.5
   he_reion_z_sigma:        0.5
   he_reion_ev_pH:          2.0
