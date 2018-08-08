@@ -266,6 +266,7 @@ int main(int argc, char **argv) {
   /* Init cosmology */
   cosmology_init(params, &us, &internal_const, &cosmo);
   cosmology_print(&cosmo);
+  cosmo.z = 0.9090909;
 
   /* Init cooling */
   cooling_init(params, &us, &internal_const, &cooling);
@@ -363,7 +364,10 @@ int main(int argc, char **argv) {
       printf("Error opening file!\n");
       exit(1);
     }
-    nh = pow(10.0,0);
+
+    // set hydrogen number density, construct 1d tables
+    //nh = pow(10.0,strtod(argv[2],NULL)); 
+    nh = 1.0e-1;
     u = pow(10.0,14.0);
     set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, u);
     float nh_swift = chemistry_get_number_density(&p, &cosmo, chemistry_element_H, &internal_const)*cooling.number_density_scale;
