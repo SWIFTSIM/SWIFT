@@ -720,11 +720,6 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
-#ifdef WITH_MPI
-    if (periodic && with_self_gravity)
-      error("Periodic self-gravity over MPI temporarily disabled.");
-#endif
-
 #if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
     if (with_structure_finding) error("VEOCIraptor not yet enabled over MPI.");
 #endif
