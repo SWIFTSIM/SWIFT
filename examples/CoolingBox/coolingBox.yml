@@ -1,10 +1,21 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     2.0e33     # Solar masses
-  UnitLength_in_cgs:   3.0857e21  # Kiloparsecs
+  #UnitMass_in_cgs:     2.0e33     # Solar masses
+  #UnitLength_in_cgs:   3.0857e21  # Kiloparsecs
+  UnitMass_in_cgs:     1.989e43     # Solar masses
+  UnitLength_in_cgs:   3.085678e24  # Kiloparsecs
   UnitVelocity_in_cgs: 1.0e5      # Kilometers per second
   UnitCurrent_in_cgs:  1          # Amperes
   UnitTemp_in_cgs:     1          # Kelvin
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin: 0.909090909091     # Initial scale-factor of the simulation
+  a_end: 0.91         # Final scale factor of the simulation
+  Omega_m:        0.307         # Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0455        # Baryon density parameter
 
 # Parameters governing the time integration
 TimeIntegration:
@@ -17,11 +28,14 @@ TimeIntegration:
 Snapshots:
   basename:            coolingBox # Common part of the name of output files
   time_first:          0.         # Time of the first output (in internal units)
-  delta_time:          2e-5       # Time difference between consecutive outputs (in internal units)
+  scale_factor_first: 0.909090909091         # Time of the first output (in internal units)
+  delta_time: 1.0000002    # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-3 # Time between statistics output
+  scale_factor_first: 0.909090909091 # Scale-factor of the first stat dump (cosmological run)
+  time_first:          0.01 # Time of the first stat dump (non-cosmological run) (in internal units)
+  delta_time: 1.0000002 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
