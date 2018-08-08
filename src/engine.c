@@ -3540,10 +3540,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
         else if (t->type == task_type_sub_pair &&
                  t->subtype == task_subtype_grav) {
           error("Invalid task sub-type encountered");
         }
+#endif
       }
 
       /* Only interested in density tasks as of here. */
@@ -3648,9 +3650,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
-          if (cj_active_gravity) {
-            scheduler_activate(s, ci->recv_grav);
-          }
+          if (cj_active_gravity) scheduler_activate(s, ci->recv_grav);
 
           /* If the foreign cell is active, we want its ti_end values. */
           if (ci_active_gravity) scheduler_activate(s, ci->recv_ti);
@@ -3674,9 +3674,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         } else if (cj->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
-          if (ci_active_gravity) {
-            scheduler_activate(s, cj->recv_grav);
-          }
+          if (ci_active_gravity) scheduler_activate(s, cj->recv_grav);
 
           /* If the foreign cell is active, we want its ti_end values. */
           if (cj_active_gravity) scheduler_activate(s, cj->recv_ti);
@@ -3743,6 +3741,28 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if ((ci_active_gravity && ci_nodeID == engine_rank) ||
           (cj_active_gravity && cj_nodeID == engine_rank))
         scheduler_activate(s, t);
+
+#ifdef WITH_MPI
+      /* Activate the send/recv tasks. */
+      if (ci->nodeID != engine_rank) {
+
+	/* If the foreign cell is active, we want its ti_end values. */
+	if (ci_active_gravity) scheduler_activate(s, ci->recv_ti);
+
+          /* If the local cell is active, send its ti_end values. */
+          if (cj_active_gravity)
+            scheduler_activate_send(s, cj->send_ti, ci->nodeID);
+
+      } else if (cj->nodeID != engine_rank) {
+
+          /* If the foreign cell is active, we want its ti_end values. */
+          if (cj_active_gravity) scheduler_activate(s, cj->recv_ti);
+
+          /* If the local cell is active, send its ti_end values. */
+          if (ci_active_gravity)
+            scheduler_activate_send(s, ci->send_ti, cj->nodeID);
+      }
+#endif
     }
 
     /* Time-step? */

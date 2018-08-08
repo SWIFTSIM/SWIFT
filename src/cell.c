@@ -2240,10 +2240,15 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
-    const int ci_nodeID = ci->nodeID;
-    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
     const int ci_active = cell_is_active_gravity(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_gravity(cj, e) : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_nodeID == nodeID) ||
@@ -2270,9 +2275,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       if (ci_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (cj_active) {
-          scheduler_activate(s, ci->recv_grav);
-        }
+        if (cj_active) scheduler_activate(s, ci->recv_grav);
 
         /* If the foreign cell is active, we want its ti_end values. */
         if (ci_active) scheduler_activate(s, ci->recv_ti);
@@ -2294,9 +2297,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       } else if (cj_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active) {
-          scheduler_activate(s, cj->recv_grav);
-        }
+        if (ci_active) scheduler_activate(s, cj->recv_grav);
 
         /* If the foreign cell is active, we want its ti_end values. */
         if (cj_active) scheduler_activate(s, cj->recv_ti);
@@ -2311,6 +2312,29 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
              itself. */
           cell_activate_drift_gpart(ci, s);
         }
+
+        /* If the local cell is active, send its ti_end values. */
+        if (ci_active) scheduler_activate_send(s, ci->send_ti, cj_nodeID);
+      }
+#endif
+    }
+
+    if (t->type == task_type_grav_mm) {
+
+#ifdef WITH_MPI
+      /* Activate the send/recv tasks. */
+      if (ci_nodeID != nodeID) {
+
+        /* If the foreign cell is active, we want its ti_end values. */
+        if (ci_active) scheduler_activate(s, ci->recv_ti);
+
+        /* If the local cell is active, send its ti_end values. */
+        if (cj_active) scheduler_activate_send(s, cj->send_ti, ci_nodeID);
+
+      } else if (cj_nodeID != nodeID) {
+
+        /* If the foreign cell is active, we want its ti_end values. */
+        if (cj_active) scheduler_activate(s, cj->recv_ti);
 
         /* If the local cell is active, send its ti_end values. */
         if (ci_active) scheduler_activate_send(s, ci->send_ti, cj_nodeID);
