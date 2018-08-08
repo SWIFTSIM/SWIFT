@@ -46,12 +46,11 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
   FILE *file = fopen(filename, "r");
   if (file == NULL) error("Error opening file '%s'", filename);
 
-
   /* Count number of lines */
   size_t len = 0;
   char *line = NULL;
-  size_t nber_line = 0; 
-  while (getline(&line, &len, file) != -1)  nber_line++;
+  size_t nber_line = 0;
+  while (getline(&line, &len, file) != -1) nber_line++;
 
   outputlist->size = nber_line - 1; /* Do not count header */
 
@@ -115,17 +114,17 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
 
   /* Check that the list is in monotonic order */
   for (size_t i = 1; i < outputlist->size; ++i) {
-    
-    if ((type == OUTPUT_LIST_REDSHIFT) && 
-	(outputlist->times[i] >= outputlist->times[i-1]))
+
+    if ((type == OUTPUT_LIST_REDSHIFT) &&
+        (outputlist->times[i] >= outputlist->times[i - 1]))
       error("Output list not having monotonically decreasing redshifts.");
 
-    if ((type == OUTPUT_LIST_AGE) && 
-	(outputlist->times[i] <= outputlist->times[i-1]))
+    if ((type == OUTPUT_LIST_AGE) &&
+        (outputlist->times[i] <= outputlist->times[i - 1]))
       error("Output list not having monotonically increasing ages.");
 
-    if ((type == OUTPUT_LIST_SCALE_FACTOR) && 
-	(outputlist->times[i] <= outputlist->times[i-1]))
+    if ((type == OUTPUT_LIST_SCALE_FACTOR) &&
+        (outputlist->times[i] <= outputlist->times[i - 1]))
       error("Output list not having monotonically increasing scale-factors.");
   }
 
