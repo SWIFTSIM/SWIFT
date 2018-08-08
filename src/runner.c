@@ -827,7 +827,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           }
         }
 
-/* We now have a particle whose smoothing length has converged */
+          /* We now have a particle whose smoothing length has converged */
 
 #ifdef EXTRA_HYDRO_LOOP
 

@@ -43,9 +43,10 @@ void test_log_parts(struct dump *d) {
   size_t offset = d->count;
 
   /* Write the full part. */
-  logger_log_part(&p, logger_mask_x | logger_mask_v | logger_mask_a |
-                          logger_mask_u | logger_mask_h | logger_mask_rho |
-                          logger_mask_consts,
+  logger_log_part(&p,
+                  logger_mask_x | logger_mask_v | logger_mask_a |
+                      logger_mask_u | logger_mask_h | logger_mask_rho |
+                      logger_mask_consts,
                   &offset, d);
   printf("Wrote part at offset %#016zx.\n", offset);
 
@@ -112,8 +113,9 @@ void test_log_gparts(struct dump *d) {
   size_t offset = d->count;
 
   /* Write the full part. */
-  logger_log_gpart(&p, logger_mask_x | logger_mask_v | logger_mask_a |
-                           logger_mask_h | logger_mask_consts,
+  logger_log_gpart(&p,
+                   logger_mask_x | logger_mask_v | logger_mask_a |
+                       logger_mask_h | logger_mask_consts,
                    &offset, d);
   printf("Wrote gpart at offset %#016zx.\n", offset);
 

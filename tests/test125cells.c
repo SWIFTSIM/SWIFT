@@ -238,9 +238,10 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
     p->conserved.momentum[2] = p->conserved.mass * p->v[2];
     p->conserved.energy =
         p->primitives.P / hydro_gamma_minus_one * volume +
-        0.5f * (p->conserved.momentum[0] * p->conserved.momentum[0] +
-                p->conserved.momentum[1] * p->conserved.momentum[1] +
-                p->conserved.momentum[2] * p->conserved.momentum[2]) /
+        0.5f *
+            (p->conserved.momentum[0] * p->conserved.momentum[0] +
+             p->conserved.momentum[1] * p->conserved.momentum[1] +
+             p->conserved.momentum[2] * p->conserved.momentum[2]) /
             p->conserved.mass;
 #endif
   }
@@ -325,9 +326,10 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->conserved.momentum[2] = part->conserved.mass * part->v[2];
         part->conserved.energy =
             part->primitives.P / hydro_gamma_minus_one * volume +
-            0.5f * (part->conserved.momentum[0] * part->conserved.momentum[0] +
-                    part->conserved.momentum[1] * part->conserved.momentum[1] +
-                    part->conserved.momentum[2] * part->conserved.momentum[2]) /
+            0.5f *
+                (part->conserved.momentum[0] * part->conserved.momentum[0] +
+                 part->conserved.momentum[1] * part->conserved.momentum[1] +
+                 part->conserved.momentum[2] * part->conserved.momentum[2]) /
                 part->conserved.mass;
 #endif
 
@@ -429,7 +431,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #else
             0.f, 0.f, 0.f
 #endif
-            );
+    );
   }
 
   if (with_solution) {

@@ -291,7 +291,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #else
             0., 0., 0., 0.
 #endif
-            );
+    );
   }
 
   /* Write all other cells */
@@ -325,7 +325,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #else
               0., 0., 0., 0.
 #endif
-              );
+          );
         }
       }
     }

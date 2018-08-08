@@ -250,8 +250,9 @@ int main(int argc, char *argv[]) {
     log_u += log_u_step;
 
     if (do_output == 1)
-      fprintf(f, "%.6e ", A1_u[i] * units_cgs_conversion_factor(
-                                        &us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
+      fprintf(f, "%.6e ",
+              A1_u[i] * units_cgs_conversion_factor(
+                            &us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
   }
   if (do_output == 1) fprintf(f, "\n");
 

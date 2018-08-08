@@ -44,10 +44,9 @@ __attribute__((always_inline, const)) INLINE static float good_approx_expf(
     float x) {
   return 1.f +
          x * (1.f +
-              x * (0.5f +
-                   x * ((1.f / 6.f) +
-                        x * ((1.f / 24.f) +
-                             x * ((1.f / 120.f) + (1.f / 720.f) * x)))));
+              x * (0.5f + x * ((1.f / 6.f) +
+                               x * ((1.f / 24.f) +
+                                    x * ((1.f / 120.f) + (1.f / 720.f) * x)))));
 }
 
 /**
@@ -56,11 +55,9 @@ __attribute__((always_inline, const)) INLINE static float good_approx_expf(
 __attribute__((always_inline, const)) INLINE static double good_approx_exp(
     double x) {
   return 1. +
-         x * (1. +
-              x * (0.5 +
-                   x * ((1. / 6.) +
-                        x * ((1. / 24.) +
-                             x * ((1. / 120.) + (1. / 720.) * x)))));
+         x * (1. + x * (0.5 + x * ((1. / 6.) +
+                                   x * ((1. / 24.) +
+                                        x * ((1. / 120.) + (1. / 720.) * x)))));
 }
 
 #endif /* SWIFT_APPROX_MATH_H */
