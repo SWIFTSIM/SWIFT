@@ -5274,14 +5274,11 @@ void engine_makeproxies(struct engine *e) {
   const int nodeID = e->nodeID;
   const struct space *s = e->s;
   const int *cdim = s->cdim;
-  const int periodic = s->periodic;
 
   /* Get some info about the physics */
-  const double *dim = s->dim;
-  const struct gravity_props *props = e->gravity_properties;
-  const double theta_crit2 = props->theta_crit2;
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const double theta_crit = e->gravity_properties->theta_crit;
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
@@ -5300,13 +5297,27 @@ void engine_makeproxies(struct engine *e) {
   /* Compute how many cells away we need to walk */
   int delta = 1; /*hydro case */
   if (with_gravity) {
-    const double distance = 2.5 * cells[0].width[0] / props->theta_crit;
+    const double distance = 2.5 * cells[0].width[0] / theta_crit;
     delta = (int)(distance / cells[0].width[0]) + 1;
+  }
+  int delta_m = delta;
+  int delta_p = delta;
+
+  /* Special case where every cell is in range of every other one */
+  if (delta >= cdim[0] / 2) {
+    if (cdim[0] % 2 == 0) {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2 - 1;
+    } else {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2;
+    }
   }
 
   /* Let's be verbose about this choice */
   if (e->verbose)
-    message("Looking for proxies up to %d top-level cells away", delta);
+    message("Looking for proxies up to %d top-level cells away (delta_m=%d delta_m=%d)",
+	    delta, delta_m, delta_p);
 
   /* Loop over each cell in the space. */
   int ind[3];
@@ -5331,19 +5342,19 @@ void engine_makeproxies(struct engine *e) {
         }
 
         /* Loop over all its neighbours (periodic). */
-        for (int i = -delta; i <= delta; i++) {
+        for (int i = -delta_m; i <= delta_p; i++) {
           int ii = ind[0] + i;
           if (ii >= cdim[0])
             ii -= cdim[0];
           else if (ii < 0)
             ii += cdim[0];
-          for (int j = -delta; j <= delta; j++) {
+          for (int j = -delta_m; j <= delta_p; j++) {
             int jj = ind[1] + j;
             if (jj >= cdim[1])
               jj -= cdim[1];
             else if (jj < 0)
               jj += cdim[1];
-            for (int k = -delta; k <= delta; k++) {
+            for (int k = -delta_m; k <= delta_p; k++) {
               int kk = ind[2] + k;
               if (kk >= cdim[2])
                 kk -= cdim[2];
@@ -5366,7 +5377,7 @@ void engine_makeproxies(struct engine *e) {
 
               int proxy_type = 0;
 
-              /* In the hydro case, only care about neighbours */
+              /* In the hydro case, only care about direct neighbours */
               if (with_hydro) {
 
                 /* This is super-ugly but checks for direct neighbours */
@@ -5386,27 +5397,8 @@ void engine_makeproxies(struct engine *e) {
               /* In the gravity case, check distances using the MAC. */
               if (with_gravity) {
 
-                /* Get cj's multipole */
-                const struct gravity_tensors *multi_j = cells[cjd].multipole;
-                const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1],
-                                         multi_j->CoM[2]};
-                const double r_max_j = multi_j->r_max;
-
-                /* Let's compute the current distance between the cell pair*/
-                double dx = CoM_i[0] - CoM_j[0];
-                double dy = CoM_i[1] - CoM_j[1];
-                double dz = CoM_i[2] - CoM_j[2];
-
-                /* Apply BC */
-                if (periodic) {
-                  dx = nearest(dx, dim[0]);
-                  dy = nearest(dy, dim[1]);
-                  dz = nearest(dz, dim[2]);
-                }
-                const double r2 = dx * dx + dy * dy + dz * dz;
-
                 /* Are we too close for M2L? */
-                if (!gravity_M2L_accept(r_max_i, r_max_j, theta_crit2, r2))
+                if (!cell_can_use_pair_mm(&cells[cid], &cells[cjd], e, s))
                   proxy_type |= (int)proxy_cell_type_gravity;
               }
 
