@@ -46,21 +46,18 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
   FILE *file = fopen(filename, "r");
   if (file == NULL) error("Error opening file '%s'", filename);
 
-  /* Declare reading variables */
-  ssize_t read;
-  size_t len = 0;
-  char *line = NULL;
 
   /* Count number of lines */
-  size_t nber_line = -1; /* Do not count header */
-  while (getline(&line, &len, file) != -1) {
-    nber_line++;
-  }
-  outputlist->size = nber_line;
+  size_t len = 0;
+  char *line = NULL;
+  size_t nber_line = 0; 
+  while (getline(&line, &len, file) != -1)  nber_line++;
+
+  outputlist->size = nber_line - 1; /* Do not count header */
 
   /* Return to start of file and initialize time array */
   fseek(file, 0, SEEK_SET);
-  outputlist->times = (double *)malloc(sizeof(double) * nber_line);
+  outputlist->times = (double *)malloc(sizeof(double) * outputlist->size);
   if (!outputlist->times)
     error(
         "Unable to malloc output_list. "
@@ -68,7 +65,7 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
         filename);
 
   /* Read header */
-  if ((read = getline(&line, &len, file)) == -1)
+  if (getline(&line, &len, file) == -1)
     error("Unable to read header in file '%s'", filename);
 
   /* Remove end of line character */
@@ -76,11 +73,11 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
 
   /* Find type of data in file */
   int type = -1;
-  if (!strcmp(line, "# Redshift"))
+  if (strcmp(line, "# Redshift") == 0)
     type = OUTPUT_LIST_REDSHIFT;
-  else if (!strcmp(line, "# Time"))
+  else if (strcmp(line, "# Time") == 0)
     type = OUTPUT_LIST_AGE;
-  else if (!strcmp(line, "# Scale Factor"))
+  else if (strcmp(line, "# Scale Factor") == 0)
     type = OUTPUT_LIST_SCALE_FACTOR;
   else
     error("Unable to interpret the header (%s) in file '%s'", line, filename);
@@ -94,24 +91,42 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
 
   /* Read file */
   size_t ind = 0;
-  while ((read = getline(&line, &len, file)) != -1) {
+  while (getline(&line, &len, file) != -1) {
     double *time = &outputlist->times[ind];
     /* Write data to outputlist */
-    if (sscanf(line, "%lf", time) != 1) {
+    if (sscanf(line, "%lf", time) != 1)
       error(
           "Tried parsing double but found '%s' with illegal double "
           "characters in file '%s'.",
           line, filename);
-    }
 
     /* Transform input into correct time (e.g. ages or scale factor) */
     if (type == OUTPUT_LIST_REDSHIFT) *time = 1. / (1. + *time);
 
-    if (cosmo && type == OUTPUT_LIST_AGE)
+    if (type == OUTPUT_LIST_AGE)
       *time = cosmology_get_scale_factor(cosmo, *time);
 
     /* Update size */
     ind += 1;
+  }
+
+  if (ind != outputlist->size)
+    error("Did not read the correct number of output times.");
+
+  /* Check that the list is in monotonic order */
+  for (size_t i = 1; i < outputlist->size; ++i) {
+    
+    if ((type == OUTPUT_LIST_REDSHIFT) && 
+	(outputlist->times[i] >= outputlist->times[i-1]))
+      error("Output list not having monotonically decreasing redshifts.");
+
+    if ((type == OUTPUT_LIST_AGE) && 
+	(outputlist->times[i] <= outputlist->times[i-1]))
+      error("Output list not having monotonically increasing ages.");
+
+    if ((type == OUTPUT_LIST_SCALE_FACTOR) && 
+	(outputlist->times[i] <= outputlist->times[i-1]))
+      error("Output list not having monotonically increasing scale-factors.");
   }
 
   /* set current indice to 0 */
