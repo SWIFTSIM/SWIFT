@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_OUTPUTLIST_H
-#define SWIFT_OUTPUTLIST_H
+#ifndef SWIFT_OUTPUT_LIST_H
+#define SWIFT_OUTPUT_LIST_H
 
 /* Config parameters. */
 #include "../config.h"
@@ -28,18 +28,18 @@
 struct engine;
 
 /**
- * @brief the different outputlist type
+ * @brief the different output_list type
  */
 enum output_list_type {
-  OUTPUTLIST_AGE,
-  OUTPUTLIST_REDSHIFT,
-  OUTPUTLIST_SCALE_FACTOR,
+  OUTPUT_LIST_AGE,
+  OUTPUT_LIST_REDSHIFT,
+  OUTPUT_LIST_SCALE_FACTOR,
 };
 
 /**
  * @brief the array containing the output times
  */
-struct outputlist {
+struct output_list {
 
   /* Time array */
   double *times;
@@ -51,15 +51,15 @@ struct outputlist {
   size_t cur_ind;
 };
 
-void outputlist_read_file(struct outputlist *outputlist, const char *filename,
+void output_list_read_file(struct output_list *outputlist, const char *filename,
                           struct cosmology *cosmo);
-void outputlist_read_next_time(struct outputlist *t, const struct engine *e,
+void output_list_read_next_time(struct output_list *t, const struct engine *e,
                                const char *name, integertime_t *ti_next);
-void outputlist_init(struct outputlist **list, const struct engine *e,
+void output_list_init(struct output_list **list, const struct engine *e,
                      char *name, double *delta_time, double *time_first);
-void outputlist_print(const struct outputlist *outputlist);
-void outputlist_clean(struct outputlist *outputlist);
-void outputlist_struct_dump(struct outputlist *list, FILE *stream);
-void outputlist_struct_restore(struct outputlist *list, FILE *stream);
+void output_list_print(const struct output_list *outputlist);
+void output_list_clean(struct output_list *outputlist);
+void output_list_struct_dump(struct output_list *list, FILE *stream);
+void output_list_struct_restore(struct output_list *list, FILE *stream);
 
-#endif /* SWIFT_OUTPUTLIST_H */
+#endif /* SWIFT_OUTPUT_LIST_H */

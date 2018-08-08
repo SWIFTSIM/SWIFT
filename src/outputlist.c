@@ -35,11 +35,11 @@
 /**
  * @brief Read a file containing a list of time
  *
- * @param outputlist The #outputlist to fill.
+ * @param outputlist The #output_list to fill.
  * @param filename The file to read.
  * @param cosmo The #cosmology model.
  */
-void outputlist_read_file(struct outputlist *outputlist, const char *filename,
+void output_list_read_file(struct output_list *outputlist, const char *filename,
                           struct cosmology *cosmo) {
 
   /* Open file */
@@ -63,7 +63,7 @@ void outputlist_read_file(struct outputlist *outputlist, const char *filename,
   outputlist->times = (double *)malloc(sizeof(double) * nber_line);
   if (!outputlist->times)
     error(
-        "Unable to malloc outputlist. "
+        "Unable to malloc output_list. "
         "Try reducing the number of lines in %s",
         filename);
 
@@ -77,16 +77,16 @@ void outputlist_read_file(struct outputlist *outputlist, const char *filename,
   /* Find type of data in file */
   int type = -1;
   if (!strcmp(line, "# Redshift"))
-    type = OUTPUTLIST_REDSHIFT;
+    type = OUTPUT_LIST_REDSHIFT;
   else if (!strcmp(line, "# Time"))
-    type = OUTPUTLIST_AGE;
+    type = OUTPUT_LIST_AGE;
   else if (!strcmp(line, "# Scale Factor"))
-    type = OUTPUTLIST_SCALE_FACTOR;
+    type = OUTPUT_LIST_SCALE_FACTOR;
   else
     error("Unable to interpret the header (%s) in file '%s'", line, filename);
 
   if (!cosmo &&
-      (type == OUTPUTLIST_SCALE_FACTOR || type == OUTPUTLIST_REDSHIFT))
+      (type == OUTPUT_LIST_SCALE_FACTOR || type == OUTPUT_LIST_REDSHIFT))
     error(
         "Unable to compute a redshift or a scale factor without cosmology. "
         "Please change the header in '%s'",
@@ -105,9 +105,9 @@ void outputlist_read_file(struct outputlist *outputlist, const char *filename,
     }
 
     /* Transform input into correct time (e.g. ages or scale factor) */
-    if (type == OUTPUTLIST_REDSHIFT) *time = 1. / (1. + *time);
+    if (type == OUTPUT_LIST_REDSHIFT) *time = 1. / (1. + *time);
 
-    if (cosmo && type == OUTPUTLIST_AGE)
+    if (cosmo && type == OUTPUT_LIST_AGE)
       *time = cosmology_get_scale_factor(cosmo, *time);
 
     /* Update size */
@@ -123,12 +123,12 @@ void outputlist_read_file(struct outputlist *outputlist, const char *filename,
 /**
  * @brief Read the next time for an output
  *
- * @param t The #outputlist
+ * @param t The #output_list
  * @param e The #engine.
  * @param name The name of the output (e.g. 'stats', 'snapshots', 'stf')
  * @param ti_next updated to the next output time
  */
-void outputlist_read_next_time(struct outputlist *t, const struct engine *e,
+void output_list_read_next_time(struct output_list *t, const struct engine *e,
                                const char *name, integertime_t *ti_next) {
   int is_cosmo = e->policy & engine_policy_cosmology;
 
@@ -190,7 +190,7 @@ void outputlist_read_next_time(struct outputlist *t, const struct engine *e,
  * @param time_first updated to the time of first output (scale factor or cosmic
  * time)
  */
-void outputlist_init(struct outputlist **list, const struct engine *e,
+void output_list_init(struct output_list **list, const struct engine *e,
                      char *name, double *delta_time, double *time_first) {
   struct swift_params *params = e->parameter_file;
 
@@ -207,7 +207,7 @@ void outputlist_init(struct outputlist **list, const struct engine *e,
   if (!outputlist_on) return;
 
   /* Read outputlist for snapshots */
-  *list = (struct outputlist *)malloc(sizeof(struct outputlist));
+  *list = (struct output_list *)malloc(sizeof(struct output_list));
 
   /* Read filename */
   char filename[PARSER_MAX_LINE_SIZE];
@@ -215,7 +215,7 @@ void outputlist_init(struct outputlist **list, const struct engine *e,
   parser_get_param_string(params, param_name, filename);
 
   message("Reading %s output file.", name);
-  outputlist_read_file(*list, filename, cosmo);
+  output_list_read_file(*list, filename, cosmo);
 
   if ((*list)->size < 2)
     error("You need to provide more snapshots in '%s'", filename);
@@ -231,9 +231,9 @@ void outputlist_init(struct outputlist **list, const struct engine *e,
 }
 
 /**
- * @brief Print an #outputlist
+ * @brief Print an #output_list
  */
-void outputlist_print(const struct outputlist *outputlist) {
+void output_list_print(const struct output_list *outputlist) {
 
   printf("/*\t Time Array\t */\n");
   printf("Number of Line: %lu\n", outputlist->size);
@@ -246,29 +246,29 @@ void outputlist_print(const struct outputlist *outputlist) {
 }
 
 /**
- * @brief Clean an #outputlist
+ * @brief Clean an #output_list
  */
-void outputlist_clean(struct outputlist *outputlist) {
+void output_list_clean(struct output_list *outputlist) {
   free(outputlist->times);
 }
 
 /**
- * @brief Dump an #outputlist in a restart file
+ * @brief Dump an #output_list in a restart file
  */
-void outputlist_struct_dump(struct outputlist *list, FILE *stream) {
-  restart_write_blocks(list, sizeof(struct outputlist), 1, stream, "outputlist",
-                       "outputlist struct");
+void output_list_struct_dump(struct output_list *list, FILE *stream) {
+  restart_write_blocks(list, sizeof(struct output_list), 1, stream, "output_list",
+                       "output_list struct");
 
   restart_write_blocks(list->times, list->size, sizeof(double), stream,
-                       "outputlist", "times");
+                       "output_list", "times");
 }
 
 /**
- * @brief Restore an #outputlist from a restart file
+ * @brief Restore an #output_list from a restart file
  */
-void outputlist_struct_restore(struct outputlist *list, FILE *stream) {
-  restart_read_blocks(list, sizeof(struct outputlist), 1, stream, NULL,
-                      "outputlist struct");
+void output_list_struct_restore(struct output_list *list, FILE *stream) {
+  restart_read_blocks(list, sizeof(struct output_list), 1, stream, NULL,
+                      "output_list struct");
 
   list->times = (double *)malloc(sizeof(double) * list->size);
   restart_read_blocks(list->times, list->size, sizeof(double), stream, NULL,

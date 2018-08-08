@@ -215,8 +215,8 @@ struct engine {
   double time_first_snapshot;
   double delta_time_snapshot;
 
-  /* Outputlist for the snapshots */
-  struct outputlist *outputlist_snapshots;
+  /* Output_List for the snapshots */
+  struct output_list *output_list_snapshots;
 
   /* Integer time of the next snapshot */
   integertime_t ti_next_snapshot;
@@ -234,8 +234,8 @@ struct engine {
   double deltaTimeSTF;
   int deltaStepSTF;
 
-  /* Outputlist for the structure finding */
-  struct outputlist *outputlist_stf;
+  /* Output_List for the structure finding */
+  struct output_list *output_list_stf;
 
   /* Integer time of the next stf output */
   integertime_t ti_nextSTF;
@@ -247,8 +247,8 @@ struct engine {
   double time_first_statistics;
   double delta_time_statistics;
 
-  /* Outputlist for the stats */
-  struct outputlist *outputlist_stats;
+  /* Output_List for the stats */
+  struct output_list *output_list_stats;
 
   /* Integer time of the next statistics dump */
   integertime_t ti_next_stats;
@@ -374,9 +374,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t);
 void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
 void engine_compute_next_stf_time(struct engine *e);
-void engine_read_next_snapshot_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
-void engine_read_next_statistics_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e);
@@ -384,7 +382,7 @@ void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
-void engine_init_outputlists(struct engine *e, struct swift_params *params);
+void engine_init_output_lists(struct engine *e, struct swift_params *params);
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
                  int policy, int verbose, struct repartition *reparttype,
