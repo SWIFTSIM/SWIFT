@@ -83,7 +83,7 @@ struct cooling_tables {
  *
  */
 struct eagle_cooling_table {
-  struct cooling_tables_redshift_invariant photoionisation_cooling;
+  struct cooling_tables_redshift_invariant no_compton_cooling;
   struct cooling_tables_redshift_invariant photodissociation_cooling;
   struct cooling_tables_redshift_invariant collisional_cooling;
   struct cooling_tables element_cooling;
