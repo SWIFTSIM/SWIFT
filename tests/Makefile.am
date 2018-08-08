@@ -28,7 +28,7 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
-    testCbrt
+	testCbrt testCosmology
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
@@ -39,7 +39,7 @@ check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
-		 testSelectOutput testCbrt
+		 testSelectOutput testCbrt testCosmology
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -52,6 +52,8 @@ testMaths_SOURCES = testMaths.c
 testReading_SOURCES = testReading.c
 
 testSelectOutput_SOURCES = testSelectOutput.c
+
+testCosmology_SOURCES = testCosmology.c
 
 testSymmetry_SOURCES = testSymmetry.c
 

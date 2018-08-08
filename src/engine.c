@@ -69,6 +69,7 @@
 #include "map.h"
 #include "memswap.h"
 #include "minmax.h"
+#include "outputlist.h"
 #include "parallel_io.h"
 #include "part.h"
 #include "partition.h"
@@ -5829,6 +5830,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
     e->time_base_inv = e->cosmology->time_base_inv;
     e->ti_current = 0;
   }
+
+  engine_init_output_lists(e, params);
 }
 
 /**
@@ -5902,6 +5905,9 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
       error(
           "Invalid flag (%d) set for output time format of structure finding.",
           e->stf_output_freq_format);
+
+    /* overwrite input if outputlist */
+    if (e->output_list_stf) e->stf_output_freq_format = TIME;
   }
 
   /* Get the number of queues */
@@ -6435,6 +6441,12 @@ void engine_print_policy(struct engine *e) {
  * @param e The #engine.
  */
 void engine_compute_next_snapshot_time(struct engine *e) {
+  /* Do outputlist file case */
+  if (e->output_list_snapshots) {
+    output_list_read_next_time(e->output_list_snapshots, e, "snapshots",
+                               &e->ti_next_snapshot);
+    return;
+  }
 
   /* Find upper-bound on last output */
   double time_end;
@@ -6493,6 +6505,12 @@ void engine_compute_next_snapshot_time(struct engine *e) {
  * @param e The #engine.
  */
 void engine_compute_next_statistics_time(struct engine *e) {
+  /* Do output_list file case */
+  if (e->output_list_stats) {
+    output_list_read_next_time(e->output_list_stats, e, "stats",
+                               &e->ti_next_stats);
+    return;
+  }
 
   /* Find upper-bound on last output */
   double time_end;
@@ -6553,6 +6571,11 @@ void engine_compute_next_statistics_time(struct engine *e) {
  * @param e The #engine.
  */
 void engine_compute_next_stf_time(struct engine *e) {
+  /* Do output_list file case */
+  if (e->output_list_stf) {
+    output_list_read_next_time(e->output_list_stf, e, "stf", &e->ti_nextSTF);
+    return;
+  }
 
   /* Find upper-bound on last output */
   double time_end;
@@ -6599,6 +6622,53 @@ void engine_compute_next_stf_time(struct engine *e) {
       if (e->verbose)
         message("Next output time set to t=%e.", next_snapshot_time);
     }
+  }
+}
+
+/**
+ * @brief Initialize all the output_list required by the engine
+ *
+ * @param e The #engine.
+ * @param params The #swift_params.
+ */
+void engine_init_output_lists(struct engine *e, struct swift_params *params) {
+  /* Deal with snapshots */
+  double snaps_time_first;
+  e->output_list_snapshots = NULL;
+  output_list_init(&e->output_list_snapshots, e, "Snapshots",
+                   &e->delta_time_snapshot, &snaps_time_first);
+
+  if (e->output_list_snapshots) {
+    if (e->policy & engine_policy_cosmology)
+      e->a_first_snapshot = snaps_time_first;
+    else
+      e->time_first_snapshot = snaps_time_first;
+  }
+
+  /* Deal with stats */
+  double stats_time_first;
+  e->output_list_stats = NULL;
+  output_list_init(&e->output_list_stats, e, "Statistics",
+                   &e->delta_time_statistics, &stats_time_first);
+
+  if (e->output_list_stats) {
+    if (e->policy & engine_policy_cosmology)
+      e->a_first_statistics = stats_time_first;
+    else
+      e->time_first_statistics = stats_time_first;
+  }
+
+  /* Deal with stf */
+  double stf_time_first;
+  e->output_list_stf = NULL;
+  output_list_init(&e->output_list_stf, e, "StructureFinding", &e->deltaTimeSTF,
+                   &stf_time_first);
+
+  if (e->output_list_stf) {
+    if (e->policy & engine_policy_cosmology)
+      e->a_first_stf = stf_time_first;
+    else
+      e->timeFirstSTFOutput = stf_time_first;
   }
 }
 
@@ -6735,6 +6805,18 @@ void engine_clean(struct engine *e) {
   }
   free(e->runners);
   free(e->snapshot_units);
+  if (e->output_list_snapshots) {
+    output_list_clean(e->output_list_snapshots);
+    free(e->output_list_snapshots);
+  }
+  if (e->output_list_stats) {
+    output_list_clean(e->output_list_stats);
+    free(e->output_list_stats);
+  }
+  if (e->output_list_stf) {
+    output_list_clean(e->output_list_stf);
+    free(e->output_list_stf);
+  }
   free(e->links);
   free(e->cell_loc);
   scheduler_clean(&e->sched);
@@ -6777,6 +6859,11 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   chemistry_struct_dump(e->chemistry, stream);
   sourceterms_struct_dump(e->sourceterms, stream);
   parser_struct_dump(e->parameter_file, stream);
+  if (e->output_list_snapshots)
+    output_list_struct_dump(e->output_list_snapshots, stream);
+  if (e->output_list_stats)
+    output_list_struct_dump(e->output_list_stats, stream);
+  if (e->output_list_stf) output_list_struct_dump(e->output_list_stf, stream);
 }
 
 /**
@@ -6871,6 +6958,27 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct swift_params *)malloc(sizeof(struct swift_params));
   parser_struct_restore(parameter_file, stream);
   e->parameter_file = parameter_file;
+
+  if (e->output_list_snapshots) {
+    struct output_list *output_list_snapshots =
+        (struct output_list *)malloc(sizeof(struct output_list));
+    output_list_struct_restore(output_list_snapshots, stream);
+    e->output_list_snapshots = output_list_snapshots;
+  }
+
+  if (e->output_list_stats) {
+    struct output_list *output_list_stats =
+        (struct output_list *)malloc(sizeof(struct output_list));
+    output_list_struct_restore(output_list_stats, stream);
+    e->output_list_stats = output_list_stats;
+  }
+
+  if (e->output_list_stf) {
+    struct output_list *output_list_stf =
+        (struct output_list *)malloc(sizeof(struct output_list));
+    output_list_struct_restore(output_list_stf, stream);
+    e->output_list_stf = output_list_stf;
+  }
 
   /* Want to force a rebuild before using this engine. Wait to repartition.*/
   e->forcerebuild = 1;

@@ -156,6 +156,9 @@ struct cosmology {
   /*! Time interpolation table */
   double *time_interp_table;
 
+  /*! Scale factor interpolation table */
+  double *scale_factor_interp_table;
+
   /*! Time between Big Bang and first entry in the table */
   double time_interp_table_offset;
 
@@ -180,6 +183,9 @@ double cosmology_get_therm_kick_factor(const struct cosmology *cosmo,
 double cosmology_get_delta_time(const struct cosmology *c,
                                 integertime_t ti_start, integertime_t ti_end);
 
+double cosmology_get_scale_factor(const struct cosmology *cosmo, double t);
+
+double cosmology_get_time_since_big_bang(const struct cosmology *c, double a);
 void cosmology_init(struct swift_params *params, const struct unit_system *us,
                     const struct phys_const *phys_const, struct cosmology *c);
 

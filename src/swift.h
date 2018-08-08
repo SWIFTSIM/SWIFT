@@ -49,6 +49,7 @@
 #include "map.h"
 #include "mesh_gravity.h"
 #include "multipole.h"
+#include "outputlist.h"
 #include "parallel_io.h"
 #include "parser.h"
 #include "part.h"
