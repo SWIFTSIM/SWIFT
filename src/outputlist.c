@@ -116,7 +116,7 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
   for (size_t i = 1; i < outputlist->size; ++i) {
 
     if ((type == OUTPUT_LIST_REDSHIFT) &&
-        (outputlist->times[i] >= outputlist->times[i - 1]))
+        (outputlist->times[i] <= outputlist->times[i - 1]))
       error("Output list not having monotonically decreasing redshifts.");
 
     if ((type == OUTPUT_LIST_AGE) &&
