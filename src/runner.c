@@ -96,8 +96,8 @@
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
 
-/* Import the star loop functions. */
-#include "runner_doiact_star.h"
+/* Import the stars loop functions. */
+#include "runner_doiact_stars.h"
 
 /**
  * @brief Perform source terms
@@ -143,15 +143,15 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
+void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct spart *restrict sparts = c->sparts;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct stars_props *stars_properties = e->stars_properties;
-  const float star_h_max = stars_properties->h_max;
+  const float stars_h_max = stars_properties->h_max;
   const float eps = stars_properties->h_tolerance;
-  const float star_eta_dim =
+  const float stars_eta_dim =
       pow_dimension(stars_properties->eta_neighbours);
   const int max_smoothing_iter = stars_properties->max_smoothing_iterations;
   int redo = 0, scount = 0;
@@ -159,12 +159,12 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_star(c, e)) return;
+  if (!cell_is_active_stars(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_star_ghost(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_stars_ghost(r, c->progeny[k], 0);
   } else {
 
     /* Init the list of active particles that have to be updated. */
@@ -212,11 +212,11 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Finish the density calculation */
-          star_end_density(sp, cosmo);
+          stars_end_density(sp, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = sp->wcount * h_old_dim;
-          const float n_target = star_eta_dim;
+          const float n_target = stars_eta_dim;
           const float f = n_sum - n_target;
           const float f_prime =
               sp->wcount_dh * h_old_dim +
@@ -242,14 +242,14 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
           sp->h = h_new;
 
           /* If below the absolute maximum, try again */
-          if (sp->h < star_h_max) {
+          if (sp->h < stars_h_max) {
 
             /* Flag for another round of fun */
             sid[redo] = sid[i];
             redo += 1;
 
             /* Re-initialise everything */
-            star_init_spart(sp);
+            stars_init_spart(sp);
 
             /* Off we go ! */
             continue;
@@ -257,11 +257,11 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
           } else {
 
             /* Ok, this particle is a lost cause... */
-            sp->h = star_h_max;
+            sp->h = stars_h_max;
 
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
-              star_spart_has_no_neighbours(sp, cosmo);
+              stars_spart_has_no_neighbours(sp, cosmo);
             }
           }
         }
@@ -271,13 +271,13 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        star_prepare_force(sp, cosmo);
+        stars_prepare_force(sp, cosmo);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
 
         /* Prepare the particle for the force loop over neighbours */
-        star_reset_acceleration(sp);
+        stars_reset_acceleration(sp);
 
       }
 
@@ -301,23 +301,23 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Self-interaction? */
             if (l->t->type == task_type_self)
-              runner_doself_subset_branch_star_density(r, finger, sparts, sid, scount);
+              runner_doself_subset_branch_stars_density(r, finger, sparts, sid, scount);
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dopair_subset_branch_star_density(r, finger, sparts, sid,
+                runner_dopair_subset_branch_stars_density(r, finger, sparts, sid,
                                                     scount, l->t->cj);
               else
-                runner_dopair_subset_branch_star_density(r, finger, sparts, sid,
+                runner_dopair_subset_branch_stars_density(r, finger, sparts, sid,
                                                     scount, l->t->ci);
             }
 
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
-              runner_dosub_subset_star_density(r, finger, sparts, sid, scount, NULL,
+              runner_dosub_subset_stars_density(r, finger, sparts, sid, scount, NULL,
                                           -1, 1);
 
             /* Otherwise, sub-pair interaction? */
@@ -325,10 +325,10 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dosub_subset_star_density(r, finger, sparts, sid, scount,
+                runner_dosub_subset_stars_density(r, finger, sparts, sid, scount,
                                             l->t->cj, -1, 1);
               else
-                runner_dosub_subset_star_density(r, finger, sparts, sid, scount,
+                runner_dosub_subset_stars_density(r, finger, sparts, sid, scount,
                                             l->t->ci, -1, 1);
             }
           }
@@ -344,7 +344,7 @@ void runner_do_star_ghost(struct runner *r, struct cell *c, int timer) {
     free(sid);
   }
 
-  if (timer) TIMER_TOC(timer_do_star_ghost);
+  if (timer) TIMER_TOC(timer_do_stars_ghost);
 }
 
 
@@ -1428,7 +1428,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-    /* Loop over the star particles in this cell. */
+    /* Loop over the stars particles in this cell. */
     for (int k = 0; k < scount; k++) {
 
       /* Get a handle on the s-part. */
@@ -1640,7 +1640,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 #endif
 
         /* Prepare the values to be drifted */
-        star_reset_predicted_values(sp);
+        stars_reset_predicted_values(sp);
       }
     }
   }
@@ -1855,7 +1855,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next starting point for this cell ? */
         ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
 
-      } else { /* star particle is inactive */
+      } else { /* stars particle is inactive */
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, sp->time_bin);
@@ -1987,7 +1987,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
         long long id = 0;
         if (gp->type == swift_type_gas)
           id = e->s->parts[-gp->id_or_neg_offset].id;
-        else if (gp->type == swift_type_star)
+        else if (gp->type == swift_type_stars)
           id = e->s->sparts[-gp->id_or_neg_offset].id;
         else if (gp->type == swift_type_black_hole)
           error("Unexisting type");
@@ -2018,7 +2018,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
             long long my_id = 0;
             if (gp->type == swift_type_gas)
               my_id = e->s->parts[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_star)
+            else if (gp->type == swift_type_stars)
               my_id = e->s->sparts[-gp->id_or_neg_offset].id;
             else if (gp->type == swift_type_black_hole)
               error("Unexisting type");
@@ -2038,7 +2038,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-    /* Loop over the star particles in this cell. */
+    /* Loop over the stars particles in this cell. */
     for (int k = 0; k < scount; k++) {
 
       /* Get a handle on the spart. */
@@ -2046,7 +2046,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (spart_is_active(sp, e)) {
 
         /* Finish the force loop */
-        star_end_force(sp);
+        stars_end_force(sp);
       }
     }
   }
@@ -2361,8 +2361,8 @@ void *runner_main(void *data) {
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
-	  else if (t->subtype == task_subtype_star_density)
-	    runner_doself_star_density(r, ci, 1);
+	  else if (t->subtype == task_subtype_stars_density)
+	    runner_doself_stars_density(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2378,8 +2378,8 @@ void *runner_main(void *data) {
             runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
-	  else if (t->subtype == task_subtype_star_density)
-	    runner_dopair_star_density(r, ci, cj, 1);
+	  else if (t->subtype == task_subtype_stars_density)
+	    runner_dopair_stars_density(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2393,8 +2393,8 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
-	  else if (t->subtype == task_subtype_star_density)
-	    runner_dosub_self_star_density(r, ci, 1);
+	  else if (t->subtype == task_subtype_stars_density)
+	    runner_dosub_self_stars_density(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2408,8 +2408,8 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
-	  else if (t->subtype == task_subtype_star_density)
-	    runner_dosub_pair_star_density(r, ci, cj, t->flags, 1);
+	  else if (t->subtype == task_subtype_stars_density)
+	    runner_dosub_pair_stars_density(r, ci, cj, t->flags, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2432,8 +2432,8 @@ void *runner_main(void *data) {
           runner_do_extra_ghost(r, ci, 1);
           break;
 #endif
-        case task_type_star_ghost:
-	  runner_do_star_ghost(r, ci, 1);
+        case task_type_stars_ghost:
+	  runner_do_stars_ghost(r, ci, 1);
 	  break;
         case task_type_drift_part:
           runner_do_drift_part(r, ci, 1);

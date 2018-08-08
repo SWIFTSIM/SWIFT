@@ -283,16 +283,16 @@ struct cell {
   struct task *grav_down;
 
   /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
-  struct task *star_ghost_in;
+  struct task *stars_ghost_in;
 
   /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
-  struct task *star_ghost_out;
+  struct task *stars_ghost_out;
 
   /*! The star ghost task itself */
-  struct task *star_ghost;
+  struct task *stars_ghost;
 
   /*! Linked list of the tasks computing this cell's star density. */
-  struct link *star_density;
+  struct link *stars_density;
 
   /*! Task for cooling */
   struct task *cooling;

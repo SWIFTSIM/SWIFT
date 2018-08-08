@@ -2326,9 +2326,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->ghost_in != NULL) scheduler_activate(s, c->ghost_in);
     if (c->ghost_out != NULL) scheduler_activate(s, c->ghost_out);
     if (c->ghost != NULL) scheduler_activate(s, c->ghost);
-    if (c->star_ghost_in != NULL) scheduler_activate(s, c->star_ghost_in);
-    if (c->star_ghost_out != NULL) scheduler_activate(s, c->star_ghost_out);
-    if (c->star_ghost != NULL) scheduler_activate(s, c->star_ghost);
+    if (c->stars_ghost_in != NULL) scheduler_activate(s, c->stars_ghost_in);
+    if (c->stars_ghost_out != NULL) scheduler_activate(s, c->stars_ghost_out);
+    if (c->stars_ghost != NULL) scheduler_activate(s, c->stars_ghost);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
@@ -2876,7 +2876,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       /* Drift... */
       drift_spart(sp, dt_drift, ti_old_gpart, ti_current);
       if (spart_is_active(sp, e))
-	star_init_spart(sp);
+	stars_init_spart(sp);
 
       /* Note: no need to compute dx_max as all spart have a gpart */
     }

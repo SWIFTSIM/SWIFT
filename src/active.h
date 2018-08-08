@@ -195,7 +195,7 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active_gravity(
  * @param e The #engine containing information about the current time.
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int cell_is_active_star(
+__attribute__((always_inline)) INLINE static int cell_is_active_stars(
     const struct cell *c, const struct engine *e) {
 
   return 1;

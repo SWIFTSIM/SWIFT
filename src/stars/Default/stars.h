@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_STAR_H
-#define SWIFT_DEFAULT_STAR_H
+#ifndef SWIFT_DEFAULT_STARS_H
+#define SWIFT_DEFAULT_STARS_H
 
 #include <float.h>
 #include "minmax.h"
@@ -27,7 +27,7 @@
  *
  * @param sp Pointer to the s-particle data.
  */
-__attribute__((always_inline)) INLINE static float star_compute_timestep(
+__attribute__((always_inline)) INLINE static float stars_compute_timestep(
     const struct spart* const sp) {
 
   return FLT_MAX;
@@ -41,7 +41,7 @@ __attribute__((always_inline)) INLINE static float star_compute_timestep(
  *
  * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void star_first_init_spart(
+__attribute__((always_inline)) INLINE static void stars_first_init_spart(
     struct spart* sp) {
 
   sp->time_bin = 0;
@@ -52,7 +52,7 @@ __attribute__((always_inline)) INLINE static void star_first_init_spart(
  *
  * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void star_init_spart(
+__attribute__((always_inline)) INLINE static void stars_init_spart(
   struct spart* sp) {
 
 #ifdef DEBUG_INTERACTIONS_STARS
@@ -70,7 +70,7 @@ __attribute__((always_inline)) INLINE static void star_init_spart(
  *
  * @param sp The particle.
  */
-__attribute__((always_inline)) INLINE static void star_reset_predicted_values(
+__attribute__((always_inline)) INLINE static void stars_reset_predicted_values(
     struct spart* restrict sp) {}
 
 /**
@@ -80,7 +80,7 @@ __attribute__((always_inline)) INLINE static void star_reset_predicted_values(
  *
  * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void star_end_force(
+__attribute__((always_inline)) INLINE static void stars_end_force(
     struct spart* sp) {}
 
 /**
@@ -89,7 +89,7 @@ __attribute__((always_inline)) INLINE static void star_end_force(
  * @param sp The particle to act upon
  * @param dt The time-step for this kick
  */
-__attribute__((always_inline)) INLINE static void star_kick_extra(
+__attribute__((always_inline)) INLINE static void stars_kick_extra(
     struct spart* sp, float dt) {}
 
 /**
@@ -97,7 +97,7 @@ __attribute__((always_inline)) INLINE static void star_kick_extra(
  *
  * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void star_end_density(
+__attribute__((always_inline)) INLINE static void stars_end_density(
     struct spart* sp, const struct cosmology* cosmo) {
 
   /* Some smoothing length multiples. */
@@ -118,7 +118,7 @@ __attribute__((always_inline)) INLINE static void star_end_density(
  * @param sp The particle to act upon
  * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void star_spart_has_no_neighbours(
+__attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
     struct spart *restrict sp, const struct cosmology *cosmo) {
 
   /* Some smoothing length multiples. */
@@ -138,7 +138,7 @@ __attribute__((always_inline)) INLINE static void star_spart_has_no_neighbours(
  * @param sp The particle to act upon
  * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void star_prepare_force(
+__attribute__((always_inline)) INLINE static void stars_prepare_force(
     struct spart *restrict sp, const struct cosmology *cosmo) {}
 
 
@@ -150,7 +150,7 @@ __attribute__((always_inline)) INLINE static void star_prepare_force(
  *
  * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void star_reset_acceleration(
+__attribute__((always_inline)) INLINE static void stars_reset_acceleration(
     struct spart *restrict p) {}
 
-#endif /* SWIFT_DEFAULT_STAR_H */
+#endif /* SWIFT_DEFAULT_STARS_H */

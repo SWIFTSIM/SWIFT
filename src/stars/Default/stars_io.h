@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_STAR_IO_H
-#define SWIFT_DEFAULT_STAR_IO_H
+#ifndef SWIFT_DEFAULT_STARS_IO_H
+#define SWIFT_DEFAULT_STARS_IO_H
 
-#include "star_part.h"
+#include "stars_part.h"
 #include "io_properties.h"
 
 /**
@@ -29,7 +29,7 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-INLINE static void star_read_particles(struct spart* sparts,
+INLINE static void stars_read_particles(struct spart* sparts,
                                        struct io_props* list, int* num_fields) {
 
   /* Say how much we want to read */
@@ -55,7 +55,7 @@ INLINE static void star_read_particles(struct spart* sparts,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-INLINE static void star_write_particles(const struct spart* sparts,
+INLINE static void stars_write_particles(const struct spart* sparts,
                                         struct io_props* list,
                                         int* num_fields) {
 
