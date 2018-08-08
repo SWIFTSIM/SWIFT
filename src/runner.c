@@ -1898,11 +1898,6 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
       if (gparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, gparts[k].time_bin);
       time_bin_max = max(time_bin_max, gparts[k].time_bin);
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (gparts[k].ti_drift != ti_current)
-        error("Received un-drifted g-particle !");
-#endif
     }
 
     /* Convert into a time */
