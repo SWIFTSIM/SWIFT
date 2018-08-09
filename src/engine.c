@@ -5348,19 +5348,6 @@ void engine_makeproxies(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
 
-        double CoM_i[3] = {0., 0., 0.};
-        double r_max_i = 0.;
-
-        if (with_gravity) {
-
-          /* Get ci's multipole */
-          const struct gravity_tensors *multi_i = cells[cid].multipole;
-          CoM_i[0] = multi_i->CoM[0];
-          CoM_i[1] = multi_i->CoM[1];
-          CoM_i[2] = multi_i->CoM[2];
-          r_max_i = multi_i->r_max;
-        }
-
         /* Loop over all its neighbours (periodic). */
         for (int i = -delta_m; i <= delta_p; i++) {
           int ii = ind[0] + i;
