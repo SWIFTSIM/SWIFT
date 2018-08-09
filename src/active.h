@@ -73,20 +73,6 @@ __attribute__((always_inline)) INLINE static int cell_are_gpart_drifted(
   return (c->ti_old_gpart == e->ti_current);
 }
 
-/**
- * @brief Check that the #spart in a #cell have been drifted to the current
- * time.
- *
- * @param c The #cell.
- * @param e The #engine containing information about the current time.
- * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int cell_are_spart_drifted(
-    const struct cell *c, const struct engine *e) {
-
-  return 1;
-}
-
 /* Are cells / particles active for regular tasks ? */
 
 /**
