@@ -3197,7 +3197,7 @@ void engine_maketasks(struct engine *e) {
                    s->nr_cells, 1, 0, e);
 
   if (e->verbose)
-    message("Making hydro tasks took %.3f %s (including reweight).",
+    message("Making hydro tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
@@ -3206,7 +3206,7 @@ void engine_maketasks(struct engine *e) {
   if (e->policy & engine_policy_self_gravity) engine_make_self_gravity_tasks(e);
 
   if (e->verbose)
-    message("Making gravity tasks took %.3f %s (including reweight).",
+    message("Making gravity tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Add the external gravity tasks. */
@@ -3252,7 +3252,7 @@ void engine_maketasks(struct engine *e) {
   scheduler_splittasks(sched);
 
   if (e->verbose)
-    message("Splitting tasks took %.3f %s (including reweight).",
+    message("Splitting tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -3272,7 +3272,7 @@ void engine_maketasks(struct engine *e) {
                  sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
   if (e->verbose)
-    message("Counting and linking tasks took %.3f %s (including reweight).",
+    message("Counting and linking tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
@@ -3283,7 +3283,7 @@ void engine_maketasks(struct engine *e) {
                  sizeof(struct cell), 0, e);
 
   if (e->verbose)
-    message("Setting super-pointers took %.3f %s (including reweight).",
+    message("Setting super-pointers took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Append hierarchical tasks to each cell. */
@@ -3300,7 +3300,7 @@ void engine_maketasks(struct engine *e) {
                    sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
   if (e->verbose)
-    message("Making extra hydroloop tasks took %.3f %s (including reweight).",
+    message("Making extra hydroloop tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
@@ -3310,7 +3310,7 @@ void engine_maketasks(struct engine *e) {
     engine_link_gravity_tasks(e);
 
   if (e->verbose)
-    message("Linking gravity tasks took %.3f %s (including reweight).",
+    message("Linking gravity tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
 #ifdef WITH_MPI
@@ -3371,7 +3371,7 @@ void engine_maketasks(struct engine *e) {
   scheduler_set_unlocks(sched);
 
   if (e->verbose)
-    message("Setting unlocks took %.3f %s (including reweight).",
+    message("Setting unlocks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
@@ -3380,17 +3380,11 @@ void engine_maketasks(struct engine *e) {
   scheduler_ranktasks(sched);
 
   if (e->verbose)
-    message("Ranking the tasks took %.3f %s (including reweight).",
+    message("Ranking the tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
 
   /* Weight the tasks. */
   scheduler_reweight(sched, e->verbose);
-
-  if (e->verbose)
-    message("Reweighting tasks took %.3f %s (including reweight).",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Set the tasks age. */
   e->tasks_age = 0;
@@ -4038,7 +4032,7 @@ void engine_prepare(struct engine *e) {
   int drifted_all = 0;
 
   /* Unskip active tasks and check for rebuild */
-  if (!e->forcerepart && !e->restarting) engine_unskip(e);
+  if (!e->forcerebuild && !e->forcerepart && !e->restarting) engine_unskip(e);
 
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, &e->forcerebuild, 1, MPI_INT, MPI_MAX,
@@ -4086,7 +4080,7 @@ void engine_prepare(struct engine *e) {
   TIMER_TOC2(timer_prepare);
 
   if (e->verbose)
-    message("took %.3f %s (including unskip and reweight).",
+    message("took %.3f %s (including unskip, rebuild and reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
