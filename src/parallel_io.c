@@ -1030,7 +1030,16 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
     H5Gclose(h_grp);
   }
 
-  /* Print the gravity parameters */
+  /* Print the stellar parameters */
+  if (e->policy & engine_policy_stars) {
+    h_grp = H5Gcreate(h_file, "/StarsScheme", H5P_DEFAULT, H5P_DEFAULT,
+		      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating stars group");
+    stars_props_print_snapshot(h_grp, e->stars_properties);
+    H5Gclose(h_grp);
+  }
+
+  /* Print the cosmological parameters */
   h_grp =
       H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating cosmology group");
