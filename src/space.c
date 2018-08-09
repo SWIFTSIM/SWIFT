@@ -66,6 +66,8 @@ int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
 int space_subsize_self_hydro = space_subsize_self_hydro_default;
 int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
+int space_subsize_pair_stars = space_subsize_pair_stars_default;
+int space_subsize_self_stars = space_subsize_self_stars_default;
 int space_subdepth_grav = space_subdepth_grav_default;
 int space_maxsize = space_maxsize_default;
 #ifdef SWIFT_DEBUG_CHECKS
@@ -185,6 +187,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars_ghost_in = NULL;
     c->stars_ghost_out = NULL;
     c->stars_ghost = NULL;
+    c->stars_density = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -2847,6 +2850,12 @@ void space_init(struct space *s, struct swift_params *params,
   space_subsize_self_grav =
       parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_grav",
                                space_subsize_self_grav_default);
+  space_subsize_pair_stars =
+      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_stars",
+                               space_subsize_pair_stars_default);
+  space_subsize_self_stars =
+      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_stars",
+                               space_subsize_self_stars_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
   space_subdepth_grav = parser_get_opt_param_int(
@@ -2860,6 +2869,8 @@ void space_init(struct space *s, struct swift_params *params,
             space_subsize_pair_hydro, space_subsize_self_hydro);
     message("sub_size_pair_grav set to %d, sub_size_self_grav set to %d",
             space_subsize_pair_grav, space_subsize_self_grav);
+    message("sub_size_pair_stars set to %d, sub_size_self_stars set to %d",
+            space_subsize_pair_stars, space_subsize_self_stars);
   }
 
   /* Apply h scaling */

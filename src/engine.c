@@ -3332,7 +3332,7 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
       /* Make the self-density tasks depend on the drift only. */
       scheduler_addunlock(sched, t->ci->super->drift_part, t);
 
-      /* Now, build all the dependencies for the hydro */
+      /* Now, build all the dependencies for the stars */
       engine_make_stars_loops_dependencies(sched, t, t->ci);
       scheduler_addunlock(sched, t->ci->stars_ghost_out, t->ci->super->end_force);
     }
@@ -3350,13 +3350,13 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t->cj->super->sorts, t);
       }
 
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* Now, build all the dependencies for the stars for the cells */
+      /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_stars_loops_dependencies(sched, t, t->ci);
       }
       if (t->cj->nodeID == nodeID) {
-        if (t->ci->super_hydro != t->cj->super)
+        if (t->ci->super != t->cj->super)
           engine_make_stars_loops_dependencies(sched, t, t->cj);
       }
 
@@ -3370,8 +3370,8 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
       scheduler_addunlock(sched, t->ci->super->drift_part, t);
       scheduler_addunlock(sched, t->ci->super->sorts, t);
 
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* Now, build all the dependencies for the stars for the cells */
+      /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_stars_loops_dependencies(sched, t, t->ci);
       } else
@@ -3392,8 +3392,8 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t->cj->super->sorts, t);
       }
 
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super_hydro-cells */
+      /* Now, build all the dependencies for the stars for the cells */
+      /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_stars_loops_dependencies(sched, t, t->ci);
       }
@@ -3434,7 +3434,7 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
-  /* Construct the star hydro loop over neighbours */
+  /* Construct the stars hydro loop over neighbours */
   if (e->policy & engine_policy_stars) {
     threadpool_map(&e->threadpool, engine_make_starsloop_tasks_mapper, NULL,
                    s->nr_cells, 1, 0, e);

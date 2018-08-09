@@ -650,6 +650,30 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
 }
 
 /**
+ * @brief Can a pair stars task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_pair_stars_task(
+    const struct cell *c) {
+
+  return 0;
+}
+
+/**
+ * @brief Can a self stars task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_self_stars_task(
+    const struct cell *c) {
+
+  return 0;
+}
+
+/**
  * @brief Can a pair gravity task associated with a cell be split into smaller
  * sub-tasks.
  *
