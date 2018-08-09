@@ -4983,13 +4983,16 @@ void engine_step(struct engine *e) {
   /* Perform structure finding? */
   if (run_stf) {
 
-    // MATTHIEU: Add a drift_all here. And check the order with the order i/o
-    // options.
+  // MATTHIEU: Add a drift_all here. And check the order with the order i/o
+  // options.
 
+#ifdef HAVE_VELOCIRAPTOR
+    velociraptor_init(e);
     velociraptor_invoke(e);
 
     /* ... and find the next output time */
     if (e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
+#endif
   }
 
   /* Restore the information we stored */
@@ -5799,6 +5802,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->chemistry = chemistry;
   e->sourceterms = sourceterms;
   e->parameter_file = params;
+  e->cell_loc = NULL;
 #ifdef WITH_MPI
   e->cputime_last_step = 0;
   e->last_repartition = 0;
@@ -5892,7 +5896,6 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
         parser_get_param_double(params, "StructureFinding:time_first");
     e->a_first_stf = parser_get_opt_param_double(
         params, "StructureFinding:scale_factor_first", 0.1);
-    // velociraptor_init(e);
     e->stf_output_freq_format =
         parser_get_param_int(params, "StructureFinding:output_time_format");
     if (e->stf_output_freq_format == STEPS) {

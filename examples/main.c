@@ -943,8 +943,13 @@ int main(int argc, char *argv[]) {
     engine_dump_snapshot(&e);
     engine_print_stats(&e);
 
+#ifdef HAVE_VELOCIRAPTOR
     /* Call VELOCIraptor for the first time after the first snapshot dump. */
-    // if (e.policy & engine_policy_structure_finding) velociraptor_invoke(&e);
+    // if (e.policy & engine_policy_structure_finding) {
+    // velociraptor_init(&e);
+    // velociraptor_invoke(&e);
+    //}
+#endif
   }
 
   /* Legend */
