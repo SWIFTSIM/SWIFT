@@ -50,11 +50,14 @@ struct spart {
   /*! Particle time bin */
   timebin_t time_bin;
 
-  /* Number of neighbours. */
-  float wcount;
+  struct {
+    /* Number of neighbours. */
+    float wcount;
 
-  /* Number of neighbours spatial derivative. */
-  float wcount_dh;
+    /* Number of neighbours spatial derivative. */
+    float wcount_dh;
+
+  } density;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

@@ -27,14 +27,14 @@
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_doself_star_density(struct runner *r, struct cell *c, int timer) {
+void runner_doself_stars_density(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
 
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_star(c, e)) return;
+  if (!cell_is_active_stars(c, e)) return;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -72,19 +72,17 @@ void runner_doself_star_density(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      /* if (si->ti_drift != e->ti_current) */
-      /*   error("Particle si not drifted to current time"); */
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
 
       if (r2 > 0.f && r2 < hig2) {
-	runner_iact_nonsym_star_density(r2, dx, hi, hj, si, pj, a, H);
+	runner_iact_nonsym_stars_density(r2, dx, hi, hj, si, pj, a, H);
       }
     } /* loop over the parts in ci. */
   }   /* loop over the sparts in ci. */
 
-  TIMER_TOC(timer_doself_star_density);
+  TIMER_TOC(timer_doself_stars_density);
  
 }
 
@@ -95,14 +93,14 @@ void runner_doself_star_density(struct runner *r, struct cell *c, int timer) {
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_dosubpair_star_density(struct runner *r, struct cell *restrict ci,
+void runner_dosubpair_stars_density(struct runner *r, struct cell *restrict ci,
 				   struct cell *restrict cj) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
 
   /* Anything to do here? */
-  if (!cell_is_active_star(ci, e) && !cell_is_active_star(cj, e)) return;
+  if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
 
   const int scount_i = ci->scount;
   const int count_j = cj->count;
@@ -149,14 +147,12 @@ void runner_dosubpair_star_density(struct runner *r, struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      /* if (si->ti_drift != e->ti_current) */
-      /*   error("Particle si not drifted to current time"); */
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
 
       if (r2 < hig2)
-	runner_iact_nonsym_star_density(r2, dx, hi, hj, si, pj, a, H);
+	runner_iact_nonsym_stars_density(r2, dx, hi, hj, si, pj, a, H);
 
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -164,15 +160,15 @@ void runner_dosubpair_star_density(struct runner *r, struct cell *restrict ci,
 }
 
 
-void runner_dopair_star_density(struct runner *r, struct cell *restrict ci,
+void runner_dopair_stars_density(struct runner *r, struct cell *restrict ci,
 				   struct cell *restrict cj, int timer) {
 
   TIMER_TIC;
   
-  runner_dosubpair_star_density(r, ci, cj);
-  runner_dosubpair_star_density(r, cj, ci);
+  runner_dosubpair_stars_density(r, ci, cj);
+  runner_dosubpair_stars_density(r, cj, ci);
 
-  if (timer) TIMER_TOC(timer_dopair_star_density);
+  if (timer) TIMER_TOC(timer_dopair_stars_density);
 }
 
 
@@ -190,7 +186,7 @@ void runner_dopair_star_density(struct runner *r, struct cell *restrict ci,
  * @param cj The second #cell.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void runner_dopair_subset_star_density(struct runner *r, struct cell *restrict ci,
+void runner_dopair_subset_stars_density(struct runner *r, struct cell *restrict ci,
 				       struct spart *restrict sparts_i, int *restrict ind,
 				       int scount, struct cell *restrict cj,
 				       const double *shift) {
@@ -238,14 +234,12 @@ void runner_dopair_subset_star_density(struct runner *r, struct cell *restrict c
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      /* if (spi->ti_drift != e->ti_current) */
-      /*   error("Particle pi not drifted to current time"); */
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
       /* Hit or miss? */
       if (r2 < hig2) {
-        runner_iact_nonsym_star_density(r2, dx, hi, pj->h, spi, pj, a, H);
+        runner_iact_nonsym_stars_density(r2, dx, hi, pj->h, spi, pj, a, H);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -264,7 +258,7 @@ void runner_dopair_subset_star_density(struct runner *r, struct cell *restrict c
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param scount The number of particles in @c ind.
  */
-void runner_doself_subset_star_density(struct runner *r, struct cell *restrict ci,
+void runner_doself_subset_stars_density(struct runner *r, struct cell *restrict ci,
                    struct spart *restrict sparts, int *restrict ind, int scount) {
 
   const struct engine *e = r->e;
@@ -310,20 +304,18 @@ void runner_doself_subset_star_density(struct runner *r, struct cell *restrict c
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      /* if (spi->ti_drift != e->ti_current) */
-      /*   error("Particle pi not drifted to current time"); */
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
 
       /* Hit or miss? */
       if (r2 > 0.f && r2 < hig2) {
-	runner_iact_nonsym_star_density(r2, dx, hi, hj, spi, pj, a, H);
+	runner_iact_nonsym_stars_density(r2, dx, hi, hj, spi, pj, a, H);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
 
-  TIMER_TOC(timer_doself_subset_star_density);
+  TIMER_TOC(timer_doself_subset_stars_density);
 }
 
 
@@ -337,11 +329,11 @@ void runner_doself_subset_star_density(struct runner *r, struct cell *restrict c
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param scount The number of particles in @c ind.
  */
-void runner_doself_subset_branch_star_density(struct runner *r, struct cell *restrict ci,
+void runner_doself_subset_branch_stars_density(struct runner *r, struct cell *restrict ci,
                           struct spart *restrict sparts, int *restrict ind,
                           int scount) {
 
-  runner_doself_subset_star_density(r, ci, sparts, ind, scount);
+  runner_doself_subset_stars_density(r, ci, sparts, ind, scount);
 }
 
  /**
@@ -356,7 +348,7 @@ void runner_doself_subset_branch_star_density(struct runner *r, struct cell *res
  * @param scount The number of particles in @c ind.
  * @param cj The second #cell.
  */
- void runner_dopair_subset_branch_star_density(struct runner *r, struct cell *restrict ci,
+ void runner_dopair_subset_branch_stars_density(struct runner *r, struct cell *restrict ci,
                           struct spart *restrict sparts_i, int *restrict ind,
                           int scount, struct cell *restrict cj) {
 
@@ -371,10 +363,10 @@ void runner_doself_subset_branch_star_density(struct runner *r, struct cell *res
       shift[k] = -e->s->dim[k];
   }
 
-  runner_dopair_subset_star_density(r, ci, sparts_i, ind, scount, cj, shift);
+  runner_dopair_subset_stars_density(r, ci, sparts_i, ind, scount, cj, shift);
 }
 
-void runner_dosub_subset_star_density(struct runner *r, struct cell *ci, struct spart *sparts,
+void runner_dosub_subset_stars_density(struct runner *r, struct cell *ci, struct spart *sparts,
                   int *ind, int scount, struct cell *cj, int sid, int gettimer) {
 
   const struct engine *e = r->e;
@@ -383,8 +375,8 @@ void runner_dosub_subset_star_density(struct runner *r, struct cell *ci, struct 
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (!cell_is_active_star(ci, e) &&
-      (cj == NULL || !cell_is_active_star(cj, e)))
+  if (!cell_is_active_stars(ci, e) &&
+      (cj == NULL || !cell_is_active_stars(cj, e)))
     return;
   if (ci->scount == 0 || (cj != NULL && cj->scount == 0)) return;
 
@@ -409,16 +401,16 @@ void runner_dosub_subset_star_density(struct runner *r, struct cell *ci, struct 
     if (cell_can_recurse_in_self_task(ci)) {
 
       /* Loop over all progeny. */
-      runner_dosub_subset_star_density(r, sub, sparts, ind, scount, NULL, -1, 0);
+      runner_dosub_subset_stars_density(r, sub, sparts, ind, scount, NULL, -1, 0);
       for (int j = 0; j < 8; j++)
         if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
-          runner_dosub_subset_star_density(r, sub, sparts, ind, scount, ci->progeny[j], -1, 0);
+          runner_dosub_subset_stars_density(r, sub, sparts, ind, scount, ci->progeny[j], -1, 0);
 
     }
 
     /* Otherwise, compute self-interaction. */
     else
-      runner_doself_subset_branch_star_density(r, ci, sparts, ind, scount);
+      runner_doself_subset_branch_stars_density(r, ci, sparts, ind, scount);
   } /* self-interaction. */
 
   /* Otherwise, it's a pair interaction. */
@@ -438,496 +430,496 @@ void runner_dosub_subset_star_density(struct runner *r, struct cell *ci, struct 
         /* Regular sub-cell interactions of a single cell. */
         case 0: /* (  1 ,  1 ,  1 ) */
           if (ci->progeny[7] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           break;
 
         case 1: /* (  1 ,  1 ,  0 ) */
           if (ci->progeny[6] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           break;
 
         case 2: /* (  1 ,  1 , -1 ) */
           if (ci->progeny[6] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           break;
 
         case 3: /* (  1 ,  0 ,  1 ) */
           if (ci->progeny[5] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           if (ci->progeny[5] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           break;
 
         case 4: /* (  1 ,  0 ,  0 ) */
           if (ci->progeny[4] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[4] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[4],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[4],
                          -1, 0);
           if (ci->progeny[4] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[4] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[4],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[4],
                          -1, 0);
           if (ci->progeny[4] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[4] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[4],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[4],
                          -1, 0);
           if (ci->progeny[4] == sub && cj->progeny[3] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[3],
+            runner_dosub_subset_stars_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[3],
                          -1, 0);
           if (ci->progeny[4] != NULL && cj->progeny[3] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[4],
+            runner_dosub_subset_stars_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[4],
                          -1, 0);
           if (ci->progeny[5] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           if (ci->progeny[5] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           if (ci->progeny[5] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           if (ci->progeny[5] == sub && cj->progeny[3] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[3],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[3],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[3] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[3] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[3],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[3],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[3] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[3] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[3],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[3],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[3] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           break;
 
         case 5: /* (  1 ,  0 , -1 ) */
           if (ci->progeny[4] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[4] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[4],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[4],
                          -1, 0);
           if (ci->progeny[4] == sub && cj->progeny[3] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[3],
+            runner_dosub_subset_stars_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[3],
                          -1, 0);
           if (ci->progeny[4] != NULL && cj->progeny[3] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[4],
+            runner_dosub_subset_stars_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[4],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[3] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[3],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[3],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[3] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           break;
 
         case 6: /* (  1 , -1 ,  1 ) */
           if (ci->progeny[5] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           break;
 
         case 7: /* (  1 , -1 ,  0 ) */
           if (ci->progeny[4] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[4] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[4],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[4],
                          -1, 0);
           if (ci->progeny[4] == sub && cj->progeny[3] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[3],
+            runner_dosub_subset_stars_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[3],
                          -1, 0);
           if (ci->progeny[4] != NULL && cj->progeny[3] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[4],
+            runner_dosub_subset_stars_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[4],
                          -1, 0);
           if (ci->progeny[5] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           if (ci->progeny[5] == sub && cj->progeny[3] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[3],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[3],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[3] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           break;
 
         case 8: /* (  1 , -1 , -1 ) */
           if (ci->progeny[4] == sub && cj->progeny[3] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[3],
+            runner_dosub_subset_stars_density(r, ci->progeny[4], sparts, ind, scount, cj->progeny[3],
                          -1, 0);
           if (ci->progeny[4] != NULL && cj->progeny[3] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[4],
+            runner_dosub_subset_stars_density(r, cj->progeny[3], sparts, ind, scount, ci->progeny[4],
                          -1, 0);
           break;
 
         case 9: /* (  0 ,  1 ,  1 ) */
           if (ci->progeny[3] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[3] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[3],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[3],
                          -1, 0);
           if (ci->progeny[3] == sub && cj->progeny[4] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[4],
+            runner_dosub_subset_stars_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[4],
                          -1, 0);
           if (ci->progeny[3] != NULL && cj->progeny[4] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[3],
+            runner_dosub_subset_stars_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[3],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[4] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[4],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[4],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[4] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           break;
 
         case 10: /* (  0 ,  1 ,  0 ) */
           if (ci->progeny[2] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[2], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[2], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[2] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[2],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[2],
                          -1, 0);
           if (ci->progeny[2] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[2], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[2], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[2] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[2],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[2],
                          -1, 0);
           if (ci->progeny[2] == sub && cj->progeny[4] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[2], sparts, ind, scount, cj->progeny[4],
+            runner_dosub_subset_stars_density(r, ci->progeny[2], sparts, ind, scount, cj->progeny[4],
                          -1, 0);
           if (ci->progeny[2] != NULL && cj->progeny[4] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[2],
+            runner_dosub_subset_stars_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[2],
                          -1, 0);
           if (ci->progeny[2] == sub && cj->progeny[5] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[2], sparts, ind, scount, cj->progeny[5],
+            runner_dosub_subset_stars_density(r, ci->progeny[2], sparts, ind, scount, cj->progeny[5],
                          -1, 0);
           if (ci->progeny[2] != NULL && cj->progeny[5] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[5], sparts, ind, scount, ci->progeny[2],
+            runner_dosub_subset_stars_density(r, cj->progeny[5], sparts, ind, scount, ci->progeny[2],
                          -1, 0);
           if (ci->progeny[3] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[3] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[3],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[3],
                          -1, 0);
           if (ci->progeny[3] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[3] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[3],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[3],
                          -1, 0);
           if (ci->progeny[3] == sub && cj->progeny[4] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[4],
+            runner_dosub_subset_stars_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[4],
                          -1, 0);
           if (ci->progeny[3] != NULL && cj->progeny[4] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[3],
+            runner_dosub_subset_stars_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[3],
                          -1, 0);
           if (ci->progeny[3] == sub && cj->progeny[5] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[5],
+            runner_dosub_subset_stars_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[5],
                          -1, 0);
           if (ci->progeny[3] != NULL && cj->progeny[5] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[5], sparts, ind, scount, ci->progeny[3],
+            runner_dosub_subset_stars_density(r, cj->progeny[5], sparts, ind, scount, ci->progeny[3],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[4] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[4],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[4],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[4] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[5] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[5],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[5],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[5] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[5], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[5], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[4] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[4],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[4],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[4] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[5] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[5],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[5],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[5] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[5], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[5], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           break;
 
         case 11: /* (  0 ,  1 , -1 ) */
           if (ci->progeny[2] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[2], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[2], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[2] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[2],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[2],
                          -1, 0);
           if (ci->progeny[2] == sub && cj->progeny[5] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[2], sparts, ind, scount, cj->progeny[5],
+            runner_dosub_subset_stars_density(r, ci->progeny[2], sparts, ind, scount, cj->progeny[5],
                          -1, 0);
           if (ci->progeny[2] != NULL && cj->progeny[5] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[5], sparts, ind, scount, ci->progeny[2],
+            runner_dosub_subset_stars_density(r, cj->progeny[5], sparts, ind, scount, ci->progeny[2],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[1] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[1],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[1],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[1] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[1], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           if (ci->progeny[6] == sub && cj->progeny[5] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[5],
+            runner_dosub_subset_stars_density(r, ci->progeny[6], sparts, ind, scount, cj->progeny[5],
                          -1, 0);
           if (ci->progeny[6] != NULL && cj->progeny[5] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[5], sparts, ind, scount, ci->progeny[6],
+            runner_dosub_subset_stars_density(r, cj->progeny[5], sparts, ind, scount, ci->progeny[6],
                          -1, 0);
           break;
 
         case 12: /* (  0 ,  0 ,  1 ) */
           if (ci->progeny[1] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[1], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[1], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[1] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[1],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[1],
                          -1, 0);
           if (ci->progeny[1] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[1], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[1], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[1] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[1],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[1],
                          -1, 0);
           if (ci->progeny[1] == sub && cj->progeny[4] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[1], sparts, ind, scount, cj->progeny[4],
+            runner_dosub_subset_stars_density(r, ci->progeny[1], sparts, ind, scount, cj->progeny[4],
                          -1, 0);
           if (ci->progeny[1] != NULL && cj->progeny[4] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[1],
+            runner_dosub_subset_stars_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[1],
                          -1, 0);
           if (ci->progeny[1] == sub && cj->progeny[6] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[1], sparts, ind, scount, cj->progeny[6],
+            runner_dosub_subset_stars_density(r, ci->progeny[1], sparts, ind, scount, cj->progeny[6],
                          -1, 0);
           if (ci->progeny[1] != NULL && cj->progeny[6] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[6], sparts, ind, scount, ci->progeny[1],
+            runner_dosub_subset_stars_density(r, cj->progeny[6], sparts, ind, scount, ci->progeny[1],
                          -1, 0);
           if (ci->progeny[3] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[3] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[3],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[3],
                          -1, 0);
           if (ci->progeny[3] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[3] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[3],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[3],
                          -1, 0);
           if (ci->progeny[3] == sub && cj->progeny[4] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[4],
+            runner_dosub_subset_stars_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[4],
                          -1, 0);
           if (ci->progeny[3] != NULL && cj->progeny[4] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[3],
+            runner_dosub_subset_stars_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[3],
                          -1, 0);
           if (ci->progeny[3] == sub && cj->progeny[6] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[6],
+            runner_dosub_subset_stars_density(r, ci->progeny[3], sparts, ind, scount, cj->progeny[6],
                          -1, 0);
           if (ci->progeny[3] != NULL && cj->progeny[6] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[6], sparts, ind, scount, ci->progeny[3],
+            runner_dosub_subset_stars_density(r, cj->progeny[6], sparts, ind, scount, ci->progeny[3],
                          -1, 0);
           if (ci->progeny[5] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           if (ci->progeny[5] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           if (ci->progeny[5] == sub && cj->progeny[4] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[4],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[4],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[4] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           if (ci->progeny[5] == sub && cj->progeny[6] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[6],
+            runner_dosub_subset_stars_density(r, ci->progeny[5], sparts, ind, scount, cj->progeny[6],
                          -1, 0);
           if (ci->progeny[5] != NULL && cj->progeny[6] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[6], sparts, ind, scount, ci->progeny[5],
+            runner_dosub_subset_stars_density(r, cj->progeny[6], sparts, ind, scount, ci->progeny[5],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[0] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[0] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[0], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[2] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[2],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[2],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[2] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[2], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[4] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[4],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[4],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[4] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[4], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           if (ci->progeny[7] == sub && cj->progeny[6] != NULL)
-            runner_dosub_subset_star_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[6],
+            runner_dosub_subset_stars_density(r, ci->progeny[7], sparts, ind, scount, cj->progeny[6],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[6] == sub)
-            runner_dosub_subset_star_density(r, cj->progeny[6], sparts, ind, scount, ci->progeny[7],
+            runner_dosub_subset_stars_density(r, cj->progeny[6], sparts, ind, scount, ci->progeny[7],
                          -1, 0);
           break;
       }
@@ -935,12 +927,12 @@ void runner_dosub_subset_star_density(struct runner *r, struct cell *ci, struct 
     }
 
     /* Otherwise, compute the pair directly. */
-    else if (cell_is_active_star(ci, e) || cell_is_active_star(cj, e)) {
+    else if (cell_is_active_stars(ci, e) || cell_is_active_stars(cj, e)) {
 
       /* Do any of the cells need to be drifted first? */
       if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
 
-      runner_dopair_subset_branch_star_density(r, ci, sparts, ind, scount, cj);
+      runner_dopair_subset_branch_stars_density(r, ci, sparts, ind, scount, cj);
     }
 
   } /* otherwise, pair interaction. */
@@ -957,18 +949,18 @@ void runner_dosub_subset_star_density(struct runner *r, struct cell *ci, struct 
  * @param c #cell c
  *
  */
-void runner_doself_branch_star_density(struct runner *r, struct cell *c) {
+void runner_doself_branch_stars_density(struct runner *r, struct cell *c) {
 
   const struct engine *restrict e = r->e;
 
   /* Anything to do here? */
-  if (!cell_is_active_star(c, e)) return;
+  if (!cell_is_active_stars(c, e)) return;
 
   /* Did we mess up the recursion? */
   if (c->h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
-  runner_doself_star_density(r, c, 1);
+  runner_doself_stars_density(r, c, 1);
 }
 
 
@@ -981,16 +973,16 @@ void runner_doself_branch_star_density(struct runner *r, struct cell *c) {
  * @param cj #cell cj
  *
  */
-void runner_dopair_branch_star_density(struct runner *r, struct cell *ci, struct cell *cj) {
+void runner_dopair_branch_stars_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *restrict e = r->e;
 
   /* Anything to do here? */
-  if (!cell_is_active_star(ci, e) && !cell_is_active_star(cj, e)) return;
+  if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
 
-  /* /\* Check that cells are drifted. *\/ */
-  /* if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e)) */
-  /*   error("Interacting undrifted cells."); */
+  /* Check that cells are drifted. */
+  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
+    error("Interacting undrifted cells.");
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -1043,7 +1035,7 @@ void runner_dopair_branch_star_density(struct runner *r, struct cell *ci, struct
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  runner_dopair_star_density(r, ci, cj, 1);
+  runner_dopair_stars_density(r, ci, cj, 1);
 }
 
 /**
@@ -1058,7 +1050,7 @@ void runner_dopair_branch_star_density(struct runner *r, struct cell *ci, struct
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
-void runner_dosub_pair_star_density(struct runner *r, struct cell *ci, struct cell *cj, int sid,
+void runner_dosub_pair_stars_density(struct runner *r, struct cell *ci, struct cell *cj, int sid,
                  int gettimer) {
 
   struct space *s = r->e->s;
@@ -1067,7 +1059,7 @@ void runner_dosub_pair_star_density(struct runner *r, struct cell *ci, struct ce
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (!cell_is_active_star(ci, e) && !cell_is_active_star(cj, e)) return;
+  if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
   if (ci->scount == 0 || cj->scount == 0) return;
 
   /* Get the type of pair if not specified explicitly. */
@@ -1083,200 +1075,200 @@ void runner_dosub_pair_star_density(struct runner *r, struct cell *ci, struct ce
       /* Regular sub-cell interactions of a single cell. */
       case 0: /* (  1 ,  1 ,  1 ) */
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
         break;
 
       case 1: /* (  1 ,  1 ,  0 ) */
         if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[0], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[1], -1, 0);
         break;
 
       case 2: /* (  1 ,  1 , -1 ) */
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
         break;
 
       case 3: /* (  1 ,  0 ,  1 ) */
         if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[0], -1, 0);
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[2], -1, 0);
         break;
 
       case 4: /* (  1 ,  0 ,  0 ) */
         if (ci->progeny[4] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[4], cj->progeny[0], -1, 0);
         if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[4], cj->progeny[1], -1, 0);
         if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[4], cj->progeny[2], -1, 0);
         if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[3], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[4], cj->progeny[3], -1, 0);
         if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[0], -1, 0);
         if (ci->progeny[5] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[1], -1, 0);
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
         if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[3], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[3], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[0], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[2], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[3], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[3], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[1], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[2], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[3] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[3], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[3], -1, 0);
         break;
 
       case 5: /* (  1 ,  0 , -1 ) */
         if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[4], cj->progeny[1], -1, 0);
         if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[3], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[4], cj->progeny[3], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[3], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[3], -1, 0);
         break;
 
       case 6: /* (  1 , -1 ,  1 ) */
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
         break;
 
       case 7: /* (  1 , -1 ,  0 ) */
         if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[4], cj->progeny[2], -1, 0);
         if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[3], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[4], cj->progeny[3], -1, 0);
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
         if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[3], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[3], -1, 0);
         break;
 
       case 8: /* (  1 , -1 , -1 ) */
         if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[4], cj->progeny[3], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[4], cj->progeny[3], -1, 0);
         break;
 
       case 9: /* (  0 ,  1 ,  1 ) */
         if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[3], cj->progeny[0], -1, 0);
         if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[4], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[3], cj->progeny[4], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[4], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[4], -1, 0);
         break;
 
       case 10: /* (  0 ,  1 ,  0 ) */
         if (ci->progeny[2] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[2], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[2], cj->progeny[0], -1, 0);
         if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[2], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[2], cj->progeny[1], -1, 0);
         if (ci->progeny[2] != NULL && cj->progeny[4] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[2], cj->progeny[4], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[2], cj->progeny[4], -1, 0);
         if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[2], cj->progeny[5], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[2], cj->progeny[5], -1, 0);
         if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[3], cj->progeny[0], -1, 0);
         if (ci->progeny[3] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[3], cj->progeny[1], -1, 0);
         if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[4], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[3], cj->progeny[4], -1, 0);
         if (ci->progeny[3] != NULL && cj->progeny[5] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[5], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[3], cj->progeny[5], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[0], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[4] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[4], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[4], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[5], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[5], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[1], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[4], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[4], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[5] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[5], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[5], -1, 0);
         break;
 
       case 11: /* (  0 ,  1 , -1 ) */
         if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[2], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[2], cj->progeny[1], -1, 0);
         if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[2], cj->progeny[5], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[2], cj->progeny[5], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[1], -1, 0);
         if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[6], cj->progeny[5], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[6], cj->progeny[5], -1, 0);
         break;
 
       case 12: /* (  0 ,  0 ,  1 ) */
         if (ci->progeny[1] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[1], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[1], cj->progeny[0], -1, 0);
         if (ci->progeny[1] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[1], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[1], cj->progeny[2], -1, 0);
         if (ci->progeny[1] != NULL && cj->progeny[4] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[1], cj->progeny[4], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[1], cj->progeny[4], -1, 0);
         if (ci->progeny[1] != NULL && cj->progeny[6] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[1], cj->progeny[6], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[1], cj->progeny[6], -1, 0);
         if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[3], cj->progeny[0], -1, 0);
         if (ci->progeny[3] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[3], cj->progeny[2], -1, 0);
         if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[4], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[3], cj->progeny[4], -1, 0);
         if (ci->progeny[3] != NULL && cj->progeny[6] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[3], cj->progeny[6], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[3], cj->progeny[6], -1, 0);
         if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[0], -1, 0);
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[2], -1, 0);
         if (ci->progeny[5] != NULL && cj->progeny[4] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[4], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[4], -1, 0);
         if (ci->progeny[5] != NULL && cj->progeny[6] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[5], cj->progeny[6], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[5], cj->progeny[6], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[0], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[2], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[2], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[4], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[4], -1, 0);
         if (ci->progeny[7] != NULL && cj->progeny[6] != NULL)
-          runner_dosub_pair_star_density(r, ci->progeny[7], cj->progeny[6], -1, 0);
+          runner_dosub_pair_stars_density(r, ci->progeny[7], cj->progeny[6], -1, 0);
         break;
     }
 
   }
 
   /* Otherwise, compute the pair directly. */
-  else if (cell_is_active_star(ci, e) || cell_is_active_star(cj, e)) {
+  else if (cell_is_active_stars(ci, e) || cell_is_active_stars(cj, e)) {
 
     /* Make sure both cells are drifted to the current timestep. */
     if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
@@ -1291,7 +1283,7 @@ void runner_dosub_pair_star_density(struct runner *r, struct cell *ci, struct ce
       error("Interacting unsorted cell.");
 
     /* Compute the interactions. */
-    runner_dopair_branch_star_density(r, ci, cj);
+    runner_dopair_branch_stars_density(r, ci, cj);
   }
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);
@@ -1305,12 +1297,12 @@ void runner_dosub_pair_star_density(struct runner *r, struct cell *ci, struct ce
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void runner_dosub_self_star_density(struct runner *r, struct cell *ci, int gettimer) {
+void runner_dosub_self_stars_density(struct runner *r, struct cell *ci, int gettimer) {
 
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->scount == 0 || !cell_is_active_star(ci, r->e)) return;
+  if (ci->scount == 0 || !cell_is_active_stars(ci, r->e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_task(ci)) {
@@ -1318,18 +1310,18 @@ void runner_dosub_self_star_density(struct runner *r, struct cell *ci, int getti
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL) {
-        runner_dosub_self_star_density(r, ci->progeny[k], 0);
+        runner_dosub_self_stars_density(r, ci->progeny[k], 0);
         for (int j = k + 1; j < 8; j++)
           if (ci->progeny[j] != NULL)
-            runner_dosub_pair_star_density(r, ci->progeny[k], ci->progeny[j], -1, 0);
+            runner_dosub_pair_stars_density(r, ci->progeny[k], ci->progeny[j], -1, 0);
       }
   }
 
   /* Otherwise, compute self-interaction. */
  else {
 
-    runner_doself_branch_star_density(r, ci);
+    runner_doself_branch_stars_density(r, ci);
   }
 
-  if (gettimer) TIMER_TOC(timer_dosub_self_star_density);
+  if (gettimer) TIMER_TOC(timer_dosub_self_stars_density);
 }

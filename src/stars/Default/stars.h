@@ -132,25 +132,18 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
 }
 
 /**
- * @brief Prepare a particle for the force calculation.
+ * @brief Evolve the stellar properties of a #spart.
  *
+ * This function allows for example to compute the SN rate before sending
+ * this information to a different MPI rank.
  *
  * @param sp The particle to act upon
  * @param cosmo The current cosmological model.
+ * @param stars_properties The #stars_props
  */
-__attribute__((always_inline)) INLINE static void stars_prepare_force(
-    struct spart *restrict sp, const struct cosmology *cosmo) {}
+__attribute__((always_inline)) INLINE static void stars_evolve_spart(
+    struct spart *restrict sp, const struct stars_props *stars_properties,
+    const struct cosmology *cosmo) {}
 
-
-/**
- * @brief Reset acceleration fields of a particle
- *
- * Resets all star acceleration and time derivative fields in preparation
- * for the sums taking place in the variaous force tasks
- *
- * @param sp The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void stars_reset_acceleration(
-    struct spart *restrict p) {}
 
 #endif /* SWIFT_DEFAULT_STARS_H */

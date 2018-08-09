@@ -182,9 +182,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->ghost_in = NULL;
     c->ghost_out = NULL;
     c->ghost = NULL;
-    c->star_ghost_in = NULL;
-    c->star_ghost_out = NULL;
-    c->star_ghost = NULL;
+    c->stars_ghost_in = NULL;
+    c->stars_ghost_out = NULL;
+    c->stars_ghost = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -658,13 +658,13 @@ void space_rebuild(struct space *s, int verbose) {
       /* Swap the link with part/spart */
       if (s->gparts[k].type == swift_type_gas) {
         s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      } else if (s->gparts[k].type == swift_type_star) {
+      } else if (s->gparts[k].type == swift_type_stars) {
         s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
       if (s->gparts[nr_gparts].type == swift_type_gas) {
         s->parts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
             &s->gparts[nr_gparts];
-      } else if (s->gparts[nr_gparts].type == swift_type_star) {
+      } else if (s->gparts[nr_gparts].type == swift_type_stars) {
         s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
             &s->gparts[nr_gparts];
       }
@@ -1565,7 +1565,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
         memswap(&ind[j], &target_cid, sizeof(int));
         if (gparts[j].type == swift_type_gas) {
           parts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
-        } else if (gparts[j].type == swift_type_star) {
+        } else if (gparts[j].type == swift_type_stars) {
           sparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
         }
       }
@@ -1573,7 +1573,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
       ind[k] = target_cid;
       if (gparts[k].type == swift_type_gas) {
         parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
-      } else if (gparts[k].type == swift_type_star) {
+      } else if (gparts[k].type == swift_type_stars) {
         sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
       }
     }
@@ -2389,7 +2389,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
       xp->v_full[2] = gp->v_full[2];
     }
 
-    else if (gp->type == swift_type_star) {
+    else if (gp->type == swift_type_stars) {
 
       /* Get it's stellar friend */
       struct spart *sp = &s->sparts[-gp->id_or_neg_offset];
@@ -2588,7 +2588,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    star_first_init_spart(&sp[k]);
+    stars_first_init_spart(&sp[k]);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (sp[k].gpart && sp[k].gpart->id_or_neg_offset != -(k + delta))
@@ -2604,7 +2604,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
 /**
  * @brief Initialises all the s-particles by setting them into a valid state
  *
- * Calls star_first_init_spart() on all the particles
+ * Calls stars_first_init_spart() on all the particles
  */
 void space_first_init_sparts(struct space *s, int verbose) {
   const ticks tic = getticks();
@@ -2673,7 +2673,7 @@ void space_init_sparts_mapper(void *restrict map_data, int scount,
                              void *restrict extra_data) {
 
   struct spart *restrict sparts = (struct spart *)map_data;
-  for (int k = 0; k < scount; k++) star_init_spart(&sparts[k]);
+  for (int k = 0; k < scount; k++) stars_init_spart(&sparts[k]);
 }
 
 /**
@@ -2736,10 +2736,10 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param dim Spatial dimensions of the domain.
  * @param parts Array of Gas particles.
  * @param gparts Array of Gravity particles.
- * @param sparts Array of star particles.
+ * @param sparts Array of stars particles.
  * @param Npart The number of Gas particles in the space.
  * @param Ngpart The number of Gravity particles in the space.
- * @param Nspart The number of star particles in the space.
+ * @param Nspart The number of stars particles in the space.
  * @param periodic flag whether the domain is periodic or not.
  * @param replicate How many replications along each direction do we want?
  * @param generate_gas_in_ics Are we generating gas particles from the gparts?
@@ -3415,7 +3415,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
                         NULL, "sparts");
   }
 
-  /* Need to reconnect the gravity parts to their hydro and star particles. */
+  /* Need to reconnect the gravity parts to their hydro and stars particles. */
   /* Re-link the parts. */
   if (s->nr_parts > 0 && s->nr_gparts > 0)
     part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);

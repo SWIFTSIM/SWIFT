@@ -268,16 +268,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
 	/* We now have a particle whose smoothing length has converged */
 
-        /* As of here, particle force variables will be set. */
-
-        /* Compute variables required for the force loop */
-        stars_prepare_force(sp, cosmo);
-
-        /* The particle force values are now set.  Do _NOT_
-           try to read any particle density variables! */
-
-        /* Prepare the particle for the force loop over neighbours */
-        stars_reset_acceleration(sp);
+        /* Compute the stellar evolution  */
+        stars_evolve_spart(sp, cosmo);
 
       }
 
