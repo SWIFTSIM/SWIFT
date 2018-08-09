@@ -90,7 +90,8 @@ INLINE static void stars_props_init(struct stars_props *sp,
 		      const struct hydro_props *p) {
 
   /* Kernel properties */
-  sp->eta_neighbours = parser_get_param_float(params, "Stars:resolution_eta");
+  sp->eta_neighbours = parser_get_opt_param_float(params, "Stars:resolution_eta",
+						  p->eta_neighbours);
 
   /* Tolerance for the smoothing length Newton-Raphson scheme */
   sp->h_tolerance = parser_get_opt_param_float(params, "Stars:h_tolerance",

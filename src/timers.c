@@ -86,13 +86,13 @@ const char* timers_names[timer_count] = {
     "locktree",
     "runners",
     "step",
-    "doself_star_density",
-    "dopair_star_density",
-    "do_star_ghost",
-    "doself_subset_star_density",
-    "dopair_subset_star_density",
-    "dosubpair_star_density",
-    "dosub_self_star_density",
+    "doself_stars_density",
+    "dopair_stars_density",
+    "do_stars_ghost",
+    "doself_subset_stars_density",
+    "dopair_subset_stars_density",
+    "dosubpair_stars_density",
+    "dosub_self_stars_density",
 };
 
 /* File to store the timers */

@@ -126,8 +126,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
                  riemann/riemann_checks.h \
 	 	 stars.h stars_io.h \
-		 stars/Default/star.h stars/Default/star_iact.h stars/Default/star_io.h \
-		 stars/Default/star_debug.h stars/Default/star_part.h  \
+		 stars/Default/stars.h stars/Default/stars_iact.h stars/Default/stars_io.h \
+		 stars/Default/stars_debug.h stars/Default/stars_part.h  \
 	         potential/none/potential.h potential/point_mass/potential.h \
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
                  potential/sine_wave/potential.h \

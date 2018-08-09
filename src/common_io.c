@@ -747,7 +747,7 @@ void io_duplicate_hydro_sparts_mapper(void* restrict data, int Nstars,
     gparts[i + Ndm].mass = sparts[i].mass;
 
     /* Set gpart type */
-    gparts[i + Ndm].type = swift_type_star;
+    gparts[i + Ndm].type = swift_type_stars;
 
     /* Link the particles */
     gparts[i + Ndm].id_or_neg_offset = -(long long)(offset + i);
@@ -768,7 +768,7 @@ void io_duplicate_hydro_sparts_mapper(void* restrict data, int Nstars,
  * @param Nstars The number of stars particles read in.
  * @param Ndm The number of DM and gas particles read in.
  */
-void io_duplicate_star_gparts(struct threadpool* tp, struct spart* const sparts,
+void io_duplicate_stars_gparts(struct threadpool* tp, struct spart* const sparts,
                               struct gpart* const gparts, size_t Nstars,
                               size_t Ndm) {
 
@@ -853,8 +853,8 @@ void io_check_output_fields(const struct swift_params* params,
         darkmatter_write_particles(&gp, list, &num_fields);
         break;
 
-      case swift_type_star:
-        star_write_particles(&sp, list, &num_fields);
+      case swift_type_stars:
+        stars_write_particles(&sp, list, &num_fields);
         break;
 
       default:
@@ -939,8 +939,8 @@ void io_write_output_field_parameter(const char* filename) {
         darkmatter_write_particles(NULL, list, &num_fields);
         break;
 
-      case swift_type_star:
-        star_write_particles(NULL, list, &num_fields);
+      case swift_type_stars:
+        stars_write_particles(NULL, list, &num_fields);
         break;
 
       default:

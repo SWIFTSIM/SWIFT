@@ -26,8 +26,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_stars_densi
   kernel_deval(ui, &wi, &wi_dx);
 
   /* Compute contribution to the number of neighbours */
-  si->wcount += wi;
-  si->wcount_dh -= (hydro_dimension * wi + ui * wi_dx);    
+  si->density.wcount += wi;
+  si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);    
 
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */

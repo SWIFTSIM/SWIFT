@@ -202,7 +202,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         float h_new;
         int has_no_neighbours = 0;
 
-        if (sp->wcount == 0.f) { /* No neighbours case */
+        if (sp->density.wcount == 0.f) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -215,12 +215,12 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           stars_end_density(sp, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
-          const float n_sum = sp->wcount * h_old_dim;
+          const float n_sum = sp->density.wcount * h_old_dim;
           const float n_target = stars_eta_dim;
           const float f = n_sum - n_target;
           const float f_prime =
-              sp->wcount_dh * h_old_dim +
-              hydro_dimension * sp->wcount * h_old_dim_minus_one;
+              sp->density.wcount_dh * h_old_dim +
+              hydro_dimension * sp->density.wcount * h_old_dim_minus_one;
 
           /* Avoid floating point exception from f_prime = 0 */
           h_new = h_old - f / (f_prime + FLT_MIN);
@@ -269,7 +269,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 	/* We now have a particle whose smoothing length has converged */
 
         /* Compute the stellar evolution  */
-        stars_evolve_spart(sp, cosmo);
+        stars_evolve_spart(sp, stars_properties, cosmo);
 
       }
 

@@ -57,13 +57,13 @@ const char *taskID_names[task_type_count] = {
     "send",          "recv",          "grav_long_range",
     "grav_mm",       "grav_down_in",  "grav_down",
     "grav_mesh",     "cooling",       "sourceterms",
-    "star_ghost_in", "star_ghost",    "star_ghost_out"};
+    "stars_ghost_in","stars_ghost",   "stars_ghost_out"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
     "none", "density", "gradient", "force", "grav",      "external_grav",
     "tend", "xv",      "rho",      "gpart", "multipole", "spart",
-    "star_density"};
+    "stars_density"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -122,7 +122,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_part;
       break;
 
-    case task_type_star_ghost:
+    case task_type_stars_ghost:
       return task_action_spart;
       break;
 
@@ -138,7 +138,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           return task_action_part;
           break;
 
-        case task_subtype_star_density:
+        case task_subtype_stars_density:
 	  return task_action_all;
 	  break;
 

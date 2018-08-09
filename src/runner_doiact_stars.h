@@ -398,7 +398,7 @@ void runner_dosub_subset_stars_density(struct runner *r, struct cell *ci, struct
   if (cj == NULL) {
 
     /* Recurse? */
-    if (cell_can_recurse_in_self_task(ci)) {
+    if (cell_can_recurse_in_self_stars_task(ci)) {
 
       /* Loop over all progeny. */
       runner_dosub_subset_stars_density(r, sub, sparts, ind, scount, NULL, -1, 0);
@@ -417,8 +417,8 @@ void runner_dosub_subset_stars_density(struct runner *r, struct cell *ci, struct
   else {
 
     /* Recurse? */
-    if (cell_can_recurse_in_pair_task(ci) &&
-        cell_can_recurse_in_pair_task(cj)) {
+    if (cell_can_recurse_in_pair_stars_task(ci) &&
+        cell_can_recurse_in_pair_stars_task(cj)) {
 
       /* Get the type of pair if not specified explicitly. */
       double shift[3] = {0.0, 0.0, 0.0};
@@ -1067,7 +1067,7 @@ void runner_dosub_pair_stars_density(struct runner *r, struct cell *ci, struct c
   sid = space_getsid(s, &ci, &cj, shift);
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_task(ci) && cell_can_recurse_in_pair_task(cj)) {
+  if (cell_can_recurse_in_pair_stars_task(ci) && cell_can_recurse_in_pair_stars_task(cj)) {
 
     /* Different types of flags. */
     switch (sid) {
@@ -1305,7 +1305,7 @@ void runner_dosub_self_stars_density(struct runner *r, struct cell *ci, int gett
   if (ci->scount == 0 || !cell_is_active_stars(ci, r->e)) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_self_task(ci)) {
+  if (cell_can_recurse_in_self_stars_task(ci)) {
 
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)

@@ -30,20 +30,20 @@
 /* Local headers. */
 #include "swift.h"
 
-#define DOSELF1 runner_doself_branch_star_density
-#define DOSELF1_SUBSET runner_doself_subset_branch_star_density
+#define DOSELF1 runner_doself_branch_stars_density
+#define DOSELF1_SUBSET runner_doself_subset_branch_stars_density
 #ifdef TEST_DOSELF_SUBSET
-#define DOSELF1_NAME "runner_doself_subset_branch_star_density"
+#define DOSELF1_NAME "runner_doself_subset_branch_stars_density"
 #else
-#define DOSELF1_NAME "runner_doself1_branch_star_density"
+#define DOSELF1_NAME "runner_doself1_branch_stars_density"
 #endif
 
-#define DOPAIR1 runner_dopair_branch_star_density
-#define DOPAIR1_SUBSET runner_dopair_subset_branch_star_density
+#define DOPAIR1 runner_dopair_branch_stars_density
+#define DOPAIR1_SUBSET runner_dopair_subset_branch_stars_density
 #ifdef TEST_DOPAIR_SUBSET
-#define DOPAIR1_NAME "runner_dopair_subset_branch_star_density"
+#define DOPAIR1_NAME "runner_dopair_subset_branch_stars_density"
 #else
-#define DOPAIR1_NAME "runner_dopair_branch_star_density"
+#define DOPAIR1_NAME "runner_dopair_branch_stars_density"
 #endif
 
 #define NODE_ID 0
@@ -63,10 +63,10 @@
  * of the inter-particle separation.
  * @param h_pert The perturbation to apply to the smoothing length.
  */
-struct cell *make_cell(size_t n, size_t n_star, double *offset, double size, double h,
+struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size, double h,
                        long long *partId, long long *spartId, double pert, double h_pert) {
   const size_t count = n * n * n;
-  const size_t scount = n_star * n_star * n_star;
+  const size_t scount = n_stars * n_stars * n_stars;
   float h_max = 0.f;
   struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
@@ -121,26 +121,26 @@ struct cell *make_cell(size_t n, size_t n_star, double *offset, double size, dou
   bzero(cell->sparts, scount * sizeof(struct spart));
 
   struct spart *spart = cell->sparts;
-  for (size_t x = 0; x < n_star; ++x) {
-    for (size_t y = 0; y < n_star; ++y) {
-      for (size_t z = 0; z < n_star; ++z) {
+  for (size_t x = 0; x < n_stars; ++x) {
+    for (size_t y = 0; y < n_stars; ++y) {
+      for (size_t z = 0; z < n_stars; ++z) {
         spart->x[0] =
             offset[0] +
-            size * (x + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n_star;
+            size * (x + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n_stars;
         spart->x[1] =
             offset[1] +
-            size * (y + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n_star;
+            size * (y + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n_stars;
         spart->x[2] =
             offset[2] +
-            size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n_star;
+            size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n_stars;
 
 	spart->v[0] = 0;
 	spart->v[1] = 0;
 	spart->v[2] = 0;
 	if (h_pert)
-	  spart->h = size * h * random_uniform(1.f, h_pert) / (float)n_star;
+	  spart->h = size * h * random_uniform(1.f, h_pert) / (float)n_stars;
 	else
-	  spart->h = size * h / (float)n_star;
+	  spart->h = size * h / (float)n_stars;
 	h_max = fmaxf(h_max, spart->h);
 	spart->id = ++(*spartId);
 
@@ -196,7 +196,7 @@ void clean_up(struct cell *ci) {
  */
 void zero_particle_fields(struct cell *c) {
   for (int pid = 0; pid < c->scount; pid++) {
-    star_init_spart(&c->sparts[pid]);
+    stars_init_spart(&c->sparts[pid]);
   }
 }
 
@@ -205,11 +205,11 @@ void zero_particle_fields(struct cell *c) {
  */
 void end_calculation(struct cell *c, const struct cosmology *cosmo) {
   for (int pid = 0; pid < c->scount; pid++) {
-    star_end_density(&c->sparts[pid], cosmo);
+    stars_end_density(&c->sparts[pid], cosmo);
 
     /* Recover the common "Neighbour number" definition */
-    c->sparts[pid].wcount *= pow_dimension(c->sparts[pid].h);
-    c->sparts[pid].wcount *= kernel_norm;
+    c->sparts[pid].density.wcount *= pow_dimension(c->sparts[pid].h);
+    c->sparts[pid].density.wcount *= kernel_norm;
   }
 }
 
@@ -233,8 +233,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             "%6llu %10f %10f %10f %13e %13e\n",
             main_cell->sparts[pid].id, main_cell->sparts[pid].x[0],
             main_cell->sparts[pid].x[1], main_cell->sparts[pid].x[2],
-            main_cell->sparts[pid].wcount,
-            main_cell->sparts[pid].wcount_dh);
+            main_cell->sparts[pid].density.wcount,
+            main_cell->sparts[pid].density.wcount_dh);
   }
 
   /* Write all other cells */
@@ -254,7 +254,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               "%6llu %10f %10f %10f %13e %13e\n",
               cj->sparts[pjd].id, cj->sparts[pjd].x[0], cj->sparts[pjd].x[1],
               cj->sparts[pjd].x[2],
-              cj->sparts[pjd].wcount, cj->sparts[pjd].wcount_dh);
+              cj->sparts[pjd].density.wcount, cj->sparts[pjd].density.wcount_dh);
         }
       }
     }
@@ -263,15 +263,15 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 }
 
 /* Just a forward declaration... */
-void runner_dopair_branch_star_density(struct runner *r, struct cell *ci,
+void runner_dopair_branch_stars_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
-void runner_doself_branch_star_density(struct runner *r, struct cell *c);
-void runner_dopair_subset_branch_star_density(struct runner *r,
+void runner_doself_branch_stars_density(struct runner *r, struct cell *c);
+void runner_dopair_subset_branch_stars_density(struct runner *r,
                                          struct cell *restrict ci,
                                          struct spart *restrict sparts_i,
                                          int *restrict ind, int scount,
                                          struct cell *restrict cj);
-void runner_doself_subset_branch_star_density(struct runner *r,
+void runner_doself_subset_branch_stars_density(struct runner *r,
                                          struct cell *restrict ci,
                                          struct spart *restrict sparts,
                                          int *restrict ind, int scount);
@@ -339,8 +339,8 @@ int main(int argc, char *argv[]) {
     printf(
         "\nUsage: %s -n PARTICLES_PER_AXIS -N SPARTICLES_PER_AXIS -r NUMBER_OF_RUNS [OPTIONS...]\n"
         "\nGenerates 27 cells, filled with particles on a Cartesian grid."
-        "\nThese are then interacted using runner_dopair_star_density() and "
-        "runner_doself_star_density()."
+        "\nThese are then interacted using runner_dopair_stars_density() and "
+        "runner_doself_stars_density()."
         "\n\nOptions:"
         "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
         "\n-p                 - Random fractional change in h, h=h*random(1,p)"
@@ -374,11 +374,11 @@ int main(int argc, char *argv[]) {
   hp.max_smoothing_iterations = 1;
   hp.CFL_condition = 0.1;
 
-  struct stars_props star_p;
-  star_p.eta_neighbours = h;
-  star_p.h_tolerance = 1e0;
-  star_p.h_max = FLT_MAX;
-  star_p.max_smoothing_iterations = 1;
+  struct stars_props stars_p;
+  stars_p.eta_neighbours = h;
+  stars_p.h_tolerance = 1e0;
+  stars_p.h_max = FLT_MAX;
+  stars_p.max_smoothing_iterations = 1;
 
   struct engine engine;
   engine.s = &space;
@@ -386,7 +386,7 @@ int main(int argc, char *argv[]) {
   engine.ti_current = 8;
   engine.max_active_bin = num_time_bins;
   engine.hydro_properties = &hp;
-  engine.stars_properties = &star_p;
+  engine.stars_properties = &stars_p;
   engine.nodeID = NODE_ID;
 
   struct cosmology cosmo;
@@ -508,10 +508,10 @@ int main(int argc, char *argv[]) {
 
   /* Run all the brute-force pairs */
   for (int j = 0; j < 27; ++j)
-    if (cells[j] != main_cell) pairs_all_star_density(&runner, main_cell, cells[j]);
+    if (cells[j] != main_cell) pairs_all_stars_density(&runner, main_cell, cells[j]);
 
   /* And now the self-interaction */
-  self_all_star_density(&runner, main_cell);
+  self_all_stars_density(&runner, main_cell);
 
   const ticks toc = getticks();
 

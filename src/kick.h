@@ -150,7 +150,7 @@ __attribute__((always_inline)) INLINE static void kick_spart(
   sp->gpart->v_full[2] = sp->v[2];
 
   /* Kick extra variables */
-  star_kick_extra(sp, dt_kick_grav);
+  stars_kick_extra(sp, dt_kick_grav);
 }
 
 #endif /* SWIFT_KICK_H */

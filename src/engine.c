@@ -818,7 +818,7 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
       }
 
       /* Does this gpart have a star partner ? */
-      else if (s->gparts[k].type == swift_type_star) {
+      else if (s->gparts[k].type == swift_type_stars) {
 
         const ptrdiff_t partner_index =
             offset_sparts - s->gparts[k].id_or_neg_offset;
@@ -2015,7 +2015,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     for (size_t k = 0; k < offset_gparts; k++) {
       if (s->gparts[k].type == swift_type_gas) {
         s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      } else if (s->gparts[k].type == swift_type_star) {
+      } else if (s->gparts[k].type == swift_type_stars) {
         s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
     }
@@ -2111,7 +2111,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
               &s->parts[offset_parts + count_parts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->parts - p;
           p->gpart = gp;
-        } else if (gp->type == swift_type_star) {
+        } else if (gp->type == swift_type_stars) {
           struct spart *sp =
               &s->sparts[offset_sparts + count_sparts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->sparts - sp;
@@ -3734,7 +3734,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Activate the star density */
       else if (t->type == task_type_self &&
                t->subtype == task_subtype_stars_density) {
-        if (cell_is_active_star(ci, e)) {
+        if (cell_is_active_stars(ci, e)) {
 	  scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
 	}
@@ -3743,7 +3743,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_self &&
                t->subtype == task_subtype_stars_density) {
-        if (cell_is_active_star(ci, e)) {
+        if (cell_is_active_stars(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_subcell_hydro_tasks(ci, NULL, s);
         }
@@ -4120,10 +4120,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, t);
     }
 
+    }
+
     /* Star ghost tasks ? */
     else if (t->type == task_type_stars_ghost ||
              t->type == task_type_stars_ghost_in || t->type == task_type_stars_ghost_out) {
-      if (cell_is_active_star(t->ci, e)) scheduler_activate(s, t);
+      if (cell_is_active_stars(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Time-step? */

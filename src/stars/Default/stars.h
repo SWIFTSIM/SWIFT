@@ -60,8 +60,8 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
   sp->num_ngb_density = 0;
 #endif
 
-  sp->wcount = 0.f;
-  sp->wcount_dh = 0.f;
+  sp->density.wcount = 0.f;
+  sp->density.wcount_dh = 0.f;
 }
 
 /**
@@ -107,8 +107,8 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   /* Finish the calculation by inserting the missing h-factors */
-  sp->wcount *= h_inv_dim;
-  sp->wcount_dh *= h_inv_dim_plus_one;
+  sp->density.wcount *= h_inv_dim;
+  sp->density.wcount_dh *= h_inv_dim_plus_one;
 }
 
 
@@ -127,8 +127,8 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
   /* Re-set problematic values */
-  sp->wcount = kernel_root * h_inv_dim;
-  sp->wcount_dh = 0.f;
+  sp->density.wcount = kernel_root * h_inv_dim;
+  sp->density.wcount_dh = 0.f;
 }
 
 /**

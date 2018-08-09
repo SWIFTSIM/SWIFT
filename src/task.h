@@ -66,9 +66,9 @@ enum task_types {
   task_type_grav_mesh,
   task_type_cooling,
   task_type_sourceterms,
-  task_type_star_ghost_in,
-  task_type_star_ghost,
-  task_type_star_ghost_out,
+  task_type_stars_ghost_in,
+  task_type_stars_ghost,
+  task_type_stars_ghost_out,
   task_type_count
 } __attribute__((packed));
 
@@ -88,7 +88,7 @@ enum task_subtypes {
   task_subtype_gpart,
   task_subtype_multipole,
   task_subtype_spart,
-  task_subtype_star_density,
+  task_subtype_stars_density,
   task_subtype_count
 } __attribute__((packed));
 
