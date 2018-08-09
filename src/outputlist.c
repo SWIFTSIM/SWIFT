@@ -28,6 +28,7 @@
 #include "engine.h"
 #include "error.h"
 #include "restart.h"
+#include "tools.h"
 
 /* Some standard headers. */
 #include <string.h>
@@ -72,11 +73,13 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
 
   /* Find type of data in file */
   int type = -1;
-  if (strcmp(line, "# Redshift") == 0)
+
+  trim_trailing(line);
+  if (strcasecmp(line, "# Redshift") == 0)
     type = OUTPUT_LIST_REDSHIFT;
-  else if (strcmp(line, "# Time") == 0)
+  else if (strcasecmp(line, "# Time") == 0)
     type = OUTPUT_LIST_AGE;
-  else if (strcmp(line, "# Scale Factor") == 0)
+  else if (strcasecmp(line, "# Scale Factor") == 0)
     type = OUTPUT_LIST_SCALE_FACTOR;
   else
     error("Unable to interpret the header (%s) in file '%s'", line, filename);
@@ -102,7 +105,7 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
     /* Transform input into correct time (e.g. ages or scale factor) */
     if (type == OUTPUT_LIST_REDSHIFT) *time = 1. / (1. + *time);
 
-    if (type == OUTPUT_LIST_AGE)
+    if (cosmo && type == OUTPUT_LIST_AGE)
       *time = cosmology_get_scale_factor(cosmo, *time);
 
     /* Update size */
