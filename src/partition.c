@@ -421,7 +421,7 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *            redistribution time. Used to weight repartitioning edge cuts
  *            when refine and adaptive are true.
  * @param celllist on exit this contains the ids of the selected regions,
- *        sizeof number of cells. If refine is 1, then this should contain
+ *        size of number of cells. If refine is 1, then this should contain
  *        the old partition on entry.
  */
 static void pick_parmetis(int nodeID, struct space *s, int nregions,
@@ -623,7 +623,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       int nvt = vtxdist[rank + 1] - vtxdist[rank];
 
       if (refine)
-        for (int i = 0; i < nvt; i++) full_regionid[i] = celllist[j3 + i];
+        for (int i = 0; i < nvt; i++) full_regionid[j3 + i] = celllist[j3 + i];
+
 
       if (rank == 0) {
         memcpy(xadj, &full_xadj[j1], sizeof(idx_t) * (nvt + 1));
@@ -647,7 +648,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
           res = MPI_Isend(&full_weights_v[j3], nvt, IDX_T, rank, 3, comm,
                           &reqs[5 * rank + 3]);
         if (refine && res == MPI_SUCCESS)
-          res = MPI_Isend(full_regionid, nvt, IDX_T, rank, 4, comm,
+          res = MPI_Isend(&full_regionid[j3], nvt, IDX_T, rank, 4, comm,
                           &reqs[5 * rank + 4]);
         if (res != MPI_SUCCESS) mpi_error(res, "Failed to send graph data");
       }
@@ -744,7 +745,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
                                        &edgecut, regionid, &comm) != METIS_OK)
             error("Call to ParMETIS_V3_AdaptiveRepart failed.");
     } else {
-
         if (ParMETIS_V3_RefineKway(vtxdist, xadj, adjncy, weights_v, weights_e,
                                    &wgtflag, &numflag, &ncon, &nparts, tpwgts,
                                    ubvec, options, &edgecut, regionid,
@@ -1232,14 +1232,14 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
   int refine = 1;
-  if (repartition->ncelllist != s->nr_cells) {
+  if (repartition->ncelllist != nr_cells) {
     refine = 0;
     free(repartition->celllist);
     repartition->ncelllist = 0;
-    if ((repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) ==
+    if ((repartition->celllist = (int *)malloc(sizeof(int) * nr_cells)) ==
         NULL)
       error("Failed to allocate celllist");
-    repartition->ncelllist = s->nr_cells;
+    repartition->ncelllist = nr_cells;
   }
 #endif
 
@@ -1326,9 +1326,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   if (failed) {
     if (nodeID == 0)
       message(
-          "WARNING: ParMETIS repartition has failed, "
-          "continuing with the current partition, "
-          "load balance will not be optimal");
+          "WARNING: repartition has failed, continuing with the current"
+          " partition, load balance will not be optimal");
     for (int k = 0; k < nr_cells; k++)
       repartition->celllist[k] = cells[k].nodeID;
   }
@@ -1472,11 +1471,11 @@ void partition_initial_partition(struct partition *initial_partition,
     if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
-  if (initial_partition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, weights, NULL, celllist);
-  } else {
-    pick_parmetis(nodeID, s, nr_nodes, weights, NULL, 0, 0, 0.0f, celllist);
-  }
+    if (initial_partition->usemetis) {
+      pick_metis(nodeID, s, nr_nodes, weights, NULL, celllist);
+    } else {
+      pick_parmetis(nodeID, s, nr_nodes, weights, NULL, 0, 0, 0.0f, celllist);
+    }
 #else
     pick_metis(nodeID, s, nr_nodes, weights, NULL, celllist);
 #endif
