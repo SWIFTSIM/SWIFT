@@ -118,7 +118,7 @@ int engine_rank;
  */
 struct end_of_step_data {
 
-  int updates, g_updates, s_updates;
+  size_t updates, g_updates, s_updates;
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
   struct engine *e;
@@ -4113,7 +4113,7 @@ void engine_collect_end_of_step_recurse(struct cell *c) {
 #endif /* WITH_MPI */
 
   /* Counters for the different quantities. */
-  int updated = 0, g_updated = 0, s_updated = 0;
+  size_t updated = 0, g_updated = 0, s_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -4166,7 +4166,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   int *local_cells = (int *)map_data;
 
   /* Local collectible */
-  int updates = 0, g_updates = 0, s_updates = 0;
+  size_t updates = 0, g_updates = 0, s_updates = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
