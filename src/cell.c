@@ -2072,15 +2072,22 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     struct cell *cj = t->cj;
     const int ci_active = cell_is_active_hydro(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
 
     /* Only activate tasks that involve a local active cell. */
-    if ((ci_active && ci->nodeID == nodeID) ||
-        (cj_active && cj->nodeID == nodeID)) {
+    if ((ci_active && ci_nodeID == nodeID) ||
+        (cj_active && cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
 
       /* Activate hydro drift */
       if (t->type == task_type_self) {
-        if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
       }
 
       /* Set the correct sorting flags and activate hydro drifts */
@@ -2092,8 +2099,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         cj->dx_max_sort_old = cj->dx_max_sort;
 
         /* Activate the drift tasks. */
-        if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
-        if (cj->nodeID == nodeID) cell_activate_drift_part(cj, s);
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
         /* Check the sorts and activate them if needed. */
         cell_activate_sorts(ci, t->flags, s);
@@ -2114,7 +2121,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
-      if (ci->nodeID != nodeID) {
+      if (ci_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
@@ -2134,7 +2141,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
-          scheduler_activate_send(s, cj->send_xv, ci->nodeID);
+          scheduler_activate_send(s, cj->send_xv, ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -2142,18 +2149,18 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
           /* If the local cell is also active, more stuff will be needed. */
           if (cj_active) {
-            scheduler_activate_send(s, cj->send_rho, ci->nodeID);
+            scheduler_activate_send(s, cj->send_rho, ci_nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
-            scheduler_activate_send(s, cj->send_gradient, ci->nodeID);
+            scheduler_activate_send(s, cj->send_gradient, ci_nodeID);
 #endif
           }
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (cj_active) scheduler_activate_send(s, cj->send_ti, ci->nodeID);
+        if (cj_active) scheduler_activate_send(s, cj->send_ti, ci_nodeID);
 
-      } else if (cj->nodeID != nodeID) {
+      } else if (cj_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
@@ -2173,7 +2180,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
 
-          scheduler_activate_send(s, ci->send_xv, cj->nodeID);
+          scheduler_activate_send(s, ci->send_xv, cj_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -2182,16 +2189,16 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           /* If the local cell is also active, more stuff will be needed. */
           if (ci_active) {
 
-            scheduler_activate_send(s, ci->send_rho, cj->nodeID);
+            scheduler_activate_send(s, ci->send_rho, cj_nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
-            scheduler_activate_send(s, ci->send_gradient, cj->nodeID);
+            scheduler_activate_send(s, ci->send_gradient, cj_nodeID);
 #endif
           }
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (ci_active) scheduler_activate_send(s, ci->send_ti, cj->nodeID);
+        if (ci_active) scheduler_activate_send(s, ci->send_ti, cj_nodeID);
       }
 #endif
     }
