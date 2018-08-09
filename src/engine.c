@@ -3746,21 +3746,21 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Activate the send/recv tasks. */
       if (ci->nodeID != engine_rank) {
 
-	/* If the foreign cell is active, we want its ti_end values. */
-	if (ci_active_gravity) scheduler_activate(s, ci->recv_ti);
+        /* If the foreign cell is active, we want its ti_end values. */
+        if (ci_active_gravity) scheduler_activate(s, ci->recv_ti);
 
-          /* If the local cell is active, send its ti_end values. */
-          if (cj_active_gravity)
-            scheduler_activate_send(s, cj->send_ti, ci->nodeID);
+        /* If the local cell is active, send its ti_end values. */
+        if (cj_active_gravity)
+          scheduler_activate_send(s, cj->send_ti, ci->nodeID);
 
       } else if (cj->nodeID != engine_rank) {
 
-          /* If the foreign cell is active, we want its ti_end values. */
-          if (cj_active_gravity) scheduler_activate(s, cj->recv_ti);
+        /* If the foreign cell is active, we want its ti_end values. */
+        if (cj_active_gravity) scheduler_activate(s, cj->recv_ti);
 
-          /* If the local cell is active, send its ti_end values. */
-          if (ci_active_gravity)
-            scheduler_activate_send(s, ci->send_ti, cj->nodeID);
+        /* If the local cell is active, send its ti_end values. */
+        if (ci_active_gravity)
+          scheduler_activate_send(s, ci->send_ti, cj->nodeID);
       }
 #endif
     }
@@ -5336,8 +5336,10 @@ void engine_makeproxies(struct engine *e) {
 
   /* Let's be verbose about this choice */
   if (e->verbose)
-    message("Looking for proxies up to %d top-level cells away (delta_m=%d delta_m=%d)",
-	    delta, delta_m, delta_p);
+    message(
+        "Looking for proxies up to %d top-level cells away (delta_m=%d "
+        "delta_m=%d)",
+        delta, delta_m, delta_p);
 
   /* Loop over each cell in the space. */
   int ind[3];

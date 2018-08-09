@@ -333,7 +333,8 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   tic = getticks();
 
   /* Merge everybody's share of the density mesh */
-  MPI_Allreduce(MPI_IN_PLACE, rho, N * N * N, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, rho, N * N * N, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
 
   if (verbose)
     message("Mesh comunication took %.3f %s.",

@@ -944,8 +944,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           }
         } /* Split the pair */
       }
-    }  /* pair interaction? */
-  }    /* iterate over the current task. */
+    } /* pair interaction? */
+  }   /* iterate over the current task. */
 }
 
 /**
