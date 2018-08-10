@@ -4848,11 +4848,11 @@ void engine_step(struct engine *e) {
 
   /* Save some statistics ? */
   int save_stats = 0;
-  if (e->ti_end_min >= e->ti_next_stats && e->ti_next_stats > 0) save_stats = 1;
+  if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) save_stats = 1;
 
   /* Do we want a snapshot? */
   int dump_snapshot = 0;
-  if (e->ti_end_min >= e->ti_next_snapshot && e->ti_next_snapshot > 0)
+  if (e->ti_end_min > e->ti_next_snapshot && e->ti_next_snapshot > 0)
     dump_snapshot = 1;
 
   /* Do we want to perform structure finding? */
@@ -4861,7 +4861,7 @@ void engine_step(struct engine *e) {
     if (e->stf_output_freq_format == STEPS && e->step % e->deltaStepSTF == 0)
       run_stf = 1;
     else if (e->stf_output_freq_format == TIME &&
-             e->ti_end_min >= e->ti_nextSTF && e->ti_nextSTF > 0)
+             e->ti_end_min > e->ti_nextSTF && e->ti_nextSTF > 0)
       run_stf = 1;
   }
 
