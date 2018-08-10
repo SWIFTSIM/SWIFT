@@ -1582,7 +1582,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   c->recv_grav = t_grav;
 
   for (struct link *l = c->grav; l != NULL; l = l->next)
-    scheduler_addunlock(s, t_grav, l->t);
+    if (l->t->type != task_type_grav_mm)
+      scheduler_addunlock(s, t_grav, l->t);
 
   /* Recurse? */
   if (c->split)
@@ -4827,7 +4828,7 @@ void engine_step(struct engine *e) {
   engine_prepare(e);
 
   /* Print the number of active tasks ? */
-  if (e->step == 389) engine_print_task_counts(e);
+  if (e->step == 43) engine_print_task_counts(e);
 
     /* Dump local cells and active particle counts. */
     /* dumpCells("cells", 0, 0, 0, 0, e->s, e->nodeID, e->step); */
