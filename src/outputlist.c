@@ -208,7 +208,7 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
  * time)
  */
 void output_list_init(struct output_list **list, const struct engine *e,
-                      char *name, double *delta_time, double *time_first) {
+                      const char *name, double *delta_time, double *time_first) {
   struct swift_params *params = e->parameter_file;
 
   /* get cosmo */
