@@ -755,8 +755,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0)
       message(
           "Read %lld gas particles, %lld star particles and %lld gparts from "
-          "the "
-          "ICs.",
+          "the ICs.",
           N_total[0], N_total[2], N_total[1]);
 
     /* Verify that the fields to dump actually exist */
@@ -891,11 +890,10 @@ int main(int argc, char *argv[]) {
           "particles (%lld gravity particles)",
           N_total[0], N_total[2], N_total[1] > 0 ? N_DM : 0, N_total[1]);
       message(
-          "from t=%.3e until t=%.3e with %d threads and %d queues "
-          "(dt_min=%.3e, "
-          "dt_max=%.3e)...",
-          e.time_begin, e.time_end, e.nr_threads, e.sched.nr_queues, e.dt_min,
-          e.dt_max);
+          "from t=%.3e until t=%.3e with %d ranks, %d threads / rank and %d "
+          "task queues / rank (dt_min=%.3e, dt_max=%.3e)...",
+          e.time_begin, e.time_end, nr_nodes, e.nr_threads, e.sched.nr_queues,
+	  e.dt_min, e.dt_max);
       fflush(stdout);
     }
   }
@@ -935,7 +933,7 @@ int main(int argc, char *argv[]) {
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
     /* Write the state of the system before starting time integration. */
-    engine_dump_snapshot(&e);
+    // engine_dump_snapshot(&e);
     engine_print_stats(&e);
 
 #ifdef HAVE_VELOCIRAPTOR

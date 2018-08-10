@@ -3818,14 +3818,29 @@ void engine_print_task_counts(struct engine *e) {
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
 
+  int count_send_gpart = 0;
+  int count_recv_gpart = 0;
+  int count_send_tiend = 0;
+  int count_recv_tiend = 0;
+  
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   for (int k = 0; k < nr_tasks; k++) {
     if (tasks[k].skip)
       counts[task_type_count] += 1;
-    else
+    else {
       counts[(int)tasks[k].type] += 1;
+
+      if(tasks[k].type == task_type_send && tasks[k].subtype == task_subtype_gpart)
+	++count_send_gpart;
+      if(tasks[k].type == task_type_send && tasks[k].subtype == task_subtype_tend)
+	++count_send_tiend;
+      if(tasks[k].type == task_type_recv && tasks[k].subtype == task_subtype_gpart)
+	++count_recv_gpart;
+      if(tasks[k].type == task_type_recv && tasks[k].subtype == task_subtype_tend)
+	++count_recv_tiend;
+    }
   }
   message("Total = %d  (per cell = %d)", nr_tasks,
           (int)ceil((double)nr_tasks / e->s->tot_cells));
@@ -3840,6 +3855,11 @@ void engine_print_task_counts(struct engine *e) {
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
+  message("send_gpart = %d", count_send_gpart);
+  message("send_tiend = %d", count_send_tiend);
+  message("recv_gpart = %d", count_recv_gpart);
+  message("recv_tiend = %d", count_recv_tiend);
+	
   message("nr_parts = %zu.", e->s->nr_parts);
   message("nr_gparts = %zu.", e->s->nr_gparts);
   message("nr_sparts = %zu.", e->s->nr_sparts);
@@ -4807,7 +4827,7 @@ void engine_step(struct engine *e) {
   engine_prepare(e);
 
   /* Print the number of active tasks ? */
-  if (e->verbose) engine_print_task_counts(e);
+  if (e->step == 389) engine_print_task_counts(e);
 
     /* Dump local cells and active particle counts. */
     /* dumpCells("cells", 0, 0, 0, 0, e->s, e->nodeID, e->step); */
