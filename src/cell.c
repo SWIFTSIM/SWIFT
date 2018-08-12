@@ -2348,6 +2348,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
+
+      scheduler_activate(s, t);
       cell_activate_grav_mm_task(ci, cj, s);
     }
   }

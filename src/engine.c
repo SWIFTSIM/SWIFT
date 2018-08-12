@@ -3741,28 +3741,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if ((ci_active_gravity && ci_nodeID == engine_rank) ||
           (cj_active_gravity && cj_nodeID == engine_rank))
         scheduler_activate(s, t);
-
-#ifdef WITH_MPI
-      /* Activate the send/recv tasks. */
-      if (ci->nodeID != engine_rank) {
-
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active_gravity) scheduler_activate(s, ci->recv_ti);
-
-        /* If the local cell is active, send its ti_end values. */
-        if (cj_active_gravity)
-          scheduler_activate_send(s, cj->send_ti, ci->nodeID);
-
-      } else if (cj->nodeID != engine_rank) {
-
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active_gravity) scheduler_activate(s, cj->recv_ti);
-
-        /* If the local cell is active, send its ti_end values. */
-        if (ci_active_gravity)
-          scheduler_activate_send(s, ci->send_ti, cj->nodeID);
-      }
-#endif
     }
 
     /* Time-step? */
