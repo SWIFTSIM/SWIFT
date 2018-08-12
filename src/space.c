@@ -168,6 +168,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->gradient = NULL;
     c->force = NULL;
     c->grav = NULL;
+    c->grav_mm = NULL;
     c->dx_max_part = 0.0f;
     c->dx_max_sort = 0.0f;
     c->sorted = 0;

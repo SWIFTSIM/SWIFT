@@ -2001,8 +2001,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* ... and store. */
-  //c->ti_gravity_end_min = ti_gravity_end_min;
-  //c->ti_gravity_end_max = ti_gravity_end_max;
+  // c->ti_gravity_end_min = ti_gravity_end_min;
+  // c->ti_gravity_end_max = ti_gravity_end_max;
   c->ti_old_gpart = ti_current;
 
   if (timer) TIMER_TOC(timer_dorecv_spart);

@@ -893,7 +893,7 @@ int main(int argc, char *argv[]) {
           "from t=%.3e until t=%.3e with %d ranks, %d threads / rank and %d "
           "task queues / rank (dt_min=%.3e, dt_max=%.3e)...",
           e.time_begin, e.time_end, nr_nodes, e.nr_threads, e.sched.nr_queues,
-	  e.dt_min, e.dt_max);
+          e.dt_min, e.dt_max);
       fflush(stdout);
     }
   }

@@ -897,8 +897,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         /* Since this task will not be split, we can already link it */
         atomic_inc(&ci->nr_tasks);
         atomic_inc(&cj->nr_tasks);
-        engine_addlink(e, &ci->grav, t);
-        engine_addlink(e, &cj->grav, t);
+        engine_addlink(e, &ci->grav_mm, t);
+        engine_addlink(e, &cj->grav_mm, t);
         break;
       }
 

@@ -216,6 +216,9 @@ struct cell {
   /*! Linked list of the tasks computing this cell's gravity forces. */
   struct link *grav;
 
+  /*! Linked list of the tasks computing this cell's gravity M-M forces. */
+  struct link *grav_mm;
+
   /*! The task computing this cell's sorts. */
   struct task *sorts;
 

@@ -1582,8 +1582,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   c->recv_grav = t_grav;
 
   for (struct link *l = c->grav; l != NULL; l = l->next)
-    if (l->t->type != task_type_grav_mm)
-      scheduler_addunlock(s, t_grav, l->t);
+    scheduler_addunlock(s, t_grav, l->t);
 
   /* Recurse? */
   if (c->split)
@@ -3823,7 +3822,7 @@ void engine_print_task_counts(struct engine *e) {
   int count_recv_gpart = 0;
   int count_send_tiend = 0;
   int count_recv_tiend = 0;
-  
+
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
@@ -3833,14 +3832,18 @@ void engine_print_task_counts(struct engine *e) {
     else {
       counts[(int)tasks[k].type] += 1;
 
-      if(tasks[k].type == task_type_send && tasks[k].subtype == task_subtype_gpart)
-	++count_send_gpart;
-      if(tasks[k].type == task_type_send && tasks[k].subtype == task_subtype_tend)
-	++count_send_tiend;
-      if(tasks[k].type == task_type_recv && tasks[k].subtype == task_subtype_gpart)
-	++count_recv_gpart;
-      if(tasks[k].type == task_type_recv && tasks[k].subtype == task_subtype_tend)
-	++count_recv_tiend;
+      if (tasks[k].type == task_type_send &&
+          tasks[k].subtype == task_subtype_gpart)
+        ++count_send_gpart;
+      if (tasks[k].type == task_type_send &&
+          tasks[k].subtype == task_subtype_tend)
+        ++count_send_tiend;
+      if (tasks[k].type == task_type_recv &&
+          tasks[k].subtype == task_subtype_gpart)
+        ++count_recv_gpart;
+      if (tasks[k].type == task_type_recv &&
+          tasks[k].subtype == task_subtype_tend)
+        ++count_recv_tiend;
     }
   }
   message("Total = %d  (per cell = %d)", nr_tasks,
@@ -3860,7 +3863,7 @@ void engine_print_task_counts(struct engine *e) {
   message("send_tiend = %d", count_send_tiend);
   message("recv_gpart = %d", count_recv_gpart);
   message("recv_tiend = %d", count_recv_tiend);
-	
+
   message("nr_parts = %zu.", e->s->nr_parts);
   message("nr_gparts = %zu.", e->s->nr_gparts);
   message("nr_sparts = %zu.", e->s->nr_sparts);

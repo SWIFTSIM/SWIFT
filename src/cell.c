@@ -1095,6 +1095,7 @@ void cell_clean_links(struct cell *c, void *data) {
   c->gradient = NULL;
   c->force = NULL;
   c->grav = NULL;
+  c->grav_mm = NULL;
 }
 
 /**
@@ -2271,7 +2272,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       } else if (t->type == task_type_pair) {
         cell_activate_subcell_grav_tasks(ci, cj, s);
       } else if (t->type == task_type_grav_mm) {
-        cell_activate_grav_mm_task(ci, cj, s);
+        error("Incorrectyl linked M-M task!");
       }
     }
 
@@ -2325,28 +2326,29 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       }
 #endif
     }
+  }
 
-    if (t->type == task_type_grav_mm) {
+  for (struct link *l = c->grav_mm; l != NULL; l = l->next) {
 
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_gravity(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_gravity(cj, e) : 0;
 #ifdef WITH_MPI
-      /* Activate the send/recv tasks. */
-      if (ci_nodeID != nodeID) {
-
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active) scheduler_activate(s, ci->recv_ti);
-
-        /* If the local cell is active, send its ti_end values. */
-        if (cj_active) scheduler_activate_send(s, cj->send_ti, ci_nodeID);
-
-      } else if (cj_nodeID != nodeID) {
-
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active) scheduler_activate(s, cj->recv_ti);
-
-        /* If the local cell is active, send its ti_end values. */
-        if (ci_active) scheduler_activate_send(s, ci->send_ti, cj_nodeID);
-      }
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
 #endif
+
+    if (t->type != task_type_grav_mm) error("Incorrectly linked gravity task!");
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active && ci_nodeID == nodeID) ||
+        (cj_active && cj_nodeID == nodeID)) {
+      cell_activate_grav_mm_task(ci, cj, s);
     }
   }
 
@@ -2420,7 +2422,8 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
 
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_gravity == NULL && c->grav != NULL) super_gravity = c;
+  if (super_gravity == NULL && (c->grav != NULL || c->grav_mm != NULL))
+    super_gravity = c;
 
   /* Set the super-cell */
   c->super_gravity = super_gravity;
