@@ -47,7 +47,6 @@ void fof_search_serial(struct space *s);
 void fof_search_cell(struct space *s, struct cell *c);
 void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj);
 void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell *cj, size_t *send_count, struct fof_mpi *fof_send);
-void fof_search_pair_cells_foreign_new(struct space *s, struct cell *ci, struct cell *cj, size_t *send_count, struct fof_mpi *fof_send);
 void fof_search_tree_serial(struct space *s);
 void fof_search_tree(struct space *s);
 void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_index, int *num_in_groups, long long *group_id);
