@@ -76,15 +76,13 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
      all these speeds are along the interface normal, since uL and uR are */
   float qL = 1.0f;
   if (pstar > WL[4] && WL[4] > 0.0f) {
-    qL = sqrtf(1.0f +
-               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                   (pstar / WL[4] - 1.0f));
+    qL = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                          (pstar / WL[4] - 1.0f));
   }
   float qR = 1.0f;
   if (pstar > WR[4] && WR[4] > 0.0f) {
-    qR = sqrtf(1.0f +
-               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                   (pstar / WR[4] - 1.0f));
+    qR = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                          (pstar / WR[4] - 1.0f));
   }
   const float SLmuL = -aL * qL;
   const float SRmuR = aR * qR;
@@ -220,15 +218,13 @@ riemann_solve_for_middle_state_flux(const float *WL, const float *WR,
      all these speeds are along the interface normal, since uL and uR are */
   float qL = 1.0f;
   if (pstar > WL[4] && WL[4] > 0.0f) {
-    qL = sqrtf(1.0f +
-               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                   (pstar / WL[4] - 1.0f));
+    qL = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                          (pstar / WL[4] - 1.0f));
   }
   float qR = 1.0f;
   if (pstar > WR[4] && WR[4] > 0.0f) {
-    qR = sqrtf(1.0f +
-               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                   (pstar / WR[4] - 1.0f));
+    qR = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                          (pstar / WR[4] - 1.0f));
   }
   const float SLmuL = -aL * qL;
   const float SRmuR = aR * qR;
