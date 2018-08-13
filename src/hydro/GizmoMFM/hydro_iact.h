@@ -57,7 +57,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float r = sqrtf(r2);
 
   /* Compute density of pi. */
-  const float hi_inv = 1.f / hi;
+  const float hi_inv = 1.0f / hi;
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->geometry.centroid[2] -= dx[2] * wi;
 
   /* Compute density of pj. */
-  const float hj_inv = 1.f / hj;
+  const float hj_inv = 1.0f / hj;
   const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
@@ -123,7 +123,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   /* Get r and h inverse. */
   const float r = sqrtf(r2);
 
-  const float hi_inv = 1.f / hi;
+  const float hi_inv = 1.0f / hi;
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
@@ -220,7 +220,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, int mode, float a, float H) {
 
-  const float r_inv = 1.f / sqrtf(r2);
+  const float r_inv = 1.0f / sqrtf(r2);
   const float r = r2 * r_inv;
 
   /* Initialize local variables */
@@ -238,16 +238,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   const float Vi = pi->geometry.volume;
   const float Vj = pj->geometry.volume;
   float Wi[5], Wj[5];
-  Wi[0] = pi->primitives.rho;
-  Wi[1] = pi->primitives.v[0];
-  Wi[2] = pi->primitives.v[1];
-  Wi[3] = pi->primitives.v[2];
-  Wi[4] = pi->primitives.P;
-  Wj[0] = pj->primitives.rho;
-  Wj[1] = pj->primitives.v[0];
-  Wj[2] = pj->primitives.v[1];
-  Wj[3] = pj->primitives.v[2];
-  Wj[4] = pj->primitives.P;
+  Wi[0] = pi->rho;
+  Wi[1] = pi->v[0];
+  Wi[2] = pi->v[1];
+  Wi[3] = pi->v[2];
+  Wi[4] = pi->P;
+  Wj[0] = pj->rho;
+  Wj[1] = pj->v[0];
+  Wj[2] = pj->v[1];
+  Wj[3] = pj->v[2];
+  Wj[4] = pj->P;
 
   /* calculate the maximal signal velocity */
   float vmax;
@@ -258,21 +258,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   } else
     vmax = 0.0f;
 
-  float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
-               (pi->v[2] - pj->v[2]) * dx[2];
-
   /* Velocity on the axis linking the particles */
-  float dvdotdx = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
-                  (Wi[3] - Wj[3]) * dx[2];
-  dvdotdx = min(dvdotdx, dvdr);
+  float dvdr = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
+               (Wi[3] - Wj[3]) * dx[2];
 
-  /* We only care about this velocity for particles moving towards each others
+  /* We only care about this velocity for particles moving towards each other
    */
-  dvdotdx = min(dvdotdx, 0.f);
+  const float dvdotdx = min(dvdr, 0.0f);
 
   /* Get the signal velocity */
   /* the magical factor 3 also appears in Gadget2 */
-  vmax -= 3.f * dvdotdx * r_inv;
+  vmax -= 3.0f * dvdotdx * r_inv;
 
   /* Store the signal velocity */
   pi->timestepvars.vmax = max(pi->timestepvars.vmax, vmax);
@@ -280,14 +276,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* Compute kernel of pi. */
   float wi, wi_dx;
-  const float hi_inv = 1.f / hi;
+  const float hi_inv = 1.0f / hi;
   const float hi_inv_dim = pow_dimension(hi_inv);
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   /* Compute kernel of pj. */
   float wj, wj_dx;
-  const float hj_inv = 1.f / hj;
+  const float hj_inv = 1.0f / hj;
   const float hj_inv_dim = pow_dimension(hj_inv);
   const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
@@ -298,17 +294,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   const float wi_dr = hidp1 * wi_dx;
   const float wj_dr = hjdp1 * wj_dx;
   dvdr *= r_inv;
-  if (pj->primitives.rho > 0.)
-    pi->force.h_dt -= pj->conserved.mass * dvdr / pj->primitives.rho * wi_dr;
-  if (mode == 1 && pi->primitives.rho > 0.)
-    pj->force.h_dt -= pi->conserved.mass * dvdr / pi->primitives.rho * wj_dr;
+  if (pj->rho > 0.0f)
+    pi->force.h_dt -= pj->conserved.mass * dvdr / pj->rho * wi_dr;
+  if (mode == 1 && pi->rho > 0.0f)
+    pj->force.h_dt -= pi->conserved.mass * dvdr / pi->rho * wj_dr;
 
   /* Compute (square of) area */
   /* eqn. (7) */
   float Anorm2 = 0.0f;
   float A[3];
-  if (pi->density.wcorr > const_gizmo_min_wcorr &&
-      pj->density.wcorr > const_gizmo_min_wcorr) {
+  if (pi->geometry.wcorr > const_gizmo_min_wcorr &&
+      pj->geometry.wcorr > const_gizmo_min_wcorr) {
     /* in principle, we use Vi and Vj as weights for the left and right
        contributions to the generalized surface vector.
        However, if Vi and Vj are very different (because they have very
@@ -342,10 +338,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* if the interface has no area, nothing happens and we return */
   /* continuing results in dividing by zero and NaN's... */
-  if (Anorm2 == 0.f) return;
+  if (Anorm2 == 0.0f) return;
 
   /* Compute the area */
-  const float Anorm_inv = 1. / sqrtf(Anorm2);
+  const float Anorm_inv = 1.0f / sqrtf(Anorm2);
   const float Anorm = Anorm2 * Anorm_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -407,34 +403,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   riemann_solve_for_middle_state_flux(Wi, Wj, n_unit, vij, totflux);
 
   /* Multiply with the interface surface area */
-  totflux[0] *= Anorm;
   totflux[1] *= Anorm;
   totflux[2] *= Anorm;
   totflux[3] *= Anorm;
   totflux[4] *= Anorm;
 
-  /* Store mass flux */
-  const float mflux_i = totflux[0];
-  pi->gravity.mflux[0] += mflux_i * dx[0];
-  pi->gravity.mflux[1] += mflux_i * dx[1];
-  pi->gravity.mflux[2] += mflux_i * dx[2];
-
   /* Update conserved variables */
+  /* We shamelessly exploit the fact that the mass flux is zero and omit all
+     terms involving it */
   /* eqn. (16) */
-  pi->conserved.flux.mass -= totflux[0];
-  pi->conserved.flux.momentum[0] -= totflux[1];
-  pi->conserved.flux.momentum[1] -= totflux[2];
-  pi->conserved.flux.momentum[2] -= totflux[3];
-  pi->conserved.flux.energy -= totflux[4];
+  pi->flux.momentum[0] -= totflux[1];
+  pi->flux.momentum[1] -= totflux[2];
+  pi->flux.momentum[2] -= totflux[3];
+  pi->flux.energy -= totflux[4];
 
 #ifndef GIZMO_TOTAL_ENERGY
-  const float ekin_i = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
-                               pi->primitives.v[1] * pi->primitives.v[1] +
-                               pi->primitives.v[2] * pi->primitives.v[2]);
-  pi->conserved.flux.energy += totflux[1] * pi->primitives.v[0];
-  pi->conserved.flux.energy += totflux[2] * pi->primitives.v[1];
-  pi->conserved.flux.energy += totflux[3] * pi->primitives.v[2];
-  pi->conserved.flux.energy -= totflux[0] * ekin_i;
+  pi->flux.energy += totflux[1] * pi->v[0];
+  pi->flux.energy += totflux[2] * pi->v[1];
+  pi->flux.energy += totflux[3] * pi->v[2];
 #endif
 
   /* Note that this used to be much more complicated in early implementations of
@@ -443,26 +429,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
    * conservation anymore and just assume the current fluxes are representative
    * for the flux over the entire time step. */
   if (mode == 1) {
-    /* Store mass flux */
-    const float mflux_j = totflux[0];
-    pj->gravity.mflux[0] -= mflux_j * dx[0];
-    pj->gravity.mflux[1] -= mflux_j * dx[1];
-    pj->gravity.mflux[2] -= mflux_j * dx[2];
-
-    pj->conserved.flux.mass += totflux[0];
-    pj->conserved.flux.momentum[0] += totflux[1];
-    pj->conserved.flux.momentum[1] += totflux[2];
-    pj->conserved.flux.momentum[2] += totflux[3];
-    pj->conserved.flux.energy += totflux[4];
+    pj->flux.momentum[0] += totflux[1];
+    pj->flux.momentum[1] += totflux[2];
+    pj->flux.momentum[2] += totflux[3];
+    pj->flux.energy += totflux[4];
 
 #ifndef GIZMO_TOTAL_ENERGY
-    const float ekin_j = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
-                                 pj->primitives.v[1] * pj->primitives.v[1] +
-                                 pj->primitives.v[2] * pj->primitives.v[2]);
-    pj->conserved.flux.energy -= totflux[1] * pj->primitives.v[0];
-    pj->conserved.flux.energy -= totflux[2] * pj->primitives.v[1];
-    pj->conserved.flux.energy -= totflux[3] * pj->primitives.v[2];
-    pj->conserved.flux.energy += totflux[0] * ekin_j;
+    pj->flux.energy -= totflux[1] * pj->v[0];
+    pj->flux.energy -= totflux[2] * pj->v[1];
+    pj->flux.energy -= totflux[3] * pj->v[2];
 #endif
   }
 }
