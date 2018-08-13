@@ -103,7 +103,6 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     p->v[2] = p->conserved.momentum[2] * inverse_mass;
 
 #ifdef GIZMO_STEER_MOTION
-
     /* Add a correction to the velocity to keep particle positions close enough
        to
        the centroid of their mesh-free "cell". */

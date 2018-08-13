@@ -591,11 +591,27 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
         p->conserved.flux.momentum[2] * dt_drift / p->conserved.mass;
 
 #if !defined(EOS_ISOTHERMAL_GAS)
-    const float u = p->conserved.energy + p->conserved.flux.energy * dt_therm;
-    p->primitives.P =
-        hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
+#ifdef GIZMO_TOTAL_ENERGY
+    const float Etot =
+        p->conserved.energy + p->conserved.flux.energy * dt_therm;
+    const float v2 = (p->primitives.v[0] * p->primitives.v[0] +
+                      p->primitives.v[1] * p->primitives.v[1] +
+                      p->primitives.v[2] * p->primitives.v[2]);
+    const float u = (Etot / p->conserved.mass - 0.5 * v2);
+#else
+    const float u =
+        (p->conserved.energy + p->conserved.flux.energy * dt_therm) /
+        p->conserved.mass;
+#endif
+    p->primitives.P = hydro_gamma_minus_one * u * p->primitives.rho;
 #endif
   }
+
+  /* we use a sneaky way to get the gravitational contribtuion to the
+     velocity update */
+  p->primitives.v[0] += p->v[0] - xp->v_full[0];
+  p->primitives.v[1] += p->v[1] - xp->v_full[1];
+  p->primitives.v[2] += p->v[2] - xp->v_full[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->h <= 0.) {
@@ -646,6 +662,34 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   float a_grav[3];
 
+  /* Add gravity. We only do this if we have gravity activated. */
+  if (p->gpart) {
+    /* Retrieve the current value of the gravitational acceleration from the
+       gpart. We are only allowed to do this because this is the kick. We still
+       need to check whether gpart exists though.*/
+    a_grav[0] = p->gpart->a_grav[0];
+    a_grav[1] = p->gpart->a_grav[1];
+    a_grav[2] = p->gpart->a_grav[2];
+
+#ifdef GIZMO_TOTAL_ENERGY
+    p->conserved.energy += dt * (p->conserved.momentum[0] * a_grav[0] +
+                                 p->conserved.momentum[1] * a_grav[1] +
+                                 p->conserved.momentum[2] * a_grav[2]);
+#endif
+
+    /* Kick the momentum for half a time step */
+    /* Note that this also affects the particle movement, as the velocity for
+       the particles is set after this. */
+    p->conserved.momentum[0] += p->conserved.mass * a_grav[0] * dt;
+    p->conserved.momentum[1] += p->conserved.mass * a_grav[1] * dt;
+    p->conserved.momentum[2] += p->conserved.mass * a_grav[2] * dt;
+
+    p->conserved.energy -=
+        0.5f * dt *
+        (p->gravity.mflux[0] * a_grav[0] + p->gravity.mflux[1] * a_grav[1] +
+         p->gravity.mflux[2] * a_grav[2]);
+  }
+
   /* Update conserved variables. */
   p->conserved.mass += p->conserved.flux.mass * dt;
   p->conserved.momentum[0] += p->conserved.flux.momentum[0] * dt;
@@ -688,28 +732,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   }
 #endif
 
-  /* Add gravity. We only do this if we have gravity activated. */
   if (p->gpart) {
-    /* Retrieve the current value of the gravitational acceleration from the
-       gpart. We are only allowed to do this because this is the kick. We still
-       need to check whether gpart exists though.*/
-    a_grav[0] = p->gpart->a_grav[0];
-    a_grav[1] = p->gpart->a_grav[1];
-    a_grav[2] = p->gpart->a_grav[2];
-
     /* Make sure the gpart knows the mass has changed. */
     p->gpart->mass = p->conserved.mass;
-
-    /* Kick the momentum for half a time step */
-    /* Note that this also affects the particle movement, as the velocity for
-       the particles is set after this. */
-    p->conserved.momentum[0] += dt * p->conserved.mass * a_grav[0];
-    p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
-    p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
-
-    p->conserved.energy += dt * (p->gravity.mflux[0] * a_grav[0] +
-                                 p->gravity.mflux[1] * a_grav[1] +
-                                 p->gravity.mflux[2] * a_grav[2]);
   }
 
   hydro_velocities_set(p, xp);
