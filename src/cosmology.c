@@ -585,7 +585,8 @@ double cosmology_get_grav_kick_factor(const struct cosmology *c,
 /**
  * @brief Computes the cosmology factor that enters the hydro kick operator.
  *
- * Computes \f$ \int_{a_start}^{a_end} dt/a \f$ using the interpolation table.
+ * Computes \f$ \int_{a_start}^{a_end} dt/a^{3(gamma - 1)} \f$ using the
+ * interpolation table.
  *
  * @param c The current #cosmology.
  * @param ti_start the (integer) time of the start of the drift.
@@ -602,9 +603,9 @@ double cosmology_get_hydro_kick_factor(const struct cosmology *c,
   const double a_start = c->log_a_begin + ti_start * c->time_base;
   const double a_end = c->log_a_begin + ti_end * c->time_base;
 
-  const double int_start = interp_table(c->drift_fac_interp_table, a_start,
+  const double int_start = interp_table(c->hydro_kick_fac_interp_table, a_start,
                                         c->log_a_begin, c->log_a_end);
-  const double int_end = interp_table(c->drift_fac_interp_table, a_end,
+  const double int_end = interp_table(c->hydro_kick_fac_interp_table, a_end,
                                       c->log_a_begin, c->log_a_end);
 
   return int_end - int_start;
@@ -631,9 +632,9 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
   const double a_start = c->log_a_begin + ti_start * c->time_base;
   const double a_end = c->log_a_begin + ti_end * c->time_base;
 
-  const double int_start = interp_table(c->hydro_kick_fac_interp_table, a_start,
+  const double int_start = interp_table(c->drift_fac_interp_table, a_start,
                                         c->log_a_begin, c->log_a_end);
-  const double int_end = interp_table(c->hydro_kick_fac_interp_table, a_end,
+  const double int_end = interp_table(c->drift_fac_interp_table, a_end,
                                       c->log_a_begin, c->log_a_end);
 
   return int_end - int_start;
