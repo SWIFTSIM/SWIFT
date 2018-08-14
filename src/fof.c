@@ -1087,64 +1087,75 @@ void fof_search_foreign_cells(struct space *s) {
   fclose(fof_file);
   
   for(int i=0; i<global_list_count; i++) {
-    global_fof_list_offset[i].local_pid = i;
-    global_fof_list_offset[i].foreign_pid = i;
+    global_fof_list_offset[i].local_pid = global_fof_list[i].local_pid;
+    global_fof_list_offset[i].foreign_pid = global_fof_list[i].foreign_pid;
   }
 
   for(int i=0; i<global_list_count; i++) {
     int group_i = global_fof_list[i].local_pid;
     int group_j = global_fof_list[i].foreign_pid;
-    
-    //if((group_j >= node_offset && group_j < node_offset + s->nr_gparts)) {
-    //  int root = fof_find(group_j - node_offset, group_index);
-
-    //  group_j = root;
-
-    //}
-    //
-    //if((group_i >= node_offset && group_i < node_offset + s->nr_gparts)) {
-    //  int root = fof_find(group_i - node_offset, group_index);
-
-    //  group_i = root;
-
-    //}
 
     if(group_i == group_j) error("Particles have same root. local_root: %d, foreign_root: %d", group_i, group_j);
 
     int min_root = min(group_i, group_j);
 
-    for(int j=i + 1; j<global_list_count; j++) {
+    //for(int j=i + 1; j<global_list_count; j++) {
+    for(int j=0; j<global_list_count; j++) {
       int root_i = global_fof_list[j].local_pid;
       int root_j = global_fof_list[j].foreign_pid;
 
       if(root_i == group_j) {
-        if(root_j < min_root) min_root = root_j;
+        if(global_fof_list_offset[j].local_pid < min_root) min_root = global_fof_list_offset[j].local_pid;
       }
       else if(root_j == group_j) {
-        if(root_i < min_root) min_root = root_i;
+        if(global_fof_list_offset[j].foreign_pid < min_root) min_root = global_fof_list_offset[j].foreign_pid;
       }
     }
 
-    for(int j=i + 1; j<global_list_count; j++) {
+    //for(int j=i + 1; j<global_list_count; j++) {
+    for(int j=0; j<global_list_count; j++) {
       int root_i = global_fof_list[j].local_pid;
       int root_j = global_fof_list[j].foreign_pid;
 
       if(root_i == group_i) {
-        if(root_j < min_root) min_root = root_j;
+        if(global_fof_list_offset[j].local_pid < min_root) min_root = global_fof_list_offset[j].local_pid;
       }
       else if(root_j == group_i) {
-        if(root_i < min_root) min_root = root_i;
+        if(global_fof_list_offset[j].foreign_pid < min_root) min_root = global_fof_list_offset[j].foreign_pid;
       }
     }
 
-    if(((group_j >= node_offset && group_j < node_offset + s->nr_gparts) ||
-       (group_i >= node_offset && group_i < node_offset + s->nr_gparts) ) &&
-       (group_i != min_root && group_j != min_root) ) {
-      message("Rank %d. Link %d <-> %d has common lowest root: %d", engine_rank, group_i, group_j, min_root);
+    //if(((group_j >= node_offset && group_j < node_offset + s->nr_gparts) ||
+    //   (group_i >= node_offset && group_i < node_offset + s->nr_gparts) ) &&
+    //   (group_i != min_root && group_j != min_root) ) {
+    //  message("Rank %d. Link %d <-> %d has common lowest root: %d", engine_rank, group_i, group_j, min_root);
+    //}
+      
+    message("Rank %d. Link %d <-> %d has common lowest root: %d", engine_rank, group_i, group_j, min_root);
+
+    for(int j=0; j<global_list_count; j++) {
+      int root_i = global_fof_list[j].local_pid;
+      int root_j = global_fof_list[j].foreign_pid;
+
+      if(root_i == group_i) {
+        global_fof_list_offset[j].local_pid = min_root;
+      }
+      if(root_j == group_i) {
+        global_fof_list_offset[j].foreign_pid = min_root;
+      }
+      if(root_i == group_j) {
+        global_fof_list_offset[j].local_pid = min_root;
+      }
+      if(root_j == group_j) {
+        global_fof_list_offset[j].foreign_pid = min_root;
+      }
     }
 
-    if((group_j >= node_offset && group_j < node_offset + s->nr_gparts) &&
-       (group_j != min_root)) {
+
+    //if((group_j >= node_offset && group_j < node_offset + s->nr_gparts) &&
+    //   (group_j != min_root)) {
+    if((group_j >= node_offset && group_j < node_offset + s->nr_gparts) ) {
+            
       int root = fof_find(group_j - node_offset, group_index);
       if(root != group_j) message("Rank %d. The root of group_j has changed from: %d to %d", engine_rank, group_j, root);
       //message("Rank %d. Updating local root: %d to: %d", engine_rank, root, min_root);
@@ -1166,9 +1177,10 @@ void fof_search_foreign_cells(struct space *s) {
         }
       }
     }
-    
-    if((group_i >= node_offset && group_i < node_offset + s->nr_gparts) &&
-       (group_i != min_root)) {
+      
+    //if((group_i >= node_offset && group_i < node_offset + s->nr_gparts) &&
+    //   (group_i != min_root)) {
+    if((group_i >= node_offset && group_i < node_offset + s->nr_gparts)) {
       int root = fof_find(group_i - node_offset, group_index);
       if(root != group_i) message("Rank %d. The root of group_i has changed from: %d to %d", engine_rank, group_i, root);
 
