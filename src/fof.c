@@ -979,7 +979,7 @@ void fof_search_foreign_cells(struct space *s) {
 
       if(gparts[0].root >= node_offset && gparts[0].root < node_offset + s->nr_gparts) {
           //error("Rank %d received foreign particle with local root: %d", engine_rank, gparts[k].root);
-          message("Rank %d received foreign particle %lld from rank %d with a local root: %d. i=%d,j=%d.", engine_rank, gparts[0].id_or_neg_offset, foreign_cell->nodeID, gparts[0].root, i, j);
+          //message("Rank %d received foreign particle %lld from rank %d with a local root: %d. i=%d,j=%d.", engine_rank, gparts[0].id_or_neg_offset, foreign_cell->nodeID, gparts[0].root, i, j);
       }
       for(int k=0; k<foreign_cell->gcount; k++) {
         if(gparts[k].root >= node_offset && gparts[k].root < node_offset + s->nr_gparts) {
@@ -1133,25 +1133,6 @@ void fof_search_foreign_cells(struct space *s) {
       
     message("Rank %d. Link %d <-> %d has common lowest root: %d", engine_rank, group_i, group_j, min_root);
 
-    for(int j=0; j<global_list_count; j++) {
-      int root_i = global_fof_list[j].local_pid;
-      int root_j = global_fof_list[j].foreign_pid;
-
-      if(root_i == group_i) {
-        global_fof_list_offset[j].local_pid = min_root;
-      }
-      if(root_j == group_i) {
-        global_fof_list_offset[j].foreign_pid = min_root;
-      }
-      if(root_i == group_j) {
-        global_fof_list_offset[j].local_pid = min_root;
-      }
-      if(root_j == group_j) {
-        global_fof_list_offset[j].foreign_pid = min_root;
-      }
-    }
-
-
     //if((group_j >= node_offset && group_j < node_offset + s->nr_gparts) &&
     //   (group_j != min_root)) {
     if((group_j >= node_offset && group_j < node_offset + s->nr_gparts) ) {
@@ -1177,7 +1158,20 @@ void fof_search_foreign_cells(struct space *s) {
         }
       }
     }
+
+    int old_group_i = global_fof_list_offset[i].local_pid;
+    int old_group_j = global_fof_list_offset[i].foreign_pid;
+
+    if(old_group_i >= node_offset && old_group_i < node_offset + s->nr_gparts) {
       
+      if(min_root < old_group_i) group_index[old_group_i - node_offset] = min_root;
+    }
+    
+    if(old_group_j >= node_offset && old_group_j < node_offset + s->nr_gparts) {
+      
+      if(min_root < old_group_j) group_index[old_group_j - node_offset] = min_root;
+    }
+
     //if((group_i >= node_offset && group_i < node_offset + s->nr_gparts) &&
     //   (group_i != min_root)) {
     if((group_i >= node_offset && group_i < node_offset + s->nr_gparts)) {
@@ -1204,6 +1198,23 @@ void fof_search_foreign_cells(struct space *s) {
       }
     }
 
+    for(int j=0; j<global_list_count; j++) {
+      int root_i = global_fof_list[j].local_pid;
+      int root_j = global_fof_list[j].foreign_pid;
+
+      if(root_i == group_i) {
+        global_fof_list_offset[j].local_pid = min_root;
+      }
+      if(root_j == group_i) {
+        global_fof_list_offset[j].foreign_pid = min_root;
+      }
+      if(root_i == group_j) {
+        global_fof_list_offset[j].local_pid = min_root;
+      }
+      if(root_j == group_j) {
+        global_fof_list_offset[j].foreign_pid = min_root;
+      }
+    }
     //if(engine_rank == 0) message("Rank 0. Updating local roots. %d of %d....", i, global_list_count);
     //global_fof_list[i].local_pid = min_root;
     //global_fof_list[i].foreign_pid = min_root;
