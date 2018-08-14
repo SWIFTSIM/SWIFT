@@ -6,77 +6,73 @@ the Euler equations to comoving coordinates and variables. In a physical
 coordinate frame, these equations are
 \begin{align}
 \frac{\partial{}\rho{}}{\partial{}t} +
-\nabla{} . \left(\rho{} \mathbf{v}_{\rm tot} \right)
+\nabla{} \cdot \left(\rho{} \mathbf{v}_{\rm tot} \right)
 &= 0, \\
 \frac{\partial{} \rho{} \mathbf{v}_{\rm tot} }{\partial{} t} +
-\nabla{} . \left( \rho{} \mathbf{v}_{\rm tot} \mathbf{v}_{\rm tot} +
+\nabla{} \cdot \left( \rho{} \mathbf{v}_{\rm tot} \mathbf{v}_{\rm tot} +
 P \right) &= 0.
 \end{align}
 \begin{multline}
 \frac{\partial{}}{\partial{} t} \left( \rho{} u + \frac{1}{2} \rho{}
-\mathbf{v}_{\rm{} tot}.\mathbf{v}_{\rm{} tot} \right) +\\
-\nabla{} . \left( \rho{} u \mathbf{v}_{\rm{} tot} +
-\frac{1}{2} \rho{} \left(\mathbf{v}_{\rm{} tot}. \mathbf{v}_{\rm{} tot}\right)
+\mathbf{v}_{\rm{} tot}\cdot\mathbf{v}_{\rm{} tot} \right) +\\
+\nabla{} \cdot \left( \rho{} u \mathbf{v}_{\rm{} tot} +
+\frac{1}{2} \rho{} \left(\mathbf{v}_{\rm{} tot} \cdot \mathbf{v}_{\rm{} tot}\right)
 \mathbf{v}_{\rm{} tot} + P \mathbf{v}_{\rm{} tot} \right) = 0.
 \end{multline}
-For simplicity, we will rewrite the last equations in terms of the quantities
+For simplicity, we will rewrite the last two equations in terms of the quantities
 $\mathbf{v}_{\rm{} tot}$ and $u$:
 \begin{align}
 \frac{\partial{} \mathbf{v}_{\rm{} tot}}{\partial{} t} +
-\left(\mathbf{v}_{\rm{} tot} . \nabla{} \right) \mathbf{v}_{\rm{} tot} +
+\left(\mathbf{v}_{\rm{} tot} \cdot \nabla{} \right) \mathbf{v}_{\rm{} tot} +
 \frac{1}{\rho{}}\nabla{} P &= 0,\\
 \frac{\partial{} u}{\partial{} t} +
-\left(\mathbf{v}_{\rm{} tot} . \nabla{} \right) u +
-\frac{P}{\rho{}} \nabla{} . \mathbf{v}_{\rm{} tot} &= 0.
+\left(\mathbf{v}_{\rm{} tot} \cdot \nabla{} \right) u +
+\frac{P}{\rho{}} \nabla{} \cdot \mathbf{v}_{\rm{} tot} &= 0.
 \end{align}
 To convert to comoving coordinates, we need to take into account the
 appropriate operator transformations:
 \begin{align}
 \nabla{} &\rightarrow{} \frac{1}{a} \nabla{}', \\
 \frac{\partial{}}{\partial{} t} &\rightarrow{}
-\frac{\partial{}}{\partial{} t} - \frac{\dot{a}}{a} \mathbf{r}' . \nabla{}',
+\frac{\partial{}}{\partial{} t} - \frac{\dot{a}}{a} \mathbf{r}' \cdot \nabla{}',
 \end{align}
-the latter of which follows from the explicit time dependence of the comoving
-coordinate $\mathbf{r}'$.
-
-Substituting the definitions of the comoving variables and operators into
-the first Euler equation, we obtain
+the latter of which follows from the explicit time dependence of the
+comoving coordinate $\mathbf{r}'$. Substituting the definitions of the
+comoving variables and operators into the first Euler equation, we
+obtain
 \begin{equation}
-\frac{\partial{} \rho{}'}{\partial{} t} + \frac{1}{a^2} \nabla{}' . \left(
+\frac{\partial{} \rho{}'}{\partial{} t} + \frac{1}{a^2} \nabla{}' \cdot \left(
 \rho{}' \mathbf{v}' \right) = 0,
 \end{equation}
 which is the same as the original continuity equation but now with an extra
 $1/a^2$ for the second term (the same correction factor that appears
-for the drift in the SPH case).
-
-For the velocity equation, we find
+for the ``drift'' in the SPH case). For the velocity equation, we find
 \begin{multline}
-\frac{\partial{} \mathbf{v}'}{\partial{} t} + \frac{1}{a^2} \left( \mathbf{v}' .
+\frac{\partial{} \mathbf{v}'}{\partial{} t} + \frac{1}{a^2} \left( \mathbf{v}' \cdot
 \nabla{}' \right) \mathbf{v}' + \frac{1}{a^{3(\gamma{} - 1)}\rho{}'}
 \nabla{}' P' = \\
-- \nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'.\mathbf{r}'
+- \nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'\cdot\mathbf{r}'
 \right).
 \end{multline}
 The right hand side of this equation is simply the extra term we absorb in the
 potential through the gauge transformation; the $1/a^2$ dependence in the
-second term on the left hand side again corresponds to the SPH drift factor,
+second term on the left hand side again corresponds to the SPH ``drift'' factor,
 while the more complicated correction factor for the third term corresponds
-to the SPH kick factor in the equation of motion for the velocity.
-
-Finally, the thermal energy equation reduces to
+to the SPH ``kick'' factor in the equation of motion for the
+velocity. Finally, the thermal energy equation reduces to
 \begin{equation}
 \frac{\partial{} u'}{\partial{} t} + \frac{1}{a^2} \left( \mathbf{v}' .
-\nabla{}' \right) u' + \frac{1}{a^2} \frac{P'}{\rho{}'} \nabla{}' . \mathbf{v}'
+\nabla{}' \right) u' + \frac{1}{a^2} \frac{P'}{\rho{}'} \nabla{}' \cdot \mathbf{v}'
 = 0.
 \end{equation}
 Again, this gives us the same correction factors as used by the SPH energy
-equation.
+equation.\\
 
 Unfortunately, the system of equations above is no longer consistent with the
 original equations. For the continuity equation, we can transform to a new
 time coordinate $t'$ defined by
 \begin{equation}
-\dot{t}' = \frac{1}{a^2}, \quad{} t'(t) = \int \frac{dt}{a^2(t)} + {\rm{}const.}
+\dot{t}' = \frac{1}{a^2}, \quad{} t'(t) = \int \frac{dt}{a^2(t)} + {\rm{}const,}
 \end{equation}
 and end up with the original continuity equation in comoving variables. The
 same transformation brings the thermal energy equation into its original form
@@ -85,10 +81,11 @@ equation due to the $a^{-3(\gamma{}-1)}$ factor in the third term (note that
 for the specific choice $\gamma{}=5/3$ this procedure would work).
 To get around this issue, we will rewrite the velocity equation as
 \begin{multline}
-\frac{\partial{} \mathbf{v}'}{\partial{} t} + \frac{1}{a^2} \left( \mathbf{v}' .
+\frac{\partial{} \mathbf{v}'}{\partial{} t} + \frac{1}{a^2} \left(
+\mathbf{v}' \cdot
 \nabla{}' \right) \mathbf{v}' + \frac{1}{a^2\rho{}'}
 \nabla{}' P' = \\
-- \nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'.\mathbf{r}'
+- \nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'\cdot\mathbf{r}'
 \right) - \frac{a^2 - a^{3(\gamma{}-1)}}{a^{3\gamma{} - 1}} \nabla{}'P'
 \end{multline}
 and treat the extra correction term on the right hand side as a source term,
@@ -99,24 +96,24 @@ Riemann problem in the comoving frame.
 If we now convert the primitive Euler equations back to their conservative form,
 we end up with the following set of equations:
 \begin{equation}
-\frac{\partial{} \rho{}'}{\partial{} t} + \frac{1}{a^2} \nabla{}' . \left(
+\frac{\partial{} \rho{}'}{\partial{} t} + \frac{1}{a^2} \nabla{}' \cdot \left(
 \rho{}' \mathbf{v}' \right) = 0,
 \end{equation}
 \begin{multline}
 \frac{\partial{} \rho{}' \mathbf{v}'}{\partial{} t} + \frac{1}{a^2}
-\nabla{} . \left( \rho{}' \mathbf{v}'\mathbf{v}' + P' \right) = \\
-- \rho{}' \nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'.\mathbf{r}'
+\nabla{} \cdot \left( \rho{}' \mathbf{v}'\mathbf{v}' + P' \right) = \\
+- \rho{}' \nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'\cdot\mathbf{r}'
 \right) - \frac{a^2 - a^{3(\gamma{}-1)}}{a^{3\gamma{} - 1}} \nabla{}'P,
 \end{multline}
 \begin{multline}
 \frac{\partial{}}{\partial{} t} \left( \rho{}' u' + \frac{1}{2} \rho{}'
-\mathbf{v}'.\mathbf{v}' \right) +\\
-\frac{1}{a^2}\nabla{} . \left( \rho{}' u' \mathbf{v}' +
-\frac{1}{2} \rho{}' \left(\mathbf{v}'. \mathbf{v}'\right)
+\mathbf{v}'\cdot\mathbf{v}' \right) +\\
+\frac{1}{a^2}\nabla{} \cdot \left( \rho{}' u' \mathbf{v}' +
+\frac{1}{2} \rho{}' \left(\mathbf{v}'\cdot \mathbf{v}'\right)
 \mathbf{v}' + P' \mathbf{v}' \right) =\\
-- \rho{}' \mathbf{v}'.\nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'.
+- \rho{}' \mathbf{v}'\cdot\nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'\cdot
 \mathbf{r}' \right) - \frac{a^2 - a^{3(\gamma{}-1)}}{a^{3\gamma{} - 1}}
-\mathbf{v}'.\nabla{}'P'.
+\mathbf{v}'\cdot\nabla{}'P'.
 \end{multline}
 These equations tell us that the mass, comoving momentum and comoving total
 energy are conserved in the case of adiabatic expansion ($\gamma{} = 5/3$).
@@ -125,14 +122,14 @@ depend on $\nabla{}'P'$, which is an unknown quantity. These equations are
 hence not very practical.
 
 We can make the equations more practical by introducing a new comoving pressure
-$P'' = a^5 P$, for which the extra source terms in the conservative form of
+$P'' \equiv a^5 P$, for which the extra source terms in the conservative form of
 the Euler equations drop out. However, when we do this we also need to introduce
-a new comoving thermal energy $u'' = a^2 u$, so that
+a new comoving thermal energy $u'' \equiv a^2 u$, so that
 $P'' = (\gamma{}-1)\rho'u''$ is still valid. This introduces an additional
 source term in the thermal energy equation:
 \begin{equation}
-\frac{\partial{} u''}{\partial{} t} + \frac{1}{a^2} \left( \mathbf{v}' .
+\frac{\partial{} u''}{\partial{} t} + \frac{1}{a^2} \left( \mathbf{v}' \cdot
 \nabla{}' \right) u'' +
-\frac{1}{a^2} \frac{P''}{\rho{}'} \nabla{}' . \mathbf{v}'
+\frac{1}{a^2} \frac{P''}{\rho{}'} \nabla{}' \cdot \mathbf{v}'
 = \frac{2\dot{a}}{a} u''.
 \end{equation}
