@@ -1,6 +1,6 @@
 ################################################################################
 # This file is part of SWIFT.
-# Copyright (c) 2018 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+# Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -20,15 +20,13 @@
 import h5py
 from numpy import *
 
-# Generates a swift IC file for the 1D Zeldovich pancake
-
 # Parameters
 T_i = 100.           # Initial temperature of the gas (in K)
-z_c = 1.             # Redshift of caustic formation (non-linear collapse)
 z_i = 100.           # Initial redshift
 gamma = 5./3.        # Gas adiabatic index
-numPart_1D = 32      # Number of particles along each dimension
-fileName = "zeldovichPancake.hdf5"
+numPart_1D = 32
+#glassFile = "glassCube_32.hdf5"
+fileName = "constantBox.hdf5"
 
 
 # Some units
@@ -55,16 +53,21 @@ unit_t_in_si = Gyr_in_s
 unit_v_in_si = unit_l_in_si / unit_t_in_si
 unit_u_in_si = unit_v_in_si**2
 
-# Total number of particles
-numPart = numPart_1D**3
-
 #---------------------------------------------------
 
-# Get the frequency of the initial perturbation
-k_i = 2. * pi / lambda_i
+# Read the glass file
+#glass = h5py.File(glassFile, "r" )
 
-# Get the redshift prefactor for the initial positions
-zfac = (1. + z_c) / (1. + z_i)
+# Read particle positions and h from the glass
+#pos = glass["/PartType0/Coordinates"][:,:]
+#h = glass["/PartType0/SmoothingLength"][:] * 0.3
+#glass.close()
+
+# Total number of particles
+#numPart = size(h)
+#if numPart != numPart_1D**3:
+#  print "Non-matching glass file"
+numPart = numPart_1D**3
 
 # Set box size and interparticle distance
 boxSize = x_max - x_min
@@ -75,6 +78,8 @@ a_i = 1. / (1. + z_i)
 m_i = boxSize**3 * rho_0 / numPart
 
 # Build the arrays
+#pos *= boxSize
+#h *= boxSize
 coords = zeros((numPart, 3))
 v = zeros((numPart, 3))
 ids = linspace(1, numPart, numPart)
@@ -87,15 +92,13 @@ for i in range(numPart_1D):
   for j in range(numPart_1D):
     for k in range(numPart_1D):
       index = i * numPart_1D**2 + j * numPart_1D + k
-      q = x_min + (i + 0.5) * delta_x
-      coords[index,0] = q - zfac * sin(k_i * q) / k_i - x_min
+      coords[index,0] = (i + 0.5) * delta_x
       coords[index,1] = (j + 0.5) * delta_x
       coords[index,2] = (k + 0.5) * delta_x
-      T = T_i * (1. / (1. - zfac * cos(k_i * q)))**(2. / 3.)
-      u[index] = kB_in_SI * T / (gamma - 1.) / mH_in_kg
+      u[index] = kB_in_SI * T_i / (gamma - 1.) / mH_in_kg
       h[index] = 1.2348 * delta_x
       m[index] = m_i
-      v[index,0] = -H_0 * (1. + z_c) / sqrt(1. + z_i) * sin(k_i * q) / k_i
+      v[index,0] = 0.
       v[index,1] = 0.
       v[index,2] = 0.
 
@@ -137,16 +140,11 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 
 #Particle group
 grp = file.create_group("/PartType0")
-grp.create_dataset('Coordinates', data=coords, dtype='d')
-grp.create_dataset('Velocities', data=v, dtype='f')
-grp.create_dataset('Masses', data=m, dtype='f')
-grp.create_dataset('SmoothingLength', data=h, dtype='f')
-grp.create_dataset('InternalEnergy', data=u, dtype='f')
-grp.create_dataset('ParticleIDs', data=ids, dtype='L')
+grp.create_dataset('Coordinates', data=coords, dtype='d', compression="gzip", shuffle=True)
+grp.create_dataset('Velocities', data=v, dtype='f',compression="gzip", shuffle=True)
+grp.create_dataset('Masses', data=m, dtype='f', compression="gzip", shuffle=True)
+grp.create_dataset('SmoothingLength', data=h, dtype='f', compression="gzip", shuffle=True)
+grp.create_dataset('InternalEnergy', data=u, dtype='f', compression="gzip", shuffle=True)
+grp.create_dataset('ParticleIDs', data=ids, dtype='L', compression="gzip", shuffle=True)
 
 file.close()
-
-#import pylab as pl
-
-#pl.plot(coords[:,0], v[:,0], "k.")
-#pl.show()
