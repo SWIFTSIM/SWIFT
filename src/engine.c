@@ -1458,6 +1458,11 @@ void engine_addtasks_send_timestep(struct engine *e, struct cell *ci,
     if (l->t->ci->nodeID == nodeID ||
         (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
+  if (l == NULL)
+    for (l = ci->grav_mm; l != NULL; l = l->next)
+      if (l->t->ci->nodeID == nodeID ||
+          (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+        break;
 
   /* Check whether instead any of the hydro tasks are for the target node. */
   if (l == NULL)
