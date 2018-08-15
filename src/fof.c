@@ -1100,19 +1100,16 @@ void fof_search_foreign_cells(struct space *s) {
       int root_i = global_fof_list[j].local_pid;
       int root_j = global_fof_list[j].foreign_pid;
 
-      if(root_i == group_j) {
-        if(global_fof_list_offset[j].local_pid < min_root) min_root = global_fof_list_offset[j].local_pid;
-      }
-      else if(root_j == group_j) {
-        if(global_fof_list_offset[j].foreign_pid < min_root) min_root = global_fof_list_offset[j].foreign_pid;
-      }
+      if(root_i == group_j && global_fof_list_offset[j].local_pid < min_root) 
+        min_root = global_fof_list_offset[j].local_pid;
+      else if(root_j == group_j && global_fof_list_offset[j].foreign_pid < min_root) 
+        min_root = global_fof_list_offset[j].foreign_pid;
       
-      if(root_i == group_i) {
-        if(global_fof_list_offset[j].local_pid < min_root) min_root = global_fof_list_offset[j].local_pid;
-      }
-      else if(root_j == group_i) {
-        if(global_fof_list_offset[j].foreign_pid < min_root) min_root = global_fof_list_offset[j].foreign_pid;
-      }
+      if(root_i == group_i && global_fof_list_offset[j].local_pid < min_root) 
+        min_root = global_fof_list_offset[j].local_pid;
+      else if(root_j == group_i && global_fof_list_offset[j].foreign_pid < min_root) 
+        min_root = global_fof_list_offset[j].foreign_pid;
+      
     }
 
     message("Rank %d. Link %d <-> %d has common lowest root: %d", engine_rank, group_i, group_j, min_root);
@@ -1121,50 +1118,22 @@ void fof_search_foreign_cells(struct space *s) {
     if((group_i >= node_offset && group_i < node_offset + s->nr_gparts) &&
        (group_i != min_root)) {
       
-      /* TODO: don't think a fof_find is necessary here. */ 
-      int root = fof_find(group_i - node_offset, group_index);
-      if(root != group_i) message("Rank %d. The root of group_i has changed from: %d to %d", engine_rank, group_i, root);
+      int root = group_index[group_i - node_offset];
 
-      if(root < min_root) message("Rank %d. Group_i: %d Trying to set a root: %d to a larger value: %d", engine_rank, group_i, root, min_root);
-      
-      /* Check root is local to node. */ 
-      if(root >= node_offset && root < node_offset + s->nr_gparts) {
-        if(root > min_root) {
-          group_index[root - node_offset] = min_root;
-        }
-        else if(min_root >= node_offset && min_root < node_offset + s->nr_gparts){
+      if(root >= min_root) group_index[group_i - node_offset] = min_root;
+      else error("Rank %d. Group_i: %d Trying to set a root: %d to a larger value: %d", engine_rank, group_i, root, min_root);
 
-          int root_new = fof_find(min_root - node_offset, group_index);
-
-          group_index[root_new - node_offset] = root;
-
-        }
-      }
     }
 
     /* If group_j is local to the node, update its root. */
     if((group_j >= node_offset && group_j < node_offset + s->nr_gparts) &&
        (group_j != min_root)) {
-           
-      /* TODO: don't think a fof_find is necessary here. */ 
-      int root = fof_find(group_j - node_offset, group_index);
-      if(root != group_j) message("Rank %d. The root of group_j has changed from: %d to %d", engine_rank, group_j, root);
+       
+      int root = group_index[group_j - node_offset];
 
-      if(root < min_root) message("Rank %d. Group_j: %d Trying to set a root: %d to a larger value: %d", engine_rank, group_j, root, min_root);
-     
-      /* Check root is local to node. */ 
-      if(root >= node_offset && root < node_offset + s->nr_gparts) {
-        if(root > min_root) {
-          group_index[root - node_offset] = min_root;
-        }
-        else if(min_root >= node_offset && min_root < node_offset + s->nr_gparts){
+      if(root >= min_root) group_index[group_j - node_offset] = min_root;
+      else error("Rank %d. Group_j: %d Trying to set a root: %d to a larger value: %d", engine_rank, group_j, root, min_root);
 
-          int root_new = fof_find(min_root - node_offset, group_index);
-
-          group_index[root_new - node_offset] = root;
-
-        }
-      }
     }
 
     int old_group_i = global_fof_list_offset[i].local_pid;
