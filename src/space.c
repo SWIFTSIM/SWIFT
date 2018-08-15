@@ -164,6 +164,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
                          multipole_rec_end);
     c->sorts = NULL;
     c->nr_tasks = 0;
+    c->nr_mm_tasks = 0;
     c->density = NULL;
     c->gradient = NULL;
     c->force = NULL;

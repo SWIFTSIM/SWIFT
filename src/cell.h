@@ -428,6 +428,9 @@ struct cell {
   /*! Number of tasks that are associated with this cell. */
   short int nr_tasks;
 
+  /*! Number of M-M tasks that are associated with this cell. */
+  short int nr_mm_tasks;
+
   /*! The depth of this cell in the tree. */
   char depth;
 

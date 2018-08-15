@@ -2381,7 +2381,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 void cell_set_super(struct cell *c, struct cell *super) {
 
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super == NULL && c->nr_tasks > 0) super = c;
+  if (super == NULL && (c->nr_tasks > 0 || c->nr_mm_tasks > 0)) super = c;
 
   /* Set the super-cell */
   c->super = super;

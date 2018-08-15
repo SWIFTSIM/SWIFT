@@ -4757,7 +4757,7 @@ void engine_step(struct engine *e) {
   e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_old);
   e->step += 1;
   e->step_props = engine_step_prop_none;
-
+  
   /* When restarting, move everyone to the current time. */
   if (e->restarting) engine_drift_all(e);
 
