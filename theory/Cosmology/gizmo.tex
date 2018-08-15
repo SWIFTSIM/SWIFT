@@ -10,15 +10,16 @@ coordinate frame, these equations are
 &= 0, \\
 \frac{\partial{} \rho{} \mathbf{v}_{\rm tot} }{\partial{} t} +
 \nabla{} \cdot \left( \rho{} \mathbf{v}_{\rm tot} \mathbf{v}_{\rm tot} +
-P \right) &= 0.
+P \mathbb{1} \right) &= 0.
 \end{align}
 \begin{multline}
 \frac{\partial{}}{\partial{} t} \left( \rho{} u + \frac{1}{2} \rho{}
 \mathbf{v}_{\rm{} tot}\cdot\mathbf{v}_{\rm{} tot} \right) +\\
 \nabla{} \cdot \left( \rho{} u \mathbf{v}_{\rm{} tot} +
 \frac{1}{2} \rho{} \left(\mathbf{v}_{\rm{} tot} \cdot \mathbf{v}_{\rm{} tot}\right)
-\mathbf{v}_{\rm{} tot} + P \mathbf{v}_{\rm{} tot} \right) = 0.
+\mathbf{v}_{\rm{} tot} + P \mathbf{v}_{\rm{} tot} \right) = 0,
 \end{multline}
+where $\mathbb{1}$ is the unit tensor.
 For simplicity, we will rewrite the last two equations in terms of the quantities
 $\mathbf{v}_{\rm{} tot}$ and $u$:
 \begin{align}
@@ -86,7 +87,8 @@ To get around this issue, we will rewrite the velocity equation as
 \nabla{}' \right) \mathbf{v}' + \frac{1}{a^2\rho{}'}
 \nabla{}' P' = \\
 - \nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'\cdot\mathbf{r}'
-\right) - \frac{a^2 - a^{3(\gamma{}-1)}}{a^{3\gamma{} - 1}} \nabla{}'P'
+\right) - \left(\frac{1}{a^{3(\gamma{} - 1)}} - \frac{1}{a^2} \right)
+\nabla{}'P'
 \end{multline}
 and treat the extra correction term on the right hand side as a source term,
 like we do for the gravitational acceleration. This means we end up with
@@ -103,7 +105,8 @@ we end up with the following set of equations:
 \frac{\partial{} \rho{}' \mathbf{v}'}{\partial{} t} + \frac{1}{a^2}
 \nabla{} \cdot \left( \rho{}' \mathbf{v}'\mathbf{v}' + P' \right) = \\
 - \rho{}' \nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'\cdot\mathbf{r}'
-\right) - \frac{a^2 - a^{3(\gamma{}-1)}}{a^{3\gamma{} - 1}} \nabla{}'P,
+\right) - \left(\frac{1}{a^{3(\gamma{} - 1)}} - \frac{1}{a^2} \right)
+\nabla{}'P',
 \end{multline}
 \begin{multline}
 \frac{\partial{}}{\partial{} t} \left( \rho{}' u' + \frac{1}{2} \rho{}'
@@ -112,24 +115,18 @@ we end up with the following set of equations:
 \frac{1}{2} \rho{}' \left(\mathbf{v}'\cdot \mathbf{v}'\right)
 \mathbf{v}' + P' \mathbf{v}' \right) =\\
 - \rho{}' \mathbf{v}'\cdot\nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'\cdot
-\mathbf{r}' \right) - \frac{a^2 - a^{3(\gamma{}-1)}}{a^{3\gamma{} - 1}}
+\mathbf{r}' \right) -
+\left(\frac{1}{a^{3(\gamma{} - 1)}} - \frac{1}{a^2} \right)
 \mathbf{v}'\cdot\nabla{}'P'.
 \end{multline}
 These equations tell us that the mass, comoving momentum and comoving total
 energy are conserved in the case of adiabatic expansion ($\gamma{} = 5/3$).
 For a more general $\gamma{}$, we however end up with extra source terms that
-depend on $\nabla{}'P'$, which is an unknown quantity. These equations are
-hence not very practical.
-
-We can make the equations more practical by introducing a new comoving pressure
-$P'' \equiv a^5 P$, for which the extra source terms in the conservative form of
-the Euler equations drop out. However, when we do this we also need to introduce
-a new comoving thermal energy $u'' \equiv a^2 u$, so that
-$P'' = (\gamma{}-1)\rho'u''$ is still valid. This introduces an additional
-source term in the thermal energy equation:
-\begin{equation}
-\frac{\partial{} u''}{\partial{} t} + \frac{1}{a^2} \left( \mathbf{v}' \cdot
-\nabla{}' \right) u'' +
-\frac{1}{a^2} \frac{P''}{\rho{}'} \nabla{}' \cdot \mathbf{v}'
-= \frac{2\dot{a}}{a} u''.
-\end{equation}
+depend on $\nabla{}'P'$. Since we already use this quantity for the gradient
+reconstruction step, adding this term is straightforward. The additional time
+step required to integrate the source term is
+\begin{multline}
+\Delta{} t_{\rm{} kick,c} \equiv \int_{a_n}^{a_{n+1}}
+\left(\frac{1}{a^{3(\gamma{} - 1)}} - \frac{1}{a^2} \right) dt \\ =
+\Delta{} t_{\rm{} kick,h} - \Delta{} t_{\rm{} drift}.
+\end{multline}
