@@ -62,6 +62,7 @@
 #include "space.h"
 #include "space_getsid.h"
 #include "timers.h"
+#include "tools.h"
 
 /* Global variables. */
 int cell_next_tag = 0;
@@ -2551,6 +2552,36 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       }
 #endif
 
+#ifdef PLANETARY_SPH
+      /* Remove particles that cross the non-periodic box edge */
+      if (!(e->s->periodic)) {
+        for (int i = 0; i < 3; i++) {
+          if ((p->x[i] - xp->v_full[i] * dt_drift > e->s->dim[i]) ||
+              (p->x[i] - xp->v_full[i] * dt_drift < 0.f) ||
+              ((p->mass != 0.f) && ((p->x[i] < 0.01f * e->s->dim[i]) ||
+                                    (p->x[i] > 0.99f * e->s->dim[i])))) {
+            /* (TEMPORARY) Crudely stop the particle manually */
+            message(
+                "Particle %lld hit a box edge. \n"
+                "  pos=%.4e %.4e %.4e  vel=%.2e %.2e %.2e",
+                p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2]);
+            for (int j = 0; j < 3; j++) {
+              p->v[j] = 0.f;
+              p->gpart->v_full[j] = 0.f;
+              xp->v_full[j] = 0.f;
+            }
+            p->h = hydro_h_max;
+            p->time_bin = time_bin_inhibited;
+            p->gpart->time_bin = time_bin_inhibited;
+            hydro_part_has_no_neighbours(p, xp, e->cosmology);
+            p->mass = 0.f;
+            p->gpart->mass = 0.f;
+            break;
+          }
+        }
+      }
+#endif
+
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
 
@@ -2652,6 +2683,26 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_gpart(gp, dt_drift, ti_old_gpart, ti_current);
+
+#ifdef PLANETARY_SPH
+      /* Remove particles that cross the non-periodic box edge */
+      if (!(e->s->periodic)) {
+        for (int i = 0; i < 3; i++) {
+          if ((gp->x[i] - gp->v_full[i] * dt_drift > e->s->dim[i]) ||
+              (gp->x[i] - gp->v_full[i] * dt_drift < 0.f) ||
+              ((gp->mass != 0.f) && ((gp->x[i] < 0.01f * e->s->dim[i]) ||
+                                     (gp->x[i] > 0.99f * e->s->dim[i])))) {
+            /* (TEMPORARY) Crudely stop the particle manually */
+            for (int j = 0; j < 3; j++) {
+              gp->v_full[j] = 0.f;
+            }
+            gp->time_bin = time_bin_inhibited;
+            gp->mass = 0.f;
+            break;
+          }
+        }
+      }
+#endif
 
       /* Init gravity force fields. */
       if (gpart_is_active(gp, e)) {

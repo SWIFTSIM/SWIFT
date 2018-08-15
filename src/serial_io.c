@@ -759,10 +759,11 @@ void write_output_serial(struct engine* e, const char* baseName,
   char fileName[FILENAME_BUFFER_SIZE];
   if (e->snapshot_label_delta == 1)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->snapshot_output_count);
+             e->snapshot_output_count + e->snapshot_label_first);
   else
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
-             e->snapshot_output_count * e->snapshot_label_delta);
+             e->snapshot_output_count * e->snapshot_label_delta +
+                 e->snapshot_label_first);
 
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas, Ndm, 0, 0, Nstars, 0};

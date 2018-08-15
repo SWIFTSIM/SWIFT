@@ -576,7 +576,7 @@ if test "x$with_profiler" != "xno"; then
       proflibs="-lprofiler"
    fi
    AC_CHECK_LIB([profiler],[ProfilerFlush],
-    [have_profiler="yes" 
+    [have_profiler="yes"
       AC_DEFINE([WITH_PROFILER],1,[Link against the gperftools profiling library.])],
     [have_profiler="no"], $proflibs)
 
@@ -973,7 +973,7 @@ esac
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, default, gizmo-mfv, gizmo-mfm, shadowfax, minimal-multi-mat, debug default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, debug default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -1012,9 +1012,10 @@ case "$with_hydro" in
    shadowfax)
       AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])
    ;;
-   minimal-multi-mat)
-      AC_DEFINE([MINIMAL_MULTI_MAT_SPH], [1], [Minimal Multiple Material SPH])
+   planetary)
+      AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
    ;;
+
 
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])

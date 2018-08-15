@@ -62,6 +62,7 @@
 #include "cosmology.h"
 #include "cycle.h"
 #include "debug.h"
+#include "equation_of_state.h"
 #include "error.h"
 #include "gravity.h"
 #include "gravity_cache.h"
@@ -5767,6 +5768,10 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
+  e->snapshot_label_first =
+      parser_get_opt_param_int(params, "Snapshots:label_first", 0);
+  if (e->snapshot_label_first < 0)
+    error("Snapshots:label_first must be zero or positive");
   e->snapshot_label_delta =
       parser_get_opt_param_int(params, "Snapshots:label_delta", 1);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
@@ -6976,6 +6981,10 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
     output_list_struct_restore(output_list_stf, stream);
     e->output_list_stf = output_list_stf;
   }
+
+#ifdef EOS_PLANETARY
+  eos_init(&eos, e->physical_constants, e->snapshot_units, e->parameter_file);
+#endif
 
   /* Want to force a rebuild before using this engine. Wait to repartition.*/
   e->forcerebuild = 1;

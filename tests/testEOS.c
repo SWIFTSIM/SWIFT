@@ -74,6 +74,11 @@
  *  P_1_0   ...     ...     P_1_num_u
  *  ...     ...     ...     ...
  *  P_num_rho_0     ...     P_num_rho_num_u
+ *  c_0_0   c_0_1   ...     c_0_num_u           # Array of sound speeds, c(rho,
+ * u)
+ *  c_1_0   ...     ...     c_1_num_u
+ *  ...     ...     ...     ...
+ *  c_num_rho_0     ...     c_num_rho_num_u
  *
  * Note that the values tested extend beyond the range that most EOS are
  * designed for (e.g. outside table limits), to help test the EOS in case of
@@ -83,21 +88,24 @@
 
 #ifdef EOS_PLANETARY
 int main(int argc, char *argv[]) {
-  float rho, log_rho, log_u, P;
+  float rho, u, log_rho, log_u, P, c;
   struct unit_system us;
+  struct swift_params *params =
+      (struct swift_params *)malloc(sizeof(struct swift_params));
+  if (params == NULL) error("Error allocating memory for the parameter file.");
   const struct phys_const *phys_const = 0;  // Unused placeholder
-  struct swift_params *params = 0;          // Unused placeholder
   const float J_kg_to_erg_g = 1e4;          // Convert J/kg to erg/g
   char filename[64];
   // Output table params
   const int num_rho = 100, num_u = 100;
-  float log_rho_min = logf(1e-4), log_rho_max = logf(30.f),
-        log_u_min = logf(1e4), log_u_max = logf(1e10),
-        log_rho_step = (log_rho_max - log_rho_min) / (num_rho - 1.f),
+  float log_rho_min = logf(1e-4f), log_rho_max = logf(1e3f),  // Densities (cgs)
+      log_u_min = logf(1e4f),
+        log_u_max = logf(1e13f),  // Sp. int. energies (SI)
+      log_rho_step = (log_rho_max - log_rho_min) / (num_rho - 1.f),
         log_u_step = (log_u_max - log_u_min) / (num_u - 1.f);
   float A1_rho[num_rho], A1_u[num_u];
   // Sys args
-  int mat_id, do_output;
+  int mat_id_in, do_output;
   // Default sys args
   const int mat_id_def = eos_planetary_id_HM80_ice;
   const int do_output_def = 0;
@@ -106,34 +114,40 @@ int main(int argc, char *argv[]) {
   switch (argc) {
     case 1:
       // Default both
-      mat_id = mat_id_def;
+      mat_id_in = mat_id_def;
       do_output = do_output_def;
       break;
 
     case 2:
       // Read mat_id, default do_output
-      mat_id = atoi(argv[1]);
+      mat_id_in = atoi(argv[1]);
       do_output = do_output_def;
       break;
 
     case 3:
       // Read both
-      mat_id = atoi(argv[1]);
+      mat_id_in = atoi(argv[1]);
       do_output = atoi(argv[2]);
       break;
 
     default:
       error("Invalid number of system arguments!\n");
-      mat_id = mat_id_def;  // Ignored, just here to keep the compiler happy
+      mat_id_in = mat_id_def;  // Ignored, just here to keep the compiler happy
       do_output = do_output_def;
   };
+
+  enum eos_planetary_material_id mat_id =
+      (enum eos_planetary_material_id)mat_id_in;
 
   /* Greeting message */
   printf("This is %s\n", package_description());
 
   // Check material ID
-  // Material base type
-  switch ((int)(mat_id / eos_planetary_type_factor)) {
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
+
+  // Select the material base type
+  switch (type) {
     // Tillotson
     case eos_planetary_type_Til:
       switch (mat_id) {
@@ -174,27 +188,23 @@ int main(int argc, char *argv[]) {
       };
       break;
 
-    // ANEOS
-    case eos_planetary_type_ANEOS:
-      switch (mat_id) {
-        case eos_planetary_id_ANEOS_iron:
-          printf("  ANEOS iron \n");
-          break;
-
-        case eos_planetary_id_MANEOS_forsterite:
-          printf("  MANEOS forsterite \n");
-          break;
-
-        default:
-          error("Unknown material ID! mat_id = %d \n", mat_id);
-      };
-      break;
-
     // SESAME
     case eos_planetary_type_SESAME:
       switch (mat_id) {
         case eos_planetary_id_SESAME_iron:
-          printf("  SESAME iron \n");
+          printf("  SESAME basalt 7530 \n");
+          break;
+
+        case eos_planetary_id_SESAME_basalt:
+          printf("  SESAME basalt 7530 \n");
+          break;
+
+        case eos_planetary_id_SESAME_water:
+          printf("  SESAME water 7154 \n");
+          break;
+
+        case eos_planetary_id_SS08_water:
+          printf("  Senft & Stewart (2008) SESAME-like water \n");
           break;
 
         default:
@@ -206,8 +216,11 @@ int main(int argc, char *argv[]) {
       error("Unknown material type! mat_id = %d \n", mat_id);
   }
 
-  // Convert to internal units (Earth masses and radii)
-  units_init(&us, 5.9724e27, 6.3710e8, 1.f, 1.f, 1.f);
+  // Convert to internal units
+  // Earth masses and radii
+  //  units_init(&us, 5.9724e27, 6.3710e8, 1.f, 1.f, 1.f);
+  // SI
+  units_init(&us, 1000.f, 100.f, 1.f, 1.f, 1.f);
   log_rho_min -= logf(units_cgs_conversion_factor(&us, UNIT_CONV_DENSITY));
   log_rho_max -= logf(units_cgs_conversion_factor(&us, UNIT_CONV_DENSITY));
   log_u_min += logf(J_kg_to_erg_g / units_cgs_conversion_factor(
@@ -215,11 +228,51 @@ int main(int argc, char *argv[]) {
   log_u_max += logf(J_kg_to_erg_g / units_cgs_conversion_factor(
                                         &us, UNIT_CONV_ENERGY_PER_UNIT_MASS));
 
+  // Set the input parameters
+  // Which EOS to initialise
+  parser_set_param(params, "EoS:planetary_use_Til:1");
+  parser_set_param(params, "EoS:planetary_use_HM80:1");
+  parser_set_param(params, "EoS:planetary_use_SESAME:1");
+  // Table file names
+  parser_set_param(params,
+                   "EoS:planetary_HM80_HHe_table_file:"
+                   "../examples/planetary_HM80_HHe.txt");
+  parser_set_param(params,
+                   "EoS:planetary_HM80_ice_table_file:"
+                   "../examples/planetary_HM80_ice.txt");
+  parser_set_param(params,
+                   "EoS:planetary_HM80_rock_table_file:"
+                   "../examples/planetary_HM80_rock.txt");
+  parser_set_param(params,
+                   "EoS:planetary_SESAME_iron_table_file:"
+                   "../examples/planetary_SESAME_iron_2140.txt");
+  parser_set_param(params,
+                   "EoS:planetary_SESAME_basalt_table_file:"
+                   "../examples/planetary_SESAME_basalt_7530.txt");
+  parser_set_param(params,
+                   "EoS:planetary_SESAME_water_table_file:"
+                   "../examples/planetary_SESAME_water_7154.txt");
+  parser_set_param(params,
+                   "EoS:planetary_SS08_water_table_file:"
+                   "../examples/planetary_SS08_water.txt");
+
   // Initialise the EOS materials
   eos_init(&eos, phys_const, &us, params);
 
+  // Manual debug testing
+  if (1) {
+    printf("\n ### MANUAL DEBUG TESTING ### \n");
+
+    rho = 5960;
+    u = 1.7e8;
+    P = gas_pressure_from_internal_energy(rho, u, eos_planetary_id_HM80_ice);
+    printf("u = %.2e,    rho = %.2e,    P = %.2e \n", u, rho, P);
+
+    return 0;
+  }
+
   // Output file
-  sprintf(filename, "testEOS_rho_u_P_%d.txt", mat_id);
+  sprintf(filename, "testEOS_rho_u_P_c_%d.txt", mat_id);
   FILE *f = fopen(filename, "w");
   if (f == NULL) {
     printf("Could not open output file!\n");
@@ -266,6 +319,21 @@ int main(int argc, char *argv[]) {
       if (do_output == 1)
         fprintf(f, "%.6e ",
                 P * units_cgs_conversion_factor(&us, UNIT_CONV_PRESSURE));
+    }
+
+    if (do_output == 1) fprintf(f, "\n");
+  }
+
+  // Sound speeds
+  for (int i = 0; i < num_rho; i++) {
+    rho = A1_rho[i];
+
+    for (int j = 0; j < num_u; j++) {
+      c = gas_soundspeed_from_internal_energy(rho, A1_u[j], mat_id);
+
+      if (do_output == 1)
+        fprintf(f, "%.6e ",
+                c * units_cgs_conversion_factor(&us, UNIT_CONV_SPEED));
     }
 
     if (do_output == 1) fprintf(f, "\n");

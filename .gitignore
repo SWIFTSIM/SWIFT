@@ -165,6 +165,8 @@ m4/lt~obsolete.m4
 /stamp-h1
 /test-driver
 
+src/equation_of_state/planetary/*.txt
+
 # Intel compiler optimization reports
 *.optrpt
 
@@ -316,3 +318,6 @@ sympy-plots-for-*.tex/
 
 #ctags
 *tags
+
+# vim
+*.swp
