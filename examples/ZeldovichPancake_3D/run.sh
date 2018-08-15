@@ -8,7 +8,7 @@ then
 fi
 
 # Run SWIFT
-../swift -a -s -c -G -t 8 zeldovichPancake.yml 2>&1 | tee output.log
+../swift -s -c -G -t 8 zeldovichPancake.yml 2>&1 | tee output.log
 
 # Plot the result
 for i in {0..119}
