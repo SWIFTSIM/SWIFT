@@ -1161,6 +1161,14 @@ void fof_search_foreign_cells(struct space *s) {
     }
   }
 
+  /* Clean up memory. */
+  free(part_links);
+  free(interface_cells);
+  free(group_links);
+  free(global_group_links);
+  free(global_group_links_offset);
+  free(displ);
+
   message("Rank %d finished linking local roots to foreign roots.", engine_rank);
 
 #endif /* WITH_MPI */
@@ -1276,8 +1284,8 @@ void fof_search_tree(struct space *s) {
       group_size, group_id);
 
 #ifdef WITH_MPI
-  int *global_group_index, *global_group_size;
-  long long *global_group_id;
+  int *global_group_index = NULL, *global_group_size = NULL, *displ = NULL;
+  long long *global_group_id = NULL;
   int total_num_groups = 0;
   
   if (s->e->nr_nodes > 1) {
@@ -1297,7 +1305,7 @@ void fof_search_tree(struct space *s) {
     bzero(global_group_size, s->e->total_nr_gparts * sizeof(int));
     bzero(global_group_id, s->e->total_nr_gparts * sizeof(long long));
 
-    int *displ = NULL;
+
     if (posix_memalign((void**)&displ, SWIFT_STRUCT_ALIGNMENT,
           s->e->nr_nodes * sizeof(int)) != 0)
       error("Error while allocating memory for FOF MPI communication");
@@ -1451,6 +1459,7 @@ void fof_search_tree(struct space *s) {
   message("Biggest group size: %d with ID: %d", max_group_size, max_group_index);
   message("Biggest group by mass: %f with ID: %d", max_group_mass, max_group_mass_id);
 
+  /* Clean up memory. */
   free(group_size);
   free(group_mass);
 
@@ -1459,6 +1468,9 @@ void fof_search_tree(struct space *s) {
     if(engine_rank == 0) message("Total number of groups: %d", total_num_groups);
     free(global_nr_gparts);
     free(global_group_index);
+    free(global_group_size);
+    free(global_group_id);
+    free(displ);
   }
 #endif /* WITH_MPI */
 
