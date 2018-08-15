@@ -261,7 +261,7 @@ static void rec_fof_search_pair(struct cell *ci, struct cell *cj, struct space *
 
 }
 
-/* Recurse on a pair of cells (one local, one foreign( and perform a FOF search between cells that are within
+/* Recurse on a pair of cells (one local, one foreign) and perform a FOF search between cells that are within
  * range. */
 static void rec_fof_search_pair_foreign(struct cell *ci, struct cell *cj, struct space *s,
                            const double *dim,
@@ -293,6 +293,7 @@ static void rec_fof_search_pair_foreign(struct cell *ci, struct cell *cj, struct
 
 }
 
+/* Recurse on a pair of cells (one local, one foreign) and count the total number of possible links between them. */
 static void rec_fof_search_pair_foreign_count(struct cell *ci, struct cell *cj, struct space *s,
                            const double *dim,
                            const double search_r2, size_t *nr_links) {
@@ -481,7 +482,7 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
 }
 
 /* Perform a FOF search between a local and foreign cell using the Union-Find algorithm. 
- * Communicate any links found between particles to the appropriate node.*/
+ * Store any links found between particles.*/
 void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell *cj, size_t *send_count, struct fof_mpi *fof_send ) {
 
   const size_t count_i = ci->gcount;
@@ -504,8 +505,6 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
   const int cj_local = (cj->nodeID == engine_rank);
 
   if((ci_local && cj_local) || (!ci_local && !cj_local)) error("FOF search of foreign cells called on two local cells or two foreign cells.");
-
-  size_t local_send_count = 0;
 
   /* Get the relative distance between the pairs, wrapping. */
   const int periodic = s->periodic;
@@ -553,15 +552,12 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
 
         /* Hit or miss? */
         if (r2 < l_x2) {
-
-          /* Store the particle IDs and group ID for communication. */
+          
+          /* Store the particle group IDs for communication. */
           fof_send[*send_count].local_pid = root_i;        
           fof_send[*send_count].foreign_pid = pj->root;        
-          //fof_send[*send_count].root_i = root_i;
           (*send_count)++;
-          local_send_count++;
-
-          //fprintf(fof_file, "  %7d <-> %7d\n", root_i, pj->root);
+        
         }
       }
     }
@@ -611,28 +607,15 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
         /* Hit or miss? */
         if (r2 < l_x2) {
 
-          /* Store the particle IDs and group ID for communication. */
+          /* Store the particle group IDs for communication. */
           fof_send[*send_count].local_pid = root_j;        
           fof_send[*send_count].foreign_pid = pi->root; 
-          //fof_send[*send_count].root_i = root_j;
           (*send_count)++;
-          local_send_count++;
-          //fprintf(fof_file, "  %7d <-> %7d\n", root_j, pi->root);
           
         }
       }
     }
-
   }
-
-  //if(local_send_count > 0) {
-
-  //  if(ci_local) 
-  //    message("Rank: %d sending %zu links to rank %d for testing. ci: (%lf,%lf,%lf) -> cj: (%lf,%lf,%lf).", engine_rank, local_send_count, cj->nodeID, ci->loc[0], ci->loc[1], ci->loc[2], cj->loc[0], cj->loc[1], cj->loc[2]);
-  //  
-  //  if(cj_local) 
-  //    message("Rank: %d sending %zu links to rank %d for testing. cj: (%lf,%lf,%lf) -> ci: (%lf,%lf,%lf).", engine_rank, local_send_count, ci->nodeID, cj->loc[0], cj->loc[1], cj->loc[2], ci->loc[0], ci->loc[1], ci->loc[2]);
-  //}
 
 }
 
@@ -836,11 +819,21 @@ void fof_search_foreign_cells(struct space *s) {
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->l_x2;
 
+  /* Save particle links for each rank to a file. */
+  char fof_filename[200] = "part_links";
+  sprintf(fof_filename + strlen(fof_filename), "_%d.dat",
+      engine_rank);
+  
+  fof_file = fopen(fof_filename, "w");
+  fprintf(fof_file, "# %7s %7s %7s\n", "Local PID", "Foreign PID", "Root ID");
+  fprintf(fof_file, "#-------------------------------\n");
+
   message("Searching foreign cells for links.");
 
   size_t nr_links = 0;
   int count = 0;
 
+  /* Loop over top-level cells and find local cells that touch foreign cells. Calculate the total number of possible links between these cells. */
   for (size_t cid = 0; cid < nr_cells; cid++) {
 
     struct cell *restrict ci = &cells[cid];
@@ -848,8 +841,7 @@ void fof_search_foreign_cells(struct space *s) {
     /* Skip empty cells. */
     if(ci->gcount == 0) continue;
 
-    /* Loop over all top-level cells skipping over the cells already searched.
-    */
+    /* Loop over all top-level cells skipping over the cells already searched. */
     for (size_t cjd = cid + 1; cjd < nr_cells; cjd++) {
 
       struct cell *restrict cj = &cells[cjd];
@@ -877,20 +869,12 @@ void fof_search_foreign_cells(struct space *s) {
   
   if (posix_memalign((void**)&fof_send, SWIFT_STRUCT_ALIGNMENT,
                        nr_links * sizeof(struct fof_mpi)) != 0)
-    error("Error while allocating memory for FOF MPI communication");
+    error("Error while allocating memory for FOF links over an MPI domain");
 
   if (posix_memalign((void**)&interface_cells, SWIFT_STRUCT_ALIGNMENT,
                        count * sizeof(struct cell *)) != 0)
-    error("Error while allocating memory for interface cells");
+    error("Error while allocating memory for FOF interface cells");
   
-  char fof_filename[200] = "part_links";
-  sprintf(fof_filename + strlen(fof_filename), "_%d.dat",
-      engine_rank);
-  
-  fof_file = fopen(fof_filename, "w");
-  fprintf(fof_file, "# %7s %7s %7s\n", "Local PID", "Foreign PID", "Root ID");
-  fprintf(fof_file, "#-------------------------------\n");
-
   /* Loop over cells_in and cells_out for each proxy and find which cells are in range of each other to perform
    * the FOF search. Store local cells that are touching foreign cells in a list. */
   for(int i=0; i<e->nr_proxies; i++) {
@@ -937,7 +921,7 @@ void fof_search_foreign_cells(struct space *s) {
       /* Make a list of particle offsets into the global gparts array. */
       int *const offset = group_index + (ptrdiff_t)(gparts - s->gparts);
 
-      /* Set each particle's root after the local FOF.*/
+      /* Set each particle's root found in the local FOF.*/
       for(int k=0; k<local_cell->gcount; k++) {
         const int root = fof_find(offset[k] - node_offset, group_index);  
         gparts[k].root = root;
@@ -949,6 +933,7 @@ void fof_search_foreign_cells(struct space *s) {
   struct task *tasks = sched->tasks;
   int nr_sends = 0, nr_recvs = 0;
 
+  /* Activate the send and receive tasks for the gparts. */
   for(int i=0; i<sched->nr_tasks; i++) {
   
     struct task *t = &tasks[i];
@@ -966,6 +951,7 @@ void fof_search_foreign_cells(struct space *s) {
 
   message("Rank %d. No. of sends activated: %d, no. of receives activated: %d", engine_rank, nr_sends, nr_recvs);
 
+  /* Perform send and receive tasks. */
   engine_launch(e);
 
   for(int i=0; i<e->nr_proxies; i++) {
@@ -992,6 +978,7 @@ void fof_search_foreign_cells(struct space *s) {
 
   size_t link_count = 0;
 
+  /* Loop over each interface cell and find all particle links with foreign cells. */
   for(int i=0; i<interface_cell_count; i++) {
 
     struct cell *restrict local_cell = interface_cells[i];
@@ -1021,8 +1008,9 @@ void fof_search_foreign_cells(struct space *s) {
   
   if (posix_memalign((void**)&fof_list, SWIFT_STRUCT_ALIGNMENT,
                        link_count * sizeof(struct fof_mpi)) != 0)
-    error("Error while allocating memory for FOF MPI communication");
+    error("Error while allocating memory for unique set of group links across MPI domains");
 
+  /* Compress the particle links to a unique set of links between groups over an MPI domain. */
   for(int i=0; i<link_count; i++) {
     
     int found = 0;
@@ -1031,13 +1019,16 @@ void fof_search_foreign_cells(struct space *s) {
 
     if(local_root == foreign_root) error("Particles have same root. local_root: %d, foreign_root: %d", local_root, foreign_root);
 
+    /* Loop over list and check that the link doesn't already exist. */
     for(int j=0; j<list_count; j++) {
+      /* TODO: don't add the symmetric link. */
       if(fof_list[j].local_pid == local_root && fof_list[j].foreign_pid == foreign_root) {
         found = 1;
         break;
       }
     }
 
+    /* If it doesn't already exist in the list add it. */
     if(!found) {
       fof_list[list_count].local_pid = local_root;
       fof_list[list_count++].foreign_pid = foreign_root;
@@ -1047,36 +1038,39 @@ void fof_search_foreign_cells(struct space *s) {
 
   message("Rank %d found %d unique group links.", engine_rank, list_count);
  
-  struct fof_mpi *global_fof_list, *global_fof_list_offset;
+  struct fof_mpi *global_fof_list = NULL, *global_fof_list_offset = NULL;
+  int *displ = NULL, *list_counts = NULL;
   int global_list_count = 0;
 
+  /* Sum the total number of links across MPI domains over each MPI rank. */
   MPI_Allreduce(&list_count, &global_list_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     
-  int *list_counts = NULL;
-  if (posix_memalign((void**)&list_counts, SWIFT_STRUCT_ALIGNMENT,
-                       e->nr_nodes * sizeof(int)) != 0)
-    error("Error while allocating memory for FOF MPI communication");
-
-  MPI_Allgather(&list_count, 1, MPI_INT, list_counts, 1, MPI_INT, MPI_COMM_WORLD);
- 
   message("Global list count: %d", global_list_count);
 
   if (posix_memalign((void**)&global_fof_list, SWIFT_STRUCT_ALIGNMENT,
                        global_list_count * sizeof(struct fof_mpi)) != 0)
-    error("Error while allocating memory for FOF MPI communication");
+    error("Error while allocating memory for the global list of group links");
   
   if (posix_memalign((void**)&global_fof_list_offset, SWIFT_STRUCT_ALIGNMENT,
                        global_list_count * sizeof(struct fof_mpi)) != 0)
-    error("Error while allocating memory for FOF MPI communication");
+    error("Error while allocating memory for the global list of group links");
  
-  int *displ = NULL;
+  if (posix_memalign((void**)&list_counts, SWIFT_STRUCT_ALIGNMENT,
+                       e->nr_nodes * sizeof(int)) != 0)
+    error("Error while allocating memory for the number of group links on each MPI rank");
+
   if (posix_memalign((void**)&displ, SWIFT_STRUCT_ALIGNMENT,
                        e->nr_nodes * sizeof(int)) != 0)
-    error("Error while allocating memory for FOF MPI communication");
+    error("Error while allocating memory for the displacement in memory for the global FOF link list");
+  
+  /* Gather the total number of links on each rank. */
+  MPI_Allgather(&list_count, 1, MPI_INT, list_counts, 1, MPI_INT, MPI_COMM_WORLD);
 
+  /* Set the displacements into the global link list using the link counts from each rank */
   displ[0] = 0;
   for(int i=1; i<e->nr_nodes; i++) displ[i] = displ[i-1] + list_counts[i-1];
 
+  /* Gather the global link list on all ranks. */
   MPI_Allgatherv(fof_list, list_count, fof_mpi_type, global_fof_list, list_counts, displ, fof_mpi_type, MPI_COMM_WORLD);
 
   for(int i=0; i<global_list_count; i++) {
@@ -1085,12 +1079,14 @@ void fof_search_foreign_cells(struct space *s) {
   }
   
   fclose(fof_file);
-  
+ 
+  /* Copy the initial link list. */
   for(int i=0; i<global_list_count; i++) {
     global_fof_list_offset[i].local_pid = global_fof_list[i].local_pid;
     global_fof_list_offset[i].foreign_pid = global_fof_list[i].foreign_pid;
   }
 
+  /* Search through global list of links across MPI domains and perform a Union-Find. */
   for(int i=0; i<global_list_count; i++) {
     int group_i = global_fof_list[i].local_pid;
     int group_j = global_fof_list[i].foreign_pid;
@@ -1099,7 +1095,7 @@ void fof_search_foreign_cells(struct space *s) {
 
     int min_root = min(group_i, group_j);
 
-    //for(int j=i + 1; j<global_list_count; j++) {
+    /* Search the list for more occurrences of the two groups and find the lowest group that they both link to. */
     for(int j=0; j<global_list_count; j++) {
       int root_i = global_fof_list[j].local_pid;
       int root_j = global_fof_list[j].foreign_pid;
@@ -1110,13 +1106,7 @@ void fof_search_foreign_cells(struct space *s) {
       else if(root_j == group_j) {
         if(global_fof_list_offset[j].foreign_pid < min_root) min_root = global_fof_list_offset[j].foreign_pid;
       }
-    }
-
-    //for(int j=i + 1; j<global_list_count; j++) {
-    for(int j=0; j<global_list_count; j++) {
-      int root_i = global_fof_list[j].local_pid;
-      int root_j = global_fof_list[j].foreign_pid;
-
+      
       if(root_i == group_i) {
         if(global_fof_list_offset[j].local_pid < min_root) min_root = global_fof_list_offset[j].local_pid;
       }
@@ -1125,21 +1115,40 @@ void fof_search_foreign_cells(struct space *s) {
       }
     }
 
-    //if(((group_j >= node_offset && group_j < node_offset + s->nr_gparts) ||
-    //   (group_i >= node_offset && group_i < node_offset + s->nr_gparts) ) &&
-    //   (group_i != min_root && group_j != min_root) ) {
-    //  message("Rank %d. Link %d <-> %d has common lowest root: %d", engine_rank, group_i, group_j, min_root);
-    //}
-      
     message("Rank %d. Link %d <-> %d has common lowest root: %d", engine_rank, group_i, group_j, min_root);
 
-    //if((group_j >= node_offset && group_j < node_offset + s->nr_gparts) &&
-    //   (group_j != min_root)) {
-    if((group_j >= node_offset && group_j < node_offset + s->nr_gparts) ) {
-            
+    /* If group_i is local to the node, update its root. */
+    if((group_i >= node_offset && group_i < node_offset + s->nr_gparts) &&
+       (group_i != min_root)) {
+      
+      /* TODO: don't think a fof_find is necessary here. */ 
+      int root = fof_find(group_i - node_offset, group_index);
+      if(root != group_i) message("Rank %d. The root of group_i has changed from: %d to %d", engine_rank, group_i, root);
+
+      if(root < min_root) message("Rank %d. Group_i: %d Trying to set a root: %d to a larger value: %d", engine_rank, group_i, root, min_root);
+      
+      /* Check root is local to node. */ 
+      if(root >= node_offset && root < node_offset + s->nr_gparts) {
+        if(root > min_root) {
+          group_index[root - node_offset] = min_root;
+        }
+        else if(min_root >= node_offset && min_root < node_offset + s->nr_gparts){
+
+          int root_new = fof_find(min_root - node_offset, group_index);
+
+          group_index[root_new - node_offset] = root;
+
+        }
+      }
+    }
+
+    /* If group_j is local to the node, update its root. */
+    if((group_j >= node_offset && group_j < node_offset + s->nr_gparts) &&
+       (group_j != min_root)) {
+           
+      /* TODO: don't think a fof_find is necessary here. */ 
       int root = fof_find(group_j - node_offset, group_index);
       if(root != group_j) message("Rank %d. The root of group_j has changed from: %d to %d", engine_rank, group_j, root);
-      //message("Rank %d. Updating local root: %d to: %d", engine_rank, root, min_root);
 
       if(root < min_root) message("Rank %d. Group_j: %d Trying to set a root: %d to a larger value: %d", engine_rank, group_j, root, min_root);
      
@@ -1151,7 +1160,6 @@ void fof_search_foreign_cells(struct space *s) {
         else if(min_root >= node_offset && min_root < node_offset + s->nr_gparts){
 
           int root_new = fof_find(min_root - node_offset, group_index);
-          //if(min_root != root_new) error("Wrong min_root used. min_root in fof_list: %d and actual root found in group_index: %d", min_root, root_new);
 
           group_index[root_new - node_offset] = root;
 
@@ -1162,6 +1170,7 @@ void fof_search_foreign_cells(struct space *s) {
     int old_group_i = global_fof_list_offset[i].local_pid;
     int old_group_j = global_fof_list_offset[i].foreign_pid;
 
+    /* If the group had an old root that was local, make sure it is also updated. */
     if(old_group_i >= node_offset && old_group_i < node_offset + s->nr_gparts) {
       
       if(min_root < old_group_i) group_index[old_group_i - node_offset] = min_root;
@@ -1172,52 +1181,17 @@ void fof_search_foreign_cells(struct space *s) {
       if(min_root < old_group_j) group_index[old_group_j - node_offset] = min_root;
     }
 
-    //if((group_i >= node_offset && group_i < node_offset + s->nr_gparts) &&
-    //   (group_i != min_root)) {
-    if((group_i >= node_offset && group_i < node_offset + s->nr_gparts)) {
-      int root = fof_find(group_i - node_offset, group_index);
-      if(root != group_i) message("Rank %d. The root of group_i has changed from: %d to %d", engine_rank, group_i, root);
-
-      //message("Rank %d. Updating local root: %d to: %d", engine_rank, root, min_root);
-      
-      if(root < min_root) message("Rank %d. Group_i: %d Trying to set a root: %d to a larger value: %d", engine_rank, group_i, root, min_root);
-      
-      /* Check root is local to node. */ 
-      if(root >= node_offset && root < node_offset + s->nr_gparts) {
-        if(root > min_root) {
-          group_index[root - node_offset] = min_root;
-        }
-        else if(min_root >= node_offset && min_root < node_offset + s->nr_gparts){
-
-          int root_new = fof_find(min_root - node_offset, group_index);
-          //if(min_root != root_new) error("Wrong min_root used. min_root in fof_list: %d and actual root found in group_index: %d", min_root, root_new);
-
-          group_index[root_new - node_offset] = root;
-
-        }
-      }
-    }
-
+    /* Update the group with the new root assigned to it in the copied list. */
     for(int j=0; j<global_list_count; j++) {
       int root_i = global_fof_list[j].local_pid;
       int root_j = global_fof_list[j].foreign_pid;
 
-      if(root_i == group_i) {
-        global_fof_list_offset[j].local_pid = min_root;
-      }
-      if(root_j == group_i) {
-        global_fof_list_offset[j].foreign_pid = min_root;
-      }
-      if(root_i == group_j) {
-        global_fof_list_offset[j].local_pid = min_root;
-      }
-      if(root_j == group_j) {
-        global_fof_list_offset[j].foreign_pid = min_root;
-      }
+      if(root_i == group_i) global_fof_list_offset[j].local_pid = min_root;
+      if(root_j == group_i) global_fof_list_offset[j].foreign_pid = min_root;
+      if(root_i == group_j) global_fof_list_offset[j].local_pid = min_root;
+      if(root_j == group_j) global_fof_list_offset[j].foreign_pid = min_root;
+      
     }
-    //if(engine_rank == 0) message("Rank 0. Updating local roots. %d of %d....", i, global_list_count);
-    //global_fof_list[i].local_pid = min_root;
-    //global_fof_list[i].foreign_pid = min_root;
   }
 
   message("Rank %d finished linking local roots to foreign roots.", engine_rank);
