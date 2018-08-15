@@ -374,31 +374,45 @@ void cosmology_init_tables(struct cosmology *c) {
                       GSL_INTEG_GAUSS61, space, &result, &abserr);
   c->universe_age_at_present_day = result;
 
-  /* Inverse t(a) */
-  const double time_init = c->time_interp_table_offset;
-  const double delta_t =
-      (c->universe_age_at_present_day - time_init) / cosmology_table_length;
 
-  int i_prev = 0;
-  for (int i = 0; i < cosmology_table_length; i++) {
-    /* Current time */
-    double time_interp = delta_t * i;
+  /* Update the times */
+  c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
+  c->time_end = cosmology_get_time_since_big_bang(c, c->a_end);
+
+  /*
+   * Inverse t(a)
+   */
+
+  const double delta_t =
+    (c->time_end - c->time_begin) / cosmology_table_length;
+
+  /* index in the time_interp_table */
+  int i_a = 0;
+
+  for (int i_time = 0; i_time < cosmology_table_length; i_time++) {
+    /* Current time
+     * time_interp_table = \int_a_begin^a => no need of time_begin */
+    double time_interp = delta_t * (i_time + 1);
 
     /* Find next time in time_interp_table */
-    while (i_prev < cosmology_table_length &&
-           c->time_interp_table[i_prev] <= time_interp) {
-      i_prev++;
+    while (i_a < cosmology_table_length &&
+           c->time_interp_table[i_a] <= time_interp) {
+      i_a++;
     }
 
     /* Find linear interpolation scaling */
-    double scale = time_interp - c->time_interp_table[i_prev - 1];
-    scale /= c->time_interp_table[i_prev] - c->time_interp_table[i_prev - 1];
-    scale += i_prev;
+    double scale = 0;
+    if (i_a != cosmology_table_length) {
+      scale = time_interp - c->time_interp_table[i_a - 1];
+      scale /= c->time_interp_table[i_a] - c->time_interp_table[i_a - 1];
+    }
+
+    scale += i_a;
 
     /* Compute interpolated scale factor */
     double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) /
-                                        cosmology_table_length;
-    c->scale_factor_interp_table[i] = exp(log_a) - c->a_begin;
+      cosmology_table_length;
+    c->scale_factor_interp_table[i_time] = exp(log_a) - c->a_begin;
   }
 
   /* Free the workspace and temp array */
@@ -671,9 +685,6 @@ double cosmology_get_delta_time(const struct cosmology *c,
 
 /**
  * @brief Compute scale factor from time since big bang (in internal units).
- *
- * WARNING: This method has a low accuracy at high redshift.
- * The relative error is around 1e-3 (testCosmology.c is measuring it).
  *
  * @param c The current #cosmology.
  * @param t time since the big bang
