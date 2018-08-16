@@ -57,12 +57,7 @@ const float EPS = 1.e-4;
  */
 __attribute__((always_inline)) INLINE int row_major_index_2d(int i, int j,
                                                              int nx, int ny) {
-  int index = i * ny + j;
-#ifdef SWIFT_DEBUG_CHECKS
-  assert(i < nx);
-  assert(j < ny);
-#endif
-  return index;
+  return i * ny + j;
 }
 
 /**
@@ -75,13 +70,7 @@ __attribute__((always_inline)) INLINE int row_major_index_2d(int i, int j,
 __attribute__((always_inline)) INLINE int row_major_index_3d(int i, int j,
                                                              int k, int nx,
                                                              int ny, int nz) {
-  int index = i * ny * nz + j * nz + k;
-#ifdef SWIFT_DEBUG_CHECKS
-  assert(i < nx);
-  assert(j < ny);
-  assert(k < nz);
-#endif
-  return index;
+  return i * ny * nz + j * nz + k;
 }
 
 /**
@@ -95,14 +84,7 @@ __attribute__((always_inline)) INLINE int row_major_index_4d(int i, int j,
                                                              int k, int l,
                                                              int nx, int ny,
                                                              int nz, int nw) {
-  int index = i * ny * nz * nw + j * nz * nw + k * nw + l;
-#ifdef SWIFT_DEBUG_CHECKS
-  assert(i < nx);
-  assert(j < ny);
-  assert(k < nz);
-  assert(l < nw);
-#endif
-  return index;
+  return i * ny * nz * nw + j * nz * nw + k * nw + l;
 }
 
 /*
@@ -143,7 +125,7 @@ __attribute__((always_inline)) INLINE void get_index_1d(float *table,
  *
  * @param z Redshift whose position within the redshift array we are interested
  * in
- * @param z_index i Pointer to the index whose corresponding redshift
+ * @param z_index Pointer to the index whose corresponding redshift
  * is the greatest value in the redshift table less than x
  * @param dz Pointer to offset of z within redshift cell
  * @param cooling Pointer to cooling structure containing redshift table
@@ -229,6 +211,10 @@ __attribute__((always_inline)) INLINE double interpol_1d_dbl(double *table,
  * @param i,j Indices of cell we are interpolating
  * @param dx,dy Offset within cell
  * @param nx,ny Table dimensions
+ * @param upper Pointer to value set to the table value at
+ * the when dy = 1 (used for calculating derivatives)
+ * @param lower Pointer to value set to the table value at
+ * the when dy = 0 (used for calculating derivatives)
  */
 __attribute__((always_inline)) INLINE float interpol_2d(float *table, int i,
                                                         int j, float dx,
@@ -268,6 +254,10 @@ __attribute__((always_inline)) INLINE float interpol_2d(float *table, int i,
  * @param i,j Indices of cell we are interpolating
  * @param dx,dy Offset within cell
  * @param nx,ny Table dimensions
+ * @param upper Pointer to value set to the table value at
+ * the when dy = 1 (used for calculating derivatives)
+ * @param lower Pointer to value set to the table value at
+ * the when dy = 0 (used for calculating derivatives)
  */
 __attribute__((always_inline)) INLINE double interpol_2d_dbl(
     double *table, int i, int j, double dx, double dy, int nx, int ny,
@@ -305,6 +295,10 @@ __attribute__((always_inline)) INLINE double interpol_2d_dbl(
  * @param i,j,k Indices of cell we are interpolating
  * @param dx,dy,dz Offset within cell
  * @param nx,ny,nz Table dimensions
+ * @param upper Pointer to value set to the table value at
+ * the when dz = 1 (used for calculating derivatives)
+ * @param lower Pointer to value set to the table value at
+ * the when dz = 0 (used for calculating derivatives)
  */
 __attribute__((always_inline)) INLINE float interpol_3d(float *table, int i,
                                                         int j, int k, float dx,
@@ -370,6 +364,14 @@ __attribute__((always_inline)) INLINE float interpol_3d(float *table, int i,
  * @param i,j,k,l Indices of cell we are interpolating
  * @param dx,dy,dz,dw Offset within cell
  * @param nx,ny,nz,nw Table dimensions
+ * @param upper Pointer to value set to the table value at
+ * the when dw = 1 when used for interpolating table 
+ * depending on metal species, dz = 1 otherwise 
+ * (used for calculating derivatives)
+ * @param upper Pointer to value set to the table value at
+ * the when dw = 0 when used for interpolating table 
+ * depending on metal species, dz = 0 otherwise 
+ * (used for calculating derivatives)
  */
 __attribute__((always_inline)) INLINE float interpol_4d(
     float *table, int i, int j, int k, int l, float dx, float dy, float dz,
@@ -428,6 +430,7 @@ __attribute__((always_inline)) INLINE float interpol_4d(
            dx * dy * dz * (1 - dw) * table14 +
            dx * dy * dz * dw * table15;
   if (nw == 9) {
+    // interpolating metal species
     dz = 1.0;
   } else {
     dw = 1.0;
@@ -449,6 +452,7 @@ __attribute__((always_inline)) INLINE float interpol_4d(
            dx * dy * dz * (1 - dw) * table14 +
            dx * dy * dz * dw * table15;
   if (nw == 9) {
+    // interpolating metal species
     dz = 0.0;
   } else {
     dw = 0.0;
@@ -475,7 +479,8 @@ __attribute__((always_inline)) INLINE float interpol_4d(
 
 /*
  * @brief Interpolates 2d EAGLE table over one of the dimensions,
- * producing 1d table
+ * producing 1d table. May be useful if need to use bisection
+ * method often with lots of iterations.
  *
  * @param p Particle structure
  * @param cooling Cooling data structure
@@ -635,14 +640,6 @@ construct_1d_print_table_from_3d_elements(
 
       result_table[i + array_size*j] += ((1 - d_x) * table[index[0]] +
                          d_x * table[index[1]])*abundance_ratio[j+2];
-#if SWIFT_DEBUG_CHECKS
-      if (isnan(result_table[i]))
-        printf(
-            "Eagle cooling.h 3 i partial sums %d %.5e %.5e %.5e \n",
-            i, result_table[i], (1 - d_x) * table[index[0]],
-            (1 - d_x) * table[index[0]] +
-                d_x * table[index[1]]);
-#endif
     }
   }
 }
@@ -701,14 +698,6 @@ construct_1d_table_from_3d_elements(
 
       result_table[i] += ((1 - d_x) * table[index[0]] +
                          d_x * table[index[1]])*abundance_ratio[j+2];
-#if SWIFT_DEBUG_CHECKS
-      if (isnan(result_table[i]))
-        printf(
-            "Eagle cooling.h 3 i partial sums %d %.5e %.5e %.5e \n",
-            i, result_table[i], (1 - d_x) * table[index[0]],
-            (1 - d_x) * table[index[0]] +
-                d_x * table[index[1]]);
-#endif
     }
   }
 }
@@ -788,15 +777,6 @@ __attribute__((always_inline)) INLINE void construct_1d_table_from_4d(
                       d_x * (1 - d_y) * d_w * table[index[5]] +
                       d_x * d_y * (1 - d_w) * table[index[6]] +
                       d_x * d_y * d_w * table[index[7]];
-#if SWIFT_DEBUG_CHECKS
-    if (isnan(result_table[i]))
-      printf(
-          "Eagle cooling.h 2 i dz dnh dHe table values %d %.5e %.5e %.5e %.5e "
-          "%.5e %.5e %.5e %.5e %.5e %.5e %.5e \n",
-          i, d_x, d_y, d_w, table[index[0]], table[index[1]],
-          table[index[2]], table[index[3]], table[index[4]], table[index[5]],
-          table[index[6]], table[index[7]]);
-#endif
   }
 }
 
@@ -861,21 +841,6 @@ construct_1d_print_table_from_4d_elements(
                          (1 - d_x) * d_y * table[index[1]] +
                          d_x * (1 - d_y) * table[index[2]] +
                          d_x * d_y * table[index[3]]) * abundance_ratio[j+2];
-#if SWIFT_DEBUG_CHECKS
-      if (isnan(result_table[i]))
-        printf(
-            "Eagle cooling.h 3 i partial sums %d %.5e %.5e %.5e %.5e %.5e \n",
-            i, result_table[i], (1 - d_x) * (1 - d_y) * table[index[0]],
-            (1 - d_x) * (1 - d_y) * table[index[0]] +
-                (1 - d_x) * d_y * table[index[1]],
-            (1 - d_x) * (1 - d_y) * table[index[0]] +
-                (1 - d_x) * d_y * table[index[1]] +
-                d_x * (1 - d_y) * table[index[2]],
-            (1 - d_x) * (1 - d_y) * table[index[0]] +
-                (1 - d_x) * d_y * table[index[1]] +
-                d_x * (1 - d_y) * table[index[2]] +
-                d_x * d_y * table[index[3]]);
-#endif
     }
   }
 }
@@ -940,21 +905,6 @@ construct_1d_table_from_4d_elements(
                          (1 - d_x) * d_y * table[index[1]] +
                          d_x * (1 - d_y) * table[index[2]] +
                          d_x * d_y * table[index[3]]) * abundance_ratio[j+2];
-#if SWIFT_DEBUG_CHECKS
-      if (isnan(result_table[i]))
-        printf(
-            "Eagle cooling.h 3 i partial sums %d %.5e %.5e %.5e %.5e %.5e \n",
-            i, result_table[i], (1 - d_x) * (1 - d_y) * table[index[0]],
-            (1 - d_x) * (1 - d_y) * table[index[0]] +
-                (1 - d_x) * d_y * table[index[1]],
-            (1 - d_x) * (1 - d_y) * table[index[0]] +
-                (1 - d_x) * d_y * table[index[1]] +
-                d_x * (1 - d_y) * table[index[2]],
-            (1 - d_x) * (1 - d_y) * table[index[0]] +
-                (1 - d_x) * d_y * table[index[1]] +
-                d_x * (1 - d_y) * table[index[2]] +
-                d_x * d_y * table[index[3]]);
-#endif
     }
   }
 }
@@ -996,20 +946,16 @@ eagle_convert_temp_to_u_1d_table(double temp, float *temperature_table,
  * @param d_z Redshift offset
  * @param d_n_h Hydrogen number density offset
  * @param d_He Helium fraction offset
- * @param p Particle data structure
  * @param cooling Cooling data structure
  * @param cosmo Cosmology data structure
- * @param internal_const Physical constants data structure
  */
 __attribute__((always_inline)) INLINE double
 eagle_convert_u_to_temp(
     double log_10_u, float *delta_u,
     int z_i, int n_h_i, int He_i, 
     float d_z, float d_n_h, float d_He,
-    const struct part *restrict p,
     const struct cooling_function_data *restrict cooling,
-    const struct cosmology *restrict cosmo,
-    const struct phys_const *internal_const) {
+    const struct cosmology *restrict cosmo) {
 
   int u_i;
   float d_u, logT;
@@ -1044,18 +990,12 @@ eagle_convert_u_to_temp(
  * @param log_10_u Log base 10 of internal energy
  * @param delta_u Pointer to size of internal energy cell
  * @param temperature_table 1d array of temperatures 
- * @param p Particle data structure
  * @param cooling Cooling data structure
- * @param cosmo Cosmology data structure
- * @param internal_const Physical constants data structure
  */
 __attribute__((always_inline)) INLINE double
 eagle_convert_u_to_temp_1d_table(
     double log_10_u, float *delta_u, double *temperature_table,
-    const struct part *restrict p,
-    const struct cooling_function_data *restrict cooling,
-    const struct cosmology *restrict cosmo,
-    const struct phys_const *internal_const) {
+    const struct cooling_function_data *restrict cooling) {
 
   int u_i;
   float d_u, logT;
@@ -1080,7 +1020,6 @@ eagle_convert_u_to_temp_1d_table(
  * @param He_i Helium fraction index
  * @param d_He Helium fraction offset
  * @param phys_const Physical constants data structure
- * @param us Units data structure
  * @param cosmo Cosmology data structure
  * @param cooling Cooling data structure
  * @param p Particle data structure
@@ -1110,7 +1049,6 @@ __attribute__((always_inline)) INLINE void construct_1d_tables(
 		int z_index, float dz, int n_h_i, float d_n_h,
 		int He_i, float d_He,
                 const struct phys_const *restrict phys_const,
-                const struct unit_system *restrict us,
                 const struct cosmology *restrict cosmo,
                 const struct cooling_function_data *restrict cooling,
                 const struct part *restrict p,

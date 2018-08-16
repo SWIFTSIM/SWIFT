@@ -19,7 +19,7 @@
 ACLOCAL_AMFLAGS = -I m4
 
 # Show the way...
-SUBDIRS = src examples doc tests examples/CoolingTest_Alexei
+SUBDIRS = src examples doc tests examples/CoolingRates
 
 # Non-standard files that should be part of the distribution.
 EXTRA_DIST = INSTALL.swift .clang-format format.sh

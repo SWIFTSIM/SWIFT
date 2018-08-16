@@ -5,13 +5,13 @@ max_number() {
 }
 
 # loop over redshift
-for z in 0.1; do
+for z in $(seq 0.01 5.0 25.01); do
   # loop over solar and zero metal abundances
-  for solar in 1; do
+  for solar in {0..1}; do
     # loop over log_10 hydrogen number density
-    for nh in -1; do
+    for nh_exp in $(seq -3 2.0 -1); do
       #change parameters in yml file for calculating explicit ode solution of cooling
-      cd ../CoolingTest_Alexei
+      cd ../CoolingRates
       if [ $solar == 1 ]
       then
         sed -i "/InitMetallicity: / s/: \+[[:alnum:],\.,-]\+/: 0.014/g" testCooling.yml
@@ -41,10 +41,10 @@ for z in 0.1; do
         sed -i "/CalciumOverSilicon: / s/: \+[[:alnum:],\.,-]\+/: 0.0941736/g" testCooling.yml
         sed -i "/SulphurOverSilicon: / s/: \+[[:alnum:],\.,-]\+/: 0.6054160/g" testCooling.yml
       fi
-      # ./testCooling metals $nh
-      ./testCooling -z $z -d $nh -t
+      rm cooling_*.dat
+      ./testCooling -z $z -d $nh_exp
       cd ../CoolingBox
-      cp ../CoolingTest_Alexei/cooling_output.dat ./
+      cp ../CoolingRates/cooling_output.dat ./
   
       #change parameters in coolingBox.yml
       if [ $solar == 1 ]
@@ -79,7 +79,7 @@ for z in 0.1; do
         
       # set starting, ending redshift, how often to write to file
       a_begin=$(python -c "print 1.0/(1.0+$z)")
-      a_end=$(python -c "print min(1.0, $a_begin*1.001)")
+      a_end=$(python -c "print min(1.0, $a_begin*1.0001)")
       first_ouput_a=$a_begin
       delta_a=$(python -c "print 1.0 + ($a_end/$a_begin - 1.0)/500.")
       sed -i "/a_begin: / s/: \+[[:alnum:],\.,-]\+/: $a_begin/g" coolingBox.yml
@@ -88,26 +88,28 @@ for z in 0.1; do
       sed -i "/delta_time: / s/: \+[[:alnum:],\.,-]\+/: $delta_a/g" coolingBox.yml
   
       # change hydrogen number density
-      sed -i "/^rho =/ s/= \S*/= 3.2e$(expr $nh + 7)/g" makeIC.py
-      for pressure in 7; do
+      nh=$(python -c "print 3.555*10.0**($nh_exp+7)/(1.0+$z)**3")
+      sed -i "/^rho =/ s/= \S*/= $nh/g" makeIC.py
+      for pressure_index in 7; do
+        pressure=$(python -c "print 4.5*10.0**($pressure_index + $nh_exp + 3)/(1.0+$z)")
         # change pressure (and hence energy)
-        sed -i "/^P =/ s/= \S*/= 4.5e$(expr $pressure + $nh + 2)/g" makeIC.py
+        sed -i "/^P =/ s/= \S*/= $pressure/g" makeIC.py
         python makeIC.py
+	rm coolingBox_*hdf5
   
         # run cooling box
         ./run.sh
   
         max=0
-        for file in $( ls coolingBox_*.hdf5 ); do
+        for file in $( ls -lth coolingBox_*.hdf5 | head -n 1 ); do
           f=${file//hdf5/}
           f=${f//[!0-9]/}
-          max=$(max_number $max $f)
         done
-        frames=$((10#$max))
+        frames=$((10#$f))
 	echo "number of frames $frames"
 
         # check if everything worked and create plots
-        python analytical_test.py $nh $pressure $solar $frames
+        python analytical_test.py $z $nh_exp $pressure_index $solar $frames
       done
     done
   done
