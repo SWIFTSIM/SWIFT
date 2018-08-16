@@ -257,12 +257,12 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
           const integertime_t ti_step = get_integer_timestep(p->time_bin);
           const integertime_t ti_begin =
               get_integer_time_begin(ti_current + 1, p->time_bin);
-	  if (ti_begin > 0.0){
+          if (ti_begin > 0.0) {
             dt_cool =
                 cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-	  } else {
+          } else {
             dt_cool = 0.0;
-	  }
+          }
         } else {
           dt_cool = get_timestep(p->time_bin, time_base);
         }

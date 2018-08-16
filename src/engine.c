@@ -4570,10 +4570,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_gparts(s, e->verbose);
 
   /* Update the cooling function */
-  //if (e->policy & engine_policy_cooling)
+  // if (e->policy & engine_policy_cooling)
   //  cooling_update(e->physical_constants, e->internal_units, e->cosmology,
   //                 e->cooling_func);
-
 
   /* Now, launch the calculation */
   TIMER_TIC;
@@ -4752,17 +4751,14 @@ void engine_step(struct engine *e) {
         "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-        e->s_updates, e->wallclock_time,
-        e->step_props);
+        e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
-    fprintf(
-        e->file_timesteps,
-        "  %6d %14e %14e %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
-        e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
-        e->max_active_bin, e->updates, e->g_updates, e->s_updates,
-        e->wallclock_time,
-        e->step_props);
+    fprintf(e->file_timesteps,
+            "  %6d %14e %14e %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+            e->step, e->time, e->cosmology->a, e->time_step, e->min_active_bin,
+            e->max_active_bin, e->updates, e->g_updates, e->s_updates,
+            e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
 

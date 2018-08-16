@@ -46,111 +46,88 @@
 
 int row_major_index_2d(int, int, int, int);
 
-int row_major_index_3d(int, int, int, int, int, int); 
+int row_major_index_3d(int, int, int, int, int, int);
 
 int row_major_index_4d(int, int, int, int, int, int, int, int);
 
 void get_index_1d(float *, int, double, int *, float *);
 
-void get_redshift_index(
-    float, int *, float *,
-    const struct cooling_function_data *restrict);
+void get_redshift_index(float, int *, float *,
+                        const struct cooling_function_data *restrict);
 
 float interpol_1d(float *, int, float);
 
 double interpol_1d_dbl(double *, int, float);
 
-float interpol_2d(float *, int, int, float, float, int, int, double *, double *);
+float interpol_2d(float *, int, int, float, float, int, int, double *,
+                  double *);
 
-double interpol_2d_dbl(double *, int, int, double, double, int, int, double *, double *);
+double interpol_2d_dbl(double *, int, int, double, double, int, int, double *,
+                       double *);
 
-float interpol_3d(float *, int, int, int, float, float, float, int, int, int, double *, double *);
+float interpol_3d(float *, int, int, int, float, float, float, int, int, int,
+                  double *, double *);
 
-float interpol_4d(float *, int, int, int, int, float, float, float, float, int, int, int, int, double *, double *);
+float interpol_4d(float *, int, int, int, int, float, float, float, float, int,
+                  int, int, int, double *, double *);
 
-void construct_1d_table_from_2d(
-    const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *, float *, int, float,
-    int, int, double *, float *, float *);
+void construct_1d_table_from_2d(const struct part *restrict,
+                                const struct cooling_function_data *restrict,
+                                const struct cosmology *restrict,
+                                const struct phys_const *, float *, int, float,
+                                int, int, double *, float *, float *);
 
-void construct_1d_table_from_3d(
-    const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *, float *, int, float,
-    int, int, float, int, int, double *, float *, float *);
+void construct_1d_table_from_3d(const struct part *restrict,
+                                const struct cooling_function_data *restrict,
+                                const struct cosmology *restrict,
+                                const struct phys_const *, float *, int, float,
+                                int, int, float, int, int, double *, float *,
+                                float *);
 
-void
-construct_1d_print_table_from_3d_elements(
-    const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *, float *, int, float,
-    int, int, double *, float *, float *, float *);
+void construct_1d_print_table_from_3d_elements(
+    const struct part *restrict, const struct cooling_function_data *restrict,
+    const struct cosmology *restrict, const struct phys_const *, float *, int,
+    float, int, int, double *, float *, float *, float *);
 
-void
-construct_1d_table_from_3d_elements(
-    const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *, float *, int, float,
-    int, int, double *, float *, float *, float *);
+void construct_1d_table_from_3d_elements(
+    const struct part *restrict, const struct cooling_function_data *restrict,
+    const struct cosmology *restrict, const struct phys_const *, float *, int,
+    float, int, int, double *, float *, float *, float *);
 
-void construct_1d_table_from_4d(
-    const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *, float *, int, float, int,
-    int, float, int, int, float, int, int, double *, float *, float *);
+void construct_1d_table_from_4d(const struct part *restrict,
+                                const struct cooling_function_data *restrict,
+                                const struct cosmology *restrict,
+                                const struct phys_const *, float *, int, float,
+                                int, int, float, int, int, float, int, int,
+                                double *, float *, float *);
 
-void
-construct_1d_print_table_from_4d_elements(
-    const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *, float *, int, float,
-    int, int, float, int, int, double *, float *, float *, float *);
+void construct_1d_print_table_from_4d_elements(
+    const struct part *restrict, const struct cooling_function_data *restrict,
+    const struct cosmology *restrict, const struct phys_const *, float *, int,
+    float, int, int, float, int, int, double *, float *, float *, float *);
 
-void
-construct_1d_table_from_4d_elements(
-    const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *, float *, int, float,
-    int, int, float, int, int, double *, float *, float *, float *);
+void construct_1d_table_from_4d_elements(
+    const struct part *restrict, const struct cooling_function_data *restrict,
+    const struct cosmology *restrict, const struct phys_const *, float *, int,
+    float, int, int, float, int, int, double *, float *, float *, float *);
 
-double eagle_convert_temp_to_u_1d_table(double, float *, const struct cooling_function_data *restrict);
+double eagle_convert_temp_to_u_1d_table(
+    double, float *, const struct cooling_function_data *restrict);
 
-double
-eagle_convert_u_to_temp(
-    double, float *,
-    int, int, int, 
-    float, float, float,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict);
+double eagle_convert_u_to_temp(double, float *, int, int, int, float, float,
+                               float,
+                               const struct cooling_function_data *restrict,
+                               const struct cosmology *restrict);
 
-double
-eagle_convert_u_to_temp_1d_table(
-    double, float *, double *,
-    const struct cooling_function_data *restrict);
+double eagle_convert_u_to_temp_1d_table(
+    double, float *, double *, const struct cooling_function_data *restrict);
 
-void construct_1d_tables(
-		int, float, int, float,
-		int, float,
-                const struct phys_const *restrict,
-                const struct cosmology *restrict,
-                const struct cooling_function_data *restrict,
-                const struct part *restrict,
-		float *,
-		double *,
-		double *,
-		double *,
-		double *,
-		double *,
-		double *,
-		float *, float *);
-
+void construct_1d_tables(int, float, int, float, int, float,
+                         const struct phys_const *restrict,
+                         const struct cosmology *restrict,
+                         const struct cooling_function_data *restrict,
+                         const struct part *restrict, float *, double *,
+                         double *, double *, double *, double *, double *,
+                         float *, float *);
 
 #endif /* SWIFT_INTERPOL_EAGLE_H */

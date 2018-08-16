@@ -237,10 +237,12 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
  *
  * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static float hydro_get_physical_internal_energy_dt(
-    const struct part *restrict p, const struct cosmology *restrict cosmo) {
+__attribute__((always_inline)) INLINE static float
+hydro_get_physical_internal_energy_dt(const struct part *restrict p,
+                                      const struct cosmology *restrict cosmo) {
 
-  return gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv, p->entropy_dt);
+  return gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv,
+                                          p->entropy_dt);
 }
 
 /**
@@ -252,10 +254,13 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_internal_e
  * @param cosmo Cosmology data structure
  * @param du_dt The time derivative of the internal energy.
  */
-__attribute__((always_inline)) INLINE static void hydro_set_physical_internal_energy_dt(
-    struct part *restrict p, const struct cosmology *restrict cosmo, float du_dt) {
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_internal_energy_dt(struct part *restrict p,
+                                      const struct cosmology *restrict cosmo,
+                                      float du_dt) {
 
-  p->entropy_dt = gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, du_dt);
+  p->entropy_dt =
+      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, du_dt);
 }
 
 /**
@@ -561,7 +566,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float dt_grav, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-  /* Do not decrease the entropy by more than a factor of 2 
+  /* Do not decrease the entropy by more than a factor of 2
    * Note: factor 0.49 used to prevent negative entropy occuring
    * due to rounding error */
   if (dt_therm > 0. && p->entropy_dt * dt_therm < -0.49f * xp->entropy_full) {

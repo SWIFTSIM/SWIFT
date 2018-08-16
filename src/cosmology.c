@@ -748,7 +748,6 @@ double cosmology_get_delta_time(const struct cosmology *c,
   return t2 - t1;
 }
 
-
 /**
  * @brief Compute scale factor from time since big bang (in internal units).
  *
