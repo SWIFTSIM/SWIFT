@@ -45,6 +45,7 @@ struct fof {
 
   long long *group_id;
   int *group_index;
+  int *group_size;
 
 } SWIFT_STRUCT_ALIGN;
 
