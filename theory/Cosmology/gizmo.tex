@@ -130,3 +130,65 @@ step required to integrate the source term is
 \left(\frac{1}{a^{3(\gamma{} - 1)}} - \frac{1}{a^2} \right) dt \\ =
 \Delta{} t_{\rm{} kick,h} - \Delta{} t_{\rm{} drift}.
 \end{multline}
+
+The last issue we need to address is the appropriate scale factor for the
+gravitational correction term that is used by the finite volume flavour of
+GIZMO. Remember that in GIZMO we evolve the comoving conserved quantities. The
+evolution equations for the conserved quantities of particle $i$ are then
+simply given by integrating over the
+comoving ``volume'' of the particle and adding the appropriate correction terms
+(we ignore the comoving correction terms for this derivation):
+\begin{align}
+\frac{d m_i'}{dt} &= -\frac{1}{a^2} \sum_j
+\mathbf{F}_{m,ij}'\left(\rho{}'\mathbf{v}'\right),\\
+\frac{d \mathbf{p}_i'}{dt} &= -\frac{1}{a^2} \sum_j
+\mathbf{F}_{p,ij}'\left(\rho{}'\mathbf{v}'\mathbf{v}' +
+P\mathbb{1}\right) - \frac{1}{a}\nabla{}'\phi{}_i',
+\end{align}
+\begin{multline}
+\frac{d E_i'}{dt} = -\frac{1}{a^2} \sum_j
+\mathbf{F}_{E,ij}'\left( \rho{}' u' \mathbf{v}' +
+\frac{1}{2} \rho{}' \left(\mathbf{v}'\cdot \mathbf{v}'\right)
+\mathbf{v}' + P' \mathbf{v}' \right) \\
+- \frac{1}{a} \mathbf{p}_i'\cdot{}\nabla{}'\phi{}_i',
+\end{multline}
+where $\mathbf{F}_{X,ij}'(Y)$ represents the appropriately geometrically evaluated
+flux $Y$ for conserved quantity $X$ between particle $i$ and particle $j$.
+In finite volume GIZMO, the particle
+velocity $\mathbf{v}_i' = \mathbf{w}_i' + \mathbf{v}_{i,{\rm{}rel}}'$ consists of the
+actual particle movement $\mathbf{w}_i'$ and the relative movement of the fluid
+w.r.t. the particle movement, $\mathbf{v}_{i,{\rm{}rel}}'$.
+We can therefore replace the gravitational contribution
+to the energy evolution with \citep{Springel2010}
+\begin{equation}
+\mathbf{p}_i'\cdot{}\nabla{}'\phi{}_i' \rightarrow{} m_i'\mathbf{w}_i' \cdot{}
+\nabla{}'\phi{}_i' + \int{} \rho{}'\left(\mathbf{v}' -
+\mathbf{w}_i' \right)\cdot{}
+\nabla{}'\phi{}' dV
+\end{equation}
+to get a more accurate update of the total energy. If we make the following
+approximation
+\begin{equation}
+\rho{}'\left(\mathbf{v}' - \mathbf{w}_i' \right) \approx{}
+\left(\mathbf{r}' - \mathbf{r}_i'\right) \nabla{}' \cdot{}
+\left( \rho{}' \left( \mathbf{v}' - \mathbf{w}_i' \right) \right)
+\end{equation}
+and assume that the force is constant over the ``volume'' of the particle, then
+the second term in the gravity contribution reduces to
+\begin{multline}
+\int{} \rho{}'\left(\mathbf{v}' -
+\mathbf{w}_i' \right)\cdot{}
+\nabla{}'\phi{}' dV \approx{} \\\sum_j \frac{1}{2}
+\left(\mathbf{r}_j' - \mathbf{r}_i'\right)
+a^2 \mathbf{F}_{m,ij}'\left(\rho{}'\mathbf{v}'\right) \cdot{}
+\nabla{}'\phi{}'_i.
+\end{multline}
+This means that the gravitational correction term will have a total scale factor
+dependence $a$ instead of the $1/a$ for the normal gravitational contribution
+and the $1/a^2$ for the hydrodynamical flux. We hence need an additional time
+step
+\begin{equation}
+\Delta{}t_{\rm{}kick,corr} = \int_{a_n}^{a_n+1} adt = \frac{1}{H_0}
+\int_{a_n}^{a_n+1} \frac{da}{E(a)}
+\end{equation}
+that needs to be precomputed.
