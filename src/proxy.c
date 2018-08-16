@@ -444,7 +444,7 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
  *
  * @param p The #proxy.
  */
-void proxy_parts_exch1(struct proxy *p) {
+void proxy_parts_exch_first(struct proxy *p) {
 
 #ifdef WITH_MPI
 
@@ -504,7 +504,7 @@ void proxy_parts_exch1(struct proxy *p) {
 #endif
 }
 
-void proxy_parts_exch2(struct proxy *p) {
+void proxy_parts_exch_second(struct proxy *p) {
 
 #ifdef WITH_MPI
 
