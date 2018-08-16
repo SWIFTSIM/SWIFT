@@ -105,6 +105,7 @@ void print_help_message(void) {
   printf("  %2s %14s %s\n", "-v", "[12]", "Increase the level of verbosity:");
   printf("  %2s %14s %s\n", "", "", "1: MPI-rank 0 writes,");
   printf("  %2s %14s %s\n", "", "", "2: All MPI-ranks write.");
+  printf("  %2s %14s %s\n", "-x", "", "Run with structure finding.");
   printf("  %2s %14s %s\n", "-y", "{int}",
          "Time-step frequency at which task graphs are dumped.");
   printf("  %2s %14s %s\n", "-Y", "{int}",
@@ -194,6 +195,7 @@ int main(int argc, char *argv[]) {
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
+  int with_structure_finding = 0;
   int verbose = 0;
   int nr_threads = 1;
   int with_verbose_timers = 0;
@@ -206,7 +208,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tv:y:Y:")) != -1)
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tv:xy:Y:")) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -302,6 +304,15 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
+        break;
+      case 'x':
+#ifdef HAVE_VELOCIRAPTOR
+        with_structure_finding = 1;
+#else
+        error(
+            "Error: (-x) needs to have the code compiled with VELOCIraptor "
+            "linked in.");
+#endif
         break;
       case 'y':
         if (sscanf(optarg, "%d", &dump_tasks) != 1) {
@@ -482,6 +493,19 @@ int main(int argc, char *argv[]) {
   const char *dirp = dirname(basename);
   if (access(dirp, W_OK | X_OK) != 0) {
     error("Cannot write snapshots in directory %s (%s)", dirp, strerror(errno));
+  }
+
+  /* Check that we can write the structure finding catalogues by testing if the
+   * output
+   * directory exists and is searchable and writable. */
+  if (with_structure_finding) {
+    char stfbasename[PARSER_MAX_LINE_SIZE];
+    parser_get_param_string(params, "StructureFinding:basename", stfbasename);
+    const char *stfdirp = dirname(stfbasename);
+    if (access(stfdirp, W_OK | X_OK) != 0) {
+      error("Cannot write stf catalogues in directory %s (%s)", stfdirp,
+            strerror(errno));
+    }
   }
 
   /* Prepare the domain decomposition scheme */
@@ -701,6 +725,10 @@ int main(int argc, char *argv[]) {
       error("Periodic self-gravity over MPI temporarily disabled.");
 #endif
 
+#if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
+    if (with_structure_finding) error("VEOCIraptor not yet enabled over MPI.");
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check once and for all that we don't have unwanted links */
     if (!with_stars && !dry_run) {
@@ -841,6 +869,8 @@ int main(int argc, char *argv[]) {
     if (with_cooling) engine_policies |= engine_policy_cooling;
     if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
     if (with_stars) engine_policies |= engine_policy_stars;
+    if (with_structure_finding)
+      engine_policies |= engine_policy_structure_finding;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -912,14 +942,24 @@ int main(int argc, char *argv[]) {
     /* Write the state of the system before starting time integration. */
     engine_dump_snapshot(&e);
     engine_print_stats(&e);
+
+#ifdef HAVE_VELOCIRAPTOR
+    /* Call VELOCIraptor for the first time after the first snapshot dump. */
+    // if (e.policy & engine_policy_structure_finding) {
+    // velociraptor_init(&e);
+    // velociraptor_invoke(&e);
+    //}
+#endif
   }
 
   /* Legend */
-  if (myrank == 0)
+  if (myrank == 0) {
     printf("# %6s %14s %14s %10s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
            "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
            "Updates", "g-Updates", "s-Updates", "Wall-clock time",
            clocks_getunit(), "Props");
+    fflush(stdout);
+  }
 
   /* File for the timers */
   if (with_verbose_timers) timers_open_file(myrank);
@@ -1090,11 +1130,12 @@ int main(int argc, char *argv[]) {
         e.wallclock_time, e.step_props);
     fflush(stdout);
 
-    fprintf(e.file_timesteps,
-            "  %6d %14e %14e %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
-            e.step, e.time, e.cosmology->a, e.time_step, e.min_active_bin,
-            e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-            e.wallclock_time, e.step_props);
+    fprintf(
+        e.file_timesteps,
+        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+        e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
+        e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
+        e.wallclock_time, e.step_props);
     fflush(e.file_timesteps);
   }
 
@@ -1102,6 +1143,14 @@ int main(int argc, char *argv[]) {
   engine_drift_all(&e);
   engine_print_stats(&e);
   engine_dump_snapshot(&e);
+
+#ifdef HAVE_VELOCIRAPTOR
+  /* Call VELOCIraptor at the end of the run to find groups. */
+  if (e.policy & engine_policy_structure_finding) {
+    velociraptor_init(&e);
+    velociraptor_invoke(&e);
+  }
+#endif
 
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)

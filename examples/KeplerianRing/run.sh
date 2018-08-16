@@ -10,3 +10,9 @@ fi
 
 rm -rf keplerian_ring_*.hdf5
 ../swift -g -s -t 1 -v 1 keplerian_ring.yml 2>&1 | tee output.log
+
+echo
+echo
+echo "This test is expected to fail, please read the README.md file"
+echo
+echo

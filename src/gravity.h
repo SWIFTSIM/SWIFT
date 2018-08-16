@@ -27,10 +27,16 @@
 #include "inline.h"
 #include "part.h"
 
-/* So far only one model here */
-/* Straight-forward import */
+/* Import the right functions */
+#if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity.h"
-#include "./gravity/Default/gravity_iact.h"
+#define GRAVITY_IMPLEMENTATION "Default (no potential)"
+#elif defined(POTENTIAL_GRAVITY)
+#include "./gravity/Potential/gravity.h"
+#define GRAVITY_IMPLEMENTATION "With potential calculation"
+#else
+#error "Invalid choice of gravity variant"
+#endif
 
 struct engine;
 struct space;

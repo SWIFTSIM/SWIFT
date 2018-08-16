@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_MINIMAL_MULTI_MAT_HYDRO_H
-#define SWIFT_MINIMAL_MULTI_MAT_HYDRO_H
+#ifndef SWIFT_PLANETARY_HYDRO_H
+#define SWIFT_PLANETARY_HYDRO_H
 
 /**
- * @file MinimalMultiMat/hydro.h
+ * @file Planetary/hydro.h
  * @brief Minimal conservative implementation of SPH (Non-neighbour loop
  * equations) with multiple materials.
  *
@@ -43,6 +43,12 @@
 #include "hydro_space.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
+
+/*
+ * Note: Define PLANETARY_SPH_BALSARA to use the Balsara (1995) switch for
+ * the artificial viscosity, instead of the default Monaghan (1992).
+ * i.e. compile with:  make CFLAGS=-DPLANETARY_SPH_BALSARA  to use.
+ */
 
 /**
  * @brief Returns the comoving internal energy of a particle
@@ -257,6 +263,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
 
   p->u_dt = du_dt;
 }
+
 /**
  * @brief Computes the hydro time-step of a given particle
  *
@@ -391,23 +398,52 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo) {
 
+#ifdef PLANETARY_SPH_BALSARA
+  const float fac_mu = cosmo->a_factor_mu;
+
+  /* Compute the norm of the curl */
+  const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
+                             p->density.rot_v[1] * p->density.rot_v[1] +
+                             p->density.rot_v[2] * p->density.rot_v[2]);
+
+  /* Compute the norm of div v */
+  const float abs_div_v = fabsf(p->density.div_v);
+#endif  // PLANETARY_SPH_BALSARA
+
   /* Compute the pressure */
   const float pressure =
       gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
 
   /* Compute the sound speed */
   const float soundspeed =
-      gas_soundspeed_from_pressure(p->rho, pressure, p->mat_id);
+      gas_soundspeed_from_internal_energy(p->rho, p->u, p->mat_id);
 
   /* Compute the "grad h" term */
   const float rho_inv = 1.f / p->rho;
-  const float grad_h_term =
-      1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
+  float grad_h_term;
+  const float grad_h_term_inv =
+      1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv;
+  /* Avoid 1/0 from only having one neighbour right at the edge of the kernel */
+  if (grad_h_term_inv != 0.f) {
+    grad_h_term = 1.f / grad_h_term_inv;
+  } else {
+    grad_h_term = 0.f;
+  }
+
+#ifdef PLANETARY_SPH_BALSARA
+  /* Compute the Balsara switch */
+  const float balsara =
+      abs_div_v / (abs_div_v + curl_v + 0.0001f * fac_mu * soundspeed / p->h);
+#endif  // PLANETARY_SPH_BALSARA
 
   /* Update variables. */
   p->force.f = grad_h_term;
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+#ifdef PLANETARY_SPH_BALSARA
+  p->force.balsara = balsara;
+#endif  // PLANETARY_SPH_BALSARA
 }
 
 /**
@@ -494,7 +530,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Compute the new sound speed */
   const float soundspeed =
-      gas_soundspeed_from_pressure(p->rho, pressure, p->mat_id);
+      gas_soundspeed_from_internal_energy(p->rho, p->u, p->mat_id);
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
@@ -631,4 +667,4 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
   p->u = u_init;
 }
 
-#endif /* SWIFT_MINIMAL_MULTI_MAT_HYDRO_H */
+#endif /* SWIFT_PLANETARY_HYDRO_H */

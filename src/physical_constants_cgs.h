@@ -93,6 +93,6 @@ const double const_solar_mass_cgs = 1.98848e33;
 const double const_earth_mass_cgs = 5.9724e27;
 
 /*! Temperature of the CMB at present day [K] */
-const double const_T_CMB_0_cgs = 2.72556;
+const double const_T_CMB_0_cgs = 2.7255;
 
 #endif /* SWIFT_PHYSICAL_CONSTANTS_CGS_H */

@@ -1,7 +1,7 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.989e43      # 10^10 M_sun in grams
-  UnitLength_in_cgs:   3.085678e24   # Mpc in centimeters
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
   UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
@@ -24,14 +24,13 @@ TimeIntegration:
 
 Scheduler:
   max_top_level_cells: 20
-  cell_split_size:     50
 
 # Parameters governing the snapshots
 Snapshots:
   basename:            eagle # Common part of the name of output files
-  scale_factor_first:  0.92  # Scale-factor of the first snaphot (cosmological run)
+  scale_factor_first:  0.91  # Scale-factor of the first snaphot (cosmological run)
   time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
-  delta_time:          1.10  # Time difference between consecutive outputs (in internal units)
+  delta_time:          1.01  # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:

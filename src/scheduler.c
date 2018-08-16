@@ -241,7 +241,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   int density_cluster[4] = {0};
   int gradient_cluster[4] = {0};
   int force_cluster[4] = {0};
-  int gravity_cluster[4] = {0};
+  int gravity_cluster[5] = {0};
 
   /* Check whether we need to construct a group of tasks */
   for (int type = 0; type < task_type_count; ++type) {
@@ -265,6 +265,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
         }
         if (type == task_type_grav_mesh) gravity_cluster[2] = 1;
         if (type == task_type_grav_long_range) gravity_cluster[3] = 1;
+        if (type == task_type_grav_mm) gravity_cluster[4] = 1;
       }
     }
   }
@@ -307,6 +308,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
     fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_mesh]);
   if (gravity_cluster[3])
     fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_long_range]);
+  if (gravity_cluster[4])
+    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_mm]);
   fprintf(f, "\t};\n");
 
   /* Be clean */
@@ -357,7 +360,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       }
 
       /* Is this cell even split and the task does not violate h ? */
-      if (cell_can_split_self_task(ci)) {
+      if (cell_can_split_self_hydro_task(ci)) {
 
         /* Make a sub? */
         if (scheduler_dosub && ci->count < space_subsize_self_hydro) {
@@ -416,7 +419,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       const int sid = space_getsid(s->space, &ci, &cj, shift);
 
       /* Should this task be split-up? */
-      if (cell_can_split_pair_task(ci) && cell_can_split_pair_task(cj)) {
+      if (cell_can_split_pair_hydro_task(ci) &&
+          cell_can_split_pair_hydro_task(cj)) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub && /* Use division to avoid integer overflow. */
@@ -800,6 +804,12 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
  */
 static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
+/* Temporarily prevent MPI here */
+#ifndef WITH_MPI
+  const struct space *sp = s->space;
+  struct engine *e = sp->e;
+#endif
+
   /* Iterate on this task until we're done with it. */
   int redo = 1;
   while (redo) {
@@ -820,7 +830,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
     if (t->type == task_type_self) {
 
       /* Get a handle on the cell involved. */
-      struct cell *ci = t->ci;
+      const struct cell *ci = t->ci;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -828,38 +838,49 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         break;
       }
 
+/* Temporarily prevent MPI here */
+#ifndef WITH_MPI
+
       /* Should we split this task? */
-      if (ci->split && ci->gcount > space_subsize_self_grav) {
+      if (cell_can_split_self_gravity_task(ci)) {
 
-        /* Take a step back (we're going to recycle the current task)... */
-        redo = 1;
+        if (scheduler_dosub && ci->gcount < space_subsize_self_grav) {
 
-        /* Add the self tasks. */
-        int first_child = 0;
-        while (ci->progeny[first_child] == NULL) first_child++;
-        t->ci = ci->progeny[first_child];
-        for (int k = first_child + 1; k < 8; k++)
-          if (ci->progeny[k] != NULL)
-            scheduler_splittask_gravity(
-                scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
-                                  ci->progeny[k], NULL),
-                s);
+          /* Otherwise, split it. */
+        } else {
 
-        /* Make a task for each pair of progeny */
-        if (t->subtype != task_subtype_external_grav) {
-          for (int j = 0; j < 8; j++)
-            if (ci->progeny[j] != NULL)
-              for (int k = j + 1; k < 8; k++)
-                if (ci->progeny[k] != NULL)
-                  scheduler_splittask_gravity(
-                      scheduler_addtask(s, task_type_pair, t->subtype,
-                                        sub_sid_flag[j][k], 0, ci->progeny[j],
-                                        ci->progeny[k]),
-                      s);
-        }
-      } /* Cell is split */
+          /* Take a step back (we're going to recycle the current task)... */
+          redo = 1;
 
-    } /* Self interaction */
+          /* Add the self tasks. */
+          int first_child = 0;
+          while (ci->progeny[first_child] == NULL) first_child++;
+          t->ci = ci->progeny[first_child];
+
+          for (int k = first_child + 1; k < 8; k++)
+            if (ci->progeny[k] != NULL)
+              scheduler_splittask_gravity(
+                  scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
+                                    ci->progeny[k], NULL),
+                  s);
+
+          /* Make a task for each pair of progeny */
+          if (t->subtype != task_subtype_external_grav) {
+            for (int j = 0; j < 8; j++)
+              if (ci->progeny[j] != NULL)
+                for (int k = j + 1; k < 8; k++)
+                  if (ci->progeny[k] != NULL)
+                    scheduler_splittask_gravity(
+                        scheduler_addtask(s, task_type_pair, t->subtype,
+                                          sub_sid_flag[j][k], 0, ci->progeny[j],
+                                          ci->progeny[k]),
+                        s);
+
+          } /* Self-gravity only */
+        }   /* Make tasks explicitly */
+      }     /* Cell is split */
+#endif      /* WITH_MPI */
+    }       /* Self interaction */
 
     /* Pair interaction? */
     else if (t->type == task_type_pair) {
@@ -873,8 +894,69 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         t->skip = 1;
         break;
       }
-    } /* pair interaction? */
-  }   /* iterate over the current task. */
+
+/* Temporarily prevent MPI here */
+#ifndef WITH_MPI
+
+      /* Should we replace it with an M-M task? */
+      if (cell_can_use_pair_mm(ci, cj, e, sp)) {
+
+        t->type = task_type_grav_mm;
+        t->subtype = task_subtype_none;
+
+        /* Since this task will not be split, we can already link it */
+        atomic_inc(&ci->nr_tasks);
+        atomic_inc(&cj->nr_tasks);
+        engine_addlink(e, &ci->grav, t);
+        engine_addlink(e, &cj->grav, t);
+        break;
+      }
+
+      /* Should this task be split-up? */
+      if (cell_can_split_pair_gravity_task(ci) &&
+          cell_can_split_pair_gravity_task(cj)) {
+
+        /* Replace by a single sub-task? */
+        if (scheduler_dosub && /* Use division to avoid integer overflow. */
+            ci->gcount < space_subsize_pair_grav / cj->gcount) {
+
+          /* Otherwise, split it. */
+        } else {
+
+          /* Take a step back (we're going to recycle the current task)... */
+          redo = 1;
+
+          /* Find the first non-empty childrens of the cells */
+          int first_ci_child = 0, first_cj_child = 0;
+          while (ci->progeny[first_ci_child] == NULL) first_ci_child++;
+          while (cj->progeny[first_cj_child] == NULL) first_cj_child++;
+
+          /* Recycle the current pair */
+          t->ci = ci->progeny[first_ci_child];
+          t->cj = cj->progeny[first_cj_child];
+
+          /* Make a task for every other pair of progeny */
+          for (int i = first_ci_child; i < 8; i++) {
+            if (ci->progeny[i] != NULL) {
+              for (int j = first_cj_child; j < 8; j++) {
+                if (cj->progeny[j] != NULL) {
+
+                  /* Skip the recycled pair */
+                  if (i == first_ci_child && j == first_cj_child) continue;
+
+                  scheduler_splittask_gravity(
+                      scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
+                                        ci->progeny[i], cj->progeny[j]),
+                      s);
+                }
+              }
+            }
+          }
+        } /* Split the pair */
+      }
+#endif /* WITH_MPI */
+    }  /* pair interaction? */
+  }    /* iterate over the current task. */
 }
 
 /**
@@ -904,7 +986,9 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     } else if (t->type == task_type_grav_mesh) {
       /* For future use */
     } else {
+#ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type");
+#endif
     }
   }
 }
@@ -995,10 +1079,10 @@ void scheduler_set_unlocks(struct scheduler *s) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that we are not overflowing */
     if (counts[s->unlock_ind[k]] < 0)
-      error("Task (type=%s/%s) unlocking more than %d other tasks!",
+      error("Task (type=%s/%s) unlocking more than %lld other tasks!",
             taskID_names[s->tasks[s->unlock_ind[k]].type],
             subtaskID_names[s->tasks[s->unlock_ind[k]].subtype],
-            (1 << (8 * sizeof(short int) - 1)) - 1);
+            (1LL << (8 * sizeof(short int) - 1)) - 1);
 #endif
   }
 
@@ -1185,15 +1269,15 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
   /* Run through the tasks backwards and set their weights. */
   for (int k = nr_tasks - 1; k >= 0; k--) {
     struct task *t = &tasks[tid[k]];
-    t->weight = 0;
+    t->weight = 0.f;
     for (int j = 0; j < t->nr_unlock_tasks; j++)
       if (t->unlock_tasks[j]->weight > t->weight)
         t->weight = t->unlock_tasks[j]->weight;
-    float cost = 0;
+    float cost = 0.f;
 
-    const float count_i = t->ci->count;
+    const float count_i = (t->ci != NULL) ? t->ci->count : 0.f;
     const float count_j = (t->cj != NULL) ? t->cj->count : 0.f;
-    const float gcount_i = t->ci->gcount;
+    const float gcount_i = (t->ci != NULL) ? t->ci->gcount : 0.f;
     const float gcount_j = (t->cj != NULL) ? t->cj->gcount : 0.f;
 
     switch (t->type) {
@@ -1263,6 +1347,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_grav_long_range:
         cost = wscale * gcount_i;
         break;
+      case task_type_grav_mm:
+        cost = wscale * (gcount_i + gcount_j);
+        break;
       case task_type_end_force:
         cost = wscale * count_i + wscale * gcount_i;
         break;
@@ -1292,13 +1379,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
     }
 
-/* Note if the cost is > 1e9 we cap it as we don't
-   care. That's large compared to other possible
-   costs.  */
 #if defined(WITH_MPI) && defined(HAVE_METIS)
-    t->cost = (cost < 1e9) ? cost : 1e9;
+    t->cost = cost;
 #endif
-    t->weight += (cost < 1e9) ? cost : 1e9;
+    t->weight += cost;
   }
 
   if (verbose)
@@ -1336,8 +1420,9 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that we don't have more waits that what can be stored. */
     if (t->wait < 0)
-      error("Task unlocked by more than %d tasks!",
-            (1 << (8 * sizeof(t->wait) - 1)) - 1);
+      error("Task (type=%s/%s) unlocked by more than %lld tasks!",
+            taskID_names[t->type], subtaskID_names[t->subtype],
+            (1LL << (8 * sizeof(t->wait) - 1)) - 1);
 #endif
 
     /* Sets the waits of the dependances */

@@ -156,17 +156,17 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
 }
 #endif
 
-/* METIS support
- * =============
- *
- * METIS partitions using a multi-level k-way scheme. We support using this in
- * a unweighted scheme, which works well and seems to be guaranteed, and a
- * weighted by the number of particles scheme. Note METIS is optional.
- *
- * Repartitioning is based on METIS and uses weights determined from the times
- * that cell tasks have taken. These weight the graph edges and vertices, or
- * just the edges, with vertex weights from the particle counts or none.
- */
+  /* METIS support
+   * =============
+   *
+   * METIS partitions using a multi-level k-way scheme. We support using this in
+   * a unweighted scheme, which works well and seems to be guaranteed, and a
+   * weighted by the number of particles scheme. Note METIS is optional.
+   *
+   * Repartitioning is based on METIS and uses weights determined from the times
+   * that cell tasks have taken. These weight the graph edges and vertices, or
+   * just the edges, with vertex weights from the particle counts or none.
+   */
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 /**
@@ -561,7 +561,7 @@ static void repart_edge_metis(int partweights, int bothweights, int timebins,
     struct task *t = &tasks[j];
 
     /* Skip un-interesting tasks. */
-    if (t->cost == 0) continue;
+    if (t->cost == 0.f) continue;
 
     /* Get the task weight based on costs. */
     double w = (double)t->cost;
@@ -926,9 +926,8 @@ void partition_initial_partition(struct partition *initial_partition,
     struct cell *c;
 
     /* If we've got the wrong number of nodes, fail. */
-    if (nr_nodes !=
-        initial_partition->grid[0] * initial_partition->grid[1] *
-            initial_partition->grid[2])
+    if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
+                        initial_partition->grid[2])
       error("Grid size does not match number of nodes.");
 
     /* Run through the cells and set their nodeID. */
@@ -937,9 +936,8 @@ void partition_initial_partition(struct partition *initial_partition,
       c = &s->cells_top[k];
       for (j = 0; j < 3; j++)
         ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
-      c->nodeID = ind[0] +
-                  initial_partition->grid[0] *
-                      (ind[1] + initial_partition->grid[1] * ind[2]);
+      c->nodeID = ind[0] + initial_partition->grid[0] *
+                               (ind[1] + initial_partition->grid[1] * ind[2]);
       // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
       // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
     }

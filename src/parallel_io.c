@@ -490,9 +490,10 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
   else
     H5Sselect_none(h_filespace);
 
-/* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
- * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize, */
-/* 	  (int)(N * props.dimension * typeSize), offset); */
+    /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
+     * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize,
+     */
+    /* 	  (int)(N * props.dimension * typeSize), offset); */
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -927,10 +928,11 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   char fileName[FILENAME_BUFFER_SIZE];
   if (e->snapshot_label_delta == 1)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->snapshot_output_count);
+             e->snapshot_output_count + e->snapshot_label_first);
   else
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
-             e->snapshot_output_count * e->snapshot_label_delta);
+             e->snapshot_output_count * e->snapshot_label_delta +
+                 e->snapshot_label_first);
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1180,8 +1182,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
    * broadcast from there */
   MPI_Bcast(&N_total, 6, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
-/* Now everybody konws its offset and the total number of
- * particles of each type */
+  /* Now everybody konws its offset and the total number of
+   * particles of each type */
 
 #ifdef IO_SPEED_MEASUREMENT
   ticks tic = getticks();
@@ -1203,8 +1205,13 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* HDF5 File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           e->snapshot_output_count);
+  if (e->snapshot_label_delta == 1)
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->snapshot_output_count + e->snapshot_label_first);
+  else
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
+             e->snapshot_output_count * e->snapshot_label_delta +
+                 e->snapshot_label_first);
 
   /* Prepare some file-access properties */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);

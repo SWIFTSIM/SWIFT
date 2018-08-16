@@ -33,11 +33,6 @@
 #include "riemann_checks.h"
 #include "riemann_vacuum.h"
 
-#ifndef EOS_IDEAL_GAS
-#error \
-    "The HLLC Riemann solver currently only supports and ideal gas equation of state. Either select this equation of state, or try using another Riemann solver!"
-#endif
-
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     const float *WL, const float *WR, const float *n, const float *vij,
     float *totflux) {
@@ -48,19 +43,21 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 
   /* Handle pure vacuum */
   if (!WL[0] && !WR[0]) {
-    totflux[0] = 0.f;
-    totflux[1] = 0.f;
-    totflux[2] = 0.f;
-    totflux[3] = 0.f;
-    totflux[4] = 0.f;
+    totflux[0] = 0.0f;
+    totflux[1] = 0.0f;
+    totflux[2] = 0.0f;
+    totflux[3] = 0.0f;
+    totflux[4] = 0.0f;
     return;
   }
 
   /* STEP 0: obtain velocity in interface frame */
   const float uL = WL[1] * n[0] + WL[2] * n[1] + WL[3] * n[2];
   const float uR = WR[1] * n[0] + WR[2] * n[1] + WR[3] * n[2];
-  const float aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
-  const float aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
+  const float rhoLinv = 1.0f / WL[0];
+  const float rhoRinv = 1.0f / WR[0];
+  const float aL = sqrtf(hydro_gamma * WL[4] * rhoLinv);
+  const float aR = sqrtf(hydro_gamma * WR[4] * rhoRinv);
 
   /* Handle vacuum: vacuum does not require iteration and is always exact */
   if (riemann_is_vacuum(WL, WR, uL, uR, aL, aR)) {
@@ -69,100 +66,90 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   }
 
   /* STEP 1: pressure estimate */
-  const float rhobar = 0.5f * (WL[0] + WR[0]);
-  const float abar = 0.5f * (aL + aR);
-  const float pPVRS = 0.5f * (WL[4] + WR[4]) - 0.5f * (uR - uL) * rhobar * abar;
-  const float pstar = max(0.f, pPVRS);
+  const float rhobar = WL[0] + WR[0];
+  const float abar = aL + aR;
+  const float pPVRS =
+      0.5f * ((WL[4] + WR[4]) - 0.25f * (uR - uL) * rhobar * abar);
+  const float pstar = max(0.0f, pPVRS);
 
   /* STEP 2: wave speed estimates
      all these speeds are along the interface normal, since uL and uR are */
-  float qL = 1.f;
-  if (pstar > WL[4] && WL[4] > 0.f) {
-    qL = sqrtf(1.f +
-               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                   (pstar / WL[4] - 1.f));
+  float qL = 1.0f;
+  if (pstar > WL[4] && WL[4] > 0.0f) {
+    qL = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                          (pstar / WL[4] - 1.0f));
   }
-  float qR = 1.f;
-  if (pstar > WR[4] && WR[4] > 0.f) {
-    qR = sqrtf(1.f +
-               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                   (pstar / WR[4] - 1.f));
+  float qR = 1.0f;
+  if (pstar > WR[4] && WR[4] > 0.0f) {
+    qR = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                          (pstar / WR[4] - 1.0f));
   }
-  const float SL = uL - aL * qL;
-  const float SR = uR + aR * qR;
+  const float SLmuL = -aL * qL;
+  const float SRmuR = aR * qR;
   const float Sstar =
-      (WR[4] - WL[4] + WL[0] * uL * (SL - uL) - WR[0] * uR * (SR - uR)) /
-      (WL[0] * (SL - uL) - WR[0] * (SR - uR));
+      (WR[4] - WL[4] + WL[0] * uL * SLmuL - WR[0] * uR * SRmuR) /
+      (WL[0] * SLmuL - WR[0] * SRmuR);
 
   /* STEP 3: HLLC flux in a frame moving with the interface velocity */
-  if (Sstar >= 0.f) {
+  if (Sstar >= 0.0f) {
+    const float rhoLuL = WL[0] * uL;
+    const float v2 = WL[1] * WL[1] + WL[2] * WL[2] + WL[3] * WL[3];
+    const float eL =
+        WL[4] * rhoLinv * hydro_one_over_gamma_minus_one + 0.5f * v2;
+    const float SL = SLmuL + uL;
+
     /* flux FL */
-    totflux[0] = WL[0] * uL;
+    totflux[0] = rhoLuL;
     /* these are the actual correct fluxes in the boosted lab frame
        (not rotated to interface frame) */
-    totflux[1] = WL[0] * WL[1] * uL + WL[4] * n[0];
-    totflux[2] = WL[0] * WL[2] * uL + WL[4] * n[1];
-    totflux[3] = WL[0] * WL[3] * uL + WL[4] * n[2];
-    const float v2 = WL[1] * WL[1] + WL[2] * WL[2] + WL[3] * WL[3];
-    const float eL = WL[4] * hydro_one_over_gamma_minus_one / WL[0] + 0.5f * v2;
-    totflux[4] = WL[0] * eL * uL + WL[4] * uL;
-    if (SL < 0.f) {
+    totflux[1] = rhoLuL * WL[1] + WL[4] * n[0];
+    totflux[2] = rhoLuL * WL[2] + WL[4] * n[1];
+    totflux[3] = rhoLuL * WL[3] + WL[4] * n[2];
+    totflux[4] = rhoLuL * eL + WL[4] * uL;
 
-      float UstarL[5];
+    if (SL < 0.0f) {
 
-      /* add flux FstarL */
-      UstarL[0] = 1.f;
-      /* we need UstarL in the lab frame:
-       * subtract the velocity in the interface frame from the lab frame
-       * velocity and then add Sstar in interface frame */
-      UstarL[1] = WL[1] + (Sstar - uL) * n[0];
-      UstarL[2] = WL[2] + (Sstar - uL) * n[1];
-      UstarL[3] = WL[3] + (Sstar - uL) * n[2];
-      UstarL[4] = eL + (Sstar - uL) * (Sstar + WL[4] / (WL[0] * (SL - uL)));
-      UstarL[0] *= WL[0] * (SL - uL) / (SL - Sstar);
-      UstarL[1] *= WL[0] * (SL - uL) / (SL - Sstar);
-      UstarL[2] *= WL[0] * (SL - uL) / (SL - Sstar);
-      UstarL[3] *= WL[0] * (SL - uL) / (SL - Sstar);
-      UstarL[4] *= WL[0] * (SL - uL) / (SL - Sstar);
-      totflux[0] += SL * (UstarL[0] - WL[0]);
-      totflux[1] += SL * (UstarL[1] - WL[0] * WL[1]);
-      totflux[2] += SL * (UstarL[2] - WL[0] * WL[2]);
-      totflux[3] += SL * (UstarL[3] - WL[0] * WL[3]);
-      totflux[4] += SL * (UstarL[4] - WL[0] * eL);
+      const float starfac = SLmuL / (SL - Sstar) - 1.0f;
+      const float rhoLSL = WL[0] * SL;
+      const float SstarmuL = Sstar - uL;
+      const float rhoLSLstarfac = rhoLSL * starfac;
+      const float rhoLSLSstarmuL = rhoLSL * SstarmuL;
+
+      totflux[0] += rhoLSLstarfac;
+      totflux[1] += rhoLSLstarfac * WL[1] + rhoLSLSstarmuL * n[0];
+      totflux[2] += rhoLSLstarfac * WL[2] + rhoLSLSstarmuL * n[1];
+      totflux[3] += rhoLSLstarfac * WL[3] + rhoLSLSstarmuL * n[2];
+      totflux[4] += rhoLSLstarfac * eL +
+                    rhoLSLSstarmuL * (Sstar + WL[4] / (WL[0] * SLmuL));
     }
   } else {
-    /* flux FR */
-    totflux[0] = WR[0] * uR;
-    totflux[1] = WR[0] * WR[1] * uR + WR[4] * n[0];
-    totflux[2] = WR[0] * WR[2] * uR + WR[4] * n[1];
-    totflux[3] = WR[0] * WR[3] * uR + WR[4] * n[2];
+    const float rhoRuR = WR[0] * uR;
     const float v2 = WR[1] * WR[1] + WR[2] * WR[2] + WR[3] * WR[3];
-    const float eR = WR[4] * hydro_one_over_gamma_minus_one / WR[0] + 0.5f * v2;
-    totflux[4] = WR[0] * eR * uR + WR[4] * uR;
-    if (SR > 0.f) {
+    const float eR =
+        WR[4] * rhoRinv * hydro_one_over_gamma_minus_one + 0.5f * v2;
+    const float SR = SRmuR + uR;
 
-      float UstarR[5];
+    /* flux FR */
+    totflux[0] = rhoRuR;
+    totflux[1] = rhoRuR * WR[1] + WR[4] * n[0];
+    totflux[2] = rhoRuR * WR[2] + WR[4] * n[1];
+    totflux[3] = rhoRuR * WR[3] + WR[4] * n[2];
+    totflux[4] = rhoRuR * eR + WR[4] * uR;
 
-      /* add flux FstarR */
-      UstarR[0] = 1.f;
+    if (SR > 0.0f) {
 
-      /* we need UstarR in the lab frame:
-       * subtract the velocity in the interface frame from the lab frame
-       * velocity and then add Sstar in interface frame */
-      UstarR[1] = WR[1] + (Sstar - uR) * n[0];
-      UstarR[2] = WR[2] + (Sstar - uR) * n[1];
-      UstarR[3] = WR[3] + (Sstar - uR) * n[2];
-      UstarR[4] = eR + (Sstar - uR) * (Sstar + WR[4] / (WR[0] * (SR - uR)));
-      UstarR[0] *= WR[0] * (SR - uR) / (SR - Sstar);
-      UstarR[1] *= WR[0] * (SR - uR) / (SR - Sstar);
-      UstarR[2] *= WR[0] * (SR - uR) / (SR - Sstar);
-      UstarR[3] *= WR[0] * (SR - uR) / (SR - Sstar);
-      UstarR[4] *= WR[0] * (SR - uR) / (SR - Sstar);
-      totflux[0] += SR * (UstarR[0] - WR[0]);
-      totflux[1] += SR * (UstarR[1] - WR[0] * WR[1]);
-      totflux[2] += SR * (UstarR[2] - WR[0] * WR[2]);
-      totflux[3] += SR * (UstarR[3] - WR[0] * WR[3]);
-      totflux[4] += SR * (UstarR[4] - WR[0] * eR);
+      const float starfac = SRmuR / (SR - Sstar) - 1.0f;
+      const float rhoRSR = WR[0] * SR;
+      const float SstarmuR = Sstar - uR;
+      const float rhoRSRstarfac = rhoRSR * starfac;
+      const float rhoRSRSstarmuR = rhoRSR * SstarmuR;
+
+      totflux[0] += rhoRSRstarfac;
+      totflux[1] += rhoRSRstarfac * WR[1] + rhoRSRSstarmuR * n[0];
+      totflux[2] += rhoRSRstarfac * WR[2] + rhoRSRSstarmuR * n[1];
+      totflux[3] += rhoRSRstarfac * WR[3] + rhoRSRSstarmuR * n[2];
+      totflux[4] += rhoRSRstarfac * eR +
+                    rhoRSRSstarmuR * (Sstar + WR[4] / (WR[0] * SRmuR));
     }
   }
 
@@ -196,11 +183,11 @@ riemann_solve_for_middle_state_flux(const float *WL, const float *WR,
 
   /* Handle pure vacuum */
   if (!WL[0] && !WR[0]) {
-    totflux[0] = 0.f;
-    totflux[1] = 0.f;
-    totflux[2] = 0.f;
-    totflux[3] = 0.f;
-    totflux[4] = 0.f;
+    totflux[0] = 0.0f;
+    totflux[1] = 0.0f;
+    totflux[2] = 0.0f;
+    totflux[3] = 0.0f;
+    totflux[4] = 0.0f;
     return;
   }
 
@@ -212,39 +199,38 @@ riemann_solve_for_middle_state_flux(const float *WL, const float *WR,
 
   /* Handle vacuum: vacuum does not require iteration and is always exact */
   if (riemann_is_vacuum(WL, WR, uL, uR, aL, aR)) {
-    totflux[0] = 0.f;
-    totflux[1] = 0.f;
-    totflux[2] = 0.f;
-    totflux[3] = 0.f;
-    totflux[4] = 0.f;
+    totflux[0] = 0.0f;
+    totflux[1] = 0.0f;
+    totflux[2] = 0.0f;
+    totflux[3] = 0.0f;
+    totflux[4] = 0.0f;
     return;
   }
 
   /* STEP 1: pressure estimate */
-  const float rhobar = 0.5f * (WL[0] + WR[0]);
-  const float abar = 0.5f * (aL + aR);
-  const float pPVRS = 0.5f * (WL[4] + WR[4]) - 0.5f * (uR - uL) * rhobar * abar;
+  const float rhobar = WL[0] + WR[0];
+  const float abar = aL + aR;
+  const float pPVRS =
+      0.5f * ((WL[4] + WR[4]) - 0.25f * (uR - uL) * rhobar * abar);
   const float pstar = max(0.f, pPVRS);
 
   /* STEP 2: wave speed estimates
      all these speeds are along the interface normal, since uL and uR are */
-  float qL = 1.f;
-  if (pstar > WL[4] && WL[4] > 0.f) {
-    qL = sqrtf(1.f +
-               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                   (pstar / WL[4] - 1.f));
+  float qL = 1.0f;
+  if (pstar > WL[4] && WL[4] > 0.0f) {
+    qL = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                          (pstar / WL[4] - 1.0f));
   }
-  float qR = 1.f;
-  if (pstar > WR[4] && WR[4] > 0.f) {
-    qR = sqrtf(1.f +
-               0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
-                   (pstar / WR[4] - 1.f));
+  float qR = 1.0f;
+  if (pstar > WR[4] && WR[4] > 0.0f) {
+    qR = sqrtf(1.0f + 0.5f * hydro_gamma_plus_one * hydro_one_over_gamma *
+                          (pstar / WR[4] - 1.0f));
   }
-  const float SL = uL - aL * qL;
-  const float SR = uR + aR * qR;
+  const float SLmuL = -aL * qL;
+  const float SRmuR = aR * qR;
   const float Sstar =
-      (WR[4] - WL[4] + WL[0] * uL * (SL - uL) - WR[0] * uR * (SR - uR)) /
-      (WL[0] * (SL - uL) - WR[0] * (SR - uR));
+      (WR[4] - WL[4] + WL[0] * uL * SLmuL - WR[0] * uR * SRmuR) /
+      (WL[0] * SLmuL - WR[0] * SRmuR);
 
   totflux[0] = 0.0f;
   totflux[1] = pstar * n[0];

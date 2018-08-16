@@ -69,15 +69,21 @@
 #include "./hydro/Shadowswift/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
-#elif defined(MINIMAL_MULTI_MAT_SPH)
-#include "./hydro/MinimalMultiMat/hydro_part.h"
+#elif defined(PLANETARY_SPH)
+#include "./hydro/Planetary/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #else
 #error "Invalid choice of SPH variant"
 #endif
 
 /* Import the right gravity particle definition */
+#if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_part.h"
+#elif defined(POTENTIAL_GRAVITY)
+#include "./gravity/Potential/gravity_part.h"
+#else
+#error "Invalid choice of gravity variant"
+#endif
 
 /* Import the right star particle definition */
 #include "./stars/Default/star_part.h"

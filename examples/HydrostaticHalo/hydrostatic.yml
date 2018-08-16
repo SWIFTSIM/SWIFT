@@ -1,7 +1,7 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e39    # 10^6 solar masses
-  UnitLength_in_cgs:   3.0856776e21  # Kiloparsecs
+  UnitLength_in_cgs:   3.08567758e21 # Kiloparsecs
   UnitVelocity_in_cgs: 1e5           # Kilometres per second
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin

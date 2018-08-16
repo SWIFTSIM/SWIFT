@@ -17,13 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_MINIMAL_MULTI_MAT_HYDRO_PART_H
-#define SWIFT_MINIMAL_MULTI_MAT_HYDRO_PART_H
+#ifndef SWIFT_PLANETARY_HYDRO_PART_H
+#define SWIFT_PLANETARY_HYDRO_PART_H
 
 /**
- * @file MinimalMultiMat/hydro_part.h
- * @brief MinimalMultiMat conservative implementation of SPH (Particle
- * definition)
+ * @file Planetary/hydro_part.h
+ * @brief Minimal conservative implementation of SPH (Particle definition)
  *
  * The thermal variable is the internal energy (u). Simple constant
  * viscosity term without switches is implemented. No thermal conduction
@@ -127,6 +126,14 @@ struct part {
       /*! Derivative of density with respect to h */
       float rho_dh;
 
+#ifdef PLANETARY_SPH_BALSARA
+      /*! Velocity divergence. */
+      float div_v;
+
+      /*! Velocity curl. */
+      float rot_v[3];
+#endif  // PLANETARY_SPH_BALSARA
+
     } density;
 
     /**
@@ -153,6 +160,11 @@ struct part {
       /*! Time derivative of smoothing length  */
       float h_dt;
 
+#ifdef PLANETARY_SPH_BALSARA
+      /*! Balsara switch */
+      float balsara;
+#endif  // PLANETARY_SPH_BALSARA
+
     } force;
   };
 
@@ -177,4 +189,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_MINIMAL_MULTI_MAT_HYDRO_PART_H */
+#endif /* SWIFT_PLANETARY_HYDRO_PART_H */

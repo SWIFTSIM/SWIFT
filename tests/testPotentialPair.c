@@ -82,8 +82,9 @@ double acceleration(double mass, double r, double H, double rlr) {
   if (u > 1.)
     acc = -mass / (r * r * r);
   else
-    acc = -mass * (21. * u * u * u * u * u - 90. * u * u * u * u +
-                   140. * u * u * u - 84. * u * u + 14.) /
+    acc = -mass *
+          (21. * u * u * u * u * u - 90. * u * u * u * u + 140. * u * u * u -
+           84. * u * u + 14.) /
           (H * H * H);
 
   return r * acc * (4. * x * S_prime(2 * x) - 2. * S(2. * x) + 2.);
@@ -94,11 +95,6 @@ int main(int argc, char *argv[]) {
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
-
-/* Choke on FPEs */
-#ifdef HAVE_FE_ENABLE_EXCEPT
-  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
-#endif
 
   /* Initialise a few things to get us going */
 
@@ -234,16 +230,18 @@ int main(int argc, char *argv[]) {
     const struct gpart *gp2 = &ci.gparts[0];
     const double epsilon = gravity_get_softening(gp, &props);
 
+#if defined(POTENTIAL_GRAVITY)
     double pot_true =
         potential(ci.gparts[0].mass, gp->x[0] - gp2->x[0], epsilon, rlr);
+    check_value(gp->potential, pot_true, "potential");
+#endif
+
     double acc_true =
         acceleration(ci.gparts[0].mass, gp->x[0] - gp2->x[0], epsilon, rlr);
+    check_value(gp->a_grav[0], acc_true, "acceleration");
 
     /* message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] - gp2->x[0],
      *         gp->a_grav[0], acc_true, gp->potential, pot_true); */
-
-    check_value(gp->potential, pot_true, "potential");
-    check_value(gp->a_grav[0], acc_true, "acceleration");
   }
 
   message("\n\t\t P-P interactions all good\n");
@@ -276,16 +274,18 @@ int main(int argc, char *argv[]) {
     const struct gravity_tensors *mpole = ci.multipole;
     const double epsilon = gravity_get_softening(gp, &props);
 
+#if defined(POTENTIAL_GRAVITY)
     double pot_true =
         potential(mpole->m_pole.M_000, gp->x[0] - mpole->CoM[0], epsilon, rlr);
+    check_value(gp->potential, pot_true, "potential");
+#endif
+
     double acc_true = acceleration(mpole->m_pole.M_000,
                                    gp->x[0] - mpole->CoM[0], epsilon, rlr);
+    check_value(gp->a_grav[0], acc_true, "acceleration");
 
     /* message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] -
      * mpole->CoM[0], gp->a_grav[0], acc_true, gp->potential, pot_true); */
-
-    check_value(gp->potential, pot_true, "potential");
-    check_value(gp->a_grav[0], acc_true, "acceleration");
   }
 
   message("\n\t\t basic P-M interactions all good\n");
@@ -314,16 +314,19 @@ int main(int argc, char *argv[]) {
     const struct gravity_tensors *mpole = ci.multipole;
     const double epsilon = gravity_get_softening(gp, &props);
 
+#if defined(POTENTIAL_GRAVITY)
     double pot_true =
         potential(mpole->m_pole.M_000, gp->x[0] - mpole->CoM[0], epsilon, rlr);
+    check_value(gp->potential, pot_true, "potential");
+#endif
+
     double acc_true = acceleration(mpole->m_pole.M_000,
                                    gp->x[0] - mpole->CoM[0], epsilon, rlr);
-
-    message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] - mpole->CoM[0],
-            gp->a_grav[0], acc_true, gp->potential, pot_true);
-
-    check_value(gp->potential, pot_true, "potential");
     check_value(gp->a_grav[0], acc_true, "acceleration");
+
+    /* message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] -
+     * mpole->CoM[0], */
+    /*         gp->a_grav[0], acc_true, gp->potential, pot_true); */
   }
 
   message("\n\t\t truncated P-M interactions all good\n");
@@ -387,7 +390,10 @@ int main(int argc, char *argv[]) {
   for (int n = 0; n < num_tests; ++n) {
     const struct gpart *gp = &cj.gparts[n];
 
-    double pot_true = 0, acc_true[3] = {0., 0., 0.};
+#if defined(POTENTIAL_GRAVITY)
+    double pot_true = 0;
+#endif
+    double acc_true[3] = {0., 0., 0.};
 
     for (int i = 0; i < 8; ++i) {
       const struct gpart *gp2 = &ci.gparts[i];
@@ -397,20 +403,25 @@ int main(int argc, char *argv[]) {
                             gp2->x[2] - gp->x[2]};
       const double d = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
 
+#if defined(POTENTIAL_GRAVITY)
       pot_true += potential(gp2->mass, d, epsilon, rlr);
+#endif
+
       acc_true[0] -= acceleration(gp2->mass, d, epsilon, rlr) * dx[0] / d;
       acc_true[1] -= acceleration(gp2->mass, d, epsilon, rlr) * dx[1] / d;
       acc_true[2] -= acceleration(gp2->mass, d, epsilon, rlr) * dx[2] / d;
     }
+
+#if defined(POTENTIAL_GRAVITY)
+    check_value_backend(gp->potential, pot_true, "potential", 1e-2, 1e-6);
+#endif
+    check_value_backend(gp->a_grav[0], acc_true[0], "acceleration", 1e-2, 1e-6);
 
     /* const struct gravity_tensors *mpole = ci.multipole; */
     /* message("x=%e f=%e f_true=%e pot=%e pot_true=%e %e %e", */
     /*         gp->x[0] - mpole->CoM[0], gp->a_grav[0], acc_true[0],
      * gp->potential, */
     /*         pot_true, acc_true[1], acc_true[2]); */
-
-    check_value_backend(gp->potential, pot_true, "potential", 1e-2, 1e-6);
-    check_value_backend(gp->a_grav[0], acc_true[0], "acceleration", 1e-2, 1e-6);
   }
 
   message("\n\t\t high-order P-M interactions all good\n");

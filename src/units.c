@@ -51,6 +51,20 @@ void units_init_cgs(struct unit_system* us) {
 }
 
 /**
+ * @brief Initialises the unit_system structure with SI system
+ *
+ * @param us The unit_system to initialize
+ */
+void units_init_si(struct unit_system* us) {
+
+  us->UnitMass_in_cgs = 1000.;
+  us->UnitLength_in_cgs = 100.;
+  us->UnitTime_in_cgs = 1.;
+  us->UnitCurrent_in_cgs = 1.;
+  us->UnitTemperature_in_cgs = 1.;
+}
+
+/**
  * @brief Initialise the unit_system with values for the base units.
  *
  * @param us The #unit_system to initialise.

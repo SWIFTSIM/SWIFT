@@ -152,6 +152,7 @@ void gravity_exact_force_ewald_init(double boxSize) {
     bzero(fewald_z, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
     bzero(potewald, (Newald + 1) * (Newald + 1) * (Newald + 1) * sizeof(float));
 
+    /* Hernquist, Bouchet & Suto, 1991, Eq. 2.10 and just below Eq. 2.15 */
     potewald[0][0][0] = 2.8372975f;
 
     /* Compute the values in one of the octants */
@@ -689,7 +690,8 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
               "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
               "%16.8e %16.8e %16.8e\n",
               id, gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav[0],
-              gpi->a_grav[1], gpi->a_grav[2], gpi->potential, gpi->a_grav_PM[0],
+              gpi->a_grav[1], gpi->a_grav[2],
+              gravity_get_comoving_potential(gpi), gpi->a_grav_PM[0],
               gpi->a_grav_PM[1], gpi->a_grav_PM[2], gpi->potential_PM);
     }
   }

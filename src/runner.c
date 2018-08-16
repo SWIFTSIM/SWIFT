@@ -766,6 +766,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Double h and try again */
           h_new = 2.f * h_old;
+
         } else {
 
           /* Finish the density calculation */
@@ -779,6 +780,46 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           const float f_prime =
               p->density.wcount_dh * h_old_dim +
               hydro_dimension * p->density.wcount * h_old_dim_minus_one;
+
+          /* Skip if h is already h_max and we don't have enough neighbours */
+          if ((p->h >= hydro_h_max) && (f < 0.f)) {
+
+          /* We have a particle whose smoothing length is already set (wants to
+           * be larger but has already hit the maximum). So, just tidy up as if
+           * the smoothing length had converged correctly  */
+
+#ifdef EXTRA_HYDRO_LOOP
+
+            /* As of here, particle gradient variables will be set. */
+            /* The force variables are set in the extra ghost. */
+
+            /* Compute variables required for the gradient loop */
+            hydro_prepare_gradient(p, xp, cosmo);
+
+            /* The particle gradient values are now set.  Do _NOT_
+               try to read any particle density variables! */
+
+            /* Prepare the particle for the gradient loop over neighbours */
+            hydro_reset_gradient(p);
+
+#else
+            /* As of here, particle force variables will be set. */
+
+            /* Compute variables required for the force loop */
+            hydro_prepare_force(p, xp, cosmo);
+
+            /* The particle force values are now set.  Do _NOT_
+               try to read any particle density variables! */
+
+            /* Prepare the particle for the force loop over neighbours */
+            hydro_reset_acceleration(p);
+
+#endif /* EXTRA_HYDRO_LOOP */
+
+            continue;
+          }
+
+          /* Normal case: Use Newton-Raphson to get a better value of h */
 
           /* Avoid floating point exception from f_prime = 0 */
           h_new = h_old - f / (f_prime + FLT_MIN);
@@ -827,7 +868,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           }
         }
 
-/* We now have a particle whose smoothing length has converged */
+          /* We now have a particle whose smoothing length has converged */
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -968,7 +1009,7 @@ static void runner_do_unskip_gravity(struct cell *c, struct engine *e) {
   if (!cell_is_active_gravity(c, e)) return;
 
   /* Recurse */
-  if (c->split) {
+  if (c->split && c->depth < space_subdepth_grav) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
@@ -998,9 +1039,13 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
     if (c != NULL) {
+
+      /* Hydro tasks */
       if (e->policy & engine_policy_hydro) runner_do_unskip_hydro(c, e);
-      if (e->policy &
-          (engine_policy_self_gravity | engine_policy_external_gravity))
+
+      /* All gravity tasks */
+      if ((e->policy & engine_policy_self_gravity) ||
+          (e->policy & engine_policy_external_gravity))
         runner_do_unskip_gravity(c, e);
     }
   }
@@ -1659,13 +1704,17 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict gparts = c->gparts;
   struct spart *restrict sparts = c->sparts;
   const int periodic = s->periodic;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
-  const float Omega_m = e->cosmology->Omega_m;
-  const float H0 = e->cosmology->H0;
   const float G_newton = e->physical_constants->const_newton_G;
-  const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
 
   TIMER_TIC;
+
+  /* Potential normalisation in the case of periodic gravity */
+  float potential_normalisation = 0.;
+  if (periodic && (e->policy & engine_policy_self_gravity)) {
+    const double volume = s->dim[0] * s->dim[1] * s->dim[2];
+    const double r_s = e->mesh->r_s;
+    potential_normalisation = 4. * M_PI * e->total_mass * r_s * r_s / volume;
+  }
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) return;
@@ -1698,18 +1747,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (gpart_is_active(gp, e)) {
 
         /* Finish the force calculation */
-        gravity_end_force(gp, G_newton);
-
-        /* Apply periodic BC contribution to the potential */
-        if (with_cosmology && periodic) {
-          const float mass = gravity_get_mass(gp);
-          const float mass2 = mass * mass;
-
-          /* This correction term matches the one used in Gadget-2 */
-          /* The numerical constant is taken from Hernquist, Bouchet & Suto 1991
-           */
-          gp->potential -= 2.8372975f * cbrtf(mass2 * Omega_m * rho_crit0);
-        }
+        gravity_end_force(gp, G_newton, potential_normalisation, periodic);
 
 #ifdef SWIFT_NO_GRAVITY_BELOW_ID
 
@@ -2218,6 +2256,9 @@ void *runner_main(void *data) {
           break;
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);
+          break;
+        case task_type_grav_mm:
+          runner_dopair_grav_mm_symmetric(r, t->ci, t->cj);
           break;
         case task_type_cooling:
           runner_do_cooling(r, t->ci, 1);
