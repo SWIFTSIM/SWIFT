@@ -1229,6 +1229,10 @@ void fof_search_tree(struct space *s) {
   if (posix_memalign((void **)&s->fof_data.group_index, 32, nr_gparts * sizeof(int)) != 0)
     error("Failed to allocate list of particle group indices for FOF search.");
   
+  /* Allocate and initialise a group size array. */
+  if (posix_memalign((void **)&s->fof_data.group_size, 32, nr_gparts * sizeof(int)) != 0)
+    error("Failed to allocate list of group size for FOF search.");
+ 
   /* Allocate and initialise a group ID array. */
   if (posix_memalign((void **)&s->fof_data.group_id, 32, nr_gparts * sizeof(long long)) != 0)
     error("Failed to allocate list of particle group IDs for FOF search.");
@@ -1238,13 +1242,10 @@ void fof_search_tree(struct space *s) {
   for (size_t i = 0; i < nr_gparts; i++) s->fof_data.group_id[i] = gparts[i].id_or_neg_offset;
 
   group_index = s->fof_data.group_index;
+  group_size = s->fof_data.group_size;
   group_id = s->fof_data.group_id;
   
   message("Rank: %d, Allocated group_index array of size %zu", engine_rank, s->nr_gparts);
-
-  /* Allocate and initialise a group size array. */
-  if (posix_memalign((void **)&group_size, 32, nr_gparts * sizeof(int)) != 0)
-    error("Failed to allocate list of group size for FOF search.");
 
   /* Allocate and initialise a group mass array. */
   if (posix_memalign((void **)&group_mass, 32, nr_gparts * sizeof(float)) != 0)
@@ -1258,6 +1259,13 @@ void fof_search_tree(struct space *s) {
                  nr_cells, sizeof(struct cell), 1, s);
 
 #ifdef WITH_MPI
+
+  /* Calculate the total number of particles in each group, group mass and the total number of groups. */
+  //for (size_t i = 0; i < nr_gparts; i++) {
+  //  int root = fof_find(i - node_offset, group_index);
+  //  group_size[root - node_offset]++;
+  //}
+
   if (s->e->nr_nodes > 1) {
     /* Find any particle links with other nodes. */
     fof_search_foreign_cells(s);
@@ -1305,7 +1313,6 @@ void fof_search_tree(struct space *s) {
     bzero(global_group_index, s->e->total_nr_gparts * sizeof(int));
     bzero(global_group_size, s->e->total_nr_gparts * sizeof(int));
     bzero(global_group_id, s->e->total_nr_gparts * sizeof(long long));
-
 
     if (posix_memalign((void**)&displ, SWIFT_STRUCT_ALIGNMENT,
           s->e->nr_nodes * sizeof(int)) != 0)
@@ -1398,7 +1405,6 @@ void fof_search_tree(struct space *s) {
   message("Biggest group by mass: %f with ID: %d", max_group_mass, max_group_mass_id);
 
   /* Clean up memory. */
-  free(group_size);
   free(group_mass);
 
 #ifdef WITH_MPI
