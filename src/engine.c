@@ -3116,6 +3116,9 @@ void engine_maketasks(struct engine *e) {
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
 
+    // Re-set the tag counter.
+    cell_next_tag = 0;
+
     /* Loop over the proxies and add the send tasks, which also generates the
      * cell tags. */
     for (int pid = 0; pid < e->nr_proxies; pid++) {

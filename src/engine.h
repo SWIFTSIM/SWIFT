@@ -104,7 +104,7 @@ enum engine_task_tags {
   engine_task_tag_ti,
   engine_task_tag_grad,
   engine_task_tag_grav,
-  engine_tasks_per_tag
+  engine_tasks_per_tag = 6
 };
 
 /**
