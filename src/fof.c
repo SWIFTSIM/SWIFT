@@ -810,6 +810,8 @@ void fof_search_foreign_cells(struct space *s) {
   struct engine *e = s->e;
   struct cell *cells = s->cells_top;
   int *group_index = s->fof_data.group_index;
+  int *group_size = s->fof_data.group_size;
+  const int nr_gparts = s->nr_gparts;
   const size_t nr_cells = s->nr_cells;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->l_x2;
@@ -820,7 +822,7 @@ void fof_search_foreign_cells(struct space *s) {
   int count = 0;
 
   /* Make group IDs globally unique. */  
-  for (size_t i = 0; i < s->nr_gparts; i++) group_index[i] += node_offset;
+  for (size_t i = 0; i < nr_gparts; i++) group_index[i] += node_offset;
 
   /* Loop over top-level cells and find local cells that touch foreign cells. Calculate the total number of possible links between these cells. */
   for (size_t cid = 0; cid < nr_cells; cid++) {
@@ -952,12 +954,12 @@ void fof_search_foreign_cells(struct space *s) {
      
       if(foreign_cell->nodeID == engine_rank) error("Rank %d. Foreign cell is actually local.", engine_rank); 
 
-      if(gparts[0].root >= node_offset && gparts[0].root < node_offset + s->nr_gparts) {
+      if(gparts[0].root >= node_offset && gparts[0].root < node_offset + nr_gparts) {
           //error("Rank %d received foreign particle with local root: %d", engine_rank, gparts[k].root);
           //message("Rank %d received foreign particle %lld from rank %d with a local root: %d. i=%d,j=%d.", engine_rank, gparts[0].id_or_neg_offset, foreign_cell->nodeID, gparts[0].root, i, j);
       }
       for(int k=0; k<foreign_cell->gcount; k++) {
-        if(gparts[k].root >= node_offset && gparts[k].root < node_offset + s->nr_gparts) {
+        if(gparts[k].root >= node_offset && gparts[k].root < node_offset + nr_gparts) {
           //error("Rank %d received foreign particle with local root: %d", engine_rank, gparts[k].root);
           //message("Rank %d received foreign particle %lld from rank %d with a local root: %d. i=%d,j=%d,k=%d.", engine_rank, gparts[k].id_or_neg_offset, foreign_cell->nodeID, gparts[k].root, i, j, k);
         }
@@ -1019,6 +1021,7 @@ void fof_search_foreign_cells(struct space *s) {
     /* If it doesn't already exist in the list add it. */
     if(!found) {
       group_links[group_link_count].group_i = local_root;
+      group_links[group_link_count].group_i_size = group_size[local_root - node_offset];
       group_links[group_link_count++].group_j = foreign_root;
     }
 
@@ -1026,21 +1029,27 @@ void fof_search_foreign_cells(struct space *s) {
 
   message("Rank %d found %d unique group links.", engine_rank, group_link_count);
  
-  struct fof_mpi *global_group_links = NULL, *global_group_roots = NULL;
+  struct fof_mpi *global_all_group_links = NULL, *global_group_links = NULL, *global_group_roots = NULL;
   int *displ = NULL, *group_link_counts = NULL;
+  int global_all_group_link_count = 0;
   int global_group_link_count = 0;
 
   /* Sum the total number of links across MPI domains over each MPI rank. */
-  MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    
-  message("Global list count: %d", global_group_link_count);
+  MPI_Allreduce(&group_link_count, &global_all_group_link_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
+  message("Global list count: %d", global_all_group_link_count);
+
+  if (posix_memalign((void**)&global_all_group_links, SWIFT_STRUCT_ALIGNMENT,
+                       global_all_group_link_count * sizeof(struct fof_mpi)) != 0)
+    error("Error while allocating memory for the global list of group links");
+
+  /* Unique set of links is half of all group links as each link is found twice by opposing MPI ranks. */
   if (posix_memalign((void**)&global_group_links, SWIFT_STRUCT_ALIGNMENT,
-                       global_group_link_count * sizeof(struct fof_mpi)) != 0)
+                       global_all_group_link_count / 2 * sizeof(struct fof_mpi)) != 0)
     error("Error while allocating memory for the global list of group links");
   
   if (posix_memalign((void**)&global_group_roots, SWIFT_STRUCT_ALIGNMENT,
-                       global_group_link_count * sizeof(struct fof_mpi)) != 0)
+                       global_all_group_link_count * sizeof(struct fof_mpi)) != 0)
     error("Error while allocating memory for the global list of group links");
  
   if (posix_memalign((void**)&group_link_counts, SWIFT_STRUCT_ALIGNMENT,
@@ -1059,7 +1068,7 @@ void fof_search_foreign_cells(struct space *s) {
   for(int i=1; i<e->nr_nodes; i++) displ[i] = displ[i-1] + group_link_counts[i-1];
 
   /* Gather the global link list on all ranks. */
-  MPI_Allgatherv(group_links, group_link_count, fof_mpi_type, global_group_links, group_link_counts, displ, fof_mpi_type, MPI_COMM_WORLD);
+  MPI_Allgatherv(group_links, group_link_count, fof_mpi_type, global_all_group_links, group_link_counts, displ, fof_mpi_type, MPI_COMM_WORLD);
 
   /* Save particle links for each rank to a file. */
   char fof_filename[200] = "part_links";
@@ -1070,15 +1079,45 @@ void fof_search_foreign_cells(struct space *s) {
   fprintf(fof_file, "# %7s %7s %7s\n", "Local PID", "Foreign PID", "Root ID");
   fprintf(fof_file, "#-------------------------------\n");
 
-  for(int i=0; i<global_group_link_count; i++) {
-    fprintf(fof_file, "  %7d <-> %7d\n", global_group_links[i].group_i, global_group_links[i].group_j);
+  for(int i=0; i<global_all_group_link_count; i++) {
+    fprintf(fof_file, "  %7d (%7d) <-> %7d\n", global_all_group_links[i].group_i, global_all_group_links[i].group_i_size,  global_all_group_links[i].group_j);
   }
   
   fclose(fof_file);
  
+  /* Compress the list of group links across an MPI domain by removing the symmetric cases. */
+  for(int i=0; i<global_all_group_link_count; i++) {
+    
+    int found = 0;
+    int local_root = global_all_group_links[i].group_i;
+    int foreign_root = global_all_group_links[i].group_j;
+
+    if(local_root == foreign_root) error("Particles have same root. local_root: %d, foreign_root: %d", local_root, foreign_root);
+
+    /* Loop over list and check that the link doesn't already exist. */
+    for(int j=0; j<global_all_group_link_count; j++) {
+      if((global_group_links[j].group_i == local_root && global_group_links[j].group_j == foreign_root) ||
+         (global_group_links[j].group_j == local_root && global_group_links[j].group_i == foreign_root)) {
+        found = 1;
+        break;
+      }
+    }
+
+    /* If it doesn't already exist in the list add it. */
+    if(!found) {
+      global_group_links[global_group_link_count].group_i = local_root;
+      global_group_links[global_group_link_count].group_i_size = group_size[local_root - node_offset];
+      global_group_links[global_group_link_count++].group_j = foreign_root;
+    }
+
+  }
+
+  message("Reduced global list count: %d", global_group_link_count);
+
   /* Copy the initial roots from the group list. */
   for(int i=0; i<global_group_link_count; i++) {
     global_group_roots[i].group_i = global_group_links[i].group_i;
+    global_group_roots[i].group_i_size = global_group_links[i].group_i_size;
     global_group_roots[i].group_j = global_group_links[i].group_j;
   }
 
@@ -1086,6 +1125,8 @@ void fof_search_foreign_cells(struct space *s) {
   for(int i=0; i<global_group_link_count; i++) {
     int group_i = global_group_links[i].group_i;
     int group_j = global_group_links[i].group_j;
+    int group_i_count = global_group_links[i].group_i_size;
+    //int group_j_count = 0;
 
     if(group_i == group_j) error("Particles have same root. local_root: %d, foreign_root: %d", group_i, group_j);
 
@@ -1111,7 +1152,7 @@ void fof_search_foreign_cells(struct space *s) {
     message("Rank %d. Link %d <-> %d has common lowest root: %d", engine_rank, group_i, group_j, min_root);
 
     /* If group_i is local to the node, update its root. */
-    if((group_i >= node_offset && group_i < node_offset + s->nr_gparts) &&
+    if((group_i >= node_offset && group_i < node_offset + nr_gparts) &&
        (group_i != min_root)) {
       
       int root = group_index[group_i - node_offset];
@@ -1120,9 +1161,13 @@ void fof_search_foreign_cells(struct space *s) {
       else error("Rank %d. Group_i: %d Trying to set a root: %d to a larger value: %d", engine_rank, group_i, root, min_root);
 
     }
+    
+    if(min_root >= node_offset && min_root < node_offset + nr_gparts) {
+      group_size[min_root - node_offset] += group_i_count;
+    }
 
     /* If group_j is local to the node, update its root. */
-    if((group_j >= node_offset && group_j < node_offset + s->nr_gparts) &&
+    if((group_j >= node_offset && group_j < node_offset + nr_gparts) &&
        (group_j != min_root)) {
        
       int root = group_index[group_j - node_offset];
@@ -1136,12 +1181,12 @@ void fof_search_foreign_cells(struct space *s) {
     int old_group_j = global_group_roots[i].group_j;
 
     /* If the group had an old root that was local, make sure it is also updated. */
-    if(old_group_i >= node_offset && old_group_i < node_offset + s->nr_gparts) {
+    if(old_group_i >= node_offset && old_group_i < node_offset + nr_gparts) {
       
       if(min_root < old_group_i) group_index[old_group_i - node_offset] = min_root;
     }
     
-    if(old_group_j >= node_offset && old_group_j < node_offset + s->nr_gparts) {
+    if(old_group_j >= node_offset && old_group_j < node_offset + nr_gparts) {
       
       if(min_root < old_group_j) group_index[old_group_j - node_offset] = min_root;
     }
@@ -1158,6 +1203,21 @@ void fof_search_foreign_cells(struct space *s) {
       
     }
   }
+
+  /* Save particle links for each rank to a file. */
+  char fof_size_filename[200] = "group_sizes";
+  sprintf(fof_size_filename + strlen(fof_size_filename), "_%d.dat",
+      engine_rank);
+  
+  fof_file = fopen(fof_size_filename, "w");
+  fprintf(fof_file, "# %7s %7s\n", "Root ID", "Group Size");
+  fprintf(fof_file, "#-------------------------------\n");
+
+  for(int i=0; i<nr_gparts; i++) {
+    fprintf(fof_file, "  %7d %7d\n", i + node_offset, group_size[i]);
+  }
+  
+  fclose(fof_file);
 
   /* Clean up memory. */
   free(part_links);
@@ -1181,8 +1241,7 @@ void fof_search_tree(struct space *s) {
   const size_t nr_cells = s->nr_cells;
   struct gpart *gparts = s->gparts;
   long long *group_id;
-  int *group_index;
-  int *group_size;
+  int *group_index, *group_size;
   float *group_mass;
   int num_groups = 0;
   ticks tic = getticks();
@@ -1262,10 +1321,10 @@ void fof_search_tree(struct space *s) {
 #ifdef WITH_MPI
 
   /* Calculate the total number of particles in each group, group mass and the total number of groups. */
-  //for (size_t i = 0; i < nr_gparts; i++) {
-  //  int root = fof_find_global(i - node_offset, group_index);
-  //  group_size[root - node_offset]++;
-  //}
+  for (size_t i = 0; i < nr_gparts; i++) {
+    int root = fof_find(i, group_index);
+    group_size[root]++;
+  }
 
   if (s->e->nr_nodes > 1) {
     /* Find any particle links with other nodes. */
@@ -1282,11 +1341,10 @@ void fof_search_tree(struct space *s) {
   /* Calculate the total number of particles in each group, group mass and the total number of groups. */
   for (size_t i = 0; i < nr_gparts; i++) {
     int root = fof_find(i, group_index);
-    if(root >= node_offset) root -= node_offset;
     group_size[root]++;
     group_mass[root] += gparts[i].mass;
-    if(group_index[i] == (int)(i + node_offset)) num_groups++;
-    //group_id[i] = group_id[root - node_offset];
+    if(group_index[i] == i) num_groups++;
+    //group_id[i] = group_id[root];
     group_id[i] = gparts[i].id_or_neg_offset;
   }
 #endif
@@ -1333,8 +1391,13 @@ void fof_search_tree(struct space *s) {
       global_group_size[root]++;
       if(global_group_index[i] == i) total_num_groups++;
     }
-
+    
     if(engine_rank == 0) {
+    
+      int num_parts = 0;
+    
+      for (size_t i = 0; i < s->e->total_nr_gparts; i++) num_parts += global_group_size[i]; 
+
       fof_file = fopen("global_group_index.dat", "w");
       fprintf(fof_file, "# %7s %7s\n", "Index", "Group ID");
       fprintf(fof_file, "#-------------------------------\n");
@@ -1346,6 +1409,8 @@ void fof_search_tree(struct space *s) {
   
       fof_dump_group_data(output_file_name, s->e->total_nr_gparts, global_group_index,
           global_group_size, global_group_id);
+    
+      message("Total no. of particles in groups: %d.", num_parts);
     
     }
 
