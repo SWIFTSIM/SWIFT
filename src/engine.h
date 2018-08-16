@@ -98,12 +98,14 @@ enum engine_step_properties {
 #define engine_max_parts_per_ghost 1000
 
 /* MPI task tags. */
-#define engine_tasks_per_tag 6
-#define engine_task_tag_xv 0
-#define engine_task_tag_rho 1
-#define engine_task_tag_ti 2
-#define engine_task_tag_grad 3
-#define engine_task_tag_grav 4
+enum engine_task_tags {
+  engine_task_tag_xv = 0,
+  engine_task_tag_rho,
+  engine_task_tag_ti,
+  engine_task_tag_grad,
+  engine_task_tag_grav,
+  engine_tasks_per_tag
+};
 
 /**
  * @brief The rank of the engine as a global variable (for messages).
