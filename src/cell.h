@@ -606,4 +606,16 @@ __attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
           cj->dmin);
 }
 
+/**
+ * @brief Add a unique tag to a cell.
+ */
+__attribute((always_inline)) INLINE static void cell_tag(struct cell *c) {
+#ifdef WITH_MPI
+  if (c->tag < 0 && (c->tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
+    error("Ran out of cell tags.");
+#else
+  error("SWIFT was not compiled with MPI enabled.");
+#endif  // WITH_MPI
+}
+
 #endif /* SWIFT_CELL_H */
