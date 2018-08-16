@@ -31,9 +31,6 @@
 
 #define MPI_RANK_0_SEND_TAG 666
 #define MPI_RANK_1_SEND_TAG 999
-#define MPI_GROUP_SIZE 16153
-#define SERIAL_GROUP_SIZE 16157
-#define PART_ID 2717474954926
 
 MPI_Datatype fof_mpi_type;
 FILE *fof_file;
@@ -1208,9 +1205,11 @@ void fof_search_tree(struct space *s) {
 
     MPI_Allgather(&s->nr_gparts, 1, MPI_INT, global_nr_gparts, 1, MPI_INT, MPI_COMM_WORLD);
 
-    printf("No. of particles: [%d", global_nr_gparts[0]);
-    for(int i = 1; i<s->e->nr_nodes; i++) printf(", %d", global_nr_gparts[i]);
-    printf("]\n");
+    if(engine_rank == 0) {
+      printf("No. of particles: [%d", global_nr_gparts[0]);
+      for(int i = 1; i<s->e->nr_nodes; i++) printf(", %d", global_nr_gparts[i]);
+      printf("]\n");
+    }
 
     for(int i = 0; i<engine_rank; i++) node_offset += global_nr_gparts[i];
   }
@@ -1226,9 +1225,11 @@ void fof_search_tree(struct space *s) {
   if(s->fof_data.group_index != NULL) free(s->fof_data.group_index);
   if(s->fof_data.group_id != NULL) free(s->fof_data.group_id);
 
+  /* Allocate and initialise a group index array. */
   if (posix_memalign((void **)&s->fof_data.group_index, 32, nr_gparts * sizeof(int)) != 0)
     error("Failed to allocate list of particle group indices for FOF search.");
   
+  /* Allocate and initialise a group ID array. */
   if (posix_memalign((void **)&s->fof_data.group_id, 32, nr_gparts * sizeof(long long)) != 0)
     error("Failed to allocate list of particle group IDs for FOF search.");
 
@@ -1338,48 +1339,22 @@ void fof_search_tree(struct space *s) {
       fof_dump_group_data(output_file_name, s->e->total_nr_gparts, global_group_index,
           global_group_size, global_group_id);
     
-      fof_print_group_list(s, s->e->total_nr_gparts, global_group_size, global_group_index, global_group_id, MPI_GROUP_SIZE, "2_mpi_rank_group_ids.dat", &fof_find_global);
-
-      //for (size_t i = 0; i < s->e->total_nr_gparts; i++) {
-      // 
-      //  if(i >= nr_gparts) {
-      //    message("Particle %lld not on rank %d", PART_ID, engine_rank);
-      //    break;
-      //  } 
-      //  if(gparts[i].id_or_neg_offset == PART_ID) {
-      //    const int root_i = fof_find(i, global_group_index);
-      //    message("Particle %lld is on rank %d, group size: %d, root: %zu, loc: [%lf,%lf,%lf]", PART_ID, engine_rank, group_size[root_i], i, gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]);
-      //    break;
-      //  }
-      //  
-      //}
-      
     }
 
-    //int find_root = 0;
-    //for (size_t i = 0; i < nr_gparts; i++) {
+    int num_groups_mpi = 0;
 
-    //  if(gparts[i].id_or_neg_offset == PART_ID) {
-    //    const int root_i = fof_find(i, group_index);
-    //    find_root = root_i;
-    //    message("Particle %lld is on rank %d, group size: %d, root: %d, loc: [%lf,%lf,%lf]", PART_ID, engine_rank, group_size[root_i - node_offset], root_i, gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]);
-    //    break;
-    //  }
-    //}
-    //
-    //for (size_t i = 0; i < nr_gparts; i++) {
+    /* Calculate the total number of particles in each group, group mass and the total number of groups. */
+    for (size_t i = 0; i < nr_gparts; i++) {
+      if(group_index[i] == (int)(i + node_offset)) num_groups_mpi++;
+    }
 
-    //  if(find_root == fof_find(i, group_index)) {
-    //    message("Particle %lld is on rank %d, group size: %d, loc: [%lf,%lf,%lf]", gparts[i].id_or_neg_offset, engine_rank, group_size[find_root - node_offset], gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]);
-    //    //break;
-    //  }
-    //}
+    message("Rank %d has %d groups.", engine_rank, num_groups_mpi);
 
-  }
-  else {
-    
-    fof_print_group_list(s, nr_gparts, group_size, group_index, group_id, SERIAL_GROUP_SIZE, "1_mpi_rank_group_ids.dat", &fof_find);
-    
+    int total_num_groups_mpi = 0;
+    MPI_Reduce(&num_groups_mpi, &total_num_groups_mpi, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if(engine_rank == 0) message("Reduction on no. of groups: %d", total_num_groups_mpi);
+
   }
 #else
   fof_file = fopen("serial_group_index.dat", "w");
@@ -1390,43 +1365,6 @@ void fof_search_tree(struct space *s) {
 
     fprintf(fof_file, "  %7zu %7d \n", i, group_index[i]);
   }
-
-  //FILE *file_pid;
-
-  //file_pid = fopen("group_ids.dat", "w");
-
-  //int this_root = 0;
-  //for (size_t i = 0; i < nr_gparts; i++) {
-  //  if(group_size[i] == SERIAL_GROUP_SIZE) {
-  //    this_root = i;
-  //    break;
-  //  }
-  //}
-
-
-  //int find_root = 0;
-  //for (size_t i = 0; i < nr_gparts; i++) {
-
-  //  if(gparts[i].id_or_neg_offset == PART_ID) {
-  //    const int root_i = fof_find(i, group_index);
-  //    find_root = root_i;
-  //    message("Particle %lld, group size: %d, root: %zu, loc: [%lf,%lf,%lf]", PART_ID, group_size[root_i - node_offset], i, gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]);
-
-  //  }
-
-  //  const int root = fof_find(i, group_index);
-  //  if(root == this_root) {
-  //      fprintf(file_pid, "%7lld\n", gparts[i].id_or_neg_offset);
-  //  }
-  //}
-
-  //for (size_t i = 0; i < nr_gparts; i++) {
-
-  //  if(find_root == fof_find(i, group_index)) {
-  //    message("Particle %lld is on rank %d, group size: %d, loc: [%lf,%lf,%lf]", gparts[i].id_or_neg_offset, engine_rank, group_size[find_root - node_offset], gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]);
-  //    //break;
-  //  }
-  //}
 
 #endif /* WITH_MPI */
 
