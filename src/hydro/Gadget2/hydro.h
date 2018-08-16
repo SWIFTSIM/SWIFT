@@ -231,6 +231,34 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
 }
 
 /**
+ * @brief Returns the time derivative of internal energy of a particle
+ *
+ * We assume a constant density.
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_physical_internal_energy_dt(
+    const struct part *restrict p, const struct cosmology *restrict cosmo) {
+
+  return gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv, p->entropy_dt);
+}
+
+/**
+ * @brief Sets the time derivative of entropy of a particle
+ *
+ * We assume a constant density.
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param du_dt The time derivative of the internal energy.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_physical_internal_energy_dt(
+    struct part *restrict p, const struct cosmology *restrict cosmo, float du_dt) {
+
+  p->entropy_dt = gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, du_dt);
+}
+
+/**
  * @brief Computes the hydro time-step of a given particle
  *
  * @param p Pointer to the particle data

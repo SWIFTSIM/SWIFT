@@ -38,6 +38,7 @@
 #include "./cooling/grackle/cooling.h"
 #elif defined(COOLING_EAGLE)
 #include "./cooling/EAGLE/cooling.h"
+#include "./cooling/EAGLE/interpolate.h"
 #else
 #error "Invalid choice of cooling function."
 #endif

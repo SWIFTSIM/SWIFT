@@ -128,24 +128,18 @@ eagle_convert_u_to_temp(
     double, float *,
     int, int, int, 
     float, float, float,
-    const struct part *restrict,
     const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *);
+    const struct cosmology *restrict);
 
 double
 eagle_convert_u_to_temp_1d_table(
     double, float *, double *,
-    const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *);
+    const struct cooling_function_data *restrict);
 
 void construct_1d_tables(
 		int, float, int, float,
 		int, float,
                 const struct phys_const *restrict,
-                const struct unit_system *restrict,
                 const struct cosmology *restrict,
                 const struct cooling_function_data *restrict,
                 const struct part *restrict,
