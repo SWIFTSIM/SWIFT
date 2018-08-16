@@ -58,8 +58,8 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts) {
 
 }
 
-/* Finds the root ID of the group a particle exists in. */
-__attribute__((always_inline)) INLINE static int fof_find(const int i,
+/* Finds the global root ID of the group a particle exists in. */
+__attribute__((always_inline)) INLINE static int fof_find_global(const int i,
                                                           int *group_index) {
 
   int root = node_offset + i;
@@ -83,9 +83,8 @@ __attribute__((always_inline)) INLINE static int fof_find(const int i,
   return root;
 }
 
-#ifdef WITH_MPI
-/* Finds the root ID of the group a particle exists in. */
-__attribute__((always_inline)) INLINE static int fof_find_global(const int i,
+/* Finds the local root ID of the group a particle exists in. */
+__attribute__((always_inline)) INLINE static int fof_find(const int i,
                                                           int *group_index) {
 
   int root = i;
@@ -106,7 +105,6 @@ __attribute__((always_inline)) INLINE static int fof_find_global(const int i,
 
   return root;
 }
-#endif
 
 /* Updates the root and checks that its value has not been changed since being read. */
 __attribute__((always_inline)) INLINE static int update_root(
@@ -135,8 +133,8 @@ __attribute__((always_inline)) INLINE static void fof_union(int *root_i, const i
 
   /* Loop until the root can be set to a new value. */
   do {
-    int root_i_new = fof_find(*root_i - node_offset, group_index);
-    const int root_j_new = fof_find(root_j - node_offset, group_index);
+    int root_i_new = fof_find(*root_i, group_index);
+    const int root_j_new = fof_find(root_j, group_index);
 
     /* Skip particles in the same group. */
     if(root_i_new == root_j_new) return;
@@ -146,7 +144,7 @@ __attribute__((always_inline)) INLINE static void fof_union(int *root_i, const i
     if(root_j_new < root_i_new) {
       
       /* Updates the root and checks that its value has not been changed since being read. */
-      result = update_root(&group_index[root_i_new - node_offset], root_j_new);
+      result = update_root(&group_index[root_i_new], root_j_new);
       
       /* Update root_i on the fly. */
       *root_i = root_j_new;
@@ -154,7 +152,7 @@ __attribute__((always_inline)) INLINE static void fof_union(int *root_i, const i
     else {
       
       /* Updates the root and checks that its value has not been changed since being read. */
-      result = update_root(&group_index[root_j_new - node_offset], root_i_new);
+      result = update_root(&group_index[root_j_new], root_i_new);
       
       /* Update root_i on the fly. */
       *root_i = root_i_new;
@@ -372,12 +370,12 @@ void fof_search_cell(struct space *s, struct cell *c) {
     const double piz = pi->x[2];
 
     /* Find the root of pi. */
-    int root_i = fof_find(offset[i] - node_offset, group_index);
+    int root_i = fof_find(offset[i], group_index);
 
     for (size_t j = i + 1; j < count; j++) {
 
       /* Find the root of pj. */
-      const int root_j = fof_find(offset[j] - node_offset, group_index);
+      const int root_j = fof_find(offset[j], group_index);
       //long long group_j = group_id[root_j];
 
       /* Skip particles in the same group. */
@@ -446,12 +444,12 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
     const double piz = pi->x[2] - shift[2];
 
     /* Find the root of pi. */
-    int root_i = fof_find(offset_i[i] - node_offset, group_index);
+    int root_i = fof_find(offset_i[i], group_index);
     
     for (size_t j = 0; j < count_j; j++) {
 
       /* Find the root of pj. */
-      const int root_j = fof_find(offset_j[j] - node_offset, group_index);
+      const int root_j = fof_find(offset_j[j], group_index);
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
@@ -529,7 +527,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
       const double piz = pi->x[2] - shift[2];
 
       /* Find the root of pi. */
-      const int root_i = fof_find(offset_i[i] - node_offset, group_index);
+      const int root_i = fof_find_global(offset_i[i] - node_offset, group_index);
 
       for (size_t j = 0; j < count_j; j++) {
 
@@ -583,7 +581,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
       const double pjz = pj->x[2] - shift[2];
 
       /* Find the root of pj. */
-      int root_j = fof_find(offset_j[j] - node_offset, group_index);
+      int root_j = fof_find_global(offset_j[j] - node_offset, group_index);
 
       for (size_t i = 0; i < count_i; i++) {
 
@@ -821,6 +819,9 @@ void fof_search_foreign_cells(struct space *s) {
   size_t nr_links = 0;
   int count = 0;
 
+  /* Make group IDs globally unique. */  
+  for (size_t i = 0; i < s->nr_gparts; i++) group_index[i] += node_offset;
+
   /* Loop over top-level cells and find local cells that touch foreign cells. Calculate the total number of possible links between these cells. */
   for (size_t cid = 0; cid < nr_cells; cid++) {
 
@@ -911,7 +912,7 @@ void fof_search_foreign_cells(struct space *s) {
 
       /* Set each particle's root found in the local FOF.*/
       for(int k=0; k<local_cell->gcount; k++) {
-        const int root = fof_find(offset[k] - node_offset, group_index);  
+        const int root = fof_find_global(offset[k] - node_offset, group_index);  
         gparts[k].root = root;
       }
     }
@@ -1238,7 +1239,7 @@ void fof_search_tree(struct space *s) {
     error("Failed to allocate list of particle group IDs for FOF search.");
 
   /* Initial group ID is particle offset into array. */
-  for (size_t i = 0; i < nr_gparts; i++) s->fof_data.group_index[i] = node_offset + i;
+  for (size_t i = 0; i < nr_gparts; i++) s->fof_data.group_index[i] = i;
   for (size_t i = 0; i < nr_gparts; i++) s->fof_data.group_id[i] = gparts[i].id_or_neg_offset;
 
   group_index = s->fof_data.group_index;
@@ -1262,7 +1263,7 @@ void fof_search_tree(struct space *s) {
 
   /* Calculate the total number of particles in each group, group mass and the total number of groups. */
   //for (size_t i = 0; i < nr_gparts; i++) {
-  //  int root = fof_find(i - node_offset, group_index);
+  //  int root = fof_find_global(i - node_offset, group_index);
   //  group_size[root - node_offset]++;
   //}
 
@@ -1446,7 +1447,7 @@ void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_inde
   fprintf(file, "#---------------------------------------\n");
 
   for (size_t i = 0; i < nr_gparts; i++) {
-    const int root = fof_find(i, group_index);
+    const int root = fof_find_global(i - node_offset, group_index);
     fprintf(file, "  %7zu %7d %7d    %10lld\n", i, root, group_size[i], group_id[i]);
   }
 
