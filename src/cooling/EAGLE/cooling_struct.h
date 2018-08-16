@@ -29,6 +29,8 @@
 #define eagle_max_iterations 15
 #define eagle_proton_mass_cgs 1.6726e-24
 #define eagle_ev_to_erg 1.60217646e-12
+#define eagle_log_10 2.30258509299404
+#define eagle_log_10_e 0.43429448190325182765
 
 /*
  * @brief struct containing radiative and heating rates
