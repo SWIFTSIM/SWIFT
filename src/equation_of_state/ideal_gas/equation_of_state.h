@@ -164,7 +164,9 @@ gas_soundspeed_from_pressure(float density, float P) {
 
   const float density_inv = 1.f / density;
   if (hydro_gamma * P * density_inv < 0) {
-    printf("equation_of_state.h density_inv hydro_gamma P %.5e %.5e %.5e %.5e\n", density, density_inv, hydro_gamma, P);
+    printf(
+        "equation_of_state.h density_inv hydro_gamma P %.5e %.5e %.5e %.5e\n",
+        density, density_inv, hydro_gamma, P);
     fflush(stdout);
   }
   return sqrtf(hydro_gamma * P * density_inv);
