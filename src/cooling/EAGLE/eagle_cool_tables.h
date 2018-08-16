@@ -25,7 +25,6 @@ int row_major_index_2d(int, int, int, int);
 int row_major_index_3d(int, int, int, int, int, int);
 int row_major_index_4d(int, int, int, int, int, int, int, int);
 
-
 /*
  * @brief Reads in EAGLE table redshift values
  *
@@ -256,8 +255,8 @@ inline struct cooling_tables_redshift_invariant get_no_compt_table(
       for (k = 0; k < cooling->N_nH; k++) {
         table_index = row_major_index_2d(j, k, cooling->N_Temp, cooling->N_nH);
         cooling_index = row_major_index_4d(
-            0, k, j, specs, 1, cooling->N_nH,
-            cooling->N_Temp, cooling->N_Elements);  // Redshift invariant table!!!
+            0, k, j, specs, 1, cooling->N_nH, cooling->N_Temp,
+            cooling->N_Elements);  // Redshift invariant table!!!
         cooling_table.metal_heating[cooling_index] =
             -net_cooling_rate[table_index];
       }
@@ -524,8 +523,8 @@ inline struct cooling_tables_redshift_invariant get_photodis_table(
       for (k = 0; k < cooling->N_nH; k++) {
         table_index = row_major_index_2d(j, k, cooling->N_Temp, cooling->N_nH);
         cooling_index = row_major_index_3d(
-            k, j, specs, cooling->N_nH,
-            cooling->N_Temp, cooling->N_Elements);  // Redshift invariant table!!!
+            k, j, specs, cooling->N_nH, cooling->N_Temp,
+            cooling->N_Elements);  // Redshift invariant table!!!
         cooling_table.metal_heating[cooling_index] =
             -net_cooling_rate[table_index];
       }
@@ -599,8 +598,8 @@ inline struct cooling_tables_redshift_invariant get_photodis_table(
 
 inline struct cooling_tables get_two_cooling_tables(
     char *cooling_table_path,
-    const struct cooling_function_data *restrict cooling,
-    char *filename1, char *filename2) {
+    const struct cooling_function_data *restrict cooling, char *filename1,
+    char *filename2) {
 
   struct cooling_tables cooling_table;
   hid_t file_id, dataset;
@@ -668,8 +667,8 @@ inline struct cooling_tables get_two_cooling_tables(
           table_index =
               row_major_index_2d(j, i, cooling->N_Temp, cooling->N_nH);
           cooling_index = row_major_index_4d(
-              file, i, j, specs, cooling->N_Redshifts,
-              cooling->N_nH, cooling->N_Temp, cooling->N_Elements);
+              file, i, j, specs, cooling->N_Redshifts, cooling->N_nH,
+              cooling->N_Temp, cooling->N_Elements);
           cooling_table.metal_heating[cooling_index] =
               -net_cooling_rate[table_index];
         }
@@ -817,8 +816,8 @@ inline struct cooling_tables get_cooling_table(
           table_index =
               row_major_index_2d(j, i, cooling->N_Temp, cooling->N_nH);
           cooling_index = row_major_index_4d(
-              z_index, i, j, specs, cooling->N_Redshifts,
-              cooling->N_nH, cooling->N_Temp, cooling->N_Elements);
+              z_index, i, j, specs, cooling->N_Redshifts, cooling->N_nH,
+              cooling->N_Temp, cooling->N_Elements);
           cooling_table.metal_heating[cooling_index] =
               -net_cooling_rate[table_index];
         }
@@ -903,7 +902,8 @@ inline void eagle_read_two_tables(
 
   struct eagle_cooling_table table;
 
-  table.element_cooling = get_cooling_table(cooling->cooling_table_path, cooling);
+  table.element_cooling =
+      get_cooling_table(cooling->cooling_table_path, cooling);
   cooling->table = table;
 }
 
@@ -919,8 +919,7 @@ inline struct eagle_cooling_table eagle_readtable(
 
   struct eagle_cooling_table table;
 
-  table.no_compton_cooling =
-      get_no_compt_table(cooling_table_path, cooling);
+  table.no_compton_cooling = get_no_compt_table(cooling_table_path, cooling);
   table.photodissociation_cooling =
       get_photodis_table(cooling_table_path, cooling);
   table.collisional_cooling =
