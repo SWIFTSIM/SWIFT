@@ -41,125 +41,90 @@ enum hdf5_allowed_types {
   hdf5_char
 };
 
-double eagle_helium_reionization_extraheat(double, double, const struct cooling_function_data *restrict);
+double eagle_helium_reionization_extraheat(
+    double, double, const struct cooling_function_data *restrict);
 
-double eagle_metal_cooling_rate(
-    double, double *, int, float, int, float,
-    int, float, const struct part *restrict,
+double eagle_metal_cooling_rate(double, double *, int, float, int, float, int,
+                                float, const struct part *restrict,
+                                const struct cooling_function_data *restrict,
+                                const struct cosmology *restrict,
+                                const struct phys_const *, double *, float *);
+
+double eagle_metal_cooling_rate_1d_table(
+    double, double *, double *, double *, double *, double *, double *,
+    const struct part *restrict, const struct cooling_function_data *restrict,
+    const struct cosmology *restrict, const struct phys_const *, double *);
+
+double eagle_cooling_rate(double, double *, int, float, int, float, int, float,
+                          const struct part *restrict,
+                          const struct cooling_function_data *restrict,
+                          const struct cosmology *restrict,
+                          const struct phys_const *, float *);
+
+double eagle_cooling_rate_1d_table(double, double *, double *, double *,
+                                   double *, double *, double *, int, float,
+                                   int, float, int, float,
+                                   const struct part *restrict,
+                                   const struct cooling_function_data *restrict,
+                                   const struct cosmology *restrict,
+                                   const struct phys_const *, float *);
+
+double eagle_print_metal_cooling_rate(
+    int, float, int, float, int, float, const struct part *restrict,
     const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *,
-    double *,
-    float *);
+    const struct cosmology *restrict, const struct phys_const *, float *);
 
-double
-eagle_metal_cooling_rate_1d_table(
-    double, double *, double *,
-    double *, double *,
-    double *, double *,
-    const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *, 
-    double *);
+double eagle_print_metal_cooling_rate_1d_table(
+    double *, double *, double *, double *, double *,
+    const struct part *restrict, const struct cooling_function_data *restrict,
+    const struct cosmology *restrict, const struct phys_const *);
 
-double eagle_cooling_rate(
-    double, double *, int,
-    float, int, float, int, float,
-    const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *,
-    float *);
+float bisection_iter(float, double, int, float, int, float, int, float, float,
+                     struct part *restrict, const struct cosmology *restrict,
+                     const struct cooling_function_data *restrict,
+                     const struct phys_const *restrict, float *, float);
 
-double eagle_cooling_rate_1d_table(
-    double, double *, double *,
-    double *, double *,
-    double *, double *, int,
-    float, int, float, int, float,
-    const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *,
-    float *);
+float newton_iter(float, double, int, float, int, float, int, float, float,
+                  struct part *restrict, const struct cosmology *restrict,
+                  const struct cooling_function_data *restrict,
+                  const struct phys_const *restrict, float *, float, int *);
 
-double
-eagle_print_metal_cooling_rate(
-    int, float, int, float, int,
-    float, const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *,
-    float *);
+void abundance_ratio_to_solar(const struct part *restrict,
+                              const struct cooling_function_data *restrict,
+                              float *);
 
-double
-eagle_print_metal_cooling_rate_1d_table(
-    double *, double *,
-    double *, double *,
-    double *, const struct part *restrict,
-    const struct cooling_function_data *restrict,
-    const struct cosmology *restrict,
-    const struct phys_const *);
+void cooling_cool_part(const struct phys_const *restrict,
+                       const struct unit_system *restrict,
+                       const struct cosmology *restrict,
+                       const struct cooling_function_data *restrict,
+                       struct part *restrict, struct xpart *restrict, float);
 
-float bisection_iter(
-    float, double, int,
-    float, int, float, int, float, float,
-    struct part *restrict, const struct cosmology *restrict,
-    const struct cooling_function_data *restrict,
-    const struct phys_const *restrict,
-    float *, float);
+void cooling_write_flavour(hid_t);
 
-float newton_iter(
-    float, double, int,
-    float, int, float, int, float,
-    float, struct part *restrict, 
-    const struct cosmology *restrict,
-    const struct cooling_function_data *restrict,
-    const struct phys_const *restrict, 
-    float *, float, int *);
+float cooling_timestep(const struct cooling_function_data *restrict,
+                       const struct phys_const *restrict,
+                       const struct cosmology *restrict,
+                       const struct unit_system *restrict,
+                       const struct part *restrict,
+                       const struct xpart *restrict);
 
-void abundance_ratio_to_solar(
-		const struct part *restrict, 
-		const struct cooling_function_data *restrict,
-		float *);
+void cooling_first_init_part(const struct phys_const *restrict,
+                             const struct unit_system *restrict,
+                             const struct cosmology *restrict,
+                             const struct cooling_function_data *restrict,
+                             const struct part *restrict,
+                             struct xpart *restrict);
 
-void cooling_cool_part(
-		const struct phys_const *restrict,
-		const struct unit_system *restrict,
-		const struct cosmology *restrict,
-		const struct cooling_function_data *restrict,
-		struct part *restrict, struct xpart *restrict, float);
-
-void cooling_write_flavour(
-    hid_t);
-
-float cooling_timestep(
-    const struct cooling_function_data *restrict,
-    const struct phys_const *restrict,
-    const struct cosmology *restrict,
-    const struct unit_system *restrict, const struct part *restrict, const struct xpart *restrict); 
-
-void cooling_first_init_part(
-    const struct phys_const* restrict,
-    const struct unit_system* restrict,
-    const struct cosmology* restrict,
-    const struct cooling_function_data* restrict,
-    const struct part* restrict, struct xpart* restrict);
-
-float cooling_get_radiated_energy(
-    const struct xpart *restrict);
+float cooling_get_radiated_energy(const struct xpart *restrict);
 
 void eagle_check_cooling_tables(struct cooling_function_data *, int);
 
-void cooling_update(const struct phys_const*,
-                                  const struct unit_system*,
-                                  const struct cosmology*,
-                                  struct cooling_function_data*);
+void cooling_update(const struct phys_const *, const struct unit_system *,
+                    const struct cosmology *, struct cooling_function_data *);
 
-void cooling_init_backend(
-    struct swift_params *, const struct unit_system *,
-    const struct phys_const *,
-    struct cooling_function_data *);
+void cooling_init_backend(struct swift_params *, const struct unit_system *,
+                          const struct phys_const *,
+                          struct cooling_function_data *);
 
 void cooling_print_backend(const struct cooling_function_data *);
 

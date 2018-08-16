@@ -31,12 +31,12 @@
 #include <time.h>
 
 /* Local includes. */
-#include "interpolate.h"
 #include "chemistry.h"
 #include "cooling_struct.h"
 #include "eagle_cool_tables.h"
 #include "error.h"
 #include "hydro.h"
+#include "interpolate.h"
 #include "io_properties.h"
 #include "parser.h"
 #include "part.h"
@@ -45,7 +45,7 @@
 
 static int get_redshift_index_first_call = 0;
 static int get_redshift_index_previous = -1;
-  
+
 const float EPS = 1.e-4;
 
 /**
@@ -220,7 +220,7 @@ __attribute__((always_inline)) INLINE float interpol_2d(float *table, int i,
                                                         int j, float dx,
                                                         float dy, int nx,
                                                         int ny, double *upper,
-							double *lower) {
+                                                        double *lower) {
   float result;
   int index[4];
 
@@ -230,18 +230,15 @@ __attribute__((always_inline)) INLINE float interpol_2d(float *table, int i,
   index[3] = row_major_index_2d(i + 1, j + 1, nx, ny);
 
   result = (1 - dx) * (1 - dy) * table[index[0]] +
-           (1 - dx) * dy * table[index[1]] + 
-	   dx * (1 - dy) * table[index[2]] +
+           (1 - dx) * dy * table[index[1]] + dx * (1 - dy) * table[index[2]] +
            dx * dy * table[index[3]];
   dy = 1.0;
   *upper = (1 - dx) * (1 - dy) * table[index[0]] +
-           (1 - dx) * dy * table[index[1]] + 
-	   dx * (1 - dy) * table[index[2]] +
+           (1 - dx) * dy * table[index[1]] + dx * (1 - dy) * table[index[2]] +
            dx * dy * table[index[3]];
   dy = 0.0;
   *lower = (1 - dx) * (1 - dy) * table[index[0]] +
-           (1 - dx) * dy * table[index[1]] + 
-	   dx * (1 - dy) * table[index[2]] +
+           (1 - dx) * dy * table[index[1]] + dx * (1 - dy) * table[index[2]] +
            dx * dy * table[index[3]];
 
   return result;
@@ -271,18 +268,15 @@ __attribute__((always_inline)) INLINE double interpol_2d_dbl(
   index[3] = row_major_index_2d(i + 1, j + 1, nx, ny);
 
   result = (1 - dx) * (1 - dy) * table[index[0]] +
-           (1 - dx) * dy * table[index[1]] + 
-	   dx * (1 - dy) * table[index[2]] +
+           (1 - dx) * dy * table[index[1]] + dx * (1 - dy) * table[index[2]] +
            dx * dy * table[index[3]];
   dy = 1.0;
   *upper = (1 - dx) * (1 - dy) * table[index[0]] +
-           (1 - dx) * dy * table[index[1]] + 
-	   dx * (1 - dy) * table[index[2]] +
+           (1 - dx) * dy * table[index[1]] + dx * (1 - dy) * table[index[2]] +
            dx * dy * table[index[3]];
   dy = 0.0;
   *lower = (1 - dx) * (1 - dy) * table[index[0]] +
-           (1 - dx) * dy * table[index[1]] + 
-	   dx * (1 - dy) * table[index[2]] +
+           (1 - dx) * dy * table[index[1]] + dx * (1 - dy) * table[index[2]] +
            dx * dy * table[index[3]];
 
   return result;
@@ -300,12 +294,9 @@ __attribute__((always_inline)) INLINE double interpol_2d_dbl(
  * @param lower Pointer to value set to the table value at
  * the when dz = 0 (used for calculating derivatives)
  */
-__attribute__((always_inline)) INLINE float interpol_3d(float *table, int i,
-                                                        int j, int k, float dx,
-                                                        float dy, float dz,
-                                                        int nx, int ny,
-                                                        int nz, double *upper, 
-							double *lower) {
+__attribute__((always_inline)) INLINE float interpol_3d(
+    float *table, int i, int j, int k, float dx, float dy, float dz, int nx,
+    int ny, int nz, double *upper, double *lower) {
   float result;
   int index[8];
 
@@ -317,42 +308,33 @@ __attribute__((always_inline)) INLINE float interpol_3d(float *table, int i,
   index[5] = row_major_index_3d(i + 1, j, k + 1, nx, ny, nz);
   index[6] = row_major_index_3d(i + 1, j + 1, k, nx, ny, nz);
   index[7] = row_major_index_3d(i + 1, j + 1, k + 1, nx, ny, nz);
-  
-  float table0  = table[index[0]];
-  float table1  = table[index[1]];
-  float table2  = table[index[2]];
-  float table3  = table[index[3]];
-  float table4  = table[index[4]];
-  float table5  = table[index[5]];
-  float table6  = table[index[6]];
-  float table7  = table[index[7]];
+
+  float table0 = table[index[0]];
+  float table1 = table[index[1]];
+  float table2 = table[index[2]];
+  float table3 = table[index[3]];
+  float table4 = table[index[4]];
+  float table5 = table[index[5]];
+  float table6 = table[index[6]];
+  float table7 = table[index[7]];
 
   result = (1 - dx) * (1 - dy) * (1 - dz) * table0 +
            (1 - dx) * (1 - dy) * dz * table1 +
-           (1 - dx) * dy * (1 - dz) * table2 +
-           (1 - dx) * dy * dz * table3 +
-           dx * (1 - dy) * (1 - dz) * table4 +
-           dx * (1 - dy) * dz * table5 +
-           dx * dy * (1 - dz) * table6 +
-           dx * dy * dz * table7;
+           (1 - dx) * dy * (1 - dz) * table2 + (1 - dx) * dy * dz * table3 +
+           dx * (1 - dy) * (1 - dz) * table4 + dx * (1 - dy) * dz * table5 +
+           dx * dy * (1 - dz) * table6 + dx * dy * dz * table7;
   dz = 1.0;
   *upper = (1 - dx) * (1 - dy) * (1 - dz) * table0 +
            (1 - dx) * (1 - dy) * dz * table1 +
-           (1 - dx) * dy * (1 - dz) * table2 +
-           (1 - dx) * dy * dz * table3 +
-           dx * (1 - dy) * (1 - dz) * table4 +
-           dx * (1 - dy) * dz * table5 +
-           dx * dy * (1 - dz) * table6 +
-           dx * dy * dz * table7;
+           (1 - dx) * dy * (1 - dz) * table2 + (1 - dx) * dy * dz * table3 +
+           dx * (1 - dy) * (1 - dz) * table4 + dx * (1 - dy) * dz * table5 +
+           dx * dy * (1 - dz) * table6 + dx * dy * dz * table7;
   dz = 0.0;
   *lower = (1 - dx) * (1 - dy) * (1 - dz) * table0 +
            (1 - dx) * (1 - dy) * dz * table1 +
-           (1 - dx) * dy * (1 - dz) * table2 +
-           (1 - dx) * dy * dz * table3 +
-           dx * (1 - dy) * (1 - dz) * table4 +
-           dx * (1 - dy) * dz * table5 +
-           dx * dy * (1 - dz) * table6 +
-           dx * dy * dz * table7;
+           (1 - dx) * dy * (1 - dz) * table2 + (1 - dx) * dy * dz * table3 +
+           dx * (1 - dy) * (1 - dz) * table4 + dx * (1 - dy) * dz * table5 +
+           dx * dy * (1 - dz) * table6 + dx * dy * dz * table7;
 
   return result;
 }
@@ -365,12 +347,12 @@ __attribute__((always_inline)) INLINE float interpol_3d(float *table, int i,
  * @param dx,dy,dz,dw Offset within cell
  * @param nx,ny,nz,nw Table dimensions
  * @param upper Pointer to value set to the table value at
- * the when dw = 1 when used for interpolating table 
- * depending on metal species, dz = 1 otherwise 
+ * the when dw = 1 when used for interpolating table
+ * depending on metal species, dz = 1 otherwise
  * (used for calculating derivatives)
  * @param upper Pointer to value set to the table value at
- * the when dw = 0 when used for interpolating table 
- * depending on metal species, dz = 0 otherwise 
+ * the when dw = 0 when used for interpolating table
+ * depending on metal species, dz = 0 otherwise
  * (used for calculating derivatives)
  */
 __attribute__((always_inline)) INLINE float interpol_4d(
@@ -396,16 +378,16 @@ __attribute__((always_inline)) INLINE float interpol_4d(
   index[14] = row_major_index_4d(i + 1, j + 1, k + 1, l, nx, ny, nz, nw);
   index[15] = row_major_index_4d(i + 1, j + 1, k + 1, l + 1, nx, ny, nz, nw);
 
-  float table0  = table[index[0]];
-  float table1  = table[index[1]];
-  float table2  = table[index[2]];
-  float table3  = table[index[3]];
-  float table4  = table[index[4]];
-  float table5  = table[index[5]];
-  float table6  = table[index[6]];
-  float table7  = table[index[7]];
-  float table8  = table[index[8]];
-  float table9  = table[index[9]];
+  float table0 = table[index[0]];
+  float table1 = table[index[1]];
+  float table2 = table[index[2]];
+  float table3 = table[index[3]];
+  float table4 = table[index[4]];
+  float table5 = table[index[5]];
+  float table6 = table[index[6]];
+  float table7 = table[index[7]];
+  float table8 = table[index[8]];
+  float table9 = table[index[9]];
   float table10 = table[index[10]];
   float table11 = table[index[11]];
   float table12 = table[index[12]];
@@ -427,8 +409,7 @@ __attribute__((always_inline)) INLINE float interpol_4d(
            dx * (1 - dy) * dz * dw * table11 +
            dx * dy * (1 - dz) * (1 - dw) * table12 +
            dx * dy * (1 - dz) * dw * table13 +
-           dx * dy * dz * (1 - dw) * table14 +
-           dx * dy * dz * dw * table15;
+           dx * dy * dz * (1 - dw) * table14 + dx * dy * dz * dw * table15;
   if (nw == 9) {
     // interpolating metal species
     dz = 1.0;
@@ -449,8 +430,7 @@ __attribute__((always_inline)) INLINE float interpol_4d(
            dx * (1 - dy) * dz * dw * table11 +
            dx * dy * (1 - dz) * (1 - dw) * table12 +
            dx * dy * (1 - dz) * dw * table13 +
-           dx * dy * dz * (1 - dw) * table14 +
-           dx * dy * dz * dw * table15;
+           dx * dy * dz * (1 - dw) * table14 + dx * dy * dz * dw * table15;
   if (nw == 9) {
     // interpolating metal species
     dz = 0.0;
@@ -471,8 +451,7 @@ __attribute__((always_inline)) INLINE float interpol_4d(
            dx * (1 - dy) * dz * dw * table11 +
            dx * dy * (1 - dz) * (1 - dw) * table12 +
            dx * dy * (1 - dz) * dw * table13 +
-           dx * dy * dz * (1 - dw) * table14 +
-           dx * dy * dz * dw * table15;
+           dx * dy * dz * (1 - dw) * table14 + dx * dy * dz * dw * table15;
 
   return result;
 }
@@ -504,12 +483,14 @@ __attribute__((always_inline)) INLINE void construct_1d_table_from_2d(
 
   int index_low = 0, index_high = array_size;
   float d_high, d_low;
-  
+
   // only compute the part of the table between the bounds
   if (array_size == cooling->N_Temp) {
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*ub)/eagle_log_10,&index_high,&d_high);
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*lb)/eagle_log_10,&index_low,&d_low);
-    if (index_high < array_size-1) {
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*ub) / eagle_log_10,
+                 &index_high, &d_high);
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*lb) / eagle_log_10,
+                 &index_low, &d_low);
+    if (index_high < array_size - 1) {
       index_high += 2;
     } else {
       index_high = array_size;
@@ -519,13 +500,10 @@ __attribute__((always_inline)) INLINE void construct_1d_table_from_2d(
 
   int index[2];
   for (int i = index_low; i < index_high; i++) {
-    index[0] = row_major_index_2d(x_i, i, n_x,
-                                  array_size);
-    index[1] = row_major_index_2d(x_i + 1, i, n_x,
-                                  array_size);
+    index[0] = row_major_index_2d(x_i, i, n_x, array_size);
+    index[1] = row_major_index_2d(x_i + 1, i, n_x, array_size);
 
-    result_table[i] = (1 - d_x) * table[index[0]] +
-                      d_x * table[index[1]];
+    result_table[i] = (1 - d_x) * table[index[0]] + d_x * table[index[1]];
   }
 }
 
@@ -551,16 +529,19 @@ __attribute__((always_inline)) INLINE void construct_1d_table_from_3d(
     const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo,
     const struct phys_const *internal_const, float *table, int x_i, float d_x,
-    int n_x, int y_i, float d_y, int n_y, int array_size, double *result_table, float *ub, float *lb) {
+    int n_x, int y_i, float d_y, int n_y, int array_size, double *result_table,
+    float *ub, float *lb) {
 
   int index_low, index_high;
   float d_high, d_low;
 
   // only compute the part of the table between the bounds
   if (array_size == cooling->N_Temp) {
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*ub)/eagle_log_10,&index_high,&d_high);
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*lb)/eagle_log_10,&index_low,&d_low);
-    if (index_high < array_size-1) {
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*ub) / eagle_log_10,
+                 &index_high, &d_high);
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*lb) / eagle_log_10,
+                 &index_low, &d_low);
+    if (index_high < array_size - 1) {
       index_high += 2;
     } else {
       index_high = array_size;
@@ -570,14 +551,10 @@ __attribute__((always_inline)) INLINE void construct_1d_table_from_3d(
 
   int index[4];
   for (int i = index_low; i < index_high; i++) {
-    index[0] = row_major_index_3d(x_i, y_i, i, n_x,
-                                  n_y, array_size);
-    index[1] = row_major_index_3d(x_i, y_i + 1, i, n_x,
-                                  n_y, array_size);
-    index[2] = row_major_index_3d(x_i + 1, y_i, i, n_x,
-                                  n_y, array_size);
-    index[3] = row_major_index_3d(x_i + 1, y_i + 1, i, n_x,
-                                  n_y, array_size);
+    index[0] = row_major_index_3d(x_i, y_i, i, n_x, n_y, array_size);
+    index[1] = row_major_index_3d(x_i, y_i + 1, i, n_x, n_y, array_size);
+    index[2] = row_major_index_3d(x_i + 1, y_i, i, n_x, n_y, array_size);
+    index[3] = row_major_index_3d(x_i + 1, y_i + 1, i, n_x, n_y, array_size);
 
     result_table[i] = (1 - d_x) * (1 - d_y) * table[index[0]] +
                       (1 - d_x) * d_y * table[index[1]] +
@@ -612,7 +589,8 @@ construct_1d_print_table_from_3d_elements(
     const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo,
     const struct phys_const *internal_const, float *table, int x_i, float d_x,
-    int n_x, int array_size, double *result_table, float *abundance_ratio, float *ub, float *lb) {
+    int n_x, int array_size, double *result_table, float *abundance_ratio,
+    float *ub, float *lb) {
   int index[2];
 
   int index_low, index_high;
@@ -620,9 +598,11 @@ construct_1d_print_table_from_3d_elements(
 
   // only compute the part of the table between the bounds
   if (array_size == cooling->N_Temp) {
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*ub)/eagle_log_10,&index_high,&d_high);
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*lb)/eagle_log_10,&index_low,&d_low);
-    if (index_high < array_size-1) {
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*ub) / eagle_log_10,
+                 &index_high, &d_high);
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*lb) / eagle_log_10,
+                 &index_low, &d_low);
+    if (index_high < array_size - 1) {
       index_high += 2;
     } else {
       index_high = array_size;
@@ -633,13 +613,14 @@ construct_1d_print_table_from_3d_elements(
   for (int j = 0; j < cooling->N_Elements; j++) {
     for (int i = index_low; i < index_high; i++) {
       if (j == 0) result_table[i] = 0.0;
-      index[0] = row_major_index_3d(x_i, i, j,
-                                    n_x, array_size, cooling->N_Elements);
-      index[1] = row_major_index_3d(x_i + 1, i, j,
-                                    n_x, array_size, cooling->N_Elements);
+      index[0] =
+          row_major_index_3d(x_i, i, j, n_x, array_size, cooling->N_Elements);
+      index[1] = row_major_index_3d(x_i + 1, i, j, n_x, array_size,
+                                    cooling->N_Elements);
 
-      result_table[i + array_size*j] += ((1 - d_x) * table[index[0]] +
-                         d_x * table[index[1]])*abundance_ratio[j+2];
+      result_table[i + array_size * j] +=
+          ((1 - d_x) * table[index[0]] + d_x * table[index[1]]) *
+          abundance_ratio[j + 2];
     }
   }
 }
@@ -664,13 +645,13 @@ construct_1d_print_table_from_3d_elements(
  * @param ub Upper bound in temperature up to which to interpolate
  * @param lb Lower bound in temperature above which to interpolate
  */
-__attribute__((always_inline)) INLINE void
-construct_1d_table_from_3d_elements(
+__attribute__((always_inline)) INLINE void construct_1d_table_from_3d_elements(
     const struct part *restrict p,
     const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo,
     const struct phys_const *internal_const, float *table, int x_i, float d_x,
-    int n_x, int array_size, double *result_table, float *abundance_ratio, float *ub, float *lb) {
+    int n_x, int array_size, double *result_table, float *abundance_ratio,
+    float *ub, float *lb) {
   int index[2];
 
   int index_low, index_high;
@@ -678,9 +659,11 @@ construct_1d_table_from_3d_elements(
 
   // only compute the part of the table between the bounds
   if (array_size == cooling->N_Temp) {
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*ub)/eagle_log_10,&index_high,&d_high);
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*lb)/eagle_log_10,&index_low,&d_low);
-    if (index_high < array_size-1) {
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*ub) / eagle_log_10,
+                 &index_high, &d_high);
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*lb) / eagle_log_10,
+                 &index_low, &d_low);
+    if (index_high < array_size - 1) {
       index_high += 2;
     } else {
       index_high = array_size;
@@ -691,17 +674,16 @@ construct_1d_table_from_3d_elements(
   for (int j = 0; j < cooling->N_Elements; j++) {
     for (int i = index_low; i < index_high; i++) {
       if (j == 0) result_table[i] = 0.0;
-      index[0] = row_major_index_3d(x_i, i, j,
-                                    n_x, array_size, cooling->N_Elements);
-      index[1] = row_major_index_3d(x_i + 1, i, j,
-                                    n_x, array_size, cooling->N_Elements);
+      index[0] =
+          row_major_index_3d(x_i, i, j, n_x, array_size, cooling->N_Elements);
+      index[1] = row_major_index_3d(x_i + 1, i, j, n_x, array_size,
+                                    cooling->N_Elements);
 
-      result_table[i] += ((1 - d_x) * table[index[0]] +
-                         d_x * table[index[1]])*abundance_ratio[j+2];
+      result_table[i] += ((1 - d_x) * table[index[0]] + d_x * table[index[1]]) *
+                         abundance_ratio[j + 2];
     }
   }
 }
-
 
 /*
  * @brief Interpolates 4d EAGLE table over three of the dimensions,
@@ -724,17 +706,20 @@ __attribute__((always_inline)) INLINE void construct_1d_table_from_4d(
     const struct part *restrict p,
     const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo,
-    const struct phys_const *internal_const, float *table, int x_i, float d_x, int n_x,
-    int y_i, float d_y, int n_y, int w_i, float d_w, int n_w, int array_size, double *result_table, float *ub, float *lb) {
+    const struct phys_const *internal_const, float *table, int x_i, float d_x,
+    int n_x, int y_i, float d_y, int n_y, int w_i, float d_w, int n_w,
+    int array_size, double *result_table, float *ub, float *lb) {
 
   int index_low, index_high;
   float d_high, d_low;
 
   // only compute the part of the table between the bounds
   if (array_size == cooling->N_Temp) {
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*ub)/eagle_log_10,&index_high,&d_high);
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*lb)/eagle_log_10,&index_low,&d_low);
-    if (index_high < array_size-1) {
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*ub) / eagle_log_10,
+                 &index_high, &d_high);
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*lb) / eagle_log_10,
+                 &index_low, &d_low);
+    if (index_high < array_size - 1) {
       index_high += 2;
     } else {
       index_high = array_size;
@@ -744,30 +729,21 @@ __attribute__((always_inline)) INLINE void construct_1d_table_from_4d(
 
   int index[8];
   for (int i = index_low; i < index_high; i++) {
-    index[0] =
-        row_major_index_4d(x_i, y_i, w_i, i, n_x,
-                           n_y, n_w, array_size);
+    index[0] = row_major_index_4d(x_i, y_i, w_i, i, n_x, n_y, n_w, array_size);
     index[1] =
-        row_major_index_4d(x_i, y_i, w_i + 1, i, n_x,
-                           n_y, n_w, array_size);
+        row_major_index_4d(x_i, y_i, w_i + 1, i, n_x, n_y, n_w, array_size);
     index[2] =
-        row_major_index_4d(x_i, y_i + 1, w_i, i, n_x,
-                           n_y, n_w, array_size);
+        row_major_index_4d(x_i, y_i + 1, w_i, i, n_x, n_y, n_w, array_size);
     index[3] =
-        row_major_index_4d(x_i, y_i + 1, w_i + 1, i, n_x,
-                           n_y, n_w, array_size);
+        row_major_index_4d(x_i, y_i + 1, w_i + 1, i, n_x, n_y, n_w, array_size);
     index[4] =
-        row_major_index_4d(x_i + 1, y_i, w_i, i, n_x,
-                           n_y, n_w, array_size);
+        row_major_index_4d(x_i + 1, y_i, w_i, i, n_x, n_y, n_w, array_size);
     index[5] =
-        row_major_index_4d(x_i + 1, y_i, w_i + 1, i, n_x,
-                           n_y, n_w, array_size);
+        row_major_index_4d(x_i + 1, y_i, w_i + 1, i, n_x, n_y, n_w, array_size);
     index[6] =
-        row_major_index_4d(x_i + 1, y_i + 1, w_i, i, n_x,
-                           n_y, n_w, array_size);
-    index[7] = row_major_index_4d(x_i + 1, y_i + 1, w_i + 1, i,
-                                  n_x, n_y,
-                                  n_w, array_size);
+        row_major_index_4d(x_i + 1, y_i + 1, w_i, i, n_x, n_y, n_w, array_size);
+    index[7] = row_major_index_4d(x_i + 1, y_i + 1, w_i + 1, i, n_x, n_y, n_w,
+                                  array_size);
 
     result_table[i] = (1 - d_x) * (1 - d_y) * (1 - d_w) * table[index[0]] +
                       (1 - d_x) * (1 - d_y) * d_w * table[index[1]] +
@@ -806,16 +782,19 @@ construct_1d_print_table_from_4d_elements(
     const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo,
     const struct phys_const *internal_const, float *table, int x_i, float d_x,
-    int n_x, int y_i, float d_y, int n_y, int array_size, double *result_table, float *abundance_ratio, float *ub, float *lb) {
+    int n_x, int y_i, float d_y, int n_y, int array_size, double *result_table,
+    float *abundance_ratio, float *ub, float *lb) {
 
   int index_low, index_high;
   float d_high, d_low;
 
   // only compute the part of the table between the bounds
   if (array_size == cooling->N_Temp) {
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*ub)/eagle_log_10,&index_high,&d_high);
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*lb)/eagle_log_10,&index_low,&d_low);
-    if (index_high < array_size-1) {
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*ub) / eagle_log_10,
+                 &index_high, &d_high);
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*lb) / eagle_log_10,
+                 &index_low, &d_low);
+    if (index_high < array_size - 1) {
       index_high += 2;
     } else {
       index_high = array_size;
@@ -828,19 +807,20 @@ construct_1d_print_table_from_4d_elements(
   for (int j = 0; j < cooling->N_Elements; j++) {
     for (int i = index_low; i < index_high; i++) {
       if (j == 0) result_table[i] = 0.0;
-      index[0] = row_major_index_4d(x_i, y_i, i, j, n_x,
-                                    n_y, array_size, cooling->N_Elements);
-      index[1] = row_major_index_4d(x_i, y_i+1, i, j, n_x,
-                                    n_y, array_size, cooling->N_Elements);
-      index[2] = row_major_index_4d(x_i+1, y_i, i, j, n_x,
-                                    n_y, array_size, cooling->N_Elements);
-      index[3] = row_major_index_4d(x_i+1, y_i+1, i, j, n_x,
-                                    n_y, array_size, cooling->N_Elements);
+      index[0] = row_major_index_4d(x_i, y_i, i, j, n_x, n_y, array_size,
+                                    cooling->N_Elements);
+      index[1] = row_major_index_4d(x_i, y_i + 1, i, j, n_x, n_y, array_size,
+                                    cooling->N_Elements);
+      index[2] = row_major_index_4d(x_i + 1, y_i, i, j, n_x, n_y, array_size,
+                                    cooling->N_Elements);
+      index[3] = row_major_index_4d(x_i + 1, y_i + 1, i, j, n_x, n_y,
+                                    array_size, cooling->N_Elements);
 
-      result_table[i+array_size*j] = ((1 - d_x) * (1 - d_y) * table[index[0]] +
-                         (1 - d_x) * d_y * table[index[1]] +
-                         d_x * (1 - d_y) * table[index[2]] +
-                         d_x * d_y * table[index[3]]) * abundance_ratio[j+2];
+      result_table[i + array_size * j] =
+          ((1 - d_x) * (1 - d_y) * table[index[0]] +
+           (1 - d_x) * d_y * table[index[1]] +
+           d_x * (1 - d_y) * table[index[2]] + d_x * d_y * table[index[3]]) *
+          abundance_ratio[j + 2];
     }
   }
 }
@@ -865,13 +845,13 @@ construct_1d_print_table_from_4d_elements(
  * @param ub Upper bound in temperature up to which to interpolate
  * @param lb Lower bound in temperature above which to interpolate
  */
-__attribute__((always_inline)) INLINE void
-construct_1d_table_from_4d_elements(
+__attribute__((always_inline)) INLINE void construct_1d_table_from_4d_elements(
     const struct part *restrict p,
     const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo,
     const struct phys_const *internal_const, float *table, int x_i, float d_x,
-    int n_x, int y_i, float d_y, int n_y, int array_size, double *result_table, float *abundance_ratio, float *ub, float *lb) {
+    int n_x, int y_i, float d_y, int n_y, int array_size, double *result_table,
+    float *abundance_ratio, float *ub, float *lb) {
   int index[4];
 
   int index_low, index_high;
@@ -879,9 +859,11 @@ construct_1d_table_from_4d_elements(
 
   // only compute the part of the table between the bounds
   if (array_size == cooling->N_Temp) {
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*ub)/eagle_log_10,&index_high,&d_high);
-    get_index_1d(cooling->Temp, cooling->N_Temp,(*lb)/eagle_log_10,&index_low,&d_low);
-    if (index_high < array_size-1) {
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*ub) / eagle_log_10,
+                 &index_high, &d_high);
+    get_index_1d(cooling->Temp, cooling->N_Temp, (*lb) / eagle_log_10,
+                 &index_low, &d_low);
+    if (index_high < array_size - 1) {
       index_high += 2;
     } else {
       index_high = array_size;
@@ -892,35 +874,35 @@ construct_1d_table_from_4d_elements(
   for (int j = 0; j < cooling->N_Elements; j++) {
     for (int i = index_low; i < index_high; i++) {
       if (j == 0) result_table[i] = 0.0;
-      index[0] = row_major_index_4d(x_i, y_i, i, j, n_x,
-                                    n_y, array_size, cooling->N_Elements);
-      index[1] = row_major_index_4d(x_i, y_i+1, i, j, n_x,
-                                    n_y, array_size, cooling->N_Elements);
-      index[2] = row_major_index_4d(x_i+1, y_i, i, j, n_x,
-                                    n_y, array_size, cooling->N_Elements);
-      index[3] = row_major_index_4d(x_i+1, y_i+1, i, j, n_x,
-                                    n_y, array_size, cooling->N_Elements);
+      index[0] = row_major_index_4d(x_i, y_i, i, j, n_x, n_y, array_size,
+                                    cooling->N_Elements);
+      index[1] = row_major_index_4d(x_i, y_i + 1, i, j, n_x, n_y, array_size,
+                                    cooling->N_Elements);
+      index[2] = row_major_index_4d(x_i + 1, y_i, i, j, n_x, n_y, array_size,
+                                    cooling->N_Elements);
+      index[3] = row_major_index_4d(x_i + 1, y_i + 1, i, j, n_x, n_y,
+                                    array_size, cooling->N_Elements);
 
-      result_table[i] += ((1 - d_x) * (1 - d_y) * table[index[0]] +
-                         (1 - d_x) * d_y * table[index[1]] +
-                         d_x * (1 - d_y) * table[index[2]] +
-                         d_x * d_y * table[index[3]]) * abundance_ratio[j+2];
+      result_table[i] +=
+          ((1 - d_x) * (1 - d_y) * table[index[0]] +
+           (1 - d_x) * d_y * table[index[1]] +
+           d_x * (1 - d_y) * table[index[2]] + d_x * d_y * table[index[3]]) *
+          abundance_ratio[j + 2];
     }
   }
 }
 
 /*
- * @brief Interpolates internal energy from temperature based 
+ * @brief Interpolates internal energy from temperature based
  * on preinterpolated 1d table
  *
  * @param temp Temperature
  * @param temperature_table Table of internal energy values
  * @param cooling Cooling data structure
  */
-__attribute__((always_inline)) INLINE double
-eagle_convert_temp_to_u_1d_table(double temp, float *temperature_table,
-                                 const struct cooling_function_data *restrict
-                                     cooling) {
+__attribute__((always_inline)) INLINE double eagle_convert_temp_to_u_1d_table(
+    double temp, float *temperature_table,
+    const struct cooling_function_data *restrict cooling) {
 
   int temp_i;
   float d_temp, u;
@@ -949,11 +931,9 @@ eagle_convert_temp_to_u_1d_table(double temp, float *temperature_table,
  * @param cooling Cooling data structure
  * @param cosmo Cosmology data structure
  */
-__attribute__((always_inline)) INLINE double
-eagle_convert_u_to_temp(
-    double log_10_u, float *delta_u,
-    int z_i, int n_h_i, int He_i, 
-    float d_z, float d_n_h, float d_He,
+__attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
+    double log_10_u, float *delta_u, int z_i, int n_h_i, int He_i, float d_z,
+    float d_n_h, float d_He,
     const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo) {
 
@@ -963,15 +943,19 @@ eagle_convert_u_to_temp(
 
   get_index_1d(cooling->Therm, cooling->N_Temp, log_10_u, &u_i, &d_u);
 
-  if (cosmo->z > cooling->reionisation_redshift){
-  logT = interpol_3d(cooling->table.photodissociation_cooling.temperature,n_h_i,He_i,u_i,d_n_h,d_He,d_u,
-    cooling->N_nH,cooling->N_He,cooling->N_Temp,&upper,&lower);
+  if (cosmo->z > cooling->reionisation_redshift) {
+    logT = interpol_3d(cooling->table.photodissociation_cooling.temperature,
+                       n_h_i, He_i, u_i, d_n_h, d_He, d_u, cooling->N_nH,
+                       cooling->N_He, cooling->N_Temp, &upper, &lower);
   } else if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-  logT = interpol_3d(cooling->table.no_compton_cooling.temperature,n_h_i,He_i,u_i,d_n_h,d_He,d_u,
-    cooling->N_nH,cooling->N_He,cooling->N_Temp,&upper,&lower);
+    logT = interpol_3d(cooling->table.no_compton_cooling.temperature, n_h_i,
+                       He_i, u_i, d_n_h, d_He, d_u, cooling->N_nH,
+                       cooling->N_He, cooling->N_Temp, &upper, &lower);
   } else {
-  logT = interpol_4d(cooling->table.element_cooling.temperature, z_i,n_h_i,He_i,u_i,d_z,d_n_h,d_He,d_u,
-    cooling->N_Redshifts,cooling->N_nH,cooling->N_He,cooling->N_Temp,&upper,&lower);
+    logT = interpol_4d(cooling->table.element_cooling.temperature, z_i, n_h_i,
+                       He_i, u_i, d_z, d_n_h, d_He, d_u, cooling->N_Redshifts,
+                       cooling->N_nH, cooling->N_He, cooling->N_Temp, &upper,
+                       &lower);
   }
 
   *delta_u =
@@ -980,20 +964,18 @@ eagle_convert_u_to_temp(
   return logT;
 }
 
-
 /*
- * @brief Interpolates temperature from internal energy based on 
+ * @brief Interpolates temperature from internal energy based on
  * 1d preinterpolated table for the given particle. Also
  * calculates the size of the internal energy cell for the specified
  * internal energy
  *
  * @param log_10_u Log base 10 of internal energy
  * @param delta_u Pointer to size of internal energy cell
- * @param temperature_table 1d array of temperatures 
+ * @param temperature_table 1d array of temperatures
  * @param cooling Cooling data structure
  */
-__attribute__((always_inline)) INLINE double
-eagle_convert_u_to_temp_1d_table(
+__attribute__((always_inline)) INLINE double eagle_convert_u_to_temp_1d_table(
     double log_10_u, float *delta_u, double *temperature_table,
     const struct cooling_function_data *restrict cooling) {
 
@@ -1026,117 +1008,127 @@ eagle_convert_u_to_temp_1d_table(
  * @param abundance_ratio Array of ratio of particle metal abundances
  * to solar
  * @param H_plus_He_heat_table Pointer to table of values
- * which will contain contribution to cooling from 
+ * which will contain contribution to cooling from
  * hydrogen and helium
- * @param H_plus_He_electron_abundance_table Pointer to table of values 
- * which will contain contribution hydrogen and helium 
+ * @param H_plus_He_electron_abundance_table Pointer to table of values
+ * which will contain contribution hydrogen and helium
  * electron abundances
  * @param element_cooling_table Pointer to table of values which
  * whill contain contribution to heating from all of
  * the metals
  * @param element_cooling_print_table Pointer to table of values
- * which will contain contribution to heating from each of 
+ * which will contain contribution to heating from each of
  * metals (has size n_elements*n_temp)
  * @param element_electron_abundance_table Pointer to table
  * of values which will contain metal electron abundances
- * @param temp_table Pointer to table of values which will 
+ * @param temp_table Pointer to table of values which will
  * contain log_10(temperature) for conversion of internal energy to
  * temperature
  * @param ub Upper bound in log(internal energy) up to which to produce tables
  * @param lb Lower bound in log(internal energy) above which to produce tables
  */
 __attribute__((always_inline)) INLINE void construct_1d_tables(
-		int z_index, float dz, int n_h_i, float d_n_h,
-		int He_i, float d_He,
-                const struct phys_const *restrict phys_const,
-                const struct cosmology *restrict cosmo,
-                const struct cooling_function_data *restrict cooling,
-                const struct part *restrict p,
-		float *abundance_ratio,
-		double *H_plus_He_heat_table,
-		double *H_plus_He_electron_abundance_table,
-		double *element_cooling_table,
-		double *element_cooling_print_table,
-		double *element_electron_abundance_table,
-		double *temp_table,
-		float *ub, float *lb) {
+    int z_index, float dz, int n_h_i, float d_n_h, int He_i, float d_He,
+    const struct phys_const *restrict phys_const,
+    const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct part *restrict p, float *abundance_ratio,
+    double *H_plus_He_heat_table, double *H_plus_He_electron_abundance_table,
+    double *element_cooling_table, double *element_cooling_print_table,
+    double *element_electron_abundance_table, double *temp_table, float *ub,
+    float *lb) {
 
   if (cosmo->z > cooling->reionisation_redshift) {
     // Photodissociation table
-    construct_1d_table_from_3d(p, cooling, cosmo, phys_const,
-    		cooling->table.photodissociation_cooling.temperature,
-    		n_h_i, d_n_h, cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp, temp_table, ub, lb);
     construct_1d_table_from_3d(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.photodissociation_cooling.H_plus_He_heating, n_h_i, d_n_h, cooling->N_nH,  
-    		He_i, d_He, cooling->N_He, cooling->N_Temp, H_plus_He_heat_table, ub, lb);
+        p, cooling, cosmo, phys_const,
+        cooling->table.photodissociation_cooling.temperature, n_h_i, d_n_h,
+        cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp, temp_table,
+        ub, lb);
     construct_1d_table_from_3d(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.photodissociation_cooling.H_plus_He_electron_abundance,
-    		n_h_i, d_n_h, cooling->N_nH, He_i, d_He, cooling->N_He,
-    		cooling->N_Temp, H_plus_He_electron_abundance_table, ub, lb);
+        p, cooling, cosmo, phys_const,
+        cooling->table.photodissociation_cooling.H_plus_He_heating, n_h_i,
+        d_n_h, cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp,
+        H_plus_He_heat_table, ub, lb);
+    construct_1d_table_from_3d(
+        p, cooling, cosmo, phys_const,
+        cooling->table.photodissociation_cooling.H_plus_He_electron_abundance,
+        n_h_i, d_n_h, cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp,
+        H_plus_He_electron_abundance_table, ub, lb);
     construct_1d_table_from_3d_elements(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.photodissociation_cooling.metal_heating, 
-    		n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_cooling_table, abundance_ratio, ub, lb);
+        p, cooling, cosmo, phys_const,
+        cooling->table.photodissociation_cooling.metal_heating, n_h_i, d_n_h,
+        cooling->N_nH, cooling->N_Temp, element_cooling_table, abundance_ratio,
+        ub, lb);
     construct_1d_table_from_2d(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.photodissociation_cooling.electron_abundance,
-    		n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_electron_abundance_table, ub, lb);
+        p, cooling, cosmo, phys_const,
+        cooling->table.photodissociation_cooling.electron_abundance, n_h_i,
+        d_n_h, cooling->N_nH, cooling->N_Temp, element_electron_abundance_table,
+        ub, lb);
   } else if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
     // High redshift table
     construct_1d_table_from_3d(p, cooling, cosmo, phys_const,
-    		cooling->table.no_compton_cooling.temperature,
-    		n_h_i, d_n_h, cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp, temp_table, ub, lb);
+                               cooling->table.no_compton_cooling.temperature,
+                               n_h_i, d_n_h, cooling->N_nH, He_i, d_He,
+                               cooling->N_He, cooling->N_Temp, temp_table, ub,
+                               lb);
     construct_1d_table_from_3d(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.no_compton_cooling.H_plus_He_heating, n_h_i, d_n_h, cooling->N_nH,  
-    		He_i, d_He, cooling->N_He, cooling->N_Temp, H_plus_He_heat_table, ub, lb);
+        p, cooling, cosmo, phys_const,
+        cooling->table.no_compton_cooling.H_plus_He_heating, n_h_i, d_n_h,
+        cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp,
+        H_plus_He_heat_table, ub, lb);
     construct_1d_table_from_3d(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.no_compton_cooling.H_plus_He_electron_abundance,
-    		n_h_i, d_n_h, cooling->N_nH, He_i, d_He, cooling->N_He,
-    		cooling->N_Temp, H_plus_He_electron_abundance_table, ub, lb);
+        p, cooling, cosmo, phys_const,
+        cooling->table.no_compton_cooling.H_plus_He_electron_abundance, n_h_i,
+        d_n_h, cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp,
+        H_plus_He_electron_abundance_table, ub, lb);
     construct_1d_table_from_3d_elements(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.no_compton_cooling.metal_heating, 
-    		n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_cooling_table, abundance_ratio, ub, lb);
+        p, cooling, cosmo, phys_const,
+        cooling->table.no_compton_cooling.metal_heating, n_h_i, d_n_h,
+        cooling->N_nH, cooling->N_Temp, element_cooling_table, abundance_ratio,
+        ub, lb);
     construct_1d_print_table_from_3d_elements(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.no_compton_cooling.metal_heating, 
-    		n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_cooling_print_table, abundance_ratio, ub, lb);
+        p, cooling, cosmo, phys_const,
+        cooling->table.no_compton_cooling.metal_heating, n_h_i, d_n_h,
+        cooling->N_nH, cooling->N_Temp, element_cooling_print_table,
+        abundance_ratio, ub, lb);
     construct_1d_table_from_2d(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.no_compton_cooling.electron_abundance,
-    		n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_electron_abundance_table, ub, lb);
+        p, cooling, cosmo, phys_const,
+        cooling->table.no_compton_cooling.electron_abundance, n_h_i, d_n_h,
+        cooling->N_nH, cooling->N_Temp, element_electron_abundance_table, ub,
+        lb);
   } else {
-    // Normal tables 
+    // Normal tables
     construct_1d_table_from_4d(p, cooling, cosmo, phys_const,
-    		cooling->table.element_cooling.temperature,
-    		z_index, dz, cooling->N_Redshifts, n_h_i, d_n_h,
-    		cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp, temp_table, ub, lb);
+                               cooling->table.element_cooling.temperature,
+                               z_index, dz, cooling->N_Redshifts, n_h_i, d_n_h,
+                               cooling->N_nH, He_i, d_He, cooling->N_He,
+                               cooling->N_Temp, temp_table, ub, lb);
+    construct_1d_table_from_4d(p, cooling, cosmo, phys_const,
+                               cooling->table.element_cooling.H_plus_He_heating,
+                               z_index, dz, cooling->N_Redshifts, n_h_i, d_n_h,
+                               cooling->N_nH, He_i, d_He, cooling->N_He,
+                               cooling->N_Temp, H_plus_He_heat_table, ub, lb);
     construct_1d_table_from_4d(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.element_cooling.H_plus_He_heating, z_index, dz, cooling->N_Redshifts, n_h_i, d_n_h,
-    		cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp, H_plus_He_heat_table, ub, lb);
-    construct_1d_table_from_4d(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.element_cooling.H_plus_He_electron_abundance, z_index,
-    		dz, cooling->N_Redshifts, n_h_i, d_n_h, cooling->N_nH, He_i, d_He,
-    		cooling->N_He, cooling->N_Temp, H_plus_He_electron_abundance_table, ub, lb);
+        p, cooling, cosmo, phys_const,
+        cooling->table.element_cooling.H_plus_He_electron_abundance, z_index,
+        dz, cooling->N_Redshifts, n_h_i, d_n_h, cooling->N_nH, He_i, d_He,
+        cooling->N_He, cooling->N_Temp, H_plus_He_electron_abundance_table, ub,
+        lb);
     construct_1d_table_from_4d_elements(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.element_cooling.metal_heating, z_index, dz, cooling->N_Redshifts, 
-    		n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_cooling_table, abundance_ratio, ub, lb);
+        p, cooling, cosmo, phys_const,
+        cooling->table.element_cooling.metal_heating, z_index, dz,
+        cooling->N_Redshifts, n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp,
+        element_cooling_table, abundance_ratio, ub, lb);
     construct_1d_print_table_from_4d_elements(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.element_cooling.metal_heating, z_index, dz, cooling->N_Redshifts, 
-    		n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_cooling_print_table, abundance_ratio, ub, lb);
+        p, cooling, cosmo, phys_const,
+        cooling->table.element_cooling.metal_heating, z_index, dz,
+        cooling->N_Redshifts, n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp,
+        element_cooling_print_table, abundance_ratio, ub, lb);
     construct_1d_table_from_3d(
-    		p, cooling, cosmo, phys_const,
-    		cooling->table.element_cooling.electron_abundance, z_index, dz, cooling->N_Redshifts,
-    		n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_electron_abundance_table, ub, lb);
-  }		
+        p, cooling, cosmo, phys_const,
+        cooling->table.element_cooling.electron_abundance, z_index, dz,
+        cooling->N_Redshifts, n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp,
+        element_electron_abundance_table, ub, lb);
+  }
 }
-
-
