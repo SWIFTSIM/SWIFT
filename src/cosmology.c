@@ -374,7 +374,6 @@ void cosmology_init_tables(struct cosmology *c) {
                       GSL_INTEG_GAUSS61, space, &result, &abserr);
   c->universe_age_at_present_day = result;
 
-
   /* Update the times */
   c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
   c->time_end = cosmology_get_time_since_big_bang(c, c->a_end);
@@ -383,8 +382,7 @@ void cosmology_init_tables(struct cosmology *c) {
    * Inverse t(a)
    */
 
-  const double delta_t =
-    (c->time_end - c->time_begin) / cosmology_table_length;
+  const double delta_t = (c->time_end - c->time_begin) / cosmology_table_length;
 
   /* index in the time_interp_table */
   int i_a = 0;
@@ -411,7 +409,7 @@ void cosmology_init_tables(struct cosmology *c) {
 
     /* Compute interpolated scale factor */
     double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) /
-      cosmology_table_length;
+                                        cosmology_table_length;
     c->scale_factor_interp_table[i_time] = exp(log_a) - c->a_begin;
   }
 

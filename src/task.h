@@ -85,6 +85,8 @@ enum task_subtypes {
   task_subtype_gpart,
   task_subtype_multipole,
   task_subtype_spart,
+  task_subtype_rad_density,
+  task_subtype_rad_transmission,
   task_subtype_count
 } __attribute__((packed));
 

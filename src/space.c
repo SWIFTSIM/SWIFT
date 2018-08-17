@@ -54,6 +54,7 @@
 #include "memswap.h"
 #include "minmax.h"
 #include "multipole.h"
+#include "radiation.h"
 #include "restart.h"
 #include "sort_part.h"
 #include "stars.h"
@@ -2446,6 +2447,14 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     p[k].ti_kick = 0;
 #endif
   }
+
+  /* Initialize the rparts */
+  if (s->radiation) {
+    struct rpart *restrict rp = s->rparts + delta;
+    for (int k = 0; k < count; k++) {
+      radiation_first_init_part(&p[k], &rp[k]);
+    }
+  }
 }
 
 /**
@@ -2688,6 +2697,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param replicate How many replications along each direction do we want?
  * @param generate_gas_in_ics Are we generating gas particles from the gparts?
  * @param self_gravity flag whether we are doing gravity or not?
+ * @param radiation Flag whether we are doing radiation or not?
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
  *
@@ -2701,7 +2711,7 @@ void space_init(struct space *s, struct swift_params *params,
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
                 size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
                 int replicate, int generate_gas_in_ics, int self_gravity,
-                int verbose, int dry_run) {
+                int radiation, int verbose, int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -2712,6 +2722,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->dim[2] = dim[2];
   s->periodic = periodic;
   s->gravity = self_gravity;
+  s->radiation = radiation;
   s->nr_parts = Npart;
   s->size_parts = Npart;
   s->parts = parts;
@@ -2888,6 +2899,14 @@ void space_init(struct space *s, struct swift_params *params,
                        Npart * sizeof(struct xpart)) != 0)
       error("Failed to allocate xparts.");
     bzero(s->xparts, Npart * sizeof(struct xpart));
+  }
+
+  /* Allocate the extra radiation parts array for the gas particles. */
+  if (radiation) {
+    if (posix_memalign((void **)&s->rparts, rpart_align,
+                       Npart * sizeof(struct rpart)) != 0)
+      error("Failed to allocate rparts.");
+    bzero(s->rparts, Npart * sizeof(struct rpart));
   }
 
   hydro_space_init(&s->hs, s);

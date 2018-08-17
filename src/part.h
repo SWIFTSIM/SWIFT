@@ -40,6 +40,7 @@
 #define xpart_align 128
 #define spart_align 128
 #define gpart_align 128
+#define rpart_align 128
 
 /* Import the right hydro particle definition */
 #if defined(MINIMAL_SPH)
@@ -87,6 +88,9 @@
 
 /* Import the right star particle definition */
 #include "./stars/Default/star_part.h"
+
+/* Import the right radiation particle definition */
+#include "./radiation/Traphic/rad_part.h"
 
 void part_relink_gparts_to_parts(struct part *parts, size_t N,
                                  ptrdiff_t offset);

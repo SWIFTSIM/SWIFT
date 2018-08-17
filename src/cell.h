@@ -184,6 +184,9 @@ struct cell {
   /*! Pointer to the #spart data. */
   struct spart *sparts;
 
+  /*! Pointer to the #rpart data. */
+  struct rpart *rparts;
+
   /*! Pointer for the sorted indices. */
   struct entry *sort[13];
 
@@ -204,6 +207,10 @@ struct cell {
    * tasks */
   struct cell *super_gravity;
 
+  /*! Super cell, i.e. the highest-level parent clel that has radiation
+   *  density pair/self tasks */
+  struct cell *super_rad;
+
   /*! Linked list of the tasks computing this cell's hydro density. */
   struct link *density;
 
@@ -215,6 +222,12 @@ struct cell {
 
   /*! Linked list of the tasks computing this cell's gravity forces. */
   struct link *grav;
+
+  /*! Linked list of the tasks computing this cell's radiation density. */
+  struct link *rad_density;
+
+  /*! Linked list of the tasks computing this cell's radiation transmission. */
+  struct link *rad_transmission;
 
   /*! The task computing this cell's sorts. */
   struct task *sorts;

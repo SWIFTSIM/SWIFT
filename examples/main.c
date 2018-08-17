@@ -96,6 +96,7 @@ void print_help_message(void) {
          "Set parameter value and overwrites values read from the parameters "
          "file. Can be used more than once.");
   printf("  %2s %14s %s\n", "-r", "", "Continue using restart files.");
+  printf("  %2s %14s %s\n", "-R", "", "Run with radiation.");
   printf("  %2s %14s %s\n", "-s", "", "Run with hydrodynamics.");
   printf("  %2s %14s %s\n", "-S", "", "Run with stars.");
   printf("  %2s %14s %s\n", "-t", "{int}",
@@ -135,6 +136,7 @@ int main(int argc, char *argv[]) {
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
+  struct rad_props radiation_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct sourceterms sourceterms;
@@ -196,6 +198,7 @@ int main(int argc, char *argv[]) {
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
   int with_structure_finding = 0;
+  int with_radiation = 0;
   int verbose = 0;
   int nr_threads = 1;
   int with_verbose_timers = 0;
@@ -208,7 +211,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tv:xy:Y:")) != -1)
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rRsSt:Tv:xy:Y:")) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -280,6 +283,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'r':
         restart = 1;
+        break;
+      case 'R':
+        with_radiation = 1;
         break;
       case 's':
         with_hydro = 1;
@@ -369,9 +375,10 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) print_help_message();
     return 1;
   }
-  if (!with_self_gravity && !with_hydro && !with_external_gravity) {
+  if (!with_self_gravity && !with_hydro && !with_external_gravity &&
+      !with_radiation) {
     if (myrank == 0)
-      printf("Error: At least one of -s, -g or -G must be chosen.\n");
+      printf("Error: At least one of -s, -R, -g or -G must be chosen.\n");
     if (myrank == 0) print_help_message();
     return 1;
   }
@@ -459,6 +466,7 @@ int main(int argc, char *argv[]) {
     message("sizeof(xpart)       is %4zi bytes.", sizeof(struct xpart));
     message("sizeof(spart)       is %4zi bytes.", sizeof(struct spart));
     message("sizeof(gpart)       is %4zi bytes.", sizeof(struct gpart));
+    message("sizeof(rpart)       is %4zi bytes.", sizeof(struct rpart));
     message("sizeof(multipole)   is %4zi bytes.", sizeof(struct multipole));
     message("sizeof(grav_tensor) is %4zi bytes.", sizeof(struct grav_tensor));
     message("sizeof(task)        is %4zi bytes.", sizeof(struct task));
@@ -659,6 +667,9 @@ int main(int argc, char *argv[]) {
     if (with_self_gravity)
       gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology);
 
+    /* Initialise the radiation properties */
+    if (with_radiation) radiation_props_init(&radiation_properties, params);
+
     /* Read particles and space information from (GADGET) ICs */
     char ICfileName[200] = "";
     parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
@@ -706,11 +717,11 @@ int main(int argc, char *argv[]) {
                    dry_run);
 #endif
 #else
-    read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                   &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
-                   (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
-                   dry_run);
+    read_ic_single(
+        ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas, &Ngpart, &Nspart,
+        &periodic, &flag_entropy_ICs, with_hydro | with_radiation,
+        (with_external_gravity || with_self_gravity), with_stars, cleanup_h,
+        cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads, dry_run);
 #endif
 #endif
     if (myrank == 0) {
@@ -784,7 +795,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
                Nspart, periodic, replicate, generate_gas_in_ics,
-               with_self_gravity, talking, dry_run);
+               with_self_gravity, with_radiation, talking, dry_run);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -871,13 +882,14 @@ int main(int argc, char *argv[]) {
     if (with_stars) engine_policies |= engine_policy_stars;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
+    if (with_radiation) engine_policies |= engine_policy_radiation;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
-                &hydro_properties, &gravity_properties, &mesh, &potential,
-                &cooling_func, &chemistry, &sourceterms);
+                &hydro_properties, &gravity_properties, &radiation_properties,
+                &mesh, &potential, &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 

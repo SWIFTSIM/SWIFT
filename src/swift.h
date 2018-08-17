@@ -59,6 +59,8 @@
 #include "potential.h"
 #include "profiler.h"
 #include "queue.h"
+#include "radiation.h"
+#include "radiation_properties.h"
 #include "restart.h"
 #include "runner.h"
 #include "scheduler.h"

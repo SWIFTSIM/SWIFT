@@ -2384,6 +2384,28 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
  * @param c The top-level #cell to play with.
+ * @param super_rad Pointer to the deepest cell with tasks in this part of the
+ * tree.
+ */
+void cell_set_super_radiation(struct cell *c, struct cell *super_rad) {
+
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_rad == NULL && c->rad_density != NULL) super_rad = c;
+
+  /* Set the super-cell */
+  c->super_rad = super_rad;
+
+  /* Recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_set_super_radiation(c->progeny[k], super_rad);
+}
+
+/**
+ * @brief Set the super-cell pointers for all cells in a hierarchy.
+ *
+ * @param c The top-level #cell to play with.
  * @param super_gravity Pointer to the deepest cell with tasks in this part of
  * the tree.
  */
@@ -2423,6 +2445,8 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
     if ((e->policy & engine_policy_self_gravity) ||
         (e->policy & engine_policy_external_gravity))
       cell_set_super_gravity(c, NULL);
+
+    if (e->policy & engine_policy_radiation) cell_set_super_radiation(c, NULL);
 
     /* Super-pointer for common operations */
     cell_set_super(c, NULL);

@@ -82,6 +82,9 @@ struct space {
   /*! Are we doing gravity? */
   int gravity;
 
+  /*! Are we doing radiation? */
+  int radiation;
+
   /*! Width of the top-level cells. */
   double width[3];
 
@@ -145,6 +148,9 @@ struct space {
   /*! The s-particle data (cells have pointers to this). */
   struct spart *sparts;
 
+  /*! The r-particle data (cells have pointers to this). */
+  struct rpart *rparts;
+
   /*! The top-level FFT task */
   struct task *grav_top_level;
 
@@ -207,7 +213,7 @@ void space_init(struct space *s, struct swift_params *params,
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
                 size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
                 int replicate, int generate_gas_in_ics, int gravity,
-                int verbose, int dry_run);
+                int radiation, int verbose, int dry_run);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);

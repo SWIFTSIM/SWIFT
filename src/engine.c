@@ -109,7 +109,8 @@ const char *engine_policy_names[] = {"none",
                                      "cooling",
                                      "sourceterms",
                                      "stars",
-                                     "structure finding"};
+                                     "structure finding",
+                                     "radiation"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -298,6 +299,57 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
 }
 
 /**
+ * @brief Generate the radiation hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks -- hydro version
+ *
+ * Tasks are only created here. The dependencies will be added later on.
+ *
+ * Note that there is no need to recurse below the super-cell. Note also
+ * that we only add tasks if the relevant particles are present in the cell.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ */
+void engine_make_hierarchical_tasks_radiation(struct engine *e,
+                                              struct cell *c) {
+
+  struct scheduler *s = &e->sched;
+
+  /* Are we in a super-cell ? */
+  if (c->super_hydro == c) {
+
+    /* Add the sort task. */
+    c->sorts =
+        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+
+      /* Generate the ghost tasks. */
+      c->ghost_in =
+          scheduler_addtask(s, task_type_ghost_in, task_subtype_none, 0,
+                            /* implicit = */ 1, c, NULL);
+      c->ghost_out =
+          scheduler_addtask(s, task_type_ghost_out, task_subtype_none, 0,
+                            /* implicit = */ 1, c, NULL);
+      engine_add_ghosts(e, c, c->ghost_in, c->ghost_out);
+
+      /* Generate the extra ghost task. */
+      c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
+                                         task_subtype_none, 0, 0, c, NULL);
+    }
+
+  } else { /* We are above the super-cell so need to go deeper */
+
+    /* Recurse. */
+    if (c->split)
+      for (int k = 0; k < 8; k++)
+        if (c->progeny[k] != NULL)
+          engine_make_hierarchical_tasks_radiation(e, c->progeny[k]);
+  }
+}
+
+/**
  * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
  * i.e. all the O(Npart) tasks -- gravity version
  *
@@ -396,6 +448,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   const int is_with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int is_with_external_gravity =
       (e->policy & engine_policy_external_gravity);
+  const int is_with_radiation = (e->policy & engine_policy_radiation);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -406,6 +459,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* And the gravity stuff */
     if (is_with_self_gravity || is_with_external_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);
+    if (is_with_radiation) engine_make_hierarchical_tasks_radiation(e, c);
   }
 }
 
@@ -2558,6 +2612,72 @@ void engine_make_external_gravity_tasks(struct engine *e) {
 }
 
 /**
+ * @brief Constructs the top-level tasks for the radiation.
+ *
+ * @param e The #engine.
+ */
+void engine_make_first_radiation_tasks(struct engine *e) {
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+  const int nr_cells = s->nr_cells;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int cid = 0; cid < nr_cells; ++cid) {
+
+    /* Get the cell index. */
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Skip cells without hydro particles */
+    if (ci->count == 0) continue;
+
+    /* If the cells is local build a self-interaction */
+    if (ci->nodeID == nodeID)
+      scheduler_addtask(sched, task_type_self, task_subtype_rad_density, 0, 0,
+                        ci, NULL);
+
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          struct cell *cj = &cells[cjd];
+
+          /* Is that neighbour local and does it have particles ? */
+          if (cid >= cjd || cj->count == 0 ||
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
+
+          /* Construct the pair task */
+          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+          scheduler_addtask(sched, task_type_pair, task_subtype_rad_density,
+                            sid, 0, ci, cj);
+        }
+      }
+    }
+  }
+}
+
+/**
  * @brief Constructs the top-level pair tasks for the first hydro loop over
  * neighbours
  *
@@ -2673,6 +2793,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav, t);
+      } else if (t_subtype == task_subtype_rad_density) {
+        engine_addlink(e, &ci->rad_density, t);
       }
 
       /* Link pair tasks to cells. */
@@ -2686,6 +2808,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
         engine_addlink(e, &cj->grav, t);
+      } else if (t_subtype == task_subtype_rad_density) {
+        engine_addlink(e, &ci->rad_density, t);
+        engine_addlink(e, &cj->rad_density, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -2703,6 +2828,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav, t);
+      } else if (t_subtype == task_subtype_rad_density) {
+        engine_addlink(e, &ci->rad_density, t);
       }
 
       /* Link sub-pair tasks to cells. */
@@ -2716,6 +2843,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
         engine_addlink(e, &cj->grav, t);
+      } else if (t_subtype == task_subtype_rad_density) {
+        engine_addlink(e, &ci->rad_density, t);
+        engine_addlink(e, &cj->rad_density, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -3175,6 +3305,162 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Creates the dependency network for the radiation tasks of a given
+ * cell.
+ *
+ * @param sched The #scheduler.
+ * @param density The density task to link.
+ * @param force The force task to link.
+ * @param c The cell.
+ */
+static inline void engine_make_radiation_loops_dependencies(
+    struct scheduler *sched, struct task *rad_density,
+    struct task *rad_transmission, struct cell *c) {
+  /* density loop --> ghost --> transmission loop */
+  scheduler_addunlock(sched, rad_density, c->super_hydro->ghost_in);
+  scheduler_addunlock(sched, c->super_hydro->ghost_out, rad_transmission);
+}
+
+/**
+ * @brief Duplicates the first radiation loop and construct all the
+ * dependencies for the radiation parts
+ *
+ * This is done by looping over all the previously constructed tasks
+ * and adding another task involving the same cells but this time
+ * corresponding to the second radiation loop over neighbours.
+ * With all the relevant tasks for a given cell available, we construct
+ * all the dependencies for that cell.
+ */
+void engine_make_extra_radiation_tasks_mapper(void *map_data, int num_elements,
+                                              void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &((struct task *)map_data)[ind];
+
+    /* Self-interaction? */
+    if (t->type == task_type_self && t->subtype == task_subtype_rad_density) {
+
+      /* The self radiation density task has no dependencies */
+
+      /* Start by constructing the task for the second radiation loop */
+      struct task *t2 =
+          scheduler_addtask(sched, task_type_self,
+                            task_subtype_rad_transmission, 0, 0, t->ci, NULL);
+
+      /* Add the link between the new loop and the cell */
+      engine_addlink(e, &t->ci->rad_transmission, t2);
+
+      /* Now, build all the dependencies for the hydro */
+      engine_make_radiation_loops_dependencies(sched, t, t2, t->ci);
+      /// if it doesn't work, you might want to look here
+      scheduler_addunlock(sched, t2, t->ci->super->end_force);
+    }
+
+    /* Otherwise, pair interaction? */
+    else if (t->type == task_type_pair &&
+             t->subtype == task_subtype_rad_density) {
+
+      /* Make all density tasks depend on the drift and the sorts. */
+      if (t->ci->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->ci->super_hydro->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super_hydro->sorts, t);
+      if (t->ci->super_hydro != t->cj->super_hydro) {
+        if (t->cj->nodeID == engine_rank)
+          scheduler_addunlock(sched, t->cj->super_hydro->drift_part, t);
+        scheduler_addunlock(sched, t->cj->super_hydro->sorts, t);
+      }
+
+      /* Start by constructing the task for the second hydro loop */
+      struct task *t2 = scheduler_addtask(
+          sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj);
+
+      /* Add the link between the new loop and both cells */
+      engine_addlink(e, &t->ci->force, t2);
+      engine_addlink(e, &t->cj->force, t2);
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_radiation_loops_dependencies(sched, t, t2, t->ci);
+        scheduler_addunlock(sched, t2, t->ci->super->end_force);
+      }
+      if (t->cj->nodeID == nodeID) {
+        if (t->ci->super_hydro != t->cj->super_hydro)
+          engine_make_radiation_loops_dependencies(sched, t, t2, t->cj);
+        if (t->ci->super != t->cj->super)
+          scheduler_addunlock(sched, t2, t->cj->super->end_force);
+      }
+
+    }
+
+    /* Otherwise, sub-self interaction? */
+    else if (t->type == task_type_sub_self &&
+             t->subtype == task_subtype_density) {
+
+      /* Make all density tasks depend on the drift and sorts. */
+      scheduler_addunlock(sched, t->ci->super_hydro->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super_hydro->sorts, t);
+
+      /* Start by constructing the task for the second hydro loop */
+      struct task *t2 =
+          scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
+                            t->flags, 0, t->ci, t->cj);
+
+      /* Add the link between the new loop and the cell */
+      engine_addlink(e, &t->ci->force, t2);
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_radiation_loops_dependencies(sched, t, t2, t->ci);
+        scheduler_addunlock(sched, t2, t->ci->super->end_force);
+      }
+    }
+
+    /* Otherwise, sub-pair interaction? */
+    else if (t->type == task_type_sub_pair &&
+             t->subtype == task_subtype_density) {
+
+      /* Make all density tasks depend on the drift. */
+      if (t->ci->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->ci->super_hydro->drift_part, t);
+      scheduler_addunlock(sched, t->ci->super_hydro->sorts, t);
+      if (t->ci->super_hydro != t->cj->super_hydro) {
+        if (t->cj->nodeID == engine_rank)
+          scheduler_addunlock(sched, t->cj->super_hydro->drift_part, t);
+        scheduler_addunlock(sched, t->cj->super_hydro->sorts, t);
+      }
+
+      /* Start by constructing the task for the second hydro loop */
+      struct task *t2 =
+          scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
+                            t->flags, 0, t->ci, t->cj);
+
+      /* Add the link between the new loop and both cells */
+      engine_addlink(e, &t->ci->force, t2);
+      engine_addlink(e, &t->cj->force, t2);
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super_hydro-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_radiation_loops_dependencies(sched, t, t2, t->ci);
+        scheduler_addunlock(sched, t2, t->ci->super->end_force);
+      }
+      if (t->cj->nodeID == nodeID) {
+        if (t->ci->super_hydro != t->cj->super_hydro)
+          engine_make_radiation_loops_dependencies(sched, t, t2, t->cj);
+        if (t->ci->super != t->cj->super)
+          scheduler_addunlock(sched, t2, t->cj->super->end_force);
+      }
+    }
+  }
+}
+
+/**
  * @brief Fill the #space's task list.
  *
  * @param e The #engine we are working with.
@@ -3214,6 +3500,8 @@ void engine_maketasks(struct engine *e) {
   if (e->policy & engine_policy_external_gravity)
     engine_make_external_gravity_tasks(e);
 
+  if (e->policy & engine_policy_radiation) engine_make_first_radiation_tasks(e);
+
   if (e->sched.nr_tasks == 0 && (s->nr_gparts > 0 || s->nr_parts > 0))
     error("We have particles but no hydro or gravity tasks were created.");
 
@@ -3233,6 +3521,7 @@ void engine_maketasks(struct engine *e) {
 #endif
   const size_t self_grav_tasks_per_cell = 125;
   const size_t ext_grav_tasks_per_cell = 1;
+  const size_t rad_tasks_per_cell = 27 * 2;
 
   if (e->policy & engine_policy_hydro)
     e->size_links += s->tot_cells * hydro_tasks_per_cell;
@@ -3240,6 +3529,8 @@ void engine_maketasks(struct engine *e) {
     e->size_links += s->tot_cells * ext_grav_tasks_per_cell;
   if (e->policy & engine_policy_self_gravity)
     e->size_links += s->tot_cells * self_grav_tasks_per_cell;
+  if (e->policy & engine_policy_radiation)
+    e->size_links += s->tot_cells * rad_tasks_per_cell;
 
   /* Allocate the new link list */
   if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) ==
@@ -3298,6 +3589,10 @@ void engine_maketasks(struct engine *e) {
      of its super-cell. */
   if (e->policy & engine_policy_hydro)
     threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
+                   sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
+
+  if (e->policy & engine_policy_radiation)
+    threadpool_map(&e->threadpool, engine_make_extra_radiation_tasks_mapper,
                    sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
   if (e->verbose)
@@ -3890,6 +4185,10 @@ int engine_estimate_nr_tasks(struct engine *e) {
   }
   if (e->policy & engine_policy_stars) {
     n1 += 2;
+  }
+  if (e->policy & engine_policy_radiation) {
+    /* 2 x 13 x neighbours + 2 x self + 2 x ghost */
+    n1 += 30;
   }
 
 #ifdef WITH_MPI
@@ -5717,6 +6016,7 @@ void engine_unpin(void) {
  * @param cosmo The #cosmology used for this run.
  * @param hydro The #hydro_props used for this run.
  * @param gravity The #gravity_props used for this run.
+ * @param radiation The #rad_props used for this run.
  * @param mesh The #pm_mesh used for the long-range periodic forces.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
@@ -5729,7 +6029,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
-                 struct gravity_props *gravity, struct pm_mesh *mesh,
+                 struct gravity_props *gravity,
+                 const struct rad_props *radiation, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
                  const struct chemistry_global_data *chemistry,
@@ -5795,6 +6096,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->cosmology = cosmo;
   e->hydro_properties = hydro;
   e->gravity_properties = gravity;
+  e->radiation_properties = radiation;
   e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;

@@ -985,6 +985,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->type == task_type_grav_mesh) {
       /* For future use */
+    } else if (t->subtype == task_subtype_rad_density) {
+      scheduler_splittask_hydro(t, s);
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type");
