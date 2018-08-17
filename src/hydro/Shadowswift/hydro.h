@@ -443,7 +443,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param dt Physical time step.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, const struct cosmology* cosmo,
+    struct part* p, struct xpart* xp, float dt, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {
 
   /* Update the conserved variables. We do this here and not in the kick,

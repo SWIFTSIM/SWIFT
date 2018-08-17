@@ -91,7 +91,8 @@ INLINE static void load_table_HM80(struct HM80_params *mat, char *table_file) {
   // Ignore header lines
   char buffer[100];
   for (int i = 0; i < 4; i++) {
-    fgets(buffer, 100, f);
+    if (fgets(buffer, 100, f) == NULL)
+      error("Something incorrect happening with the file header.");
   }
 
   // Table properties

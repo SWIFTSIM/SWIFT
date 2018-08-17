@@ -60,10 +60,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
       sqrtf(hydro_gamma * p->P / p->rho);
   vmax = max(vmax, p->timestepvars.vmax);
 
-  // MATTHIEU: Bert is this correct? Do we need more cosmology terms here?
-  const float psize =
-      cosmo->a * powf(p->geometry.volume / hydro_dimension_unit_sphere,
-                      hydro_dimension_inv);
+  const float psize = cosmo->a * cosmo->a *
+                      powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                           hydro_dimension_inv);
   float dt = FLT_MAX;
   if (vmax > 0.0f) {
     dt = psize / vmax;
@@ -502,7 +501,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p, struct xpart* xp, const struct cosmology* cosmo) {}
+    struct part* p, struct xpart* xp, const struct cosmology* cosmo) {
+
+  p->conserved.energy /= cosmo->a_factor_internal_energy;
+}
 
 /**
  * @brief Extra operations to be done during the drift
@@ -541,22 +543,16 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
 #if !defined(EOS_ISOTHERMAL_GAS)
 #ifdef GIZMO_TOTAL_ENERGY
-    const float Etot = p->conserved.energy + p->flux.energy * dt_therm;
+    const float Etot = p->conserved.energy + p->flux.energy * dt_drift;
     const float v2 =
         (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]);
     const float u = (Etot * m_inv - 0.5f * v2);
 #else
-    const float u = (p->conserved.energy + p->flux.energy * dt_therm) * m_inv;
+    const float u = (p->conserved.energy + p->flux.energy * dt_drift) * m_inv;
 #endif
     p->P = hydro_gamma_minus_one * u * p->rho;
 #endif
   }
-
-  /* we use a sneaky way to get the gravitational contribtuion to the
-     velocity update */
-  p->v[0] += p->v[0] - xp->v_full[0];
-  p->v[1] += p->v[1] - xp->v_full[1];
-  p->v[2] += p->v[2] - xp->v_full[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->h <= 0.0f) {
@@ -595,29 +591,40 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 /**
  * @brief Extra operations done during the kick
  *
- * Not used for GIZMO.
- *
  * @param p Particle to act upon.
  * @param xp Extended particle data to act upon.
- * @param dt Physical time step.
- * @param half_dt Half the physical time step.
+ * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
+ * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
+ * @param dt_hydro Hydro acceleration time-step
+ * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
+ * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
+ * @param cosmo Cosmology.
+ * @param hydro_props Additional hydro properties.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, const struct cosmology* cosmo,
+    struct part* p, struct xpart* xp, float dt_therm, float dt_grav,
+    float dt_hydro, float dt_kick_corr, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {
 
   float a_grav[3];
 
   /* Update conserved variables (note: the mass does not change). */
-  p->conserved.momentum[0] += p->flux.momentum[0] * dt;
-  p->conserved.momentum[1] += p->flux.momentum[1] * dt;
-  p->conserved.momentum[2] += p->flux.momentum[2] * dt;
+  p->conserved.momentum[0] += p->flux.momentum[0] * dt_therm;
+  p->conserved.momentum[1] += p->flux.momentum[1] * dt_therm;
+  p->conserved.momentum[2] += p->flux.momentum[2] * dt_therm;
 #if defined(EOS_ISOTHERMAL_GAS)
   /* We use the EoS equation in a sneaky way here just to get the constant u */
   p->conserved.energy =
       p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
-  p->conserved.energy += p->flux.energy * dt;
+  p->conserved.energy += p->flux.energy * dt_therm;
+#endif
+
+#ifndef HYDRO_GAMMA_5_3
+  const float Pcorr = (dt_hydro - dt_therm) * p->geometry.volume;
+  p->conserved.momentum[0] -= Pcorr * p->gradients.P[0];
+  p->conserved.momentum[1] -= Pcorr * p->gradients.P[1];
+  p->conserved.momentum[2] -= Pcorr * p->gradients.P[2];
 #endif
 
   /* Apply the minimal energy limit */
@@ -655,9 +662,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Kick the momentum for half a time step */
     /* Note that this also affects the particle movement, as the velocity for
        the particles is set after this. */
-    p->conserved.momentum[0] += dt * p->conserved.mass * a_grav[0];
-    p->conserved.momentum[1] += dt * p->conserved.mass * a_grav[1];
-    p->conserved.momentum[2] += dt * p->conserved.mass * a_grav[2];
+    p->conserved.momentum[0] += dt_grav * p->conserved.mass * a_grav[0];
+    p->conserved.momentum[1] += dt_grav * p->conserved.mass * a_grav[1];
+    p->conserved.momentum[2] += dt_grav * p->conserved.mass * a_grav[2];
   }
 
   /* Set the velocities: */
@@ -844,7 +851,6 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
     v[2] = p->v[2];
   }
 
-  // MATTHIEU: Bert is this correct?
   v[0] += xp->a_grav[0] * dt_kick_grav;
   v[1] += xp->a_grav[1] * dt_kick_grav;
   v[2] += xp->a_grav[2] * dt_kick_grav;

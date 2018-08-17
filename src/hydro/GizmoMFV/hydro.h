@@ -68,14 +68,13 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   vmax = max(vmax, p->timestepvars.vmax);
 
   // MATTHIEU: Bert is this correct? Do we need more cosmology terms here?
-  const float psize =
-      cosmo->a * powf(p->geometry.volume / hydro_dimension_unit_sphere,
-                      hydro_dimension_inv);
+  const float psize = powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                           hydro_dimension_inv);
   float dt = FLT_MAX;
   if (vmax > 0.) {
     dt = psize / vmax;
   }
-  return CFL_condition * dt;
+  return cosmo->a * cosmo->a * CFL_condition * dt;
 }
 
 /**
@@ -544,7 +543,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p, struct xpart* xp, const struct cosmology* cosmo) {}
+    struct part* p, struct xpart* xp, const struct cosmology* cosmo) {
+
+  p->conserved.energy /= cosmo->a_factor_internal_energy;
+}
 
 /**
  * @brief Extra operations to be done during the drift
@@ -579,16 +581,16 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* drift the primitive variables based on the old fluxes */
   if (p->geometry.volume > 0.) {
-    p->primitives.rho += p->conserved.flux.mass * dt_drift / p->geometry.volume;
+    p->primitives.rho += p->conserved.flux.mass * dt_therm / p->geometry.volume;
   }
 
   if (p->conserved.mass > 0.) {
     p->primitives.v[0] +=
-        p->conserved.flux.momentum[0] * dt_drift / p->conserved.mass;
+        p->conserved.flux.momentum[0] * dt_therm / p->conserved.mass;
     p->primitives.v[1] +=
-        p->conserved.flux.momentum[1] * dt_drift / p->conserved.mass;
+        p->conserved.flux.momentum[1] * dt_therm / p->conserved.mass;
     p->primitives.v[2] +=
-        p->conserved.flux.momentum[2] * dt_drift / p->conserved.mass;
+        p->conserved.flux.momentum[2] * dt_therm / p->conserved.mass;
 
 #if !defined(EOS_ISOTHERMAL_GAS)
 #ifdef GIZMO_TOTAL_ENERGY
@@ -607,7 +609,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 #endif
   }
 
-  /* we use a sneaky way to get the gravitational contribtuion to the
+  /* we use a sneaky way to get the gravitational contribution to the
      velocity update */
   p->primitives.v[0] += p->v[0] - xp->v_full[0];
   p->primitives.v[1] += p->v[1] - xp->v_full[1];
@@ -649,15 +651,19 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 /**
  * @brief Extra operations done during the kick
  *
- * Not used for GIZMO.
- *
  * @param p Particle to act upon.
  * @param xp Extended particle data to act upon.
- * @param dt Physical time step.
- * @param half_dt Half the physical time step.
+ * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
+ * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
+ * @param dt_hydro Hydro acceleration time-step
+ * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
+ * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
+ * @param cosmo Cosmology.
+ * @param hydro_props Additional hydro properties.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, const struct cosmology* cosmo,
+    struct part* p, struct xpart* xp, float dt_therm, float dt_grav,
+    float dt_hydro, float dt_kick_corr, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {
 
   float a_grav[3];
@@ -672,35 +678,48 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     a_grav[2] = p->gpart->a_grav[2];
 
 #ifdef GIZMO_TOTAL_ENERGY
-    p->conserved.energy += dt * (p->conserved.momentum[0] * a_grav[0] +
-                                 p->conserved.momentum[1] * a_grav[1] +
-                                 p->conserved.momentum[2] * a_grav[2]);
+    p->conserved.energy += dt_grav * (p->conserved.momentum[0] * a_grav[0] +
+                                      p->conserved.momentum[1] * a_grav[1] +
+                                      p->conserved.momentum[2] * a_grav[2]);
 #endif
 
     /* Kick the momentum for half a time step */
     /* Note that this also affects the particle movement, as the velocity for
        the particles is set after this. */
-    p->conserved.momentum[0] += p->conserved.mass * a_grav[0] * dt;
-    p->conserved.momentum[1] += p->conserved.mass * a_grav[1] * dt;
-    p->conserved.momentum[2] += p->conserved.mass * a_grav[2] * dt;
+    p->conserved.momentum[0] += p->conserved.mass * a_grav[0] * dt_grav;
+    p->conserved.momentum[1] += p->conserved.mass * a_grav[1] * dt_grav;
+    p->conserved.momentum[2] += p->conserved.mass * a_grav[2] * dt_grav;
 
     p->conserved.energy -=
-        0.5f * dt *
+        0.5f * dt_kick_corr *
         (p->gravity.mflux[0] * a_grav[0] + p->gravity.mflux[1] * a_grav[1] +
          p->gravity.mflux[2] * a_grav[2]);
   }
 
   /* Update conserved variables. */
-  p->conserved.mass += p->conserved.flux.mass * dt;
-  p->conserved.momentum[0] += p->conserved.flux.momentum[0] * dt;
-  p->conserved.momentum[1] += p->conserved.flux.momentum[1] * dt;
-  p->conserved.momentum[2] += p->conserved.flux.momentum[2] * dt;
+  p->conserved.mass += p->conserved.flux.mass * dt_therm;
+  p->conserved.momentum[0] += p->conserved.flux.momentum[0] * dt_therm;
+  p->conserved.momentum[1] += p->conserved.flux.momentum[1] * dt_therm;
+  p->conserved.momentum[2] += p->conserved.flux.momentum[2] * dt_therm;
 #if defined(EOS_ISOTHERMAL_GAS)
   /* We use the EoS equation in a sneaky way here just to get the constant u */
   p->conserved.energy =
       p->conserved.mass * gas_internal_energy_from_entropy(0.f, 0.f);
 #else
-  p->conserved.energy += p->conserved.flux.energy * dt;
+  p->conserved.energy += p->conserved.flux.energy * dt_therm;
+#endif
+
+#ifndef HYDRO_GAMMA_5_3
+  const float Pcorr = (dt_hydro - dt_therm) * p->geometry.volume;
+  p->conserved.momentum[0] -= Pcorr * p->primitives.gradients.P[0];
+  p->conserved.momentum[1] -= Pcorr * p->primitives.gradients.P[1];
+  p->conserved.momentum[2] -= Pcorr * p->primitives.gradients.P[2];
+#ifdef GIZMO_TOTAL_ENERGY
+  p->conserved.energy -=
+      Pcorr * (p->primitives.v[0] * p->primitives.gradients.P[0] +
+               p->primitives.v[1] * p->primitives.gradients.P[1] +
+               p->primitives.v[2] * p->primitives.gradients.P[2]);
+#endif
 #endif
 
   /* Apply the minimal energy limit */
