@@ -1142,7 +1142,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 #endif
 
         /* Time interval for this half-kick */
-        double dt_kick_grav, dt_kick_hydro, dt_kick_therm;
+        double dt_kick_grav, dt_kick_hydro, dt_kick_therm, dt_kick_corr;
         if (with_cosmology) {
           dt_kick_hydro = cosmology_get_hydro_kick_factor(
               cosmo, ti_begin, ti_begin + ti_step / 2);
@@ -1150,15 +1150,19 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
                                                         ti_begin + ti_step / 2);
           dt_kick_therm = cosmology_get_therm_kick_factor(
               cosmo, ti_begin, ti_begin + ti_step / 2);
+          dt_kick_corr = cosmology_get_corr_kick_factor(cosmo, ti_begin,
+                                                        ti_begin + ti_step / 2);
         } else {
           dt_kick_hydro = (ti_step / 2) * time_base;
           dt_kick_grav = (ti_step / 2) * time_base;
           dt_kick_therm = (ti_step / 2) * time_base;
+          dt_kick_corr = (ti_step / 2) * time_base;
         }
 
         /* do the kick */
-        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, cosmo,
-                  hydro_props, ti_begin, ti_begin + ti_step / 2);
+        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
+                  dt_kick_corr, cosmo, hydro_props, ti_begin,
+                  ti_begin + ti_step / 2);
 
         /* Update the accelerations to be used in the drift for hydro */
         if (p->gpart != NULL) {
@@ -1308,7 +1312,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
               ti_begin, ti_step, p->time_bin, ti_current);
 #endif
         /* Time interval for this half-kick */
-        double dt_kick_grav, dt_kick_hydro, dt_kick_therm;
+        double dt_kick_grav, dt_kick_hydro, dt_kick_therm, dt_kick_corr;
         if (with_cosmology) {
           dt_kick_hydro = cosmology_get_hydro_kick_factor(
               cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
@@ -1316,15 +1320,19 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
               cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
           dt_kick_therm = cosmology_get_therm_kick_factor(
               cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+          dt_kick_corr = cosmology_get_corr_kick_factor(
+              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
         } else {
           dt_kick_hydro = (ti_step / 2) * time_base;
           dt_kick_grav = (ti_step / 2) * time_base;
           dt_kick_therm = (ti_step / 2) * time_base;
+          dt_kick_corr = (ti_step / 2) * time_base;
         }
 
         /* Finish the time-step with a second half-kick */
-        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, cosmo,
-                  hydro_props, ti_begin + ti_step / 2, ti_begin + ti_step);
+        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
+                  dt_kick_corr, cosmo, hydro_props, ti_begin + ti_step / 2,
+                  ti_begin + ti_step);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
