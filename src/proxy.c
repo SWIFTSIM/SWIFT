@@ -60,17 +60,20 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   /* Run through the cells and get the size of the tags that will be sent off.
    */
   int count_out = 0;
-  int offset[s->nr_cells];
+  int offset_out[s->nr_cells];
   for (int k = 0; k < s->nr_cells; k++) {
-    offset[k] = count_out;
-    if (s->cells_top[k].sendto) count_out += s->cells_top[k].pcell_size;
+    offset_out[k] = count_out;
+    if (s->cells_top[k].sendto) {
+      count_out += s->cells_top[k].pcell_size;
+    }
   }
 
   /* Run through the proxies and get the count of incoming tags. */
   int count_in = 0;
+  int offset_in[s->nr_cells];
   for (int k = 0; k < num_proxies; k++) {
     for (int j = 0; j < proxies[k].nr_cells_in; j++) {
-      offset[proxies[k].cells_in[j] - s->cells_top] = count_in;
+      offset_in[proxies[k].cells_in[j] - s->cells_top] = count_in;
       count_in += proxies[k].cells_in[j]->pcell_size;
     }
   }
@@ -85,10 +88,11 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     error("Failed to allocate tags buffers.");
 
   /* Pack the local tags. */
-  for (int k = 0; k < s->nr_cells; k++)
+  for (int k = 0; k < s->nr_cells; k++) {
     if (s->cells_top[k].sendto) {
-      cell_pack_tags(&s->cells_top[k], &tags_out[offset[k]]);
+      cell_pack_tags(&s->cells_top[k], &tags_out[offset_out[k]]);
     }
+  }
 
   /* Allocate the incoming and outgoing request handles. */
   int num_reqs_out = 0;
@@ -113,7 +117,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       const int cid = proxies[k].cells_in[j] - s->cells_top;
       cids_in[recv_rid] = cid;
       int err = MPI_Irecv(
-          &tags_in[offset[cid]], proxies[k].cells_in[j]->pcell_size, MPI_INT,
+          &tags_in[offset_in[cid]], proxies[k].cells_in[j]->pcell_size, MPI_INT,
           proxies[k].nodeID, cid, MPI_COMM_WORLD, &reqs_in[recv_rid]);
       if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv tags.");
       recv_rid += 1;
@@ -122,7 +126,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       const int cid = proxies[k].cells_out[j] - s->cells_top;
       cids_out[send_rid] = cid;
       int err = MPI_Isend(
-          &tags_out[offset[cid]], proxies[k].cells_out[j]->pcell_size, MPI_INT,
+          &tags_out[offset_out[cid]], proxies[k].cells_out[j]->pcell_size, MPI_INT,
           proxies[k].nodeID, cid, MPI_COMM_WORLD, &reqs_out[send_rid]);
       if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend tags.");
       send_rid += 1;
@@ -137,7 +141,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     const int cid = cids_in[pid];
-    cell_unpack_tags(&tags_in[offset[cid]], &s->cells_top[cid]);
+    cell_unpack_tags(&tags_in[offset_in[cid]], &s->cells_top[cid]);
   }
 
   /* Wait for all the sends to have completed. */
