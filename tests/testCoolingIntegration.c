@@ -88,9 +88,8 @@ int main() {
       hydrogen_number_density_cgs *
       pow(units_cgs_conversion_factor(&us, UNIT_CONV_LENGTH), 3);
   p.rho = hydrogen_number_density * internal_const.const_proton_mass *
-          (1.0 +
-           p.chemistry_data.metal_mass_fraction[EAGLE_Helium] /
-               p.chemistry_data.metal_mass_fraction[EAGLE_Hydrogen]);
+          (1.0 + p.chemistry_data.metal_mass_fraction[EAGLE_Helium] /
+                     p.chemistry_data.metal_mass_fraction[EAGLE_Hydrogen]);
   p.entropy = pressure / (pow(p.rho, gamma));
   cosmo.z = 0.0999744;
 
@@ -138,9 +137,8 @@ int main() {
         hydrogen_number_density_cgs *
         pow(units_cgs_conversion_factor(&us, UNIT_CONV_LENGTH), 3);
     p.rho = hydrogen_number_density * internal_const.const_proton_mass *
-            (1.0 +
-             p.chemistry_data.metal_mass_fraction[EAGLE_Helium] /
-                 p.chemistry_data.metal_mass_fraction[EAGLE_Hydrogen]);
+            (1.0 + p.chemistry_data.metal_mass_fraction[EAGLE_Helium] /
+                       p.chemistry_data.metal_mass_fraction[EAGLE_Hydrogen]);
     p.entropy = pressure / (pow(p.rho, gamma));
 
     float x, du;
@@ -173,10 +171,10 @@ int main() {
       exit(1);
     }
     for (int k = 0; k < cooling.N_Temp - 1; k++) {
-      float lambda1 = H_plus_He_heat_table[k] +
-                      element_cooling_table[k] *
-                          H_plus_He_electron_abundance_table[k] /
-                          element_electron_abundance_table[k];
+      float lambda1 =
+          H_plus_He_heat_table[k] + element_cooling_table[k] *
+                                        H_plus_He_electron_abundance_table[k] /
+                                        element_electron_abundance_table[k];
       float lambda2 = H_plus_He_heat_table[k + 1] +
                       element_cooling_table[k + 1] *
                           H_plus_He_electron_abundance_table[k + 1] /

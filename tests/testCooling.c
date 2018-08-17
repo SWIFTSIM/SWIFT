@@ -103,9 +103,8 @@ int main() {
       hydrogen_number_density_cgs *
       pow(units_cgs_conversion_factor(&us, UNIT_CONV_LENGTH), 3);
   p.rho = hydrogen_number_density * internal_const.const_proton_mass *
-          (1.0 +
-           p.chemistry_data.metal_mass_fraction[EAGLE_Helium] /
-               p.chemistry_data.metal_mass_fraction[EAGLE_Hydrogen]);
+          (1.0 + p.chemistry_data.metal_mass_fraction[EAGLE_Helium] /
+                     p.chemistry_data.metal_mass_fraction[EAGLE_Hydrogen]);
   p.entropy = pressure / (pow(p.rho, gamma));
 
   cooling_init(params, &us, &internal_const, &cooling);
