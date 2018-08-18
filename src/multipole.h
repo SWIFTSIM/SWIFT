@@ -240,17 +240,17 @@ INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
   m->CoM[2] += dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (m->m_pole.vel[0] > m->m_pole.max_delta_vel[0])
+  if (m->m_pole.vel[0] > m->m_pole.max_delta_vel[0] * 1.1)
     error("Invalid maximal velocity");
-  if (m->m_pole.vel[0] < m->m_pole.min_delta_vel[0])
+  if (m->m_pole.vel[0] < m->m_pole.min_delta_vel[0] * 1.1)
     error("Invalid minimal velocity");
-  if (m->m_pole.vel[1] > m->m_pole.max_delta_vel[1])
+  if (m->m_pole.vel[1] > m->m_pole.max_delta_vel[1] * 1.1)
     error("Invalid maximal velocity");
-  if (m->m_pole.vel[1] < m->m_pole.min_delta_vel[1])
+  if (m->m_pole.vel[1] < m->m_pole.min_delta_vel[1] * 1.1)
     error("Invalid minimal velocity");
-  if (m->m_pole.vel[2] > m->m_pole.max_delta_vel[2])
+  if (m->m_pole.vel[2] > m->m_pole.max_delta_vel[2] * 1.1)
     error("Invalid maximal velocity");
-  if (m->m_pole.vel[2] < m->m_pole.min_delta_vel[2])
+  if (m->m_pole.vel[2] < m->m_pole.min_delta_vel[2] * 1.1)
     error("Invalid minimal velocity");
 #endif
 
