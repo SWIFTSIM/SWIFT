@@ -1573,6 +1573,11 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Need to account for the interactions we missed */
       multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
 #endif
+
+      /* Record that this multipole received a contribution */
+      multi_i->pot.interacted = 1;
+
+      /* We are done here. */
       continue;
     }
 
