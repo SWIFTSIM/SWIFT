@@ -943,6 +943,9 @@ int main(int argc, char *argv[]) {
     engine_dump_snapshot(&e);
     engine_print_stats(&e);
 
+    /* Is there a dump before the end of the first time-step? */
+    engine_check_for_dumps(&e);
+
 #ifdef HAVE_VELOCIRAPTOR
     /* Call VELOCIraptor for the first time after the first snapshot dump. */
     // if (e.policy & engine_policy_structure_finding) {

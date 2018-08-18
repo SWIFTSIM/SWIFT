@@ -2746,8 +2746,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Get a pointer to the task. */
     struct task *t = &sched->tasks[k];
 
-    if(t->type == task_type_none)
-      continue;
+    if (t->type == task_type_none) continue;
 
     /* Get the cells we act on */
     struct cell *ci = t->ci;
@@ -4844,6 +4843,21 @@ void engine_step(struct engine *e) {
   /* Create a restart file if needed. */
   engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
 
+  engine_check_for_dumps(e);
+
+  TIMER_TOC2(timer_step);
+
+  clocks_gettime(&time2);
+  e->wallclock_time = (float)clocks_diff(&time1, &time2);
+
+#ifdef SWIFT_DEBUG_TASKS
+  /* Time in ticks at the end of this step. */
+  e->toc_step = getticks();
+#endif
+}
+
+void engine_check_for_dumps(struct engine *e) {
+
   /* Save some statistics ? */
   int save_stats = 0;
   if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) save_stats = 1;
@@ -4997,16 +5011,6 @@ void engine_step(struct engine *e) {
   e->ti_current = ti_current;
   e->max_active_bin = max_active_bin;
   e->time = time;
-
-  TIMER_TOC2(timer_step);
-
-  clocks_gettime(&time2);
-  e->wallclock_time = (float)clocks_diff(&time1, &time2);
-
-#ifdef SWIFT_DEBUG_TASKS
-  /* Time in ticks at the end of this step. */
-  e->toc_step = getticks();
-#endif
 }
 
 /**
