@@ -17,18 +17,19 @@ Cosmology:
 # Parameters governing the time integration
 TimeIntegration:
   dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     4e-3  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     5e-3  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            zeldovichPancake # Common part of the name of output files
+  basename:	       box      # Common part of the name of output files
   time_first:          0.       # Time of the first output (in internal units)
   delta_time:          1.04     # Time difference between consecutive outputs (in internal units)
-  scale_factor_first: 0.00991
+  scale_factor_first:  0.00991
+  compression:         4
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1.02 # Time between statistics output
+  delta_time:          2. # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -37,7 +38,7 @@ SPH:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./zeldovichPancake.hdf5       # The file to read
+  file_name:  ./constantBox.hdf5       # The file to read
 
 Scheduler:
   max_top_level_cells: 8
@@ -48,5 +49,5 @@ Gravity:
   eta: 0.025
   theta: 0.3
   r_cut_max: 5.
-  comoving_softening: 0.001
-  max_physical_softening: 0.001
+  comoving_softening: 0.05
+  max_physical_softening: 0.05

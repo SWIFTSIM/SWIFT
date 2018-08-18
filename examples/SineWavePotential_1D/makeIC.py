@@ -31,12 +31,12 @@ cs2 = 2.*uconst/3.
 A = 10.
 
 fileName = "sineWavePotential.hdf5"
-numPart = 100
+numPart = 1000
 boxSize = 1.
 
 coords = np.zeros((numPart, 3))
 v = np.zeros((numPart, 3))
-m = np.zeros(numPart) + 1.
+m = np.zeros(numPart) + 1000. / numPart
 h = np.zeros(numPart) + 2./numPart
 u = np.zeros(numPart) + uconst
 ids = np.arange(numPart, dtype = 'L')

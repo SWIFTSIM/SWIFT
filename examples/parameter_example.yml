@@ -75,6 +75,7 @@ Snapshots:
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
   compression: 0          # (Optional) Set the level of compression of the HDF5 datasets [0-9]. 0 does no compression.
+  label_first: 0          # (Optional) An additional offset for the snapshot output label
   label_delta: 1          # (Optional) Set the integer increment between snapshot output labels
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
   UnitLength_in_cgs:   1  # (Optional) Unit system for the outputs (Centimeters)
@@ -142,9 +143,13 @@ EoS:
   planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EOS
   planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EOS
                             # (Optional) Table file paths
-  planetary_HM80_HHe_table_file:    HM80_HHe.txt
-  planetary_HM80_ice_table_file:    HM80_ice.txt
-  planetary_HM80_rock_table_file:   HM80_rock.txt
+  planetary_HM80_HHe_table_file:        ./equation_of_state/planetary_HM80_HHe.txt
+  planetary_HM80_ice_table_file:        ./equation_of_state/planetary_HM80_ice.txt
+  planetary_HM80_rock_table_file:       ./equation_of_state/planetary_HM80_rock.txt
+  planetary_SESAME_iron_table_file:     ./equation_of_state/planetary_SESAME_iron_2140.txt
+  planetary_SESAME_basalt_table_file:   ./equation_of_state/planetary_SESAME_basalt_7530.txt
+  planetary_SESAME_water_table_file:    ./equation_of_state/planetary_SESAME_water_7154.txt
+  planetary_SS08_water_table_file:      ./equation_of_state/planetary_SS08_water.txt
 
 # Parameters related to external potentials --------------------------------------------
 

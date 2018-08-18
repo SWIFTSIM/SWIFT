@@ -17,12 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_MINIMAL_MULTI_MAT_HYDRO_IO_H
-#define SWIFT_MINIMAL_MULTI_MAT_HYDRO_IO_H
+#ifndef SWIFT_PLANETARY_HYDRO_IO_H
+#define SWIFT_PLANETARY_HYDRO_IO_H
 
 /**
- * @file MinimalMultiMat/hydro_io.h
- * @brief MinimalMultiMat conservative implementation of SPH (i/o routines)
+ * @file Planetary/hydro_io.h
+ * @brief Minimal conservative implementation of SPH (i/o routines)
  *
  * The thermal variable is the internal energy (u). Simple constant
  * viscosity term without switches is implemented. No thermal conduction
@@ -197,8 +197,14 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
   /* Viscosity and thermal conduction */
   /* Nothing in this minimal model... */
   io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
+#ifdef PLANETARY_SPH_BALSARA
+  io_write_attribute_s(
+      h_grpsph, "Viscosity Model",
+      "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
+#else
   io_write_attribute_s(h_grpsph, "Viscosity Model",
                        "Minimal treatment as in Monaghan (1992)");
+#endif  // PLANETARY_SPH_BALSARA
 
   /* Time integration properties */
   io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
@@ -212,4 +218,4 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
  */
 INLINE static int writeEntropyFlag(void) { return 0; }
 
-#endif /* SWIFT_MINIMAL_MULTI_MAT_HYDRO_IO_H */
+#endif /* SWIFT_PLANETARY_HYDRO_IO_H */

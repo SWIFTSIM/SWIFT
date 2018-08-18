@@ -135,6 +135,14 @@ void hydro_props_init(struct hydro_props *p,
     mean_molecular_weight = 4. / (1. + 3. * p->hydrogen_mass_fraction);
 
   p->minimal_internal_energy = u_min / mean_molecular_weight;
+
+#ifdef PLANETARY_SPH
+#ifdef PLANETARY_SPH_BALSARA
+  message("Planetary SPH: Balsara switch enabled");
+#else
+  message("Planetary SPH: Balsara switch disabled");
+#endif  // PLANETARY_SPH_BALSARA
+#endif  // PLANETARY_SPH
 }
 
 /**

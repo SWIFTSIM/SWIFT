@@ -24,7 +24,7 @@
 #include "swift.h"
 
 #define N_CHECK 20
-#define TOLERANCE 1e-3
+#define TOLERANCE 1e-7
 
 void test_params_init(struct swift_params *params) {
   parser_init("", params);
@@ -72,5 +72,6 @@ int main(int argc, char *argv[]) {
 
   message("Everything seems fine with cosmology.");
 
+  cosmology_clean(&cosmo);
   return 0;
 }
