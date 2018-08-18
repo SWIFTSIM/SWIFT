@@ -1529,7 +1529,6 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   /* Flag that contributions will be recieved */
   struct gravity_tensors *const multi_i = ci->multipole;
-  multi_i->pot.interacted = 1;
 
   /* Recover the top-level multipole (for distance checks) */
   struct gravity_tensors *const multi_top = top->multipole;
@@ -1584,6 +1583,9 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Call the PM interaction fucntion on the active sub-cells of ci */
       runner_dopair_grav_mm(r, ci, cj);
       // runner_dopair_recursive_grav_pm(r, ci, cj);
+
+      /* Record that this multipole received a contribution */
+      multi_i->pot.interacted = 1;
 
     } /* We are in charge of this pair */
   }   /* Loop over top-level cells */
