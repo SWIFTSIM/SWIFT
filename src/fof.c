@@ -1029,29 +1029,28 @@ void fof_search_foreign_cells(struct space *s) {
 
   message("Rank %d found %d unique group links.", engine_rank, group_link_count);
  
-  struct fof_mpi *global_all_group_links = NULL, *global_group_links = NULL, *global_group_roots = NULL;
+  struct fof_mpi *global_group_links = NULL, *global_group_roots = NULL, *global_group_size_roots = NULL;
   int *displ = NULL, *group_link_counts = NULL;
-  int global_all_group_link_count = 0;
   int global_group_link_count = 0;
 
   /* Sum the total number of links across MPI domains over each MPI rank. */
-  MPI_Allreduce(&group_link_count, &global_all_group_link_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-
-  message("Global list count: %d", global_all_group_link_count);
-
-  if (posix_memalign((void**)&global_all_group_links, SWIFT_STRUCT_ALIGNMENT,
-                       global_all_group_link_count * sizeof(struct fof_mpi)) != 0)
-    error("Error while allocating memory for the global list of group links");
+  MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    
+  message("Global list count: %d", global_group_link_count);
 
   /* Unique set of links is half of all group links as each link is found twice by opposing MPI ranks. */
   if (posix_memalign((void**)&global_group_links, SWIFT_STRUCT_ALIGNMENT,
-                       global_all_group_link_count / 2 * sizeof(struct fof_mpi)) != 0)
+                       global_group_link_count * sizeof(struct fof_mpi)) != 0)
     error("Error while allocating memory for the global list of group links");
   
   if (posix_memalign((void**)&global_group_roots, SWIFT_STRUCT_ALIGNMENT,
-                       global_all_group_link_count * sizeof(struct fof_mpi)) != 0)
+                       global_group_link_count * sizeof(struct fof_mpi)) != 0)
     error("Error while allocating memory for the global list of group links");
  
+  if (posix_memalign((void**)&global_group_size_roots, SWIFT_STRUCT_ALIGNMENT,
+                       global_group_link_count * sizeof(struct fof_mpi)) != 0)
+    error("Error while allocating memory for the global list of group links");
+
   if (posix_memalign((void**)&group_link_counts, SWIFT_STRUCT_ALIGNMENT,
                        e->nr_nodes * sizeof(int)) != 0)
     error("Error while allocating memory for the number of group links on each MPI rank");
@@ -1068,7 +1067,7 @@ void fof_search_foreign_cells(struct space *s) {
   for(int i=1; i<e->nr_nodes; i++) displ[i] = displ[i-1] + group_link_counts[i-1];
 
   /* Gather the global link list on all ranks. */
-  MPI_Allgatherv(group_links, group_link_count, fof_mpi_type, global_all_group_links, group_link_counts, displ, fof_mpi_type, MPI_COMM_WORLD);
+  MPI_Allgatherv(group_links, group_link_count, fof_mpi_type, global_group_links, group_link_counts, displ, fof_mpi_type, MPI_COMM_WORLD);
 
   /* Save particle links for each rank to a file. */
   char fof_filename[200] = "part_links";
@@ -1079,130 +1078,148 @@ void fof_search_foreign_cells(struct space *s) {
   fprintf(fof_file, "# %7s %7s %7s\n", "Local PID", "Foreign PID", "Root ID");
   fprintf(fof_file, "#-------------------------------\n");
 
-  for(int i=0; i<global_all_group_link_count; i++) {
-    fprintf(fof_file, "  %7d (%7d) <-> %7d\n", global_all_group_links[i].group_i, global_all_group_links[i].group_i_size,  global_all_group_links[i].group_j);
+  for(int i=0; i<global_group_link_count; i++) {
+    fprintf(fof_file, "  %7d <-> %7d\n", global_group_links[i].group_i, global_group_links[i].group_j);
   }
   
   fclose(fof_file);
  
   /* Compress the list of group links across an MPI domain by removing the symmetric cases. */
-  for(int i=0; i<global_all_group_link_count; i++) {
-    
-    int found = 0;
-    int local_root = global_all_group_links[i].group_i;
-    int foreign_root = global_all_group_links[i].group_j;
+  //for(int i=0; i<global_all_group_link_count; i++) {
+  //  
+  //  int found = 0;
+  //  int local_root = global_all_group_links[i].group_i;
+  //  int foreign_root = global_all_group_links[i].group_j;
 
-    if(local_root == foreign_root) error("Particles have same root. local_root: %d, foreign_root: %d", local_root, foreign_root);
+  //  if(local_root == foreign_root) error("Particles have same root. local_root: %d, foreign_root: %d", local_root, foreign_root);
+
+  //  /* Loop over list and check that the link doesn't already exist. */
+  //  for(int j=0; j<global_all_group_link_count; j++) {
+  //    if((global_group_links[j].group_i == local_root && global_group_links[j].group_j == foreign_root) ||
+  //       (global_group_links[j].group_j == local_root && global_group_links[j].group_i == foreign_root)) {
+  //      found = 1;
+  //      break;
+  //    }
+  //  }
+
+  //  /* If it doesn't already exist in the list add it. */
+  //  if(!found) {
+  //    global_group_links[global_group_link_count].group_i = local_root;
+  //    global_group_links[global_group_link_count].group_i_size = group_size[local_root - node_offset];
+  //    global_group_links[global_group_link_count++].group_j = foreign_root;
+  //  }
+
+  //}
+
+  message("Reduced global list count: %d", global_group_link_count);
+
+  int *global_group_index = NULL, *global_group_id = NULL;
+
+  int group_count = 0;
+
+  if (posix_memalign((void**)&global_group_index, SWIFT_STRUCT_ALIGNMENT,
+                      global_group_link_count  * sizeof(int)) != 0)
+    error("Error while allocating memory for the displacement in memory for the global group link list");
+  
+  if (posix_memalign((void**)&global_group_id, SWIFT_STRUCT_ALIGNMENT,
+                      global_group_link_count  * sizeof(int)) != 0)
+    error("Error while allocating memory for the displacement in memory for the global group link list");
+  
+
+  /* Compress the list of group links across an MPI domain by removing the symmetric cases. */
+  for(int i=0; i<global_group_link_count; i++) {
+    
+    int found_i = 0, found_j = 0;
+    int group_i = global_group_links[i].group_i;
+    int group_j = global_group_links[i].group_j;
 
     /* Loop over list and check that the link doesn't already exist. */
-    for(int j=0; j<global_all_group_link_count; j++) {
-      if((global_group_links[j].group_i == local_root && global_group_links[j].group_j == foreign_root) ||
-         (global_group_links[j].group_j == local_root && global_group_links[j].group_i == foreign_root)) {
-        found = 1;
+    for(int j=0; j<group_count; j++) {
+      if(global_group_id[j] == group_i) {
+        found_i = 1;
+        break;
+      }
+    }
+    
+    for(int j=0; j<group_count; j++) {
+      if(global_group_id[j] == group_j) {
+        found_j = 1;
         break;
       }
     }
 
     /* If it doesn't already exist in the list add it. */
-    if(!found) {
-      global_group_links[global_group_link_count].group_i = local_root;
-      global_group_links[global_group_link_count].group_i_size = group_size[local_root - node_offset];
-      global_group_links[global_group_link_count++].group_j = foreign_root;
-    }
-
-  }
-
-  message("Reduced global list count: %d", global_group_link_count);
-
-  /* Copy the initial roots from the group list. */
-  for(int i=0; i<global_group_link_count; i++) {
-    global_group_roots[i].group_i = global_group_links[i].group_i;
-    global_group_roots[i].group_i_size = global_group_links[i].group_i_size;
-    global_group_roots[i].group_j = global_group_links[i].group_j;
-  }
-
-  /* Search through global list of links across MPI domains and perform a Union-Find. */
-  for(int i=0; i<global_group_link_count; i++) {
-    int group_i = global_group_links[i].group_i;
-    int group_j = global_group_links[i].group_j;
-    int group_i_count = global_group_links[i].group_i_size;
-    //int group_j_count = 0;
-
-    if(group_i == group_j) error("Particles have same root. local_root: %d, foreign_root: %d", group_i, group_j);
-
-    int min_root = min(group_i, group_j);
-
-    /* Search the list for more occurrences of the two groups and find the lowest group that they both link to. */
-    for(int j=0; j<global_group_link_count; j++) {
-      int root_i = global_group_links[j].group_i;
-      int root_j = global_group_links[j].group_j;
-
-      if(root_i == group_j && global_group_roots[j].group_i < min_root) 
-        min_root = global_group_roots[j].group_i;
-      else if(root_j == group_j && global_group_roots[j].group_j < min_root) 
-        min_root = global_group_roots[j].group_j;
-      
-      if(root_i == group_i && global_group_roots[j].group_i < min_root) 
-        min_root = global_group_roots[j].group_i;
-      else if(root_j == group_i && global_group_roots[j].group_j < min_root) 
-        min_root = global_group_roots[j].group_j;
-      
-    }
-
-    message("Rank %d. Link %d <-> %d has common lowest root: %d", engine_rank, group_i, group_j, min_root);
-
-    /* If group_i is local to the node, update its root. */
-    if((group_i >= node_offset && group_i < node_offset + nr_gparts) &&
-       (group_i != min_root)) {
-      
-      int root = group_index[group_i - node_offset];
-
-      if(root >= min_root) group_index[group_i - node_offset] = min_root;
-      else error("Rank %d. Group_i: %d Trying to set a root: %d to a larger value: %d", engine_rank, group_i, root, min_root);
-
+    if(!found_i) {
+      global_group_id[group_count++] = group_i;
     }
     
-    if(min_root >= node_offset && min_root < node_offset + nr_gparts) {
-      group_size[min_root - node_offset] += group_i_count;
+    if(!found_j) {
+      global_group_id[group_count++] = group_j;
     }
 
-    /* If group_j is local to the node, update its root. */
-    if((group_j >= node_offset && group_j < node_offset + nr_gparts) &&
-       (group_j != min_root)) {
-       
-      int root = group_index[group_j - node_offset];
+  }
 
-      if(root >= min_root) group_index[group_j - node_offset] = min_root;
-      else error("Rank %d. Group_j: %d Trying to set a root: %d to a larger value: %d", engine_rank, group_j, root, min_root);
+  for(int i=0; i<group_count; i++) global_group_index[i] = i;
 
-    }
+  for(int i=0; i<global_group_link_count; i++) {
+  
+    int find_i = 0, find_j = 0;
 
-    int old_group_i = global_group_roots[i].group_i;
-    int old_group_j = global_group_roots[i].group_j;
-
-    /* If the group had an old root that was local, make sure it is also updated. */
-    if(old_group_i >= node_offset && old_group_i < node_offset + nr_gparts) {
-      
-      if(min_root < old_group_i) group_index[old_group_i - node_offset] = min_root;
+    for(int j=0; j<group_count; j++) {  
+      if(global_group_id[j] == global_group_links[i].group_i) {
+        find_i = j;
+        break;
+      }
     }
     
-    if(old_group_j >= node_offset && old_group_j < node_offset + nr_gparts) {
-      
-      if(min_root < old_group_j) group_index[old_group_j - node_offset] = min_root;
+    for(int j=0; j<group_count; j++) {  
+      if(global_group_id[j] == global_group_links[i].group_j) {
+        find_j = j;
+        break;
+      }
     }
 
-    /* Update the group with the new root assigned to it in the copied list. */
-    for(int j=0; j<global_group_link_count; j++) {
-      int root_i = global_group_links[j].group_i;
-      int root_j = global_group_links[j].group_j;
+    int root_i = fof_find(find_i, global_group_index);
+    int root_j = fof_find(find_j, global_group_index);
+    
+    int group_i = global_group_id[root_i];
+    int group_j = global_group_id[root_j];
 
-      if(root_i == group_i) global_group_roots[j].group_i = min_root;
-      if(root_j == group_i) global_group_roots[j].group_j = min_root;
-      if(root_i == group_j) global_group_roots[j].group_i = min_root;
-      if(root_j == group_j) global_group_roots[j].group_j = min_root;
-      
-    }
+    if(group_j < group_i) global_group_index[root_i] = root_j;
+    else global_group_index[root_j] = root_i;
+
   }
+
+
+  for(int i=0; i<group_count; i++) {
+    
+    int group_id = global_group_id[i];
+    
+    if(group_id >= node_offset && group_id < node_offset + nr_gparts) {
+      
+      int old_root = group_index[group_id - node_offset];
+      int new_root = global_group_id[global_group_index[i]];
+
+      if(old_root >= new_root) group_index[group_id - node_offset] = new_root;
+      else error("Rank %d. Group_j: %d Trying to set a root: %d to a larger value: %d", engine_rank, group_id, old_root, new_root);
+    }
+
+  }
+
+  /* Save particle links for each rank to a file. */
+  char fof_map_filename[200] = "group_map";
+  sprintf(fof_map_filename + strlen(fof_map_filename), "_%d.dat",
+      engine_rank);
+  
+  fof_file = fopen(fof_map_filename, "w");
+  fprintf(fof_file, "# %7s %7s\n", "Index", "Group ID");
+  fprintf(fof_file, "#-------------------------------\n");
+
+  for(int i=0; i<group_count; i++) {
+    fprintf(fof_file, "  %7d %7d\n", global_group_index[i], global_group_id[i]);
+  }
+  
+  fclose(fof_file);
 
   /* Save particle links for each rank to a file. */
   char fof_size_filename[200] = "group_sizes";
@@ -1382,13 +1399,13 @@ void fof_search_tree(struct space *s) {
 
     MPI_Gatherv(group_index, nr_gparts, MPI_INT, global_group_index, global_nr_gparts, displ, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Gatherv(group_id, nr_gparts, MPI_LONG_LONG, global_group_id, global_nr_gparts, displ, MPI_LONG_LONG, 0, MPI_COMM_WORLD);
+    MPI_Gatherv(group_size, nr_gparts, MPI_INT, global_group_size, global_nr_gparts, displ, MPI_INT, 0, MPI_COMM_WORLD);
 
     total_num_groups = 0;
 
     for (size_t i = 0; i < s->e->total_nr_gparts; i++) {
-      const int root = fof_find_global(i, global_group_index);
       //const int root = fof_find(i, global_group_index);
-      global_group_size[root]++;
+      //global_group_size[root]++;
       if(global_group_index[i] == i) total_num_groups++;
     }
     
@@ -1415,18 +1432,21 @@ void fof_search_tree(struct space *s) {
     }
 
     int num_groups_mpi = 0;
+    int num_parts_in_groups_mpi = 0;
 
     /* Calculate the total number of particles in each group, group mass and the total number of groups. */
     for (size_t i = 0; i < nr_gparts; i++) {
+      num_parts_in_groups_mpi += group_size[i];
       if(group_index[i] == (int)(i + node_offset)) num_groups_mpi++;
     }
 
     message("Rank %d has %d groups.", engine_rank, num_groups_mpi);
 
-    int total_num_groups_mpi = 0;
+    int total_num_groups_mpi = 0, total_num_parts_in_groups_mpi = 0;
     MPI_Reduce(&num_groups_mpi, &total_num_groups_mpi, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&num_parts_in_groups_mpi, &total_num_parts_in_groups_mpi, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    if(engine_rank == 0) message("Reduction on no. of groups: %d", total_num_groups_mpi);
+    if(engine_rank == 0) message("Reduction on no. of groups: %d, reduction on no. of particles in groups: %d", total_num_groups_mpi, total_num_parts_in_groups_mpi);
 
   }
 #else
