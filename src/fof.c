@@ -1029,7 +1029,7 @@ void fof_search_foreign_cells(struct space *s) {
 
   message("Rank %d found %d unique group links.", engine_rank, group_link_count);
  
-  struct fof_mpi *global_group_links = NULL, *global_group_roots = NULL, *global_group_size_roots = NULL;
+  struct fof_mpi *global_group_links = NULL;
   int *displ = NULL, *group_link_counts = NULL;
   int global_group_link_count = 0;
 
@@ -1043,14 +1043,6 @@ void fof_search_foreign_cells(struct space *s) {
                        global_group_link_count * sizeof(struct fof_mpi)) != 0)
     error("Error while allocating memory for the global list of group links");
   
-  if (posix_memalign((void**)&global_group_roots, SWIFT_STRUCT_ALIGNMENT,
-                       global_group_link_count * sizeof(struct fof_mpi)) != 0)
-    error("Error while allocating memory for the global list of group links");
- 
-  if (posix_memalign((void**)&global_group_size_roots, SWIFT_STRUCT_ALIGNMENT,
-                       global_group_link_count * sizeof(struct fof_mpi)) != 0)
-    error("Error while allocating memory for the global list of group links");
-
   if (posix_memalign((void**)&group_link_counts, SWIFT_STRUCT_ALIGNMENT,
                        e->nr_nodes * sizeof(int)) != 0)
     error("Error while allocating memory for the number of group links on each MPI rank");
@@ -1084,37 +1076,9 @@ void fof_search_foreign_cells(struct space *s) {
   
   fclose(fof_file);
  
-  /* Compress the list of group links across an MPI domain by removing the symmetric cases. */
-  //for(int i=0; i<global_all_group_link_count; i++) {
-  //  
-  //  int found = 0;
-  //  int local_root = global_all_group_links[i].group_i;
-  //  int foreign_root = global_all_group_links[i].group_j;
-
-  //  if(local_root == foreign_root) error("Particles have same root. local_root: %d, foreign_root: %d", local_root, foreign_root);
-
-  //  /* Loop over list and check that the link doesn't already exist. */
-  //  for(int j=0; j<global_all_group_link_count; j++) {
-  //    if((global_group_links[j].group_i == local_root && global_group_links[j].group_j == foreign_root) ||
-  //       (global_group_links[j].group_j == local_root && global_group_links[j].group_i == foreign_root)) {
-  //      found = 1;
-  //      break;
-  //    }
-  //  }
-
-  //  /* If it doesn't already exist in the list add it. */
-  //  if(!found) {
-  //    global_group_links[global_group_link_count].group_i = local_root;
-  //    global_group_links[global_group_link_count].group_i_size = group_size[local_root - node_offset];
-  //    global_group_links[global_group_link_count++].group_j = foreign_root;
-  //  }
-
-  //}
-
   message("Reduced global list count: %d", global_group_link_count);
 
-  int *global_group_index = NULL, *global_group_id = NULL;
-
+  int *global_group_index = NULL, *global_group_id = NULL, *global_group_size = NULL;
   int group_count = 0;
 
   if (posix_memalign((void**)&global_group_index, SWIFT_STRUCT_ALIGNMENT,
@@ -1125,8 +1089,14 @@ void fof_search_foreign_cells(struct space *s) {
                       global_group_link_count  * sizeof(int)) != 0)
     error("Error while allocating memory for the displacement in memory for the global group link list");
   
+  if (posix_memalign((void**)&global_group_size, SWIFT_STRUCT_ALIGNMENT,
+                      global_group_link_count  * sizeof(int)) != 0)
+    error("Error while allocating memory for the displacement in memory for the global group link list");
+  
+  bzero(global_group_size, global_group_link_count * sizeof(int));
 
   /* Compress the list of group links across an MPI domain by removing the symmetric cases. */
+  /* Store each group ID once along with its size. */
   for(int i=0; i<global_group_link_count; i++) {
     
     int found_i = 0, found_j = 0;
@@ -1150,21 +1120,49 @@ void fof_search_foreign_cells(struct space *s) {
 
     /* If it doesn't already exist in the list add it. */
     if(!found_i) {
+      global_group_size[group_count] += global_group_links[i].group_i_size;
       global_group_id[group_count++] = group_i;
     }
     
     if(!found_j) {
+      /* Need to search for group_j sizes as the group size is only known on the local node. */
+      for(int j=0; j<global_group_link_count; j++) {
+        if(global_group_links[j].group_i == group_j) {
+          global_group_size[group_count] += global_group_links[j].group_i_size;
+          break;
+        }
+      }
+
       global_group_id[group_count++] = group_j;
     }
 
   }
 
+  /* Create a global_group_index list of groups across MPI domains so that you can perform a union-find locally on each node. */
+  /* The value of which is an offset into global_group_id, which is the actual root. */
   for(int i=0; i<group_count; i++) global_group_index[i] = i;
 
+  /* Save group links for each rank to a file. */
+  char fof_map_filename[200] = "group_map";
+  sprintf(fof_map_filename + strlen(fof_map_filename), "_%d.dat",
+      engine_rank);
+  
+  fof_file = fopen(fof_map_filename, "w");
+  fprintf(fof_file, "# %7s %7s %7s\n", "Index", "Group ID", "Group Size");
+  fprintf(fof_file, "#-------------------------------\n");
+
+  for(int i=0; i<group_count; i++) {
+    fprintf(fof_file, "  %7d %7d %7d\n", global_group_index[i], global_group_id[i], global_group_size[i]);
+  }
+  
+  fclose(fof_file);
+
+  /* Perform a union-find on the group links. */
   for(int i=0; i<global_group_link_count; i++) {
   
     int find_i = 0, find_j = 0;
 
+    /* Find group offset into global_group_id */
     for(int j=0; j<group_count; j++) {  
       if(global_group_id[j] == global_group_links[i].group_i) {
         find_i = j;
@@ -1179,47 +1177,39 @@ void fof_search_foreign_cells(struct space *s) {
       }
     }
 
+    /* Use the offset to find the group's root. */
     int root_i = fof_find(find_i, global_group_index);
     int root_j = fof_find(find_j, global_group_index);
     
     int group_i = global_group_id[root_i];
     int group_j = global_group_id[root_j];
 
+    /* Update roots accordingly. */
     if(group_j < group_i) global_group_index[root_i] = root_j;
     else global_group_index[root_j] = root_i;
 
   }
 
-
+  /* Update each group locally with new root information. */
   for(int i=0; i<group_count; i++) {
     
     int group_id = global_group_id[i];
+    int new_root = global_group_id[fof_find(global_group_index[i], global_group_index)];
     
-    if(group_id >= node_offset && group_id < node_offset + nr_gparts) {
-      
-      int old_root = group_index[group_id - node_offset];
-      int new_root = global_group_id[global_group_index[i]];
-
-      if(old_root >= new_root) group_index[group_id - node_offset] = new_root;
-      else error("Rank %d. Group_j: %d Trying to set a root: %d to a larger value: %d", engine_rank, group_id, old_root, new_root);
+    /* If the group is local update its root and size. */
+    if(group_id >= node_offset && group_id < node_offset + nr_gparts &&
+       new_root != group_id) {
+        group_index[group_id - node_offset] = new_root;
+        group_size[group_id - node_offset] -= global_group_size[i];
+    }
+     
+    /* If the group linked to a local root update its size. */
+    if(new_root >= node_offset && new_root < node_offset + nr_gparts &&
+       new_root != group_id) {
+      group_size[new_root - node_offset] += global_group_size[i];
     }
 
   }
-
-  /* Save particle links for each rank to a file. */
-  char fof_map_filename[200] = "group_map";
-  sprintf(fof_map_filename + strlen(fof_map_filename), "_%d.dat",
-      engine_rank);
-  
-  fof_file = fopen(fof_map_filename, "w");
-  fprintf(fof_file, "# %7s %7s\n", "Index", "Group ID");
-  fprintf(fof_file, "#-------------------------------\n");
-
-  for(int i=0; i<group_count; i++) {
-    fprintf(fof_file, "  %7d %7d\n", global_group_index[i], global_group_id[i]);
-  }
-  
-  fclose(fof_file);
 
   /* Save particle links for each rank to a file. */
   char fof_size_filename[200] = "group_sizes";
@@ -1241,8 +1231,10 @@ void fof_search_foreign_cells(struct space *s) {
   free(interface_cells);
   free(group_links);
   free(global_group_links);
-  free(global_group_roots);
   free(displ);
+  free(global_group_index);
+  free(global_group_size);
+  free(global_group_id);
 
   message("Rank %d finished linking local roots to foreign roots.", engine_rank);
 
@@ -1399,13 +1391,11 @@ void fof_search_tree(struct space *s) {
 
     MPI_Gatherv(group_index, nr_gparts, MPI_INT, global_group_index, global_nr_gparts, displ, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Gatherv(group_id, nr_gparts, MPI_LONG_LONG, global_group_id, global_nr_gparts, displ, MPI_LONG_LONG, 0, MPI_COMM_WORLD);
-    MPI_Gatherv(group_size, nr_gparts, MPI_INT, global_group_size, global_nr_gparts, displ, MPI_INT, 0, MPI_COMM_WORLD);
+    //MPI_Gatherv(group_size, nr_gparts, MPI_INT, global_group_size, global_nr_gparts, displ, MPI_INT, 0, MPI_COMM_WORLD);
 
     total_num_groups = 0;
 
     for (size_t i = 0; i < s->e->total_nr_gparts; i++) {
-      //const int root = fof_find(i, global_group_index);
-      //global_group_size[root]++;
       if(global_group_index[i] == i) total_num_groups++;
     }
     

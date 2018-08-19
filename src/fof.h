@@ -33,6 +33,9 @@ struct fof_mpi {
   /* The local particle's root ID.*/
   int group_i;
 
+  /* The local group's size.*/
+  int group_i_size;
+
   /* The foreign particle's root ID.*/
   int group_j;
 
