@@ -903,9 +903,6 @@ int main(int argc, char *argv[]) {
       engine_policies |= engine_policy_structure_finding;
     if (with_fof) engine_policies |= engine_policy_fof;
 
-    /* Initialise the FOF parameters. */
-    if (with_fof) fof_init(&s, N_total[0], N_total[1]);
-      
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
@@ -915,6 +912,9 @@ int main(int argc, char *argv[]) {
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 
+    /* Initialise the FOF parameters. */
+    if (with_fof) fof_init(&s, N_total[0], N_total[1]);
+    
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),

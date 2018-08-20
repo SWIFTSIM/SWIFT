@@ -47,6 +47,8 @@ struct fof {
   int *group_index;
   int *group_size;
   float *group_mass;
+  int min_group_size;
+  char base_name[PARSER_MAX_LINE_SIZE];
 
 } SWIFT_STRUCT_ALIGN;
 

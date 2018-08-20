@@ -63,6 +63,12 @@ SPH:
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   100      # (internal units)
 
+# Parameters for the Friends-Of-Friends algorithm
+FOF:
+  min_group_size:         20          # The minimum no. of particles required for a group.
+  linking_length_scale:   0.2         # Scales the linking length.
+  basename:               fof_output  # Common part of the name of output files
+
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./EAGLE_ICs_6.hdf5     # The file to read
