@@ -37,6 +37,7 @@
 #include "threadpool.h"
 #include "engine.h"
 #include "proxy.h"
+#include "common_io.h"
 
 MPI_Datatype fof_mpi_type;
 FILE *fof_file;
@@ -725,7 +726,7 @@ void fof_search_tree_serial(struct space *s) {
   }
 
   fof_dump_group_data("fof_output_tree_serial.dat", nr_gparts, group_index,
-                      group_size, group_id, group_mass);
+                      group_size, group_id, group_mass, 1);
 
   int num_parts_in_groups = 0;
   int max_group_size = 0, max_group_index = 0, max_group_mass_id = 0;
@@ -1135,19 +1136,19 @@ void fof_search_foreign_cells(struct space *s) {
   for(int i=0; i<group_count; i++) global_group_index[i] = i;
 
   /* Save group links for each rank to a file. */
-  char fof_map_filename[200] = "group_map";
-  sprintf(fof_map_filename + strlen(fof_map_filename), "_%d.dat",
-      engine_rank);
-  
-  fof_file = fopen(fof_map_filename, "w");
-  fprintf(fof_file, "# %7s %7s %7s %7s\n", "Index", "Group ID", "Group Size", "Group Mass");
-  fprintf(fof_file, "#-------------------------------\n");
+  //char fof_map_filename[200] = "group_map";
+  //sprintf(fof_map_filename + strlen(fof_map_filename), "_%d.dat",
+  //    engine_rank);
+  //
+  //fof_file = fopen(fof_map_filename, "w");
+  //fprintf(fof_file, "# %7s %7s %7s %7s\n", "Index", "Group ID", "Group Size", "Group Mass");
+  //fprintf(fof_file, "#-------------------------------\n");
 
-  for(int i=0; i<group_count; i++) {
-    fprintf(fof_file, "  %7d %7d %7d %7e\n", global_group_index[i], global_group_id[i], global_group_size[i], global_group_mass[i]);
-  }
-  
-  fclose(fof_file);
+  //for(int i=0; i<group_count; i++) {
+  //  fprintf(fof_file, "  %7d %7d %7d %7e\n", global_group_index[i], global_group_id[i], global_group_size[i], global_group_mass[i]);
+  //}
+  //
+  //fclose(fof_file);
 
   /* Perform a union-find on the group links. */
   for(int i=0; i<global_group_link_count; i++) {
@@ -1237,8 +1238,8 @@ void fof_search_tree(struct space *s) {
   float max_group_mass = 0;
   ticks tic = getticks();
 
-  char output_file_name[128];
-  sprintf(output_file_name + strlen(output_file_name), s->fof_data.base_name);
+  char output_file_name[FILENAME_BUFFER_SIZE];
+  snprintf(output_file_name, FILENAME_BUFFER_SIZE, s->fof_data.base_name);
 
   message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
           s->l_x2);
@@ -1321,19 +1322,19 @@ void fof_search_tree(struct space *s) {
   }
 
 #ifdef WITH_MPI
-  sprintf(output_file_name + strlen(output_file_name), "_mpi_rank_%d.dat", engine_rank);
+  snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, "_mpi_rank_%d.dat", engine_rank);
   
   if (s->e->nr_nodes > 1) {
     /* Search for group links across MPI domains. */
     fof_search_foreign_cells(s);
   }  
 #else
-  sprintf(output_file_name + strlen(output_file_name), ".dat");
+  snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, ".dat");
 #endif
  
   /* Dump group data. */ 
   fof_dump_group_data(output_file_name, nr_gparts, group_index,
-      group_size, group_id, group_mass);
+      group_size, group_id, group_mass, min_group_size);
 
   int num_groups_local = 0, num_parts_in_groups_local = 0, max_group_size_local = 0;
   float max_group_mass_local = 0;
@@ -1383,15 +1384,17 @@ void fof_search_tree(struct space *s) {
 
 /* Dump FOF group data. */
 void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_index,
-                         int *group_size, long long *group_id, float *group_mass) {
+                         int *group_size, long long *group_id, float *group_mass, const int min_group_size) {
 
   FILE *file = fopen(out_file, "w");
   fprintf(file, "# %7s %7s %7s %7s %7s\n", "ID", "Root ID", "Group Size", "Group Mass", "Group ID");
   fprintf(file, "#---------------------------------------\n");
 
   for (size_t i = 0; i < nr_gparts; i++) {
-    const int root = fof_find_global(i - node_offset, group_index);
-    fprintf(file, "  %7zu %7d %7d %7e    %10lld\n", i, root, group_size[i], group_mass[i], group_id[i]);
+    if(group_size[i] >= min_group_size) {
+      const int root = fof_find_global(i - node_offset, group_index);
+      fprintf(file, "  %7zu %7d %7d %7e    %10lld\n", i, root, group_size[i], group_mass[i], group_id[i]);
+    }
   }
 
   fclose(file);
