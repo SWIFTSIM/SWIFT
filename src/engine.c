@@ -1327,16 +1327,13 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       /* Create a tag for this cell. */
       cell_tag(ci);
 
-      t_xv = scheduler_addtask(
-          s, task_type_send, task_subtype_xv,
-          engine_tasks_per_tag * ci->tag + engine_task_tag_xv, 0, ci, cj);
-      t_rho = scheduler_addtask(
-          s, task_type_send, task_subtype_rho,
-          engine_tasks_per_tag * ci->tag + engine_task_tag_rho, 0, ci, cj);
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv,
+                               ci->tag, 0, ci, cj);
+      t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
+                                ci->tag, 0, ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
-      t_gradient = scheduler_addtask(
-          s, task_type_send, task_subtype_gradient,
-          engine_tasks_per_tag * ci->tag + engine_task_tag_grad, 0, ci, cj);
+      t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
+                                     ci->tag, 0, ci, cj);
 #endif
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -1422,9 +1419,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       /* Create a tag for this cell. */
       cell_tag(ci);
 
-      t_grav = scheduler_addtask(
-          s, task_type_send, task_subtype_gpart,
-          engine_tasks_per_tag * ci->tag + engine_task_tag_grav, 0, ci, cj);
+      t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
+                                 ci->tag, 0, ci, cj);
 
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->super_gravity->grav_down);
@@ -1486,9 +1482,8 @@ void engine_addtasks_send_timestep(struct engine *e, struct cell *ci,
       /* Create a tag for this cell. */
       cell_tag(ci);
 
-      t_ti = scheduler_addtask(
-          s, task_type_send, task_subtype_tend,
-          engine_tasks_per_tag * ci->tag + engine_task_tag_ti, 0, ci, cj);
+      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
+                               ci->tag, 0, ci, cj);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
       scheduler_addunlock(s, ci->super->timestep, t_ti);
@@ -1534,16 +1529,13 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
 #endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
-    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv,
-                             engine_tasks_per_tag * c->tag + engine_task_tag_xv,
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->tag,
                              0, c, NULL);
-    t_rho = scheduler_addtask(
-        s, task_type_recv, task_subtype_rho,
-        engine_tasks_per_tag * c->tag + engine_task_tag_rho, 0, c, NULL);
+    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
+                              c->tag, 0, c, NULL);
 #ifdef EXTRA_HYDRO_LOOP
-    t_gradient = scheduler_addtask(
-        s, task_type_recv, task_subtype_gradient,
-        engine_tasks_per_tag * c->tag + engine_task_tag_grad, 0, c, NULL);
+    t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
+                                   c->tag, 0, c, NULL);
 #endif
   }
 
@@ -1603,9 +1595,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 #endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
-    t_grav = scheduler_addtask(
-        s, task_type_recv, task_subtype_gpart,
-        engine_tasks_per_tag * c->tag + engine_task_tag_grav, 0, c, NULL);
+    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
+                               c->tag, 0, c, NULL);
   }
 
   c->recv_grav = t_grav;
@@ -1646,8 +1637,7 @@ void engine_addtasks_recv_timestep(struct engine *e, struct cell *c,
 #endif  // SWIFT_DEBUG_CHECKS
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
-                             engine_tasks_per_tag * c->tag + engine_task_tag_ti,
-                             0, c, NULL);
+                             c->tag, 0, c, NULL);
   }
 
   c->recv_ti = t_ti;
@@ -2707,6 +2697,8 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     /* Get a pointer to the task. */
     struct task *t = &sched->tasks[k];
+
+    if (t->type == task_type_none) continue;
 
     /* Get the cells we act on */
     struct cell *ci = t->ci;
@@ -4768,7 +4760,7 @@ void engine_step(struct engine *e) {
   if (e->verbose) engine_print_task_counts(e);
 
     /* Dump local cells and active particle counts. */
-    /* dumpCells("cells", 0, 0, 0, 0, e->s, e->nodeID, e->step); */
+    //dumpCells("cells", 1, 0, 0, 0, e->s, e->nodeID, e->step);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
@@ -4818,6 +4810,30 @@ void engine_step(struct engine *e) {
   /* Create a restart file if needed. */
   engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
 
+  engine_check_for_dumps(e);
+
+  TIMER_TOC2(timer_step);
+
+  clocks_gettime(&time2);
+  e->wallclock_time = (float)clocks_diff(&time1, &time2);
+
+#ifdef SWIFT_DEBUG_TASKS
+  /* Time in ticks at the end of this step. */
+  e->toc_step = getticks();
+#endif
+}
+
+/**
+ * @brief Check whether any kind of i/o has to be performed during this
+ * step.
+ *
+ * This includes snapshots, stats and halo finder. We also handle the case
+ * of multiple outputs between two steps.
+ *
+ * @param e The #engine.
+ */
+void engine_check_for_dumps(struct engine *e) {
+
   /* Save some statistics ? */
   int save_stats = 0;
   if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) save_stats = 1;
@@ -4842,38 +4858,85 @@ void engine_step(struct engine *e) {
   timebin_t max_active_bin = e->max_active_bin;
   double time = e->time;
 
-  /* Write some form of output */
-  if (dump_snapshot && save_stats) {
+  while (save_stats || dump_snapshot || run_stf) {
 
-    /* If both, need to figure out which one occurs first */
-    if (e->ti_next_stats == e->ti_next_snapshot) {
+    /* Write some form of output */
+    if (dump_snapshot && save_stats) {
 
-      /* Let's fake that we are at the common dump time */
-      e->ti_current = e->ti_next_snapshot;
-      e->max_active_bin = 0;
-      if (!(e->policy & engine_policy_cosmology))
-        e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+      /* If both, need to figure out which one occurs first */
+      if (e->ti_next_stats == e->ti_next_snapshot) {
 
-      /* Drift everyone */
-      engine_drift_all(e);
+        /* Let's fake that we are at the common dump time */
+        e->ti_current = e->ti_next_snapshot;
+        e->max_active_bin = 0;
+        if (!(e->policy & engine_policy_cosmology))
+          e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
 
-      /* Dump everything */
-      engine_print_stats(e);
-      engine_dump_snapshot(e);
+        /* Drift everyone */
+        engine_drift_all(e);
 
-    } else if (e->ti_next_stats < e->ti_next_snapshot) {
+        /* Dump everything */
+        engine_print_stats(e);
+        engine_dump_snapshot(e);
 
-      /* Let's fake that we are at the stats dump time */
-      e->ti_current = e->ti_next_stats;
-      e->max_active_bin = 0;
-      if (!(e->policy & engine_policy_cosmology))
-        e->time = e->ti_next_stats * e->time_base + e->time_begin;
+      } else if (e->ti_next_stats < e->ti_next_snapshot) {
 
-      /* Drift everyone */
-      engine_drift_all(e);
+        /* Let's fake that we are at the stats dump time */
+        e->ti_current = e->ti_next_stats;
+        e->max_active_bin = 0;
+        if (!(e->policy & engine_policy_cosmology))
+          e->time = e->ti_next_stats * e->time_base + e->time_begin;
 
-      /* Dump stats */
-      engine_print_stats(e);
+        /* Drift everyone */
+        engine_drift_all(e);
+
+        /* Dump stats */
+        engine_print_stats(e);
+
+        /* Let's fake that we are at the snapshot dump time */
+        e->ti_current = e->ti_next_snapshot;
+        e->max_active_bin = 0;
+        if (!(e->policy & engine_policy_cosmology))
+          e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+
+        /* Drift everyone */
+        engine_drift_all(e);
+
+        /* Dump snapshot */
+        engine_dump_snapshot(e);
+
+      } else if (e->ti_next_stats > e->ti_next_snapshot) {
+
+        /* Let's fake that we are at the snapshot dump time */
+        e->ti_current = e->ti_next_snapshot;
+        e->max_active_bin = 0;
+        if (!(e->policy & engine_policy_cosmology))
+          e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+
+        /* Drift everyone */
+        engine_drift_all(e);
+
+        /* Dump snapshot */
+        engine_dump_snapshot(e);
+
+        /* Let's fake that we are at the stats dump time */
+        e->ti_current = e->ti_next_stats;
+        e->max_active_bin = 0;
+        if (!(e->policy & engine_policy_cosmology))
+          e->time = e->ti_next_stats * e->time_base + e->time_begin;
+
+        /* Drift everyone */
+        engine_drift_all(e);
+
+        /* Dump stats */
+        engine_print_stats(e);
+      }
+
+      /* Let's compute the time of the next outputs */
+      engine_compute_next_snapshot_time(e);
+      engine_compute_next_statistics_time(e);
+
+    } else if (dump_snapshot) {
 
       /* Let's fake that we are at the snapshot dump time */
       e->ti_current = e->ti_next_snapshot;
@@ -4884,22 +4947,13 @@ void engine_step(struct engine *e) {
       /* Drift everyone */
       engine_drift_all(e);
 
-      /* Dump snapshot */
+      /* Dump... */
       engine_dump_snapshot(e);
 
-    } else if (e->ti_next_stats > e->ti_next_snapshot) {
+      /* ... and find the next output time */
+      engine_compute_next_snapshot_time(e);
 
-      /* Let's fake that we are at the snapshot dump time */
-      e->ti_current = e->ti_next_snapshot;
-      e->max_active_bin = 0;
-      if (!(e->policy & engine_policy_cosmology))
-        e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
-
-      /* Drift everyone */
-      engine_drift_all(e);
-
-      /* Dump snapshot */
-      engine_dump_snapshot(e);
+    } else if (save_stats) {
 
       /* Let's fake that we are at the stats dump time */
       e->ti_current = e->ti_next_stats;
@@ -4910,77 +4964,56 @@ void engine_step(struct engine *e) {
       /* Drift everyone */
       engine_drift_all(e);
 
-      /* Dump stats */
+      /* Dump */
       engine_print_stats(e);
+
+      /* and move on */
+      engine_compute_next_statistics_time(e);
     }
 
-    /* Let's compute the time of the next outputs */
-    engine_compute_next_snapshot_time(e);
-    engine_compute_next_statistics_time(e);
+    /* Perform structure finding? */
+    if (run_stf) {
 
-  } else if (dump_snapshot) {
-
-    /* Let's fake that we are at the snapshot dump time */
-    e->ti_current = e->ti_next_snapshot;
-    e->max_active_bin = 0;
-    if (!(e->policy & engine_policy_cosmology))
-      e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
-
-    /* Drift everyone */
-    engine_drift_all(e);
-
-    /* Dump... */
-    engine_dump_snapshot(e);
-
-    /* ... and find the next output time */
-    engine_compute_next_snapshot_time(e);
-  } else if (save_stats) {
-
-    /* Let's fake that we are at the stats dump time */
-    e->ti_current = e->ti_next_stats;
-    e->max_active_bin = 0;
-    if (!(e->policy & engine_policy_cosmology))
-      e->time = e->ti_next_stats * e->time_base + e->time_begin;
-
-    /* Drift everyone */
-    engine_drift_all(e);
-
-    /* Dump */
-    engine_print_stats(e);
-
-    /* and move on */
-    engine_compute_next_statistics_time(e);
-  }
-
-  /* Perform structure finding? */
-  if (run_stf) {
-
-  // MATTHIEU: Add a drift_all here. And check the order with the order i/o
-  // options.
+    // MATTHIEU: Add a drift_all here. And check the order with the order i/o
+    // options.
 
 #ifdef HAVE_VELOCIRAPTOR
-    velociraptor_init(e);
-    velociraptor_invoke(e);
+      velociraptor_init(e);
+      velociraptor_invoke(e);
 
-    /* ... and find the next output time */
-    if (e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
+      /* ... and find the next output time */
+      if (e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
 #endif
+    }
+
+    /* We need to see whether whether we are in the pathological case
+     * where there can be another dump before the next step. */
+
+    /* Save some statistics ? */
+    save_stats = 0;
+    if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0)
+      save_stats = 1;
+
+    /* Do we want a snapshot? */
+    dump_snapshot = 0;
+    if (e->ti_end_min > e->ti_next_snapshot && e->ti_next_snapshot > 0)
+      dump_snapshot = 1;
+
+    /* Do we want to perform structure finding? */
+    run_stf = 0;
+    if ((e->policy & engine_policy_structure_finding)) {
+      if (e->stf_output_freq_format == STEPS && e->step % e->deltaStepSTF == 0)
+        run_stf = 1;
+      else if (e->stf_output_freq_format == TIME &&
+               e->ti_end_min > e->ti_nextSTF && e->ti_nextSTF > 0)
+        run_stf = 1;
+    }
   }
 
   /* Restore the information we stored */
   e->ti_current = ti_current;
   e->max_active_bin = max_active_bin;
   e->time = time;
-
-  TIMER_TOC2(timer_step);
-
-  clocks_gettime(&time2);
-  e->wallclock_time = (float)clocks_diff(&time1, &time2);
-
-#ifdef SWIFT_DEBUG_TASKS
-  /* Time in ticks at the end of this step. */
-  e->toc_step = getticks();
-#endif
 }
 
 /**
@@ -6275,6 +6308,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 #ifdef WITH_MPI
   part_create_mpi_types();
   stats_create_MPI_type();
+  task_create_mpi_comms();
 #endif
 
   /* Initialise the collection group. */

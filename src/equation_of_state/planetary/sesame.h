@@ -87,7 +87,8 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
   // Ignore header lines
   char buffer[100];
   for (int i = 0; i < 5; i++) {
-    fgets(buffer, 100, f);
+    if (fgets(buffer, 100, f) == NULL)
+      error("Something incorrect happening with the file header.");
   }
   float ignore;
 

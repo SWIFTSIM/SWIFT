@@ -266,6 +266,29 @@ double hydro_kick_integrand(double a, void *param) {
 }
 
 /**
+ * @brief Computes \f$a dt\f$ for the current cosmology.
+ *
+ * @param a The scale-factor of interest.
+ * @param param The current #cosmology.
+ */
+double hydro_kick_corr_integrand(double a, void *param) {
+
+  const struct cosmology *c = (const struct cosmology *)param;
+  const double Omega_r = c->Omega_r;
+  const double Omega_m = c->Omega_m;
+  const double Omega_k = c->Omega_k;
+  const double Omega_l = c->Omega_lambda;
+  const double w_0 = c->w_0;
+  const double w_a = c->w_a;
+  const double H0 = c->H0;
+
+  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w_0, w_a, a);
+  const double H = H0 * E_z;
+
+  return 1. / H;
+}
+
+/**
  * @brief Computes \f$ dt \f$ for the current cosmology.
  *
  * @param a The scale-factor of interest.
@@ -305,6 +328,8 @@ void cosmology_init_tables(struct cosmology *c) {
   c->grav_kick_fac_interp_table =
       (double *)malloc(cosmology_table_length * sizeof(double));
   c->hydro_kick_fac_interp_table =
+      (double *)malloc(cosmology_table_length * sizeof(double));
+  c->hydro_kick_corr_interp_table =
       (double *)malloc(cosmology_table_length * sizeof(double));
   c->time_interp_table =
       (double *)malloc(cosmology_table_length * sizeof(double));
@@ -354,6 +379,16 @@ void cosmology_init_tables(struct cosmology *c) {
     c->hydro_kick_fac_interp_table[i] = result;
   }
 
+  /* Integrate the kick correction factor \int_{a_begin}^{a_table[i]} a dt */
+  F.function = &hydro_kick_corr_integrand;
+  for (int i = 0; i < cosmology_table_length; i++) {
+    gsl_integration_qag(&F, a_begin, a_table[i], 0, 1.0e-10, GSL_workspace_size,
+                        GSL_INTEG_GAUSS61, space, &result, &abserr);
+
+    /* Store result */
+    c->hydro_kick_corr_interp_table[i] = result;
+  }
+
   /* Integrate the time \int_{a_begin}^{a_table[i]} dt */
   F.function = &time_integrand;
   for (int i = 0; i < cosmology_table_length; i++) {
@@ -374,7 +409,6 @@ void cosmology_init_tables(struct cosmology *c) {
                       GSL_INTEG_GAUSS61, space, &result, &abserr);
   c->universe_age_at_present_day = result;
 
-
   /* Update the times */
   c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
   c->time_end = cosmology_get_time_since_big_bang(c, c->a_end);
@@ -383,8 +417,7 @@ void cosmology_init_tables(struct cosmology *c) {
    * Inverse t(a)
    */
 
-  const double delta_t =
-    (c->time_end - c->time_begin) / cosmology_table_length;
+  const double delta_t = (c->time_end - c->time_begin) / cosmology_table_length;
 
   /* index in the time_interp_table */
   int i_a = 0;
@@ -411,7 +444,7 @@ void cosmology_init_tables(struct cosmology *c) {
 
     /* Compute interpolated scale factor */
     double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) /
-      cosmology_table_length;
+                                        cosmology_table_length;
     c->scale_factor_interp_table[i_time] = exp(log_a) - c->a_begin;
   }
 
@@ -626,6 +659,35 @@ double cosmology_get_hydro_kick_factor(const struct cosmology *c,
 }
 
 /**
+ * @brief Computes the cosmology factor that enters the hydro kick correction
+ * operator for the meshless schemes (GIZMO-MFV).
+ *
+ * Computes \f$ \int_{a_start}^{a_end} a dt \f$ using the interpolation table.
+ *
+ * @param c The current #cosmology.
+ * @param ti_start the (integer) time of the start of the drift.
+ * @param ti_end the (integer) time of the end of the drift.
+ */
+double cosmology_get_corr_kick_factor(const struct cosmology *c,
+                                      integertime_t ti_start,
+                                      integertime_t ti_end) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_end < ti_start) error("ti_end must be >= ti_start");
+#endif
+
+  const double a_start = c->log_a_begin + ti_start * c->time_base;
+  const double a_end = c->log_a_begin + ti_end * c->time_base;
+
+  const double int_start = interp_table(c->hydro_kick_corr_interp_table,
+                                        a_start, c->log_a_begin, c->log_a_end);
+  const double int_end = interp_table(c->hydro_kick_corr_interp_table, a_end,
+                                      c->log_a_begin, c->log_a_end);
+
+  return int_end - int_start;
+}
+
+/**
  * @brief Computes the cosmology factor that enters the thermal variable kick
  * operator.
  *
@@ -718,6 +780,7 @@ void cosmology_clean(struct cosmology *c) {
   free(c->drift_fac_interp_table);
   free(c->grav_kick_fac_interp_table);
   free(c->hydro_kick_fac_interp_table);
+  free(c->hydro_kick_corr_interp_table);
   free(c->time_interp_table);
   free(c->scale_factor_interp_table);
 }

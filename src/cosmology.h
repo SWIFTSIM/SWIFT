@@ -153,6 +153,9 @@ struct cosmology {
   /*! Kick factor (hydro) interpolation table */
   double *hydro_kick_fac_interp_table;
 
+  /*! Kick factor (hydro correction) interpolation table (GIZMO-MFV only) */
+  double *hydro_kick_corr_interp_table;
+
   /*! Time interpolation table */
   double *time_interp_table;
 
@@ -180,6 +183,9 @@ double cosmology_get_hydro_kick_factor(const struct cosmology *cosmo,
 double cosmology_get_therm_kick_factor(const struct cosmology *cosmo,
                                        integertime_t ti_start,
                                        integertime_t ti_end);
+double cosmology_get_corr_kick_factor(const struct cosmology *cosmo,
+                                      integertime_t ti_start,
+                                      integertime_t ti_end);
 double cosmology_get_delta_time(const struct cosmology *c,
                                 integertime_t ti_start, integertime_t ti_end);
 
