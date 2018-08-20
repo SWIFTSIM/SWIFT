@@ -3216,6 +3216,7 @@ void space_clean(struct space *s) {
   free(s->fof_data.group_id);
   free(s->fof_data.group_index);
   free(s->fof_data.group_size);
+  free(s->fof_data.group_mass);
 }
 
 /**
