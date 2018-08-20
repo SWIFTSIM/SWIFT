@@ -501,4 +501,3 @@ void task_create_mpi_comms(void) {
   }
 }
 #endif
-
