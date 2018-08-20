@@ -20,6 +20,16 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Some standard headers. */
+#include <errno.h>
+#include <libgen.h>
+#include <unistd.h>
+
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
+
 /* This object's header. */
 #include "fof.h"
 
@@ -27,10 +37,6 @@
 #include "threadpool.h"
 #include "engine.h"
 #include "proxy.h"
-#include "mpi.h"
-
-#define MPI_RANK_0_SEND_TAG 666
-#define MPI_RANK_1_SEND_TAG 999
 
 MPI_Datatype fof_mpi_type;
 FILE *fof_file;
@@ -39,10 +45,24 @@ int node_offset;
 /* Initialises parameters for the FOF search. */
 void fof_init(struct space *s, long long Ngas, long long Ngparts) {
 
+  struct engine *e = s->e;
+
+  /* Check that we can write outputs by testing if the output
+   * directory exists and is searchable and writable. */
+  parser_get_param_string(e->parameter_file, "FOF:basename", s->fof_data.base_name);
+  
+  const char *dirp = dirname(s->fof_data.base_name);
+  if (access(dirp, W_OK | X_OK) != 0) {
+    error("Cannot write FOF outputs in directory %s (%s)", dirp, strerror(errno));
+  }
+
+  s->fof_data.min_group_size = parser_get_opt_param_int(e->parameter_file, "FOF:min_group_size", 20);
+  const double l_x_scale = parser_get_opt_param_double(e->parameter_file, "FOF:linking_length_scale", 0.2);
+
   /* Calculate the particle linking length based upon the mean inter-particle
    * spacing of the DM particles. */
   const int total_nr_dmparts = Ngparts - Ngas;
-  const double l_x = 0.2 * (s->dim[0] / cbrt(total_nr_dmparts));
+  const double l_x = l_x_scale * (s->dim[0] / cbrt(total_nr_dmparts));
   s->l_x2 = l_x * l_x;
 
 #ifdef WITH_MPI
@@ -1041,6 +1061,7 @@ void fof_search_foreign_cells(struct space *s) {
   /* Gather the global link list on all ranks. */
   MPI_Allgatherv(group_links, group_link_count, fof_mpi_type, global_group_links, group_link_counts, displ, fof_mpi_type, MPI_COMM_WORLD);
 
+  /* Transform the group IDs to a local list going from 0-group_count so a union-find can be performed. */
   int *global_group_index = NULL, *global_group_id = NULL, *global_group_size = NULL;
   float *global_group_mass = NULL;
   int group_count = 0;
@@ -1207,6 +1228,7 @@ void fof_search_tree(struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_cells = s->nr_cells;
+  const int min_group_size = s->fof_data.min_group_size;
   struct gpart *gparts = s->gparts;
   long long *group_id;
   int *group_index, *group_size;
@@ -1215,7 +1237,8 @@ void fof_search_tree(struct space *s) {
   float max_group_mass = 0;
   ticks tic = getticks();
 
-  char output_file_name[128] = "fof_output";
+  char output_file_name[128];
+  sprintf(output_file_name + strlen(output_file_name), s->fof_data.base_name);
 
   message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
           s->l_x2);
@@ -1318,10 +1341,10 @@ void fof_search_tree(struct space *s) {
   for (size_t i = 0; i < nr_gparts; i++) {
     
     /* Find the total number of groups. */
-    if(group_index[i] == i + node_offset) num_groups_local++;
+    if(group_index[i] == i + node_offset && group_size[i] >= min_group_size) num_groups_local++;
 
     /* Find the total number of particles in groups. */
-    if (group_size[i] > 1) num_parts_in_groups_local += group_size[i];
+    if (group_size[i] >= min_group_size) num_parts_in_groups_local += group_size[i];
 
     /* Find the largest group. */
     if (group_size[i] > max_group_size_local) max_group_size_local = group_size[i];
