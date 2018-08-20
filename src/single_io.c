@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 /* This object's header. */
 #include "single_io.h"
@@ -672,6 +673,8 @@ void write_output_single(struct engine* e, const char* baseName,
   io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
   io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
   io_write_attribute_s(h_grp, "Code", "SWIFT");
+  time_t tm = time(NULL);
+  io_write_attribute_s(h_grp, "Snapshot date", ctime(&tm));
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
