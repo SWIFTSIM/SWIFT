@@ -1041,23 +1041,6 @@ void fof_search_foreign_cells(struct space *s) {
   /* Gather the global link list on all ranks. */
   MPI_Allgatherv(group_links, group_link_count, fof_mpi_type, global_group_links, group_link_counts, displ, fof_mpi_type, MPI_COMM_WORLD);
 
-  /* Save particle links for each rank to a file. */
-  char fof_filename[200] = "part_links";
-  sprintf(fof_filename + strlen(fof_filename), "_%d.dat",
-      engine_rank);
-  
-  fof_file = fopen(fof_filename, "w");
-  fprintf(fof_file, "# %7s %7s %7s\n", "Local PID", "Foreign PID", "Root ID");
-  fprintf(fof_file, "#-------------------------------\n");
-
-  for(int i=0; i<global_group_link_count; i++) {
-    fprintf(fof_file, "  %7d <-> %7d\n", global_group_links[i].group_i, global_group_links[i].group_j);
-  }
-  
-  fclose(fof_file);
- 
-  message("Reduced global list count: %d", global_group_link_count);
-
   int *global_group_index = NULL, *global_group_id = NULL, *global_group_size = NULL;
   float *global_group_mass = NULL;
   int group_count = 0;
@@ -1201,21 +1184,6 @@ void fof_search_foreign_cells(struct space *s) {
 
   }
 
-  /* Save particle links for each rank to a file. */
-  char fof_size_filename[200] = "group_sizes";
-  sprintf(fof_size_filename + strlen(fof_size_filename), "_%d.dat",
-      engine_rank);
-  
-  fof_file = fopen(fof_size_filename, "w");
-  fprintf(fof_file, "# %7s %7s %7s\n", "Root ID", "Group Size", "Group Mass");
-  fprintf(fof_file, "#-------------------------------\n");
-
-  for(int i=0; i<nr_gparts; i++) {
-    fprintf(fof_file, "  %7d %7d %7e\n", i + node_offset, group_size[i], group_mass[i]);
-  }
-  
-  fclose(fof_file);
-
   /* Clean up memory. */
   free(part_links);
   free(interface_cells);
@@ -1243,10 +1211,11 @@ void fof_search_tree(struct space *s) {
   long long *group_id;
   int *group_index, *group_size;
   float *group_mass;
-  int num_groups = 0;
+  int num_groups = 0, num_parts_in_groups = 0, max_group_size = 0;
+  float max_group_mass = 0;
   ticks tic = getticks();
 
-  char output_file_name[128] = "fof_output_tree";
+  char output_file_name[128] = "fof_output";
 
   message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
           s->l_x2);
@@ -1254,8 +1223,9 @@ void fof_search_tree(struct space *s) {
   node_offset = 0;
 
 #ifdef WITH_MPI
-  int *global_nr_gparts;
   if (s->e->nr_nodes > 1) {
+  
+    int *global_nr_gparts;
 
     /* Find the total no. of particles on each node and calculate your unique offset. */
     if (posix_memalign((void**)&global_nr_gparts, SWIFT_STRUCT_ALIGNMENT,
@@ -1273,11 +1243,10 @@ void fof_search_tree(struct space *s) {
     }
 
     for(int i = 0; i<engine_rank; i++) node_offset += global_nr_gparts[i];
+    
+    /* Clean up memory. */
+    free(global_nr_gparts);
   }
-
-  sprintf(output_file_name + strlen(output_file_name), "_%d_mpi_ranks.dat", s->e->nr_nodes);
-#else
-  sprintf(output_file_name + strlen(output_file_name), ".dat");
 #endif
 
   message("Node offset: %d", node_offset);
@@ -1320,142 +1289,74 @@ void fof_search_tree(struct space *s) {
   threadpool_map(&s->e->threadpool, fof_search_tree_mapper, s->cells_top,
                  nr_cells, sizeof(struct cell), 1, s);
 
-#ifdef WITH_MPI
-
-  /* Calculate the total number of particles in each group, group mass and the total number of groups. */
+  /* Calculate the total number of particles in each group, group mass and group ID. */
   for (size_t i = 0; i < nr_gparts; i++) {
     int root = fof_find(i, group_index);
     group_size[root]++;
     group_mass[root] += gparts[i].mass;
+    group_id[i] = group_id[root];
   }
 
-  if (s->e->nr_nodes > 1) {
-    /* Find any particle links with other nodes. */
-    fof_search_foreign_cells(s);
-  }
-#endif
-
-  char local_output_file_name[128] = "fof_search_tree_local";
 #ifdef WITH_MPI
-  sprintf(local_output_file_name + strlen(local_output_file_name), "_%d.dat", engine_rank);
-#else
-  sprintf(local_output_file_name + strlen(local_output_file_name), "_serial.dat");
+  sprintf(output_file_name + strlen(output_file_name), "_mpi_rank_%d.dat", engine_rank);
   
-  /* Calculate the total number of particles in each group, group mass and the total number of groups. */
-  for (size_t i = 0; i < nr_gparts; i++) {
-    int root = fof_find(i, group_index);
-    group_size[root]++;
-    group_mass[root] += gparts[i].mass;
-    if(group_index[i] == i) num_groups++;
-    //group_id[i] = group_id[root];
-    group_id[i] = gparts[i].id_or_neg_offset;
-  }
+  if (s->e->nr_nodes > 1) {
+    /* Search for group links across MPI domains. */
+    fof_search_foreign_cells(s);
+  }  
+#else
+  sprintf(output_file_name + strlen(output_file_name), ".dat");
 #endif
-  fof_dump_group_data(local_output_file_name, nr_gparts, group_index,
+ 
+  /* Dump group data. */ 
+  fof_dump_group_data(output_file_name, nr_gparts, group_index,
       group_size, group_id, group_mass);
 
-#ifdef WITH_MPI
+  int num_groups_local = 0, num_parts_in_groups_local = 0, max_group_size_local = 0;
+  float max_group_mass_local = 0;
   
-  if (s->e->nr_nodes > 1) {
-  
-    int *displ = NULL;
-
-    if (posix_memalign((void**)&displ, SWIFT_STRUCT_ALIGNMENT,
-          s->e->nr_nodes * sizeof(int)) != 0)
-      error("Error while allocating memory for FOF MPI communication");
-
-    displ[0] = 0;
-    for(int i=1; i<s->e->nr_nodes; i++) displ[i] = displ[i-1] + global_nr_gparts[i-1];
-
-    int num_groups_mpi = 0;
-    int num_parts_in_groups_mpi = 0;
-
-    /* Calculate the total number of particles in each group, group mass and the total number of groups. */
-    for (size_t i = 0; i < nr_gparts; i++) {
-      num_parts_in_groups_mpi += group_size[i];
-      if(group_index[i] == (int)(i + node_offset)) num_groups_mpi++;
-    }
-
-    message("Rank %d has %d groups.", engine_rank, num_groups_mpi);
-
-    int total_num_groups_mpi = 0, total_num_parts_in_groups_mpi = 0;
-    MPI_Reduce(&num_groups_mpi, &total_num_groups_mpi, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&num_parts_in_groups_mpi, &total_num_parts_in_groups_mpi, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-
-    if(engine_rank == 0) message("Reduction on no. of groups: %d, reduction on no. of particles in groups: %d", total_num_groups_mpi, total_num_parts_in_groups_mpi);
+  for (size_t i = 0; i < nr_gparts; i++) {
     
-    free(displ);
-
-  }
-#else
-  fof_file = fopen("serial_group_index.dat", "w");
-  fprintf(fof_file, "# %7s %7s\n", "Index", "Group ID");
-  fprintf(fof_file, "#-------------------------------\n");
-
-  for (size_t i = 0; i < nr_gparts; i++) {
-
-    fprintf(fof_file, "  %7zu %7d \n", i, group_index[i]);
-  }
-
-#endif /* WITH_MPI */
-
-  int num_parts_in_groups = 0;
-  int max_group_size = 0, max_group_index = 0, max_group_mass_id = 0;
-  float max_group_mass = 0;
-  for (size_t i = 0; i < nr_gparts; i++) {
+    /* Find the total number of groups. */
+    if(group_index[i] == i + node_offset) num_groups_local++;
 
     /* Find the total number of particles in groups. */
-    if (group_size[i] > 1) num_parts_in_groups += group_size[i];
+    if (group_size[i] > 1) num_parts_in_groups_local += group_size[i];
 
     /* Find the largest group. */
-    if (group_size[i] > max_group_size) {
-      max_group_size = group_size[i];
-      max_group_index = i;
-    }
+    if (group_size[i] > max_group_size_local) max_group_size_local = group_size[i];
     
     /* Find the largest group by mass. */
-    if (group_mass[i] > max_group_mass) {
-      max_group_mass = group_mass[i];
-      max_group_mass_id = i;
-    }
+    if (group_mass[i] > max_group_mass_local) max_group_mass_local = group_mass[i];
   }
 
-  message(
-      "No. of groups: %d. No. of particles in groups: %d. No. of particles not "
-      "in groups: %zu.",
-      num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
-
-  message("Biggest group size: %d with ID: %d", max_group_size, max_group_index);
-  message("Biggest group by mass: %f with ID: %d", max_group_mass, max_group_mass_id);
-
-  /* Clean up memory. */
-  free(group_mass);
-
+  /* Find global properties. */
 #ifdef WITH_MPI
-  if (s->e->nr_nodes > 1) {
-    free(global_nr_gparts);
-
-  }
+  MPI_Reduce(&num_groups_local, &num_groups, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&num_parts_in_groups_local, &num_parts_in_groups, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&max_group_size_local, &max_group_size, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&max_group_mass_local, &max_group_mass, 1, MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
+#else
+  num_groups += num_groups_local;
+  num_parts_in_groups += num_parts_in_groups_local;
+  max_group_size = max_group_size_local;
+  max_group_mass = max_group_mass_local;
 #endif /* WITH_MPI */
+  
+  if(engine_rank == 0) {
+    message(
+        "No. of groups: %d. No. of particles in groups: %d. No. of particles not "
+        "in groups: %zu.",
+        num_groups, num_parts_in_groups, s->e->total_nr_gparts - num_parts_in_groups);
 
-  message("FOF search took: %.3f %s.",
-      clocks_from_ticks(getticks() - tic), clocks_getunit());
+    message("Largest group by size: %d", max_group_size);
+    message("Largest group by mass: %f", max_group_mass);
+  
+    message("FOF search took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
+
 }
-
-//void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_index,
-//                         int *group_size) {
-//
-//  FILE *file = fopen(out_file, "w");
-//  fprintf(file, "# %7s %7s %7s\n", "ID", "Root ID", "Group Size");
-//  fprintf(file, "#---------------------------------------\n");
-//
-//  for (size_t i = 0; i < nr_gparts; i++) {
-//    const int root = fof_find(i, group_index);
-//    fprintf(file, "  %7zu %7d %7d\n", i, root, group_size[i]);
-//  }
-//
-//  fclose(file);
-//}
 
 /* Dump FOF group data. */
 void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_index,
