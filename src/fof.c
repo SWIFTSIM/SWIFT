@@ -645,7 +645,7 @@ void fof_search_tree_serial(struct space *s) {
   long long *group_id;
   int *group_index;
   int *group_size;
-  float *group_mass;
+  double *group_mass;
   int num_groups = 0;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->l_x2;
@@ -678,11 +678,11 @@ void fof_search_tree_serial(struct space *s) {
     error("Failed to allocate list of group size for FOF search.");
   
   /* Allocate and initialise a group mass array. */
-  if (posix_memalign((void **)&group_mass, 32, nr_gparts * sizeof(float)) != 0)
+  if (posix_memalign((void **)&group_mass, 32, nr_gparts * sizeof(double)) != 0)
     error("Failed to allocate list of group masses for FOF search.");
 
   bzero(group_size, nr_gparts * sizeof(int));
-  bzero(group_mass, nr_gparts * sizeof(float));
+  bzero(group_mass, nr_gparts * sizeof(double));
 
   /* Loop over cells and find which cells are in range of each other to perform
    * the FOF search. */
@@ -730,7 +730,7 @@ void fof_search_tree_serial(struct space *s) {
 
   int num_parts_in_groups = 0;
   int max_group_size = 0, max_group_index = 0, max_group_mass_id = 0;
-  float max_group_mass = 0;
+  double max_group_mass = 0;
   for (size_t i = 0; i < nr_gparts; i++) {
 
     /* Find the total number of particles in groups. */
@@ -754,7 +754,7 @@ void fof_search_tree_serial(struct space *s) {
       "in groups: %zu.",
       num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
   message("Biggest group size: %d with ID: %d", max_group_size, max_group_index);
-  message("Biggest group by mass: %f with ID: %d", max_group_mass, max_group_mass_id);
+  message("Biggest group by mass: %e with ID: %d", max_group_mass, max_group_mass_id);
 
   free(group_size);
   free(group_mass);
@@ -832,7 +832,7 @@ void fof_search_foreign_cells(struct space *s) {
   struct cell *cells = s->cells_top;
   int *group_index = s->fof_data.group_index;
   int *group_size = s->fof_data.group_size;
-  float *group_mass = s->fof_data.group_mass;
+  double *group_mass = s->fof_data.group_mass;
   const int nr_gparts = s->nr_gparts;
   const size_t nr_cells = s->nr_cells;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -1064,7 +1064,7 @@ void fof_search_foreign_cells(struct space *s) {
 
   /* Transform the group IDs to a local list going from 0-group_count so a union-find can be performed. */
   int *global_group_index = NULL, *global_group_id = NULL, *global_group_size = NULL;
-  float *global_group_mass = NULL;
+  double *global_group_mass = NULL;
   int group_count = 0;
 
   if (posix_memalign((void**)&global_group_index, SWIFT_STRUCT_ALIGNMENT,
@@ -1080,11 +1080,11 @@ void fof_search_foreign_cells(struct space *s) {
     error("Error while allocating memory for the displacement in memory for the global group link list");
   
   if (posix_memalign((void**)&global_group_mass, SWIFT_STRUCT_ALIGNMENT,
-                      global_group_link_count  * sizeof(int)) != 0)
+                      global_group_link_count  * sizeof(double)) != 0)
     error("Error while allocating memory for the displacement in memory for the global group link list");
 
   bzero(global_group_size, global_group_link_count * sizeof(int));
-  bzero(global_group_mass, global_group_link_count * sizeof(float));
+  bzero(global_group_mass, global_group_link_count * sizeof(double));
 
   /* Compress the list of group links across an MPI domain by removing the symmetric cases. */
   /* Store each group ID once along with its size. */
@@ -1233,9 +1233,9 @@ void fof_search_tree(struct space *s) {
   struct gpart *gparts = s->gparts;
   long long *group_id;
   int *group_index, *group_size;
-  float *group_mass;
+  double *group_mass;
   int num_groups = 0, num_parts_in_groups = 0, max_group_size = 0;
-  float max_group_mass = 0;
+  double max_group_mass = 0;
   ticks tic = getticks();
 
   char output_file_name[FILENAME_BUFFER_SIZE];
@@ -1292,7 +1292,7 @@ void fof_search_tree(struct space *s) {
     error("Failed to allocate list of particle group IDs for FOF search.");
 
   /* Allocate and initialise a group mass array. */
-  if (posix_memalign((void **)&s->fof_data.group_mass, 32, nr_gparts * sizeof(float)) != 0)
+  if (posix_memalign((void **)&s->fof_data.group_mass, 32, nr_gparts * sizeof(double)) != 0)
     error("Failed to allocate list of group masses for FOF search.");
 
   /* Initial group ID is particle offset into array. */
@@ -1307,7 +1307,7 @@ void fof_search_tree(struct space *s) {
   message("Rank: %d, Allocated group_index array of size %zu", engine_rank, s->nr_gparts);
 
   bzero(group_size, nr_gparts * sizeof(int));
-  bzero(group_mass, nr_gparts * sizeof(float));
+  bzero(group_mass, nr_gparts * sizeof(double));
 
   /* Activate all the regular tasks */
   threadpool_map(&s->e->threadpool, fof_search_tree_mapper, s->cells_top,
@@ -1337,7 +1337,7 @@ void fof_search_tree(struct space *s) {
       group_size, group_id, group_mass, min_group_size);
 
   int num_groups_local = 0, num_parts_in_groups_local = 0, max_group_size_local = 0;
-  float max_group_mass_local = 0;
+  double max_group_mass_local = 0;
   
   for (size_t i = 0; i < nr_gparts; i++) {
     
@@ -1359,7 +1359,7 @@ void fof_search_tree(struct space *s) {
   MPI_Reduce(&num_groups_local, &num_groups, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
   MPI_Reduce(&num_parts_in_groups_local, &num_parts_in_groups, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
   MPI_Reduce(&max_group_size_local, &max_group_size, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-  MPI_Reduce(&max_group_mass_local, &max_group_mass, 1, MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&max_group_mass_local, &max_group_mass, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 #else
   num_groups += num_groups_local;
   num_parts_in_groups += num_parts_in_groups_local;
@@ -1374,7 +1374,7 @@ void fof_search_tree(struct space *s) {
         num_groups, num_parts_in_groups, s->e->total_nr_gparts - num_parts_in_groups);
 
     message("Largest group by size: %d", max_group_size);
-    message("Largest group by mass: %f", max_group_mass);
+    message("Largest group by mass: %e", max_group_mass);
   
     message("FOF search took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -1384,7 +1384,7 @@ void fof_search_tree(struct space *s) {
 
 /* Dump FOF group data. */
 void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_index,
-                         int *group_size, long long *group_id, float *group_mass, const int min_group_size) {
+                         int *group_size, long long *group_id, double *group_mass, const int min_group_size) {
 
   FILE *file = fopen(out_file, "w");
   fprintf(file, "# %7s %7s %7s %7s %7s\n", "ID", "Root ID", "Group Size", "Group Mass", "Group ID");
