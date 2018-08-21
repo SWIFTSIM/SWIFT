@@ -46,7 +46,7 @@ struct fof {
   long long *group_id;
   int *group_index;
   int *group_size;
-  float *group_mass;
+  double *group_mass;
   int min_group_size;
   char base_name[PARSER_MAX_LINE_SIZE];
 

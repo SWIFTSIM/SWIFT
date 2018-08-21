@@ -52,7 +52,7 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj);
 void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell *cj, size_t *link_count, struct fof_mpi *part_links);
 void fof_search_tree_serial(struct space *s);
 void fof_search_tree(struct space *s);
-void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_index, int *num_in_groups, long long *group_id, float *group_mass, const int min_group_size);
+void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_index, int *num_in_groups, long long *group_id, double *group_mass, const int min_group_size);
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
