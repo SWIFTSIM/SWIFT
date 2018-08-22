@@ -1327,10 +1327,10 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       /* Create a tag for this cell. */
       cell_tag(ci);
 
-      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv,
-                               ci->tag, 0, ci, cj);
-      t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
-                                ci->tag, 0, ci, cj);
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->tag, 0,
+                               ci, cj);
+      t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho, ci->tag, 0,
+                                ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
                                      ci->tag, 0, ci, cj);
@@ -1419,8 +1419,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       /* Create a tag for this cell. */
       cell_tag(ci);
 
-      t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
-                                 ci->tag, 0, ci, cj);
+      t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart, ci->tag,
+                                 0, ci, cj);
 
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->super_gravity->grav_down);
@@ -1482,8 +1482,8 @@ void engine_addtasks_send_timestep(struct engine *e, struct cell *ci,
       /* Create a tag for this cell. */
       cell_tag(ci);
 
-      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
-                               ci->tag, 0, ci, cj);
+      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend, ci->tag, 0,
+                               ci, cj);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
       scheduler_addunlock(s, ci->super->timestep, t_ti);
@@ -1529,10 +1529,10 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
 #endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
-    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->tag,
-                             0, c, NULL);
-    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
-                              c->tag, 0, c, NULL);
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->tag, 0, c,
+                             NULL);
+    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, c->tag, 0, c,
+                              NULL);
 #ifdef EXTRA_HYDRO_LOOP
     t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
                                    c->tag, 0, c, NULL);
@@ -1595,8 +1595,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 #endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
-    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
-                               c->tag, 0, c, NULL);
+    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart, c->tag, 0,
+                               c, NULL);
   }
 
   c->recv_grav = t_grav;
@@ -1636,8 +1636,8 @@ void engine_addtasks_recv_timestep(struct engine *e, struct cell *c,
     if (c->tag < 0) error("Trying to receive from untagged cell.");
 #endif  // SWIFT_DEBUG_CHECKS
 
-    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
-                             c->tag, 0, c, NULL);
+    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend, c->tag, 0, c,
+                             NULL);
   }
 
   c->recv_ti = t_ti;
@@ -4760,7 +4760,7 @@ void engine_step(struct engine *e) {
   if (e->verbose) engine_print_task_counts(e);
 
     /* Dump local cells and active particle counts. */
-    //dumpCells("cells", 1, 0, 0, 0, e->s, e->nodeID, e->step);
+    // dumpCells("cells", 1, 0, 0, 0, e->s, e->nodeID, e->step);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
