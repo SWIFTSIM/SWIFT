@@ -1228,12 +1228,32 @@ void fof_search_foreign_cells(struct space *s) {
     /* If the group linked to a local root update its size. */
     if(new_root >= node_offset && new_root < node_offset + nr_gparts &&
        new_root != group_id) {
+
+      /* Calculate the CoM of each distinct group. */
+      double CoM_x_old = group_CoM[new_root - node_offset].x / group_mass[new_root - node_offset];
+      double CoM_y_old = group_CoM[new_root - node_offset].y / group_mass[new_root - node_offset];
+      double CoM_z_old = group_CoM[new_root - node_offset].z / group_mass[new_root - node_offset];
+      double CoM_x = global_group_CoM[i].x / global_group_mass[i];
+      double CoM_y = global_group_CoM[i].y / global_group_mass[i];
+      double CoM_z = global_group_CoM[i].z / global_group_mass[i];
+
+      /* Periodically wrap the CoM of the group being linked across the domain based upon the location of the other CoM location. */
+      if(CoM_x_old > 0.5 * dim[0] && CoM_x < 0.5 * dim[0]) CoM_x += dim[0];
+      else if(CoM_x_old <= 0.5 * dim[0] && CoM_x > 0.5 * dim[0]) CoM_x -= dim[0];
+      
+      if(CoM_y_old > 0.5 * dim[1] && CoM_y < 0.5 * dim[1]) CoM_y += dim[1];
+      else if(CoM_y_old <= 0.5 * dim[1] && CoM_y > 0.5 * dim[1]) CoM_y -= dim[1];
+      
+      if(CoM_z_old > 0.5 * dim[2] && CoM_z < 0.5 * dim[2]) CoM_z += dim[2];
+      else if(CoM_z_old <= 0.5 * dim[2] && CoM_z > 0.5 * dim[2]) CoM_z -= dim[2];
+
+      /* Update the CoM. */
+      group_CoM[new_root - node_offset].x += (CoM_x * global_group_mass[i]);
+      group_CoM[new_root - node_offset].y += (CoM_y * global_group_mass[i]);
+      group_CoM[new_root - node_offset].z += (CoM_z * global_group_mass[i]);
+
       group_size[new_root - node_offset] += global_group_size[i];
       group_mass[new_root - node_offset] += global_group_mass[i];
-      group_CoM[new_root - node_offset].x += global_group_CoM[i].x;
-      group_CoM[new_root - node_offset].y += global_group_CoM[i].y;
-      group_CoM[new_root - node_offset].z += global_group_CoM[i].z;
-
     }
 
   }
@@ -1350,7 +1370,7 @@ void fof_search_tree(struct space *s) {
   bzero(group_mass, nr_gparts * sizeof(double));
   bzero(group_CoM, nr_gparts * sizeof(struct fof_CoM));
 
-  /* Activate all the regular tasks */
+  /* Perform local FOF using the threadpool. */
   threadpool_map(&s->e->threadpool, fof_search_tree_mapper, s->cells_top,
                  nr_cells, sizeof(struct cell), 1, s);
 
