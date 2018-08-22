@@ -27,7 +27,7 @@ z_i = 100.           # Initial redshift
 gas_gamma = 5./3.    # Gas adiabatic index
 
 # Physical constants needed for internal energy to temperature conversion
-k_in_J_K = 1.38064852e-23
+kB_in_SI = 1.38064852e-23
 mH_in_kg = 1.6737236e-27
 
 import matplotlib
@@ -45,12 +45,12 @@ params = {'axes.labelsize': 10,
 'ytick.labelsize': 10,
 'text.usetex': True,
  'figure.figsize' : (9.90,6.45),
-'figure.subplot.left'    : 0.08,
+'figure.subplot.left'    : 0.06,
 'figure.subplot.right'   : 0.99,
 'figure.subplot.bottom'  : 0.06,
 'figure.subplot.top'     : 0.99,
-'figure.subplot.wspace'  : 0.2,
-'figure.subplot.hspace'  : 0.12,
+'figure.subplot.wspace'  : 0.21,
+'figure.subplot.hspace'  : 0.13,
 'lines.markersize' : 6,
 'lines.linewidth' : 3.,
 'text.latex.unicode': True
@@ -73,28 +73,37 @@ H_0 = sim["/Cosmology"].attrs["H0 [internal units]"][0]
 unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"]
 unit_mass_in_cgs = sim["/Units"].attrs["Unit mass in cgs (U_M)"]
 unit_time_in_cgs = sim["/Units"].attrs["Unit time in cgs (U_t)"]
+m_gas = sim["/PartType0/Masses"][0]
+N = sim["/Header"].attrs["NumPart_Total"][0]
 sim.close()
 
+# Expected comoving quantities
+rho_0 = N * m_gas / boxSize**3
+u_0 = kB_in_SI * T_i / (gas_gamma - 1.) / mH_in_kg
+u_0 *= 1e-6 # conversion to internal units
+u_0 *= a**(-3*(1-gas_gamma))
+S_0 = (gas_gamma - 1.) * u_0 * rho_0**(-(gas_gamma - 1.))
+
 # Mean quantities over time
-z = np.zeros(120)
-a = np.zeros(120)
-S_mean = np.zeros(120)
-S_std = np.zeros(120)
-u_mean = np.zeros(120)
-u_std = np.zeros(120)
-P_mean = np.zeros(120)
-P_std = np.zeros(120)
-rho_mean = np.zeros(120)
-rho_std = np.zeros(120)
+z = np.zeros(119)
+a = np.zeros(119)
+S_mean = np.zeros(119)
+S_std = np.zeros(119)
+u_mean = np.zeros(119)
+u_std = np.zeros(119)
+P_mean = np.zeros(119)
+P_std = np.zeros(119)
+rho_mean = np.zeros(119)
+rho_std = np.zeros(119)
 
-vx_mean = np.zeros(120)
-vy_mean = np.zeros(120)
-vz_mean = np.zeros(120)
-vx_std = np.zeros(120)
-vy_std = np.zeros(120)
-vz_std = np.zeros(120)
+vx_mean = np.zeros(119)
+vy_mean = np.zeros(119)
+vz_mean = np.zeros(119)
+vx_std = np.zeros(119)
+vy_std = np.zeros(119)
+vz_std = np.zeros(119)
 
-for i in range(120):
+for i in range(119):
     sim = h5py.File("box_%04d.hdf5"%i, "r")
 
     z[i] = sim["/Cosmology"].attrs["Redshift"][0]
@@ -136,21 +145,45 @@ figure()
 
 # Density evolution --------------------------------
 subplot(231)#, yscale="log")
-semilogx(a, rho_mean, '-', color='r', lw=1)
+semilogx(a, rho_mean / rho_0, '-', color='r', lw=1)
+semilogx([1e-10, 1e10], np.ones(2), '-', color='0.6', lw=1.)
+semilogx([1e-10, 1e10], np.ones(2)*0.99, '--', color='0.6', lw=1.)
+semilogx([1e-10, 1e10], np.ones(2)*1.01, '--', color='0.6', lw=1.)
+text(1e-2, 1.0105, "+1\\%", color='0.6', fontsize=9)
+text(1e-2, 0.9895, "-1\\%", color='0.6', fontsize=9, va="top")
+text(1e-2, 1.015, "$\\rho_0=%.3f$"%rho_0) 
+ylim(0.98, 1.02)
+xlim(8e-3, 1.1)
 xlabel("${\\rm Scale-factor}$", labelpad=0.)
-ylabel("${\\rm Comoving~density}$", labelpad=0.)
+ylabel("${\\rm Comoving~density}~\\rho / \\rho_0$", labelpad=0.)
 
 # Thermal energy evolution --------------------------------
 subplot(232)#, yscale="log")
-semilogx(a, u_mean, '-', color='r', lw=1)
+semilogx(a, u_mean / u_0, '-', color='r', lw=1)
+semilogx([1e-10, 1e10], np.ones(2), '-', color='0.6', lw=1.)
+semilogx([1e-10, 1e10], np.ones(2)*0.99, '--', color='0.6', lw=1.)
+semilogx([1e-10, 1e10], np.ones(2)*1.01, '--', color='0.6', lw=1.)
+text(1e-2, 1.0105, "+1\\%", color='0.6', fontsize=9)
+text(1e-2, 0.9895, "-1\\%", color='0.6', fontsize=9, va="top")
+text(1e-2, 1.015, "$u_0=%.3e$"%(u_0)) 
+ylim(0.98, 1.02)
+xlim(8e-3, 1.1)
 xlabel("${\\rm Scale-factor}$", labelpad=0.)
-ylabel("${\\rm Comoving~internal~energy}$", labelpad=0.)
+ylabel("${\\rm Comoving~internal~energy}~u / u_0$", labelpad=0.)
 
 # Entropy evolution --------------------------------
 subplot(233)#, yscale="log")
-semilogx(a, S_mean, '-', color='r', lw=1)
+semilogx(a, S_mean / S_0, '-', color='r', lw=1)
+semilogx([1e-10, 1e10], np.ones(2), '-', color='0.6', lw=1.)
+semilogx([1e-10, 1e10], np.ones(2)*0.99, '--', color='0.6', lw=1.)
+semilogx([1e-10, 1e10], np.ones(2)*1.01, '--', color='0.6', lw=1.)
+text(1e-2, 1.0105, "+1\\%", color='0.6', fontsize=9)
+text(1e-2, 0.9895, "-1\\%", color='0.6', fontsize=9, va="top")
+text(1e-2, 1.015, "$A_0=%.3e$"%(S_0)) 
+ylim(0.98, 1.02)
+xlim(8e-3, 1.1)
 xlabel("${\\rm Scale-factor}$", labelpad=0.)
-ylabel("${\\rm Comoving~entropy}$", labelpad=0.)
+ylabel("${\\rm Comoving~entropy}~A / A_0$", labelpad=0.)
 
 # Peculiar velocity evolution ---------------------
 subplot(234)
@@ -158,7 +191,7 @@ semilogx(a, vx_mean, '-', color='r', lw=1)
 semilogx(a, vy_mean, '-', color='g', lw=1)
 semilogx(a, vz_mean, '-', color='b', lw=1)
 xlabel("${\\rm Scale-factor}$", labelpad=0.)
-ylabel("${\\rm Peculiar~velocity~mean}$", labelpad=0.)
+ylabel("${\\rm Peculiar~velocity~mean}$", labelpad=-5.)
 
 # Peculiar velocity evolution ---------------------
 subplot(235)
