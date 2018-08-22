@@ -725,8 +725,8 @@ void fof_search_tree_serial(struct space *s) {
     group_id[i] = group_id[root - node_offset];
   }
 
-  fof_dump_group_data("fof_output_tree_serial.dat", nr_gparts, group_index,
-                      group_size, group_id, group_mass, 1);
+  //fof_dump_group_data("fof_output_tree_serial.dat", nr_gparts, group_index,
+  //                    group_size, group_id, group_mass, 1);
 
   int num_parts_in_groups = 0;
   int max_group_size = 0, max_group_index = 0, max_group_mass_id = 0;
@@ -833,6 +833,7 @@ void fof_search_foreign_cells(struct space *s) {
   int *group_index = s->fof_data.group_index;
   int *group_size = s->fof_data.group_size;
   double *group_mass = s->fof_data.group_mass;
+  struct fof_CoM *group_CoM = s->fof_data.group_CoM;
   const int nr_gparts = s->nr_gparts;
   const size_t nr_cells = s->nr_cells;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -1023,6 +1024,11 @@ void fof_search_foreign_cells(struct space *s) {
       group_links[group_link_count].group_i = local_root;
       group_links[group_link_count].group_i_size = group_size[local_root - node_offset];
       group_links[group_link_count].group_i_mass = group_mass[local_root - node_offset];
+
+      /* TODO: The CoM of groups linked across MPI domains will not be wrapped correctly as each rank will centre it within their own domain first.*/
+      group_links[group_link_count].group_i_CoM.x = group_CoM[local_root - node_offset].x;
+      group_links[group_link_count].group_i_CoM.y = group_CoM[local_root - node_offset].y;
+      group_links[group_link_count].group_i_CoM.z = group_CoM[local_root - node_offset].z;
       group_links[group_link_count++].group_j = foreign_root;
     }
 
@@ -1065,6 +1071,7 @@ void fof_search_foreign_cells(struct space *s) {
   /* Transform the group IDs to a local list going from 0-group_count so a union-find can be performed. */
   int *global_group_index = NULL, *global_group_id = NULL, *global_group_size = NULL;
   double *global_group_mass = NULL;
+  struct fof_CoM *global_group_CoM = NULL;
   int group_count = 0;
 
   if (posix_memalign((void**)&global_group_index, SWIFT_STRUCT_ALIGNMENT,
@@ -1083,8 +1090,13 @@ void fof_search_foreign_cells(struct space *s) {
                       global_group_link_count  * sizeof(double)) != 0)
     error("Error while allocating memory for the displacement in memory for the global group link list");
 
+  if (posix_memalign((void**)&global_group_CoM, SWIFT_STRUCT_ALIGNMENT,
+                      global_group_link_count  * sizeof(struct fof_CoM)) != 0)
+    error("Error while allocating memory for the global group CoM.");
+
   bzero(global_group_size, global_group_link_count * sizeof(int));
   bzero(global_group_mass, global_group_link_count * sizeof(double));
+  bzero(global_group_CoM, global_group_link_count * sizeof(struct fof_CoM));
 
   /* Compress the list of group links across an MPI domain by removing the symmetric cases. */
   /* Store each group ID once along with its size. */
@@ -1113,6 +1125,12 @@ void fof_search_foreign_cells(struct space *s) {
     if(!found_i) {
       global_group_size[group_count] += global_group_links[i].group_i_size;
       global_group_mass[group_count] += global_group_links[i].group_i_mass;
+      
+      /* TODO: The CoM of groups linked across MPI domains will not be wrapped correctly as each rank will centre it within their own domain first.*/
+      global_group_CoM[group_count].x += global_group_links[i].group_i_CoM.x;
+      global_group_CoM[group_count].y += global_group_links[i].group_i_CoM.y;
+      global_group_CoM[group_count].z += global_group_links[i].group_i_CoM.z;
+
       global_group_id[group_count++] = group_i;
     }
     
@@ -1122,6 +1140,12 @@ void fof_search_foreign_cells(struct space *s) {
         if(global_group_links[j].group_i == group_j) {
           global_group_size[group_count] += global_group_links[j].group_i_size;
           global_group_mass[group_count] += global_group_links[j].group_i_mass;
+      
+          /* TODO: The CoM of groups linked across MPI domains will not be wrapped correctly as each rank will centre it within their own domain first.*/
+          global_group_CoM[group_count].x += global_group_links[j].group_i_CoM.x;
+          global_group_CoM[group_count].y += global_group_links[j].group_i_CoM.y;
+          global_group_CoM[group_count].z += global_group_links[j].group_i_CoM.z;
+
           break;
         }
       }
@@ -1195,6 +1219,10 @@ void fof_search_foreign_cells(struct space *s) {
         group_index[group_id - node_offset] = new_root;
         group_size[group_id - node_offset] -= global_group_size[i];
         group_mass[group_id - node_offset] -= global_group_mass[i];
+        group_CoM[group_id - node_offset].x -= global_group_CoM[i].x;
+        group_CoM[group_id - node_offset].y -= global_group_CoM[i].y;
+        group_CoM[group_id - node_offset].z -= global_group_CoM[i].z;
+
     }
      
     /* If the group linked to a local root update its size. */
@@ -1202,6 +1230,10 @@ void fof_search_foreign_cells(struct space *s) {
        new_root != group_id) {
       group_size[new_root - node_offset] += global_group_size[i];
       group_mass[new_root - node_offset] += global_group_mass[i];
+      group_CoM[new_root - node_offset].x += global_group_CoM[i].x;
+      group_CoM[new_root - node_offset].y += global_group_CoM[i].y;
+      group_CoM[new_root - node_offset].z += global_group_CoM[i].z;
+
     }
 
   }
@@ -1234,6 +1266,7 @@ void fof_search_tree(struct space *s) {
   long long *group_id;
   int *group_index, *group_size;
   double *group_mass;
+  struct fof_CoM *group_CoM;
   int num_groups = 0, num_parts_in_groups = 0, max_group_size = 0;
   double max_group_mass = 0;
   ticks tic = getticks();
@@ -1278,6 +1311,8 @@ void fof_search_tree(struct space *s) {
   /* Allocate and initialise array of particle group IDs. */
   if(s->fof_data.group_index != NULL) free(s->fof_data.group_index);
   if(s->fof_data.group_id != NULL) free(s->fof_data.group_id);
+  if(s->fof_data.group_mass != NULL) free(s->fof_data.group_mass);
+  if(s->fof_data.group_CoM != NULL) free(s->fof_data.group_CoM);
 
   /* Allocate and initialise a group index array. */
   if (posix_memalign((void **)&s->fof_data.group_index, 32, nr_gparts * sizeof(int)) != 0)
@@ -1295,6 +1330,10 @@ void fof_search_tree(struct space *s) {
   if (posix_memalign((void **)&s->fof_data.group_mass, 32, nr_gparts * sizeof(double)) != 0)
     error("Failed to allocate list of group masses for FOF search.");
 
+  /* Allocate and initialise a group mass array. */
+  if (posix_memalign((void **)&s->fof_data.group_CoM, 32, nr_gparts * sizeof(struct fof_CoM)) != 0)
+    error("Failed to allocate list of group CoM for FOF search.");
+
   /* Initial group ID is particle offset into array. */
   for (size_t i = 0; i < nr_gparts; i++) s->fof_data.group_index[i] = i;
   for (size_t i = 0; i < nr_gparts; i++) s->fof_data.group_id[i] = gparts[i].id_or_neg_offset;
@@ -1303,22 +1342,76 @@ void fof_search_tree(struct space *s) {
   group_size = s->fof_data.group_size;
   group_id = s->fof_data.group_id;
   group_mass = s->fof_data.group_mass;
+  group_CoM = s->fof_data.group_CoM;
   
   message("Rank: %d, Allocated group_index array of size %zu", engine_rank, s->nr_gparts);
 
   bzero(group_size, nr_gparts * sizeof(int));
   bzero(group_mass, nr_gparts * sizeof(double));
+  bzero(group_CoM, nr_gparts * sizeof(struct fof_CoM));
 
   /* Activate all the regular tasks */
   threadpool_map(&s->e->threadpool, fof_search_tree_mapper, s->cells_top,
                  nr_cells, sizeof(struct cell), 1, s);
 
-  /* Calculate the total number of particles in each group, group mass and group ID. */
+  struct fof_CoM *group_bc;
+  int *com_set;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+
+  /* Allocate and initialise a group boundary condition array. */
+  if (posix_memalign((void **)&group_bc, 32, nr_gparts * sizeof(struct fof_CoM)) != 0)
+    error("Failed to allocate list of group CoM for FOF search.");
+  
+  if (posix_memalign((void **)&com_set, 32, nr_gparts * sizeof(int)) != 0)
+    error("Failed to allocate list of whether the CoM has been initialised.");
+  
+  bzero(group_bc, nr_gparts * sizeof(struct fof_CoM));
+  bzero(com_set, nr_gparts * sizeof(int));
+  
+  /* Calculate the total number of particles in each group, group mass, group ID and group CoM. */
   for (size_t i = 0; i < nr_gparts; i++) {
     int root = fof_find(i, group_index);
     group_size[root]++;
     group_mass[root] += gparts[i].mass;
     group_id[i] = group_id[root];
+
+    double x = gparts[i].x[0];
+    double y = gparts[i].x[1];
+    double z = gparts[i].x[2];
+    
+    /* Use the CoM location set by the first particle added to the group. */
+    if(com_set[root]) {
+      
+      /* Periodically wrap particle positions if they are located on the other side of the domain than the CoM location. */
+      if(group_bc[root].x > 0.5 * dim[0] && x < 0.5 * dim[0]) x += dim[0];
+      else if(group_bc[root].x == 0.0 && x > 0.5 * dim[0]) x -= dim[0];
+      
+      if(group_bc[root].y > 0.5 * dim[1] && y < 0.5 * dim[1]) y += dim[1];
+      else if(group_bc[root].y == 0.0 && y > 0.5 * dim[1]) y -= dim[1];
+      
+      if(group_bc[root].z > 0.5 * dim[2] && z < 0.5 * dim[2]) z += dim[2];
+      else if(group_bc[root].z == 0.0 && z > 0.5 * dim[2]) z -= dim[2];
+    
+    }
+    else {
+
+      com_set[root] = 1;
+     
+      /* Use the first particle to set the CoM location in the domain. */ 
+      if(x > 0.5 * dim[0]) group_bc[root].x = dim[0];
+      else group_bc[root].x = 0.0; 
+
+      if(y > 0.5 * dim[1]) group_bc[root].y = dim[1];
+      else group_bc[root].y = 0.0; 
+      
+      if(z > 0.5 * dim[2]) group_bc[root].z = dim[2];
+      else group_bc[root].z = 0.0; 
+    }
+
+    group_CoM[root].x += gparts[i].mass * x;
+    group_CoM[root].y += gparts[i].mass * y;
+    group_CoM[root].z += gparts[i].mass * z;
+
   }
 
 #ifdef WITH_MPI
@@ -1332,15 +1425,18 @@ void fof_search_tree(struct space *s) {
   snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, ".dat");
 #endif
  
-  /* Dump group data. */ 
-  fof_dump_group_data(output_file_name, nr_gparts, group_index,
-      group_size, group_id, group_mass, min_group_size);
-
   int num_groups_local = 0, num_parts_in_groups_local = 0, max_group_size_local = 0;
   double max_group_mass_local = 0;
   
   for (size_t i = 0; i < nr_gparts; i++) {
     
+    /* Find the group's CoM. */
+    if (group_size[i] >= min_group_size) {
+      group_CoM[i].x = group_CoM[i].x / group_mass[i];
+      group_CoM[i].y = group_CoM[i].y / group_mass[i];
+      group_CoM[i].z = group_CoM[i].z / group_mass[i];
+    }
+
     /* Find the total number of groups. */
     if(group_index[i] == i + node_offset && group_size[i] >= min_group_size) num_groups_local++;
 
@@ -1366,6 +1462,9 @@ void fof_search_tree(struct space *s) {
   max_group_size = max_group_size_local;
   max_group_mass = max_group_mass_local;
 #endif /* WITH_MPI */
+ 
+  /* Dump group data. */ 
+  fof_dump_group_data(output_file_name, s);
   
   if(engine_rank == 0) {
     message(
@@ -1383,17 +1482,31 @@ void fof_search_tree(struct space *s) {
 }
 
 /* Dump FOF group data. */
-void fof_dump_group_data(char *out_file, const size_t nr_gparts, int *group_index,
-                         int *group_size, long long *group_id, double *group_mass, const int min_group_size) {
+void fof_dump_group_data(char *out_file, struct space *s) {
 
   FILE *file = fopen(out_file, "w");
-  fprintf(file, "# %7s %7s %7s %7s %7s\n", "ID", "Root ID", "Group Size", "Group Mass", "Group ID");
+  const int min_group_size = s->fof_data.min_group_size, nr_gparts = s->nr_gparts;
+
+  int *group_index = s->fof_data.group_index;
+  int *group_size = s->fof_data.group_size;
+  long long *group_id = s->fof_data.group_id;
+  double *group_mass = s->fof_data.group_mass;
+  struct fof_CoM *group_CoM = s->fof_data.group_CoM;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  
+  fprintf(file, "# %7s %7s %7s %7s %7s %7s %7s %7s\n", "ID", "Root ID", "Group Size", "Group Mass", "x CoM", "y CoM", "z CoM", "Group ID");
   fprintf(file, "#---------------------------------------\n");
 
   for (size_t i = 0; i < nr_gparts; i++) {
     if(group_size[i] >= min_group_size) {
       const int root = fof_find_global(i - node_offset, group_index);
-      fprintf(file, "  %7zu %7d %7d %7e    %10lld\n", i, root, group_size[i], group_mass[i], group_id[i]);
+ 
+      /* Box wrap the CoM. */
+      const double CoM_x = box_wrap(group_CoM[i].x, 0., dim[0]);
+      const double CoM_y = box_wrap(group_CoM[i].y, 0., dim[1]);
+      const double CoM_z = box_wrap(group_CoM[i].z, 0., dim[2]);
+
+      fprintf(file, "  %7zu %7d %7d %7e %7e %7e %7e %10lld\n", i, root, group_size[i], group_mass[i], CoM_x, CoM_y, CoM_z, group_id[i]);
     }
   }
 
