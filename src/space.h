@@ -41,12 +41,19 @@
 struct cell;
 struct cosmology;
 
+struct fof_CoM {
+
+  double x, y, z;
+
+} SWIFT_STRUCT_ALIGN;
+
 struct fof {
 
   long long *group_id;
   int *group_index;
   int *group_size;
   double *group_mass;
+  struct fof_CoM *group_CoM;
   int min_group_size;
   char base_name[PARSER_MAX_LINE_SIZE];
 
