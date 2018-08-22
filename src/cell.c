@@ -2487,6 +2487,11 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
 
+    /* All top-level cells get an MPI tag. */
+#ifdef WITH_MPI
+    if (c->tag < 0 && c->sendto) cell_tag(c);
+#endif
+
     /* Super-pointer for hydro */
     if (e->policy & engine_policy_hydro) cell_set_super_hydro(c, NULL);
 

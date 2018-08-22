@@ -1325,7 +1325,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
     if (t_xv == NULL) {
 
       /* Create a tag for this cell. */
-      cell_tag(ci);
+      if (ci->tag < 0) cell_tag(ci);
 
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->tag, 0,
                                ci, cj);
@@ -1417,7 +1417,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     if (t_grav == NULL) {
 
       /* Create a tag for this cell. */
-      cell_tag(ci);
+      if (ci->tag < 0) cell_tag(ci);
 
       t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart, ci->tag,
                                  0, ci, cj);
@@ -1480,7 +1480,7 @@ void engine_addtasks_send_timestep(struct engine *e, struct cell *ci,
     if (t_ti == NULL) {
 
       /* Create a tag for this cell. */
-      cell_tag(ci);
+      if (ci->tag < 0) cell_tag(ci);
 
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend, ci->tag, 0,
                                ci, cj);
@@ -3232,6 +3232,12 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
+  /* Re-set the tag counter. MPI tags are defined for top-level cells in
+   * cell_set_super_mapper. */
+#ifdef WITH_MPI
+  cell_next_tag = 0;
+#endif
+
   /* Now that the self/pair tasks are at the right level, set the super
    * pointers. */
   threadpool_map(&e->threadpool, cell_set_super_mapper, cells, nr_cells,
@@ -3273,11 +3279,8 @@ void engine_maketasks(struct engine *e) {
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
 
-    // Re-set the tag counter.
-    cell_next_tag = 0;
-
     /* Loop over the proxies and add the send tasks, which also generates the
-     * cell tags. */
+     * cell tags for super-cells. */
     for (int pid = 0; pid < e->nr_proxies; pid++) {
 
       /* Get a handle on the proxy. */
@@ -3950,13 +3953,14 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   engine_exchange_cells(e);
 
   if (e->policy & engine_policy_self_gravity) engine_exchange_top_multipoles(e);
-
-  if (e->policy & engine_policy_self_gravity)
-    engine_exchange_proxy_multipoles(e);
 #endif
 
   /* Re-build the tasks. */
   engine_maketasks(e);
+
+#ifdef WITH_MPI
+  if (e->policy & engine_policy_self_gravity) engine_exchange_proxy_multipoles(e);
+#endif
 
   /* Make the list of top-level cells that have tasks */
   space_list_cells_with_tasks(e->s);

@@ -638,6 +638,11 @@ __attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
  */
 __attribute((always_inline)) INLINE static void cell_tag(struct cell *c) {
 #ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->tag > 0) error("setting tag for already tagged cell");
+#endif
+
   if (c->tag < 0 && (c->tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
     error("Ran out of cell tags.");
 #else

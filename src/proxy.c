@@ -43,7 +43,7 @@
 #include "space.h"
 
 /**
- * @brief Eschange tags between nodes.
+ * @brief Exchange tags between nodes.
  *
  * Note that this function assumes that the cell structures have already
  * been exchanged, e.g. via #proxy_cells_exchange.
