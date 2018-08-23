@@ -1,0 +1,8 @@
+This example can be used to generate a glass file for gravity calculation.
+The makeIC.py script will generate a uniform Poisson distribution of particles
+in a cubic box with zero initial velocities.
+
+By running the code with the SWIFT configuration option --enable-glass-making
+the code will run with gravity as a repulsive force and the particles will
+moe towards a state of minimal energy. These glass files can be used to then
+start simulations with a minimal level of noise.

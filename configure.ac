@@ -270,6 +270,18 @@ elif test "$gravity_force_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_GRAVITY_FORCE_CHECKS], [$enableval] ,[Enable gravity brute-force checks])
 fi
 
+# Check whether we want to switch on glass making
+AC_ARG_ENABLE([glass-making],
+   [AS_HELP_STRING([--enable-glass-making],
+     [Activate the glass-making procedure by reversing the sign of gravity @<:@yes/no@:>@]
+   )],
+   [gravity_glass_making="$enableval"],
+   [gravity_glass_making="no"]
+)
+if test "$gravity_glass_making" == "yes"; then
+   AC_DEFINE([SWIFT_MAKE_GRAVITY_GLASS], 1, [Make the code run in a way to produce a glass file for gravity/cosmology])
+fi
+
 # Check if we want to zero the gravity forces for all particles below some ID.
 AC_ARG_ENABLE([no-gravity-below-id],
    [AS_HELP_STRING([--enable-no-gravity-below-id],
@@ -1408,6 +1420,7 @@ AC_MSG_RESULT([
    Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order
    No gravity below ID : $no_gravity_below_id
+   Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
 
    Cooling function   : $with_cooling
