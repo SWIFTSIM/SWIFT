@@ -48,20 +48,25 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",          "sort",           "self",
-    "pair",          "sub_self",       "sub_pair",
-    "init_grav",     "ghost_in",       "ghost",
-    "ghost_out",     "extra_ghost",    "drift_part",
-    "drift_gpart",   "end_force",      "kick1",
-    "kick2",         "timestep",       "send",
-    "recv",          "grav_top_level", "grav_long_range",
-    "grav_ghost_in", "grav_ghost_out", "grav_mm",
-    "grav_down",     "cooling",        "sourceterms"};
+    "none",       "sort",          "self",
+    "pair",       "sub_self",      "sub_pair",
+    "init_grav",  "init_grav_out", "ghost_in",
+    "ghost",      "ghost_out",     "extra_ghost",
+    "drift_part", "drift_gpart",   "end_force",
+    "kick1",      "kick2",         "timestep",
+    "send",       "recv",          "grav_long_range",
+    "grav_mm",    "grav_down_in",  "grav_down",
+    "grav_mesh",  "cooling",       "sourceterms"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
     "none", "density", "gradient", "force", "grav",      "external_grav",
     "tend", "xv",      "rho",      "gpart", "multipole", "spart"};
+
+#ifdef WITH_MPI
+/* MPI communicators for the subtypes. */
+MPI_Comm subtaskMPI_comms[task_subtype_count];
+#endif
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
@@ -171,14 +176,14 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_init_grav:
-    case task_type_grav_top_level:
-    case task_type_grav_long_range:
     case task_type_grav_mm:
       return task_action_multipole;
       break;
 
     case task_type_drift_gpart:
     case task_type_grav_down:
+    case task_type_grav_mesh:
+    case task_type_grav_long_range:
       return task_action_gpart;
       break;
 
@@ -289,6 +294,7 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
+    case task_type_grav_mesh:
       cell_gunlocktree(ci);
       break;
 
@@ -321,8 +327,12 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_grav_long_range:
+      cell_munlocktree(ci);
+      break;
+
     case task_type_grav_mm:
       cell_munlocktree(ci);
+      cell_munlocktree(cj);
       break;
 
     default:
@@ -384,6 +394,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
+    case task_type_grav_mesh:
       if (ci->ghold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
       break;
@@ -446,11 +457,19 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_grav_long_range:
-    case task_type_grav_mm:
       /* Lock the m-poles */
       if (ci->mhold) return 0;
       if (cell_mlocktree(ci) != 0) return 0;
       break;
+
+    case task_type_grav_mm:
+      /* Lock both m-poles */
+      if (ci->mhold || cj->mhold) return 0;
+      if (cell_mlocktree(ci) != 0) return 0;
+      if (cell_mlocktree(cj) != 0) {
+        cell_munlocktree(ci);
+        return 0;
+      }
 
     default:
       break;
@@ -471,3 +490,14 @@ void task_print(const struct task *t) {
           taskID_names[t->type], subtaskID_names[t->subtype], t->wait,
           t->nr_unlock_tasks, t->skip);
 }
+
+#ifdef WITH_MPI
+/**
+ * @brief Create global communicators for each of the subtasks.
+ */
+void task_create_mpi_comms(void) {
+  for (int i = 0; i < task_subtype_count; i++) {
+    MPI_Comm_dup(MPI_COMM_WORLD, &subtaskMPI_comms[i]);
+  }
+}
+#endif

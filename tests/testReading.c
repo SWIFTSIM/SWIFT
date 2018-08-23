@@ -48,8 +48,8 @@ int main(int argc, char *argv[]) {
 
   /* Read data */
   read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &sparts, &Ngas,
-                 &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, 1, 1, 0, 0, 1.,
-                 1, 0);
+                 &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, 1, 1, 0, 0, 0,
+                 1., 1., 1, 0);
 
   /* Check global properties read are correct */
   assert(dim[0] == boxSize);

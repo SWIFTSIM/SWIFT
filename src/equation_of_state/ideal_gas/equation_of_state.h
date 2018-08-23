@@ -45,7 +45,7 @@ struct eos_parameters {};
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$S\f$.
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 gas_internal_energy_from_entropy(float density, float entropy) {
 
   return entropy * pow_gamma_minus_one(density) *
@@ -60,8 +60,8 @@ gas_internal_energy_from_entropy(float density, float entropy) {
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$S\f$.
  */
-__attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
-    float density, float entropy) {
+__attribute__((always_inline, const)) INLINE static float
+gas_pressure_from_entropy(float density, float entropy) {
 
   return entropy * pow_gamma(density);
 }
@@ -75,8 +75,8 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
  * @param pressure The pressure \f$P\f$.
  * @return The entropy \f$A\f$.
  */
-__attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
-    float density, float pressure) {
+__attribute__((always_inline, const)) INLINE static float
+gas_entropy_from_pressure(float density, float pressure) {
 
   return pressure * pow_minus_gamma(density);
 }
@@ -89,8 +89,8 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$S\f$.
  */
-__attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
-    float density, float entropy) {
+__attribute__((always_inline, const)) INLINE static float
+gas_soundspeed_from_entropy(float density, float entropy) {
 
   return sqrtf(hydro_gamma * pow_gamma_minus_one(density) * entropy);
 }
@@ -103,7 +103,7 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
  * @param density The density \f$\rho\f$
  * @param u The internal energy \f$u\f$
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 gas_entropy_from_internal_energy(float density, float u) {
 
   return hydro_gamma_minus_one * u * pow_minus_gamma_minus_one(density);
@@ -117,7 +117,7 @@ gas_entropy_from_internal_energy(float density, float u) {
  * @param density The density \f$\rho\f$
  * @param u The internal energy \f$u\f$
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 gas_pressure_from_internal_energy(float density, float u) {
 
   return hydro_gamma_minus_one * u * density;
@@ -132,7 +132,7 @@ gas_pressure_from_internal_energy(float density, float u) {
  * @param pressure The pressure \f$P\f$.
  * @return The internal energy \f$u\f$.
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 gas_internal_energy_from_pressure(float density, float pressure) {
   return hydro_one_over_gamma_minus_one * pressure / density;
 }
@@ -145,7 +145,7 @@ gas_internal_energy_from_pressure(float density, float pressure) {
  * @param density The density \f$\rho\f$
  * @param u The internal energy \f$u\f$
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_internal_energy(float density, float u) {
 
   return sqrtf(u * hydro_gamma * hydro_gamma_minus_one);
@@ -159,8 +159,8 @@ gas_soundspeed_from_internal_energy(float density, float u) {
  * @param density The density \f$\rho\f$
  * @param P The pressure \f$P\f$
  */
-__attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
-    float density, float P) {
+__attribute__((always_inline, const)) INLINE static float
+gas_soundspeed_from_pressure(float density, float P) {
 
   const float density_inv = 1.f / density;
   return sqrtf(hydro_gamma * P * density_inv);
@@ -176,16 +176,16 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
  * @param us The internal unit system.
  * @param params The parsed parameters.
  */
-__attribute__((always_inline)) INLINE static void eos_init(
-    struct eos_parameters *e, const struct phys_const *phys_const,
-    const struct unit_system *us, struct swift_params *params) {}
+INLINE static void eos_init(struct eos_parameters *e,
+                            const struct phys_const *phys_const,
+                            const struct unit_system *us,
+                            struct swift_params *params) {}
 /**
  * @brief Print the equation of state
  *
  * @param e The #eos_parameters
  */
-__attribute__((always_inline)) INLINE static void eos_print(
-    const struct eos_parameters *e) {
+INLINE static void eos_print(const struct eos_parameters *e) {
 
   message("Equation of state: Ideal gas.");
 
@@ -199,8 +199,8 @@ __attribute__((always_inline)) INLINE static void eos_print(
  * @param h_grpsph The HDF5 group in which to write
  * @param e The #eos_parameters
  */
-__attribute__((always_inline)) INLINE static void eos_print_snapshot(
-    hid_t h_grpsph, const struct eos_parameters *e) {
+INLINE static void eos_print_snapshot(hid_t h_grpsph,
+                                      const struct eos_parameters *e) {
 
   io_write_attribute_f(h_grpsph, "Adiabatic index", hydro_gamma);
 

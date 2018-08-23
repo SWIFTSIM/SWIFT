@@ -28,7 +28,122 @@
 #include "inline.h"
 
 /* Standard headers */
+#include <float.h>
 #include <math.h>
+
+#define GADGET2_LONG_RANGE_CORRECTION
+
+#ifdef GADGET2_LONG_RANGE_CORRECTION
+#define kernel_long_gravity_truncation_name "Gadget-like (using erfc())"
+#else
+#define kernel_long_gravity_truncation_name "Exp-based Sigmoid"
+#endif
+
+/**
+ * @brief Derivatives of the long-range truncation function \f$\chi(r,r_s)\f$ up
+ * to 5th order.
+ */
+struct chi_derivatives {
+
+  /*! 0th order derivative \f$\chi(r,r_s)\f$ */
+  float chi_0;
+
+  /*! 1st order derivative \f$\partial_{r}\chi(r,r_s)\f$ */
+  float chi_1;
+
+  /*! 2nd order derivative \f$\partial_{rr}\chi(r,r_s)\f$ */
+  float chi_2;
+
+  /*! 3rd order derivative \f$\partial_{rrr}\chi(r,r_s)\f$ */
+  float chi_3;
+
+  /*! 4th order derivative \f$\partial_{rrrr}\chi(r,r_s)\f$ */
+  float chi_4;
+
+  /*! 5th order derivative \f$\partial_{rrrrr}\chi(r,r_s)\f$ */
+  float chi_5;
+};
+
+/**
+ * @brief Compute the derivatives of the long-range truncation function
+ * \f$\chi(r,r_s)\f$ up to 5th order.
+ *
+ * @param r The distance.
+ * @param r_s_inv The inverse of the long-range gravity mesh scale.
+ * @param derivs (return) The computed #chi_derivatives.
+ */
+__attribute__((always_inline)) INLINE static void kernel_long_grav_derivatives(
+    const float r, const float r_s_inv, struct chi_derivatives *const derivs) {
+
+#ifdef GADGET2_LONG_RANGE_CORRECTION
+
+  /* Powers of u=r/2r_s */
+  const float u = 0.5f * r * r_s_inv;
+  const float u2 = u * u;
+  const float u3 = u2 * u;
+  const float u4 = u3 * u;
+
+  /* Powers of (1/r_s) */
+  const float r_s_inv2 = r_s_inv * r_s_inv;
+  const float r_s_inv3 = r_s_inv2 * r_s_inv;
+  const float r_s_inv4 = r_s_inv3 * r_s_inv;
+  const float r_s_inv5 = r_s_inv4 * r_s_inv;
+
+  /* Derivatives of \chi */
+  derivs->chi_0 = erfcf(u);
+  derivs->chi_1 = -r_s_inv;
+  derivs->chi_2 = r_s_inv2 * u;
+  derivs->chi_3 = -r_s_inv3 * (u2 - 0.5f);
+  derivs->chi_4 = r_s_inv4 * (u3 - 1.5f * u);
+  derivs->chi_5 = -r_s_inv5 * (u4 - 3.f * u2 + 0.75f);
+
+  const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
+  const float common_factor = one_over_sqrt_pi * expf(-u2);
+
+  /* Multiply in the common factors */
+  derivs->chi_1 *= common_factor;
+  derivs->chi_2 *= common_factor;
+  derivs->chi_3 *= common_factor;
+  derivs->chi_4 *= common_factor;
+  derivs->chi_5 *= common_factor;
+
+#else
+
+  /* Powers of 2/r_s */
+  const float c0 = 1.f;
+  const float c1 = 2.f * r_s_inv;
+  const float c2 = c1 * c1;
+  const float c3 = c2 * c1;
+  const float c4 = c3 * c1;
+  const float c5 = c4 * c1;
+
+  /* 2r / r_s */
+  const float x = c1 * r;
+
+  /* e^(2r / r_s) */
+  const float exp_x = expf(x);  // good_approx_expf(x);
+
+  /* 1 / alpha(w) */
+  const float a_inv = 1.f + exp_x;
+
+  /* Powers of alpha */
+  const float a1 = 1.f / a_inv;
+  const float a2 = a1 * a1;
+  const float a3 = a2 * a1;
+  const float a4 = a3 * a1;
+  const float a5 = a4 * a1;
+  const float a6 = a5 * a1;
+
+  /* Derivatives of \chi */
+  derivs->chi_0 = -2.f * exp_x * c0 * a1 + 2.f;
+  derivs->chi_1 = -2.f * exp_x * c1 * a2;
+  derivs->chi_2 = -2.f * exp_x * c2 * (2.f * a3 - a2);
+  derivs->chi_3 = -2.f * exp_x * c3 * (6.f * a4 - 6.f * a3 + a2);
+  derivs->chi_4 = -2.f * exp_x * c4 * (24.f * a5 - 36.f * a4 + 14.f * a3 - a2);
+  derivs->chi_5 = -2.f * exp_x * c5 *
+                  (120.f * a6 - 240.f * a5 + 150.f * a4 - 30.f * a3 + a2);
+#endif
+}
 
 /**
  * @brief Computes the long-range correction term for the potential calculation
@@ -49,7 +164,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_pot_eval(
 #else
 
   const float x = 2.f * u;
-  const float exp_x = good_approx_expf(x);
+  const float exp_x = expf(x);  // good_approx_expf(x);
   const float alpha = 1.f / (1.f + exp_x);
 
   /* We want 2 - 2 exp(x) * alpha */
@@ -66,27 +181,29 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_pot_eval(
  * @param W (return) The value of the kernel function.
  */
 __attribute__((always_inline)) INLINE static void kernel_long_grav_force_eval(
-    float u, float *const W) {
+    const float u, float *const W) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
   const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
 
   const float arg1 = u * 0.5f;
-  const float arg2 = u * one_over_sqrt_pi;
-  const float arg3 = -arg1 * arg1;
+  const float arg2 = -arg1 * arg1;
 
   const float term1 = erfcf(arg1);
-  const float term2 = arg2 * expf(arg3);
+  const float term2 = u * one_over_sqrt_pi * expf(arg2);
 
   *W = term1 + term2;
 #else
 
-  const float arg = 2.f * u;
-  const float exp_arg = good_approx_expf(arg);
-  const float term = 1.f / (1.f + exp_arg);
+  const float x = 2.f * u;
+  const float exp_x = expf(x);  // good_approx_expf(x);
+  const float alpha = 1.f / (1.f + exp_x);
 
-  *W = arg * exp_arg * term * term - exp_arg * term + 1.f;
+  /* We want 2*(x*alpha - x*alpha^2 - exp(x)*alpha + 1) */
+  *W = 1.f - alpha;
+  *W = *W * x - exp_x;
+  *W = *W * alpha + 1.f;
   *W *= 2.f;
 #endif
 }
@@ -100,7 +217,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_force_eval(
  * @param W (return) The value of the kernel function.
  */
 __attribute__((always_inline)) INLINE static void fourier_kernel_long_grav_eval(
-    double u2, double *const W) {
+    const double u2, double *const W) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
   *W = exp(-u2);

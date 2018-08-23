@@ -375,21 +375,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* Compute interface velocity */
   /* eqn. (9) */
-  float xijdotdx = xij_i[0] * dx[0] + xij_i[1] * dx[1] + xij_i[2] * dx[2];
-  xijdotdx *= r_inv * r_inv;
-  const float vij[3] = {vi[0] + (vi[0] - vj[0]) * xijdotdx,
-                        vi[1] + (vi[1] - vj[1]) * xijdotdx,
-                        vi[2] + (vi[2] - vj[2]) * xijdotdx};
+  const float vij[3] = {vi[0] + xfac * (vi[0] - vj[0]),
+                        vi[1] + xfac * (vi[1] - vj[1]),
+                        vi[2] + xfac * (vi[2] - vj[2])};
 
-  /* complete calculation of position of interface */
-  /* NOTE: dx is not necessarily just pi->x - pj->x but can also contain
-           correction terms for periodicity. If we do the interpolation,
-           we have to use xij w.r.t. the actual particle.
-           => we need a separate xij for pi and pj... */
-  /* tldr: we do not need the code below, but we do need the same code as above
-     but then with i and j swapped */
-  //    for ( k = 0 ; k < 3 ; k++ )
-  //      xij[k] += pi->x[k];
+  hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
 
   /* Boost the primitive variables to the frame of reference of the interface */
   /* Note that velocities are indices 1-3 in W */
@@ -399,8 +389,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   Wj[1] -= vij[0];
   Wj[2] -= vij[1];
   Wj[3] -= vij[2];
-
-  hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
 
   /* we don't need to rotate, we can use the unit vector in the Riemann problem
    * itself (see GIZMO) */
@@ -447,9 +435,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   if (mode == 1) {
     /* Store mass flux */
     const float mflux_j = totflux[0];
-    pj->gravity.mflux[0] -= mflux_j * dx[0];
-    pj->gravity.mflux[1] -= mflux_j * dx[1];
-    pj->gravity.mflux[2] -= mflux_j * dx[2];
+    pj->gravity.mflux[0] += mflux_j * dx[0];
+    pj->gravity.mflux[1] += mflux_j * dx[1];
+    pj->gravity.mflux[2] += mflux_j * dx[2];
 
     pj->conserved.flux.mass += totflux[0];
     pj->conserved.flux.momentum[0] += totflux[1];

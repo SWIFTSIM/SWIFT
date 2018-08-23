@@ -9,11 +9,27 @@ Scheduler:
 kernel: 4
 
 Simulation:    
-  no_of_time_steps:   10
+  no_of_time_steps:   10    
   max_h:              1.1255
   start_time:         1.23456789
 
 IO:
   #Input file
   ic_file:            ic_file.ini
+
+Words:
+  list: ['xyz', 'ABC', "ab'c", "de:f", "g,hi", "zzz", Hello World, once-again]
+  nonstdlist: 'xyz', 'ABC', "ab'c", "de:f", "g,hi", "zzz", Hello World, once-again
+  long: [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z]
+
+#  Spelling mistake, should go into unused list.
+Box:
+  csides: [a, b, c]
+  isydes: [2, 3, 4]
+  isides: [2, 3, 4]
+  fsides: [2.0, 3.0, 4.0]
+  dsides: 2.0, 3.0, 4.0
+
+Unused:
+  value: unused
 ...

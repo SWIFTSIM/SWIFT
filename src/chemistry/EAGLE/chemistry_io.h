@@ -101,7 +101,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
 
 /**
  * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
+ * @param h_grp The HDF5 group in which to write
  */
 INLINE static void chemistry_write_flavour(hid_t h_grp) {
 
@@ -109,7 +109,9 @@ INLINE static void chemistry_write_flavour(hid_t h_grp) {
   for (int elem = 0; elem < chemistry_element_count; ++elem) {
     char buffer[20];
     sprintf(buffer, "Element %d", elem);
-    io_write_attribute_s(h_grp, buffer, chemistry_get_element_name(elem));
+    io_write_attribute_s(
+        h_grp, buffer,
+        chemistry_get_element_name((enum chemistry_element)elem));
   }
 }
 #endif

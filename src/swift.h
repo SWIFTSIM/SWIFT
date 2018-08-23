@@ -47,7 +47,9 @@
 #include "lock.h"
 #include "logger.h"
 #include "map.h"
+#include "mesh_gravity.h"
 #include "multipole.h"
+#include "outputlist.h"
 #include "parallel_io.h"
 #include "parser.h"
 #include "part.h"
@@ -70,6 +72,7 @@
 #include "timers.h"
 #include "tools.h"
 #include "units.h"
+#include "velociraptor_interface.h"
 #include "version.h"
 
 #endif /* SWIFT_SWIFT_H */

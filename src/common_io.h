@@ -56,6 +56,12 @@ enum IO_DATA_TYPE {
   CHAR
 };
 
+/**
+ * @brief The different formats for when to run structure finding.
+ *
+ */
+enum IO_STF_OUTPUT_FORMAT { STEPS = 0, TIME };
+
 #if defined(HAVE_HDF5)
 
 hid_t io_hdf5_type(enum IO_DATA_TYPE type);
@@ -75,7 +81,9 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 void io_write_code_description(hid_t h_file);
 void io_write_engine_policy(hid_t h_file, const struct engine* e);
 
-void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank);
+void io_read_unit_system(hid_t h_file, struct unit_system* ic_units,
+                         const struct unit_system* internal_units,
+                         int mpi_rank);
 void io_write_unit_system(hid_t h_grp, const struct unit_system* us,
                           const char* groupName);
 

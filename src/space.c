@@ -55,7 +55,6 @@
 #include "minmax.h"
 #include "multipole.h"
 #include "restart.h"
-#include "runner.h"
 #include "sort_part.h"
 #include "stars.h"
 #include "threadpool.h"
@@ -67,6 +66,7 @@ int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
 int space_subsize_self_hydro = space_subsize_self_hydro_default;
 int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
+int space_subdepth_grav = space_subdepth_grav_default;
 int space_maxsize = space_maxsize_default;
 #ifdef SWIFT_DEBUG_CHECKS
 int last_cell_id;
@@ -169,13 +169,13 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->force = NULL;
     c->grav = NULL;
     c->dx_max_part = 0.0f;
-    c->dx_max_gpart = 0.0f;
     c->dx_max_sort = 0.0f;
     c->sorted = 0;
     c->count = 0;
     c->gcount = 0;
     c->scount = 0;
     c->init_grav = NULL;
+    c->init_grav_out = NULL;
     c->extra_ghost = NULL;
     c->ghost_in = NULL;
     c->ghost_out = NULL;
@@ -188,10 +188,10 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->drift_gpart = NULL;
     c->cooling = NULL;
     c->sourceterms = NULL;
-    c->grav_ghost_in = NULL;
-    c->grav_ghost_out = NULL;
     c->grav_long_range = NULL;
+    c->grav_down_in = NULL;
     c->grav_down = NULL;
+    c->grav_mesh = NULL;
     c->super = c;
     c->super_hydro = c;
     c->super_gravity = c;
@@ -199,6 +199,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->xparts = NULL;
     c->gparts = NULL;
     c->sparts = NULL;
+    c->do_sub_sort = 0;
+    c->do_grav_sub_drift = 0;
+    c->do_sub_drift = 0;
     if (s->gravity) bzero(c->multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
       if (c->sort[i] != NULL) {
@@ -240,7 +243,7 @@ void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const ticks tic = getticks();
-  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
@@ -287,20 +290,6 @@ void space_regrid(struct space *s, int verbose) {
     error(
         "Must have at least 3 cells in each spatial dimension when periodicity "
         "is switched on.\nThis error is often caused by any of the "
-        "followings:\n"
-        " - too few particles to generate a sensible grid,\n"
-        " - the initial value of 'Scheduler:max_top_level_cells' is too "
-        "small,\n"
-        " - the (minimal) time-step is too large leading to particles with "
-        "predicted smoothing lengths too large for the box size,\n"
-        " - particles with velocities so large that they move by more than two "
-        "box sizes per time-step.\n");
-
-  /* Check if we have enough cells for periodic gravity. */
-  if (s->gravity && s->periodic && (cdim[0] < 8 || cdim[1] < 8 || cdim[2] < 8))
-    error(
-        "Must have at least 8 cells in each spatial dimension when periodic "
-        "gravity is switched on.\nThis error is often caused by any of the "
         "followings:\n"
         " - too few particles to generate a sensible grid,\n"
         " - the initial value of 'Scheduler:max_top_level_cells' is too "
@@ -437,9 +426,9 @@ void space_regrid(struct space *s, int verbose) {
           c->super = c;
           c->super_hydro = c;
           c->super_gravity = c;
-          c->ti_old_part = ti_old;
-          c->ti_old_gpart = ti_old;
-          c->ti_old_multipole = ti_old;
+          c->ti_old_part = ti_current;
+          c->ti_old_gpart = ti_current;
+          c->ti_old_multipole = ti_current;
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
 
@@ -537,7 +526,7 @@ void space_rebuild(struct space *s, int verbose) {
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   struct cell *restrict cells_top = s->cells_top;
-  const integertime_t ti_old = (s->e != NULL) ? s->e->ti_old : 0;
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the particles and get their cell index. Allocates
      an index that is larger than the number of particles to avoid
@@ -929,9 +918,9 @@ void space_rebuild(struct space *s, int verbose) {
   struct spart *sfinger = s->sparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
-    c->ti_old_part = ti_old;
-    c->ti_old_gpart = ti_old;
-    c->ti_old_multipole = ti_old;
+    c->ti_old_part = ti_current;
+    c->ti_old_gpart = ti_current;
+    c->ti_old_multipole = ti_current;
     if (c->nodeID == engine_rank) {
       c->parts = finger;
       c->xparts = xfinger;
@@ -1070,8 +1059,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     /* Get its cell index */
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
-    ind[k] = index;
-    cell_counts[index]++;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -1083,6 +1070,9 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
             pos_z);
 #endif
+
+    ind[k] = index;
+    cell_counts[index]++;
 
     /* Compute minimal mass */
     min_mass = min(min_mass, hydro_get_mass(p));
@@ -1157,8 +1147,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     /* Get its cell index */
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
-    ind[k] = index;
-    cell_counts[index]++;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -1170,6 +1158,9 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
             pos_z);
 #endif
+
+    ind[k] = index;
+    cell_counts[index]++;
 
     /* Compute minimal mass */
     if (gp->type == swift_type_dark_matter) {
@@ -1246,8 +1237,6 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     /* Get its cell index */
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
-    ind[k] = index;
-    cell_counts[index]++;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -1259,6 +1248,9 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
             pos_z);
 #endif
+
+    ind[k] = index;
+    cell_counts[index]++;
 
     /* Compute minimal mass */
     min_mass = min(min_mass, sp->mass);
@@ -1746,6 +1738,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int count = c->count;
   const int gcount = c->gcount;
   const int scount = c->scount;
+  const int with_gravity = s->gravity;
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
@@ -1758,6 +1751,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct spart *sparts = c->sparts;
   struct xpart *xparts = c->xparts;
   struct engine *e = s->e;
+  const integertime_t ti_current = e->ti_current;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL);
@@ -1806,8 +1800,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   }
 
   /* Split or let it be? */
-  if (count > space_splitsize || gcount > space_splitsize ||
-      scount > space_splitsize) {
+  if ((with_gravity && gcount > space_splitsize) ||
+      (!with_gravity &&
+       (count > space_splitsize || scount > space_splitsize))) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -1836,76 +1831,117 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->split = 0;
       cp->h_max = 0.f;
       cp->dx_max_part = 0.f;
-      cp->dx_max_gpart = 0.f;
       cp->dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->super = NULL;
       cp->super_hydro = NULL;
       cp->super_gravity = NULL;
+      cp->do_sub_sort = 0;
+      cp->do_grav_sub_drift = 0;
+      cp->do_sub_drift = 0;
 #ifdef SWIFT_DEBUG_CHECKS
       cp->cellID = last_cell_id++;
 #endif
     }
 
-    /* Split the cell data. */
+    /* Split the cell's partcle data. */
     cell_split(c, c->parts - s->parts, c->sparts - s->sparts, buff, sbuff,
                gbuff);
 
-    /* Remove any progeny with zero parts. */
+    /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
                      *progeny_sbuff = sbuff;
+
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0 &&
-          c->progeny[k]->scount == 0) {
-        space_recycle(s, c->progeny[k]);
+
+      /* Get the progenitor */
+      struct cell *cp = c->progeny[k];
+
+      /* Remove any progeny with zero particles. */
+      if (cp->count == 0 && cp->gcount == 0 && cp->scount == 0) {
+
+        space_recycle(s, cp);
         c->progeny[k] = NULL;
+
       } else {
-        space_split_recursive(s, c->progeny[k], progeny_buff, progeny_sbuff,
+
+        /* Recurse */
+        space_split_recursive(s, cp, progeny_buff, progeny_sbuff,
                               progeny_gbuff);
-        progeny_buff += c->progeny[k]->count;
-        progeny_gbuff += c->progeny[k]->gcount;
-        progeny_sbuff += c->progeny[k]->scount;
-        h_max = max(h_max, c->progeny[k]->h_max);
-        ti_hydro_end_min =
-            min(ti_hydro_end_min, c->progeny[k]->ti_hydro_end_min);
-        ti_hydro_end_max =
-            max(ti_hydro_end_max, c->progeny[k]->ti_hydro_end_max);
-        ti_hydro_beg_max =
-            max(ti_hydro_beg_max, c->progeny[k]->ti_hydro_beg_max);
-        ti_gravity_end_min =
-            min(ti_gravity_end_min, c->progeny[k]->ti_gravity_end_min);
-        ti_gravity_end_max =
-            max(ti_gravity_end_max, c->progeny[k]->ti_gravity_end_max);
-        ti_gravity_beg_max =
-            max(ti_gravity_beg_max, c->progeny[k]->ti_gravity_beg_max);
-        if (c->progeny[k]->maxdepth > maxdepth)
-          maxdepth = c->progeny[k]->maxdepth;
+
+        /* Update the pointers in the buffers */
+        progeny_buff += cp->count;
+        progeny_gbuff += cp->gcount;
+        progeny_sbuff += cp->scount;
+
+        /* Update the cell-wide properties */
+        h_max = max(h_max, cp->h_max);
+        ti_hydro_end_min = min(ti_hydro_end_min, cp->ti_hydro_end_min);
+        ti_hydro_end_max = max(ti_hydro_end_max, cp->ti_hydro_end_max);
+        ti_hydro_beg_max = max(ti_hydro_beg_max, cp->ti_hydro_beg_max);
+        ti_gravity_end_min = min(ti_gravity_end_min, cp->ti_gravity_end_min);
+        ti_gravity_end_max = max(ti_gravity_end_max, cp->ti_gravity_end_max);
+        ti_gravity_beg_max = max(ti_gravity_beg_max, cp->ti_gravity_beg_max);
+
+        /* Increase the depth */
+        if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
       }
     }
 
-    /* Deal with multipole */
+    /* Deal with the multipole */
     if (s->gravity) {
 
       /* Reset everything */
       gravity_reset(c->multipole);
 
-      /* Compute CoM of all progenies */
+      /* Compute CoM and bulk velocity from all progenies */
       double CoM[3] = {0., 0., 0.};
+      double vel[3] = {0., 0., 0.};
+      float max_delta_vel[3] = {0.f, 0.f, 0.f};
+      float min_delta_vel[3] = {0.f, 0.f, 0.f};
       double mass = 0.;
 
       for (int k = 0; k < 8; ++k) {
         if (c->progeny[k] != NULL) {
           const struct gravity_tensors *m = c->progeny[k]->multipole;
+
+          mass += m->m_pole.M_000;
+
           CoM[0] += m->CoM[0] * m->m_pole.M_000;
           CoM[1] += m->CoM[1] * m->m_pole.M_000;
           CoM[2] += m->CoM[2] * m->m_pole.M_000;
-          mass += m->m_pole.M_000;
+
+          vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+          vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+          vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+
+          max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+          max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+          max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+
+          min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+          min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+          min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
         }
       }
-      c->multipole->CoM[0] = CoM[0] / mass;
-      c->multipole->CoM[1] = CoM[1] / mass;
-      c->multipole->CoM[2] = CoM[2] / mass;
+
+      /* Final operation on the CoM and bulk velocity */
+      const double inv_mass = 1. / mass;
+      c->multipole->CoM[0] = CoM[0] * inv_mass;
+      c->multipole->CoM[1] = CoM[1] * inv_mass;
+      c->multipole->CoM[2] = CoM[2] * inv_mass;
+      c->multipole->m_pole.vel[0] = vel[0] * inv_mass;
+      c->multipole->m_pole.vel[1] = vel[1] * inv_mass;
+      c->multipole->m_pole.vel[2] = vel[2] * inv_mass;
+
+      /* Min max velocity along each axis */
+      c->multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+      c->multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+      c->multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+      c->multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+      c->multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+      c->multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
 
       /* Now shift progeny multipoles and add them up */
       struct multipole temp;
@@ -1927,6 +1963,7 @@ void space_split_recursive(struct space *s, struct cell *c,
           r_max = max(r_max, cp->multipole->r_max + sqrt(r2));
         }
       }
+
       /* Alternative upper limit of max CoM<->gpart distance */
       const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
                             ? c->multipole->CoM[0] - c->loc[0]
@@ -1940,14 +1977,22 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Take minimum of both limits */
       c->multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+
+      /* Store the value at rebuild time */
       c->multipole->r_max_rebuild = c->multipole->r_max;
       c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
       c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
       c->multipole->CoM_rebuild[2] = c->multipole->CoM[2];
-    } /* Deal with gravity */
-  }
 
-  /* Otherwise, collect the data for this cell. */
+      /* We know the first-order multipole (dipole) is 0. */
+      c->multipole->m_pole.M_100 = 0.f;
+      c->multipole->m_pole.M_010 = 0.f;
+      c->multipole->m_pole.M_001 = 0.f;
+
+    } /* Deal with gravity */
+  }   /* Split or let it be? */
+
+  /* Otherwise, collect the data from the particles this cell. */
   else {
 
     /* Clear the progeny. */
@@ -1968,13 +2013,15 @@ void space_split_recursive(struct space *s, struct cell *c,
       hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
     }
-    /* parts: Reset x_diff */
+
+    /* xparts: Reset x_diff */
     for (int k = 0; k < count; k++) {
       xparts[k].x_diff[0] = 0.f;
       xparts[k].x_diff[1] = 0.f;
       xparts[k].x_diff[2] = 0.f;
     }
-    /* gparts: Get dt_min/dt_max, reset x_diff. */
+
+    /* gparts: Get dt_min/dt_max. */
     for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (gparts[k].time_bin == time_bin_inhibited)
@@ -1982,10 +2029,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
       gravity_time_bin_min = min(gravity_time_bin_min, gparts[k].time_bin);
       gravity_time_bin_max = max(gravity_time_bin_max, gparts[k].time_bin);
-      gparts[k].x_diff[0] = 0.f;
-      gparts[k].x_diff[1] = 0.f;
-      gparts[k].x_diff[2] = 0.f;
     }
+
     /* sparts: Get dt_min/dt_max */
     for (int k = 0; k < scount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1997,32 +2042,26 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Convert into integer times */
-    ti_hydro_end_min = get_integer_time_end(e->ti_current, hydro_time_bin_min);
-    ti_hydro_end_max = get_integer_time_end(e->ti_current, hydro_time_bin_max);
+    ti_hydro_end_min = get_integer_time_end(ti_current, hydro_time_bin_min);
+    ti_hydro_end_max = get_integer_time_end(ti_current, hydro_time_bin_max);
     ti_hydro_beg_max =
-        get_integer_time_begin(e->ti_current + 1, hydro_time_bin_max);
-    ti_gravity_end_min =
-        get_integer_time_end(e->ti_current, gravity_time_bin_min);
-    ti_gravity_end_max =
-        get_integer_time_end(e->ti_current, gravity_time_bin_max);
+        get_integer_time_begin(ti_current + 1, hydro_time_bin_max);
+    ti_gravity_end_min = get_integer_time_end(ti_current, gravity_time_bin_min);
+    ti_gravity_end_max = get_integer_time_end(ti_current, gravity_time_bin_max);
     ti_gravity_beg_max =
-        get_integer_time_begin(e->ti_current + 1, gravity_time_bin_max);
+        get_integer_time_begin(ti_current + 1, gravity_time_bin_max);
 
     /* Construct the multipole and the centre of mass*/
     if (s->gravity) {
       if (gcount > 0) {
+
         gravity_P2M(c->multipole, c->gparts, c->gcount);
-        const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
-                              ? c->multipole->CoM[0] - c->loc[0]
-                              : c->loc[0] + c->width[0] - c->multipole->CoM[0];
-        const double dy = c->multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
-                              ? c->multipole->CoM[1] - c->loc[1]
-                              : c->loc[1] + c->width[1] - c->multipole->CoM[1];
-        const double dz = c->multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
-                              ? c->multipole->CoM[2] - c->loc[2]
-                              : c->loc[2] + c->width[2] - c->multipole->CoM[2];
-        c->multipole->r_max = sqrt(dx * dx + dy * dy + dz * dz);
+
       } else {
+
+        /* No gparts in that leaf cell */
+
+        /* Set the values to something sensible */
         gravity_multipole_init(&c->multipole->m_pole);
         if (c->nodeID == engine_rank) {
           c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
@@ -2031,6 +2070,8 @@ void space_split_recursive(struct space *s, struct cell *c,
           c->multipole->r_max = 0.;
         }
       }
+
+      /* Store the value at rebuild time */
       c->multipole->r_max_rebuild = c->multipole->r_max;
       c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
       c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
@@ -2370,8 +2411,8 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct cooling_function_data *cool_func = e->cooling_func;
 
+  /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
-    /* Convert velocities to internal units */
     p[k].v[0] *= a_factor_vel;
     p[k].v[1] *= a_factor_vel;
     p[k].v[2] *= a_factor_vel;
@@ -2385,6 +2426,10 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     p[k].x[1] = p[k].x[2] = 0.f;
     p[k].v[1] = p[k].v[2] = 0.f;
 #endif
+  }
+
+  /* Initialise the rest */
+  for (int k = 0; k < count; k++) {
 
     hydro_first_init_part(&p[k], &xp[k]);
 
@@ -2439,8 +2484,8 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
   const float a_factor_vel = cosmo->a;
   const struct gravity_props *grav_props = s->e->gravity_properties;
 
+  /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
-    /* Convert velocities to internal units */
     gp[k].v_full[0] *= a_factor_vel;
     gp[k].v_full[1] *= a_factor_vel;
     gp[k].v_full[2] *= a_factor_vel;
@@ -2454,6 +2499,10 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
     gp[k].x[1] = gp[k].x[2] = 0.f;
     gp[k].v_full[1] = gp[k].v_full[2] = 0.f;
 #endif
+  }
+
+  /* Initialise the rest */
+  for (int k = 0; k < count; k++) {
 
     gravity_first_init_gpart(&gp[k], grav_props);
 
@@ -2495,8 +2544,9 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const struct cosmology *cosmo = s->e->cosmology;
   const float a_factor_vel = cosmo->a;
 
+  /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
-    /* Convert velocities to internal units */
+
     sp[k].v[0] *= a_factor_vel;
     sp[k].v[1] *= a_factor_vel;
     sp[k].v[2] *= a_factor_vel;
@@ -2510,6 +2560,10 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
     sp[k].x[1] = sp[k].x[2] = 0.f;
     sp[k].v[1] = sp[k].v[2] = 0.f;
 #endif
+  }
+
+  /* Initialise the rest */
+  for (int k = 0; k < count; k++) {
 
     star_first_init_spart(&sp[k]);
 
@@ -2599,6 +2653,7 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
   struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
+
   for (int k = 0; k < count; k++)
     hydro_convert_quantities(&parts[k], &xparts[k], cosmo);
 }
@@ -2745,10 +2800,13 @@ void space_init(struct space *s, struct swift_params *params,
                                space_subsize_self_grav_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
+  space_subdepth_grav = parser_get_opt_param_int(
+      params, "Scheduler:cell_subdepth_grav", space_subdepth_grav_default);
 
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
             space_splitsize);
+    message("subdepth_grav set to %d", space_subdepth_grav);
     message("sub_size_pair_hydro set to %d, sub_size_self_hydro set to %d",
             space_subsize_pair_hydro, space_subsize_self_hydro);
     message("sub_size_pair_grav set to %d, sub_size_self_grav set to %d",
@@ -2765,12 +2823,8 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};
-  shift[0] =
-      parser_get_opt_param_double(params, "InitialConditions:shift_x", 0.0);
-  shift[1] =
-      parser_get_opt_param_double(params, "InitialConditions:shift_y", 0.0);
-  shift[2] =
-      parser_get_opt_param_double(params, "InitialConditions:shift_z", 0.0);
+  parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
+                                    shift);
   if ((shift[0] != 0. || shift[1] != 0. || shift[2] != 0.) && !dry_run) {
     message("Shifting particles by [%e %e %e]", shift[0], shift[1], shift[2]);
     for (size_t k = 0; k < Npart; k++) {

@@ -40,6 +40,7 @@
 #include "cooling_struct.h"
 #include "fof.h"
 #include "gravity_properties.h"
+#include "mesh_gravity.h"
 #include "parser.h"
 #include "partition.h"
 #include "potential.h"
@@ -71,9 +72,10 @@ enum engine_policy {
   engine_policy_cooling = (1 << 13),
   engine_policy_sourceterms = (1 << 14),
   engine_policy_stars = (1 << 15),
-  engine_policy_fof = (1 << 16)
+  engine_policy_fof = (1 << 16),
+  engine_policy_structure_finding = (1 << 17)
 };
-#define engine_maxpolicy 16
+#define engine_maxpolicy 17
 extern const char *engine_policy_names[];
 
 /**
@@ -201,30 +203,55 @@ struct engine {
   /* Total numbers of particles in the system. */
   long long total_nr_parts, total_nr_gparts, total_nr_sparts;
 
+  /* Total mass in the simulation */
+  double total_mass;
+
   /* The internal system of units */
   const struct unit_system *internal_units;
+
+  /* Top-level cell locations for VELOCIraptor. */
+  struct cell_loc *cell_loc;
 
   /* Snapshot information */
   double a_first_snapshot;
   double time_first_snapshot;
   double delta_time_snapshot;
 
+  /* Output_List for the snapshots */
+  struct output_list *output_list_snapshots;
+
   /* Integer time of the next snapshot */
   integertime_t ti_next_snapshot;
 
   char snapshot_base_name[PARSER_MAX_LINE_SIZE];
   int snapshot_compression;
+  int snapshot_label_first;
   int snapshot_label_delta;
   struct unit_system *snapshot_units;
   int snapshot_output_count;
 
-  /* FOF information */
-  int run_fof;
+  /* Structure finding information */
+  int stf_output_freq_format;
+  double a_first_stf;
+  double timeFirstSTFOutput;
+  double deltaTimeSTF;
+  int deltaStepSTF;
+
+  /* Output_List for the structure finding */
+  struct output_list *output_list_stf;
+
+  /* Integer time of the next stf output */
+  integertime_t ti_nextSTF;
+
+  char stfBaseName[PARSER_MAX_LINE_SIZE];
 
   /* Statistics information */
   double a_first_statistics;
   double time_first_statistics;
   double delta_time_statistics;
+
+  /* Output_List for the stats */
+  struct output_list *output_list_stats;
 
   /* Integer time of the next statistics dump */
   integertime_t ti_next_stats;
@@ -237,9 +264,6 @@ struct engine {
 
   /* The current step number. */
   int step;
-
-  /* The number of particles updated in the previous step. */
-  int count_step;
 
   /* Data for the threads' barrier. */
   swift_barrier_t wait_barrier;
@@ -268,6 +292,9 @@ struct engine {
   /* Wallclock time of the last time-step */
   float wallclock_time;
 
+  /* Are we in the process of restaring a simulation? */
+  int restarting;
+
   /* Force the engine to rebuild? */
   int forcerebuild;
 
@@ -275,22 +302,16 @@ struct engine {
   int forcerepart;
   struct repartition *reparttype;
 
-  /* Need to dump some statistics ? */
-  int save_stats;
-
-  /* Need to dump a snapshot ? */
-  int dump_snapshot;
-
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
 
   /* Linked list for cell-task association. */
   struct link *links;
-  int nr_links, size_links;
+  size_t nr_links, size_links;
 
   /* Average number of tasks per cell. Used to estimate the sizes
    * of the various task arrays. */
-  int tasks_per_cell;
+  size_t tasks_per_cell;
 
   /* Are we talkative ? */
   int verbose;
@@ -306,6 +327,9 @@ struct engine {
 
   /* Properties of the self-gravity scheme */
   struct gravity_props *gravity_properties;
+
+  /* The mesh used for long-range gravity forces */
+  struct pm_mesh *mesh;
 
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
@@ -349,8 +373,10 @@ struct engine {
 };
 
 /* Function prototypes. */
+void engine_addlink(struct engine *e, struct link **l, struct task *t);
 void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
+void engine_compute_next_stf_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
@@ -358,14 +384,16 @@ void engine_drift_all(struct engine *e);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
+void engine_check_for_dumps(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
+void engine_init_output_lists(struct engine *e, struct swift_params *params);
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
                  int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
-                 struct gravity_props *gravity,
+                 struct gravity_props *gravity, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
                  const struct chemistry_global_data *chemistry,
@@ -396,6 +424,10 @@ void engine_pin(void);
 void engine_unpin(void);
 void engine_clean(struct engine *e);
 int engine_estimate_nr_tasks(struct engine *e);
+
+#ifdef HAVE_SETAFFINITY
+cpu_set_t *engine_entry_affinity(void);
+#endif
 
 /* Struct dump/restore support. */
 void engine_struct_dump(struct engine *e, FILE *stream);

@@ -33,6 +33,7 @@
 /* Local headers. */
 #include "inline.h"
 #include "kernel_gravity.h"
+#include "kernel_long_gravity.h"
 
 /**
  * @brief Structure containing all the derivatives of the potential field
@@ -40,7 +41,7 @@
  */
 struct potential_derivatives_M2L {
 
-  /* 0th order terms */
+  /* 0th order term */
   float D_000;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
@@ -95,7 +96,7 @@ struct potential_derivatives_M2L {
  */
 struct potential_derivatives_M2P {
 
-  /* 0th order terms */
+  /* 0th order term */
   float D_000;
 
   /* 1st order terms */
@@ -111,6 +112,17 @@ struct potential_derivatives_M2P {
   float D_120, D_021;
   float D_102, D_012;
   float D_111;
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+
+  /* 4th order terms */
+  float D_400, D_040, D_004;
+  float D_310, D_301;
+  float D_130, D_031;
+  float D_103, D_013;
+  float D_220, D_202, D_022;
+  float D_211, D_121, D_112;
+#endif
 };
 
 /**
@@ -124,11 +136,16 @@ struct potential_derivatives_M2P {
  * @param r_inv Inverse norm of distance vector
  * @param eps Softening length.
  * @param eps_inv Inverse of softening length.
+ * @param periodic Is the calculation periodic ?
+ * @param r_s_inv Inverse of the long-range gravity mesh smoothing length.
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
-compute_potential_derivatives_M2L(float r_x, float r_y, float r_z, float r2,
-                                  float r_inv, float eps, float eps_inv,
+compute_potential_derivatives_M2L(const float r_x, const float r_y,
+                                  const float r_z, const float r2,
+                                  const float r_inv, const float eps,
+                                  const float eps_inv, const int periodic,
+                                  const float r_s_inv,
                                   struct potential_derivatives_M2L *pot) {
 
   float Dt_1;
@@ -148,8 +165,8 @@ compute_potential_derivatives_M2L(float r_x, float r_y, float r_z, float r2,
   float Dt_11;
 #endif
 
-  /* Un-softened case */
-  if (r2 > eps * eps) {
+  /* Un-softened un-truncated case (Newtonian potential) */
+  if (!periodic && r2 > eps * eps) {
 
     Dt_1 = r_inv;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
@@ -172,6 +189,52 @@ compute_potential_derivatives_M2L(float r_x, float r_y, float r_z, float r2,
 #error "Missing implementation for order >5"
 #endif
 
+    /* Un-softened truncated case */
+  } else if (periodic && r2 > eps * eps) {
+
+    /* Get the derivatives of the truncated potential */
+    const float r = r2 * r_inv;
+    struct chi_derivatives derivs;
+    kernel_long_grav_derivatives(r, r_s_inv, &derivs);
+
+    Dt_1 = derivs.chi_0 * r_inv;
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+    const float r_inv2 = r_inv * r_inv;
+    const float r_inv3 = r_inv2 * r_inv;
+    Dt_3 = (r * derivs.chi_1 - derivs.chi_0) * r_inv3;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+    const float r_inv5 = r_inv2 * r_inv3;
+    Dt_5 =
+        (r * r * derivs.chi_2 - 3.f * r * derivs.chi_1 + 3.f * derivs.chi_0) *
+        r_inv5;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+    const float r_inv7 = r_inv2 * r_inv5;
+    Dt_7 = (r * r * r * derivs.chi_3 - 6.f * r * r * derivs.chi_2 +
+            15.f * r * derivs.chi_1 - 15.f * derivs.chi_0) *
+           r_inv7;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+    const float r_inv9 = r_inv2 * r_inv7;
+    Dt_9 = (r * r * r * r * derivs.chi_4 - 10.f * r * r * r * derivs.chi_3 +
+            45.f * r * r * derivs.chi_2 - 105.f * r * derivs.chi_1 +
+            105.f * derivs.chi_0) *
+           r_inv9;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+    const float r_inv11 = r_inv2 * r_inv9;
+    Dt_11 = (r * r * r * r * r * derivs.chi_5 -
+             15.f * r * r * r * r * derivs.chi_4 +
+             105.f * r * r * r * derivs.chi_3 - 420.f * r * r * derivs.chi_2 +
+             945.f * r * derivs.chi_1 - 945.f * derivs.chi_0) *
+            r_inv11;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
+#endif
+
+    /* Softened case */
   } else {
     const float r = r2 * r_inv;
     const float u = r * eps_inv;
@@ -329,20 +392,28 @@ compute_potential_derivatives_M2L(float r_x, float r_y, float r_z, float r2,
  * @param r_inv Inverse norm of distance vector
  * @param eps Softening length.
  * @param eps_inv Inverse of softening length.
+ * @param periodic Is the calculation using periodic BCs?
+ * @param r_s_inv The inverse of the gravity mesh-smoothing scale.
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
-compute_potential_derivatives_M2P(float r_x, float r_y, float r_z, float r2,
-                                  float r_inv, float eps, float eps_inv,
+compute_potential_derivatives_M2P(const float r_x, const float r_y,
+                                  const float r_z, const float r2,
+                                  const float r_inv, const float eps,
+                                  const float eps_inv, const int periodic,
+                                  const float r_s_inv,
                                   struct potential_derivatives_M2P *pot) {
 
   float Dt_1;
   float Dt_3;
   float Dt_5;
   float Dt_7;
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+  float Dt_9;
+#endif
 
-  /* Un-softened case */
-  if (r2 > eps * eps) {
+  /* Un-softened un-truncated case (Newtonian potential) */
+  if (!periodic && r2 > eps * eps) {
 
     const float r_inv2 = r_inv * r_inv;
 
@@ -350,21 +421,62 @@ compute_potential_derivatives_M2P(float r_x, float r_y, float r_z, float r2,
     Dt_3 = -1.f * Dt_1 * r_inv2; /* -1 / r^3 */
     Dt_5 = -3.f * Dt_3 * r_inv2; /* 3 / r^5 */
     Dt_7 = -5.f * Dt_5 * r_inv2; /* -15 / r^7 */
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+    Dt_9 = -7.f * Dt_7 * r_inv2; /* -105 / r^9 */
+#endif
 
+    /* Un-softened truncated case */
+  } else if (periodic && r2 > eps * eps) {
+
+    /* Get the derivatives of the truncated potential */
+    const float r = r2 * r_inv;
+    struct chi_derivatives d;
+    kernel_long_grav_derivatives(r, r_s_inv, &d);
+
+    const float r_inv2 = r_inv * r_inv;
+    Dt_1 = d.chi_0 * r_inv;
+
+    const float r_inv3 = r_inv2 * r_inv;
+    Dt_3 = (r * d.chi_1 - d.chi_0) * r_inv3;
+
+    const float r_inv5 = r_inv2 * r_inv3;
+    Dt_5 = (r * r * d.chi_2 - 3.f * r * d.chi_1 + 3.f * d.chi_0) * r_inv5;
+
+    const float r_inv7 = r_inv2 * r_inv5;
+    Dt_7 = (r * r * r * d.chi_3 - 6.f * r * r * d.chi_2 + 15.f * r * d.chi_1 -
+            15.f * d.chi_0) *
+           r_inv7;
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+    const float r_inv9 = r_inv2 * r_inv7;
+    Dt_9 = (r * r * r * r * d.chi_4 - 10.f * r * r * r * d.chi_3 +
+            45.f * r * r * d.chi_2 - 105.f * r * d.chi_1 + 105.f * d.chi_0) *
+           r_inv9;
+#endif
+
+    /* Softened case */
   } else {
 
     const float r = r2 * r_inv;
     const float u = r * eps_inv;
     const float u_inv = r_inv * eps;
     const float eps_inv2 = eps_inv * eps_inv;
-    const float eps_inv3 = eps_inv * eps_inv2;
-    const float eps_inv5 = eps_inv3 * eps_inv2;
-    const float eps_inv7 = eps_inv5 * eps_inv2;
 
     Dt_1 = eps_inv * D_soft_1(u, u_inv);
+
+    const float eps_inv3 = eps_inv * eps_inv2;
     Dt_3 = -eps_inv3 * D_soft_3(u, u_inv);
+
+    const float eps_inv5 = eps_inv3 * eps_inv2;
     Dt_5 = eps_inv5 * D_soft_5(u, u_inv);
+
+    const float eps_inv7 = eps_inv5 * eps_inv2;
     Dt_7 = -eps_inv7 * D_soft_7(u, u_inv);
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+    const float eps_inv9 = eps_inv7 * eps_inv2;
+    Dt_9 = eps_inv9 * D_soft_9(u, u_inv);
+#endif
   }
 
   /* Compute some powers of r_x, r_y and r_z */
@@ -374,6 +486,11 @@ compute_potential_derivatives_M2P(float r_x, float r_y, float r_z, float r2,
   const float r_x3 = r_x2 * r_x;
   const float r_y3 = r_y2 * r_y;
   const float r_z3 = r_z2 * r_z;
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+  const float r_x4 = r_x3 * r_x;
+  const float r_y4 = r_y3 * r_y;
+  const float r_z4 = r_z3 * r_z;
+#endif
 
   /* 0th order derivative */
   pot->D_000 = Dt_1;
@@ -402,6 +519,25 @@ compute_potential_derivatives_M2P(float r_x, float r_y, float r_z, float r2,
   pot->D_102 = r_z2 * r_x * Dt_7 + r_x * Dt_5;
   pot->D_012 = r_z2 * r_y * Dt_7 + r_y * Dt_5;
   pot->D_111 = r_x * r_y * r_z * Dt_7;
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+  /* 4th order derivatives */
+  pot->D_400 = r_x4 * Dt_9 + 6.f * r_x2 * Dt_7 + 3.f * Dt_5;
+  pot->D_040 = r_y4 * Dt_9 + 6.f * r_y2 * Dt_7 + 3.f * Dt_5;
+  pot->D_004 = r_z4 * Dt_9 + 6.f * r_z2 * Dt_7 + 3.f * Dt_5;
+  pot->D_310 = r_x3 * r_y * Dt_9 + 3.f * r_x * r_y * Dt_7;
+  pot->D_301 = r_x3 * r_z * Dt_9 + 3.f * r_x * r_z * Dt_7;
+  pot->D_130 = r_y3 * r_x * Dt_9 + 3.f * r_y * r_x * Dt_7;
+  pot->D_031 = r_y3 * r_z * Dt_9 + 3.f * r_y * r_z * Dt_7;
+  pot->D_103 = r_z3 * r_x * Dt_9 + 3.f * r_z * r_x * Dt_7;
+  pot->D_013 = r_z3 * r_y * Dt_9 + 3.f * r_z * r_y * Dt_7;
+  pot->D_220 = r_x2 * r_y2 * Dt_9 + r_x2 * Dt_7 + r_y2 * Dt_7 + Dt_5;
+  pot->D_202 = r_x2 * r_z2 * Dt_9 + r_x2 * Dt_7 + r_z2 * Dt_7 + Dt_5;
+  pot->D_022 = r_y2 * r_z2 * Dt_9 + r_y2 * Dt_7 + r_z2 * Dt_7 + Dt_5;
+  pot->D_211 = r_x2 * r_y * r_z * Dt_9 + r_y * r_z * Dt_7;
+  pot->D_121 = r_y2 * r_x * r_z * Dt_9 + r_x * r_z * Dt_7;
+  pot->D_112 = r_z2 * r_x * r_y * Dt_9 + r_x * r_y * Dt_7;
+#endif
 }
 
 #endif /* SWIFT_GRAVITY_DERIVATIVE_H */

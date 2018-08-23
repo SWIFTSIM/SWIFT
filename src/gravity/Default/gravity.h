@@ -51,18 +51,35 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 }
 
 /**
- * @brief Returns the comoving potential of a particle
+ * @brief Add a contribution to this particle's potential.
+ *
+ * Here we do nothing as this version does not accumulate potential.
+ *
+ * @param gp The particle.
+ * @param pot The contribution to add.
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_add_comoving_potential(struct gpart* restrict gp, float pot) {}
+
+/**
+ * @brief Returns the comoving potential of a particle.
+ *
+ * This returns 0 as this flavour of gravity does not compute the
+ * particles' potential.
  *
  * @param gp The particle of interest
  */
 __attribute__((always_inline)) INLINE static float
 gravity_get_comoving_potential(const struct gpart* restrict gp) {
 
-  return gp->potential;
+  return 0.f;
 }
 
 /**
  * @brief Returns the physical potential of a particle
+ *
+ * This returns 0 as this flavour of gravity does not compute the
+ * particles' potential.
  *
  * @param gp The particle of interest.
  * @param cosmo The cosmological model.
@@ -71,7 +88,7 @@ __attribute__((always_inline)) INLINE static float
 gravity_get_physical_potential(const struct gpart* restrict gp,
                                const struct cosmology* cosmo) {
 
-  return gp->potential * cosmo->a_inv;
+  return 0.f;
 }
 
 /**
@@ -128,7 +145,6 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[0] = 0.f;
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
-  gp->potential = 0.f;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM = 0.f;
@@ -145,19 +161,25 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
 /**
  * @brief Finishes the gravity calculation.
  *
- * Multiplies the forces and accelerations by the appropiate constants
+ * Multiplies the forces and accelerations by the appropiate constants.
+ * Applies cosmological correction for periodic BCs.
+ *
+ * No need to apply the potential normalisation correction for periodic
+ * BCs here since we do not compute the potential.
  *
  * @param gp The particle to act upon
- * @param const_G Newton's constant in internal units
+ * @param const_G Newton's constant in internal units.
+ * @param potential_normalisation Term to be added to all the particles.
+ * @param periodic Are we using periodic BCs?
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
-    struct gpart* gp, float const_G) {
+    struct gpart* gp, float const_G, const float potential_normalisation,
+    const int periodic) {
 
   /* Let's get physical... */
   gp->a_grav[0] *= const_G;
   gp->a_grav[1] *= const_G;
   gp->a_grav[2] *= const_G;
-  gp->potential *= const_G;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM *= const_G;

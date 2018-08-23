@@ -112,8 +112,8 @@ int main(int argc, char *argv[]) {
   /* Read data */
   message("Reading initial conditions.");
   read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &sparts, &Ngas,
-                 &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, 1, 0, 0, 0, 1.,
-                 1, 0);
+                 &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, 1, 0, 0, 0, 0,
+                 1., 1., 1, 0);
 
   /* pseudo initialization of the space */
   message("Initialization of the space.");

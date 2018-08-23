@@ -43,7 +43,7 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
 
   /* Units are declared as {U_M, U_L, U_t, U_I, U_T} */
 
-  const float dimension_G[5] = {-1, 3, -2, 0, 0};
+  const float dimension_G[5] = {-1, 3, -2, 0, 0}; /* [g^-1 cm^3 s^-2] */
   internal_const->const_newton_G =
       const_newton_G_cgs / units_general_cgs_conversion_factor(us, dimension_G);
 
@@ -51,44 +51,49 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
   internal_const->const_newton_G = parser_get_opt_param_double(
       params, "PhysicalConstants:G", internal_const->const_newton_G);
 
-  const float dimension_c[5] = {0, 1, -1, 0, 0};
+  const float dimension_c[5] = {0, 1, -1, 0, 0}; /* [cm s^-1] */
   internal_const->const_speed_light_c =
       const_speed_light_c_cgs /
       units_general_cgs_conversion_factor(us, dimension_c);
 
-  const float dimension_h[5] = {1, -2, -1, 0, 0};
+  const float dimension_h[5] = {1, 2, -1, 0, 0}; /* [g cm^2 s^-1] */
   internal_const->const_planck_h =
       const_planck_h_cgs / units_general_cgs_conversion_factor(us, dimension_h);
   internal_const->const_planck_hbar =
       const_planck_hbar_cgs /
       units_general_cgs_conversion_factor(us, dimension_h);
 
-  const float dimension_k[5] = {1, 2, -2, 0, -1};
+  const float dimension_k[5] = {1, 2, -2, 0, -1}; /* [g cm^2 s^-2 K^-1] */
   internal_const->const_boltzmann_k =
       const_boltzmann_k_cgs /
       units_general_cgs_conversion_factor(us, dimension_k);
 
-  const float dimension_Na[5] = {0, 0, 0, 0, 0};
+  const float dimension_Na[5] = {0, 0, 0, 0, 0}; /* [ - ] */
   internal_const->const_avogadro_number =
       const_avogadro_number_cgs /
       units_general_cgs_conversion_factor(us, dimension_Na);
 
-  const float dimension_thomson[5] = {0, 2, 0, 0, 0};
+  const float dimension_thomson[5] = {0, 2, 0, 0, 0}; /* [cm^2] */
   internal_const->const_thomson_cross_section =
       const_thomson_cross_section_cgs /
       units_general_cgs_conversion_factor(us, dimension_thomson);
 
-  const float dimension_ev[5] = {1, 2, -2, 0, 0};
+  const float dimension_stefan[5] = {1, 0, -3, 0, -4}; /* [g s^-3 K^-4] */
+  internal_const->const_stefan_boltzmann =
+      const_stefan_boltzmann_cgs /
+      units_general_cgs_conversion_factor(us, dimension_stefan);
+
+  const float dimension_ev[5] = {1, 2, -2, 0, 0}; /* [g cm^2 s^-2] */
   internal_const->const_electron_volt =
       const_electron_volt_cgs /
       units_general_cgs_conversion_factor(us, dimension_ev);
 
-  const float dimension_charge[5] = {0, 0, -1, 1, 0};
+  const float dimension_charge[5] = {0, 0, 1, 1, 0}; /* [A s] */
   internal_const->const_electron_charge =
       const_electron_charge_cgs /
       units_general_cgs_conversion_factor(us, dimension_charge);
 
-  const float dimension_mass[5] = {1, 0, 0, 0, 0};
+  const float dimension_mass[5] = {1, 0, 0, 0, 0}; /* [g] */
   internal_const->const_electron_mass =
       const_electron_mass_cgs /
       units_general_cgs_conversion_factor(us, dimension_mass);
@@ -102,11 +107,11 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
       const_earth_mass_cgs /
       units_general_cgs_conversion_factor(us, dimension_mass);
 
-  const float dimension_time[5] = {0, 0, 1, 0, 0};
+  const float dimension_time[5] = {0, 0, 1, 0, 0}; /* [s] */
   internal_const->const_year =
       const_year_cgs / units_general_cgs_conversion_factor(us, dimension_time);
 
-  const float dimension_length[5] = {0, 1, 0, 0, 0};
+  const float dimension_length[5] = {0, 1, 0, 0, 0}; /* [cm] */
   internal_const->const_astronomical_unit =
       const_astronomical_unit_cgs /
       units_general_cgs_conversion_factor(us, dimension_length);
@@ -116,6 +121,11 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
   internal_const->const_light_year =
       const_light_year_cgs /
       units_general_cgs_conversion_factor(us, dimension_length);
+
+  const float dimension_temperature[5] = {0, 0, 0, 0, 1}; /* [K] */
+  internal_const->const_T_CMB_0 =
+      const_T_CMB_0_cgs /
+      units_general_cgs_conversion_factor(us, dimension_temperature);
 }
 
 /**

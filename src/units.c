@@ -51,6 +51,20 @@ void units_init_cgs(struct unit_system* us) {
 }
 
 /**
+ * @brief Initialises the unit_system structure with SI system
+ *
+ * @param us The unit_system to initialize
+ */
+void units_init_si(struct unit_system* us) {
+
+  us->UnitMass_in_cgs = 1000.;
+  us->UnitLength_in_cgs = 100.;
+  us->UnitTime_in_cgs = 1.;
+  us->UnitCurrent_in_cgs = 1.;
+  us->UnitTemperature_in_cgs = 1.;
+}
+
+/**
  * @brief Initialise the unit_system with values for the base units.
  *
  * @param us The #unit_system to initialise.
@@ -126,6 +140,21 @@ void units_init_default(struct unit_system* us, struct swift_params* params,
   sprintf(buffer, "%s:UnitTemp_in_cgs", category);
   us->UnitTemperature_in_cgs =
       parser_get_opt_param_double(params, buffer, def->UnitTemperature_in_cgs);
+}
+
+/**
+ * @brief Copy the content of a #unit_system to another one.
+ *
+ * @param dest The destination of the copy.
+ * @param src The source of the copy.
+ */
+void units_copy(struct unit_system* dest, const struct unit_system* src) {
+
+  dest->UnitMass_in_cgs = src->UnitMass_in_cgs;
+  dest->UnitLength_in_cgs = src->UnitLength_in_cgs;
+  dest->UnitTime_in_cgs = src->UnitTime_in_cgs;
+  dest->UnitCurrent_in_cgs = src->UnitCurrent_in_cgs;
+  dest->UnitTemperature_in_cgs = src->UnitTemperature_in_cgs;
 }
 
 /**
@@ -470,7 +499,7 @@ float units_general_a_factor(const struct unit_system* us,
 void units_general_cgs_conversion_string(char* buffer,
                                          const struct unit_system* us,
                                          const float baseUnitsExponants[5]) {
-  char temp[14];
+  char temp[20];
   const double a_exp = units_general_a_factor(us, baseUnitsExponants);
   const double h_exp = units_general_h_factor(us, baseUnitsExponants);
 
@@ -503,7 +532,7 @@ void units_general_cgs_conversion_string(char* buffer,
     sprintf(temp, "h^%d ", (int)h_exp);
   else
     sprintf(temp, "h^%7.4f ", h_exp);
-  strncat(buffer, temp, 12);
+  strcat(buffer, temp);
 
   /* Add conversion units */
   for (int i = 0; i < 5; ++i)
@@ -521,11 +550,11 @@ void units_general_cgs_conversion_string(char* buffer,
         sprintf(temp, "%s^%7.4f ",
                 units_get_base_unit_internal_symbol((enum base_units)i),
                 baseUnitsExponants[i]);
-      strncat(buffer, temp, 12);
+      strcat(buffer, temp);
     }
 
   /* Add CGS units */
-  strncat(buffer, " [ ", 3);
+  strcat(buffer, " [ ");
 
   for (int i = 0; i < 5; ++i) {
     if (baseUnitsExponants[i] != 0) {
@@ -542,11 +571,11 @@ void units_general_cgs_conversion_string(char* buffer,
         sprintf(temp, "%s^%7.4f ",
                 units_get_base_unit_cgs_symbol((enum base_units)i),
                 baseUnitsExponants[i]);
-      strncat(buffer, temp, 12);
+      strcat(buffer, temp);
     }
   }
 
-  strncat(buffer, "]", 2);
+  strcat(buffer, "]");
 }
 
 /**

@@ -42,6 +42,11 @@ examples/*/*/*.hdf5
 examples/*/snapshots*
 examples/*/restart/*
 examples/*/*/used_parameters.yml
+examples/*/err_file*
+examples/*/out_file*
+examples/*/stf_output*
+examples/*/stf_ouput*
+examples/*/log*
 examples/*/*/unused_parameters.yml
 examples/*/*.mpg
 examples/*/gravity_checks_*.dat
@@ -106,6 +111,8 @@ tests/test125cellsPerturbed.sh
 tests/testParser.sh
 tests/testReading.sh
 tests/testSelectOutput.sh
+tests/unused_parser_output.yml
+tests/used_parser_output.yml
 tests/testAdiabaticIndex
 tests/testRiemannExact
 tests/testRiemannTRRS
@@ -124,6 +131,7 @@ tests/testEOS
 tests/testEOS*.txt
 tests/testEOS*.png
 tests/testUtilities
+tests/testCbrt
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf
@@ -156,6 +164,8 @@ m4/lt~obsolete.m4
 /missing
 /stamp-h1
 /test-driver
+
+src/equation_of_state/planetary/*.txt
 
 # Intel compiler optimization reports
 *.optrpt
@@ -308,3 +318,6 @@ sympy-plots-for-*.tex/
 
 #ctags
 *tags
+
+# vim
+*.swp

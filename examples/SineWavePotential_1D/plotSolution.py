@@ -23,7 +23,12 @@
 import numpy as np
 import h5py
 import sys
+import matplotlib
+matplotlib.use("Agg")
 import pylab as pl
+
+pl.rcParams["figure.figsize"] = (12, 10)
+pl.rcParams["text.usetex"] = True
 
 # these should be the same as in makeIC.py
 uconst = 20.2615290634
@@ -39,15 +44,20 @@ fileName = sys.argv[1]
 file = h5py.File(fileName, 'r')
 coords = np.array(file["/PartType0/Coordinates"])
 rho = np.array(file["/PartType0/Density"])
+P = np.array(file["/PartType0/Pressure"])
 u = np.array(file["/PartType0/InternalEnergy"])
-agrav = np.array(file["/PartType0/GravAcceleration"])
 m = np.array(file["/PartType0/Masses"])
+vs = np.array(file["/PartType0/Velocities"])
 ids = np.array(file["/PartType0/ParticleIDs"])
 
 x = np.linspace(0., 1., 1000)
 rho_x = 1000.*np.exp(-0.5*A/np.pi/cs2*np.cos(2.*np.pi*x))
 
-P = cs2*rho
+a = A * np.sin(2. * np.pi * x)
+
+apart = A * np.sin(2. * np.pi * coords[:,0])
+tkin = -0.5 * np.dot(apart, coords[:,0])
+print tkin, 0.5 * np.dot(m, vs[:,0]**2)
 
 ids_reverse = np.argsort(ids)
 
@@ -65,13 +75,38 @@ for i in range(len(P)):
     corr = 1.
   idxp1 = ids_reverse[ip1]
   idxm1 = ids_reverse[im1]
-  gradP[i] = (P[idxp1]-P[idxm1])/(coords[idxp1,0]-coords[idxm1,0])
+  gradP[i] = (P[idxp1] - P[idxm1])/(coords[idxp1,0] - coords[idxm1,0])
 
-fig, ax = pl.subplots(2, 2)
+fig, ax = pl.subplots(2, 2, sharex = True)
 
-ax[0][0].plot(coords[:,0], rho, "r.", markersize = 0.5)
-ax[0][0].plot(x, rho_x, "g-")
-ax[0][1].plot(coords[:,0], gradP/rho, "b.")
-ax[1][0].plot(coords[:,0], agrav[:,0], "g.", markersize = 0.5)
-ax[1][1].plot(coords[:,0], m, "y.")
+ax[0][0].plot(coords[:,0], rho, ".", label = "gizmo-mfm")
+ax[0][0].plot(x, rho_x, "-", label = "stable solution")
+ax[0][0].set_ylabel("$\\rho{}$ (code units)")
+ax[0][0].legend(loc = "best")
+
+ax[0][1].plot(x, a, "-", label = "$\\nabla{}\\Phi{}$ external")
+ax[0][1].plot(coords[:,0], gradP/rho, ".",
+              label = "$\\nabla{}P/\\rho{}$ gizmo-mfm")
+ax[0][1].set_ylabel("force (code units)")
+ax[0][1].legend(loc = "best")
+
+ax[1][0].axhline(y = uconst, label = "isothermal $u$", color = "k",
+                 linestyle = "--")
+ax[1][0].plot(coords[:,0], u, ".", label = "gizmo-mfm")
+ax[1][0].set_ylabel("$u$ (code units)")
+ax[1][0].set_xlabel("$x$ (code units)")
+ax[1][0].legend(loc = "best")
+
+#ax[1][1].plot(coords[:,0], m, "y.")
+#ax[1][1].set_ylabel("$m_i$ (code units)")
+#ax[1][1].set_xlabel("$x$ (code units)")
+
+ax[1][1].axhline(y = 0., label = "target", color = "k",
+                 linestyle = "--")
+ax[1][1].plot(coords[:,0], vs[:,0], ".", label = "gizmo-mfm")
+ax[1][1].set_ylabel("$v_x$ (code units)")
+ax[1][1].set_xlabel("$x$ (code units)")
+ax[1][1].legend(loc = "best")
+
+pl.tight_layout()
 pl.savefig("{fileName}.png".format(fileName = fileName[:-5]))

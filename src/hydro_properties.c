@@ -72,6 +72,7 @@ void hydro_props_init(struct hydro_props *p,
   /* change the meaning of target_neighbours and delta_neighbours */
   p->target_neighbours = 1.0f;
   p->delta_neighbours = 0.0f;
+  p->eta_neighbours = 1.0f;
 #endif
 
   /* Maximal smoothing length */
@@ -122,7 +123,7 @@ void hydro_props_init(struct hydro_props *p,
 
   /* Compute the minimal energy (Note the temp. read is in internal units) */
   double u_min = phys_const->const_boltzmann_k / phys_const->const_proton_mass;
-  u_min *= p->initial_temperature;
+  u_min *= p->minimal_temperature;
   u_min *= hydro_one_over_gamma_minus_one;
 
   /* Correct for hydrogen mass fraction */
@@ -134,6 +135,14 @@ void hydro_props_init(struct hydro_props *p,
     mean_molecular_weight = 4. / (1. + 3. * p->hydrogen_mass_fraction);
 
   p->minimal_internal_energy = u_min / mean_molecular_weight;
+
+#ifdef PLANETARY_SPH
+#ifdef PLANETARY_SPH_BALSARA
+  message("Planetary SPH: Balsara switch enabled");
+#else
+  message("Planetary SPH: Balsara switch disabled");
+#endif  // PLANETARY_SPH_BALSARA
+#endif  // PLANETARY_SPH
 }
 
 /**

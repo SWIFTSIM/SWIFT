@@ -217,8 +217,20 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields(struct cell *c) {
+#ifdef SHADOWFAX_SPH
+  struct hydro_space hs;
+  hs.anchor[0] = 0.;
+  hs.anchor[1] = 0.;
+  hs.anchor[2] = 0.;
+  hs.side[0] = 1.;
+  hs.side[1] = 1.;
+  hs.side[2] = 1.;
+  struct hydro_space *hspointer = &hs;
+#else
+  struct hydro_space *hspointer = NULL;
+#endif
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_init_part(&c->parts[pid], NULL);
+    hydro_init_part(&c->parts[pid], hspointer);
   }
 }
 
@@ -279,7 +291,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #else
             0., 0., 0., 0.
 #endif
-            );
+    );
   }
 
   /* Write all other cells */
@@ -313,7 +325,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #else
               0., 0., 0., 0.
 #endif
-              );
+          );
         }
       }
     }

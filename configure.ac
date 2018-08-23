@@ -38,47 +38,6 @@ AX_CHECK_ENABLE_DEBUG
 AC_PROG_CC
 AM_PROG_CC_C_O
 
-
-# Master subgrid options
-# If you add a restriction (e.g. no cooling, chemistry or hydro)
-# you will need to check for overwrite after reading the additional options.
-# As an example for this, see the call to AC_ARG_WITH for cooling.
-AC_ARG_WITH([subgrid],
-	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start from here @<:@none, GEAR, EAGLE default: none@:>@]
-	)],
-	[with_subgrid="$withval"],
-	[with_subgrid=none]
-)
-
-# Default values
-with_subgrid_cooling=none
-with_subgrid_chemistry=none
-with_subgrid_hydro=none
-
-case "$with_subgrid" in
-   yes)
-      AC_MSG_ERROR([Invalid option. A subgrid model must be chosen.])
-   ;;
-   none)
-   ;;
-   GEAR)
-	with_subgrid_cooling=grackle
-	with_subgrid_chemistry=GEAR
-	with_subgrid_hydro=gadget2
-   ;;
-   EAGLE)
-	with_subgrid_cooling=EAGLE
-	with_subgrid_chemistry=EAGLE
-	with_subgrid_hydro=gadget2
-   ;;
-   *)
-      AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
-   ;;
-esac
-
-
-
 # If debug is selected then we also define SWIFT_DEVELOP_MODE to control
 # any developer code options.
 if test "x$ax_enable_debug" != "xno"; then
@@ -271,6 +230,18 @@ AC_ARG_ENABLE([debugging-checks],
 )
 if test "$enable_debugging_checks" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
+fi
+
+# Check if using our custom icbrtf is enalbled.
+AC_ARG_ENABLE([custom-icbrtf],
+   [AS_HELP_STRING([--enable-custom-icbrtf],
+     [Use SWIFT's custom icbrtf function instead of the system cbrtf @<:@yes/no@:>@]
+   )],
+   [enable_custom_icbrtf="$enableval"],
+   [enable_custom_icbrtf="no"]
+)
+if test "$enable_custom_icbrtf" = "yes"; then
+   AC_DEFINE([WITH_ICBRTF],1,[Enable custom icbrtf])
 fi
 
 # Check whether we want to default to naive cell interactions
@@ -549,42 +520,6 @@ AH_VERBATIM([__STDC_FORMAT_MACROS],
 #define __STDC_FORMAT_MACROS 1
 #endif])
 
-# Check for grackle.
-have_grackle="no"
-AC_ARG_WITH([grackle],
-    [AS_HELP_STRING([--with-grackle=PATH],
-       [root directory where grackle is installed @<:@yes/no@:>@]
-    )],
-    [with_grackle="$withval"],
-    [with_grackle="no"]
-)
-if test "x$with_grackle" != "xno"; then
-   AC_PROG_FC
-   AC_FC_LIBRARY_LDFLAGS
-   if test "x$with_grackle" != "xyes" -a "x$with_grackle" != "x"; then
-      GRACKLE_LIBS="-L$with_grackle/lib -lgrackle"
-      GRACKLE_INCS="-I$with_grackle/include"
-   else
-      GRACKLE_LIBS="-lgrackle"
-      GRACKLE_INCS=""
-   fi
-
-   have_grackle="yes"
-
-   AC_CHECK_LIB(
-      [grackle],
-      [initialize_chemistry_data],
-      [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.])
-        AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
-      ],
-      [AC_MSG_ERROR(Cannot find grackle library!)],
-      [$GRACKLE_LIBS $GRACKLE_INCS $FCLIBS]
-   )
-fi
-AC_SUBST([GRACKLE_LIBS])
-AC_SUBST([GRACKLE_INCS])
-AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
-
 # Check for FFTW. We test for this in the standard directories by default,
 # and only disable if using --with-fftw=no or --without-fftw. When a value
 # is given GSL must be found.
@@ -641,7 +576,7 @@ if test "x$with_profiler" != "xno"; then
       proflibs="-lprofiler"
    fi
    AC_CHECK_LIB([profiler],[ProfilerFlush],
-    [have_profiler="yes" 
+    [have_profiler="yes"
       AC_DEFINE([WITH_PROFILER],1,[Link against the gperftools profiling library.])],
     [have_profiler="no"], $proflibs)
 
@@ -836,6 +771,38 @@ if test "$with_hdf5" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
 
+# Check for VELOCIraptor.
+have_velociraptor="no"
+AC_ARG_WITH([velociraptor],
+    [AS_HELP_STRING([--with-velociraptor=PATH],
+       [Directory where velociraptor library exists @<:@yes/no@:>@]
+    )],
+    [with_velociraptor="$withval"],
+    [with_velociraptor="no"]
+)
+if test "x$with_velociraptor" != "xno"; then
+   AC_PROG_FC
+   AC_FC_LIBRARY_LDFLAGS
+   if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
+      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lstf -lstdc++ -lhdf5_cpp"
+      CFLAGS="$CFLAGS -fopenmp"
+   else
+      VELOCIRAPTOR_LIBS=""
+   fi
+
+   have_velociraptor="yes"
+
+   AC_CHECK_LIB(
+      [stf],
+      [InitVelociraptor],
+      [AC_DEFINE([HAVE_VELOCIRAPTOR],1,[The VELOCIraptor library appears to be present.])],
+      [AC_MSG_ERROR(Cannot find VELOCIraptor library at $with_velociraptor)],
+      [$VELOCIRAPTOR_LIBS $HDF5_LDFLAGS $HDF5_LIBS $GSL_LIBS]
+   )
+fi
+AC_SUBST([VELOCIRAPTOR_LIBS])
+AM_CONDITIONAL([HAVEVELOCIRAPTOR],[test -n "$VELOCIRAPTOR_LIBS"])
+
 # Check for floating-point execeptions
 AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
     [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
@@ -944,10 +911,69 @@ fi
 
 # Various package configuration options.
 
+# Master subgrid options
+# If you add a restriction (e.g. no cooling, chemistry or hydro)
+# you will need to check for overwrite after reading the additional options.
+# As an example for this, see the call to AC_ARG_WITH for cooling.
+AC_ARG_WITH([subgrid],
+	[AS_HELP_STRING([--with-subgrid=<subgrid>],
+		[Master switch for subgrid methods. Inexperienced user should start from here @<:@none, GEAR, EAGLE default: none@:>@]
+	)],
+	[with_subgrid="$withval"],
+	[with_subgrid=none]
+)
+
+# Default values
+with_subgrid_cooling=none
+with_subgrid_chemistry=none
+with_subgrid_hydro=none
+
+case "$with_subgrid" in
+   yes)
+      AC_MSG_ERROR([Invalid option. A subgrid model must be chosen.])
+   ;;
+   none)
+   ;;
+   GEAR)
+	with_subgrid_cooling=grackle
+	with_subgrid_chemistry=GEAR
+	with_subgrid_hydro=gadget2
+   ;;
+   EAGLE)
+	with_subgrid_cooling=EAGLE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_hydro=gadget2
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
+   ;;
+esac
+
+# Gravity scheme.
+AC_ARG_WITH([gravity],
+   [AS_HELP_STRING([--with-gravity=<scheme>],
+      [Gravity scheme to use @<:@default, with-potential, default: default@:>@]
+   )],
+   [with_gravity="$withval"],
+   [with_gravity="default"]
+)
+
+case "$with_gravity" in
+   with-potential)
+      AC_DEFINE([POTENTIAL_GRAVITY], [1], [Gravity scheme with potential calculation])
+   ;;
+   default)
+      AC_DEFINE([DEFAULT_GRAVITY], [1], [Default gravity scheme])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown gravity scheme: $with_gravity])
+   ;;
+esac
+
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, default, gizmo-mfv, gizmo-mfm, shadowfax, minimal-multi-mat, debug default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, debug default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -986,9 +1012,10 @@ case "$with_hydro" in
    shadowfax)
       AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])
    ;;
-   minimal-multi-mat)
-      AC_DEFINE([MINIMAL_MULTI_MAT_SPH], [1], [Minimal Multiple Material SPH])
+   planetary)
+      AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
    ;;
+
 
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
@@ -1148,6 +1175,42 @@ case "$with_riemann" in
    ;;
 esac
 
+# Check for grackle.
+have_grackle="no"
+AC_ARG_WITH([grackle],
+    [AS_HELP_STRING([--with-grackle=PATH],
+       [root directory where grackle is installed @<:@yes/no@:>@]
+    )],
+    [with_grackle="$withval"],
+    [with_grackle="no"]
+)
+if test "x$with_grackle" != "xno"; then
+   AC_PROG_FC
+   AC_FC_LIBRARY_LDFLAGS
+   if test "x$with_grackle" != "xyes" -a "x$with_grackle" != "x"; then
+      GRACKLE_LIBS="-L$with_grackle/lib -lgrackle"
+      GRACKLE_INCS="-I$with_grackle/include"
+   else
+      GRACKLE_LIBS="-lgrackle"
+      GRACKLE_INCS=""
+   fi
+
+   have_grackle="yes"
+
+   AC_CHECK_LIB(
+      [grackle],
+      [initialize_chemistry_data],
+      [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.])
+        AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
+      ],
+      [AC_MSG_ERROR(Cannot find grackle library!)],
+      [$GRACKLE_LIBS $GRACKLE_INCS $FCLIBS]
+   )
+fi
+AC_SUBST([GRACKLE_LIBS])
+AC_SUBST([GRACKLE_INCS])
+AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
+
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<function>],
@@ -1269,10 +1332,10 @@ esac
 #  Gravity multipole order
 AC_ARG_WITH([multipole-order],
    [AS_HELP_STRING([--with-multipole-order=<order>],
-      [order of the multipole and gravitational field expansion @<:@ default: 5@:>@]
+      [order of the multipole and gravitational field expansion @<:@ default: 4@:>@]
    )],
    [with_multipole_order="$withval"],
-   [with_multipole_order="5"]
+   [with_multipole_order="4"]
 )
 AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Multipole order])
 
@@ -1318,21 +1381,22 @@ AC_MSG_RESULT([
 
    $PACKAGE_NAME v.$PACKAGE_VERSION
 
-   Compiler           : $CC
-    - vendor          : $ax_cv_c_compiler_vendor
-    - version         : $ax_cv_c_compiler_version
-    - flags           : $CFLAGS
-   MPI enabled        : $enable_mpi
-   HDF5 enabled       : $with_hdf5
-    - parallel        : $have_parallel_hdf5
-   Metis enabled      : $have_metis
-   FFTW3 enabled      : $have_fftw
-   GSL enabled        : $have_gsl
-   libNUMA enabled    : $have_numa
-   GRACKLE enabled    : $have_grackle
-   Special allocators : $have_special_allocator
-   CPU profiler       : $have_profiler
-   Pthread barriers   : $have_pthread_barrier
+   Compiler             : $CC
+    - vendor            : $ax_cv_c_compiler_vendor
+    - version           : $ax_cv_c_compiler_version
+    - flags             : $CFLAGS
+   MPI enabled          : $enable_mpi
+   HDF5 enabled         : $with_hdf5
+    - parallel          : $have_parallel_hdf5
+   Metis enabled        : $have_metis
+   FFTW3 enabled        : $have_fftw
+   GSL enabled          : $have_gsl
+   libNUMA enabled      : $have_numa
+   GRACKLE enabled      : $have_grackle
+   Special allocators   : $have_special_allocator
+   CPU profiler         : $have_profiler
+   Pthread barriers     : $have_pthread_barrier
+   VELOCIraptor enabled : $have_velociraptor
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension
@@ -1340,12 +1404,14 @@ AC_MSG_RESULT([
    Equation of state  : $with_eos
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
-   Cooling function   : $with_cooling
-   Chemistry          : $with_chemistry
 
-   External potential  : $with_potential
+   Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order
    No gravity below ID : $no_gravity_below_id
+   External potential  : $with_potential
+
+   Cooling function   : $with_cooling
+   Chemistry          : $with_chemistry
 
    Individual timers     : $enable_timers
    Task debugging        : $enable_task_debugging
@@ -1354,5 +1420,6 @@ AC_MSG_RESULT([
    Interaction debugging : $enable_debug_interactions
    Naive interactions    : $enable_naive_interactions
    Gravity checks        : $gravity_force_checks
+   Custom icbrtf         : $enable_custom_icbrtf
 
  ------------------------])

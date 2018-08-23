@@ -98,9 +98,12 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
  * @brief Sets the chemistry properties of the (x-)particles to a valid start
  * state.
  *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
+ * @param data The global chemistry information.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
- * @param data The global chemistry information.
  */
 __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     const struct phys_const* restrict phys_const,
@@ -137,7 +140,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   for (int elem = 0; elem < chemistry_element_count; ++elem) {
     char buffer[50];
     sprintf(buffer, "EAGLEChemistry:InitAbundance_%s",
-            chemistry_get_element_name(elem));
+            chemistry_get_element_name((enum chemistry_element)elem));
 
     data->initial_metal_mass_fraction[elem] =
         parser_get_param_float(parameter_file, buffer);

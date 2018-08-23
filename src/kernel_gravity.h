@@ -26,16 +26,16 @@
 #include "inline.h"
 #include "minmax.h"
 
-//#define GADGET2_SOFTENING_CORRECTION
-
 #ifdef GADGET2_SOFTENING_CORRECTION
 /*! Conversion factor between Plummer softening and internal softening */
 #define kernel_gravity_softening_plummer_equivalent 2.8
 #define kernel_gravity_softening_plummer_equivalent_inv (1. / 2.8)
+#define kernel_gravity_softening_name "Gadget-2 (spline kernel)"
 #else
 /*! Conversion factor between Plummer softening and internal softening */
 #define kernel_gravity_softening_plummer_equivalent 3.
 #define kernel_gravity_softening_plummer_equivalent_inv (1. / 3.)
+#define kernel_gravity_softening_name "Wendland-C2"
 #endif /* GADGET2_SOFTENING_CORRECTION */
 
 /**
@@ -53,9 +53,10 @@ __attribute__((always_inline)) INLINE static void kernel_grav_pot_eval(
   if (u < 0.5f)
     *W = -2.8f + u * u * (5.333333333333f + u * u * (6.4f * u - 9.6f));
   else
-    *W = -3.2f + 0.066666666667f / u +
-         u * u * (10.666666666667f +
-                  u * (-16.f + u * (9.6f - 2.133333333333f * u)));
+    *W =
+        -3.2f + 0.066666666667f / u +
+        u * u *
+            (10.666666666667f + u * (-16.f + u * (9.6f - 2.133333333333f * u)));
 #else
 
   /* W(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
@@ -170,14 +171,14 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval_force_double(
 __attribute__((always_inline)) INLINE static float D_soft_1(float u,
                                                             float u_inv) {
 
-  /* phi(u) = -3u^7 + 15u^6 - 28u^5 + 21u^4 - 7u^2 + 3 */
-  float phi = -3.f * u + 15.f;
-  phi = phi * u - 28.f;
-  phi = phi * u + 21.f;
+  /* phi(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
+  float phi = 3.f * u - 15.f;
+  phi = phi * u + 28.f;
+  phi = phi * u - 21.f;
   phi = phi * u;
-  phi = phi * u - 7.f;
+  phi = phi * u + 7.f;
   phi = phi * u;
-  phi = phi * u + 3.f;
+  phi = phi * u - 3.f;
 
   return phi;
 }
@@ -198,43 +199,27 @@ __attribute__((always_inline)) INLINE static float D_soft_3(float u,
 __attribute__((always_inline)) INLINE static float D_soft_5(float u,
                                                             float u_inv) {
 
-  /* (phi'(u)/u)'/u = -105u^3 + 360u^2 - 420u + 168 */
-  float phi = -105.f * u + 360.f;
-  phi = phi * u - 420.f;
-  phi = phi * u + 168.f;
+  /* (phi'(u)/u)'/u = 105u^3 - 360u^2 + 420u - 168 */
+  float phi = 105.f * u - 360.f;
+  phi = phi * u + 420.f;
+  phi = phi * u - 168.f;
 
   return phi;
 }
 
 __attribute__((always_inline)) INLINE static float D_soft_7(float u,
                                                             float u_inv) {
-
-  /* ((phi'(u)/u)'/u)'/u = 315u - 720 + 420u^-1 */
-  return 315.f * u - 720.f + 420.f * u_inv;
+  return 0.f;
 }
 
 __attribute__((always_inline)) INLINE static float D_soft_9(float u,
                                                             float u_inv) {
-
-  /* (((phi'(u)/u)'/u)'/u)'/u = -315u^-1 + 420u^-3 */
-  float phi = 420.f * u_inv;
-  phi = phi * u_inv - 315.f;
-  phi = phi * u_inv;
-
-  return phi;
+  return 0.f;
 }
 
 __attribute__((always_inline)) INLINE static float D_soft_11(float u,
                                                              float u_inv) {
-
-  /* ((((phi'(u)/u)'/u)'/u)'/u)'/u = 315u^-3 - 1260u^-5 */
-  float phi = -1260.f * u_inv;
-  phi = phi * u_inv + 315.f;
-  phi = phi * u_inv;
-  phi = phi * u_inv;
-  phi = phi * u_inv;
-
-  return phi;
+  return 0.f;
 }
 
 #endif /* SWIFT_KERNEL_GRAVITY_H */

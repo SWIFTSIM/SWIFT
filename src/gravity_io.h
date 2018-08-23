@@ -19,8 +19,19 @@
 #ifndef SWIFT_GRAVITY_IO_H
 #define SWIFT_GRAVITY_IO_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Local headers. */
 #include "./const.h"
 
+/* Import the right functions */
+#if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_io.h"
+#elif defined(POTENTIAL_GRAVITY)
+#include "./gravity/Potential/gravity_io.h"
+#else
+#error "Invalid choice of gravity variant"
+#endif
 
 #endif /* SWIFT_GRAVITY_IO_H */

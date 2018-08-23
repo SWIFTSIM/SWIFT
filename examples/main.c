@@ -105,6 +105,7 @@ void print_help_message(void) {
   printf("  %2s %14s %s\n", "-v", "[12]", "Increase the level of verbosity:");
   printf("  %2s %14s %s\n", "", "", "1: MPI-rank 0 writes,");
   printf("  %2s %14s %s\n", "", "", "2: All MPI-ranks write.");
+  printf("  %2s %14s %s\n", "-x", "", "Run with structure finding.");
   printf("  %2s %14s %s\n", "-y", "{int}",
          "Time-step frequency at which task graphs are dumped.");
   printf("  %2s %14s %s\n", "-Y", "{int}",
@@ -130,6 +131,7 @@ int main(int argc, char *argv[]) {
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
+  struct pm_mesh mesh;
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
@@ -194,6 +196,7 @@ int main(int argc, char *argv[]) {
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
+  int with_structure_finding = 0;
   int verbose = 0;
   int nr_threads = 1;
   int with_verbose_timers = 0;
@@ -206,7 +209,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tuv:y:Y:")) != -1)
+  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tuv:xy:Y:")) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -305,6 +308,15 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
+        break;
+      case 'x':
+#ifdef HAVE_VELOCIRAPTOR
+        with_structure_finding = 1;
+#else
+        error(
+            "Error: (-x) needs to have the code compiled with VELOCIraptor "
+            "linked in.");
+#endif
         break;
       case 'y':
         if (sscanf(optarg, "%d", &dump_tasks) != 1) {
@@ -495,6 +507,19 @@ int main(int argc, char *argv[]) {
     error("Cannot write snapshots in directory %s (%s)", dirp, strerror(errno));
   }
 
+  /* Check that we can write the structure finding catalogues by testing if the
+   * output
+   * directory exists and is searchable and writable. */
+  if (with_structure_finding) {
+    char stfbasename[PARSER_MAX_LINE_SIZE];
+    parser_get_param_string(params, "StructureFinding:basename", stfbasename);
+    const char *stfdirp = dirname(stfbasename);
+    if (access(stfdirp, W_OK | X_OK) != 0) {
+      error("Cannot write stf catalogues in directory %s (%s)", stfdirp,
+            strerror(errno));
+    }
+  }
+
   /* Prepare the domain decomposition scheme */
   struct repartition reparttype;
 #ifdef WITH_MPI
@@ -621,7 +646,7 @@ int main(int argc, char *argv[]) {
     /* Initialize unit system and constants */
     units_init_from_params(&us, params, "InternalUnitSystem");
     phys_const_init(&us, params, &prog_const);
-    if (myrank == 0 && verbose > 0) {
+    if (myrank == 0) {
       message("Internal unit system: U_M = %e g.", us.UnitMass_in_cgs);
       message("Internal unit system: U_L = %e cm.", us.UnitLength_in_cgs);
       message("Internal unit system: U_t = %e s.", us.UnitTime_in_cgs);
@@ -640,11 +665,20 @@ int main(int argc, char *argv[]) {
     /* Initialise the hydro properties */
     if (with_hydro)
       hydro_props_init(&hydro_properties, &prog_const, &us, params);
-    if (with_hydro) eos_init(&eos, &prog_const, &us, params);
+    else
+      bzero(&hydro_properties, sizeof(struct hydro_props));
+
+    /* Initialise the equation of state */
+    if (with_hydro)
+      eos_init(&eos, &prog_const, &us, params);
+    else
+      bzero(&eos, sizeof(struct eos_parameters));
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
-      gravity_props_init(&gravity_properties, params, &cosmo);
+      gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology);
+    else
+      bzero(&gravity_properties, sizeof(struct gravity_props));
 
     /* Read particles and space information from (GADGET) ICs */
     char ICfileName[200] = "";
@@ -655,6 +689,8 @@ int main(int argc, char *argv[]) {
         params, "InitialConditions:cleanup_smoothing_lengths", 0);
     const int cleanup_h = parser_get_opt_param_int(
         params, "InitialConditions:cleanup_h_factors", 0);
+    const int cleanup_sqrt_a = parser_get_opt_param_int(
+        params, "InitialConditions:cleanup_velocity_factors", 0);
     const int generate_gas_in_ics = parser_get_opt_param_int(
         params, "InitialConditions:generate_gas_in_ics", 0);
     if (generate_gas_in_ics && flag_entropy_ICs)
@@ -664,6 +700,8 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
     if (myrank == 0 && cleanup_h)
       message("Cleaning up h-factors (h=%f)", cosmo.h);
+    if (myrank == 0 && cleanup_sqrt_a)
+      message("Cleaning up a-factors from velocity (a=%f)", cosmo.a);
     fflush(stdout);
 
     /* Get ready to read particles of all kinds */
@@ -677,20 +715,23 @@ int main(int argc, char *argv[]) {
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                      &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                      (with_external_gravity || with_self_gravity), with_stars,
-                     cleanup_h, cosmo.h, myrank, nr_nodes, MPI_COMM_WORLD,
-                     MPI_INFO_NULL, nr_threads, dry_run);
+                     cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
+                     nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                     dry_run);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                    &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cosmo.h, myrank, nr_nodes, MPI_COMM_WORLD,
-                   MPI_INFO_NULL, nr_threads, dry_run);
+                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
+                   nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                   dry_run);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
                    &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cosmo.h, nr_threads, dry_run);
+                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
+                   dry_run);
 #endif
 #endif
     if (myrank == 0) {
@@ -700,11 +741,13 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
-#ifndef HAVE_FFTW
-    /* Need the FFTW library if periodic and self gravity. */
-    if (with_self_gravity && periodic)
-      error(
-          "No FFTW library found. Cannot compute periodic long-range forces.");
+#ifdef WITH_MPI
+    //if (periodic && with_self_gravity)
+    //  error("Periodic self-gravity over MPI temporarily disabled.");
+#endif
+
+#if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
+    if (with_structure_finding) error("VEOCIraptor not yet enabled over MPI.");
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -744,6 +787,19 @@ int main(int argc, char *argv[]) {
 
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);
+
+    /* Initialise the long-range gravity mesh */
+    if (with_self_gravity && periodic) {
+#ifdef HAVE_FFTW
+      pm_mesh_init(&mesh, &gravity_properties, dim);
+#else
+      /* Need the FFTW library if periodic and self gravity. */
+      error(
+          "No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
+    } else {
+      pm_mesh_init_no_mesh(&mesh, dim);
+    }
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -835,12 +891,14 @@ int main(int argc, char *argv[]) {
     if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
     if (with_stars) engine_policies |= engine_policy_stars;
     if (with_fof) engine_policies |= engine_policy_fof;
+    if (with_structure_finding)
+      engine_policies |= engine_policy_structure_finding;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
-                &hydro_properties, &gravity_properties, &potential,
+                &hydro_properties, &gravity_properties, &mesh, &potential,
                 &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
@@ -913,14 +971,26 @@ int main(int argc, char *argv[]) {
     /* Perform first FOF search after the first snapshot dump. */
     if (e.policy & engine_policy_fof) fof_search_tree(&s);
 
+    /* Is there a dump before the end of the first time-step? */
+    engine_check_for_dumps(&e);
+
+#ifdef HAVE_VELOCIRAPTOR
+    /* Call VELOCIraptor for the first time after the first snapshot dump. */
+    // if (e.policy & engine_policy_structure_finding) {
+    // velociraptor_init(&e);
+    // velociraptor_invoke(&e);
+    //}
+#endif
   }
 
   /* Legend */
-  if (myrank == 0)
+  if (myrank == 0) {
     printf("# %6s %14s %14s %10s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
            "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
            "Updates", "g-Updates", "s-Updates", "Wall-clock time",
            clocks_getunit(), "Props");
+    fflush(stdout);
+  }
 
   /* File for the timers */
   if (with_verbose_timers) timers_open_file(myrank);
@@ -1091,11 +1161,12 @@ int main(int argc, char *argv[]) {
         e.wallclock_time, e.step_props);
     fflush(stdout);
 
-    fprintf(e.file_timesteps,
-            "  %6d %14e %14e %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
-            e.step, e.time, e.cosmology->a, e.time_step, e.min_active_bin,
-            e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-            e.wallclock_time, e.step_props);
+    fprintf(
+        e.file_timesteps,
+        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+        e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
+        e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
+        e.wallclock_time, e.step_props);
     fflush(e.file_timesteps);
   }
 
@@ -1103,6 +1174,14 @@ int main(int argc, char *argv[]) {
   engine_drift_all(&e);
   engine_print_stats(&e);
   engine_dump_snapshot(&e);
+
+#ifdef HAVE_VELOCIRAPTOR
+  /* Call VELOCIraptor at the end of the run to find groups. */
+  if (e.policy & engine_policy_structure_finding) {
+    velociraptor_init(&e);
+    velociraptor_invoke(&e);
+  }
+#endif
 
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
@@ -1116,6 +1195,7 @@ int main(int argc, char *argv[]) {
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(&cosmo);
+  if (with_self_gravity) pm_mesh_clean(&mesh);
   engine_clean(&e);
   free(params);
 

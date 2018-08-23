@@ -34,9 +34,9 @@ params = {'axes.labelsize': 9,
 'ytick.labelsize': 8,
 'text.usetex': True,
 'figure.figsize' : (3.15,3.15),
-'figure.subplot.left'    : 0.115,
+'figure.subplot.left'    : 0.14,
 'figure.subplot.right'   : 0.99  ,
-'figure.subplot.bottom'  : 0.065  ,
+'figure.subplot.bottom'  : 0.1  ,
 'figure.subplot.top'     : 0.99  ,
 'figure.subplot.wspace'  : 0.  ,
 'figure.subplot.hspace'  : 0.  ,
@@ -117,12 +117,12 @@ colors=['#4477AA', '#CC6677', '#DDCC77', '#117733']
 subplot(311)
 plot(r, W_newton, '--', lw=1.4, label="${\\rm Newtonian}$", color=colors[0])
 plot(r, W_plummer, ':', lw=1.4, label="${\\rm Plummer}$", color=colors[1])
-plot(r, W_gadget2, '-', lw=1.4, label="${\\rm Gadget}$", color=colors[2])
+plot(r, W_gadget2, '-', lw=1.4, label="${\\rm Spline}$", color=colors[2])
 plot(r, W, '-', lw=1.4, label="${\\rm SWIFT}$", color=colors[3])
 plot([epsilon, epsilon], [0, 10], 'k-', alpha=0.5, lw=0.5)
 plot([epsilon/plummer_equivalent_factor, epsilon/plummer_equivalent_factor], [0, 10], 'k-', alpha=0.5, lw=0.5)
 
-legend(loc="upper right", frameon=True, handletextpad=0.1, handlelength=3.2, fontsize=8)
+legend(loc="upper right", frameon=True, handletextpad=0.3, handlelength=1.6, fontsize=8, framealpha=1.)
 
 xlim(0,r_max_plot)
 xticks([0., 0.5, 1., 1.5, 2., 2.5], ["", "", "", "", "", ""])
@@ -135,7 +135,7 @@ ylabel("$\\rho(r)$", labelpad=2)
 subplot(312)
 plot(r, phi_newton, '--', lw=1.4, label="${\\rm Newtonian}$", color=colors[0])
 plot(r, phi_plummer, ':', lw=1.4, label="${\\rm Plummer}$", color=colors[1])
-plot(r, phi_gadget2, '-', lw=1.4, label="${\\rm Gadget}$", color=colors[2])
+plot(r, phi_gadget2, '-', lw=1.4, label="${\\rm Spline}$", color=colors[2])
 plot(r, phi, '-', lw=1.4, label="${\\rm SWIFT}$", color=colors[3])
 plot([epsilon, epsilon], [-10, 10], 'k-', alpha=0.5, lw=0.5)
 plot([epsilon/plummer_equivalent_factor, epsilon/plummer_equivalent_factor], [0, 10], 'k-', alpha=0.5, lw=0.5)
@@ -160,7 +160,7 @@ text(epsilon/plummer_equivalent_factor+0.03, 0.05, "$\\epsilon_{\\rm Plummer}$",
 
 xlim(0,r_max_plot)
 xticks([0., 0.5, 1., 1.5, 2., 2.5], ["$%.1f$"%(0./epsilon), "", "$%.1f$"%(1./epsilon), "", "$%.1f$"%(2./epsilon)])
-xlabel("$r/H$", labelpad=-7)
+xlabel("$r/H$", labelpad=-2.)
 
 ylim(0, 0.95)
 ylabel("$|\\overrightarrow{\\nabla}\\varphi(r)|$", labelpad=0)

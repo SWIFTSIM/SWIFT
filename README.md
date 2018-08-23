@@ -32,7 +32,7 @@ Contribution Guidelines
 -----------------------
 
 The SWIFT source code uses a variation of the 'Google' formatting style.
-The script 'format.sh' in the root directory applies the clang-format-3.8
+The script 'format.sh' in the root directory applies the clang-format-5.0
 tool with our style choices to all the SWIFT C source file. Please apply
 the formatting script to the files before submitting a pull request.
 
@@ -77,7 +77,9 @@ Valid options are:
   -G                Run with self-gravity.
   -M                Reconstruct the multipoles every time-step.
   -n          {int} Execute a fixed number of time steps. When unset use the time_end parameter to stop.
+  -o          {str} Generate a default output parameter file.
   -P  {sec:par:val} Set parameter value and overwrites values read from the parameters file. Can be used more than once.
+  -r                Continue using restart files.
   -s                Run with hydrodynamics.
   -S                Run with stars.
   -t          {int} The number of threads to use on each MPI rank. Defaults to 1 if not specified.
@@ -85,6 +87,7 @@ Valid options are:
   -v           [12] Increase the level of verbosity:
                     1: MPI-rank 0 writes,
                     2: All MPI-ranks write.
+  -x                Run with structure finding.
   -y          {int} Time-step frequency at which task graphs are dumped.
   -Y          {int} Time-step frequency at which threadpool tasks are dumped.
   -h                Print this help message and exit.

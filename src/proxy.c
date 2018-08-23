@@ -88,8 +88,8 @@ void proxy_cells_exch1(struct proxy *p) {
                   p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                   &p->req_cells_count_in);
   if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv nr of pcells.");
-// message( "irecv pcells count on node %i from node %i." , p->mynodeID ,
-// p->nodeID ); fflush(stdout);
+    // message( "irecv pcells count on node %i from node %i." , p->mynodeID ,
+    // p->nodeID ); fflush(stdout);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -113,8 +113,8 @@ void proxy_cells_exch2(struct proxy *p) {
                       MPI_COMM_WORLD, &p->req_cells_in);
 
   if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv part data.");
-// message( "irecv pcells (%i) on node %i from node %i." , p->size_pcells_in ,
-// p->mynodeID , p->nodeID ); fflush(stdout);
+    // message( "irecv pcells (%i) on node %i from node %i." , p->size_pcells_in
+    // , p->mynodeID , p->nodeID ); fflush(stdout);
 
 #else
   error("SWIFT was not compiled with MPI support.");

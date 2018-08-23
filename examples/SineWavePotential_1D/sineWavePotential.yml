@@ -10,7 +10,7 @@ InternalUnitSystem:
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   10.   # The end time of the simulation (in internal units).
-  dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
+  dt_min:     1e-8  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the conserved quantities statistics
@@ -36,3 +36,6 @@ InitialConditions:
 SineWavePotential:
   amplitude: 10.
   timestep_limit: 1.
+
+EoS:
+  isothermal_internal_energy: 20.2615290634

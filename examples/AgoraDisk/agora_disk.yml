@@ -1,0 +1,69 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e21 # kpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+Scheduler:
+  max_top_level_cells: 8
+  
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   0.5  # The end time of the simulation (in internal units).
+  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
+  
+# Parameters governing the snapshots
+Snapshots:
+  basename:            agora_disk # Common part of the name of output files
+  time_first:          0.    # Time of the first output (in internal units)
+  delta_time:          1e-2  # Time difference between consecutive outputs (in internal units)
+  compression:         4
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e-3 # Time between statistics output
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                    0.025    # Constant dimensionless multiplier for time integration.
+  theta:                  0.7     # Opening angle (Multipole acceptance criterion)
+  comoving_softening:     0.08 # Comoving softening length (in internal units).
+  max_physical_softening: 0.08    # Physical softening length (in internal units).
+  mesh_side_length:       32        # Number of cells along each axis for the periodic gravity mesh.
+  
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   10      # (internal units)
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./agora_disk.hdf5     # The file to read
+  cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
+  shift:    [674.1175, 674.1175, 674.1175]   # (Optional) A shift to apply to all particles read from the ICs (in internal units).
+
+# Dimensionless pre-factor for the time-step condition
+LambdaCooling:
+  lambda_cgs:                  1.0e-22    # Cooling rate (in cgs units)
+  minimum_temperature:         1.0e2      # Minimal temperature (Kelvin)
+  mean_molecular_weight:       0.59       # Mean molecular weight
+  hydrogen_mass_abundance:     0.75       # Hydrogen mass abundance (dimensionless)
+  cooling_tstep_mult:          1.0        # Dimensionless pre-factor for the time-step condition
+
+# Cooling with Grackle 2.0
+GrackleCooling:
+  CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  WithUVbackground: 1 # Enable or not the UV background
+  Redshift: 0 # Redshift to use (-1 means time based redshift)
+  WithMetalCooling: 1 # Enable or not the metal cooling
+  ProvideVolumetricHeatingRates: 0 # User provide volumetric heating rates
+  ProvideSpecificHeatingRates: 0 # User provide specific heating rates
+  SelfShieldingMethod: 0 # Grackle (<= 3) or Gear self shielding method
+  OutputMode: 1 # Write in output corresponding primordial chemistry mode
+  MaxSteps: 1000
+  ConvergenceLimit: 1e-2

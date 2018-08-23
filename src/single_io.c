@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 /* This object's header. */
 #include "single_io.h"
@@ -53,10 +54,6 @@
 #include "units.h"
 #include "xmf.h"
 
-/*-----------------------------------------------------------------------------
- * Routines reading an IC file
- *-----------------------------------------------------------------------------*/
-
 /**
  * @brief Reads a data array from a given HDF5 group.
  *
@@ -66,44 +63,48 @@
  * @param internal_units The #unit_system used internally
  * @param ic_units The #unit_system used in the ICs
  * @param cleanup_h Are we removing h-factors from the ICs?
- * @param The value of the reduced Hubble constant.
+ * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
+ * IC velocities?
+ * @param h The value of the reduced Hubble constant.
+ * @param a The current value of the scale-factor.
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  * the part array will be written once the structures have been stabilized.
  */
-void readArray(hid_t h_grp, const struct io_props prop, size_t N,
+void readArray(hid_t h_grp, const struct io_props props, size_t N,
                const struct unit_system* internal_units,
-               const struct unit_system* ic_units, int cleanup_h, double h) {
+               const struct unit_system* ic_units, int cleanup_h,
+               int cleanup_sqrt_a, double h, double a) {
 
-  const size_t typeSize = io_sizeof_type(prop.type);
-  const size_t copySize = typeSize * prop.dimension;
-  const size_t num_elements = N * prop.dimension;
+  const size_t typeSize = io_sizeof_type(props.type);
+  const size_t copySize = typeSize * props.dimension;
+  const size_t num_elements = N * props.dimension;
 
   /* Check whether the dataspace exists or not */
-  const htri_t exist = H5Lexists(h_grp, prop.name, 0);
+  const htri_t exist = H5Lexists(h_grp, props.name, 0);
   if (exist < 0) {
-    error("Error while checking the existence of data set '%s'.", prop.name);
+    error("Error while checking the existence of data set '%s'.", props.name);
   } else if (exist == 0) {
-    if (prop.importance == COMPULSORY) {
-      error("Compulsory data set '%s' not present in the file.", prop.name);
+    if (props.importance == COMPULSORY) {
+      error("Compulsory data set '%s' not present in the file.", props.name);
     } else {
       /* message("Optional data set '%s' not present. Zeroing this particle
-       * prop...", name);	   */
+       * props...", name);	   */
 
       for (size_t i = 0; i < N; ++i)
-        memset(prop.field + i * prop.partSize, 0, copySize);
+        memset(props.field + i * props.partSize, 0, copySize);
 
       return;
     }
   }
 
   /* message("Reading %s '%s' array...", */
-  /*         prop.importance == COMPULSORY ? "compulsory" : "optional  ", */
-  /*         prop.name); */
+  /*         props.importance == COMPULSORY ? "compulsory" : "optional  ", */
+  /*         props.name); */
 
   /* Open data space */
-  const hid_t h_data = H5Dopen(h_grp, prop.name, H5P_DEFAULT);
-  if (h_data < 0) error("Error while opening data space '%s'.", prop.name);
+  const hid_t h_data = H5Dopen(h_grp, props.name, H5P_DEFAULT);
+  if (h_data < 0) error("Error while opening data space '%s'.", props.name);
 
   /* Allocate temporary buffer */
   void* temp = malloc(num_elements * typeSize);
@@ -112,18 +113,18 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
   /* Read HDF5 dataspace in temporary buffer */
   /* Dirty version that happens to work for vectors but should be improved */
   /* Using HDF5 dataspaces would be better */
-  const hid_t h_err = H5Dread(h_data, io_hdf5_type(prop.type), H5S_ALL, H5S_ALL,
-                              H5P_DEFAULT, temp);
-  if (h_err < 0) error("Error while reading data array '%s'.", prop.name);
+  const hid_t h_err = H5Dread(h_data, io_hdf5_type(props.type), H5S_ALL,
+                              H5S_ALL, H5P_DEFAULT, temp);
+  if (h_err < 0) error("Error while reading data array '%s'.", props.name);
 
   /* Unit conversion if necessary */
   const double unit_factor =
-      units_conversion_factor(ic_units, internal_units, prop.units);
+      units_conversion_factor(ic_units, internal_units, props.units);
   if (unit_factor != 1. && exist != 0) {
 
     /* message("Converting ! factor=%e", factor); */
 
-    if (io_is_double_precision(prop.type)) {
+    if (io_is_double_precision(props.type)) {
       double* temp_d = (double*)temp;
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= unit_factor;
     } else {
@@ -133,35 +134,46 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
   }
 
   /* Clean-up h if necessary */
-  const float h_factor_exp = units_h_factor(internal_units, prop.units);
+  const float h_factor_exp = units_h_factor(internal_units, props.units);
   if (cleanup_h && h_factor_exp != 0.f && exist != 0) {
-    const double h_factor = pow(h, h_factor_exp);
 
-    /* message("Multipltying '%s' by h^%f=%f", prop.name, h_factor_exp,
+    /* message("Multipltying '%s' by h^%f=%f", props.name, h_factor_exp,
      * h_factor); */
 
-    if (io_is_double_precision(prop.type)) {
+    if (io_is_double_precision(props.type)) {
       double* temp_d = (double*)temp;
+      const double h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= h_factor;
     } else {
       float* temp_f = (float*)temp;
+      const float h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= h_factor;
+    }
+  }
+
+  /* Clean-up a if necessary */
+  if (cleanup_sqrt_a && a != 1. && (strcmp(props.name, "Velocities") == 0)) {
+
+    if (io_is_double_precision(props.type)) {
+      double* temp_d = (double*)temp;
+      const double vel_factor = sqrt(a);
+      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= vel_factor;
+    } else {
+      float* temp_f = (float*)temp;
+      const float vel_factor = sqrt(a);
+      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= vel_factor;
     }
   }
 
   /* Copy temporary buffer to particle data */
   char* temp_c = (char*)temp;
   for (size_t i = 0; i < N; ++i)
-    memcpy(prop.field + i * prop.partSize, &temp_c[i * copySize], copySize);
+    memcpy(props.field + i * props.partSize, &temp_c[i * copySize], copySize);
 
   /* Free and close everything */
   free(temp);
   H5Dclose(h_data);
 }
-
-/*-----------------------------------------------------------------------------
- * Routines writing an output file
- *-----------------------------------------------------------------------------*/
 
 /**
  * @brief Writes a data array in given HDF5 group.
@@ -309,7 +321,10 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param with_gravity Are we reading/creating #gpart arrays ?
  * @param with_stars Are we reading star particles ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
+ * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
+ * IC velocities?
  * @param h The value of the reduced Hubble constant to use for correction.
+ * @param a The current value of the scale-factor.
  * @prarm n_threads The number of threads to use for the temporary threadpool.
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  *
@@ -319,7 +334,6 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  *
  * @warning Can not read snapshot distributed over more than 1 file !!!
  * @todo Read snapshots distributed in more than one file.
- *
  */
 void read_ic_single(const char* fileName,
                     const struct unit_system* internal_units, double dim[3],
@@ -327,14 +341,15 @@ void read_ic_single(const char* fileName,
                     struct spart** sparts, size_t* Ngas, size_t* Ngparts,
                     size_t* Nstars, int* periodic, int* flag_entropy,
                     int with_hydro, int with_gravity, int with_stars,
-                    int cleanup_h, double h, int n_threads, int dry_run) {
+                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
+                    int n_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
   /* GADGET has 6 particle types. We only keep the type 0 & 1 for now...*/
-  int numParticles[swift_type_count] = {0};
-  int numParticles_highWord[swift_type_count] = {0};
+  long long numParticles[swift_type_count] = {0};
+  long long numParticles_highWord[swift_type_count] = {0};
   size_t N[swift_type_count] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
@@ -374,13 +389,12 @@ void read_ic_single(const char* fileName,
   io_read_attribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy_temp);
   *flag_entropy = flag_entropy_temp[0];
   io_read_attribute(h_grp, "BoxSize", DOUBLE, boxSize);
-  io_read_attribute(h_grp, "NumPart_Total", UINT, numParticles);
-  io_read_attribute(h_grp, "NumPart_Total_HighWord", UINT,
+  io_read_attribute(h_grp, "NumPart_Total", LONGLONG, numParticles);
+  io_read_attribute(h_grp, "NumPart_Total_HighWord", LONGLONG,
                     numParticles_highWord);
 
   for (int ptype = 0; ptype < swift_type_count; ++ptype)
-    N[ptype] = ((long long)numParticles[ptype]) +
-               ((long long)numParticles_highWord[ptype] << 32);
+    N[ptype] = (numParticles[ptype]) + (numParticles_highWord[ptype] << 32);
 
   /* Get the box size if not cubic */
   dim[0] = boxSize[0];
@@ -410,7 +424,7 @@ void read_ic_single(const char* fileName,
   struct unit_system* ic_units =
       (struct unit_system*)malloc(sizeof(struct unit_system));
   if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
-  io_read_unit_system(h_file, ic_units, 0);
+  io_read_unit_system(h_file, ic_units, internal_units, 0);
 
   /* Tell the user if a conversion will be needed */
   if (units_are_equal(ic_units, internal_units)) {
@@ -533,7 +547,7 @@ void read_ic_single(const char* fileName,
     if (!dry_run)
       for (int i = 0; i < num_fields; ++i)
         readArray(h_grp, list[i], Nparticles, internal_units, ic_units,
-                  cleanup_h, h);
+                  cleanup_h, cleanup_sqrt_a, h, a);
 
     /* Close particle group */
     H5Gclose(h_grp);
@@ -612,10 +626,11 @@ void write_output_single(struct engine* e, const char* baseName,
   char fileName[FILENAME_BUFFER_SIZE];
   if (e->snapshot_label_delta == 1)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->snapshot_output_count);
+             e->snapshot_output_count + e->snapshot_label_first);
   else
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
-             e->snapshot_output_count * e->snapshot_label_delta);
+             e->snapshot_output_count * e->snapshot_label_delta +
+                 e->snapshot_label_first);
 
   /* First time, we need to create the XMF file */
   if (e->snapshot_output_count == 0) xmf_create_file(baseName);
@@ -658,6 +673,8 @@ void write_output_single(struct engine* e, const char* baseName,
   io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
   io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
   io_write_attribute_s(h_grp, "Code", "SWIFT");
+  time_t tm = time(NULL);
+  io_write_attribute_s(h_grp, "Snapshot date", ctime(&tm));
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */

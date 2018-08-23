@@ -1,7 +1,7 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.989e43      # 10^10 M_sun in grams
-  UnitLength_in_cgs:   3.085678e24   # Mpc in centimeters
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
   UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
@@ -20,7 +20,7 @@ TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   1e-2  # The end time of the simulation (in internal units).
   dt_min:     1e-12 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
 
 Scheduler:
   max_top_level_cells: 80
@@ -28,10 +28,9 @@ Scheduler:
 # Parameters governing the snapshots
 Snapshots:
   basename:            eagle # Common part of the name of output files
-  scale_factor_first:  0.92  # Scale-factor of the first snaphot (cosmological run)
+  scale_factor_first:  0.91  # Scale-factor of the first snaphot (cosmological run)
   time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
-  delta_time:          1.10  # Time difference between consecutive outputs (in internal units)
-  compression:         1
+  delta_time:          1.01  # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -54,5 +53,7 @@ SPH:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./EAGLE_ICs_100.hdf5     # The file to read
-  cleanup_h_factors: 1                 # Remove the h-factors inherited from Gadget
+  file_name:  ./EAGLE_ICs_100.hdf5   # The file to read
+  cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
+  cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
+

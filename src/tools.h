@@ -54,4 +54,8 @@ int compare_particles(struct part a, struct part b, double threshold);
 
 long get_maxrss(void);
 
+char *trim_leading(char *s);
+char *trim_trailing(char *s);
+char *trim_both(char *s);
+
 #endif /* SWIFT_TOOL_H */

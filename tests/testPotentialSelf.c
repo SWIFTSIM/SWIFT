@@ -78,8 +78,9 @@ double acceleration(double mass, double r, double H, double rlr) {
   if (u > 1.)
     acc = -mass / (r * r * r);
   else
-    acc = -mass * (21. * u * u * u * u * u - 90. * u * u * u * u +
-                   140. * u * u * u - 84. * u * u + 14.) /
+    acc = -mass *
+          (21. * u * u * u * u * u - 90. * u * u * u * u + 140. * u * u * u -
+           84. * u * u + 14.) /
           (H * H * H);
 
   return r * acc * (4. * x * S_prime(2 * x) - 2. * S(2. * x) + 2.);
@@ -91,6 +92,11 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
+/* Choke on FPEs */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
+
   /* Initialise a few things to get us going */
   struct engine e;
   e.max_active_bin = num_time_bins;
@@ -98,11 +104,14 @@ int main(int argc, char *argv[]) {
   e.ti_current = 8;
   e.time_base = 1e-10;
 
-  struct space s;
-  s.width[0] = 0.2;
-  s.width[1] = 0.2;
-  s.width[2] = 0.2;
-  e.s = &s;
+  struct pm_mesh mesh;
+  mesh.periodic = 0;
+  mesh.dim[0] = 10.;
+  mesh.dim[1] = 10.;
+  mesh.dim[2] = 10.;
+  mesh.r_s_inv = 0.;
+  mesh.r_cut_min = 0.;
+  e.mesh = &mesh;
 
   struct gravity_props props;
   props.a_smooth = 1.25;
@@ -113,7 +122,7 @@ int main(int argc, char *argv[]) {
   bzero(&r, sizeof(struct runner));
   r.e = &e;
 
-  const double rlr = props.a_smooth * s.width[0];
+  const double rlr = FLT_MAX;
 
   /* Init the cache for gravity interaction */
   gravity_cache_init(&r.ci_gravity_cache, num_tests * 2);
@@ -168,7 +177,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Now compute the forces */
-  runner_doself_grav_pp_truncated(&r, &c);
+  runner_doself_grav_pp(&r, &c);
 
   /* Verify everything */
   for (int n = 1; n < num_tests + 1; ++n) {
@@ -176,13 +185,15 @@ int main(int argc, char *argv[]) {
 
     const double epsilon = gravity_get_softening(gp, &props);
 
+#if defined(POTENTIAL_GRAVITY)
     double pot_true = potential(c.gparts[0].mass, gp->x[0], epsilon, rlr);
+    check_value(gp->potential, pot_true, "potential");
+#endif
+
     double acc_true = acceleration(c.gparts[0].mass, gp->x[0], epsilon, rlr);
+    check_value(gp->a_grav[0], acc_true, "acceleration");
 
     // message("x=%e f=%e f_true=%e", gp->x[0], gp->a_grav[0], acc_true);
-
-    check_value(gp->potential, pot_true, "potential");
-    check_value(gp->a_grav[0], acc_true, "acceleration");
   }
 
   free(c.gparts);

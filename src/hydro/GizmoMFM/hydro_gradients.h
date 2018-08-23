@@ -98,42 +98,31 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   /* perform gradient reconstruction in space and time */
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8) */
-  const float xfac = hj / (hi + hj);
-  const float xij_j[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
+  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   float dWi[5];
-  dWi[0] = pi->primitives.gradients.rho[0] * xij_i[0] +
-           pi->primitives.gradients.rho[1] * xij_i[1] +
-           pi->primitives.gradients.rho[2] * xij_i[2];
-  dWi[1] = pi->primitives.gradients.v[0][0] * xij_i[0] +
-           pi->primitives.gradients.v[0][1] * xij_i[1] +
-           pi->primitives.gradients.v[0][2] * xij_i[2];
-  dWi[2] = pi->primitives.gradients.v[1][0] * xij_i[0] +
-           pi->primitives.gradients.v[1][1] * xij_i[1] +
-           pi->primitives.gradients.v[1][2] * xij_i[2];
-  dWi[3] = pi->primitives.gradients.v[2][0] * xij_i[0] +
-           pi->primitives.gradients.v[2][1] * xij_i[1] +
-           pi->primitives.gradients.v[2][2] * xij_i[2];
-  dWi[4] = pi->primitives.gradients.P[0] * xij_i[0] +
-           pi->primitives.gradients.P[1] * xij_i[1] +
-           pi->primitives.gradients.P[2] * xij_i[2];
+  dWi[0] = pi->gradients.rho[0] * xij_i[0] + pi->gradients.rho[1] * xij_i[1] +
+           pi->gradients.rho[2] * xij_i[2];
+  dWi[1] = pi->gradients.v[0][0] * xij_i[0] + pi->gradients.v[0][1] * xij_i[1] +
+           pi->gradients.v[0][2] * xij_i[2];
+  dWi[2] = pi->gradients.v[1][0] * xij_i[0] + pi->gradients.v[1][1] * xij_i[1] +
+           pi->gradients.v[1][2] * xij_i[2];
+  dWi[3] = pi->gradients.v[2][0] * xij_i[0] + pi->gradients.v[2][1] * xij_i[1] +
+           pi->gradients.v[2][2] * xij_i[2];
+  dWi[4] = pi->gradients.P[0] * xij_i[0] + pi->gradients.P[1] * xij_i[1] +
+           pi->gradients.P[2] * xij_i[2];
 
   float dWj[5];
-  dWj[0] = pj->primitives.gradients.rho[0] * xij_j[0] +
-           pj->primitives.gradients.rho[1] * xij_j[1] +
-           pj->primitives.gradients.rho[2] * xij_j[2];
-  dWj[1] = pj->primitives.gradients.v[0][0] * xij_j[0] +
-           pj->primitives.gradients.v[0][1] * xij_j[1] +
-           pj->primitives.gradients.v[0][2] * xij_j[2];
-  dWj[2] = pj->primitives.gradients.v[1][0] * xij_j[0] +
-           pj->primitives.gradients.v[1][1] * xij_j[1] +
-           pj->primitives.gradients.v[1][2] * xij_j[2];
-  dWj[3] = pj->primitives.gradients.v[2][0] * xij_j[0] +
-           pj->primitives.gradients.v[2][1] * xij_j[1] +
-           pj->primitives.gradients.v[2][2] * xij_j[2];
-  dWj[4] = pj->primitives.gradients.P[0] * xij_j[0] +
-           pj->primitives.gradients.P[1] * xij_j[1] +
-           pj->primitives.gradients.P[2] * xij_j[2];
+  dWj[0] = pj->gradients.rho[0] * xij_j[0] + pj->gradients.rho[1] * xij_j[1] +
+           pj->gradients.rho[2] * xij_j[2];
+  dWj[1] = pj->gradients.v[0][0] * xij_j[0] + pj->gradients.v[0][1] * xij_j[1] +
+           pj->gradients.v[0][2] * xij_j[2];
+  dWj[2] = pj->gradients.v[1][0] * xij_j[0] + pj->gradients.v[1][1] * xij_j[1] +
+           pj->gradients.v[1][2] * xij_j[2];
+  dWj[3] = pj->gradients.v[2][0] * xij_j[0] + pj->gradients.v[2][1] * xij_j[1] +
+           pj->gradients.v[2][2] * xij_j[2];
+  dWj[4] = pj->gradients.P[0] * xij_j[0] + pj->gradients.P[1] * xij_j[1] +
+           pj->gradients.P[2] * xij_j[2];
 
   /* Apply the slope limiter at this interface */
   hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, r);

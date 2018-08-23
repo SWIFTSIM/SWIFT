@@ -259,7 +259,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
     int k = ind;
     if (k < qcount) {
       qtid[k] = qtid[qcount];
-      int w = qtasks[qtid[k]].weight;
+      const float w = qtasks[qtid[k]].weight;
       while (k > 0 && w > qtasks[qtid[(k - 1) / 2]].weight) {
         int temp = q->tid[k];
         q->tid[k] = q->tid[(k - 1) / 2];

@@ -1,7 +1,7 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e33    # M_sun
-  UnitLength_in_cgs:   3.0856776e21  # kpc
+  UnitLength_in_cgs:   3.08567758e21 # kpc
   UnitVelocity_in_cgs: 1e5           # km/s
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
@@ -31,15 +31,11 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  PointMass.hdf5        # The file to read
-  shift_x:    50.                   # A shift to apply to all particles read from the ICs (in internal units).
-  shift_y:    50.
-  shift_z:    50.
+  shift:      [50.,50.,50.]         # A shift to apply to all particles read from the ICs (in internal units).
 
 # External potential parameters
 PointMassPotential:
-  position_x:      50.     # location of external point mass in internal units
-  position_y:      50.
-  position_z:      50.	
+  position:        [50.,50.,50.]    # location of external point mass in internal units
   mass:            1e10     # mass of external point mass in internal units
   timestep_mult:   0.03     # controls time step
 
