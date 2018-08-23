@@ -95,7 +95,7 @@ EXTRA_DIST = CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/make
 	     SquareTest_2D/makeIC.py SquareTest_2D/plotSolution.py SquareTest_2D/run.sh SquareTest_2D/square.yml \
 	     UniformBox_2D/makeIC.py UniformBox_2D/run.sh UniformBox_2D/uniformPlane.yml \
 	     UniformBox_3D/makeICbig.py UniformBox_3D/makeIC.py UniformBox_3D/run.sh UniformBox_3D/uniformBox.yml \
-	     Gravity_glass/makeIC.py Gravity_glass/README Gravity_glass/uniform_DM_box.yml
+	     Gravity_glass/makeIC.py Gravity_glass/README Gravity_glass/uniform_DM_box.yml \
              ZeldovichPancake_3D/makeIC.py ZeldovichPancake_3D/zeldovichPancake.yml ZeldovichPancake_3D/run.sh ZeldovichPancake_3D/plotSolution.py
 
 # Default parameter file
