@@ -20,7 +20,7 @@
 
 import h5py
 import sys
-from numpy import *
+import numpy as np
 
 # Generates a swift IC file containing a cartesian distribution of DM particles
 # with a density of 1
@@ -30,7 +30,7 @@ periodic= 1           # 1 For periodic box
 boxSize = 1.
 rho = 1.
 L = int(sys.argv[1])  # Number of particles along one axis
-fileName = "uniformDMBox_%d.hdf5"%L 
+fileName = "uniform_DM_box.hdf5"
 
 #---------------------------------------------------
 numPart = L**3
@@ -69,27 +69,16 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 #Particle group
 grp = file.create_group("/PartType1")
 
-v  = zeros((numPart, 3))
-ds = grp.create_dataset('Velocities', (numPart, 3), 'f')
-ds[()] = v
-v = zeros(1)
+v  = np.zeros((numPart, 3))
+ds = grp.create_dataset('Velocities', (numPart, 3), 'f', data=v)
 
-m = full((numPart, 1), mass)
-ds = grp.create_dataset('Masses', (numPart,1), 'f')
-ds[()] = m
-m = zeros(1)
+m = np.full((numPart, 1), mass)
+ds = grp.create_dataset('Masses', (numPart,1), 'f', data=m)
 
-ids = linspace(0, numPart, numPart, endpoint=False).reshape((numPart,1))
+ids = np.linspace(0, numPart, numPart, endpoint=False).reshape((numPart,1))
 ds = grp.create_dataset('ParticleIDs', (numPart, 1), 'L')
 ds[()] = ids + 1
-x      = ids % L;
-y      = ((ids - x) / L) % L;
-z      = (ids - x - L * y) / L**2;
-coords = zeros((numPart, 3))
-coords[:,0] = z[:,0] * boxSize / L + boxSize / (2*L)
-coords[:,1] = y[:,0] * boxSize / L + boxSize / (2*L)
-coords[:,2] = x[:,0] * boxSize / L + boxSize / (2*L)
-ds = grp.create_dataset('Coordinates', (numPart, 3), 'd')
-ds[()] = coords
+coords = np.random.rand(numPart, 3) * boxSize
+ds = grp.create_dataset('Coordinates', (numPart, 3), 'd', data=coords)
 
 file.close()
