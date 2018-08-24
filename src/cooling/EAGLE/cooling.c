@@ -972,8 +972,7 @@ __attribute__((always_inline)) INLINE float cooling_timestep(
     const struct cooling_function_data *restrict cooling,
     const struct phys_const *restrict phys_const,
     const struct cosmology *restrict cosmo,
-    const struct unit_system *restrict us, const struct part *restrict p,
-    const struct xpart *restrict xp) {
+    const struct unit_system *restrict us, const struct part *restrict p) {
 
   /* Remember to update when using an implicit integrator */
   // const float cooling_rate = cooling->cooling_rate;

@@ -105,8 +105,7 @@ float cooling_timestep(const struct cooling_function_data *restrict,
                        const struct phys_const *restrict,
                        const struct cosmology *restrict,
                        const struct unit_system *restrict,
-                       const struct part *restrict,
-                       const struct xpart *restrict);
+                       const struct part *restrict);
 
 void cooling_first_init_part(const struct phys_const *restrict,
                              const struct unit_system *restrict,
