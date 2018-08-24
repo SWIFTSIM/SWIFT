@@ -5,7 +5,7 @@
 clang=${CLANG_FORMAT_CMD:="clang-format-5.0"}
 
 # Formatting command
-cmd="$clang -style=file src/*.[ch] src/*/*.[ch] src/*/*/*.[ch] examples/main.c tests/*.[ch]"
+cmd="$clang -style=file $(git ls-files | grep '\.[ch]$')"
 
 # Test if `clang-format-5.0` works
 command -v $clang > /dev/null
