@@ -209,6 +209,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
         c->sort[i] = NULL;
       }
 #if WITH_MPI
+    c->tag = -1;
+
     c->recv_xv = NULL;
     c->recv_rho = NULL;
     c->recv_gradient = NULL;
@@ -422,6 +424,9 @@ void space_regrid(struct space *s, int verbose) {
           c->ti_old_part = ti_current;
           c->ti_old_gpart = ti_current;
           c->ti_old_multipole = ti_current;
+#ifdef WITH_MPI
+          c->tag = -1;
+#endif  // WITH_MPI
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
 
@@ -1833,6 +1838,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->do_sub_sort = 0;
       cp->do_grav_sub_drift = 0;
       cp->do_sub_drift = 0;
+#ifdef WITH_MPI
+      cp->tag = -1;
+#endif  // WITH_MPI
 #ifdef SWIFT_DEBUG_CHECKS
       cp->cellID = last_cell_id++;
 #endif
