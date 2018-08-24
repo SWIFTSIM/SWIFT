@@ -129,7 +129,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_gravity_end_min < e->ti_current && c->nr_tasks > 0)
+  if (c->ti_gravity_end_min < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e, a=%e)",
@@ -139,6 +139,20 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
 
   return (c->ti_gravity_end_min == e->ti_current);
 }
+
+/**
+ * @brief Does a cell contain any g-particle finishing their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_active_gravity_mm(
+    const struct cell *c, const struct engine *e) {
+
+  return (c->ti_gravity_end_min == e->ti_current);
+}
+
 
 /**
  * @brief Are *all* g-particles in a cell finishing their time-step now ?

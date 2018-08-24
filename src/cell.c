@@ -67,6 +67,10 @@
 /* Global variables. */
 int cell_next_tag = 0;
 
+integertime_t ti_current_global;
+
+extern FILE* file_dump;
+
 /**
  * @brief Get the size of the cell subtree.
  *
@@ -180,9 +184,12 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
   pc->ti_hydro_end_max = c->ti_hydro_end_max;
   pc->ti_gravity_end_min = c->ti_gravity_end_min;
   pc->ti_gravity_end_max = c->ti_gravity_end_max;
-  pc->ti_old_part = c->ti_old_part;
-  pc->ti_old_gpart = c->ti_old_gpart;
-  pc->ti_old_multipole = c->ti_old_multipole;
+  //pc->ti_old_part = c->ti_old_part;
+  // pc->ti_old_gpart = c->ti_old_gpart;
+  //pc->ti_old_multipole = c->ti_old_multipole;
+
+  pc->multipole = *(c->multipole);
+
   pc->count = c->count;
   pc->gcount = c->gcount;
   pc->scount = c->scount;
@@ -230,9 +237,16 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->ti_hydro_end_max = pc->ti_hydro_end_max;
   c->ti_gravity_end_min = pc->ti_gravity_end_min;
   c->ti_gravity_end_max = pc->ti_gravity_end_max;
-  c->ti_old_part = pc->ti_old_part;
-  c->ti_old_gpart = pc->ti_old_gpart;
-  c->ti_old_multipole = pc->ti_old_multipole;
+  //c->ti_old_part = pc->ti_old_part;
+  //c->ti_old_gpart = pc->ti_old_gpart;
+  //c->ti_old_multipole = pc->ti_old_multipole;
+  
+  c->ti_old_part = ti_current_global;
+  c->ti_old_gpart = ti_current_global;
+  c->ti_old_multipole = ti_current_global;
+
+  *(c->multipole) = pc->multipole;
+
   c->count = pc->count;
   c->gcount = pc->gcount;
   c->scount = pc->scount;
@@ -339,6 +353,11 @@ int cell_unpack_end_step(struct cell *restrict c,
   c->ti_gravity_end_max = pcells[0].ti_gravity_end_max;
   c->dx_max_part = pcells[0].dx_max_part;
 
+  if(c->ti_last_update == ti_current_global && c->ti_last_update > 0)
+    error("Overwriting data");
+
+  c->ti_last_update = ti_current_global;
+  
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
@@ -1878,7 +1897,7 @@ void cell_activate_grav_mm_task(struct cell *ci, struct cell *cj,
   const struct engine *e = s->space->e;
 
   /* Anything to do here? */
-  if (!cell_is_active_gravity(ci, e) && !cell_is_active_gravity(cj, e))
+  if (!cell_is_active_gravity_mm(ci, e) && !cell_is_active_gravity_mm(cj, e))
     error("Inactive MM task being activated");
 
   /* Atomically drift the multipole in ci */
@@ -2273,7 +2292,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       } else if (t->type == task_type_pair) {
         cell_activate_subcell_grav_tasks(ci, cj, s);
       } else if (t->type == task_type_grav_mm) {
-        error("Incorrectyl linked M-M task!");
+#ifdef SWIFT_DEBUG_CHECKS
+        error("Incorrectly linked M-M task!");
+#endif
       }
     }
 
@@ -2284,8 +2305,18 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       if (ci_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (cj_active) scheduler_activate(s, ci->recv_grav);
+        if (cj_active) {scheduler_activate(s, ci->recv_grav);
 
+	fprintf(file_dump, "node %d activating cell %d to be received. ",
+	       cj->nodeID, ci->cellID);
+	if(ci->parent == NULL)
+	  fprintf(file_dump, "top\n");
+	else
+	  fprintf(file_dump, " \n");
+
+	fflush(file_dump);
+
+	}
         /* If the foreign cell is active, we want its ti_end values. */
         if (ci_active) scheduler_activate(s, ci->recv_ti);
 
@@ -2293,6 +2324,15 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (ci_active) {
 
           scheduler_activate_send(s, cj->send_grav, ci_nodeID);
+
+	  fprintf(file_dump, "node %d activating cell %d to send to node %d ",
+		 cj->nodeID, cj->cellID, ci->nodeID);
+	if(cj->parent == NULL)
+	  fprintf(file_dump, "top\n");
+	else
+	    fprintf(file_dump, " \n");
+
+	fflush(file_dump);
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
@@ -2306,7 +2346,18 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       } else if (cj_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active) scheduler_activate(s, cj->recv_grav);
+        if (ci_active) {scheduler_activate(s, cj->recv_grav);
+
+	fprintf(file_dump, "node %d activating cell %d to be received. ",
+	       ci->nodeID, cj->cellID);
+	if(cj->parent == NULL)
+	  fprintf(file_dump, "top\n");
+	else
+	  fprintf(file_dump, " \n");
+
+
+	fflush(file_dump);
+	}
 
         /* If the foreign cell is active, we want its ti_end values. */
         if (cj_active) scheduler_activate(s, cj->recv_ti);
@@ -2315,6 +2366,15 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (cj_active) {
 
           scheduler_activate_send(s, ci->send_grav, cj_nodeID);
+
+	  fprintf(file_dump, "node %d activating cell %d to sent to node %d",
+		 ci->nodeID, ci->cellID, cj->nodeID);
+	  if(ci->parent == NULL)
+	    fprintf(file_dump, " top\n");
+	  else
+	    fprintf(file_dump, " \n");
+
+	  fflush(file_dump);
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
@@ -2334,8 +2394,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
-    const int ci_active = cell_is_active_gravity(ci, e);
-    const int cj_active = (cj != NULL) ? cell_is_active_gravity(cj, e) : 0;
+    const int ci_active = cell_is_active_gravity_mm(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_gravity_mm(cj, e) : 0;
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -2344,7 +2404,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
     if (t->type != task_type_grav_mm) error("Incorrectly linked gravity task!");
+#endif
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_nodeID == nodeID) ||
@@ -2356,7 +2418,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Unskip all the other task types. */
-  if (c->nodeID == nodeID && cell_is_active_gravity(c, e)) {
+  if (c->nodeID == nodeID && cell_is_active_gravity_mm(c, e)) {
 
     if (c->init_grav != NULL) scheduler_activate(s, c->init_grav);
     if (c->init_grav_out != NULL) scheduler_activate(s, c->init_grav_out);
@@ -2882,6 +2944,60 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
   /* Recover the multipole information */
   const struct gravity_tensors *const multi_i = ci->multipole;
   const struct gravity_tensors *const multi_j = cj->multipole;
+
+  /* Get the distance between the CoMs */
+  double dx = multi_i->CoM[0] - multi_j->CoM[0];
+  double dy = multi_i->CoM[1] - multi_j->CoM[1];
+  double dz = multi_i->CoM[2] - multi_j->CoM[2];
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+  const double r2 = dx * dx + dy * dy + dz * dz;
+
+  return gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2);
+}
+
+
+/**
+ * @brief Can we use the MM interactions fo a given pair of cells?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param e The #engine.
+ * @param s The #space.
+ */
+int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
+				 const struct engine *e, const struct space *s) {
+
+  const double theta_crit2 = e->gravity_properties->theta_crit2;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+
+  /* Recover the multipole information */
+  const struct gravity_tensors *const multi_i = ci->multipole;
+  const struct gravity_tensors *const multi_j = cj->multipole;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  if(multi_i->CoM[0] < ci->loc[0] || multi_i->CoM[0] > ci->loc[0] + ci->width[0])
+    error("Invalid multipole position ci");
+  if(multi_i->CoM[1] < ci->loc[1] || multi_i->CoM[1] > ci->loc[1] + ci->width[1])
+    error("Invalid multipole position ci");
+  if(multi_i->CoM[2] < ci->loc[2] || multi_i->CoM[2] > ci->loc[2] + ci->width[2])
+    error("Invalid multipole position ci");
+
+  if(multi_j->CoM[0] < cj->loc[0] || multi_j->CoM[0] > cj->loc[0] + cj->width[0])
+    error("Invalid multipole position cj");
+  if(multi_j->CoM[1] < cj->loc[1] || multi_j->CoM[1] > cj->loc[1] + cj->width[1])
+    error("Invalid multipole position cj");
+  if(multi_j->CoM[2] < cj->loc[2] || multi_j->CoM[2] > cj->loc[2] + cj->width[2])
+    error("Invalid multipole position cj");
+
+#endif
 
   /* Get the distance between the CoMs */
   double dx = multi_i->CoM[0] - multi_j->CoM[0];

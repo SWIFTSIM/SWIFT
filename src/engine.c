@@ -92,6 +92,8 @@
 /* Particle cache size. */
 #define CACHE_SIZE 512
 
+FILE* file_dump;
+
 const char *engine_policy_names[] = {"none",
                                      "rand",
                                      "steal",
@@ -113,6 +115,8 @@ const char *engine_policy_names[] = {"none",
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
+
+extern integertime_t ti_current_global;
 
 /**
  * @brief Data collected from the cells at the end of a time-step
@@ -2496,7 +2500,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           if (periodic && min_radius > max_distance) continue;
 
           /* Are the cells too close for a MM interaction ? */
-          if (!cell_can_use_pair_mm(ci, cj, e, s)) {
+          if (!cell_can_use_pair_mm_rebuild(ci, cj, e, s)) {
 
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
@@ -3739,8 +3743,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const struct cell *cj = t->cj;
       const int ci_nodeID = ci->nodeID;
       const int cj_nodeID = cj->nodeID;
-      const int ci_active_gravity = cell_is_active_gravity(ci, e);
-      const int cj_active_gravity = cell_is_active_gravity(cj, e);
+      const int ci_active_gravity = cell_is_active_gravity_mm(ci, e);
+      const int cj_active_gravity = cell_is_active_gravity_mm(cj, e);
 
       if ((ci_active_gravity && ci_nodeID == engine_rank) ||
           (cj_active_gravity && cj_nodeID == engine_rank))
@@ -4003,12 +4007,12 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
 /* If in parallel, exchange the cell structure, top-level and neighbouring
  * multipoles. */
 #ifdef WITH_MPI
-  engine_exchange_cells(e);
-
   if (e->policy & engine_policy_self_gravity) engine_exchange_top_multipoles(e);
 
-  if (e->policy & engine_policy_self_gravity)
-    engine_exchange_proxy_multipoles(e);
+  engine_exchange_cells(e);
+
+  //if (e->policy & engine_policy_self_gravity)
+  //  engine_exchange_proxy_multipoles(e);
 #endif
 
   /* Re-build the tasks. */
@@ -4761,7 +4765,11 @@ void engine_step(struct engine *e) {
   e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_old);
   e->step += 1;
   e->step_props = engine_step_prop_none;
+
+  ti_current_global = e->ti_current;
   
+  fprintf(file_dump, "####################  Step  %d #####################\n\n\n", e->step);
+
   /* When restarting, move everyone to the current time. */
   if (e->restarting) engine_drift_all(e);
 
@@ -5344,7 +5352,7 @@ void engine_makeproxies(struct engine *e) {
   if (e->verbose)
     message(
         "Looking for proxies up to %d top-level cells away (delta_m=%d "
-        "delta_m=%d)",
+        "delta_p=%d)",
         delta, delta_m, delta_p);
 
   /* Loop over each cell in the space. */
@@ -5413,7 +5421,16 @@ void engine_makeproxies(struct engine *e) {
               if (with_gravity) {
 
                 /* Are we too close for M2L? */
-                if (!cell_can_use_pair_mm(&cells[cid], &cells[cjd], e, s))
+                //if (!cell_can_use_pair_mm_rebuild(&cells[cid], &cells[cjd], e, s))
+                /* if (((abs(ind[0] - ii) <= 5 || */
+                /*       abs(ind[0] - ii - cdim[0]) <= 5 || */
+                /*       abs(ind[0] - ii + cdim[0]) <= 5) && */
+                /*      (abs(ind[1] - jj) <= 5 || */
+                /*       abs(ind[1] - jj - cdim[1]) <= 5 || */
+                /*       abs(ind[1] - jj + cdim[1]) <= 5) && */
+                /*      (abs(ind[2] - kk) <= 5 || */
+                /*       abs(ind[2] - kk - cdim[2]) <= 5 || */
+                /*       abs(ind[2] - kk + cdim[2]) <= 5))) */
                   proxy_type |= (int)proxy_cell_type_gravity;
               }
 
@@ -5892,6 +5909,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->restart_dt = 0;
   e->timeFirstSTFOutput = 0;
   engine_rank = nodeID;
+
+  char buffer[32];
+  sprintf(buffer, "dump_%d.txt", engine_rank);
+  file_dump = fopen(buffer, "w");
 
   /* Initialise VELOCIraptor. */
   if (e->policy & engine_policy_structure_finding) {

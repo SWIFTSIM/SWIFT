@@ -122,6 +122,8 @@ struct pcell {
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
 
+  struct gravity_tensors multipole;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Cell ID (for debugging) */
   int cellID;
@@ -156,6 +158,8 @@ struct pcell_step {
  * Contains particles, links to tasks, a multipole object and counters.
  */
 struct cell {
+
+  integertime_t ti_last_update;
 
   /*! The cell location on the grid. */
   double loc[3];
@@ -529,6 +533,8 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 int cell_has_tasks(struct cell *c);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s);
+int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
+				 const struct engine *e, const struct space *s);
 
 /* Inlined functions (for speed). */
 

@@ -889,7 +889,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       }
 
       /* Should we replace it with an M-M task? */
-      if (cell_can_use_pair_mm(ci, cj, e, sp)) {
+      if (cell_can_use_pair_mm_rebuild(ci, cj, e, sp)) {
 
         t->type = task_type_grav_mm;
         t->subtype = task_subtype_none;
