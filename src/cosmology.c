@@ -566,8 +566,10 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->drift_fac_interp_table = NULL;
   c->grav_kick_fac_interp_table = NULL;
   c->hydro_kick_fac_interp_table = NULL;
+  c->hydro_kick_corr_interp_table = NULL;
   c->time_interp_table = NULL;
   c->time_interp_table_offset = 0.;
+  c->scale_factor_interp_table = NULL;
 
   c->time_begin = 0.;
   c->time_end = 0.;
