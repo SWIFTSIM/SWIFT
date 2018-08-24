@@ -29,6 +29,22 @@
 
 /* Local includes. */
 #include "common_io.h"
+#include "engine.h"
+#include "hydro.h"
+#include "swift_velociraptor_part.h"
+
+#ifdef HAVE_VELOCIRAPTOR
+
+/* VELOCIraptor interface. */
+int InitVelociraptor(char *config_name, char *output_name,
+                     struct cosmoinfo cosmo_info, struct unitinfo unit_info,
+                     struct siminfo sim_info);
+int InvokeVelociraptor(const size_t num_gravity_parts,
+                       const size_t num_hydro_parts,
+                       struct swift_vel_part *swift_parts,
+                       const int *cell_node_ids, char *output_name);
+
+#endif /* HAVE_VELOCIRAPTOR */
 
 /**
  * @brief Initialise VELOCIraptor with input and output file names along with
@@ -62,13 +78,16 @@ void velociraptor_init(struct engine *e) {
   message("Omega_cdm: %e", cosmo_info.Omega_cdm);
   message("w_de: %e", cosmo_info.w_de);
 
+  if (e->cosmology->w != -1.)
+    error("w_de is not 1. It is: %lf", e->cosmology->w);
+
   /* Set unit conversions. */
   unit_info.lengthtokpc = 1.0;
   unit_info.velocitytokms = 1.0;
   unit_info.masstosolarmass = 1.0;
   unit_info.energyperunitmass = 1.0;
   unit_info.gravity = e->physical_constants->const_newton_G;
-  unit_info.hubbleunit = e->cosmology->H; /* TODO: double check this. */
+  unit_info.hubbleunit = e->cosmology->H0 / e->cosmology->h;
 
   message("Length conversion factor: %e", unit_info.lengthtokpc);
   message("Velocity conversion factor: %e", unit_info.velocitytokms);
@@ -107,15 +126,18 @@ void velociraptor_init(struct engine *e) {
   sim_info.icellwidth[1] = s->iwidth[1] / unit_info.lengthtokpc;
   sim_info.icellwidth[2] = s->iwidth[2] / unit_info.lengthtokpc;
 
-  /* Allocate and populate top-level cell locations. */
-  if (posix_memalign((void **)&(e->cell_loc), 32,
-                     s->nr_cells * sizeof(struct cell_loc)) != 0)
-    error("Failed to allocate top-level cell locations for VELOCIraptor.");
+  /* Only allocate cell location array on first call to velociraptor_init(). */
+  if (e->cell_loc == NULL) {
+    /* Allocate and populate top-level cell locations. */
+    if (posix_memalign((void **)&(e->cell_loc), 32,
+                       s->nr_cells * sizeof(struct cell_loc)) != 0)
+      error("Failed to allocate top-level cell locations for VELOCIraptor.");
 
-  for (int i = 0; i < s->nr_cells; i++) {
-    e->cell_loc[i].loc[0] = unit_info.lengthtokpc * s->cells_top[i].loc[0];
-    e->cell_loc[i].loc[1] = unit_info.lengthtokpc * s->cells_top[i].loc[1];
-    e->cell_loc[i].loc[2] = unit_info.lengthtokpc * s->cells_top[i].loc[2];
+    for (int i = 0; i < s->nr_cells; i++) {
+      e->cell_loc[i].loc[0] = unit_info.lengthtokpc * s->cells_top[i].loc[0];
+      e->cell_loc[i].loc[1] = unit_info.lengthtokpc * s->cells_top[i].loc[1];
+      e->cell_loc[i].loc[2] = unit_info.lengthtokpc * s->cells_top[i].loc[2];
+    }
   }
 
   sim_info.cell_loc = e->cell_loc;
@@ -215,23 +237,21 @@ void velociraptor_invoke(struct engine *e) {
   bzero(swift_parts, nr_gparts * sizeof(struct swift_vel_part));
 
   const float energy_scale = 1.0;
-  const float a2 = e->cosmology->a * e->cosmology->a;
+  const float a = e->cosmology->a;
 
   message("Energy scaling factor: %f", energy_scale);
-  message("a^2: %f", a2);
+  message("a: %f", a);
 
   /* Convert particle properties into VELOCIraptor units */
   for (size_t i = 0; i < nr_gparts; i++) {
     swift_parts[i].x[0] = gparts[i].x[0];
     swift_parts[i].x[1] = gparts[i].x[1];
     swift_parts[i].x[2] = gparts[i].x[2];
-    swift_parts[i].v[0] =
-        gparts[i].v_full[0] / a2;  // MATTHIEU: Check this a^2 !!
-    swift_parts[i].v[1] = gparts[i].v_full[1] / a2;
-    swift_parts[i].v[2] = gparts[i].v_full[2] / a2;
+    swift_parts[i].v[0] = gparts[i].v_full[0] / a;
+    swift_parts[i].v[1] = gparts[i].v_full[1] / a;
+    swift_parts[i].v[2] = gparts[i].v_full[2] / a;
     swift_parts[i].mass = gravity_get_mass(&gparts[i]);
-    swift_parts[i].potential = gravity_get_comoving_potential(
-        &gparts[i]);  // MATTHIEU: Need factors here?
+    swift_parts[i].potential = gravity_get_comoving_potential(&gparts[i]);
     swift_parts[i].type = gparts[i].type;
 
     /* Set gas particle IDs from their hydro counterparts and set internal

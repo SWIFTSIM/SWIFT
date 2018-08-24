@@ -120,7 +120,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
-#elif defined(MINIMAL_MULTI_MAT_SPH)
+#elif defined(PLANETARY_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
   part->primitives.P = pressure;
@@ -238,9 +238,10 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
     p->conserved.momentum[2] = p->conserved.mass * p->v[2];
     p->conserved.energy =
         p->primitives.P / hydro_gamma_minus_one * volume +
-        0.5f * (p->conserved.momentum[0] * p->conserved.momentum[0] +
-                p->conserved.momentum[1] * p->conserved.momentum[1] +
-                p->conserved.momentum[2] * p->conserved.momentum[2]) /
+        0.5f *
+            (p->conserved.momentum[0] * p->conserved.momentum[0] +
+             p->conserved.momentum[1] * p->conserved.momentum[1] +
+             p->conserved.momentum[2] * p->conserved.momentum[2]) /
             p->conserved.mass;
 #endif
   }
@@ -325,9 +326,10 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->conserved.momentum[2] = part->conserved.mass * part->v[2];
         part->conserved.energy =
             part->primitives.P / hydro_gamma_minus_one * volume +
-            0.5f * (part->conserved.momentum[0] * part->conserved.momentum[0] +
-                    part->conserved.momentum[1] * part->conserved.momentum[1] +
-                    part->conserved.momentum[2] * part->conserved.momentum[2]) /
+            0.5f *
+                (part->conserved.momentum[0] * part->conserved.momentum[0] +
+                 part->conserved.momentum[1] * part->conserved.momentum[1] +
+                 part->conserved.momentum[2] * part->conserved.momentum[2]) /
                 part->conserved.mass;
 #endif
 
@@ -405,8 +407,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
             hydro_get_comoving_density(&main_cell->parts[pid]),
-#if defined(MINIMAL_SPH) || defined(MINIMAL_MULTI_MAT_SPH) || \
-    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) ||       \
+#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||   \
+    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) || \
     defined(HOPKINS_PU_SPH)
             0.f,
 #else
@@ -429,7 +431,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #else
             0.f, 0.f, 0.f
 #endif
-            );
+    );
   }
 
   if (with_solution) {

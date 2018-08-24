@@ -388,9 +388,8 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
     pdpR = p / WR[4];
     if (p > WR[4]) {
       /* shockwave */
-      SR = vR +
-           aR * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpR +
-                      hydro_gamma_minus_one_over_two_gamma);
+      SR = vR + aR * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpR +
+                           hydro_gamma_minus_one_over_two_gamma);
       if (SR > 0.0f) {
         Whalf[0] = WR[0] * (pdpR + hydro_gamma_minus_one_over_gamma_plus_one) /
                    (hydro_gamma_minus_one_over_gamma_plus_one * pdpR + 1.0f);
@@ -436,9 +435,8 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
     pdpL = p / WL[4];
     if (p > WL[4]) {
       /* shockwave */
-      SL = vL -
-           aL * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpL +
-                      hydro_gamma_minus_one_over_two_gamma);
+      SL = vL - aL * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpL +
+                           hydro_gamma_minus_one_over_two_gamma);
       if (SL < 0.0f) {
         Whalf[0] = WL[0] * (pdpL + hydro_gamma_minus_one_over_gamma_plus_one) /
                    (hydro_gamma_minus_one_over_gamma_plus_one * pdpL + 1.0f);

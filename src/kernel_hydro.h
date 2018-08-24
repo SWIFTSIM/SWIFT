@@ -346,7 +346,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx(
   *dW_dx = dw_dx * kernel_constant * kernel_gamma_inv_dim_plus_one;
 }
 
-/* ------------------------------------------------------------------------- */
+  /* -------------------------------------------------------------------------
+   */
 
 #ifdef WITH_OLD_VECTORIZATION
 /**

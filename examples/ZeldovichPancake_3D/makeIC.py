@@ -28,29 +28,34 @@ z_c = 1.             # Redshift of caustic formation (non-linear collapse)
 z_i = 100.           # Initial redshift
 gamma = 5./3.        # Gas adiabatic index
 numPart_1D = 32      # Number of particles along each dimension
+fileName = "zeldovichPancake.hdf5"
 
 
 # Some units
-Mpc_in_m = 3.085678e22
-Msol_in_kg = 1.989e30
-Gyr_in_s = 3.085678e19
+Mpc_in_m = 3.08567758e22
+Msol_in_kg = 1.98848e30
+Gyr_in_s = 3.08567758e19
 mH_in_kg = 1.6737236e-27
-k_in_J_K = 1.38064852e-23
 
-# Parameters
-rho_0 = 1.8788e-26 # h^2 kg m^-3
-H_0 = 1. / Mpc_in_m * 10**5 # s^-1
+# Some constants
+kB_in_SI = 1.38064852e-23
+G_in_SI = 6.67408e-11
+
+# Some useful variables in h-full units
+H_0 = 1. / Mpc_in_m * 10**5 # h s^-1
+rho_0 = 3. * H_0**2 / (8* math.pi * G_in_SI) # h^2 kg m^-3
 lambda_i = 64. / H_0 * 10**5 # h^-1 m (= 64 h^-1 Mpc)
 x_min = -0.5 * lambda_i
 x_max = 0.5 * lambda_i
-fileName = "zeldovichPancake.hdf5"
 
+# SI system of units
 unit_l_in_si = Mpc_in_m
 unit_m_in_si = Msol_in_kg * 1.e10
 unit_t_in_si = Gyr_in_s
 unit_v_in_si = unit_l_in_si / unit_t_in_si
 unit_u_in_si = unit_v_in_si**2
 
+# Total number of particles
 numPart = numPart_1D**3
 
 #---------------------------------------------------
@@ -87,7 +92,7 @@ for i in range(numPart_1D):
       coords[index,1] = (j + 0.5) * delta_x
       coords[index,2] = (k + 0.5) * delta_x
       T = T_i * (1. / (1. - zfac * cos(k_i * q)))**(2. / 3.)
-      u[index] = k_in_J_K * T / (gamma - 1.) / mH_in_kg
+      u[index] = kB_in_SI * T / (gamma - 1.) / mH_in_kg
       h[index] = 1.2348 * delta_x
       m[index] = m_i
       v[index,0] = -H_0 * (1. + z_c) / sqrt(1. + z_i) * sin(k_i * q) / k_i
@@ -141,7 +146,7 @@ grp.create_dataset('ParticleIDs', data=ids, dtype='L')
 
 file.close()
 
-import pylab as pl
+#import pylab as pl
 
-pl.plot(coords[:,0], v[:,0], "k.")
-pl.show()
+#pl.plot(coords[:,0], v[:,0], "k.")
+#pl.show()

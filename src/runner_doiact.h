@@ -2297,10 +2297,16 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid)) ||
         ci->dx_max_sort_old > ci->dmin * space_maxreldx)
-      error("Interacting unsorted cell.");
+      error(
+          "Interacting unsorted cell. ci->dx_max_sort_old=%e ci->dmin=%e "
+          "ci->sorted=%d sid=%d",
+          ci->dx_max_sort_old, ci->dmin, ci->sorted, sid);
     if (!(cj->sorted & (1 << sid)) ||
         cj->dx_max_sort_old > cj->dmin * space_maxreldx)
-      error("Interacting unsorted cell.");
+      error(
+          "Interacting unsorted cell. cj->dx_max_sort_old=%e cj->dmin=%e "
+          "cj->sorted=%d sid=%d",
+          cj->dx_max_sort_old, cj->dmin, cj->sorted, sid);
 
     /* Compute the interactions. */
     DOPAIR1_BRANCH(r, ci, cj);
@@ -2588,10 +2594,16 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid)) ||
         ci->dx_max_sort_old > ci->dmin * space_maxreldx)
-      error("Interacting unsorted cells.");
+      error(
+          "Interacting unsorted cell. ci->dx_max_sort_old=%e ci->dmin=%e "
+          "ci->sorted=%d sid=%d",
+          ci->dx_max_sort_old, ci->dmin, ci->sorted, sid);
     if (!(cj->sorted & (1 << sid)) ||
         cj->dx_max_sort_old > cj->dmin * space_maxreldx)
-      error("Interacting unsorted cells.");
+      error(
+          "Interacting unsorted cell. cj->dx_max_sort_old=%e cj->dmin=%e "
+          "cj->sorted=%d sid=%d",
+          cj->dx_max_sort_old, cj->dmin, cj->sorted, sid);
 
     /* Compute the interactions. */
     DOPAIR2_BRANCH(r, ci, cj);

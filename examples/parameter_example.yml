@@ -75,12 +75,15 @@ Snapshots:
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
   compression: 0          # (Optional) Set the level of compression of the HDF5 datasets [0-9]. 0 does no compression.
+  label_first: 0          # (Optional) An additional offset for the snapshot output label
   label_delta: 1          # (Optional) Set the integer increment between snapshot output labels
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
   UnitLength_in_cgs:   1  # (Optional) Unit system for the outputs (Centimeters)
   UnitVelocity_in_cgs: 1  # (Optional) Unit system for the outputs (Centimeters per second)
   UnitCurrent_in_cgs:  1  # (Optional) Unit system for the outputs (Amperes)
   UnitTemp_in_cgs:     1  # (Optional) Unit system for the outputs (Kelvin)
+  output_list_on:      0  # (Optional) Enable the output list
+  output_list:         snaplist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -89,6 +92,8 @@ Statistics:
   time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
   energy_file_name:    energy    # (Optional) File name for energy output
   timestep_file_name:  timesteps # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name
+  output_list_on:      0   	 # (Optional) Enable the output list
+  output_list:         statlist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
 
 # Parameters related to the initial conditions
 InitialConditions:
@@ -141,9 +146,13 @@ EoS:
   planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EOS
   planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EOS
                             # (Optional) Table file paths
-  planetary_HM80_HHe_table_file:    HM80_HHe.txt
-  planetary_HM80_ice_table_file:    HM80_ice.txt
-  planetary_HM80_rock_table_file:   HM80_rock.txt
+  planetary_HM80_HHe_table_file:        ./equation_of_state/planetary_HM80_HHe.txt
+  planetary_HM80_ice_table_file:        ./equation_of_state/planetary_HM80_ice.txt
+  planetary_HM80_rock_table_file:       ./equation_of_state/planetary_HM80_rock.txt
+  planetary_SESAME_iron_table_file:     ./equation_of_state/planetary_SESAME_iron_2140.txt
+  planetary_SESAME_basalt_table_file:   ./equation_of_state/planetary_SESAME_basalt_7530.txt
+  planetary_SESAME_water_table_file:    ./equation_of_state/planetary_SESAME_water_7154.txt
+  planetary_SS08_water_table_file:      ./equation_of_state/planetary_SS08_water.txt
 
 # Parameters related to external potentials --------------------------------------------
 
@@ -223,3 +232,14 @@ EAGLEChemistry:
   CalciumOverSilicon:      0.0941736    # Constant ratio of Calcium over Silicon abundance
   SulphurOverSilicon:      0.6054160    # Constant ratio of Sulphur over Silicon abundance
 
+# Structure finding options (requires velociraptor)
+StructureFinding:
+  config_file_name:     stf_input.cfg # Name of the STF config file.
+  basename:             ./stf         # Common part of the name of output files.
+  output_time_format:   0             # Specifies the frequency format of structure finding. 0 for simulation steps (delta_step) and 1 for simulation time intervals (delta_time).
+  scale_factor_first:   0.92          # Scale-factor of the first snaphot (cosmological run)
+  time_first:           0.01          # Time of the first structure finding output (in internal units).
+  delta_step:           1000          # Time difference between consecutive structure finding outputs (in internal units) in simulation steps.
+  delta_time:           1.10          # Time difference between consecutive structure finding outputs (in internal units) in simulation time intervals.
+  output_list_on:      0   	      # (Optional) Enable the output list
+  output_list:         stflist.txt    # (Optional) File containing the output times (see documentation in "Parameter File" section)

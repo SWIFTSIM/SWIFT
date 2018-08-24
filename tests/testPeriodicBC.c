@@ -252,7 +252,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
 #else
             0., 0., 0., 0.
 #endif
-            );
+    );
   }
   fclose(file);
 }

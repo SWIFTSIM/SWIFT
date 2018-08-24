@@ -22,10 +22,8 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Includes. */
-#include "engine.h"
-#include "hydro.h"
-#include "swift_vel_part.h"
+/* Forward declaration */
+struct engine;
 
 /* Structure for passing cosmological information to VELOCIraptor. */
 struct cosmoinfo {
@@ -99,15 +97,6 @@ struct siminfo {
 
   int icosmologicalsim;
 };
-
-/* VELOCIraptor interface. */
-int InitVelociraptor(char *config_name, char *output_name,
-                     struct cosmoinfo cosmo_info, struct unitinfo unit_info,
-                     struct siminfo sim_info);
-int InvokeVelociraptor(const size_t num_gravity_parts,
-                       const size_t num_hydro_parts,
-                       struct swift_vel_part *swift_parts,
-                       const int *cell_node_ids, char *output_name);
 
 /* VELOCIraptor wrapper functions. */
 void velociraptor_init(struct engine *e);

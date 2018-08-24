@@ -109,8 +109,9 @@ INLINE static void chemistry_write_flavour(hid_t h_grp) {
   for (int elem = 0; elem < chemistry_element_count; ++elem) {
     char buffer[20];
     sprintf(buffer, "Element %d", elem);
-    io_write_attribute_s(h_grp, buffer, chemistry_get_element_name(
-                                            (enum chemistry_element)elem));
+    io_write_attribute_s(
+        h_grp, buffer,
+        chemistry_get_element_name((enum chemistry_element)elem));
   }
 }
 #endif

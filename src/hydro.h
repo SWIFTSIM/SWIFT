@@ -62,9 +62,9 @@
 #include "./hydro/Shadowswift/hydro_iact.h"
 #define SPH_IMPLEMENTATION \
   "Shadowfax moving mesh (Vandenbroucke and De Rijcke 2016)"
-#elif defined(MINIMAL_MULTI_MAT_SPH)
-#include "./hydro/MinimalMultiMat/hydro.h"
-#include "./hydro/MinimalMultiMat/hydro_iact.h"
+#elif defined(PLANETARY_SPH)
+#include "./hydro/Planetary/hydro.h"
+#include "./hydro/Planetary/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Minimal version of SPH with multiple materials"
 #else
 #error "Invalid choice of SPH variant"

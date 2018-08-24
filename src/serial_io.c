@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 /* This object's header. */
 #include "serial_io.h"
@@ -759,10 +760,11 @@ void write_output_serial(struct engine* e, const char* baseName,
   char fileName[FILENAME_BUFFER_SIZE];
   if (e->snapshot_label_delta == 1)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->snapshot_output_count);
+             e->snapshot_output_count + e->snapshot_label_first);
   else
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
-             e->snapshot_output_count * e->snapshot_label_delta);
+             e->snapshot_output_count * e->snapshot_label_delta +
+                 e->snapshot_label_first);
 
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas, Ndm, 0, 0, Nstars, 0};
@@ -821,6 +823,8 @@ void write_output_serial(struct engine* e, const char* baseName,
     io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
     io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
     io_write_attribute_s(h_grp, "Code", "SWIFT");
+    time_t tm = time(NULL);
+    io_write_attribute_s(h_grp, "Snapshot date", ctime(&tm));
 
     /* GADGET-2 legacy values */
     /* Number of particles of each type */

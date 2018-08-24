@@ -270,6 +270,18 @@ elif test "$gravity_force_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_GRAVITY_FORCE_CHECKS], [$enableval] ,[Enable gravity brute-force checks])
 fi
 
+# Check whether we want to switch on glass making
+AC_ARG_ENABLE([glass-making],
+   [AS_HELP_STRING([--enable-glass-making],
+     [Activate the glass-making procedure by reversing the sign of gravity @<:@yes/no@:>@]
+   )],
+   [gravity_glass_making="$enableval"],
+   [gravity_glass_making="no"]
+)
+if test "$gravity_glass_making" == "yes"; then
+   AC_DEFINE([SWIFT_MAKE_GRAVITY_GLASS], 1, [Make the code run in a way to produce a glass file for gravity/cosmology])
+fi
+
 # Check if we want to zero the gravity forces for all particles below some ID.
 AC_ARG_ENABLE([no-gravity-below-id],
    [AS_HELP_STRING([--enable-no-gravity-below-id],
@@ -630,7 +642,7 @@ if test "x$with_profiler" != "xno"; then
       proflibs="-lprofiler"
    fi
    AC_CHECK_LIB([profiler],[ProfilerFlush],
-    [have_profiler="yes" 
+    [have_profiler="yes"
       AC_DEFINE([WITH_PROFILER],1,[Link against the gperftools profiling library.])],
     [have_profiler="no"], $proflibs)
 
@@ -1027,7 +1039,7 @@ esac
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, default, gizmo-mfv, gizmo-mfm, shadowfax, minimal-multi-mat, debug default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, debug default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -1066,9 +1078,10 @@ case "$with_hydro" in
    shadowfax)
       AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])
    ;;
-   minimal-multi-mat)
-      AC_DEFINE([MINIMAL_MULTI_MAT_SPH], [1], [Minimal Multiple Material SPH])
+   planetary)
+      AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
    ;;
+
 
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
@@ -1413,6 +1426,7 @@ AC_CONFIG_FILES([tests/testPeriodicBCPerturbed.sh], [chmod +x tests/testPeriodic
 AC_CONFIG_FILES([tests/testInteractions.sh], [chmod +x tests/testInteractions.sh])
 AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 AC_CONFIG_FILES([tests/testSelectOutput.sh], [chmod +x tests/testSelectOutput.sh])
+AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 
 # Save the compilation options
 AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
@@ -1461,6 +1475,7 @@ AC_MSG_RESULT([
    Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order
    No gravity below ID : $no_gravity_below_id
+   Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
 
    Cooling function   : $with_cooling

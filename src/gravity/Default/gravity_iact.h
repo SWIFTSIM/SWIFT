@@ -176,13 +176,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
-/* 1st order contributions */
+  /* 1st order contributions */
 
-/* 1st order contributions are all 0 since the dipole is 0 */
+  /* 1st order contributions are all 0 since the dipole is 0 */
 
-/* *f_x = m->M_001 * d.D_101 + m->M_010 * d.D_110 + m->M_100 * d.D_200 ; */
-/* *f_y = m->M_001 * d.D_011 + m->M_010 * d.D_020 + m->M_100 * d.D_110 ; */
-/* *f_z = m->M_001 * d.D_002 + m->M_010 * d.D_011 + m->M_100 * d.D_101 ; */
+  /* *f_x = m->M_001 * d.D_101 + m->M_010 * d.D_110 + m->M_100 * d.D_200 ; */
+  /* *f_y = m->M_001 * d.D_011 + m->M_010 * d.D_020 + m->M_100 * d.D_110 ; */
+  /* *f_z = m->M_001 * d.D_002 + m->M_010 * d.D_011 + m->M_100 * d.D_101 ; */
 
 #endif
 
@@ -281,13 +281,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
-/* 1st order contributions */
+  /* 1st order contributions */
 
-/* 1st order contributions are all 0 since the dipole is 0 */
+  /* 1st order contributions are all 0 since the dipole is 0 */
 
-/* *f_x = m->M_001 * d.D_101 + m->M_010 * d.D_110 + m->M_100 * d.D_200 ; */
-/* *f_y = m->M_001 * d.D_011 + m->M_010 * d.D_020 + m->M_100 * d.D_110 ; */
-/* *f_z = m->M_001 * d.D_002 + m->M_010 * d.D_011 + m->M_100 * d.D_101 ; */
+  /* *f_x = m->M_001 * d.D_101 + m->M_010 * d.D_110 + m->M_100 * d.D_200 ; */
+  /* *f_y = m->M_001 * d.D_011 + m->M_010 * d.D_020 + m->M_100 * d.D_110 ; */
+  /* *f_z = m->M_001 * d.D_002 + m->M_010 * d.D_011 + m->M_100 * d.D_101 ; */
 
 #endif
 

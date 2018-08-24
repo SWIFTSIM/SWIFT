@@ -63,7 +63,7 @@ INLINE static void hydro_read_particles(struct part* parts,
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
-                                UNIT_CONV_DENSITY, parts, primitives.rho);
+                                UNIT_CONV_DENSITY, parts, rho);
 }
 
 /**
@@ -203,12 +203,12 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                               parts, xparts, convert_u);
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, id);
-  list[6] = io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts,
-                                 primitives.rho);
+  list[6] =
+      io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
   list[7] = io_make_output_field_convert_part(
       "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, parts, xparts, convert_A);
-  list[8] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
-                                 parts, primitives.P);
+  list[8] =
+      io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, P);
   list[9] = io_make_output_field_convert_part(
       "TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY, parts, xparts, convert_Etot);
 

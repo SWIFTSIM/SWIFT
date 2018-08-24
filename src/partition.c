@@ -1414,9 +1414,8 @@ void partition_initial_partition(struct partition *initial_partition,
     struct cell *c;
 
     /* If we've got the wrong number of nodes, fail. */
-    if (nr_nodes !=
-        initial_partition->grid[0] * initial_partition->grid[1] *
-            initial_partition->grid[2])
+    if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
+                        initial_partition->grid[2])
       error("Grid size does not match number of nodes.");
 
     /* Run through the cells and set their nodeID. */
@@ -1425,9 +1424,8 @@ void partition_initial_partition(struct partition *initial_partition,
       c = &s->cells_top[k];
       for (j = 0; j < 3; j++)
         ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
-      c->nodeID = ind[0] +
-                  initial_partition->grid[0] *
-                      (ind[1] + initial_partition->grid[1] * ind[2]);
+      c->nodeID = ind[0] + initial_partition->grid[0] *
+                               (ind[1] + initial_partition->grid[1] * ind[2]);
       // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
       // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
     }

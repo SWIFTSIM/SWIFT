@@ -111,6 +111,13 @@ extern const char *taskID_names[];
 extern const char *subtaskID_names[];
 
 /**
+ *  @brief The MPI communicators for the different subtypes.
+ */
+#ifdef WITH_MPI
+extern MPI_Comm subtaskMPI_comms[task_subtype_count];
+#endif
+
+/**
  * @brief A task to be run by the #scheduler.
  */
 struct task {
@@ -187,5 +194,7 @@ float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);
 void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
-
+#ifdef WITH_MPI
+void task_create_mpi_comms(void);
+#endif
 #endif /* SWIFT_TASK_H */

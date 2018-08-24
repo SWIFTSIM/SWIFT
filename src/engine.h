@@ -215,11 +215,15 @@ struct engine {
   double time_first_snapshot;
   double delta_time_snapshot;
 
+  /* Output_List for the snapshots */
+  struct output_list *output_list_snapshots;
+
   /* Integer time of the next snapshot */
   integertime_t ti_next_snapshot;
 
   char snapshot_base_name[PARSER_MAX_LINE_SIZE];
   int snapshot_compression;
+  int snapshot_label_first;
   int snapshot_label_delta;
   struct unit_system *snapshot_units;
   int snapshot_output_count;
@@ -231,6 +235,9 @@ struct engine {
   double deltaTimeSTF;
   int deltaStepSTF;
 
+  /* Output_List for the structure finding */
+  struct output_list *output_list_stf;
+
   /* Integer time of the next stf output */
   integertime_t ti_nextSTF;
 
@@ -240,6 +247,9 @@ struct engine {
   double a_first_statistics;
   double time_first_statistics;
   double delta_time_statistics;
+
+  /* Output_List for the stats */
+  struct output_list *output_list_stats;
 
   /* Integer time of the next statistics dump */
   integertime_t ti_next_stats;
@@ -372,7 +382,9 @@ void engine_drift_all(struct engine *e);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
+void engine_check_for_dumps(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
+void engine_init_output_lists(struct engine *e, struct swift_params *params);
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
                  int policy, int verbose, struct repartition *reparttype,
