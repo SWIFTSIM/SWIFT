@@ -93,6 +93,7 @@
 #define CACHE_SIZE 512
 
 FILE* file_dump;
+FILE* file_tasks;
 
 const char *engine_policy_names[] = {"none",
                                      "rand",
@@ -1389,6 +1390,9 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 #endif
 }
 
+int count_send[4];
+int count_recv[4];
+
 /**
  * @brief Add send tasks for the gravity pairs to a hierarchy of cells.
  *
@@ -1420,6 +1424,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
                                  6 * ci->tag + 4, 0, ci, cj);
 
+      count_send[nodeID]++;
+      
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->super_gravity->grav_down);
 
@@ -1582,6 +1588,10 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                6 * c->tag + 4, 0, c, NULL);
+
+    if(c->nodeID < 0 || c->nodeID > 3)
+      error("Invalid nodeID");
+    count_recv[c->nodeID]++;
   }
 
   c->recv_grav = t_grav;
@@ -2210,8 +2220,8 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
   const ticks tic = getticks();
 
   /* Start by counting the number of cells to send and receive */
-  int count_send = 0;
-  int count_recv = 0;
+  int count_send_cells = 0;
+  int count_recv_cells = 0;
   int count_send_requests = 0;
   int count_recv_requests = 0;
 
@@ -2227,21 +2237,21 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 
     /* And the actual number of things we are going to ship */
     for (int k = 0; k < p->nr_cells_in; k++)
-      count_recv += p->cells_in[k]->pcell_size;
+      count_recv_cells += p->cells_in[k]->pcell_size;
 
     for (int k = 0; k < p->nr_cells_out; k++)
-      count_send += p->cells_out[k]->pcell_size;
+      count_send_cells += p->cells_out[k]->pcell_size;
   }
 
   /* Allocate the buffers for the packed data */
   struct gravity_tensors *buffer_send = NULL;
   if (posix_memalign((void **)&buffer_send, SWIFT_CACHE_ALIGNMENT,
-                     count_send * sizeof(struct gravity_tensors)) != 0)
+                     count_send_cells * sizeof(struct gravity_tensors)) != 0)
     error("Unable to allocate memory for multipole transactions");
 
   struct gravity_tensors *buffer_recv = NULL;
   if (posix_memalign((void **)&buffer_recv, SWIFT_CACHE_ALIGNMENT,
-                     count_recv * sizeof(struct gravity_tensors)) != 0)
+                     count_recv_cells * sizeof(struct gravity_tensors)) != 0)
     error("Unable to allocate memory for multipole transactions");
 
   /* Also allocate the MPI requests */
@@ -3321,6 +3331,11 @@ void engine_maketasks(struct engine *e) {
     message("Linking gravity tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
+  for(int k=0; k<4 ; ++k){
+    count_send[k] = 0;
+    count_recv[k] = 0;
+  }
+
 #ifdef WITH_MPI
 
   /* Add the communication tasks if MPI is being used. */
@@ -3372,6 +3387,12 @@ void engine_maketasks(struct engine *e) {
     }
   }
 #endif
+
+  for(int k=0; k<4 ; ++k){
+    fprintf(file_tasks, "Send to %d: %d\n", k, count_send[k]);
+    fprintf(file_tasks, "recv from %d: %d\n", k, count_recv[k]);
+  }  
+  fflush(file_tasks);
 
   tic2 = getticks();
 
@@ -3804,10 +3825,10 @@ void engine_print_task_counts(struct engine *e) {
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
 
-  int count_send_gpart = 0;
-  int count_recv_gpart = 0;
-  int count_send_tiend = 0;
-  int count_recv_tiend = 0;
+  int count_send_gpart[4] = {0};
+  int count_recv_gpart[4] = {0};
+  int count_send_tiend[4] = {0};
+  int count_recv_tiend[4] = {0};
 
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
@@ -3820,16 +3841,16 @@ void engine_print_task_counts(struct engine *e) {
 
       if (tasks[k].type == task_type_send &&
           tasks[k].subtype == task_subtype_gpart)
-        ++count_send_gpart;
+        ++count_send_gpart[tasks[k].cj->nodeID];
       if (tasks[k].type == task_type_send &&
           tasks[k].subtype == task_subtype_tend)
-        ++count_send_tiend;
+        ++count_send_tiend[tasks[k].cj->nodeID];
       if (tasks[k].type == task_type_recv &&
           tasks[k].subtype == task_subtype_gpart)
-        ++count_recv_gpart;
+        ++count_recv_gpart[tasks[k].ci->nodeID];
       if (tasks[k].type == task_type_recv &&
           tasks[k].subtype == task_subtype_tend)
-        ++count_recv_tiend;
+        ++count_recv_tiend[tasks[k].ci->nodeID];
     }
   }
   message("Total = %d  (per cell = %d)", nr_tasks,
@@ -3845,10 +3866,10 @@ void engine_print_task_counts(struct engine *e) {
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  message("send_gpart = %d", count_send_gpart);
-  message("send_tiend = %d", count_send_tiend);
-  message("recv_gpart = %d", count_recv_gpart);
-  message("recv_tiend = %d", count_recv_tiend);
+  message("send_gpart = %3d %3d %3d %3d", count_send_gpart[0], count_send_gpart[1], count_send_gpart[2], count_send_gpart[3]);
+  message("recv_gpart = %3d %3d %3d %3d", count_recv_gpart[0], count_recv_gpart[1], count_recv_gpart[2], count_recv_gpart[3]);
+  message("send_tiend = %3d %3d %3d %3d", count_send_tiend[0], count_send_tiend[1], count_send_tiend[2], count_send_tiend[3]);
+  message("recv_tiend = %3d %3d %3d %3d", count_recv_tiend[0], count_recv_tiend[1], count_recv_tiend[2], count_recv_tiend[3]);
 
   message("nr_parts = %zu.", e->s->nr_parts);
   message("nr_gparts = %zu.", e->s->nr_gparts);
@@ -4769,6 +4790,7 @@ void engine_step(struct engine *e) {
   ti_current_global = e->ti_current;
   
   fprintf(file_dump, "####################  Step  %d #####################\n\n\n", e->step);
+  fprintf(file_tasks, "####################  Step  %d #####################\n\n\n", e->step);
 
   /* When restarting, move everyone to the current time. */
   if (e->restarting) engine_drift_all(e);
@@ -5913,6 +5935,9 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   char buffer[32];
   sprintf(buffer, "dump_%d.txt", engine_rank);
   file_dump = fopen(buffer, "w");
+
+  sprintf(buffer, "tasks_%d.txt", engine_rank);
+  file_tasks = fopen(buffer, "w");
 
   /* Initialise VELOCIraptor. */
   if (e->policy & engine_policy_structure_finding) {

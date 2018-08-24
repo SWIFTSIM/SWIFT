@@ -428,6 +428,7 @@ void space_regrid(struct space *s, int verbose) {
           c->ti_old_part = ti_current;
           c->ti_old_gpart = ti_current;
           c->ti_old_multipole = ti_current;
+	  c->cellID = -(last_cell_id++);
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
         }
 
@@ -2747,6 +2748,8 @@ void space_init(struct space *s, struct swift_params *params,
     part_verify_links(parts, gparts, sparts, Npart, Ngpart, Nspart, 1);
 #endif
   }
+
+  last_cell_id = 1;
 
   /* Are we replicating the space ? */
   if (replicate < 1)
