@@ -204,6 +204,10 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->do_sub_sort = 0;
     c->do_grav_sub_drift = 0;
     c->do_sub_drift = 0;
+    c->ti_hydro_end_min = -1;
+    c->ti_hydro_end_max = -1;
+    c->ti_gravity_end_min = -1;
+    c->ti_gravity_end_max = -1;
     if (s->gravity) bzero(c->multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
       if (c->sort[i] != NULL) {
