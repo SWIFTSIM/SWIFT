@@ -20,11 +20,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-#if defined(COOLING_EAGLE)
-#include "./cooling/EAGLE/cooling_struct.h"
-#include "./cooling/EAGLE/eagle_cool_tables.h"
-#endif
-
 /* This object's header. */
 #include "cooling.h"
 #include "restart.h"
