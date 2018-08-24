@@ -293,8 +293,8 @@ double clocks_get_cputime_used(void) {
  * @result an integer.
  */
 int clocks_random_seed(void) {
-    struct timespec timespec;
 #ifdef HAVE_CLOCK_GETTIME
+    struct timespec timespec;
     clock_gettime(CLOCK_REALTIME, &timespec);
     return (timespec.tv_nsec % INT_MAX);
 #else
