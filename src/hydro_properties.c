@@ -179,7 +179,7 @@ void hydro_props_print(const struct hydro_props *p) {
   if (p->minimal_temperature != hydro_props_default_min_temp)
     message("Minimal gas temperature set to %f", p->minimal_temperature);
 
-  // Matthieu: Temporary location for this i/o business.
+    // Matthieu: Temporary location for this i/o business.
 #ifdef PLANETARY_SPH
 #ifdef PLANETARY_SPH_BALSARA
   message("Planetary SPH: Balsara switch enabled");
