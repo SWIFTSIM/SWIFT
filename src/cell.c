@@ -186,7 +186,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
   pc->count = c->count;
   pc->gcount = c->gcount;
   pc->scount = c->scount;
-  c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
+
 #ifdef SWIFT_DEBUG_CHECKS
   pc->cellID = c->cellID;
 #endif
@@ -197,11 +197,46 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
     if (c->progeny[k] != NULL) {
       pc->progeny[k] = count;
       count += cell_pack(c->progeny[k], &pc[count]);
-    } else
+    } else {
       pc->progeny[k] = -1;
+    }
 
   /* Return the number of packed cells used. */
   c->pcell_size = count;
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Pack the tag of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param tags Pointer to an array of packed tags.
+ *
+ * @return The number of packed tags.
+ */
+int cell_pack_tags(const struct cell *c, int *tags) {
+
+#ifdef WITH_MPI
+
+  /* Start by packing the data of the current cell. */
+  tags[0] = c->tag;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      count += cell_pack_tags(c->progeny[k], &tags[count]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->pcell_size != count) error("Inconsistent tag and pcell count!");
+#endif  // SWIFT_DEBUG_CHECKS
+
+  /* Return the number of packed tags used. */
   return count;
 
 #else
@@ -236,7 +271,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->count = pc->count;
   c->gcount = pc->gcount;
   c->scount = pc->scount;
-  c->tag = pc->tag;
 #ifdef SWIFT_DEBUG_CHECKS
   c->cellID = pc->cellID;
 #endif
@@ -275,6 +309,43 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
 
   /* Return the total number of unpacked cells. */
   c->pcell_size = count;
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the tags of a given cell and its sub-cells.
+ *
+ * @param tags An array of tags.
+ * @param c The #cell in which to unpack the tags.
+ *
+ * @return The number of tags created.
+ */
+int cell_unpack_tags(const int *tags, struct cell *restrict c) {
+
+#ifdef WITH_MPI
+
+  /* Unpack the current pcell. */
+  c->tag = tags[0];
+
+  /* Number of new cells created. */
+  int count = 1;
+
+  /* Fill the progeny recursively, depth-first. */
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_tags(&tags[count], c->progeny[k]);
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->pcell_size != count) error("Inconsistent tag and pcell count!");
+#endif  // SWIFT_DEBUG_CHECKS
+
+  /* Return the total number of unpacked tags. */
   return count;
 
 #else
@@ -2455,6 +2526,11 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
+
+    /* All top-level cells get an MPI tag. */
+#ifdef WITH_MPI
+    if (c->tag < 0 && c->sendto) cell_tag(c);
+#endif
 
     /* Super-pointer for hydro */
     if (e->policy & engine_policy_hydro) cell_set_super_hydro(c, NULL);

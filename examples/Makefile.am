@@ -57,6 +57,7 @@ swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(MPI_LIBS) $(EXTRA_LIBS)
 
 # Scripts to generate ICs
 EXTRA_DIST = CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/makeIC.py CoolingBox/run.sh \
+             ConstantCosmoVolume/run.sh ConstantCosmoVolume/makeIC.py ConstantCosmoVolume/plotSolution.py ConstantCosmoVolume/constant_volume.yml \
 	     EAGLE_6/eagle_6.yml EAGLE_6/getIC.sh EAGLE_6/README EAGLE_6/run.sh \
 	     EAGLE_12/eagle_12.yml EAGLE_12/getIC.sh EAGLE_12/README EAGLE_12/run.sh \
 	     EAGLE_25/eagle_25.yml EAGLE_25/getIC.sh EAGLE_25/README EAGLE_25/run.sh \
@@ -94,7 +95,7 @@ EXTRA_DIST = CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/make
 	     SquareTest_2D/makeIC.py SquareTest_2D/plotSolution.py SquareTest_2D/run.sh SquareTest_2D/square.yml \
 	     UniformBox_2D/makeIC.py UniformBox_2D/run.sh UniformBox_2D/uniformPlane.yml \
 	     UniformBox_3D/makeICbig.py UniformBox_3D/makeIC.py UniformBox_3D/run.sh UniformBox_3D/uniformBox.yml \
-	     UniformDMBox/makeIC.py \
+	     Gravity_glass/makeIC.py Gravity_glass/README Gravity_glass/uniform_DM_box.yml \
              ZeldovichPancake_3D/makeIC.py ZeldovichPancake_3D/zeldovichPancake.yml ZeldovichPancake_3D/run.sh ZeldovichPancake_3D/plotSolution.py
 
 # Default parameter file

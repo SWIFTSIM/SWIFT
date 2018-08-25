@@ -1324,13 +1324,16 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
 
-      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv,
-                               6 * ci->tag + 0, 0, ci, cj);
-      t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
-                                6 * ci->tag + 1, 0, ci, cj);
+      /* Create a tag for this cell. */
+      if (ci->tag < 0) cell_tag(ci);
+
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->tag, 0,
+                               ci, cj);
+      t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho, ci->tag, 0,
+                                ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
-                                     6 * ci->tag + 3, 0, ci, cj);
+                                     ci->tag, 0, ci, cj);
 #endif
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -1413,8 +1416,11 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_grav == NULL) {
 
-      t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
-                                 6 * ci->tag + 4, 0, ci, cj);
+      /* Create a tag for this cell. */
+      if (ci->tag < 0) cell_tag(ci);
+
+      t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart, ci->tag,
+                                 0, ci, cj);
 
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->super_gravity->grav_down);
@@ -1473,8 +1479,11 @@ void engine_addtasks_send_timestep(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_ti == NULL) {
 
-      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
-                               6 * ci->tag + 2, 0, ci, cj);
+      /* Create a tag for this cell. */
+      if (ci->tag < 0) cell_tag(ci);
+
+      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend, ci->tag, 0,
+                               ci, cj);
 
       /* The super-cell's timestep task should unlock the send_ti task. */
       scheduler_addunlock(s, ci->super->timestep, t_ti);
@@ -1514,14 +1523,19 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
   /* Have we reached a level where there are any hydro tasks ? */
   if (t_xv == NULL && c->density != NULL) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
     /* Create the tasks. */
-    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, 6 * c->tag + 0,
-                             0, c, NULL);
-    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
-                              6 * c->tag + 1, 0, c, NULL);
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->tag, 0, c,
+                             NULL);
+    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, c->tag, 0, c,
+                              NULL);
 #ifdef EXTRA_HYDRO_LOOP
     t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
-                                   6 * c->tag + 3, 0, c, NULL);
+                                   c->tag, 0, c, NULL);
 #endif
   }
 
@@ -1575,9 +1589,14 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   /* Have we reached a level where there are any gravity tasks ? */
   if (t_grav == NULL && c->grav != NULL) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
     /* Create the tasks. */
-    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
-                               6 * c->tag + 4, 0, c, NULL);
+    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart, c->tag, 0,
+                               c, NULL);
   }
 
   c->recv_grav = t_grav;
@@ -1612,8 +1631,13 @@ void engine_addtasks_recv_timestep(struct engine *e, struct cell *c,
   /* Have we reached a level where there are any self/pair tasks ? */
   if (t_ti == NULL && (c->grav != NULL || c->density != NULL)) {
 
-    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
-                             6 * c->tag + 2, 0, c, NULL);
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
+    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend, c->tag, 0, c,
+                             NULL);
   }
 
   c->recv_ti = t_ti;
@@ -1645,80 +1669,11 @@ void engine_exchange_cells(struct engine *e) {
 #ifdef WITH_MPI
 
   struct space *s = e->s;
-  struct cell *cells = s->cells_top;
-  const int nr_cells = s->nr_cells;
   const int nr_proxies = e->nr_proxies;
-  int offset[nr_cells];
-  MPI_Request reqs_in[engine_maxproxies];
-  MPI_Request reqs_out[engine_maxproxies];
-  MPI_Status status;
   const ticks tic = getticks();
 
-  /* Run through the cells and get the size of the ones that will be sent off.
-   */
-  int count_out = 0;
-  for (int k = 0; k < nr_cells; k++) {
-    offset[k] = count_out;
-    if (cells[k].sendto)
-      count_out += (cells[k].pcell_size = cell_getsize(&cells[k]));
-  }
-
-  /* Allocate the pcells. */
-  struct pcell *pcells = NULL;
-  if (posix_memalign((void **)&pcells, SWIFT_CACHE_ALIGNMENT,
-                     sizeof(struct pcell) * count_out) != 0)
-    error("Failed to allocate pcell buffer.");
-
-  /* Pack the cells. */
-  cell_next_tag = 0;
-  for (int k = 0; k < nr_cells; k++)
-    if (cells[k].sendto) {
-      cell_pack(&cells[k], &pcells[offset[k]]);
-      cells[k].pcell = &pcells[offset[k]];
-    }
-
-  /* Launch the proxies. */
-  for (int k = 0; k < nr_proxies; k++) {
-    proxy_cells_exch1(&e->proxies[k]);
-    reqs_in[k] = e->proxies[k].req_cells_count_in;
-    reqs_out[k] = e->proxies[k].req_cells_count_out;
-  }
-
-  /* Wait for each count to come in and start the recv. */
-  for (int k = 0; k < nr_proxies; k++) {
-    int pid = MPI_UNDEFINED;
-    if (MPI_Waitany(nr_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
-        pid == MPI_UNDEFINED)
-      error("MPI_Waitany failed.");
-    // message( "request from proxy %i has arrived." , pid );
-    proxy_cells_exch2(&e->proxies[pid]);
-  }
-
-  /* Wait for all the sends to have finished too. */
-  if (MPI_Waitall(nr_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
-    error("MPI_Waitall on sends failed.");
-
-  /* Set the requests for the cells. */
-  for (int k = 0; k < nr_proxies; k++) {
-    reqs_in[k] = e->proxies[k].req_cells_in;
-    reqs_out[k] = e->proxies[k].req_cells_out;
-  }
-
-  /* Wait for each pcell array to come in from the proxies. */
-  for (int k = 0; k < nr_proxies; k++) {
-    int pid = MPI_UNDEFINED;
-    if (MPI_Waitany(nr_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
-        pid == MPI_UNDEFINED)
-      error("MPI_Waitany failed.");
-    // message( "cell data from proxy %i has arrived." , pid );
-    for (int count = 0, j = 0; j < e->proxies[pid].nr_cells_in; j++)
-      count += cell_unpack(&e->proxies[pid].pcells_in[count],
-                           e->proxies[pid].cells_in[j], e->s);
-  }
-
-  /* Wait for all the sends to have finished too. */
-  if (MPI_Waitall(nr_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
-    error("MPI_Waitall on sends failed.");
+  /* Exchange the cell structure with neighbouring ranks. */
+  proxy_cells_exchange(e->proxies, e->nr_proxies, e->s);
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
@@ -1777,9 +1732,6 @@ void engine_exchange_cells(struct engine *e) {
   s->nr_parts_foreign = parts - s->parts_foreign;
   s->nr_gparts_foreign = gparts - s->gparts_foreign;
   s->nr_sparts_foreign = sparts - s->sparts_foreign;
-
-  /* Free the pcell buffer. */
-  free(pcells);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1904,7 +1856,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
   MPI_Request reqs_in[4 * engine_maxproxies];
   MPI_Request reqs_out[4 * engine_maxproxies];
   for (int k = 0; k < e->nr_proxies; k++) {
-    proxy_parts_exch1(&e->proxies[k]);
+    proxy_parts_exchange_first(&e->proxies[k]);
     reqs_in[k] = e->proxies[k].req_parts_count_in;
     reqs_out[k] = e->proxies[k].req_parts_count_out;
   }
@@ -1917,7 +1869,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     // message( "request from proxy %i has arrived." , pid );
-    proxy_parts_exch2(&e->proxies[pid]);
+    proxy_parts_exchange_second(&e->proxies[pid]);
   }
 
   /* Wait for all the sends to have finished too. */
@@ -3280,6 +3232,12 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
+  /* Re-set the tag counter. MPI tags are defined for top-level cells in
+   * cell_set_super_mapper. */
+#ifdef WITH_MPI
+  cell_next_tag = 0;
+#endif
+
   /* Now that the self/pair tasks are at the right level, set the super
    * pointers. */
   threadpool_map(&e->threadpool, cell_set_super_mapper, cells, nr_cells,
@@ -3321,32 +3279,15 @@ void engine_maketasks(struct engine *e) {
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
 
-    /* Loop over the proxies. */
+    /* Loop over the proxies and add the send tasks, which also generates the
+     * cell tags for super-cells. */
     for (int pid = 0; pid < e->nr_proxies; pid++) {
 
       /* Get a handle on the proxy. */
       struct proxy *p = &e->proxies[pid];
 
-      for (int k = 0; k < p->nr_cells_in; k++)
-        engine_addtasks_recv_timestep(e, p->cells_in[k], NULL);
-
       for (int k = 0; k < p->nr_cells_out; k++)
         engine_addtasks_send_timestep(e, p->cells_out[k], p->cells_in[0], NULL);
-
-      /* Loop through the proxy's incoming cells and add the
-         recv tasks for the cells in the proxy that have a hydro connection. */
-      if (e->policy & engine_policy_hydro)
-        for (int k = 0; k < p->nr_cells_in; k++)
-          if (p->cells_in_type[k] & proxy_cell_type_hydro)
-            engine_addtasks_recv_hydro(e, p->cells_in[k], NULL, NULL, NULL);
-
-      /* Loop through the proxy's incoming cells and add the
-         recv tasks for the cells in the proxy that have a gravity connection.
-         */
-      if (e->policy & engine_policy_self_gravity)
-        for (int k = 0; k < p->nr_cells_in; k++)
-          if (p->cells_in_type[k] & proxy_cell_type_gravity)
-            engine_addtasks_recv_gravity(e, p->cells_in[k], NULL);
 
       /* Loop through the proxy's outgoing cells and add the
          send tasks for the cells in the proxy that have a hydro connection. */
@@ -3364,6 +3305,35 @@ void engine_maketasks(struct engine *e) {
           if (p->cells_out_type[k] & proxy_cell_type_gravity)
             engine_addtasks_send_gravity(e, p->cells_out[k], p->cells_in[0],
                                          NULL);
+    }
+
+    /* Exchange the cell tags. */
+    proxy_tags_exchange(e->proxies, e->nr_proxies, s);
+
+    /* Loop over the proxies and add the recv tasks, which relies on having the
+     * cell tags. */
+    for (int pid = 0; pid < e->nr_proxies; pid++) {
+
+      /* Get a handle on the proxy. */
+      struct proxy *p = &e->proxies[pid];
+
+      for (int k = 0; k < p->nr_cells_in; k++)
+        engine_addtasks_recv_timestep(e, p->cells_in[k], NULL);
+
+      /* Loop through the proxy's incoming cells and add the
+         recv tasks for the cells in the proxy that have a hydro connection. */
+      if (e->policy & engine_policy_hydro)
+        for (int k = 0; k < p->nr_cells_in; k++)
+          if (p->cells_in_type[k] & proxy_cell_type_hydro)
+            engine_addtasks_recv_hydro(e, p->cells_in[k], NULL, NULL, NULL);
+
+      /* Loop through the proxy's incoming cells and add the
+         recv tasks for the cells in the proxy that have a gravity connection.
+         */
+      if (e->policy & engine_policy_self_gravity)
+        for (int k = 0; k < p->nr_cells_in; k++)
+          if (p->cells_in_type[k] & proxy_cell_type_gravity)
+            engine_addtasks_recv_gravity(e, p->cells_in[k], NULL);
     }
   }
 #endif
@@ -3981,13 +3951,14 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   engine_exchange_cells(e);
 
   if (e->policy & engine_policy_self_gravity) engine_exchange_top_multipoles(e);
-
-  if (e->policy & engine_policy_self_gravity)
-    engine_exchange_proxy_multipoles(e);
 #endif
 
   /* Re-build the tasks. */
   engine_maketasks(e);
+
+#ifdef WITH_MPI
+  if (e->policy & engine_policy_self_gravity) engine_exchange_proxy_multipoles(e);
+#endif
 
   /* Make the list of top-level cells that have tasks */
   space_list_cells_with_tasks(e->s);
@@ -4791,7 +4762,7 @@ void engine_step(struct engine *e) {
   if (e->verbose) engine_print_task_counts(e);
 
     /* Dump local cells and active particle counts. */
-    /* dumpCells("cells", 0, 0, 0, 0, e->s, e->nodeID, e->step); */
+    // dumpCells("cells", 1, 0, 0, 0, e->s, e->nodeID, e->step);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
@@ -4841,6 +4812,30 @@ void engine_step(struct engine *e) {
   /* Create a restart file if needed. */
   engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
 
+  engine_check_for_dumps(e);
+
+  TIMER_TOC2(timer_step);
+
+  clocks_gettime(&time2);
+  e->wallclock_time = (float)clocks_diff(&time1, &time2);
+
+#ifdef SWIFT_DEBUG_TASKS
+  /* Time in ticks at the end of this step. */
+  e->toc_step = getticks();
+#endif
+}
+
+/**
+ * @brief Check whether any kind of i/o has to be performed during this
+ * step.
+ *
+ * This includes snapshots, stats and halo finder. We also handle the case
+ * of multiple outputs between two steps.
+ *
+ * @param e The #engine.
+ */
+void engine_check_for_dumps(struct engine *e) {
+
   /* Save some statistics ? */
   int save_stats = 0;
   if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) save_stats = 1;
@@ -4865,38 +4860,85 @@ void engine_step(struct engine *e) {
   timebin_t max_active_bin = e->max_active_bin;
   double time = e->time;
 
-  /* Write some form of output */
-  if (dump_snapshot && save_stats) {
+  while (save_stats || dump_snapshot || run_stf) {
 
-    /* If both, need to figure out which one occurs first */
-    if (e->ti_next_stats == e->ti_next_snapshot) {
+    /* Write some form of output */
+    if (dump_snapshot && save_stats) {
 
-      /* Let's fake that we are at the common dump time */
-      e->ti_current = e->ti_next_snapshot;
-      e->max_active_bin = 0;
-      if (!(e->policy & engine_policy_cosmology))
-        e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+      /* If both, need to figure out which one occurs first */
+      if (e->ti_next_stats == e->ti_next_snapshot) {
 
-      /* Drift everyone */
-      engine_drift_all(e);
+        /* Let's fake that we are at the common dump time */
+        e->ti_current = e->ti_next_snapshot;
+        e->max_active_bin = 0;
+        if (!(e->policy & engine_policy_cosmology))
+          e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
 
-      /* Dump everything */
-      engine_print_stats(e);
-      engine_dump_snapshot(e);
+        /* Drift everyone */
+        engine_drift_all(e);
 
-    } else if (e->ti_next_stats < e->ti_next_snapshot) {
+        /* Dump everything */
+        engine_print_stats(e);
+        engine_dump_snapshot(e);
 
-      /* Let's fake that we are at the stats dump time */
-      e->ti_current = e->ti_next_stats;
-      e->max_active_bin = 0;
-      if (!(e->policy & engine_policy_cosmology))
-        e->time = e->ti_next_stats * e->time_base + e->time_begin;
+      } else if (e->ti_next_stats < e->ti_next_snapshot) {
 
-      /* Drift everyone */
-      engine_drift_all(e);
+        /* Let's fake that we are at the stats dump time */
+        e->ti_current = e->ti_next_stats;
+        e->max_active_bin = 0;
+        if (!(e->policy & engine_policy_cosmology))
+          e->time = e->ti_next_stats * e->time_base + e->time_begin;
 
-      /* Dump stats */
-      engine_print_stats(e);
+        /* Drift everyone */
+        engine_drift_all(e);
+
+        /* Dump stats */
+        engine_print_stats(e);
+
+        /* Let's fake that we are at the snapshot dump time */
+        e->ti_current = e->ti_next_snapshot;
+        e->max_active_bin = 0;
+        if (!(e->policy & engine_policy_cosmology))
+          e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+
+        /* Drift everyone */
+        engine_drift_all(e);
+
+        /* Dump snapshot */
+        engine_dump_snapshot(e);
+
+      } else if (e->ti_next_stats > e->ti_next_snapshot) {
+
+        /* Let's fake that we are at the snapshot dump time */
+        e->ti_current = e->ti_next_snapshot;
+        e->max_active_bin = 0;
+        if (!(e->policy & engine_policy_cosmology))
+          e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+
+        /* Drift everyone */
+        engine_drift_all(e);
+
+        /* Dump snapshot */
+        engine_dump_snapshot(e);
+
+        /* Let's fake that we are at the stats dump time */
+        e->ti_current = e->ti_next_stats;
+        e->max_active_bin = 0;
+        if (!(e->policy & engine_policy_cosmology))
+          e->time = e->ti_next_stats * e->time_base + e->time_begin;
+
+        /* Drift everyone */
+        engine_drift_all(e);
+
+        /* Dump stats */
+        engine_print_stats(e);
+      }
+
+      /* Let's compute the time of the next outputs */
+      engine_compute_next_snapshot_time(e);
+      engine_compute_next_statistics_time(e);
+
+    } else if (dump_snapshot) {
 
       /* Let's fake that we are at the snapshot dump time */
       e->ti_current = e->ti_next_snapshot;
@@ -4907,22 +4949,13 @@ void engine_step(struct engine *e) {
       /* Drift everyone */
       engine_drift_all(e);
 
-      /* Dump snapshot */
+      /* Dump... */
       engine_dump_snapshot(e);
 
-    } else if (e->ti_next_stats > e->ti_next_snapshot) {
+      /* ... and find the next output time */
+      engine_compute_next_snapshot_time(e);
 
-      /* Let's fake that we are at the snapshot dump time */
-      e->ti_current = e->ti_next_snapshot;
-      e->max_active_bin = 0;
-      if (!(e->policy & engine_policy_cosmology))
-        e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
-
-      /* Drift everyone */
-      engine_drift_all(e);
-
-      /* Dump snapshot */
-      engine_dump_snapshot(e);
+    } else if (save_stats) {
 
       /* Let's fake that we are at the stats dump time */
       e->ti_current = e->ti_next_stats;
@@ -4933,77 +4966,56 @@ void engine_step(struct engine *e) {
       /* Drift everyone */
       engine_drift_all(e);
 
-      /* Dump stats */
+      /* Dump */
       engine_print_stats(e);
+
+      /* and move on */
+      engine_compute_next_statistics_time(e);
     }
 
-    /* Let's compute the time of the next outputs */
-    engine_compute_next_snapshot_time(e);
-    engine_compute_next_statistics_time(e);
+    /* Perform structure finding? */
+    if (run_stf) {
 
-  } else if (dump_snapshot) {
-
-    /* Let's fake that we are at the snapshot dump time */
-    e->ti_current = e->ti_next_snapshot;
-    e->max_active_bin = 0;
-    if (!(e->policy & engine_policy_cosmology))
-      e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
-
-    /* Drift everyone */
-    engine_drift_all(e);
-
-    /* Dump... */
-    engine_dump_snapshot(e);
-
-    /* ... and find the next output time */
-    engine_compute_next_snapshot_time(e);
-  } else if (save_stats) {
-
-    /* Let's fake that we are at the stats dump time */
-    e->ti_current = e->ti_next_stats;
-    e->max_active_bin = 0;
-    if (!(e->policy & engine_policy_cosmology))
-      e->time = e->ti_next_stats * e->time_base + e->time_begin;
-
-    /* Drift everyone */
-    engine_drift_all(e);
-
-    /* Dump */
-    engine_print_stats(e);
-
-    /* and move on */
-    engine_compute_next_statistics_time(e);
-  }
-
-  /* Perform structure finding? */
-  if (run_stf) {
-
-  // MATTHIEU: Add a drift_all here. And check the order with the order i/o
-  // options.
+    // MATTHIEU: Add a drift_all here. And check the order with the order i/o
+    // options.
 
 #ifdef HAVE_VELOCIRAPTOR
-    velociraptor_init(e);
-    velociraptor_invoke(e);
+      velociraptor_init(e);
+      velociraptor_invoke(e);
 
-    /* ... and find the next output time */
-    if (e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
+      /* ... and find the next output time */
+      if (e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
 #endif
+    }
+
+    /* We need to see whether whether we are in the pathological case
+     * where there can be another dump before the next step. */
+
+    /* Save some statistics ? */
+    save_stats = 0;
+    if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0)
+      save_stats = 1;
+
+    /* Do we want a snapshot? */
+    dump_snapshot = 0;
+    if (e->ti_end_min > e->ti_next_snapshot && e->ti_next_snapshot > 0)
+      dump_snapshot = 1;
+
+    /* Do we want to perform structure finding? */
+    run_stf = 0;
+    if ((e->policy & engine_policy_structure_finding)) {
+      if (e->stf_output_freq_format == STEPS && e->step % e->deltaStepSTF == 0)
+        run_stf = 1;
+      else if (e->stf_output_freq_format == TIME &&
+               e->ti_end_min > e->ti_nextSTF && e->ti_nextSTF > 0)
+        run_stf = 1;
+    }
   }
 
   /* Restore the information we stored */
   e->ti_current = ti_current;
   e->max_active_bin = max_active_bin;
   e->time = time;
-
-  TIMER_TOC2(timer_step);
-
-  clocks_gettime(&time2);
-  e->wallclock_time = (float)clocks_diff(&time1, &time2);
-
-#ifdef SWIFT_DEBUG_TASKS
-  /* Time in ticks at the end of this step. */
-  e->toc_step = getticks();
-#endif
 }
 
 /**
@@ -6280,6 +6292,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 #ifdef WITH_MPI
   part_create_mpi_types();
   stats_create_MPI_type();
+  task_create_mpi_comms();
 #endif
 
   /* Initialise the collection group. */

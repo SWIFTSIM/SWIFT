@@ -116,9 +116,6 @@ struct pcell {
   /*! Number of #spart in this cell. */
   int scount;
 
-  /*! tag used for MPI communication. */
-  int tag;
-
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
 
@@ -490,6 +487,8 @@ int cell_slocktree(struct cell *c);
 void cell_sunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
+int cell_pack_tags(const struct cell *c, int *tags);
+int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step(struct cell *c, struct pcell_step *pcell);
 int cell_unpack_end_step(struct cell *c, struct pcell_step *pcell);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
@@ -640,6 +639,23 @@ __attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
   return (kernel_gamma * max(ci->h_max, cj->h_max) + ci->dx_max_part +
               cj->dx_max_part >
           cj->dmin);
+}
+
+/**
+ * @brief Add a unique tag to a cell.
+ */
+__attribute((always_inline)) INLINE static void cell_tag(struct cell *c) {
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->tag > 0) error("setting tag for already tagged cell");
+#endif
+
+  if (c->tag < 0 && (c->tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
+    error("Ran out of cell tags.");
+#else
+  error("SWIFT was not compiled with MPI enabled.");
+#endif  // WITH_MPI
 }
 
 #endif /* SWIFT_CELL_H */

@@ -63,6 +63,11 @@ const char *subtaskID_names[task_subtype_count] = {
     "none", "density", "gradient", "force", "grav",      "external_grav",
     "tend", "xv",      "rho",      "gpart", "multipole", "spart"};
 
+#ifdef WITH_MPI
+/* MPI communicators for the subtypes. */
+MPI_Comm subtaskMPI_comms[task_subtype_count];
+#endif
+
 /**
  * @brief Computes the overlap between the parts array of two given cells.
  *
@@ -485,3 +490,14 @@ void task_print(const struct task *t) {
           taskID_names[t->type], subtaskID_names[t->subtype], t->wait,
           t->nr_unlock_tasks, t->skip);
 }
+
+#ifdef WITH_MPI
+/**
+ * @brief Create global communicators for each of the subtasks.
+ */
+void task_create_mpi_comms(void) {
+  for (int i = 0; i < task_subtype_count; i++) {
+    MPI_Comm_dup(MPI_COMM_WORLD, &subtaskMPI_comms[i]);
+  }
+}
+#endif

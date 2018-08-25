@@ -634,7 +634,7 @@ int main(int argc, char *argv[]) {
     /* Initialize unit system and constants */
     units_init_from_params(&us, params, "InternalUnitSystem");
     phys_const_init(&us, params, &prog_const);
-    if (myrank == 0 && verbose > 0) {
+    if (myrank == 0) {
       message("Internal unit system: U_M = %e g.", us.UnitMass_in_cgs);
       message("Internal unit system: U_L = %e cm.", us.UnitLength_in_cgs);
       message("Internal unit system: U_t = %e s.", us.UnitTime_in_cgs);
@@ -653,11 +653,20 @@ int main(int argc, char *argv[]) {
     /* Initialise the hydro properties */
     if (with_hydro)
       hydro_props_init(&hydro_properties, &prog_const, &us, params);
-    if (with_hydro) eos_init(&eos, &prog_const, &us, params);
+    else
+      bzero(&hydro_properties, sizeof(struct hydro_props));
+
+    /* Initialise the equation of state */
+    if (with_hydro)
+      eos_init(&eos, &prog_const, &us, params);
+    else
+      bzero(&eos, sizeof(struct eos_parameters));
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
       gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology);
+    else
+      bzero(&gravity_properties, sizeof(struct gravity_props));
 
     /* Read particles and space information from (GADGET) ICs */
     char ICfileName[200] = "";
@@ -935,6 +944,9 @@ int main(int argc, char *argv[]) {
     /* Write the state of the system before starting time integration. */
     engine_dump_snapshot(&e);
     engine_print_stats(&e);
+
+    /* Is there a dump before the end of the first time-step? */
+    engine_check_for_dumps(&e);
 
 #ifdef HAVE_VELOCIRAPTOR
     /* Call VELOCIraptor for the first time after the first snapshot dump. */

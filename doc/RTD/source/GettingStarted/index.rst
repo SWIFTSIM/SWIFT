@@ -23,3 +23,4 @@ and keep on your desk.
    parameter_file
    what_about_mpi
    running_on_large_systems
+   special_modes

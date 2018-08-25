@@ -1757,6 +1757,14 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
         /* Finish the force calculation */
         gravity_end_force(gp, G_newton, potential_normalisation, periodic);
 
+#ifdef SWIFT_MAKE_GRAVITY_GLASS
+
+        /* Negate the gravity forces */
+        gp->a_grav[0] *= -1.f;
+        gp->a_grav[1] *= -1.f;
+        gp->a_grav[2] *= -1.f;
+#endif
+
 #ifdef SWIFT_NO_GRAVITY_BELOW_ID
 
         /* Get the ID of the gpart */

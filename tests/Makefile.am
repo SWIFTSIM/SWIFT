@@ -28,7 +28,7 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
-	testCbrt testCosmology testOutputList
+	testCbrt testCosmology testOutputList testFormat.sh
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
