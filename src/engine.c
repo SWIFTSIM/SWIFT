@@ -2514,11 +2514,11 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           /* Are the cells too close for a MM interaction ? */
           if (!cell_can_use_pair_mm_rebuild(ci, cj, e, s)) {
 
-	    if(ci->cellID == -111895 || cj->cellID == -111895) {
+	    /* if(ci->cellID == -111895 || cj->cellID == -111895) { */
 
-	      message("Constructing grav task! t->ci->cellID= %d t->cj->cellID= %d t->ci->nodeID= %d t->cj->nodeID= %d",
-		      ci->cellID, cj->cellID, ci->nodeID, cj->nodeID);
-	    }
+	    /*   message("Constructing grav task! t->ci->cellID= %d t->cj->cellID= %d t->ci->nodeID= %d t->cj->nodeID= %d", */
+	    /* 	      ci->cellID, cj->cellID, ci->nodeID, cj->nodeID); */
+	    /* } */
 	    
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
@@ -2707,12 +2707,12 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->density, t);
       } else if (t_subtype == task_subtype_grav) {
 
-	if((ci->cellID == -91806 && cj->cellID == -111895) ||
-	   (cj->cellID == -91806 && ci->cellID == -111895)) {
+	/* if((ci->cellID == -91806 && cj->cellID == -111895) || */
+	/*    (cj->cellID == -91806 && ci->cellID == -111895)) { */
 	  
-	  message("Task linked to ci and cj");
+	/*   message("Task linked to ci and cj"); */
 
-	}
+	/* } */
 
         engine_addlink(e, &ci->grav, t);
         engine_addlink(e, &cj->grav, t);
@@ -3282,24 +3282,24 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
-  for(int i = 0; i<e->sched.nr_tasks; ++i) {
+  /* for(int i = 0; i<e->sched.nr_tasks; ++i) { */
 
-    struct task *t = &e->sched.tasks[i];
+  /*   struct task *t = &e->sched.tasks[i]; */
 
-    if(t->type == task_type_pair && t->subtype == task_subtype_grav) {
+  /*   if(t->type == task_type_pair && t->subtype == task_subtype_grav) { */
 
-      struct cell *ci = t->ci;
-      struct cell *cj = t->cj;
+  /*     struct cell *ci = t->ci; */
+  /*     struct cell *cj = t->cj; */
 
-      if((ci->cellID == -91806 && cj->cellID == -111895) ||
-	 (cj->cellID == -91806 && ci->cellID == -111895)) {
+  /*     if((ci->cellID == -91806 && cj->cellID == -111895) || */
+  /* 	 (cj->cellID == -91806 && ci->cellID == -111895)) { */
 	
-	    message("Found the task!");	    
-      }
+  /* 	    message("Found the task!");	     */
+  /*     } */
 
-    }
+  /*   } */
 
-  }
+  /* } */
 
   /* Split the tasks. */
   scheduler_splittasks(sched);
@@ -3895,8 +3895,8 @@ void engine_print_task_counts(struct engine *e) {
 	int to = tasks[k].cj->nodeID;
 
 	if((from == 3 && to == 0)) {
-	  fprintf(file_send, "Sending cell ci=%d cj=%d to rank 3 (depth= %d %d)\n", 
-		  tasks[k].ci->cellID, tasks[k].cj->cellID, tasks[k].ci->depth, tasks[k].cj->depth);
+	  /* fprintf(file_send, "Sending cell ci=%d cj=%d to rank 3 (depth= %d %d)\n",  */
+	  /* 	  tasks[k].ci->cellID, tasks[k].cj->cellID, tasks[k].ci->depth, tasks[k].cj->depth); */
 	  fflush(file_send);
 	}
       }
@@ -3908,8 +3908,8 @@ void engine_print_task_counts(struct engine *e) {
 	int from = tasks[k].ci->nodeID;
 
 	if(to == 0 && from == 3) {
-	  fprintf(file_recv, "Receiving cell ci=%d from rank 3 (depth= %d)\n", 
-		  tasks[k].ci->cellID,  tasks[k].ci->depth);
+	  /* fprintf(file_recv, "Receiving cell ci=%d from rank 3 (depth= %d)\n",  */
+	  /* 	  tasks[k].ci->cellID,  tasks[k].ci->depth); */
 	  fflush(file_recv);
 
 	}
@@ -4909,40 +4909,40 @@ void engine_step(struct engine *e) {
   engine_prepare(e);
 
   /* Print the number of active tasks ? */
-  if (e->step == 43) engine_print_task_counts(e);
+  //if (e->step == 43) engine_print_task_counts(e);
 
-  if (e->step == 43) {
+/*   if (e->step == 43) { */
 
-    for(int i = 0; i < e->s->nr_cells; ++i) {
+/*     for(int i = 0; i < e->s->nr_cells; ++i) { */
 
-      const struct cell *c = &e->s->cells_top[i];
+/*       const struct cell *c = &e->s->cells_top[i]; */
 
-      if(c->cellID == -111895) {
+/*       if(c->cellID == -111895) { */
 
-	message("c->loc= [%f %f %f]", c->loc[0], c->loc[1], c->loc[2]);
-	message("c->depth= %d", c->depth);
-	message("c->nodeID= %d", c->nodeID);
-	message("c->gcount= %d c->count= %d c->scount= %d", c->gcount, c->count, c->scount);
-	message("c->ti_hydro_end_min= %lld c->ti_gravity_end_min= %lld", c->ti_hydro_end_min, c->ti_gravity_end_min);
-#ifdef WITH_MPI
-	message("c->recv_grav= %p", c->recv_grav);
-	if(c->recv_grav)
-	  message("c->recv_grav->skip= %d c->recv_grav->wait= %d", c->recv_grav->skip, c->recv_grav->wait);
+/* 	message("c->loc= [%f %f %f]", c->loc[0], c->loc[1], c->loc[2]); */
+/* 	message("c->depth= %d", c->depth); */
+/* 	message("c->nodeID= %d", c->nodeID); */
+/* 	message("c->gcount= %d c->count= %d c->scount= %d", c->gcount, c->count, c->scount); */
+/* 	message("c->ti_hydro_end_min= %lld c->ti_gravity_end_min= %lld", c->ti_hydro_end_min, c->ti_gravity_end_min); */
+/* #ifdef WITH_MPI */
+/* 	message("c->recv_grav= %p", c->recv_grav); */
+/* 	if(c->recv_grav) */
+/* 	  message("c->recv_grav->skip= %d c->recv_grav->wait= %d", c->recv_grav->skip, c->recv_grav->wait); */
 
-	if(c->send_grav)
-	  for(struct link *l = c->send_grav; l!=NULL; l = l->next)
-	    message("Send task: t->cj->nodeID=%d t->skip=%d", l->t->cj->nodeID, l->t->skip);
+/* 	if(c->send_grav) */
+/* 	  for(struct link *l = c->send_grav; l!=NULL; l = l->next) */
+/* 	    message("Send task: t->cj->nodeID=%d t->skip=%d", l->t->cj->nodeID, l->t->skip); */
 
-	if(c->grav)
-	  for(struct link *l = c->grav; l!=NULL; l = l->next)
-	    if(l->t->type == task_type_pair)
-	      message("grav task t->wait=%d t->skip=%d t->ci->cellID= %d t->cj->cellID= %d t->ci->nodeID= %d t->cj->nodeID= %d",
-		      l->t->wait, l->t->skip, l->t->ci->cellID, l->t->cj->cellID, l->t->ci->nodeID, l->t->cj->nodeID);
-#endif
+/* 	if(c->grav) */
+/* 	  for(struct link *l = c->grav; l!=NULL; l = l->next) */
+/* 	    if(l->t->type == task_type_pair) */
+/* 	      message("grav task t->wait=%d t->skip=%d t->ci->cellID= %d t->cj->cellID= %d t->ci->nodeID= %d t->cj->nodeID= %d", */
+/* 		      l->t->wait, l->t->skip, l->t->ci->cellID, l->t->cj->cellID, l->t->ci->nodeID, l->t->cj->nodeID); */
+/* #endif */
 
-      }
-    }
-  }
+/*       } */
+/*     } */
+/*   } */
 
     /* Dump local cells and active particle counts. */
     /* dumpCells("cells", 0, 0, 0, 0, e->s, e->nodeID, e->step); */

@@ -432,11 +432,10 @@ void space_regrid(struct space *s, int verbose) {
           c->ti_old_gpart = ti_current;
           c->ti_old_multipole = ti_current;
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
-	  //#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
 	  c->cellID = -last_cell_id;
 	  last_cell_id++;
-	  message("cid=%lld cellID=%d", cid, c->cellID);
-	  //#endif
+#endif
         }
 
     /* Be verbose about the change. */
@@ -928,10 +927,11 @@ void space_rebuild(struct space *s, int verbose) {
     c->ti_old_part = ti_current;
     c->ti_old_gpart = ti_current;
     c->ti_old_multipole = ti_current;
-    
+
+#ifdef SWIFT_DEBUG_CHECKS    
     c->cellID = -last_cell_id;
     last_cell_id++;
-    message("cid=%d cellID=%d", k, c->cellID);
+#endif
 
     if (c->nodeID == engine_rank) {
       c->parts = finger;

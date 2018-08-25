@@ -2307,14 +2307,14 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {scheduler_activate(s, ci->recv_grav);
 
-	fprintf(file_dump, "node %d activating cell %d to be received. ",
-	       cj->nodeID, ci->cellID);
-	if(ci->parent == NULL)
-	  fprintf(file_dump, "top\n");
-	else
-	  fprintf(file_dump, " \n");
+	/* fprintf(file_dump, "node %d activating cell %d to be received. ", */
+	/*        cj->nodeID, ci->cellID); */
+	/* if(ci->parent == NULL) */
+	/*   fprintf(file_dump, "top\n"); */
+	/* else */
+	/*   fprintf(file_dump, " \n"); */
 
-	fflush(file_dump);
+	/* fflush(file_dump); */
 
 	}
         /* If the foreign cell is active, we want its ti_end values. */
@@ -2325,14 +2325,14 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
           scheduler_activate_send(s, cj->send_grav, ci_nodeID);
 
-	  fprintf(file_dump, "node %d activating cell %d to send to node %d ",
-		 cj->nodeID, cj->cellID, ci->nodeID);
-	if(cj->parent == NULL)
-	  fprintf(file_dump, "top\n");
-	else
-	    fprintf(file_dump, " \n");
+	/*   fprintf(file_dump, "node %d activating cell %d to send to node %d ", */
+	/* 	 cj->nodeID, cj->cellID, ci->nodeID); */
+	/* if(cj->parent == NULL) */
+	/*   fprintf(file_dump, "top\n"); */
+	/* else */
+	/*     fprintf(file_dump, " \n"); */
 
-	fflush(file_dump);
+	/* fflush(file_dump); */
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
@@ -2348,15 +2348,13 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {scheduler_activate(s, cj->recv_grav);
 
-	fprintf(file_dump, "node %d activating cell %d to be received. ",
-	       ci->nodeID, cj->cellID);
-	if(cj->parent == NULL)
-	  fprintf(file_dump, "top\n");
-	else
-	  fprintf(file_dump, " \n");
-
-
-	fflush(file_dump);
+	/* fprintf(file_dump, "node %d activating cell %d to be received. ", */
+	/*        ci->nodeID, cj->cellID); */
+	/* if(cj->parent == NULL) */
+	/*   fprintf(file_dump, "top\n"); */
+	/* else */
+	/*   fprintf(file_dump, " \n"); */
+	/* fflush(file_dump); */
 	}
 
         /* If the foreign cell is active, we want its ti_end values. */
@@ -2367,14 +2365,13 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
           scheduler_activate_send(s, ci->send_grav, cj_nodeID);
 
-	  fprintf(file_dump, "node %d activating cell %d to sent to node %d",
-		 ci->nodeID, ci->cellID, cj->nodeID);
-	  if(ci->parent == NULL)
-	    fprintf(file_dump, " top\n");
-	  else
-	    fprintf(file_dump, " \n");
-
-	  fflush(file_dump);
+	  /* fprintf(file_dump, "node %d activating cell %d to sent to node %d", */
+	  /* 	 ci->nodeID, ci->cellID, cj->nodeID); */
+	  /* if(ci->parent == NULL) */
+	  /*   fprintf(file_dump, " top\n"); */
+	  /* else */
+	  /*   fprintf(file_dump, " \n"); */
+	  /* fflush(file_dump); */
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
