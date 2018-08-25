@@ -94,6 +94,8 @@
 
 FILE* file_dump;
 FILE* file_tasks;
+FILE* file_send;
+FILE* file_recv;
 
 const char *engine_policy_names[] = {"none",
                                      "rand",
@@ -3851,6 +3853,35 @@ void engine_print_task_counts(struct engine *e) {
       if (tasks[k].type == task_type_recv &&
           tasks[k].subtype == task_subtype_tend)
         ++count_recv_tiend[tasks[k].ci->nodeID];
+
+
+      if (tasks[k].type == task_type_send &&
+          tasks[k].subtype == task_subtype_gpart) {
+	
+	int from  = engine_rank;
+	int to = tasks[k].cj->nodeID;
+
+	if((from == 3 && to == 0)) {
+	  fprintf(file_send, "Sending cell ci=%d cj=%d to rank 3 (depth= %d %d)\n", 
+		  tasks[k].ci->cellID, tasks[k].cj->cellID, tasks[k].ci->depth, tasks[k].cj->depth);
+	  fflush(file_send);
+	}
+      }
+	
+      if (tasks[k].type == task_type_recv &&
+          tasks[k].subtype == task_subtype_gpart) {
+	
+	int to  = engine_rank;
+	int from = tasks[k].ci->nodeID;
+
+	if(to == 0 && from == 3) {
+	  fprintf(file_recv, "Receiving cell ci=%d from rank 3 (depth= %d)\n", 
+		  tasks[k].ci->cellID,  tasks[k].ci->depth);
+	  fflush(file_recv);
+
+	}
+      }      
+
     }
   }
   message("Total = %d  (per cell = %d)", nr_tasks,
@@ -4791,6 +4822,8 @@ void engine_step(struct engine *e) {
   
   fprintf(file_dump, "####################  Step  %d #####################\n\n\n", e->step);
   fprintf(file_tasks, "####################  Step  %d #####################\n\n\n", e->step);
+  fprintf(file_send, "####################  Step  %d #####################\n\n\n", e->step);
+  fprintf(file_recv, "####################  Step  %d #####################\n\n\n", e->step);
 
   /* When restarting, move everyone to the current time. */
   if (e->restarting) engine_drift_all(e);
@@ -5938,6 +5971,12 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
   sprintf(buffer, "tasks_%d.txt", engine_rank);
   file_tasks = fopen(buffer, "w");
+
+  sprintf(buffer, "send_%d.txt", engine_rank);
+  file_send = fopen(buffer, "w");
+
+  sprintf(buffer, "recv_%d.txt", engine_rank);
+  file_recv = fopen(buffer, "w");
 
   /* Initialise VELOCIraptor. */
   if (e->policy & engine_policy_structure_finding) {

@@ -208,6 +208,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->ti_hydro_end_max = -1;
     c->ti_gravity_end_min = -1;
     c->ti_gravity_end_max = -1;
+#ifdef SWIFT_DEBUG_CHECKS
+    c->cellID = 0;
+#endif
     if (s->gravity) bzero(c->multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
       if (c->sort[i] != NULL) {
@@ -338,7 +341,7 @@ void space_regrid(struct space *s, int verbose) {
 
   /* Are we about to allocate new top level cells without a regrid?
    * Can happen when restarting the application. */
-  int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
+  const int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
 #endif
 
   /* Do we need to re-build the upper-level cells? */
@@ -428,8 +431,12 @@ void space_regrid(struct space *s, int verbose) {
           c->ti_old_part = ti_current;
           c->ti_old_gpart = ti_current;
           c->ti_old_multipole = ti_current;
-	  c->cellID = -(last_cell_id++);
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
+	  //#ifdef SWIFT_DEBUG_CHECKS
+	  c->cellID = -last_cell_id;
+	  last_cell_id++;
+	  message("cid=%lld cellID=%d", cid, c->cellID);
+	  //#endif
         }
 
     /* Be verbose about the change. */
@@ -921,6 +928,11 @@ void space_rebuild(struct space *s, int verbose) {
     c->ti_old_part = ti_current;
     c->ti_old_gpart = ti_current;
     c->ti_old_multipole = ti_current;
+    
+    c->cellID = -last_cell_id;
+    last_cell_id++;
+    message("cid=%d cellID=%d", k, c->cellID);
+
     if (c->nodeID == engine_rank) {
       c->parts = finger;
       c->xparts = xfinger;
@@ -2749,8 +2761,6 @@ void space_init(struct space *s, struct swift_params *params,
 #endif
   }
 
-  last_cell_id = 1;
-
   /* Are we replicating the space ? */
   if (replicate < 1)
     error("Value of 'InitialConditions:replicate' (%d) is too small",
@@ -2903,6 +2913,10 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
+
+#ifdef SWIFT_DEBUG_CHECKS
+  last_cell_id = 1;
+#endif
 
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);
