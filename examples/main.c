@@ -933,7 +933,7 @@ int main(int argc, char *argv[]) {
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
     /* Write the state of the system before starting time integration. */
-    // engine_dump_snapshot(&e);
+    engine_dump_snapshot(&e);
     engine_print_stats(&e);
 
 #ifdef HAVE_VELOCIRAPTOR

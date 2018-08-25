@@ -92,11 +92,6 @@
 /* Particle cache size. */
 #define CACHE_SIZE 512
 
-FILE* file_dump;
-FILE* file_tasks;
-FILE* file_send;
-FILE* file_recv;
-
 const char *engine_policy_names[] = {"none",
                                      "rand",
                                      "steal",
@@ -118,8 +113,6 @@ const char *engine_policy_names[] = {"none",
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
-
-extern integertime_t ti_current_global;
 
 /**
  * @brief Data collected from the cells at the end of a time-step
@@ -1392,9 +1385,6 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 #endif
 }
 
-int count_send[4];
-int count_recv[4];
-
 /**
  * @brief Add send tasks for the gravity pairs to a hierarchy of cells.
  *
@@ -1426,8 +1416,6 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
                                  6 * ci->tag + 4, 0, ci, cj);
 
-      count_send[nodeID]++;
-      
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->super_gravity->grav_down);
 
@@ -1590,10 +1578,6 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                6 * c->tag + 4, 0, c, NULL);
-
-    if(c->nodeID < 0 || c->nodeID > 3)
-      error("Invalid nodeID");
-    count_recv[c->nodeID]++;
   }
 
   c->recv_grav = t_grav;
@@ -2514,12 +2498,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           /* Are the cells too close for a MM interaction ? */
           if (!cell_can_use_pair_mm_rebuild(ci, cj, e, s)) {
 
-	    /* if(ci->cellID == -111895 || cj->cellID == -111895) { */
-
-	    /*   message("Constructing grav task! t->ci->cellID= %d t->cj->cellID= %d t->ci->nodeID= %d t->cj->nodeID= %d", */
-	    /* 	      ci->cellID, cj->cellID, ci->nodeID, cj->nodeID); */
-	    /* } */
-	    
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
                               ci, cj);
@@ -2706,14 +2684,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->density, t);
         engine_addlink(e, &cj->density, t);
       } else if (t_subtype == task_subtype_grav) {
-
-	/* if((ci->cellID == -91806 && cj->cellID == -111895) || */
-	/*    (cj->cellID == -91806 && ci->cellID == -111895)) { */
-	  
-	/*   message("Task linked to ci and cj"); */
-
-	/* } */
-
         engine_addlink(e, &ci->grav, t);
         engine_addlink(e, &cj->grav, t);
       }
@@ -2776,8 +2746,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Get a pointer to the task. */
     struct task *t = &sched->tasks[k];
 
-    if(t->type == task_type_none)
-      continue;
+    if (t->type == task_type_none) continue;
 
     /* Get the cells we act on */
     struct cell *ci = t->ci;
@@ -3282,25 +3251,6 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
-  /* for(int i = 0; i<e->sched.nr_tasks; ++i) { */
-
-  /*   struct task *t = &e->sched.tasks[i]; */
-
-  /*   if(t->type == task_type_pair && t->subtype == task_subtype_grav) { */
-
-  /*     struct cell *ci = t->ci; */
-  /*     struct cell *cj = t->cj; */
-
-  /*     if((ci->cellID == -91806 && cj->cellID == -111895) || */
-  /* 	 (cj->cellID == -91806 && ci->cellID == -111895)) { */
-	
-  /* 	    message("Found the task!");	     */
-  /*     } */
-
-  /*   } */
-
-  /* } */
-
   /* Split the tasks. */
   scheduler_splittasks(sched);
 
@@ -3366,11 +3316,6 @@ void engine_maketasks(struct engine *e) {
     message("Linking gravity tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  for(int k=0; k<4 ; ++k){
-    count_send[k] = 0;
-    count_recv[k] = 0;
-  }
-
 #ifdef WITH_MPI
 
   /* Add the communication tasks if MPI is being used. */
@@ -3422,12 +3367,6 @@ void engine_maketasks(struct engine *e) {
     }
   }
 #endif
-
-  for(int k=0; k<4 ; ++k){
-    fprintf(file_tasks, "Send to %d: %d\n", k, count_send[k]);
-    fprintf(file_tasks, "recv from %d: %d\n", k, count_recv[k]);
-  }  
-  fflush(file_tasks);
 
   tic2 = getticks();
 
@@ -3860,62 +3799,14 @@ void engine_print_task_counts(struct engine *e) {
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
 
-  int count_send_gpart[4] = {0};
-  int count_recv_gpart[4] = {0};
-  int count_send_tiend[4] = {0};
-  int count_recv_tiend[4] = {0};
-
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   for (int k = 0; k < nr_tasks; k++) {
     if (tasks[k].skip)
       counts[task_type_count] += 1;
-    else {
+    else
       counts[(int)tasks[k].type] += 1;
-
-      if (tasks[k].type == task_type_send &&
-          tasks[k].subtype == task_subtype_gpart)
-        ++count_send_gpart[tasks[k].cj->nodeID];
-      if (tasks[k].type == task_type_send &&
-          tasks[k].subtype == task_subtype_tend)
-        ++count_send_tiend[tasks[k].cj->nodeID];
-      if (tasks[k].type == task_type_recv &&
-          tasks[k].subtype == task_subtype_gpart)
-        ++count_recv_gpart[tasks[k].ci->nodeID];
-      if (tasks[k].type == task_type_recv &&
-          tasks[k].subtype == task_subtype_tend)
-        ++count_recv_tiend[tasks[k].ci->nodeID];
-
-
-      if (tasks[k].type == task_type_send &&
-          tasks[k].subtype == task_subtype_gpart) {
-	
-	int from  = engine_rank;
-	int to = tasks[k].cj->nodeID;
-
-	if((from == 3 && to == 0)) {
-	  /* fprintf(file_send, "Sending cell ci=%d cj=%d to rank 3 (depth= %d %d)\n",  */
-	  /* 	  tasks[k].ci->cellID, tasks[k].cj->cellID, tasks[k].ci->depth, tasks[k].cj->depth); */
-	  fflush(file_send);
-	}
-      }
-	
-      if (tasks[k].type == task_type_recv &&
-          tasks[k].subtype == task_subtype_gpart) {
-	
-	int to  = engine_rank;
-	int from = tasks[k].ci->nodeID;
-
-	if(to == 0 && from == 3) {
-	  /* fprintf(file_recv, "Receiving cell ci=%d from rank 3 (depth= %d)\n",  */
-	  /* 	  tasks[k].ci->cellID,  tasks[k].ci->depth); */
-	  fflush(file_recv);
-
-	}
-      }      
-
-    }
   }
   message("Total = %d  (per cell = %d)", nr_tasks,
           (int)ceil((double)nr_tasks / e->s->tot_cells));
@@ -3930,11 +3821,6 @@ void engine_print_task_counts(struct engine *e) {
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  message("send_gpart = %3d %3d %3d %3d", count_send_gpart[0], count_send_gpart[1], count_send_gpart[2], count_send_gpart[3]);
-  message("recv_gpart = %3d %3d %3d %3d", count_recv_gpart[0], count_recv_gpart[1], count_recv_gpart[2], count_recv_gpart[3]);
-  message("send_tiend = %3d %3d %3d %3d", count_send_tiend[0], count_send_tiend[1], count_send_tiend[2], count_send_tiend[3]);
-  message("recv_tiend = %3d %3d %3d %3d", count_recv_tiend[0], count_recv_tiend[1], count_recv_tiend[2], count_recv_tiend[3]);
-
   message("nr_parts = %zu.", e->s->nr_parts);
   message("nr_gparts = %zu.", e->s->nr_gparts);
   message("nr_sparts = %zu.", e->s->nr_sparts);
@@ -4092,12 +3978,12 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
 /* If in parallel, exchange the cell structure, top-level and neighbouring
  * multipoles. */
 #ifdef WITH_MPI
-  if (e->policy & engine_policy_self_gravity) engine_exchange_top_multipoles(e);
-
   engine_exchange_cells(e);
 
-  //if (e->policy & engine_policy_self_gravity)
-  //  engine_exchange_proxy_multipoles(e);
+  if (e->policy & engine_policy_self_gravity) engine_exchange_top_multipoles(e);
+
+  if (e->policy & engine_policy_self_gravity)
+    engine_exchange_proxy_multipoles(e);
 #endif
 
   /* Re-build the tasks. */
@@ -4851,13 +4737,6 @@ void engine_step(struct engine *e) {
   e->step += 1;
   e->step_props = engine_step_prop_none;
 
-  ti_current_global = e->ti_current;
-  
-  fprintf(file_dump, "####################  Step  %d #####################\n\n\n", e->step);
-  fprintf(file_tasks, "####################  Step  %d #####################\n\n\n", e->step);
-  fprintf(file_send, "####################  Step  %d #####################\n\n\n", e->step);
-  fprintf(file_recv, "####################  Step  %d #####################\n\n\n", e->step);
-
   /* When restarting, move everyone to the current time. */
   if (e->restarting) engine_drift_all(e);
 
@@ -4909,40 +4788,7 @@ void engine_step(struct engine *e) {
   engine_prepare(e);
 
   /* Print the number of active tasks ? */
-  //if (e->step == 43) engine_print_task_counts(e);
-
-/*   if (e->step == 43) { */
-
-/*     for(int i = 0; i < e->s->nr_cells; ++i) { */
-
-/*       const struct cell *c = &e->s->cells_top[i]; */
-
-/*       if(c->cellID == -111895) { */
-
-/* 	message("c->loc= [%f %f %f]", c->loc[0], c->loc[1], c->loc[2]); */
-/* 	message("c->depth= %d", c->depth); */
-/* 	message("c->nodeID= %d", c->nodeID); */
-/* 	message("c->gcount= %d c->count= %d c->scount= %d", c->gcount, c->count, c->scount); */
-/* 	message("c->ti_hydro_end_min= %lld c->ti_gravity_end_min= %lld", c->ti_hydro_end_min, c->ti_gravity_end_min); */
-/* #ifdef WITH_MPI */
-/* 	message("c->recv_grav= %p", c->recv_grav); */
-/* 	if(c->recv_grav) */
-/* 	  message("c->recv_grav->skip= %d c->recv_grav->wait= %d", c->recv_grav->skip, c->recv_grav->wait); */
-
-/* 	if(c->send_grav) */
-/* 	  for(struct link *l = c->send_grav; l!=NULL; l = l->next) */
-/* 	    message("Send task: t->cj->nodeID=%d t->skip=%d", l->t->cj->nodeID, l->t->skip); */
-
-/* 	if(c->grav) */
-/* 	  for(struct link *l = c->grav; l!=NULL; l = l->next) */
-/* 	    if(l->t->type == task_type_pair) */
-/* 	      message("grav task t->wait=%d t->skip=%d t->ci->cellID= %d t->cj->cellID= %d t->ci->nodeID= %d t->cj->nodeID= %d", */
-/* 		      l->t->wait, l->t->skip, l->t->ci->cellID, l->t->cj->cellID, l->t->ci->nodeID, l->t->cj->nodeID); */
-/* #endif */
-
-/*       } */
-/*     } */
-/*   } */
+  if (e->verbose) engine_print_task_counts(e);
 
     /* Dump local cells and active particle counts. */
     /* dumpCells("cells", 0, 0, 0, 0, e->s, e->nodeID, e->step); */
@@ -5542,16 +5388,8 @@ void engine_makeproxies(struct engine *e) {
               if (with_gravity) {
 
                 /* Are we too close for M2L? */
-                //if (!cell_can_use_pair_mm_rebuild(&cells[cid], &cells[cjd], e, s))
-                /* if (((abs(ind[0] - ii) <= 5 || */
-                /*       abs(ind[0] - ii - cdim[0]) <= 5 || */
-                /*       abs(ind[0] - ii + cdim[0]) <= 5) && */
-                /*      (abs(ind[1] - jj) <= 5 || */
-                /*       abs(ind[1] - jj - cdim[1]) <= 5 || */
-                /*       abs(ind[1] - jj + cdim[1]) <= 5) && */
-                /*      (abs(ind[2] - kk) <= 5 || */
-                /*       abs(ind[2] - kk - cdim[2]) <= 5 || */
-                /*       abs(ind[2] - kk + cdim[2]) <= 5))) */
+                if (!cell_can_use_pair_mm_rebuild(&cells[cid], &cells[cjd], e,
+                                                  s))
                   proxy_type |= (int)proxy_cell_type_gravity;
               }
 
@@ -6030,19 +5868,6 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->restart_dt = 0;
   e->timeFirstSTFOutput = 0;
   engine_rank = nodeID;
-
-  char buffer[32];
-  sprintf(buffer, "dump_%d.txt", engine_rank);
-  file_dump = fopen(buffer, "w");
-
-  sprintf(buffer, "tasks_%d.txt", engine_rank);
-  file_tasks = fopen(buffer, "w");
-
-  sprintf(buffer, "send_%d.txt", engine_rank);
-  file_send = fopen(buffer, "w");
-
-  sprintf(buffer, "recv_%d.txt", engine_rank);
-  file_recv = fopen(buffer, "w");
 
   /* Initialise VELOCIraptor. */
   if (e->policy & engine_policy_structure_finding) {

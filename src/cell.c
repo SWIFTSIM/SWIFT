@@ -67,10 +67,6 @@
 /* Global variables. */
 int cell_next_tag = 0;
 
-integertime_t ti_current_global;
-
-extern FILE* file_dump;
-
 /**
  * @brief Get the size of the cell subtree.
  *
@@ -184,12 +180,9 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
   pc->ti_hydro_end_max = c->ti_hydro_end_max;
   pc->ti_gravity_end_min = c->ti_gravity_end_min;
   pc->ti_gravity_end_max = c->ti_gravity_end_max;
-  //pc->ti_old_part = c->ti_old_part;
-  // pc->ti_old_gpart = c->ti_old_gpart;
-  //pc->ti_old_multipole = c->ti_old_multipole;
-
-  pc->multipole = *(c->multipole);
-
+  pc->ti_old_part = c->ti_old_part;
+  pc->ti_old_gpart = c->ti_old_gpart;
+  pc->ti_old_multipole = c->ti_old_multipole;
   pc->count = c->count;
   pc->gcount = c->gcount;
   pc->scount = c->scount;
@@ -237,16 +230,9 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->ti_hydro_end_max = pc->ti_hydro_end_max;
   c->ti_gravity_end_min = pc->ti_gravity_end_min;
   c->ti_gravity_end_max = pc->ti_gravity_end_max;
-  //c->ti_old_part = pc->ti_old_part;
-  //c->ti_old_gpart = pc->ti_old_gpart;
-  //c->ti_old_multipole = pc->ti_old_multipole;
-  
-  c->ti_old_part = ti_current_global;
-  c->ti_old_gpart = ti_current_global;
-  c->ti_old_multipole = ti_current_global;
-
-  *(c->multipole) = pc->multipole;
-
+  c->ti_old_part = pc->ti_old_part;
+  c->ti_old_gpart = pc->ti_old_gpart;
+  c->ti_old_multipole = pc->ti_old_multipole;
   c->count = pc->count;
   c->gcount = pc->gcount;
   c->scount = pc->scount;
@@ -353,11 +339,6 @@ int cell_unpack_end_step(struct cell *restrict c,
   c->ti_gravity_end_max = pcells[0].ti_gravity_end_max;
   c->dx_max_part = pcells[0].dx_max_part;
 
-  if(c->ti_last_update == ti_current_global && c->ti_last_update > 0)
-    error("Overwriting data");
-
-  c->ti_last_update = ti_current_global;
-  
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
@@ -2305,18 +2286,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       if (ci_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (cj_active) {scheduler_activate(s, ci->recv_grav);
+        if (cj_active) scheduler_activate(s, ci->recv_grav);
 
-	/* fprintf(file_dump, "node %d activating cell %d to be received. ", */
-	/*        cj->nodeID, ci->cellID); */
-	/* if(ci->parent == NULL) */
-	/*   fprintf(file_dump, "top\n"); */
-	/* else */
-	/*   fprintf(file_dump, " \n"); */
-
-	/* fflush(file_dump); */
-
-	}
         /* If the foreign cell is active, we want its ti_end values. */
         if (ci_active) scheduler_activate(s, ci->recv_ti);
 
@@ -2324,15 +2295,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (ci_active) {
 
           scheduler_activate_send(s, cj->send_grav, ci_nodeID);
-
-	/*   fprintf(file_dump, "node %d activating cell %d to send to node %d ", */
-	/* 	 cj->nodeID, cj->cellID, ci->nodeID); */
-	/* if(cj->parent == NULL) */
-	/*   fprintf(file_dump, "top\n"); */
-	/* else */
-	/*     fprintf(file_dump, " \n"); */
-
-	/* fflush(file_dump); */
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
@@ -2346,16 +2308,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       } else if (cj_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active) {scheduler_activate(s, cj->recv_grav);
-
-	/* fprintf(file_dump, "node %d activating cell %d to be received. ", */
-	/*        ci->nodeID, cj->cellID); */
-	/* if(cj->parent == NULL) */
-	/*   fprintf(file_dump, "top\n"); */
-	/* else */
-	/*   fprintf(file_dump, " \n"); */
-	/* fflush(file_dump); */
-	}
+        if (ci_active) scheduler_activate(s, cj->recv_grav);
 
         /* If the foreign cell is active, we want its ti_end values. */
         if (cj_active) scheduler_activate(s, cj->recv_ti);
@@ -2364,14 +2317,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (cj_active) {
 
           scheduler_activate_send(s, ci->send_grav, cj_nodeID);
-
-	  /* fprintf(file_dump, "node %d activating cell %d to sent to node %d", */
-	  /* 	 ci->nodeID, ci->cellID, cj->nodeID); */
-	  /* if(ci->parent == NULL) */
-	  /*   fprintf(file_dump, " top\n"); */
-	  /* else */
-	  /*   fprintf(file_dump, " \n"); */
-	  /* fflush(file_dump); */
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
@@ -2958,7 +2903,6 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
   return gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2);
 }
 
-
 /**
  * @brief Can we use the MM interactions fo a given pair of cells?
  *
@@ -2968,7 +2912,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
  * @param s The #space.
  */
 int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
-				 const struct engine *e, const struct space *s) {
+                                 const struct engine *e,
+                                 const struct space *s) {
 
   const double theta_crit2 = e->gravity_properties->theta_crit2;
   const int periodic = s->periodic;
@@ -2980,18 +2925,24 @@ int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-  if(multi_i->CoM[0] < ci->loc[0] || multi_i->CoM[0] > ci->loc[0] + ci->width[0])
+  if (multi_i->CoM[0] < ci->loc[0] ||
+      multi_i->CoM[0] > ci->loc[0] + ci->width[0])
     error("Invalid multipole position ci");
-  if(multi_i->CoM[1] < ci->loc[1] || multi_i->CoM[1] > ci->loc[1] + ci->width[1])
+  if (multi_i->CoM[1] < ci->loc[1] ||
+      multi_i->CoM[1] > ci->loc[1] + ci->width[1])
     error("Invalid multipole position ci");
-  if(multi_i->CoM[2] < ci->loc[2] || multi_i->CoM[2] > ci->loc[2] + ci->width[2])
+  if (multi_i->CoM[2] < ci->loc[2] ||
+      multi_i->CoM[2] > ci->loc[2] + ci->width[2])
     error("Invalid multipole position ci");
 
-  if(multi_j->CoM[0] < cj->loc[0] || multi_j->CoM[0] > cj->loc[0] + cj->width[0])
+  if (multi_j->CoM[0] < cj->loc[0] ||
+      multi_j->CoM[0] > cj->loc[0] + cj->width[0])
     error("Invalid multipole position cj");
-  if(multi_j->CoM[1] < cj->loc[1] || multi_j->CoM[1] > cj->loc[1] + cj->width[1])
+  if (multi_j->CoM[1] < cj->loc[1] ||
+      multi_j->CoM[1] > cj->loc[1] + cj->width[1])
     error("Invalid multipole position cj");
-  if(multi_j->CoM[2] < cj->loc[2] || multi_j->CoM[2] > cj->loc[2] + cj->width[2])
+  if (multi_j->CoM[2] < cj->loc[2] ||
+      multi_j->CoM[2] > cj->loc[2] + cj->width[2])
     error("Invalid multipole position cj");
 
 #endif

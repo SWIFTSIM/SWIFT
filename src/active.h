@@ -141,7 +141,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
 }
 
 /**
- * @brief Does a cell contain any g-particle finishing their time-step now ?
+ * @brief Does a cell contain any multipole requiring calculation ?
  *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
@@ -152,7 +152,6 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity_mm(
 
   return (c->ti_gravity_end_min == e->ti_current);
 }
-
 
 /**
  * @brief Are *all* g-particles in a cell finishing their time-step now ?

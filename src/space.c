@@ -433,8 +433,8 @@ void space_regrid(struct space *s, int verbose) {
           c->ti_old_multipole = ti_current;
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
 #ifdef SWIFT_DEBUG_CHECKS
-	  c->cellID = -last_cell_id;
-	  last_cell_id++;
+          c->cellID = -last_cell_id;
+          last_cell_id++;
 #endif
         }
 
@@ -928,7 +928,7 @@ void space_rebuild(struct space *s, int verbose) {
     c->ti_old_gpart = ti_current;
     c->ti_old_multipole = ti_current;
 
-#ifdef SWIFT_DEBUG_CHECKS    
+#ifdef SWIFT_DEBUG_CHECKS
     c->cellID = -last_cell_id;
     last_cell_id++;
 #endif

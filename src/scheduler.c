@@ -888,27 +888,11 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         break;
       }
 
-      /* if((ci->cellID == -91806 && cj->cellID == -111895) || */
-      /* 	 (cj->cellID == -91806 && ci->cellID == -111895)) { */
-	
-      /* 	message("Found the task! ci->cellID=%d cj->cellID=%d ci->nodeID=%d cj->nodeID=%d ci->gcount=%d cj->gcount=%d ci->split=%d cj->split=%d ci->depth=%d cj->depth=%d", */
-      /* 		ci->cellID, cj->cellID, ci->nodeID, cj->nodeID, ci->gcount, cj->gcount, */
-      /* 		ci->split, cj->split, ci->depth, cj->depth); */
-      /* } */
-
-
       /* Should we replace it with an M-M task? */
       if (cell_can_use_pair_mm_rebuild(ci, cj, e, sp)) {
 
         t->type = task_type_grav_mm;
         t->subtype = task_subtype_none;
-
-	/* if((ci->cellID == -91806 && cj->cellID == -111895) || */
-	/*    (cj->cellID == -91806 && ci->cellID == -111895)) { */
-	  
-	/*   message("Replaced by M-M task!"); */
-
-	/* } */
 
         /* Since this task will not be split, we can already link it */
         atomic_inc(&ci->nr_mm_tasks);
@@ -922,33 +906,18 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       if (cell_can_split_pair_gravity_task(ci) &&
           cell_can_split_pair_gravity_task(cj)) {
 
-	const long long gcount_i = ci->gcount;
-	const long long gcount_j = cj->gcount;
+        const long long gcount_i = ci->gcount;
+        const long long gcount_j = cj->gcount;
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub && /* Use division to avoid integer overflow. */
-            gcount_i * gcount_j < ((long long) space_subsize_pair_grav)) {
-
-	  /* if((ci->cellID == -91806 && cj->cellID == -111895) || */
-	  /*    (cj->cellID == -91806 && ci->cellID == -111895)) { */
-	    
-	  /*   message("Do nothing!"); */
-	    
-	  /* } */
-
+            gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
 
           /* Otherwise, split it. */
         } else {
 
           /* Take a step back (we're going to recycle the current task)... */
           redo = 1;
-
-	  /* if((ci->cellID == -91806 && cj->cellID == -111895) || */
-	  /*    (cj->cellID == -91806 && ci->cellID == -111895)) { */
-	    
-	  /*   message("Split into smaller tasks!"); */
-	    
-	  /* } */
 
           /* Find the first non-empty childrens of the cells */
           int first_ci_child = 0, first_cj_child = 0;
