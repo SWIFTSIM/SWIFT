@@ -153,8 +153,14 @@ struct cosmology {
   /*! Kick factor (hydro) interpolation table */
   double *hydro_kick_fac_interp_table;
 
+  /*! Kick factor (hydro correction) interpolation table (GIZMO-MFV only) */
+  double *hydro_kick_corr_interp_table;
+
   /*! Time interpolation table */
   double *time_interp_table;
+
+  /*! Scale factor interpolation table */
+  double *scale_factor_interp_table;
 
   /*! Time between Big Bang and first entry in the table */
   double time_interp_table_offset;
@@ -177,12 +183,16 @@ double cosmology_get_hydro_kick_factor(const struct cosmology *cosmo,
 double cosmology_get_therm_kick_factor(const struct cosmology *cosmo,
                                        integertime_t ti_start,
                                        integertime_t ti_end);
+double cosmology_get_corr_kick_factor(const struct cosmology *cosmo,
+                                      integertime_t ti_start,
+                                      integertime_t ti_end);
+double cosmology_get_delta_time(const struct cosmology *c,
+                                integertime_t ti_start, integertime_t ti_end);
 
-double cosmology_get_delta_time(const struct cosmology *c, double a1,
-                                double a2);
+double cosmology_get_scale_factor(const struct cosmology *cosmo, double t);
 
-void cosmology_init(const struct swift_params *params,
-                    const struct unit_system *us,
+double cosmology_get_time_since_big_bang(const struct cosmology *c, double a);
+void cosmology_init(struct swift_params *params, const struct unit_system *us,
                     const struct phys_const *phys_const, struct cosmology *c);
 
 void cosmology_init_no_cosmo(struct cosmology *c);

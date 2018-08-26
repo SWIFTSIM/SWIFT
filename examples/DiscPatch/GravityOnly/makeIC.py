@@ -38,11 +38,10 @@ import random
 # usage: python makeIC.py 1000 
 
 # physical constants in cgs
-NEWTON_GRAVITY_CGS  = 6.672e-8
-SOLAR_MASS_IN_CGS   = 1.9885e33
-PARSEC_IN_CGS       = 3.0856776e18
-PROTON_MASS_IN_CGS  = 1.6726231e24
-YEAR_IN_CGS         = 3.154e+7
+NEWTON_GRAVITY_CGS  = 6.67408e-8
+SOLAR_MASS_IN_CGS   = 1.98848e33
+PARSEC_IN_CGS       = 3.08567758e18
+YEAR_IN_CGS         = 3.15569252e7
 
 # choice of units
 const_unit_length_in_cgs   =   (PARSEC_IN_CGS)

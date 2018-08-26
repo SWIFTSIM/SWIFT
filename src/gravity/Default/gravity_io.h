@@ -21,8 +21,8 @@
 
 #include "io_properties.h"
 
-void convert_gpart_pos(const struct engine* e, const struct gpart* gp,
-                       double* ret) {
+INLINE static void convert_gpart_pos(const struct engine* e,
+                                     const struct gpart* gp, double* ret) {
 
   if (e->s->periodic) {
     ret[0] = box_wrap(gp->x[0], 0.0, e->s->dim[0]);
@@ -35,8 +35,8 @@ void convert_gpart_pos(const struct engine* e, const struct gpart* gp,
   }
 }
 
-void convert_gpart_vel(const struct engine* e, const struct gpart* gp,
-                       float* ret) {
+INLINE static void convert_gpart_vel(const struct engine* e,
+                                     const struct gpart* gp, float* ret) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology* cosmo = e->cosmology;
@@ -62,9 +62,9 @@ void convert_gpart_vel(const struct engine* e, const struct gpart* gp,
   ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
 
   /* Conversion from internal units to peculiar velocities */
-  ret[0] *= cosmo->a2_inv;
-  ret[1] *= cosmo->a2_inv;
-  ret[2] *= cosmo->a2_inv;
+  ret[0] *= cosmo->a_inv;
+  ret[1] *= cosmo->a_inv;
+  ret[2] *= cosmo->a_inv;
 }
 
 /**
@@ -74,8 +74,9 @@ void convert_gpart_vel(const struct engine* e, const struct gpart* gp,
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-void darkmatter_read_particles(struct gpart* gparts, struct io_props* list,
-                               int* num_fields) {
+INLINE static void darkmatter_read_particles(struct gpart* gparts,
+                                             struct io_props* list,
+                                             int* num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 4;
@@ -98,11 +99,12 @@ void darkmatter_read_particles(struct gpart* gparts, struct io_props* list,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-void darkmatter_write_particles(const struct gpart* gparts,
-                                struct io_props* list, int* num_fields) {
+INLINE static void darkmatter_write_particles(const struct gpart* gparts,
+                                              struct io_props* list,
+                                              int* num_fields) {
 
   /* Say how much we want to write */
-  *num_fields = 5;
+  *num_fields = 4;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_gpart(
@@ -113,8 +115,6 @@ void darkmatter_write_particles(const struct gpart* gparts,
       io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, gparts, mass);
   list[3] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
-  list[4] = io_make_output_field("Potential", FLOAT, 1, UNIT_CONV_POTENTIAL,
-                                 gparts, potential);
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IO_H */

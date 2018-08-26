@@ -50,7 +50,8 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell_init(
  * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
+hydro_slope_limit_cell_collect(struct part* pi, const struct part* pj,
+                               float r) {
 
   /* basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */

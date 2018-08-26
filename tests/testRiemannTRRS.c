@@ -105,7 +105,7 @@ void check_riemann_solution(struct riemann_statevector* WL,
 /**
  * @brief Check the TRRS Riemann solver on the Toro test problems
  */
-void check_riemann_trrs() {
+void check_riemann_trrs(void) {
   struct riemann_statevector WL, WR, Whalf;
 
   /* Test 1 */
@@ -232,7 +232,7 @@ void check_riemann_trrs() {
 /**
  * @brief Check the symmetry of the TRRS Riemann solver
  */
-void check_riemann_symmetry() {
+void check_riemann_symmetry(void) {
   float WL[5], WR[5], Whalf1[5], Whalf2[5], n_unit1[3], n_unit2[3], n_norm,
       vij[3], totflux1[5], totflux2[5];
 
@@ -311,7 +311,7 @@ void check_riemann_symmetry() {
 /**
  * @brief Check the TRRS Riemann solver
  */
-int main() {
+int main(int argc, char* argv[]) {
 
   /* check the TRRS Riemann solver */
   check_riemann_trrs();

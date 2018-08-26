@@ -29,8 +29,10 @@
 #include "cell.h"
 #include "chemistry.h"
 #include "clocks.h"
+#include "common_io.h"
 #include "const.h"
 #include "cooling.h"
+#include "cooling_struct.h"
 #include "cosmology.h"
 #include "cycle.h"
 #include "debug.h"
@@ -45,7 +47,9 @@
 #include "lock.h"
 #include "logger.h"
 #include "map.h"
+#include "mesh_gravity.h"
 #include "multipole.h"
+#include "outputlist.h"
 #include "parallel_io.h"
 #include "parser.h"
 #include "part.h"
@@ -68,6 +72,7 @@
 #include "timers.h"
 #include "tools.h"
 #include "units.h"
+#include "velociraptor_interface.h"
 #include "version.h"
 
 #endif /* SWIFT_SWIFT_H */

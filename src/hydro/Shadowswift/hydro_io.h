@@ -32,8 +32,9 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-void hydro_read_particles(struct part* parts, struct io_props* list,
-                          int* num_fields) {
+INLINE static void hydro_read_particles(struct part* parts,
+                                        struct io_props* list,
+                                        int* num_fields) {
 
   *num_fields = 8;
 
@@ -64,7 +65,8 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
  * @param p Particle.
  * @return Internal energy of the particle
  */
-void convert_u(const struct engine* e, const struct part* p, float* ret) {
+INLINE static void convert_u(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
   ret[0] = hydro_get_internal_energy(p);
 }
 
@@ -75,7 +77,8 @@ void convert_u(const struct engine* e, const struct part* p, float* ret) {
  * @param p Particle.
  * @return Entropic function of the particle
  */
-void convert_A(const struct engine* e, const struct part* p, float* ret) {
+INLINE static void convert_A(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
   ret[0] = hydro_get_entropy(p);
 }
 
@@ -86,7 +89,8 @@ void convert_A(const struct engine* e, const struct part* p, float* ret) {
  * @param p Particle.
  * @return Total energy of the particle
  */
-void convert_Etot(const struct engine* e, const struct part* p, float* ret) {
+INLINE static void convert_Etot(const struct engine* e, const struct part* p,
+                                const struct xpart* xp, float* ret) {
 #ifdef SHADOWFAX_TOTAL_ENERGY
   return p->conserved.energy;
 #else
@@ -104,8 +108,9 @@ void convert_Etot(const struct engine* e, const struct part* p, float* ret) {
 #endif
 }
 
-void convert_part_pos(const struct engine* e, const struct part* p,
-                      double* ret) {
+INLINE static void convert_part_pos(const struct engine* e,
+                                    const struct part* p,
+                                    const struct xpart* xp, double* ret) {
 
   if (e->s->periodic) {
     ret[0] = box_wrap(p->x[0], 0.0, e->s->dim[0]);
@@ -125,14 +130,17 @@ void convert_part_pos(const struct engine* e, const struct part* p,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-void hydro_write_particles(struct part* parts, struct io_props* list,
-                           int* num_fields) {
+INLINE static void hydro_write_particles(const struct part* parts,
+                                         const struct xpart* xparts,
+                                         struct io_props* list,
+                                         int* num_fields) {
 
   *num_fields = 13;
 
   /* List what we want to write */
-  list[0] = io_make_output_field_convert_part(
-      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, parts, convert_part_pos);
+  list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
+                                              UNIT_CONV_LENGTH, parts, xparts,
+                                              convert_part_pos);
   list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts,
                                  primitives.v);
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts,
@@ -141,7 +149,7 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                  parts, h);
   list[4] = io_make_output_field_convert_part("InternalEnergy", FLOAT, 1,
                                               UNIT_CONV_ENERGY_PER_UNIT_MASS,
-                                              parts, convert_u);
+                                              parts, xparts, convert_u);
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_output_field("Acceleration", FLOAT, 3,
@@ -153,18 +161,18 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
   list[9] = io_make_output_field("GradDensity", FLOAT, 3, UNIT_CONV_DENSITY,
                                  parts, primitives.gradients.rho);
   list[10] = io_make_output_field_convert_part(
-      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, parts, convert_A);
+      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, parts, xparts, convert_A);
   list[11] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
                                   parts, primitives.P);
   list[12] = io_make_output_field_convert_part(
-      "TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY, parts, convert_Etot);
+      "TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY, parts, xparts, convert_Etot);
 }
 
 /**
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-void hydro_write_flavour(hid_t h_grpsph) {
+INLINE static void hydro_write_flavour(hid_t h_grpsph) {
   /* Gradient information */
   io_write_attribute_s(h_grpsph, "Gradient reconstruction model",
                        HYDRO_GRADIENT_IMPLEMENTATION);
@@ -185,4 +193,4 @@ void hydro_write_flavour(hid_t h_grpsph) {
  *
  * @return 1 if entropy is in 'internal energy', 0 otherwise.
  */
-int writeEntropyFlag() { return 0; }
+INLINE static int writeEntropyFlag(void) { return 0; }

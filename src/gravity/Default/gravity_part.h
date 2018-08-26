@@ -29,9 +29,6 @@ struct gpart {
   /*! Particle position. */
   double x[3];
 
-  /*! Offset between current position and position at last tree rebuild. */
-  float x_diff[3];
-
   /*! Particle velocity. */
   float v_full[3];
 
@@ -40,9 +37,6 @@ struct gpart {
 
   /*! Particle mass. */
   float mass;
-
-  /*! Gravitational potential */
-  float potential;
 
   /*! Time-step length */
   timebin_t time_bin;
@@ -64,6 +58,12 @@ struct gpart {
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
+
+  /*! Acceleration taken from the mesh only */
+  float a_grav_PM[3];
+
+  /*! Potential taken from the mesh only */
+  float potential_PM;
 
   /* Brute-force particle acceleration. */
   double a_grav_exact[3];

@@ -45,6 +45,7 @@
  *
  * Note that this turns into a no-op but gives information to the compiler.
  *
+ * @param type The type of the array.
  * @param array The array.
  * @param alignment The alignment in bytes of the array.
  */

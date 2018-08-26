@@ -41,7 +41,7 @@
 struct external_potential {
 
   /*! Position of the point mass */
-  double x, y, z;
+  double x[3];
 
   /*! Mass */
   double mass;
@@ -66,15 +66,15 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
     const struct gpart* restrict g) {
 
   const float G_newton = phys_const->const_newton_G;
-  const float dx = g->x[0] - potential->x;
-  const float dy = g->x[1] - potential->y;
-  const float dz = g->x[2] - potential->z;
+  const float dx = g->x[0] - potential->x[0];
+  const float dy = g->x[1] - potential->x[1];
+  const float dz = g->x[2] - potential->x[2];
   const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
   const float rinv2 = rinv * rinv;
   const float rinv3 = rinv2 * rinv;
-  const float drdv = (g->x[0] - potential->x) * (g->v_full[0]) +
-                     (g->x[1] - potential->y) * (g->v_full[1]) +
-                     (g->x[2] - potential->z) * (g->v_full[2]);
+  const float drdv = (g->x[0] - potential->x[0]) * (g->v_full[0]) +
+                     (g->x[1] - potential->x[1]) * (g->v_full[1]) +
+                     (g->x[2] - potential->x[2]) * (g->v_full[2]);
   const float dota_x = G_newton * potential->mass * rinv3 *
                        (-g->v_full[0] + 3.f * rinv2 * drdv * dx);
   const float dota_y = G_newton * potential->mass * rinv3 *
@@ -109,9 +109,9 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double time, const struct external_potential* restrict potential,
     const struct phys_const* restrict phys_const, struct gpart* restrict g) {
 
-  const float dx = g->x[0] - potential->x;
-  const float dy = g->x[1] - potential->y;
-  const float dz = g->x[2] - potential->z;
+  const float dx = g->x[0] - potential->x[0];
+  const float dy = g->x[1] - potential->x[1];
+  const float dz = g->x[2] - potential->x[2];
   const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
   const float rinv3 = rinv * rinv * rinv;
 
@@ -134,9 +134,9 @@ external_gravity_get_potential_energy(
     double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, const struct gpart* g) {
 
-  const float dx = g->x[0] - potential->x;
-  const float dy = g->x[1] - potential->y;
-  const float dz = g->x[2] - potential->z;
+  const float dx = g->x[0] - potential->x[0];
+  const float dy = g->x[1] - potential->x[1];
+  const float dz = g->x[2] - potential->x[2];
   const float rinv = 1. / sqrtf(dx * dx + dy * dy + dz * dz);
   return -phys_const->const_newton_G * potential->mass * rinv;
 }
@@ -152,16 +152,12 @@ external_gravity_get_potential_energy(
  * @param potential The external potential properties to initialize
  */
 static INLINE void potential_init_backend(
-    const struct swift_params* parameter_file,
-    const struct phys_const* phys_const, const struct unit_system* us,
-    const struct space* s, struct external_potential* potential) {
+    struct swift_params* parameter_file, const struct phys_const* phys_const,
+    const struct unit_system* us, const struct space* s,
+    struct external_potential* potential) {
 
-  potential->x =
-      parser_get_param_double(parameter_file, "PointMassPotential:position_x");
-  potential->y =
-      parser_get_param_double(parameter_file, "PointMassPotential:position_y");
-  potential->z =
-      parser_get_param_double(parameter_file, "PointMassPotential:position_z");
+  parser_get_param_double_array(parameter_file, "PointMassPotential:position",
+                                3, potential->x);
   potential->mass =
       parser_get_param_double(parameter_file, "PointMassPotential:mass");
   potential->timestep_mult = parser_get_param_float(
@@ -179,7 +175,7 @@ static INLINE void potential_print_backend(
   message(
       "External potential is 'Point mass' with properties (x,y,z) = (%e, %e, "
       "%e), M = %e timestep multiplier = %e.",
-      potential->x, potential->y, potential->z, potential->mass,
+      potential->x[0], potential->x[1], potential->x[2], potential->mass,
       potential->timestep_mult);
 }
 

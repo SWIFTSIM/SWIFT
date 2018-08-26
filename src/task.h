@@ -46,9 +46,10 @@ enum task_types {
   task_type_sub_self,
   task_type_sub_pair,
   task_type_init_grav,
-  task_type_ghost_in,
+  task_type_init_grav_out, /* Implicit */
+  task_type_ghost_in,      /* Implicit */
   task_type_ghost,
-  task_type_ghost_out,
+  task_type_ghost_out, /* Implicit */
   task_type_extra_ghost,
   task_type_drift_part,
   task_type_drift_gpart,
@@ -58,12 +59,11 @@ enum task_types {
   task_type_timestep,
   task_type_send,
   task_type_recv,
-  task_type_grav_top_level,
   task_type_grav_long_range,
-  task_type_grav_ghost_in,
-  task_type_grav_ghost_out,
   task_type_grav_mm,
+  task_type_grav_down_in, /* Implicit */
   task_type_grav_down,
+  task_type_grav_mesh,
   task_type_cooling,
   task_type_sourceterms,
   task_type_count
@@ -111,6 +111,13 @@ extern const char *taskID_names[];
 extern const char *subtaskID_names[];
 
 /**
+ *  @brief The MPI communicators for the different subtypes.
+ */
+#ifdef WITH_MPI
+extern MPI_Comm subtaskMPI_comms[task_subtype_count];
+#endif
+
+/**
  * @brief A task to be run by the #scheduler.
  */
 struct task {
@@ -138,11 +145,11 @@ struct task {
   int rank;
 
   /*! Weight of the task */
-  int weight;
+  float weight;
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
   /*! Individual cost estimate for this task. */
-  int cost;
+  float cost;
 #endif
 
   /*! Number of tasks unlocked by this one */
@@ -187,5 +194,7 @@ float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);
 void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
-
+#ifdef WITH_MPI
+void task_create_mpi_comms(void);
+#endif
 #endif /* SWIFT_TASK_H */

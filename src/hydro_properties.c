@@ -28,6 +28,7 @@
 #include "adiabatic_index.h"
 #include "common_io.h"
 #include "dimension.h"
+#include "equation_of_state.h"
 #include "error.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
@@ -40,10 +41,18 @@
 #define hydro_props_default_min_temp 0.f
 #define hydro_props_default_H_fraction 0.76
 
+/**
+ * @brief Initialize the global properties of the hydro scheme.
+ *
+ * @param p The #hydro_props.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param us The internal unit system.
+ * @param params The parsed parameters.
+ */
 void hydro_props_init(struct hydro_props *p,
                       const struct phys_const *phys_const,
                       const struct unit_system *us,
-                      const struct swift_params *params) {
+                      struct swift_params *params) {
 
   /* Kernel properties */
   p->eta_neighbours = parser_get_param_float(params, "SPH:resolution_eta");
@@ -63,6 +72,7 @@ void hydro_props_init(struct hydro_props *p,
   /* change the meaning of target_neighbours and delta_neighbours */
   p->target_neighbours = 1.0f;
   p->delta_neighbours = 0.0f;
+  p->eta_neighbours = 1.0f;
 #endif
 
   /* Maximal smoothing length */
@@ -83,7 +93,7 @@ void hydro_props_init(struct hydro_props *p,
   p->initial_temperature = parser_get_opt_param_float(
       params, "SPH:initial_temperature", hydro_props_default_init_temp);
 
-  /* Initial temperature */
+  /* Minimal temperature */
   p->minimal_temperature = parser_get_opt_param_float(
       params, "SPH:minimal_temperature", hydro_props_default_min_temp);
 
@@ -96,11 +106,12 @@ void hydro_props_init(struct hydro_props *p,
       params, "SPH:H_mass_fraction", hydro_props_default_H_fraction);
 
   /* Compute the initial energy (Note the temp. read is in internal units) */
+  /* u_init = k_B T_init / (mu m_p (gamma - 1)) */
   double u_init = phys_const->const_boltzmann_k / phys_const->const_proton_mass;
   u_init *= p->initial_temperature;
   u_init *= hydro_one_over_gamma_minus_one;
 
-  /* Correct for hydrogen mass fraction */
+  /* Correct for hydrogen mass fraction (mu) */
   double mean_molecular_weight;
   if (p->initial_temperature *
           units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE) >
@@ -112,11 +123,12 @@ void hydro_props_init(struct hydro_props *p,
   p->initial_internal_energy = u_init / mean_molecular_weight;
 
   /* Compute the minimal energy (Note the temp. read is in internal units) */
+  /* u_min = k_B T_min / (mu m_p (gamma - 1)) */
   double u_min = phys_const->const_boltzmann_k / phys_const->const_proton_mass;
-  u_min *= p->initial_temperature;
+  u_min *= p->minimal_temperature;
   u_min *= hydro_one_over_gamma_minus_one;
 
-  /* Correct for hydrogen mass fraction */
+  /* Correct for hydrogen mass fraction (mu) */
   if (p->minimal_temperature *
           units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE) >
       1e4)
@@ -127,6 +139,11 @@ void hydro_props_init(struct hydro_props *p,
   p->minimal_internal_energy = u_min / mean_molecular_weight;
 }
 
+/**
+ * @brief Print the global properties of the hydro scheme.
+ *
+ * @param p The #hydro_props.
+ */
 void hydro_props_print(const struct hydro_props *p) {
 
   /* Print equation of state first */
@@ -161,6 +178,15 @@ void hydro_props_print(const struct hydro_props *p) {
 
   if (p->minimal_temperature != hydro_props_default_min_temp)
     message("Minimal gas temperature set to %f", p->minimal_temperature);
+
+    // Matthieu: Temporary location for this i/o business.
+#ifdef PLANETARY_SPH
+#ifdef PLANETARY_SPH_BALSARA
+  message("Planetary SPH: Balsara switch enabled");
+#else
+  message("Planetary SPH: Balsara switch disabled");
+#endif  // PLANETARY_SPH_BALSARA
+#endif  // PLANETARY_SPH
 }
 
 #if defined(HAVE_HDF5)

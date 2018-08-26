@@ -36,7 +36,7 @@
  * @param us The current internal system of units
  * @param source the structure that has all the source term properties
  */
-void sourceterms_init(const struct swift_params *parameter_file,
+void sourceterms_init(struct swift_params *parameter_file,
                       struct unit_system *us, struct sourceterms *source) {
 #ifdef SOURCETERMS_SN_FEEDBACK
   supernova_init(parameter_file, us, source);

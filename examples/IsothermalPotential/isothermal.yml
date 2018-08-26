@@ -1,7 +1,7 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e33    # M_sun
-  UnitLength_in_cgs:   3.0856776e21  # kpc
+  UnitLength_in_cgs:   3.08567758e21 # kpc
   UnitVelocity_in_cgs: 1e5           # km/s
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
@@ -26,15 +26,10 @@ Snapshots:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  Isothermal.hdf5       # The file to read
-  shift_x:    200.                  # Shift all particles to be in the potential
-  shift_y:    200.
-  shift_z:    200.
+  shift:      [200.,200.,200.]      # Shift all particles to be in the potential
  
 # External potential parameters
 IsothermalPotential:
-  position_x:      0.       # location of centre of isothermal potential in internal units
-  position_y:      0.
-  position_z:      0.
-  vrot:            200.     # rotation speed of isothermal potential in internal units
-  timestep_mult:   0.01     # controls time step
-  epsilon:         0.       # No softening at the centre of the halo
+  vrot:            200.       # rotation speed of isothermal potential in internal units
+  timestep_mult:   0.01       # controls time step
+  epsilon:         0.         # No softening at the centre of the halo

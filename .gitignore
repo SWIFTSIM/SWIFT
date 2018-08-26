@@ -26,14 +26,29 @@ examples/swift_mpi
 examples/*/*.xmf
 examples/*/*.h5
 examples/*/*.png
+examples/*/*.mp4
 examples/*/*.txt
 examples/*/*.dot
+examples/*/restart/*
 examples/*/used_parameters.yml
+examples/*/unused_parameters.yml
 examples/*/*/*.xmf
 examples/*/*/*.png
+examples/*/*/*.mp4
 examples/*/*/*.txt
 examples/*/*/*.dot
+examples/*/*/*.rst
+examples/*/*/*.hdf5
+examples/*/snapshots*
+examples/*/restart/*
 examples/*/*/used_parameters.yml
+examples/*/err_file*
+examples/*/out_file*
+examples/*/stf_output*
+examples/*/stf_ouput*
+examples/*/log*
+examples/*/*/unused_parameters.yml
+examples/*/*.mpg
 examples/*/gravity_checks_*.dat
 
 tests/testActivePair
@@ -59,7 +74,7 @@ tests/swift_dopair_125_standard.dat
 tests/brute_force_125_perturbed.dat
 tests/swift_dopair_125_perturbed.dat
 tests/brute_force_pair_active.dat
-tests/brute_force_dopair2_active.dat 
+tests/brute_force_dopair2_active.dat
 tests/swift_dopair2_force_active.dat
 tests/brute_force_periodic_BC_perturbed.dat
 tests/swift_dopair_active.dat
@@ -70,7 +85,9 @@ tests/test_nonsym_density_1_vec.dat
 tests/test_nonsym_density_2_vec.dat
 tests/test_nonsym_force_1_vec.dat
 tests/test_nonsym_force_2_vec.dat
+tests/potential.dat
 tests/testGreetings
+tests/testSelectOutput
 tests/testReading
 tests/testSingle
 tests/testTimeIntegration
@@ -93,6 +110,9 @@ tests/test125cells.sh
 tests/test125cellsPerturbed.sh
 tests/testParser.sh
 tests/testReading.sh
+tests/testSelectOutput.sh
+tests/unused_parser_output.yml
+tests/used_parser_output.yml
 tests/testAdiabaticIndex
 tests/testRiemannExact
 tests/testRiemannTRRS
@@ -107,6 +127,11 @@ tests/benchmarkInteractions
 tests/testGravityDerivatives
 tests/testPotentialSelf
 tests/testPotentialPair
+tests/testEOS
+tests/testEOS*.txt
+tests/testEOS*.png
+tests/testUtilities
+tests/testCbrt
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf
@@ -139,6 +164,8 @@ m4/lt~obsolete.m4
 /missing
 /stamp-h1
 /test-driver
+
+src/equation_of_state/planetary/*.txt
 
 # Intel compiler optimization reports
 *.optrpt
@@ -288,3 +315,9 @@ sympy-plots-for-*.tex/
 
 # macOS
 *.DS_Store
+
+#ctags
+*tags
+
+# vim
+*.swp

@@ -27,16 +27,24 @@
 #include "inline.h"
 #include "part.h"
 
-/* So far only one model here */
-/* Straight-forward import */
+/* Import the right functions */
+#if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity.h"
-#include "./gravity/Default/gravity_iact.h"
+#define GRAVITY_IMPLEMENTATION "Default (no potential)"
+#elif defined(POTENTIAL_GRAVITY)
+#include "./gravity/Potential/gravity.h"
+#define GRAVITY_IMPLEMENTATION "With potential calculation"
+#else
+#error "Invalid choice of gravity variant"
+#endif
 
 struct engine;
 struct space;
 
 void gravity_exact_force_ewald_init(double boxSize);
-void gravity_exact_force_ewald_free();
+void gravity_exact_force_ewald_free(void);
+void gravity_exact_force_ewald_evaluate(double rx, double ry, double rz,
+                                        double corr_f[3], double *corr_p);
 void gravity_exact_force_compute(struct space *s, const struct engine *e);
 void gravity_exact_force_check(struct space *s, const struct engine *e,
                                float rel_tol);

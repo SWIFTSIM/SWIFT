@@ -98,7 +98,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->parts, part_align,
@@ -150,7 +150,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         h_max = fmaxf(h_max, part->h);
         part->id = ++(*partId);
 
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 
 #ifdef SHADOWFAX_SPH
@@ -217,8 +217,20 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields(struct cell *c) {
+#ifdef SHADOWFAX_SPH
+  struct hydro_space hs;
+  hs.anchor[0] = 0.;
+  hs.anchor[1] = 0.;
+  hs.anchor[2] = 0.;
+  hs.side[0] = 1.;
+  hs.side[1] = 1.;
+  hs.side[2] = 1.;
+  struct hydro_space *hspointer = &hs;
+#else
+  struct hydro_space *hspointer = NULL;
+#endif
   for (int pid = 0; pid < c->count; pid++) {
-    hydro_init_part(&c->parts[pid], NULL);
+    hydro_init_part(&c->parts[pid], hspointer);
   }
 }
 
@@ -261,14 +273,17 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2],
             hydro_get_comoving_density(&main_cell->parts[pid]),
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
             0.f,
+#elif defined(HOPKINS_PU_SPH)
+            main_cell->parts[pid].density.pressure_bar_dh,
 #else
             main_cell->parts[pid].density.rho_dh,
 #endif
             main_cell->parts[pid].density.wcount,
             main_cell->parts[pid].density.wcount_dh,
-#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH) || \
+    defined(HOPKINS_PU_SPH)
             main_cell->parts[pid].density.div_v,
             main_cell->parts[pid].density.rot_v[0],
             main_cell->parts[pid].density.rot_v[1],
@@ -276,7 +291,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #else
             0., 0., 0., 0.
 #endif
-            );
+    );
   }
 
   /* Write all other cells */
@@ -298,7 +313,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
               cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
               cj->parts[pjd].v[2], hydro_get_comoving_density(&cj->parts[pjd]),
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
               0.f,
 #else
               main_cell->parts[pjd].density.rho_dh,
@@ -310,7 +325,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #else
               0., 0., 0., 0.
 #endif
-              );
+          );
         }
       }
     }
@@ -342,7 +357,7 @@ int main(int argc, char *argv[]) {
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0., h_pert = 0.;
-  char outputFileNameExtension[200] = "";
+  char outputFileNameExtension[100] = "";
   char outputFileName[200] = "";
   enum velocity_types vel = velocity_zero;
 
@@ -489,8 +504,6 @@ int main(int argc, char *argv[]) {
 
     const ticks tic = getticks();
 
-#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
-
 #ifdef WITH_VECTORIZATION
     runner.ci_cache.count = 0;
     cache_init(&runner.ci_cache, 512);
@@ -501,7 +514,7 @@ int main(int argc, char *argv[]) {
 #if defined(TEST_DOSELF_SUBSET) || defined(TEST_DOPAIR_SUBSET)
     int *pid = NULL;
     int count = 0;
-    if ((pid = malloc(sizeof(int) * main_cell->count)) == NULL)
+    if ((pid = (int *)malloc(sizeof(int) * main_cell->count)) == NULL)
       error("Can't allocate memory for pid.");
     for (int k = 0; k < main_cell->count; k++)
       if (part_is_active(&main_cell->parts[k], &engine)) {
@@ -537,8 +550,6 @@ int main(int argc, char *argv[]) {
 
     timings[13] += getticks() - self_tic;
 
-#endif
-
     const ticks toc = getticks();
     time += toc - tic;
 
@@ -547,7 +558,7 @@ int main(int argc, char *argv[]) {
 
     /* Dump if necessary */
     if (i % 50 == 0) {
-      sprintf(outputFileName, "swift_dopair_27_%s.dat",
+      sprintf(outputFileName, "swift_dopair_27_%.150s.dat",
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, cells);
     }
@@ -577,8 +588,6 @@ int main(int argc, char *argv[]) {
 
   const ticks tic = getticks();
 
-#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
-
   /* Run all the brute-force pairs */
   for (int j = 0; j < 27; ++j)
     if (cells[j] != main_cell) pairs_all_density(&runner, main_cell, cells[j]);
@@ -586,15 +595,13 @@ int main(int argc, char *argv[]) {
   /* And now the self-interaction */
   self_all_density(&runner, main_cell);
 
-#endif
-
   const ticks toc = getticks();
 
   /* Let's get physical ! */
   end_calculation(main_cell, &cosmo);
 
   /* Dump */
-  sprintf(outputFileName, "brute_force_27_%s.dat", outputFileNameExtension);
+  sprintf(outputFileName, "brute_force_27_%.150s.dat", outputFileNameExtension);
   dump_particle_fields(outputFileName, main_cell, cells);
 
   /* Output timing */

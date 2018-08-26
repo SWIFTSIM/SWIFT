@@ -2086,7 +2086,8 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   sid = space_getsid(s, &ci, &cj, shift);
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_task(ci) && cell_can_recurse_in_pair_task(cj)) {
+  if (cell_can_recurse_in_pair_hydro_task(ci) &&
+      cell_can_recurse_in_pair_hydro_task(cj)) {
 
     /* Different types of flags. */
     switch (sid) {
@@ -2296,10 +2297,16 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid)) ||
         ci->dx_max_sort_old > ci->dmin * space_maxreldx)
-      error("Interacting unsorted cell.");
+      error(
+          "Interacting unsorted cell. ci->dx_max_sort_old=%e ci->dmin=%e "
+          "ci->sorted=%d sid=%d",
+          ci->dx_max_sort_old, ci->dmin, ci->sorted, sid);
     if (!(cj->sorted & (1 << sid)) ||
         cj->dx_max_sort_old > cj->dmin * space_maxreldx)
-      error("Interacting unsorted cell.");
+      error(
+          "Interacting unsorted cell. cj->dx_max_sort_old=%e cj->dmin=%e "
+          "cj->sorted=%d sid=%d",
+          cj->dx_max_sort_old, cj->dmin, cj->sorted, sid);
 
     /* Compute the interactions. */
     DOPAIR1_BRANCH(r, ci, cj);
@@ -2323,7 +2330,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   if (ci->count == 0 || !cell_is_active_hydro(ci, r->e)) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_self_task(ci)) {
+  if (cell_can_recurse_in_self_hydro_task(ci)) {
 
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
@@ -2376,7 +2383,8 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   sid = space_getsid(s, &ci, &cj, shift);
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_task(ci) && cell_can_recurse_in_pair_task(cj)) {
+  if (cell_can_recurse_in_pair_hydro_task(ci) &&
+      cell_can_recurse_in_pair_hydro_task(cj)) {
 
     /* Different types of flags. */
     switch (sid) {
@@ -2586,10 +2594,16 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
     /* Do any of the cells need to be sorted first? */
     if (!(ci->sorted & (1 << sid)) ||
         ci->dx_max_sort_old > ci->dmin * space_maxreldx)
-      error("Interacting unsorted cells.");
+      error(
+          "Interacting unsorted cell. ci->dx_max_sort_old=%e ci->dmin=%e "
+          "ci->sorted=%d sid=%d",
+          ci->dx_max_sort_old, ci->dmin, ci->sorted, sid);
     if (!(cj->sorted & (1 << sid)) ||
         cj->dx_max_sort_old > cj->dmin * space_maxreldx)
-      error("Interacting unsorted cells.");
+      error(
+          "Interacting unsorted cell. cj->dx_max_sort_old=%e cj->dmin=%e "
+          "cj->sorted=%d sid=%d",
+          cj->dx_max_sort_old, cj->dmin, cj->sorted, sid);
 
     /* Compute the interactions. */
     DOPAIR2_BRANCH(r, ci, cj);
@@ -2613,7 +2627,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
   if (ci->count == 0 || !cell_is_active_hydro(ci, r->e)) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_self_task(ci)) {
+  if (cell_can_recurse_in_self_hydro_task(ci)) {
 
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
@@ -2665,7 +2679,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   if (cj == NULL) {
 
     /* Recurse? */
-    if (cell_can_recurse_in_self_task(ci)) {
+    if (cell_can_recurse_in_self_hydro_task(ci)) {
 
       /* Loop over all progeny. */
       DOSUB_SUBSET(r, sub, parts, ind, count, NULL, -1, 0);
@@ -2684,8 +2698,8 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   else {
 
     /* Recurse? */
-    if (cell_can_recurse_in_pair_task(ci) &&
-        cell_can_recurse_in_pair_task(cj)) {
+    if (cell_can_recurse_in_pair_hydro_task(ci) &&
+        cell_can_recurse_in_pair_hydro_task(cj)) {
 
       /* Get the type of pair if not specified explicitly. */
       double shift[3] = {0.0, 0.0, 0.0};

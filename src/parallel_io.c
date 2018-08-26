@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 /* This object's header. */
 #include "parallel_io.h"
@@ -38,7 +39,7 @@
 /* Local includes. */
 #include "chemistry_io.h"
 #include "common_io.h"
-#include "cooling.h"
+#include "cooling_io.h"
 #include "dimension.h"
 #include "engine.h"
 #include "error.h"
@@ -50,12 +51,13 @@
 #include "kernel_hydro.h"
 #include "memuse.h"
 #include "part.h"
+#include "part_type.h"
 #include "stars_io.h"
 #include "units.h"
 #include "xmf.h"
 
 /* The current limit of ROMIO (the underlying MPI-IO layer) is 2GB */
-#define HDF5_PARALLEL_IO_MAX_BYTES 2000000000LL
+#define HDF5_PARALLEL_IO_MAX_BYTES 2147000000LL
 
 /* Are we timing the i/o? */
 //#define IO_SPEED_MEASUREMENT
@@ -71,13 +73,16 @@
  * @param internal_units The #unit_system used internally.
  * @param ic_units The #unit_system used in the snapshots.
  * @param cleanup_h Are we removing h-factors from the ICs?
+ * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
+ * IC velocities?
  * @param h The value of the reduced Hubble constant to use for cleaning.
+ * @param a The current value of the scale-factor.
  */
 void readArray_chunk(hid_t h_data, hid_t h_plist_id,
                      const struct io_props props, size_t N, long long offset,
                      const struct unit_system* internal_units,
                      const struct unit_system* ic_units, int cleanup_h,
-                     double h) {
+                     int cleanup_sqrt_a, double h, double a) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -85,7 +90,7 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
 
   /* Can't handle writes of more than 2GB */
   if (N * props.dimension * typeSize > HDF5_PARALLEL_IO_MAX_BYTES)
-    error("Dataset too large to be written in one pass!");
+    error("Dataset too large to be read in one pass!");
 
   /* Allocate temporary buffer */
   void* temp = malloc(num_elements * typeSize);
@@ -120,9 +125,7 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
   /* Using HDF5 dataspaces would be better */
   const hid_t h_err = H5Dread(h_data, io_hdf5_type(props.type), h_memspace,
                               h_filespace, h_plist_id, temp);
-  if (h_err < 0) {
-    error("Error while reading data array '%s'.", props.name);
-  }
+  if (h_err < 0) error("Error while reading data array '%s'.", props.name);
 
   /* Unit conversion if necessary */
   const double factor =
@@ -143,17 +146,32 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
   /* Clean-up h if necessary */
   const float h_factor_exp = units_h_factor(internal_units, props.units);
   if (cleanup_h && h_factor_exp != 0.f) {
-    const double h_factor = pow(h, h_factor_exp);
 
     /* message("Multipltying '%s' by h^%f=%f", props.name, h_factor_exp,
      * h_factor); */
 
     if (io_is_double_precision(props.type)) {
       double* temp_d = (double*)temp;
+      const double h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= h_factor;
     } else {
       float* temp_f = (float*)temp;
+      const float h_factor = pow(h, h_factor_exp);
       for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= h_factor;
+    }
+  }
+
+  /* Clean-up a if necessary */
+  if (cleanup_sqrt_a && a != 1. && (strcmp(props.name, "Velocities") == 0)) {
+
+    if (io_is_double_precision(props.type)) {
+      double* temp_d = (double*)temp;
+      const double vel_factor = sqrt(a);
+      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= vel_factor;
+    } else {
+      float* temp_f = (float*)temp;
+      const float vel_factor = sqrt(a);
+      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= vel_factor;
     }
   }
 
@@ -180,12 +198,16 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
  * @param internal_units The #unit_system used internally.
  * @param ic_units The #unit_system used in the ICs.
  * @param cleanup_h Are we removing h-factors from the ICs?
+ * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
+ * IC velocities?
  * @param h The value of the reduced Hubble constant to use for cleaning.
+ * @param a The current value of the scale-factor.
  */
 void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
                int mpi_rank, long long offset,
                const struct unit_system* internal_units,
-               const struct unit_system* ic_units, int cleanup_h, double h) {
+               const struct unit_system* ic_units, int cleanup_h,
+               int cleanup_sqrt_a, double h, double a) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -208,11 +230,56 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
   const hid_t h_data = H5Dopen2(grp, props.name, H5P_DEFAULT);
   if (h_data < 0) error("Error while opening data space '%s'.", props.name);
 
-  /* Check data type */
-  const hid_t h_type = H5Dget_type(h_data);
-  if (h_type < 0) error("Unable to retrieve data type from the file");
-  /* if (!H5Tequal(h_type, hdf5_type(type))) */
-  /*   error("Non-matching types between the code and the file"); */
+/* Parallel-HDF5 1.10.2 incorrectly reads data that was compressed */
+/* We detect this here and crash with an error message instead of  */
+/* continuing with garbage data.                                   */
+#if H5_VERSION_LE(1, 10, 2) && H5_VERSION_GE(1, 10, 2)
+  if (mpi_rank == 0) {
+
+    /* Recover the list of filters that were applied to the data */
+    const hid_t h_plist = H5Dget_create_plist(h_data);
+    if (h_plist < 0)
+      error("Error getting property list for data set '%s'", props.name);
+
+    /* Recover the number of filters in the list */
+    const int n_filters = H5Pget_nfilters(h_plist);
+
+    for (int n = 0; n < n_filters; ++n) {
+
+      unsigned int flag;
+      size_t cd_nelmts = 32;
+      unsigned int* cd_values = malloc(cd_nelmts * sizeof(unsigned int));
+      size_t namelen = 256;
+      char* name = calloc(namelen, sizeof(char));
+      unsigned int filter_config;
+
+      /* Recover the n^th filter in the list */
+      const H5Z_filter_t filter =
+          H5Pget_filter(h_plist, n, &flag, &cd_nelmts, cd_values, namelen, name,
+                        &filter_config);
+      if (filter < 0)
+        error("Error retrieving %d^th (%d) filter for data set '%s'", n,
+              n_filters, props.name);
+
+      /* Now check whether the deflate filter had been applied */
+      if (filter == H5Z_FILTER_DEFLATE)
+        error(
+            "HDF5 1.10.2 cannot correctly read data that was compressed with "
+            "the 'deflate' filter.\nThe field '%s' has had this filter applied "
+            "and the code would silently read garbage into the particle arrays "
+            "so we'd rather stop here. You can:\n - Recompile the code with an "
+            "earlier or older version of HDF5.\n - Use the 'h5repack' tool to "
+            "remove the filter from the ICs (e.g. h5repack -f NONE -i in_file "
+            "-o out_file).\n",
+            props.name);
+
+      free(name);
+      free(cd_values);
+    }
+
+    H5Pclose(h_plist);
+  }
+#endif
 
   /* Create property list for collective dataset read. */
   const hid_t h_plist_id = H5Pcreate(H5P_DATASET_XFER);
@@ -230,7 +297,7 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
     /* Write the first chunk */
     const size_t this_chunk = (N > max_chunk_size) ? max_chunk_size : N;
     readArray_chunk(h_data, h_plist_id, props, this_chunk, offset,
-                    internal_units, ic_units, cleanup_h, h);
+                    internal_units, ic_units, cleanup_h, cleanup_sqrt_a, h, a);
 
     /* Compute how many items are left */
     if (N > max_chunk_size) {
@@ -255,13 +322,8 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
 
   /* Close everything */
   H5Pclose(h_plist_id);
-  H5Tclose(h_type);
   H5Dclose(h_data);
 }
-
-/*-----------------------------------------------------------------------------
- * Routines writing an output file
- *-----------------------------------------------------------------------------*/
 
 /**
  * @brief Prepares an array in the snapshot.
@@ -395,10 +457,9 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Create data space */
   const hid_t h_memspace = H5Screate(H5S_SIMPLE);
-  if (h_memspace < 0) {
+  if (h_memspace < 0)
     error("Error while creating data space (memory) for field '%s'.",
           props.name);
-  }
 
   int rank;
   hsize_t shape[2];
@@ -419,23 +480,22 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Change shape of memory data space */
   hid_t h_err = H5Sset_extent_simple(h_memspace, rank, shape, NULL);
-  if (h_err < 0) {
+  if (h_err < 0)
     error("Error while changing data space (memory) shape for field '%s'.",
           props.name);
-  }
 
   /* Select the hyper-salb corresponding to this rank */
   hid_t h_filespace = H5Dget_space(h_data);
-  if (N > 0) {
+  if (N > 0)
     H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape,
                         NULL);
-  } else {
+  else
     H5Sselect_none(h_filespace);
-  }
 
-/* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
- * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize, */
-/* 	  (int)(N * props.dimension * typeSize), offset); */
+    /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
+     * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize,
+     */
+    /* 	  (int)(N * props.dimension * typeSize), offset); */
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -445,9 +505,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
   /* Write temporary buffer to HDF5 dataspace */
   h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
                    H5P_DEFAULT, temp);
-  if (h_err < 0) {
-    error("Error while writing data array '%s'.", props.name);
-  }
+  if (h_err < 0) error("Error while writing data array '%s'.", props.name);
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -564,7 +622,10 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  * @param with_gravity Are we running with gravity ?
  * @param with_stars Are we running with stars ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
+ * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
+ * IC velocities?
  * @param h The value of the reduced Hubble constant to use for correction.
+ * @param a The current value of the scale-factor.
  * @param mpi_rank The MPI rank of this node
  * @param mpi_size The number of MPI ranks
  * @param comm The MPI communicator
@@ -578,9 +639,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       struct spart** sparts, size_t* Ngas, size_t* Ngparts,
                       size_t* Nstars, int* periodic, int* flag_entropy,
                       int with_hydro, int with_gravity, int with_stars,
-                      int cleanup_h, double h, int mpi_rank, int mpi_size,
-                      MPI_Comm comm, MPI_Info info, int n_threads,
-                      int dry_run) {
+                      int cleanup_h, int cleanup_sqrt_a, double h, double a,
+                      int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
+                      int n_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -598,9 +659,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   hid_t h_plist_id = H5Pcreate(H5P_FILE_ACCESS);
   H5Pset_fapl_mpio(h_plist_id, comm, info);
   h_file = H5Fopen(fileName, H5F_ACC_RDONLY, h_plist_id);
-  if (h_file < 0) {
-    error("Error while opening file '%s'.", fileName);
-  }
+  if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Open header to read simulation properties */
   /* message("Reading runtime parameters..."); */
@@ -659,8 +718,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   }
 
   /* message("Found %lld particles in a %speriodic box of size [%f %f %f].", */
-  /* 	  N_total[0], (periodic ? "": "non-"), dim[0], */
-  /* 	  dim[1], dim[2]); */
+  /* 	  N_total[0], (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
 
   /* Divide the particles among the tasks. */
   for (int ptype = 0; ptype < swift_type_count; ++ptype) {
@@ -675,7 +733,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   struct unit_system* ic_units =
       (struct unit_system*)malloc(sizeof(struct unit_system));
   if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
-  io_read_unit_system(h_file, ic_units, mpi_rank);
+  io_read_unit_system(h_file, ic_units, internal_units, mpi_rank);
 
   /* Tell the user if a conversion will be needed */
   if (mpi_rank == 0) {
@@ -763,9 +821,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
              ptype);
     h_grp = H5Gopen(h_file, partTypeGroupName, H5P_DEFAULT);
-    if (h_grp < 0) {
+    if (h_grp < 0)
       error("Error while opening particle group %s.", partTypeGroupName);
-    }
 
     int num_fields = 0;
     struct io_props list[100];
@@ -806,7 +863,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     if (!dry_run)
       for (int i = 0; i < num_fields; ++i)
         readArray(h_grp, list[i], Nparticles, N_total[ptype], mpi_rank,
-                  offset[ptype], internal_units, ic_units, cleanup_h, h);
+                  offset[ptype], internal_units, ic_units, cleanup_h,
+                  cleanup_sqrt_a, h, a);
 
     /* Close particle group */
     H5Gclose(h_grp);
@@ -860,20 +918,26 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
+  struct swift_params* params = e->parameter_file;
   FILE* xmfFile = 0;
   int periodic = e->s->periodic;
   int numFiles = 1;
 
   /* First time, we need to create the XMF file */
-  if (e->snapshotOutputCount == 0) xmf_create_file(baseName);
+  if (e->snapshot_output_count == 0) xmf_create_file(baseName);
 
   /* Prepare the XMF file for the new entry */
   xmfFile = xmf_prepare_file(baseName);
 
   /* HDF5 File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           e->snapshotOutputCount);
+  if (e->snapshot_label_delta == 1)
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->snapshot_output_count + e->snapshot_label_first);
+  else
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
+             e->snapshot_output_count * e->snapshot_label_delta +
+                 e->snapshot_label_first);
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -908,6 +972,9 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
   io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
   io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
+  io_write_attribute_s(h_grp, "Code", "SWIFT");
+  time_t tm = time(NULL);
+  io_write_attribute_s(h_grp, "Snapshot date", ctime(&tm));
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
@@ -968,19 +1035,28 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   }
 
   /* Print the gravity parameters */
-  if (e->policy & engine_policy_cosmology) {
-    h_grp =
-        H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating cosmology group");
-    cosmology_write_model(h_grp, e->cosmology);
-    H5Gclose(h_grp);
-  }
+  h_grp =
+      H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating cosmology group");
+  if (e->policy & engine_policy_cosmology)
+    io_write_attribute_i(h_grp, "Cosmological run", 1);
+  else
+    io_write_attribute_i(h_grp, "Cosmological run", 0);
+  cosmology_write_model(h_grp, e->cosmology);
+  H5Gclose(h_grp);
 
   /* Print the runtime parameters */
   h_grp =
       H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating parameters group");
-  parser_write_params_to_hdf5(e->parameter_file, h_grp);
+  parser_write_params_to_hdf5(e->parameter_file, h_grp, 1);
+  H5Gclose(h_grp);
+
+  /* Print the runtime unused parameters */
+  h_grp = H5Gcreate(h_file, "/UnusedParameters", H5P_DEFAULT, H5P_DEFAULT,
+                    H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating parameters group");
+  parser_write_params_to_hdf5(e->parameter_file, h_grp, 0);
   H5Gclose(h_grp);
 
   /* Print the system of Units used in the spashot */
@@ -1032,10 +1108,19 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
 
-    /* Prepare everything */
-    for (int i = 0; i < num_fields; ++i)
-      prepareArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
-                   N_total[ptype], snapshot_units);
+    /* Prepare everything that is not cancelled */
+    for (int i = 0; i < num_fields; ++i) {
+
+      /* Did the user cancel this field? */
+      char field[PARSER_MAX_LINE_SIZE];
+      sprintf(field, "SelectOutput:%s_%s", list[i].name,
+              part_type_names[ptype]);
+      int should_write = parser_get_opt_param_int(params, field, 1);
+
+      if (should_write)
+        prepareArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
+                     N_total[ptype], snapshot_units);
+    }
 
     /* Close particle group */
     H5Gclose(h_grp);
@@ -1045,7 +1130,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   }
 
   /* Write LXMF file descriptor */
-  xmf_write_outputfooter(xmfFile, e->snapshotOutputCount, e->time);
+  xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
 
   /* Close the file for now */
   H5Fclose(h_file);
@@ -1086,6 +1171,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
+  const struct cooling_function_data* cooling = e->cooling_func;
+  struct swift_params* params = e->parameter_file;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
@@ -1102,8 +1189,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
    * broadcast from there */
   MPI_Bcast(&N_total, 6, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
-/* Now everybody konws its offset and the total number of
- * particles of each type */
+  /* Now everybody konws its offset and the total number of
+   * particles of each type */
 
 #ifdef IO_SPEED_MEASUREMENT
   ticks tic = getticks();
@@ -1125,8 +1212,13 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* HDF5 File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-           e->snapshotOutputCount);
+  if (e->snapshot_label_delta == 1)
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->snapshot_output_count + e->snapshot_label_first);
+  else
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
+             e->snapshot_output_count * e->snapshot_label_delta +
+                 e->snapshot_label_first);
 
   /* Prepare some file-access properties */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
@@ -1176,9 +1268,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fopen(fileName, H5F_ACC_RDWR, plist_id);
-  if (h_file < 0) {
-    error("Error while opening file '%s'.", fileName);
-  }
+  if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -1247,6 +1337,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
         Nparticles = Ngas;
         hydro_write_particles(parts, xparts, list, &num_fields);
         num_fields += chemistry_write_particles(parts, list + num_fields);
+        num_fields +=
+            cooling_write_particles(xparts, list + num_fields, cooling);
         break;
 
       case swift_type_dark_matter:
@@ -1275,11 +1367,20 @@ void write_output_parallel(struct engine* e, const char* baseName,
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
 
-    /* Write everything */
-    for (int i = 0; i < num_fields; ++i)
-      writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,
-                 N_total[ptype], mpi_rank, offset[ptype], internal_units,
-                 snapshot_units);
+    /* Write everything that is not cancelled */
+    for (int i = 0; i < num_fields; ++i) {
+
+      /* Did the user cancel this field? */
+      char field[PARSER_MAX_LINE_SIZE];
+      sprintf(field, "SelectOutput:%s_%s", list[i].name,
+              part_type_names[ptype]);
+      int should_write = parser_get_opt_param_int(params, field, 1);
+
+      if (should_write)
+        writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,
+                   N_total[ptype], mpi_rank, offset[ptype], internal_units,
+                   snapshot_units);
+    }
 
     /* Free temporary array */
     if (dmparts) {
@@ -1334,7 +1435,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
             clocks_getunit());
 #endif
 
-  e->snapshotOutputCount++;
+  e->snapshot_output_count++;
 }
 
 #endif /* HAVE_HDF5 */

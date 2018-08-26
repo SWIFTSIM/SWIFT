@@ -25,7 +25,7 @@
  * @param x The number of interest.
  * @return >0 if positive, 0 if negative.
  */
-__attribute__((always_inline)) INLINE static int signf(float x) {
+__attribute__((always_inline, const)) INLINE static int signf(float x) {
 #ifdef __GNUC__
   return !signbit(x);
 #else
@@ -39,7 +39,8 @@ __attribute__((always_inline)) INLINE static int signf(float x) {
  * @param x The first number
  * @param y The second number
  */
-__attribute__((always_inline)) INLINE static int same_signf(float x, float y) {
+__attribute__((always_inline, const)) INLINE static int same_signf(float x,
+                                                                   float y) {
   return signf(x) == signf(y);
 }
 

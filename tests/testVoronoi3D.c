@@ -53,7 +53,7 @@
  *
  * @return Volume of the simulation box as it is stored in the global variables.
  */
-float voronoi_get_box_volume() {
+float voronoi_get_box_volume(void) {
   return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Y * VORONOI3D_BOX_SIDE_Z;
 }
 
@@ -129,7 +129,7 @@ float voronoi_get_box_face(unsigned long long id, float *face_midpoint) {
 /**
  * @brief Check if voronoi_volume_tetrahedron() works
  */
-void test_voronoi_volume_tetrahedron() {
+void test_voronoi_volume_tetrahedron(void) {
   float v1[3] = {0., 0., 0.};
   float v2[3] = {0., 0., 1.};
   float v3[3] = {0., 1., 0.};
@@ -142,7 +142,7 @@ void test_voronoi_volume_tetrahedron() {
 /**
  * @brief Check if voronoi_centroid_tetrahedron() works
  */
-void test_voronoi_centroid_tetrahedron() {
+void test_voronoi_centroid_tetrahedron(void) {
   float v1[3] = {0., 0., 0.};
   float v2[3] = {0., 0., 1.};
   float v3[3] = {0., 1., 0.};
@@ -158,7 +158,7 @@ void test_voronoi_centroid_tetrahedron() {
 /**
  * @brief Check if voronoi_calculate_cell() works
  */
-void test_calculate_cell() {
+void test_calculate_cell(void) {
 
   double box_anchor[3] = {VORONOI3D_BOX_ANCHOR_X, VORONOI3D_BOX_ANCHOR_Y,
                           VORONOI3D_BOX_ANCHOR_Z};
@@ -234,7 +234,7 @@ void test_calculate_cell() {
   assert(cell.face_midpoints[5][2] == face_midpoint[2] - cell.x[2]);
 }
 
-void test_paths() {
+void test_paths(void) {
   float u, l, q;
   int up, us, uw, lp, ls, lw, qp, qs, qw;
   float r2, dx[3];
@@ -1240,7 +1240,7 @@ void set_coordinates(struct part *p, double x, double y, double z,
 }
 #endif
 
-void test_degeneracies() {
+void test_degeneracies(void) {
 #ifdef SHADOWFAX_SPH
   int idx = 0;
   /* make a small cube */
@@ -1308,7 +1308,7 @@ void test_degeneracies() {
 #endif
 }
 
-int main() {
+int main(int argc, char *argv[]) {
 
   /* Set the all enclosing simulation box dimensions */
   double box_anchor[3] = {VORONOI3D_BOX_ANCHOR_X, VORONOI3D_BOX_ANCHOR_Y,

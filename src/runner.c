@@ -55,12 +55,12 @@
 #include "kick.h"
 #include "memuse.h"
 #include "minmax.h"
-#include "runner_doiact_fft.h"
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
 #include "sort_part.h"
 #include "sourceterms.h"
 #include "space.h"
+#include "space_getsid.h"
 #include "stars.h"
 #include "task.h"
 #include "timers.h"
@@ -95,7 +95,6 @@
 #undef FUNCTION_TASK_LOOP
 
 /* Import the gravity loop functions. */
-#include "runner_doiact_fft.h"
 #include "runner_doiact_grav.h"
 
 /**
@@ -175,6 +174,41 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   }
 
   if (timer) TIMER_TOC(timer_dograv_external);
+}
+
+/**
+ * @brief Calculate gravity accelerations from the periodic mesh
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
+
+  struct gpart *restrict gparts = c->gparts;
+  const int gcount = c->gcount;
+  const struct engine *e = r->e;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!e->s->periodic) error("Calling mesh forces in non-periodic mode.");
+#endif
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active_gravity(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_grav_mesh(r, c->progeny[k], 0);
+  } else {
+
+    /* Get the forces from the gravity mesh */
+    pm_mesh_interpolate_forces(e->mesh, e, gparts, gcount);
+  }
+
+  if (timer) TIMER_TOC(timer_dograv_mesh);
 }
 
 /**
@@ -609,8 +643,10 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 #ifdef EXTRA_HYDRO_LOOP
 
   struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
   const int count = c->count;
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
 
   TIMER_TIC;
 
@@ -628,11 +664,23 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
       /* Get a direct pointer on the part. */
       struct part *restrict p = &parts[i];
+      struct xpart *restrict xp = &xparts[i];
 
       if (part_is_active(p, e)) {
 
-        /* Get ready for a force calculation */
+        /* Finish the gradient calculation */
         hydro_end_gradient(p);
+
+        /* As of here, particle force variables will be set. */
+
+        /* Compute variables required for the force loop */
+        hydro_prepare_force(p, xp, cosmo);
+
+        /* The particle force values are now set.  Do _NOT_
+           try to read any particle density variables! */
+
+        /* Prepare the particle for the force loop over neighbours */
+        hydro_reset_acceleration(p);
       }
     }
   }
@@ -660,7 +708,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct space *s = e->s;
   const struct hydro_space *hs = &s->hs;
   const struct cosmology *cosmo = e->cosmology;
-  const struct chemistry_data *chemistry = e->chemistry;
+  const struct chemistry_global_data *chemistry = e->chemistry;
   const float hydro_h_max = e->hydro_properties->h_max;
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
@@ -713,11 +761,16 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         const float h_old_dim = pow_dimension(h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
         float h_new;
+        int has_no_neighbours = 0;
 
         if (p->density.wcount == 0.f) { /* No neighbours case */
 
+          /* Flag that there were no neighbours */
+          has_no_neighbours = 1;
+
           /* Double h and try again */
           h_new = 2.f * h_old;
+
         } else {
 
           /* Finish the density calculation */
@@ -732,7 +785,48 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               p->density.wcount_dh * h_old_dim +
               hydro_dimension * p->density.wcount * h_old_dim_minus_one;
 
-          h_new = h_old - f / f_prime;
+          /* Skip if h is already h_max and we don't have enough neighbours */
+          if ((p->h >= hydro_h_max) && (f < 0.f)) {
+
+          /* We have a particle whose smoothing length is already set (wants to
+           * be larger but has already hit the maximum). So, just tidy up as if
+           * the smoothing length had converged correctly  */
+
+#ifdef EXTRA_HYDRO_LOOP
+
+            /* As of here, particle gradient variables will be set. */
+            /* The force variables are set in the extra ghost. */
+
+            /* Compute variables required for the gradient loop */
+            hydro_prepare_gradient(p, xp, cosmo);
+
+            /* The particle gradient values are now set.  Do _NOT_
+               try to read any particle density variables! */
+
+            /* Prepare the particle for the gradient loop over neighbours */
+            hydro_reset_gradient(p);
+
+#else
+            /* As of here, particle force variables will be set. */
+
+            /* Compute variables required for the force loop */
+            hydro_prepare_force(p, xp, cosmo);
+
+            /* The particle force values are now set.  Do _NOT_
+               try to read any particle density variables! */
+
+            /* Prepare the particle for the force loop over neighbours */
+            hydro_reset_acceleration(p);
+
+#endif /* EXTRA_HYDRO_LOOP */
+
+            continue;
+          }
+
+          /* Normal case: Use Newton-Raphson to get a better value of h */
+
+          /* Avoid floating point exception from f_prime = 0 */
+          h_new = h_old - f / (f_prime + FLT_MIN);
 
 #ifdef SWIFT_DEBUG_CHECKS
           if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
@@ -771,13 +865,30 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             p->h = hydro_h_max;
 
             /* Do some damage control if no neighbours at all were found */
-            if (p->density.wcount == kernel_root * kernel_norm)
+            if (has_no_neighbours) {
               hydro_part_has_no_neighbours(p, xp, cosmo);
+              chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
+            }
           }
         }
 
-        /* We now have a particle whose smoothing length has converged */
+          /* We now have a particle whose smoothing length has converged */
 
+#ifdef EXTRA_HYDRO_LOOP
+
+        /* As of here, particle gradient variables will be set. */
+        /* The force variables are set in the extra ghost. */
+
+        /* Compute variables required for the gradient loop */
+        hydro_prepare_gradient(p, xp, cosmo);
+
+        /* The particle gradient values are now set.  Do _NOT_
+           try to read any particle density variables! */
+
+        /* Prepare the particle for the gradient loop over neighbours */
+        hydro_reset_gradient(p);
+
+#else
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
@@ -788,6 +899,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Prepare the particle for the force loop over neighbours */
         hydro_reset_acceleration(p);
+
+#endif /* EXTRA_HYDRO_LOOP */
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -845,14 +958,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-#ifdef SWIFT_DEBUG_CHECKS
     if (count) {
       error("Smoothing length failed to converge on %i particles.", count);
     }
-#else
-    if (count)
-      error("Smoothing length failed to converge on %i particles.", count);
-#endif
 
     /* Be clean */
     free(pid);
@@ -905,7 +1013,7 @@ static void runner_do_unskip_gravity(struct cell *c, struct engine *e) {
   if (!cell_is_active_gravity(c, e)) return;
 
   /* Recurse */
-  if (c->split) {
+  if (c->split && c->depth < space_subdepth_grav) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
@@ -935,9 +1043,13 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
     if (c != NULL) {
+
+      /* Hydro tasks */
       if (e->policy & engine_policy_hydro) runner_do_unskip_hydro(c, e);
-      if (e->policy &
-          (engine_policy_self_gravity | engine_policy_external_gravity))
+
+      /* All gravity tasks */
+      if ((e->policy & engine_policy_self_gravity) ||
+          (e->policy & engine_policy_external_gravity))
         runner_do_unskip_gravity(c, e);
     }
   }
@@ -1034,7 +1146,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 #endif
 
         /* Time interval for this half-kick */
-        double dt_kick_grav, dt_kick_hydro, dt_kick_therm;
+        double dt_kick_grav, dt_kick_hydro, dt_kick_therm, dt_kick_corr;
         if (with_cosmology) {
           dt_kick_hydro = cosmology_get_hydro_kick_factor(
               cosmo, ti_begin, ti_begin + ti_step / 2);
@@ -1042,15 +1154,19 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
                                                         ti_begin + ti_step / 2);
           dt_kick_therm = cosmology_get_therm_kick_factor(
               cosmo, ti_begin, ti_begin + ti_step / 2);
+          dt_kick_corr = cosmology_get_corr_kick_factor(cosmo, ti_begin,
+                                                        ti_begin + ti_step / 2);
         } else {
           dt_kick_hydro = (ti_step / 2) * time_base;
           dt_kick_grav = (ti_step / 2) * time_base;
           dt_kick_therm = (ti_step / 2) * time_base;
+          dt_kick_corr = (ti_step / 2) * time_base;
         }
 
         /* do the kick */
-        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, cosmo,
-                  hydro_props, ti_begin, ti_begin + ti_step / 2);
+        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
+                  dt_kick_corr, cosmo, hydro_props, ti_begin,
+                  ti_begin + ti_step / 2);
 
         /* Update the accelerations to be used in the drift for hydro */
         if (p->gpart != NULL) {
@@ -1200,7 +1316,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
               ti_begin, ti_step, p->time_bin, ti_current);
 #endif
         /* Time interval for this half-kick */
-        double dt_kick_grav, dt_kick_hydro, dt_kick_therm;
+        double dt_kick_grav, dt_kick_hydro, dt_kick_therm, dt_kick_corr;
         if (with_cosmology) {
           dt_kick_hydro = cosmology_get_hydro_kick_factor(
               cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
@@ -1208,15 +1324,19 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
               cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
           dt_kick_therm = cosmology_get_therm_kick_factor(
               cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+          dt_kick_corr = cosmology_get_corr_kick_factor(
+              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
         } else {
           dt_kick_hydro = (ti_step / 2) * time_base;
           dt_kick_grav = (ti_step / 2) * time_base;
           dt_kick_therm = (ti_step / 2) * time_base;
+          dt_kick_corr = (ti_step / 2) * time_base;
         }
 
         /* Finish the time-step with a second half-kick */
-        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, cosmo,
-                  hydro_props, ti_begin + ti_step / 2, ti_begin + ti_step);
+        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
+                  dt_kick_corr, cosmo, hydro_props, ti_begin + ti_step / 2,
+                  ti_begin + ti_step);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
@@ -1587,6 +1707,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const struct space *s = e->s;
   const struct cosmology *cosmo = e->cosmology;
   const int count = c->count;
   const int gcount = c->gcount;
@@ -1594,9 +1715,18 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct gpart *restrict gparts = c->gparts;
   struct spart *restrict sparts = c->sparts;
-  const double const_G = e->physical_constants->const_newton_G;
+  const int periodic = s->periodic;
+  const float G_newton = e->physical_constants->const_newton_G;
 
   TIMER_TIC;
+
+  /* Potential normalisation in the case of periodic gravity */
+  float potential_normalisation = 0.;
+  if (periodic && (e->policy & engine_policy_self_gravity)) {
+    const double volume = s->dim[0] * s->dim[1] * s->dim[2];
+    const double r_s = e->mesh->r_s;
+    potential_normalisation = 4. * M_PI * e->total_mass * r_s * r_s / volume;
+  }
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) return;
@@ -1629,16 +1759,31 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (gpart_is_active(gp, e)) {
 
         /* Finish the force calculation */
-        gravity_end_force(gp, const_G);
+        gravity_end_force(gp, G_newton, potential_normalisation, periodic);
+
+#ifdef SWIFT_MAKE_GRAVITY_GLASS
+
+        /* Negate the gravity forces */
+        gp->a_grav[0] *= -1.f;
+        gp->a_grav[1] *= -1.f;
+        gp->a_grav[2] *= -1.f;
+#endif
 
 #ifdef SWIFT_NO_GRAVITY_BELOW_ID
+
+        /* Get the ID of the gpart */
+        long long id = 0;
+        if (gp->type == swift_type_gas)
+          id = e->s->parts[-gp->id_or_neg_offset].id;
+        else if (gp->type == swift_type_star)
+          id = e->s->sparts[-gp->id_or_neg_offset].id;
+        else if (gp->type == swift_type_black_hole)
+          error("Unexisting type");
+        else
+          id = gp->id_or_neg_offset;
+
         /* Cancel gravity forces of these particles */
-        if ((gp->type == swift_type_dark_matter &&
-             gp->id_or_neg_offset < SWIFT_NO_GRAVITY_BELOW_ID) ||
-            (gp->type == swift_type_gas &&
-             parts[-gp->id_or_neg_offset].id < SWIFT_NO_GRAVITY_BELOW_ID) ||
-            (gp->type == swift_type_star &&
-             sparts[-gp->id_or_neg_offset].id < SWIFT_NO_GRAVITY_BELOW_ID)) {
+        if (id < SWIFT_NO_GRAVITY_BELOW_ID) {
 
           /* Don't move ! */
           gp->a_grav[0] = 0.f;
@@ -1655,14 +1800,27 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
           /* Check that this gpart has interacted with all the other
            * particles (via direct or multipoles) in the box */
-          if (gp->num_interacted != e->total_nr_gparts)
+          if (gp->num_interacted != e->total_nr_gparts) {
+
+            /* Get the ID of the gpart */
+            long long my_id = 0;
+            if (gp->type == swift_type_gas)
+              my_id = e->s->parts[-gp->id_or_neg_offset].id;
+            else if (gp->type == swift_type_star)
+              my_id = e->s->sparts[-gp->id_or_neg_offset].id;
+            else if (gp->type == swift_type_black_hole)
+              error("Unexisting type");
+            else
+              my_id = gp->id_or_neg_offset;
+
             error(
                 "g-particle (id=%lld, type=%s) did not interact "
-                "gravitationally "
-                "with all other gparts gp->num_interacted=%lld, "
-                "total_gparts=%lld (local num_gparts=%zd)",
-                gp->id_or_neg_offset, part_type_names[gp->type],
-                gp->num_interacted, e->total_nr_gparts, e->s->nr_gparts);
+                "gravitationally with all other gparts "
+                "gp->num_interacted=%lld, total_gparts=%lld (local "
+                "num_gparts=%zd)",
+                my_id, part_type_names[gp->type], gp->num_interacted,
+                e->total_nr_gparts, e->s->nr_gparts);
+          }
         }
 #endif
       }
@@ -1998,7 +2156,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_doself2_branch_force(r, ci);
           else if (t->subtype == task_subtype_grav)
-            runner_doself_grav(r, ci, 1);
+            runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else
@@ -2015,7 +2173,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
-            runner_dopair_grav(r, ci, cj, 1);
+            runner_dopair_recursive_grav(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2113,11 +2271,14 @@ void *runner_main(void *data) {
         case task_type_grav_down:
           runner_do_grav_down(r, t->ci, 1);
           break;
-        case task_type_grav_top_level:
-          runner_do_grav_fft(r, 1);
+        case task_type_grav_mesh:
+          runner_do_grav_mesh(r, t->ci, 1);
           break;
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);
+          break;
+        case task_type_grav_mm:
+          runner_dopair_grav_mm_symmetric(r, t->ci, t->cj);
           break;
         case task_type_cooling:
           runner_do_cooling(r, t->ci, 1);

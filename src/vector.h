@@ -360,7 +360,8 @@
 #ifdef HAVE_SSE4_1
 #define vec_blend(mask, a, b) _mm_blendv_ps(a, b, mask.v)
 #else
-#define vec_blend(mask, a, b) _mm_or_ps(_mm_and_ps(mask.v,b), _mm_andnot_ps(mask.v,a))
+#define vec_blend(mask, a, b) \
+  _mm_or_ps(_mm_and_ps(mask.v, b), _mm_andnot_ps(mask.v, a))
 #endif
 #define vec_todbl_lo(a) _mm_cvtps_pd(a)
 #define vec_todbl_hi(a) _mm_cvtps_pd(_mm_movehl_ps(a, a))
@@ -492,7 +493,7 @@ __attribute__((always_inline)) INLINE vector vector_set1(const float x) {
  * @return temp set #vector.
  * @return A #vector filled with zeros.
  */
-__attribute__((always_inline)) INLINE vector vector_setzero() {
+__attribute__((always_inline)) INLINE vector vector_setzero(void) {
 
   vector temp;
   temp.v = vec_setzero();

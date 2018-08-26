@@ -25,12 +25,17 @@
 #include "common_io.h"
 
 /* Local includes. */
+#include "chemistry_io.h"
 #include "engine.h"
 #include "error.h"
+#include "gravity_io.h"
 #include "hydro.h"
+#include "hydro_io.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "part_type.h"
+#include "stars_io.h"
 #include "threadpool.h"
 #include "units.h"
 #include "version.h"
@@ -115,17 +120,12 @@ int io_is_double_precision(enum IO_DATA_TYPE type) {
  */
 void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                        void* data) {
-  hid_t h_attr = 0, h_err = 0;
 
-  h_attr = H5Aopen(grp, name, H5P_DEFAULT);
-  if (h_attr < 0) {
-    error("Error while opening attribute '%s'", name);
-  }
+  const hid_t h_attr = H5Aopen(grp, name, H5P_DEFAULT);
+  if (h_attr < 0) error("Error while opening attribute '%s'", name);
 
-  h_err = H5Aread(h_attr, io_hdf5_type(type), data);
-  if (h_err < 0) {
-    error("Error while reading attribute '%s'", name);
-  }
+  const hid_t h_err = H5Aread(h_attr, io_hdf5_type(type), data);
+  if (h_err < 0) error("Error while reading attribute '%s'", name);
 
   H5Aclose(h_attr);
 }
@@ -143,28 +143,22 @@ void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
  */
 void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                         void* data, int num) {
-  hid_t h_space = 0, h_attr = 0, h_err = 0;
-  hsize_t dim[1] = {(hsize_t)num};
 
-  h_space = H5Screate(H5S_SIMPLE);
-  if (h_space < 0) {
+  const hid_t h_space = H5Screate(H5S_SIMPLE);
+  if (h_space < 0)
     error("Error while creating dataspace for attribute '%s'.", name);
-  }
 
-  h_err = H5Sset_extent_simple(h_space, 1, dim, NULL);
-  if (h_err < 0) {
+  hsize_t dim[1] = {(hsize_t)num};
+  const hid_t h_err = H5Sset_extent_simple(h_space, 1, dim, NULL);
+  if (h_err < 0)
     error("Error while changing dataspace shape for attribute '%s'.", name);
-  }
 
-  h_attr = H5Acreate1(grp, name, io_hdf5_type(type), h_space, H5P_DEFAULT);
-  if (h_attr < 0) {
-    error("Error while creating attribute '%s'.", name);
-  }
+  const hid_t h_attr =
+      H5Acreate1(grp, name, io_hdf5_type(type), h_space, H5P_DEFAULT);
+  if (h_attr < 0) error("Error while creating attribute '%s'.", name);
 
-  h_err = H5Awrite(h_attr, io_hdf5_type(type), data);
-  if (h_err < 0) {
-    error("Error while reading attribute '%s'.", name);
-  }
+  const hid_t h_err2 = H5Awrite(h_attr, io_hdf5_type(type), data);
+  if (h_err2 < 0) error("Error while reading attribute '%s'.", name);
 
   H5Sclose(h_space);
   H5Aclose(h_attr);
@@ -182,32 +176,22 @@ void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
  */
 void io_writeStringAttribute(hid_t grp, const char* name, const char* str,
                              int length) {
-  hid_t h_space = 0, h_attr = 0, h_err = 0, h_type = 0;
 
-  h_space = H5Screate(H5S_SCALAR);
-  if (h_space < 0) {
+  const hid_t h_space = H5Screate(H5S_SCALAR);
+  if (h_space < 0)
     error("Error while creating dataspace for attribute '%s'.", name);
-  }
 
-  h_type = H5Tcopy(H5T_C_S1);
-  if (h_type < 0) {
-    error("Error while copying datatype 'H5T_C_S1'.");
-  }
+  const hid_t h_type = H5Tcopy(H5T_C_S1);
+  if (h_type < 0) error("Error while copying datatype 'H5T_C_S1'.");
 
-  h_err = H5Tset_size(h_type, length);
-  if (h_err < 0) {
-    error("Error while resizing attribute type to '%i'.", length);
-  }
+  const hid_t h_err = H5Tset_size(h_type, length);
+  if (h_err < 0) error("Error while resizing attribute type to '%i'.", length);
 
-  h_attr = H5Acreate1(grp, name, h_type, h_space, H5P_DEFAULT);
-  if (h_attr < 0) {
-    error("Error while creating attribute '%s'.", name);
-  }
+  const hid_t h_attr = H5Acreate1(grp, name, h_type, h_space, H5P_DEFAULT);
+  if (h_attr < 0) error("Error while creating attribute '%s'.", name);
 
-  h_err = H5Awrite(h_attr, h_type, str);
-  if (h_err < 0) {
-    error("Error while reading attribute '%s'.", name);
-  }
+  const hid_t h_err2 = H5Awrite(h_attr, h_type, str);
+  if (h_err2 < 0) error("Error while reading attribute '%s'.", name);
 
   H5Tclose(h_type);
   H5Sclose(h_space);
@@ -266,13 +250,18 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
 
 /**
  * @brief Reads the Unit System from an IC file.
- * @param h_file The (opened) HDF5 file from which to read.
- * @param us The unit_system to fill.
- * @param mpi_rank The MPI rank we are on.
  *
- * If the 'Units' group does not exist in the ICs, cgs units will be assumed
+ * If the 'Units' group does not exist in the ICs, we will use the internal
+ * system of units.
+ *
+ * @param h_file The (opened) HDF5 file from which to read.
+ * @param ic_units The unit_system to fill.
+ * @param internal_units The internal system of units to copy if needed.
+ * @param mpi_rank The MPI rank we are on.
  */
-void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank) {
+void io_read_unit_system(hid_t h_file, struct unit_system* ic_units,
+                         const struct unit_system* internal_units,
+                         int mpi_rank) {
 
   /* First check if it exists as this is *not* required. */
   const htri_t exists = H5Lexists(h_file, "/Units", H5P_DEFAULT);
@@ -280,16 +269,12 @@ void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank) {
   if (exists == 0) {
 
     if (mpi_rank == 0)
-      message("'Units' group not found in ICs. Assuming CGS unit system.");
+      message("'Units' group not found in ICs. Assuming internal unit system.");
 
-    /* Default to CGS */
-    us->UnitMass_in_cgs = 1.;
-    us->UnitLength_in_cgs = 1.;
-    us->UnitTime_in_cgs = 1.;
-    us->UnitCurrent_in_cgs = 1.;
-    us->UnitTemperature_in_cgs = 1.;
+    units_copy(ic_units, internal_units);
 
     return;
+
   } else if (exists < 0) {
     error("Serious problem with 'Units' group in ICs. H5Lexists gives %d",
           exists);
@@ -300,15 +285,15 @@ void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank) {
 
   /* Ok, Read the damn thing */
   io_read_attribute(h_grp, "Unit length in cgs (U_L)", DOUBLE,
-                    &us->UnitLength_in_cgs);
+                    &ic_units->UnitLength_in_cgs);
   io_read_attribute(h_grp, "Unit mass in cgs (U_M)", DOUBLE,
-                    &us->UnitMass_in_cgs);
+                    &ic_units->UnitMass_in_cgs);
   io_read_attribute(h_grp, "Unit time in cgs (U_t)", DOUBLE,
-                    &us->UnitTime_in_cgs);
+                    &ic_units->UnitTime_in_cgs);
   io_read_attribute(h_grp, "Unit current in cgs (U_I)", DOUBLE,
-                    &us->UnitCurrent_in_cgs);
+                    &ic_units->UnitCurrent_in_cgs);
   io_read_attribute(h_grp, "Unit temperature in cgs (U_T)", DOUBLE,
-                    &us->UnitTemperature_in_cgs);
+                    &ic_units->UnitTemperature_in_cgs);
 
   /* Clean up */
   H5Gclose(h_grp);
@@ -323,8 +308,7 @@ void io_read_unit_system(hid_t h_file, struct unit_system* us, int mpi_rank) {
 void io_write_unit_system(hid_t h_file, const struct unit_system* us,
                           const char* groupName) {
 
-  hid_t h_grpunit = 0;
-  h_grpunit = H5Gcreate1(h_file, groupName, 0);
+  const hid_t h_grpunit = H5Gcreate1(h_file, groupName, 0);
   if (h_grpunit < 0) error("Error while creating Unit System group");
 
   io_write_attribute_d(h_grpunit, "Unit mass in cgs (U_M)",
@@ -362,6 +346,7 @@ void io_write_code_description(hid_t h_file) {
   io_write_attribute_s(h_grpcode, "CFLAGS", compilation_cflags());
   io_write_attribute_s(h_grpcode, "HDF5 library version", hdf5_version());
   io_write_attribute_s(h_grpcode, "Thread barriers", thread_barrier_version());
+  io_write_attribute_s(h_grpcode, "Allocators", allocator_version());
 #ifdef HAVE_FFTW
   io_write_attribute_s(h_grpcode, "FFTW library version", fftw3_version());
 #endif
@@ -826,4 +811,158 @@ void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
   if (count != Ndm)
     error("Collected the wrong number of dm particles (%zu vs. %zu expected)",
           count, Ndm);
+}
+
+/**
+ * @brief Verify the io parameter file
+ *
+ * @param params The #swift_params
+ * @param N_total The total number of each particle type.
+ */
+void io_check_output_fields(const struct swift_params* params,
+                            const long long N_total[3]) {
+
+  /* Create some fake particles as arguments for the writing routines */
+  struct part p;
+  struct xpart xp;
+  struct spart sp;
+  struct gpart gp;
+
+  /* Copy N_total to array with length == 6 */
+  const long long nr_total[swift_type_count] = {N_total[0], N_total[1], 0,
+                                                0,          N_total[2], 0};
+
+  /* Loop over all particle types to check the fields */
+  for (int ptype = 0; ptype < swift_type_count; ptype++) {
+
+    int num_fields = 0;
+    struct io_props list[100];
+
+    /* Don't do anything if no particle of this kind */
+    if (nr_total[ptype] == 0) continue;
+
+    /* Gather particle fields from the particle structures */
+    switch (ptype) {
+
+      case swift_type_gas:
+        hydro_write_particles(&p, &xp, list, &num_fields);
+        num_fields += chemistry_write_particles(&p, list + num_fields);
+        break;
+
+      case swift_type_dark_matter:
+        darkmatter_write_particles(&gp, list, &num_fields);
+        break;
+
+      case swift_type_star:
+        star_write_particles(&sp, list, &num_fields);
+        break;
+
+      default:
+        error("Particle Type %d not yet supported. Aborting", ptype);
+    }
+
+    /* loop over each parameter */
+    for (int param_id = 0; param_id < params->paramCount; param_id++) {
+      const char* param_name = params->data[param_id].name;
+
+      char section_name[PARSER_MAX_LINE_SIZE];
+
+      /* Skip if wrong section */
+      sprintf(section_name, "SelectOutput:");
+      if (strstr(param_name, section_name) == NULL) continue;
+
+      /* Skip if wrong particle type */
+      sprintf(section_name, "_%s", part_type_names[ptype]);
+      if (strstr(param_name, section_name) == NULL) continue;
+
+      int found = 0;
+
+      /* loop over each possible output field */
+      for (int field_id = 0; field_id < num_fields; field_id++) {
+        char field_name[PARSER_MAX_LINE_SIZE];
+        sprintf(field_name, "SelectOutput:%s_%s", list[field_id].name,
+                part_type_names[ptype]);
+
+        if (strcmp(param_name, field_name) == 0) {
+          found = 1;
+          /* check if correct input */
+          int retParam = 0;
+          char str[PARSER_MAX_LINE_SIZE];
+          sscanf(params->data[param_id].value, "%d%s", &retParam, str);
+
+          /* Check that we have a 0 or 1 */
+          if (retParam != 0 && retParam != 1)
+            message(
+                "WARNING: Unexpected input for %s. Received %i but expect 0 or "
+                "1. ",
+                field_name, retParam);
+
+          /* Found it, so move to the next one. */
+          break;
+        }
+      }
+      if (!found)
+        message(
+            "WARNING: Trying to dump particle field '%s' (read from '%s') that "
+            "does not exist.",
+            param_name, params->fileName);
+    }
+  }
+}
+
+/**
+ * @brief Write the output field parameters file
+ *
+ * @param filename The file to write
+ */
+void io_write_output_field_parameter(const char* filename) {
+
+  FILE* file = fopen(filename, "w");
+  if (file == NULL) error("Error opening file '%s'", filename);
+
+  /* Loop over all particle types */
+  fprintf(file, "SelectOutput:\n");
+  for (int ptype = 0; ptype < swift_type_count; ptype++) {
+
+    int num_fields = 0;
+    struct io_props list[100];
+
+    /* Write particle fields from the particle structure */
+    switch (ptype) {
+
+      case swift_type_gas:
+        hydro_write_particles(NULL, NULL, list, &num_fields);
+        num_fields += chemistry_write_particles(NULL, list + num_fields);
+        break;
+
+      case swift_type_dark_matter:
+        darkmatter_write_particles(NULL, list, &num_fields);
+        break;
+
+      case swift_type_star:
+        star_write_particles(NULL, list, &num_fields);
+        break;
+
+      default:
+        break;
+    }
+
+    if (num_fields == 0) continue;
+
+    /* Output a header for that particle type */
+    fprintf(file, "  # Particle Type %s\n", part_type_names[ptype]);
+
+    /* Write all the fields of this particle type */
+    for (int i = 0; i < num_fields; ++i)
+      fprintf(file, "  %s_%s: 1\n", list[i].name, part_type_names[ptype]);
+
+    fprintf(file, "\n");
+  }
+
+  fclose(file);
+
+  printf(
+      "List of valid ouput fields for the particle in snapshots dumped in "
+      "'%s'.\n",
+      filename);
 }

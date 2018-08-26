@@ -46,17 +46,30 @@
 #include "./hydro/Gadget2/hydro_debug.h"
 #elif defined(HOPKINS_PE_SPH)
 #include "./hydro/PressureEntropy/hydro_debug.h"
+#elif defined(HOPKINS_PU_SPH)
+#include "./hydro/PressureEnergy/hydro_debug.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_debug.h"
-#elif defined(GIZMO_SPH)
-#include "./hydro/Gizmo/hydro_debug.h"
+#elif defined(GIZMO_MFV_SPH)
+#include "./hydro/GizmoMFV/hydro_debug.h"
+#elif defined(GIZMO_MFM_SPH)
+#include "./hydro/GizmoMFM/hydro_debug.h"
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_debug.h"
+#elif defined(PLANETARY_SPH)
+#include "./hydro/Planetary/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif
 
+/* Import the right gravity definition */
+#if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_debug.h"
+#elif defined(POTENTIAL_GRAVITY)
+#include "./gravity/Potential/gravity_debug.h"
+#else
+#error "Invalid choice of gravity variant"
+#endif
 
 /**
  * @brief Looks for the particle with the given id and prints its information to
@@ -326,7 +339,9 @@ static void dumpCells_map(struct cell *c, void *data) {
 
     /* So output local super cells that are active and have MPI
      * tasks as requested. */
-    if (c->nodeID == e->nodeID && (!super ||((super && c->super == c) || (c->parent == NULL))) && active && mpiactive) {
+    if (c->nodeID == e->nodeID &&
+        (!super || ((super && c->super == c) || (c->parent == NULL))) &&
+        active && mpiactive) {
 
       /* If requested we work out how many particles are active in this cell. */
       int pactcount = 0;

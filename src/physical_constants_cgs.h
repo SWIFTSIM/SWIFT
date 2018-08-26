@@ -29,6 +29,9 @@
  * where all the constants are defined in the system of units specified
  * in the parameter file.
  *
+ * Of special interest if the value of G which is 0.03% different from the
+ * default value adopted by Gadget-2 (G = 6.672e-8).
+ *
  * All values are taken from C. Patrignani et al. (Particle Data Group), Chin.
  * Phys. C, 40, 100001 (2016) and 2017 update.
  * http://pdg.lbl.gov/2017/reviews/rpp2017-rev-phys-constants.pdf
@@ -41,10 +44,10 @@ const double const_newton_G_cgs = 6.67408e-8;
 /*! Speed of light in vacuum [cm s^-1] */
 const double const_speed_light_c_cgs = 2.99792458e10;
 
-/*! Planck's constant [g cm^-2 s^-1] */
+/*! Planck's constant [g cm^2 s^-1] */
 const double const_planck_h_cgs = 6.626070040e-27;
 
-/*! Planck's reduced constant [g cm^-2 s^-1] */
+/*! Planck's reduced constant [g cm^2 s^-1] */
 const double const_planck_hbar_cgs = 1.054571800e-27;
 
 /*! Boltzmann's constant [g cm^2 s^-2 K^-1] */
@@ -56,7 +59,10 @@ const double const_avogadro_number_cgs = 6.022140857e23;
 /*! Thomson cross-section [cm^2] */
 const double const_thomson_cross_section_cgs = 6.6524587158e-25;
 
-/*! Elementary charge [A s^-1] */
+/*! Stefan-Boltzmann constant [g s^-3 K^-4] */
+const double const_stefan_boltzmann_cgs = 5.670367e-5;
+
+/*! Elementary charge [A s] */
 const double const_electron_charge_cgs = 1.6021766208e-19;
 
 /*! Electron-Volt [g cm^2 s^-2] */
@@ -85,5 +91,8 @@ const double const_solar_mass_cgs = 1.98848e33;
 
 /*! Mass of the Earth [g] */
 const double const_earth_mass_cgs = 5.9724e27;
+
+/*! Temperature of the CMB at present day [K] */
+const double const_T_CMB_0_cgs = 2.7255;
 
 #endif /* SWIFT_PHYSICAL_CONSTANTS_CGS_H */

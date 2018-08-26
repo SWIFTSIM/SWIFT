@@ -53,7 +53,8 @@
 /* This option disables particle movement */
 //#define GIZMO_FIX_PARTICLES
 /* Try to keep cells regular by adding a correction velocity. */
-#define GIZMO_STEER_MOTION
+//#define GIZMO_STEER_MOTION
+/* Use the total energy instead of the thermal energy as conserved variable. */
 //#define GIZMO_TOTAL_ENERGY
 
 /* Options to control handling of unphysical values (GIZMO_SPH only). */

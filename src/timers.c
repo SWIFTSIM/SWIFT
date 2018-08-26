@@ -54,12 +54,11 @@ const char* timers_names[timer_count] = {
     "dopair_density",
     "dopair_gradient",
     "dopair_force",
-    "dopair_grav_branch",
     "dopair_grav_mm",
-    "dopair_grav_pm",
     "dopair_grav_pp",
     "dograv_external",
     "dograv_down",
+    "dograv_mesh",
     "dograv_top_level",
     "dograv_long_range",
     "dosource",
@@ -110,7 +109,7 @@ void timers_reset(unsigned long long mask) {
  * @brief Re-set all the timers.
  *
  */
-void timers_reset_all() { timers_reset(timers_mask_all); }
+void timers_reset_all(void) { timers_reset(timers_mask_all); }
 
 /**
  * @brief Outputs all the timers to the timers dump file.
@@ -145,4 +144,4 @@ void timers_open_file(int rank) {
 /**
  * @brief Close the file containing the timer info.
  */
-void timers_close_file() { fclose(timers_file); }
+void timers_close_file(void) { fclose(timers_file); }

@@ -109,7 +109,7 @@ def rotation_velocity_at_r(r, params):
         )
 
     central_mass = float(params["PointMassPotential:mass"])
-    G = 6.674e-8
+    G = 6.67408e-8
 
     v = np.sqrt( G * central_mass / r)
 

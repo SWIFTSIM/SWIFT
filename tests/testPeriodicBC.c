@@ -33,14 +33,14 @@
 #define ACC_THRESHOLD 1e-5
 
 #if defined(WITH_VECTORIZATION)
-#define DOSELF1 runner_doself1_density_vec
+#define DOSELF1 runner_doself1_branch_density
 #define DOPAIR1 runner_dopair1_branch_density
 #define DOSELF1_NAME "runner_doself1_density_vec"
 #define DOPAIR1_NAME "runner_dopair1_density_vec"
 #endif
 
 #ifndef DOSELF1
-#define DOSELF1 runner_doself1_density
+#define DOSELF1 runner_doself1_branch_density
 #define DOSELF1_NAME "runner_doself1_density"
 #endif
 
@@ -78,7 +78,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
                        enum velocity_types vel) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
-  struct cell *cell = malloc(sizeof(struct cell));
+  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->parts, part_align,
@@ -129,7 +129,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         h_max = fmax(h_max, part->h);
         part->id = ++(*partId);
 
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 
 #ifdef SHADOWFAX_SPH
@@ -237,7 +237,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2],
             hydro_get_comoving_density(&main_cell->parts[pid]),
-#if defined(GIZMO_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
             main_cell->parts[pid].density.rho_dh,
@@ -252,7 +252,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
 #else
             0., 0., 0., 0.
 #endif
-            );
+    );
   }
   fclose(file);
 }
@@ -283,6 +283,7 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
+void runner_doself1_branch_density(struct runner *r, struct cell *c);
 
 void test_boundary_conditions(struct cell **cells, struct runner runner,
                               const int loc_i, const int loc_j, const int loc_k,
@@ -296,8 +297,6 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
   for (int j = 0; j < dim * dim * dim; ++j) zero_particle_fields(cells[j]);
 
 /* Run all the pairs */
-#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
-
 #ifdef WITH_VECTORIZATION
   runner.ci_cache.count = 0;
   cache_init(&runner.ci_cache, 512);
@@ -329,8 +328,6 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
 
   DOSELF1(&runner, main_cell);
 
-#endif
-
   /* Let's get physical ! */
   end_calculation(main_cell, runner.e->cosmology);
 
@@ -341,8 +338,6 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
 
   /* Zero the fields */
   for (int i = 0; i < dim * dim * dim; ++i) zero_particle_fields(cells[i]);
-
-#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
   /* Now loop over all the neighbours of this cell
    * and perform the pair interactions. */
@@ -367,8 +362,6 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
   /* And now the self-interaction */
   self_all_density(&runner, main_cell);
 
-#endif
-
   /* Let's get physical ! */
   end_calculation(main_cell, runner.e->cosmology);
 
@@ -388,7 +381,7 @@ int main(int argc, char *argv[]) {
   double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0.;
   double threshold = ACC_THRESHOLD;
-  char outputFileNameExtension[200] = "";
+  char outputFileNameExtension[100] = "";
   char swiftOutputFileName[200] = "";
   char bruteForceOutputFileName[200] = "";
   enum velocity_types vel = velocity_zero;
@@ -519,9 +512,9 @@ int main(int argc, char *argv[]) {
   }
 
   /* Create output file names. */
-  sprintf(swiftOutputFileName, "swift_periodic_BC_%s.dat",
+  sprintf(swiftOutputFileName, "swift_periodic_BC_%.150s.dat",
           outputFileNameExtension);
-  sprintf(bruteForceOutputFileName, "brute_force_periodic_BC_%s.dat",
+  sprintf(bruteForceOutputFileName, "brute_force_periodic_BC_%.150s.dat",
           outputFileNameExtension);
 
   /* Delete files if they already exist. */

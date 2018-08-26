@@ -105,7 +105,8 @@ static INLINE void gravity_cache_clean(struct gravity_cache *c) {
  * @param count The number of #gpart to allocated for (space_splitsize is a good
  * choice).
  */
-static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
+static INLINE void gravity_cache_init(struct gravity_cache *c,
+                                      const int count) {
 
   /* Size of the gravity cache */
   const int padded_count = count - (count % VEC_SIZE) + VEC_SIZE;
@@ -135,12 +136,44 @@ static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
 }
 
 /**
+ * @brief Zero all the output fields (acceleration and potential) of a
+ * #gravity_cache.
+ *
+ * @param c The #gravity_cache to zero.
+ * @param gcount_padded The padded size of the cache arrays.
+ */
+__attribute__((always_inline)) INLINE static void gravity_cache_zero_output(
+    struct gravity_cache *c, const int gcount_padded) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gcount_padded % VEC_SIZE != 0)
+    error("Padded gcount size not a multiple of the vector length");
+#endif
+
+  /* Make the compiler understand we are in happy vectorization land */
+  swift_declare_aligned_ptr(float, a_x, c->a_x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, a_y, c->a_y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, a_z, c->a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, pot, c->pot, SWIFT_CACHE_ALIGNMENT);
+  swift_assume_size(gcount_padded, VEC_SIZE);
+
+  /* Zero everything */
+  bzero(a_x, gcount_padded * sizeof(float));
+  bzero(a_y, gcount_padded * sizeof(float));
+  bzero(a_z, gcount_padded * sizeof(float));
+  bzero(pot, gcount_padded * sizeof(float));
+}
+
+/**
  * @brief Fills a #gravity_cache structure with some #gpart and shift them.
  *
  * Also checks whether the #gpart can use a M2P interaction instead of the
  * more expensive P2P.
  *
  * @param max_active_bin The largest active bin in the current time-step.
+ * @param allow_mpole Are we allowing the use of multipoles?
+ * @param periodic Are we using periodic BCs ?
+ * @param dim The size of the simulation volume along each dimension.
  * @param c The #gravity_cache to fill.
  * @param gparts The #gpart array to read from.
  * @param gcount The number of particles to read.
@@ -153,10 +186,12 @@ static INLINE void gravity_cache_init(struct gravity_cache *c, int count) {
  * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static void gravity_cache_populate(
-    timebin_t max_active_bin, struct gravity_cache *c,
-    const struct gpart *restrict gparts, int gcount, int gcount_padded,
-    const double shift[3], const float CoM[3], float r_max2,
-    const struct cell *cell, const struct gravity_props *grav_props) {
+    const timebin_t max_active_bin, const int allow_mpole, const int periodic,
+    const float dim[3], struct gravity_cache *c,
+    const struct gpart *restrict gparts, const int gcount,
+    const int gcount_padded, const double shift[3], const float CoM[3],
+    const float r_max2, const struct cell *cell,
+    const struct gravity_props *grav_props) {
 
   const float theta_crit2 = grav_props->theta_crit2;
 
@@ -180,12 +215,21 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     m[i] = gparts[i].mass;
     active[i] = (int)(gparts[i].time_bin <= max_active_bin);
 
-    /* Check whether we can use the multipole instead of P-P */
-    const float dx = x[i] - CoM[0];
-    const float dy = y[i] - CoM[1];
-    const float dz = z[i] - CoM[2];
+    /* Distance to the CoM of the other cell. */
+    float dx = x[i] - CoM[0];
+    float dy = y[i] - CoM[1];
+    float dz = z[i] - CoM[2];
+
+    /* Apply periodic BC */
+    if (periodic) {
+      dx = nearestf(dx, dim[0]);
+      dy = nearestf(dy, dim[1]);
+      dz = nearestf(dz, dim[2]);
+    }
     const float r2 = dx * dx + dy * dy + dz * dz;
-    use_mpole[i] = gravity_M2P_accept(r_max2, theta_crit2, r2);
+
+    /* Check whether we can use the multipole instead of P-P */
+    use_mpole[i] = allow_mpole && gravity_M2P_accept(r_max2, theta_crit2, r2);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -209,6 +253,9 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     active[i] = 0;
     use_mpole[i] = 0;
   }
+
+  /* Zero the output as well */
+  gravity_cache_zero_output(c, gcount_padded);
 }
 
 /**
@@ -225,11 +272,11 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
  * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static void
-gravity_cache_populate_no_mpole(timebin_t max_active_bin,
+gravity_cache_populate_no_mpole(const timebin_t max_active_bin,
                                 struct gravity_cache *c,
-                                const struct gpart *restrict gparts, int gcount,
-                                int gcount_padded, const double shift[3],
-                                const struct cell *cell,
+                                const struct gpart *restrict gparts,
+                                const int gcount, const int gcount_padded,
+                                const double shift[3], const struct cell *cell,
                                 const struct gravity_props *grav_props) {
 
   /* Make the compiler understand we are in happy vectorization land */
@@ -271,17 +318,120 @@ gravity_cache_populate_no_mpole(timebin_t max_active_bin,
     m[i] = 0.f;
     active[i] = 0;
   }
+
+  /* Zero the output as well */
+  gravity_cache_zero_output(c, gcount_padded);
 }
 
 /**
- * @brief Write the output cache values back to the #gpart.
+ * @brief Fills a #gravity_cache structure with some #gpart and make them use
+ * the multi-pole.
+ *
+ * @param max_active_bin The largest active bin in the current time-step.
+ * @param periodic Are we using periodic BCs ?
+ * @param dim The size of the simulation volume along each dimension.
+ * @param c The #gravity_cache to fill.
+ * @param gparts The #gpart array to read from.
+ * @param gcount The number of particles to read.
+ * @param gcount_padded The number of particle to read padded to the next
+ * multiple of the vector length.
+ * @param cell The cell we play with (to get reasonable padding positions).
+ * @param CoM The position of the multipole.
+ * @param r_max2 The square of the multipole radius.
+ * @param grav_props The global gravity properties.
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
+                                 const int periodic, const float dim[3],
+                                 struct gravity_cache *c,
+                                 const struct gpart *restrict gparts,
+                                 const int gcount, const int gcount_padded,
+                                 const struct cell *cell, const float CoM[3],
+                                 const float r_max2,
+                                 const struct gravity_props *grav_props) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  const float theta_crit2 = grav_props->theta_crit2;
+#endif
+
+  /* Make the compiler understand we are in happy vectorization land */
+  swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, c->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, c->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, c->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, active, c->active, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, use_mpole, c->use_mpole,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_assume_size(gcount_padded, VEC_SIZE);
+
+  /* Fill the input caches */
+  for (int i = 0; i < gcount; ++i) {
+    x[i] = (float)(gparts[i].x[0]);
+    y[i] = (float)(gparts[i].x[1]);
+    z[i] = (float)(gparts[i].x[2]);
+    epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
+    m[i] = gparts[i].mass;
+    active[i] = (int)(gparts[i].time_bin <= max_active_bin);
+    use_mpole[i] = 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Distance to the CoM of the other cell. */
+    float dx = x[i] - CoM[0];
+    float dy = y[i] - CoM[1];
+    float dz = z[i] - CoM[2];
+
+    /* Apply periodic BC */
+    if (periodic) {
+      dx = nearestf(dx, dim[0]);
+      dy = nearestf(dy, dim[1]);
+      dz = nearestf(dz, dim[2]);
+    }
+    const float r2 = dx * dx + dy * dy + dz * dz;
+
+    if (!gravity_M2P_accept(r_max2, theta_crit2, r2))
+      error("Using m-pole where the test fails");
+#endif
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gcount_padded < gcount) error("Padded counter smaller than counter");
+#endif
+
+  /* Particles used for padding should get impossible positions
+   * that have a reasonable magnitude. We use the cell width for this */
+  const float pos_padded[3] = {-2.f * (float)cell->width[0],
+                               -2.f * (float)cell->width[1],
+                               -2.f * (float)cell->width[2]};
+  const float eps_padded = epsilon[0];
+
+  /* Pad the caches */
+  for (int i = gcount; i < gcount_padded; ++i) {
+    x[i] = pos_padded[0];
+    y[i] = pos_padded[1];
+    z[i] = pos_padded[2];
+    epsilon[i] = eps_padded;
+    m[i] = 0.f;
+    active[i] = 0;
+    use_mpole[i] = 0;
+  }
+
+  /* Zero the output as well */
+  gravity_cache_zero_output(c, gcount_padded);
+}
+
+/**
+ * @brief Write the output cache values back to the active #gpart.
+ *
+ * This function obviously omits the padded values in the cache.
  *
  * @param c The #gravity_cache to read from.
  * @param gparts The #gpart array to write to.
  * @param gcount The number of particles to write.
  */
-__attribute__((always_inline)) INLINE void gravity_cache_write_back(
-    const struct gravity_cache *c, struct gpart *restrict gparts, int gcount) {
+__attribute__((always_inline)) INLINE static void gravity_cache_write_back(
+    const struct gravity_cache *c, struct gpart *restrict gparts,
+    const int gcount) {
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, a_x, c->a_x, SWIFT_CACHE_ALIGNMENT);
@@ -296,7 +446,7 @@ __attribute__((always_inline)) INLINE void gravity_cache_write_back(
       gparts[i].a_grav[0] += a_x[i];
       gparts[i].a_grav[1] += a_y[i];
       gparts[i].a_grav[2] += a_z[i];
-      gparts[i].potential += pot[i];
+      gravity_add_comoving_potential(&gparts[i], pot[i]);
     }
   }
 }
