@@ -486,6 +486,17 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
+  /* Temporary early aborts for modes not supported over MPI. */
+#ifdef WITH_MPI
+    if(with_mpole_reconstruction && nr_nodes > 1)
+      error("Cannot reconstruct m-poles every step over MPI (yet).");
+#endif
+
+#if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
+    if (with_structure_finding && nr_nodes > 1)
+      error("VEOCIraptor not yet enabled over MPI.");
+#endif
+
   /* Check that we can write the snapshots by testing if the output
    * directory exists and is searchable and writable. */
   char basename[PARSER_MAX_LINE_SIZE];
@@ -728,10 +739,6 @@ int main(int argc, char *argv[]) {
               clocks_diff(&tic, &toc), clocks_getunit());
       fflush(stdout);
     }
-
-#if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
-    if (with_structure_finding) error("VEOCIraptor not yet enabled over MPI.");
-#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check once and for all that we don't have unwanted links */
