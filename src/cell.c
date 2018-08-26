@@ -178,8 +178,6 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
 #ifdef WITH_MPI
 
   /* Start by packing the data of the current cell. */
-  if(with_gravity)
-    pc->multipole = *(c->multipole);
   pc->h_max = c->h_max;
   pc->ti_hydro_end_min = c->ti_hydro_end_min;
   pc->ti_hydro_end_max = c->ti_hydro_end_max;
@@ -191,6 +189,22 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->count = c->count;
   pc->gcount = c->gcount;
   pc->scount = c->scount;
+
+  /* Copy the Multipole related information */
+  if(with_gravity) {
+    const struct gravity_tensors *mp = c->multipole;
+
+    pc->m_pole = mp->m_pole;
+    pc->CoM[0] = mp->CoM[0];
+    pc->CoM[1] = mp->CoM[1];
+    pc->CoM[2] = mp->CoM[2];
+    pc->CoM_rebuild[0] = mp->CoM_rebuild[0];
+    pc->CoM_rebuild[1] = mp->CoM_rebuild[1];
+    pc->CoM_rebuild[2] = mp->CoM_rebuild[2];
+    pc->r_max = mp->r_max;
+    pc->r_max_rebuild = mp->r_max_rebuild;
+  }
+
 
 #ifdef SWIFT_DEBUG_CHECKS
   pc->cellID = c->cellID;
@@ -267,8 +281,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
 #ifdef WITH_MPI
 
   /* Unpack the current pcell. */
-  if(with_gravity)
-    *(c->multipole) = pc->multipole;
   c->h_max = pc->h_max;
   c->ti_hydro_end_min = pc->ti_hydro_end_min;
   c->ti_hydro_end_max = pc->ti_hydro_end_max;
@@ -284,6 +296,22 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->cellID = pc->cellID;
 #endif
 
+  /* Copy the Multipole related information */
+  if(with_gravity) {
+
+    struct gravity_tensors *mp = c->multipole;
+
+    mp->m_pole = pc->m_pole;
+    mp->CoM[0] = pc->CoM[0];
+    mp->CoM[1] = pc->CoM[1];
+    mp->CoM[2] = pc->CoM[2];
+    mp->CoM_rebuild[0] = pc->CoM_rebuild[0];
+    mp->CoM_rebuild[1] = pc->CoM_rebuild[1];
+    mp->CoM_rebuild[2] = pc->CoM_rebuild[2];
+    mp->r_max = pc->r_max;
+    mp->r_max_rebuild = pc->r_max_rebuild;
+  }
+    
   /* Number of new cells created. */
   int count = 1;
 

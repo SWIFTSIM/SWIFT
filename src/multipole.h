@@ -186,11 +186,11 @@ struct gravity_tensors {
     /*! The actual content */
     struct {
 
-      /*! Multipole mass */
-      struct multipole m_pole;
-
       /*! Field tensor for the potential */
       struct grav_tensor pot;
+
+      /*! Multipole mass */
+      struct multipole m_pole;
 
       /*! Centre of mass of the matter dsitribution */
       double CoM[3];

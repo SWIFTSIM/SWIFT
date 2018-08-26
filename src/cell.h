@@ -78,7 +78,19 @@ struct link {
 struct pcell {
 
   /*! This cell's gravity-related tensors */
-  struct gravity_tensors multipole;
+  struct multipole m_pole;
+  
+  /*! Centre of mass. */
+  double CoM[3];
+
+  /*! Centre of mass at rebuild time. */
+  double CoM_rebuild[3];
+
+  /*! Upper limit of the CoM<->gpart distance. */
+  double r_max;
+
+  /*! Upper limit of the CoM<->gpart distance at last rebuild. */
+  double r_max_rebuild;
 
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
