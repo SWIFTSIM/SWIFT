@@ -5300,6 +5300,7 @@ void engine_makeproxies(struct engine *e) {
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
   const double theta_crit2 = e->gravity_properties->theta_crit2;
+  const double max_distance = e->mesh->r_cut_max;
 
   /* Maximal distance between CoMs and any particle in the cell */
   const double r_max2 = cell_width[0] * cell_width[0] +
@@ -5451,8 +5452,22 @@ void engine_makeproxies(struct engine *e) {
                 /* This is a crazy upper-bound but the best we can do */
                 const double r2 = dx * dx + dy * dy + dz * dz;
 
-                if (!gravity_M2L_accept(r_max, r_max, theta_crit2, r2))
-                  proxy_type |= (int)proxy_cell_type_gravity;
+                /* Minimal distance between any pair of particles */
+                const double min_radius = sqrt(r2) - 2. * r_max;
+
+                /* Are we beyond the distance where the truncated forces are 0
+                 * but not too far such that M2L can be used? */
+                if (periodic) {
+
+                  if ((min_radius < max_distance) &&
+                      (!gravity_M2L_accept(r_max, r_max, theta_crit2, r2)))
+                    proxy_type |= (int)proxy_cell_type_gravity;
+
+                } else {
+
+                  if (!gravity_M2L_accept(r_max, r_max, theta_crit2, r2))
+                    proxy_type |= (int)proxy_cell_type_gravity;
+                }
               }
 
               /* Abort if not in range at all */
