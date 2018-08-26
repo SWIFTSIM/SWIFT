@@ -5292,7 +5292,8 @@ void engine_makeproxies(struct engine *e) {
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
-  const double cell_width[3] = {cells[0].width[0], cells[0].width[1], cells[0].width[2]};
+  const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
+                                cells[0].width[2]};
 
   /* Get some info about the physics */
   const int with_hydro = (e->policy & engine_policy_hydro);
@@ -5356,10 +5357,9 @@ void engine_makeproxies(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
 
-	/* and it's location */
-	const double loc_i[3] = {cells[cid].loc[0],
-				 cells[cid].loc[1],
-				 cells[cid].loc[2]};
+        /* and it's location */
+        const double loc_i[3] = {cells[cid].loc[0], cells[cid].loc[1],
+                                 cells[cid].loc[2]};
 
         /* Loop over all its neighbours (periodic). */
         for (int i = -delta_m; i <= delta_p; i++) {
@@ -5400,8 +5400,8 @@ void engine_makeproxies(struct engine *e) {
               /* In the hydro case, only care about direct neighbours */
               if (with_hydro) {
 
-		//MATTHIEU: to do: Write a better expression for the
-		// non-periodic case.
+                // MATTHIEU: to do: Write a better expression for the
+                // non-periodic case.
 
                 /* This is super-ugly but checks for direct neighbours */
                 /* with periodic BC */
@@ -5420,39 +5420,39 @@ void engine_makeproxies(struct engine *e) {
               /* In the gravity case, check distances using the MAC. */
               if (with_gravity) {
 
-		/* We don't have multipoles yet (or there CoMs) so we will have to
-		   cook up something based on cell locations only. We hence need
-		   an upper limit on the distance that the CoMs in those cells 
-		   could have. We then can decide whether we are too close 
-		   for an M2L interaction and hence require a proxy as this pair
-		   of cells cannot rely on just an M2L calculation. */
-		
-		const double loc_j[3] = {cells[cjd].loc[0],
-					 cells[cjd].loc[1],
-					 cells[cjd].loc[2]};
+                /* We don't have multipoles yet (or there CoMs) so we will have
+                   to cook up something based on cell locations only. We hence
+                   need an upper limit on the distance that the CoMs in those
+                   cells could have. We then can decide whether we are too close
+                   for an M2L interaction and hence require a proxy as this pair
+                   of cells cannot rely on just an M2L calculation. */
 
-		/* Start with the distance between the cell centres. */
-		double dx = loc_i[0] - loc_j[0];
-		double dy = loc_i[1] - loc_j[1];
-		double dz = loc_i[2] - loc_j[2];
+                const double loc_j[3] = {cells[cjd].loc[0], cells[cjd].loc[1],
+                                         cells[cjd].loc[2]};
 
-		/* Apply BC */
-		if (periodic) {
-		  dx = nearest(dx, dim[0]);
-		  dy = nearest(dy, dim[0]);
-		  dz = nearest(dz, dim[0]);
-		}
+                /* Start with the distance between the cell centres. */
+                double dx = loc_i[0] - loc_j[0];
+                double dy = loc_i[1] - loc_j[1];
+                double dz = loc_i[2] - loc_j[2];
 
-		/* Add to it for the case where the future CoMs are in the corners */
-		dx += cell_width[0];
-		dy += cell_width[1];
-		dz += cell_width[2];
+                /* Apply BC */
+                if (periodic) {
+                  dx = nearest(dx, dim[0]);
+                  dy = nearest(dy, dim[0]);
+                  dz = nearest(dz, dim[0]);
+                }
 
-		/* This is a crazy upper-bound but the best we can do */
-		const double r2 = dx * dx + dy * dy + dz * dz;
+                /* Add to it for the case where the future CoMs are in the
+                 * corners */
+                dx += cell_width[0];
+                dy += cell_width[1];
+                dz += cell_width[2];
 
-		if (!gravity_M2L_accept(r_max, r_max, theta_crit2, r2))
-		  proxy_type |= (int)proxy_cell_type_gravity;
+                /* This is a crazy upper-bound but the best we can do */
+                const double r2 = dx * dx + dy * dy + dz * dz;
+
+                if (!gravity_M2L_accept(r_max, r_max, theta_crit2, r2))
+                  proxy_type |= (int)proxy_cell_type_gravity;
               }
 
               /* Abort if not in range at all */

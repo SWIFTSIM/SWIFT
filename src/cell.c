@@ -173,7 +173,7 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
  * @return The number of packed cells.
  */
 int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
-	      const int with_gravity) {
+              const int with_gravity) {
 
 #ifdef WITH_MPI
 
@@ -191,7 +191,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->scount = c->scount;
 
   /* Copy the Multipole related information */
-  if(with_gravity) {
+  if (with_gravity) {
     const struct gravity_tensors *mp = c->multipole;
 
     pc->m_pole = mp->m_pole;
@@ -204,7 +204,6 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
     pc->r_max = mp->r_max;
     pc->r_max_rebuild = mp->r_max_rebuild;
   }
-
 
 #ifdef SWIFT_DEBUG_CHECKS
   pc->cellID = c->cellID;
@@ -297,7 +296,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
 #endif
 
   /* Copy the Multipole related information */
-  if(with_gravity) {
+  if (with_gravity) {
 
     struct gravity_tensors *mp = c->multipole;
 
@@ -311,7 +310,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
     mp->r_max = pc->r_max;
     mp->r_max_rebuild = pc->r_max_rebuild;
   }
-    
+
   /* Number of new cells created. */
   int count = 1;
 

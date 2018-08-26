@@ -488,13 +488,13 @@ int main(int argc, char *argv[]) {
 
   /* Temporary early aborts for modes not supported over MPI. */
 #ifdef WITH_MPI
-    if(with_mpole_reconstruction && nr_nodes > 1)
-      error("Cannot reconstruct m-poles every step over MPI (yet).");
+  if (with_mpole_reconstruction && nr_nodes > 1)
+    error("Cannot reconstruct m-poles every step over MPI (yet).");
 #endif
 
 #if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
-    if (with_structure_finding && nr_nodes > 1)
-      error("VEOCIraptor not yet enabled over MPI.");
+  if (with_structure_finding && nr_nodes > 1)
+    error("VEOCIraptor not yet enabled over MPI.");
 #endif
 
   /* Check that we can write the snapshots by testing if the output
