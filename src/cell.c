@@ -167,14 +167,19 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
  * @param c The #cell.
  * @param pc Pointer to an array of packed cells in which the
  *      cells will be packed.
+ * @param with_gravity Are we running with gravity and hence need
+ *      to exchange multipoles?
  *
  * @return The number of packed cells.
  */
-int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
+int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
+	      const int with_gravity) {
 
 #ifdef WITH_MPI
 
   /* Start by packing the data of the current cell. */
+  if(with_gravity)
+    pc->multipole = *(c->multipole);
   pc->h_max = c->h_max;
   pc->ti_hydro_end_min = c->ti_hydro_end_min;
   pc->ti_hydro_end_max = c->ti_hydro_end_max;
@@ -196,7 +201,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc) {
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
       pc->progeny[k] = count;
-      count += cell_pack(c->progeny[k], &pc[count]);
+      count += cell_pack(c->progeny[k], &pc[count], with_gravity);
     } else {
       pc->progeny[k] = -1;
     }
@@ -251,15 +256,19 @@ int cell_pack_tags(const struct cell *c, int *tags) {
  * @param pc An array of packed #pcell.
  * @param c The #cell in which to unpack the #pcell.
  * @param s The #space in which the cells are created.
+ * @param with_gravity Are we running with gravity and hence need
+ *      to exchange multipoles?
  *
  * @return The number of cells created.
  */
 int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
-                struct space *restrict s) {
+                struct space *restrict s, const int with_gravity) {
 
 #ifdef WITH_MPI
 
   /* Unpack the current pcell. */
+  if(with_gravity)
+    *(c->multipole) = pc->multipole;
   c->h_max = pc->h_max;
   c->ti_hydro_end_min = pc->ti_hydro_end_min;
   c->ti_hydro_end_max = pc->ti_hydro_end_max;
@@ -304,7 +313,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->parent = c;
       c->progeny[k] = temp;
       c->split = 1;
-      count += cell_unpack(&pc[pc->progeny[k]], temp, s);
+      count += cell_unpack(&pc[pc->progeny[k]], temp, s, with_gravity);
     }
 
   /* Return the total number of unpacked cells. */

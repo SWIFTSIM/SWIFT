@@ -1670,10 +1670,11 @@ void engine_exchange_cells(struct engine *e) {
 
   struct space *s = e->s;
   const int nr_proxies = e->nr_proxies;
+  const int with_gravity = e->policy & engine_policy_self_gravity;
   const ticks tic = getticks();
 
   /* Exchange the cell structure with neighbouring ranks. */
-  proxy_cells_exchange(e->proxies, e->nr_proxies, e->s);
+  proxy_cells_exchange(e->proxies, e->nr_proxies, e->s, with_gravity);
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
@@ -3948,17 +3949,13 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
 /* If in parallel, exchange the cell structure, top-level and neighbouring
  * multipoles. */
 #ifdef WITH_MPI
-  engine_exchange_cells(e);
-
   if (e->policy & engine_policy_self_gravity) engine_exchange_top_multipoles(e);
+
+  engine_exchange_cells(e);
 #endif
 
   /* Re-build the tasks. */
   engine_maketasks(e);
-
-#ifdef WITH_MPI
-  if (e->policy & engine_policy_self_gravity) engine_exchange_proxy_multipoles(e);
-#endif
 
   /* Make the list of top-level cells that have tasks */
   space_list_cells_with_tasks(e->s);
@@ -5400,8 +5397,17 @@ void engine_makeproxies(struct engine *e) {
               if (with_gravity) {
 
                 /* Are we too close for M2L? */
-                if (!cell_can_use_pair_mm_rebuild(&cells[cid], &cells[cjd], e,
-                                                  s))
+                /* if (!cell_can_use_pair_mm_rebuild(&cells[cid], &cells[cjd], e, */
+                /*                                   s)) */
+                if (((abs(ind[0] - ii) <= 5 ||
+                      abs(ind[0] - ii - cdim[0]) <= 5 ||
+                      abs(ind[0] - ii + cdim[0]) <= 5) &&
+                     (abs(ind[1] - jj) <= 5 ||
+                      abs(ind[1] - jj - cdim[1]) <= 5 ||
+                      abs(ind[1] - jj + cdim[1]) <= 5) &&
+                     (abs(ind[2] - kk) <= 5 ||
+                      abs(ind[2] - kk - cdim[2]) <= 5 ||
+                      abs(ind[2] - kk + cdim[2]) <= 5)))
                   proxy_type |= (int)proxy_cell_type_gravity;
               }
 
