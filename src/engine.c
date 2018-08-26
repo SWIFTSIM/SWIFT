@@ -5283,16 +5283,28 @@ void engine_makeproxies(struct engine *e) {
 #ifdef WITH_MPI
   const int nodeID = e->nodeID;
   const struct space *s = e->s;
-  const int *cdim = s->cdim;
-
-  /* Get some info about the physics */
-  const int with_hydro = (e->policy & engine_policy_hydro);
-  const int with_gravity = (e->policy & engine_policy_self_gravity);
-  const double theta_crit = e->gravity_properties->theta_crit;
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
   struct proxy *proxies = e->proxies;
+
+  /* Some info about the domain */
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const double cell_width[3] = {cells[0].width[0], cells[0].width[1], cells[0].width[2]};
+
+  /* Get some info about the physics */
+  const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
+  const double theta_crit2 = e->gravity_properties->theta_crit2;
+
+  /* Maximal distance between CoMs and any particle in the cell */
+  const double r_max2 = cell_width[0] * cell_width[0] +
+                        cell_width[1] * cell_width[1] +
+                        cell_width[2] * cell_width[2];
+  const double r_max = sqrt(r_max2);
 
   /* Let's time this */
   const ticks tic = getticks();
@@ -5306,10 +5318,14 @@ void engine_makeproxies(struct engine *e) {
 
   /* Compute how many cells away we need to walk */
   int delta = 1; /*hydro case */
+
+  /* Gravity needs to take the opening angle into account */
   if (with_gravity) {
-    const double distance = 2.5 * cells[0].width[0] / theta_crit;
-    delta = (int)(distance / cells[0].width[0]) + 1;
+    const double distance = 2. * r_max * theta_crit_inv;
+    delta = (int)(distance / cells[0].dmin) + 1;
   }
+
+  /* Turn this into upper and lower bounds for loops */
   int delta_m = delta;
   int delta_p = delta;
 
@@ -5339,6 +5355,11 @@ void engine_makeproxies(struct engine *e) {
 
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
+
+	/* and it's location */
+	const double loc_i[3] = {cells[cid].loc[0],
+				 cells[cid].loc[1],
+				 cells[cid].loc[2]};
 
         /* Loop over all its neighbours (periodic). */
         for (int i = -delta_m; i <= delta_p; i++) {
@@ -5379,6 +5400,9 @@ void engine_makeproxies(struct engine *e) {
               /* In the hydro case, only care about direct neighbours */
               if (with_hydro) {
 
+		//MATTHIEU: to do: Write a better expression for the
+		// non-periodic case.
+
                 /* This is super-ugly but checks for direct neighbours */
                 /* with periodic BC */
                 if (((abs(ind[0] - ii) <= 1 ||
@@ -5396,19 +5420,39 @@ void engine_makeproxies(struct engine *e) {
               /* In the gravity case, check distances using the MAC. */
               if (with_gravity) {
 
-                /* Are we too close for M2L? */
-                /* if (!cell_can_use_pair_mm_rebuild(&cells[cid], &cells[cjd], e, */
-                /*                                   s)) */
-                if (((abs(ind[0] - ii) <= 5 ||
-                      abs(ind[0] - ii - cdim[0]) <= 5 ||
-                      abs(ind[0] - ii + cdim[0]) <= 5) &&
-                     (abs(ind[1] - jj) <= 5 ||
-                      abs(ind[1] - jj - cdim[1]) <= 5 ||
-                      abs(ind[1] - jj + cdim[1]) <= 5) &&
-                     (abs(ind[2] - kk) <= 5 ||
-                      abs(ind[2] - kk - cdim[2]) <= 5 ||
-                      abs(ind[2] - kk + cdim[2]) <= 5)))
-                  proxy_type |= (int)proxy_cell_type_gravity;
+		/* We don't have multipoles yet (or there CoMs) so we will have to
+		   cook up something based on cell locations only. We hence need
+		   an upper limit on the distance that the CoMs in those cells 
+		   could have. We then can decide whether we are too close 
+		   for an M2L interaction and hence require a proxy as this pair
+		   of cells cannot rely on just an M2L calculation. */
+		
+		const double loc_j[3] = {cells[cjd].loc[0],
+					 cells[cjd].loc[1],
+					 cells[cjd].loc[2]};
+
+		/* Start with the distance between the cell centres. */
+		double dx = loc_i[0] - loc_j[0];
+		double dy = loc_i[1] - loc_j[1];
+		double dz = loc_i[2] - loc_j[2];
+
+		/* Apply BC */
+		if (periodic) {
+		  dx = nearest(dx, dim[0]);
+		  dy = nearest(dy, dim[0]);
+		  dz = nearest(dz, dim[0]);
+		}
+
+		/* Add to it for the case where the future CoMs are in the corners */
+		dx += cell_width[0];
+		dy += cell_width[1];
+		dz += cell_width[2];
+
+		/* This is a crazy upper-bound but the best we can do */
+		const double r2 = dx * dx + dy * dy + dz * dz;
+
+		if (!gravity_M2L_accept(r_max, r_max, theta_crit2, r2))
+		  proxy_type |= (int)proxy_cell_type_gravity;
               }
 
               /* Abort if not in range at all */
