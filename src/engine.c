@@ -68,8 +68,8 @@
 #include "gravity_cache.h"
 #include "hydro.h"
 #include "map.h"
-#include "memuse.h"
 #include "memswap.h"
+#include "memuse.h"
 #include "minmax.h"
 #include "outputlist.h"
 #include "parallel_io.h"
@@ -3976,7 +3976,8 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   engine_maketasks(e);
 
 #ifdef WITH_MPI
-  if (e->policy & engine_policy_self_gravity) engine_exchange_proxy_multipoles(e);
+  if (e->policy & engine_policy_self_gravity)
+    engine_exchange_proxy_multipoles(e);
 #endif
 
   /* Make the list of top-level cells that have tasks */
@@ -5830,7 +5831,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_param_double(params, "Statistics:delta_time");
   e->ti_next_stats = 0;
   e->verbose = verbose;
-  e->count_step = 0;
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
   e->cosmology = cosmo;

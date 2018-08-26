@@ -25,7 +25,7 @@
 /* Public API. */
 void memuse_use(long *size, long *resident, long *share, long *trs, long *lrs,
                 long *drs, long *dt);
-const char *memuse_process();
+const char *memuse_process(void);
 
 /* Reports are a no-op unless wanted. */
 #ifdef SWIFT_MEMUSE_REPORTS
