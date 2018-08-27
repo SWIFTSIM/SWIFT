@@ -1,0 +1,5 @@
+This test is a small cosmological volume with constant density and internal energy.
+The ICs are generated from a glass file to minimize the build-up of peculiar velocities
+over time.
+
+The solution script plots the expected solution both in comoving and physical frames.
