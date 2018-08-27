@@ -3959,7 +3959,8 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   engine_maketasks(e);
 
 #ifdef WITH_MPI
-  if (e->policy & engine_policy_self_gravity) engine_exchange_proxy_multipoles(e);
+  if (e->policy & engine_policy_self_gravity)
+    engine_exchange_proxy_multipoles(e);
 #endif
 
   /* Make the list of top-level cells that have tasks */

@@ -126,8 +126,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       const int cid = proxies[k].cells_out[j] - s->cells_top;
       cids_out[send_rid] = cid;
       int err = MPI_Isend(
-          &tags_out[offset_out[cid]], proxies[k].cells_out[j]->pcell_size, MPI_INT,
-          proxies[k].nodeID, cid, MPI_COMM_WORLD, &reqs_out[send_rid]);
+          &tags_out[offset_out[cid]], proxies[k].cells_out[j]->pcell_size,
+          MPI_INT, proxies[k].nodeID, cid, MPI_COMM_WORLD, &reqs_out[send_rid]);
       if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend tags.");
       send_rid += 1;
     }
