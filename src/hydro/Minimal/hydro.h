@@ -570,6 +570,12 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo) {
 
+  /* Convert the physcial internal energy to the comoving one. */
+  /* u' = a^(3(g-1)) u */
+  const float factor = 1.f / cosmo->a_factor_internal_energy;
+  p->u *= factor;
+  xp->u_full *= factor;
+
   /* Compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
 
