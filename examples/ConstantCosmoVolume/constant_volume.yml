@@ -17,7 +17,7 @@ Cosmology:
 # Parameters governing the time integration
 TimeIntegration:
   dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     5e-3  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     2e-3  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
