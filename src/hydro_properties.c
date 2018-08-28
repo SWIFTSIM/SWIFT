@@ -215,6 +215,7 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
                        p->initial_internal_energy);
   io_write_attribute_f(h_grpsph, "Hydrogen mass fraction",
                        p->hydrogen_mass_fraction);
+  io_write_attribute_f(h_grpsph, "Alpha viscosity", const_viscosity_alpha);
 }
 #endif
 

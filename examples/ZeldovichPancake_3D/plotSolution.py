@@ -69,6 +69,7 @@ scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
 neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
 eta = sim["/HydroScheme"].attrs["Kernel eta"]
+alpha = sim["/HydroScheme"].attrs["Alpha viscosity"]
 git = sim["Code"].attrs["Git Revision"]
 
 # Cosmological parameters
@@ -178,8 +179,8 @@ ylabel("${\\rm{Temperature}}~T$", labelpad=0)
 # Information -------------------------------------
 subplot(236, frameon=False)
 
-text(-0.49, 0.9, "Zeldovich pancake with  $\\gamma=%.3f$ in 1D at $t=%.2f$"%(gas_gamma,time), fontsize=10)
-text(-0.49, 0.8, "$z={0:.2f}$".format(redshift))
+text(-0.49, 0.9, "Zeldovich pancake at z=%.2f "%(redshift), fontsize=10)
+text(-0.49, 0.8, "adiabatic index $\\gamma=%.2f$, viscosity $\\alpha=%.2f$"%(gas_gamma, alpha), fontsize=10)
 plot([-0.49, 0.1], [0.62, 0.62], 'k-', lw=1)
 text(-0.49, 0.5, "$\\textsc{Swift}$ %s"%git, fontsize=10)
 text(-0.49, 0.4, scheme, fontsize=10)
