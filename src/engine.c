@@ -2159,8 +2159,8 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
   const ticks tic = getticks();
 
   /* Start by counting the number of cells to send and receive */
-  int count_send = 0;
-  int count_recv = 0;
+  int count_send_cells = 0;
+  int count_recv_cells = 0;
   int count_send_requests = 0;
   int count_recv_requests = 0;
 
