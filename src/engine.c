@@ -1670,10 +1670,11 @@ void engine_exchange_cells(struct engine *e) {
 
   struct space *s = e->s;
   const int nr_proxies = e->nr_proxies;
+  const int with_gravity = e->policy & engine_policy_self_gravity;
   const ticks tic = getticks();
 
   /* Exchange the cell structure with neighbouring ranks. */
-  proxy_cells_exchange(e->proxies, e->nr_proxies, e->s);
+  proxy_cells_exchange(e->proxies, e->nr_proxies, e->s, with_gravity);
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
@@ -2175,21 +2176,21 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 
     /* And the actual number of things we are going to ship */
     for (int k = 0; k < p->nr_cells_in; k++)
-      count_recv += p->cells_in[k]->pcell_size;
+      count_recv_cells += p->cells_in[k]->pcell_size;
 
     for (int k = 0; k < p->nr_cells_out; k++)
-      count_send += p->cells_out[k]->pcell_size;
+      count_send_cells += p->cells_out[k]->pcell_size;
   }
 
   /* Allocate the buffers for the packed data */
   struct gravity_tensors *buffer_send = NULL;
   if (posix_memalign((void **)&buffer_send, SWIFT_CACHE_ALIGNMENT,
-                     count_send * sizeof(struct gravity_tensors)) != 0)
+                     count_send_cells * sizeof(struct gravity_tensors)) != 0)
     error("Unable to allocate memory for multipole transactions");
 
   struct gravity_tensors *buffer_recv = NULL;
   if (posix_memalign((void **)&buffer_recv, SWIFT_CACHE_ALIGNMENT,
-                     count_recv * sizeof(struct gravity_tensors)) != 0)
+                     count_recv_cells * sizeof(struct gravity_tensors)) != 0)
     error("Unable to allocate memory for multipole transactions");
 
   /* Also allocate the MPI requests */
@@ -2448,7 +2449,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           if (periodic && min_radius > max_distance) continue;
 
           /* Are the cells too close for a MM interaction ? */
-          if (!cell_can_use_pair_mm(ci, cj, e, s)) {
+          if (!cell_can_use_pair_mm_rebuild(ci, cj, e, s)) {
 
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
@@ -3513,10 +3514,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
         else if (t->type == task_type_sub_pair &&
                  t->subtype == task_subtype_grav) {
           error("Invalid task sub-type encountered");
         }
+#endif
       }
 
       /* Only interested in density tasks as of here. */
@@ -3621,9 +3624,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
-          if (cj_active_gravity) {
-            scheduler_activate(s, ci->recv_grav);
-          }
+          if (cj_active_gravity) scheduler_activate(s, ci->recv_grav);
 
           /* If the foreign cell is active, we want its ti_end values. */
           if (ci_active_gravity) scheduler_activate(s, ci->recv_ti);
@@ -3647,9 +3648,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         } else if (cj->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
-          if (ci_active_gravity) {
-            scheduler_activate(s, cj->recv_grav);
-          }
+          if (ci_active_gravity) scheduler_activate(s, cj->recv_grav);
 
           /* If the foreign cell is active, we want its ti_end values. */
           if (cj_active_gravity) scheduler_activate(s, cj->recv_ti);
@@ -3710,8 +3709,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const struct cell *cj = t->cj;
       const int ci_nodeID = ci->nodeID;
       const int cj_nodeID = cj->nodeID;
-      const int ci_active_gravity = cell_is_active_gravity(ci, e);
-      const int cj_active_gravity = cell_is_active_gravity(cj, e);
+      const int ci_active_gravity = cell_is_active_gravity_mm(ci, e);
+      const int cj_active_gravity = cell_is_active_gravity_mm(cj, e);
 
       if ((ci_active_gravity && ci_nodeID == engine_rank) ||
           (cj_active_gravity && cj_nodeID == engine_rank))
@@ -3950,18 +3949,13 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
 /* If in parallel, exchange the cell structure, top-level and neighbouring
  * multipoles. */
 #ifdef WITH_MPI
-  engine_exchange_cells(e);
-
   if (e->policy & engine_policy_self_gravity) engine_exchange_top_multipoles(e);
+
+  engine_exchange_cells(e);
 #endif
 
   /* Re-build the tasks. */
   engine_maketasks(e);
-
-#ifdef WITH_MPI
-  if (e->policy & engine_policy_self_gravity)
-    engine_exchange_proxy_multipoles(e);
-#endif
 
   /* Make the list of top-level cells that have tasks */
   space_list_cells_with_tasks(e->s);
@@ -5289,19 +5283,30 @@ void engine_makeproxies(struct engine *e) {
 #ifdef WITH_MPI
   const int nodeID = e->nodeID;
   const struct space *s = e->s;
-  const int *cdim = s->cdim;
-  const int periodic = s->periodic;
-
-  /* Get some info about the physics */
-  const double *dim = s->dim;
-  const struct gravity_props *props = e->gravity_properties;
-  const double theta_crit2 = props->theta_crit2;
-  const int with_hydro = (e->policy & engine_policy_hydro);
-  const int with_gravity = (e->policy & engine_policy_self_gravity);
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
   struct proxy *proxies = e->proxies;
+
+  /* Some info about the domain */
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
+                                cells[0].width[2]};
+
+  /* Get some info about the physics */
+  const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
+  const double theta_crit2 = e->gravity_properties->theta_crit2;
+  const double max_distance = e->mesh->r_cut_max;
+
+  /* Maximal distance between CoMs and any particle in the cell */
+  const double r_max2 = cell_width[0] * cell_width[0] +
+                        cell_width[1] * cell_width[1] +
+                        cell_width[2] * cell_width[2];
+  const double r_max = sqrt(r_max2);
 
   /* Let's time this */
   const ticks tic = getticks();
@@ -5315,14 +5320,34 @@ void engine_makeproxies(struct engine *e) {
 
   /* Compute how many cells away we need to walk */
   int delta = 1; /*hydro case */
+
+  /* Gravity needs to take the opening angle into account */
   if (with_gravity) {
-    const double distance = 2.5 * cells[0].width[0] / props->theta_crit;
-    delta = (int)(distance / cells[0].width[0]) + 1;
+    const double distance = 2. * r_max * theta_crit_inv;
+    delta = (int)(distance / cells[0].dmin) + 1;
+  }
+
+  /* Turn this into upper and lower bounds for loops */
+  int delta_m = delta;
+  int delta_p = delta;
+
+  /* Special case where every cell is in range of every other one */
+  if (delta >= cdim[0] / 2) {
+    if (cdim[0] % 2 == 0) {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2 - 1;
+    } else {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2;
+    }
   }
 
   /* Let's be verbose about this choice */
   if (e->verbose)
-    message("Looking for proxies up to %d top-level cells away", delta);
+    message(
+        "Looking for proxies up to %d top-level cells away (delta_m=%d "
+        "delta_p=%d)",
+        delta, delta_m, delta_p);
 
   /* Loop over each cell in the space. */
   int ind[3];
@@ -5333,33 +5358,24 @@ void engine_makeproxies(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
 
-        double CoM_i[3] = {0., 0., 0.};
-        double r_max_i = 0.;
-
-        if (with_gravity) {
-
-          /* Get ci's multipole */
-          const struct gravity_tensors *multi_i = cells[cid].multipole;
-          CoM_i[0] = multi_i->CoM[0];
-          CoM_i[1] = multi_i->CoM[1];
-          CoM_i[2] = multi_i->CoM[2];
-          r_max_i = multi_i->r_max;
-        }
+        /* and it's location */
+        const double loc_i[3] = {cells[cid].loc[0], cells[cid].loc[1],
+                                 cells[cid].loc[2]};
 
         /* Loop over all its neighbours (periodic). */
-        for (int i = -delta; i <= delta; i++) {
+        for (int i = -delta_m; i <= delta_p; i++) {
           int ii = ind[0] + i;
           if (ii >= cdim[0])
             ii -= cdim[0];
           else if (ii < 0)
             ii += cdim[0];
-          for (int j = -delta; j <= delta; j++) {
+          for (int j = -delta_m; j <= delta_p; j++) {
             int jj = ind[1] + j;
             if (jj >= cdim[1])
               jj -= cdim[1];
             else if (jj < 0)
               jj += cdim[1];
-            for (int k = -delta; k <= delta; k++) {
+            for (int k = -delta_m; k <= delta_p; k++) {
               int kk = ind[2] + k;
               if (kk >= cdim[2])
                 kk -= cdim[2];
@@ -5382,8 +5398,11 @@ void engine_makeproxies(struct engine *e) {
 
               int proxy_type = 0;
 
-              /* In the hydro case, only care about neighbours */
+              /* In the hydro case, only care about direct neighbours */
               if (with_hydro) {
+
+                // MATTHIEU: to do: Write a better expression for the
+                // non-periodic case.
 
                 /* This is super-ugly but checks for direct neighbours */
                 /* with periodic BC */
@@ -5402,16 +5421,20 @@ void engine_makeproxies(struct engine *e) {
               /* In the gravity case, check distances using the MAC. */
               if (with_gravity) {
 
-                /* Get cj's multipole */
-                const struct gravity_tensors *multi_j = cells[cjd].multipole;
-                const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1],
-                                         multi_j->CoM[2]};
-                const double r_max_j = multi_j->r_max;
+                /* We don't have multipoles yet (or there CoMs) so we will have
+                   to cook up something based on cell locations only. We hence
+                   need an upper limit on the distance that the CoMs in those
+                   cells could have. We then can decide whether we are too close
+                   for an M2L interaction and hence require a proxy as this pair
+                   of cells cannot rely on just an M2L calculation. */
 
-                /* Let's compute the current distance between the cell pair*/
-                double dx = CoM_i[0] - CoM_j[0];
-                double dy = CoM_i[1] - CoM_j[1];
-                double dz = CoM_i[2] - CoM_j[2];
+                const double loc_j[3] = {cells[cjd].loc[0], cells[cjd].loc[1],
+                                         cells[cjd].loc[2]};
+
+                /* Start with the distance between the cell centres. */
+                double dx = loc_i[0] - loc_j[0];
+                double dy = loc_i[1] - loc_j[1];
+                double dz = loc_i[2] - loc_j[2];
 
                 /* Apply BC */
                 if (periodic) {
@@ -5419,11 +5442,32 @@ void engine_makeproxies(struct engine *e) {
                   dy = nearest(dy, dim[1]);
                   dz = nearest(dz, dim[2]);
                 }
+
+                /* Add to it for the case where the future CoMs are in the
+                 * corners */
+                dx += cell_width[0];
+                dy += cell_width[1];
+                dz += cell_width[2];
+
+                /* This is a crazy upper-bound but the best we can do */
                 const double r2 = dx * dx + dy * dy + dz * dz;
 
-                /* Are we too close for M2L? */
-                if (!gravity_M2L_accept(r_max_i, r_max_j, theta_crit2, r2))
-                  proxy_type |= (int)proxy_cell_type_gravity;
+                /* Minimal distance between any pair of particles */
+                const double min_radius = sqrt(r2) - 2. * r_max;
+
+                /* Are we beyond the distance where the truncated forces are 0
+                 * but not too far such that M2L can be used? */
+                if (periodic) {
+
+                  if ((min_radius < max_distance) &&
+                      (!gravity_M2L_accept(r_max, r_max, theta_crit2, r2)))
+                    proxy_type |= (int)proxy_cell_type_gravity;
+
+                } else {
+
+                  if (!gravity_M2L_accept(r_max, r_max, theta_crit2, r2))
+                    proxy_type |= (int)proxy_cell_type_gravity;
+                }
               }
 
               /* Abort if not in range at all */

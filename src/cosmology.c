@@ -535,7 +535,7 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->w_0 = 0.;
   c->w_a = 0.;
   c->h = 1.;
-  c->w = 0.;
+  c->w = -1.;
 
   c->a_begin = 1.;
   c->a_end = 1.;
@@ -544,6 +544,7 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
 
   c->H = 0.;
   c->a = 1.;
+  c->z = 0.;
   c->a_inv = 1.;
   c->a2_inv = 1.;
   c->a3_inv = 1.;

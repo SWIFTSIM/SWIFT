@@ -77,6 +77,24 @@ struct link {
  */
 struct pcell {
 
+  /*! This cell's gravity-related tensors */
+  struct multipole m_pole;
+
+  /*! Centre of mass. */
+  double CoM[3];
+
+  /*! Centre of mass at rebuild time. */
+  double CoM_rebuild[3];
+
+  /*! Upper limit of the CoM<->gpart distance. */
+  double r_max;
+
+  /*! Upper limit of the CoM<->gpart distance at last rebuild. */
+  double r_max_rebuild;
+
+  /*! Relative indices of the cell's progeny. */
+  int progeny[8];
+
   /*! Maximal smoothing length. */
   double h_max;
 
@@ -115,9 +133,6 @@ struct pcell {
 
   /*! Number of #spart in this cell. */
   int scount;
-
-  /*! Relative indices of the cell's progeny. */
-  int progeny[8];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Cell ID (for debugging) */
@@ -212,6 +227,9 @@ struct cell {
 
   /*! Linked list of the tasks computing this cell's gravity forces. */
   struct link *grav;
+
+  /*! Linked list of the tasks computing this cell's gravity M-M forces. */
+  struct link *grav_mm;
 
   /*! The task computing this cell's sorts. */
   struct task *sorts;
@@ -422,6 +440,9 @@ struct cell {
   /*! Number of tasks that are associated with this cell. */
   short int nr_tasks;
 
+  /*! Number of M-M tasks that are associated with this cell. */
+  short int nr_mm_tasks;
+
   /*! The depth of this cell in the tree. */
   char depth;
 
@@ -479,8 +500,9 @@ int cell_mlocktree(struct cell *c);
 void cell_munlocktree(struct cell *c);
 int cell_slocktree(struct cell *c);
 void cell_sunlocktree(struct cell *c);
-int cell_pack(struct cell *c, struct pcell *pc);
-int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
+int cell_pack(struct cell *c, struct pcell *pc, const int with_gravity);
+int cell_unpack(struct pcell *pc, struct cell *c, struct space *s,
+                const int with_gravity);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step(struct cell *c, struct pcell_step *pcell);
@@ -522,6 +544,8 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 int cell_has_tasks(struct cell *c);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s);
+int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
+                                 const struct engine *e, const struct space *s);
 
 /* Inlined functions (for speed). */
 

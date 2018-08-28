@@ -1144,7 +1144,7 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_gravity(ci, e) || ci->nodeID != engine_rank) return;
+  if (!cell_is_active_gravity_mm(ci, e) || ci->nodeID != engine_rank) return;
 
   /* Short-cut to the multipole */
   const struct multipole *multi_j = &cj->multipole->m_pole;
@@ -1485,8 +1485,8 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
     error("Running M-M task with two inactive cells.");
 #endif
 
-  if (cell_is_active_gravity(ci, e)) runner_dopair_grav_mm(r, ci, cj);
-  if (cell_is_active_gravity(cj, e)) runner_dopair_grav_mm(r, cj, ci);
+  if (cell_is_active_gravity_mm(ci, e)) runner_dopair_grav_mm(r, ci, cj);
+  if (cell_is_active_gravity_mm(cj, e)) runner_dopair_grav_mm(r, cj, ci);
 }
 
 /**

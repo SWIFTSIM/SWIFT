@@ -314,7 +314,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   fftw_plan inverse_plan = fftw_plan_dft_c2r_3d(
       N, N, N, frho, rho, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
 
-  const ticks tic = getticks();
+  ticks tic = getticks();
 
   /* Zero everything */
   bzero(rho, N * N * N * sizeof(double));
@@ -324,8 +324,22 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
     gpart_to_mesh_CIC(&s->gparts[i], rho, N, cell_fac, dim);
 
   if (verbose)
-    message("gpart assignment took %.3f %s.",
+    message("Gpart assignment took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+#ifdef WITH_MPI
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  tic = getticks();
+
+  /* Merge everybody's share of the density mesh */
+  MPI_Allreduce(MPI_IN_PLACE, rho, N * N * N, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  if (verbose)
+    message("Mesh comunication took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+#endif
 
   /* message("\n\n\n DENSITY"); */
   /* print_array(rho, N); */
