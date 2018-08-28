@@ -729,14 +729,11 @@ runner_iact_nonsym_1_vec_force(
   dvz.v = vec_sub(viz.v, vjz.v);
 
   /* Compute dv dot r. */
-  dvdr.v =
-      vec_fma(dvx.v, dx->v,
-              vec_fma(dvy.v, dy->v,
-                      vec_mul(dvz.v, dz->v)));
+  dvdr.v = vec_fma(dvx.v, dx->v, vec_fma(dvy.v, dy->v, vec_mul(dvz.v, dz->v)));
 
   /* Add Hubble flow */
   dvdr_Hubble.v = vec_add(dvdr.v, vec_mul(v_a2_Hubble.v, r2->v));
-  
+
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
   omega_ij.v = vec_fmin(dvdr_Hubble.v, vec_setzero());
@@ -912,17 +909,14 @@ runner_iact_nonsym_2_vec_force(
   dvz_2.v = vec_sub(viz.v, vjz_2.v);
 
   /* Compute dv dot r. */
-  dvdr.v = vec_fma(
-      dvx.v, dx.v,
-      vec_fma(dvy.v, dy.v, vec_mul(dvz.v, dz.v)));
-  dvdr_2.v = vec_fma(
-      dvx_2.v, dx_2.v,
-      vec_fma(dvy_2.v, dy_2.v, vec_mul(dvz_2.v, dz_2.v)));
+  dvdr.v = vec_fma(dvx.v, dx.v, vec_fma(dvy.v, dy.v, vec_mul(dvz.v, dz.v)));
+  dvdr_2.v = vec_fma(dvx_2.v, dx_2.v,
+                     vec_fma(dvy_2.v, dy_2.v, vec_mul(dvz_2.v, dz_2.v)));
 
   /* Add the Hubble flow */
   dvdr_Hubble.v = vec_add(dvdr.v, vec_mul(v_a2_Hubble.v, r2.v));
   dvdr_Hubble_2.v = vec_add(dvdr_2.v, vec_mul(v_a2_Hubble.v, r2_2.v));
-  
+
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
   omega_ij.v = vec_fmin(dvdr_Hubble.v, vec_setzero());
