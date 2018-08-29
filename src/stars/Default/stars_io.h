@@ -78,6 +78,8 @@ INLINE static void stars_write_particles(const struct spart* sparts,
 /**
  * @brief Initialize the global properties of the stars scheme.
  *
+ * By default, takes the values provided by the hydro.
+ *
  * @param p The #stars_props.
  * @param phys_const The physical constants in the internal unit system.
  * @param us The internal unit system.

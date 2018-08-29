@@ -1203,6 +1203,35 @@ static void runner_do_unskip_hydro(struct cell *c, struct engine *e) {
 }
 
 /**
+ * @brief Unskip any stars tasks associated with active cells.
+ *
+ * @param c The cell.
+ * @param e The engine.
+ */
+static void runner_do_unskip_stars(struct cell *c, struct engine *e) {
+
+  /* Ignore empty cells. */
+  if (c->scount == 0) return;
+
+  /* Skip inactive cells. */
+  if (!cell_is_active_stars(c, e)) return;
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        runner_do_unskip_stars(cp, e);
+      }
+    }
+  }
+
+  /* Unskip any active tasks. */
+  const int forcerebuild = cell_unskip_stars_tasks(c, &e->sched);
+  if (forcerebuild) atomic_inc(&e->forcerebuild);
+}
+
+/**
  * @brief Unskip any gravity tasks associated with active cells.
  *
  * @param c The cell.
@@ -1255,6 +1284,10 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
       if ((e->policy & engine_policy_self_gravity) ||
           (e->policy & engine_policy_external_gravity))
         runner_do_unskip_gravity(c, e);
+
+      /* Stars tasks */
+      if (e->policy & engine_policy_stars)
+	runner_do_unskip_stars(c, e);
     }
   }
 }

@@ -177,6 +177,8 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active_gravity(
 /**
  * @brief Does a cell contain any s-particle finishing their time-step now ?
  *
+ * WARNING: TODO: need to be implemented
+ *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
@@ -184,7 +186,7 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active_gravity(
 __attribute__((always_inline)) INLINE static int cell_is_active_stars(
     const struct cell *c, const struct engine *e) {
 
-  return 1;
+  return cell_is_active_gravity(c, e);
 }
 
 /**

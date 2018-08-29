@@ -1980,6 +1980,21 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
   } /* Otherwise, pair interation */
 }
 
+/**
+ * @brief Traverse a sub-cell task and activate the stars drift tasks that are
+ * required
+ * by a stars task
+ *
+ * WARNING: TODO: Need to be implemented
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in.
+ * @param s The task #scheduler.
+ */
+void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
+                                       struct scheduler *s) {}
+
+
 void cell_activate_grav_mm_task(struct cell *ci, struct cell *cj,
                                 struct scheduler *s) {
   /* Some constants */
@@ -2326,9 +2341,6 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->ghost_in != NULL) scheduler_activate(s, c->ghost_in);
     if (c->ghost_out != NULL) scheduler_activate(s, c->ghost_out);
     if (c->ghost != NULL) scheduler_activate(s, c->ghost);
-    if (c->stars_ghost_in != NULL) scheduler_activate(s, c->stars_ghost_in);
-    if (c->stars_ghost_out != NULL) scheduler_activate(s, c->stars_ghost_out);
-    if (c->stars_ghost != NULL) scheduler_activate(s, c->stars_ghost);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
@@ -2486,6 +2498,21 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
   }
 
   return rebuild;
+}
+
+/**
+ * @brief Un-skips all the stars tasks associated with a given cell and checks
+ * if the space needs to be rebuilt.
+ *
+ * WARNING: TODO: Need to be implemented
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
+  return 0;
 }
 
 /**

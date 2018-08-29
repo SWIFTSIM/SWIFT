@@ -595,6 +595,8 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
  * @brief Can a sub-pair star task recurse to a lower level based
  * on the status of the particles in the cell.
  *
+ * WARNING: TODO: need to be implemented
+ *
  * @param c The #cell.
  */
 __attribute__((always_inline)) INLINE static int
@@ -606,6 +608,8 @@ cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 /**
  * @brief Can a sub-self stars task recurse to a lower level based
  * on the status of the particles in the cell.
+ *
+ * WARNING: TODO: need to be implemented
  *
  * @param c The #cell.
  */

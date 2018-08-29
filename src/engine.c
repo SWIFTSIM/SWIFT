@@ -3329,8 +3329,10 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
     /* Self-interaction? */
     if (t->type == task_type_self && t->subtype == task_subtype_stars_density) {
 
-      /* Make the self-density tasks depend on the drift only. */
+      /* Make the self-density tasks depend on the drifts. */
       scheduler_addunlock(sched, t->ci->super->drift_part, t);
+
+      scheduler_addunlock(sched, t->ci->super->drift_gpart, t);
 
       /* Now, build all the dependencies for the stars */
       engine_make_stars_loops_dependencies(sched, t, t->ci);
@@ -3470,7 +3472,7 @@ void engine_maketasks(struct engine *e) {
 #endif
   const size_t self_grav_tasks_per_cell = 125;
   const size_t ext_grav_tasks_per_cell = 1;
-  const size_t stars_tasks_per_cell = 1;
+  const size_t stars_tasks_per_cell = 15;
 
   if (e->policy & engine_policy_hydro)
     e->size_links += s->tot_cells * hydro_tasks_per_cell;
@@ -3737,6 +3739,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_is_active_stars(ci, e)) {
 	  scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
+          cell_activate_drift_gpart(ci, s);
 	}
       }
 
@@ -3745,7 +3748,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t->subtype == task_subtype_stars_density) {
         if (cell_is_active_stars(ci, e)) {
           scheduler_activate(s, t);
-          cell_activate_subcell_hydro_tasks(ci, NULL, s);
+          cell_activate_subcell_stars_tasks(ci, NULL, s);
         }
       }
 
