@@ -829,13 +829,11 @@ void fof_search_foreign_cells(struct space *s) {
 #ifdef WITH_MPI
 
   struct engine *e = s->e;
-  struct cell *cells = s->cells_top;
   int *group_index = s->fof_data.group_index;
   int *group_size = s->fof_data.group_size;
   double *group_mass = s->fof_data.group_mass;
   struct fof_CoM *group_CoM = s->fof_data.group_CoM;
   const int nr_gparts = s->nr_gparts;
-  const size_t nr_cells = s->nr_cells;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->l_x2;
 
@@ -847,28 +845,33 @@ void fof_search_foreign_cells(struct space *s) {
   /* Make group IDs globally unique. */  
   for (size_t i = 0; i < nr_gparts; i++) group_index[i] += node_offset;
 
-  /* Loop over top-level cells and find local cells that touch foreign cells. Calculate the total number of possible links between these cells. */
-  for (size_t cid = 0; cid < nr_cells; cid++) {
+  /* Loop over the proxies and find local cells that touch foreign cells. Calculate the total number of possible links between these cells. */
+  for(int i=0; i<e->nr_proxies; i++) {
 
-    struct cell *restrict ci = &cells[cid];
+    for(int j=0; j<e->proxies[i].nr_cells_out; j++) {
 
-    /* Skip empty cells. */
-    if(ci->gcount == 0) continue;
+      /* Skip non-gravity cells. */
+      if(e->proxies[i].cells_out_type[j] != proxy_cell_type_gravity) continue; 
 
-    /* Loop over all top-level cells skipping over the cells already searched. */
-    for (size_t cjd = cid + 1; cjd < nr_cells; cjd++) {
+      struct cell *restrict local_cell = e->proxies[i].cells_out[j];
 
-      struct cell *restrict cj = &cells[cjd];
+      /* Skip empty cells. */
+      if(local_cell->gcount == 0) continue;
 
-      /* Only perform pair FOF search between a local and foreign cell. */
-      if((ci->nodeID == engine_rank && cj->nodeID != engine_rank) || (ci->nodeID != engine_rank && cj->nodeID == engine_rank)) {
+      for(int k=0; k<e->proxies[i].nr_cells_in; k++) {
+      
+        /* Skip non-gravity cells. */
+        if(e->proxies[i].cells_in_type[k] != proxy_cell_type_gravity) continue; 
+      
+        struct cell *restrict foreign_cell = e->proxies[i].cells_in[k];
+      
         /* Skip empty cells. */
-        if(cj->gcount == 0) continue;
-
-        const double r2 = cell_min_dist(ci, cj, dim);
+        if(foreign_cell->gcount == 0) continue;
+        
         /* Assume there are only links between cells that touch. */
-        if(r2 < search_r2) {
-          rec_fof_search_pair_foreign_count(ci, cj, s, dim, search_r2, &nr_links);
+        const double r2 = cell_min_dist(local_cell, foreign_cell, dim);
+        if(r2 < search_r2) {        
+          rec_fof_search_pair_foreign_count(local_cell, foreign_cell, s, dim, search_r2, &nr_links);
           count++;
         }
       }
