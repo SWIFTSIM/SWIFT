@@ -18,31 +18,11 @@
  ******************************************************************************/
 #ifndef SWIFT_COOLING_STRUCT_EAGLE_H
 #define SWIFT_COOLING_STRUCT_EAGLE_H
-#include <stdbool.h>
-#include <time.h>
 
 // EAGLE defined constants
 #define eagle_element_name_length 20
-#define eagle_cmb_temperature 2.728
-#define eagle_compton_rate 1.0178e-37 * 2.728 * 2.728 * 2.728 * 2.728
 #define eagle_metal_cooling_on 1
 #define eagle_max_iterations 15
-#define eagle_proton_mass_cgs 1.6726e-24
-#define eagle_ev_to_erg 1.60217646e-12
-#define eagle_log_10 2.30258509299404
-#define eagle_log_10_e 0.43429448190325182765
-
-/*
- * @brief struct containing radiative and heating rates
- */
-// struct radiative_rates{
-//  float Cooling[NUMBER_OF_CTYPES];
-//  float Heating[NUMBER_OF_HTYPES];
-//  float TotalCoolingRate;
-//  float TotalHeatingRate;
-//  float CoolingTime; /*Cooling time in Myr*/
-//  float HeatingTime; /*Heating time in Myr*/
-//};
 
 /*
  * @brief struct containing cooling tables independent of redshift
@@ -99,50 +79,59 @@ struct cooling_function_data {
   /* Cooling table variables */
   struct eagle_cooling_table table;
 
+  /* Size of table dimensions */
   int N_Redshifts;
   int N_nH;
   int N_Temp;
   int N_He;
+
+  /* Number of metals and solar abundances tracked in EAGLE */
   int N_Elements;
   int N_SolarAbundances;
 
+  /* Arrays of grid values in tables */
   float *Redshifts;
   float *nH;
   float *Temp;
   float *HeFrac;
   float *Therm;
+
+  /* Array of values of solar metal and electron abundance */
   float *SolarAbundances;
   float *SolarElectronAbundance;
-  float *ElementAbundance_SOLARM1;
-  double *solar_abundances;
+
+
+  /* Arrays containing names of tracked elements. Used for 
+   * reading in the contributions to the cooling rate from
+   * each element */
   char **ElementNames;
   char **SolarAbundanceNames;
-  int *ElementNamePointers;
-  int *SolarAbundanceNamePointers;
 
-  /*! Constant multiplication factor for time-step criterion */
-  float cooling_tstep_mult;
-  float Redshift;
-  float min_energy;
-  float cooling_rate;
+  /* Normalisation constants that are frequently used */
   double internal_energy_scale;
   double number_density_scale;
   double temperature_scale;
   double power_scale;
+
+  /* filepath to EAGLE cooling tables */
   char cooling_table_path[500];
+
+  /* Some constants read in from yml file relevant to EAGLE cooling */
   float reionisation_redshift;
   float calcium_over_silicon_ratio;
   float sulphur_over_silicon_ratio;
 
-  int he_reion;
+  /* Helium reionisation parameters */
+  int he_reion_flag;
   float he_reion_ev_pH;
   float he_reion_z_center;
   float he_reion_z_sigma;
 
-  int index_z, low_z_index, high_z_index;
-  float delta_z_table;
+  /* Proton mass in cgs */
+  double proton_mass_cgs;
+  double T_CMB_0;
+  double compton_rate_cgs;
 
-  double delta_u;
 };
 
 /**

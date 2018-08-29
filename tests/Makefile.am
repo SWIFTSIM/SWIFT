@@ -20,7 +20,7 @@ AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS)
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testCooling testMaths testReading.sh testSingle testKernel testSymmetry \
+TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetry \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh  \
         testParser.sh testSPHStep test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex \
@@ -31,7 +31,7 @@ TESTS = testGreetings testCooling testMaths testReading.sh testSingle testKernel
 	testCbrt testCosmology testOutputList testFormat.sh
 
 # List of test programs to compile
-check_PROGRAMS = testGreetings testCooling testReading testSingle testTimeIntegration \
+check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
 		 testSPHStep testActivePair test27cells test27cells_subset test125cells testParser \
                  testKernel testFFT testInteractions testMaths \
                  testSymmetry testThreadpool \
@@ -46,8 +46,6 @@ $(check_PROGRAMS): ../src/.libs/libswiftsim.a
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
-
-testCooling_SOURCES = testCooling.c
 
 testMaths_SOURCES = testMaths.c
 
