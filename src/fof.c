@@ -897,26 +897,29 @@ void fof_search_foreign_cells(struct space *s) {
 
     for(int j=0; j<e->proxies[i].nr_cells_out; j++) {
 
+      /* Skip non-gravity cells. */
+      if(e->proxies[i].cells_out_type[j] != proxy_cell_type_gravity) continue; 
+      
       struct cell *restrict local_cell = e->proxies[i].cells_out[j];
-      int found = 0;
 
       /* Skip empty cells. */
       if(local_cell->gcount == 0) continue;
 
       for(int k=0; k<e->proxies[i].nr_cells_in; k++) {
       
+        /* Skip non-gravity cells. */
+        if(e->proxies[i].cells_in_type[k] != proxy_cell_type_gravity) continue; 
+        
         struct cell *restrict foreign_cell = e->proxies[i].cells_in[k];
       
         /* Skip empty cells. */
         if(foreign_cell->gcount == 0) continue;
         
         /* Check if local cell has already been added to the local list of cells. */
-        if(!found) {
-          const double r2 = cell_min_dist(local_cell, foreign_cell, dim);
-          if(r2 < search_r2) {        
-            interface_cells[interface_cell_count++] = local_cell;
-            found = 1;
-          }
+        const double r2 = cell_min_dist(local_cell, foreign_cell, dim);
+        if(r2 < search_r2) {        
+          interface_cells[interface_cell_count++] = local_cell;
+          break;
         }
       }
     }
@@ -992,6 +995,9 @@ void fof_search_foreign_cells(struct space *s) {
       }
     }
   }
+  
+  /* Clean up memory. */
+  free(interface_cells);
 
   message("Rank %d found %zu links between local and foreign groups.", engine_rank, part_link_count);
 
@@ -1033,6 +1039,9 @@ void fof_search_foreign_cells(struct space *s) {
     }
 
   }
+  
+  /* Clean up memory. */
+  free(part_links);
 
   message("Rank %d found %d unique group links.", engine_rank, group_link_count);
  
@@ -1067,6 +1076,10 @@ void fof_search_foreign_cells(struct space *s) {
 
   /* Gather the global link list on all ranks. */
   MPI_Allgatherv(group_links, group_link_count, fof_mpi_type, global_group_links, group_link_counts, displ, fof_mpi_type, MPI_COMM_WORLD);
+  
+  /* Clean up memory. */
+  free(displ);
+  free(group_links);
 
   /* Transform the group IDs to a local list going from 0-group_count so a union-find can be performed. */
   int *global_group_index = NULL, *global_group_id = NULL, *global_group_size = NULL;
@@ -1259,11 +1272,7 @@ void fof_search_foreign_cells(struct space *s) {
   }
 
   /* Clean up memory. */
-  free(part_links);
-  free(interface_cells);
-  free(group_links);
   free(global_group_links);
-  free(displ);
   free(global_group_index);
   free(global_group_size);
   free(global_group_mass);
