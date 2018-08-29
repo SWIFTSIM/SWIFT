@@ -768,9 +768,10 @@ void io_duplicate_hydro_sparts_mapper(void* restrict data, int Nstars,
  * @param Nstars The number of stars particles read in.
  * @param Ndm The number of DM and gas particles read in.
  */
-void io_duplicate_stars_gparts(struct threadpool* tp, struct spart* const sparts,
-                              struct gpart* const gparts, size_t Nstars,
-                              size_t Ndm) {
+void io_duplicate_stars_gparts(struct threadpool* tp,
+                               struct spart* const sparts,
+                               struct gpart* const gparts, size_t Nstars,
+                               size_t Ndm) {
 
   struct duplication_data data;
   data.gparts = gparts;

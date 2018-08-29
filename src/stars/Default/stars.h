@@ -53,10 +53,11 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void stars_init_spart(
-  struct spart* sp) {
+    struct spart* sp) {
 
 #ifdef DEBUG_INTERACTIONS_STARS
-  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i) sp->ids_ngbs_density[i] = -1;
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
+    sp->ids_ngbs_density[i] = -1;
   sp->num_ngb_density = 0;
 #endif
 
@@ -111,15 +112,15 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
   sp->density.wcount_dh *= h_inv_dim_plus_one;
 }
 
-
 /**
- * @brief Sets all particle fields to sensible values when the #spart has 0 ngbs.
+ * @brief Sets all particle fields to sensible values when the #spart has 0
+ * ngbs.
  *
  * @param sp The particle to act upon
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
-    struct spart *restrict sp, const struct cosmology *cosmo) {
+    struct spart* restrict sp, const struct cosmology* cosmo) {
 
   /* Some smoothing length multiples. */
   const float h = sp->h;
@@ -142,8 +143,7 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
  * @param stars_properties The #stars_props
  */
 __attribute__((always_inline)) INLINE static void stars_evolve_spart(
-    struct spart *restrict sp, const struct stars_props *stars_properties,
-    const struct cosmology *cosmo) {}
-
+    struct spart* restrict sp, const struct stars_props* stars_properties,
+    const struct cosmology* cosmo) {}
 
 #endif /* SWIFT_DEFAULT_STARS_H */

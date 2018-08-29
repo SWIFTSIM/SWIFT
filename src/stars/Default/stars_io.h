@@ -19,8 +19,8 @@
 #ifndef SWIFT_DEFAULT_STARS_IO_H
 #define SWIFT_DEFAULT_STARS_IO_H
 
-#include "stars_part.h"
 #include "io_properties.h"
+#include "stars_part.h"
 
 /**
  * @brief Specifies which s-particle fields to read from a dataset
@@ -29,8 +29,9 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-INLINE static void stars_read_particles(struct spart* sparts,
-                                       struct io_props* list, int* num_fields) {
+INLINE static void stars_read_particles(struct spart *sparts,
+                                        struct io_props *list,
+                                        int *num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 5;
@@ -55,9 +56,9 @@ INLINE static void stars_read_particles(struct spart* sparts,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-INLINE static void stars_write_particles(const struct spart* sparts,
-                                        struct io_props* list,
-                                        int* num_fields) {
+INLINE static void stars_write_particles(const struct spart *sparts,
+                                         struct io_props *list,
+                                         int *num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 5;
@@ -86,18 +87,18 @@ INLINE static void stars_write_particles(const struct spart* sparts,
  * @param params The parsed parameters.
  */
 INLINE static void stars_props_init(struct stars_props *sp,
-                      const struct phys_const *phys_const,
-                      const struct unit_system *us,
-		      struct swift_params *params,
-		      const struct hydro_props *p) {
+                                    const struct phys_const *phys_const,
+                                    const struct unit_system *us,
+                                    struct swift_params *params,
+                                    const struct hydro_props *p) {
 
   /* Kernel properties */
-  sp->eta_neighbours = parser_get_opt_param_float(params, "Stars:resolution_eta",
-						  p->eta_neighbours);
+  sp->eta_neighbours = parser_get_opt_param_float(
+      params, "Stars:resolution_eta", p->eta_neighbours);
 
   /* Tolerance for the smoothing length Newton-Raphson scheme */
-  sp->h_tolerance = parser_get_opt_param_float(params, "Stars:h_tolerance",
-					       p->h_tolerance);
+  sp->h_tolerance =
+      parser_get_opt_param_float(params, "Stars:h_tolerance", p->h_tolerance);
 
   /* Get derived properties */
   sp->target_neighbours = pow_dimension(sp->eta_neighbours) * kernel_norm;
@@ -107,21 +108,19 @@ INLINE static void stars_props_init(struct stars_props *sp,
       kernel_norm;
 
   /* Maximal smoothing length */
-  sp->h_max = parser_get_opt_param_float(params, "Stars:h_max",
-					 p->h_max);
+  sp->h_max = parser_get_opt_param_float(params, "Stars:h_max", p->h_max);
 
   /* Number of iterations to converge h */
   sp->max_smoothing_iterations = parser_get_opt_param_int(
       params, "Stars:max_ghost_iterations", p->max_smoothing_iterations);
 
   /* Time integration properties */
-  const float max_volume_change = parser_get_opt_param_float(
-      params, "Stars:max_volume_change", -1);
+  const float max_volume_change =
+      parser_get_opt_param_float(params, "Stars:max_volume_change", -1);
   if (max_volume_change == -1)
     sp->log_max_h_change = p->log_max_h_change;
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
-
 }
 
 /**
@@ -146,18 +145,20 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
   message("Maximal smoothing length allowed: %.4f", sp->h_max);
 
   message("Maximal iterations in ghost task set to %d",
-	  sp->max_smoothing_iterations);
-
+          sp->max_smoothing_iterations);
 }
 
 #if defined(HAVE_HDF5)
-INLINE static void stars_props_print_snapshot(hid_t h_grpstars, const struct stars_props *sp) {
+INLINE static void stars_props_print_snapshot(hid_t h_grpstars,
+                                              const struct stars_props *sp) {
 
   io_write_attribute_s(h_grpstars, "Kernel function", kernel_name);
-  io_write_attribute_f(h_grpstars, "Kernel target N_ngb", sp->target_neighbours);
+  io_write_attribute_f(h_grpstars, "Kernel target N_ngb",
+                       sp->target_neighbours);
   io_write_attribute_f(h_grpstars, "Kernel delta N_ngb", sp->delta_neighbours);
   io_write_attribute_f(h_grpstars, "Kernel eta", sp->eta_neighbours);
-  io_write_attribute_f(h_grpstars, "Smoothing length tolerance", sp->h_tolerance);
+  io_write_attribute_f(h_grpstars, "Smoothing length tolerance",
+                       sp->h_tolerance);
   io_write_attribute_f(h_grpstars, "Maximal smoothing length", sp->h_max);
   io_write_attribute_f(h_grpstars, "Volume log(max(delta h))",
                        sp->log_max_h_change);
@@ -174,7 +175,8 @@ INLINE static void stars_props_print_snapshot(hid_t h_grpstars, const struct sta
  * @param p the struct
  * @param stream the file stream
  */
-INLINE static void stars_props_struct_dump(const struct stars_props *p, FILE *stream) {
+INLINE static void stars_props_struct_dump(const struct stars_props *p,
+                                           FILE *stream) {
   restart_write_blocks((void *)p, sizeof(struct stars_props), 1, stream,
                        "starsprops", "stars props");
 }
@@ -186,7 +188,8 @@ INLINE static void stars_props_struct_dump(const struct stars_props *p, FILE *st
  * @param p the struct
  * @param stream the file stream
  */
-INLINE static void stars_props_struct_restore(const struct stars_props *p, FILE *stream) {
+INLINE static void stars_props_struct_restore(const struct stars_props *p,
+                                              FILE *stream) {
   restart_read_blocks((void *)p, sizeof(struct stars_props), 1, stream, NULL,
                       "stars props");
 }

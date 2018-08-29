@@ -48,22 +48,22 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",          "sort",          "self",
-    "pair",          "sub_self",      "sub_pair",
-    "init_grav",     "init_grav_out", "ghost_in",
-    "ghost",         "ghost_out",     "extra_ghost",
-    "drift_part",    "drift_gpart",   "end_force",
-    "kick1",         "kick2",         "timestep",
-    "send",          "recv",          "grav_long_range",
-    "grav_mm",       "grav_down_in",  "grav_down",
-    "grav_mesh",     "cooling",       "sourceterms",
-    "stars_ghost_in","stars_ghost",   "stars_ghost_out"};
+    "none",           "sort",          "self",
+    "pair",           "sub_self",      "sub_pair",
+    "init_grav",      "init_grav_out", "ghost_in",
+    "ghost",          "ghost_out",     "extra_ghost",
+    "drift_part",     "drift_gpart",   "end_force",
+    "kick1",          "kick2",         "timestep",
+    "send",           "recv",          "grav_long_range",
+    "grav_mm",        "grav_down_in",  "grav_down",
+    "grav_mesh",      "cooling",       "sourceterms",
+    "stars_ghost_in", "stars_ghost",   "stars_ghost_out"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
-    "none", "density", "gradient", "force", "grav",      "external_grav",
-    "tend", "xv",      "rho",      "gpart", "multipole", "spart",
-    "stars_density"};
+    "none",          "density", "gradient",     "force", "grav",
+    "external_grav", "tend",    "xv",           "rho",   "gpart",
+    "multipole",     "spart",   "stars_density"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -78,22 +78,23 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)					\
-  __attribute__((always_inline)) INLINE static size_t task_cell_overlap_##TYPE( \
-    const struct cell *restrict ci, const struct cell *restrict cj) {               \
-									\
-  if (ci == NULL || cj == NULL) return 0;				\
-									\
-  if (ci->ARRAY <= cj->ARRAY &&						\
-      ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {			\
-    return cj->COUNT;							\
-  } else if (cj->ARRAY <= ci->ARRAY &&					\
-             cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) {		\
-    return ci->COUNT;							\
-  }									\
-									\
-  return 0;								\
-}
+#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                               \
+  __attribute__((always_inline))                                            \
+      INLINE static size_t task_cell_overlap_##TYPE(                        \
+          const struct cell *restrict ci, const struct cell *restrict cj) { \
+                                                                            \
+    if (ci == NULL || cj == NULL) return 0;                                 \
+                                                                            \
+    if (ci->ARRAY <= cj->ARRAY &&                                           \
+        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {                   \
+      return cj->COUNT;                                                     \
+    } else if (cj->ARRAY <= ci->ARRAY &&                                    \
+               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) {            \
+      return ci->COUNT;                                                     \
+    }                                                                       \
+                                                                            \
+    return 0;                                                               \
+  }
 
 TASK_CELL_OVERLAP(part, parts, count);
 TASK_CELL_OVERLAP(gpart, gparts, gcount);
@@ -139,8 +140,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           break;
 
         case task_subtype_stars_density:
-	  return task_action_all;
-	  break;
+          return task_action_all;
+          break;
 
         case task_subtype_grav:
         case task_subtype_external_grav:
@@ -215,11 +216,13 @@ float task_overlap(const struct task *restrict ta,
   const int ta_part = (ta_act == task_action_part || ta_act == task_action_all);
   const int ta_gpart =
       (ta_act == task_action_gpart || ta_act == task_action_all);
-  const int ta_spart = (ta_act == task_action_spart || ta_act == task_action_all);
+  const int ta_spart =
+      (ta_act == task_action_spart || ta_act == task_action_all);
   const int tb_part = (tb_act == task_action_part || tb_act == task_action_all);
   const int tb_gpart =
       (tb_act == task_action_gpart || tb_act == task_action_all);
-  const int tb_spart = (tb_act == task_action_spart || tb_act == task_action_all);
+  const int tb_spart =
+      (tb_act == task_action_spart || tb_act == task_action_all);
 
   /* In the case where both tasks act on parts */
   if (ta_part && tb_part) {
@@ -258,7 +261,7 @@ float task_overlap(const struct task *restrict ta,
 
     return ((float)size_intersect) / (size_union - size_intersect);
   }
-  
+
   /* In the case where both tasks act on sparts */
   else if (ta_spart && tb_spart) {
 
@@ -277,7 +280,6 @@ float task_overlap(const struct task *restrict ta,
 
     return ((float)size_intersect) / (size_union - size_intersect);
   }
-
 
   /* Else, no overlap */
   return 0.f;

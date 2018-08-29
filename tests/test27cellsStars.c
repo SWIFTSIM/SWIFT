@@ -63,8 +63,9 @@
  * of the inter-particle separation.
  * @param h_pert The perturbation to apply to the smoothing length.
  */
-struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size, double h,
-                       long long *partId, long long *spartId, double pert, double h_pert) {
+struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
+                       double h, long long *partId, long long *spartId,
+                       double pert, double h_pert) {
   const size_t count = n * n * n;
   const size_t scount = n_stars * n_stars * n_stars;
   float h_max = 0.f;
@@ -92,23 +93,23 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size, do
             offset[2] +
             size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
 
-	part->v[0] = 0;
-	part->v[1] = 0;
-	part->v[2] = 0;
-	if (h_pert)
-	  part->h = size * h * random_uniform(1.f, h_pert) / (float)n;
-	else
-	  part->h = size * h / (float)n;
-	h_max = fmaxf(h_max, part->h);
-	part->id = ++(*partId);
-	
-	part->time_bin = 1;
+        part->v[0] = 0;
+        part->v[1] = 0;
+        part->v[2] = 0;
+        if (h_pert)
+          part->h = size * h * random_uniform(1.f, h_pert) / (float)n;
+        else
+          part->h = size * h / (float)n;
+        h_max = fmaxf(h_max, part->h);
+        part->id = ++(*partId);
+
+        part->time_bin = 1;
 
 #ifdef SWIFT_DEBUG_CHECKS
-	part->ti_drift = 8;
-	part->ti_kick = 8;
+        part->ti_drift = 8;
+        part->ti_kick = 8;
 #endif
-	++part;
+        ++part;
       }
     }
   }
@@ -125,32 +126,32 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size, do
     for (size_t y = 0; y < n_stars; ++y) {
       for (size_t z = 0; z < n_stars; ++z) {
         spart->x[0] =
-            offset[0] +
-            size * (x + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n_stars;
+            offset[0] + size * (x + 0.5 + random_uniform(-0.5, 0.5) * pert) /
+                            (float)n_stars;
         spart->x[1] =
-            offset[1] +
-            size * (y + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n_stars;
+            offset[1] + size * (y + 0.5 + random_uniform(-0.5, 0.5) * pert) /
+                            (float)n_stars;
         spart->x[2] =
-            offset[2] +
-            size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n_stars;
+            offset[2] + size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) /
+                            (float)n_stars;
 
-	spart->v[0] = 0;
-	spart->v[1] = 0;
-	spart->v[2] = 0;
-	if (h_pert)
-	  spart->h = size * h * random_uniform(1.f, h_pert) / (float)n_stars;
-	else
-	  spart->h = size * h / (float)n_stars;
-	h_max = fmaxf(h_max, spart->h);
-	spart->id = ++(*spartId);
+        spart->v[0] = 0;
+        spart->v[1] = 0;
+        spart->v[2] = 0;
+        if (h_pert)
+          spart->h = size * h * random_uniform(1.f, h_pert) / (float)n_stars;
+        else
+          spart->h = size * h / (float)n_stars;
+        h_max = fmaxf(h_max, spart->h);
+        spart->id = ++(*spartId);
 
-	spart->time_bin = 1;
+        spart->time_bin = 1;
 
 #ifdef SWIFT_DEBUG_CHECKS
-	spart->ti_drift = 8;
-	spart->ti_kick = 8;
+        spart->ti_drift = 8;
+        spart->ti_kick = 8;
 #endif
-	++spart;
+        ++spart;
       }
     }
   }
@@ -172,6 +173,8 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size, do
   cell->ti_old_part = 8;
   cell->ti_hydro_end_min = 8;
   cell->ti_hydro_end_max = 8;
+  cell->ti_gravity_end_min = 8;
+  cell->ti_gravity_end_max = 8;
   cell->nodeID = NODE_ID;
 
   shuffle_particles(cell->parts, cell->count);
@@ -221,19 +224,16 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   FILE *file = fopen(fileName, "w");
 
   /* Write header */
-  fprintf(file,
-          "# %4s %10s %10s %10s %13s %13s\n",
-          "ID", "pos_x", "pos_y", "pos_z", "wcount", "wcount_dh");
+  fprintf(file, "# %4s %10s %10s %10s %13s %13s\n", "ID", "pos_x", "pos_y",
+          "pos_z", "wcount", "wcount_dh");
 
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
   for (int pid = 0; pid < main_cell->scount; pid++) {
-    fprintf(file,
-            "%6llu %10f %10f %10f %13e %13e\n",
-            main_cell->sparts[pid].id, main_cell->sparts[pid].x[0],
-            main_cell->sparts[pid].x[1], main_cell->sparts[pid].x[2],
-            main_cell->sparts[pid].density.wcount,
+    fprintf(file, "%6llu %10f %10f %10f %13e %13e\n", main_cell->sparts[pid].id,
+            main_cell->sparts[pid].x[0], main_cell->sparts[pid].x[1],
+            main_cell->sparts[pid].x[2], main_cell->sparts[pid].density.wcount,
             main_cell->sparts[pid].density.wcount_dh);
   }
 
@@ -249,12 +249,10 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
                 i - 1, j - 1, k - 1);
 
         for (int pjd = 0; pjd < cj->scount; pjd++) {
-          fprintf(
-              file,
-              "%6llu %10f %10f %10f %13e %13e\n",
-              cj->sparts[pjd].id, cj->sparts[pjd].x[0], cj->sparts[pjd].x[1],
-              cj->sparts[pjd].x[2],
-              cj->sparts[pjd].density.wcount, cj->sparts[pjd].density.wcount_dh);
+          fprintf(file, "%6llu %10f %10f %10f %13e %13e\n", cj->sparts[pjd].id,
+                  cj->sparts[pjd].x[0], cj->sparts[pjd].x[1],
+                  cj->sparts[pjd].x[2], cj->sparts[pjd].density.wcount,
+                  cj->sparts[pjd].density.wcount_dh);
         }
       }
     }
@@ -264,17 +262,17 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
 /* Just a forward declaration... */
 void runner_dopair_branch_stars_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj);
+                                        struct cell *cj);
 void runner_doself_branch_stars_density(struct runner *r, struct cell *c);
 void runner_dopair_subset_branch_stars_density(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct spart *restrict sparts_i,
-                                         int *restrict ind, int scount,
-                                         struct cell *restrict cj);
+                                               struct cell *restrict ci,
+                                               struct spart *restrict sparts_i,
+                                               int *restrict ind, int scount,
+                                               struct cell *restrict cj);
 void runner_doself_subset_branch_stars_density(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct spart *restrict sparts,
-                                         int *restrict ind, int scount);
+                                               struct cell *restrict ci,
+                                               struct spart *restrict sparts,
+                                               int *restrict ind, int scount);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -318,8 +316,8 @@ int main(int argc, char *argv[]) {
         sscanf(optarg, "%zu", &particles);
         break;
       case 'N':
-	sscanf(optarg, "%zu", &sparticles);
-	break;
+        sscanf(optarg, "%zu", &sparticles);
+        break;
       case 'r':
         sscanf(optarg, "%zu", &runs);
         break;
@@ -337,7 +335,8 @@ int main(int argc, char *argv[]) {
 
   if (h < 0 || particles == 0 || runs == 0 || sparticles == 0) {
     printf(
-        "\nUsage: %s -n PARTICLES_PER_AXIS -N SPARTICLES_PER_AXIS -r NUMBER_OF_RUNS [OPTIONS...]\n"
+        "\nUsage: %s -n PARTICLES_PER_AXIS -N SPARTICLES_PER_AXIS -r "
+        "NUMBER_OF_RUNS [OPTIONS...]\n"
         "\nGenerates 27 cells, filled with particles on a Cartesian grid."
         "\nThese are then interacted using runner_dopair_stars_density() and "
         "runner_doself_stars_density()."
@@ -407,7 +406,8 @@ int main(int argc, char *argv[]) {
       for (int k = 0; k < 3; ++k) {
         double offset[3] = {i * size, j * size, k * size};
         cells[i * 9 + j * 3 + k] =
-	  make_cell(particles, sparticles, offset, size, h, &partId, &spartId, perturbation, h_pert);
+            make_cell(particles, sparticles, offset, size, h, &partId, &spartId,
+                      perturbation, h_pert);
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 
@@ -415,7 +415,7 @@ int main(int argc, char *argv[]) {
       }
     }
   }
-  
+
   /* Store the main cell for future use */
   main_cell = cells[13];
 
@@ -508,7 +508,8 @@ int main(int argc, char *argv[]) {
 
   /* Run all the brute-force pairs */
   for (int j = 0; j < 27; ++j)
-    if (cells[j] != main_cell) pairs_all_stars_density(&runner, main_cell, cells[j]);
+    if (cells[j] != main_cell)
+      pairs_all_stars_density(&runner, main_cell, cells[j]);
 
   /* And now the self-interaction */
   self_all_stars_density(&runner, main_cell);
@@ -519,7 +520,8 @@ int main(int argc, char *argv[]) {
   end_calculation(main_cell, &cosmo);
 
   /* Dump */
-  sprintf(outputFileName, "star_brute_force_27_%.150s.dat", outputFileNameExtension);
+  sprintf(outputFileName, "star_brute_force_27_%.150s.dat",
+          outputFileNameExtension);
   dump_particle_fields(outputFileName, main_cell, cells);
 
   /* Output timing */

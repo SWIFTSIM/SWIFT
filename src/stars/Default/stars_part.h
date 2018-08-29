@@ -79,7 +79,6 @@ struct spart {
 
 } SWIFT_STRUCT_ALIGN;
 
-
 /**
  * @brief Contains all the constants and parameters of the stars scheme
  */

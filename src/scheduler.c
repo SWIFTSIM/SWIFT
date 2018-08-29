@@ -263,8 +263,9 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
             force_cluster[k] = 1;
           if (type == task_type_self + k && subtype == task_subtype_grav)
             gravity_cluster[k] = 1;
-	  if (type == task_type_self + k && subtype == task_subtype_stars_density)
-	    stars_density_cluster[k] = 1;
+          if (type == task_type_self + k &&
+              subtype == task_subtype_stars_density)
+            stars_density_cluster[k] = 1;
         }
         if (type == task_type_grav_mesh) gravity_cluster[2] = 1;
         if (type == task_type_grav_long_range) gravity_cluster[3] = 1;
@@ -910,7 +911,8 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub && /* Use division to avoid integer overflow. */
-            ci->scount * sid_scale[sid] < space_subsize_pair_stars / cj->scount &&
+            ci->scount * sid_scale[sid] <
+                space_subsize_pair_stars / cj->scount &&
             !sort_is_corner(sid)) {
 
           /* Make this task a sub task. */
@@ -1812,7 +1814,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_stars_ghost:
         if (t->ci == t->ci->super_hydro) cost = wscale * scount_i;
-	break;
+        break;
       case task_type_drift_part:
         cost = wscale * count_i;
         break;

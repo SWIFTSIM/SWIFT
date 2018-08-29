@@ -29,7 +29,7 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
 	testCbrt testCosmology testOutputList testFormat.sh \
-	testCbrt testCosmology test27cellsStars.sh test27cellsStarsPerturbed.sh
+	test27cellsStars.sh test27cellsStarsPerturbed.sh
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \

@@ -104,9 +104,10 @@ void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
 void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,
                                struct gpart* const gparts, size_t Ngas,
                                size_t Ndm);
-void io_duplicate_stars_gparts(struct threadpool* tp, struct spart* const sparts,
-                              struct gpart* const gparts, size_t Nstars,
-                              size_t Ndm);
+void io_duplicate_stars_gparts(struct threadpool* tp,
+                               struct spart* const sparts,
+                               struct gpart* const gparts, size_t Nstars,
+                               size_t Ndm);
 
 void io_check_output_fields(const struct swift_params* params,
                             const long long N_total[3]);

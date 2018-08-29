@@ -336,7 +336,8 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 }
 
-void pairs_all_stars_density(struct runner *r, struct cell *ci, struct cell *cj) {
+void pairs_all_stars_density(struct runner *r, struct cell *ci,
+                             struct cell *cj) {
 
   float r2, dx[3];
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
@@ -515,8 +516,7 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
     hi = spi->h;
     hig2 = hi * hi * kernel_gamma2;
 
-    if (!spart_is_active(spi, e))
-      continue;
+    if (!spart_is_active(spi, e)) continue;
 
     for (int j = 0; j < ci->count; ++j) {
 
@@ -535,7 +535,6 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
         /* Interact */
         runner_iact_nonsym_stars_density(r2, dxi, hi, hj, spi, pj, a, H);
       }
-
     }
   }
 }

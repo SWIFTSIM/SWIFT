@@ -10,9 +10,11 @@
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_stars_density(
-    float r2, const float *dx, float hi, float hj, struct spart *restrict si,
-    const struct part *restrict pj, float a, float H) {
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
+                                 struct spart *restrict si,
+                                 const struct part *restrict pj, float a,
+                                 float H) {
 
   float wi, wi_dx;
 
@@ -27,7 +29,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_stars_densi
 
   /* Compute contribution to the number of neighbours */
   si->density.wcount += wi;
-  si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);    
+  si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
