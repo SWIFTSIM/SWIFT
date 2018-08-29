@@ -840,7 +840,7 @@ void fof_search_foreign_cells(struct space *s) {
   message("Searching foreign cells for links.");
 
   size_t nr_links = 0;
-  int count = 0;
+  int interface_cell_count = 0;
 
   /* Make group IDs globally unique. */  
   for (size_t i = 0; i < nr_gparts; i++) group_index[i] += node_offset;
@@ -854,6 +854,7 @@ void fof_search_foreign_cells(struct space *s) {
       if(e->proxies[i].cells_out_type[j] != proxy_cell_type_gravity) continue; 
 
       struct cell *restrict local_cell = e->proxies[i].cells_out[j];
+      int found = 0;
 
       /* Skip empty cells. */
       if(local_cell->gcount == 0) continue;
@@ -872,26 +873,33 @@ void fof_search_foreign_cells(struct space *s) {
         const double r2 = cell_min_dist(local_cell, foreign_cell, dim);
         if(r2 < search_r2) {        
           rec_fof_search_pair_foreign_count(local_cell, foreign_cell, s, dim, search_r2, &nr_links);
-          count++;
+          
+          /* Only count the local cell once.  */
+          if(!found) {
+            interface_cell_count++;
+            found = 1;
+          }
         }
       }
     }
   }
 
-  message("Rank: %d, Total no. of possible links: %zu, cells touching: %d", engine_rank, nr_links, count);
+  message("Rank: %d, Total no. of possible links: %zu, cells touching: %d", engine_rank, nr_links, interface_cell_count);
 
   struct fof_mpi *part_links;
   struct cell **interface_cells;
-  int interface_cell_count = 0;
-  
+
   if (posix_memalign((void**)&part_links, SWIFT_STRUCT_ALIGNMENT,
                        nr_links * sizeof(struct fof_mpi)) != 0)
     error("Error while allocating memory for FOF links over an MPI domain");
 
   if (posix_memalign((void**)&interface_cells, SWIFT_STRUCT_ALIGNMENT,
-                       count * sizeof(struct cell *)) != 0)
+                       interface_cell_count * sizeof(struct cell *)) != 0)
     error("Error while allocating memory for FOF interface cells");
   
+  /* Use to index interface_cell array */
+  interface_cell_count = 0;
+
   /* Loop over cells_in and cells_out for each proxy and find which cells are in range of each other to perform
    * the FOF search. Store local cells that are touching foreign cells in a list. */
   for(int i=0; i<e->nr_proxies; i++) {
