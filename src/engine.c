@@ -3784,12 +3784,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int cj_active_hydro = cell_is_active_hydro(cj, e);
       const int ci_active_gravity = cell_is_active_gravity(ci, e);
       const int cj_active_gravity = cell_is_active_gravity(cj, e);
+      const int ci_active_stars = cell_is_active_stars(ci, e);
+      const int cj_active_stars = cell_is_active_stars(cj, e);
 
       /* Only activate tasks that involve a local active cell. */
       if ((t->subtype == task_subtype_density ||
            t->subtype == task_subtype_gradient ||
-           t->subtype == task_subtype_force ||
-           t->subtype == task_subtype_stars_density) &&
+           t->subtype == task_subtype_force) &&
           ((ci_active_hydro && ci->nodeID == engine_rank) ||
            (cj_active_hydro && cj->nodeID == engine_rank))) {
 
@@ -3821,6 +3822,44 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                  (t->subtype == task_subtype_density ||
                   t->subtype == task_subtype_stars_density)) {
           cell_activate_subcell_hydro_tasks(t->ci, t->cj, s);
+        }
+      }
+
+      /* Stars */
+      if (t->subtype == task_subtype_stars_density &&
+          ((ci_active_stars && ci->nodeID == engine_rank) ||
+           (cj_active_stars && cj->nodeID == engine_rank))) {
+
+        scheduler_activate(s, t);
+
+        /* Set the correct sorting flags */
+        if (t->type == task_type_pair) {
+
+          /* Store some values. */
+          atomic_or(&ci->requires_sorts, 1 << t->flags);
+          atomic_or(&cj->requires_sorts, 1 << t->flags);
+          ci->dx_max_sort_old = ci->dx_max_sort;
+          cj->dx_max_sort_old = cj->dx_max_sort;
+
+          /* Activate the hydro drift tasks. */
+          if (ci->nodeID == engine_rank) {
+            cell_activate_drift_part(ci, s);
+            cell_activate_drift_gpart(ci, s);
+          }
+          if (cj->nodeID == engine_rank) {
+            cell_activate_drift_part(cj, s);
+            cell_activate_drift_gpart(cj, s);
+          }
+
+          /* Check the sorts and activate them if needed. */
+          cell_activate_sorts(ci, t->flags, s);
+          cell_activate_sorts(cj, t->flags, s);
+
+        }
+
+        /* Store current values of dx_max and h_max. */
+        else if (t->type == task_type_sub_pair) {
+          cell_activate_subcell_stars_tasks(t->ci, t->cj, s);
         }
       }
 
@@ -4127,8 +4166,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if ((ci_active_gravity && ci_nodeID == engine_rank) ||
           (cj_active_gravity && cj_nodeID == engine_rank))
         scheduler_activate(s, t);
-    }
-
     }
 
     /* Star ghost tasks ? */

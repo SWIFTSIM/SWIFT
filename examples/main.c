@@ -779,8 +779,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0)
       message(
           "Read %lld gas particles, %lld stars particles and %lld gparts from "
-          "the "
-          "ICs.",
+          "the ICs.",
           N_total[0], N_total[2], N_total[1]);
 
     /* Verify that the fields to dump actually exist */
