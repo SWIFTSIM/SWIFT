@@ -136,15 +136,15 @@ log_nh = float(sys.argv[2])
 redshift = float(sys.argv[1])
 p = plt.figure(figsize = (6,6))
 p1, = plt.loglog(t_sol,u_sol,linewidth = 0.5,color = 'k', marker = '*', markersize = 1.5,label = 'explicit ODE')
-p2, = plt.loglog(t_snapshots_cgs,mean_u,linewidth = 0.5,color = 'r', marker = '*', markersize = 1.5,label = 'swift mean alexei')
+p2, = plt.loglog(t_snapshots_cgs,mean_u,linewidth = 0.5,color = 'r', marker = '*', markersize = 1.5,label = 'swift mean')
 l = legend(handles = [p1,p2])
 xlabel("${\\rm{Time~[s]}}$", labelpad=0, fontsize = 14)
 ylabel("Internal energy ${\\rm{[erg \cdot g^{-1}]}}$", fontsize = 14)
 if int(sys.argv[4]) == 1:
-	title('$n_h = 10^{' + "{}".format(log_nh) + '} \\rm{cm}^{-3}, z = ' + "{}".format(redshift) + '$, solar metallicity,\n relative error alexei: ' + "{0:.4f}".format( (u_sol[int(nt)-1] - mean_u[nsnap-1])/(u_sol[int(nt)-1])), fontsize = 16)
+	title('$n_h = 10^{' + "{}".format(log_nh) + '} \\rm{cm}^{-3}, z = ' + "{}".format(redshift) + '$, solar metallicity,\n relative error: ' + "{0:.4f}".format( (u_sol[int(nt)-1] - mean_u[nsnap-1])/(u_sol[int(nt)-1])), fontsize = 16)
 	name = "z_"+str(sys.argv[1])+"_nh_"+str(sys.argv[2])+"_pressure_"+str(sys.argv[3])+"_solar.png"
 elif int(sys.argv[4]) == 0:
-	title('$n_h = 10^{' + "{}".format(log_nh) + '} \\rm{cm}^{-3}, z = ' + "{}".format(redshift) + '$, zero metallicity,\n relative error alexei: ' + "{0:.4f}".format( (u_sol[int(nt)-1] - mean_u[nsnap-1])/(u_sol[int(nt)-1])), fontsize = 16)
+	title('$n_h = 10^{' + "{}".format(log_nh) + '} \\rm{cm}^{-3}, z = ' + "{}".format(redshift) + '$, zero metallicity,\n relative error: ' + "{0:.4f}".format( (u_sol[int(nt)-1] - mean_u[nsnap-1])/(u_sol[int(nt)-1])), fontsize = 16)
 	name = "z_"+str(sys.argv[1])+"_nh_"+str(sys.argv[2])+"_pressure_"+str(sys.argv[3])+"_zero_metal.png"
 
 savefig(name, dpi=200)

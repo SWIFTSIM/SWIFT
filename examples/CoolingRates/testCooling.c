@@ -70,299 +70,6 @@ void set_quantities(struct part *restrict p,
 }
 
 /*
- * @brief Construct 1d tables from 4d EAGLE tables by 
- * interpolating over redshift, hydrogen number density
- * and helium fraction. 
- *
- * @param p Particle data structure
- * @param cooling Cooling function data structure
- * @param cosmo Cosmology data structure
- * @param internal_const Physical constants data structure
- * @param temp_table Pointer to 1d interpolated table of temperature values
- * @param H_plus_He_heat_table Pointer to 1d interpolated table of cooling rates
- * due to hydrogen and helium
- * @param H_plus_He_electron_abundance_table Pointer to 1d interpolated table
- * of electron abundances due to hydrogen and helium
- * @param element_electron_abundance_table Pointer to 1d interpolated table 
- * of electron abundances due to metals
- * @param element_print_cooling_table Pointer to 1d interpolated table of
- * cooling rates due to each of the metals
- * @param element_cooling_table Pointer to 1d interpolated table of cooling
- * rates due to the contribution of all the metals
- * @param abundance_ratio Pointer to array of ratios of metal abundances to solar
- * @param ub Upper bound in temperature on table construction 
- * @param lb Lower bound in temperature on table construction
- */
-void construct_1d_tables_test(const struct part *restrict p,
-			 const struct cooling_function_data *restrict cooling,
-			 const struct cosmology *restrict cosmo,
-			 const struct phys_const *restrict internal_const,
-			 double *temp_table,
-			 double *H_plus_He_heat_table,
-			 double *H_plus_He_electron_abundance_table,
-			 double *element_electron_abundance_table,
-			 double *element_print_cooling_table,
-			 double *element_cooling_table,
-			 float *abundance_ratio,
-			 float *ub, float *lb){
-
-  // obtain mass fractions and number density for particle
-  float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
-  float HeFrac = p->chemistry_data.metal_mass_fraction[chemistry_element_He] /
-                 (XH + p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
-  float inn_h = chemistry_get_number_density(p, cosmo, chemistry_element_H,
-                                             internal_const) *
-                cooling->number_density_scale;
-
-  // find redshift, helium fraction, hydrogen number density indices and offsets
-  int z_index,He_i,n_h_i;
-  float dz,d_He,d_n_h;
-  get_redshift_index(cosmo->z, &z_index, &dz, cooling);
-  get_index_1d(cooling->HeFrac, cooling->N_He, HeFrac, &He_i, &d_He);
-  get_index_1d(cooling->nH, cooling->N_nH, log10(inn_h), &n_h_i, &d_n_h);
-
-  if (cosmo->z > cooling->reionisation_redshift) { 
-    // Photodissociation table 
-    printf("Eagle testCooling.c photodissociation table redshift reionisation redshift %.5e %.5e\n", cosmo->z, cooling->reionisation_redshift);
-    construct_1d_table_from_3d(p, cooling, cosmo, internal_const, 
-                cooling->table.photodissociation_cooling.temperature, 
-                n_h_i, d_n_h, cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp, temp_table, ub, lb); 
-    construct_1d_table_from_3d( 
-                p, cooling, cosmo, internal_const, 
-                cooling->table.photodissociation_cooling.H_plus_He_heating, n_h_i, d_n_h, cooling->N_nH,   
-                He_i, d_He, cooling->N_He, cooling->N_Temp, H_plus_He_heat_table, ub, lb); 
-    construct_1d_table_from_3d( 
-                p, cooling, cosmo, internal_const, 
-                cooling->table.photodissociation_cooling.H_plus_He_electron_abundance, 
-                n_h_i, d_n_h, cooling->N_nH, He_i, d_He, cooling->N_He, 
-                cooling->N_Temp, H_plus_He_electron_abundance_table, ub, lb);
-    construct_1d_table_from_3d_elements(
-                p, cooling, cosmo, internal_const,
-                cooling->table.photodissociation_cooling.metal_heating, 
-                n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_cooling_table, abundance_ratio, ub, lb);
-    construct_1d_print_table_from_3d_elements(
-                p, cooling, cosmo, internal_const,
-                cooling->table.photodissociation_cooling.metal_heating, 
-                n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_print_cooling_table, abundance_ratio, ub, lb);
-    construct_1d_table_from_2d(
-                p, cooling, cosmo, internal_const,
-                cooling->table.photodissociation_cooling.electron_abundance,
-                n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_electron_abundance_table, ub, lb);
-  } else if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-    printf("Eagle testCooling.c no compton table redshift max redshift %.5e %.5e\n", cosmo->z, cooling->Redshifts[cooling->N_Redshifts - 1]);
-    // High redshift table
-    construct_1d_table_from_3d(p, cooling, cosmo, internal_const,
-                cooling->table.no_compton_cooling.temperature,
-                n_h_i, d_n_h, cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp, temp_table, ub, lb);
-    construct_1d_table_from_3d(
-                p, cooling, cosmo, internal_const,
-                cooling->table.no_compton_cooling.H_plus_He_heating, n_h_i, d_n_h, cooling->N_nH,  
-                He_i, d_He, cooling->N_He, cooling->N_Temp, H_plus_He_heat_table, ub, lb);
-    construct_1d_table_from_3d(
-                p, cooling, cosmo, internal_const,
-                cooling->table.no_compton_cooling.H_plus_He_electron_abundance,
-                n_h_i, d_n_h, cooling->N_nH, He_i, d_He, cooling->N_He,
-                cooling->N_Temp, H_plus_He_electron_abundance_table, ub, lb);
-    construct_1d_table_from_3d_elements(
-                p, cooling, cosmo, internal_const,
-                cooling->table.no_compton_cooling.metal_heating, 
-                n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_cooling_table, abundance_ratio, ub, lb);
-    construct_1d_print_table_from_3d_elements(
-                p, cooling, cosmo, internal_const,
-                cooling->table.no_compton_cooling.metal_heating, 
-                n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_print_cooling_table, abundance_ratio, ub, lb);
-    construct_1d_table_from_2d(
-                p, cooling, cosmo, internal_const,
-                cooling->table.no_compton_cooling.electron_abundance,
-                n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_electron_abundance_table, ub, lb);
-  } else {
-    // Normal tables 
-    printf("Eagle testCooling.c normal table redshift %.5e\n", cosmo->z);
-    construct_1d_table_from_4d(p, cooling, cosmo, internal_const,
-                cooling->table.element_cooling.temperature,
-                z_index, dz, cooling->N_Redshifts, n_h_i, d_n_h,
-                cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp, temp_table, ub, lb);
-    construct_1d_table_from_4d(
-                p, cooling, cosmo, internal_const,
-                cooling->table.element_cooling.H_plus_He_heating, z_index, dz, cooling->N_Redshifts, n_h_i, d_n_h,
-                cooling->N_nH, He_i, d_He, cooling->N_He, cooling->N_Temp, H_plus_He_heat_table, ub, lb);
-    construct_1d_table_from_4d(
-                p, cooling, cosmo, internal_const,
-                cooling->table.element_cooling.H_plus_He_electron_abundance, z_index,
-                dz, cooling->N_Redshifts, n_h_i, d_n_h, cooling->N_nH, He_i, d_He,
-                cooling->N_He, cooling->N_Temp, H_plus_He_electron_abundance_table, ub, lb);
-    construct_1d_table_from_4d_elements(
-                p, cooling, cosmo, internal_const,
-                cooling->table.element_cooling.metal_heating, z_index, dz, cooling->N_Redshifts, 
-                n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_cooling_table, abundance_ratio, ub, lb);
-    construct_1d_print_table_from_4d_elements(
-                p, cooling, cosmo, internal_const,
-                cooling->table.element_cooling.metal_heating, z_index, dz, cooling->N_Redshifts, 
-                n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_print_cooling_table, abundance_ratio, ub, lb);
-    construct_1d_table_from_3d(
-                p, cooling, cosmo, internal_const,
-                cooling->table.element_cooling.electron_abundance, z_index, dz, cooling->N_Redshifts,
-                n_h_i, d_n_h, cooling->N_nH, cooling->N_Temp, element_electron_abundance_table, ub, lb);
-  } 
-    
-}
-
-/*
- * @brief Compare calculation of dlambda/du (gradient of cooling rate, 
- * needed for Newton's method) between interpolating 1d tables and 
- * 4d tables
- *
- * @param us Units data structure
- * @param p Particle data structure
- * @param xp Extended particle data structure
- * @param internal_const Physical constants data structure
- * @param cooling Cooling function data structure
- * @param cosmo Cosmology data structure
- */
-void compare_dlambda_du(
-  const struct unit_system *restrict us,
-  struct part *restrict p,
-  const struct xpart *restrict xp,
-  const struct phys_const *restrict internal_const,
-  const struct cooling_function_data *restrict cooling,
-  const struct cosmology *restrict cosmo){
-
-  // allocate tables
-  double H_plus_He_heat_table[cooling->N_Temp];              
-  double H_plus_He_electron_abundance_table[cooling->N_Temp];
-  double temp_table[cooling->N_Temp];  
-  double element_cooling_table[cooling->N_Temp];         
-  double element_print_cooling_table[cooling->N_Elements * cooling->N_Temp];  
-  double element_electron_abundance_table[cooling->N_Temp];
-  double rate_element_table[cooling->N_Elements+2];
-  float *abundance_ratio, cooling_du_dt1, cooling_du_dt2;
-  double dlambda_du1, dlambda_du2;
-
-  // calculate ratio of particle metal abundances to solar 
-  abundance_ratio = malloc((chemistry_element_count + 2)*sizeof(float));
-  abundance_ratio_to_solar(p, cooling, abundance_ratio);
-  
-  // set hydrogen number density and internal energy
-  float nh = 1.0e-1, u = 1.0e9;
-  set_quantities(p, us, cooling, cosmo, internal_const, nh, u);
-  
-  // extract hydrogen and helium mass fractions
-  float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
-  float HeFrac = p->chemistry_data.metal_mass_fraction[chemistry_element_He] /
-                 (XH + p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
-  float inn_h = chemistry_get_number_density(p, cosmo, chemistry_element_H,
-                                           internal_const) *
-              cooling->number_density_scale;
-  
-  // find redshift, hydrogen number density and helium fraction indices and offsets
-  int z_index,He_i,n_h_i;
-  float dz,d_He,d_n_h;
-  get_redshift_index(cosmo->z, &z_index, &dz, cooling);
-  get_index_1d(cooling->HeFrac, cooling->N_He, HeFrac, &He_i, &d_He);
-  get_index_1d(cooling->nH, cooling->N_nH, log10(inn_h), &n_h_i, &d_n_h);
-
-
-  // construct tables
-  float upper_bound = cooling->Temp[cooling->N_Temp-1]/eagle_log_10_e;
-  float lower_bound = cooling->Temp[0]/eagle_log_10_e;
-  construct_1d_tables_test(p, cooling, cosmo, internal_const, temp_table, 
-                           H_plus_He_heat_table, H_plus_He_electron_abundance_table, 
-			   element_electron_abundance_table, element_print_cooling_table, 
-			   element_cooling_table, abundance_ratio, &upper_bound, &lower_bound);
-  
-  // calculate dlambda/du for different values of internal energy
-  int nt = 10;
-  for(int i = 0; i < nt; i++){
-    u = pow(10.0,9 + i);
-    set_quantities(p, us, cooling, cosmo, internal_const, nh, u);
-    cooling_du_dt1 = eagle_metal_cooling_rate_1d_table(log10(u),&dlambda_du1,H_plus_He_heat_table,
-                      H_plus_He_electron_abundance_table,
-       	              element_print_cooling_table,
-       	              element_electron_abundance_table,
-       	              temp_table,
-       	              p,cooling,cosmo,internal_const,rate_element_table);
-    cooling_du_dt2 = eagle_metal_cooling_rate(log10(u),
-       	              &dlambda_du2,z_index, dz, n_h_i, d_n_h, He_i, d_He,
-       	              p,cooling,cosmo,internal_const,NULL,
-       	              abundance_ratio);
-    printf("u du_dt_1d du_dt_4d dlambda_du_1d dlambda_du_4d %.5e %.5e %.5e %.5e %.5e\n",u,cooling_du_dt1,cooling_du_dt2,dlambda_du1,dlambda_du2);
-  }
-}
-
-/*
- * @brief Compare calculating temperature between interpolating 1d tables and 
- * 4d tables
- *
- * @param us Units data structure
- * @param p Particle data structure
- * @param xp Extended particle data structure
- * @param internal_const Physical constants data structure
- * @param cooling Cooling function data structure
- * @param cosmo Cosmology data structure
- */
-void compare_temp(
-  const struct unit_system *restrict us,
-  struct part *restrict p,
-  const struct xpart *restrict xp,
-  const struct phys_const *restrict internal_const,
-  const struct cooling_function_data *restrict cooling,
-  const struct cosmology *restrict cosmo){
-
-  // allocate tables
-  double H_plus_He_heat_table[cooling->N_Temp];              
-  double H_plus_He_electron_abundance_table[cooling->N_Temp];
-  double temp_table[cooling->N_Temp];  
-  double element_cooling_table[cooling->N_Temp];         
-  double element_print_cooling_table[cooling->N_Elements * cooling->N_Temp];  
-  double element_electron_abundance_table[cooling->N_Temp];
-  float *abundance_ratio;
-
-  // calculate ratio of particle metal abundances to solar 
-  abundance_ratio = malloc((chemistry_element_count + 2)*sizeof(float));
-  abundance_ratio_to_solar(p, cooling, abundance_ratio);
-  
-  // set hydrogen number density and internal energy
-  float nh = 1.0e-1, u = 1.0e9;
-  set_quantities(p, us, cooling, cosmo, internal_const, nh, u);
-
-  // extract hydrogen and helium mass fractions
-  float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
-  float HeFrac = p->chemistry_data.metal_mass_fraction[chemistry_element_He] /
-                 (XH + p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
-  float inn_h = chemistry_get_number_density(p, cosmo, chemistry_element_H,
-                                           internal_const) *
-              cooling->number_density_scale;
-  
-  // find redshift, hydrogen number density and helium fraction indices and offsets
-  int z_index,He_i,n_h_i;
-  float dz,d_He,d_n_h;
-  get_redshift_index(cosmo->z, &z_index, &dz, cooling);
-  get_index_1d(cooling->HeFrac, cooling->N_He, HeFrac, &He_i, &d_He);
-  get_index_1d(cooling->nH, cooling->N_nH, log10(inn_h), &n_h_i, &d_n_h);
-
-  // construct tables
-  float upper_bound = cooling->Temp[cooling->N_Temp-1]/eagle_log_10_e;
-  float lower_bound = cooling->Temp[0]/eagle_log_10_e;
-  construct_1d_tables_test(p, cooling, cosmo, internal_const, temp_table, 
-                           H_plus_He_heat_table, H_plus_He_electron_abundance_table, 
-			   element_electron_abundance_table, element_print_cooling_table, 
-			   element_cooling_table, abundance_ratio, &upper_bound, &lower_bound);
-  
-  // calculate temperature for different values of internal energy
-  float T1d, T4d, delta_u;
-  int nt = 10;
-  for(int i = 0; i < nt; i++){
-    u = pow(10.0,9 + i);
-    set_quantities(p, us, cooling, cosmo, internal_const, nh, u);
-    T1d = eagle_convert_u_to_temp_1d_table(log10(u), &delta_u, temp_table,
-                   cooling);
-    T4d = eagle_convert_u_to_temp(log10(u), &delta_u, z_index, n_h_i, He_i,
-        		 dz, d_n_h, d_He,cooling, cosmo);
-    printf("u T1d T4d %.5e %.5e %.5e\n",u,pow(10.0,T1d),pow(10.0,T4d));
-  }
-}
-
-/*
  * @brief Produces contributions to cooling rates for different 
  * hydrogen number densities, from different metals, 
  * tests 1d and 4d table interpolations produce 
@@ -447,14 +154,6 @@ int main(int argc, char **argv) {
   abundance_ratio = malloc((chemistry_element_count + 2)*sizeof(float));
   abundance_ratio_to_solar(&p, &cooling, abundance_ratio);
   
-  // Declare 1D tables 
-  double H_plus_He_heat_table[cooling.N_Temp];              
-  double H_plus_He_electron_abundance_table[cooling.N_Temp];
-  double temp_table[cooling.N_Temp];  
-  double element_cooling_table[cooling.N_Temp];         
-  double element_print_cooling_table[cooling.N_Elements * cooling.N_Temp];  
-  double element_electron_abundance_table[cooling.N_Temp];
-  
   // extract mass fractions, calculate table indices and offsets 
   float XH = p.chemistry_data.metal_mass_fraction[chemistry_element_H];
   float HeFrac = p.chemistry_data.metal_mass_fraction[chemistry_element_He] /
@@ -464,139 +163,48 @@ int main(int argc, char **argv) {
   get_redshift_index(cosmo.z, &z_index, &dz, &cooling);
   get_index_1d(cooling.HeFrac, cooling.N_He, HeFrac, &He_i, &d_He);
 
-  float upper_bound = cooling.Temp[cooling.N_Temp-1]/eagle_log_10_e;
-  float lower_bound = cooling.Temp[0]/eagle_log_10_e;
-
-  int nt = 250;//, n_nh = 6;
+  int nt = 250;
   double u = pow(10.0,10);
-  //if (argc == 1 || strcmp(argv[1], "nh") == 0){
-  // Calculate cooling rates at different densities 
-    //for(int i = 0; i < n_nh; i++){
-    //  // Open files 
-    //  char output_filename[21];
-    //  sprintf(output_filename, "%s%d%s", "cooling_output_", i, ".dat");
-    //  FILE *output_file = fopen(output_filename, "w");
-    //  if (output_file == NULL) {
-    //    printf("Error opening file!\n");
-    //    exit(1);
-    //  }
 
-    //  // set hydrogen number density, construct tables
-    //  nh = pow(10.0,-i);
-    //  set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, u);
-    //  construct_1d_tables_test(&p, &cooling, &cosmo, &internal_const, 
-    //    			temp_table, H_plus_He_heat_table, 
-    //      		H_plus_He_electron_abundance_table, 
-    //      		element_electron_abundance_table, 
-    //      		element_print_cooling_table, 
-    //      		element_cooling_table, 
-    //      		abundance_ratio, &upper_bound, &lower_bound);
-    //  get_index_1d(cooling.nH, cooling.N_nH, log10(nh), &n_h_i, &d_n_h);
-
-    //  for(int j = 0; j < nt; j++){
-    //    // set internal energy
-    //    set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, pow(10.0,11.0 + j*8.0/nt));
-    //    u = hydro_get_physical_internal_energy(&p,&cosmo)*cooling.internal_energy_scale;
-    //    double dlambda_du;
-    //    float delta_u, cooling_du_dt, logT;
-
-    //    // calculate cooling rates using 1d tables
-    //    if (tables == 1) {
-    //      cooling_du_dt = eagle_metal_cooling_rate_1d_table(log10(u),&dlambda_du,H_plus_He_heat_table,
-    //                              H_plus_He_electron_abundance_table,
-    //         	              element_print_cooling_table,
-    //         	              element_electron_abundance_table,
-    //         	              temp_table,
-    //         	              z_index, dz, n_h_i, d_n_h, He_i, d_He,
-    //         	              &p,&cooling,&cosmo,&internal_const,NULL,
-    //         	              abundance_ratio);
-    //      logT = eagle_convert_u_to_temp_1d_table(log10(u), &delta_u, temp_table,
-    //                     &p,&cooling, &cosmo, &internal_const);
-    //    } else {
-    //    // calculate cooling rates using 4d tables
-    //      cooling_du_dt = eagle_metal_cooling_rate(log10(u),
-    //         	              &dlambda_du,z_index, dz, n_h_i, d_n_h, He_i, d_He,
-    //         	              &p,&cooling,&cosmo,&internal_const,NULL,
-    //         	              abundance_ratio);
-    //      logT = eagle_convert_u_to_temp(log10(u), &delta_u, z_index, n_h_i, He_i,
-    //          		 dz, d_n_h, d_He, &p,&cooling, &cosmo, &internal_const);
-    //    }
-    //    float temperature_swift = pow(10.0,logT);
-
-    //    fprintf(output_file,"%.5e %.5e\n", temperature_swift,cooling_du_dt);
-    //  }
-    //  fclose(output_file);
-    //}
-  //}
   // Calculate contributions from metals to cooling rate
-  //if (argc >= 1 || strcmp(argv[1],"metals") == 0) {
-    // open file
-    char output_filename[21];
-    sprintf(output_filename, "%s", "cooling_output.dat");
-    FILE *output_file = fopen(output_filename, "w");
-    if (output_file == NULL) {
-      printf("Error opening file!\n");
-      exit(1);
-    }
+  // open file
+  char output_filename[21];
+  sprintf(output_filename, "%s", "cooling_output.dat");
+  FILE *output_file = fopen(output_filename, "w");
+  if (output_file == NULL) {
+    printf("Error opening file!\n");
+    exit(1);
+  }
 
-    // set hydrogen number density, construct 1d tables
-    if (log_10_nh == 100) {
-      nh = 1.0e-1;
-    } else {
-      nh = pow(10.0,log_10_nh);
-    }
-    //if (argc > 2) nh = pow(10.0,strtod(argv[2],NULL));
-    printf("Eagle testcooling.c nh %.5e\n", nh);
-    u = pow(10.0,14.0);
-    set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, u);
-    construct_1d_tables_test(&p, &cooling, &cosmo, &internal_const, 
-      			temp_table, H_plus_He_heat_table, 
-        		H_plus_He_electron_abundance_table, 
-        		element_electron_abundance_table, 
-        		element_print_cooling_table, 
-        		element_cooling_table, 
-        		abundance_ratio, &upper_bound, &lower_bound);
-    float inn_h = chemistry_get_number_density(&p, &cosmo, chemistry_element_H,
-                                             &internal_const) *
-                cooling.number_density_scale;
-    printf("Eagle testcooling.c inn_h %.5e\n", inn_h);
-    get_index_1d(cooling.nH, cooling.N_nH, log10(inn_h), &n_h_i, &d_n_h);
+  // set hydrogen number density, construct 1d tables
+  if (log_10_nh == 100) {
+    nh = 1.0e-1;
+  } else {
+    nh = pow(10.0,log_10_nh);
+  }
+  //if (argc > 2) nh = pow(10.0,strtod(argv[2],NULL));
+  u = pow(10.0,14.0);
+  set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, u);
+  float inn_h = chemistry_get_number_density(&p, &cosmo, chemistry_element_H,
+                                           &internal_const) *
+              cooling.number_density_scale;
+  get_index_1d(cooling.nH, cooling.N_nH, log10(inn_h), &n_h_i, &d_n_h);
 
-    // Loop over internal energy
-    for(int j = 0; j < nt; j++){
-      set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, pow(10.0,10.0 + j*8.0/nt));
-      u = hydro_get_physical_internal_energy(&p,&cosmo)*cooling.internal_energy_scale;
-      float delta_u, cooling_du_dt, logT;
+  // Loop over internal energy
+  for(int j = 0; j < nt; j++){
+    set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, pow(10.0,10.0 + j*8.0/nt));
+    u = hydro_get_physical_internal_energy(&p,&cosmo)*cooling.internal_energy_scale;
+    float cooling_du_dt;
 
-      // calculate cooling rates using 1d tables
-      if (tables == 1) {
-        cooling_du_dt = eagle_print_metal_cooling_rate_1d_table(H_plus_He_heat_table,
-                              H_plus_He_electron_abundance_table,
-           	              element_print_cooling_table,
-           	              element_electron_abundance_table,
-           	              temp_table,
-           	              &p,&cooling,&cosmo,&internal_const);
-        logT = eagle_convert_u_to_temp_1d_table(log10(u), &delta_u, temp_table,
-                       &cooling);
-      } else {
-      // calculate cooling rates using 4d tables
-        cooling_du_dt = eagle_print_metal_cooling_rate(
-			      z_index, dz, n_h_i, d_n_h, He_i, d_He,
-           	              &p,&cooling,&cosmo,&internal_const,
-           	              abundance_ratio);
-          logT = eagle_convert_u_to_temp(log10(u), &delta_u, z_index, n_h_i, He_i,
-	      		 dz, d_n_h, d_He,&cooling, &cosmo);
-      }
-      //float temperature_swift = pow(10.0,logT);
-      //fprintf(output_file,"%.5e %.5e\n", temperature_swift,cooling_du_dt);
-      fprintf(output_file,"%.5e %.5e\n", u,cooling_du_dt);
-    }
-    fclose(output_file);
-  //}
-
-  // compare temperatures and dlambda/du calculated from 1d and 4d tables
-  //compare_temp(&us, &p, &xp, &internal_const, &cooling, &cosmo);
-  //compare_dlambda_du(&us, &p, &xp, &internal_const, &cooling, &cosmo);
+    // calculate cooling rates using 4d tables
+    cooling_du_dt = eagle_print_metal_cooling_rate(
+    		      z_index, dz, n_h_i, d_n_h, He_i, d_He,
+       	              &p,&cooling,&cosmo,&internal_const,
+       	              abundance_ratio);
+    fprintf(output_file,"%.5e %.5e\n", u,cooling_du_dt);
+  }
+  fclose(output_file);
+  printf("done\n");
 
   free(params);
   return 0;
