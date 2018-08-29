@@ -6746,8 +6746,10 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const struct cosmology *cosmo = e->cosmology;
   const float Om = cosmo->Omega_m;
   const float Ob = cosmo->Omega_b;
-  const float rho_crit = cosmo->critical_density;
+  const float H0 = cosmo->H0;
   const float a = cosmo->a;
+  const float G_newton = e->physical_constants->const_newton_G;
+  const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
 
   /* Start by reducing the minimal mass of each particle type */
   float min_mass[swift_type_count] = {e->s->min_part_mass,
@@ -6817,7 +6819,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     const float min_mass_dm = min_mass[1];
 
     /* Inter-particle sepration for the DM */
-    const float d_dm = cbrtf(min_mass_dm / ((Om - Ob) * rho_crit));
+    const float d_dm = cbrtf(min_mass_dm / ((Om - Ob) * rho_crit0));
 
     /* RMS peculiar motion for the DM */
     const float rms_vel_dm = vel_norm_dm / N_dm;
@@ -6833,7 +6835,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     const float min_mass_b = min(min_mass[0], min_mass[4]);
 
     /* Inter-particle sepration for the baryons */
-    const float d_b = cbrtf(min_mass_b / (Ob * rho_crit));
+    const float d_b = cbrtf(min_mass_b / (Ob * rho_crit0));
 
     /* RMS peculiar motion for the baryons */
     const float rms_vel_b = vel_norm_b / N_b;
