@@ -44,11 +44,12 @@
 #include "physical_constants.h"
 #include "units.h"
 
-const float explicit_tolerance = 0.05;
-const float newton_tolerance =
+static const float explicit_tolerance = 0.05;
+static const float newton_tolerance =
     1.0e-2;  // lower than bisection_tol because using log(u)
-const float bisection_tolerance = 1.0e-6;
-const double bracket_factor = 1.0488088481701;  // sqrt(1.1) to match EAGLE
+static const float bisection_tolerance = 1.0e-6;
+static const double bracket_factor = 1.0488088481701;  // sqrt(1.1) to match EAGLE
+static float print_cooling_rate_contribution_flag = 0;
 
 /*
  * @brief calculates heating due to helium reionization
@@ -73,9 +74,9 @@ eagle_helium_reionization_extraheat(
 #endif
 
   /* Helium reionization */
-  if (cooling->he_reion == 1) {
+  if (cooling->he_reion_flag == 1) {
     double he_reion_erg_pG =
-        cooling->he_reion_ev_pH * eagle_ev_to_erg / eagle_proton_mass_cgs;
+        cooling->he_reion_ev_pH / cooling->proton_mass_cgs;
     extra_heating += he_reion_erg_pG *
                      (erf((z - dz - cooling->he_reion_z_center) /
                           (pow(2., 0.5) * cooling->he_reion_z_sigma)) -
@@ -196,10 +197,10 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
   if (z > cooling->Redshifts[cooling->N_Redshifts - 1] ||
       z > cooling->reionisation_redshift) {
 
-    T_gam = eagle_cmb_temperature * (1 + z);
+    T_gam = cooling->T_CMB_0 * (1 + z);
 
-    temp_lambda = -eagle_compton_rate *
-                  (temp - eagle_cmb_temperature * (1 + z)) * pow((1 + z), 4) *
+    temp_lambda = -cooling->compton_rate_cgs *
+                  (temp - cooling->T_CMB_0 * (1 + z)) * pow((1 + z), 4) *
                   h_plus_he_electron_abundance / n_h;
     cooling_rate += temp_lambda;
     if (element_lambda != NULL) element_lambda[1] = temp_lambda;
@@ -285,130 +286,6 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
 }
 
 /*
- * @brief Calculates cooling rate by interpolating precomputed 1d tables
- * of cooling rates which depend only on (log base 10 of) temperature.
- * May be used in bisection scheme when need to perform many table
- * interpolations.
- *
- * @param log_10_u Log base 10 of internal energy
- * @param dlambda_du Pointer to value to be set to rate
- * @param H_plus_He_heat_table 1D table of heating rates due to H, He
- * @param H_plus_He_electron_abundance_table 1D table of electron abundances due
- * to H,He
- * @param element_cooling_table 1D table of heating rates due to metals
- * @param element_electron_abundance_table 1D table of electron abundances due
- * to metals
- * @param temp_table 1D table of temperatures
- * of change of cooling rate with respect to internal energy
- * @param z_index Redshift index of particle
- * @param dz Redshift offset of particle
- * @param n_h_i Particle hydrogen number density index
- * @param d_n_h Particle hydrogen number density offset
- * @param He_i Particle helium fraction index
- * @param d_He Particle helium fraction offset
- * @param p Particle structure
- * @param cooling Cooling data structure
- * @param cosmo Cosmology structure
- * @param internal_const Physical constants structure
- * @param element_lambda Pointer to array for printing contribution
- * to cooling rate from each of the metals.
- * @param solar_ratio Array of ratios of particle metal abundances
- * to solar metal abundances
- */
-__attribute__((always_inline)) INLINE double eagle_metal_cooling_rate_1d_table(
-    double log_10_u, double *dlambda_du, double *H_plus_He_heat_table,
-    double *H_plus_He_electron_abundance_table, double *element_cooling_table,
-    double *element_electron_abundance_table, double *temp_table,
-    const struct part *restrict p,
-    const struct cooling_function_data *restrict cooling,
-    const struct cosmology *restrict cosmo,
-    const struct phys_const *internal_const, double *element_lambda) {
-  double T_gam, solar_electron_abundance;
-  double n_h = chemistry_get_number_density(p, cosmo, chemistry_element_H,
-                                            internal_const) *
-               cooling->number_density_scale;  // chemistry_data
-  double z = cosmo->z;
-  double cooling_rate = 0.0, temp_lambda;
-  float du;
-  float h_plus_he_electron_abundance;
-
-  int i, temp_i;
-  double temp;
-  float d_temp;
-
-  *dlambda_du = 0.0;
-
-  // interpolate to get temperature of particles, find where we are in
-  // the temperature table.
-  temp = eagle_convert_u_to_temp_1d_table(log_10_u, &du, temp_table, cooling);
-  get_index_1d(cooling->Temp, cooling->N_Temp, temp, &temp_i, &d_temp);
-
-  /* ------------------ */
-  /* Metal-free cooling */
-  /* ------------------ */
-
-  // contribution to cooling and electron abundance from H, He.
-  temp_lambda = interpol_1d_dbl(H_plus_He_heat_table, temp_i, d_temp);
-  h_plus_he_electron_abundance =
-      interpol_1d_dbl(H_plus_He_electron_abundance_table, temp_i, d_temp);
-  cooling_rate += temp_lambda;
-  *dlambda_du += (((double)H_plus_He_heat_table[temp_i + 1]) -
-                  ((double)H_plus_He_heat_table[temp_i])) /
-                 ((double)du);
-  if (element_lambda != NULL) element_lambda[0] = temp_lambda;
-
-  /* ------------------ */
-  /* Compton cooling    */
-  /* ------------------ */
-
-  // inverse Compton cooling is not in collisional table
-  // before reionisation so add now
-
-  if (z > cooling->Redshifts[cooling->N_Redshifts - 1] ||
-      z > cooling->reionisation_redshift) {
-    /* inverse Compton cooling is not in collisional table
-       before reionisation so add now */
-
-    T_gam = eagle_cmb_temperature * (1 + z);
-
-    temp_lambda = -eagle_compton_rate *
-                  (temp - eagle_cmb_temperature * (1 + z)) * pow((1 + z), 4) *
-                  h_plus_he_electron_abundance / n_h;
-    cooling_rate += temp_lambda;
-    if (element_lambda != NULL) element_lambda[1] = temp_lambda;
-  }
-
-  /* ------------- */
-  /* Metal cooling */
-  /* ------------- */
-
-  // for each element the cooling rate is multiplied by the ratio of H, He
-  // electron abundance to solar electron abundance. Note: already multiplied by
-  // ratio of particle to solar metal abundances when creating 1d tables.
-
-  solar_electron_abundance =
-      interpol_1d_dbl(element_electron_abundance_table, temp_i, d_temp);
-
-  for (i = 0; i < cooling->N_Elements; i++) {
-    temp_lambda = interpol_1d_dbl(element_cooling_table + i * cooling->N_Temp,
-                                  temp_i, d_temp) *
-                  (h_plus_he_electron_abundance / solar_electron_abundance);
-    cooling_rate += temp_lambda;
-    *dlambda_du +=
-        (((double)element_cooling_table[i * cooling->N_Temp + temp_i + 1]) *
-             ((double)H_plus_He_electron_abundance_table[temp_i + 1]) /
-             ((double)element_electron_abundance_table[temp_i + 1]) -
-         ((double)element_cooling_table[i * cooling->N_Temp + temp_i]) *
-             ((double)H_plus_He_electron_abundance_table[temp_i]) /
-             ((double)element_electron_abundance_table[temp_i])) /
-        ((double)du);
-    if (element_lambda != NULL) element_lambda[i + 2] = temp_lambda;
-  }
-
-  return cooling_rate;
-}
-
-/*
  * @brief Wrapper function used to calculate cooling rate and dLambda_du.
  * Table indices and offsets for redshift, hydrogen number density and
  * helium fraction are passed it so as to compute them only once per particle.
@@ -441,60 +318,13 @@ __attribute__((always_inline)) INLINE double eagle_cooling_rate(
   double lambda_net = 0.0;
 
   lambda_net = eagle_metal_cooling_rate(
-      logu / eagle_log_10, dLambdaNet_du, z_index, dz, n_h_i, d_n_h, He_i, d_He,
+      logu / M_LN10, dLambdaNet_du, z_index, dz, n_h_i, d_n_h, He_i, d_He,
       p, cooling, cosmo, internal_const, element_lambda, abundance_ratio);
   if (isnan(lambda_net))
     printf(
         "Eagle cooling.c lambda_net is nan id logu z_index dz %llu %.5e %d "
         "%.5e \n",
         p->id, logu, z_index, dz);
-
-  return lambda_net;
-}
-
-/*
- * @brief Wrapper function used to calculate cooling rate and dLambda_du.
- * Table indices and offsets for redshift, hydrogen number density and
- * helium fraction are passed it so as to compute them only once per particle.
- *
- * @param logu Natural log of internal energy
- * @param dlambda_du Pointer to gradient of cooling rate (set in
- * eagle_metal_cooling_rate)
- * @param H_plus_He_heat_table 1D table of heating rates due to H, He
- * @param H_plus_He_electron_abundance_table 1D table of electron abundances due
- * to H,He
- * @param element_cooling_table 1D table of heating rates due to metals
- * @param element_electron_abundance_table 1D table of electron abundances due
- * to metals
- * @param temp_table 1D table of temperatures
- * @param z_index Redshift index of particle
- * @param dz Redshift offset of particle
- * @param n_h_i Particle hydrogen number density index
- * @param d_n_h Particle hydrogen number density offset
- * @param He_i Particle helium fraction index
- * @param d_He Particle helium fraction offset
- * @param p Particle structure
- * @param cooling Cooling data structure
- * @param cosmo Cosmology structure
- * @param internal_const Physical constants structure
- * @param abundance_ratio Ratio of element abundance to solar
- */
-__attribute__((always_inline)) INLINE double eagle_cooling_rate_1d_table(
-    double logu, double *dLambdaNet_du, double *H_plus_He_heat_table,
-    double *H_plus_He_electron_abundance_table, double *element_cooling_table,
-    double *element_electron_abundance_table, double *temp_table, int z_index,
-    float dz, int n_h_i, float d_n_h, int He_i, float d_He,
-    const struct part *restrict p,
-    const struct cooling_function_data *restrict cooling,
-    const struct cosmology *restrict cosmo,
-    const struct phys_const *internal_const, float *abundance_ratio) {
-  double *element_lambda = NULL, lambda_net = 0.0;
-
-  lambda_net = eagle_metal_cooling_rate_1d_table(
-      logu / eagle_log_10, dLambdaNet_du, H_plus_He_heat_table,
-      H_plus_He_electron_abundance_table, element_cooling_table,
-      element_electron_abundance_table, temp_table, p, cooling, cosmo,
-      internal_const, element_lambda);
 
   return lambda_net;
 }
@@ -530,9 +360,18 @@ __attribute__((always_inline)) INLINE double eagle_print_metal_cooling_rate(
 
   char output_filename[25];
   FILE **output_file = malloc((cooling->N_Elements + 2) * sizeof(FILE *));
+  print_cooling_rate_contribution_flag += 1.0/(cooling->N_Elements+2);
   for (int element = 0; element < cooling->N_Elements + 2; element++) {
     sprintf(output_filename, "%s%d%s", "cooling_element_", element, ".dat");
-    output_file[element] = fopen(output_filename, "a");
+    if (print_cooling_rate_contribution_flag < 1) {
+      // If this is the first time we're running this function, overwrite the
+      // output files
+      output_file[element] = fopen(output_filename, "w");
+      print_cooling_rate_contribution_flag += 1.0/(cooling->N_Elements+2);
+    } else {
+      // append to existing files
+      output_file[element] = fopen(output_filename, "a");
+    }
     if (output_file == NULL) {
       printf("Error opening file!\n");
       exit(1);
@@ -543,66 +382,6 @@ __attribute__((always_inline)) INLINE double eagle_print_metal_cooling_rate(
   lambda_net = eagle_metal_cooling_rate(
       log10(u), &dLambdaNet_du, z_index, dz, n_h_i, d_n_h, He_i, d_He, p,
       cooling, cosmo, internal_const, element_lambda, abundance_ratio);
-  for (int j = 0; j < cooling->N_Elements + 2; j++) {
-    fprintf(output_file[j], "%.5e\n", element_lambda[j]);
-  }
-
-  for (int i = 0; i < cooling->N_Elements + 2; i++) fclose(output_file[i]);
-
-  return lambda_net;
-}
-
-/*
- * @brief Wrapper function used to calculate cooling rate and dLambda_du.
- * Prints contribution from each element to cooling rate for testing purposes.
- * Table indices and offsets for redshift, hydrogen number density and
- * helium fraction are passed it so as to compute them only once per particle.
- *
- * @param H_plus_He_heat_table 1D table of heating rates due to H, He
- * @param H_plus_He_electron_abundance_table 1D table of electron abundances due
- * to H,He
- * @param element_cooling_table 1D table of heating rates due to metals
- * @param element_electron_abundance_table 1D table of electron abundances due
- * to metals
- * @param temp_table 1D table of temperatures
- * @param p Particle structure
- * @param cooling Cooling data structure
- * @param cosmo Cosmology structure
- * @param internal_const Physical constants structure
- * @param abundance_ratio Ratio of element abundance to solar
- */
-__attribute__((always_inline)) INLINE double
-eagle_print_metal_cooling_rate_1d_table(
-    double *H_plus_He_heat_table, double *H_plus_He_electron_abundance_table,
-    double *element_print_cooling_table,
-    double *element_electron_abundance_table, double *temp_table,
-    const struct part *restrict p,
-    const struct cooling_function_data *restrict cooling,
-    const struct cosmology *restrict cosmo,
-    const struct phys_const *internal_const) {
-  double *element_lambda, lambda_net = 0.0;
-  element_lambda = malloc((cooling->N_Elements + 2) * sizeof(double));
-  double u = hydro_get_physical_internal_energy(p, cosmo) *
-             cooling->internal_energy_scale;
-  double dLambdaNet_du;
-
-  char output_filename[25];
-  FILE **output_file = malloc((cooling->N_Elements + 2) * sizeof(FILE *));
-  for (int element = 0; element < cooling->N_Elements + 2; element++) {
-    sprintf(output_filename, "%s%d%s", "cooling_element_", element, ".dat");
-    output_file[element] = fopen(output_filename, "a");
-    if (output_file == NULL) {
-      printf("Error opening file!\n");
-      exit(1);
-    }
-  }
-
-  for (int j = 0; j < cooling->N_Elements + 2; j++) element_lambda[j] = 0.0;
-  lambda_net = eagle_metal_cooling_rate_1d_table(
-      log10(u), &dLambdaNet_du, H_plus_He_heat_table,
-      H_plus_He_electron_abundance_table, element_print_cooling_table,
-      element_electron_abundance_table, temp_table, p, cooling, cosmo,
-      internal_const, element_lambda);
   for (int j = 0; j < cooling->N_Elements + 2; j++) {
     fprintf(output_file[j], "%.5e\n", element_lambda[j]);
   }
@@ -650,7 +429,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
 
   /* ratefact = inn_h * inn_h / rho; Might lead to round-off error: replaced by
    * equivalent expression  below */
-  double ratefact = inn_h * (XH / eagle_proton_mass_cgs);
+  double ratefact = inn_h * (XH / cooling->proton_mass_cgs);
 
   // Bracketing
   u_lower = u_init;
@@ -760,14 +539,14 @@ __attribute__((always_inline)) INLINE float newton_iter(
 
   /* ratefact = inn_h * inn_h / rho; Might lead to round-off error: replaced by
    * equivalent expression  below */
-  double ratefact = inn_h * (XH / eagle_proton_mass_cgs);
+  double ratefact = inn_h * (XH / cooling->proton_mass_cgs);
 
   logu_old = logu_init;
   logu = logu_old;
   int i = 0;
   float log_table_bound_high =
-      (cooling->Therm[cooling->N_Temp - 1] + 1) / eagle_log_10_e;
-  float log_table_bound_low = (cooling->Therm[0] + 1) / eagle_log_10_e;
+      (cooling->Therm[cooling->N_Temp - 1] + 1) / M_LOG10E;
+  float log_table_bound_low = (cooling->Therm[0] + 1) / M_LOG10E;
 
   do /* iterate to convergence */
   {
@@ -891,10 +670,10 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
   /* ratefact = inn_h * inn_h / rho; Might lead to round-off error: replaced by
    * equivalent expression  below */
-  ratefact = inn_h * (XH / eagle_proton_mass_cgs);
+  ratefact = inn_h * (XH / cooling->proton_mass_cgs);
 
   /* set helium and hydrogen reheating term */
-  if (cooling->he_reion == 1)
+  if (cooling->he_reion_flag == 1)
     LambdaTune = eagle_helium_reionization_extraheat(z_index, dz, cooling);
 
   // compute hydrogen number density and helium fraction table indices
@@ -1012,70 +791,6 @@ __attribute__((always_inline)) INLINE float cooling_get_radiated_energy(
 }
 
 /**
- * To do: incorporate into code so that not all tables are read at the beginning
- * @brief Checks the tables that are currently loaded in memory and read
- * new ones if necessary.
- *
- * @param cooling The #cooling_function_data we play with.
- * @param index_z The index along the redshift axis of the tables of the current
- * z.
- */
-inline void eagle_check_cooling_tables(struct cooling_function_data *cooling,
-                                       int index_z) {
-
-  /* Do we already have the right table in memory? */
-  if (cooling->low_z_index == index_z) return;
-
-  if (index_z >= cooling->N_Redshifts) {
-
-    error("Missing implementation");
-    // Add reading of high-z tables
-
-    /* Record the table indices */
-    cooling->low_z_index = index_z;
-    cooling->high_z_index = index_z;
-  } else {
-
-    /* Record the table indices */
-    cooling->low_z_index = index_z;
-    cooling->high_z_index = index_z + 1;
-
-    /* Load the damn thing */
-    eagle_read_two_tables(cooling);
-  }
-}
-
-/**
- * To do: incorporate into code so that not all tables are read at the beginning
- * @brief Common operations performed on the cooling function at a
- * given time-step or redshift.
- *
- * Here we load the cooling tables corresponding to our redshift.
- *
- * @param phys_const The physical constants in internal units.
- * @param us The internal system of units.
- * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
- */
-INLINE void cooling_update(const struct phys_const *phys_const,
-                           const struct unit_system *us,
-                           const struct cosmology *cosmo,
-                           struct cooling_function_data *cooling) {
-  /* Current redshift */
-  const float redshift = cosmo->z;
-
-  /* Get index along the redshift index of the tables */
-  int index_z;
-  float delta_z_table;
-  get_redshift_index(redshift, &index_z, &delta_z_table, cooling);
-  cooling->index_z = index_z;
-  cooling->delta_z_table = delta_z_table;
-
-  /* Load the current table (if different from what we have) */
-  eagle_check_cooling_tables(cooling, index_z);
-}
-
-/**
  * @brief Initialises the cooling properties.
  *
  * @param parameter_file The parsed parameter file
@@ -1099,7 +814,7 @@ INLINE void cooling_init_backend(struct swift_params *parameter_file,
       parameter_file, "EAGLEChemistry:CalciumOverSilicon");
   cooling->sulphur_over_silicon_ratio = parser_get_param_float(
       parameter_file, "EAGLEChemistry:SulphurOverSilicon");
-  cooling->he_reion =
+  cooling->he_reion_flag =
       parser_get_param_float(parameter_file, "EagleCooling:he_reion");
   cooling->he_reion_z_center =
       parser_get_param_float(parameter_file, "EagleCooling:he_reion_z_center");
@@ -1108,14 +823,15 @@ INLINE void cooling_init_backend(struct swift_params *parameter_file,
   cooling->he_reion_ev_pH =
       parser_get_param_float(parameter_file, "EagleCooling:he_reion_ev_pH");
 
+  /* convert to cgs */
+  cooling->he_reion_ev_pH *= phys_const->const_electron_volt *
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+
   // read in cooling tables
   GetCoolingRedshifts(cooling);
   sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
   ReadCoolingHeader(fname, cooling);
   cooling->table = eagle_readtable(cooling->cooling_table_path, cooling);
-
-  // allocate array for solar abundances
-  cooling->solar_abundances = malloc(cooling->N_Elements * sizeof(double));
 
   // compute conversion factors
   cooling->internal_energy_scale =
@@ -1128,6 +844,31 @@ INLINE void cooling_init_backend(struct swift_params *parameter_file,
                          units_cgs_conversion_factor(us, UNIT_CONV_MASS);
   cooling->temperature_scale =
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+  cooling->proton_mass_cgs = phys_const->const_proton_mass *
+      units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  cooling->T_CMB_0 = phys_const->const_T_CMB_0 *
+      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+  /* Compute the coefficient at the front of the Compton cooling expression */
+  const double radiation_constant =
+      4. * phys_const->const_stefan_boltzmann / phys_const->const_speed_light_c;
+  const double compton_coefficient =
+      4. * radiation_constant * phys_const->const_thomson_cross_section *
+      phys_const->const_boltzmann_k /
+      (phys_const->const_electron_mass * phys_const->const_speed_light_c);
+  const float dimension_coefficient[5] = {1, 2, -3, 0, -5};
+
+  /* This should be ~1.0178085e-37 g cm^2 s^-3 K^-5 */
+  const double compton_coefficient_cgs =
+      compton_coefficient *
+      units_general_cgs_conversion_factor(us, dimension_coefficient);
+
+  /* And now the Compton rate */
+  cooling->compton_rate_cgs =
+      compton_coefficient_cgs * cooling->T_CMB_0 * 
+      cooling->T_CMB_0 * cooling->T_CMB_0 * cooling->T_CMB_0;
+
 }
 
 /**
