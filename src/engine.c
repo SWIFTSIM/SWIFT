@@ -2739,7 +2739,7 @@ void engine_link_gravity_tasks(struct engine *e) {
 
       /* drift -----> gravity --> end_force */
       scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
-      scheduler_addunlock(sched, t, ci->end_force);
+      scheduler_addunlock(sched, t, ci->super->end_force);
     }
 
     /* Otherwise, pair interaction? */
@@ -2787,7 +2787,7 @@ void engine_link_gravity_tasks(struct engine *e) {
 
       /* drift -----> gravity --> end_force */
       scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
-      scheduler_addunlock(sched, t, ci->end_force);
+      scheduler_addunlock(sched, t, ci->super->end_force);
     }
 
     /* Otherwise, sub-pair interaction? */
