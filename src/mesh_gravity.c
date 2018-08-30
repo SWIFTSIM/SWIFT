@@ -224,6 +224,11 @@ void cell_gpart_to_mesh_CIC_mapper(void *map_data, int num, void* extra) {
   /* Pointer to the chunk to be processed */
   int *local_cells = (int *)map_data;
 
+  //MATTHIEU: This could in principle be improved by creating a local mesh
+  //          with just the extent required for the cell. Assignment can
+  //          then be done without atomics. That local mesh is then added
+  //          atomically to the global one.
+
   /* Loop over the elements assigned to this thread */
   for (int i = 0; i < num; ++i) {
 
@@ -349,6 +354,7 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
  *
  * @param mesh The #pm_mesh used to store the potential.
  * @param s The #space containing the particles.
+ * @param tp The #threadpool object used for parallelisation.
  * @param verbose Are we talkative?
  */
 void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
