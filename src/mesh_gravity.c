@@ -110,14 +110,22 @@ __attribute__((always_inline)) INLINE static void CIC_set(
     double dx, double dy, double dz, double value) {
 
   /* Classic CIC interpolation */
-  mesh[row_major_id_periodic(i + 0, j + 0, k + 0, N)] += value * tx * ty * tz;
-  mesh[row_major_id_periodic(i + 0, j + 0, k + 1, N)] += value * tx * ty * dz;
-  mesh[row_major_id_periodic(i + 0, j + 1, k + 0, N)] += value * tx * dy * tz;
-  mesh[row_major_id_periodic(i + 0, j + 1, k + 1, N)] += value * tx * dy * dz;
-  mesh[row_major_id_periodic(i + 1, j + 0, k + 0, N)] += value * dx * ty * tz;
-  mesh[row_major_id_periodic(i + 1, j + 0, k + 1, N)] += value * dx * ty * dz;
-  mesh[row_major_id_periodic(i + 1, j + 1, k + 0, N)] += value * dx * dy * tz;
-  mesh[row_major_id_periodic(i + 1, j + 1, k + 1, N)] += value * dx * dy * dz;
+  atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 0, k + 0, N)],
+               value * tx * ty * tz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 0, k + 1, N)],
+               value * tx * ty * dz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 1, k + 0, N)],
+               value * tx * dy * tz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 1, k + 1, N)],
+               value * tx * dy * dz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 1, j + 0, k + 0, N)],
+               value * dx * ty * tz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 1, j + 0, k + 1, N)],
+               value * dx * ty * dz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 1, j + 1, k + 0, N)],
+               value * dx * dy * tz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 1, j + 1, k + 1, N)],
+               value * dx * dy * dz);
 }
 
 /**
@@ -163,6 +171,26 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho, int N,
 
   /* CIC ! */
   CIC_set(rho, N, i, j, k, tx, ty, tz, dx, dy, dz, mass);
+}
+
+/**
+ * @brief Assigns all the #gpart of a #cell to a density mesh using the CIC
+ * method.
+ *
+ * @param c The #cell.
+ * @param rho The density mesh.
+ * @param N the size of the mesh along one axis.
+ * @param fac The width of a mesh cell.
+ * @param dim The dimensions of the simulation box.
+ */
+void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, int N,
+                            double fac, const double dim[3]) {
+  const int gcount = c->gcount;
+  const struct gpart* gparts = c->gparts;
+
+  /* Assign all the gpart of that cell to the mesh */
+  for (int i = 0; i < gcount; ++i)
+    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim);
 }
 
 /**
@@ -289,6 +317,9 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   const double r_s = mesh->r_s;
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const struct cell* cells = s->cells_top;
+  const int* local_cells = s->local_cells_top;
+  const int nr_local_cells = s->nr_local_cells;
 
   if (r_s <= 0.) error("Invalid value of a_smooth");
 
@@ -319,9 +350,10 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   /* Zero everything */
   bzero(rho, N * N * N * sizeof(double));
 
-  /* Do a CIC mesh assignment of the gparts */
-  for (size_t i = 0; i < s->nr_gparts; ++i)
-    gpart_to_mesh_CIC(&s->gparts[i], rho, N, cell_fac, dim);
+  /* Do a CIC mesh assignment of the gparts by looping over local top-level
+   * cells */
+  for (int k = 0; k < nr_local_cells; k++)
+    cell_gpart_to_mesh_CIC(&cells[local_cells[k]], rho, N, cell_fac, dim);
 
   if (verbose)
     message("Gpart assignment took %.3f %s.",
