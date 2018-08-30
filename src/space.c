@@ -400,8 +400,8 @@ void space_regrid(struct space *s, int verbose) {
     bzero(s->local_cells_top, s->nr_cells * sizeof(int));
 
     /* Allocate the indices of local cells with tasks */
-    if (posix_memalign((void **)&s->local_cells_with_tasks_top, SWIFT_STRUCT_ALIGNMENT,
-                       s->nr_cells * sizeof(int)) != 0)
+    if (posix_memalign((void **)&s->local_cells_with_tasks_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of local top-level cells.");
     bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
 
@@ -2360,7 +2360,8 @@ void space_list_cells_with_tasks(struct space *s) {
       s->nr_local_cells_with_tasks++;
     }
   if (s->e->verbose)
-    message("Have %d local top-level cells with tasks (total=%d)", s->nr_local_cells_with_tasks, s->nr_cells);
+    message("Have %d local top-level cells with tasks (total=%d)",
+            s->nr_local_cells_with_tasks, s->nr_cells);
 }
 
 /**
@@ -2375,13 +2376,14 @@ void space_list_local_cells(struct space *s) {
   s->nr_local_cells = 0;
 
   for (int i = 0; i < s->nr_cells; ++i)
-    if(s->cells_top[i].nodeID == engine_rank) {
+    if (s->cells_top[i].nodeID == engine_rank) {
       s->local_cells_top[s->nr_local_cells] = i;
       s->nr_local_cells++;
     }
 
   if (s->e->verbose)
-    message("Have %d local top-level cells (total=%d)", s->nr_local_cells, s->nr_cells);
+    message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
+            s->nr_cells);
 }
 
 void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,

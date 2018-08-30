@@ -106,7 +106,7 @@ struct space {
   /*! Total number of cells (top- and sub-) */
   int tot_cells;
 
-  /*! Number of *local* top-level cells */ 
+  /*! Number of *local* top-level cells */
   int nr_local_cells;
 
   /*! Number of *local* top-level cells with tasks */

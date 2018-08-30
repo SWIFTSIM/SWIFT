@@ -194,11 +194,12 @@ void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, int N,
 }
 
 /**
- * @brief Shared information about the mesh to be used by all the threads in the pool.
+ * @brief Shared information about the mesh to be used by all the threads in the
+ * pool.
  */
-struct cic_mapper_data{
-  const struct cell *cells;
-  double *rho;
+struct cic_mapper_data {
+  const struct cell* cells;
+  double* rho;
   int N;
   double fac;
   double dim[3];
@@ -211,29 +212,29 @@ struct cic_mapper_data{
  * @param num The number of cells in the chunk.
  * @param extra The information about the mesh and cells.
  */
-void cell_gpart_to_mesh_CIC_mapper(void *map_data, int num, void* extra) {
+void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
 
   /* Unpack the shared information */
-  const struct cic_mapper_data *data = (struct cic_mapper_data*) extra;
-  const struct cell *cells = data->cells;
-  double *rho = data->rho;
+  const struct cic_mapper_data* data = (struct cic_mapper_data*)extra;
+  const struct cell* cells = data->cells;
+  double* rho = data->rho;
   const int N = data->N;
   const double fac = data->fac;
   const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
 
   /* Pointer to the chunk to be processed */
-  int *local_cells = (int *)map_data;
+  int* local_cells = (int*)map_data;
 
-  //MATTHIEU: This could in principle be improved by creating a local mesh
-  //          with just the extent required for the cell. Assignment can
-  //          then be done without atomics. That local mesh is then added
-  //          atomically to the global one.
+  // MATTHIEU: This could in principle be improved by creating a local mesh
+  //           with just the extent required for the cell. Assignment can
+  //           then be done without atomics. That local mesh is then added
+  //           atomically to the global one.
 
   /* Loop over the elements assigned to this thread */
   for (int i = 0; i < num; ++i) {
 
     /* Pointer to local cell */
-    const struct cell *c = &cells[local_cells[i]];
+    const struct cell* c = &cells[local_cells[i]];
 
     /* Assign this cell's content to the mesh */
     cell_gpart_to_mesh_CIC(c, rho, N, fac, dim);
@@ -358,7 +359,7 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
  * @param verbose Are we talkative?
  */
 void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
-                               struct threadpool *tp, int verbose) {
+                               struct threadpool* tp, int verbose) {
 
 #ifdef HAVE_FFTW
 
@@ -409,8 +410,8 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
 
   /* Do a parallel CIC mesh assignment of the gparts but only using
      the local top-level cells */
-  threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*) local_cells,
-		 nr_local_cells, sizeof(int), 0, (void*) &data);
+  threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
+                 nr_local_cells, sizeof(int), 0, (void*)&data);
 
   if (verbose)
     message("Gpart assignment took %.3f %s.",
