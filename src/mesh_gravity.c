@@ -194,6 +194,48 @@ void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, int N,
 }
 
 /**
+ * @brief Shared information about the mesh to be used by all the threads in the pool.
+ */
+struct cic_mapper_data{
+  const struct cell *cells;
+  double *rho;
+  int N;
+  double fac;
+  double dim[3];
+};
+
+/**
+ * @brief Threadpool mapper function for the mesh CIC assignment of a cell.
+ *
+ * @param map_data A chunk of the list of local cells.
+ * @param num The number of cells in the chunk.
+ * @param extra The information about the mesh and cells.
+ */
+void cell_gpart_to_mesh_CIC_mapper(void *map_data, int num, void* extra) {
+
+  /* Unpack the shared information */
+  const struct cic_mapper_data *data = (struct cic_mapper_data*) extra;
+  const struct cell *cells = data->cells;
+  double *rho = data->rho;
+  const int N = data->N;
+  const double fac = data->fac;
+  const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
+
+  /* Pointer to the chunk to be processed */
+  int *local_cells = (int *)map_data;
+
+  /* Loop over the elements assigned to this thread */
+  for (int i = 0; i < num; ++i) {
+
+    /* Pointer to local cell */
+    const struct cell *c = &cells[local_cells[i]];
+
+    /* Assign this cell's content to the mesh */
+    cell_gpart_to_mesh_CIC(c, rho, N, fac, dim);
+  }
+}
+
+/**
  * @brief Computes the potential on a gpart from a given mesh using the CIC
  * method.
  *
@@ -310,14 +352,13 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
  * @param verbose Are we talkative?
  */
 void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
-                               int verbose) {
+                               struct threadpool *tp, int verbose) {
 
 #ifdef HAVE_FFTW
 
   const double r_s = mesh->r_s;
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const struct cell* cells = s->cells_top;
   const int* local_cells = s->local_cells_top;
   const int nr_local_cells = s->nr_local_cells;
 
@@ -350,10 +391,20 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   /* Zero everything */
   bzero(rho, N * N * N * sizeof(double));
 
-  /* Do a CIC mesh assignment of the gparts by looping over local top-level
-   * cells */
-  for (int k = 0; k < nr_local_cells; k++)
-    cell_gpart_to_mesh_CIC(&cells[local_cells[k]], rho, N, cell_fac, dim);
+  /* Gather the mesh shared information to be used by the threads */
+  struct cic_mapper_data data;
+  data.cells = s->cells_top;
+  data.rho = rho;
+  data.N = N;
+  data.fac = cell_fac;
+  data.dim[0] = dim[0];
+  data.dim[1] = dim[1];
+  data.dim[2] = dim[2];
+
+  /* Do a parallel CIC mesh assignment of the gparts but only using
+     the local top-level cells */
+  threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*) local_cells,
+		 nr_local_cells, sizeof(int), 0, (void*) &data);
 
   if (verbose)
     message("Gpart assignment took %.3f %s.",
