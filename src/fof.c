@@ -39,7 +39,9 @@
 #include "proxy.h"
 #include "common_io.h"
 
+#ifdef WITH_MPI
 MPI_Datatype fof_mpi_type;
+#endif
 FILE *fof_file;
 int node_offset;
 
@@ -277,11 +279,12 @@ static void rec_fof_search_pair(struct cell *ci, struct cell *cj, struct space *
 
 }
 
+#ifdef WITH_MPI
 /* Recurse on a pair of cells (one local, one foreign) and perform a FOF search between cells that are within
  * range. */
 static void rec_fof_search_pair_foreign(struct cell *ci, struct cell *cj, struct space *s,
                            const double *dim,
-                           const double search_r2, int *link_count, struct fof_mpi *group_links) {
+                           const double search_r2, int *link_count, struct fof_mpi **group_links, int *group_links_size) {
 
   /* Find the shortest distance between cells, remembering to account for
    * boundary conditions. */
@@ -297,50 +300,18 @@ static void rec_fof_search_pair_foreign(struct cell *ci, struct cell *cj, struct
 
         for (int l = 0; l < 8; l++)
           if (cj->progeny[l] != NULL)
-            rec_fof_search_pair_foreign(ci->progeny[k], cj->progeny[l], s, dim, search_r2, link_count, group_links);
+            rec_fof_search_pair_foreign(ci->progeny[k], cj->progeny[l], s, dim, search_r2, link_count, group_links, group_links_size);
       }
     }
   }
   /* Perform FOF search between pairs of cells that are within the linking
    * length and not the same cell. */
   else if (ci != cj)
-    fof_search_pair_cells_foreign(s, ci, cj, link_count, group_links);
+    fof_search_pair_cells_foreign(s, ci, cj, link_count, group_links, group_links_size);
   else if (ci == cj) error("Pair FOF called on same cell!!!");
 
 }
-
-/* Recurse on a pair of cells (one local, one foreign) and count the total number of possible links between them. */
-static void rec_fof_search_pair_foreign_count(struct cell *ci, struct cell *cj, struct space *s,
-                           const double *dim,
-                           const double search_r2, size_t *nr_links) {
-
-  /* Find the shortest distance between cells, remembering to account for
-   * boundary conditions. */
-  const double r2 = cell_min_dist(ci, cj, dim);
-
-  /* Return if cells are out of range of each other. */
-  if (r2 > search_r2) return;
-
-  /* Recurse on both cells if they are both split. */
-  if (ci->split && cj->split) {
-    for (int k = 0; k < 8; k++) {
-      if (ci->progeny[k] != NULL) {
-
-        for (int l = 0; l < 8; l++)
-          if (cj->progeny[l] != NULL)
-            rec_fof_search_pair_foreign_count(ci->progeny[k], cj->progeny[l], s, dim, search_r2, nr_links);
-      }
-    }
-  }
-  /* Perform FOF search between pairs of cells that are within the linking
-   * length and not the same cell. */
-  else if (ci != cj) {
-    *nr_links += ci->gcount * cj->gcount;
-    return;
-  }
-  else if (ci == cj) error("Pair FOF called on same cell!!!");
-
-}
+#endif
 
 /* Recurse on a cell and perform a FOF search between cells that are within
  * range. */
@@ -499,7 +470,7 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
 
 /* Perform a FOF search between a local and foreign cell using the Union-Find algorithm. 
  * Store any links found between particles.*/
-void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell *cj, int *link_count, struct fof_mpi *group_links ) {
+void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell *cj, int *link_count, struct fof_mpi **group_links, int *group_links_size) {
 
   const size_t count_i = ci->gcount;
   const size_t count_j = cj->gcount;
@@ -574,19 +545,32 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
           int found = 0;
   
           /* Check that the links have not already been added to the list. */
-          for(size_t l=0; l<*link_count; l++) {
-            if(group_links[l].group_i == root_i && group_links[l].group_j == pj->root) found = 1;
+          for(int l=0; l<*link_count; l++) {
+            if((*group_links)[l].group_i == root_i && (*group_links)[l].group_j == pj->root) found = 1;
           }
 
           if(!found) {
+            
+            /* If the group_links array is not big enough re-allocate it. */
+            if(*link_count + 1 > *group_links_size) {
+
+              int new_size = *group_links_size + 0.1 * (double)(*group_links_size);
+
+              *group_links_size = new_size;
+              
+              (*group_links) = (struct fof_mpi *)realloc(*group_links, new_size * sizeof(struct fof_mpi)); 
+
+              message("Re-allocating group links from %d to %d elements.", *link_count, new_size);
+            }
+
             /* Store the particle group properties for communication. */
-            group_links[*link_count].group_i = root_i;        
-            group_links[*link_count].group_j = pj->root;        
-            group_links[*link_count].group_i_size = group_size[root_i - node_offset];
-            group_links[*link_count].group_i_mass = group_mass[root_i - node_offset];
-            group_links[*link_count].group_i_CoM.x = group_CoM[root_i - node_offset].x;
-            group_links[*link_count].group_i_CoM.y = group_CoM[root_i - node_offset].y;
-            group_links[*link_count].group_i_CoM.z = group_CoM[root_i - node_offset].z;
+            (*group_links)[*link_count].group_i = root_i;        
+            (*group_links)[*link_count].group_j = pj->root;        
+            (*group_links)[*link_count].group_i_size = group_size[root_i - node_offset];
+            (*group_links)[*link_count].group_i_mass = group_mass[root_i - node_offset];
+            (*group_links)[*link_count].group_i_CoM.x = group_CoM[root_i - node_offset].x;
+            (*group_links)[*link_count].group_i_CoM.y = group_CoM[root_i - node_offset].y;
+            (*group_links)[*link_count].group_i_CoM.z = group_CoM[root_i - node_offset].z;
             (*link_count)++;
           }
         
@@ -748,7 +732,7 @@ void fof_search_tree_mapper(void *map_data, int num_elements,
 
   /* Loop over cells and find which cells are in range of each other to perform
    * the FOF search. */
-  for (size_t ind = 0; ind < num_elements; ind++) {
+  for (int ind = 0; ind < num_elements; ind++) {
     
     /* Get the cell. */
     struct cell *restrict ci = &cells[ind];
@@ -795,75 +779,29 @@ void fof_search_foreign_cells(struct space *s) {
   int *group_size = s->fof_data.group_size;
   double *group_mass = s->fof_data.group_mass;
   struct fof_CoM *group_CoM = s->fof_data.group_CoM;
-  const int nr_gparts = s->nr_gparts;
+  const size_t nr_gparts = s->nr_gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->l_x2;
 
   message("Searching foreign cells for links.");
 
-  size_t nr_links = 0;
-  int interface_cell_count = 0;
-
   /* Make group IDs globally unique. */  
   for (size_t i = 0; i < nr_gparts; i++) group_index[i] += node_offset;
-
-  /* Loop over the proxies and find local cells that touch foreign cells. Calculate the total number of possible links between these cells. */
-  for(int i=0; i<e->nr_proxies; i++) {
-
-    for(int j=0; j<e->proxies[i].nr_cells_out; j++) {
-
-      /* Skip non-gravity cells. */
-      if(e->proxies[i].cells_out_type[j] != proxy_cell_type_gravity) continue; 
-
-      struct cell *restrict local_cell = e->proxies[i].cells_out[j];
-      int found = 0;
-
-      /* Skip empty cells. */
-      if(local_cell->gcount == 0) continue;
-
-      for(int k=0; k<e->proxies[i].nr_cells_in; k++) {
-      
-        /* Skip non-gravity cells. */
-        if(e->proxies[i].cells_in_type[k] != proxy_cell_type_gravity) continue; 
-      
-        struct cell *restrict foreign_cell = e->proxies[i].cells_in[k];
-      
-        /* Skip empty cells. */
-        if(foreign_cell->gcount == 0) continue;
-        
-        /* Assume there are only links between cells that touch. */
-        const double r2 = cell_min_dist(local_cell, foreign_cell, dim);
-        if(r2 < search_r2) {        
-          rec_fof_search_pair_foreign_count(local_cell, foreign_cell, s, dim, search_r2, &nr_links);
-          
-          /* Only count the local cell once.  */
-          if(!found) {
-            interface_cell_count++;
-            found = 1;
-          }
-        }
-      }
-    }
-  }
-
-  message("Rank: %d, Total no. of possible links: %zu, cells touching: %d", engine_rank, nr_links, interface_cell_count);
-
+  
+  int group_links_size = 20000;
+  int interface_cell_size = 4000;
   struct fof_mpi *group_links;
-  int group_link_count = 0;
   struct cell **interface_cells;
-
-  nr_links = 100000;
+  int group_link_count = 0;
+  int interface_cell_count = 0;
 
   if (posix_memalign((void**)&group_links, SWIFT_STRUCT_ALIGNMENT,
-                       nr_links * sizeof(struct fof_mpi)) != 0)
+                       group_links_size * sizeof(struct fof_mpi)) != 0)
     error("Error while allocating memory for FOF links over an MPI domain");
 
   if (posix_memalign((void**)&interface_cells, SWIFT_STRUCT_ALIGNMENT,
-                       interface_cell_count * sizeof(struct cell *)) != 0)
+                       interface_cell_size * sizeof(struct cell *)) != 0)
     error("Error while allocating memory for FOF interface cells");
-  
-  /* Use to index interface_cell array */
-  interface_cell_count = 0;
 
   /* Loop over cells_in and cells_out for each proxy and find which cells are in range of each other to perform
    * the FOF search. Store local cells that are touching foreign cells in a list. */
@@ -893,7 +831,19 @@ void fof_search_foreign_cells(struct space *s) {
         
         /* Check if local cell has already been added to the local list of cells. */
         const double r2 = cell_min_dist(local_cell, foreign_cell, dim);
-        if(r2 < search_r2) {        
+        if(r2 < search_r2) {
+
+          /* If the interface_cells array is not big enough re-allocate it. */
+          if(interface_cell_count + 1 > interface_cell_size) {
+            
+            int new_size = interface_cell_size + 0.1 * (double)interface_cell_size;
+            
+            interface_cell_size = new_size;
+            interface_cells = (struct cell **)realloc(interface_cells, new_size * sizeof(struct cell *)); 
+            
+            message("Re-allocating interface cells from %d to %d elements.", interface_cell_count, new_size);
+          }
+
           interface_cells[interface_cell_count++] = local_cell;
           break;
         }
@@ -964,7 +914,7 @@ void fof_search_foreign_cells(struct space *s) {
         /* Skip empty cells. */
         if(foreign_cell->gcount == 0) continue;
 
-        rec_fof_search_pair_foreign(local_cell, foreign_cell, s, dim, search_r2, &group_link_count, group_links);
+        rec_fof_search_pair_foreign(local_cell, foreign_cell, s, dim, search_r2, &group_link_count, &group_links, &group_links_size);
 
       }
     }
@@ -1445,7 +1395,8 @@ void fof_search_tree(struct space *s) {
 void fof_dump_group_data(char *out_file, struct space *s) {
 
   FILE *file = fopen(out_file, "w");
-  const int min_group_size = s->fof_data.min_group_size, nr_gparts = s->nr_gparts;
+  const int min_group_size = s->fof_data.min_group_size;
+  const size_t nr_gparts = s->nr_gparts;
 
   int *group_index = s->fof_data.group_index;
   int *group_size = s->fof_data.group_size;
@@ -1457,6 +1408,8 @@ void fof_dump_group_data(char *out_file, struct space *s) {
   fprintf(file, "# %7s %7s %7s %7s %7s %7s %7s %7s\n", "ID", "Root ID", "Group Size", "Group Mass", "x CoM", "y CoM", "z CoM", "Group ID");
   fprintf(file, "#---------------------------------------\n");
 
+  /* TODO: Order groups in descending order. */
+  /* TODO: Set particle group ID in particle struct. */
   for (size_t i = 0; i < nr_gparts; i++) {
     if(group_size[i] >= min_group_size) {
       const int root = fof_find_global(i - node_offset, group_index);
