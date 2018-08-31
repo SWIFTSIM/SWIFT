@@ -1551,11 +1551,19 @@ INLINE static void gravity_M2M(struct multipole *m_a,
 #endif
 }
 
+/**
+ * @brief Compute the field tensors due to a multipole.
+ *
+ * Corresponds to equation (28b).
+ *
+ * @param l_b The field tensor to compute.
+ * @param m_a The multipole creating the field.
+ * @param pot The derivatives of the potential.
+ */
 INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
-				     const struct multipole *m_a,
-				     struct potential_derivatives_M2L pot){
+                                     const struct multipole *m_a,
+                                     struct potential_derivatives_M2L pot) {
 
-  
 #ifdef SWIFT_DEBUG_CHECKS
   /* Count interactions */
   l_b->num_interacted += m_a->num_gpart;
@@ -1887,12 +1895,10 @@ INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
 }
 
 /**
- * @brief Compute the field tensors due to a multipole.
- *
- * Corresponds to equation (28b).
+ * @brief Compute the field tensor due to a multipole.
  *
  * @param l_b The field tensor to compute.
- * @param m_a The multipole creating the field.
+ * @param m_a The multipole.
  * @param pos_b The position of the field tensor.
  * @param pos_a The position of the multipole.
  * @param props The #gravity_props of this calculation.
@@ -1900,11 +1906,10 @@ INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
  * @param dim The size of the simulation box.
  * @param rs_inv The inverse of the gravity mesh-smoothing scale.
  */
-INLINE static void gravity_M2L_nonsym(struct grav_tensor *l_b,
-				      const struct multipole *m_a,
-				      const double pos_b[3], const double pos_a[3],
-				      const struct gravity_props *props, int periodic,
-				      const double dim[3], float rs_inv) {
+INLINE static void gravity_M2L_nonsym(
+    struct grav_tensor *l_b, const struct multipole *m_a, const double pos_b[3],
+    const double pos_a[3], const struct gravity_props *props, int periodic,
+    const double dim[3], float rs_inv) {
 
   /* Recover some constants */
   const float eps = props->epsilon_cur;
@@ -1935,14 +1940,27 @@ INLINE static void gravity_M2L_nonsym(struct grav_tensor *l_b,
   gravity_M2L_apply(l_b, m_a, pot);
 }
 
-
-INLINE static void gravity_M2L_symmetric(struct grav_tensor *l_a,
-					 struct grav_tensor *l_b,
-					 const struct multipole *m_a,
-					 const struct multipole *m_b,
-					 const double pos_b[3], const double pos_a[3],
-					 const struct gravity_props *props, int periodic,
-					 const double dim[3], float rs_inv) {
+/**
+ * @brief Compute the field tensor due to a multipole and the symmetric
+ * equivalent.
+ *
+ * @param l_a The first field tensor to compute.
+ * @param l_b The second field tensor to compute.
+ * @param m_a The first multipole.
+ * @param m_b The second multipole.
+ * @param pos_b The position of the first m-pole and field tensor.
+ * @param pos_a The position of the second m-pole and field tensor.
+ * @param props The #gravity_props of this calculation.
+ * @param periodic Is the calculation periodic ?
+ * @param dim The size of the simulation box.
+ * @param rs_inv The inverse of the gravity mesh-smoothing scale.
+ */
+INLINE static void gravity_M2L_symmetric(
+    struct grav_tensor *l_a, struct grav_tensor *l_b,
+    const struct multipole *m_a, const struct multipole *m_b,
+    const double pos_b[3], const double pos_a[3],
+    const struct gravity_props *props, int periodic, const double dim[3],
+    float rs_inv) {
 
   /* Recover some constants */
   const float eps = props->epsilon_cur;
@@ -1972,10 +1990,10 @@ INLINE static void gravity_M2L_symmetric(struct grav_tensor *l_a,
   /* Do the first M2L tensor multiplication */
   gravity_M2L_apply(l_b, m_a, pot);
 
-  /* Flip the signs */
+  /* Flip the signs of odd derivatives */
   potential_derivatives_flip_signs(&pot);
-  
-  /* Do the first M2L tensor multiplication */
+
+  /* Do the second M2L tensor multiplication */
   gravity_M2L_apply(l_a, m_b, pot);
 }
 

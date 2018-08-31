@@ -125,6 +125,15 @@ struct potential_derivatives_M2P {
 #endif
 };
 
+/**
+ * @brief Converts the derivatives from a distance vector to its opposite.
+ *
+ * From a series of tensors D_xxx(\vec{r}), compute D_xxx(-\vec{r}).
+ * This can be computed efficiently by flipping the sign of all the odd
+ * derivative terms.
+ *
+ * @param pot The derivatives of the potential.
+ */
 __attribute__((always_inline)) INLINE static void
 potential_derivatives_flip_signs(struct potential_derivatives_M2L *pot) {
 
@@ -150,10 +159,29 @@ potential_derivatives_flip_signs(struct potential_derivatives_M2L *pot) {
 #endif
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-  //MATTHIEU
-  error("oo");
+  /* 5th order terms */
+  pot->D_500 = -pot->D_500;
+  pot->D_050 = -pot->D_050;
+  pot->D_005 = -pot->D_005;
+  pot->D_410 = -pot->D_410;
+  pot->D_401 = -pot->D_401;
+  pot->D_041 = -pot->D_041;
+  pot->D_140 = -pot->D_140;
+  pot->D_014 = -pot->D_014;
+  pot->D_104 = -pot->D_104;
+  pot->D_320 = -pot->D_320;
+  pot->D_302 = -pot->D_302;
+  pot->D_032 = -pot->D_032;
+  pot->D_230 = -pot->D_230;
+  pot->D_023 = -pot->D_023;
+  pot->D_203 = -pot->D_203;
+  pot->D_311 = -pot->D_311;
+  pot->D_131 = -pot->D_131;
+  pot->D_113 = -pot->D_113;
+  pot->D_122 = -pot->D_122;
+  pot->D_212 = -pot->D_212;
+  pot->D_221 = -pot->D_221;
 #endif
-  
 }
 
 /**

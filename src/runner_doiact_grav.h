@@ -642,8 +642,10 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
   TIMER_TIC;
 
   /* Record activity status */
-  const int ci_active = cell_is_active_gravity(ci, e) && (ci->nodeID == e->nodeID);
-  const int cj_active = cell_is_active_gravity(cj, e) && (cj->nodeID == e->nodeID);
+  const int ci_active =
+      cell_is_active_gravity(ci, e) && (ci->nodeID == e->nodeID);
+  const int cj_active =
+      cell_is_active_gravity(cj, e) && (cj->nodeID == e->nodeID);
 
   /* Anything to do here? */
   if (!ci_active && !cj_active) return;
@@ -1131,8 +1133,8 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
  * @param cj The second #cell.
  */
 static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
-						   struct cell *restrict ci,
-						   struct cell *restrict cj) {
+                                                   struct cell *restrict ci,
+                                                   struct cell *restrict cj) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1160,7 +1162,7 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
 
   if (multi_j->num_gpart == 0)
     error("Multipole j does not seem to have been set.");
-  
+
   if (ci->multipole->pot.ti_init != e->ti_current)
     error("ci->grav tensor not initialised.");
 
@@ -1180,13 +1182,12 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
         cj->ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 #endif
 
-  
   /* Let's interact at this level */
-  gravity_M2L_symmetric(&ci->multipole->pot, &cj->multipole->pot, multi_i, multi_j, ci->multipole->CoM,
-			cj->multipole->CoM, props, periodic, dim, r_s_inv);
-  
+  gravity_M2L_symmetric(&ci->multipole->pot, &cj->multipole->pot, multi_i,
+                        multi_j, ci->multipole->CoM, cj->multipole->CoM, props,
+                        periodic, dim, r_s_inv);
 
-  TIMER_TOC(timer_dopair_grav_mm);  
+  TIMER_TOC(timer_dopair_grav_mm);
 }
 
 /**
@@ -1198,8 +1199,8 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
  * @param cj The #cell with the multipole.
  */
 static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
-						struct cell *restrict ci,
-						struct cell *restrict cj) {
+                                                struct cell *restrict ci,
+                                                struct cell *restrict cj) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1234,7 +1235,7 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
 
   /* Let's interact at this level */
   gravity_M2L_nonsym(&ci->multipole->pot, multi_j, ci->multipole->CoM,
-		     cj->multipole->CoM, props, periodic, dim, r_s_inv);
+                     cj->multipole->CoM, props, periodic, dim, r_s_inv);
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
@@ -1246,9 +1247,8 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-static INLINE void runner_dopair_grav_mm(struct runner *r,
-					 struct cell *ci,
-					 struct cell *cj) {
+static INLINE void runner_dopair_grav_mm(struct runner *r, struct cell *ci,
+                                         struct cell *cj) {
 
   const struct engine *e = r->e;
 
