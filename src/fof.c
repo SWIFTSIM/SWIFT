@@ -65,7 +65,10 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts) {
   /* Calculate the particle linking length based upon the mean inter-particle
    * spacing of the DM particles. */
   const int total_nr_dmparts = Ngparts - Ngas;
-  const double l_x = l_x_scale * (s->dim[0] / cbrt(total_nr_dmparts));
+  double l_x = l_x_scale * (s->dim[0] / cbrt(total_nr_dmparts));
+
+  l_x = parser_get_opt_param_double(e->parameter_file, "FOF:absolute_linking_length", l_x);
+
   s->l_x2 = l_x * l_x;
 
 #ifdef WITH_MPI
@@ -902,9 +905,6 @@ void fof_search_foreign_cells(struct space *s) {
 
     struct cell *restrict local_cell = interface_cells[i];
       
-    /* Skip empty cells. */
-    if(local_cell->gcount == 0) continue;
-
     for(int j=0; j<e->nr_proxies; j++) {
 
       for(int k=0; k<e->proxies[j].nr_cells_in; k++) {
@@ -1018,12 +1018,9 @@ void fof_search_foreign_cells(struct space *s) {
     if(!found_i) {
       global_group_size[group_count] += global_group_links[i].group_i_size;
       global_group_mass[group_count] += global_group_links[i].group_i_mass;
-      
-      /* TODO: The CoM of groups linked across MPI domains will not be wrapped correctly as each rank will centre it within their own domain first.*/
       global_group_CoM[group_count].x += global_group_links[i].group_i_CoM.x;
       global_group_CoM[group_count].y += global_group_links[i].group_i_CoM.y;
       global_group_CoM[group_count].z += global_group_links[i].group_i_CoM.z;
-
       global_group_id[group_count++] = group_i;
     }
     
@@ -1031,10 +1028,9 @@ void fof_search_foreign_cells(struct space *s) {
       /* Need to search for group_j sizes as the group size is only known on the local node. */
       for(int j=0; j<global_group_link_count; j++) {
         if(global_group_links[j].group_i == group_j) {
+          
           global_group_size[group_count] += global_group_links[j].group_i_size;
           global_group_mass[group_count] += global_group_links[j].group_i_mass;
-      
-          /* TODO: The CoM of groups linked across MPI domains will not be wrapped correctly as each rank will centre it within their own domain first.*/
           global_group_CoM[group_count].x += global_group_links[j].group_i_CoM.x;
           global_group_CoM[group_count].y += global_group_links[j].group_i_CoM.y;
           global_group_CoM[group_count].z += global_group_links[j].group_i_CoM.z;
@@ -1051,21 +1047,6 @@ void fof_search_foreign_cells(struct space *s) {
   /* Create a global_group_index list of groups across MPI domains so that you can perform a union-find locally on each node. */
   /* The value of which is an offset into global_group_id, which is the actual root. */
   for(int i=0; i<group_count; i++) global_group_index[i] = i;
-
-  /* Save group links for each rank to a file. */
-  //char fof_map_filename[200] = "group_map";
-  //sprintf(fof_map_filename + strlen(fof_map_filename), "_%d.dat",
-  //    engine_rank);
-  //
-  //fof_file = fopen(fof_map_filename, "w");
-  //fprintf(fof_file, "# %7s %7s %7s %7s\n", "Index", "Group ID", "Group Size", "Group Mass");
-  //fprintf(fof_file, "#-------------------------------\n");
-
-  //for(int i=0; i<group_count; i++) {
-  //  fprintf(fof_file, "  %7d %7d %7d %7e\n", global_group_index[i], global_group_id[i], global_group_size[i], global_group_mass[i]);
-  //}
-  //
-  //fclose(fof_file);
 
   /* Perform a union-find on the group links. */
   for(int i=0; i<global_group_link_count; i++) {
