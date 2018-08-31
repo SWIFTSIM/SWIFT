@@ -65,14 +65,13 @@ SPH:
 
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
-  min_group_size:         20          # The minimum no. of particles required for a group.
-  linking_length_scale:   0.2         # Scales the linking length.
-  basename:               fof_output  # Common part of the name of output files
+  min_group_size:           20          # The minimum no. of particles required for a group.
+  linking_length_scale:     0.2         # Scales the linking length.
+  #absolute_linking_length:  0.2         # Absolute linking length. Overrides default value of using the linking_length_scale parameter and the mean inter-particle separation.
+  basename:                 fof_output  # Common part of the name of output files
 
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./EAGLE_ICs_6.hdf5     # The file to read
   cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
   cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
-
-
