@@ -65,10 +65,12 @@ SPH:
 
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
-  min_group_size:           20          # The minimum no. of particles required for a group.
-  linking_length_scale:     0.2         # Scales the linking length.
-  #absolute_linking_length:  0.2         # Absolute linking length. Overrides default value of using the linking_length_scale parameter and the mean inter-particle separation.
-  basename:                 fof_output  # Common part of the name of output files
+  min_group_size:                 20          # The minimum no. of particles required for a group.
+  linking_length_scale:           0.2         # Scales the linking length.
+  #group_links_size_default:       20000       # Sets the initial size of the group_links array, which is used to store links across MPI domains.
+  #interface_cells_size_default:   4000        # Sets the initial size of the interface_cells array, which is used to store a list of local cells that touch foreign cells.
+  #absolute_linking_length:       0.2         # Absolute linking length. Overrides default value of using the linking_length_scale parameter and the mean inter-particle separation.
+  basename:                       fof_output  # Common part of the name of output files
 
 # Parameters related to the initial conditions
 InitialConditions:

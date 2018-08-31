@@ -59,7 +59,10 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts) {
     error("Cannot write FOF outputs in directory %s (%s)", dirp, strerror(errno));
   }
 
+  /* Read the minimum group size. */
   s->fof_data.min_group_size = parser_get_opt_param_int(e->parameter_file, "FOF:min_group_size", 20);
+  
+  /* Read the linking length scale. */
   const double l_x_scale = parser_get_opt_param_double(e->parameter_file, "FOF:linking_length_scale", 0.2);
 
   /* Calculate the particle linking length based upon the mean inter-particle
@@ -70,6 +73,12 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts) {
   l_x = parser_get_opt_param_double(e->parameter_file, "FOF:absolute_linking_length", l_x);
 
   s->l_x2 = l_x * l_x;
+
+  /* Read the initial group_links array size. */
+  s->fof_data.group_links_size_default = parser_get_opt_param_double(e->parameter_file, "FOF:group_links_size_default", 20000);
+  
+  /* Read the initial interface cells array size. */
+  s->fof_data.interface_cells_size_default = parser_get_opt_param_double(e->parameter_file, "FOF:interface_cells_size_default", 4000);
 
 #ifdef WITH_MPI
   /* Check size of linking length against the top-level cell dimensions. */
@@ -557,7 +566,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
             /* If the group_links array is not big enough re-allocate it. */
             if(*link_count + 1 > *group_links_size) {
 
-              int new_size = *group_links_size + 0.1 * (double)(*group_links_size);
+              int new_size = *group_links_size + ceil(0.1 * (double)(*group_links_size));
 
               *group_links_size = new_size;
               
@@ -791,8 +800,8 @@ void fof_search_foreign_cells(struct space *s) {
   /* Make group IDs globally unique. */  
   for (size_t i = 0; i < nr_gparts; i++) group_index[i] += node_offset;
   
-  int group_links_size = 20000;
-  int interface_cell_size = 4000;
+  int group_links_size = s->fof_data.group_links_size_default;
+  int interface_cell_size = s->fof_data.interface_cells_size_default;
   struct fof_mpi *group_links;
   struct cell **interface_cells;
   int group_link_count = 0;
@@ -839,7 +848,7 @@ void fof_search_foreign_cells(struct space *s) {
           /* If the interface_cells array is not big enough re-allocate it. */
           if(interface_cell_count + 1 > interface_cell_size) {
             
-            int new_size = interface_cell_size + 0.1 * (double)interface_cell_size;
+            int new_size = interface_cell_size + ceil(0.1 * (double)interface_cell_size);
             
             interface_cell_size = new_size;
             interface_cells = (struct cell **)realloc(interface_cells, new_size * sizeof(struct cell *)); 

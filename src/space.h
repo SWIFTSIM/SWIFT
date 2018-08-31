@@ -55,6 +55,8 @@ struct fof {
   double *group_mass;
   struct fof_CoM *group_CoM;
   int min_group_size;
+  int group_links_size_default;
+  int interface_cells_size_default;
   char base_name[PARSER_MAX_LINE_SIZE];
 
 } SWIFT_STRUCT_ALIGN;
