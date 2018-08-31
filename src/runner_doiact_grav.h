@@ -1122,6 +1122,11 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   TIMER_TOC(timer_doself_grav_pp);
 }
 
+static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
+						   struct cell *restrict ci,
+						   struct cell *restrict cj) {
+}
+
 /**
  * @brief Computes the interaction of the field tensor in a cell with the
  * multipole of another cell.
@@ -1130,9 +1135,9 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
  * @param ci The #cell with field tensor to interact.
  * @param cj The #cell with the multipole.
  */
-static INLINE void runner_dopair_grav_mm(struct runner *r,
-                                         struct cell *restrict ci,
-                                         struct cell *restrict cj) {
+static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
+						struct cell *restrict ci,
+						struct cell *restrict cj) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1157,20 +1162,45 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
 
   if (ci->multipole->pot.ti_init != e->ti_current)
     error("ci->grav tensor not initialised.");
-#endif
 
-  /* Do we need to drift the multipole ? */
   if (cj->ti_old_multipole != e->ti_current)
     error(
         "Undrifted multipole cj->ti_old_multipole=%lld cj->nodeID=%d "
         "ci->nodeID=%d e->ti_current=%lld",
         cj->ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
+#endif
 
   /* Let's interact at this level */
   gravity_M2L(&ci->multipole->pot, multi_j, ci->multipole->CoM,
               cj->multipole->CoM, props, periodic, dim, r_s_inv);
 
   TIMER_TOC(timer_dopair_grav_mm);
+}
+
+/**
+ * @brief Call the M-M calculation on two cells if active.
+ *
+ * @param r The #runner object.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+static INLINE void runner_dopair_grav_mm(struct runner *r,
+                                                   struct cell *ci,
+                                                   struct cell *cj) {
+
+  const struct engine *e = r->e;
+
+  int do_i = cell_is_active_gravity_mm(ci, e) && (ci->nodeID == e->nodeID);
+  int do_j = cell_is_active_gravity_mm(cj, e) && (cj->nodeID == e->nodeID);
+
+  if (do_i && do_j)
+    runner_dopair_grav_mm_symmetric(r, ci, cj);
+  else if (do_i)
+    runner_dopair_grav_mm_nonsym(r, ci, cj);
+  else if (do_j)
+    runner_dopair_grav_mm_nonsym(r, cj, ci);
+  else
+    error("Running M-M task with two inactive cells.");
 }
 
 static INLINE void runner_dopair_recursive_grav_pm(struct runner *r,
@@ -1345,9 +1375,8 @@ static INLINE void runner_dopair_recursive_grav(struct runner *r,
   /* Can we use M-M interactions ? */
   if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) {
 
-    /* MATTHIEU: make a symmetric M-M interaction function ! */
+    /* Go M-M */
     runner_dopair_grav_mm(r, ci, cj);
-    runner_dopair_grav_mm(r, cj, ci);
 
   } else if (!ci->split && !cj->split) {
 
@@ -1465,28 +1494,6 @@ static INLINE void runner_doself_recursive_grav(struct runner *r,
   }
 
   if (gettimer) TIMER_TOC(timer_dosub_self_grav);
-}
-
-/**
- * @brief Call the non-symmetric M-M calculation on two cells if active.
- *
- * @param r The #runner object.
- * @param ci The first #cell.
- * @param cj The second #cell.
- */
-static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
-                                                   struct cell *ci,
-                                                   struct cell *cj) {
-
-  const struct engine *e = r->e;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (!cell_is_active_gravity(ci, e) && !cell_is_active_gravity(cj, e))
-    error("Running M-M task with two inactive cells.");
-#endif
-
-  if (cell_is_active_gravity_mm(ci, e)) runner_dopair_grav_mm(r, ci, cj);
-  if (cell_is_active_gravity_mm(cj, e)) runner_dopair_grav_mm(r, cj, ci);
 }
 
 /**
