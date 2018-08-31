@@ -125,6 +125,37 @@ struct potential_derivatives_M2P {
 #endif
 };
 
+__attribute__((always_inline)) INLINE static void
+potential_derivatives_flip_signs(struct potential_derivatives_M2L *pot) {
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+  /* 1st order terms */
+  pot->D_100 = -pot->D_100;
+  pot->D_010 = -pot->D_010;
+  pot->D_001 = -pot->D_001;
+#endif
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+  /* 3rd order terms */
+  pot->D_300 = -pot->D_300;
+  pot->D_030 = -pot->D_030;
+  pot->D_003 = -pot->D_003;
+  pot->D_210 = -pot->D_210;
+  pot->D_201 = -pot->D_201;
+  pot->D_021 = -pot->D_021;
+  pot->D_120 = -pot->D_120;
+  pot->D_012 = -pot->D_012;
+  pot->D_102 = -pot->D_102;
+  pot->D_111 = -pot->D_111;
+#endif
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+  //MATTHIEU
+  error("oo");
+#endif
+  
+}
+
 /**
  * @brief Compute all the relevent derivatives of the softened and truncated
  * gravitational potential for the M2L kernel.
@@ -141,7 +172,7 @@ struct potential_derivatives_M2P {
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
-compute_potential_derivatives_M2L(const float r_x, const float r_y,
+potential_derivatives_compute_M2L(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
                                   const float eps_inv, const int periodic,
@@ -397,7 +428,7 @@ compute_potential_derivatives_M2L(const float r_x, const float r_y,
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
-compute_potential_derivatives_M2P(const float r_x, const float r_y,
+potential_derivatives_compute_M2P(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
                                   const float eps_inv, const int periodic,

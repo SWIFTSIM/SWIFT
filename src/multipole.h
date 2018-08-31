@@ -1551,51 +1551,11 @@ INLINE static void gravity_M2M(struct multipole *m_a,
 #endif
 }
 
-/**
- * @brief Compute the field tensors due to a multipole.
- *
- * Corresponds to equation (28b).
- *
- * @param l_b The field tensor to compute.
- * @param m_a The multipole creating the field.
- * @param pos_b The position of the field tensor.
- * @param pos_a The position of the multipole.
- * @param props The #gravity_props of this calculation.
- * @param periodic Is the calculation periodic ?
- * @param dim The size of the simulation box.
- * @param rs_inv The inverse of the gravity mesh-smoothing scale.
- */
-INLINE static void gravity_M2L(struct grav_tensor *l_b,
-                               const struct multipole *m_a,
-                               const double pos_b[3], const double pos_a[3],
-                               const struct gravity_props *props, int periodic,
-                               const double dim[3], float rs_inv) {
+INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
+				     const struct multipole *m_a,
+				     struct potential_derivatives_M2L pot){
 
-  /* Recover some constants */
-  const float eps = props->epsilon_cur;
-  const float eps_inv = props->epsilon_cur_inv;
-
-  /* Compute distance vector */
-  float dx = (float)(pos_b[0] - pos_a[0]);
-  float dy = (float)(pos_b[1] - pos_a[1]);
-  float dz = (float)(pos_b[2] - pos_a[2]);
-
-  /* Apply BC */
-  if (periodic) {
-    dx = nearest(dx, dim[0]);
-    dy = nearest(dy, dim[1]);
-    dz = nearest(dz, dim[2]);
-  }
-
-  /* Compute distance */
-  const float r2 = dx * dx + dy * dy + dz * dz;
-  const float r_inv = 1. / sqrtf(r2);
-
-  /* Compute all derivatives */
-  struct potential_derivatives_M2L pot;
-  compute_potential_derivatives_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
-                                    periodic, rs_inv, &pot);
-
+  
 #ifdef SWIFT_DEBUG_CHECKS
   /* Count interactions */
   l_b->num_interacted += m_a->num_gpart;
@@ -1924,6 +1884,99 @@ INLINE static void gravity_M2L(struct grav_tensor *l_b,
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
 #endif
+}
+
+/**
+ * @brief Compute the field tensors due to a multipole.
+ *
+ * Corresponds to equation (28b).
+ *
+ * @param l_b The field tensor to compute.
+ * @param m_a The multipole creating the field.
+ * @param pos_b The position of the field tensor.
+ * @param pos_a The position of the multipole.
+ * @param props The #gravity_props of this calculation.
+ * @param periodic Is the calculation periodic ?
+ * @param dim The size of the simulation box.
+ * @param rs_inv The inverse of the gravity mesh-smoothing scale.
+ */
+INLINE static void gravity_M2L_nonsym(struct grav_tensor *l_b,
+				      const struct multipole *m_a,
+				      const double pos_b[3], const double pos_a[3],
+				      const struct gravity_props *props, int periodic,
+				      const double dim[3], float rs_inv) {
+
+  /* Recover some constants */
+  const float eps = props->epsilon_cur;
+  const float eps_inv = props->epsilon_cur_inv;
+
+  /* Compute distance vector */
+  float dx = (float)(pos_b[0] - pos_a[0]);
+  float dy = (float)(pos_b[1] - pos_a[1]);
+  float dz = (float)(pos_b[2] - pos_a[2]);
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+
+  /* Compute distance */
+  const float r2 = dx * dx + dy * dy + dz * dz;
+  const float r_inv = 1. / sqrtf(r2);
+
+  /* Compute all derivatives */
+  struct potential_derivatives_M2L pot;
+  potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
+                                    periodic, rs_inv, &pot);
+
+  /* Do the M2L tensor multiplication */
+  gravity_M2L_apply(l_b, m_a, pot);
+}
+
+
+INLINE static void gravity_M2L_symmetric(struct grav_tensor *l_a,
+					 struct grav_tensor *l_b,
+					 const struct multipole *m_a,
+					 const struct multipole *m_b,
+					 const double pos_b[3], const double pos_a[3],
+					 const struct gravity_props *props, int periodic,
+					 const double dim[3], float rs_inv) {
+
+  /* Recover some constants */
+  const float eps = props->epsilon_cur;
+  const float eps_inv = props->epsilon_cur_inv;
+
+  /* Compute distance vector */
+  float dx = (float)(pos_b[0] - pos_a[0]);
+  float dy = (float)(pos_b[1] - pos_a[1]);
+  float dz = (float)(pos_b[2] - pos_a[2]);
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+
+  /* Compute distance */
+  const float r2 = dx * dx + dy * dy + dz * dz;
+  const float r_inv = 1. / sqrtf(r2);
+
+  /* Compute all derivatives */
+  struct potential_derivatives_M2L pot;
+  potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
+                                    periodic, rs_inv, &pot);
+
+  /* Do the first M2L tensor multiplication */
+  gravity_M2L_apply(l_b, m_a, pot);
+
+  /* Flip the signs */
+  potential_derivatives_flip_signs(&pot);
+  
+  /* Do the first M2L tensor multiplication */
+  gravity_M2L_apply(l_a, m_b, pot);
 }
 
 /**
