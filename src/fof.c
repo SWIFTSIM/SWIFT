@@ -99,9 +99,7 @@ __attribute__((always_inline)) INLINE static int fof_find_global(const int i,
 
   int root = node_offset + i;
   if (root < node_offset) return root;
-  /* TODO: May need this atomic here:
-   * while (root != atomic_cas(&group_index[root], group_index[root], group_index[root])) 
-   *   root = atomic_cas(&group_index[root], group_index[root], group_index[root]); */
+  
   while (root != group_index[root - node_offset]) {
     root = group_index[root - node_offset];
     if (root < node_offset) break;
@@ -123,9 +121,6 @@ __attribute__((always_inline)) INLINE static int fof_find(const int i,
                                                           int *group_index) {
 
   int root = i;
-  /* TODO: May need this atomic here:
-   * while (root != atomic_cas(&group_index[root], group_index[root], group_index[root])) 
-   *   root = atomic_cas(&group_index[root], group_index[root], group_index[root]); */
   while (root != group_index[root]) {
     root = group_index[root];
   }
@@ -358,7 +353,6 @@ void fof_search_cell(struct space *s, struct cell *c) {
   struct gpart *gparts = c->gparts;
   const double l_x2 = s->l_x2;
   int *group_index = s->fof_data.group_index;
-  //long long *group_id = s->fof_data.group_id;
 
   /* Make a list of particle offsets into the global gparts array. */
   int *const offset = group_index + (ptrdiff_t)(gparts - s->gparts);
@@ -380,7 +374,6 @@ void fof_search_cell(struct space *s, struct cell *c) {
 
       /* Find the root of pj. */
       const int root_j = fof_find(offset[j], group_index);
-      //long long group_j = group_id[root_j];
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
@@ -399,9 +392,8 @@ void fof_search_cell(struct space *s, struct cell *c) {
       for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
 
       /* Hit or miss? */
-      if (r2 < l_x2) {
-        fof_union(&root_i, root_j, group_index);
-      }
+      if (r2 < l_x2) fof_union(&root_i, root_j, group_index);
+ 
     }
   }
 }
@@ -473,9 +465,8 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
       for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
 
       /* Hit or miss? */
-      if (r2 < l_x2) {
-        fof_union(&root_i, root_j, group_index);
-      }
+      if (r2 < l_x2) fof_union(&root_i, root_j, group_index);
+   
     }
   }
 }
@@ -733,21 +724,21 @@ void fof_search_tree_mapper(void *map_data, int num_elements,
 
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
-  struct cell *cells = (struct cell *)map_data;
+  int *local_cells = (int *)map_data;
 
   const size_t nr_cells = s->nr_cells;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->l_x2;
  
   /* Make a list of cell offsets into the top-level cell array. */
-  int *const offset = s->cell_index + (ptrdiff_t)(cells - s->cells_top);
+  int *const offset = s->cell_index + (ptrdiff_t)(&s->cells_top[local_cells[0]] - s->cells_top);
 
   /* Loop over cells and find which cells are in range of each other to perform
    * the FOF search. */
   for (int ind = 0; ind < num_elements; ind++) {
     
     /* Get the cell. */
-    struct cell *restrict ci = &cells[ind];
+    struct cell *restrict ci = &s->cells_top[local_cells[ind]];
     
     /* Only perform FOF search on local cells. */
     if(ci->nodeID == engine_rank) {
@@ -819,8 +810,6 @@ void fof_search_foreign_cells(struct space *s) {
    * the FOF search. Store local cells that are touching foreign cells in a list. */
   for(int i=0; i<e->nr_proxies; i++) {
   
-    message("Rank %d, proxy: %d has %d cells_out and %d cells_in.", engine_rank, i, e->proxies[i].nr_cells_out, e->proxies[i].nr_cells_in);
-
     for(int j=0; j<e->proxies[i].nr_cells_out; j++) {
 
       /* Skip non-gravity cells. */
@@ -863,8 +852,6 @@ void fof_search_foreign_cells(struct space *s) {
     }
   }
 
-  message("No. of interface cells: %d", interface_cell_count);
-
   /* Set the root of outgoing particles. */
   for(int i=0; i<e->nr_proxies; i++) {
   
@@ -904,8 +891,6 @@ void fof_search_foreign_cells(struct space *s) {
     } 
   }
 
-  message("Rank %d. No. of sends activated: %d, no. of receives activated: %d", engine_rank, nr_sends, nr_recvs);
-
   /* Perform send and receive tasks. */
   engine_launch(e);
 
@@ -941,8 +926,6 @@ void fof_search_foreign_cells(struct space *s) {
   /* Sum the total number of links across MPI domains over each MPI rank. */
   MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     
-  message("Global list count: %d", global_group_link_count);
-
   /* Unique set of links is half of all group links as each link is found twice by opposing MPI ranks. */
   if (posix_memalign((void**)&global_group_links, SWIFT_STRUCT_ALIGNMENT,
                        global_group_link_count * sizeof(struct fof_mpi)) != 0)
@@ -1159,7 +1142,6 @@ void fof_search_foreign_cells(struct space *s) {
 void fof_search_tree(struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
-  const size_t nr_cells = s->nr_cells;
   const int min_group_size = s->fof_data.min_group_size;
   struct gpart *gparts = s->gparts;
   long long *group_id;
@@ -1205,8 +1187,6 @@ void fof_search_tree(struct space *s) {
   }
 #endif
 
-  message("Node offset: %d", node_offset);
-
   /* Allocate and initialise array of particle group IDs. */
   if(s->fof_data.group_index != NULL) free(s->fof_data.group_index);
   if(s->fof_data.group_id != NULL) free(s->fof_data.group_id);
@@ -1243,16 +1223,14 @@ void fof_search_tree(struct space *s) {
   group_mass = s->fof_data.group_mass;
   group_CoM = s->fof_data.group_CoM;
   
-  message("Rank: %d, Allocated group_index array of size %zu", engine_rank, s->nr_gparts);
-
   bzero(group_size, nr_gparts * sizeof(int));
   bzero(group_mass, nr_gparts * sizeof(double));
   bzero(group_CoM, nr_gparts * sizeof(struct fof_CoM));
 
   /* TODO: only pass in s->local_cells to process. */
   /* Perform local FOF using the threadpool. */
-  threadpool_map(&s->e->threadpool, fof_search_tree_mapper, s->cells_top,
-                 nr_cells, sizeof(struct cell), 1, s);
+  threadpool_map(&s->e->threadpool, fof_search_tree_mapper, s->local_cells_top,
+                 s->nr_local_cells, sizeof(int), 1, s);
 
   struct fof_CoM *group_bc;
   int *com_set;
