@@ -128,7 +128,7 @@ struct potential_derivatives_M2P {
 /**
  * @brief Converts the derivatives from a distance vector to its opposite.
  *
- * From a series of tensors D_xxx(\vec{r}), compute D_xxx(-\vec{r}).
+ * From a series of tensors D_xxx(r), compute D_xxx(-r).
  * This can be computed efficiently by flipping the sign of all the odd
  * derivative terms.
  *

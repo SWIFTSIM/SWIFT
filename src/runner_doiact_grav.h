@@ -1198,9 +1198,9 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
  * @param ci The #cell with field tensor to interact.
  * @param cj The #cell with the multipole.
  */
-static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
-                                                struct cell *restrict ci,
-                                                struct cell *restrict cj) {
+static INLINE void runner_dopair_grav_mm_nonsym(
+    struct runner *r, struct cell *restrict ci,
+    const struct cell *restrict cj) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1247,13 +1247,16 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-static INLINE void runner_dopair_grav_mm(struct runner *r, struct cell *ci,
-                                         struct cell *cj) {
+static INLINE void runner_dopair_grav_mm(struct runner *r,
+                                         struct cell *restrict ci,
+                                         struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
-  int do_i = cell_is_active_gravity_mm(ci, e) && (ci->nodeID == e->nodeID);
-  int do_j = cell_is_active_gravity_mm(cj, e) && (cj->nodeID == e->nodeID);
+  const int do_i =
+      cell_is_active_gravity_mm(ci, e) && (ci->nodeID == e->nodeID);
+  const int do_j =
+      cell_is_active_gravity_mm(cj, e) && (cj->nodeID == e->nodeID);
 
   if (do_i && do_j)
     runner_dopair_grav_mm_symmetric(r, ci, cj);

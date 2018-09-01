@@ -21,7 +21,6 @@
 
 #include "inline.h"
 
-
 /**
  * @brief Approximate version of the complementay error function erfcf(x).
  *
@@ -31,7 +30,8 @@
  * Returns garbage for x < 0.
  * @param x The number to compute erfc for.
  */
-__attribute__((always_inline, const)) INLINE static float approx_erfcf(float x) {
+__attribute__((always_inline, const)) INLINE static float approx_erfcf(
+    float x) {
 
   /* 1 + 0.278393*x + 0.230389*x^2 + 0.000972*x^3 + 0.078108*x^4 */
   float arg = 0.078108f;
@@ -42,7 +42,7 @@ __attribute__((always_inline, const)) INLINE static float approx_erfcf(float x) 
 
   /* 1 / arg^4 */
   const float arg2 = arg * arg;
-  const float arg4 = arg2 * arg2;  
+  const float arg4 = arg2 * arg2;
   return 1.f / arg4;
 }
 

@@ -293,8 +293,8 @@ INLINE static void gravity_field_tensors_init(struct grav_tensor *l,
  * @param la The gravity tensors to add to.
  * @param lb The gravity tensors to add.
  */
-INLINE static void gravity_field_tensors_add(struct grav_tensor *la,
-                                             const struct grav_tensor *lb) {
+INLINE static void gravity_field_tensors_add(
+    struct grav_tensor *restrict la, const struct grav_tensor *restrict lb) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (lb->num_interacted == 0) error("Adding tensors that did not interact");
   la->num_interacted += lb->num_interacted;
@@ -502,8 +502,8 @@ INLINE static void gravity_multipole_print(const struct multipole *m) {
  * @param ma The multipole to add to.
  * @param mb The multipole to add.
  */
-INLINE static void gravity_multipole_add(struct multipole *ma,
-                                         const struct multipole *mb) {
+INLINE static void gravity_multipole_add(struct multipole *restrict ma,
+                                         const struct multipole *restrict mb) {
 
   /* Add 0th order term */
   ma->M_000 += mb->M_000;
@@ -1307,8 +1307,8 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
  * @param pos_a The position to which m_b will be shifted.
  * @param pos_b The current postion of the multipole to shift.
  */
-INLINE static void gravity_M2M(struct multipole *m_a,
-                               const struct multipole *m_b,
+INLINE static void gravity_M2M(struct multipole *restrict m_a,
+                               const struct multipole *restrict m_b,
                                const double pos_a[3], const double pos_b[3]) {
 
   /* Shift 0th order term */
@@ -1560,9 +1560,9 @@ INLINE static void gravity_M2M(struct multipole *m_a,
  * @param m_a The multipole creating the field.
  * @param pot The derivatives of the potential.
  */
-INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
-                                     const struct multipole *m_a,
-                                     const struct potential_derivatives_M2L *pot) {
+INLINE static void gravity_M2L_apply(
+    struct grav_tensor *restrict l_b, const struct multipole *restrict m_a,
+    const struct potential_derivatives_M2L *pot) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Count interactions */
@@ -1908,8 +1908,8 @@ INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
  */
 INLINE static void gravity_M2L_nonsym(
     struct grav_tensor *l_b, const struct multipole *m_a, const double pos_b[3],
-    const double pos_a[3], const struct gravity_props *props, int periodic,
-    const double dim[3], float rs_inv) {
+    const double pos_a[3], const struct gravity_props *props,
+    const int periodic, const double dim[3], const float rs_inv) {
 
   /* Recover some constants */
   const float eps = props->epsilon_cur;
@@ -1956,11 +1956,11 @@ INLINE static void gravity_M2L_nonsym(
  * @param rs_inv The inverse of the gravity mesh-smoothing scale.
  */
 INLINE static void gravity_M2L_symmetric(
-    struct grav_tensor *l_a, struct grav_tensor *l_b,
-    const struct multipole *m_a, const struct multipole *m_b,
+    struct grav_tensor *restrict l_a, struct grav_tensor *restrict l_b,
+    const struct multipole *restrict m_a, const struct multipole *restrict m_b,
     const double pos_b[3], const double pos_a[3],
-    const struct gravity_props *props, int periodic, const double dim[3],
-    float rs_inv) {
+    const struct gravity_props *props, const int periodic, const double dim[3],
+    const float rs_inv) {
 
   /* Recover some constants */
   const float eps = props->epsilon_cur;
@@ -2007,8 +2007,8 @@ INLINE static void gravity_M2L_symmetric(
  * @param pos_a The position to which m_b will be shifted.
  * @param pos_b The current postion of the multipole to shift.
  */
-INLINE static void gravity_L2L(struct grav_tensor *la,
-                               const struct grav_tensor *lb,
+INLINE static void gravity_L2L(struct grav_tensor *restrict la,
+                               const struct grav_tensor *restrict lb,
                                const double pos_a[3], const double pos_b[3]) {
 
   /* Initialise everything to zero */
