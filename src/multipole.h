@@ -1562,7 +1562,7 @@ INLINE static void gravity_M2M(struct multipole *m_a,
  */
 INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
                                      const struct multipole *m_a,
-                                     struct potential_derivatives_M2L pot) {
+                                     const struct potential_derivatives_M2L *pot) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Count interactions */
@@ -1575,7 +1575,7 @@ INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
   const float M_000 = m_a->M_000;
 
   /*  0th order term */
-  l_b->F_000 += M_000 * pot.D_000;
+  l_b->F_000 += M_000 * pot->D_000;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
@@ -1587,12 +1587,12 @@ INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
   const float M_001 = 0.f;
 
   /*  1st order multipole term (addition to rank 0)*/
-  l_b->F_000 += M_100 * pot.D_100 + M_010 * pot.D_010 + M_001 * pot.D_001;
+  l_b->F_000 += M_100 * pot->D_100 + M_010 * pot->D_010 + M_001 * pot->D_001;
 
   /*  1st order multipole term (addition to rank 1)*/
-  l_b->F_100 += M_000 * pot.D_100;
-  l_b->F_010 += M_000 * pot.D_010;
-  l_b->F_001 += M_000 * pot.D_001;
+  l_b->F_100 += M_000 * pot->D_100;
+  l_b->F_010 += M_000 * pot->D_010;
+  l_b->F_001 += M_000 * pot->D_001;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
@@ -1604,21 +1604,21 @@ INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
   const float M_011 = m_a->M_011;
 
   /*  2nd order multipole term (addition to rank 0)*/
-  l_b->F_000 += M_200 * pot.D_200 + M_020 * pot.D_020 + M_002 * pot.D_002;
-  l_b->F_000 += M_110 * pot.D_110 + M_101 * pot.D_101 + M_011 * pot.D_011;
+  l_b->F_000 += M_200 * pot->D_200 + M_020 * pot->D_020 + M_002 * pot->D_002;
+  l_b->F_000 += M_110 * pot->D_110 + M_101 * pot->D_101 + M_011 * pot->D_011;
 
   /*  2nd order multipole term (addition to rank 1)*/
-  l_b->F_100 += M_100 * pot.D_200 + M_010 * pot.D_110 + M_001 * pot.D_101;
-  l_b->F_010 += M_100 * pot.D_110 + M_010 * pot.D_020 + M_001 * pot.D_011;
-  l_b->F_001 += M_100 * pot.D_101 + M_010 * pot.D_011 + M_001 * pot.D_002;
+  l_b->F_100 += M_100 * pot->D_200 + M_010 * pot->D_110 + M_001 * pot->D_101;
+  l_b->F_010 += M_100 * pot->D_110 + M_010 * pot->D_020 + M_001 * pot->D_011;
+  l_b->F_001 += M_100 * pot->D_101 + M_010 * pot->D_011 + M_001 * pot->D_002;
 
   /*  2nd order multipole term (addition to rank 2)*/
-  l_b->F_200 += M_000 * pot.D_200;
-  l_b->F_020 += M_000 * pot.D_020;
-  l_b->F_002 += M_000 * pot.D_002;
-  l_b->F_110 += M_000 * pot.D_110;
-  l_b->F_101 += M_000 * pot.D_101;
-  l_b->F_011 += M_000 * pot.D_011;
+  l_b->F_200 += M_000 * pot->D_200;
+  l_b->F_020 += M_000 * pot->D_020;
+  l_b->F_002 += M_000 * pot->D_002;
+  l_b->F_110 += M_000 * pot->D_110;
+  l_b->F_101 += M_000 * pot->D_101;
+  l_b->F_011 += M_000 * pot->D_011;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
@@ -1634,38 +1634,38 @@ INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
   const float M_111 = m_a->M_111;
 
   /*  3rd order multipole term (addition to rank 0)*/
-  l_b->F_000 += M_300 * pot.D_300 + M_030 * pot.D_030 + M_003 * pot.D_003;
-  l_b->F_000 += M_210 * pot.D_210 + M_201 * pot.D_201 + M_120 * pot.D_120;
-  l_b->F_000 += M_021 * pot.D_021 + M_102 * pot.D_102 + M_012 * pot.D_012;
-  l_b->F_000 += M_111 * pot.D_111;
+  l_b->F_000 += M_300 * pot->D_300 + M_030 * pot->D_030 + M_003 * pot->D_003;
+  l_b->F_000 += M_210 * pot->D_210 + M_201 * pot->D_201 + M_120 * pot->D_120;
+  l_b->F_000 += M_021 * pot->D_021 + M_102 * pot->D_102 + M_012 * pot->D_012;
+  l_b->F_000 += M_111 * pot->D_111;
 
   /*  3rd order multipole term (addition to rank 1)*/
-  l_b->F_100 += M_200 * pot.D_300 + M_020 * pot.D_120 + M_002 * pot.D_102;
-  l_b->F_100 += M_110 * pot.D_210 + M_101 * pot.D_201 + M_011 * pot.D_111;
-  l_b->F_010 += M_200 * pot.D_210 + M_020 * pot.D_030 + M_002 * pot.D_012;
-  l_b->F_010 += M_110 * pot.D_120 + M_101 * pot.D_111 + M_011 * pot.D_021;
-  l_b->F_001 += M_200 * pot.D_201 + M_020 * pot.D_021 + M_002 * pot.D_003;
-  l_b->F_001 += M_110 * pot.D_111 + M_101 * pot.D_102 + M_011 * pot.D_012;
+  l_b->F_100 += M_200 * pot->D_300 + M_020 * pot->D_120 + M_002 * pot->D_102;
+  l_b->F_100 += M_110 * pot->D_210 + M_101 * pot->D_201 + M_011 * pot->D_111;
+  l_b->F_010 += M_200 * pot->D_210 + M_020 * pot->D_030 + M_002 * pot->D_012;
+  l_b->F_010 += M_110 * pot->D_120 + M_101 * pot->D_111 + M_011 * pot->D_021;
+  l_b->F_001 += M_200 * pot->D_201 + M_020 * pot->D_021 + M_002 * pot->D_003;
+  l_b->F_001 += M_110 * pot->D_111 + M_101 * pot->D_102 + M_011 * pot->D_012;
 
   /*  3rd order multipole term (addition to rank 2)*/
-  l_b->F_200 += M_100 * pot.D_300 + M_010 * pot.D_210 + M_001 * pot.D_201;
-  l_b->F_020 += M_100 * pot.D_120 + M_010 * pot.D_030 + M_001 * pot.D_021;
-  l_b->F_002 += M_100 * pot.D_102 + M_010 * pot.D_012 + M_001 * pot.D_003;
-  l_b->F_110 += M_100 * pot.D_210 + M_010 * pot.D_120 + M_001 * pot.D_111;
-  l_b->F_101 += M_100 * pot.D_201 + M_010 * pot.D_111 + M_001 * pot.D_102;
-  l_b->F_011 += M_100 * pot.D_111 + M_010 * pot.D_021 + M_001 * pot.D_012;
+  l_b->F_200 += M_100 * pot->D_300 + M_010 * pot->D_210 + M_001 * pot->D_201;
+  l_b->F_020 += M_100 * pot->D_120 + M_010 * pot->D_030 + M_001 * pot->D_021;
+  l_b->F_002 += M_100 * pot->D_102 + M_010 * pot->D_012 + M_001 * pot->D_003;
+  l_b->F_110 += M_100 * pot->D_210 + M_010 * pot->D_120 + M_001 * pot->D_111;
+  l_b->F_101 += M_100 * pot->D_201 + M_010 * pot->D_111 + M_001 * pot->D_102;
+  l_b->F_011 += M_100 * pot->D_111 + M_010 * pot->D_021 + M_001 * pot->D_012;
 
   /*  3rd order multipole term (addition to rank 3)*/
-  l_b->F_300 += M_000 * pot.D_300;
-  l_b->F_030 += M_000 * pot.D_030;
-  l_b->F_003 += M_000 * pot.D_003;
-  l_b->F_210 += M_000 * pot.D_210;
-  l_b->F_201 += M_000 * pot.D_201;
-  l_b->F_120 += M_000 * pot.D_120;
-  l_b->F_021 += M_000 * pot.D_021;
-  l_b->F_102 += M_000 * pot.D_102;
-  l_b->F_012 += M_000 * pot.D_012;
-  l_b->F_111 += M_000 * pot.D_111;
+  l_b->F_300 += M_000 * pot->D_300;
+  l_b->F_030 += M_000 * pot->D_030;
+  l_b->F_003 += M_000 * pot->D_003;
+  l_b->F_210 += M_000 * pot->D_210;
+  l_b->F_201 += M_000 * pot->D_201;
+  l_b->F_120 += M_000 * pot->D_120;
+  l_b->F_021 += M_000 * pot->D_021;
+  l_b->F_102 += M_000 * pot->D_102;
+  l_b->F_012 += M_000 * pot->D_012;
+  l_b->F_111 += M_000 * pot->D_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
@@ -1686,68 +1686,68 @@ INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
   const float M_112 = m_a->M_112;
 
   /* Compute 4th order field tensor terms (addition to rank 0) */
-  l_b->F_000 += M_004 * pot.D_004 + M_013 * pot.D_013 + M_022 * pot.D_022 +
-                M_031 * pot.D_031 + M_040 * pot.D_040 + M_103 * pot.D_103 +
-                M_112 * pot.D_112 + M_121 * pot.D_121 + M_130 * pot.D_130 +
-                M_202 * pot.D_202 + M_211 * pot.D_211 + M_220 * pot.D_220 +
-                M_301 * pot.D_301 + M_310 * pot.D_310 + M_400 * pot.D_400;
+  l_b->F_000 += M_004 * pot->D_004 + M_013 * pot->D_013 + M_022 * pot->D_022 +
+                M_031 * pot->D_031 + M_040 * pot->D_040 + M_103 * pot->D_103 +
+                M_112 * pot->D_112 + M_121 * pot->D_121 + M_130 * pot->D_130 +
+                M_202 * pot->D_202 + M_211 * pot->D_211 + M_220 * pot->D_220 +
+                M_301 * pot->D_301 + M_310 * pot->D_310 + M_400 * pot->D_400;
 
   /* Compute 4th order field tensor terms (addition to rank 1) */
-  l_b->F_001 += M_003 * pot.D_004 + M_012 * pot.D_013 + M_021 * pot.D_022 +
-                M_030 * pot.D_031 + M_102 * pot.D_103 + M_111 * pot.D_112 +
-                M_120 * pot.D_121 + M_201 * pot.D_202 + M_210 * pot.D_211 +
-                M_300 * pot.D_301;
-  l_b->F_010 += M_003 * pot.D_013 + M_012 * pot.D_022 + M_021 * pot.D_031 +
-                M_030 * pot.D_040 + M_102 * pot.D_112 + M_111 * pot.D_121 +
-                M_120 * pot.D_130 + M_201 * pot.D_211 + M_210 * pot.D_220 +
-                M_300 * pot.D_310;
-  l_b->F_100 += M_003 * pot.D_103 + M_012 * pot.D_112 + M_021 * pot.D_121 +
-                M_030 * pot.D_130 + M_102 * pot.D_202 + M_111 * pot.D_211 +
-                M_120 * pot.D_220 + M_201 * pot.D_301 + M_210 * pot.D_310 +
-                M_300 * pot.D_400;
+  l_b->F_001 += M_003 * pot->D_004 + M_012 * pot->D_013 + M_021 * pot->D_022 +
+                M_030 * pot->D_031 + M_102 * pot->D_103 + M_111 * pot->D_112 +
+                M_120 * pot->D_121 + M_201 * pot->D_202 + M_210 * pot->D_211 +
+                M_300 * pot->D_301;
+  l_b->F_010 += M_003 * pot->D_013 + M_012 * pot->D_022 + M_021 * pot->D_031 +
+                M_030 * pot->D_040 + M_102 * pot->D_112 + M_111 * pot->D_121 +
+                M_120 * pot->D_130 + M_201 * pot->D_211 + M_210 * pot->D_220 +
+                M_300 * pot->D_310;
+  l_b->F_100 += M_003 * pot->D_103 + M_012 * pot->D_112 + M_021 * pot->D_121 +
+                M_030 * pot->D_130 + M_102 * pot->D_202 + M_111 * pot->D_211 +
+                M_120 * pot->D_220 + M_201 * pot->D_301 + M_210 * pot->D_310 +
+                M_300 * pot->D_400;
 
   /* Compute 4th order field tensor terms (addition to rank 2) */
-  l_b->F_002 += M_002 * pot.D_004 + M_011 * pot.D_013 + M_020 * pot.D_022 +
-                M_101 * pot.D_103 + M_110 * pot.D_112 + M_200 * pot.D_202;
-  l_b->F_011 += M_002 * pot.D_013 + M_011 * pot.D_022 + M_020 * pot.D_031 +
-                M_101 * pot.D_112 + M_110 * pot.D_121 + M_200 * pot.D_211;
-  l_b->F_020 += M_002 * pot.D_022 + M_011 * pot.D_031 + M_020 * pot.D_040 +
-                M_101 * pot.D_121 + M_110 * pot.D_130 + M_200 * pot.D_220;
-  l_b->F_101 += M_002 * pot.D_103 + M_011 * pot.D_112 + M_020 * pot.D_121 +
-                M_101 * pot.D_202 + M_110 * pot.D_211 + M_200 * pot.D_301;
-  l_b->F_110 += M_002 * pot.D_112 + M_011 * pot.D_121 + M_020 * pot.D_130 +
-                M_101 * pot.D_211 + M_110 * pot.D_220 + M_200 * pot.D_310;
-  l_b->F_200 += M_002 * pot.D_202 + M_011 * pot.D_211 + M_020 * pot.D_220 +
-                M_101 * pot.D_301 + M_110 * pot.D_310 + M_200 * pot.D_400;
+  l_b->F_002 += M_002 * pot->D_004 + M_011 * pot->D_013 + M_020 * pot->D_022 +
+                M_101 * pot->D_103 + M_110 * pot->D_112 + M_200 * pot->D_202;
+  l_b->F_011 += M_002 * pot->D_013 + M_011 * pot->D_022 + M_020 * pot->D_031 +
+                M_101 * pot->D_112 + M_110 * pot->D_121 + M_200 * pot->D_211;
+  l_b->F_020 += M_002 * pot->D_022 + M_011 * pot->D_031 + M_020 * pot->D_040 +
+                M_101 * pot->D_121 + M_110 * pot->D_130 + M_200 * pot->D_220;
+  l_b->F_101 += M_002 * pot->D_103 + M_011 * pot->D_112 + M_020 * pot->D_121 +
+                M_101 * pot->D_202 + M_110 * pot->D_211 + M_200 * pot->D_301;
+  l_b->F_110 += M_002 * pot->D_112 + M_011 * pot->D_121 + M_020 * pot->D_130 +
+                M_101 * pot->D_211 + M_110 * pot->D_220 + M_200 * pot->D_310;
+  l_b->F_200 += M_002 * pot->D_202 + M_011 * pot->D_211 + M_020 * pot->D_220 +
+                M_101 * pot->D_301 + M_110 * pot->D_310 + M_200 * pot->D_400;
 
   /* Compute 4th order field tensor terms (addition to rank 3) */
-  l_b->F_003 += M_001 * pot.D_004 + M_010 * pot.D_013 + M_100 * pot.D_103;
-  l_b->F_012 += M_001 * pot.D_013 + M_010 * pot.D_022 + M_100 * pot.D_112;
-  l_b->F_021 += M_001 * pot.D_022 + M_010 * pot.D_031 + M_100 * pot.D_121;
-  l_b->F_030 += M_001 * pot.D_031 + M_010 * pot.D_040 + M_100 * pot.D_130;
-  l_b->F_102 += M_001 * pot.D_103 + M_010 * pot.D_112 + M_100 * pot.D_202;
-  l_b->F_111 += M_001 * pot.D_112 + M_010 * pot.D_121 + M_100 * pot.D_211;
-  l_b->F_120 += M_001 * pot.D_121 + M_010 * pot.D_130 + M_100 * pot.D_220;
-  l_b->F_201 += M_001 * pot.D_202 + M_010 * pot.D_211 + M_100 * pot.D_301;
-  l_b->F_210 += M_001 * pot.D_211 + M_010 * pot.D_220 + M_100 * pot.D_310;
-  l_b->F_300 += M_001 * pot.D_301 + M_010 * pot.D_310 + M_100 * pot.D_400;
+  l_b->F_003 += M_001 * pot->D_004 + M_010 * pot->D_013 + M_100 * pot->D_103;
+  l_b->F_012 += M_001 * pot->D_013 + M_010 * pot->D_022 + M_100 * pot->D_112;
+  l_b->F_021 += M_001 * pot->D_022 + M_010 * pot->D_031 + M_100 * pot->D_121;
+  l_b->F_030 += M_001 * pot->D_031 + M_010 * pot->D_040 + M_100 * pot->D_130;
+  l_b->F_102 += M_001 * pot->D_103 + M_010 * pot->D_112 + M_100 * pot->D_202;
+  l_b->F_111 += M_001 * pot->D_112 + M_010 * pot->D_121 + M_100 * pot->D_211;
+  l_b->F_120 += M_001 * pot->D_121 + M_010 * pot->D_130 + M_100 * pot->D_220;
+  l_b->F_201 += M_001 * pot->D_202 + M_010 * pot->D_211 + M_100 * pot->D_301;
+  l_b->F_210 += M_001 * pot->D_211 + M_010 * pot->D_220 + M_100 * pot->D_310;
+  l_b->F_300 += M_001 * pot->D_301 + M_010 * pot->D_310 + M_100 * pot->D_400;
 
   /* Compute 4th order field tensor terms (addition to rank 4) */
-  l_b->F_004 += M_000 * pot.D_004;
-  l_b->F_013 += M_000 * pot.D_013;
-  l_b->F_022 += M_000 * pot.D_022;
-  l_b->F_031 += M_000 * pot.D_031;
-  l_b->F_040 += M_000 * pot.D_040;
-  l_b->F_103 += M_000 * pot.D_103;
-  l_b->F_112 += M_000 * pot.D_112;
-  l_b->F_121 += M_000 * pot.D_121;
-  l_b->F_130 += M_000 * pot.D_130;
-  l_b->F_202 += M_000 * pot.D_202;
-  l_b->F_211 += M_000 * pot.D_211;
-  l_b->F_220 += M_000 * pot.D_220;
-  l_b->F_301 += M_000 * pot.D_301;
-  l_b->F_310 += M_000 * pot.D_310;
-  l_b->F_400 += M_000 * pot.D_400;
+  l_b->F_004 += M_000 * pot->D_004;
+  l_b->F_013 += M_000 * pot->D_013;
+  l_b->F_022 += M_000 * pot->D_022;
+  l_b->F_031 += M_000 * pot->D_031;
+  l_b->F_040 += M_000 * pot->D_040;
+  l_b->F_103 += M_000 * pot->D_103;
+  l_b->F_112 += M_000 * pot->D_112;
+  l_b->F_121 += M_000 * pot->D_121;
+  l_b->F_130 += M_000 * pot->D_130;
+  l_b->F_202 += M_000 * pot->D_202;
+  l_b->F_211 += M_000 * pot->D_211;
+  l_b->F_220 += M_000 * pot->D_220;
+  l_b->F_301 += M_000 * pot->D_301;
+  l_b->F_310 += M_000 * pot->D_310;
+  l_b->F_400 += M_000 * pot->D_400;
 
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
@@ -1775,118 +1775,118 @@ INLINE static void gravity_M2L_apply(struct grav_tensor *l_b,
   const float M_113 = m_a->M_113;
 
   /* Compute 5th order field tensor terms (addition to rank 0) */
-  l_b->F_000 += M_005 * pot.D_005 + M_014 * pot.D_014 + M_023 * pot.D_023 +
-                M_032 * pot.D_032 + M_041 * pot.D_041 + M_050 * pot.D_050 +
-                M_104 * pot.D_104 + M_113 * pot.D_113 + M_122 * pot.D_122 +
-                M_131 * pot.D_131 + M_140 * pot.D_140 + M_203 * pot.D_203 +
-                M_212 * pot.D_212 + M_221 * pot.D_221 + M_230 * pot.D_230 +
-                M_302 * pot.D_302 + M_311 * pot.D_311 + M_320 * pot.D_320 +
-                M_401 * pot.D_401 + M_410 * pot.D_410 + M_500 * pot.D_500;
+  l_b->F_000 += M_005 * pot->D_005 + M_014 * pot->D_014 + M_023 * pot->D_023 +
+                M_032 * pot->D_032 + M_041 * pot->D_041 + M_050 * pot->D_050 +
+                M_104 * pot->D_104 + M_113 * pot->D_113 + M_122 * pot->D_122 +
+                M_131 * pot->D_131 + M_140 * pot->D_140 + M_203 * pot->D_203 +
+                M_212 * pot->D_212 + M_221 * pot->D_221 + M_230 * pot->D_230 +
+                M_302 * pot->D_302 + M_311 * pot->D_311 + M_320 * pot->D_320 +
+                M_401 * pot->D_401 + M_410 * pot->D_410 + M_500 * pot->D_500;
 
   /* Compute 5th order field tensor terms (addition to rank 1) */
-  l_b->F_001 += M_004 * pot.D_005 + M_013 * pot.D_014 + M_022 * pot.D_023 +
-                M_031 * pot.D_032 + M_040 * pot.D_041 + M_103 * pot.D_104 +
-                M_112 * pot.D_113 + M_121 * pot.D_122 + M_130 * pot.D_131 +
-                M_202 * pot.D_203 + M_211 * pot.D_212 + M_220 * pot.D_221 +
-                M_301 * pot.D_302 + M_310 * pot.D_311 + M_400 * pot.D_401;
-  l_b->F_010 += M_004 * pot.D_014 + M_013 * pot.D_023 + M_022 * pot.D_032 +
-                M_031 * pot.D_041 + M_040 * pot.D_050 + M_103 * pot.D_113 +
-                M_112 * pot.D_122 + M_121 * pot.D_131 + M_130 * pot.D_140 +
-                M_202 * pot.D_212 + M_211 * pot.D_221 + M_220 * pot.D_230 +
-                M_301 * pot.D_311 + M_310 * pot.D_320 + M_400 * pot.D_410;
-  l_b->F_100 += M_004 * pot.D_104 + M_013 * pot.D_113 + M_022 * pot.D_122 +
-                M_031 * pot.D_131 + M_040 * pot.D_140 + M_103 * pot.D_203 +
-                M_112 * pot.D_212 + M_121 * pot.D_221 + M_130 * pot.D_230 +
-                M_202 * pot.D_302 + M_211 * pot.D_311 + M_220 * pot.D_320 +
-                M_301 * pot.D_401 + M_310 * pot.D_410 + M_400 * pot.D_500;
+  l_b->F_001 += M_004 * pot->D_005 + M_013 * pot->D_014 + M_022 * pot->D_023 +
+                M_031 * pot->D_032 + M_040 * pot->D_041 + M_103 * pot->D_104 +
+                M_112 * pot->D_113 + M_121 * pot->D_122 + M_130 * pot->D_131 +
+                M_202 * pot->D_203 + M_211 * pot->D_212 + M_220 * pot->D_221 +
+                M_301 * pot->D_302 + M_310 * pot->D_311 + M_400 * pot->D_401;
+  l_b->F_010 += M_004 * pot->D_014 + M_013 * pot->D_023 + M_022 * pot->D_032 +
+                M_031 * pot->D_041 + M_040 * pot->D_050 + M_103 * pot->D_113 +
+                M_112 * pot->D_122 + M_121 * pot->D_131 + M_130 * pot->D_140 +
+                M_202 * pot->D_212 + M_211 * pot->D_221 + M_220 * pot->D_230 +
+                M_301 * pot->D_311 + M_310 * pot->D_320 + M_400 * pot->D_410;
+  l_b->F_100 += M_004 * pot->D_104 + M_013 * pot->D_113 + M_022 * pot->D_122 +
+                M_031 * pot->D_131 + M_040 * pot->D_140 + M_103 * pot->D_203 +
+                M_112 * pot->D_212 + M_121 * pot->D_221 + M_130 * pot->D_230 +
+                M_202 * pot->D_302 + M_211 * pot->D_311 + M_220 * pot->D_320 +
+                M_301 * pot->D_401 + M_310 * pot->D_410 + M_400 * pot->D_500;
 
   /* Compute 5th order field tensor terms (addition to rank 2) */
-  l_b->F_002 += M_003 * pot.D_005 + M_012 * pot.D_014 + M_021 * pot.D_023 +
-                M_030 * pot.D_032 + M_102 * pot.D_104 + M_111 * pot.D_113 +
-                M_120 * pot.D_122 + M_201 * pot.D_203 + M_210 * pot.D_212 +
-                M_300 * pot.D_302;
-  l_b->F_011 += M_003 * pot.D_014 + M_012 * pot.D_023 + M_021 * pot.D_032 +
-                M_030 * pot.D_041 + M_102 * pot.D_113 + M_111 * pot.D_122 +
-                M_120 * pot.D_131 + M_201 * pot.D_212 + M_210 * pot.D_221 +
-                M_300 * pot.D_311;
-  l_b->F_020 += M_003 * pot.D_023 + M_012 * pot.D_032 + M_021 * pot.D_041 +
-                M_030 * pot.D_050 + M_102 * pot.D_122 + M_111 * pot.D_131 +
-                M_120 * pot.D_140 + M_201 * pot.D_221 + M_210 * pot.D_230 +
-                M_300 * pot.D_320;
-  l_b->F_101 += M_003 * pot.D_104 + M_012 * pot.D_113 + M_021 * pot.D_122 +
-                M_030 * pot.D_131 + M_102 * pot.D_203 + M_111 * pot.D_212 +
-                M_120 * pot.D_221 + M_201 * pot.D_302 + M_210 * pot.D_311 +
-                M_300 * pot.D_401;
-  l_b->F_110 += M_003 * pot.D_113 + M_012 * pot.D_122 + M_021 * pot.D_131 +
-                M_030 * pot.D_140 + M_102 * pot.D_212 + M_111 * pot.D_221 +
-                M_120 * pot.D_230 + M_201 * pot.D_311 + M_210 * pot.D_320 +
-                M_300 * pot.D_410;
-  l_b->F_200 += M_003 * pot.D_203 + M_012 * pot.D_212 + M_021 * pot.D_221 +
-                M_030 * pot.D_230 + M_102 * pot.D_302 + M_111 * pot.D_311 +
-                M_120 * pot.D_320 + M_201 * pot.D_401 + M_210 * pot.D_410 +
-                M_300 * pot.D_500;
+  l_b->F_002 += M_003 * pot->D_005 + M_012 * pot->D_014 + M_021 * pot->D_023 +
+                M_030 * pot->D_032 + M_102 * pot->D_104 + M_111 * pot->D_113 +
+                M_120 * pot->D_122 + M_201 * pot->D_203 + M_210 * pot->D_212 +
+                M_300 * pot->D_302;
+  l_b->F_011 += M_003 * pot->D_014 + M_012 * pot->D_023 + M_021 * pot->D_032 +
+                M_030 * pot->D_041 + M_102 * pot->D_113 + M_111 * pot->D_122 +
+                M_120 * pot->D_131 + M_201 * pot->D_212 + M_210 * pot->D_221 +
+                M_300 * pot->D_311;
+  l_b->F_020 += M_003 * pot->D_023 + M_012 * pot->D_032 + M_021 * pot->D_041 +
+                M_030 * pot->D_050 + M_102 * pot->D_122 + M_111 * pot->D_131 +
+                M_120 * pot->D_140 + M_201 * pot->D_221 + M_210 * pot->D_230 +
+                M_300 * pot->D_320;
+  l_b->F_101 += M_003 * pot->D_104 + M_012 * pot->D_113 + M_021 * pot->D_122 +
+                M_030 * pot->D_131 + M_102 * pot->D_203 + M_111 * pot->D_212 +
+                M_120 * pot->D_221 + M_201 * pot->D_302 + M_210 * pot->D_311 +
+                M_300 * pot->D_401;
+  l_b->F_110 += M_003 * pot->D_113 + M_012 * pot->D_122 + M_021 * pot->D_131 +
+                M_030 * pot->D_140 + M_102 * pot->D_212 + M_111 * pot->D_221 +
+                M_120 * pot->D_230 + M_201 * pot->D_311 + M_210 * pot->D_320 +
+                M_300 * pot->D_410;
+  l_b->F_200 += M_003 * pot->D_203 + M_012 * pot->D_212 + M_021 * pot->D_221 +
+                M_030 * pot->D_230 + M_102 * pot->D_302 + M_111 * pot->D_311 +
+                M_120 * pot->D_320 + M_201 * pot->D_401 + M_210 * pot->D_410 +
+                M_300 * pot->D_500;
 
   /* Compute 5th order field tensor terms (addition to rank 3) */
-  l_b->F_003 += M_002 * pot.D_005 + M_011 * pot.D_014 + M_020 * pot.D_023 +
-                M_101 * pot.D_104 + M_110 * pot.D_113 + M_200 * pot.D_203;
-  l_b->F_012 += M_002 * pot.D_014 + M_011 * pot.D_023 + M_020 * pot.D_032 +
-                M_101 * pot.D_113 + M_110 * pot.D_122 + M_200 * pot.D_212;
-  l_b->F_021 += M_002 * pot.D_023 + M_011 * pot.D_032 + M_020 * pot.D_041 +
-                M_101 * pot.D_122 + M_110 * pot.D_131 + M_200 * pot.D_221;
-  l_b->F_030 += M_002 * pot.D_032 + M_011 * pot.D_041 + M_020 * pot.D_050 +
-                M_101 * pot.D_131 + M_110 * pot.D_140 + M_200 * pot.D_230;
-  l_b->F_102 += M_002 * pot.D_104 + M_011 * pot.D_113 + M_020 * pot.D_122 +
-                M_101 * pot.D_203 + M_110 * pot.D_212 + M_200 * pot.D_302;
-  l_b->F_111 += M_002 * pot.D_113 + M_011 * pot.D_122 + M_020 * pot.D_131 +
-                M_101 * pot.D_212 + M_110 * pot.D_221 + M_200 * pot.D_311;
-  l_b->F_120 += M_002 * pot.D_122 + M_011 * pot.D_131 + M_020 * pot.D_140 +
-                M_101 * pot.D_221 + M_110 * pot.D_230 + M_200 * pot.D_320;
-  l_b->F_201 += M_002 * pot.D_203 + M_011 * pot.D_212 + M_020 * pot.D_221 +
-                M_101 * pot.D_302 + M_110 * pot.D_311 + M_200 * pot.D_401;
-  l_b->F_210 += M_002 * pot.D_212 + M_011 * pot.D_221 + M_020 * pot.D_230 +
-                M_101 * pot.D_311 + M_110 * pot.D_320 + M_200 * pot.D_410;
-  l_b->F_300 += M_002 * pot.D_302 + M_011 * pot.D_311 + M_020 * pot.D_320 +
-                M_101 * pot.D_401 + M_110 * pot.D_410 + M_200 * pot.D_500;
+  l_b->F_003 += M_002 * pot->D_005 + M_011 * pot->D_014 + M_020 * pot->D_023 +
+                M_101 * pot->D_104 + M_110 * pot->D_113 + M_200 * pot->D_203;
+  l_b->F_012 += M_002 * pot->D_014 + M_011 * pot->D_023 + M_020 * pot->D_032 +
+                M_101 * pot->D_113 + M_110 * pot->D_122 + M_200 * pot->D_212;
+  l_b->F_021 += M_002 * pot->D_023 + M_011 * pot->D_032 + M_020 * pot->D_041 +
+                M_101 * pot->D_122 + M_110 * pot->D_131 + M_200 * pot->D_221;
+  l_b->F_030 += M_002 * pot->D_032 + M_011 * pot->D_041 + M_020 * pot->D_050 +
+                M_101 * pot->D_131 + M_110 * pot->D_140 + M_200 * pot->D_230;
+  l_b->F_102 += M_002 * pot->D_104 + M_011 * pot->D_113 + M_020 * pot->D_122 +
+                M_101 * pot->D_203 + M_110 * pot->D_212 + M_200 * pot->D_302;
+  l_b->F_111 += M_002 * pot->D_113 + M_011 * pot->D_122 + M_020 * pot->D_131 +
+                M_101 * pot->D_212 + M_110 * pot->D_221 + M_200 * pot->D_311;
+  l_b->F_120 += M_002 * pot->D_122 + M_011 * pot->D_131 + M_020 * pot->D_140 +
+                M_101 * pot->D_221 + M_110 * pot->D_230 + M_200 * pot->D_320;
+  l_b->F_201 += M_002 * pot->D_203 + M_011 * pot->D_212 + M_020 * pot->D_221 +
+                M_101 * pot->D_302 + M_110 * pot->D_311 + M_200 * pot->D_401;
+  l_b->F_210 += M_002 * pot->D_212 + M_011 * pot->D_221 + M_020 * pot->D_230 +
+                M_101 * pot->D_311 + M_110 * pot->D_320 + M_200 * pot->D_410;
+  l_b->F_300 += M_002 * pot->D_302 + M_011 * pot->D_311 + M_020 * pot->D_320 +
+                M_101 * pot->D_401 + M_110 * pot->D_410 + M_200 * pot->D_500;
 
   /* Compute 5th order field tensor terms (addition to rank 4) */
-  l_b->F_004 += M_001 * pot.D_005 + M_010 * pot.D_014 + M_100 * pot.D_104;
-  l_b->F_013 += M_001 * pot.D_014 + M_010 * pot.D_023 + M_100 * pot.D_113;
-  l_b->F_022 += M_001 * pot.D_023 + M_010 * pot.D_032 + M_100 * pot.D_122;
-  l_b->F_031 += M_001 * pot.D_032 + M_010 * pot.D_041 + M_100 * pot.D_131;
-  l_b->F_040 += M_001 * pot.D_041 + M_010 * pot.D_050 + M_100 * pot.D_140;
-  l_b->F_103 += M_001 * pot.D_104 + M_010 * pot.D_113 + M_100 * pot.D_203;
-  l_b->F_112 += M_001 * pot.D_113 + M_010 * pot.D_122 + M_100 * pot.D_212;
-  l_b->F_121 += M_001 * pot.D_122 + M_010 * pot.D_131 + M_100 * pot.D_221;
-  l_b->F_130 += M_001 * pot.D_131 + M_010 * pot.D_140 + M_100 * pot.D_230;
-  l_b->F_202 += M_001 * pot.D_203 + M_010 * pot.D_212 + M_100 * pot.D_302;
-  l_b->F_211 += M_001 * pot.D_212 + M_010 * pot.D_221 + M_100 * pot.D_311;
-  l_b->F_220 += M_001 * pot.D_221 + M_010 * pot.D_230 + M_100 * pot.D_320;
-  l_b->F_301 += M_001 * pot.D_302 + M_010 * pot.D_311 + M_100 * pot.D_401;
-  l_b->F_310 += M_001 * pot.D_311 + M_010 * pot.D_320 + M_100 * pot.D_410;
-  l_b->F_400 += M_001 * pot.D_401 + M_010 * pot.D_410 + M_100 * pot.D_500;
+  l_b->F_004 += M_001 * pot->D_005 + M_010 * pot->D_014 + M_100 * pot->D_104;
+  l_b->F_013 += M_001 * pot->D_014 + M_010 * pot->D_023 + M_100 * pot->D_113;
+  l_b->F_022 += M_001 * pot->D_023 + M_010 * pot->D_032 + M_100 * pot->D_122;
+  l_b->F_031 += M_001 * pot->D_032 + M_010 * pot->D_041 + M_100 * pot->D_131;
+  l_b->F_040 += M_001 * pot->D_041 + M_010 * pot->D_050 + M_100 * pot->D_140;
+  l_b->F_103 += M_001 * pot->D_104 + M_010 * pot->D_113 + M_100 * pot->D_203;
+  l_b->F_112 += M_001 * pot->D_113 + M_010 * pot->D_122 + M_100 * pot->D_212;
+  l_b->F_121 += M_001 * pot->D_122 + M_010 * pot->D_131 + M_100 * pot->D_221;
+  l_b->F_130 += M_001 * pot->D_131 + M_010 * pot->D_140 + M_100 * pot->D_230;
+  l_b->F_202 += M_001 * pot->D_203 + M_010 * pot->D_212 + M_100 * pot->D_302;
+  l_b->F_211 += M_001 * pot->D_212 + M_010 * pot->D_221 + M_100 * pot->D_311;
+  l_b->F_220 += M_001 * pot->D_221 + M_010 * pot->D_230 + M_100 * pot->D_320;
+  l_b->F_301 += M_001 * pot->D_302 + M_010 * pot->D_311 + M_100 * pot->D_401;
+  l_b->F_310 += M_001 * pot->D_311 + M_010 * pot->D_320 + M_100 * pot->D_410;
+  l_b->F_400 += M_001 * pot->D_401 + M_010 * pot->D_410 + M_100 * pot->D_500;
 
   /* Compute 5th order field tensor terms (addition to rank 5) */
-  l_b->F_005 += M_000 * pot.D_005;
-  l_b->F_014 += M_000 * pot.D_014;
-  l_b->F_023 += M_000 * pot.D_023;
-  l_b->F_032 += M_000 * pot.D_032;
-  l_b->F_041 += M_000 * pot.D_041;
-  l_b->F_050 += M_000 * pot.D_050;
-  l_b->F_104 += M_000 * pot.D_104;
-  l_b->F_113 += M_000 * pot.D_113;
-  l_b->F_122 += M_000 * pot.D_122;
-  l_b->F_131 += M_000 * pot.D_131;
-  l_b->F_140 += M_000 * pot.D_140;
-  l_b->F_203 += M_000 * pot.D_203;
-  l_b->F_212 += M_000 * pot.D_212;
-  l_b->F_221 += M_000 * pot.D_221;
-  l_b->F_230 += M_000 * pot.D_230;
-  l_b->F_302 += M_000 * pot.D_302;
-  l_b->F_311 += M_000 * pot.D_311;
-  l_b->F_320 += M_000 * pot.D_320;
-  l_b->F_401 += M_000 * pot.D_401;
-  l_b->F_410 += M_000 * pot.D_410;
-  l_b->F_500 += M_000 * pot.D_500;
+  l_b->F_005 += M_000 * pot->D_005;
+  l_b->F_014 += M_000 * pot->D_014;
+  l_b->F_023 += M_000 * pot->D_023;
+  l_b->F_032 += M_000 * pot->D_032;
+  l_b->F_041 += M_000 * pot->D_041;
+  l_b->F_050 += M_000 * pot->D_050;
+  l_b->F_104 += M_000 * pot->D_104;
+  l_b->F_113 += M_000 * pot->D_113;
+  l_b->F_122 += M_000 * pot->D_122;
+  l_b->F_131 += M_000 * pot->D_131;
+  l_b->F_140 += M_000 * pot->D_140;
+  l_b->F_203 += M_000 * pot->D_203;
+  l_b->F_212 += M_000 * pot->D_212;
+  l_b->F_221 += M_000 * pot->D_221;
+  l_b->F_230 += M_000 * pot->D_230;
+  l_b->F_302 += M_000 * pot->D_302;
+  l_b->F_311 += M_000 * pot->D_311;
+  l_b->F_320 += M_000 * pot->D_320;
+  l_b->F_401 += M_000 * pot->D_401;
+  l_b->F_410 += M_000 * pot->D_410;
+  l_b->F_500 += M_000 * pot->D_500;
 
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
@@ -1937,7 +1937,7 @@ INLINE static void gravity_M2L_nonsym(
                                     periodic, rs_inv, &pot);
 
   /* Do the M2L tensor multiplication */
-  gravity_M2L_apply(l_b, m_a, pot);
+  gravity_M2L_apply(l_b, m_a, &pot);
 }
 
 /**
@@ -1988,13 +1988,13 @@ INLINE static void gravity_M2L_symmetric(
                                     periodic, rs_inv, &pot);
 
   /* Do the first M2L tensor multiplication */
-  gravity_M2L_apply(l_b, m_a, pot);
+  gravity_M2L_apply(l_b, m_a, &pot);
 
   /* Flip the signs of odd derivatives */
   potential_derivatives_flip_signs(&pot);
 
   /* Do the second M2L tensor multiplication */
-  gravity_M2L_apply(l_a, m_b, pot);
+  gravity_M2L_apply(l_a, m_b, &pot);
 }
 
 /**
