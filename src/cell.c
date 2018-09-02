@@ -1625,8 +1625,7 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
 
 /**
  * @brief Traverse a sub-cell task and activate the hydro drift tasks that are
- * required
- * by a hydro task
+ * required by a hydro task
  *
  * @param ci The first #cell we recurse in.
  * @param cj The second #cell we recurse in.
@@ -1979,6 +1978,13 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
   } /* Otherwise, pair interation */
 }
 
+/**
+ * @brief Drift the multipoles that will be used in a M-M task.
+ *
+ * @param ci The first #cell we update.
+ * @param cj The second #cell we update.
+ * @param s The task #scheduler.
+ */
 void cell_activate_grav_mm_task(struct cell *ci, struct cell *cj,
                                 struct scheduler *s) {
   /* Some constants */
@@ -2076,8 +2082,8 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     else {
 
       /* Recover the multipole information */
-      struct gravity_tensors *const multi_i = ci->multipole;
-      struct gravity_tensors *const multi_j = cj->multipole;
+      const struct gravity_tensors *const multi_i = ci->multipole;
+      const struct gravity_tensors *const multi_j = cj->multipole;
       const double ri_max = multi_i->r_max;
       const double rj_max = multi_j->r_max;
 
@@ -2369,6 +2375,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
+
       scheduler_activate(s, t);
 
       /* Set the drifting flags */
@@ -2462,12 +2469,14 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         (cj_active && cj_nodeID == nodeID)) {
 
       scheduler_activate(s, t);
+
+      /* Drift the multipoles */
       cell_activate_grav_mm_task(ci, cj, s);
     }
   }
 
   /* Unskip all the other task types. */
-  if (c->nodeID == nodeID && cell_is_active_gravity_mm(c, e)) {
+  if (c->nodeID == nodeID && cell_is_active_gravity(c, e)) {
 
     if (c->init_grav != NULL) scheduler_activate(s, c->init_grav);
     if (c->init_grav_out != NULL) scheduler_activate(s, c->init_grav_out);
