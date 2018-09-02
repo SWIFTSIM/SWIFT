@@ -723,12 +723,12 @@ void fof_search_tree_mapper(void *map_data, int num_elements,
   struct space *s = (struct space *)extra_data;
   int *local_cells = (int *)map_data;
 
-  const size_t nr_cells = s->nr_cells;
+  const size_t nr_local_cells = s->nr_local_cells;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->l_x2;
  
-  /* Make a list of cell offsets into the top-level cell array. */
-  int *const offset = s->cell_index + (ptrdiff_t)(&s->cells_top[local_cells[0]] - s->cells_top);
+  /* Make a list of cell offsets into the local top-level cell array. */
+  int *const offset = s->cell_index + (ptrdiff_t)(local_cells - s->local_cells_top);
 
   /* Loop over cells and find which cells are in range of each other to perform
    * the FOF search. */
@@ -748,9 +748,9 @@ void fof_search_tree_mapper(void *map_data, int num_elements,
 
       /* Loop over all top-level cells skipping over the cells already searched.
       */
-      for (size_t cjd = offset[ind] + 1; cjd < nr_cells; cjd++) {
+      for (size_t cjd = offset[ind] + 1; cjd < nr_local_cells; cjd++) {
 
-        struct cell *restrict cj = &s->cells_top[cjd];
+        struct cell *restrict cj = &s->cells_top[s->local_cells_top[cjd]];
 
         /* Only perform FOF search on local cells. */
         if(cj->nodeID == engine_rank) {
