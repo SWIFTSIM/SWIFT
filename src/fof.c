@@ -77,9 +77,6 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts) {
   /* Read the initial group_links array size. */
   s->fof_data.group_links_size_default = parser_get_opt_param_double(e->parameter_file, "FOF:group_links_size_default", 20000);
   
-  /* Read the initial interface cells array size. */
-  s->fof_data.interface_cells_size_default = parser_get_opt_param_double(e->parameter_file, "FOF:interface_cells_size_default", 4000);
-
 #ifdef WITH_MPI
   /* Check size of linking length against the top-level cell dimensions. */
   if(l_x > s->width[0]) error("Linking length greater than the width of a top-level cell. Need to check more than one layer of top-level cells for links.");
@@ -791,8 +788,21 @@ void fof_search_foreign_cells(struct space *s) {
   /* Make group IDs globally unique. */  
   for (size_t i = 0; i < nr_gparts; i++) group_index[i] += node_offset;
   
+  int interface_cell_size = 0;
+ 
+  /* Find the maximum no. of interface cells. */ 
+  for(int i=0; i<e->nr_proxies; i++) {
+  
+    for(int j=0; j<e->proxies[i].nr_cells_out; j++) {
+
+      /* Only include gravity cells. */
+      if(e->proxies[i].cells_out_type[j] == proxy_cell_type_gravity) interface_cell_size++;
+    
+    }
+  }
+
   int group_links_size = s->fof_data.group_links_size_default;
-  int interface_cell_size = s->fof_data.interface_cells_size_default;
+
   struct fof_mpi *group_links;
   struct cell **interface_cells;
   int group_link_count = 0;
@@ -833,18 +843,6 @@ void fof_search_foreign_cells(struct space *s) {
         /* Check if local cell has already been added to the local list of cells. */
         const double r2 = cell_min_dist(local_cell, foreign_cell, dim);
         if(r2 < search_r2) {
-
-          /* If the interface_cells array is not big enough re-allocate it. */
-          if(interface_cell_count + 1 > interface_cell_size) {
-            
-            int new_size = interface_cell_size + ceil(0.1 * (double)interface_cell_size);
-            
-            interface_cell_size = new_size;
-            interface_cells = (struct cell **)realloc(interface_cells, new_size * sizeof(struct cell *)); 
-            
-            message("Re-allocating interface cells from %d to %d elements.", interface_cell_count, new_size);
-          }
-
           interface_cells[interface_cell_count++] = local_cell;
           break;
         }
