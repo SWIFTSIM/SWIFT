@@ -36,6 +36,12 @@
 #include "error.h"
 #include "interpolate.h"
 
+/* Names of the elements in the order they are storeed in the files */
+static const char* eagle_tables_element_names[9] = {
+    "Carbon",  "Nitrogen", "Oxygen",  "Neon", "Magnesium",
+    "Silicon", "Sulphur",  "Calcium", "Iron"};
+
+
 /*
  * @brief Reads in EAGLE table of redshift values
  *
@@ -73,9 +79,10 @@ void GetCoolingRedshifts(struct cooling_function_data *cooling) {
  * @param cooling Cooling data structure
  */
 void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
+#ifdef HAVE_HDF5
   int i;
 
-  hid_t tempfile_id, dataset, datatype;
+  hid_t tempfile_id, dataset;
 
   herr_t status;
 
@@ -122,14 +129,6 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
   cooling->SolarAbundances = malloc(cooling->N_SolarAbundances * sizeof(float));
   cooling->Therm = malloc(cooling->N_Temp * sizeof(float));
 
-  cooling->ElementNames = malloc(cooling->N_Elements * sizeof(char *));
-  for (i = 0; i < cooling->N_Elements; i++)
-    cooling->ElementNames[i] = malloc(eagle_element_name_length * sizeof(char));
-
-  cooling->SolarAbundanceNames = malloc(cooling->N_SolarAbundances * sizeof(char *));
-  for (i = 0; i < cooling->N_SolarAbundances; i++)
-    cooling->SolarAbundanceNames[i] = malloc(eagle_element_name_length * sizeof(char));
-
   // read in values for each of the arrays
   dataset = H5Dopen(tempfile_id, "/Solar/Temperature_bins", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -159,39 +158,6 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
                    cooling->Therm);
   status = H5Dclose(dataset);
 
-  char element_names[cooling->N_Elements][eagle_element_name_length];
-  hsize_t string_length = eagle_element_name_length;
-
-  // read in names of chemical elements stored in table
-  datatype = H5Tcopy(H5T_C_S1);
-  status = H5Tset_size(datatype, string_length);
-  dataset = H5Dopen(tempfile_id, "/Header/Metal_names", H5P_DEFAULT);
-  status =
-      H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, element_names);
-  status = H5Dclose(dataset);
-  H5Tclose(datatype);
-
-  for (i = 0; i < cooling->N_Elements; i++)
-    strcpy(cooling->ElementNames[i],element_names[i]);
-  
-
-  char solar_abund_names[cooling->N_SolarAbundances][eagle_element_name_length];
-
-  // read in assumed solar abundances used in constructing the tables,
-  // and corresponding names
-  datatype = H5Tcopy(H5T_C_S1);
-  status = H5Tset_size(datatype, string_length);
-  dataset = H5Dopen(tempfile_id, "/Header/Abundances/Abund_names", H5P_DEFAULT);
-  status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                   solar_abund_names);
-  status = H5Dclose(dataset);
-  H5Tclose(datatype);
-
-  for (i = 0; i < cooling->N_SolarAbundances; i++)
-    strcpy(cooling->SolarAbundanceNames[i],element_names[i]);
-
-  status = H5Fclose(tempfile_id);
-
   // Convert to temperature, density and internal energy arrays to log10
   for (i = 0; i < cooling->N_Temp; i++) {
     cooling->Temp[i] = log10(cooling->Temp[i]);
@@ -199,6 +165,9 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
   }
 
   for (i = 0; i < cooling->N_nH; i++) cooling->nH[i] = log10(cooling->nH[i]);
+#else
+  error("Need HDF5 to read cooling tables");
+#endif
 }
 
 /*
@@ -219,6 +188,7 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
 struct cooling_tables_redshift_invariant get_no_compt_table(
     char *cooling_table_path,
     const struct cooling_function_data *restrict cooling) {
+#ifdef HAVE_HDF5
 
   struct cooling_tables_redshift_invariant cooling_table;
   hid_t file_id, dataset;
@@ -266,7 +236,7 @@ struct cooling_tables_redshift_invariant get_no_compt_table(
 
   // read in cooling rates due to metals
   for (specs = 0; specs < cooling->N_Elements; specs++) {
-    sprintf(set_name, "/%s/Net_Cooling", cooling->ElementNames[specs]);
+    sprintf(set_name, "/%s/Net_Cooling", eagle_tables_element_names[specs]);
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      net_cooling_rate);
@@ -275,9 +245,9 @@ struct cooling_tables_redshift_invariant get_no_compt_table(
     for (j = 0; j < cooling->N_Temp; j++) {
       for (k = 0; k < cooling->N_nH; k++) {
         table_index = row_major_index_2d(j, k, cooling->N_Temp, cooling->N_nH);
-        cooling_index = row_major_index_4d(
-            0, k, j, specs, 1, cooling->N_nH, cooling->N_Temp,
-            cooling->N_Elements);  // Redshift invariant table!!!
+        cooling_index = row_major_index_3d(
+            k, j, specs, cooling->N_nH, cooling->N_Temp,
+            cooling->N_Elements);  
         cooling_table.metal_heating[cooling_index] =
             -net_cooling_rate[table_index];
       }
@@ -286,19 +256,19 @@ struct cooling_tables_redshift_invariant get_no_compt_table(
 
   // read in cooling rates due to hydrogen and helium, H + He electron
   // abundances, temperatures
-  sprintf(set_name, "/Metal_free/Net_Cooling");
+  strcpy(set_name, "/Metal_free/Net_Cooling");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    he_net_cooling_rate);
   status = H5Dclose(dataset);
 
-  sprintf(set_name, "/Metal_free/Temperature/Temperature");
+  strcpy(set_name, "/Metal_free/Temperature/Temperature");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    temperature);
   status = H5Dclose(dataset);
 
-  sprintf(set_name, "/Metal_free/Electron_density_over_n_h");
+  strcpy(set_name, "/Metal_free/Electron_density_over_n_h");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    he_electron_abundance);
@@ -310,8 +280,8 @@ struct cooling_tables_redshift_invariant get_no_compt_table(
         table_index = row_major_index_3d(i, j, k, cooling->N_He,
                                          cooling->N_Temp, cooling->N_nH);
         cooling_index =
-            row_major_index_4d(0, k, i, j, 1, cooling->N_nH, cooling->N_He,
-                               cooling->N_Temp);  // Redshift invariant table!!!
+            row_major_index_3d(k, i, j, cooling->N_nH, cooling->N_He,
+                               cooling->N_Temp);  
         cooling_table.H_plus_He_heating[cooling_index] =
             -he_net_cooling_rate[table_index];
         cooling_table.H_plus_He_electron_abundance[cooling_index] =
@@ -323,7 +293,7 @@ struct cooling_tables_redshift_invariant get_no_compt_table(
   }
 
   // read in electron densities due to metals
-  sprintf(set_name, "/Solar/Electron_density_over_n_h");
+  strcpy(set_name, "/Solar/Electron_density_over_n_h");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    electron_abundance);
@@ -333,7 +303,7 @@ struct cooling_tables_redshift_invariant get_no_compt_table(
     for (j = 0; j < cooling->N_nH; j++) {
       table_index = row_major_index_2d(i, j, cooling->N_Temp, cooling->N_nH);
       cooling_index =
-          row_major_index_3d(0, j, i, 1, cooling->N_nH, cooling->N_Temp);
+          row_major_index_2d(j, i, cooling->N_nH, cooling->N_Temp);
       cooling_table.electron_abundance[cooling_index] =
           electron_abundance[table_index];
     }
@@ -347,9 +317,14 @@ struct cooling_tables_redshift_invariant get_no_compt_table(
   free(he_net_cooling_rate);
   free(he_electron_abundance);
 
+#ifdef SWIFT_DEBUG_CHECKS
   message("done reading in no compton table");
+#endif
 
   return cooling_table;
+#else
+  error("Need HDF5 to read cooling tables");
+#endif
 }
 
 /*
@@ -369,6 +344,7 @@ struct cooling_tables_redshift_invariant get_no_compt_table(
 struct cooling_tables_redshift_invariant get_collisional_table(
     char *cooling_table_path,
     const struct cooling_function_data *restrict cooling) {
+#ifdef HAVE_HDF5
 
   struct cooling_tables_redshift_invariant cooling_table;
   hid_t file_id, dataset;
@@ -414,7 +390,7 @@ struct cooling_tables_redshift_invariant get_collisional_table(
 
   // read in cooling rates due to metals
   for (specs = 0; specs < cooling->N_Elements; specs++) {
-    sprintf(set_name, "/%s/Net_Cooling", cooling->ElementNames[specs]);
+    sprintf(set_name, "/%s/Net_Cooling", eagle_tables_element_names[specs]);
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      net_cooling_rate);
@@ -422,27 +398,27 @@ struct cooling_tables_redshift_invariant get_collisional_table(
 
     for (j = 0; j < cooling->N_Temp; j++) {
       cooling_index =
-          row_major_index_3d(0, specs, j, 1, cooling->N_Elements,
-                             cooling->N_Temp);  // Redshift invariant table!!!
+          row_major_index_2d(specs, j, cooling->N_Elements,
+                             cooling->N_Temp);  
       cooling_table.metal_heating[cooling_index] = -net_cooling_rate[j];
     }
   }
 
   // read in cooling rates due to hydrogen and helium, H + He electron
   // abundances, temperatures
-  sprintf(set_name, "/Metal_free/Net_Cooling");
+  strcpy(set_name, "/Metal_free/Net_Cooling");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    he_net_cooling_rate);
   status = H5Dclose(dataset);
 
-  sprintf(set_name, "/Metal_free/Temperature/Temperature");
+  strcpy(set_name, "/Metal_free/Temperature/Temperature");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    temperature);
   status = H5Dclose(dataset);
 
-  sprintf(set_name, "/Metal_free/Electron_density_over_n_h");
+  strcpy(set_name, "/Metal_free/Electron_density_over_n_h");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    he_electron_abundance);
@@ -452,8 +428,8 @@ struct cooling_tables_redshift_invariant get_collisional_table(
     for (j = 0; j < cooling->N_Temp; j++) {
       table_index = row_major_index_2d(i, j, cooling->N_He, cooling->N_Temp);
       cooling_index =
-          row_major_index_3d(0, i, j, 1, cooling->N_He,
-                             cooling->N_Temp);  // Redshift invariant table!!!
+          row_major_index_2d(i, j, cooling->N_He,
+                             cooling->N_Temp);  
       cooling_table.H_plus_He_heating[cooling_index] =
           -he_net_cooling_rate[table_index];
       cooling_table.H_plus_He_electron_abundance[cooling_index] =
@@ -464,7 +440,7 @@ struct cooling_tables_redshift_invariant get_collisional_table(
   }
 
   // read in electron densities due to metals
-  sprintf(set_name, "/Solar/Electron_density_over_n_h");
+  strcpy(set_name, "/Solar/Electron_density_over_n_h");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    electron_abundance);
@@ -482,8 +458,14 @@ struct cooling_tables_redshift_invariant get_collisional_table(
   free(he_net_cooling_rate);
   free(he_electron_abundance);
 
+#ifdef SWIFT_DEBUG_CHECKS
   message("done reading in collisional table");
+#endif
+
   return cooling_table;
+#else
+  error("Need HDF5 to read cooling tables");
+#endif
 }
 
 /*
@@ -503,6 +485,7 @@ struct cooling_tables_redshift_invariant get_collisional_table(
 struct cooling_tables_redshift_invariant get_photodis_table(
     char *cooling_table_path,
     const struct cooling_function_data *restrict cooling) {
+#ifdef HAVE_HDF5
 
   struct cooling_tables_redshift_invariant cooling_table;
   hid_t file_id, dataset;
@@ -550,7 +533,7 @@ struct cooling_tables_redshift_invariant get_photodis_table(
 
   // read in cooling rates due to metals
   for (specs = 0; specs < cooling->N_Elements; specs++) {
-    sprintf(set_name, "/%s/Net_Cooling", cooling->ElementNames[specs]);
+    sprintf(set_name, "/%s/Net_Cooling", eagle_tables_element_names[specs]);
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      net_cooling_rate);
@@ -561,7 +544,7 @@ struct cooling_tables_redshift_invariant get_photodis_table(
         table_index = row_major_index_2d(j, k, cooling->N_Temp, cooling->N_nH);
         cooling_index = row_major_index_3d(
             k, j, specs, cooling->N_nH, cooling->N_Temp,
-            cooling->N_Elements);  // Redshift invariant table!!!
+            cooling->N_Elements);  
         cooling_table.metal_heating[cooling_index] =
             -net_cooling_rate[table_index];
       }
@@ -570,19 +553,19 @@ struct cooling_tables_redshift_invariant get_photodis_table(
 
   // read in cooling rates due to hydrogen and helium, H + He electron
   // abundances, temperatures
-  sprintf(set_name, "/Metal_free/Net_Cooling");
+  strcpy(set_name, "/Metal_free/Net_Cooling");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    he_net_cooling_rate);
   status = H5Dclose(dataset);
 
-  sprintf(set_name, "/Metal_free/Temperature/Temperature");
+  strcpy(set_name, "/Metal_free/Temperature/Temperature");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    temperature);
   status = H5Dclose(dataset);
 
-  sprintf(set_name, "/Metal_free/Electron_density_over_n_h");
+  strcpy(set_name, "/Metal_free/Electron_density_over_n_h");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    he_electron_abundance);
@@ -595,7 +578,7 @@ struct cooling_tables_redshift_invariant get_photodis_table(
                                          cooling->N_Temp, cooling->N_nH);
         cooling_index =
             row_major_index_3d(k, i, j, cooling->N_nH, cooling->N_He,
-                               cooling->N_Temp);  // Redshift invariant table!!!
+                               cooling->N_Temp);  
         cooling_table.H_plus_He_heating[cooling_index] =
             -he_net_cooling_rate[table_index];
         cooling_table.H_plus_He_electron_abundance[cooling_index] =
@@ -607,7 +590,7 @@ struct cooling_tables_redshift_invariant get_photodis_table(
   }
 
   // read in electron densities due to metals
-  sprintf(set_name, "/Solar/Electron_density_over_n_h");
+  strcpy(set_name, "/Solar/Electron_density_over_n_h");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    electron_abundance);
@@ -617,7 +600,7 @@ struct cooling_tables_redshift_invariant get_photodis_table(
     for (j = 0; j < cooling->N_nH; j++) {
       table_index = row_major_index_2d(i, j, cooling->N_Temp, cooling->N_nH);
       cooling_index = row_major_index_2d(
-          j, i, cooling->N_nH, cooling->N_Temp);  // Redshift invariant table!!!
+          j, i, cooling->N_nH, cooling->N_Temp);  
       cooling_table.electron_abundance[cooling_index] =
           electron_abundance[table_index];
     }
@@ -631,8 +614,14 @@ struct cooling_tables_redshift_invariant get_photodis_table(
   free(he_net_cooling_rate);
   free(he_electron_abundance);
 
+#ifdef SWIFT_DEBUG_CHECKS
   message("done reading in photodissociation table");
+#endif
+
   return cooling_table;
+#else
+  error("Need HDF5 to read cooling tables");
+#endif
 }
 
 /*
@@ -645,6 +634,7 @@ struct cooling_tables_redshift_invariant get_photodis_table(
 struct cooling_tables get_cooling_table(
     char *cooling_table_path,
     const struct cooling_function_data *restrict cooling) {
+#ifdef HAVE_HDF5
 
   struct cooling_tables cooling_table;
   hid_t file_id, dataset;
@@ -697,12 +687,12 @@ struct cooling_tables get_cooling_table(
     file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
 
     if (file_id < 0) {
-      error("[GetCoolingTables()]: unable to open file %s\n", fname);
+      error("unable to open file %s", fname);
     }
 
     // read in cooling rates due to metals
     for (specs = 0; specs < cooling->N_Elements; specs++) {
-      sprintf(set_name, "/%s/Net_Cooling", cooling->ElementNames[specs]);
+      sprintf(set_name, "/%s/Net_Cooling", eagle_tables_element_names[specs]);
       dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
       status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                        net_cooling_rate);
@@ -723,19 +713,19 @@ struct cooling_tables get_cooling_table(
 
     // read in cooling rates due to hydrogen and helium, H + He electron
     // abundances, temperatures
-    sprintf(set_name, "/Metal_free/Net_Cooling");
+    strcpy(set_name, "/Metal_free/Net_Cooling");
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      he_net_cooling_rate);
     status = H5Dclose(dataset);
 
-    sprintf(set_name, "/Metal_free/Temperature/Temperature");
+    strcpy(set_name, "/Metal_free/Temperature/Temperature");
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      temperature);
     status = H5Dclose(dataset);
 
-    sprintf(set_name, "/Metal_free/Electron_density_over_n_h");
+    strcpy(set_name, "/Metal_free/Electron_density_over_n_h");
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      he_electron_abundance);
@@ -760,7 +750,7 @@ struct cooling_tables get_cooling_table(
     }
 
     // read in electron densities due to metals
-    sprintf(set_name, "/Solar/Electron_density_over_n_h");
+    strcpy(set_name, "/Solar/Electron_density_over_n_h");
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      electron_abundance);
@@ -785,9 +775,14 @@ struct cooling_tables get_cooling_table(
   free(he_net_cooling_rate);
   free(he_electron_abundance);
 
+#ifdef SWIFT_DEBUG_CHECKS
   message("done reading in general cooling table");
+#endif
 
   return cooling_table;
+#else
+  error("Need HDF5 to read cooling tables");
+#endif
 }
 
 /*

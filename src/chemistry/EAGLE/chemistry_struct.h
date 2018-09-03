@@ -20,7 +20,7 @@
 #define SWIFT_CHEMISTRY_STRUCT_EAGLE_H
 
 /**
- * @brief The individual elements traced in the EAGLE model.
+ * @brief The individual elements tracked in the EAGLE model.
  */
 enum chemistry_element {
   chemistry_element_H = 0,

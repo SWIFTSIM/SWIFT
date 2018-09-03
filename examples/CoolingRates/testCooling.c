@@ -25,18 +25,6 @@
 #include "swift.h"
 #include "units.h"
   
-enum table_index {
-  EAGLE_Hydrogen = 0,
-  EAGLE_Helium,
-  EAGLE_Carbon,
-  EAGLE_Nitrogen,
-  EAGLE_Oxygen,
-  EAGLE_Neon,
-  EAGLE_Magnesium,
-  EAGLE_Silicon,
-  EAGLE_Iron
-};
-
 /*
  * @brief Assign particle density and entropy corresponding to the 
  * hydrogen number density and internal energy specified.
@@ -59,7 +47,7 @@ void set_quantities(struct part *restrict p,
   const float gamma = 5.0/3.0;
   float scale_factor = 1.0/(1.0+cosmo->z);
   double hydrogen_number_density = nh*pow(units_cgs_conversion_factor(us,UNIT_CONV_LENGTH),3);
-  p->rho = hydrogen_number_density*internal_const->const_proton_mass/p->chemistry_data.metal_mass_fraction[EAGLE_Hydrogen];
+  p->rho = hydrogen_number_density*internal_const->const_proton_mass/p->chemistry_data.metal_mass_fraction[chemistry_element_H];
 
   float pressure = (u*pow(scale_factor,2))/cooling->internal_energy_scale*p->rho*(gamma -1.0); 
   p->entropy = pressure/(pow(p->rho,gamma));
@@ -74,16 +62,6 @@ void set_quantities(struct part *restrict p,
  * hydrogen number densities, from different metals, 
  * tests 1d and 4d table interpolations produce 
  * same results for cooling rate, dlambda/du and temperature.
- *
- * @param pass string "nh" to produce cooling rates for one internal
- * energy, different redshifts
- * @param pass string "metals" to produce contribution to cooling
- * rates from different metals
- * @param pass string "compare_temp" to compare temperature interpolation
- * from 1d and 4d tables
- * @param pass string "compare_dlambda_du" to compare dlambda/du calculation
- * from 1d and 4d tables
- * @param if no string passed, all of the above are performed.
  */
 int main(int argc, char **argv) {
   // Declare relevant structs
@@ -97,21 +75,22 @@ int main(int argc, char **argv) {
   struct cosmology cosmo;
   char *parametersFileName = "./testCooling.yml";
 
-  float nh;
+  float nh; // hydrogen number density
+  double u; // internal energy
+  const int npts = 250; // number of values for the internal energy at which cooling rate is evaluated
 
   // Read options
-  int param, tables = 0;
-  float redshift = -1.0, log_10_nh = 100;
+  int param;
+  float redshift = -1.0, log_10_nh = 100; // unreasonable values will be changed if not set in options
   while ((param = getopt(argc, argv, "z:d:t")) != -1)
   switch(param){
     case 'z':
+      // read redshift
       redshift = atof(optarg);
       break;
     case 'd':
+      // read log10 of hydrogen number density
       log_10_nh = atof(optarg);
-      break;
-    case 't':
-      tables = 1;
       break;
     case '?':
       if (optopt == 'z')
@@ -161,29 +140,29 @@ int main(int argc, char **argv) {
   int z_index,He_i,n_h_i;
   float dz,d_He,d_n_h;
   get_redshift_index(cosmo.z, &z_index, &dz, &cooling);
+  cooling.z_index = z_index;
+  cooling.dz = dz;
   get_index_1d(cooling.HeFrac, cooling.N_He, HeFrac, &He_i, &d_He);
-
-  int nt = 250;
-  double u = pow(10.0,10);
 
   // Calculate contributions from metals to cooling rate
   // open file
-  char output_filename[21];
-  sprintf(output_filename, "%s", "cooling_output.dat");
+  const char *output_filename = "cooling_output.dat";
   FILE *output_file = fopen(output_filename, "w");
   if (output_file == NULL) {
     printf("Error opening file!\n");
     exit(1);
   }
 
-  // set hydrogen number density, construct 1d tables
+  // set hydrogen number density
   if (log_10_nh == 100) {
+    // hydrogen number density not specified in options
     nh = 1.0e-1;
   } else {
     nh = pow(10.0,log_10_nh);
   }
-  //if (argc > 2) nh = pow(10.0,strtod(argv[2],NULL));
-  u = pow(10.0,14.0);
+
+  // set internal energy to dummy value, will get reset when looping over internal energies
+  u = 1.0e14;
   set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, u);
   float inn_h = chemistry_get_number_density(&p, &cosmo, chemistry_element_H,
                                            &internal_const) *
@@ -191,14 +170,14 @@ int main(int argc, char **argv) {
   get_index_1d(cooling.nH, cooling.N_nH, log10(inn_h), &n_h_i, &d_n_h);
 
   // Loop over internal energy
-  for(int j = 0; j < nt; j++){
-    set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, pow(10.0,10.0 + j*8.0/nt));
+  for(int j = 0; j < npts; j++){
+    set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, pow(10.0,10.0 + j*8.0/npts));
     u = hydro_get_physical_internal_energy(&p,&cosmo)*cooling.internal_energy_scale;
     float cooling_du_dt;
 
-    // calculate cooling rates using 4d tables
+    // calculate cooling rates
     cooling_du_dt = eagle_print_metal_cooling_rate(
-    		      z_index, dz, n_h_i, d_n_h, He_i, d_He,
+    		      n_h_i, d_n_h, He_i, d_He,
        	              &p,&cooling,&cosmo,&internal_const,
        	              abundance_ratio);
     fprintf(output_file,"%.5e %.5e\n", u,cooling_du_dt);

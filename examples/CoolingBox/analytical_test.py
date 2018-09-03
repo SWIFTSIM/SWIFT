@@ -113,8 +113,6 @@ t_sol[0] = tfirst
 for j in range(int(nt-1)):
 	t_sol[j+1] = t_sol[j] + dt
 	Lambda_net = interpol_lambda(internal_energy,cooling_rate,u_sol[j])
-	if j < 10:
-		print(u,Lambda_net)
 	if int(sys.argv[4]) == 1:
 		nH = 0.702*rho/(m_p)/scale_factor[0]**3
 		ratefact = nH*0.702/m_p

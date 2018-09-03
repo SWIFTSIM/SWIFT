@@ -7,7 +7,7 @@ max_number() {
 # loop over redshift
 for z in $(seq 0.01 5.0 25.01); do
   # loop over solar and zero metal abundances
-  for solar in {0..1}; do
+  for solar in 1; do
     # loop over log_10 hydrogen number density
     for nh_exp in $(seq -3 2.0 -1); do
       #change parameters in yml file for calculating explicit ode solution of cooling

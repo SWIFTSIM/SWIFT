@@ -51,12 +51,6 @@
 /* Global profiler. */
 struct profiler prof;
 
-/* number of calls to eagle cooling rate */
-int n_eagle_cooling_rate_calls_1 = 0;
-int n_eagle_cooling_rate_calls_2 = 0;
-int n_eagle_cooling_rate_calls_3 = 0;
-int n_eagle_cooling_rate_calls_4 = 0;
-
 /**
  * @brief Help messages for the command line parameters.
  */
