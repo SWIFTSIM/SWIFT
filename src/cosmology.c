@@ -443,7 +443,7 @@ void cosmology_init_tables(struct cosmology *c) {
     scale += i_a;
 
     /* Compute interpolated scale factor */
-    double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) /
+    const double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) /
                                         cosmology_table_length;
     c->scale_factor_interp_table[i_time] = exp(log_a) - c->a_begin;
   }

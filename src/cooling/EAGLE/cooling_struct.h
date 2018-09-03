@@ -29,14 +29,25 @@
  *
  */
 struct cooling_tables_redshift_invariant {
-  float *metal_heating;      // size: [1][cooling_N_Temp][cooling_N_nH];
-  float *H_plus_He_heating;  // size:
-                             // [1][cooling_N_He][cooling_N_Temp][cooling_N_nH];
-  float *
-      H_plus_He_electron_abundance;  // size:
-                                     // [1][cooling_N_He][cooling_N_Temp][cooling_N_nH];
-  float *temperature;  // size: [1][cooling_N_He][cooling_N_Temp][cooling_N_nH];
-  float *electron_abundance;  // size: [1][cooling_N_Temp][cooling_N_nH];
+  /* array of heating rates due to metals
+   * when allocated need size: [N_Temp][N_nH] */
+  float *metal_heating;      
+  
+  /* array of heating rates due to hydrogen and helium
+   * when allocated need size: [N_He][N_Temp][N_nH] */
+  float *H_plus_He_heating;  
+  
+  /* array of electron abundances due to hydrogen and helium
+   * when allocated need size: [N_He][N_Temp][N_nH] */
+  float *H_plus_He_electron_abundance;
+
+  /* array of temperatures
+   * when allocated need size: [N_He][N_Temp][N_nH]; */
+  float *temperature;  
+
+  /* array of electron abundances due to metals
+   * when allocated need size: [N_Temp][N_nH]; */
+  float *electron_abundance;  
 };
 
 /*
@@ -44,20 +55,25 @@ struct cooling_tables_redshift_invariant {
  *
  */
 struct cooling_tables {
-  float *metal_heating;  // size:
-                         // [cooling_N_Redshifts][cooling_N_Temp][cooling_N_nH];
-  float *
-      H_plus_He_heating;  // size:
-                          // [cooling_N_Redshifts][cooling_N_He][cooling_N_Temp][cooling_N_nH];
-  float *
-      H_plus_He_electron_abundance;  // size:
-                                     // [cooling_N_Redshifts][cooling_N_He][cooling_N_Temp][cooling_N_nH];
-  float *
-      temperature;  // size:
-                    // [cooling_N_Redshifts][cooling_N_He][cooling_N_Temp][cooling_N_nH];
-  float *
-      electron_abundance;  // size:
-                           // [cooling_N_Redshifts][cooling_N_Temp][cooling_N_nH];
+  /* array of heating rates due to metals
+   * when allocated need size: [N_Redshifts][N_Temp][N_nH] */
+  float *metal_heating;  
+  
+  /* array of heating rates due to hydrogen and helium
+   * when allocated need size: [N_Redshifts][N_He][N_Temp][N_nH] */
+  float *H_plus_He_heating;  
+  
+  /* array of electron abundances due to hydrogen and helium
+   * when allocated need size: [N_Redshifts][N_He][N_Temp][N_nH] */
+  float *H_plus_He_electron_abundance; 
+  
+  /* array of temperatures
+   * when allocated need size: [N_Redshifts][N_He][N_Temp][N_nH]; */
+  float *temperature;  
+  
+  /* array of electron abundances due to metals
+   * when allocated need size: [N_Redshifts][N_Temp][N_nH]; */
+  float *electron_abundance;  
 };
 
 /*
@@ -100,13 +116,6 @@ struct cooling_function_data {
   float *SolarAbundances;
   float *SolarElectronAbundance;
 
-
-  /* Arrays containing names of tracked elements. Used for 
-   * reading in the contributions to the cooling rate from
-   * each element */
-  char **ElementNames;
-  char **SolarAbundanceNames;
-
   /* Normalisation constants that are frequently used */
   double internal_energy_scale;
   double number_density_scale;
@@ -131,6 +140,10 @@ struct cooling_function_data {
   double proton_mass_cgs;
   double T_CMB_0;
   double compton_rate_cgs;
+
+  /* redshift table index and offset */
+  int z_index;
+  float dz;
 
 };
 

@@ -7,5 +7,5 @@ then
     ./getIC.sh
 fi
 
-mpirun -np 4 ../swift_mpi -s -c -C -t 16 -n 100 eagle_12.yml 2>&1 | tee output.log
+../swift -s -c -C -t 16 eagle_12.yml 2>&1 | tee output.log
 

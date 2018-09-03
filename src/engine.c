@@ -2214,7 +2214,8 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
       const int num_elements = p->cells_in[k]->pcell_size;
 
       /* Receive everything */
-      MPI_Irecv(&buffer_recv[this_recv], num_elements, multipole_mpi_type,
+      MPI_Irecv(&buffer_recv[this_recv],
+                num_elements * sizeof(struct gravity_tensors), MPI_BYTE,
                 p->cells_in[k]->nodeID, p->cells_in[k]->tag, MPI_COMM_WORLD,
                 &requests[this_request]);
 
@@ -2234,7 +2235,8 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 
       /* Send everything (note the use of cells_in[0] to get the correct node
        * ID. */
-      MPI_Isend(&buffer_send[this_send], num_elements, multipole_mpi_type,
+      MPI_Isend(&buffer_send[this_send],
+                num_elements * sizeof(struct gravity_tensors), MPI_BYTE,
                 p->cells_in[0]->nodeID, p->cells_out[k]->tag, MPI_COMM_WORLD,
                 &requests[this_request]);
 
@@ -3381,17 +3383,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   size_t *rebuild_space = &((size_t *)extra_data)[1];
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
   struct engine *e = (struct engine *)((size_t *)extra_data)[0];
-  const int nodeID = e->nodeID;
 
   for (int ind = 0; ind < num_elements; ind++) {
-
-    /* Get basic task information */
     struct task *t = &tasks[ind];
-    const enum task_types t_type = t->type;
-    const enum task_subtypes t_subtype = t->subtype;
 
     /* Single-cell task? */
-    if (t_type == task_type_self || t_type == task_type_sub_self) {
+    if (t->type == task_type_self || t->type == task_type_sub_self) {
 
       /* Local pointer. */
       struct cell *ci = t->ci;
@@ -3399,7 +3396,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (ci->nodeID != engine_rank) error("Non-local self task found");
 
       /* Activate the hydro drift */
-      if (t_type == task_type_self && t_subtype == task_subtype_density) {
+      if (t->type == task_type_self && t->subtype == task_subtype_density) {
         if (cell_is_active_hydro(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
@@ -3407,36 +3404,37 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Store current values of dx_max and h_max. */
-      else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_density) {
+      else if (t->type == task_type_sub_self &&
+               t->subtype == task_subtype_density) {
         if (cell_is_active_hydro(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_subcell_hydro_tasks(ci, NULL, s);
         }
       }
 
-      else if (t_type == task_type_self && t_subtype == task_subtype_force) {
+      else if (t->type == task_type_self && t->subtype == task_subtype_force) {
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
-      else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_force) {
+      else if (t->type == task_type_sub_self &&
+               t->subtype == task_subtype_force) {
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
-      else if (t_type == task_type_self && t_subtype == task_subtype_gradient) {
+      else if (t->type == task_type_self &&
+               t->subtype == task_subtype_gradient) {
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
-      else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_gradient) {
+      else if (t->type == task_type_sub_self &&
+               t->subtype == task_subtype_gradient) {
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 #endif
 
       /* Activate the gravity drift */
-      else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
+      else if (t->type == task_type_self && t->subtype == task_subtype_grav) {
         if (cell_is_active_gravity(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_subcell_grav_tasks(t->ci, NULL, s);
@@ -3444,8 +3442,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Activate the gravity drift */
-      else if (t_type == task_type_self &&
-               t_subtype == task_subtype_external_grav) {
+      else if (t->type == task_type_self &&
+               t->subtype == task_subtype_external_grav) {
         if (cell_is_active_gravity(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_drift_gpart(t->ci, s);
@@ -3460,34 +3458,27 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Pair? */
-    else if (t_type == task_type_pair || t_type == task_type_sub_pair) {
+    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
       /* Local pointers. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
-#ifdef WITH_MPI
-      const int ci_nodeID = ci->nodeID;
-      const int cj_nodeID = cj->nodeID;
-#else
-      const int ci_nodeID = nodeID;
-      const int cj_nodeID = nodeID;
-#endif
       const int ci_active_hydro = cell_is_active_hydro(ci, e);
       const int cj_active_hydro = cell_is_active_hydro(cj, e);
       const int ci_active_gravity = cell_is_active_gravity(ci, e);
       const int cj_active_gravity = cell_is_active_gravity(cj, e);
 
       /* Only activate tasks that involve a local active cell. */
-      if ((t_subtype == task_subtype_density ||
-           t_subtype == task_subtype_gradient ||
-           t_subtype == task_subtype_force) &&
-          ((ci_active_hydro && ci_nodeID == nodeID) ||
-           (cj_active_hydro && cj_nodeID == nodeID))) {
+      if ((t->subtype == task_subtype_density ||
+           t->subtype == task_subtype_gradient ||
+           t->subtype == task_subtype_force) &&
+          ((ci_active_hydro && ci->nodeID == engine_rank) ||
+           (cj_active_hydro && cj->nodeID == engine_rank))) {
 
         scheduler_activate(s, t);
 
         /* Set the correct sorting flags */
-        if (t_type == task_type_pair && t_subtype == task_subtype_density) {
+        if (t->type == task_type_pair && t->subtype == task_subtype_density) {
 
           /* Store some values. */
           atomic_or(&ci->requires_sorts, 1 << t->flags);
@@ -3496,8 +3487,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cj->dx_max_sort_old = cj->dx_max_sort;
 
           /* Activate the hydro drift tasks. */
-          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+          if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+          if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
 
           /* Check the sorts and activate them if needed. */
           cell_activate_sorts(ci, t->flags, s);
@@ -3506,40 +3497,40 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 
         /* Store current values of dx_max and h_max. */
-        else if (t_type == task_type_sub_pair &&
-                 t_subtype == task_subtype_density) {
+        else if (t->type == task_type_sub_pair &&
+                 t->subtype == task_subtype_density) {
           cell_activate_subcell_hydro_tasks(t->ci, t->cj, s);
         }
       }
 
-      if ((t_subtype == task_subtype_grav) &&
-          ((ci_active_gravity && ci_nodeID == nodeID) ||
-           (cj_active_gravity && cj_nodeID == nodeID))) {
+      if ((t->subtype == task_subtype_grav) &&
+          ((ci_active_gravity && ci->nodeID == engine_rank) ||
+           (cj_active_gravity && cj->nodeID == engine_rank))) {
 
         scheduler_activate(s, t);
 
-        if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
+        if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
           /* Activate the gravity drift */
           cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
         }
 
 #ifdef SWIFT_DEBUG_CHECKS
-        else if (t_type == task_type_sub_pair &&
-                 t_subtype == task_subtype_grav) {
+        else if (t->type == task_type_sub_pair &&
+                 t->subtype == task_subtype_grav) {
           error("Invalid task sub-type encountered");
         }
 #endif
       }
 
       /* Only interested in density tasks as of here. */
-      if (t_subtype == task_subtype_density) {
+      if (t->subtype == task_subtype_density) {
 
         /* Too much particle movement? */
         if (cell_need_rebuild_for_pair(ci, cj)) *rebuild_space = 1;
 
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
-        if (ci_nodeID != nodeID) {
+        if (ci->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active_hydro) {
@@ -3558,7 +3549,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_hydro) {
 
-            struct link *l = scheduler_activate_send(s, cj->send_xv, ci_nodeID);
+            struct link *l =
+                scheduler_activate_send(s, cj->send_xv, ci->nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -3567,19 +3559,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             /* If the local cell is also active, more stuff will be needed. */
             if (cj_active_hydro) {
-              scheduler_activate_send(s, cj->send_rho, ci_nodeID);
+              scheduler_activate_send(s, cj->send_rho, ci->nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
-              scheduler_activate_send(s, cj->send_gradient, ci_nodeID);
+              scheduler_activate_send(s, cj->send_gradient, ci->nodeID);
 #endif
             }
           }
 
           /* If the local cell is active, send its ti_end values. */
           if (cj_active_hydro)
-            scheduler_activate_send(s, cj->send_ti, ci_nodeID);
+            scheduler_activate_send(s, cj->send_ti, ci->nodeID);
 
-        } else if (cj_nodeID != nodeID) {
+        } else if (cj->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_hydro) {
@@ -3598,7 +3590,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active_hydro) {
 
-            struct link *l = scheduler_activate_send(s, ci->send_xv, cj_nodeID);
+            struct link *l =
+                scheduler_activate_send(s, ci->send_xv, cj->nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -3608,27 +3601,27 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             /* If the local cell is also active, more stuff will be needed. */
             if (ci_active_hydro) {
 
-              scheduler_activate_send(s, ci->send_rho, cj_nodeID);
+              scheduler_activate_send(s, ci->send_rho, cj->nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
-              scheduler_activate_send(s, ci->send_gradient, cj_nodeID);
+              scheduler_activate_send(s, ci->send_gradient, cj->nodeID);
 #endif
             }
           }
 
           /* If the local cell is active, send its ti_end values. */
           if (ci_active_hydro)
-            scheduler_activate_send(s, ci->send_ti, cj_nodeID);
+            scheduler_activate_send(s, ci->send_ti, cj->nodeID);
         }
 #endif
       }
 
       /* Only interested in gravity tasks as of here. */
-      if (t_subtype == task_subtype_grav) {
+      if (t->subtype == task_subtype_grav) {
 
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
-        if (ci_nodeID != nodeID) {
+        if (ci->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active_gravity) scheduler_activate(s, ci->recv_grav);
@@ -3640,7 +3633,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (ci_active_gravity) {
 
             struct link *l =
-                scheduler_activate_send(s, cj->send_grav, ci_nodeID);
+                scheduler_activate_send(s, cj->send_grav, ci->nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -3650,9 +3643,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, send its ti_end values. */
           if (cj_active_gravity)
-            scheduler_activate_send(s, cj->send_ti, ci_nodeID);
+            scheduler_activate_send(s, cj->send_ti, ci->nodeID);
 
-        } else if (cj_nodeID != nodeID) {
+        } else if (cj->nodeID != engine_rank) {
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_gravity) scheduler_activate(s, cj->recv_grav);
@@ -3664,7 +3657,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_active_gravity) {
 
             struct link *l =
-                scheduler_activate_send(s, ci->send_grav, cj_nodeID);
+                scheduler_activate_send(s, ci->send_grav, cj->nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -3674,64 +3667,58 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, send its ti_end values. */
           if (ci_active_gravity)
-            scheduler_activate_send(s, ci->send_ti, cj_nodeID);
+            scheduler_activate_send(s, ci->send_ti, cj->nodeID);
         }
 #endif
       }
     }
 
     /* End force ? */
-    else if (t_type == task_type_end_force) {
+    else if (t->type == task_type_end_force) {
 
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
         scheduler_activate(s, t);
     }
 
     /* Kick ? */
-    else if (t_type == task_type_kick1 || t_type == task_type_kick2) {
+    else if (t->type == task_type_kick1 || t->type == task_type_kick2) {
 
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
         scheduler_activate(s, t);
     }
 
     /* Hydro ghost tasks ? */
-    else if (t_type == task_type_ghost || t_type == task_type_extra_ghost ||
-             t_type == task_type_ghost_in || t_type == task_type_ghost_out) {
+    else if (t->type == task_type_ghost || t->type == task_type_extra_ghost ||
+             t->type == task_type_ghost_in || t->type == task_type_ghost_out) {
       if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Gravity stuff ? */
-    else if (t_type == task_type_grav_down || t_type == task_type_grav_mesh ||
-             t_type == task_type_grav_long_range ||
-             t_type == task_type_init_grav ||
-             t_type == task_type_init_grav_out ||
-             t_type == task_type_grav_down_in) {
+    else if (t->type == task_type_grav_down || t->type == task_type_grav_mesh ||
+             t->type == task_type_grav_long_range ||
+             t->type == task_type_init_grav ||
+             t->type == task_type_init_grav_out ||
+             t->type == task_type_grav_down_in) {
       if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
     }
 
-    /* Multipole - Multipole interaction task */
-    else if (t_type == task_type_grav_mm) {
+    else if (t->type == task_type_grav_mm) {
 
       /* Local pointers. */
       const struct cell *ci = t->ci;
       const struct cell *cj = t->cj;
-#ifdef WITH_MPI
       const int ci_nodeID = ci->nodeID;
-      const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
-#else
-      const int ci_nodeID = nodeID;
-      const int cj_nodeID = nodeID;
-#endif
+      const int cj_nodeID = cj->nodeID;
       const int ci_active_gravity = cell_is_active_gravity_mm(ci, e);
       const int cj_active_gravity = cell_is_active_gravity_mm(cj, e);
 
-      if ((ci_active_gravity && ci_nodeID == nodeID) ||
-          (cj_active_gravity && cj_nodeID == nodeID))
+      if ((ci_active_gravity && ci_nodeID == engine_rank) ||
+          (cj_active_gravity && cj_nodeID == engine_rank))
         scheduler_activate(s, t);
     }
 
     /* Time-step? */
-    else if (t_type == task_type_timestep) {
+    else if (t->type == task_type_timestep) {
       t->ci->updated = 0;
       t->ci->g_updated = 0;
       t->ci->s_updated = 0;
@@ -3740,7 +3727,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Subgrid tasks */
-    else if (t_type == task_type_cooling || t_type == task_type_sourceterms) {
+    else if (t->type == task_type_cooling || t->type == task_type_sourceterms) {
       if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
   }
@@ -3943,12 +3930,9 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
 
-  /* Construct the list of purely local cells */
-  space_list_local_cells(e->s);
-
   /* Re-compute the mesh forces */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
-    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+    pm_mesh_compute_potential(e->mesh, e->s, e->verbose);
 
   /* Re-compute the maximal RMS displacement constraint */
   if (e->policy & engine_policy_cosmology)
@@ -3970,21 +3954,6 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   engine_exchange_cells(e);
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS
-
-  /* Let's check that what we received makes sense */
-  if (e->policy & engine_policy_self_gravity) {
-    long long counter = 0;
-
-    for (int i = 0; i < e->s->nr_cells; ++i) {
-      const struct gravity_tensors *m = &e->s->multipoles_top[i];
-      counter += m->m_pole.num_gpart;
-    }
-    if (counter != e->total_nr_gparts)
-      error("Total particles in multipoles inconsistent with engine");
-  }
-#endif
-
   /* Re-build the tasks. */
   engine_maketasks(e);
 
@@ -3997,11 +3966,6 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
    * previously been active on this rank. */
   space_check_drift_point(e->s, e->ti_current,
                           e->policy & engine_policy_self_gravity);
-
-  if (e->policy & engine_policy_self_gravity) {
-    for (int k = 0; k < e->s->nr_local_cells; k++)
-      cell_check_foreign_multipole(&e->s->cells_top[e->s->local_cells_top[k]]);
-  }
 #endif
 
   /* Run through the tasks and mark as skip or not. */
@@ -4104,17 +4068,11 @@ void engine_barrier(struct engine *e) {
 }
 
 /**
- * @brief Recursive function gathering end-of-step data.
+ * @brief Mapping function to collect the data from the kick.
  *
- * We recurse until we encounter a timestep or time-step MPI recv task
- * as the values will have been set at that level. We then bring these
- * values upwards.
- *
- * @param c The #cell to recurse into.
- * @param e The #engine.
+ * @param c A super-cell.
  */
-void engine_collect_end_of_step_recurse(struct cell *c,
-                                        const struct engine *e) {
+void engine_collect_end_of_step_recurse(struct cell *c) {
 
 /* Skip super-cells (Their values are already set) */
 #ifdef WITH_MPI
@@ -4136,17 +4094,15 @@ void engine_collect_end_of_step_recurse(struct cell *c,
     if (cp != NULL && (cp->count > 0 || cp->gcount > 0 || cp->scount > 0)) {
 
       /* Recurse */
-      engine_collect_end_of_step_recurse(cp, e);
+      engine_collect_end_of_step_recurse(cp);
 
       /* And update */
       ti_hydro_end_min = min(ti_hydro_end_min, cp->ti_hydro_end_min);
       ti_hydro_end_max = max(ti_hydro_end_max, cp->ti_hydro_end_max);
       ti_hydro_beg_max = max(ti_hydro_beg_max, cp->ti_hydro_beg_max);
-
       ti_gravity_end_min = min(ti_gravity_end_min, cp->ti_gravity_end_min);
       ti_gravity_end_max = max(ti_gravity_end_max, cp->ti_gravity_end_max);
       ti_gravity_beg_max = max(ti_gravity_beg_max, cp->ti_gravity_beg_max);
-
       updated += cp->updated;
       g_updated += cp->g_updated;
       s_updated += cp->s_updated;
@@ -4170,22 +4126,11 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   c->s_updated = s_updated;
 }
 
-/**
- * @brief Mapping function to collect the data from the end of the step
- *
- * This function will call a recursive function on all the top-level cells
- * to collect the information we are after.
- *
- * @param map_data The list of cells with tasks on this node.
- * @param num_elements The number of elements in the list this thread will work
- * on.
- * @param extra_data The #engine.
- */
 void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
                                        void *extra_data) {
 
   struct end_of_step_data *data = (struct end_of_step_data *)extra_data;
-  const struct engine *e = data->e;
+  struct engine *e = data->e;
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
 
@@ -4202,19 +4147,15 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     if (c->count > 0 || c->gcount > 0 || c->scount > 0) {
 
       /* Make the top-cells recurse */
-      engine_collect_end_of_step_recurse(c, e);
+      engine_collect_end_of_step_recurse(c);
 
       /* And aggregate */
-      if (c->ti_hydro_end_min > e->ti_current)
-        ti_hydro_end_min = min(ti_hydro_end_min, c->ti_hydro_end_min);
+      ti_hydro_end_min = min(ti_hydro_end_min, c->ti_hydro_end_min);
       ti_hydro_end_max = max(ti_hydro_end_max, c->ti_hydro_end_max);
       ti_hydro_beg_max = max(ti_hydro_beg_max, c->ti_hydro_beg_max);
-
-      if (c->ti_gravity_end_min > e->ti_current)
-        ti_gravity_end_min = min(ti_gravity_end_min, c->ti_gravity_end_min);
+      ti_gravity_end_min = min(ti_gravity_end_min, c->ti_gravity_end_min);
       ti_gravity_end_max = max(ti_gravity_end_max, c->ti_gravity_end_max);
       ti_gravity_beg_max = max(ti_gravity_beg_max, c->ti_gravity_beg_max);
-
       updates += c->updated;
       g_updates += c->g_updated;
       s_updates += c->s_updated;
@@ -4232,21 +4173,16 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->updates += updates;
     data->g_updates += g_updates;
     data->s_updates += s_updates;
-
-    if (ti_hydro_end_min > e->ti_current)
-      data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
+    data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
     data->ti_hydro_end_max = max(ti_hydro_end_max, data->ti_hydro_end_max);
     data->ti_hydro_beg_max = max(ti_hydro_beg_max, data->ti_hydro_beg_max);
-
-    if (ti_gravity_end_min > e->ti_current)
-      data->ti_gravity_end_min =
-          min(ti_gravity_end_min, data->ti_gravity_end_min);
+    data->ti_gravity_end_min =
+        min(ti_gravity_end_min, data->ti_gravity_end_min);
     data->ti_gravity_end_max =
         max(ti_gravity_end_max, data->ti_gravity_end_max);
     data->ti_gravity_beg_max =
         max(ti_gravity_beg_max, data->ti_gravity_beg_max);
   }
-
   if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
 }
 
@@ -4281,8 +4217,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
 
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,
-                 s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
-                 sizeof(int), 0, &data);
+                 s->local_cells_top, s->nr_local_cells, sizeof(int), 0, &data);
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(&e->collect_group1, data.updates, data.g_updates,
@@ -4570,10 +4505,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_gparts(s, e->verbose);
 
   /* Update the cooling function */
-  //if (e->policy & engine_policy_cooling)
-  //  cooling_update(e->physical_constants, e->internal_units, e->cosmology,
-  //                 e->cooling_func);
-
+  if (e->policy & engine_policy_cooling)
+    cooling_update(e->physical_constants, e->internal_units, e->cosmology,
+                   e->cooling_func);
 
   /* Now, launch the calculation */
   TIMER_TIC;
@@ -4749,10 +4683,10 @@ void engine_step(struct engine *e) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d %6d %6d %6d %.5e\n",
+        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-        e->s_updates, e->wallclock_time, e->step_props,  (n_eagle_cooling_rate_calls_1 - n_eagle_cooling_rate_calls_3)/n_eagle_cooling_rate_calls_2, n_eagle_cooling_rate_calls_2, n_eagle_cooling_rate_calls_3, ((float) n_eagle_cooling_rate_calls_3)/((float) n_eagle_cooling_rate_calls_2));
+        e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
     fprintf(e->file_timesteps,
@@ -4762,9 +4696,6 @@ void engine_step(struct engine *e) {
             e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
-  n_eagle_cooling_rate_calls_1 = 0;
-  n_eagle_cooling_rate_calls_2 = 0;
-  n_eagle_cooling_rate_calls_3 = 0;
 
   /* We need some cells to exist but not the whole task stuff. */
   if (e->restarting) space_rebuild(e->s, e->verbose);
@@ -4791,6 +4722,11 @@ void engine_step(struct engine *e) {
     e->time_old = e->ti_old * e->time_base + e->time_begin;
     e->time_step = (e->ti_current - e->ti_old) * e->time_base;
   }
+
+  /* Update the cooling function */
+  if (e->policy & engine_policy_cooling)
+    cooling_update(e->physical_constants, e->internal_units, e->cosmology,
+                   e->cooling_func);
 
   /*****************************************************/
   /* OK, we now know what the next end of time-step is */
@@ -4865,16 +4801,14 @@ void engine_step(struct engine *e) {
 #endif
 
   /* Collect information about the next time-step */
-  engine_collect_end_of_step(e, 1);
+  engine_collect_end_of_step(e, 0);
   e->forcerebuild = e->collect_group1.forcerebuild;
+
+  /* Now apply all the collected time step updates and particle counts. */
+  collectgroup1_apply(&e->collect_group1, e);
   e->updates_since_rebuild += e->collect_group1.updates;
   e->g_updates_since_rebuild += e->collect_group1.g_updates;
   e->s_updates_since_rebuild += e->collect_group1.s_updates;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (e->ti_end_min == e->ti_current && e->ti_end_min < max_nr_timesteps)
-    error("Obtained a time-step of size 0");
-#endif
 
   /********************************************************/
   /* OK, we are done with the regular stuff. Time for i/o */
@@ -5159,17 +5093,14 @@ void engine_unskip(struct engine *e) {
 #endif  // WITH_PROFILER
 
   /* Move the active local cells to the top of the list. */
-  int *local_cells = e->s->local_cells_with_tasks_top;
+  int *local_cells = e->s->local_cells_top;
   int num_active_cells = 0;
-  for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
+  for (int k = 0; k < s->nr_local_cells; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
-
     if ((e->policy & engine_policy_hydro && cell_is_active_hydro(c, e)) ||
-        (e->policy & engine_policy_self_gravity &&
-         cell_is_active_gravity(c, e)) ||
-        (e->policy & engine_policy_external_gravity &&
+        (e->policy &
+             (engine_policy_self_gravity | engine_policy_external_gravity) &&
          cell_is_active_gravity(c, e))) {
-
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
       num_active_cells += 1;
@@ -5358,10 +5289,6 @@ void engine_reconstruct_multipoles(struct engine *e) {
 void engine_makeproxies(struct engine *e) {
 
 #ifdef WITH_MPI
-  /* Let's time this */
-  const ticks tic = getticks();
-
-  /* Useful local information */
   const int nodeID = e->nodeID;
   const struct space *s = e->s;
 
@@ -5388,6 +5315,9 @@ void engine_makeproxies(struct engine *e) {
                         cell_width[1] * cell_width[1] +
                         cell_width[2] * cell_width[2];
   const double r_max = sqrt(r_max2);
+
+  /* Let's time this */
+  const ticks tic = getticks();
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
@@ -6434,8 +6364,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_types();
-  stats_create_mpi_type();
-  proxy_create_mpi_type();
+  stats_create_MPI_type();
   task_create_mpi_comms();
 #endif
 
