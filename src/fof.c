@@ -90,6 +90,28 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts) {
 
 }
 
+/* Store group size and offset into array. */
+struct group_length {
+
+  int index, size;
+
+};
+
+/*
+ * Sort elements in descending order.
+ *
+ * Return value meaning
+ * <0 The element pointed by b goes before the element pointed by a 
+ * 0  The element pointed by b is equivalent to the element pointed by a
+ * >0 The element pointed by b goes after the element pointed by a
+ * 
+ */
+int cmp_func(const void * a, const void * b) {
+  struct group_length *a_group_size = (struct group_length *)a;
+  struct group_length *b_group_size = (struct group_length *)b;
+  return ( b_group_size->size - a_group_size->size );
+}
+
 /* Finds the global root ID of the group a particle exists in. */
 __attribute__((always_inline)) INLINE static int fof_find_global(const int i,
                                                           int *group_index) {
@@ -1309,6 +1331,51 @@ void fof_search_tree(struct space *s) {
     
     /* Find the largest group by mass. */
     if (group_mass[i] > max_group_mass_local) max_group_mass_local = group_mass[i];
+  }
+
+  if (s->e->nr_nodes <= 1) {
+    /* Sort the groups in descending order based upon size and re-lable their IDs 0-num_groups. */
+    struct group_length *high_group_sizes = NULL;
+    int group_count = 0;
+
+    if (posix_memalign((void **)&high_group_sizes, 32, num_groups_local * sizeof(struct group_length)) != 0)
+      error("Failed to allocate list of large groups.");
+
+    /* Store the group_sizes and their offset. */
+    for (size_t i = 0; i < nr_gparts; i++) {
+
+      if(group_index[i] == i + node_offset && group_size[i] >= min_group_size) {
+        high_group_sizes[group_count].index = i;
+        high_group_sizes[group_count++].size = group_size[i];
+      }
+
+    }
+
+    FILE *file = fopen("group_sizes_unsorted.dat", "w");
+
+    for(int i=0; i<num_groups_local; i++) fprintf(file, "%7d %7d\n", high_group_sizes[i].index, high_group_sizes[i].size);
+
+    fclose(file);
+
+    /* Sort the groups */
+    qsort(high_group_sizes, num_groups_local, sizeof(struct group_length), cmp_func);
+
+    file = fopen("group_sizes_sorted.dat", "w");
+
+    for(int i=0; i<num_groups_local; i++) fprintf(file, "%7d %7d\n", high_group_sizes[i].index, high_group_sizes[i].size);
+
+    fclose(file);
+
+    group_count = 0;
+    int offset = 0;
+    for(int i=0; i<num_groups_local; i++) group_index[high_group_sizes[i].index] = offset + (group_count++);
+
+    /* Re-label the groups between 0-num_groups. */
+    for (size_t i = 0; i < nr_gparts; i++) {
+
+      if (group_size[i] >= min_group_size) gparts[i].root = group_index[i];
+
+    } 
   }
 
   /* Find global properties. */
