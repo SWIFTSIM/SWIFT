@@ -1365,9 +1365,10 @@ void fof_search_tree(struct space *s) {
 #endif /* WITH_MPI */
 
 #ifdef WITH_MPI
+  struct group_length *global_group_sizes = NULL;
+  
   if (nr_nodes > 1) {
 
-    struct group_length *global_group_sizes = NULL;
     int *displ = NULL, *group_counts = NULL;
 
     if (posix_memalign((void **)&global_group_sizes, 32, num_groups * sizeof(struct group_length)) != 0)
@@ -1409,10 +1410,18 @@ void fof_search_tree(struct space *s) {
     }
 
     /* Clean up memory. */
-    free(global_group_sizes);
     free(group_counts);
     free(displ);
 
+  }
+  else {
+    /* Sort the groups */
+    qsort(high_group_sizes, num_groups_local, sizeof(struct group_length), cmp_func);
+
+    /* Update group_index with new value. */
+    group_count = 0;
+    int offset = 0;
+    for(int i=0; i<num_groups_local; i++) group_index[high_group_sizes[i].index] = offset + (group_count++);
   }
 #else
 
@@ -1425,6 +1434,8 @@ void fof_search_tree(struct space *s) {
   for(int i=0; i<num_groups_local; i++) group_index[high_group_sizes[i].index] = offset + (group_count++);
    
 #endif
+  
+  s->fof_data.num_groups = num_groups;
 
   /* Re-label the groups between 0-num_groups. */
   for (size_t i = 0; i < nr_gparts; i++) {
@@ -1434,8 +1445,17 @@ void fof_search_tree(struct space *s) {
   }
 
   /* Dump group data. */ 
-  fof_dump_group_data(output_file_name, s);
-  
+#ifdef WITH_MPI
+  if (nr_nodes > 1) {
+    fof_dump_group_data(output_file_name, s, global_group_sizes);
+    free(global_group_sizes);
+  }
+  else 
+    fof_dump_group_data(output_file_name, s, high_group_sizes);
+#else
+  fof_dump_group_data(output_file_name, s, high_group_sizes);
+#endif
+
   if(engine_rank == 0) {
     message(
         "No. of groups: %d. No. of particles in groups: %d. No. of particles not "
@@ -1452,10 +1472,9 @@ void fof_search_tree(struct space *s) {
 }
 
 /* Dump FOF group data. */
-void fof_dump_group_data(char *out_file, struct space *s) {
+void fof_dump_group_data(char *out_file, struct space *s, struct group_length *group_sizes) {
 
   FILE *file = fopen(out_file, "w");
-  const int min_group_size = s->fof_data.min_group_size;
   const size_t nr_gparts = s->nr_gparts;
 
   struct gpart *gparts = s->gparts;
@@ -1465,19 +1484,20 @@ void fof_dump_group_data(char *out_file, struct space *s) {
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   
   fprintf(file, "# %7s %7s %7s %7s %7s %7s %7s\n", "ID", "Root ID", "Group Size", "Group Mass", "x CoM", "y CoM", "z CoM");
-  fprintf(file, "#---------------------------------------\n");
+  fprintf(file, "#------------------------------------------------------------\n");
 
-  /* TODO: Order groups in descending order. */
-  /* TODO: Set particle group ID in particle struct. */
-  for (size_t i = 0; i < nr_gparts; i++) {
-    if(group_size[i] >= min_group_size) {
- 
+  for (size_t i = 0; i < s->fof_data.num_groups; i++) {
+    
+    const int group_offset = group_sizes[i].index;
+      
+    if(group_offset >= node_offset && group_offset < node_offset + nr_gparts) {
+      
       /* Box wrap the CoM. */
-      const double CoM_x = box_wrap(group_CoM[i].x, 0., dim[0]);
-      const double CoM_y = box_wrap(group_CoM[i].y, 0., dim[1]);
-      const double CoM_z = box_wrap(group_CoM[i].z, 0., dim[2]);
+      const double CoM_x = box_wrap(group_CoM[group_offset - node_offset].x, 0., dim[0]);
+      const double CoM_y = box_wrap(group_CoM[group_offset - node_offset].y, 0., dim[1]);
+      const double CoM_z = box_wrap(group_CoM[group_offset - node_offset].z, 0., dim[2]);
 
-      fprintf(file, "  %7zu %7d %7d %7e %7e %7e %7e\n", node_offset + i, gparts[i].root, group_size[i], group_mass[i], CoM_x, CoM_y, CoM_z);
+      fprintf(file, "  %7d %7d %7d %7e %7e %7e %7e\n", group_offset - node_offset, gparts[group_offset - node_offset].root, group_size[group_offset - node_offset], group_mass[group_offset - node_offset], CoM_x, CoM_y, CoM_z);
     }
   }
 
