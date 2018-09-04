@@ -47,6 +47,13 @@ struct fof_mpi {
 
 } SWIFT_STRUCT_ALIGN; 
 
+/* Store group size and offset into array. */
+struct group_length {
+
+  int index, size;
+
+} SWIFT_STRUCT_ALIGN;
+
 /* Function prototypes. */
 void fof_init(struct space *s, long long Ngas, long long Ngparts);
 void fof_search_serial(struct space *s);
@@ -60,6 +67,7 @@ void fof_dump_group_data(char *out_file, struct space *s);
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
 extern MPI_Datatype fof_mpi_type;
+extern MPI_Datatype group_length_mpi_type;
 #endif
 
 #endif /* SWIFT_FOF_H */

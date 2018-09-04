@@ -41,6 +41,7 @@
 
 #ifdef WITH_MPI
 MPI_Datatype fof_mpi_type;
+MPI_Datatype group_length_mpi_type;
 #endif
 FILE *fof_file;
 int node_offset;
@@ -86,16 +87,14 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts) {
       MPI_Type_commit(&fof_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for fof.");
   }
+  if (MPI_Type_contiguous(sizeof(struct group_length) / sizeof(unsigned char), MPI_BYTE,
+        &group_length_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&group_length_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for group_length.");
+  }
 #endif
 
 }
-
-/* Store group size and offset into array. */
-struct group_length {
-
-  int index, size;
-
-};
 
 /*
  * Sort elements in descending order.
@@ -1091,6 +1090,7 @@ void fof_search_foreign_cells(struct space *s) {
     int new_root = global_group_id[fof_find(global_group_index[i], global_group_index)];
     
     /* If the group is local update its root and size. */
+    /* TODO: create a is_local() inline function. */
     if(group_id >= node_offset && group_id < node_offset + nr_gparts &&
        new_root != group_id) {
         group_index[group_id - node_offset] = new_root;
@@ -1171,22 +1171,24 @@ void fof_search_tree(struct space *s) {
   node_offset = 0;
 
 #ifdef WITH_MPI
-  if (s->e->nr_nodes > 1) {
+  const int nr_nodes = s->e->nr_nodes;
+  
+  if (nr_nodes > 1) {
   
     int *global_nr_gparts;
 
     /* Find the total no. of particles on each node and calculate your unique offset. */
     if (posix_memalign((void**)&global_nr_gparts, SWIFT_STRUCT_ALIGNMENT,
-          s->e->nr_nodes * sizeof(int)) != 0)
+            nr_nodes * sizeof(int)) != 0)
       error("Error while allocating memory for global_nr_gparts array.");
 
-    bzero(global_nr_gparts, s->e->nr_nodes * sizeof(int));
+    bzero(global_nr_gparts, nr_nodes * sizeof(int));
 
     MPI_Allgather(&s->nr_gparts, 1, MPI_INT, global_nr_gparts, 1, MPI_INT, MPI_COMM_WORLD);
 
     if(engine_rank == 0) {
       printf("No. of particles: [%d", global_nr_gparts[0]);
-      for(int i = 1; i<s->e->nr_nodes; i++) printf(", %d", global_nr_gparts[i]);
+      for(int i = 1; i<nr_nodes; i++) printf(", %d", global_nr_gparts[i]);
       printf("]\n");
     }
 
@@ -1299,7 +1301,7 @@ void fof_search_tree(struct space *s) {
 #ifdef WITH_MPI
   snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, "_mpi_rank_%d.dat", engine_rank);
   
-  if (s->e->nr_nodes > 1) {
+  if (nr_nodes > 1) {
     /* Search for group links across MPI domains. */
     fof_search_foreign_cells(s);
   }  
@@ -1317,7 +1319,6 @@ void fof_search_tree(struct space *s) {
       group_CoM[i].x = group_CoM[i].x / group_mass[i];
       group_CoM[i].y = group_CoM[i].y / group_mass[i];
       group_CoM[i].z = group_CoM[i].z / group_mass[i];
-      gparts[i].root = fof_find_global(i, group_index);
     }
 
     /* Find the total number of groups. */
@@ -1333,54 +1334,26 @@ void fof_search_tree(struct space *s) {
     if (group_mass[i] > max_group_mass_local) max_group_mass_local = group_mass[i];
   }
 
-  if (s->e->nr_nodes <= 1) {
-    /* Sort the groups in descending order based upon size and re-lable their IDs 0-num_groups. */
-    struct group_length *high_group_sizes = NULL;
-    int group_count = 0;
+  /* Sort the groups in descending order based upon size and re-label their IDs 0-num_groups. */
+  struct group_length *high_group_sizes = NULL;
+  int group_count = 0;
 
-    if (posix_memalign((void **)&high_group_sizes, 32, num_groups_local * sizeof(struct group_length)) != 0)
-      error("Failed to allocate list of large groups.");
+  if (posix_memalign((void **)&high_group_sizes, 32, num_groups_local * sizeof(struct group_length)) != 0)
+    error("Failed to allocate list of large groups.");
 
-    /* Store the group_sizes and their offset. */
-    for (size_t i = 0; i < nr_gparts; i++) {
+  /* Store the group_sizes and their offset. */
+  for (size_t i = 0; i < nr_gparts; i++) {
 
-      if(group_index[i] == i + node_offset && group_size[i] >= min_group_size) {
-        high_group_sizes[group_count].index = i;
-        high_group_sizes[group_count++].size = group_size[i];
-      }
-
+    if(group_index[i] == i + node_offset && group_size[i] >= min_group_size) {
+      high_group_sizes[group_count].index = node_offset + i;
+      high_group_sizes[group_count++].size = group_size[i];
     }
 
-    FILE *file = fopen("group_sizes_unsorted.dat", "w");
-
-    for(int i=0; i<num_groups_local; i++) fprintf(file, "%7d %7d\n", high_group_sizes[i].index, high_group_sizes[i].size);
-
-    fclose(file);
-
-    /* Sort the groups */
-    qsort(high_group_sizes, num_groups_local, sizeof(struct group_length), cmp_func);
-
-    file = fopen("group_sizes_sorted.dat", "w");
-
-    for(int i=0; i<num_groups_local; i++) fprintf(file, "%7d %7d\n", high_group_sizes[i].index, high_group_sizes[i].size);
-
-    fclose(file);
-
-    group_count = 0;
-    int offset = 0;
-    for(int i=0; i<num_groups_local; i++) group_index[high_group_sizes[i].index] = offset + (group_count++);
-
-    /* Re-label the groups between 0-num_groups. */
-    for (size_t i = 0; i < nr_gparts; i++) {
-
-      if (group_size[i] >= min_group_size) gparts[i].root = group_index[i];
-
-    } 
   }
 
   /* Find global properties. */
 #ifdef WITH_MPI
-  MPI_Reduce(&num_groups_local, &num_groups, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Allreduce(&num_groups_local, &num_groups, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   MPI_Reduce(&num_parts_in_groups_local, &num_parts_in_groups, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
   MPI_Reduce(&max_group_size_local, &max_group_size, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
   MPI_Reduce(&max_group_mass_local, &max_group_mass, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -1390,7 +1363,76 @@ void fof_search_tree(struct space *s) {
   max_group_size = max_group_size_local;
   max_group_mass = max_group_mass_local;
 #endif /* WITH_MPI */
- 
+
+#ifdef WITH_MPI
+  if (nr_nodes > 1) {
+
+    struct group_length *global_group_sizes = NULL;
+    int *displ = NULL, *group_counts = NULL;
+
+    if (posix_memalign((void **)&global_group_sizes, 32, num_groups * sizeof(struct group_length)) != 0)
+      error("Failed to allocate list of global large groups.");
+
+    if (posix_memalign((void**)&group_counts, SWIFT_STRUCT_ALIGNMENT,
+          nr_nodes * sizeof(int)) != 0)
+      error("Error while allocating memory for the number of groups on each MPI rank");
+
+    if (posix_memalign((void**)&displ, SWIFT_STRUCT_ALIGNMENT,
+          nr_nodes * sizeof(int)) != 0)
+      error("Error while allocating memory for the displacement in memory for the global group size list");
+
+    /* Gather the total number of links on each rank. */
+    MPI_Allgather(&num_groups_local, 1, MPI_INT, group_counts, 1, MPI_INT, MPI_COMM_WORLD);
+
+    /* Set the displacements into the global link list using the link counts from each rank */
+    displ[0] = 0;
+    for(int i=1; i<nr_nodes; i++) displ[i] = displ[i-1] + group_counts[i-1];
+
+    /* Gather the global link list on all ranks. */
+    MPI_Allgatherv(high_group_sizes, num_groups_local, group_length_mpi_type, global_group_sizes, group_counts, displ, group_length_mpi_type, MPI_COMM_WORLD);
+
+    /* Sort the groups */
+    qsort(global_group_sizes, num_groups, sizeof(struct group_length), cmp_func);
+
+    /* Only update group_index that is local with new value. */
+    group_count = 0;
+    int offset = 0;
+    for(int i=0; i<num_groups; i++) {
+
+      const int group_id = global_group_sizes[i].index;
+      
+      if(group_id >= node_offset && group_id < node_offset + nr_gparts) {
+        group_index[group_id - node_offset] = offset + group_count;
+      }
+      
+      group_count++;
+    }
+
+    /* Clean up memory. */
+    free(global_group_sizes);
+    free(group_counts);
+    free(displ);
+
+  }
+#else
+
+  /* Sort the groups */
+  qsort(high_group_sizes, num_groups_local, sizeof(struct group_length), cmp_func);
+
+  /* Update group_index with new value. */
+  group_count = 0;
+  int offset = 0;
+  for(int i=0; i<num_groups_local; i++) group_index[high_group_sizes[i].index] = offset + (group_count++);
+   
+#endif
+
+  /* Re-label the groups between 0-num_groups. */
+  for (size_t i = 0; i < nr_gparts; i++) {
+
+    if (group_size[i] >= min_group_size) gparts[i].root = group_index[i];
+
+  }
+
   /* Dump group data. */ 
   fof_dump_group_data(output_file_name, s);
   
