@@ -1948,8 +1948,8 @@ INLINE static void gravity_M2L_nonsym(
  * @param l_b The second field tensor to compute.
  * @param m_a The first multipole.
  * @param m_b The second multipole.
- * @param pos_b The position of the first m-pole and field tensor.
- * @param pos_a The position of the second m-pole and field tensor.
+ * @param pos_a The position of the first m-pole and field tensor.
+ * @param pos_b The position of the second m-pole and field tensor.
  * @param props The #gravity_props of this calculation.
  * @param periodic Is the calculation periodic ?
  * @param dim The size of the simulation box.
@@ -1958,7 +1958,7 @@ INLINE static void gravity_M2L_nonsym(
 INLINE static void gravity_M2L_symmetric(
     struct grav_tensor *restrict l_a, struct grav_tensor *restrict l_b,
     const struct multipole *restrict m_a, const struct multipole *restrict m_b,
-    const double pos_b[3], const double pos_a[3],
+    const double pos_a[3], const double pos_b[3],
     const struct gravity_props *props, const int periodic, const double dim[3],
     const float rs_inv) {
 
