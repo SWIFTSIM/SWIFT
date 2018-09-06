@@ -401,16 +401,16 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
   get_index_1d(cooling->Therm, cooling->N_Temp, log_10_u, &u_i, &d_u);
 
   if (cosmo->z > cooling->reionisation_redshift) {
-    logT = interpolate_3d(cooling->table.photodissociation_cooling.temperature,
+    logT = interpolate_3d(cooling->table.temperature,
                        n_h_i, He_i, u_i, d_n_h, d_He, d_u, cooling->N_nH,
                        cooling->N_He, cooling->N_Temp, &upper, &lower);
   } else if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-    logT = interpolate_3d(cooling->table.no_compton_cooling.temperature, n_h_i,
+    logT = interpolate_3d(cooling->table.temperature, n_h_i,
                        He_i, u_i, d_n_h, d_He, d_u, cooling->N_nH,
                        cooling->N_He, cooling->N_Temp, &upper, &lower);
   } else {
-    logT = interpolate_4d(cooling->table.element_cooling.temperature, cooling->z_index, n_h_i,
-                       He_i, u_i, cooling->dz, d_n_h, d_He, d_u, cooling->N_Redshifts,
+    logT = interpolate_4d(cooling->table.temperature, 0, n_h_i,
+                       He_i, u_i, cooling->dz, d_n_h, d_He, d_u, 2,
                        cooling->N_nH, cooling->N_He, cooling->N_Temp, &upper,
                        &lower,0);
   }
