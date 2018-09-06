@@ -45,7 +45,7 @@ struct gpart {
   enum part_type type;
 
   /* Particle group ID in FOF. */
-  int root;
+  int group_id;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
