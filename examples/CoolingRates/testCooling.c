@@ -127,6 +127,7 @@ int main(int argc, char **argv) {
   // Init cooling 
   cooling_init(params, &us, &internal_const, &cooling);
   cooling_print(&cooling);
+  cooling_update(&internal_const,&us,&cosmo,&cooling);
 
   // Calculate abundance ratios 
   float *abundance_ratio;
@@ -183,7 +184,7 @@ int main(int argc, char **argv) {
     fprintf(output_file,"%.5e %.5e\n", u,cooling_du_dt);
   }
   fclose(output_file);
-  printf("done\n");
+  message("done cooling rates test");
 
   free(params);
   return 0;

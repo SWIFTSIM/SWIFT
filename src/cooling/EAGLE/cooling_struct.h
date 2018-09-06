@@ -81,9 +81,9 @@ struct cooling_tables {
  *
  */
 struct eagle_cooling_table {
-  struct cooling_tables_redshift_invariant no_compton_cooling;
-  struct cooling_tables_redshift_invariant photodissociation_cooling;
-  struct cooling_tables_redshift_invariant collisional_cooling;
+  struct cooling_tables no_compton_cooling;
+  struct cooling_tables photodissociation_cooling;
+  struct cooling_tables collisional_cooling;
   struct cooling_tables element_cooling;
 };
 
@@ -93,7 +93,7 @@ struct eagle_cooling_table {
 struct cooling_function_data {
 
   /* Cooling table variables */
-  struct eagle_cooling_table table;
+  struct cooling_tables table;
 
   /* Size of table dimensions */
   int N_Redshifts;
@@ -141,9 +141,10 @@ struct cooling_function_data {
   double T_CMB_0;
   double compton_rate_cgs;
 
-  /* redshift table index and offset */
+  /* redshift table indices and offset */
   int z_index;
   float dz;
+  int low_z_index, high_z_index;
 
 };
 

@@ -39,19 +39,15 @@ void GetCoolingRedshifts(struct cooling_function_data *);
 
 void ReadCoolingHeader(char *, struct cooling_function_data *);
 
-struct cooling_tables_redshift_invariant get_no_compt_table(
-  char *, const struct cooling_function_data *restrict);
-
-struct cooling_tables_redshift_invariant get_collisional_table(
-    char *, const struct cooling_function_data *restrict);
-
-struct cooling_tables_redshift_invariant get_photodis_table(
-    char *, const struct cooling_function_data *restrict);
+struct cooling_tables get_redshift_invariant_table(
+  struct cooling_function_data *restrict);
 
 struct cooling_tables get_cooling_table(
-    char *, const struct cooling_function_data *restrict);
+    struct cooling_function_data *restrict);
 
-struct eagle_cooling_table eagle_readtable(
-    char *, const struct cooling_function_data *restrict);
+struct cooling_tables eagle_readtable(
+    struct cooling_function_data *restrict);
+
+void eagle_check_cooling_tables(struct cooling_function_data *restrict, int);
 
 #endif
