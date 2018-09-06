@@ -572,7 +572,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
   
           /* Check that the links have not already been added to the list. */
           for(int l=0; l<*link_count; l++) {
-            if((*group_links)[l].group_i == root_i && (*group_links)[l].group_j == pj->root) found = 1;
+            if((*group_links)[l].group_i == root_i && (*group_links)[l].group_j == pj->group_id) found = 1;
           }
 
           if(!found) {
@@ -591,7 +591,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
 
             /* Store the particle group properties for communication. */
             (*group_links)[*link_count].group_i = root_i;        
-            (*group_links)[*link_count].group_j = pj->root;        
+            (*group_links)[*link_count].group_j = pj->group_id;        
             (*group_links)[*link_count].group_i_size = group_size[root_i - node_offset];
             (*group_links)[*link_count].group_i_mass = group_mass[root_i - node_offset];
             (*group_links)[*link_count].group_i_CoM.x = group_CoM[root_i - node_offset].x;
@@ -882,7 +882,7 @@ void fof_search_foreign_cells(struct space *s) {
       /* Set each particle's root found in the local FOF.*/
       for(int k=0; k<local_cell->gcount; k++) {
         const int root = fof_find_global(offset[k] - node_offset, group_index);  
-        gparts[k].root = root;
+        gparts[k].group_id = root;
       }
     }
   }
@@ -1230,7 +1230,7 @@ void fof_search_tree(struct space *s) {
   /* Set initial group index to particle offset into array and set default group ID. */
   for (size_t i = 0; i < nr_gparts; i++) {
     s->fof_data.group_index[i] = i;
-    gparts[i].root = group_id_default;
+    gparts[i].group_id = group_id_default;
   }
 
   group_index = s->fof_data.group_index;
@@ -1379,13 +1379,13 @@ void fof_search_tree(struct space *s) {
     qsort(high_group_sizes, num_groups_local, sizeof(struct group_length), cmp_func);
 
     /* Update group roots with new value. */
-    for(int i=0; i<num_groups_local; i++) gparts[high_group_sizes[i].index].root = group_id_offset + i;
+    for(int i=0; i<num_groups_local; i++) gparts[high_group_sizes[i].index].group_id = group_id_offset + i;
 
     /* Re-label the groups between group_id_offset - num_groups. */
     for (size_t i = 0; i < nr_gparts; i++) {
       const int root = fof_find(i, group_index);
 
-      if (group_size[root] >= min_group_size) gparts[i].root = gparts[root].root;
+      if (group_size[root] >= min_group_size) gparts[i].group_id = gparts[root].group_id;
 
     }
 
@@ -1423,7 +1423,7 @@ void fof_search_tree(struct space *s) {
     qsort(global_group_sizes, num_groups, sizeof(struct group_length), cmp_func);
 
     /* Set default group ID again. */
-    for (size_t i = 0; i < nr_gparts; i++) gparts[i].root = group_id_default;
+    for (size_t i = 0; i < nr_gparts; i++) gparts[i].group_id = group_id_default;
 
     /* Re-label the groups between group_id_offset - num_groups. */
     for (size_t i = 0; i < nr_gparts; i++) {
@@ -1431,7 +1431,7 @@ void fof_search_tree(struct space *s) {
 
       for(int j = 0; j < num_groups; j++) {
         if(root == global_group_sizes[j].index) {
-          gparts[i].root = group_id_offset + j;
+          gparts[i].group_id = group_id_offset + j;
           break;
         }
       }
@@ -1447,7 +1447,7 @@ void fof_search_tree(struct space *s) {
     FILE *root_file = fopen(root_file_name,"w");
 
     for (size_t i = 0; i < nr_gparts; i++) {
-      fprintf(root_file, "%d\n", gparts[i].root);
+      fprintf(root_file, "%d\n", gparts[i].group_id);
     }
 
     fclose(root_file);
@@ -1493,8 +1493,8 @@ void fof_dump_group_data(char *out_file, struct space *s, struct group_length *g
   struct fof_CoM *group_CoM = s->fof_data.group_CoM;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   
-  fprintf(file, "# %7s %7s %7s %7s %7s %7s %7s\n", "ID", "Root ID", "Group Size", "Group Mass", "x CoM", "y CoM", "z CoM");
-  fprintf(file, "#------------------------------------------------------------\n");
+  fprintf(file, "# %7s %8s %10s %12s %12s %12s %12s\n", "Index", "Group ID", "Group Size", "Group Mass", "x CoM", "y CoM", "z CoM");
+  fprintf(file, "#--------------------------------------------------------------------------------\n");
 
   for (size_t i = 0; i < s->fof_data.num_groups; i++) {
     
@@ -1507,7 +1507,7 @@ void fof_dump_group_data(char *out_file, struct space *s, struct group_length *g
       const double CoM_y = box_wrap(group_CoM[group_offset - node_offset].y, 0., dim[1]);
       const double CoM_z = box_wrap(group_CoM[group_offset - node_offset].z, 0., dim[2]);
 
-      fprintf(file, "  %7d %7d %7d %7e %7e %7e %7e\n", group_offset - node_offset, gparts[group_offset - node_offset].root, group_size[group_offset - node_offset], group_mass[group_offset - node_offset], CoM_x, CoM_y, CoM_z);
+      fprintf(file, "  %7d %8d %10d %12e %12e %12e %12e\n", group_offset - node_offset, gparts[group_offset - node_offset].group_id, group_size[group_offset - node_offset], group_mass[group_offset - node_offset], CoM_x, CoM_y, CoM_z);
     }
   }
 
