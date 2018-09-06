@@ -62,7 +62,7 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj);
 void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell *cj, int *link_count, struct fof_mpi **group_links, int *group_links_size);
 void fof_search_tree_serial(struct space *s);
 void fof_search_tree(struct space *s);
-void fof_dump_group_data(char *out_file, struct space *s);
+void fof_dump_group_data(char *out_file, struct space *s, struct group_length *group_sizes);
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */

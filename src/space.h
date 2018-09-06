@@ -53,7 +53,10 @@ struct fof {
   int *group_size;
   double *group_mass;
   struct fof_CoM *group_CoM;
+  int num_groups;
   int min_group_size;
+  int group_id_default;
+  int group_id_offset;
   int group_links_size_default;
   char base_name[PARSER_MAX_LINE_SIZE];
 

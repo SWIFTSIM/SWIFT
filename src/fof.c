@@ -63,6 +63,12 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts) {
   /* Read the minimum group size. */
   s->fof_data.min_group_size = parser_get_opt_param_int(e->parameter_file, "FOF:min_group_size", 20);
   
+  /* Read the default group ID of particles in groups below the minimum group size. */
+  s->fof_data.group_id_default = parser_get_opt_param_int(e->parameter_file, "FOF:group_id_default", -1);
+  
+  /* Read the starting group ID. */
+  s->fof_data.group_id_offset = parser_get_opt_param_int(e->parameter_file, "FOF:group_id_offset", 1);
+  
   /* Read the linking length scale. */
   const double l_x_scale = parser_get_opt_param_double(e->parameter_file, "FOF:linking_length_scale", 0.2);
 
@@ -1154,6 +1160,9 @@ void fof_search_tree(struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
   const int min_group_size = s->fof_data.min_group_size;
+  const int group_id_default = s->fof_data.group_id_default;
+  const int group_id_offset = s->fof_data.group_id_offset;
+  const int nr_nodes = s->e->nr_nodes;
   struct gpart *gparts = s->gparts;
   int *group_index, *group_size;
   double *group_mass;
@@ -1162,7 +1171,7 @@ void fof_search_tree(struct space *s) {
   double max_group_mass = 0;
   ticks tic = getticks();
 
-  char output_file_name[FILENAME_BUFFER_SIZE];
+  char output_file_name[FILENAME_BUFFER_SIZE], root_file_name[FILENAME_BUFFER_SIZE] = "root_final";
   snprintf(output_file_name, FILENAME_BUFFER_SIZE, s->fof_data.base_name);
 
   message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
@@ -1171,8 +1180,6 @@ void fof_search_tree(struct space *s) {
   node_offset = 0;
 
 #ifdef WITH_MPI
-  const int nr_nodes = s->e->nr_nodes;
-  
   if (nr_nodes > 1) {
   
     int *global_nr_gparts;
@@ -1220,10 +1227,10 @@ void fof_search_tree(struct space *s) {
   if (posix_memalign((void **)&s->fof_data.group_CoM, 32, nr_gparts * sizeof(struct fof_CoM)) != 0)
     error("Failed to allocate list of group CoM for FOF search.");
 
-  /* Initial group ID is particle offset into array. */
+  /* Set initial group index to particle offset into array and set default group ID. */
   for (size_t i = 0; i < nr_gparts; i++) {
     s->fof_data.group_index[i] = i;
-    gparts[i].root = -1;
+    gparts[i].root = group_id_default;
   }
 
   group_index = s->fof_data.group_index;
@@ -1300,6 +1307,7 @@ void fof_search_tree(struct space *s) {
 
 #ifdef WITH_MPI
   snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, "_mpi_rank_%d.dat", engine_rank);
+  snprintf(root_file_name + strlen(root_file_name), FILENAME_BUFFER_SIZE, "_mpi_rank_%d.dat", engine_rank);
   
   if (nr_nodes > 1) {
     /* Search for group links across MPI domains. */
@@ -1307,6 +1315,7 @@ void fof_search_tree(struct space *s) {
   }  
 #else
   snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, ".dat");
+  snprintf(root_file_name + strlen(root_file_name), FILENAME_BUFFER_SIZE, ".dat");
 #endif
  
   int num_groups_local = 0, num_parts_in_groups_local = 0, max_group_size_local = 0;
@@ -1364,6 +1373,24 @@ void fof_search_tree(struct space *s) {
   max_group_mass = max_group_mass_local;
 #endif /* WITH_MPI */
 
+  /* For non-MPI runs and MPI runs with 1 rank sort the groups locally. */
+  if(nr_nodes == 1) {
+    /* Sort the groups */
+    qsort(high_group_sizes, num_groups_local, sizeof(struct group_length), cmp_func);
+
+    /* Update group roots with new value. */
+    for(int i=0; i<num_groups_local; i++) gparts[high_group_sizes[i].index].root = group_id_offset + i;
+
+    /* Re-label the groups between group_id_offset - num_groups. */
+    for (size_t i = 0; i < nr_gparts; i++) {
+      const int root = fof_find(i, group_index);
+
+      if (group_size[root] >= min_group_size) gparts[i].root = gparts[root].root;
+
+    }
+
+  }
+
 #ifdef WITH_MPI
   struct group_length *global_group_sizes = NULL;
   
@@ -1395,18 +1422,19 @@ void fof_search_tree(struct space *s) {
     /* Sort the groups */
     qsort(global_group_sizes, num_groups, sizeof(struct group_length), cmp_func);
 
-    /* Only update group_index that is local with new value. */
-    group_count = 0;
-    int offset = 0;
-    for(int i=0; i<num_groups; i++) {
+    /* Set default group ID again. */
+    for (size_t i = 0; i < nr_gparts; i++) gparts[i].root = group_id_default;
 
-      const int group_id = global_group_sizes[i].index;
-      
-      if(group_id >= node_offset && group_id < node_offset + nr_gparts) {
-        group_index[group_id - node_offset] = offset + group_count;
+    /* Re-label the groups between group_id_offset - num_groups. */
+    for (size_t i = 0; i < nr_gparts; i++) {
+      const int root = fof_find_global(i, group_index);
+
+      for(int j = 0; j < num_groups; j++) {
+        if(root == global_group_sizes[j].index) {
+          gparts[i].root = group_id_offset + j;
+          break;
+        }
       }
-      
-      group_count++;
     }
 
     /* Clean up memory. */
@@ -1414,35 +1442,17 @@ void fof_search_tree(struct space *s) {
     free(displ);
 
   }
-  else {
-    /* Sort the groups */
-    qsort(high_group_sizes, num_groups_local, sizeof(struct group_length), cmp_func);
-
-    /* Update group_index with new value. */
-    group_count = 0;
-    int offset = 0;
-    for(int i=0; i<num_groups_local; i++) group_index[high_group_sizes[i].index] = offset + (group_count++);
-  }
-#else
-
-  /* Sort the groups */
-  qsort(high_group_sizes, num_groups_local, sizeof(struct group_length), cmp_func);
-
-  /* Update group_index with new value. */
-  group_count = 0;
-  int offset = 0;
-  for(int i=0; i<num_groups_local; i++) group_index[high_group_sizes[i].index] = offset + (group_count++);
-   
 #endif
-  
+
+    FILE *root_file = fopen(root_file_name,"w");
+
+    for (size_t i = 0; i < nr_gparts; i++) {
+      fprintf(root_file, "%d\n", gparts[i].root);
+    }
+
+    fclose(root_file);
+
   s->fof_data.num_groups = num_groups;
-
-  /* Re-label the groups between 0-num_groups. */
-  for (size_t i = 0; i < nr_gparts; i++) {
-
-    if (group_size[i] >= min_group_size) gparts[i].root = group_index[i];
-
-  }
 
   /* Dump group data. */ 
 #ifdef WITH_MPI
