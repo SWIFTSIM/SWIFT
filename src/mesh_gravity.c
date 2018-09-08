@@ -291,6 +291,8 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   if (r_s <= 0.) error("Invalid value of a_smooth");
+  if (mesh->dim[0] != dim[0] || mesh->dim[1] != dim[1] || mesh->dim[2] != dim[2])
+    error("Domain size does not match the value stored in the space.");
 
   /* Some useful constants */
   const int N = mesh->N;

@@ -777,19 +777,6 @@ int main(int argc, char *argv[]) {
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);
 
-    /* Initialise the long-range gravity mesh */
-    if (with_self_gravity && periodic) {
-#ifdef HAVE_FFTW
-      pm_mesh_init(&mesh, &gravity_properties, dim);
-#else
-      /* Need the FFTW library if periodic and self gravity. */
-      error(
-          "No FFTW library found. Cannot compute periodic long-range forces.");
-#endif
-    } else {
-      pm_mesh_init_no_mesh(&mesh, dim);
-    }
-
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
@@ -801,6 +788,19 @@ int main(int argc, char *argv[]) {
       message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
               clocks_getunit());
       fflush(stdout);
+    }
+
+    /* Initialise the long-range gravity mesh */
+    if (with_self_gravity && periodic) {
+#ifdef HAVE_FFTW
+      pm_mesh_init(&mesh, &gravity_properties, s.dim);
+#else
+      /* Need the FFTW library if periodic and self gravity. */
+      error(
+          "No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
+    } else {
+      pm_mesh_init_no_mesh(&mesh, s.dim);
     }
 
     /* Check that the matter content matches the cosmology given in the
