@@ -2311,7 +2311,6 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
       if (cells[j]->sort[k] != NULL) free(cells[j]->sort[k]);
     struct gravity_tensors *temp = cells[j]->multipole;
     bzero(cells[j], sizeof(struct cell));
-    bzero(temp, sizeof(struct gravity_tensors));
     cells[j]->multipole = temp;
     cells[j]->nodeID = -1;
     if (lock_init(&cells[j]->lock) != 0 || lock_init(&cells[j]->glock) != 0 ||
