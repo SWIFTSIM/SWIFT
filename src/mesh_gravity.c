@@ -467,8 +467,20 @@ void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
   for (int i = 0; i < gcount; ++i) {
     struct gpart* gp = &gparts[i];
 
-    if (gpart_is_active(gp, e))
+    if (gpart_is_active(gp, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (gp->ti_drift != e->ti_current)
+        error("gpart not drifted to current time");
+
+      /* Check that the particle was initialised */
+      if (gp->initialised == 0)
+        error("Adding forces to an un-initialised gpart.");
+#endif
+
       mesh_to_gparts_CIC(gp, potential, N, cell_fac, dim);
+    }
   }
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");

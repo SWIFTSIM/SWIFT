@@ -119,6 +119,10 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
           error("gpart not drifted to current time");
         if (c->multipole->pot.ti_init != e->ti_current)
           error("c->field tensor not initialised");
+
+        /* Check that the particle was initialised */
+        if (gp->initialised == 0)
+          error("Adding forces to an un-initialised gpart.");
 #endif
         /* Apply the kernel */
         gravity_L2P(pot, CoM, gp);
@@ -223,6 +227,10 @@ static INLINE void runner_dopair_grav_pp_full(
         error("gpi not drifted to current time");
       if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
         error("gpj not drifted to current time");
+
+      /* Check that the particle was initialised */
+      if (gparts_i[pid].initialised == 0)
+        error("Adding forces to an un-initialised gpart.");
 #endif
 
       /* Interact! */
@@ -349,6 +357,10 @@ static INLINE void runner_dopair_grav_pp_truncated(
         error("gpi not drifted to current time");
       if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
         error("gpj not drifted to current time");
+
+      /* Check that the particle was initialised */
+      if (gparts_i[pid].initialised == 0)
+        error("Adding forces to an un-initialised gpart.");
 #endif
 
       /* Interact! */
@@ -433,6 +445,14 @@ static INLINE void runner_dopair_grav_pm_full(
     if (pid < gcount_i && !gpart_is_active(&gparts_i[pid], e))
       error("Active particle went through the cache");
 
+    /* Check that particles have been drifted to the current time */
+    if (gparts_i[pid].ti_drift != e->ti_current)
+      error("gpi not drifted to current time");
+
+    /* Check that the particle was initialised */
+    if (gparts_i[pid].initialised == 0)
+      error("Adding forces to an un-initialised gpart.");
+
     if (pid >= gcount_i) error("Adding forces to padded particle");
 #endif
 
@@ -458,13 +478,13 @@ static INLINE void runner_dopair_grav_pm_full(
 
     const float r2 = dx * dx + dy * dy + dz * dz;
 
-#ifdef SWIFT_DEBUG_CHECKSa
+#ifdef SWIFT_DEBUG_CHECKS
     const float r_max_j = cj->multipole->r_max;
     const float r_max2 = r_max_j * r_max_j;
     const float theta_crit2 = e->gravity_properties->theta_crit2;
 
-    /* 1.01 to avoid FP rounding false-positives */
-    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.01, r2))
+    /* Note: 1.1 to avoid FP rounding false-positives */
+    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2))
       error(
           "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
           "%e], rmax=%e",
@@ -554,6 +574,14 @@ static INLINE void runner_dopair_grav_pm_truncated(
     if (pid < gcount_i && !gpart_is_active(&gparts_i[pid], e))
       error("Active particle went through the cache");
 
+    /* Check that particles have been drifted to the current time */
+    if (gparts_i[pid].ti_drift != e->ti_current)
+      error("gpi not drifted to current time");
+
+    /* Check that the particle was initialised */
+    if (gparts_i[pid].initialised == 0)
+      error("Adding forces to an un-initialised gpart.");
+
     if (pid >= gcount_i) error("Adding forces to padded particle");
 #endif
 
@@ -582,8 +610,8 @@ static INLINE void runner_dopair_grav_pm_truncated(
     const float r_max2 = r_max_j * r_max_j;
     const float theta_crit2 = e->gravity_properties->theta_crit2;
 
-    /* 1.01 to avoid FP rounding false-positives */
-    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.01, r2))
+    /* 1.1 to avoid FP rounding false-positives */
+    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2))
       error(
           "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
           "%e], rmax=%e",
@@ -894,6 +922,10 @@ static INLINE void runner_doself_grav_pp_full(
         error("gpi not drifted to current time");
       if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current)
         error("gpj not drifted to current time");
+
+      /* Check that the particle was initialised */
+      if (gparts[pid].initialised == 0)
+        error("Adding forces to an un-initialised gpart.");
 #endif
 
       /* Interact! */
@@ -1004,6 +1036,10 @@ static INLINE void runner_doself_grav_pp_truncated(
         error("gpi not drifted to current time");
       if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current)
         error("gpj not drifted to current time");
+
+      /* Check that the particle was initialised */
+      if (gparts[pid].initialised == 0)
+        error("Adding forces to an un-initialised gpart.");
 #endif
 
       /* Interact! */

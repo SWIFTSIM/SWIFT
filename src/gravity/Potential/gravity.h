@@ -151,6 +151,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
 
 #ifdef SWIFT_DEBUG_CHECKS
   gp->num_interacted = 0;
+  gp->initialised = 1;
 #endif
 }
 
@@ -182,6 +183,10 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->a_grav_PM[0] *= const_G;
   gp->a_grav_PM[1] *= const_G;
   gp->a_grav_PM[2] *= const_G;
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  gp->initialised = 0; /* Ready for next step */
 #endif
 }
 
