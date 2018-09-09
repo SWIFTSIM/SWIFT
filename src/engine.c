@@ -3970,15 +3970,18 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  long long counter = 0;
 
   /* Let's check that what we received makes sense */
-  for (int i = 0; i < e->s->nr_cells; ++i) {
-    const struct gravity_tensors *m = &e->s->multipoles_top[i];
-    counter += m->m_pole.num_gpart;
+  if (e->policy & engine_policy_self_gravity) {
+    long long counter = 0;
+
+    for (int i = 0; i < e->s->nr_cells; ++i) {
+      const struct gravity_tensors *m = &e->s->multipoles_top[i];
+      counter += m->m_pole.num_gpart;
+    }
+    if (counter != e->total_nr_gparts)
+      error("Total particles in multipoles inconsistent with engine");
   }
-  if (counter != e->total_nr_gparts)
-    error("Total particles in multipoles inconsistent with engine");
 #endif
 
   /* Re-build the tasks. */
@@ -3994,8 +3997,10 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   space_check_drift_point(e->s, e->ti_current,
                           e->policy & engine_policy_self_gravity);
 
-  for (int k = 0; k < e->s->nr_local_cells; k++)
-    cell_check_foreign_multipole(&e->s->cells_top[e->s->local_cells_top[k]]);
+  if (e->policy & engine_policy_self_gravity) {
+    for (int k = 0; k < e->s->nr_local_cells; k++)
+      cell_check_foreign_multipole(&e->s->cells_top[e->s->local_cells_top[k]]);
+  }
 #endif
 
   /* Run through the tasks and mark as skip or not. */
