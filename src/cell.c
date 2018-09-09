@@ -1420,24 +1420,63 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current) {
 }
 
 /**
+ * @brief Recursively verify that the multipoles are the sum of their progenies.
+ *
+ * This function does not check whether the multipoles match the particle
+ * content as we may not have received the particles.
+ *
+ * @param c The #cell to recursively search and verify.
+ */
+void cell_check_foreign_multipole(const struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  if (c->split) {
+
+    double M_000 = 0.;
+    long long num_gpart = 0;
+
+    for (int k = 0; k < 8; k++) {
+      const struct cell *cp = c->progeny[k];
+
+      if (cp != NULL) {
+
+        /* Check the mass */
+        M_000 += cp->multipole->m_pole.M_000;
+
+        /* Check the number of particles */
+        num_gpart += cp->multipole->m_pole.num_gpart;
+
+        /* Now recurse */
+        cell_check_foreign_multipole(cp);
+      }
+    }
+
+    if (num_gpart != c->multipole->m_pole.num_gpart)
+      error("Sum of particles in progenies does not match");
+  }
+
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
  * @brief Computes the multi-pole brutally and compare to the
  * recursively computed one.
  *
  * @param c Cell to act upon
- * @param data Unused parameter
  */
-void cell_check_multipole(struct cell *c, void *data) {
+void cell_check_multipole(struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   struct gravity_tensors ma;
   const double tolerance = 1e-3; /* Relative */
 
-  return;
-
   /* First recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_check_multipole(c->progeny[k], NULL);
+      if (c->progeny[k] != NULL) cell_check_multipole(c->progeny[k]);
 
   if (c->gcount > 0) {
 
@@ -1456,7 +1495,7 @@ void cell_check_multipole(struct cell *c, void *data) {
     }
 
     /* Check that the upper limit of r_max is good enough */
-    if (!(c->multipole->r_max >= ma.r_max)) {
+    if (!(1.1 * c->multipole->r_max >= ma.r_max)) {
       error("Upper-limit r_max=%e too small. Should be >=%e.",
             c->multipole->r_max, ma.r_max);
     } else if (c->multipole->r_max * c->multipole->r_max >

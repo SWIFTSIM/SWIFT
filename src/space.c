@@ -960,7 +960,7 @@ void space_rebuild(struct space *s, int verbose) {
   /* Check that the multipole construction went OK */
   if (s->gravity)
     for (int k = 0; k < s->nr_cells; k++)
-      cell_check_multipole(&s->cells_top[k], NULL);
+      cell_check_multipole(&s->cells_top[k]);
 #endif
 
   /* Clean up any stray sort indices in the cell buffer. */
@@ -2311,6 +2311,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
       if (cells[j]->sort[k] != NULL) free(cells[j]->sort[k]);
     struct gravity_tensors *temp = cells[j]->multipole;
     bzero(cells[j], sizeof(struct cell));
+    bzero(temp, sizeof(struct gravity_tensors));
     cells[j]->multipole = temp;
     cells[j]->nodeID = -1;
     if (lock_init(&cells[j]->lock) != 0 || lock_init(&cells[j]->glock) != 0 ||
