@@ -1689,6 +1689,13 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->ti_gravity_end_max = ti_gravity_end_max;
   c->ti_gravity_beg_max = ti_gravity_beg_max;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->ti_hydro_end_min == e->ti_current)
+    error("End of next hydro step is current time!");
+  if (c->ti_gravity_end_min == e->ti_current)
+    error("End of next gravity step is current time!");
+#endif
+
   if (timer) TIMER_TOC(timer_timestep);
 }
 
