@@ -303,6 +303,8 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
       N -= max_chunk_size;
       props.field += max_chunk_size * props.partSize; /* char* on the field */
       props.parts += max_chunk_size;                  /* part* on the part */
+      props.xparts += max_chunk_size;                 /* xpart* on the xpart */
+      props.gparts += max_chunk_size;                 /* gpart* on the gpart */
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -352,13 +354,13 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
     rank = 2;
     shape[0] = N_total;
     shape[1] = props.dimension;
-    chunk_shape[0] = 1 << 16; /* Just a guess...*/
+    chunk_shape[0] = 1 << 20; /* Just a guess...*/
     chunk_shape[1] = props.dimension;
   } else {
     rank = 1;
     shape[0] = N_total;
     shape[1] = 0;
-    chunk_shape[0] = 1 << 16; /* Just a guess...*/
+    chunk_shape[0] = 1 << 20; /* Just a guess...*/
     chunk_shape[1] = 0;
   }
 
@@ -575,6 +577,8 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
       N -= max_chunk_size;
       props.field += max_chunk_size * props.partSize; /* char* on the field */
       props.parts += max_chunk_size;                  /* part* on the part */
+      props.xparts += max_chunk_size;                 /* xpart* on the xpart */
+      props.gparts += max_chunk_size;                 /* gpart* on the gpart */
       offset += max_chunk_size;
       redo = 1;
     } else {
