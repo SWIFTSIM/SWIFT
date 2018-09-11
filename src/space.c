@@ -966,7 +966,7 @@ void space_rebuild(struct space *s, int verbose) {
   /* Check that the multipole construction went OK */
   if (s->gravity)
     for (int k = 0; k < s->nr_cells; k++)
-      cell_check_multipole(&s->cells_top[k], NULL);
+      cell_check_multipole(&s->cells_top[k]);
 #endif
 
   /* Clean up any stray sort indices in the cell buffer. */

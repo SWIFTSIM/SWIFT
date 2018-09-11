@@ -58,6 +58,11 @@ make_integer_timestep(float new_dt, timebin_t old_bin, integertime_t ti_current,
   if (new_dti > current_dti) {
     if ((max_nr_timesteps - ti_end) % new_dti > 0) new_dti = current_dti;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (new_dti == 0) error("Computed an integer time-step of size 0");
+#endif
+
   return new_dti;
 }
 

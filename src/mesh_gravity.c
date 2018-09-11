@@ -291,6 +291,9 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   if (r_s <= 0.) error("Invalid value of a_smooth");
+  if (mesh->dim[0] != dim[0] || mesh->dim[1] != dim[1] ||
+      mesh->dim[2] != dim[2])
+    error("Domain size does not match the value stored in the space.");
 
   /* Some useful constants */
   const int N = mesh->N;
@@ -464,8 +467,20 @@ void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
   for (int i = 0; i < gcount; ++i) {
     struct gpart* gp = &gparts[i];
 
-    if (gpart_is_active(gp, e))
+    if (gpart_is_active(gp, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (gp->ti_drift != e->ti_current)
+        error("gpart not drifted to current time");
+
+      /* Check that the particle was initialised */
+      if (gp->initialised == 0)
+        error("Adding forces to an un-initialised gpart.");
+#endif
+
       mesh_to_gparts_CIC(gp, potential, N, cell_fac, dim);
+    }
   }
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");

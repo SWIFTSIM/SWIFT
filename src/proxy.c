@@ -42,6 +42,11 @@
 #include "error.h"
 #include "space.h"
 
+#ifdef WITH_MPI
+/* MPI data type for the communications */
+MPI_Datatype pcell_mpi_type;
+#endif
+
 /**
  * @brief Exchange tags between nodes.
  *
@@ -197,8 +202,7 @@ void proxy_cells_exchange_first(struct proxy *p) {
   }
 
   /* Send the pcell buffer. */
-  err = MPI_Isend(p->pcells_out, sizeof(struct pcell) * p->size_pcells_out,
-                  MPI_BYTE, p->nodeID,
+  err = MPI_Isend(p->pcells_out, p->size_pcells_out, pcell_mpi_type, p->nodeID,
                   p->mynodeID * proxy_tag_shift + proxy_tag_cells,
                   MPI_COMM_WORLD, &p->req_cells_out);
 
@@ -239,9 +243,8 @@ void proxy_cells_exchange_second(struct proxy *p) {
     error("Failed to allocate pcell_in buffer.");
 
   /* Receive the particle buffers. */
-  int err = MPI_Irecv(p->pcells_in, sizeof(struct pcell) * p->size_pcells_in,
-                      MPI_BYTE, p->nodeID,
-                      p->nodeID * proxy_tag_shift + proxy_tag_cells,
+  int err = MPI_Irecv(p->pcells_in, p->size_pcells_in, pcell_mpi_type,
+                      p->nodeID, p->nodeID * proxy_tag_shift + proxy_tag_cells,
                       MPI_COMM_WORLD, &p->req_cells_in);
 
   if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv part data.");
@@ -770,4 +773,20 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
       error("Failed to allocate sparts_out buffers.");
   }
   p->nr_sparts_out = 0;
+}
+
+/**
+ * @brief Registers the MPI types for the proxy cells.
+ */
+void proxy_create_mpi_type(void) {
+
+#ifdef WITH_MPI
+  if (MPI_Type_contiguous(sizeof(struct pcell) / sizeof(unsigned char),
+                          MPI_BYTE, &pcell_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&pcell_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for parts.");
+  }
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
 }

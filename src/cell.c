@@ -1115,7 +1115,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
           if (gparts[j].type == swift_type_gas) {
             parts[-gparts[j].id_or_neg_offset - parts_offset].gpart =
                 &gparts[j];
-          } else if (gparts[j].type == swift_type_stars) {
+          } else if (gparts[j].type == swift_type_star) {
             sparts[-gparts[j].id_or_neg_offset - sparts_offset].gpart =
                 &gparts[j];
           }
@@ -1125,7 +1125,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
         gbuff[k] = temp_buff;
         if (gparts[k].type == swift_type_gas) {
           parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
-        } else if (gparts[k].type == swift_type_stars) {
+        } else if (gparts[k].type == swift_type_star) {
           sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart =
               &gparts[k];
         }
@@ -1421,24 +1421,63 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current) {
 }
 
 /**
+ * @brief Recursively verify that the multipoles are the sum of their progenies.
+ *
+ * This function does not check whether the multipoles match the particle
+ * content as we may not have received the particles.
+ *
+ * @param c The #cell to recursively search and verify.
+ */
+void cell_check_foreign_multipole(const struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  if (c->split) {
+
+    double M_000 = 0.;
+    long long num_gpart = 0;
+
+    for (int k = 0; k < 8; k++) {
+      const struct cell *cp = c->progeny[k];
+
+      if (cp != NULL) {
+
+        /* Check the mass */
+        M_000 += cp->multipole->m_pole.M_000;
+
+        /* Check the number of particles */
+        num_gpart += cp->multipole->m_pole.num_gpart;
+
+        /* Now recurse */
+        cell_check_foreign_multipole(cp);
+      }
+    }
+
+    if (num_gpart != c->multipole->m_pole.num_gpart)
+      error("Sum of particles in progenies does not match");
+  }
+
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
  * @brief Computes the multi-pole brutally and compare to the
  * recursively computed one.
  *
  * @param c Cell to act upon
- * @param data Unused parameter
  */
-void cell_check_multipole(struct cell *c, void *data) {
+void cell_check_multipole(struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   struct gravity_tensors ma;
   const double tolerance = 1e-3; /* Relative */
 
-  return;
-
   /* First recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_check_multipole(c->progeny[k], NULL);
+      if (c->progeny[k] != NULL) cell_check_multipole(c->progeny[k]);
 
   if (c->gcount > 0) {
 
@@ -1457,7 +1496,7 @@ void cell_check_multipole(struct cell *c, void *data) {
     }
 
     /* Check that the upper limit of r_max is good enough */
-    if (!(c->multipole->r_max >= ma.r_max)) {
+    if (!(1.1 * c->multipole->r_max >= ma.r_max)) {
       error("Upper-limit r_max=%e too small. Should be >=%e.",
             c->multipole->r_max, ma.r_max);
     } else if (c->multipole->r_max * c->multipole->r_max >
@@ -1626,8 +1665,7 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
 
 /**
  * @brief Traverse a sub-cell task and activate the hydro drift tasks that are
- * required
- * by a hydro task
+ * required by a hydro task
  *
  * @param ci The first #cell we recurse in.
  * @param cj The second #cell we recurse in.
@@ -1982,18 +2020,24 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 
 /**
  * @brief Traverse a sub-cell task and activate the stars drift tasks that are
- * required
- * by a stars task
- *
- * WARNING: TODO: Need to be implemented
+ * required by a stars task
  *
  * @param ci The first #cell we recurse in.
  * @param cj The second #cell we recurse in.
  * @param s The task #scheduler.
  */
 void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s) {}
+                                       struct scheduler *s) {
+ // LOIC: to implement
+}
 
+/**
+ * @brief Drift the multipoles that will be used in a M-M task.
+ *
+ * @param ci The first #cell we update.
+ * @param cj The second #cell we update.
+ * @param s The task #scheduler.
+ */
 void cell_activate_grav_mm_task(struct cell *ci, struct cell *cj,
                                 struct scheduler *s) {
   /* Some constants */
@@ -2091,8 +2135,8 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     else {
 
       /* Recover the multipole information */
-      struct gravity_tensors *const multi_i = ci->multipole;
-      struct gravity_tensors *const multi_j = cj->multipole;
+      const struct gravity_tensors *const multi_i = ci->multipole;
+      const struct gravity_tensors *const multi_j = cj->multipole;
       const double ri_max = multi_i->r_max;
       const double rj_max = multi_j->r_max;
 
@@ -2384,6 +2428,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
+
       scheduler_activate(s, t);
 
       /* Set the drifting flags */
@@ -2477,12 +2522,14 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         (cj_active && cj_nodeID == nodeID)) {
 
       scheduler_activate(s, t);
+
+      /* Drift the multipoles */
       cell_activate_grav_mm_task(ci, cj, s);
     }
   }
 
   /* Unskip all the other task types. */
-  if (c->nodeID == nodeID && cell_is_active_gravity_mm(c, e)) {
+  if (c->nodeID == nodeID && cell_is_active_gravity(c, e)) {
 
     if (c->init_grav != NULL) scheduler_activate(s, c->init_grav);
     if (c->init_grav_out != NULL) scheduler_activate(s, c->init_grav_out);
@@ -3039,7 +3086,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_spart(sp, dt_drift, ti_old_gpart, ti_current);
-      if (spart_is_active(sp, e)) stars_init_spart(sp);
 
       /* Note: no need to compute dx_max as all spart have a gpart */
     }
