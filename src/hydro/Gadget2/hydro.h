@@ -515,8 +515,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
-  p->entropy_dt = 0.5f * cosmo->a2_inv *
-                  gas_entropy_from_internal_energy(p->rho, p->entropy_dt);
+  p->entropy_dt =
+      0.5f * gas_entropy_from_internal_energy(p->rho, p->entropy_dt);
 }
 
 /**

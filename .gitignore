@@ -132,6 +132,7 @@ tests/testEOS*.txt
 tests/testEOS*.png
 tests/testUtilities
 tests/testCbrt
+tests/testFormat.sh
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf

@@ -1,0 +1,7 @@
+This test is a small cosmological volume with constant density and internal energy.
+The ICs are generated from a glass file to minimize the build-up of peculiar velocities
+over time.
+
+The cosmology model is very simple by design. We use Omega_m = 1, Omega_b = 1, h = 1.
+
+The solution script plots the expected solution both in comoving and physical frames.

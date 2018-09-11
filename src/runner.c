@@ -1689,6 +1689,15 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->ti_gravity_end_max = ti_gravity_end_max;
   c->ti_gravity_beg_max = ti_gravity_beg_max;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->ti_hydro_end_min == e->ti_current &&
+      c->ti_hydro_end_min < max_nr_timesteps)
+    error("End of next hydro step is current time!");
+  if (c->ti_gravity_end_min == e->ti_current &&
+      c->ti_gravity_end_min < max_nr_timesteps)
+    error("End of next gravity step is current time!");
+#endif
+
   if (timer) TIMER_TOC(timer_timestep);
 }
 
@@ -1955,11 +1964,6 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
       if (gparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, gparts[k].time_bin);
       time_bin_max = max(time_bin_max, gparts[k].time_bin);
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (gparts[k].ti_drift != ti_current)
-        error("Received un-drifted g-particle !");
-#endif
     }
 
     /* Convert into a time */
@@ -2034,11 +2038,6 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
       if (sparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, sparts[k].time_bin);
       time_bin_max = max(time_bin_max, sparts[k].time_bin);
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (sparts[k].ti_drift != ti_current)
-        error("Received un-drifted s-particle !");
-#endif
     }
 
     /* Convert into a time */
@@ -2068,8 +2067,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* ... and store. */
-  c->ti_gravity_end_min = ti_gravity_end_min;
-  c->ti_gravity_end_max = ti_gravity_end_max;
+  // c->ti_gravity_end_min = ti_gravity_end_min;
+  // c->ti_gravity_end_max = ti_gravity_end_max;
   c->ti_old_gpart = ti_current;
 
   if (timer) TIMER_TOC(timer_dorecv_spart);

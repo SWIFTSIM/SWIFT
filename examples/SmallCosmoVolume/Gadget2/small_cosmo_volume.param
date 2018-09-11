@@ -1,0 +1,137 @@
+
+% System of units
+
+UnitLength_in_cm         3.08567758e24      %  1.0 Mpc
+UnitMass_in_g            1.98848e43         %  1.0e10 solar masses 
+UnitVelocity_in_cm_per_s 1e5                %  1 km/sec 
+GravityConstantInternal  4.300927e+01       %  Same value as SWIFT
+
+%  Relevant files
+InitCondFile  	   small_cosmo_volume
+OutputDir          data/
+
+EnergyFile         energy.txt
+InfoFile           info.txt
+TimingsFile        timings.txt
+CpuFile            cpu.txt
+
+RestartFile        restart
+SnapshotFileBase   box
+
+OutputListFilename dummy
+
+% CPU time -limit
+
+TimeLimitCPU      360000  % = 10 hours
+ResubmitOn        0
+ResubmitCommand   my-scriptfile  
+
+
+% Code options
+
+ICFormat                 3
+SnapFormat               3
+ComovingIntegrationOn    1
+
+TypeOfTimestepCriterion  0
+OutputListOn             0
+PeriodicBoundariesOn     1
+
+%  Caracteristics of run
+
+TimeBegin             0.019607843 % z = 50.
+TimeMax	              1.          % z = 0.
+
+Omega0	              0.276
+OmegaLambda           0.724
+OmegaBaryon           0.0455
+HubbleParam           0.703
+BoxSize               100.        % Mpc / h
+
+% Output frequency
+
+TimeBetSnapshot        1.02
+TimeOfFirstSnapshot    0.02
+
+CpuTimeBetRestartFile     36000.0    ; here in seconds
+TimeBetStatistics         0.02
+
+NumFilesPerSnapshot       1
+NumFilesWrittenInParallel 1
+
+% Accuracy of time integration
+
+ErrTolIntAccuracy      0.025 
+MaxRMSDisplacementFac  0.25
+CourantFac             0.1     
+MaxSizeTimestep        0.01
+MinSizeTimestep        1e-6
+
+
+% Tree algorithm, force accuracy, domain update frequency
+
+ErrTolTheta            	     0.3
+TypeOfOpeningCriterion	     1
+ErrTolForceAcc         	     0.005
+TreeDomainUpdateFrequency    0.01
+
+%  Further parameters of SPH
+
+DesNumNgb              48
+MaxNumNgbDeviation     1.
+ArtBulkViscConst       0.8
+InitGasTemp            0.        
+MinGasTemp             0.
+
+% Memory allocation
+
+PartAllocFactor       1.6
+TreeAllocFactor       0.8
+BufferSize            30  
+
+% Softening lengths
+
+MinGasHsmlFractional 0.001
+
+SofteningGas       0
+SofteningHalo      0.0625        # 62.5 kpc / h = 1/25 of mean inter-particle separation
+SofteningDisk      0
+SofteningBulge     0           
+SofteningStars     0
+SofteningBndry     0
+
+SofteningGasMaxPhys       0
+SofteningHaloMaxPhys      0.0625   # 62.5 kpc / h = 1/25 of mean inter-particle separation
+SofteningDiskMaxPhys      0
+SofteningBulgeMaxPhys     0           
+SofteningStarsMaxPhys     0
+SofteningBndryMaxPhys     0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

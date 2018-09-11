@@ -77,6 +77,24 @@ struct link {
  */
 struct pcell {
 
+  /*! This cell's gravity-related tensors */
+  struct multipole m_pole;
+
+  /*! Centre of mass. */
+  double CoM[3];
+
+  /*! Centre of mass at rebuild time. */
+  double CoM_rebuild[3];
+
+  /*! Upper limit of the CoM<->gpart distance. */
+  double r_max;
+
+  /*! Upper limit of the CoM<->gpart distance at last rebuild. */
+  double r_max_rebuild;
+
+  /*! Relative indices of the cell's progeny. */
+  int progeny[8];
+
   /*! Maximal smoothing length. */
   double h_max;
 
@@ -115,12 +133,6 @@ struct pcell {
 
   /*! Number of #spart in this cell. */
   int scount;
-
-  /*! tag used for MPI communication. */
-  int tag;
-
-  /*! Relative indices of the cell's progeny. */
-  int progeny[8];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Cell ID (for debugging) */
@@ -215,6 +227,9 @@ struct cell {
 
   /*! Linked list of the tasks computing this cell's gravity forces. */
   struct link *grav;
+
+  /*! Linked list of the tasks computing this cell's gravity M-M forces. */
+  struct link *grav_mm;
 
   /*! The task computing this cell's sorts. */
   struct task *sorts;
@@ -425,6 +440,9 @@ struct cell {
   /*! Number of tasks that are associated with this cell. */
   short int nr_tasks;
 
+  /*! Number of M-M tasks that are associated with this cell. */
+  short int nr_mm_tasks;
+
   /*! The depth of this cell in the tree. */
   char depth;
 
@@ -482,8 +500,11 @@ int cell_mlocktree(struct cell *c);
 void cell_munlocktree(struct cell *c);
 int cell_slocktree(struct cell *c);
 void cell_sunlocktree(struct cell *c);
-int cell_pack(struct cell *c, struct pcell *pc);
-int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
+int cell_pack(struct cell *c, struct pcell *pc, const int with_gravity);
+int cell_unpack(struct pcell *pc, struct cell *c, struct space *s,
+                const int with_gravity);
+int cell_pack_tags(const struct cell *c, int *tags);
+int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step(struct cell *c, struct pcell_step *pcell);
 int cell_unpack_end_step(struct cell *c, struct pcell_step *pcell);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
@@ -494,7 +515,8 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts);
 int cell_link_sparts(struct cell *c, struct spart *sparts);
 void cell_clean_links(struct cell *c, void *data);
 void cell_make_multipoles(struct cell *c, integertime_t ti_current);
-void cell_check_multipole(struct cell *c, void *data);
+void cell_check_multipole(struct cell *c);
+void cell_check_foreign_multipole(const struct cell *c);
 void cell_clean(struct cell *c);
 void cell_check_part_drift_point(struct cell *c, void *data);
 void cell_check_gpart_drift_point(struct cell *c, void *data);
@@ -523,6 +545,8 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 int cell_has_tasks(struct cell *c);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s);
+int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
+                                 const struct engine *e, const struct space *s);
 
 /* Inlined functions (for speed). */
 
@@ -632,6 +656,25 @@ __attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
   return (kernel_gamma * max(ci->h_max, cj->h_max) + ci->dx_max_part +
               cj->dx_max_part >
           cj->dmin);
+}
+
+/**
+ * @brief Add a unique tag to a cell mostly for MPI communications.
+ *
+ * @param c The #cell to tag.
+ */
+__attribute__((always_inline)) INLINE static void cell_tag(struct cell *c) {
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->tag > 0) error("setting tag for already tagged cell");
+#endif
+
+  if (c->tag < 0 && (c->tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
+    error("Ran out of cell tags.");
+#else
+  error("SWIFT was not compiled with MPI enabled.");
+#endif  // WITH_MPI
 }
 
 #endif /* SWIFT_CELL_H */

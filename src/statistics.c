@@ -386,7 +386,7 @@ MPI_Op statistics_mpi_reduce_op;
 /**
  * @brief MPI reduce operator for #statistics structures.
  */
-void stats_add_MPI(void *in, void *inout, int *len, MPI_Datatype *datatype) {
+void stats_add_mpi(void *in, void *inout, int *len, MPI_Datatype *datatype) {
 
   for (int i = 0; i < *len; ++i)
     stats_add(&((struct statistics *)inout)[0],
@@ -396,7 +396,7 @@ void stats_add_MPI(void *in, void *inout, int *len, MPI_Datatype *datatype) {
 /**
  * @brief Registers MPI #statistics type and reduction function.
  */
-void stats_create_MPI_type(void) {
+void stats_create_mpi_type(void) {
 
   /* This is not the recommended way of doing this.
      One should define the structure field by field
@@ -411,6 +411,6 @@ void stats_create_MPI_type(void) {
   }
 
   /* Create the reduction operation */
-  MPI_Op_create(stats_add_MPI, 1, &statistics_mpi_reduce_op);
+  MPI_Op_create(stats_add_mpi, 1, &statistics_mpi_reduce_op);
 }
 #endif

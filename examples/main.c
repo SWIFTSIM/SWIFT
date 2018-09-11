@@ -486,6 +486,17 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
+  /* Temporary early aborts for modes not supported over MPI. */
+#ifdef WITH_MPI
+  if (with_mpole_reconstruction && nr_nodes > 1)
+    error("Cannot reconstruct m-poles every step over MPI (yet).");
+#endif
+
+#if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
+  if (with_structure_finding && nr_nodes > 1)
+    error("VEOCIraptor not yet enabled over MPI.");
+#endif
+
   /* Check that we can write the snapshots by testing if the output
    * directory exists and is searchable and writable. */
   char basename[PARSER_MAX_LINE_SIZE];
@@ -737,15 +748,6 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
-#ifdef WITH_MPI
-    if (periodic && with_self_gravity)
-      error("Periodic self-gravity over MPI temporarily disabled.");
-#endif
-
-#if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
-    if (with_structure_finding) error("VEOCIraptor not yet enabled over MPI.");
-#endif
-
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check once and for all that we don't have unwanted links */
     if (!with_stars && !dry_run) {
@@ -777,25 +779,11 @@ int main(int argc, char *argv[]) {
     if (myrank == 0)
       message(
           "Read %lld gas particles, %lld star particles and %lld gparts from "
-          "the "
-          "ICs.",
+          "the ICs.",
           N_total[0], N_total[2], N_total[1]);
 
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);
-
-    /* Initialise the long-range gravity mesh */
-    if (with_self_gravity && periodic) {
-#ifdef HAVE_FFTW
-      pm_mesh_init(&mesh, &gravity_properties, dim);
-#else
-      /* Need the FFTW library if periodic and self gravity. */
-      error(
-          "No FFTW library found. Cannot compute periodic long-range forces.");
-#endif
-    } else {
-      pm_mesh_init_no_mesh(&mesh, dim);
-    }
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -808,6 +796,19 @@ int main(int argc, char *argv[]) {
       message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
               clocks_getunit());
       fflush(stdout);
+    }
+
+    /* Initialise the long-range gravity mesh */
+    if (with_self_gravity && periodic) {
+#ifdef HAVE_FFTW
+      pm_mesh_init(&mesh, &gravity_properties, s.dim);
+#else
+      /* Need the FFTW library if periodic and self gravity. */
+      error(
+          "No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
+    } else {
+      pm_mesh_init_no_mesh(&mesh, s.dim);
     }
 
     /* Check that the matter content matches the cosmology given in the
@@ -913,11 +914,10 @@ int main(int argc, char *argv[]) {
           "particles (%lld gravity particles)",
           N_total[0], N_total[2], N_total[1] > 0 ? N_DM : 0, N_total[1]);
       message(
-          "from t=%.3e until t=%.3e with %d threads and %d queues "
-          "(dt_min=%.3e, "
-          "dt_max=%.3e)...",
-          e.time_begin, e.time_end, e.nr_threads, e.sched.nr_queues, e.dt_min,
-          e.dt_max);
+          "from t=%.3e until t=%.3e with %d ranks, %d threads / rank and %d "
+          "task queues / rank (dt_min=%.3e, dt_max=%.3e)...",
+          e.time_begin, e.time_end, nr_nodes, e.nr_threads, e.sched.nr_queues,
+          e.dt_min, e.dt_max);
       fflush(stdout);
     }
   }

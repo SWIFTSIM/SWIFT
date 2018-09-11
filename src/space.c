@@ -164,10 +164,12 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
                          multipole_rec_end);
     c->sorts = NULL;
     c->nr_tasks = 0;
+    c->nr_mm_tasks = 0;
     c->density = NULL;
     c->gradient = NULL;
     c->force = NULL;
     c->grav = NULL;
+    c->grav_mm = NULL;
     c->dx_max_part = 0.0f;
     c->dx_max_sort = 0.0f;
     c->sorted = 0;
@@ -202,6 +204,13 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->do_sub_sort = 0;
     c->do_grav_sub_drift = 0;
     c->do_sub_drift = 0;
+    c->ti_hydro_end_min = -1;
+    c->ti_hydro_end_max = -1;
+    c->ti_gravity_end_min = -1;
+    c->ti_gravity_end_max = -1;
+#ifdef SWIFT_DEBUG_CHECKS
+    c->cellID = 0;
+#endif
     if (s->gravity) bzero(c->multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
       if (c->sort[i] != NULL) {
@@ -209,6 +218,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
         c->sort[i] = NULL;
       }
 #if WITH_MPI
+    c->tag = -1;
+
     c->recv_xv = NULL;
     c->recv_rho = NULL;
     c->recv_gradient = NULL;
@@ -332,7 +343,7 @@ void space_regrid(struct space *s, int verbose) {
 
   /* Are we about to allocate new top level cells without a regrid?
    * Can happen when restarting the application. */
-  int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
+  const int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
 #endif
 
   /* Do we need to re-build the upper-level cells? */
@@ -422,7 +433,14 @@ void space_regrid(struct space *s, int verbose) {
           c->ti_old_part = ti_current;
           c->ti_old_gpart = ti_current;
           c->ti_old_multipole = ti_current;
+#ifdef WITH_MPI
+          c->tag = -1;
+#endif  // WITH_MPI
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
+#ifdef SWIFT_DEBUG_CHECKS
+          c->cellID = -last_cell_id;
+          last_cell_id++;
+#endif
         }
 
     /* Be verbose about the change. */
@@ -914,6 +932,12 @@ void space_rebuild(struct space *s, int verbose) {
     c->ti_old_part = ti_current;
     c->ti_old_gpart = ti_current;
     c->ti_old_multipole = ti_current;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    c->cellID = -last_cell_id;
+    last_cell_id++;
+#endif
+
     if (c->nodeID == engine_rank) {
       c->parts = finger;
       c->xparts = xfinger;
@@ -936,7 +960,7 @@ void space_rebuild(struct space *s, int verbose) {
   /* Check that the multipole construction went OK */
   if (s->gravity)
     for (int k = 0; k < s->nr_cells; k++)
-      cell_check_multipole(&s->cells_top[k], NULL);
+      cell_check_multipole(&s->cells_top[k]);
 #endif
 
   /* Clean up any stray sort indices in the cell buffer. */
@@ -1833,6 +1857,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->do_sub_sort = 0;
       cp->do_grav_sub_drift = 0;
       cp->do_sub_drift = 0;
+#ifdef WITH_MPI
+      cp->tag = -1;
+#endif  // WITH_MPI
 #ifdef SWIFT_DEBUG_CHECKS
       cp->cellID = last_cell_id++;
 #endif
@@ -2894,6 +2921,10 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
+
+#ifdef SWIFT_DEBUG_CHECKS
+  last_cell_id = 1;
+#endif
 
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);

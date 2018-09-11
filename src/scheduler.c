@@ -804,11 +804,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
  */
 static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
-/* Temporarily prevent MPI here */
-#ifndef WITH_MPI
   const struct space *sp = s->space;
   struct engine *e = sp->e;
-#endif
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -837,9 +834,6 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         t->skip = 1;
         break;
       }
-
-/* Temporarily prevent MPI here */
-#ifndef WITH_MPI
 
       /* Should we split this task? */
       if (cell_can_split_self_gravity_task(ci)) {
@@ -879,7 +873,6 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           } /* Self-gravity only */
         }   /* Make tasks explicitly */
       }     /* Cell is split */
-#endif      /* WITH_MPI */
     }       /* Self interaction */
 
     /* Pair interaction? */
@@ -895,20 +888,17 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         break;
       }
 
-/* Temporarily prevent MPI here */
-#ifndef WITH_MPI
-
       /* Should we replace it with an M-M task? */
-      if (cell_can_use_pair_mm(ci, cj, e, sp)) {
+      if (cell_can_use_pair_mm_rebuild(ci, cj, e, sp)) {
 
         t->type = task_type_grav_mm;
         t->subtype = task_subtype_none;
 
         /* Since this task will not be split, we can already link it */
-        atomic_inc(&ci->nr_tasks);
-        atomic_inc(&cj->nr_tasks);
-        engine_addlink(e, &ci->grav, t);
-        engine_addlink(e, &cj->grav, t);
+        atomic_inc(&ci->nr_mm_tasks);
+        atomic_inc(&cj->nr_mm_tasks);
+        engine_addlink(e, &ci->grav_mm, t);
+        engine_addlink(e, &cj->grav_mm, t);
         break;
       }
 
@@ -916,9 +906,12 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       if (cell_can_split_pair_gravity_task(ci) &&
           cell_can_split_pair_gravity_task(cj)) {
 
+        const long long gcount_i = ci->gcount;
+        const long long gcount_j = cj->gcount;
+
         /* Replace by a single sub-task? */
         if (scheduler_dosub && /* Use division to avoid integer overflow. */
-            ci->gcount < space_subsize_pair_grav / cj->gcount) {
+            gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
 
           /* Otherwise, split it. */
         } else {
@@ -954,9 +947,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           }
         } /* Split the pair */
       }
-#endif /* WITH_MPI */
-    }  /* pair interaction? */
-  }    /* iterate over the current task. */
+    } /* pair interaction? */
+  }   /* iterate over the current task. */
 }
 
 /**
@@ -1588,10 +1580,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_multipole) {
           t->buff = (struct gravity_tensors *)malloc(
               sizeof(struct gravity_tensors) * t->ci->pcell_size);
-          err = MPI_Irecv(t->buff,
-                          sizeof(struct gravity_tensors) * t->ci->pcell_size,
-                          MPI_BYTE, t->ci->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
+          err = MPI_Irecv(t->buff, t->ci->pcell_size, multipole_mpi_type,
+                          t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                          &t->req);
         } else {
           error("Unknown communication sub-type");
         }
@@ -1656,10 +1647,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           t->buff = (struct gravity_tensors *)malloc(
               sizeof(struct gravity_tensors) * t->ci->pcell_size);
           cell_pack_multipoles(t->ci, (struct gravity_tensors *)t->buff);
-          err = MPI_Isend(t->buff,
-                          t->ci->pcell_size * sizeof(struct gravity_tensors),
-                          MPI_BYTE, t->cj->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
+          err = MPI_Isend(t->buff, t->ci->pcell_size, multipole_mpi_type,
+                          t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                          &t->req);
         } else {
           error("Unknown communication sub-type");
         }
