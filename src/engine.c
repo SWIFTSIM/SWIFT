@@ -4105,7 +4105,8 @@ void engine_barrier(struct engine *e) {
  *
  * @param c A super-cell.
  */
-void engine_collect_end_of_step_recurse(struct cell *c) {
+void engine_collect_end_of_step_recurse(struct cell *c,
+                                        const struct engine *e) {
 
 /* Skip super-cells (Their values are already set) */
 #ifdef WITH_MPI
@@ -4127,15 +4128,17 @@ void engine_collect_end_of_step_recurse(struct cell *c) {
     if (cp != NULL && (cp->count > 0 || cp->gcount > 0 || cp->scount > 0)) {
 
       /* Recurse */
-      engine_collect_end_of_step_recurse(cp);
+      engine_collect_end_of_step_recurse(cp, e);
 
       /* And update */
       ti_hydro_end_min = min(ti_hydro_end_min, cp->ti_hydro_end_min);
       ti_hydro_end_max = max(ti_hydro_end_max, cp->ti_hydro_end_max);
       ti_hydro_beg_max = max(ti_hydro_beg_max, cp->ti_hydro_beg_max);
+
       ti_gravity_end_min = min(ti_gravity_end_min, cp->ti_gravity_end_min);
       ti_gravity_end_max = max(ti_gravity_end_max, cp->ti_gravity_end_max);
       ti_gravity_beg_max = max(ti_gravity_beg_max, cp->ti_gravity_beg_max);
+
       updated += cp->updated;
       g_updated += cp->g_updated;
       s_updated += cp->s_updated;
@@ -4163,7 +4166,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
                                        void *extra_data) {
 
   struct end_of_step_data *data = (struct end_of_step_data *)extra_data;
-  struct engine *e = data->e;
+  const struct engine *e = data->e;
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
 
@@ -4180,15 +4183,19 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     if (c->count > 0 || c->gcount > 0 || c->scount > 0) {
 
       /* Make the top-cells recurse */
-      engine_collect_end_of_step_recurse(c);
+      engine_collect_end_of_step_recurse(c, e);
 
       /* And aggregate */
-      ti_hydro_end_min = min(ti_hydro_end_min, c->ti_hydro_end_min);
+      if (c->ti_hydro_end_min > e->ti_current)
+        ti_hydro_end_min = min(ti_hydro_end_min, c->ti_hydro_end_min);
       ti_hydro_end_max = max(ti_hydro_end_max, c->ti_hydro_end_max);
       ti_hydro_beg_max = max(ti_hydro_beg_max, c->ti_hydro_beg_max);
-      ti_gravity_end_min = min(ti_gravity_end_min, c->ti_gravity_end_min);
+
+      if (c->ti_gravity_end_min > e->ti_current)
+        ti_gravity_end_min = min(ti_gravity_end_min, c->ti_gravity_end_min);
       ti_gravity_end_max = max(ti_gravity_end_max, c->ti_gravity_end_max);
       ti_gravity_beg_max = max(ti_gravity_beg_max, c->ti_gravity_beg_max);
+
       updates += c->updated;
       g_updates += c->g_updated;
       s_updates += c->s_updated;
@@ -4206,16 +4213,21 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->updates += updates;
     data->g_updates += g_updates;
     data->s_updates += s_updates;
-    data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
+
+    if (ti_hydro_end_min > e->ti_current)
+      data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
     data->ti_hydro_end_max = max(ti_hydro_end_max, data->ti_hydro_end_max);
     data->ti_hydro_beg_max = max(ti_hydro_beg_max, data->ti_hydro_beg_max);
-    data->ti_gravity_end_min =
-        min(ti_gravity_end_min, data->ti_gravity_end_min);
+
+    if (ti_gravity_end_min > e->ti_current)
+      data->ti_gravity_end_min =
+          min(ti_gravity_end_min, data->ti_gravity_end_min);
     data->ti_gravity_end_max =
         max(ti_gravity_end_max, data->ti_gravity_end_max);
     data->ti_gravity_beg_max =
         max(ti_gravity_beg_max, data->ti_gravity_beg_max);
   }
+
   if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
 }
 
@@ -4826,14 +4838,15 @@ void engine_step(struct engine *e) {
 #endif
 
   /* Collect information about the next time-step */
-  engine_collect_end_of_step(e, 0);
+  engine_collect_end_of_step(e, 1);
   e->forcerebuild = e->collect_group1.forcerebuild;
-
-  /* Now apply all the collected time step updates and particle counts. */
-  collectgroup1_apply(&e->collect_group1, e);
   e->updates_since_rebuild += e->collect_group1.updates;
   e->g_updates_since_rebuild += e->collect_group1.g_updates;
   e->s_updates_since_rebuild += e->collect_group1.s_updates;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (e->ti_end_min == e->ti_current) error("Obtained a time-step of size 0");
+#endif
 
   /********************************************************/
   /* OK, we are done with the regular stuff. Time for i/o */
