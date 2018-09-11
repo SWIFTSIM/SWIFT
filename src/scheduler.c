@@ -1571,10 +1571,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_multipole) {
           t->buff = (struct gravity_tensors *)malloc(
               sizeof(struct gravity_tensors) * t->ci->pcell_size);
-          err = MPI_Irecv(t->buff,
-                          sizeof(struct gravity_tensors) * t->ci->pcell_size,
-                          MPI_BYTE, t->ci->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
+          err = MPI_Irecv(t->buff, t->ci->pcell_size, multipole_mpi_type,
+                          t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                          &t->req);
         } else {
           error("Unknown communication sub-type");
         }
@@ -1639,10 +1638,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           t->buff = (struct gravity_tensors *)malloc(
               sizeof(struct gravity_tensors) * t->ci->pcell_size);
           cell_pack_multipoles(t->ci, (struct gravity_tensors *)t->buff);
-          err = MPI_Isend(t->buff,
-                          t->ci->pcell_size * sizeof(struct gravity_tensors),
-                          MPI_BYTE, t->cj->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
+          err = MPI_Isend(t->buff, t->ci->pcell_size, multipole_mpi_type,
+                          t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                          &t->req);
         } else {
           error("Unknown communication sub-type");
         }

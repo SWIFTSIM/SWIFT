@@ -2214,8 +2214,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
       const int num_elements = p->cells_in[k]->pcell_size;
 
       /* Receive everything */
-      MPI_Irecv(&buffer_recv[this_recv],
-                num_elements * sizeof(struct gravity_tensors), MPI_BYTE,
+      MPI_Irecv(&buffer_recv[this_recv], num_elements, multipole_mpi_type,
                 p->cells_in[k]->nodeID, p->cells_in[k]->tag, MPI_COMM_WORLD,
                 &requests[this_request]);
 
@@ -2235,8 +2234,7 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 
       /* Send everything (note the use of cells_in[0] to get the correct node
        * ID. */
-      MPI_Isend(&buffer_send[this_send],
-                num_elements * sizeof(struct gravity_tensors), MPI_BYTE,
+      MPI_Isend(&buffer_send[this_send], num_elements, multipole_mpi_type,
                 p->cells_in[0]->nodeID, p->cells_out[k]->tag, MPI_COMM_WORLD,
                 &requests[this_request]);
 
@@ -6391,7 +6389,8 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_types();
-  stats_create_MPI_type();
+  stats_create_mpi_type();
+  proxy_create_mpi_type();
   task_create_mpi_comms();
 #endif
 
