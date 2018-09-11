@@ -778,9 +778,13 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
  */
 void proxy_create_mpi_type(void) {
 
+#ifdef WITH_MPI
   if (MPI_Type_contiguous(sizeof(struct pcell) / sizeof(unsigned char),
                           MPI_BYTE, &pcell_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&pcell_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for parts.");
   }
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
 }
