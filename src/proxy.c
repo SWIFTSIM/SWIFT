@@ -42,8 +42,10 @@
 #include "error.h"
 #include "space.h"
 
+#ifdef WITH_MPI
 /* MPI data type for the communications */
 MPI_Datatype pcell_mpi_type;
+#endif
 
 /**
  * @brief Exchange tags between nodes.
