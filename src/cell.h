@@ -659,9 +659,11 @@ __attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
 }
 
 /**
- * @brief Add a unique tag to a cell.
+ * @brief Add a unique tag to a cell mostly for MPI communications.
+ *
+ * @param c The #cell to tag.
  */
-__attribute((always_inline)) INLINE static void cell_tag(struct cell *c) {
+__attribute__((always_inline)) INLINE static void cell_tag(struct cell *c) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
