@@ -574,7 +574,7 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
 
 #ifdef HAVE_FFTW
 
-  if (dim[0] != dim[1] || dim[0] != dim[1])
+  if (dim[0] != dim[1] || dim[0] != dim[2])
     error("Doing mesh-gravity on a non-cubic domain");
 
   const int N = props->mesh_size;
@@ -590,6 +590,9 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   mesh->r_s_inv = 1. / mesh->r_s;
   mesh->r_cut_max = mesh->r_s * props->r_cut_max_ratio;
   mesh->r_cut_min = mesh->r_s * props->r_cut_min_ratio;
+
+  if (2. * mesh->r_cut_max > box_size)
+    error("Mesh too small or r_cut_max too big for this box size");
 
   /* Allocate the memory for the combined density and potential array */
   mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
