@@ -1115,7 +1115,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
           if (gparts[j].type == swift_type_gas) {
             parts[-gparts[j].id_or_neg_offset - parts_offset].gpart =
                 &gparts[j];
-          } else if (gparts[j].type == swift_type_star) {
+          } else if (gparts[j].type == swift_type_stars) {
             sparts[-gparts[j].id_or_neg_offset - sparts_offset].gpart =
                 &gparts[j];
           }
@@ -1125,7 +1125,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
         gbuff[k] = temp_buff;
         if (gparts[k].type == swift_type_gas) {
           parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
-        } else if (gparts[k].type == swift_type_star) {
+        } else if (gparts[k].type == swift_type_stars) {
           sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart =
               &gparts[k];
         }
@@ -2028,7 +2028,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
  */
 void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s) {
- // LOIC: to implement
+  // LOIC: to implement
 }
 
 /**

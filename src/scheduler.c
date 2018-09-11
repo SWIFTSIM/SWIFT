@@ -817,6 +817,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
  */
 static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
 
+  // LOIC: This is un-tested. Need to verify that it works.
+
   /* Iterate on this task until we're done with it. */
   int redo = 1;
   while (redo) {
@@ -1767,6 +1769,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_self:
+        // LOIC: Need to do something for stars here
         if (t->subtype == task_subtype_grav)
           cost = 1.f * (wscale * gcount_i) * gcount_i;
         else if (t->subtype == task_subtype_external_grav)
@@ -1776,6 +1779,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_pair:
+        // LOIC: Need to do something for stars here
         if (t->subtype == task_subtype_grav) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * gcount_i) * gcount_j;
@@ -1790,6 +1794,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_sub_pair:
+        // LOIC: Need to do something for stars here
         if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
           if (t->flags < 0)
             cost = 3.f * (wscale * count_i) * count_j;
@@ -1804,6 +1809,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_sub_self:
+        // LOIC: Need to do something for stars here
         cost = 1.f * (wscale * count_i) * count_i;
         break;
       case task_type_ghost:

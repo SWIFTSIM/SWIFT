@@ -3982,94 +3982,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Only interested in stars_density tasks as of here. */
       if (t->subtype == task_subtype_stars_density) {
 
-	// LOIC: Need implementing
-
         /* Too much particle movement? */
         if (cell_need_rebuild_for_pair(ci, cj)) *rebuild_space = 1;
 
-#ifdef WITH_MPI
-        error("MPI with stars not implemented");
-        /* /\* Activate the send/recv tasks. *\/ */
-        /* if (ci->nodeID != engine_rank) { */
-
-        /*   /\* If the local cell is active, receive data from the foreign
-         * cell. *\/ */
-        /*   if (cj_active_hydro) { */
-        /*     scheduler_activate(s, ci->recv_xv); */
-        /*     if (ci_active_hydro) { */
-        /*       scheduler_activate(s, ci->recv_rho); */
-        /*     } */
-        /*   } */
-
-        /*   /\* If the foreign cell is active, we want its ti_end values. *\/
-         */
-        /*   if (ci_active_hydro) scheduler_activate(s, ci->recv_ti); */
-
-        /*   /\* Is the foreign cell active and will need stuff from us? *\/ */
-        /*   if (ci_active_hydro) { */
-
-        /*     struct link *l = */
-        /*         scheduler_activate_send(s, cj->send_xv, ci->nodeID); */
-
-        /*     /\* Drift the cell which will be sent at the level at which it is
-         */
-        /*        sent, i.e. drift the cell specified in the send task (l->t) */
-        /*        itself. *\/ */
-        /*     cell_activate_drift_part(l->t->ci, s); */
-
-        /*     /\* If the local cell is also active, more stuff will be needed.
-         * *\/ */
-        /*     if (cj_active_hydro) { */
-        /*       scheduler_activate_send(s, cj->send_rho, ci->nodeID); */
-
-        /*     } */
-        /*   } */
-
-        /*   /\* If the local cell is active, send its ti_end values. *\/ */
-        /*   if (cj_active_hydro) */
-        /*     scheduler_activate_send(s, cj->send_ti, ci->nodeID); */
-
-        /* } else if (cj->nodeID != engine_rank) { */
-
-        /*   /\* If the local cell is active, receive data from the foreign
-         * cell. *\/ */
-        /*   if (ci_active_hydro) { */
-        /*     scheduler_activate(s, cj->recv_xv); */
-        /*     if (cj_active_hydro) { */
-        /*       scheduler_activate(s, cj->recv_rho); */
-        /*     } */
-        /*   } */
-
-        /*   /\* If the foreign cell is active, we want its ti_end values. *\/
-         */
-        /*   if (cj_active_hydro) scheduler_activate(s, cj->recv_ti); */
-
-        /*   /\* Is the foreign cell active and will need stuff from us? *\/ */
-        /*   if (cj_active_hydro) { */
-
-        /*     struct link *l = */
-        /*         scheduler_activate_send(s, ci->send_xv, cj->nodeID); */
-
-        /*     /\* Drift the cell which will be sent at the level at which it is
-         */
-        /*        sent, i.e. drift the cell specified in the send task (l->t) */
-        /*        itself. *\/ */
-        /*     cell_activate_drift_part(l->t->ci, s); */
-
-        /*     /\* If the local cell is also active, more stuff will be needed.
-         * *\/ */
-        /*     if (ci_active_hydro) { */
-
-        /*       scheduler_activate_send(s, ci->send_rho, cj->nodeID); */
-
-        /*     } */
-        /*   } */
-
-        /*   /\* If the local cell is active, send its ti_end values. *\/ */
-        /*   if (ci_active_hydro) */
-        /*     scheduler_activate_send(s, ci->send_ti, cj->nodeID); */
-        /* } */
-#endif
+        // LOIC: Need implementing MPI case
       }
 
       /* Only interested in gravity tasks as of here. */
