@@ -2744,6 +2744,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param periodic flag whether the domain is periodic or not.
  * @param replicate How many replications along each direction do we want?
  * @param generate_gas_in_ics Are we generating gas particles from the gparts?
+ * @param hydro flag whether we are doing hydro or not?
  * @param self_gravity flag whether we are doing gravity or not?
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
@@ -2757,8 +2758,8 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
                 size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
-                int replicate, int generate_gas_in_ics, int self_gravity,
-                int verbose, int dry_run) {
+                int replicate, int generate_gas_in_ics, int hydro,
+                int self_gravity, int verbose, int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -2769,6 +2770,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->dim[2] = dim[2];
   s->periodic = periodic;
   s->gravity = self_gravity;
+  s->hydro = hydro;
   s->nr_parts = Npart;
   s->size_parts = Npart;
   s->parts = parts;
@@ -3084,6 +3086,13 @@ void space_replicate(struct space *s, int replicate, int verbose) {
 
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         int verbose) {
+
+  /* Check that this is a sensible ting to do */
+  if (!s->hydro)
+    error(
+        "Cannot generate gas from ICs if we are running without "
+        "hydrodynamics. Need to run with -s and the corresponding "
+        "hydrodynamics parameters in the YAML file.");
 
   if (verbose) message("Generating gas particles from gparts");
 

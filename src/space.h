@@ -79,6 +79,9 @@ struct space {
   /*! Extra space information needed for some hydro schemes. */
   struct hydro_space hs;
 
+  /*! Are we doing hydrodynamics? */
+  int hydro;
+
   /*! Are we doing gravity? */
   int gravity;
 
@@ -212,7 +215,7 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
                 size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
-                int replicate, int generate_gas_in_ics, int gravity,
+                int replicate, int generate_gas_in_ics, int hydro, int gravity,
                 int verbose, int dry_run);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
