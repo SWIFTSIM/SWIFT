@@ -5351,6 +5351,10 @@ void engine_reconstruct_multipoles(struct engine *e) {
 void engine_makeproxies(struct engine *e) {
 
 #ifdef WITH_MPI
+  /* Let's time this */
+  const ticks tic = getticks();
+
+  /* Useful local information */
   const int nodeID = e->nodeID;
   const struct space *s = e->s;
 
@@ -5377,9 +5381,6 @@ void engine_makeproxies(struct engine *e) {
                         cell_width[1] * cell_width[1] +
                         cell_width[2] * cell_width[2];
   const double r_max = sqrt(r_max2);
-
-  /* Let's time this */
-  const ticks tic = getticks();
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)

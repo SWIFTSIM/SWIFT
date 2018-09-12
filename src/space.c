@@ -239,9 +239,16 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
  * @brief Free up any allocated cells.
  */
 void space_free_cells(struct space *s) {
+
+  ticks tic = getticks();
+
   threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper, s->cells_top,
                  s->nr_cells, sizeof(struct cell), 0, s);
   s->maxdepth = 0;
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**

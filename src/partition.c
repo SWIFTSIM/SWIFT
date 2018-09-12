@@ -868,6 +868,8 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
+  ticks tic = getticks();
+
   if (reparttype->type == REPART_METIS_VERTEX_COSTS_EDGE_COSTS) {
     repart_edge_metis(0, 1, 0, nodeID, nr_nodes, s, tasks, nr_tasks);
 
@@ -895,6 +897,10 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
   } else {
     error("Impossible repartition type");
   }
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("SWIFT was not compiled with METIS support.");
 #endif
