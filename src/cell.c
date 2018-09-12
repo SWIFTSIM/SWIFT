@@ -2028,20 +2028,31 @@ void cell_activate_grav_mm_task(struct cell *ci, struct cell *cj,
                                 struct scheduler *s) {
   /* Some constants */
   const struct engine *e = s->space->e;
+  const integertime_t ti_current = e->ti_current;
 
   /* Anything to do here? */
   if (!cell_is_active_gravity_mm(ci, e) && !cell_is_active_gravity_mm(cj, e))
     error("Inactive MM task being activated");
 
-  /* Atomically drift the multipole in ci */
-  lock_lock(&ci->mlock);
-  if (ci->ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
-  if (lock_unlock(&ci->mlock) != 0) error("Impossible to unlock m-pole");
+  /* Atomically drift the multipoles in the progenies of ci */
+  for (int i = 0; i < 8; i++) {
+    struct cell *cpi = ci->progeny[i];
+    if (cpi != NULL) {
+      lock_lock(&cpi->mlock);
+      if (cpi->ti_old_multipole < ti_current) cell_drift_multipole(cpi, e);
+      if (lock_unlock(&cpi->mlock) != 0) error("Impossible to unlock m-pole");
+    }
+  }
 
-  /* Atomically drift the multipole in cj */
-  lock_lock(&cj->mlock);
-  if (cj->ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
-  if (lock_unlock(&cj->mlock) != 0) error("Impossible to unlock m-pole");
+  /* Atomically drift the multipoles in the progenies of cj */
+  for (int j = 0; j < 8; j++) {
+    struct cell *cpj = cj->progeny[j];
+    if (cpj != NULL) {
+      lock_lock(&cpj->mlock);
+      if (cpj->ti_old_multipole < ti_current) cell_drift_multipole(cpj, e);
+      if (lock_unlock(&cpj->mlock) != 0) error("Impossible to unlock m-pole");
+    }
+  }
 }
 
 /**
@@ -2490,7 +2501,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
     const int ci_active = cell_is_active_gravity_mm(ci, e);
-    const int cj_active = (cj != NULL) ? cell_is_active_gravity_mm(cj, e) : 0;
+    const int cj_active = cell_is_active_gravity_mm(cj, e);
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;

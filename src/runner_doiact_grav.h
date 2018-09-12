@@ -1300,8 +1300,35 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
     runner_dopair_grav_mm_nonsym(r, ci, cj);
   else if (do_j)
     runner_dopair_grav_mm_nonsym(r, cj, ci);
-  else
-    error("Running M-M task with two inactive cells.");
+  /* else */
+  /*   error("Running M-M task with two inactive cells."); */
+}
+
+static INLINE void runner_dopair_grav_mm_progenies(struct runner *r,
+                                                   struct cell *restrict ci,
+                                                   struct cell *restrict cj) {
+
+  const struct engine *e = r->e;
+  const struct space *s = e->s;
+
+  /* Loop over all pairs of progenies */
+  for (int i = 0; i < 8; i++) {
+    if (ci->progeny[i] != NULL) {
+      for (int j = 0; j < 8; j++) {
+        if (cj->progeny[j] != NULL) {
+
+          struct cell *cpi = ci->progeny[i];
+          struct cell *cpj = cj->progeny[j];
+
+          /* Did we agree to use an M-M interaction here at the last rebuild? */
+          if (cell_can_use_pair_mm_rebuild(cpi, cpj, e, s)) {
+
+            runner_dopair_grav_mm(r, cpi, cpj);
+          }
+        }
+      }
+    }
+  }
 }
 
 static INLINE void runner_dopair_recursive_grav_pm(struct runner *r,
@@ -1631,12 +1658,12 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   if (ci->ti_old_multipole != e->ti_current)
     error("Interacting un-drifted multipole");
 
+  /* Get this cell's multipole information */
+  struct gravity_tensors *const multi_i = ci->multipole;
+
   /* Find this cell's top-level (great-)parent */
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
-
-  /* Flag that contributions will be recieved */
-  struct gravity_tensors *const multi_i = ci->multipole;
 
   /* Recover the top-level multipole (for distance checks) */
   struct gravity_tensors *const multi_top = top->multipole;

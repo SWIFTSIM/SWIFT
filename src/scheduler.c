@@ -888,20 +888,6 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         break;
       }
 
-      /* Should we replace it with an M-M task? */
-      if (cell_can_use_pair_mm_rebuild(ci, cj, e, sp)) {
-
-        t->type = task_type_grav_mm;
-        t->subtype = task_subtype_none;
-
-        /* Since this task will not be split, we can already link it */
-        atomic_inc(&ci->nr_mm_tasks);
-        atomic_inc(&cj->nr_mm_tasks);
-        engine_addlink(e, &ci->grav_mm, t);
-        engine_addlink(e, &cj->grav_mm, t);
-        break;
-      }
-
       /* Should this task be split-up? */
       if (cell_can_split_pair_gravity_task(ci) &&
           cell_can_split_pair_gravity_task(cj)) {
@@ -910,37 +896,33 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         const long long gcount_j = cj->gcount;
 
         /* Replace by a single sub-task? */
-        if (scheduler_dosub && /* Use division to avoid integer overflow. */
+        if (scheduler_dosub &&
             gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
 
           /* Otherwise, split it. */
         } else {
 
-          /* Take a step back (we're going to recycle the current task)... */
-          redo = 1;
-
-          /* Find the first non-empty childrens of the cells */
-          int first_ci_child = 0, first_cj_child = 0;
-          while (ci->progeny[first_ci_child] == NULL) first_ci_child++;
-          while (cj->progeny[first_cj_child] == NULL) first_cj_child++;
-
-          /* Recycle the current pair */
-          t->ci = ci->progeny[first_ci_child];
-          t->cj = cj->progeny[first_cj_child];
+          /* Turn the task into a M-M task that will take care of all the
+           * progeny pairs */
+          t->type = task_type_grav_mm;
+          t->subtype = task_subtype_none;
 
           /* Make a task for every other pair of progeny */
-          for (int i = first_ci_child; i < 8; i++) {
+          for (int i = 0; i < 8; i++) {
             if (ci->progeny[i] != NULL) {
-              for (int j = first_cj_child; j < 8; j++) {
+              for (int j = 0; j < 8; j++) {
                 if (cj->progeny[j] != NULL) {
 
-                  /* Skip the recycled pair */
-                  if (i == first_ci_child && j == first_cj_child) continue;
+                  /* But only for pairs that cannot be replaced by a M-M
+                   * interaction */
+                  if (!cell_can_use_pair_mm_rebuild(ci->progeny[i],
+                                                    cj->progeny[j], e, sp)) {
 
-                  scheduler_splittask_gravity(
-                      scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
-                                        ci->progeny[i], cj->progeny[j]),
-                      s);
+                    scheduler_splittask_gravity(
+                        scheduler_addtask(s, task_type_pair, task_subtype_grav,
+                                          0, 0, ci->progeny[i], cj->progeny[j]),
+                        s);
+                  }
                 }
               }
             }

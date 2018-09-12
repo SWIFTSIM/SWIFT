@@ -2674,9 +2674,29 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       }
 #endif
 
-      /* Note that we do not need to link the M-M tasks */
-      /* since we already did so when splitting the gravity */
-      /* tasks. */
+      /* Multipole-multipole interaction of progenies */
+    } else if (t_type == task_type_grav_mm) {
+
+      atomic_inc(&ci->nr_mm_tasks);
+      atomic_inc(&cj->nr_mm_tasks);
+      engine_addlink(e, &ci->grav_mm, t);
+      engine_addlink(e, &cj->grav_mm, t);
+
+      /* for (int i = 0; i < 8; i++) { */
+      /* 	struct cell *cpi = ci->progeny[i]; */
+      /* 	if (cpi != NULL) { */
+      /* 	  atomic_inc(&cpi->nr_mm_tasks); */
+      /* 	  engine_addlink(e, &cpi->grav_mm, t); */
+      /* 	} */
+      /* } */
+
+      /* for (int j = 0; j < 8; j++) { */
+      /* 	struct cell *cpj = cj->progeny[j];       */
+      /*   if (cpj != NULL) { */
+      /* 	  atomic_inc(&cpj->nr_mm_tasks); */
+      /* 	  engine_addlink(e, &cpj->grav_mm, t); */
+      /* 	} */
+      /* } */
     }
   }
 }
