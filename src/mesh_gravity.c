@@ -437,13 +437,19 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   /* message("\n\n\n DENSITY"); */
   /* print_array(rho, N); */
 
-  const ticks tic2 = getticks();
+  tic = getticks();
 
   /* Fourier transform to go to magic-land */
   fftw_execute(forward_plan);
 
+  if (verbose)
+    message("Forward Fourier transform took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   /* frho now contains the Fourier transform of the density field */
   /* frho contains NxNx(N/2+1) complex numbers */
+
+  tic = getticks();
 
   /* Some common factors */
   const double green_fac = -1. / (M_PI * box_size);
@@ -506,17 +512,24 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   frho[0][0] = 0.;
   frho[0][1] = 0.;
 
+  if (verbose)
+    message("Applying Green function took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
   /* Fourier transform to come back from magic-land */
   fftw_execute(inverse_plan);
 
+  if (verbose)
+    message("Backwards Fourier transform took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   /* rho now contains the potential */
   /* This array is now again NxNxN real numbers */
+
   /* Let's store it in the structure */
   mesh->potential = rho;
-
-  if (verbose)
-    message("Fourier-space PM took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* message("\n\n\n POTENTIAL"); */
   /* print_array(potential, N); */
