@@ -3943,9 +3943,12 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
 
+  /* Construct the list of purely local cells */
+  space_list_local_cells(e->s);
+
   /* Re-compute the mesh forces */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
-    pm_mesh_compute_potential(e->mesh, e->s, e->verbose);
+    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
 
   /* Re-compute the maximal RMS displacement constraint */
   if (e->policy & engine_policy_cosmology)
@@ -4262,7 +4265,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
 
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,
-                 s->local_cells_top, s->nr_local_cells, sizeof(int), 0, &data);
+                 s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
+                 sizeof(int), 0, &data);
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(&e->collect_group1, data.updates, data.g_updates,
@@ -5132,14 +5136,17 @@ void engine_unskip(struct engine *e) {
 #endif  // WITH_PROFILER
 
   /* Move the active local cells to the top of the list. */
-  int *local_cells = e->s->local_cells_top;
+  int *local_cells = e->s->local_cells_with_tasks_top;
   int num_active_cells = 0;
-  for (int k = 0; k < s->nr_local_cells; k++) {
+  for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
+
     if ((e->policy & engine_policy_hydro && cell_is_active_hydro(c, e)) ||
-        (e->policy &
-             (engine_policy_self_gravity | engine_policy_external_gravity) &&
+        (e->policy & engine_policy_self_gravity &&
+         cell_is_active_gravity(c, e)) ||
+        (e->policy & engine_policy_external_gravity &&
          cell_is_active_gravity(c, e))) {
+
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
       num_active_cells += 1;

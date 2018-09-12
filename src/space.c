@@ -360,6 +360,7 @@ void space_regrid(struct space *s, int verbose) {
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
       space_free_cells(s);
+      free(s->local_cells_with_tasks_top);
       free(s->local_cells_top);
       free(s->cells_top);
       free(s->multipoles_top);
@@ -397,6 +398,12 @@ void space_regrid(struct space *s, int verbose) {
                        s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of local top-level cells.");
     bzero(s->local_cells_top, s->nr_cells * sizeof(int));
+
+    /* Allocate the indices of local cells with tasks */
+    if (posix_memalign((void **)&s->local_cells_with_tasks_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of local top-level cells.");
+    bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
@@ -2337,7 +2344,7 @@ void space_free_buff_sort_indices(struct space *s) {
 
 /**
  * @brief Construct the list of top-level cells that have any tasks in
- * their hierarchy.
+ * their hierarchy on this MPI rank.
  *
  * This assumes the list has been pre-allocated at a regrid.
  *
@@ -2345,15 +2352,38 @@ void space_free_buff_sort_indices(struct space *s) {
  */
 void space_list_cells_with_tasks(struct space *s) {
 
-  /* Let's rebuild the list of local top-level cells */
-  s->nr_local_cells = 0;
+  s->nr_local_cells_with_tasks = 0;
+
   for (int i = 0; i < s->nr_cells; ++i)
     if (cell_has_tasks(&s->cells_top[i])) {
+      s->local_cells_with_tasks_top[s->nr_local_cells_with_tasks] = i;
+      s->nr_local_cells_with_tasks++;
+    }
+  if (s->e->verbose)
+    message("Have %d local top-level cells with tasks (total=%d)",
+            s->nr_local_cells_with_tasks, s->nr_cells);
+}
+
+/**
+ * @brief Construct the list of local top-level cells.
+ *
+ * This assumes the list has been pre-allocated at a regrid.
+ *
+ * @param s The #space.
+ */
+void space_list_local_cells(struct space *s) {
+
+  s->nr_local_cells = 0;
+
+  for (int i = 0; i < s->nr_cells; ++i)
+    if (s->cells_top[i].nodeID == engine_rank) {
       s->local_cells_top[s->nr_local_cells] = i;
       s->nr_local_cells++;
     }
+
   if (s->e->verbose)
-    message("Have %d local cells (total=%d)", s->nr_local_cells, s->nr_cells);
+    message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
+            s->nr_cells);
 }
 
 void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
@@ -3287,6 +3317,7 @@ void space_clean(struct space *s) {
   free(s->cells_top);
   free(s->multipoles_top);
   free(s->local_cells_top);
+  free(s->local_cells_with_tasks_top);
   free(s->parts);
   free(s->xparts);
   free(s->gparts);
@@ -3338,6 +3369,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->multipoles_top = NULL;
   s->multipoles_sub = NULL;
   s->local_cells_top = NULL;
+  s->local_cells_with_tasks_top = NULL;
   s->grav_top_level = NULL;
 #ifdef WITH_MPI
   s->parts_foreign = NULL;
