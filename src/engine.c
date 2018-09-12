@@ -4104,9 +4104,14 @@ void engine_barrier(struct engine *e) {
 }
 
 /**
- * @brief Mapping function to collect the data from the kick.
+ * @brief Recursive function gathering end-of-step data.
  *
- * @param c A super-cell.
+ * We recurse until we encounter a timestep or time-step MPI recv task
+ * as the values will have been set at that level. We then bring these
+ * values upwards.
+ *
+ * @param c The #cell to recurse into.
+ * @param e The #engine.
  */
 void engine_collect_end_of_step_recurse(struct cell *c,
                                         const struct engine *e) {
@@ -4165,6 +4170,17 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   c->s_updated = s_updated;
 }
 
+/**
+ * @brief Mapping function to collect the data from the end of the step
+ *
+ * This function will call a recursive function on all the top-level cells
+ * to collect the information we are after.
+ *
+ * @param map_data The list of cells with tasks on this node.
+ * @param num_elements The number of elements in the list this thread will work
+ * on.
+ * @param extra_data The #engine.
+ */
 void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
                                        void *extra_data) {
 
