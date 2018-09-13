@@ -2018,48 +2018,6 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 }
 
 /**
- * @brief Drift the multipoles that will be used in a M-M task.
- *
- * @param ci The first #cell we update.
- * @param cj The second #cell we update.
- * @param s The task #scheduler.
- */
-void cell_activate_grav_mm_task(struct cell *ci, struct cell *cj,
-                                struct scheduler *s) {
-  /* Some constants */
-  const struct engine *e = s->space->e;
-  // const integertime_t ti_current = e->ti_current;
-
-  /* Anything to do here? */
-  if (!cell_is_active_gravity_mm(ci, e) && !cell_is_active_gravity_mm(cj, e))
-    error("Inactive MM task being activated");
-
-  /* /\* Atomically drift the multipoles in the progenies of ci *\/ */
-  /* for (int i = 0; i < 8; i++) { */
-  /*   struct cell *cpi = ci->progeny[i]; */
-  /*   if (cpi != NULL) { */
-  /*     lock_lock(&cpi->mlock); */
-  /*     if (cpi->ti_old_multipole < ti_current) cell_drift_multipole(cpi, e);
-   */
-  /*     if (lock_unlock(&cpi->mlock) != 0) error("Impossible to unlock
-   * m-pole"); */
-  /*   } */
-  /* } */
-
-  /* /\* Atomically drift the multipoles in the progenies of cj *\/ */
-  /* for (int j = 0; j < 8; j++) { */
-  /*   struct cell *cpj = cj->progeny[j]; */
-  /*   if (cpj != NULL) { */
-  /*     lock_lock(&cpj->mlock); */
-  /*     if (cpj->ti_old_multipole < ti_current) cell_drift_multipole(cpj, e);
-   */
-  /*     if (lock_unlock(&cpj->mlock) != 0) error("Impossible to unlock
-   * m-pole"); */
-  /*   } */
-  /* } */
-}
-
-/**
  * @brief Traverse a sub-cell task and activate the gravity drift tasks that
  * are required by a self gravity task.
  *
@@ -2523,9 +2481,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         (cj_active && cj_nodeID == nodeID)) {
 
       scheduler_activate(s, t);
-
-      /* Drift the multipoles */
-      cell_activate_grav_mm_task(ci, cj, s);
     }
   }
 

@@ -906,6 +906,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
            * progeny pairs */
           t->type = task_type_grav_mm;
           t->subtype = task_subtype_none;
+          t->flags = 0;
 
           /* Make a task for every other pair of progeny */
           for (int i = 0; i < 8; i++) {
@@ -913,11 +914,22 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
               for (int j = 0; j < 8; j++) {
                 if (cj->progeny[j] != NULL) {
 
-                  /* But only for pairs that cannot be replaced by a M-M
-                   * interaction */
-                  if (!cell_can_use_pair_mm_rebuild(ci->progeny[i],
-                                                    cj->progeny[j], e, sp)) {
+                  /* Can we use a M-M interaction here? */
+                  if (cell_can_use_pair_mm_rebuild(ci->progeny[i],
+                                                   cj->progeny[j], e, sp)) {
 
+                    /* Flag this pair as being treated by the M-M task */
+                    /* We use the 64 bits in the task->flags field to store */
+                    /* this information. The corresponding taks will unpack the
+                     */
+                    /* information and operate according to the choices made
+                     * here. */
+                    const int flag = i * 8 + j;
+                    t->flags |= (1LL << flag);
+
+                  } else {
+
+                    /* Ok, we actually have to create a task */
                     scheduler_splittask_gravity(
                         scheduler_addtask(s, task_type_pair, task_subtype_grav,
                                           0, 0, ci->progeny[i], cj->progeny[j]),
@@ -927,6 +939,16 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
               }
             }
           }
+
+          /* Can none of the progenies use M-M calculations? */
+          if (t->flags == 0) {
+            t->type = task_type_none;
+            t->subtype = task_subtype_none;
+            t->ci = NULL;
+            t->cj = NULL;
+            t->skip = 1;
+          }
+
         } /* Split the pair */
       }
     } /* pair interaction? */

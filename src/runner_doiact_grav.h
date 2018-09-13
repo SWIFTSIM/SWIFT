@@ -1308,12 +1308,20 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
     runner_dopair_grav_mm_nonsym(r, cj, ci);
 }
 
+/**
+ * @brief Computes all the M-M interactions between all the well-separated (at
+ * rebuild) pairs of progenies of the two cells.
+ *
+ * @param r The #runner thread.
+ * @param flags The task flag containing the list of well-separated pairs as a
+ * bit-field.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
 static INLINE void runner_dopair_grav_mm_progenies(struct runner *r,
+                                                   const long long flags,
                                                    struct cell *restrict ci,
                                                    struct cell *restrict cj) {
-
-  const struct engine *e = r->e;
-  const struct space *s = e->s;
 
   /* Loop over all pairs of progenies */
   for (int i = 0; i < 8; i++) {
@@ -1324,11 +1332,10 @@ static INLINE void runner_dopair_grav_mm_progenies(struct runner *r,
           struct cell *cpi = ci->progeny[i];
           struct cell *cpj = cj->progeny[j];
 
-          /* Did we agree to use an M-M interaction here at the last rebuild? */
-          if (cell_can_use_pair_mm_rebuild(cpi, cpj, e, s)) {
+          const int flag = i * 8 + j;
 
-            runner_dopair_grav_mm(r, cpi, cpj);
-          }
+          /* Did we agree to use an M-M interaction here at the last rebuild? */
+          if (flags & (1LL << flag)) runner_dopair_grav_mm(r, cpi, cpj);
         }
       }
     }
