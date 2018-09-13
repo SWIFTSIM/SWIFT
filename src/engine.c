@@ -363,7 +363,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   }
 
   /* We are below the super-cell but not below the maximal splitting depth */
-  else if (c->super_gravity != NULL && c->depth <= space_subdepth_grav) {
+  else if (c->super_gravity != NULL && c->depth < space_subdepth_grav) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
@@ -2709,6 +2709,10 @@ void engine_link_gravity_tasks(struct engine *e) {
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
+    struct cell *ci_parent = (ci->parent != NULL) ? ci->parent : ci;
+    struct cell *cj_parent =
+        (cj != NULL && cj->parent != NULL) ? cj->parent : cj;
+
 /* Node ID (if running with MPI) */
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
@@ -2728,8 +2732,8 @@ void engine_link_gravity_tasks(struct engine *e) {
       /* drift ---+-> gravity --> grav_down */
       /* init  --/    */
       scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
-      scheduler_addunlock(sched, ci->init_grav_out, t);
-      scheduler_addunlock(sched, t, ci->grav_down_in);
+      scheduler_addunlock(sched, ci_parent->init_grav_out, t);
+      scheduler_addunlock(sched, t, ci_parent->grav_down_in);
     }
 
     /* Self-interaction for external gravity ? */
@@ -2752,8 +2756,8 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
         scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
-        scheduler_addunlock(sched, ci->init_grav_out, t);
-        scheduler_addunlock(sched, t, ci->grav_down_in);
+        scheduler_addunlock(sched, ci_parent->init_grav_out, t);
+        scheduler_addunlock(sched, t, ci_parent->grav_down_in);
       }
       if (cj_nodeID == nodeID) {
 
@@ -2761,8 +2765,11 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* init  --/    */
         if (ci->super_gravity != cj->super_gravity) /* Avoid double unlock */
           scheduler_addunlock(sched, cj->super_gravity->drift_gpart, t);
-        scheduler_addunlock(sched, cj->init_grav_out, t);
-        scheduler_addunlock(sched, t, cj->grav_down_in);
+
+        if (ci_parent != cj_parent) { /* Avoid double unlock */
+          scheduler_addunlock(sched, cj_parent->init_grav_out, t);
+          scheduler_addunlock(sched, t, cj_parent->grav_down_in);
+        }
       }
     }
 
@@ -2775,8 +2782,8 @@ void engine_link_gravity_tasks(struct engine *e) {
       /* drift ---+-> gravity --> grav_down */
       /* init  --/    */
       scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
-      scheduler_addunlock(sched, ci->init_grav_out, t);
-      scheduler_addunlock(sched, t, ci->grav_down_in);
+      scheduler_addunlock(sched, ci_parent->init_grav_out, t);
+      scheduler_addunlock(sched, t, ci_parent->grav_down_in);
     }
 
     /* Sub-self-interaction for external gravity ? */
@@ -2800,8 +2807,8 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
         scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
-        scheduler_addunlock(sched, ci->init_grav_out, t);
-        scheduler_addunlock(sched, t, ci->grav_down_in);
+        scheduler_addunlock(sched, ci_parent->init_grav_out, t);
+        scheduler_addunlock(sched, t, ci_parent->grav_down_in);
       }
       if (cj_nodeID == nodeID) {
 
@@ -2809,8 +2816,11 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* init  --/    */
         if (ci->super_gravity != cj->super_gravity) /* Avoid double unlock */
           scheduler_addunlock(sched, cj->super_gravity->drift_gpart, t);
-        scheduler_addunlock(sched, cj->init_grav_out, t);
-        scheduler_addunlock(sched, t, cj->grav_down_in);
+
+        if (ci_parent != cj_parent) { /* Avoid double unlock */
+          scheduler_addunlock(sched, cj_parent->init_grav_out, t);
+          scheduler_addunlock(sched, t, cj_parent->grav_down_in);
+        }
       }
     }
 
@@ -2820,14 +2830,16 @@ void engine_link_gravity_tasks(struct engine *e) {
       if (ci_nodeID == nodeID) {
 
         /* init -----> gravity --> grav_down */
-        scheduler_addunlock(sched, ci->init_grav_out, t);
-        scheduler_addunlock(sched, t, ci->grav_down_in);
+        scheduler_addunlock(sched, ci_parent->init_grav_out, t);
+        scheduler_addunlock(sched, t, ci_parent->grav_down_in);
       }
       if (cj_nodeID == nodeID) {
 
         /* init -----> gravity --> grav_down */
-        scheduler_addunlock(sched, cj->init_grav_out, t);
-        scheduler_addunlock(sched, t, cj->grav_down_in);
+        if (ci_parent != cj_parent) { /* Avoid double unlock */
+          scheduler_addunlock(sched, cj_parent->init_grav_out, t);
+          scheduler_addunlock(sched, t, cj_parent->grav_down_in);
+        }
       }
     }
   }

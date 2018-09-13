@@ -918,12 +918,11 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                   if (cell_can_use_pair_mm_rebuild(ci->progeny[i],
                                                    cj->progeny[j], e, sp)) {
 
-                    /* Flag this pair as being treated by the M-M task */
-                    /* We use the 64 bits in the task->flags field to store */
-                    /* this information. The corresponding taks will unpack the
-                     */
-                    /* information and operate according to the choices made
-                     * here. */
+                    /* Flag this pair as being treated by the M-M task.
+                     * We use the 64 bits in the task->flags field to store
+                     * this information. The corresponding taks will unpack
+                     * the information and operate according to the choices
+                     * made here. */
                     const int flag = i * 8 + j;
                     t->flags |= (1LL << flag);
 
