@@ -3294,6 +3294,8 @@ void engine_maketasks(struct engine *e) {
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
 
+    tic2 = getticks();
+
     /* Loop over the proxies and add the send tasks, which also generates the
      * cell tags for super-cells. */
     for (int pid = 0; pid < e->nr_proxies; pid++) {
@@ -3322,8 +3324,20 @@ void engine_maketasks(struct engine *e) {
                                          NULL);
     }
 
+    if (e->verbose)
+      message("Creating send tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+    tic2 = getticks();
+
     /* Exchange the cell tags. */
     proxy_tags_exchange(e->proxies, e->nr_proxies, s);
+
+    if (e->verbose)
+      message("Exchanging cell tags took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+    tic2 = getticks();
 
     /* Loop over the proxies and add the recv tasks, which relies on having the
      * cell tags. */
@@ -3350,6 +3364,10 @@ void engine_maketasks(struct engine *e) {
           if (p->cells_in_type[k] & proxy_cell_type_gravity)
             engine_addtasks_recv_gravity(e, p->cells_in[k], NULL);
     }
+
+    if (e->verbose)
+      message("Creating recv tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
   }
 #endif
 
