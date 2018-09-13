@@ -1232,8 +1232,11 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
   int refine = 1;
+#endif
   if (repartition->ncelllist != nr_cells) {
+#ifdef HAVE_PARMETIS
     refine = 0;
+#endif
     free(repartition->celllist);
     repartition->ncelllist = 0;
     if ((repartition->celllist = (int *)malloc(sizeof(int) * nr_cells)) ==
@@ -1241,7 +1244,6 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
       error("Failed to allocate celllist");
     repartition->ncelllist = nr_cells;
   }
-#endif
 
  /* We need to rescale the sum of the weights so that the sums of the two
   * types of weights are less than IDX_MAX, that is the range of idx_t.  Also
