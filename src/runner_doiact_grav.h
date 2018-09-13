@@ -1289,19 +1289,23 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
 
   const struct engine *e = r->e;
 
+  /* What do we need to do? */
   const int do_i =
       cell_is_active_gravity_mm(ci, e) && (ci->nodeID == e->nodeID);
   const int do_j =
       cell_is_active_gravity_mm(cj, e) && (cj->nodeID == e->nodeID);
 
+  /* Do we need drifting first? */
+  if (ci->ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
+  if (cj->ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
+
+  /* Interact! */
   if (do_i && do_j)
     runner_dopair_grav_mm_symmetric(r, ci, cj);
   else if (do_i)
     runner_dopair_grav_mm_nonsym(r, ci, cj);
   else if (do_j)
     runner_dopair_grav_mm_nonsym(r, cj, ci);
-  /* else */
-  /*   error("Running M-M task with two inactive cells."); */
 }
 
 static INLINE void runner_dopair_grav_mm_progenies(struct runner *r,
@@ -1655,8 +1659,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     error("Non-local cell in long-range gravity task!");
 
   /* Check multipole has been drifted */
-  if (ci->ti_old_multipole != e->ti_current)
-    error("Interacting un-drifted multipole");
+  if (ci->ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
 
   /* Get this cell's multipole information */
   struct gravity_tensors *const multi_i = ci->multipole;
