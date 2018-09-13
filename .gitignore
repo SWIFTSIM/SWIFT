@@ -131,6 +131,8 @@ tests/testEOS
 tests/testEOS*.txt
 tests/testEOS*.png
 tests/testUtilities
+tests/testCosmology
+tests/testOutputList
 tests/testCbrt
 tests/testFormat.sh
 

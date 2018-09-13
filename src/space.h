@@ -79,6 +79,9 @@ struct space {
   /*! Extra space information needed for some hydro schemes. */
   struct hydro_space hs;
 
+  /*! Are we doing hydrodynamics? */
+  int hydro;
+
   /*! Are we doing gravity? */
   int gravity;
 
@@ -106,8 +109,11 @@ struct space {
   /*! Total number of cells (top- and sub-) */
   int tot_cells;
 
-  /*! Number of *local* top-level cells with tasks */
+  /*! Number of *local* top-level cells */
   int nr_local_cells;
+
+  /*! Number of *local* top-level cells with tasks */
+  int nr_local_cells_with_tasks;
 
   /*! The (level 0) cells themselves. */
   struct cell *cells_top;
@@ -121,8 +127,11 @@ struct space {
   /*! Buffer of unused multipoles for the sub-cells. */
   struct gravity_tensors *multipoles_sub;
 
-  /*! The indices of the *local* top-level cells with tasks */
+  /*! The indices of the *local* top-level cells */
   int *local_cells_top;
+
+  /*! The indices of the *local* top-level cells with tasks */
+  int *local_cells_with_tasks_top;
 
   /*! The total number of parts in the space. */
   size_t nr_parts, size_parts;
@@ -206,7 +215,7 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
                 size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
-                int replicate, int generate_gas_in_ics, int gravity,
+                int replicate, int generate_gas_in_ics, int hydro, int gravity,
                 int verbose, int dry_run);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
@@ -228,6 +237,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
 void space_split(struct space *s, struct cell *cells, int nr_cells,
                  int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);
+void space_list_local_cells(struct space *s);
 void space_list_cells_with_tasks(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
                                 struct cell *cells, int verbose);

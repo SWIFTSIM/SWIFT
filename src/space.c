@@ -239,9 +239,16 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
  * @brief Free up any allocated cells.
  */
 void space_free_cells(struct space *s) {
+
+  ticks tic = getticks();
+
   threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper, s->cells_top,
                  s->nr_cells, sizeof(struct cell), 0, s);
   s->maxdepth = 0;
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -360,6 +367,7 @@ void space_regrid(struct space *s, int verbose) {
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
       space_free_cells(s);
+      free(s->local_cells_with_tasks_top);
       free(s->local_cells_top);
       free(s->cells_top);
       free(s->multipoles_top);
@@ -397,6 +405,12 @@ void space_regrid(struct space *s, int verbose) {
                        s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of local top-level cells.");
     bzero(s->local_cells_top, s->nr_cells * sizeof(int));
+
+    /* Allocate the indices of local cells with tasks */
+    if (posix_memalign((void **)&s->local_cells_with_tasks_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of local top-level cells.");
+    bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
@@ -2337,7 +2351,7 @@ void space_free_buff_sort_indices(struct space *s) {
 
 /**
  * @brief Construct the list of top-level cells that have any tasks in
- * their hierarchy.
+ * their hierarchy on this MPI rank.
  *
  * This assumes the list has been pre-allocated at a regrid.
  *
@@ -2345,15 +2359,38 @@ void space_free_buff_sort_indices(struct space *s) {
  */
 void space_list_cells_with_tasks(struct space *s) {
 
-  /* Let's rebuild the list of local top-level cells */
-  s->nr_local_cells = 0;
+  s->nr_local_cells_with_tasks = 0;
+
   for (int i = 0; i < s->nr_cells; ++i)
     if (cell_has_tasks(&s->cells_top[i])) {
+      s->local_cells_with_tasks_top[s->nr_local_cells_with_tasks] = i;
+      s->nr_local_cells_with_tasks++;
+    }
+  if (s->e->verbose)
+    message("Have %d local top-level cells with tasks (total=%d)",
+            s->nr_local_cells_with_tasks, s->nr_cells);
+}
+
+/**
+ * @brief Construct the list of local top-level cells.
+ *
+ * This assumes the list has been pre-allocated at a regrid.
+ *
+ * @param s The #space.
+ */
+void space_list_local_cells(struct space *s) {
+
+  s->nr_local_cells = 0;
+
+  for (int i = 0; i < s->nr_cells; ++i)
+    if (s->cells_top[i].nodeID == engine_rank) {
       s->local_cells_top[s->nr_local_cells] = i;
       s->nr_local_cells++;
     }
+
   if (s->e->verbose)
-    message("Have %d local cells (total=%d)", s->nr_local_cells, s->nr_cells);
+    message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
+            s->nr_cells);
 }
 
 void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
@@ -2714,6 +2751,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param periodic flag whether the domain is periodic or not.
  * @param replicate How many replications along each direction do we want?
  * @param generate_gas_in_ics Are we generating gas particles from the gparts?
+ * @param hydro flag whether we are doing hydro or not?
  * @param self_gravity flag whether we are doing gravity or not?
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
@@ -2727,8 +2765,8 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
                 size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
-                int replicate, int generate_gas_in_ics, int self_gravity,
-                int verbose, int dry_run) {
+                int replicate, int generate_gas_in_ics, int hydro,
+                int self_gravity, int verbose, int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -2739,6 +2777,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->dim[2] = dim[2];
   s->periodic = periodic;
   s->gravity = self_gravity;
+  s->hydro = hydro;
   s->nr_parts = Npart;
   s->size_parts = Npart;
   s->parts = parts;
@@ -3055,6 +3094,13 @@ void space_replicate(struct space *s, int replicate, int verbose) {
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         int verbose) {
 
+  /* Check that this is a sensible ting to do */
+  if (!s->hydro)
+    error(
+        "Cannot generate gas from ICs if we are running without "
+        "hydrodynamics. Need to run with -s and the corresponding "
+        "hydrodynamics parameters in the YAML file.");
+
   if (verbose) message("Generating gas particles from gparts");
 
   /* Store the current values */
@@ -3287,6 +3333,7 @@ void space_clean(struct space *s) {
   free(s->cells_top);
   free(s->multipoles_top);
   free(s->local_cells_top);
+  free(s->local_cells_with_tasks_top);
   free(s->parts);
   free(s->xparts);
   free(s->gparts);
@@ -3338,6 +3385,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->multipoles_top = NULL;
   s->multipoles_sub = NULL;
   s->local_cells_top = NULL;
+  s->local_cells_with_tasks_top = NULL;
   s->grav_top_level = NULL;
 #ifdef WITH_MPI
   s->parts_foreign = NULL;
