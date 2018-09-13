@@ -588,7 +588,7 @@ AH_VERBATIM([__STDC_FORMAT_MACROS],
 
 # Check for FFTW. We test for this in the standard directories by default,
 # and only disable if using --with-fftw=no or --without-fftw. When a value
-# is given GSL must be found.
+# is given FFTW must be found.
 have_fftw="no"
 AC_ARG_WITH([fftw],
     [AS_HELP_STRING([--with-fftw=PATH],
@@ -599,10 +599,10 @@ AC_ARG_WITH([fftw],
 )
 if test "x$with_fftw" != "xno"; then
    if test "x$with_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
-      FFTW_LIBS="-L$with_fftw/lib -lfftw3"
+      FFTW_LIBS="-L$with_fftw/lib -lfftw3_threads -lfftw3"
       FFTW_INCS="-I$with_fftw/include"
    else
-      FFTW_LIBS="-lfftw3"
+      FFTW_LIBS="-lfftw3_threads -lfftw3"
       FFTW_INCS=""
    fi
    #  FFTW is not specified, so just check if we have it.

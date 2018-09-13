@@ -801,7 +801,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the long-range gravity mesh */
     if (with_self_gravity && periodic) {
 #ifdef HAVE_FFTW
-      pm_mesh_init(&mesh, &gravity_properties, s.dim);
+      pm_mesh_init(&mesh, &gravity_properties, s.dim, nr_threads);
 #else
       /* Need the FFTW library if periodic and self gravity. */
       error(
