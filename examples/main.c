@@ -1051,7 +1051,7 @@ int main(int argc, char *argv[]) {
             if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
               fprintf(
                   file_thread,
-                  " %03i %i %i %i %i %lli %lli %i %i %i %i %i %i\n", myrank,
+                  " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n", myrank,
                   e.sched.tasks[l].rid, e.sched.tasks[l].type,
                   e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
                   e.sched.tasks[l].tic, e.sched.tasks[l].toc,
