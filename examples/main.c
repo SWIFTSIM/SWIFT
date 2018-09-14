@@ -529,9 +529,9 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) {
 #if defined(HAVE_PARMETIS)
     if (reparttype.usemetis)
-       message("Using METIS serial partitioning:");
+      message("Using METIS serial partitioning:");
     else
-       message("Using ParMETIS partitioning:");
+      message("Using ParMETIS partitioning:");
 #else
     message("Using METIS serial partitioning:");
 #endif

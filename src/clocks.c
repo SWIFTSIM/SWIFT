@@ -29,8 +29,8 @@
 #include "../config.h"
 
 /* Standard headers. */
-#include <stdio.h>
 #include <limits.h>
+#include <stdio.h>
 #include <unistd.h>
 
 /* Local headers. */
@@ -294,10 +294,10 @@ double clocks_get_cputime_used(void) {
  */
 int clocks_random_seed(void) {
 #ifdef HAVE_CLOCK_GETTIME
-    struct timespec timespec;
-    clock_gettime(CLOCK_REALTIME, &timespec);
-    return (timespec.tv_nsec % INT_MAX);
+  struct timespec timespec;
+  clock_gettime(CLOCK_REALTIME, &timespec);
+  return (timespec.tv_nsec % INT_MAX);
 #else
-    return (getticks() % INT_MAX);
+  return (getticks() % INT_MAX);
 #endif
 }

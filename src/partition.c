@@ -60,19 +60,15 @@
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
-    "axis aligned grids of cells",
-    "vectorized point associated cells",
+    "axis aligned grids of cells", "vectorized point associated cells",
     "memory balanced, using particle weighted cells",
     "similar sized regions, using unweighted cells"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
-    "none",
-    "edge and vertex task cost weights",
-    "task cost edge weights",
+    "none", "edge and vertex task cost weights", "task cost edge weights",
     "task cost vertex weights",
-    "vertex task costs and edge delta timebin weights"
-};
+    "vertex task costs and edge delta timebin weights"};
 
 /* Local functions, if needed. */
 static int check_complete(struct space *s, int verbose, int nregions);
@@ -155,17 +151,17 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
 }
 #endif
 
-/* METIS/ParMETIS support (optional)
- * =================================
- *
- * METIS/ParMETIS partitions using a multi-level k-way scheme. We support
- * using this in a unweighted scheme, which works well and seems to be
- * guaranteed, and a weighted by the number of particles scheme.
- *
- * Repartitioning is based on ParMETIS and uses weights determined from the
- * estimated costs that a cells tasks will take or the relative time bins of
- * the cells next updates.
- */
+  /* METIS/ParMETIS support (optional)
+   * =================================
+   *
+   * METIS/ParMETIS partitions using a multi-level k-way scheme. We support
+   * using this in a unweighted scheme, which works well and seems to be
+   * guaranteed, and a weighted by the number of particles scheme.
+   *
+   * Repartitioning is based on ParMETIS and uses weights determined from the
+   * estimated costs that a cells tasks will take or the relative time bins of
+   * the cells next updates.
+   */
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
@@ -625,7 +621,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       if (refine)
         for (int i = 0; i < nvt; i++) full_regionid[j3 + i] = celllist[j3 + i];
 
-
       if (rank == 0) {
         memcpy(xadj, &full_xadj[j1], sizeof(idx_t) * (nvt + 1));
         memcpy(adjncy, &full_adjncy[j2], sizeof(idx_t) * nvt * 26);
@@ -737,19 +732,19 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
      * refinement. */
     if (adaptive) {
 
-        /* Balance between cuts and movement. */
-        real_t itr_real_t = itr;
-        if (ParMETIS_V3_AdaptiveRepart(vtxdist, xadj, adjncy, weights_v, NULL,
-                                       weights_e, &wgtflag, &numflag, &ncon,
-                                       &nparts, tpwgts, ubvec, &itr_real_t, options,
-                                       &edgecut, regionid, &comm) != METIS_OK)
-            error("Call to ParMETIS_V3_AdaptiveRepart failed.");
+      /* Balance between cuts and movement. */
+      real_t itr_real_t = itr;
+      if (ParMETIS_V3_AdaptiveRepart(
+              vtxdist, xadj, adjncy, weights_v, NULL, weights_e, &wgtflag,
+              &numflag, &ncon, &nparts, tpwgts, ubvec, &itr_real_t, options,
+              &edgecut, regionid, &comm) != METIS_OK)
+        error("Call to ParMETIS_V3_AdaptiveRepart failed.");
     } else {
-        if (ParMETIS_V3_RefineKway(vtxdist, xadj, adjncy, weights_v, weights_e,
-                                   &wgtflag, &numflag, &ncon, &nparts, tpwgts,
-                                   ubvec, options, &edgecut, regionid,
-                                   &comm) != METIS_OK)
-            error("Call to ParMETIS_V3_RefineKway failed.");
+      if (ParMETIS_V3_RefineKway(vtxdist, xadj, adjncy, weights_v, weights_e,
+                                 &wgtflag, &numflag, &ncon, &nparts, tpwgts,
+                                 ubvec, options, &edgecut, regionid,
+                                 &comm) != METIS_OK)
+        error("Call to ParMETIS_V3_RefineKway failed.");
     }
   } else {
 
@@ -765,8 +760,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       options[2] = clocks_random_seed();
 
       if (ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, weights_v, weights_e,
-                               &wgtflag, &numflag, &ncon, &nparts, tpwgts, ubvec,
-                               options, &edgecut, regionid, &comm) != METIS_OK)
+                               &wgtflag, &numflag, &ncon, &nparts, tpwgts,
+                               ubvec, options, &edgecut, regionid,
+                               &comm) != METIS_OK)
         error("Call to ParMETIS_V3_PartKway failed.");
 
       if (i == 0 || (best_edgecut > edgecut)) {
@@ -1072,8 +1068,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
  */
 static void repart_edge_metis(int vweights, int eweights, int timebins,
                               struct repartition *repartition, int nodeID,
-                              int nr_nodes, struct space *s,
-                              struct task *tasks, int nr_tasks) {
+                              int nr_nodes, struct space *s, struct task *tasks,
+                              int nr_tasks) {
 
   /* Create weight arrays using task ticks for vertices and edges (edges
    * assume the same graph structure as used in the part_ calls). */
@@ -1220,7 +1216,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   if (vweights) {
     res = MPI_Allreduce(MPI_IN_PLACE, weights_v, nr_cells, MPI_DOUBLE, MPI_SUM,
                         MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce vertex weights.");
+    if (res != MPI_SUCCESS)
+      mpi_error(res, "Failed to allreduce vertex weights.");
   }
 
   if (eweights) {
@@ -1229,7 +1226,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights.");
   }
 
-  /* Allocate cell list for the partition. If not already done. */
+    /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
   int refine = 1;
 #endif
@@ -1239,21 +1236,22 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 #endif
     free(repartition->celllist);
     repartition->ncelllist = 0;
-    if ((repartition->celllist = (int *)malloc(sizeof(int) * nr_cells)) ==
-        NULL)
+    if ((repartition->celllist = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
       error("Failed to allocate celllist");
     repartition->ncelllist = nr_cells;
   }
 
- /* We need to rescale the sum of the weights so that the sums of the two
-  * types of weights are less than IDX_MAX, that is the range of idx_t.  Also
-  * we would like to balance edges and vertices when the edge weights are
-  * timebins, as these have no reason to have equivalent scales, so we use an
-  * equipartition. */
+  /* We need to rescale the sum of the weights so that the sums of the two
+   * types of weights are less than IDX_MAX, that is the range of idx_t.  Also
+   * we would like to balance edges and vertices when the edge weights are
+   * timebins, as these have no reason to have equivalent scales, so we use an
+   * equipartition. */
   double vsum = 0.0;
-  if (vweights) for (int k = 0; k < nr_cells; k++) vsum += weights_v[k];
+  if (vweights)
+    for (int k = 0; k < nr_cells; k++) vsum += weights_v[k];
   double esum = 0.0;
-  if (eweights) for (int k = 0; k < 26 * nr_cells; k++) esum += weights_e[k];
+  if (eweights)
+    for (int k = 0; k < 26 * nr_cells; k++) esum += weights_e[k];
 
   double vscale = 1.0;
   double escale = 1.0;
@@ -1282,19 +1280,21 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
         }
       }
     }
-    if (vscale != 1.0) for (int k = 0; k < nr_cells; k++) weights_v[k] *= vscale;
+    if (vscale != 1.0)
+      for (int k = 0; k < nr_cells; k++) weights_v[k] *= vscale;
   }
 
   if (eweights) {
-    if (esum > (double)IDX_MAX)
-      escale = (double)(IDX_MAX - 1000) / esum;
-    if (escale != 1.0) for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= escale;
+    if (esum > (double)IDX_MAX) escale = (double)(IDX_MAX - 1000) / esum;
+    if (escale != 1.0)
+      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= escale;
   }
 
-  /* And repartition/ partition, using both weights or not as requested. */
+    /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
+    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
+               repartition->celllist);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
                   repartition->adaptive, repartition->itr,
@@ -1366,20 +1366,20 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
   ticks tic = getticks();
 
   if (reparttype->type == REPART_METIS_VERTEX_EDGE_COSTS) {
-      repart_edge_metis(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
-                        nr_tasks);
+    repart_edge_metis(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
+                      nr_tasks);
 
   } else if (reparttype->type == REPART_METIS_EDGE_COSTS) {
-      repart_edge_metis(0, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
-                        nr_tasks);
+    repart_edge_metis(0, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
+                      nr_tasks);
 
   } else if (reparttype->type == REPART_METIS_VERTEX_COSTS) {
-      repart_edge_metis(1, 0, 0, reparttype, nodeID, nr_nodes, s, tasks,
-                           nr_tasks);
+    repart_edge_metis(1, 0, 0, reparttype, nodeID, nr_nodes, s, tasks,
+                      nr_tasks);
 
   } else if (reparttype->type == REPART_METIS_VERTEX_COSTS_TIMEBINS) {
-      repart_edge_metis(1, 1, 1, reparttype, nodeID, nr_nodes, s, tasks,
-                           nr_tasks);
+    repart_edge_metis(1, 1, 1, reparttype, nodeID, nr_nodes, s, tasks,
+                      nr_tasks);
 
   } else if (reparttype->type == REPART_NONE) {
     /* Doing nothing. */
@@ -1467,8 +1467,8 @@ void partition_initial_partition(struct partition *initial_partition,
       accumulate_counts(s, weights);
 
       /* Get all the counts from all the nodes. */
-      if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE,
-                        MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
+      if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                        MPI_COMM_WORLD) != MPI_SUCCESS)
         error("Failed to allreduce particle cell weights.");
     }
 
@@ -1628,8 +1628,9 @@ void partition_init(struct partition *partition,
 #else
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
-    error("Permitted values are: 'none/none' when compiled without "
-          "METIS or ParMETIS.");
+    error(
+        "Permitted values are: 'none/none' when compiled without "
+        "METIS or ParMETIS.");
 #endif
   }
 

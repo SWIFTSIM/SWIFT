@@ -356,8 +356,7 @@ void io_write_code_description(hid_t h_file) {
 #ifdef WITH_MPI
   io_write_attribute_s(h_grpcode, "MPI library", mpi_version());
 #ifdef HAVE_METIS
-  io_write_attribute_s(h_grpcode, "METIS library version",
-                       metis_version());
+  io_write_attribute_s(h_grpcode, "METIS library version", metis_version());
 #endif
 #ifdef HAVE_PARMETIS
   io_write_attribute_s(h_grpcode, "ParMETIS library version",
