@@ -337,7 +337,8 @@ static void dumpCells_map(struct cell *c, void *data) {
     else
       active = 1;
 
-    /* So output local super cells that are active and have MPI
+    /* So output local super cells or top-level cells that are active and have
+     * MPI
      * tasks as requested. */
     if (c->nodeID == e->nodeID &&
         (!super || ((super && c->super == c) || (c->parent == NULL))) &&
@@ -414,13 +415,13 @@ void dumpCells(const char *prefix, int super, int active, int mpiactive,
   fclose(file);
 }
 
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
 /**
- * @brief Dump the METIS graph in standard format, simple format and weights
+ * @brief Dump a graph in METIS standard format, simple format and weights
  * only, to a file.
  *
- * The standard format output can be read into the METIS
+ * The standard format output can be read into the METIS and some ParMETIS
  * command-line tools. The simple format is just the cell connectivity (this
  * should not change between calls).  The weights format is the standard one,
  * minus the cell connectivity.
@@ -552,7 +553,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   }
 }
 
-#endif /* HAVE_METIS */
+#endif /* HAVE_METIS || HAVE_PARMETIS */
 
 #ifdef HAVE_MPI
 /**

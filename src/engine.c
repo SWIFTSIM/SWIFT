@@ -1148,7 +1148,7 @@ void engine_redistribute(struct engine *e) {
  */
 void engine_repartition(struct engine *e) {
 
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
 
   ticks tic = getticks();
 
@@ -1206,7 +1206,7 @@ void engine_repartition(struct engine *e) {
             clocks_getunit());
 #else
   if (e->reparttype->type != REPART_NONE)
-    error("SWIFT was not compiled with MPI and METIS support.");
+    error("SWIFT was not compiled with MPI and METIS or ParMETIS support.");
 
   /* Clear the repartition flag. */
   e->forcerepart = 0;

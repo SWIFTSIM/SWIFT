@@ -496,18 +496,20 @@ AC_CHECK_LIB(pthread, posix_fallocate,
 	     AC_DEFINE([HAVE_POSIX_FALLOCATE], [1], [The posix library implements file allocation functions.]),
 	     AC_MSG_WARN(POSIX implementation does not have file allocation functions.))
 
-# Check for METIS. Note AX_LIB_METIS exists, but cannot be configured
-# to be default off (i.e. given no option it tries to locate METIS), so we
-# don't use that.
+# Check for METIS.
 have_metis="no"
 AC_ARG_WITH([metis],
     [AS_HELP_STRING([--with-metis=PATH],
-       [root directory where metis is installed @<:@yes/no@:>@]
+       [root directory where METIS is installed @<:@yes/no@:>@]
     )],
     [with_metis="$withval"],
     [with_metis="no"]
 )
+
+METIS_LIBS=""
 if test "x$with_metis" != "xno"; then
+
+# Check if we have METIS.
    if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
       METIS_LIBS="-L$with_metis/lib -lmetis"
       METIS_INCS="-I$with_metis/include"
@@ -515,14 +517,66 @@ if test "x$with_metis" != "xno"; then
       METIS_LIBS="-lmetis"
       METIS_INCS=""
    fi
-   have_metis="yes"
-   AC_CHECK_LIB([metis],[METIS_PartGraphKway],
-      AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.]),
-      AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LIBS)
+   AC_CHECK_LIB([metis],[METIS_PartGraphKway], [have_metis="yes"],
+                [have_metis="no"], $METIS_LIBS)
+   if test "$have_metis" == "yes"; then
+      AC_DEFINE([HAVE_METIS],1,[The METIS library is present.])
+   else
+      AC_MSG_ERROR("Failed to find a METIS library")
+   fi
 fi
+
 AC_SUBST([METIS_LIBS])
 AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
+
+# Check for ParMETIS note we can have both as ParMETIS uses METIS.
+have_parmetis="no"
+AC_ARG_WITH([parmetis],
+    [AS_HELP_STRING([--with-parmetis=PATH],
+       [root directory where ParMETIS is installed @<:@yes/no@:>@]
+    )],
+    [with_parmetis="$withval"],
+    [with_parmetis="no"]
+)
+
+if test "x$with_parmetis" != "xno"; then
+
+# Check if we have ParMETIS.
+   if test "x$with_parmetis" != "xyes" -a "x$with_parmetis" != "x"; then
+      PARMETIS_LIBS="-L$with_parmetis/lib -lparmetis"
+      PARMETIS_INCS="-I$with_parmetis/include"
+   else
+      PARMETIS_LIBS="-lparmetis"
+      PARMETIS_INCS=""
+   fi
+   AC_CHECK_LIB([parmetis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
+                [have_parmetis="no"], $PARMETIS_LIBS)
+   if test "$have_parmetis" == "no"; then
+
+# A build may use an external METIS library, check for that.
+
+      if test "x$with_parmetis" != "xyes" -a "x$with_parmetis" != "x"; then
+         PARMETIS_LIBS="-L$with_parmetis/lib -lparmetis -lmetis"
+         PARMETIS_INCS="-I$with_parmetis/include"
+      else
+         PARMETIS_LIBS="-lparmetis -lmetis"
+         PARMETIS_INCS=""
+      fi
+      AC_CHECK_LIB([parmetis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
+                   [have_parmetis="no"], [$METIS_LIBS $PARMETIS_LIBS])
+
+   fi
+   if test "$have_parmetis" == "yes"; then
+      AC_DEFINE([HAVE_PARMETIS],1,[The ParMETIS library is present.])
+   else
+      AC_MSG_ERROR("Failed to find a ParMETIS library")
+   fi
+fi
+
+AC_SUBST([PARMETIS_LIBS])
+AC_SUBST([PARMETIS_INCS])
+AM_CONDITIONAL([HAVEPARMETIS],[test -n "$PARMETIS_LIBS"])
 
 # METIS fixed width integer printing can require this, so define. Only needed
 # for some non C99 compilers, i.e. C++ pre C++11.
@@ -1401,7 +1455,7 @@ AC_MSG_RESULT([
    MPI enabled          : $enable_mpi
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5
-   Metis enabled        : $have_metis
+   METIS/ParMETIS       : $have_metis / $have_parmetis
    FFTW3 enabled        : $have_fftw
    GSL enabled          : $have_gsl
    libNUMA enabled      : $have_numa

@@ -1266,6 +1266,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       if (t->unlock_tasks[j]->weight > t->weight)
         t->weight = t->unlock_tasks[j]->weight;
     float cost = 0.f;
+#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
+    int partcost = 1;
+#endif
 
     const float count_i = (t->ci != NULL) ? t->ci->count : 0.f;
     const float count_j = (t->cj != NULL) ? t->cj->count : 0.f;
@@ -1355,12 +1358,18 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * count_i + wscale * gcount_i;
         break;
       case task_type_send:
+#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
+        partcost = 0;
+#endif
         if (count_i < 1e5)
           cost = 10.f * (wscale * count_i) * count_i;
         else
           cost = 2e9;
         break;
       case task_type_recv:
+#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
+        partcost = 0;
+#endif
         if (count_i < 1e5)
           cost = 5.f * (wscale * count_i) * count_i;
         else
@@ -1371,8 +1380,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
     }
 
-#if defined(WITH_MPI) && defined(HAVE_METIS)
-    t->cost = cost;
+#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
+    if (partcost) t->cost = cost;
 #endif
     t->weight += cost;
   }
