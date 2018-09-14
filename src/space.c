@@ -267,10 +267,17 @@ void space_regrid(struct space *s, int verbose) {
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
   if (nr_parts > 0) {
-    if (s->cells_top != NULL) {
+    if (s->local_cells_top != NULL) {
+      for (int k = 0; k < s->nr_local_cells; ++k) {
+        const struct cell *c = &s->cells_top[s->local_cells_top[k]];
+        if (c->h_max > h_max) {
+          h_max = s->cells_top[k].h_max;
+        }
+      }
+    } else if (s->cells_top != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
-        if (s->cells_top[k].nodeID == engine_rank &&
-            s->cells_top[k].h_max > h_max) {
+        const struct cell *c = &s->cells_top[k];
+        if (c->nodeID == engine_rank && c->h_max > h_max) {
           h_max = s->cells_top[k].h_max;
         }
       }
