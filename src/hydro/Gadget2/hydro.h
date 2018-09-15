@@ -582,6 +582,17 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, p->entropy);
   p->entropy = xp->entropy_full;
 
+  /* Apply the minimal energy limit */
+  const float density = p->rho * cosmo->a3_inv;
+  const float min_energy = hydro_props->minimal_internal_energy;
+  const float min_entropy =
+      gas_entropy_from_internal_energy(density, min_energy);
+  if (xp->entropy_full < min_entropy) {
+    xp->entropy_full = min_entropy;
+    p->entopy = min_entropy;
+    p->entropy_dt = 0.f;
+  }
+
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
 
