@@ -2463,7 +2463,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
   const struct hydro_props *hydro_props = s->e->hydro_properties;
   const float u_init = hydro_props->initial_internal_energy;
-  const float u_min = hydro_props->minimal_internal_energy;
 
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct cooling_function_data *cool_func = e->cooling_func;
@@ -2492,7 +2491,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
     /* Overwrite the internal energy? */
     if (u_init > 0.f) hydro_set_init_internal_energy(&p[k], u_init);
-    if (u_min > 0.f) hydro_set_init_internal_energy(&p[k], u_min);
 
     /* Also initialise the chemistry */
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
@@ -3091,6 +3089,19 @@ void space_replicate(struct space *s, int replicate, int verbose) {
 #endif
 }
 
+/**
+ * @brief Duplicate all the dark matter particles to create the same number
+ * of gas particles with mass ratios given by the cosmology.
+ *
+ * Note that this function alters the dark matter particle masses and positions.
+ * Velocities are unchanged. We also leave the thermodynamic properties of the
+ * gas un-initialised as they will be given a value from the parameter file at a
+ * later stage.
+ *
+ * @param s The #space to create the particles in.
+ * @param cosmo The current #cosmology model.
+ * @param verbose Are we talkative?
+ */
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         int verbose) {
 
@@ -3185,6 +3196,8 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
     /* Set the smoothing length to the mean inter-particle separation */
     p->h = 30. * d;
+
+    /* Note that the thermodynamic properties (u, S, ...) will be set later */
   }
 
   /* Replace the content of the space */
