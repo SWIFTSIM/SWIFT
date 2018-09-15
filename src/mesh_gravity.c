@@ -686,15 +686,18 @@ void pm_mesh_struct_restore(struct pm_mesh* mesh, FILE* stream) {
 
   restart_read_blocks((void*)mesh, sizeof(struct pm_mesh), 1, stream, NULL,
                       "gravity props");
+
+  if (mesh->periodic) {
+
 #ifdef HAVE_FFTW
-  const int N = mesh->N;
+    const int N = mesh->N;
 
-  /* Allocate the memory for the combined density and potential array */
-  mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
-  if (mesh->potential == NULL)
-    error("Error allocating memory for the long-range gravity mesh.");
-
+    /* Allocate the memory for the combined density and potential array */
+    mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
+    if (mesh->potential == NULL)
+      error("Error allocating memory for the long-range gravity mesh.");
 #else
-  error("No FFTW library found. Cannot compute periodic long-range forces.");
+    error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif
+  }
 }
