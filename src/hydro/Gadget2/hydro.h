@@ -571,10 +571,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * @param p The particle to act upon.
  * @param xp The extended data.
  * @param cosmo The cosmological model.
+ * @param hydro_props The constants used in the scheme.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
   /* We read u in the entropy field. We now get (comoving) S from (physical) u
    * and (physical) rho. Note that comoving S == physical S */
@@ -589,7 +590,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
       gas_entropy_from_internal_energy(density, min_energy);
   if (xp->entropy_full < min_entropy) {
     xp->entropy_full = min_entropy;
-    p->entopy = min_entropy;
+    p->entropy = min_entropy;
     p->entropy_dt = 0.f;
   }
 

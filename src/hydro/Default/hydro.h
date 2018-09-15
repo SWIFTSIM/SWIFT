@@ -520,7 +520,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo) {}
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
 
 /**
  * @brief Initialises the particles for the first time
