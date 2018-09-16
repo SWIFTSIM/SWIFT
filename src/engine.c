@@ -5898,12 +5898,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
-  e->snapshot_label_first =
-      parser_get_opt_param_int(params, "Snapshots:label_first", 0);
-  if (e->snapshot_label_first < 0)
-    error("Snapshots:label_first must be zero or positive");
-  e->snapshot_label_delta =
-      parser_get_opt_param_int(params, "Snapshots:label_delta", 1);
+  e->snapshot_int_time_label_on =
+      parser_get_opt_param_int(params, "Snapshots:int_time_label_on", 0);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->snapshot_output_count = 0;
@@ -6264,6 +6260,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
         "Final simulation time (t_end = %e) must be larger than the start time "
         "(t_beg = %e)",
         e->time_end, e->time_begin);
+
+  /* Check we don't have inappropriate time labels */
+  if ((e->snapshot_int_time_label_on == 1) && (e->time_end <= 1.f))
+    error("Snapshot integer time labels enabled but end time <= 1");
 
   /* Check we have sensible time-step values */
   if (e->dt_min > e->dt_max)
