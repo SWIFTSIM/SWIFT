@@ -702,8 +702,8 @@ void pm_mesh_struct_restore(struct pm_mesh* mesh, FILE* stream) {
 #ifdef HAVE_FFTW
     const int N = mesh->N;
 
-   /* Initialise the thread-parallel FFTW version */
-   if (N >= 64) {
+    /* Initialise the thread-parallel FFTW version */
+    if (N >= 64) {
       fftw_init_threads();
       fftw_plan_with_nthreads(mesh->nr_threads);
     }
