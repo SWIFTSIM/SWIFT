@@ -159,11 +159,11 @@ legend(loc="upper left", frameon=False, handlelength=1.5)
 
 # Expected lines
 plot([1e-10, 1e10], [H_transition_temp, H_transition_temp], 'k--', lw=0.5, alpha=0.7)
-text(2e-2, H_transition_temp*1.1, "$T_{\\rm HII\\rightarrow HI}$", va="bottom", alpha=0.7, fontsize=8)
+text(2.5e-2, H_transition_temp*1.07, "$T_{\\rm HII\\rightarrow HI}$", va="bottom", alpha=0.7, fontsize=8)
 plot([1e-10, 1e10], [T_minimal, T_minimal], 'k--', lw=0.5, alpha=0.7)
 text(1e-2, T_minimal*0.8, "$T_{\\rm min}$", va="top", alpha=0.7, fontsize=8)
 plot(a_evol, T_cmb, 'k--', lw=0.5, alpha=0.7)
-text(a_evol[20], T_cmb[20]*0.6, "$T_{\\rm CMB,0}(1+z)^2$", rotation=-35, alpha=0.7, fontsize=8, va="top", bbox=dict(facecolor='w', edgecolor='none', pad=0.5, alpha=0.9)) 
+text(a_evol[20], T_cmb[20]*0.55, "$(1+z)^2\\times T_{\\rm CMB,0}$", rotation=-34, alpha=0.7, fontsize=8, va="top", bbox=dict(facecolor='w', edgecolor='none', pad=1.0, alpha=0.9))
 
 
 redshift_ticks = np.array([0., 1., 2., 5., 10., 20., 50., 100.])
