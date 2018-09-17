@@ -588,7 +588,8 @@ AH_VERBATIM([__STDC_FORMAT_MACROS],
 
 # Check for FFTW. We test for this in the standard directories by default,
 # and only disable if using --with-fftw=no or --without-fftw. When a value
-# is given GSL must be found.
+# is given FFTW must be found.
+# If FFTW is found, we check whether this is the threaded version.
 have_fftw="no"
 AC_ARG_WITH([fftw],
     [AS_HELP_STRING([--with-fftw=PATH],
@@ -598,6 +599,8 @@ AC_ARG_WITH([fftw],
     [with_fftw="test"]
 )
 if test "x$with_fftw" != "xno"; then
+
+   # Was FFTW's location specifically given?
    if test "x$with_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
       FFTW_LIBS="-L$with_fftw/lib -lfftw3"
       FFTW_INCS="-I$with_fftw/include"
@@ -605,21 +608,50 @@ if test "x$with_fftw" != "xno"; then
       FFTW_LIBS="-lfftw3"
       FFTW_INCS=""
    fi
+
    #  FFTW is not specified, so just check if we have it.
    if test "x$with_fftw" = "xtest"; then
       AC_CHECK_LIB([fftw3],[fftw_malloc],[have_fftw="yes"],[have_fftw="no"],$FFTW_LIBS)
       if test "x$have_fftw" != "xno"; then
       	 AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.])
       fi
+   # FFTW was specified, check that it was a valid location.
    else
       AC_CHECK_LIB([fftw3],[fftw_malloc],
          AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.]),
          AC_MSG_ERROR(something is wrong with the FFTW library!), $FFTW_LIBS)
       have_fftw="yes"
    fi
+
+   # FFTW was requested not to be used.
    if test "$have_fftw" = "no"; then
       FFTW_LIBS=""
       FFTW_INCS=""
+   fi
+
+   # Now, check whether we have the threaded version of FFTW
+   if test "x$have_fftw" = "xyes"; then
+
+      # Was FFTW's location specifically given?
+      if test "x$with_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
+        FFTW_THREADED_LIBS="-L$with_fftw/lib -lfftw3_threads -lfftw3"
+        FFTW_THREADED_INCS="-I$with_fftw/include"
+      else
+        FFTW_THREADED_LIBS="-lfftw3_threads -lfftw3"
+        FFTW_THREADED_INCS=""
+      fi
+
+      # Verify that the library is threaded
+      AC_CHECK_LIB([fftw3],[fftw_init_threads],[have_threaded_fftw="yes"],
+		   [have_threaded_fftw="no"], $FFTW_THREADED_LIBS)
+
+      # If found, update things
+      if test "x$have_threaded_fftw" = "xyes"; then
+         AC_DEFINE([HAVE_THREADED_FFTW],1,[The threaded FFTW library appears to be present.])
+         FFTW_LIBS=$FFTW_THREADED_LIBS
+         FFTW_INCS=$FFTW_THREADED_INCS
+	 have_fftw="yes - threaded"
+      fi
    fi
 fi
 AC_SUBST([FFTW_LIBS])
