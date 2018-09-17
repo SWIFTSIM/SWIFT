@@ -32,7 +32,8 @@ SPH:
   max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
   initial_temperature:   0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
   minimal_temperature:   0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
-  H_mass_fraction:       0.76     # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy.
+  H_mass_fraction:       0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
+  H_ionization_temperature: 1e4   # (Optional) Temperature of the transition from neutral to ionized Hydrogen for primoridal gas.
 
 # Parameters for the self-gravity scheme
 Gravity:

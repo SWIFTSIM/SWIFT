@@ -39,7 +39,7 @@
 #define hydro_props_default_h_tolerance 1e-4
 #define hydro_props_default_init_temp 0.f
 #define hydro_props_default_min_temp 0.f
-#define hydro_props_default_H_fraction 0.76
+#define hydro_props_default_H_ionization_temperature 1e4
 
 /**
  * @brief Initialize the global properties of the hydro scheme.
@@ -101,9 +101,16 @@ void hydro_props_init(struct hydro_props *p,
       (p->initial_temperature < p->minimal_temperature))
     error("Initial temperature lower than minimal allowed temperature!");
 
+  /* Neutral to ionized Hydrogen transition temperature */
+  p->hydrogen_ionization_temperature =
+      parser_get_opt_param_double(params, "SPH:H_ionization_temperature",
+                                  hydro_props_default_H_ionization_temperature);
+
   /* Hydrogen mass fraction */
+  const float default_H_fraction =
+      1. - phys_const->const_primordial_He_fraction;
   p->hydrogen_mass_fraction = parser_get_opt_param_double(
-      params, "SPH:H_mass_fraction", hydro_props_default_H_fraction);
+      params, "SPH:H_mass_fraction", default_H_fraction);
 
   /* Compute the initial energy (Note the temp. read is in internal units) */
   /* u_init = k_B T_init / (mu m_p (gamma - 1)) */
@@ -113,9 +120,7 @@ void hydro_props_init(struct hydro_props *p,
 
   /* Correct for hydrogen mass fraction (mu) */
   double mean_molecular_weight;
-  if (p->initial_temperature *
-          units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE) >
-      1e4)
+  if (p->initial_temperature > p->hydrogen_ionization_temperature)
     mean_molecular_weight = 4. / (8. - 5. * (1. - p->hydrogen_mass_fraction));
   else
     mean_molecular_weight = 4. / (1. + 3. * p->hydrogen_mass_fraction);
@@ -129,9 +134,7 @@ void hydro_props_init(struct hydro_props *p,
   u_min *= hydro_one_over_gamma_minus_one;
 
   /* Correct for hydrogen mass fraction (mu) */
-  if (p->minimal_temperature *
-          units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE) >
-      1e4)
+  if (p->minimal_temperature > p->hydrogen_ionization_temperature)
     mean_molecular_weight = 4. / (8. - 5. * (1. - p->hydrogen_mass_fraction));
   else
     mean_molecular_weight = 4. / (1. + 3. * p->hydrogen_mass_fraction);
@@ -215,6 +218,8 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
                        p->initial_internal_energy);
   io_write_attribute_f(h_grpsph, "Hydrogen mass fraction",
                        p->hydrogen_mass_fraction);
+  io_write_attribute_f(h_grpsph, "Hydrogen ionization transition temperature",
+		       p->hydrogen_ionization_temperature);
   io_write_attribute_f(h_grpsph, "Alpha viscosity", const_viscosity_alpha);
 }
 #endif
