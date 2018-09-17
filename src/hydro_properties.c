@@ -219,7 +219,7 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
   io_write_attribute_f(h_grpsph, "Hydrogen mass fraction",
                        p->hydrogen_mass_fraction);
   io_write_attribute_f(h_grpsph, "Hydrogen ionization transition temperature",
-		       p->hydrogen_ionization_temperature);
+                       p->hydrogen_ionization_temperature);
   io_write_attribute_f(h_grpsph, "Alpha viscosity", const_viscosity_alpha);
 }
 #endif
