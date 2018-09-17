@@ -126,6 +126,11 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
   internal_const->const_T_CMB_0 =
       const_T_CMB_0_cgs /
       units_general_cgs_conversion_factor(us, dimension_temperature);
+
+  const float dimension_Yp[5] = {0, 0, 0, 0, 0}; /* [ - ] */
+  internal_const->const_primordial_He_fraction =
+      const_primordial_He_fraction_cgs /
+      units_general_cgs_conversion_factor(us, dimension_Yp);
 }
 
 /**

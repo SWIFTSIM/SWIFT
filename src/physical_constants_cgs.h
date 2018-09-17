@@ -95,4 +95,7 @@ const double const_earth_mass_cgs = 5.9724e27;
 /*! Temperature of the CMB at present day [K] */
 const double const_T_CMB_0_cgs = 2.7255;
 
+/*! Primordial Helium fraction */
+const double const_primordial_He_fraction_cgs = 0.245;
+
 #endif /* SWIFT_PHYSICAL_CONSTANTS_CGS_H */
