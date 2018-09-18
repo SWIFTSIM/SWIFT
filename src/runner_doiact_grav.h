@@ -121,6 +121,10 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
         if (c->grav.multipole->pot.ti_init != e->ti_current)
           error("c->field tensor not initialised");
 
+        /* Check that we are not updated an inhibited particle */
+        if (gp->time_bin == time_bin_inhibited)
+          error("Updating an inhibited particle!");
+
         /* Check that the particle was initialised */
         if (gp->initialised == 0)
           error("Adding forces to an un-initialised gpart.");
@@ -228,6 +232,14 @@ static INLINE void runner_dopair_grav_pp_full(
         error("gpi not drifted to current time");
       if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
         error("gpj not drifted to current time");
+
+      /* Check that we are not updated an inhibited particle */
+      if (gparts_i[pid].time_bin == time_bin_inhibited)
+        error("Updating an inhibited particle!");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (gparts_j[pjd].time_bin == time_bin_inhibited && mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
 
       /* Check that the particle was initialised */
       if (gparts_i[pid].initialised == 0)
@@ -359,6 +371,14 @@ static INLINE void runner_dopair_grav_pp_truncated(
       if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
         error("gpj not drifted to current time");
 
+      /* Check that we are not updated an inhibited particle */
+      if (gparts_i[pid].time_bin == time_bin_inhibited)
+        error("Updating an inhibited particle!");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (gparts_j[pjd].time_bin == time_bin_inhibited && mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
+
       /* Check that the particle was initialised */
       if (gparts_i[pid].initialised == 0)
         error("Adding forces to an un-initialised gpart.");
@@ -449,6 +469,10 @@ static INLINE void runner_dopair_grav_pm_full(
     /* Check that particles have been drifted to the current time */
     if (gparts_i[pid].ti_drift != e->ti_current)
       error("gpi not drifted to current time");
+
+    /* Check that we are not updated an inhibited particle */
+    if (gparts_i[pid].time_bin == time_bin_inhibited)
+      error("Updating an inhibited particle!");
 
     /* Check that the particle was initialised */
     if (gparts_i[pid].initialised == 0)
@@ -578,6 +602,10 @@ static INLINE void runner_dopair_grav_pm_truncated(
     /* Check that particles have been drifted to the current time */
     if (gparts_i[pid].ti_drift != e->ti_current)
       error("gpi not drifted to current time");
+
+    /* Check that we are not updated an inhibited particle */
+    if (gparts_i[pid].time_bin == time_bin_inhibited)
+      error("Updating an inhibited particle!");
 
     /* Check that the particle was initialised */
     if (gparts_i[pid].initialised == 0)
@@ -928,6 +956,14 @@ static INLINE void runner_doself_grav_pp_full(
       if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current)
         error("gpj not drifted to current time");
 
+      /* Check that we are not updated an inhibited particle */
+      if (gparts[pid].time_bin == time_bin_inhibited)
+        error("Updating an inhibited particle!");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (gparts[pjd].time_bin == time_bin_inhibited && mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
+
       /* Check that the particle was initialised */
       if (gparts[pid].initialised == 0)
         error("Adding forces to an un-initialised gpart.");
@@ -1041,6 +1077,14 @@ static INLINE void runner_doself_grav_pp_truncated(
         error("gpi not drifted to current time");
       if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current)
         error("gpj not drifted to current time");
+
+      /* Check that we are not updated an inhibited particle */
+      if (gparts[pid].time_bin == time_bin_inhibited)
+        error("Updating an inhibited particle!");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (gparts[pjd].time_bin == time_bin_inhibited && mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
 
       /* Check that the particle was initialised */
       if (gparts[pid].initialised == 0)
