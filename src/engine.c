@@ -5040,7 +5040,7 @@ void engine_check_for_dumps(struct engine *e) {
     /* Perform structure finding? */
     if (run_stf) {
 
-    // MATTHIEU: Add a drift_all here. And check the order with the order i/o
+    // MATTHIEU: Add a drift_all here. And check the order with the other i/o
     // options.
 
 #ifdef HAVE_VELOCIRAPTOR
@@ -5067,12 +5067,9 @@ void engine_check_for_dumps(struct engine *e) {
 
     /* Do we want to perform structure finding? */
     run_stf = 0;
-    if ((e->policy & engine_policy_structure_finding)) {
-      if (e->stf_output_freq_format == STEPS && e->step % e->deltaStepSTF == 0)
-        run_stf = 1;
-      else if (e->stf_output_freq_format == TIME &&
-               e->ti_end_min > e->ti_nextSTF && e->ti_nextSTF > 0)
-        run_stf = 1;
+    if ((e->policy & engine_policy_structure_finding) &&
+        e->stf_output_freq_format == TIME) {
+      if (e->ti_end_min > e->ti_nextSTF && e->ti_nextSTF > 0) run_stf = 1;
     }
   }
 
