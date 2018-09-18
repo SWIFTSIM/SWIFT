@@ -278,6 +278,42 @@ __attribute__((always_inline)) INLINE static int spart_is_active(
   return (spart_bin <= max_active_bin);
 }
 
+/**
+ * @brief Has this particle been inhibited?
+ *
+ * @param p The #part.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part is inhibited, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int part_is_inhibited(
+    const struct part *p, const struct engine *e) {
+  return p->time_bin == time_bin_inhibited;
+}
+
+/**
+ * @brief Has this gravity particle been inhibited?
+ *
+ * @param gp The #gpart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part is inhibited, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int gpart_is_inhibited(
+    const struct gpart *gp, const struct engine *e) {
+  return gp->time_bin == time_bin_inhibited;
+}
+
+/**
+ * @brief Has this star particle been inhibited?
+ *
+ * @param sp The #spart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part is inhibited, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int spart_is_inhibited(
+    const struct spart *sp, const struct engine *e) {
+  return sp->time_bin == time_bin_inhibited;
+}
+
 /* Are cells / particles active for kick1 tasks ? */
 
 /**
