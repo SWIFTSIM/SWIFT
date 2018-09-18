@@ -3203,6 +3203,69 @@ void cell_check_timesteps(struct cell *c) {
 }
 
 /**
+ * @brief "Remove" a gas particle from the calculation.
+ *
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param c The #cell from which to remove the particle.
+ * @param p The #part to remove.
+ * @param xp The extended data of the particle to remove.
+ */
+void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
+                      struct xpart *xp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  /* Mark the particle as inhibited */
+  p->time_bin = time_bin_inhibited;
+  if (p->gpart) p->gpart->time_bin = time_bin_inhibited;
+}
+
+/**
+ * @brief "Remove" a gravity particle from the calculation.
+ *
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param c The #cell from which to remove the particle.
+ * @param gp The #gpart to remove.
+ */
+void cell_remove_gpart(const struct engine *e, struct cell *c,
+                       struct gpart *gp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  if (gp->type != swift_type_dark_matter)
+    error("Trying to remove a non-dark matter gpart.");
+
+  /* Mark the particle as inhibited */
+  gp->time_bin = time_bin_inhibited;
+}
+
+/**
+ * @brief "Remove" a star particle from the calculation.
+ *
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param c The #cell from which to remove the particle.
+ * @param sp The #spart to remove.
+ */
+void cell_remove_spart(const struct engine *e, struct cell *c,
+                       struct spart *sp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  /* Mark the particle as inhibited */
+  sp->time_bin = time_bin_inhibited;
+  if (sp->gpart) sp->gpart->time_bin = time_bin_inhibited;
+}
+
+/**
  * @brief Can we use the MM interactions fo a given pair of cells?
  *
  * @param ci The first #cell.
