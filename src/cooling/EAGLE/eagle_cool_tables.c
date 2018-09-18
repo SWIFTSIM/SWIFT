@@ -34,7 +34,7 @@
 #include "error.h"
 #include "interpolate.h"
 
-/* Names of the elements in the order they are storeed in the files */
+/* Names of the elements in the order they are stored in the files */
 static const char* eagle_tables_element_names[9] = {
     "Carbon",  "Nitrogen", "Oxygen",  "Neon", "Magnesium",
     "Silicon", "Sulphur",  "Calcium", "Iron"};
@@ -212,7 +212,7 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
 }
 
 /*
- * @brief Get the table of cooling rates for photoionized cooling (before
+ * @brief Get the redshift invariant table of cooling rates (before reionization at
  * redshift ~9) Reads in table of cooling rates and electron abundances due to
  * metals (depending on temperature, hydrogen number density), cooling rates and
  * electron abundances due to hydrogen and helium (depending on temperature,
@@ -371,7 +371,15 @@ struct cooling_tables get_redshift_invariant_table(
 }
 
 /*
- * @brief Get the cooling tables dependent on redshift
+ * @brief Get redshift dependent table of cooling rates.
+ * Reads in table of cooling rates and electron abundances due to
+ * metals (depending on temperature, hydrogen number density), cooling rates and
+ * electron abundances due to hydrogen and helium (depending on temperature,
+ * hydrogen number density and helium fraction), and temperatures (depending on
+ * internal energy, hydrogen number density and helium fraction; note: this is
+ * distinct from table of temperatures read in ReadCoolingHeader, as that table
+ * is used to index the cooling, electron abundance tables, whereas this one is
+ * used to obtain temperature of particle)
  *
  * @param cooling Cooling data structure
  */

@@ -72,8 +72,6 @@ void cooling_cool_part(const struct phys_const *restrict,
                        const struct cooling_function_data *restrict,
                        struct part *restrict, struct xpart *restrict, float);
 
-void cooling_write_flavour(hid_t);
-
 float cooling_timestep(const struct cooling_function_data *restrict,
                        const struct phys_const *restrict,
                        const struct cosmology *restrict,

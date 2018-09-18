@@ -25,66 +25,24 @@
 #define eagle_max_iterations 15
 
 /*
- * @brief struct containing cooling tables independent of redshift
- *
- */
-struct cooling_tables_redshift_invariant {
-  /* array of heating rates due to metals
-   * when allocated need size: [N_Temp][N_nH] */
-  float *metal_heating;      
-  
-  /* array of heating rates due to hydrogen and helium
-   * when allocated need size: [N_He][N_Temp][N_nH] */
-  float *H_plus_He_heating;  
-  
-  /* array of electron abundances due to hydrogen and helium
-   * when allocated need size: [N_He][N_Temp][N_nH] */
-  float *H_plus_He_electron_abundance;
-
-  /* array of temperatures
-   * when allocated need size: [N_He][N_Temp][N_nH]; */
-  float *temperature;  
-
-  /* array of electron abundances due to metals
-   * when allocated need size: [N_Temp][N_nH]; */
-  float *electron_abundance;  
-};
-
-/*
- * @brief struct containing cooling tables depending on redshift
+ * @brief struct containing cooling tables
  *
  */
 struct cooling_tables {
-  /* array of heating rates due to metals
-   * when allocated need size: [N_Redshifts][N_Temp][N_nH] */
+  // array of heating rates due to metals
   float *metal_heating;  
   
-  /* array of heating rates due to hydrogen and helium
-   * when allocated need size: [N_Redshifts][N_He][N_Temp][N_nH] */
+  // array of heating rates due to hydrogen and helium
   float *H_plus_He_heating;  
   
-  /* array of electron abundances due to hydrogen and helium
-   * when allocated need size: [N_Redshifts][N_He][N_Temp][N_nH] */
+  // array of electron abundances due to hydrogen and helium
   float *H_plus_He_electron_abundance; 
   
-  /* array of temperatures
-   * when allocated need size: [N_Redshifts][N_He][N_Temp][N_nH]; */
+  // array of temperatures
   float *temperature;  
   
-  /* array of electron abundances due to metals
-   * when allocated need size: [N_Redshifts][N_Temp][N_nH]; */
+  // array of electron abundances due to metals
   float *electron_abundance;  
-};
-
-/*
- * @brief struct containing structs of various eagle cooling tables
- *
- */
-struct eagle_cooling_table {
-  struct cooling_tables no_compton_cooling;
-  struct cooling_tables photodissociation_cooling;
-  struct cooling_tables collisional_cooling;
-  struct cooling_tables element_cooling;
 };
 
 /**

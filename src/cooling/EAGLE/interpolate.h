@@ -186,16 +186,19 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
 }
 
 /*
- * @brief Performs 2d interpolation
+ * @brief Performs 2d interpolation of table based on indices
+ * and offsets. Also computes values of table directly above and 
+ * below in second dimension by setting dy = 0,1 (used for
+ * computing derivatives for Newton's method)
  *
  * @param table Pointer to flattened 2d table of values
  * @param i,j Indices of cell we are interpolating
  * @param dx,dy Offset within cell
  * @param nx,ny Table dimensions
- * @param upper Pointer to value set to the table value at
- * the when dy = 1 (used for calculating derivatives)
- * @param lower Pointer to value set to the table value at
- * the when dy = 0 (used for calculating derivatives)
+ * @param upper Pointer to value set to the table value
+ * when dy = 1 (used for calculating derivatives)
+ * @param lower Pointer to value set to the table value
+ * when dy = 0 (used for calculating derivatives)
  */
 __attribute__((always_inline)) INLINE float interpolate_2d(const float *table, int i,
                                                         int j, float dx,
@@ -225,7 +228,10 @@ __attribute__((always_inline)) INLINE float interpolate_2d(const float *table, i
 }
 
 /*
- * @brief Performs 3d interpolation
+ * @brief Performs 3d interpolation of table based on indices
+ * and offsets. Also computes values of table directly above and 
+ * below in third dimension by setting dz = 0,1 (used for
+ * computing derivatives for Newton's method)
  *
  * @param table Pointer to flattened 3d table of values
  * @param i,j,k Indices of cell we are interpolating
@@ -272,7 +278,13 @@ __attribute__((always_inline)) INLINE float interpolate_3d(
 }
 
 /*
- * @brief Performs 4d interpolation
+ * @brief Performs 4d interpolation of table based on indices
+ * and offsets. Also computes values of table directly above and 
+ * below in third or fourth dimension by setting dz,dw = 0,1 (which 
+ * dimension this happens for depends on whether this function is 
+ * used to interpolate one of the tables depending on metal species, 
+ * and is identified by cooling_is_metal flag. These values are used 
+ * for computing derivatives for Newton's method)
  *
  * @param table Pointer to flattened 4d table of values
  * @param i,j,k,l Indices of cell we are interpolating

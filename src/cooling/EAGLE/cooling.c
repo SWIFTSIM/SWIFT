@@ -53,7 +53,8 @@ static float print_cooling_rate_contribution_flag = 0;
 
 /**
  * @brief Common operations performed on the cooling function at a
- * given time-step or redshift.
+ * given time-step or redshift. Predominantly used to read cooling tables
+ * above and below the current redshift, if not already read in.
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
@@ -84,7 +85,7 @@ void cooling_update(const struct phys_const* phys_const,
 }
 
 /**
- * @brief Apply the cooling function to a particle.
+ * @brief Apply the cooling function to a particle. 
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
@@ -200,14 +201,14 @@ eagle_helium_reionization_extraheat(
   double extra_heating = 0.0;
 
 /* dz is the change in redshift (start to finish) and hence *should* be < 0 */
-#ifdef SWIFT_DEBUG_CHECKS
-  if (dz > 0) {
-    error(
-        " formulation of helium reionization expects dz<0, whereas you have "
-        "dz=%e\n",
-        dz);
-  }
-#endif
+// #ifdef SWIFT_DEBUG_CHECKS
+//   if (dz > 0) {
+//     error(
+//         " formulation of helium reionization expects dz<0, whereas you have "
+//         "dz=%e\n",
+//         dz);
+//   }
+// #endif
 
   /* Helium reionization */
   if (cooling->he_reion_flag == 1) {
@@ -464,8 +465,9 @@ __attribute__((always_inline)) INLINE double eagle_cooling_rate(
 /*
  * @brief Wrapper function used to calculate cooling rate and dLambda_du.
  * Writes to file contribution from each element to cooling rate for testing
- * purposes. Table indices and offsets for redshift, hydrogen number density and
- * helium fraction are passed it so as to compute them only once per particle.
+ * purposes (this function is not used when running SWIFT). Table indices 
+ * and offsets for redshift, hydrogen number density and helium fraction are 
+ * passed in so as to compute them only once per particle.
  *
  * @param n_h_i Particle hydrogen number density index
  * @param d_n_h Particle hydrogen number density offset
@@ -524,7 +526,8 @@ double eagle_print_metal_cooling_rate(
 
 /*
  * @brief Calculate ratio of particle element abundances
- * to solar abundance
+ * to solar abundance. This replaces set_Cooling_SolarAbundances
+ * function in EAGLE.
  *
  * @param p Pointer to particle data
  * @param cooling Pointer to cooling data
@@ -558,6 +561,92 @@ __attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
       p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
       cooling->calcium_over_silicon_ratio /
       cooling->SolarAbundances[chemistry_element_count];
+}
+
+/*
+ * @brief Newton Raphson integration scheme to calculate particle cooling over
+ * timestep. This replaces bisection scheme used in EAGLE to minimize the
+ * number of array accesses. Integration defaults to bisection scheme (see
+ * function bisection_iter) if this function does not converge within a 
+ * specified number of steps (eagle_max_iterations)
+ *
+ * @param logu_init Initial guess for log(internal energy)
+ * @param u_ini Internal energy at beginning of hydro step
+ * @param n_h_i Particle hydrogen number density index
+ * @param d_n_h Particle hydrogen number density offset
+ * @param He_i Particle helium fraction index
+ * @param d_He Particle helium fraction offset
+ * @param He_reion_heat Heating due to helium reionization
+ * (only depends on redshift, so passed as parameter)
+ * @param p Particle structure
+ * @param cosmo Cosmology structure
+ * @param cooling Cooling data structure
+ * @param phys_const Physical constants structure
+ * @param abundance_ratio Array of ratios of metal abundance to solar
+ * @param dt timestep
+ * @param bisection_flag Flag to identify if scheme failed to converge
+ */
+__attribute__((always_inline)) INLINE float newton_iter(
+    float logu_init, double u_ini, int n_h_i,
+    float d_n_h, int He_i, float d_He, float He_reion_heat,
+    struct part *restrict p, const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct phys_const *restrict phys_const, float *abundance_ratio,
+    float dt, int *bisection_flag) {
+
+  double logu, logu_old;
+  double dLambdaNet_du, LambdaNet;
+  
+  // table bounds 
+  const float log_table_bound_high =
+      (cooling->Therm[cooling->N_Temp - 1] + 1) / M_LOG10E;
+  const float log_table_bound_low = (cooling->Therm[0] + 1) / M_LOG10E;
+
+  /* convert Hydrogen mass fraction in Hydrogen number density */
+  const double inn_h =
+      chemistry_get_number_density(p, cosmo, chemistry_element_H, phys_const) *
+      cooling->number_density_scale;
+
+  /* compute ratefact = inn_h * inn_h / rho; Might lead to round-off error: replaced by
+   * equivalent expression  below */
+  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+  const double ratefact = inn_h * (XH / cooling->proton_mass_cgs);
+
+  logu_old = logu_init;
+  logu = logu_old;
+  int i = 0;
+
+  do /* iterate to convergence */
+  {
+    logu_old = logu;
+    LambdaNet = (He_reion_heat / (dt * ratefact)) +
+                eagle_cooling_rate(logu_old, &dLambdaNet_du, n_h_i,
+                                   d_n_h, He_i, d_He, p, cooling, cosmo,
+                                   phys_const, abundance_ratio);
+
+    // Newton iteration.
+    logu = logu_old - (1.0 - u_ini * exp(-logu_old) -
+                       LambdaNet * ratefact * dt * exp(-logu_old)) /
+                          (1.0 - dLambdaNet_du * ratefact * dt);
+
+    // check whether iterations go out of bounds of table,
+    // if out of bounds, try again, guess average between old
+    // and table bound
+    if (logu > log_table_bound_high) {
+      logu = (log_table_bound_high + logu_old) / 2.0;
+    } else if (logu < log_table_bound_low) {
+      logu = (log_table_bound_low + logu_old) / 2.0;
+    }
+
+    i++;
+  } while (fabs(logu - logu_old) > newton_tolerance &&
+           i < eagle_max_iterations);
+  if (i >= eagle_max_iterations) {
+    // flag to trigger bisection scheme
+    *bisection_flag = 1;
+  }
+
+  return logu;
 }
 
 /*
@@ -666,99 +755,6 @@ __attribute__((always_inline)) INLINE float bisection_iter(
   return log(u_upper);
 }
 
-/*
- * @brief Newton Raphson integration scheme to calculate particle cooling over
- * timestep
- *
- * @param logu_init Initial guess for log(internal energy)
- * @param u_ini Internal energy at beginning of hydro step
- * @param n_h_i Particle hydrogen number density index
- * @param d_n_h Particle hydrogen number density offset
- * @param He_i Particle helium fraction index
- * @param d_He Particle helium fraction offset
- * @param He_reion_heat Heating due to helium reionization
- * (only depends on redshift, so passed as parameter)
- * @param p Particle structure
- * @param cosmo Cosmology structure
- * @param cooling Cooling data structure
- * @param phys_const Physical constants structure
- * @param abundance_ratio Array of ratios of metal abundance to solar
- * @param dt timestep
- * @param bisection_flag Flag to identify if scheme failed to converge
- */
-__attribute__((always_inline)) INLINE float newton_iter(
-    float logu_init, double u_ini, int n_h_i,
-    float d_n_h, int He_i, float d_He, float He_reion_heat,
-    struct part *restrict p, const struct cosmology *restrict cosmo,
-    const struct cooling_function_data *restrict cooling,
-    const struct phys_const *restrict phys_const, float *abundance_ratio,
-    float dt, int *bisection_flag) {
-
-  double logu, logu_old;
-  double dLambdaNet_du, LambdaNet;
-  
-  // table bounds 
-  const float log_table_bound_high =
-      (cooling->Therm[cooling->N_Temp - 1] + 1) / M_LOG10E;
-  const float log_table_bound_low = (cooling->Therm[0] + 1) / M_LOG10E;
-
-  /* convert Hydrogen mass fraction in Hydrogen number density */
-  const double inn_h =
-      chemistry_get_number_density(p, cosmo, chemistry_element_H, phys_const) *
-      cooling->number_density_scale;
-
-  /* compute ratefact = inn_h * inn_h / rho; Might lead to round-off error: replaced by
-   * equivalent expression  below */
-  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
-  const double ratefact = inn_h * (XH / cooling->proton_mass_cgs);
-
-  logu_old = logu_init;
-  logu = logu_old;
-  int i = 0;
-
-  do /* iterate to convergence */
-  {
-    logu_old = logu;
-    LambdaNet = (He_reion_heat / (dt * ratefact)) +
-                eagle_cooling_rate(logu_old, &dLambdaNet_du, n_h_i,
-                                   d_n_h, He_i, d_He, p, cooling, cosmo,
-                                   phys_const, abundance_ratio);
-
-    // Newton iteration.
-    logu = logu_old - (1.0 - u_ini * exp(-logu_old) -
-                       LambdaNet * ratefact * dt * exp(-logu_old)) /
-                          (1.0 - dLambdaNet_du * ratefact * dt);
-
-    // check whether iterations go out of bounds of table,
-    // if out of bounds, try again, guess average between old
-    // and table bound
-    if (logu > log_table_bound_high) {
-      logu = (log_table_bound_high + logu_old) / 2.0;
-    } else if (logu < log_table_bound_low) {
-      logu = (log_table_bound_low + logu_old) / 2.0;
-    }
-
-    i++;
-  } while (fabs(logu - logu_old) > newton_tolerance &&
-           i < eagle_max_iterations);
-  if (i >= eagle_max_iterations) {
-    // flag to trigger bisection scheme
-    *bisection_flag = 1;
-  }
-
-  return logu;
-}
-
-/**
- * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
- */
-__attribute__((always_inline)) INLINE void cooling_write_flavour(
-    hid_t h_grpsph) {
-
-  io_write_attribute_s(h_grpsph, "Cooling Model", "EAGLE");
-}
-
 /**
  * @brief Computes the cooling time-step.
  *
@@ -773,11 +769,6 @@ __attribute__((always_inline)) INLINE float cooling_timestep(
     const struct phys_const *restrict phys_const,
     const struct cosmology *restrict cosmo,
     const struct unit_system *restrict us, const struct part *restrict p) {
-
-  /* Remember to update when using an implicit integrator */
-  // const float cooling_rate = cooling->cooling_rate;
-  // const float internal_energy = hydro_get_comoving_internal_energy(p);
-  // return cooling->cooling_tstep_mult * internal_energy / fabsf(cooling_rate);
 
   return FLT_MAX;
 }
@@ -812,7 +803,7 @@ __attribute__((always_inline)) INLINE float cooling_get_radiated_energy(
 }
 
 /**
- * @brief Initialises the cooling properties.
+ * @brief Initialises properties stored in the cooling_function_data struct
  *
  * @param parameter_file The parsed parameter file
  * @param us Internal system of units data structure
@@ -848,7 +839,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->he_reion_ev_pH *= phys_const->const_electron_volt *
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
 
-  // read in cooling tables
+  // read in cooling table header
   GetCoolingRedshifts(cooling);
   sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
   ReadCoolingHeader(fname, cooling);
