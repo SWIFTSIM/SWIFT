@@ -361,15 +361,22 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 /**
  * @brief Prepare a particle for the force calculation.
  *
- * Computes viscosity term, conduction term and smoothing length gradient terms.
+ * This function is called in the ghost task to convert some quantities coming
+ * from the density loop over neighbours into quantities ready to be used in the
+ * force loop over neighbours. Quantities are typically read from the density
+ * sub-structure and written to the force sub-structure.
+ * Examples of calculations done here include the calculation of viscosity term
+ * constants, thermal conduction terms, hydro conversions, etc.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  * @param cosmo The current cosmological model.
+ * @param dt_alpha The time-step used to evolve non-cosmological quantities such
+ *                 as the artificial viscosity.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo) {
+    const struct cosmology *cosmo, const float dt_alpha) {
 
   const float fac_mu = cosmo->a_factor_mu;
 
