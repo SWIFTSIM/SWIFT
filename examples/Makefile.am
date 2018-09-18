@@ -92,7 +92,7 @@ EXTRA_DIST = CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/make
              SineWavePotential_2D/makeIC.py SineWavePotential_2D/plotSolution.py SineWavePotential_2D/run.sh SineWavePotential_2D/sineWavePotential.yml \
              SineWavePotential_3D/makeIC.py SineWavePotential_3D/plotSolution.py SineWavePotential_3D/run.sh SineWavePotential_3D/sineWavePotential.yml \
              SmallCosmoVolume/README SmallCosmoVolume/getIC.sh SmallCosmoVolume/run.sh SmallCosmoVolume/small_cosmo_volume.yml SmallCosmoVolume/plotTempEvolution.py \
-             SmallCosmoVolume_DM/README SmallCosmoVolume_DM/getIC.sh SmallCosmoVolume_DM/run.sh SmallCosmoVolume_DM/small_cosmo_volume.yml SmallCosmoVolume_DM/stf_input_6dfof_dmonly_sub.cfg \
+             SmallCosmoVolume_DM/README SmallCosmoVolume_DM/getIC.sh SmallCosmoVolume_DM/run.sh SmallCosmoVolume_DM/small_cosmo_volume_dm.yml SmallCosmoVolume_DM/stf_input_6dfof_dmonly_sub.cfg \
 	     SodShock_1D/makeIC.py SodShock_1D/plotSolution.py SodShock_1D/run.sh SodShock_1D/sodShock.yml \
 	     SodShock_2D/getGlass.sh SodShock_2D/makeIC.py SodShock_2D/plotSolution.py SodShock_2D/run.sh SodShock_2D/sodShock.yml \
 	     SodShock_3D/getGlass.sh SodShock_3D/makeIC.py SodShock_3D/plotSolution.py SodShock_3D/run.sh SodShock_3D/sodShock.yml \
