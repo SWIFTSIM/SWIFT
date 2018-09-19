@@ -4912,9 +4912,9 @@ void engine_check_for_dumps(struct engine *e) {
   /* Do we want to perform structure finding? */
   int run_stf = 0;
   if ((e->policy & engine_policy_structure_finding)) {
-    if (e->stf_output_freq_format == STEPS && e->step % e->delta_step_stf == 0)
+    if (e->stf_output_freq_format == io_stf_steps && e->step % e->delta_step_stf == 0)
       run_stf = 1;
-    else if (e->stf_output_freq_format == TIME &&
+    else if (e->stf_output_freq_format == io_stf_time &&
              e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0)
       run_stf = 1;
   }
@@ -5048,7 +5048,7 @@ void engine_check_for_dumps(struct engine *e) {
       velociraptor_invoke(e);
 
       /* ... and find the next output time */
-      if (e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
+      if (e->stf_output_freq_format == io_stf_time) engine_compute_next_stf_time(e);
 #endif
     }
 
@@ -5068,7 +5068,7 @@ void engine_check_for_dumps(struct engine *e) {
     /* Do we want to perform structure finding? */
     run_stf = 0;
     if ((e->policy & engine_policy_structure_finding) &&
-        e->stf_output_freq_format == TIME) {
+        e->stf_output_freq_format == io_stf_time) {
       if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) run_stf = 1;
     }
   }
@@ -5968,10 +5968,10 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
     e->stf_output_freq_format =
         parser_get_param_int(params, "StructureFinding:output_time_format");
 
-    if (e->stf_output_freq_format == STEPS) {
+    if (e->stf_output_freq_format == io_stf_steps) {
       e->delta_step_stf =
           parser_get_param_int(params, "StructureFinding:delta_step");
-    } else if (e->stf_output_freq_format == TIME) {
+    } else if (e->stf_output_freq_format == io_stf_time) {
       e->delta_time_stf =
           parser_get_param_double(params, "StructureFinding:delta_time");
     } else {
@@ -5981,7 +5981,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
     }
 
     /* overwrite input if outputlist */
-    if (e->output_list_stf) e->stf_output_freq_format = TIME;
+    if (e->output_list_stf) e->stf_output_freq_format = io_stf_time;
   }
 
   engine_init_output_lists(e, params);
@@ -6319,7 +6319,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           e->a_first_statistics, e->cosmology->a_begin);
 
     if ((e->policy & engine_policy_structure_finding) &&
-        (e->stf_output_freq_format == TIME)) {
+        (e->stf_output_freq_format == io_stf_time)) {
 
       if (e->delta_time_stf <= 1.)
         error("Time between STF (%e) must be > 1.", e->delta_time_stf);
@@ -6355,7 +6355,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           e->time_first_statistics, e->time_begin);
 
     if ((e->policy & engine_policy_structure_finding) &&
-        (e->stf_output_freq_format == TIME)) {
+        (e->stf_output_freq_format == io_stf_time)) {
 
       if (e->delta_time_stf <= 0.)
         error("Time between STF (%e) must be positive.", e->delta_time_stf);
@@ -6368,7 +6368,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
   if (e->policy & engine_policy_structure_finding) {
     /* Find the time of the first stf output */
-    if (e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
+    if (e->stf_output_freq_format == io_stf_time) engine_compute_next_stf_time(e);
   }
 
   /* Get the total mass */
