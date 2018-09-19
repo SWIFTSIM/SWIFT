@@ -180,7 +180,8 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
   /* Update the internal energy time derivative */
 
-  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt + cooling_du_dt);
+  //hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt + cooling_du_dt);
+  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt);
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy +=
@@ -257,7 +258,7 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
     const struct cosmology *restrict cosmo,
     const struct phys_const *internal_const, double *element_lambda,
     float *solar_ratio) {
-  double T_gam, solar_electron_abundance, solar_electron_abundance1,
+  double solar_electron_abundance, solar_electron_abundance1,
       solar_electron_abundance2, elem_cool1, elem_cool2;
   double n_h = chemistry_get_number_density(p, cosmo, chemistry_element_H,
                                             internal_const) *
@@ -332,7 +333,7 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
   if (z > cooling->Redshifts[cooling->N_Redshifts - 1] ||
       z > cooling->reionisation_redshift) {
 
-    T_gam = cooling->T_CMB_0 * (1 + z);
+    //T_gam = cooling->T_CMB_0 * (1 + z);
 
     temp_lambda = -cooling->compton_rate_cgs *
                   (temp - cooling->T_CMB_0 * (1 + z)) * pow((1 + z), 4) *
@@ -885,6 +886,9 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   /* set low_z_index to -10 to indicate we haven't read any tables yet */
   cooling->low_z_index = -10;
+  /* set previous_z_index and z_index_initialised to indicate we haven't calculated z_index yet */
+  cooling->previous_z_index = -1;
+  cooling->z_index_initialised = 0;
 
 }
 
