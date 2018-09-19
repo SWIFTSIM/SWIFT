@@ -2895,6 +2895,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       struct part *const p = &parts[k];
       struct xpart *const xp = &xparts[k];
 
+      /* Ignore inhibited particles */
+      if (part_is_inhibited(p, e)) continue;
+
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current);
@@ -3037,6 +3040,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       /* Get a handle on the gpart. */
       struct gpart *const gp = &gparts[k];
 
+      /* Ignore inhibited particles */
+      if (gpart_is_inhibited(gp, e)) continue;
+
       /* Drift... */
       drift_gpart(gp, dt_drift, ti_old_gpart, ti_current);
 
@@ -3081,6 +3087,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Get a handle on the spart. */
       struct spart *const sp = &sparts[k];
+
+      /* Ignore inhibited particles */
+      if (spart_is_inhibited(sp, e)) continue;
 
       /* Drift... */
       drift_spart(sp, dt_drift, ti_old_gpart, ti_current);
