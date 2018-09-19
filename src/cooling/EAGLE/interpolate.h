@@ -46,11 +46,9 @@
 #include "units.h"
 
 // Used for identifying first call to get_redshift_index and previous redshift index
-static int z_index_initialized = 0;
-static int previous_z_index = -1;
+//static int z_index_initialised = 0;
+//static int previous_z_index = -1;
 
-// Used for deciding whether to use table endpoints when finding index of a variable
-static const float table_bound_tolerance = 1.e-4;
 
 /**
  * @brief Returns the 1d index of element with 2d indices i,j
@@ -106,6 +104,8 @@ __attribute__((always_inline)) INLINE int row_major_index_4d(int i, int j,
 __attribute__((always_inline)) INLINE void get_index_1d(float *table,
                                                         int ntable, double x,
                                                         int *i, float *dx) {
+  // Used for deciding whether to use table endpoints when finding index of a variable
+  const float table_bound_tolerance = 1.e-4;
 
   float dxm1 = (float)(ntable - 1) / (table[ntable - 1] - table[0]);
 
@@ -120,6 +120,9 @@ __attribute__((always_inline)) INLINE void get_index_1d(float *table,
   } else {
     // x inside table range, interpolate
     *i = (int)floor(((float)x - table[0]) * dxm1);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (*i > ntable || *i < 0) error("trying to get index for value outside table range. Table size: %d, calculated index: %d, value: %.5e, table[0]: %.5e, grid size: %.5e", ntable, *i, x, table[0], dxm1);
+#endif
     *dx = ((float)x - table[*i]) * dxm1;
   }
 }
@@ -139,12 +142,12 @@ __attribute__((always_inline)) INLINE void get_index_1d(float *table,
  */
 __attribute__((always_inline)) INLINE void get_redshift_index(
     float z, int *z_index, float *dz,
-    const struct cooling_function_data *restrict cooling) {
+    struct cooling_function_data *restrict cooling) {
   int i, iz;
   
-  if (z_index_initialized == 0) {
-    z_index_initialized = 1;
-    previous_z_index = cooling->N_Redshifts - 2;
+  if (cooling->z_index_initialised == 0) {
+    cooling->z_index_initialised = 1;
+    cooling->previous_z_index = cooling->N_Redshifts - 2;
 
     /* this routine assumes cooling_redshifts table is in increasing order. Test
      * this. */
@@ -172,12 +175,12 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
     *dz = 0.0;
   } else {
     /* start at the previous index and search */
-    for (iz = previous_z_index; iz >= 0; iz--) {
+    for (iz = cooling->previous_z_index; iz >= 0; iz--) {
       if (z > cooling->Redshifts[iz]) {
         *dz = (z - cooling->Redshifts[iz]) /
               (cooling->Redshifts[iz + 1] - cooling->Redshifts[iz]);
 
-        previous_z_index = *z_index = iz;
+        cooling->previous_z_index = *z_index = iz;
 
         break;
       }

@@ -40,8 +40,7 @@
 /**
  * @brief Return a string containing the name of a given #chemistry_element.
  */
-//__attribute__((always_inline)) INLINE static const char*
-__attribute__((always_inline)) INLINE const char* chemistry_get_element_name(
+__attribute__((always_inline)) INLINE static const char* chemistry_get_element_name(
     enum chemistry_element elem) {
 
   // static const char* chemistry_element_names[chemistry_element_count] = {
@@ -209,6 +208,8 @@ chemistry_get_number_density(const struct part* restrict p,
       break;
     case chemistry_element_Fe:
       atomic_number = 56;
+      break;
+    default:
       break;
   }
   double element_mass = internal_const->const_proton_mass * atomic_number;

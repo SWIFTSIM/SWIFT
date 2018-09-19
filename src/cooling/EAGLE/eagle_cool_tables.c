@@ -139,6 +139,7 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
       H5Dopen(tempfile_id, "/Header/Number_of_temperature_bins", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    &cooling->N_Temp);
+  if (status < 0) error("error reading number of temperature bins");
   status = H5Dclose(dataset);
 
   dataset = H5Dopen(tempfile_id, "/Header/Number_of_density_bins", H5P_DEFAULT);
@@ -283,6 +284,7 @@ struct cooling_tables get_redshift_invariant_table(
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      net_cooling_rate);
+    if (status < 0) error("error reading cooling rate table");
     status = H5Dclose(dataset);
 
     for (j = 0; j < cooling->N_Temp; j++) {
@@ -448,6 +450,7 @@ struct cooling_tables get_cooling_table(
       dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
       status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                        net_cooling_rate);
+      if (status < 0) error("error reading metal cooling rate table");
       status = H5Dclose(dataset);
 
       for (i = 0; i < cooling->N_nH; i++) {
