@@ -4912,10 +4912,10 @@ void engine_check_for_dumps(struct engine *e) {
   /* Do we want to perform structure finding? */
   int run_stf = 0;
   if ((e->policy & engine_policy_structure_finding)) {
-    if (e->stf_output_freq_format == STEPS && e->step % e->deltaStepSTF == 0)
+    if (e->stf_output_freq_format == STEPS && e->step % e->delta_step_stf == 0)
       run_stf = 1;
     else if (e->stf_output_freq_format == TIME &&
-             e->ti_end_min > e->ti_nextSTF && e->ti_nextSTF > 0)
+             e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0)
       run_stf = 1;
   }
 
@@ -5069,7 +5069,7 @@ void engine_check_for_dumps(struct engine *e) {
     run_stf = 0;
     if ((e->policy & engine_policy_structure_finding) &&
         e->stf_output_freq_format == TIME) {
-      if (e->ti_end_min > e->ti_nextSTF && e->ti_nextSTF > 0) run_stf = 1;
+      if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) run_stf = 1;
     }
   }
 
@@ -5957,6 +5957,33 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
     e->ti_current = 0;
   }
 
+  /* Initialise VELOCIraptor output. */
+  if (e->policy & engine_policy_structure_finding) {
+    parser_get_param_string(params, "StructureFinding:basename",
+                            e->stfBaseName);
+    e->time_first_stf_output =
+        parser_get_opt_param_double(params, "StructureFinding:time_first", 0.);
+    e->a_first_stf_output = parser_get_opt_param_double(
+        params, "StructureFinding:scale_factor_first", 0.1);
+    e->stf_output_freq_format =
+        parser_get_param_int(params, "StructureFinding:output_time_format");
+
+    if (e->stf_output_freq_format == STEPS) {
+      e->delta_step_stf =
+          parser_get_param_int(params, "StructureFinding:delta_step");
+    } else if (e->stf_output_freq_format == TIME) {
+      e->delta_time_stf =
+          parser_get_param_double(params, "StructureFinding:delta_time");
+    } else {
+      error(
+          "Invalid flag (%d) set for output time format of structure finding.",
+          e->stf_output_freq_format);
+    }
+
+    /* overwrite input if outputlist */
+    if (e->output_list_stf) e->stf_output_freq_format = TIME;
+  }
+
   engine_init_output_lists(e, params);
 }
 
@@ -6007,33 +6034,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->restart_file = restart_file;
   e->restart_next = 0;
   e->restart_dt = 0;
-  e->timeFirstSTFOutput = 0;
   engine_rank = nodeID;
-
-  /* Initialise VELOCIraptor. */
-  if (e->policy & engine_policy_structure_finding) {
-    parser_get_param_string(params, "StructureFinding:basename",
-                            e->stfBaseName);
-    e->timeFirstSTFOutput =
-        parser_get_param_double(params, "StructureFinding:time_first");
-    e->a_first_stf = parser_get_opt_param_double(
-        params, "StructureFinding:scale_factor_first", 0.1);
-    e->stf_output_freq_format =
-        parser_get_param_int(params, "StructureFinding:output_time_format");
-    if (e->stf_output_freq_format == STEPS) {
-      e->deltaStepSTF =
-          parser_get_param_int(params, "StructureFinding:delta_step");
-    } else if (e->stf_output_freq_format == TIME) {
-      e->deltaTimeSTF =
-          parser_get_param_double(params, "StructureFinding:delta_time");
-    } else
-      error(
-          "Invalid flag (%d) set for output time format of structure finding.",
-          e->stf_output_freq_format);
-
-    /* overwrite input if outputlist */
-    if (e->output_list_stf) e->stf_output_freq_format = TIME;
-  }
 
   /* Get the number of queues */
   int nr_queues =
@@ -6320,15 +6321,15 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     if ((e->policy & engine_policy_structure_finding) &&
         (e->stf_output_freq_format == TIME)) {
 
-      if (e->deltaTimeSTF <= 1.)
-        error("Time between STF (%e) must be > 1.", e->deltaTimeSTF);
+      if (e->delta_time_stf <= 1.)
+        error("Time between STF (%e) must be > 1.", e->delta_time_stf);
 
-      if (e->a_first_stf < e->cosmology->a_begin)
+      if (e->a_first_stf_output < e->cosmology->a_begin)
         error(
             "Scale-factor of first stf output (%e) must be after the "
             "simulation "
             "start a=%e.",
-            e->a_first_stf, e->cosmology->a_begin);
+            e->a_first_stf_output, e->cosmology->a_begin);
     }
   } else {
 
@@ -6356,21 +6357,18 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     if ((e->policy & engine_policy_structure_finding) &&
         (e->stf_output_freq_format == TIME)) {
 
-      if (e->deltaTimeSTF <= 0.)
-        error("Time between STF (%e) must be positive.", e->deltaTimeSTF);
+      if (e->delta_time_stf <= 0.)
+        error("Time between STF (%e) must be positive.", e->delta_time_stf);
 
-      if (e->timeFirstSTFOutput < e->time_begin)
+      if (e->time_first_stf_output < e->time_begin)
         error("Time of first STF (%e) must be after the simulation start t=%e.",
-              e->timeFirstSTFOutput, e->time_begin);
+              e->time_first_stf_output, e->time_begin);
     }
   }
 
   if (e->policy & engine_policy_structure_finding) {
     /* Find the time of the first stf output */
-    if (e->stf_output_freq_format == TIME) {
-      engine_compute_next_stf_time(e);
-      message("Next STF step will be: %lld", e->ti_nextSTF);
-    }
+    if (e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
   }
 
   /* Get the total mass */
@@ -6704,54 +6702,56 @@ void engine_compute_next_statistics_time(struct engine *e) {
 void engine_compute_next_stf_time(struct engine *e) {
   /* Do output_list file case */
   if (e->output_list_stf) {
-    output_list_read_next_time(e->output_list_stf, e, "stf", &e->ti_nextSTF);
+    output_list_read_next_time(e->output_list_stf, e, "stf", &e->ti_next_stf);
     return;
   }
 
   /* Find upper-bound on last output */
   double time_end;
   if (e->policy & engine_policy_cosmology)
-    time_end = e->cosmology->a_end * e->deltaTimeSTF;
+    time_end = e->cosmology->a_end * e->delta_time_stf;
   else
-    time_end = e->time_end + e->deltaTimeSTF;
+    time_end = e->time_end + e->delta_time_stf;
 
   /* Find next snasphot above current time */
-  double time = e->timeFirstSTFOutput;
-
+  double time;
+  if (e->policy & engine_policy_cosmology)
+    time = e->a_first_stf_output;
+  else
+    time = e->time_first_stf_output;
   while (time < time_end) {
 
     /* Output time on the integer timeline */
     if (e->policy & engine_policy_cosmology)
-      e->ti_nextSTF = log(time / e->cosmology->a_begin) / e->time_base;
+      e->ti_next_stf = log(time / e->cosmology->a_begin) / e->time_base;
     else
-      e->ti_nextSTF = (time - e->time_begin) / e->time_base;
+      e->ti_next_stf = (time - e->time_begin) / e->time_base;
 
     /* Found it? */
-    if (e->ti_nextSTF > e->ti_current) break;
+    if (e->ti_next_stf > e->ti_current) break;
 
     if (e->policy & engine_policy_cosmology)
-      time *= e->deltaTimeSTF;
+      time *= e->delta_time_stf;
     else
-      time += e->deltaTimeSTF;
+      time += e->delta_time_stf;
   }
 
   /* Deal with last snapshot */
-  if (e->ti_nextSTF >= max_nr_timesteps) {
-    e->ti_nextSTF = -1;
+  if (e->ti_next_stf >= max_nr_timesteps) {
+    e->ti_next_stf = -1;
     if (e->verbose) message("No further output time.");
   } else {
 
     /* Be nice, talk... */
     if (e->policy & engine_policy_cosmology) {
-      const float next_snapshot_time =
-          exp(e->ti_nextSTF * e->time_base) * e->cosmology->a_begin;
+      const float next_stf_time =
+          exp(e->ti_next_stf * e->time_base) * e->cosmology->a_begin;
       if (e->verbose)
-        message("Next output time set to a=%e.", next_snapshot_time);
+        message("Next VELOCIraptor time set to a=%e.", next_stf_time);
     } else {
-      const float next_snapshot_time =
-          e->ti_nextSTF * e->time_base + e->time_begin;
+      const float next_stf_time = e->ti_next_stf * e->time_base + e->time_begin;
       if (e->verbose)
-        message("Next output time set to t=%e.", next_snapshot_time);
+        message("Next VELOCIraptor time set to t=%e.", next_stf_time);
     }
   }
 }
@@ -6792,14 +6792,14 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
   /* Deal with stf */
   double stf_time_first;
   e->output_list_stf = NULL;
-  output_list_init(&e->output_list_stf, e, "StructureFinding", &e->deltaTimeSTF,
-                   &stf_time_first);
+  output_list_init(&e->output_list_stf, e, "StructureFinding",
+                   &e->delta_time_stf, &stf_time_first);
 
   if (e->output_list_stf) {
     if (e->policy & engine_policy_cosmology)
-      e->a_first_stf = stf_time_first;
+      e->a_first_stf_output = stf_time_first;
     else
-      e->timeFirstSTFOutput = stf_time_first;
+      e->time_first_stf_output = stf_time_first;
   }
 }
 

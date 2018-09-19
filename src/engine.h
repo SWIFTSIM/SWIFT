@@ -229,16 +229,16 @@ struct engine {
 
   /* Structure finding information */
   int stf_output_freq_format;
-  double a_first_stf;
-  double timeFirstSTFOutput;
-  double deltaTimeSTF;
-  int deltaStepSTF;
+  int delta_step_stf;
+  double a_first_stf_output;
+  double time_first_stf_output;
+  double delta_time_stf;
 
   /* Output_List for the structure finding */
   struct output_list *output_list_stf;
 
   /* Integer time of the next stf output */
-  integertime_t ti_nextSTF;
+  integertime_t ti_next_stf;
 
   char stfBaseName[PARSER_MAX_LINE_SIZE];
 
