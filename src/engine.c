@@ -4912,7 +4912,8 @@ void engine_check_for_dumps(struct engine *e) {
   /* Do we want to perform structure finding? */
   int run_stf = 0;
   if ((e->policy & engine_policy_structure_finding)) {
-    if (e->stf_output_freq_format == io_stf_steps && e->step % e->delta_step_stf == 0)
+    if (e->stf_output_freq_format == io_stf_steps &&
+        e->step % e->delta_step_stf == 0)
       run_stf = 1;
     else if (e->stf_output_freq_format == io_stf_time &&
              e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0)
@@ -5048,7 +5049,8 @@ void engine_check_for_dumps(struct engine *e) {
       velociraptor_invoke(e);
 
       /* ... and find the next output time */
-      if (e->stf_output_freq_format == io_stf_time) engine_compute_next_stf_time(e);
+      if (e->stf_output_freq_format == io_stf_time)
+        engine_compute_next_stf_time(e);
 #endif
     }
 
@@ -6368,7 +6370,8 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
   if (e->policy & engine_policy_structure_finding) {
     /* Find the time of the first stf output */
-    if (e->stf_output_freq_format == io_stf_time) engine_compute_next_stf_time(e);
+    if (e->stf_output_freq_format == io_stf_time)
+      engine_compute_next_stf_time(e);
   }
 
   /* Get the total mass */
