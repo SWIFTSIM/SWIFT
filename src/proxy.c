@@ -106,8 +106,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     num_reqs_in += proxies[k].nr_cells_in;
     num_reqs_out += proxies[k].nr_cells_out;
   }
-  MPI_Request *reqs_in;
-  int *cids_in;
+  MPI_Request *reqs_in = NULL;
+  int *cids_in = NULL;
   if ((reqs_in = (MPI_Request *)malloc(sizeof(MPI_Request) *
                                        (num_reqs_in + num_reqs_out))) == NULL ||
       (cids_in = (int *)malloc(sizeof(int) * (num_reqs_in + num_reqs_out))) ==
