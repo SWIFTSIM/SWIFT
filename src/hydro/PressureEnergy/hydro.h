@@ -609,10 +609,31 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  *
  * @param p The particle to act upon
  * @param xp The extended particle to act upon
+ * @param cosmo The cosmological model.
+ * @param hydro_props The constants used in the scheme.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+
+  /* Convert the physcial internal energy to the comoving one. */
+  /* u' = a^(3(g-1)) u */
+  const float factor = 1.f / cosmo->a_factor_internal_energy;
+  p->u *= factor;
+  xp->u_full = p->u;
+
+  /* Apply the minimal energy limit */
+  const float min_energy =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+  if (xp->u_full < min_energy) {
+    xp->u_full = min_energy;
+    p->u = min_energy;
+    p->u_dt = 0.f;
+  }
+
+  /* Note that unlike Minimal the pressure and sound speed cannot be calculated
+   * here because they are smoothed properties in this scheme. */
+}
 
 /**
  * @brief Initialises the particles for the first time
