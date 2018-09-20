@@ -229,7 +229,8 @@ static INLINE void runner_dopair_grav_pp_full(
       /* Check that particles have been drifted to the current time */
       if (gparts_i[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
+      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts_j[pjd], e))
         error("gpj not drifted to current time");
 
       /* Check that we are not updated an inhibited particle */
@@ -367,7 +368,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
       /* Check that particles have been drifted to the current time */
       if (gparts_i[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
+      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts_j[pjd], e))
         error("gpj not drifted to current time");
 
       /* Check that we are not updated an inhibited particle */
@@ -952,7 +954,8 @@ static INLINE void runner_doself_grav_pp_full(
       /* Check that particles have been drifted to the current time */
       if (gparts[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current)
+      if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts[pjd], e))
         error("gpj not drifted to current time");
 
       /* Check that we are not updated an inhibited particle */
@@ -1074,7 +1077,8 @@ static INLINE void runner_doself_grav_pp_truncated(
       /* Check that particles have been drifted to the current time */
       if (gparts[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current)
+      if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts[pjd], e))
         error("gpj not drifted to current time");
 
       /* Check that we are not updated an inhibited particle */
