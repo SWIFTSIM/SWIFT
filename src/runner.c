@@ -719,13 +719,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct hydro_space *hs = &s->hs;
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
-  const double time_base = e->time_base;
-  const integertime_t ti_end = e->ti_current;
   const float hydro_h_max = e->hydro_properties->h_max;
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
       pow_dimension(e->hydro_properties->eta_neighbours);
-  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
 
@@ -820,12 +817,14 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_reset_gradient(p);
 
 #else
-            /* As of here, particle force variables will be set. */
-
-            /* Calculate the time-step for passing to hydro_prepare_force.
-             * This is the physical time between the start and end of the
-             * time-step without any scale-factor powers. */
+            /* Calculate the time-step for passing to hydro_prepare_force, used
+             * for the evolution of alpha factors (i.e. those involved in the
+             * artificial viscosity and thermal conduction terms) */
+            const int with_cosmology = (e->policy & engine_policy_cosmology);
+            const double time_base = e->time_base;
+            const integertime_t ti_end = e->ti_current;
             double dt_alpha;
+
             if (with_cosmology) {
               const integertime_t ti_step = get_integer_timestep(p->time_bin);
               dt_alpha =
@@ -833,6 +832,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             } else {
               dt_alpha = get_timestep(p->time_bin, time_base);
             }
+
+            /* As of here, particle force variables will be set. */
 
             /* Compute variables required for the force loop */
             hydro_prepare_force(p, xp, cosmo, dt_alpha);
@@ -914,18 +915,22 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_reset_gradient(p);
 
 #else
-        /* As of here, particle force variables will be set. */
-
-        /* Calculate the time-step for passing to hydro_prepare_force.
-         * This is the physical time between the start and end of the time-step
-         * without any scale-factor powers. */
+        /* Calculate the time-step for passing to hydro_prepare_force, used for
+         * the evolution of alpha factors (i.e. those involved in the artificial
+         * viscosity and thermal conduction terms) */
+        const int with_cosmology = (e->policy & engine_policy_cosmology);
+        const integertime_t ti_end = e->ti_current;
+        const double time_base = e->time_base;
         double dt_alpha;
+
         if (with_cosmology) {
           const integertime_t ti_step = get_integer_timestep(p->time_bin);
           dt_alpha = cosmology_get_delta_time(cosmo, ti_end - ti_step, ti_end);
         } else {
           dt_alpha = get_timestep(p->time_bin, time_base);
         }
+
+        /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, dt_alpha);
