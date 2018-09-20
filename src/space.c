@@ -808,6 +808,16 @@ void space_rebuild(struct space *s, int verbose) {
   for (size_t k = 0; k < nr_parts; k++) {
     const struct part *p = &s->parts[k];
 
+    if (k >= nr_parts - count_inhibited_parts) {
+      if (p->time_bin != time_bin_inhibited)
+        error("Non-inhibited particles sorted into a cell!");
+
+      continue;
+    }
+
+    if (p->time_bin == time_bin_inhibited)
+      error("Inhibited particle sorted into a cell!");
+
     /* New cell index */
     const int new_ind =
         cell_getid(s->cdim, p->x[0] * s->iwidth[0], p->x[1] * s->iwidth[1],
@@ -835,6 +845,16 @@ void space_rebuild(struct space *s, int verbose) {
   for (size_t k = 0; k < nr_sparts; k++) {
     const struct spart *sp = &s->sparts[k];
 
+    if (k >= nr_sparts - count_inhibited_sparts) {
+      if (sp->time_bin != time_bin_inhibited)
+        error("Non-inhibited particles sorted into a cell!");
+
+      continue;
+    }
+
+    if (sp->time_bin == time_bin_inhibited)
+      error("Inhibited particle sorted into a cell!");
+
     /* New cell index */
     const int new_sind =
         cell_getid(s->cdim, sp->x[0] * s->iwidth[0], sp->x[1] * s->iwidth[1],
@@ -853,8 +873,22 @@ void space_rebuild(struct space *s, int verbose) {
   }
 #endif
 
-  /* Extract the cell counts from the sorted indices. */
-  size_t last_index = 0;
+  /* Remove the inhibited particles */
+  for (int k = nr_parts - count_inhibited_parts; k < nr_parts; ++k) {
+    bzero(&s->parts[k], sizeof(struct part));
+    s->parts[k].time_bin = time_bin_inhibited;
+  }
+  nr_parts -= count_inhibited_sparts
+
+      /* Remove the inhibited star particles */
+      for (int k = nr_sparts - count_inhibited_sparts; k < nr_sparts; ++k) {
+    bzero(&s->sparts[k], sizeof(struct spart));
+    s->sparts[k].time_bin = time_bin_inhibited;
+  }
+  nr_sparts -= count_inhibited_sparts
+
+      /* Extract the cell counts from the sorted indices. */
+      size_t last_index = 0;
   ind[nr_parts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_parts; k++) {
     if (ind[k] < ind[k + 1]) {
@@ -916,6 +950,16 @@ void space_rebuild(struct space *s, int verbose) {
   /* Verify that the gpart have been sorted correctly. */
   for (size_t k = 0; k < nr_gparts; k++) {
     const struct gpart *gp = &s->gparts[k];
+
+    if (k >= nr_gparts - count_inhibited_gparts) {
+      if (gp->time_bin != time_bin_inhibited)
+        error("Non-inhibited particles sorted into a cell!");
+
+      continue;
+    }
+
+    if (gp->time_bin == time_bin_inhibited)
+      error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
     const int new_gind =
