@@ -105,6 +105,9 @@ struct index_data {
   struct cell *cells;
   int *ind;
   int *cell_counts;
+  int count_inhibited_part;
+  int count_inhibited_gpart;
+  int count_inhibited_spart;
 };
 
 /**
@@ -1084,6 +1087,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   /* Init the local collectors */
   float min_mass = FLT_MAX;
   float sum_vel_norm = 0.f;
+  int count_inhibited_part = 0;
 
   /* Loop over the parts. */
   for (int k = 0; k < nr_parts; k++) {
@@ -1115,8 +1119,15 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
             pos_z);
 #endif
 
-    ind[k] = index;
-    cell_counts[index]++;
+    /* Is this particle to be removed? */
+    if (p->time_bin == time_bin_inhibited) {
+      ind[k] = -1;
+      ++count_inhibited_part;
+    } else {
+      /* List its top-level cell index */
+      ind[k] = index;
+      cell_counts[index]++;
+    }
 
     /* Compute minimal mass */
     min_mass = min(min_mass, hydro_get_mass(p));
@@ -1134,6 +1145,9 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   for (int k = 0; k < s->nr_cells; k++)
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
+
+  /* Write the count of inhibited parts */
+  atomic_add(&data->count_inhibited_part, count_inhibited_part);
 
   /* Write back the minimal part mass and velocity sum */
   atomic_min_f(&s->min_part_mass, min_mass);
@@ -1173,6 +1187,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   /* Init the local collectors */
   float min_mass = FLT_MAX;
   float sum_vel_norm = 0.f;
+  int count_inhibited_gpart = 0;
 
   for (int k = 0; k < nr_gparts; k++) {
 
@@ -1203,12 +1218,22 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
             pos_z);
 #endif
 
-    ind[k] = index;
-    cell_counts[index]++;
+    /* Is this particle to be removed? */
+    if (gp->time_bin == time_bin_inhibited) {
+      ind[k] = -1;
+      ++count_inhibited_gpart;
+    } else {
+      /* List its top-level cell index */
+      ind[k] = index;
+      cell_counts[index]++;
+    }
 
-    /* Compute minimal mass */
     if (gp->type == swift_type_dark_matter) {
+
+      /* Compute minimal mass */
       min_mass = min(min_mass, gp->mass);
+
+      /* Compute sum of velocity norm */
       sum_vel_norm += gp->v_full[0] * gp->v_full[0] +
                       gp->v_full[1] * gp->v_full[1] +
                       gp->v_full[2] * gp->v_full[2];
@@ -1224,6 +1249,9 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   for (int k = 0; k < s->nr_cells; k++)
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
+
+  /* Write the count of inhibited gparts */
+  atomic_add(&data->count_inhibited_gpart, count_inhibited_gpart);
 
   /* Write back the minimal part mass and velocity sum */
   atomic_min_f(&s->min_gpart_mass, min_mass);
@@ -1263,6 +1291,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   /* Init the local collectors */
   float min_mass = FLT_MAX;
   float sum_vel_norm = 0.f;
+  int count_inhibited_spart = 0;
 
   for (int k = 0; k < nr_sparts; k++) {
 
@@ -1293,8 +1322,15 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
             pos_z);
 #endif
 
-    ind[k] = index;
-    cell_counts[index]++;
+    /* Is this particle to be removed? */
+    if (sp->time_bin == time_bin_inhibited) {
+      ind[k] = -1;
+      ++count_inhibited_spart;
+    } else {
+      /* List its top-level cell index */
+      ind[k] = index;
+      cell_counts[index]++;
+    }
 
     /* Compute minimal mass */
     min_mass = min(min_mass, sp->mass);
@@ -1313,6 +1349,9 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   for (int k = 0; k < s->nr_cells; k++)
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
+
+  /* Write the count of inhibited parts */
+  atomic_add(&data->count_inhibited_spart, count_inhibited_spart);
 
   /* Write back the minimal part mass and velocity sum */
   atomic_min_f(&s->min_spart_mass, min_mass);
@@ -1345,6 +1384,9 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
   data.cells = cells;
   data.ind = ind;
   data.cell_counts = cell_counts;
+  data.count_inhibited_part = 0;
+  data.count_inhibited_gpart = 0;
+  data.count_inhibited_spart = 0;
 
   threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
                  s->nr_parts, sizeof(struct part), 0, &data);
@@ -1380,6 +1422,9 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
   data.cells = cells;
   data.ind = gind;
   data.cell_counts = cell_counts;
+  data.count_inhibited_part = 0;
+  data.count_inhibited_gpart = 0;
+  data.count_inhibited_spart = 0;
 
   threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
                  s->gparts, s->nr_gparts, sizeof(struct gpart), 0, &data);
@@ -1415,6 +1460,9 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
   data.cells = cells;
   data.ind = sind;
   data.cell_counts = cell_counts;
+  data.count_inhibited_part = 0;
+  data.count_inhibited_gpart = 0;
+  data.count_inhibited_spart = 0;
 
   threadpool_map(&s->e->threadpool, space_sparts_get_cell_index_mapper,
                  s->sparts, s->nr_sparts, sizeof(struct spart), 0, &data);
