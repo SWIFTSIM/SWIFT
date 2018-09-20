@@ -1830,17 +1830,17 @@ void engine_exchange_cells(struct engine *e) {
  *
  * @param e The #engine.
  * @param offset_parts The index in the parts array as of which the foreign
- *        parts reside.
+ *        parts reside (i.e. the current number of local #part).
  * @param ind_part The foreign #cell ID of each part.
  * @param Npart The number of stray parts, contains the number of parts received
  *        on return.
  * @param offset_gparts The index in the gparts array as of which the foreign
- *        parts reside.
+ *        parts reside (i.e. the current number of local #gpart).
  * @param ind_gpart The foreign #cell ID of each gpart.
  * @param Ngpart The number of stray gparts, contains the number of gparts
  *        received on return.
  * @param offset_sparts The index in the sparts array as of which the foreign
- *        parts reside.
+ *        parts reside (i.e. the current number of local #spart).
  * @param ind_spart The foreign #cell ID of each spart.
  * @param Nspart The number of stray sparts, contains the number of sparts
  *        received on return.
@@ -1848,11 +1848,11 @@ void engine_exchange_cells(struct engine *e) {
  * Note that this function does not mess-up the linkage between parts and
  * gparts, i.e. the received particles have correct linkeage.
  */
-void engine_exchange_strays(struct engine *e, size_t offset_parts,
-                            int *ind_part, size_t *Npart, size_t offset_gparts,
-                            int *ind_gpart, size_t *Ngpart,
-                            size_t offset_sparts, int *ind_spart,
-                            size_t *Nspart) {
+void engine_exchange_strays(struct engine *e, const size_t offset_parts,
+                            const int *ind_part, size_t *Npart,
+                            const size_t offset_gparts, const int *ind_gpart,
+                            size_t *Ngpart, const size_t offset_sparts,
+                            const int *ind_spart, size_t *Nspart) {
 
 #ifdef WITH_MPI
 
