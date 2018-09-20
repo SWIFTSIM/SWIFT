@@ -65,7 +65,7 @@ glass.close()
 # Total number of particles
 numPart = size(pos)/3
 if numPart != numPart_1D**3:
-  print "Non-matching glass file"
+  print("Non-matching glass file")
 numPart = numPart_1D**3
 
 # Set box size and interparticle distance
