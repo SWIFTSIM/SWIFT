@@ -137,8 +137,8 @@ INLINE static void convert_part_vel(const struct engine* e,
 }
 
 INLINE static void convert_part_potential(const struct engine* e,
-		                          const struct part* p,
-					  const struct xpart* xp, float* ret) {
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
   if (p->gpart != NULL)
     ret[0] = gravity_get_comoving_potential(p->gpart);
   else
@@ -182,8 +182,8 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                               UNIT_CONV_ENTROPY_PER_UNIT_MASS,
                                               parts, xparts, convert_S);
   list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
-		                              UNIT_CONV_POTENTIAL, parts,
-					      xparts, convert_part_potential);
+                                              UNIT_CONV_POTENTIAL, parts,
+                                              xparts, convert_part_potential);
 }
 
 /**
