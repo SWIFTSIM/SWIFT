@@ -244,11 +244,11 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data);
 void space_list_local_cells(struct space *s);
 void space_list_cells_with_tasks(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
-                                struct cell *cells, int verbose);
+                                int *count_inibibited_parts, int verbose);
 void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
-                                 struct cell *cells, int verbose);
+                                 int *count_inibibited_gparts, int verbose);
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
-                                 struct cell *cells, int verbose);
+                                 int *count_inibibited_sparts, int verbose);
 void space_synchronize_particle_positions(struct space *s);
 void space_do_parts_sort(void);
 void space_do_gparts_sort(void);

@@ -102,7 +102,6 @@ struct parallel_sort {
  */
 struct index_data {
   struct space *s;
-  struct cell *cells;
   int *ind;
   int *cell_counts;
   int count_inhibited_part;
@@ -566,6 +565,9 @@ void space_rebuild(struct space *s, int verbose) {
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
+  int count_inhibited_parts = 0;
+  int count_inhibited_gparts = 0;
+  int count_inhibited_sparts = 0;
   struct cell *restrict cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
@@ -579,7 +581,8 @@ void space_rebuild(struct space *s, int verbose) {
   if (cell_part_counts == NULL)
     error("Failed to allocate cell part count buffer.");
   if (s->size_parts > 0)
-    space_parts_get_cell_index(s, ind, cell_part_counts, cells_top, verbose);
+    space_parts_get_cell_index(s, ind, cell_part_counts, &count_inhibited_parts,
+                               verbose);
 
   /* Run through the gravity particles and get their cell index. */
   const size_t gind_size = s->size_gparts + 100;
@@ -589,7 +592,8 @@ void space_rebuild(struct space *s, int verbose) {
   if (cell_gpart_counts == NULL)
     error("Failed to allocate cell gpart count buffer.");
   if (s->size_gparts > 0)
-    space_gparts_get_cell_index(s, gind, cell_gpart_counts, cells_top, verbose);
+    space_gparts_get_cell_index(s, gind, cell_gpart_counts,
+                                &count_inhibited_gparts, verbose);
 
   /* Run through the star particles and get their cell index. */
   const size_t sind_size = s->size_sparts + 100;
@@ -599,7 +603,8 @@ void space_rebuild(struct space *s, int verbose) {
   if (cell_spart_counts == NULL)
     error("Failed to allocate cell gpart count buffer.");
   if (s->size_sparts > 0)
-    space_sparts_get_cell_index(s, sind, cell_spart_counts, cells_top, verbose);
+    space_sparts_get_cell_index(s, sind, cell_spart_counts,
+                                &count_inhibited_sparts, verbose);
 
 #ifdef WITH_MPI
   const int local_nodeID = s->e->nodeID;
@@ -1366,11 +1371,11 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
  * @param s The #space.
  * @param ind The array of indices to fill.
  * @param cell_counts The cell counters to update.
- * @param cells The array of #cell to update.
+ * @param count_inhibited_parts (return) The number of #part to remove.
  * @param verbose Are we talkative ?
  */
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
-                                struct cell *cells, int verbose) {
+                                int *count_inibibited_parts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1381,7 +1386,6 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
   /* Pack the extra information */
   struct index_data data;
   data.s = s;
-  data.cells = cells;
   data.ind = ind;
   data.cell_counts = cell_counts;
   data.count_inhibited_part = 0;
@@ -1404,11 +1408,11 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
  * @param s The #space.
  * @param gind The array of indices to fill.
  * @param cell_counts The cell counters to update.
- * @param cells The array of #cell to update.
+ * @param count_inhibited_gparts (return) The number of #gpart to remove.
  * @param verbose Are we talkative ?
  */
 void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
-                                 struct cell *cells, int verbose) {
+                                 int *count_inibibited_gparts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1419,7 +1423,6 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
   /* Pack the extra information */
   struct index_data data;
   data.s = s;
-  data.cells = cells;
   data.ind = gind;
   data.cell_counts = cell_counts;
   data.count_inhibited_part = 0;
@@ -1442,11 +1445,11 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
  * @param s The #space.
  * @param sind The array of indices to fill.
  * @param cell_counts The cell counters to update.
- * @param cells The array of #cell to update.
+ * @param count_inhibited_gparts (return) The number of #gpart to remove.
  * @param verbose Are we talkative ?
  */
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
-                                 struct cell *cells, int verbose) {
+                                 int *count_inibibited_gparts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1457,7 +1460,6 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
   /* Pack the extra information */
   struct index_data data;
   data.s = s;
-  data.cells = cells;
   data.ind = sind;
   data.cell_counts = cell_counts;
   data.count_inhibited_part = 0;
