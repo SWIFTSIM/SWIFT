@@ -606,12 +606,11 @@ void space_rebuild(struct space *s, int verbose) {
     space_sparts_get_cell_index(s, sind, cell_spart_counts,
                                 &count_inhibited_sparts, verbose);
 
-#ifdef WITH_MPI
   const int local_nodeID = s->e->nodeID;
 
-  /* Move non-local parts to the end of the list. */
-  for (size_t k = 0; k < nr_parts;) {
-    if (cells_top[ind[k]].nodeID != local_nodeID) {
+  /* Move non-local parts and inhibited parts to the end of the list. */
+  for (size_t k = 0; k < nr_parts; /* void */) {
+    if (ind[k] == -1 || cells_top[ind[k]].nodeID != local_nodeID) {
       nr_parts -= 1;
       /* Swap the particle */
       memswap(&s->parts[k], &s->parts[nr_parts], sizeof(struct part));
@@ -644,11 +643,11 @@ void space_rebuild(struct space *s, int verbose) {
       error("Failed to remove local parts from send list");
     }
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
 
-  /* Move non-local sparts to the end of the list. */
-  for (size_t k = 0; k < nr_sparts;) {
-    if (cells_top[sind[k]].nodeID != local_nodeID) {
+  /* Move non-local sparts and inhibited sparts to the end of the list. */
+  for (size_t k = 0; k < nr_sparts; /* void */) {
+    if (sind[k] == -1 || cells_top[sind[k]].nodeID != local_nodeID) {
       nr_sparts -= 1;
       /* Swap the particle */
       memswap(&s->sparts[k], &s->sparts[nr_sparts], sizeof(struct spart));
@@ -679,11 +678,11 @@ void space_rebuild(struct space *s, int verbose) {
       error("Failed to remove local sparts from send list");
     }
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
 
-  /* Move non-local gparts to the end of the list. */
-  for (size_t k = 0; k < nr_gparts;) {
-    if (cells_top[gind[k]].nodeID != local_nodeID) {
+  /* Move non-local gparts and inhibited parts to the end of the list. */
+  for (size_t k = 0; k < nr_gparts; /* void */) {
+    if (gind[k] == -1 || cells_top[gind[k]].nodeID != local_nodeID) {
       nr_gparts -= 1;
       /* Swap the particle */
       memswap(&s->gparts[k], &s->gparts[nr_gparts], sizeof(struct gpart));
@@ -720,7 +719,9 @@ void space_rebuild(struct space *s, int verbose) {
       error("Failed to remove local gparts from send list");
     }
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
+
+#ifdef WITH_MPI
 
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. */
@@ -796,6 +797,12 @@ void space_rebuild(struct space *s, int verbose) {
   }
   nr_sparts = s->nr_sparts;
 
+#else /* WITH_MPI */
+
+  /* Update the part and spart counters */
+  s->nr_parts = nr_parts;
+  s->nr_sparts = nr_sparts;
+
 #endif /* WITH_MPI */
 
   /* Sort the parts according to their cells. */
@@ -807,13 +814,6 @@ void space_rebuild(struct space *s, int verbose) {
   /* Verify that the part have been sorted correctly. */
   for (size_t k = 0; k < nr_parts; k++) {
     const struct part *p = &s->parts[k];
-
-    if (k >= nr_parts - count_inhibited_parts) {
-      if (p->time_bin != time_bin_inhibited)
-        error("Non-inhibited particles sorted into a cell!");
-
-      continue;
-    }
 
     if (p->time_bin == time_bin_inhibited)
       error("Inhibited particle sorted into a cell!");
@@ -834,7 +834,7 @@ void space_rebuild(struct space *s, int verbose) {
         p->x[2] < c->loc[2] || p->x[2] > c->loc[2] + c->width[2])
       error("part not sorted into the right top-level cell!");
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Sort the sparts according to their cells. */
   if (nr_sparts > 0)
@@ -844,13 +844,6 @@ void space_rebuild(struct space *s, int verbose) {
   /* Verify that the spart have been sorted correctly. */
   for (size_t k = 0; k < nr_sparts; k++) {
     const struct spart *sp = &s->sparts[k];
-
-    if (k >= nr_sparts - count_inhibited_sparts) {
-      if (sp->time_bin != time_bin_inhibited)
-        error("Non-inhibited particles sorted into a cell!");
-
-      continue;
-    }
 
     if (sp->time_bin == time_bin_inhibited)
       error("Inhibited particle sorted into a cell!");
@@ -871,24 +864,10 @@ void space_rebuild(struct space *s, int verbose) {
         sp->x[2] < c->loc[2] || sp->x[2] > c->loc[2] + c->width[2])
       error("spart not sorted into the right top-level cell!");
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
 
-  /* Remove the inhibited particles */
-  for (int k = nr_parts - count_inhibited_parts; k < nr_parts; ++k) {
-    bzero(&s->parts[k], sizeof(struct part));
-    s->parts[k].time_bin = time_bin_inhibited;
-  }
-  nr_parts -= count_inhibited_sparts
-
-      /* Remove the inhibited star particles */
-      for (int k = nr_sparts - count_inhibited_sparts; k < nr_sparts; ++k) {
-    bzero(&s->sparts[k], sizeof(struct spart));
-    s->sparts[k].time_bin = time_bin_inhibited;
-  }
-  nr_sparts -= count_inhibited_sparts
-
-      /* Extract the cell counts from the sorted indices. */
-      size_t last_index = 0;
+  /* Extract the cell counts from the sorted indices. */
+  size_t last_index = 0;
   ind[nr_parts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_parts; k++) {
     if (ind[k] < ind[k + 1]) {
@@ -939,6 +918,11 @@ void space_rebuild(struct space *s, int verbose) {
   }
   nr_gparts = s->nr_gparts;
 
+#else /* WITH_MPI */
+
+  /* Update the gpart counter */
+  s->nr_gparts = nr_gparts;
+
 #endif /* WITH_MPI */
 
   /* Sort the gparts according to their cells. */
@@ -950,13 +934,6 @@ void space_rebuild(struct space *s, int verbose) {
   /* Verify that the gpart have been sorted correctly. */
   for (size_t k = 0; k < nr_gparts; k++) {
     const struct gpart *gp = &s->gparts[k];
-
-    if (k >= nr_gparts - count_inhibited_gparts) {
-      if (gp->time_bin != time_bin_inhibited)
-        error("Non-inhibited particles sorted into a cell!");
-
-      continue;
-    }
 
     if (gp->time_bin == time_bin_inhibited)
       error("Inhibited particle sorted into a cell!");
@@ -977,7 +954,7 @@ void space_rebuild(struct space *s, int verbose) {
         gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2])
       error("gpart not sorted into the right top-level cell!");
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Extract the cell counts from the sorted indices. */
   size_t last_gindex = 0;
@@ -1127,7 +1104,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   const double ih_x = s->iwidth[0];
   const double ih_y = s->iwidth[1];
   const double ih_z = s->iwidth[2];
-  const int num_cells = s->nr_cells;
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -1171,7 +1147,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 
     /* Is this particle to be removed? */
     if (p->time_bin == time_bin_inhibited) {
-      ind[k] = num_cells + 1;
+      ind[k] = -1;
       ++count_inhibited_part;
     } else {
       /* List its top-level cell index */
@@ -1228,7 +1204,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   const double ih_x = s->iwidth[0];
   const double ih_y = s->iwidth[1];
   const double ih_z = s->iwidth[2];
-  const int num_cells = s->nr_cells;
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -1271,7 +1246,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
 
     /* Is this particle to be removed? */
     if (gp->time_bin == time_bin_inhibited) {
-      ind[k] = num_cells + 1;
+      ind[k] = -1;
       ++count_inhibited_gpart;
     } else {
       /* List its top-level cell index */
@@ -1333,7 +1308,6 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   const double ih_x = s->iwidth[0];
   const double ih_y = s->iwidth[1];
   const double ih_z = s->iwidth[2];
-  const int num_cells = s->nr_cells;
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -1376,7 +1350,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
 
     /* Is this particle to be removed? */
     if (sp->time_bin == time_bin_inhibited) {
-      ind[k] = num_cells + 1;
+      ind[k] = -1;
       ++count_inhibited_spart;
     } else {
       /* List its top-level cell index */
