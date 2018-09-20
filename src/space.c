@@ -1083,6 +1083,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   const double ih_x = s->iwidth[0];
   const double ih_y = s->iwidth[1];
   const double ih_z = s->iwidth[2];
+  const int num_cells = s->nr_cells;
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -1126,7 +1127,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 
     /* Is this particle to be removed? */
     if (p->time_bin == time_bin_inhibited) {
-      ind[k] = -1;
+      ind[k] = num_cells + 1;
       ++count_inhibited_part;
     } else {
       /* List its top-level cell index */
@@ -1183,6 +1184,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   const double ih_x = s->iwidth[0];
   const double ih_y = s->iwidth[1];
   const double ih_z = s->iwidth[2];
+  const int num_cells = s->nr_cells;
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -1225,7 +1227,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
 
     /* Is this particle to be removed? */
     if (gp->time_bin == time_bin_inhibited) {
-      ind[k] = -1;
+      ind[k] = num_cells + 1;
       ++count_inhibited_gpart;
     } else {
       /* List its top-level cell index */
@@ -1287,6 +1289,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   const double ih_x = s->iwidth[0];
   const double ih_y = s->iwidth[1];
   const double ih_z = s->iwidth[2];
+  const int num_cells = s->nr_cells;
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -1329,7 +1332,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
 
     /* Is this particle to be removed? */
     if (sp->time_bin == time_bin_inhibited) {
-      ind[k] = -1;
+      ind[k] = num_cells + 1;
       ++count_inhibited_spart;
     } else {
       /* List its top-level cell index */
