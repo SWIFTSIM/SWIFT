@@ -741,7 +741,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2 && pj_inhibited) {
+        if (r2 < hig2 && !pj_inhibited) {
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1466,7 +1466,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current && pj_inhibited)
+        if (pj->ti_drift != e->ti_current && !pj_inhibited)
           error("Particle pj not drifted to current time");
 #endif
         /* Hit or miss?
@@ -1808,14 +1808,13 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[indt[pjd]];
-        const int pj_inhibited = part_is_inhibited(pj, e);
         const float hj = pj->h;
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current && !pj_inhibited)
+        if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
 
@@ -1862,6 +1861,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         const int doj =
             (part_is_active(pj, e)) && (r2 < hj * hj * kernel_gamma2);
 
+        const int doi = (r2 < hig2);
+
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current && !pi_inhibited)
@@ -1871,20 +1872,23 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2 || doj) {
+        if (doi || doj) {
 
           /* Which parts need to be updated? */
-          if (r2 < hig2 && doj) {
+          if (doi && doj) {
+
             IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
 #endif
-          } else if (!doj && !pj_inhibited) {
+          } else if (doi && !pj_inhibited) {
+
             IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
 #endif
-          } else {
+          } else if (doj && !pi_inhibited) {
+
             dx[0] = -dx[0];
             dx[1] = -dx[1];
             dx[2] = -dx[2];
