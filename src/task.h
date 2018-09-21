@@ -128,6 +128,9 @@ struct task {
   /*! List of tasks unlocked by this one */
   struct task **unlock_tasks;
 
+  /*! Flags used to carry additional information (e.g. sort directions) */
+  long long flags;
+
 #ifdef WITH_MPI
 
   /*! Buffer for this task's communications */
@@ -137,9 +140,6 @@ struct task {
   MPI_Request req;
 
 #endif
-
-  /*! Flags used to carry additional information (e.g. sort directions) */
-  int flags;
 
   /*! Rank of a task in the order */
   int rank;
