@@ -1306,15 +1306,15 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
       case task_type_sub_pair:
         if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
-          if (t->flags < 0)
-            cost = 3.f * (wscale * count_i) * count_j;
-          else
-            cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+#ifdef SWIFT_DEBUG_CHECKS
+          if (t->flags < 0) error("Negative flag value!");
+#endif
+	  cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
         } else {
-          if (t->flags < 0)
-            cost = 2.f * (wscale * count_i) * count_j;
-          else
-            cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+#ifdef SWIFT_DEBUG_CHECKS
+          if (t->flags < 0) error("Negative flag value!");
+#endif
+	  cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
         }
         break;
 
