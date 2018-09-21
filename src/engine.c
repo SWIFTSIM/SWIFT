@@ -110,7 +110,8 @@ const char *engine_policy_names[] = {"none",
                                      "cooling",
                                      "sourceterms",
                                      "stars",
-                                     "structure finding"};
+                                     "structure finding",
+                                     "feedback"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -463,7 +464,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   const int is_with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int is_with_external_gravity =
       (e->policy & engine_policy_external_gravity);
-  const int is_with_stars = (e->policy & engine_policy_stars);
+  const int is_with_feedback = (e->policy & engine_policy_feedback);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -474,7 +475,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* And the gravity stuff */
     if (is_with_self_gravity || is_with_external_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);
-    if (is_with_stars) engine_make_hierarchical_tasks_stars(e, c);
+    if (is_with_feedback) engine_make_hierarchical_tasks_stars(e, c);
   }
 }
 
@@ -3431,7 +3432,7 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Construct the stars hydro loop over neighbours */
-  if (e->policy & engine_policy_stars) {
+  if (e->policy & engine_policy_feedback) {
     threadpool_map(&e->threadpool, engine_make_starsloop_tasks_mapper, NULL,
                    s->nr_cells, 1, 0, e);
   }
