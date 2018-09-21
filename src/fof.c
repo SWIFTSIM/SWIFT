@@ -219,31 +219,6 @@ __attribute__((always_inline)) INLINE static void fof_union(size_t *root_i, cons
   } while (result != 1);
 }
 
-void fof_print_group_list(struct space *s, const size_t nr_gparts, int *group_size, int *group_index, long long *group_id, const int find_group_size, char *out_file, int (*fof_find_func)(int, int *)) {
-
-  FILE *file;
-
-  file = fopen(out_file, "w");
-
-  int this_root = 0;
-  for (size_t i = 0; i < nr_gparts; i++) {
-    if(group_size[i] == find_group_size) {
-      this_root = i;
-      break;
-    }
-  }
-
-  for (size_t i = 0; i < nr_gparts; i++) {
-    const int root = (*fof_find_func)(i, group_index);
-    if(root == this_root) {
-      if(s->e->nr_nodes > 1) fprintf(file, "%7lld\n", group_id[i]);
-      else fprintf(file, "%7lld\n", s->gparts[i].id_or_neg_offset);
-    }
-  }
-
-  fclose(file);
-}
-
 /* Find the shortest distance between cells, remembering to account for boundary
  * conditions. */
 __attribute__((always_inline)) INLINE static double cell_min_dist(
@@ -281,6 +256,12 @@ __attribute__((always_inline)) INLINE static double cell_min_dist(
   for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
 
   return r2;
+}
+
+/* Checks whether the group is on the local node. */
+__attribute__((always_inline)) INLINE static int is_local(const size_t group_id,
+                                                          const size_t nr_gparts) {
+  return (group_id >= node_offset && group_id < node_offset + nr_gparts);
 }
 
 /* Recurse on a pair of cells and perform a FOF search between cells that are within
@@ -610,125 +591,6 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
     }
   }
   else error("Cell ci, is not local.");
-}
-
-/* Perform a FOF search on gravity particles using the cells and applying the
- * Union-Find algorithm.*/
-void fof_search_tree_serial(struct space *s) {
-
-  const size_t nr_gparts = s->nr_gparts;
-  const size_t nr_cells = s->nr_cells;
-  struct gpart *gparts = s->gparts;
-  size_t *group_index = NULL, *group_size = NULL;
-  double *group_mass = NULL;
-  int num_groups = 0;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double search_r2 = s->l_x2;
-  ticks tic = getticks();
-
-  message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
-          s->l_x2);
-
-  /* Allocate and initialise array of particle group IDs. */
-  if(s->fof_data.group_index != NULL) free(s->fof_data.group_index);
-
-  if (posix_memalign((void **)&s->fof_data.group_index, 32, nr_gparts * sizeof(size_t)) != 0)
-    error("Failed to allocate list of particle group indices for FOF search.");
-
-  /* Initial group ID is particle offset into array. */
-  for (size_t i = 0; i < nr_gparts; i++) s->fof_data.group_index[i] = i;
-  
-  group_index = s->fof_data.group_index;
-  
-  message("Rank: %d, Allocated group_index array of size %zu", engine_rank, s->nr_gparts);
-
-  /* Allocate and initialise a group size array. */
-  if (posix_memalign((void **)&group_size, 32, nr_gparts * sizeof(size_t)) != 0)
-    error("Failed to allocate list of group size for FOF search.");
-  
-  /* Allocate and initialise a group mass array. */
-  if (posix_memalign((void **)&group_mass, 32, nr_gparts * sizeof(double)) != 0)
-    error("Failed to allocate list of group masses for FOF search.");
-
-  bzero(group_size, nr_gparts * sizeof(size_t));
-  bzero(group_mass, nr_gparts * sizeof(double));
-
-  /* Loop over cells and find which cells are in range of each other to perform
-   * the FOF search. */
-  for (size_t cid = 0; cid < nr_cells; cid++) {
-
-    struct cell *restrict ci = &s->cells_top[cid];
-    
-    /* Only perform FOF search on local cells. */
-    if(ci->nodeID == engine_rank) {
-
-      /* Skip empty cells. */
-      if(ci->gcount == 0) continue;
-
-      /* Perform FOF search on local particles within the cell. */
-      rec_fof_search_self(ci, s, dim, search_r2);
-
-      /* Loop over all top-level cells skipping over the cells already searched.
-      */
-      for (size_t cjd = cid + 1; cjd < nr_cells; cjd++) {
-
-        struct cell *restrict cj = &s->cells_top[cjd];
-
-        /* Only perform FOF search on local cells. */
-        if(cj->nodeID == engine_rank) {
-          /* Skip empty cells. */
-          if(cj->gcount == 0) continue;
-
-          rec_fof_search_pair(ci, cj, s, dim, search_r2);
-        }
-      }
-    }   
-  }
-
-  /* Calculate the total number of particles in each group, group mass and the total number of groups. */
-  for (size_t i = 0; i < nr_gparts; i++) {
-    const size_t root = fof_find(i, group_index);
-    group_size[root]++;
-    group_mass[root] += gparts[i].mass;
-    if(group_index[i] == i) num_groups++;
-  }
-
-  //fof_dump_group_data("fof_output_tree_serial.dat", nr_gparts, group_index,
-  //                    group_size, group_id, group_mass, 1);
-
-  int num_parts_in_groups = 0;
-  size_t max_group_size = 0, max_group_index = 0, max_group_mass_id = 0;
-  double max_group_mass = 0;
-  for (size_t i = 0; i < nr_gparts; i++) {
-
-    /* Find the total number of particles in groups. */
-    if (group_size[i] > 1) num_parts_in_groups += group_size[i];
-
-    /* Find the largest group. */
-    if (group_size[i] > max_group_size) {
-      max_group_size = group_size[i];
-      max_group_index = i;
-    }
-    
-    /* Find the largest group by mass. */
-    if (group_mass[i] > max_group_mass) {
-      max_group_mass = group_mass[i];
-      max_group_mass_id = i;
-    }
-  }
-
-  message(
-      "No. of groups: %d. No. of particles in groups: %d. No. of particles not "
-      "in groups: %zu.",
-      num_groups, num_parts_in_groups, nr_gparts - num_parts_in_groups);
-  message("Biggest group size: %zu with ID: %zu", max_group_size, max_group_index);
-  message("Biggest group by mass: %e with ID: %zu", max_group_mass, max_group_mass_id);
-
-  free(group_size);
-  free(group_mass);
-  
-  message("Serial FOF search took: %.3f %s.",
-      clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
@@ -1097,9 +959,7 @@ void fof_search_foreign_cells(struct space *s) {
     size_t new_root = global_group_id[fof_find(global_group_index[i], global_group_index)];
     
     /* If the group is local update its root and size. */
-    /* TODO: create a is_local() inline function. */
-    if(group_id >= node_offset && group_id < node_offset + nr_gparts &&
-       new_root != group_id) {
+    if(is_local(group_id, nr_gparts) && new_root != group_id) {
         group_index[group_id - node_offset] = new_root;
         group_size[group_id - node_offset] -= global_group_size[i];
         group_mass[group_id - node_offset] -= global_group_mass[i];
@@ -1110,8 +970,7 @@ void fof_search_foreign_cells(struct space *s) {
     }
      
     /* If the group linked to a local root update its size. */
-    if(new_root >= node_offset && new_root < node_offset + nr_gparts &&
-       new_root != group_id) {
+    if(is_local(new_root, nr_gparts) && new_root != group_id) {
 
       /* Calculate the CoM of each distinct group. */
       double CoM_x_old = group_CoM[new_root - node_offset].x / group_mass[new_root - node_offset];
@@ -1172,7 +1031,7 @@ void fof_search_tree(struct space *s) {
   double max_group_mass = 0;
   ticks tic = getticks();
 
-  char output_file_name[FILENAME_BUFFER_SIZE], root_file_name[FILENAME_BUFFER_SIZE] = "root_final";
+  char output_file_name[FILENAME_BUFFER_SIZE];
   snprintf(output_file_name, FILENAME_BUFFER_SIZE, s->fof_data.base_name);
 
   message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
@@ -1205,6 +1064,10 @@ void fof_search_tree(struct space *s) {
     /* Clean up memory. */
     free(global_nr_gparts);
   }
+  
+  snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, "_mpi_rank_%d.dat", engine_rank);
+#else
+  snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, ".dat");
 #endif
 
   /* Allocate and initialise array of particle group IDs. */
@@ -1307,16 +1170,10 @@ void fof_search_tree(struct space *s) {
   }
 
 #ifdef WITH_MPI
-  snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, "_mpi_rank_%d.dat", engine_rank);
-  snprintf(root_file_name + strlen(root_file_name), FILENAME_BUFFER_SIZE, "_mpi_rank_%d.dat", engine_rank);
-  
   if (nr_nodes > 1) {
     /* Search for group links across MPI domains. */
     fof_search_foreign_cells(s);
   }  
-#else
-  snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, ".dat");
-  snprintf(root_file_name + strlen(root_file_name), FILENAME_BUFFER_SIZE, ".dat");
 #endif
  
   size_t num_groups_local = 0, num_parts_in_groups_local = 0, max_group_size_local = 0;
@@ -1445,14 +1302,6 @@ void fof_search_tree(struct space *s) {
   }
 #endif
 
-    FILE *root_file = fopen(root_file_name,"w");
-
-    for (size_t i = 0; i < nr_gparts; i++) {
-      fprintf(root_file, "%zu\n", gparts[i].group_id);
-    }
-
-    fclose(root_file);
-
   s->fof_data.num_groups = num_groups;
 
   /* Dump group data. */ 
@@ -1501,7 +1350,7 @@ void fof_dump_group_data(char *out_file, struct space *s, struct group_length *g
     
     const size_t group_offset = group_sizes[i].index;
       
-    if(group_offset >= node_offset && group_offset < node_offset + nr_gparts) {
+    if(is_local(group_offset, nr_gparts)) {
       
       /* Box wrap the CoM. */
       const double CoM_x = box_wrap(group_CoM[group_offset - node_offset].x, 0., dim[0]);
