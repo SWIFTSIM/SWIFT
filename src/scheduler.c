@@ -1309,12 +1309,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
           if (t->flags < 0) error("Negative flag value!");
 #endif
-	  cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+          cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
         } else {
 #ifdef SWIFT_DEBUG_CHECKS
           if (t->flags < 0) error("Negative flag value!");
 #endif
-	  cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+          cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
         }
         break;
 
