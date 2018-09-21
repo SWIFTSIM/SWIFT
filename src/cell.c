@@ -1232,7 +1232,8 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
           c->hydro.ti_old_part, ti_drift);
 
   for (int i = 0; i < c->hydro.count; ++i)
-    if (c->hydro.parts[i].ti_drift != ti_drift)
+    if (c->hydro.parts[i].ti_drift != ti_drift &&
+        c->parts[i].time_bin != time_bin_inhibited)
       error("part in an incorrect time-zone! p->ti_drift=%lld ti_drift=%lld",
             c->hydro.parts[i].ti_drift, ti_drift);
 #else
@@ -1265,12 +1266,14 @@ void cell_check_gpart_drift_point(struct cell *c, void *data) {
         c->grav.ti_old_part, ti_drift);
 
   for (int i = 0; i < c->grav.count; ++i)
-    if (c->grav.parts[i].ti_drift != ti_drift)
+    if (c->grav.parts[i].ti_drift != ti_drift &&
+        c->gparts[i].time_bin != time_bin_inhibited)
       error("g-part in an incorrect time-zone! gp->ti_drift=%lld ti_drift=%lld",
             c->grav.parts[i].ti_drift, ti_drift);
 
   for (int i = 0; i < c->stars.count; ++i)
-    if (c->stars.parts[i].ti_drift != ti_drift)
+    if (c->stars.parts[i].ti_drift != ti_drift &&
+        c->sparts[i].time_bin != time_bin_inhibited)
       error("s-part in an incorrect time-zone! sp->ti_drift=%lld ti_drift=%lld",
             c->stars.parts[i].ti_drift, ti_drift);
 #else
