@@ -1933,7 +1933,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next starting point for this cell ? */
         ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
 
-      } else { /* stars particle is inactive */
+        /* star particle is inactive but not inhibited */
+      } else if (!spart_is_inhibited(sp, e)) {
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, sp->time_bin);
