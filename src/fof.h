@@ -31,10 +31,10 @@
 struct fof_mpi {
   
   /* The local particle's root ID.*/
-  int group_i;
+  size_t group_i;
 
   /* The local group's size.*/
-  int group_i_size;
+  size_t group_i_size;
 
   /* The local group's mass.*/
   double group_i_mass;
@@ -43,14 +43,14 @@ struct fof_mpi {
   struct fof_CoM group_i_CoM;
   
   /* The foreign particle's root ID.*/
-  int group_j;
+  size_t group_j;
 
 } SWIFT_STRUCT_ALIGN; 
 
 /* Store group size and offset into array. */
 struct group_length {
 
-  int index, size;
+  size_t index, size;
 
 } SWIFT_STRUCT_ALIGN;
 
