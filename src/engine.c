@@ -4408,6 +4408,17 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   /* Construct the list of purely local cells */
   space_list_local_cells(e->s);
 
+  /* Update the global counters of particles */
+  long long num_particles[3] = {e->s->nr_parts, e->s->nr_gparts,
+                                e->s->nr_sparts};
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, num_particles, 3, MPI_LONG_LONG, MPI_SUM,
+                MPI_COMM_WORLD);
+#endif
+  e->total_nr_parts = num_particles[0];
+  e->total_nr_gparts = num_particles[1];
+  e->total_nr_sparts = num_particles[2];
+
   /* Re-compute the mesh forces */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
