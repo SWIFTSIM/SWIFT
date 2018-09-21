@@ -639,7 +639,7 @@ void space_rebuild(struct space *s, int verbose) {
     }
   }
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
-    if (cells_top[ind[k]].nodeID == local_nodeID) {
+    if (ind[k] != -1 && cells_top[ind[k]].nodeID == local_nodeID) {
       error("Failed to remove local parts from send list");
     }
   }
@@ -674,7 +674,7 @@ void space_rebuild(struct space *s, int verbose) {
     }
   }
   for (size_t k = nr_sparts; k < s->nr_sparts; k++) {
-    if (cells_top[sind[k]].nodeID == local_nodeID) {
+    if (sind[k] != -1 && cells_top[sind[k]].nodeID == local_nodeID) {
       error("Failed to remove local sparts from send list");
     }
   }
@@ -715,7 +715,7 @@ void space_rebuild(struct space *s, int verbose) {
     }
   }
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
-    if (cells_top[gind[k]].nodeID == local_nodeID) {
+    if (gind[k] != -1 && cells_top[gind[k]].nodeID == local_nodeID) {
       error("Failed to remove local gparts from send list");
     }
   }
