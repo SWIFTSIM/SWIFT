@@ -42,10 +42,14 @@
 #include <mpi.h>
 /* METIS/ParMETIS headers only used when MPI is also available. */
 #ifdef HAVE_PARMETIS
+#define __STDC_LIMIT_MACROS
 #include <parmetis.h>
+#include <stdint.h>
 #endif
 #ifdef HAVE_METIS
+#define __STDC_LIMIT_MACROS
 #include <metis.h>
+#include <stdint.h>
 #endif
 #endif
 
@@ -290,8 +294,8 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
 struct indexval {
   int index;
   int count;
-  int old;
-  int new;
+  int old_val;
+  int new_val;
 };
 static int indexvalcmp(const void *p1, const void *p2) {
   const struct indexval *iv1 = (const struct indexval *)p1;
@@ -329,8 +333,8 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
     int index = newlist[k] + nregions * oldlist[k];
     ivs[index].count++;
     ivs[index].index = index;
-    ivs[index].old = oldlist[k];
-    ivs[index].new = newlist[k];
+    ivs[index].old_val = oldlist[k];
+    ivs[index].new_val = newlist[k];
   }
   qsort(ivs, indmax, sizeof(struct indexval), indexvalcmp);
 
@@ -340,7 +344,7 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
   int *oldmap = NULL;
   int *newmap = NULL;
   oldmap = permlist; /* Reuse this */
-  if ((newmap = malloc(sizeof(int) * nregions)) == NULL)
+  if ((newmap = (int *)malloc(sizeof(int) * nregions)) == NULL)
     error("Failed to allocate newmap array");
 
   for (int k = 0; k < nregions; k++) {
@@ -354,9 +358,9 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
     if (ivs[k].count == 0) break;
 
     /* Store old and new IDs, if not already used. */
-    if (newmap[ivs[k].new] == -1 && oldmap[ivs[k].old] == -1) {
-      newmap[ivs[k].new] = ivs[k].old;
-      oldmap[ivs[k].old] = ivs[k].new;
+    if (newmap[ivs[k].new_val] == -1 && oldmap[ivs[k].old_val] == -1) {
+      newmap[ivs[k].new_val] = ivs[k].old_val;
+      oldmap[ivs[k].old_val] = ivs[k].new_val;
     }
   }
 
