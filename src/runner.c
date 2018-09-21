@@ -2012,6 +2012,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   const int periodic = s->periodic;
@@ -2041,11 +2042,17 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       if (part_is_active(p, e)) {
 
         /* Finish the force loop */
         hydro_end_force(p, cosmo);
+
+        if (p->rho > 1.5e7 && e->step > 2) {
+          message("Removing particle id=%lld rho=%e", p->id, p->rho);
+          cell_remove_part(e, c, p, xp);
+        }
       }
     }
 
