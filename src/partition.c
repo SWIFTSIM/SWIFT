@@ -37,19 +37,19 @@
 #include <stdlib.h>
 #include <strings.h>
 
+/* Include int min and max values. Define these limits in C++ as well. */
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
+
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
 /* METIS/ParMETIS headers only used when MPI is also available. */
 #ifdef HAVE_PARMETIS
-#define __STDC_LIMIT_MACROS
 #include <parmetis.h>
-#include <stdint.h>
 #endif
 #ifdef HAVE_METIS
-#define __STDC_LIMIT_MACROS
 #include <metis.h>
-#include <stdint.h>
 #endif
 #endif
 
