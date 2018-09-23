@@ -2715,9 +2715,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
-      if (fabsf(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
-          fabsf(xp->v_full[1] * dt_drift) > e->s->dim[1] ||
-          fabsf(xp->v_full[2] * dt_drift) > e->s->dim[2]) {
+      if (fabs(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
+          fabs(xp->v_full[1] * dt_drift) > e->s->dim[1] ||
+          fabs(xp->v_full[2] * dt_drift) > e->s->dim[2]) {
         error("Particle drifts by more than a box length!");
       }
 #endif
@@ -2854,6 +2854,15 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       /* Drift... */
       drift_gpart(gp, dt_drift, ti_old_gpart, ti_current);
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure the particle does not drift by more than a box length. */
+      if (fabs(gp->v_full[0] * dt_drift) > e->s->dim[0] ||
+          fabs(gp->v_full[1] * dt_drift) > e->s->dim[1] ||
+          fabs(gp->v_full[2] * dt_drift) > e->s->dim[2]) {
+        error("Particle drifts by more than a box length!");
+      }
+#endif
+
 #ifdef PLANETARY_SPH
       /* Remove particles that cross the non-periodic box edge */
       if (!(e->s->periodic)) {
@@ -2889,6 +2898,15 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_spart(sp, dt_drift, ti_old_gpart, ti_current);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure the particle does not drift by more than a box length. */
+      if (fabs(sp->v[0] * dt_drift) > e->s->dim[0] ||
+          fabs(sp->v[1] * dt_drift) > e->s->dim[1] ||
+          fabs(sp->v[2] * dt_drift) > e->s->dim[2]) {
+        error("Particle drifts by more than a box length!");
+      }
+#endif
 
       /* Note: no need to compute dx_max as all spart have a gpart */
     }
