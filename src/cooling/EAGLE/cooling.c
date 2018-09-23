@@ -181,9 +181,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
   /* Update the internal energy time derivative */
 
-  // hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt +
-  // cooling_du_dt);
-  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt);
+  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt + cooling_du_dt);
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy +=
