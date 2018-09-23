@@ -80,6 +80,7 @@ intrinsic.])], [rtc_ok=no])
 
 /***************************************************************************/
 
+#include <stdint.h>
 #if TIME_WITH_SYS_TIME
 #include <sys/time.h>
 #include <time.h>
@@ -531,7 +532,7 @@ INLINE_ELAPSED(inline)
 #endif
 
 #if defined(__aarch64__) && defined(HAVE_ARMV8_CNTVCT_EL0) && \
-    !defined(HAVE_ARMV8_PMCCNTR_EL0)
+    !defined(HAVE_ARMV8_PMCCNTR_EL0) && !defined(HAAVE_TICK_COUNTER)
 typedef uint64_t ticks;
 static inline ticks getticks(void) {
   uint64_t Rt;
