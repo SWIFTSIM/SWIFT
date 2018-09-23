@@ -36,7 +36,7 @@ fileName = "coolingBox.hdf5"
 #---------------------------------------------------
 
 # Read id, position and h from glass
-glass = h5py.File("glassCube_16.hdf5", "r")
+glass = h5py.File("glassCube_32.hdf5", "r")
 ids = glass["/PartType0/ParticleIDs"][:]
 pos = glass["/PartType0/Coordinates"][:,:] * boxSize
 h = glass["/PartType0/SmoothingLength"][:] * boxSize
