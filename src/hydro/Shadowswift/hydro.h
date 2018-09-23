@@ -283,22 +283,24 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 }
 
 /**
- * @brief Prepare a particle for the gradient calculation.
+ * @brief Prepare a particle for the force calculation.
  *
- * The name of this method is confusing, as this method is really called after
- * the density loop and before the gradient loop.
+ * This function is called in the ghost task to convert some quantities coming
+ * from the density loop over neighbours into quantities ready to be used in the
+ * force loop over neighbours. Quantities are typically read from the density
+ * sub-structure and written to the force sub-structure.
+ * Examples of calculations done here include the calculation of viscosity term
+ * constants, thermal conduction terms, hydro conversions, etc.
  *
- * We use it to set the physical timestep for the particle and to copy the
- * actual velocities, which we need to boost our interfaces during the flux
- * calculation. We also initialize the variables used for the time step
- * calculation.
- *
- * @param p The particle to act upon.
- * @param xp The extended particle data to act upon.
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ * @param cosmo The current cosmological model.
+ * @param dt_alpha The time-step used to evolve non-cosmological quantities such
+ *                 as the artificial viscosity.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo) {
+    const struct cosmology* cosmo, const float dt_alpha) {
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.0f;
@@ -411,7 +413,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param xp The extended particle data to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p, struct xpart* xp, const struct cosmology* cosmo) {}
+    struct part* p, struct xpart* xp, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props) {}
 
 /**
  * @brief Extra operations to be done during the drift

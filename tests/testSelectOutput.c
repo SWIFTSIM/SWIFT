@@ -44,7 +44,6 @@ void select_output_engine_init(struct engine *e, struct space *s,
   e->time = 0;
   e->snapshot_output_count = 0;
   e->snapshot_compression = 0;
-  e->snapshot_label_delta = 1;
 };
 
 void select_output_space_init(struct space *s, double *dim, int periodic,

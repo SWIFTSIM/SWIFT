@@ -888,20 +888,6 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         break;
       }
 
-      /* Should we replace it with an M-M task? */
-      if (cell_can_use_pair_mm_rebuild(ci, cj, e, sp)) {
-
-        t->type = task_type_grav_mm;
-        t->subtype = task_subtype_none;
-
-        /* Since this task will not be split, we can already link it */
-        atomic_inc(&ci->nr_mm_tasks);
-        atomic_inc(&cj->nr_mm_tasks);
-        engine_addlink(e, &ci->grav_mm, t);
-        engine_addlink(e, &cj->grav_mm, t);
-        break;
-      }
-
       /* Should this task be split-up? */
       if (cell_can_split_pair_gravity_task(ci) &&
           cell_can_split_pair_gravity_task(cj)) {
@@ -910,41 +896,58 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         const long long gcount_j = cj->gcount;
 
         /* Replace by a single sub-task? */
-        if (scheduler_dosub && /* Use division to avoid integer overflow. */
+        if (scheduler_dosub &&
             gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
 
           /* Otherwise, split it. */
         } else {
 
-          /* Take a step back (we're going to recycle the current task)... */
-          redo = 1;
-
-          /* Find the first non-empty childrens of the cells */
-          int first_ci_child = 0, first_cj_child = 0;
-          while (ci->progeny[first_ci_child] == NULL) first_ci_child++;
-          while (cj->progeny[first_cj_child] == NULL) first_cj_child++;
-
-          /* Recycle the current pair */
-          t->ci = ci->progeny[first_ci_child];
-          t->cj = cj->progeny[first_cj_child];
+          /* Turn the task into a M-M task that will take care of all the
+           * progeny pairs */
+          t->type = task_type_grav_mm;
+          t->subtype = task_subtype_none;
+          t->flags = 0;
 
           /* Make a task for every other pair of progeny */
-          for (int i = first_ci_child; i < 8; i++) {
+          for (int i = 0; i < 8; i++) {
             if (ci->progeny[i] != NULL) {
-              for (int j = first_cj_child; j < 8; j++) {
+              for (int j = 0; j < 8; j++) {
                 if (cj->progeny[j] != NULL) {
 
-                  /* Skip the recycled pair */
-                  if (i == first_ci_child && j == first_cj_child) continue;
+                  /* Can we use a M-M interaction here? */
+                  if (cell_can_use_pair_mm_rebuild(ci->progeny[i],
+                                                   cj->progeny[j], e, sp)) {
 
-                  scheduler_splittask_gravity(
-                      scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
-                                        ci->progeny[i], cj->progeny[j]),
-                      s);
+                    /* Flag this pair as being treated by the M-M task.
+                     * We use the 64 bits in the task->flags field to store
+                     * this information. The corresponding taks will unpack
+                     * the information and operate according to the choices
+                     * made here. */
+                    const int flag = i * 8 + j;
+                    t->flags |= (1LL << flag);
+
+                  } else {
+
+                    /* Ok, we actually have to create a task */
+                    scheduler_splittask_gravity(
+                        scheduler_addtask(s, task_type_pair, task_subtype_grav,
+                                          0, 0, ci->progeny[i], cj->progeny[j]),
+                        s);
+                  }
                 }
               }
             }
           }
+
+          /* Can none of the progenies use M-M calculations? */
+          if (t->flags == 0) {
+            t->type = task_type_none;
+            t->subtype = task_subtype_none;
+            t->ci = NULL;
+            t->cj = NULL;
+            t->skip = 1;
+          }
+
         } /* Split the pair */
       }
     } /* pair interaction? */
@@ -1262,10 +1265,16 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
   for (int k = nr_tasks - 1; k >= 0; k--) {
     struct task *t = &tasks[tid[k]];
     t->weight = 0.f;
+#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
+    t->cost = 0.f;
+#endif
     for (int j = 0; j < t->nr_unlock_tasks; j++)
       if (t->unlock_tasks[j]->weight > t->weight)
         t->weight = t->unlock_tasks[j]->weight;
     float cost = 0.f;
+#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
+    int partcost = 1;
+#endif
 
     const float count_i = (t->ci != NULL) ? t->ci->count : 0.f;
     const float count_j = (t->cj != NULL) ? t->cj->count : 0.f;
@@ -1303,15 +1312,15 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
       case task_type_sub_pair:
         if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
-          if (t->flags < 0)
-            cost = 3.f * (wscale * count_i) * count_j;
-          else
-            cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+#ifdef SWIFT_DEBUG_CHECKS
+          if (t->flags < 0) error("Negative flag value!");
+#endif
+          cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
         } else {
-          if (t->flags < 0)
-            cost = 2.f * (wscale * count_i) * count_j;
-          else
-            cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+#ifdef SWIFT_DEBUG_CHECKS
+          if (t->flags < 0) error("Negative flag value!");
+#endif
+          cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
         }
         break;
 
@@ -1355,12 +1364,18 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * count_i + wscale * gcount_i;
         break;
       case task_type_send:
+#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
+        partcost = 0;
+#endif
         if (count_i < 1e5)
           cost = 10.f * (wscale * count_i) * count_i;
         else
           cost = 2e9;
         break;
       case task_type_recv:
+#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
+        partcost = 0;
+#endif
         if (count_i < 1e5)
           cost = 5.f * (wscale * count_i) * count_i;
         else
@@ -1371,8 +1386,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
     }
 
-#if defined(WITH_MPI) && defined(HAVE_METIS)
-    t->cost = cost;
+#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
+    if (partcost) t->cost = cost;
 #endif
     t->weight += cost;
   }

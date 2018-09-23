@@ -267,10 +267,17 @@ void space_regrid(struct space *s, int verbose) {
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
   if (nr_parts > 0) {
-    if (s->cells_top != NULL) {
+    if (s->local_cells_top != NULL) {
+      for (int k = 0; k < s->nr_local_cells; ++k) {
+        const struct cell *c = &s->cells_top[s->local_cells_top[k]];
+        if (c->h_max > h_max) {
+          h_max = s->cells_top[k].h_max;
+        }
+      }
+    } else if (s->cells_top != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
-        if (s->cells_top[k].nodeID == engine_rank &&
-            s->cells_top[k].h_max > h_max) {
+        const struct cell *c = &s->cells_top[k];
+        if (c->nodeID == engine_rank && c->h_max > h_max) {
           h_max = s->cells_top[k].h_max;
         }
       }
@@ -477,7 +484,7 @@ void space_regrid(struct space *s, int verbose) {
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");
         struct partition initial_partition;
-#ifdef HAVE_METIS
+#if defined(HAVE_PARMETIS) || defined(HAVE_METIS)
         initial_partition.type = INITPART_METIS_NOWEIGHT;
 #else
         initial_partition.type = INITPART_VECTORIZE;
@@ -2463,7 +2470,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
   const struct hydro_props *hydro_props = s->e->hydro_properties;
   const float u_init = hydro_props->initial_internal_energy;
-  const float u_min = hydro_props->minimal_internal_energy;
 
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct cooling_function_data *cool_func = e->cooling_func;
@@ -2492,7 +2498,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
     /* Overwrite the internal energy? */
     if (u_init > 0.f) hydro_set_init_internal_energy(&p[k], u_init);
-    if (u_min > 0.f) hydro_set_init_internal_energy(&p[k], u_min);
 
     /* Also initialise the chemistry */
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
@@ -2707,12 +2712,13 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
                                      void *restrict extra_data) {
   struct space *s = (struct space *)extra_data;
   const struct cosmology *cosmo = s->e->cosmology;
+  const struct hydro_props *hydro_props = s->e->hydro_properties;
   struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
 
   for (int k = 0; k < count; k++)
-    hydro_convert_quantities(&parts[k], &xparts[k], cosmo);
+    hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
 }
 
 /**
@@ -3091,6 +3097,19 @@ void space_replicate(struct space *s, int replicate, int verbose) {
 #endif
 }
 
+/**
+ * @brief Duplicate all the dark matter particles to create the same number
+ * of gas particles with mass ratios given by the cosmology.
+ *
+ * Note that this function alters the dark matter particle masses and positions.
+ * Velocities are unchanged. We also leave the thermodynamic properties of the
+ * gas un-initialised as they will be given a value from the parameter file at a
+ * later stage.
+ *
+ * @param s The #space to create the particles in.
+ * @param cosmo The current #cosmology model.
+ * @param verbose Are we talkative?
+ */
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         int verbose) {
 
@@ -3185,6 +3204,8 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
     /* Set the smoothing length to the mean inter-particle separation */
     p->h = 30. * d;
+
+    /* Note that the thermodynamic properties (u, S, ...) will be set later */
   }
 
   /* Replace the content of the space */

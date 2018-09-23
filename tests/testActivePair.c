@@ -219,7 +219,7 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo) {
 #endif /* PRESSURE-ENERGY */
 
     /* And prepare for a round of force tasks. */
-    hydro_prepare_force(p, xp, cosmo);
+    hydro_prepare_force(p, xp, cosmo, 0.);
     hydro_reset_acceleration(p);
   }
 }

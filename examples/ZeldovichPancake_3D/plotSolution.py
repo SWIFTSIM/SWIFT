@@ -83,7 +83,12 @@ S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 rho = sim["/PartType0/Density"][:]
 m = sim["/PartType0/Masses"][:]
-phi = sim["/PartType0/Potential"][:]
+try:
+    phi = sim["/PartType0/Potential"][:]
+except KeyError:
+    # We didn't write the potential, try to go on without
+    print("Couldn't find potential in your output file")
+    phi = np.zeros_like(m)
 
 x -= 0.5 * boxSize
 
@@ -97,7 +102,7 @@ if os.path.exists(filename_g):
     rho_g = sim_g["/PartType0/Density"][:]
     phi_g = sim_g["/PartType0/Potential"][:]
     a_g = sim_g["/Header"].attrs["Time"]
-    print "Gadget Scale-factor:", a_g, "redshift:", 1/a_g - 1.
+    print("Gadget Scale-factor:", a_g, "redshift:", 1/a_g - 1.)
     
     x_g -= 0.5 * boxSize
 else:
@@ -168,7 +173,7 @@ u /= a**(3 * (gas_gamma - 1.))
 u_g /= a**(3 * (gas_gamma - 1.))
 T = (gas_gamma - 1.) * u * mH_in_kg / k_in_J_K
 T_g = (gas_gamma - 1.) * u_g * mH_in_kg / k_in_J_K
-print "z = {0:.2f}, T_avg = {1:.2f}".format(redshift, T.mean())
+print("z = {0:.2f}, T_avg = {1:.2f}".format(redshift, T.mean()))
 if np.size(x_g) > 1:
     plot(x_g, T_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, T, '.', color='r', ms=4.0)

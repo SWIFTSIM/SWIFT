@@ -2018,33 +2018,6 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 }
 
 /**
- * @brief Drift the multipoles that will be used in a M-M task.
- *
- * @param ci The first #cell we update.
- * @param cj The second #cell we update.
- * @param s The task #scheduler.
- */
-void cell_activate_grav_mm_task(struct cell *ci, struct cell *cj,
-                                struct scheduler *s) {
-  /* Some constants */
-  const struct engine *e = s->space->e;
-
-  /* Anything to do here? */
-  if (!cell_is_active_gravity_mm(ci, e) && !cell_is_active_gravity_mm(cj, e))
-    error("Inactive MM task being activated");
-
-  /* Atomically drift the multipole in ci */
-  lock_lock(&ci->mlock);
-  if (ci->ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
-  if (lock_unlock(&ci->mlock) != 0) error("Impossible to unlock m-pole");
-
-  /* Atomically drift the multipole in cj */
-  lock_lock(&cj->mlock);
-  if (cj->ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
-  if (lock_unlock(&cj->mlock) != 0) error("Impossible to unlock m-pole");
-}
-
-/**
  * @brief Traverse a sub-cell task and activate the gravity drift tasks that
  * are required by a self gravity task.
  *
@@ -2490,7 +2463,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
     const int ci_active = cell_is_active_gravity_mm(ci, e);
-    const int cj_active = (cj != NULL) ? cell_is_active_gravity_mm(cj, e) : 0;
+    const int cj_active = cell_is_active_gravity_mm(cj, e);
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -2508,9 +2481,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         (cj_active && cj_nodeID == nodeID)) {
 
       scheduler_activate(s, t);
-
-      /* Drift the multipoles */
-      cell_activate_grav_mm_task(ci, cj, s);
     }
   }
 
@@ -3066,6 +3036,9 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
 /**
  * @brief Can we use the MM interactions fo a given pair of cells?
  *
+ * This function uses the information gathered in the multipole at rebuild
+ * time and not the current position and radius of the multipole.
+ *
  * @param ci The first #cell.
  * @param cj The second #cell.
  * @param e The #engine.
@@ -3085,32 +3058,32 @@ int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-  if (multi_i->CoM[0] < ci->loc[0] ||
-      multi_i->CoM[0] > ci->loc[0] + ci->width[0])
+  if (multi_i->CoM_rebuild[0] < ci->loc[0] ||
+      multi_i->CoM_rebuild[0] > ci->loc[0] + ci->width[0])
     error("Invalid multipole position ci");
-  if (multi_i->CoM[1] < ci->loc[1] ||
-      multi_i->CoM[1] > ci->loc[1] + ci->width[1])
+  if (multi_i->CoM_rebuild[1] < ci->loc[1] ||
+      multi_i->CoM_rebuild[1] > ci->loc[1] + ci->width[1])
     error("Invalid multipole position ci");
-  if (multi_i->CoM[2] < ci->loc[2] ||
-      multi_i->CoM[2] > ci->loc[2] + ci->width[2])
+  if (multi_i->CoM_rebuild[2] < ci->loc[2] ||
+      multi_i->CoM_rebuild[2] > ci->loc[2] + ci->width[2])
     error("Invalid multipole position ci");
 
-  if (multi_j->CoM[0] < cj->loc[0] ||
-      multi_j->CoM[0] > cj->loc[0] + cj->width[0])
+  if (multi_j->CoM_rebuild[0] < cj->loc[0] ||
+      multi_j->CoM_rebuild[0] > cj->loc[0] + cj->width[0])
     error("Invalid multipole position cj");
-  if (multi_j->CoM[1] < cj->loc[1] ||
-      multi_j->CoM[1] > cj->loc[1] + cj->width[1])
+  if (multi_j->CoM_rebuild[1] < cj->loc[1] ||
+      multi_j->CoM_rebuild[1] > cj->loc[1] + cj->width[1])
     error("Invalid multipole position cj");
-  if (multi_j->CoM[2] < cj->loc[2] ||
-      multi_j->CoM[2] > cj->loc[2] + cj->width[2])
+  if (multi_j->CoM_rebuild[2] < cj->loc[2] ||
+      multi_j->CoM_rebuild[2] > cj->loc[2] + cj->width[2])
     error("Invalid multipole position cj");
 
 #endif
 
   /* Get the distance between the CoMs */
-  double dx = multi_i->CoM[0] - multi_j->CoM[0];
-  double dy = multi_i->CoM[1] - multi_j->CoM[1];
-  double dz = multi_i->CoM[2] - multi_j->CoM[2];
+  double dx = multi_i->CoM_rebuild[0] - multi_j->CoM_rebuild[0];
+  double dy = multi_i->CoM_rebuild[1] - multi_j->CoM_rebuild[1];
+  double dz = multi_i->CoM_rebuild[2] - multi_j->CoM_rebuild[2];
 
   /* Apply BC */
   if (periodic) {
@@ -3120,5 +3093,6 @@ int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
   }
   const double r2 = dx * dx + dy * dy + dz * dz;
 
-  return gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2);
+  return gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
+                            theta_crit2, r2);
 }

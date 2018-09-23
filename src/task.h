@@ -128,6 +128,9 @@ struct task {
   /*! List of tasks unlocked by this one */
   struct task **unlock_tasks;
 
+  /*! Flags used to carry additional information (e.g. sort directions) */
+  long long flags;
+
 #ifdef WITH_MPI
 
   /*! Buffer for this task's communications */
@@ -138,16 +141,13 @@ struct task {
 
 #endif
 
-  /*! Flags used to carry additional information (e.g. sort directions) */
-  int flags;
-
   /*! Rank of a task in the order */
   int rank;
 
   /*! Weight of the task */
   float weight;
 
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /*! Individual cost estimate for this task. */
   float cost;
 #endif

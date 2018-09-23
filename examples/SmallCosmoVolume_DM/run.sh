@@ -8,7 +8,5 @@ then
 fi
 
 # Run SWIFT
-../swift -c -s -G -t 8 small_cosmo_volume.yml 2>&1 | tee output.log
+../swift -c -G -t 8 small_cosmo_volume_dm.yml 2>&1 | tee output.log
 
-# Plot the temperature evolution
-python plotTempEvolution.py

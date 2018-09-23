@@ -596,9 +596,10 @@ void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
  * @param mesh The #pm_mesh to initialise.
  * @param props The propoerties of the gravity scheme.
  * @param dim The (comoving) side-lengths of the simulation volume.
+ * @param nr_threads The number of threads on this MPI rank.
  */
 void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
-                  double dim[3]) {
+                  double dim[3], int nr_threads) {
 
 #ifdef HAVE_FFTW
 
@@ -608,6 +609,7 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   const int N = props->mesh_size;
   const double box_size = dim[0];
 
+  mesh->nr_threads = nr_threads;
   mesh->periodic = 1;
   mesh->N = N;
   mesh->dim[0] = dim[0];
@@ -621,6 +623,14 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
 
   if (2. * mesh->r_cut_max > box_size)
     error("Mesh too small or r_cut_max too big for this box size");
+
+#ifdef HAVE_THREADED_FFTW
+  /* Initialise the thread-parallel FFTW version */
+  if (N >= 64) {
+    fftw_init_threads();
+    fftw_plan_with_nthreads(nr_threads);
+  }
+#endif
 
   /* Allocate the memory for the combined density and potential array */
   mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
@@ -660,6 +670,10 @@ void pm_mesh_init_no_mesh(struct pm_mesh* mesh, double dim[3]) {
  */
 void pm_mesh_clean(struct pm_mesh* mesh) {
 
+#ifdef HAVE_THREADED_FFTW
+  fftw_cleanup_threads();
+#endif
+
   if (mesh->potential) free(mesh->potential);
   mesh->potential = 0;
 }
@@ -686,15 +700,26 @@ void pm_mesh_struct_restore(struct pm_mesh* mesh, FILE* stream) {
 
   restart_read_blocks((void*)mesh, sizeof(struct pm_mesh), 1, stream, NULL,
                       "gravity props");
+
+  if (mesh->periodic) {
+
 #ifdef HAVE_FFTW
-  const int N = mesh->N;
+    const int N = mesh->N;
 
-  /* Allocate the memory for the combined density and potential array */
-  mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
-  if (mesh->potential == NULL)
-    error("Error allocating memory for the long-range gravity mesh.");
-
-#else
-  error("No FFTW library found. Cannot compute periodic long-range forces.");
+#ifdef HAVE_THREADED_FFTW
+    /* Initialise the thread-parallel FFTW version */
+    if (N >= 64) {
+      fftw_init_threads();
+      fftw_plan_with_nthreads(mesh->nr_threads);
+    }
 #endif
+
+    /* Allocate the memory for the combined density and potential array */
+    mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
+    if (mesh->potential == NULL)
+      error("Error allocating memory for the long-range gravity mesh.");
+#else
+    error("No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
+  }
 }

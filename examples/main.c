@@ -527,12 +527,20 @@ int main(int argc, char *argv[]) {
 
   /* Let's report what we did */
   if (myrank == 0) {
-    message("Using initial partition %s",
+#if defined(HAVE_PARMETIS)
+    if (reparttype.usemetis)
+      message("Using METIS serial partitioning:");
+    else
+      message("Using ParMETIS partitioning:");
+#else
+    message("Using METIS serial partitioning:");
+#endif
+    message("  initial partitioning: %s",
             initial_partition_name[initial_partition.type]);
     if (initial_partition.type == INITPART_GRID)
-      message("grid set to [ %i %i %i ].", initial_partition.grid[0],
+      message("    grid set to [ %i %i %i ].", initial_partition.grid[0],
               initial_partition.grid[1], initial_partition.grid[2]);
-    message("Using %s repartitioning", repartition_name[reparttype.type]);
+    message("  repartitioning: %s", repartition_name[reparttype.type]);
   }
 #endif
 
@@ -793,7 +801,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the long-range gravity mesh */
     if (with_self_gravity && periodic) {
 #ifdef HAVE_FFTW
-      pm_mesh_init(&mesh, &gravity_properties, s.dim);
+      pm_mesh_init(&mesh, &gravity_properties, s.dim, nr_threads);
 #else
       /* Need the FFTW library if periodic and self gravity. */
       error(
@@ -1051,7 +1059,7 @@ int main(int argc, char *argv[]) {
             if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
               fprintf(
                   file_thread,
-                  " %03i %i %i %i %i %lli %lli %i %i %i %i %i %i\n", myrank,
+                  " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n", myrank,
                   e.sched.tasks[l].rid, e.sched.tasks[l].type,
                   e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
                   e.sched.tasks[l].tic, e.sched.tasks[l].toc,
