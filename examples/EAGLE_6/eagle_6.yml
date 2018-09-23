@@ -87,23 +87,3 @@ EAGLEChemistry:
 EagleCooling:
   filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/
   reionisation_redshift:   8.898
-
-#Cosmology:
-#  Omega_m:        0.307
-#  Omega_lambda:   0.693
-#  Omega_b:        0.0455
-#  h:              0.6777
-#  #a_begin:        0.0078125
-#  a_begin:        1.0
-#  #a_begin:        0.5
-#  a_end:          1.0
-
-# Cosmological parameters
-Cosmology:
-  h:              0.6777        # Reduced Hubble constant
-  a_begin:        0.9090909     # Initial scale-factor of the simulation
-  a_end:          1.0           # Final scale factor of the simulation
-  Omega_m:        0.307         # Matter density parameter
-  Omega_lambda:   0.693         # Dark-energy density parameter
-  Omega_b:        0.0455        # Baryon density parameter
-
