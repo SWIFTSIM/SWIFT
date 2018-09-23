@@ -56,10 +56,10 @@
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
  */
-inline void cooling_update(const struct phys_const* phys_const,
-                           const struct unit_system* us,
-                           const struct cosmology* cosmo,
-                           struct cooling_function_data* cooling) {
+INLINE static void cooling_update(const struct phys_const* phys_const,
+                                  const struct unit_system* us,
+                                  const struct cosmology* cosmo,
+                                  struct cooling_function_data* cooling) {
   // Add content if required.
 }
 
