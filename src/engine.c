@@ -3137,8 +3137,8 @@ struct cell_type_pair {
   int type;
 };
 
-void engine_addtasks_send_hydro_mapper(void *map_data, int num_elements,
-                                       void *extra_data) {
+void engine_addtasks_send_mapper(void *map_data, int num_elements,
+                                 void *extra_data) {
   struct engine *e = (struct engine *)extra_data;
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
@@ -3152,15 +3152,40 @@ void engine_addtasks_send_hydro_mapper(void *map_data, int num_elements,
 
     /* Add the send tasks for the cells in the proxy that have a hydro
      * connection. */
-    if (e->policy & engine_policy_hydro && (type & proxy_cell_type_hydro))
+    if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
       engine_addtasks_send_hydro(e, ci, cj, /*t_xv=*/NULL,
                                  /*t_rho=*/NULL, /*t_gradient=*/NULL);
 
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
-    if (e->policy & engine_policy_self_gravity &&
+    if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
       engine_addtasks_send_gravity(e, ci, cj, NULL);
+  }
+}
+
+void engine_addtasks_recv_mapper(void *map_data, int num_elements,
+                                 void *extra_data) {
+  struct engine *e = (struct engine *)extra_data;
+  struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    struct cell *ci = cell_type_pairs[k].ci;
+    const int type = cell_type_pairs[k].type;
+
+    /* Add the recv task for the particle timesteps. */
+    engine_addtasks_recv_timestep(e, ci, NULL);
+
+    /* Add the recv tasks for the cells in the proxy that have a hydro
+     * connection. */
+    if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
+      engine_addtasks_recv_hydro(e, ci, NULL, NULL, NULL);
+
+    /* Add the recv tasks for the cells in the proxy that have a gravity
+     * connection. */
+    if ((e->policy & engine_policy_self_gravity) &&
+        (type & proxy_cell_type_gravity))
+      engine_addtasks_recv_gravity(e, ci, NULL);
   }
 }
 
@@ -3337,7 +3362,7 @@ void engine_maketasks(struct engine *e) {
         send_cell_type_pairs[num_send_cells++].type = p->cells_out_type[k];
       }
     }
-    threadpool_map(&e->threadpool, engine_addtasks_send_hydro_mapper,
+    threadpool_map(&e->threadpool, engine_addtasks_send_mapper,
                    send_cell_type_pairs, num_send_cells,
                    sizeof(struct cell_type_pair),
                    /*chunk=*/0, e);
@@ -3360,29 +3385,26 @@ void engine_maketasks(struct engine *e) {
 
     /* Loop over the proxies and add the recv tasks, which relies on having the
      * cell tags. */
+    int max_num_recv_cells = 0;
+    for (int pid = 0; pid < e->nr_proxies; pid++)
+      max_num_recv_cells += e->proxies[pid].nr_cells_in;
+    struct cell_type_pair *recv_cell_type_pairs = NULL;
+    if ((recv_cell_type_pairs = (struct cell_type_pair *)malloc(
+             sizeof(struct cell_type_pair) * max_num_recv_cells)) == NULL)
+      error("Failed to allocate temporary cell pointer list.");
+    int num_recv_cells = 0;
     for (int pid = 0; pid < e->nr_proxies; pid++) {
-
-      /* Get a handle on the proxy. */
       struct proxy *p = &e->proxies[pid];
-
-      for (int k = 0; k < p->nr_cells_in; k++)
-        engine_addtasks_recv_timestep(e, p->cells_in[k], NULL);
-
-      /* Loop through the proxy's incoming cells and add the
-         recv tasks for the cells in the proxy that have a hydro connection. */
-      if (e->policy & engine_policy_hydro)
-        for (int k = 0; k < p->nr_cells_in; k++)
-          if (p->cells_in_type[k] & proxy_cell_type_hydro)
-            engine_addtasks_recv_hydro(e, p->cells_in[k], NULL, NULL, NULL);
-
-      /* Loop through the proxy's incoming cells and add the
-         recv tasks for the cells in the proxy that have a gravity connection.
-         */
-      if (e->policy & engine_policy_self_gravity)
-        for (int k = 0; k < p->nr_cells_in; k++)
-          if (p->cells_in_type[k] & proxy_cell_type_gravity)
-            engine_addtasks_recv_gravity(e, p->cells_in[k], NULL);
+      for (int k = 0; k < p->nr_cells_in; k++) {
+        recv_cell_type_pairs[num_recv_cells].ci = p->cells_in[k];
+        recv_cell_type_pairs[num_recv_cells++].type = p->cells_in_type[k];
+      }
     }
+    threadpool_map(&e->threadpool, engine_addtasks_recv_mapper,
+                   recv_cell_type_pairs, num_recv_cells,
+                   sizeof(struct cell_type_pair),
+                   /*chunk=*/0, e);
+    free(recv_cell_type_pairs);
 
     if (e->verbose)
       message("Creating recv tasks took %.3f %s.",
