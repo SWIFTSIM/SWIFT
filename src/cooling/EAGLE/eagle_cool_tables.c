@@ -35,10 +35,9 @@
 #include "interpolate.h"
 
 /* Names of the elements in the order they are stored in the files */
-static const char* eagle_tables_element_names[9] = {
+static const char *eagle_tables_element_names[9] = {
     "Carbon",  "Nitrogen", "Oxygen",  "Neon", "Magnesium",
     "Silicon", "Sulphur",  "Calcium", "Iron"};
-
 
 /*
  * @brief Constructs the data structure containting the relevant cooling tables
@@ -51,7 +50,7 @@ struct cooling_tables eagle_readtable(
 
   struct cooling_tables table;
   if (cooling->z_index < 0) {
-    // z_index is set to < 0 in cooling_update if need 
+    // z_index is set to < 0 in cooling_update if need
     // to read any of the high redshift tables
     table = get_redshift_invariant_table(cooling);
   } else {
@@ -93,7 +92,7 @@ void GetCoolingRedshifts(struct cooling_function_data *cooling) {
 
   int i = 0;
 
-  char buffer[500], redfilename[500];
+  char buffer[500], redfilename[516];
 
   sprintf(redfilename, "%s/redshifts.dat", cooling->cooling_table_path);
   infile = fopen(redfilename, "r");
@@ -213,10 +212,10 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
 }
 
 /*
- * @brief Get the redshift invariant table of cooling rates (before reionization at
- * redshift ~9) Reads in table of cooling rates and electron abundances due to
- * metals (depending on temperature, hydrogen number density), cooling rates and
- * electron abundances due to hydrogen and helium (depending on temperature,
+ * @brief Get the redshift invariant table of cooling rates (before reionization
+ * at redshift ~9) Reads in table of cooling rates and electron abundances due
+ * to metals (depending on temperature, hydrogen number density), cooling rates
+ * and electron abundances due to hydrogen and helium (depending on temperature,
  * hydrogen number density and helium fraction), and temperatures (depending on
  * internal energy, hydrogen number density and helium fraction; note: this is
  * distinct from table of temperatures read in ReadCoolingHeader, as that table
@@ -225,7 +224,6 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
  *
  * @param cooling Cooling data structure
  */
-
 struct cooling_tables get_redshift_invariant_table(
     struct cooling_function_data *restrict cooling) {
 #ifdef HAVE_HDF5
@@ -235,7 +233,7 @@ struct cooling_tables get_redshift_invariant_table(
 
   herr_t status;
 
-  char fname[500], set_name[500];
+  char fname[521], set_name[500];
 
   int specs, i, j, k, table_index, cooling_index;
 
@@ -291,8 +289,7 @@ struct cooling_tables get_redshift_invariant_table(
       for (k = 0; k < cooling->N_nH; k++) {
         table_index = row_major_index_2d(j, k, cooling->N_Temp, cooling->N_nH);
         cooling_index = row_major_index_3d(
-            k, j, specs, cooling->N_nH, cooling->N_Temp,
-            cooling->N_Elements);  
+            k, j, specs, cooling->N_nH, cooling->N_Temp, cooling->N_Elements);
         cooling_table.metal_heating[cooling_index] =
             -net_cooling_rate[table_index];
       }
@@ -324,9 +321,8 @@ struct cooling_tables get_redshift_invariant_table(
       for (k = 0; k < cooling->N_nH; k++) {
         table_index = row_major_index_3d(i, j, k, cooling->N_He,
                                          cooling->N_Temp, cooling->N_nH);
-        cooling_index =
-            row_major_index_3d(k, i, j, cooling->N_nH, cooling->N_He,
-                               cooling->N_Temp);  
+        cooling_index = row_major_index_3d(k, i, j, cooling->N_nH,
+                                           cooling->N_He, cooling->N_Temp);
         cooling_table.H_plus_He_heating[cooling_index] =
             -he_net_cooling_rate[table_index];
         cooling_table.H_plus_He_electron_abundance[cooling_index] =
@@ -347,8 +343,7 @@ struct cooling_tables get_redshift_invariant_table(
   for (i = 0; i < cooling->N_Temp; i++) {
     for (j = 0; j < cooling->N_nH; j++) {
       table_index = row_major_index_2d(i, j, cooling->N_Temp, cooling->N_nH);
-      cooling_index =
-          row_major_index_2d(j, i, cooling->N_nH, cooling->N_Temp);
+      cooling_index = row_major_index_2d(j, i, cooling->N_nH, cooling->N_Temp);
       cooling_table.electron_abundance[cooling_index] =
           electron_abundance[table_index];
     }
@@ -395,7 +390,7 @@ struct cooling_tables get_cooling_table(
 
   herr_t status;
 
-  char fname[500], set_name[500];
+  char fname[1024], set_name[500];
 
   int specs, i, j, k, table_index, cooling_index;
 
@@ -420,22 +415,20 @@ struct cooling_tables get_cooling_table(
 
   // allocate arrays that the values will be assigned to
   cooling_table.metal_heating =
-      (float *)malloc(2 * cooling->N_Elements *
-                      cooling->N_Temp * cooling->N_nH * sizeof(float));
-  cooling_table.electron_abundance = (float *)malloc(
-      2 * cooling->N_Temp * cooling->N_nH * sizeof(float));
-  cooling_table.temperature =
-      (float *)malloc(2 * cooling->N_He * cooling->N_Temp *
+      (float *)malloc(2 * cooling->N_Elements * cooling->N_Temp *
                       cooling->N_nH * sizeof(float));
-  cooling_table.H_plus_He_heating =
-      (float *)malloc(2 * cooling->N_He * cooling->N_Temp *
-                      cooling->N_nH * sizeof(float));
-  cooling_table.H_plus_He_electron_abundance =
-      (float *)malloc(2 * cooling->N_He * cooling->N_Temp *
-                      cooling->N_nH * sizeof(float));
+  cooling_table.electron_abundance =
+      (float *)malloc(2 * cooling->N_Temp * cooling->N_nH * sizeof(float));
+  cooling_table.temperature = (float *)malloc(
+      2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float));
+  cooling_table.H_plus_He_heating = (float *)malloc(
+      2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float));
+  cooling_table.H_plus_He_electron_abundance = (float *)malloc(
+      2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float));
 
   // repeat for each redshift
-  for (int z_index = cooling->low_z_index; z_index <= cooling->high_z_index; z_index++) {
+  for (int z_index = cooling->low_z_index; z_index <= cooling->high_z_index;
+       z_index++) {
     sprintf(fname, "%sz_%1.3f.hdf5", cooling->cooling_table_path,
             cooling->Redshifts[z_index]);
     file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -514,8 +507,8 @@ struct cooling_tables get_cooling_table(
     for (i = 0; i < cooling->N_Temp; i++) {
       for (j = 0; j < cooling->N_nH; j++) {
         table_index = row_major_index_2d(i, j, cooling->N_Temp, cooling->N_nH);
-        cooling_index = row_major_index_3d(z_index - cooling->low_z_index, j, i, 2,
-                                           cooling->N_nH, cooling->N_Temp);
+        cooling_index = row_major_index_3d(z_index - cooling->low_z_index, j, i,
+                                           2, cooling->N_nH, cooling->N_Temp);
         cooling_table.electron_abundance[cooling_index] =
             electron_abundance[table_index];
       }

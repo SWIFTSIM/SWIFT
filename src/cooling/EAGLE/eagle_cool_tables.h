@@ -32,21 +32,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cooling_struct.h"
-#include "interpolate.h"
 #include "error.h"
+#include "interpolate.h"
 
 void GetCoolingRedshifts(struct cooling_function_data *);
 
 void ReadCoolingHeader(char *, struct cooling_function_data *);
 
 struct cooling_tables get_redshift_invariant_table(
-  struct cooling_function_data *restrict);
-
-struct cooling_tables get_cooling_table(
     struct cooling_function_data *restrict);
 
-struct cooling_tables eagle_readtable(
-    struct cooling_function_data *restrict);
+struct cooling_tables get_cooling_table(struct cooling_function_data *restrict);
+
+struct cooling_tables eagle_readtable(struct cooling_function_data *restrict);
 
 void eagle_check_cooling_tables(struct cooling_function_data *restrict, int);
 
