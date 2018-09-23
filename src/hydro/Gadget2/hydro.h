@@ -204,34 +204,36 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 }
 
 /**
- * @brief Returns the time derivative of internal energy of a particle
+ * @brief Returns the time derivative of the comoving internal energy of a
+ * particle
  *
  * We assume a constant density.
  *
  * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static float hydro_get_internal_energy_dt(
-    const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float
+hydro_get_comoving_internal_energy_dt(const struct part *restrict p) {
 
   return gas_internal_energy_from_entropy(p->rho, p->entropy_dt);
 }
 
 /**
- * @brief Returns the time derivative of internal energy of a particle
+ * @brief Set the time derivative of the comoving internal energy of a particle
  *
  * We assume a constant density.
  *
  * @param p The particle of interest.
  * @param du_dt The new time derivative of the internal energy.
  */
-__attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
-    struct part *restrict p, float du_dt) {
+__attribute__((always_inline)) INLINE static void
+hydro_set_comoving_internal_energy_dt(struct part *restrict p, float du_dt) {
 
   p->entropy_dt = gas_entropy_from_internal_energy(p->rho, du_dt);
 }
 
 /**
- * @brief Returns the time derivative of internal energy of a particle
+ * @brief Returns the time derivative of the physical internal energy of a
+ * particle
  *
  * We assume a constant density.
  *
@@ -246,7 +248,7 @@ hydro_get_physical_internal_energy_dt(const struct part *restrict p,
 }
 
 /**
- * @brief Sets the time derivative of entropy of a particle
+ * @brief Sets the time derivative of the physical internal energy of a particle
  *
  * We assume a constant density.
  *
