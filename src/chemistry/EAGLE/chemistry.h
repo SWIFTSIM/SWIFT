@@ -180,7 +180,7 @@ chemistry_get_number_density(const struct part* restrict p,
                              enum chemistry_element elem,
                              const struct phys_const* restrict internal_const) {
   double number_density;
-  int atomic_number;
+  int atomic_number = 0;
   switch (elem) {
     case chemistry_element_H:
       atomic_number = 1;
@@ -210,6 +210,9 @@ chemistry_get_number_density(const struct part* restrict p,
       atomic_number = 56;
       break;
     default:
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Invalid element");
+#endif
       break;
   }
   double element_mass = internal_const->const_proton_mass * atomic_number;
