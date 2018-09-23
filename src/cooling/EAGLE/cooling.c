@@ -772,6 +772,9 @@ __attribute__((always_inline)) INLINE float cooling_timestep(
  * @brief Sets the cooling properties of the (x-)particles to a valid start
  * state.
  *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  * @param cooling The properties of the cooling function.
