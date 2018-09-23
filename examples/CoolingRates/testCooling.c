@@ -24,9 +24,9 @@
 #include "physical_constants.h"
 #include "swift.h"
 #include "units.h"
-  
+
 /*
- * @brief Assign particle density and entropy corresponding to the 
+ * @brief Assign particle density and entropy corresponding to the
  * hydrogen number density and internal energy specified.
  *
  * @param p Particle data structure
@@ -36,31 +36,36 @@
  * @param nh Hydrogen number density (cgs units)
  * @param u Internal energy (cgs units)
  */
-void set_quantities(struct part *restrict p, 
+void set_quantities(struct part *restrict p,
                     const struct unit_system *restrict us,
-		    const struct cooling_function_data *restrict cooling,
-		    const struct cosmology *restrict cosmo,
-		    const struct phys_const *restrict internal_const,
-		    float nh,
-		    double u){
-     
-  const float gamma = 5.0/3.0;
-  float scale_factor = 1.0/(1.0+cosmo->z);
-  double hydrogen_number_density = nh*pow(units_cgs_conversion_factor(us,UNIT_CONV_LENGTH),3);
-  p->rho = hydrogen_number_density*internal_const->const_proton_mass/p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+                    const struct cooling_function_data *restrict cooling,
+                    const struct cosmology *restrict cosmo,
+                    const struct phys_const *restrict internal_const, float nh,
+                    double u) {
 
-  float pressure = (u*pow(scale_factor,2))/cooling->internal_energy_scale*p->rho*(gamma -1.0); 
-  p->entropy = pressure/(pow(p->rho,gamma));
+  const float gamma = 5.0 / 3.0;
+  float scale_factor = 1.0 / (1.0 + cosmo->z);
+  double hydrogen_number_density =
+      nh * pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3);
+  p->rho = hydrogen_number_density * internal_const->const_proton_mass /
+           p->chemistry_data.metal_mass_fraction[chemistry_element_H];
 
-  // Using hydro_set_init_internal_energy seems to work better for higher z for setting the internal energy correctly
-  // However, with Gadget2 this just sets the entropy to the internal energy, which needs to be converted somehow
-  if(cosmo->z >= 1) hydro_set_init_internal_energy(p,(u*pow(scale_factor,2))/cooling->internal_energy_scale);
+  float pressure = (u * pow(scale_factor, 2)) / cooling->internal_energy_scale *
+                   p->rho * (gamma - 1.0);
+  p->entropy = pressure / (pow(p->rho, gamma));
+
+  // Using hydro_set_init_internal_energy seems to work better for higher z for
+  // setting the internal energy correctly However, with Gadget2 this just sets
+  // the entropy to the internal energy, which needs to be converted somehow
+  if (cosmo->z >= 1)
+    hydro_set_init_internal_energy(
+        p, (u * pow(scale_factor, 2)) / cooling->internal_energy_scale);
 }
 
 /*
- * @brief Produces contributions to cooling rates for different 
- * hydrogen number densities, from different metals, 
- * tests 1d and 4d table interpolations produce 
+ * @brief Produces contributions to cooling rates for different
+ * hydrogen number densities, from different metals,
+ * tests 1d and 4d table interpolations produce
  * same results for cooling rate, dlambda/du and temperature.
  */
 int main(int argc, char **argv) {
@@ -75,47 +80,48 @@ int main(int argc, char **argv) {
   struct cosmology cosmo;
   char *parametersFileName = "./testCooling.yml";
 
-  float nh; // hydrogen number density
-  double u; // internal energy
-  const int npts = 250; // number of values for the internal energy at which cooling rate is evaluated
+  float nh;              // hydrogen number density
+  double u;              // internal energy
+  const int npts = 250;  // number of values for the internal energy at which
+                         // cooling rate is evaluated
 
   // Read options
   int param;
-  float redshift = -1.0, log_10_nh = 100; // unreasonable values will be changed if not set in options
-  while ((param = getopt(argc, argv, "z:d:t")) != -1)
-  switch(param){
-    case 'z':
-      // read redshift
-      redshift = atof(optarg);
-      break;
-    case 'd':
-      // read log10 of hydrogen number density
-      log_10_nh = atof(optarg);
-      break;
-    case '?':
-      if (optopt == 'z')
-        printf ("Option -%c requires an argument.\n", optopt);
-      else
-        printf ("Unknown option character `\\x%x'.\n",
-                 optopt);
-      error("invalid option(s) to testCooling");
-  }
+  float redshift = -1.0,
+        log_10_nh =
+            100;  // unreasonable values will be changed if not set in options
+  while ((param = getopt(argc, argv, "z:d:t")) != -1) switch (param) {
+      case 'z':
+        // read redshift
+        redshift = atof(optarg);
+        break;
+      case 'd':
+        // read log10 of hydrogen number density
+        log_10_nh = atof(optarg);
+        break;
+      case '?':
+        if (optopt == 'z')
+          printf("Option -%c requires an argument.\n", optopt);
+        else
+          printf("Unknown option character `\\x%x'.\n", optopt);
+        error("invalid option(s) to testCooling");
+    }
 
   // Read the parameter file
   if (params == NULL) error("Error allocating memory for the parameter file.");
   message("Reading runtime parameters from file '%s'", parametersFileName);
   parser_read_file(parametersFileName, params);
 
-  // Init units 
+  // Init units
   units_init_from_params(&us, params, "InternalUnitSystem");
   phys_const_init(&us, params, &internal_const);
 
-  // Init chemistry 
+  // Init chemistry
   chemistry_init(params, &us, &internal_const, &chem_data);
   chemistry_first_init_part(&internal_const, &us, &cosmo, &chem_data, &p, &xp);
   chemistry_print(&chem_data);
 
-  // Init cosmology 
+  // Init cosmology
   cosmology_init(params, &us, &internal_const, &cosmo);
   cosmology_print(&cosmo);
   if (redshift == -1.0) {
@@ -124,22 +130,23 @@ int main(int argc, char **argv) {
     cosmo.z = redshift;
   }
 
-  // Init cooling 
+  // Init cooling
   cooling_init(params, &us, &internal_const, &cooling);
   cooling_print(&cooling);
-  cooling_update(&internal_const,&us,&cosmo,&cooling);
+  cooling_update(&internal_const, &us, &cosmo, &cooling);
 
-  // Calculate abundance ratios 
+  // Calculate abundance ratios
   float *abundance_ratio;
-  abundance_ratio = malloc((chemistry_element_count + 2)*sizeof(float));
+  abundance_ratio = malloc((chemistry_element_count + 2) * sizeof(float));
   abundance_ratio_to_solar(&p, &cooling, abundance_ratio);
-  
-  // extract mass fractions, calculate table indices and offsets 
+
+  // extract mass fractions, calculate table indices and offsets
   float XH = p.chemistry_data.metal_mass_fraction[chemistry_element_H];
-  float HeFrac = p.chemistry_data.metal_mass_fraction[chemistry_element_He] /
-                 (XH + p.chemistry_data.metal_mass_fraction[chemistry_element_He]);
-  int z_index,He_i,n_h_i;
-  float dz,d_He,d_n_h;
+  float HeFrac =
+      p.chemistry_data.metal_mass_fraction[chemistry_element_He] /
+      (XH + p.chemistry_data.metal_mass_fraction[chemistry_element_He]);
+  int z_index = -1, He_i, n_h_i;
+  float dz = 0.f, d_He, d_n_h;
   get_redshift_index(cosmo.z, &z_index, &dz, &cooling);
   cooling.z_index = z_index;
   cooling.dz = dz;
@@ -159,29 +166,31 @@ int main(int argc, char **argv) {
     // hydrogen number density not specified in options
     nh = 1.0e-1;
   } else {
-    nh = pow(10.0,log_10_nh);
+    nh = pow(10.0, log_10_nh);
   }
 
-  // set internal energy to dummy value, will get reset when looping over internal energies
+  // set internal energy to dummy value, will get reset when looping over
+  // internal energies
   u = 1.0e14;
   set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, u);
   float inn_h = chemistry_get_number_density(&p, &cosmo, chemistry_element_H,
-                                           &internal_const) *
-              cooling.number_density_scale;
+                                             &internal_const) *
+                cooling.number_density_scale;
   get_index_1d(cooling.nH, cooling.N_nH, log10(inn_h), &n_h_i, &d_n_h);
 
   // Loop over internal energy
-  for(int j = 0; j < npts; j++){
-    set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, pow(10.0,10.0 + j*8.0/npts));
-    u = hydro_get_physical_internal_energy(&p,&cosmo)*cooling.internal_energy_scale;
+  for (int j = 0; j < npts; j++) {
+    set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh,
+                   pow(10.0, 10.0 + j * 8.0 / npts));
+    u = hydro_get_physical_internal_energy(&p, &cosmo) *
+        cooling.internal_energy_scale;
     float cooling_du_dt;
 
     // calculate cooling rates
     cooling_du_dt = eagle_print_metal_cooling_rate(
-    		      n_h_i, d_n_h, He_i, d_He,
-       	              &p,&cooling,&cosmo,&internal_const,
-       	              abundance_ratio);
-    fprintf(output_file,"%.5e %.5e\n", u,cooling_du_dt);
+        n_h_i, d_n_h, He_i, d_He, &p, &cooling, &cosmo, &internal_const,
+        abundance_ratio);
+    fprintf(output_file, "%.5e %.5e\n", u, cooling_du_dt);
   }
   fclose(output_file);
   message("done cooling rates test");
@@ -189,5 +198,3 @@ int main(int argc, char **argv) {
   free(params);
   return 0;
 }
-
-

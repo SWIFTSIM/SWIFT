@@ -45,10 +45,10 @@
 #include "physical_constants.h"
 #include "units.h"
 
-// Used for identifying first call to get_redshift_index and previous redshift index
-//static int z_index_initialised = 0;
-//static int previous_z_index = -1;
-
+// Used for identifying first call to get_redshift_index and previous redshift
+// index
+// static int z_index_initialised = 0;
+// static int previous_z_index = -1;
 
 /**
  * @brief Returns the 1d index of element with 2d indices i,j
@@ -104,7 +104,8 @@ __attribute__((always_inline)) INLINE int row_major_index_4d(int i, int j,
 __attribute__((always_inline)) INLINE void get_index_1d(float *table,
                                                         int ntable, double x,
                                                         int *i, float *dx) {
-  // Used for deciding whether to use table endpoints when finding index of a variable
+  // Used for deciding whether to use table endpoints when finding index of a
+  // variable
   const float table_bound_tolerance = 1.e-4;
 
   float dxm1 = (float)(ntable - 1) / (table[ntable - 1] - table[0]);
@@ -121,7 +122,11 @@ __attribute__((always_inline)) INLINE void get_index_1d(float *table,
     // x inside table range, interpolate
     *i = (int)floor(((float)x - table[0]) * dxm1);
 #ifdef SWIFT_DEBUG_CHECKS
-    if (*i > ntable || *i < 0) error("trying to get index for value outside table range. Table size: %d, calculated index: %d, value: %.5e, table[0]: %.5e, grid size: %.5e", ntable, *i, x, table[0], dxm1);
+    if (*i > ntable || *i < 0)
+      error(
+          "trying to get index for value outside table range. Table size: %d, "
+          "calculated index: %d, value: %.5e, table[0]: %.5e, grid size: %.5e",
+          ntable, *i, x, table[0], dxm1);
 #endif
     *dx = ((float)x - table[*i]) * dxm1;
   }
@@ -144,7 +149,7 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
     float z, int *z_index, float *dz,
     struct cooling_function_data *restrict cooling) {
   int i, iz;
-  
+
   if (cooling->z_index_initialised == 0) {
     cooling->z_index_initialised = 1;
     cooling->previous_z_index = cooling->N_Redshifts - 2;
@@ -190,7 +195,7 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
 
 /*
  * @brief Performs 2d interpolation of table based on indices
- * and offsets. Also computes values of table directly above and 
+ * and offsets. Also computes values of table directly above and
  * below in second dimension by setting dy = 0,1 (used for
  * computing derivatives for Newton's method)
  *
@@ -203,11 +208,9 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
  * @param lower Pointer to value set to the table value
  * when dy = 0 (used for calculating derivatives)
  */
-__attribute__((always_inline)) INLINE float interpolate_2d(const float *table, int i,
-                                                        int j, float dx,
-                                                        float dy, int nx,
-                                                        int ny, double *upper,
-                                                        double *lower) {
+__attribute__((always_inline)) INLINE float interpolate_2d(
+    const float *table, int i, int j, float dx, float dy, int nx, int ny,
+    double *upper, double *lower) {
   float result;
 
   const float table0 = table[row_major_index_2d(i, j, nx, ny)];
@@ -215,24 +218,21 @@ __attribute__((always_inline)) INLINE float interpolate_2d(const float *table, i
   const float table2 = table[row_major_index_2d(i + 1, j, nx, ny)];
   const float table3 = table[row_major_index_2d(i + 1, j + 1, nx, ny)];
 
-  result = (1 - dx) * (1 - dy) * table0 +
-           (1 - dx) * dy * table1 + dx * (1 - dy) * table2 +
-           dx * dy * table3;
+  result = (1 - dx) * (1 - dy) * table0 + (1 - dx) * dy * table1 +
+           dx * (1 - dy) * table2 + dx * dy * table3;
   dy = 1.0;
-  *upper = (1 - dx) * (1 - dy) * table0 +
-           (1 - dx) * dy * table1 + dx * (1 - dy) * table2 +
-           dx * dy * table3;
+  *upper = (1 - dx) * (1 - dy) * table0 + (1 - dx) * dy * table1 +
+           dx * (1 - dy) * table2 + dx * dy * table3;
   dy = 0.0;
-  *lower = (1 - dx) * (1 - dy) * table0 +
-           (1 - dx) * dy * table1 + dx * (1 - dy) * table2 +
-           dx * dy * table3;
+  *lower = (1 - dx) * (1 - dy) * table0 + (1 - dx) * dy * table1 +
+           dx * (1 - dy) * table2 + dx * dy * table3;
 
   return result;
 }
 
 /*
  * @brief Performs 3d interpolation of table based on indices
- * and offsets. Also computes values of table directly above and 
+ * and offsets. Also computes values of table directly above and
  * below in third dimension by setting dz = 0,1 (used for
  * computing derivatives for Newton's method)
  *
@@ -246,8 +246,8 @@ __attribute__((always_inline)) INLINE float interpolate_2d(const float *table, i
  * the when dz = 0 (used for calculating derivatives)
  */
 __attribute__((always_inline)) INLINE float interpolate_3d(
-    const float *table, int i, int j, int k, float dx, float dy, float dz, int nx,
-    int ny, int nz, double *upper, double *lower) {
+    const float *table, int i, int j, int k, float dx, float dy, float dz,
+    int nx, int ny, int nz, double *upper, double *lower) {
   float result;
 
   const float table0 = table[row_major_index_3d(i, j, k, nx, ny, nz)];
@@ -257,7 +257,8 @@ __attribute__((always_inline)) INLINE float interpolate_3d(
   const float table4 = table[row_major_index_3d(i + 1, j, k, nx, ny, nz)];
   const float table5 = table[row_major_index_3d(i + 1, j, k + 1, nx, ny, nz)];
   const float table6 = table[row_major_index_3d(i + 1, j + 1, k, nx, ny, nz)];
-  const float table7 = table[row_major_index_3d(i + 1, j + 1, k + 1, nx, ny, nz)];
+  const float table7 =
+      table[row_major_index_3d(i + 1, j + 1, k + 1, nx, ny, nz)];
 
   result = (1 - dx) * (1 - dy) * (1 - dz) * table0 +
            (1 - dx) * (1 - dy) * dz * table1 +
@@ -282,11 +283,11 @@ __attribute__((always_inline)) INLINE float interpolate_3d(
 
 /*
  * @brief Performs 4d interpolation of table based on indices
- * and offsets. Also computes values of table directly above and 
- * below in third or fourth dimension by setting dz,dw = 0,1 (which 
- * dimension this happens for depends on whether this function is 
- * used to interpolate one of the tables depending on metal species, 
- * and is identified by cooling_is_metal flag. These values are used 
+ * and offsets. Also computes values of table directly above and
+ * below in third or fourth dimension by setting dz,dw = 0,1 (which
+ * dimension this happens for depends on whether this function is
+ * used to interpolate one of the tables depending on metal species,
+ * and is identified by cooling_is_metal flag. These values are used
  * for computing derivatives for Newton's method)
  *
  * @param table Pointer to flattened 4d table of values
@@ -305,26 +306,42 @@ __attribute__((always_inline)) INLINE float interpolate_3d(
  * table for one of the metals set to 1, else 0.
  */
 __attribute__((always_inline)) INLINE float interpolate_4d(
-    const float *table, int i, int j, int k, int l, float dx, float dy, float dz,
-    float dw, int nx, int ny, int nz, int nw, double *upper, double *lower, const int cooling_is_metal) {
+    const float *table, int i, int j, int k, int l, float dx, float dy,
+    float dz, float dw, int nx, int ny, int nz, int nw, double *upper,
+    double *lower, const int cooling_is_metal) {
   float result;
 
-  const float table0  = table[row_major_index_4d(i, j, k, l, nx, ny, nz, nw)];
-  const float table1  = table[row_major_index_4d(i, j, k, l + 1, nx, ny, nz, nw)];
-  const float table2  = table[row_major_index_4d(i, j, k + 1, l, nx, ny, nz, nw)];
-  const float table3  = table[row_major_index_4d(i, j, k + 1, l + 1, nx, ny, nz, nw)];
-  const float table4  = table[row_major_index_4d(i, j + 1, k, l, nx, ny, nz, nw)];
-  const float table5  = table[row_major_index_4d(i, j + 1, k, l + 1, nx, ny, nz, nw)];
-  const float table6  = table[row_major_index_4d(i, j + 1, k + 1, l, nx, ny, nz, nw)];
-  const float table7  = table[row_major_index_4d(i, j + 1, k + 1, l + 1, nx, ny, nz, nw)];
-  const float table8  = table[row_major_index_4d(i + 1, j, k, l, nx, ny, nz, nw)];
-  const float table9  = table[row_major_index_4d(i + 1, j, k, l + 1, nx, ny, nz, nw)];
-  const float table10 = table[row_major_index_4d(i + 1, j, k + 1, l, nx, ny, nz, nw)];
-  const float table11 = table[row_major_index_4d(i + 1, j, k + 1, l + 1, nx, ny, nz, nw)];
-  const float table12 = table[row_major_index_4d(i + 1, j + 1, k, l, nx, ny, nz, nw)];
-  const float table13 = table[row_major_index_4d(i + 1, j + 1, k, l + 1, nx, ny, nz, nw)];
-  const float table14 = table[row_major_index_4d(i + 1, j + 1, k + 1, l, nx, ny, nz, nw)];
-  const float table15 = table[row_major_index_4d(i + 1, j + 1, k + 1, l + 1, nx, ny, nz, nw)];
+  const float table0 = table[row_major_index_4d(i, j, k, l, nx, ny, nz, nw)];
+  const float table1 =
+      table[row_major_index_4d(i, j, k, l + 1, nx, ny, nz, nw)];
+  const float table2 =
+      table[row_major_index_4d(i, j, k + 1, l, nx, ny, nz, nw)];
+  const float table3 =
+      table[row_major_index_4d(i, j, k + 1, l + 1, nx, ny, nz, nw)];
+  const float table4 =
+      table[row_major_index_4d(i, j + 1, k, l, nx, ny, nz, nw)];
+  const float table5 =
+      table[row_major_index_4d(i, j + 1, k, l + 1, nx, ny, nz, nw)];
+  const float table6 =
+      table[row_major_index_4d(i, j + 1, k + 1, l, nx, ny, nz, nw)];
+  const float table7 =
+      table[row_major_index_4d(i, j + 1, k + 1, l + 1, nx, ny, nz, nw)];
+  const float table8 =
+      table[row_major_index_4d(i + 1, j, k, l, nx, ny, nz, nw)];
+  const float table9 =
+      table[row_major_index_4d(i + 1, j, k, l + 1, nx, ny, nz, nw)];
+  const float table10 =
+      table[row_major_index_4d(i + 1, j, k + 1, l, nx, ny, nz, nw)];
+  const float table11 =
+      table[row_major_index_4d(i + 1, j, k + 1, l + 1, nx, ny, nz, nw)];
+  const float table12 =
+      table[row_major_index_4d(i + 1, j + 1, k, l, nx, ny, nz, nw)];
+  const float table13 =
+      table[row_major_index_4d(i + 1, j + 1, k, l + 1, nx, ny, nz, nw)];
+  const float table14 =
+      table[row_major_index_4d(i + 1, j + 1, k + 1, l, nx, ny, nz, nw)];
+  const float table15 =
+      table[row_major_index_4d(i + 1, j + 1, k + 1, l + 1, nx, ny, nz, nw)];
 
   result = (1 - dx) * (1 - dy) * (1 - dz) * (1 - dw) * table0 +
            (1 - dx) * (1 - dy) * (1 - dz) * dw * table1 +
@@ -404,9 +421,8 @@ __attribute__((always_inline)) INLINE float interpolate_4d(
  * @param cosmo Cosmology data structure
  */
 __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
-    double log_10_u, float *delta_u, int n_h_i, int He_i,
-    float d_n_h, float d_He,
-    const struct cooling_function_data *restrict cooling,
+    double log_10_u, float *delta_u, int n_h_i, int He_i, float d_n_h,
+    float d_He, const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo) {
 
   int u_i;
@@ -416,21 +432,21 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
   get_index_1d(cooling->Therm, cooling->N_Temp, log_10_u, &u_i, &d_u);
 
   if (cosmo->z > cooling->reionisation_redshift) {
-    logT = interpolate_3d(cooling->table.temperature,
-                       n_h_i, He_i, u_i, d_n_h, d_He, d_u, cooling->N_nH,
-                       cooling->N_He, cooling->N_Temp, &upper, &lower);
+    logT = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
+                          d_He, d_u, cooling->N_nH, cooling->N_He,
+                          cooling->N_Temp, &upper, &lower);
   } else if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-    logT = interpolate_3d(cooling->table.temperature, n_h_i,
-                       He_i, u_i, d_n_h, d_He, d_u, cooling->N_nH,
-                       cooling->N_He, cooling->N_Temp, &upper, &lower);
+    logT = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
+                          d_He, d_u, cooling->N_nH, cooling->N_He,
+                          cooling->N_Temp, &upper, &lower);
   } else {
-    logT = interpolate_4d(cooling->table.temperature, 0, n_h_i,
-                       He_i, u_i, cooling->dz, d_n_h, d_He, d_u, 2,
-                       cooling->N_nH, cooling->N_He, cooling->N_Temp, &upper,
-                       &lower,0);
+    logT = interpolate_4d(cooling->table.temperature, 0, n_h_i, He_i, u_i,
+                          cooling->dz, d_n_h, d_He, d_u, 2, cooling->N_nH,
+                          cooling->N_He, cooling->N_Temp, &upper, &lower, 0);
   }
 
-  *delta_u = exp(cooling->Therm[u_i + 1]*M_LN10) - exp(cooling->Therm[u_i]*M_LN10);
+  *delta_u =
+      exp(cooling->Therm[u_i + 1] * M_LN10) - exp(cooling->Therm[u_i] * M_LN10);
 
   return logT;
 }

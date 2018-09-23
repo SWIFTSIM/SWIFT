@@ -40,8 +40,8 @@
 /**
  * @brief Return a string containing the name of a given #chemistry_element.
  */
-__attribute__((always_inline)) INLINE static const char* chemistry_get_element_name(
-    enum chemistry_element elem) {
+__attribute__((always_inline)) INLINE static const char*
+chemistry_get_element_name(enum chemistry_element elem) {
 
   // static const char* chemistry_element_names[chemistry_element_count] = {
   const char* chemistry_element_names[chemistry_element_count] = {
