@@ -209,7 +209,17 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       c->end_force = scheduler_addtask(s, task_type_end_force,
                                        task_subtype_none, 0, 0, c, NULL);
 
-      if (!is_with_cooling) scheduler_addunlock(s, c->end_force, c->kick2);
+      if (is_with_cooling) {
+
+        c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
+                                       0, 0, c, NULL);
+
+        scheduler_addunlock(s, c->end_force, c->cooling);
+        scheduler_addunlock(s, c->cooling, c->kick2);
+
+      } else {
+        scheduler_addunlock(s, c->end_force, c->kick2);
+      }
       scheduler_addunlock(s, c->kick2, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
     }
@@ -239,7 +249,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
-  const int is_with_cooling = (e->policy & engine_policy_cooling);
   const int is_with_sourceterms = (e->policy & engine_policy_sourceterms);
 
   /* Are we in a super-cell ? */
@@ -270,15 +279,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
       c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
                                          task_subtype_none, 0, 0, c, NULL);
 #endif
-
-      /* Cooling task */
-      if (is_with_cooling) {
-        c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
-                                       0, 0, c, NULL);
-
-        scheduler_addunlock(s, c->super->end_force, c->cooling);
-        scheduler_addunlock(s, c->cooling, c->super->kick2);
-      }
 
       /* add source terms */
       if (is_with_sourceterms) {
@@ -3774,8 +3774,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Subgrid tasks */
-    else if (t_type == task_type_cooling || t_type == task_type_sourceterms) {
-      if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
+    else if (t_type == task_type_cooling) {
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
+        scheduler_activate(s, t);
     }
   }
 }
