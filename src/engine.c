@@ -3774,8 +3774,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Subgrid tasks */
-    else if (t_type == task_type_cooling || t_type == task_type_sourceterms) {
-      if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
+    else if (t_type == task_type_cooling) {
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
+        scheduler_activate(s, t);
     }
   }
 }
