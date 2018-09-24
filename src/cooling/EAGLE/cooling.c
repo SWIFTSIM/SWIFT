@@ -180,10 +180,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   }
 
   /* Update the internal energy time derivative */
-
-  // hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt +
-  // cooling_du_dt);
-  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt);
+  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt + cooling_du_dt);
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy +=
@@ -873,7 +870,9 @@ void cooling_init_backend(struct swift_params *parameter_file,
       compton_coefficient *
       units_general_cgs_conversion_factor(us, dimension_coefficient);
 #ifdef SWIFT_DEBUG_CHECKS
-  if (fabs(compton_coefficient_cgs - 1.0178085e-37) / 1.0178085e-37 > 0.01)
+  const double expected_compton_coefficient_cgs = 1.0178085e-37;
+  if (fabs(compton_coefficient_cgs - expected_compton_coefficient_cgs) / 
+      expected_compton_coefficient_cgs > 0.01)
     error("compton coefficient incorrect.");
 #endif
 
