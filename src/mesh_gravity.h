@@ -29,6 +29,7 @@
 /* Forward declarations */
 struct space;
 struct gpart;
+struct threadpool;
 
 /**
  * @brief Data structure for the long-range periodic forces using a mesh
@@ -37,6 +38,9 @@ struct pm_mesh {
 
   /*! Is the calculation using periodic BCs? */
   int periodic;
+
+  /*! The number of threads used by the FFTW library */
+  int nr_threads;
 
   /*! Side-length of the mesh */
   int N;
@@ -64,10 +68,10 @@ struct pm_mesh {
 };
 
 void pm_mesh_init(struct pm_mesh *mesh, const struct gravity_props *props,
-                  double dim[3]);
+                  double dim[3], int nr_threads);
 void pm_mesh_init_no_mesh(struct pm_mesh *mesh, double dim[3]);
 void pm_mesh_compute_potential(struct pm_mesh *mesh, const struct space *s,
-                               int verbose);
+                               struct threadpool *tp, int verbose);
 void pm_mesh_interpolate_forces(const struct pm_mesh *mesh,
                                 const struct engine *e, struct gpart *gparts,
                                 int gcount);

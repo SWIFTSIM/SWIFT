@@ -39,6 +39,7 @@
 
 /* Local headers. */
 #include "cell.h"
+#include "engine.h"
 #include "error.h"
 #include "space.h"
 
@@ -61,6 +62,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                          struct space *s) {
 
 #ifdef WITH_MPI
+
+  ticks tic2 = getticks();
 
   /* Run through the cells and get the size of the tags that will be sent off.
    */
@@ -99,6 +102,10 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     }
   }
 
+  if (s->e->verbose)
+    message("Cell pack tags took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
   /* Allocate the incoming and outgoing request handles. */
   int num_reqs_out = 0;
   int num_reqs_in = 0;
@@ -106,8 +113,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     num_reqs_in += proxies[k].nr_cells_in;
     num_reqs_out += proxies[k].nr_cells_out;
   }
-  MPI_Request *reqs_in;
-  int *cids_in;
+  MPI_Request *reqs_in = NULL;
+  int *cids_in = NULL;
   if ((reqs_in = (MPI_Request *)malloc(sizeof(MPI_Request) *
                                        (num_reqs_in + num_reqs_out))) == NULL ||
       (cids_in = (int *)malloc(sizeof(int) * (num_reqs_in + num_reqs_out))) ==
@@ -138,6 +145,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     }
   }
 
+  tic2 = getticks();
+
   /* Wait for each recv and unpack the tags into the local cells. */
   for (int k = 0; k < num_reqs_in; k++) {
     int pid = MPI_UNDEFINED;
@@ -148,6 +157,10 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     const int cid = cids_in[pid];
     cell_unpack_tags(&tags_in[offset_in[cid]], &s->cells_top[cid]);
   }
+
+  if (s->e->verbose)
+    message("Cell unpack tags took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Wait for all the sends to have completed. */
   if (MPI_Waitall(num_reqs_out, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
@@ -277,6 +290,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   MPI_Request *reqs_in = reqs;
   MPI_Request *reqs_out = &reqs[num_proxies];
 
+  ticks tic2 = getticks();
+
   /* Run through the cells and get the size of the ones that will be sent off.
    */
   int count_out = 0;
@@ -288,11 +303,17 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
           (s->cells_top[k].pcell_size = cell_getsize(&s->cells_top[k]));
   }
 
+  if (s->e->verbose)
+    message("Counting cells to send took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
   /* Allocate the pcells. */
   struct pcell *pcells = NULL;
   if (posix_memalign((void **)&pcells, SWIFT_CACHE_ALIGNMENT,
                      sizeof(struct pcell) * count_out) != 0)
     error("Failed to allocate pcell buffer.");
+
+  tic2 = getticks();
 
   /* Pack the cells. */
   for (int k = 0; k < s->nr_cells; k++)
@@ -300,6 +321,10 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
       cell_pack(&s->cells_top[k], &pcells[offset[k]], with_gravity);
       s->cells_top[k].pcell = &pcells[offset[k]];
     }
+
+  if (s->e->verbose)
+    message("Packing cells took %.3f %s.", clocks_from_ticks(getticks() - tic2),
+            clocks_getunit());
 
   /* Launch the first part of the exchange. */
   for (int k = 0; k < num_proxies; k++) {
@@ -329,6 +354,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     reqs_out[k] = proxies[k].req_cells_out;
   }
 
+  tic2 = getticks();
+
   /* Wait for each pcell array to come in from the proxies. */
   for (int k = 0; k < num_proxies; k++) {
     int pid = MPI_UNDEFINED;
@@ -341,6 +368,10 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
       count += cell_unpack(&proxies[pid].pcells_in[count],
                            proxies[pid].cells_in[j], s, with_gravity);
   }
+
+  if (s->e->verbose)
+    message("Un-packing cells took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Wait for all the sends to have finished too. */
   if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)

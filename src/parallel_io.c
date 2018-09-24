@@ -931,13 +931,12 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
 
   /* HDF5 File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  if (e->snapshot_label_delta == 1)
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->snapshot_output_count + e->snapshot_label_first);
-  else
+  if (e->snapshot_int_time_label_on)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
-             e->snapshot_output_count * e->snapshot_label_delta +
-                 e->snapshot_label_first);
+             (int)round(e->time));
+  else
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->snapshot_output_count);
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1221,13 +1220,12 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* HDF5 File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  if (e->snapshot_label_delta == 1)
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->snapshot_output_count + e->snapshot_label_first);
-  else
+  if (e->snapshot_int_time_label_on)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
-             e->snapshot_output_count * e->snapshot_label_delta +
-                 e->snapshot_label_first);
+             (int)round(e->time));
+  else
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->snapshot_output_count);
 
   /* Prepare some file-access properties */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);

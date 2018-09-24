@@ -427,10 +427,12 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  * @param cosmo The current cosmological model.
+ * @param dt_alpha The time-step used to evolve non-cosmological quantities such
+ *                 as the artificial viscosity.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo) {
+    const struct cosmology *cosmo, const float dt_alpha) {
 
   const float fac_mu = cosmo->a_factor_mu;
 
@@ -578,18 +580,30 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param p The particle to act upon.
  * @param xp The particle extended data to act upon.
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
+ * @param dt_grav The time-step for this kick (for gravity quantities).
+ * @param dt_hydro The time-step for this kick (for hydro quantities).
+ * @param dt_kick_corr The time-step for this kick (for gravity corrections).
+ * @param cosmo The cosmological model.
+ * @param hydro_props The constants used in the scheme
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
     float dt_grav, float dt_hydro, float dt_kick_corr,
-    const struct cosmology *cosmo,
-    const struct hydro_props *restrict hydro_properties) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
   /* Do not decrease the energy by more than a factor of 2*/
   if (dt_therm > 0. && p->u_dt * dt_therm < -0.5f * xp->u_full) {
     p->u_dt = -0.5f * xp->u_full / dt_therm;
   }
   xp->u_full += p->u_dt * dt_therm;
+
+  /* Apply the minimal energy limit */
+  const float min_energy =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+  if (xp->u_full < min_energy) {
+    xp->u_full = min_energy;
+    p->u_dt = 0.f;
+  }
 
   /* Compute the sound speed */
   const float soundspeed = hydro_get_comoving_soundspeed(p);
@@ -607,10 +621,31 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  *
  * @param p The particle to act upon
  * @param xp The extended particle to act upon
+ * @param cosmo The cosmological model.
+ * @param hydro_props The constants used in the scheme.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo) {}
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+
+  /* Convert the physcial internal energy to the comoving one. */
+  /* u' = a^(3(g-1)) u */
+  const float factor = 1.f / cosmo->a_factor_internal_energy;
+  p->u *= factor;
+  xp->u_full = p->u;
+
+  /* Apply the minimal energy limit */
+  const float min_energy =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+  if (xp->u_full < min_energy) {
+    xp->u_full = min_energy;
+    p->u = min_energy;
+    p->u_dt = 0.f;
+  }
+
+  /* Note that unlike Minimal the pressure and sound speed cannot be calculated
+   * here because they are smoothed properties in this scheme. */
+}
 
 /**
  * @brief Initialises the particles for the first time

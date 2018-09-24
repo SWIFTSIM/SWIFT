@@ -542,12 +542,20 @@ int main(int argc, char *argv[]) {
 
   /* Let's report what we did */
   if (myrank == 0) {
-    message("Using initial partition %s",
+#if defined(HAVE_PARMETIS)
+    if (reparttype.usemetis)
+      message("Using METIS serial partitioning:");
+    else
+      message("Using ParMETIS partitioning:");
+#else
+    message("Using METIS serial partitioning:");
+#endif
+    message("  initial partitioning: %s",
             initial_partition_name[initial_partition.type]);
     if (initial_partition.type == INITPART_GRID)
-      message("grid set to [ %i %i %i ].", initial_partition.grid[0],
+      message("    grid set to [ %i %i %i ].", initial_partition.grid[0],
               initial_partition.grid[1], initial_partition.grid[2]);
-    message("Using %s repartitioning", repartition_name[reparttype.type]);
+    message("  repartitioning: %s", repartition_name[reparttype.type]);
   }
 #endif
 
@@ -802,7 +810,7 @@ int main(int argc, char *argv[]) {
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
-               Nspart, periodic, replicate, generate_gas_in_ics,
+               Nspart, periodic, replicate, generate_gas_in_ics, with_hydro,
                with_self_gravity, talking, dry_run);
 
     if (myrank == 0) {
@@ -815,7 +823,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the long-range gravity mesh */
     if (with_self_gravity && periodic) {
 #ifdef HAVE_FFTW
-      pm_mesh_init(&mesh, &gravity_properties, s.dim);
+      pm_mesh_init(&mesh, &gravity_properties, s.dim, nr_threads);
 #else
       /* Need the FFTW library if periodic and self gravity. */
       error(
@@ -989,7 +997,7 @@ int main(int argc, char *argv[]) {
 
   /* Legend */
   if (myrank == 0) {
-    printf("# %6s %14s %14s %10s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
+    printf("# %6s %14s %12s %12s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
            "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
            "Updates", "g-Updates", "s-Updates", "Wall-clock time",
            clocks_getunit(), "Props");
@@ -1074,7 +1082,7 @@ int main(int argc, char *argv[]) {
             if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
               fprintf(
                   file_thread,
-                  " %03i %i %i %i %i %lli %lli %i %i %i %i %i %i\n", myrank,
+                  " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n", myrank,
                   e.sched.tasks[l].rid, e.sched.tasks[l].type,
                   e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
                   e.sched.tasks[l].tic, e.sched.tasks[l].toc,
@@ -1159,18 +1167,19 @@ int main(int argc, char *argv[]) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
+        "%6d\n",
         e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
         e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
         e.wallclock_time, e.step_props);
     fflush(stdout);
 
-    fprintf(
-        e.file_timesteps,
-        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
-        e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
-        e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-        e.wallclock_time, e.step_props);
+    fprintf(e.file_timesteps,
+            "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
+            "%6d\n",
+            e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
+            e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
+            e.s_updates, e.wallclock_time, e.step_props);
     fflush(e.file_timesteps);
   }
 

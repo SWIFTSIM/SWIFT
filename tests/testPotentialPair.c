@@ -106,6 +106,7 @@ int main(int argc, char *argv[]) {
   e.time = 0.1f;
   e.ti_current = 8;
   e.time_base = 1e-10;
+  e.nodeID = 0;
 
   struct space s;
   s.periodic = 0;
@@ -141,6 +142,7 @@ int main(int argc, char *argv[]) {
   bzero(&ci, sizeof(struct cell));
   bzero(&cj, sizeof(struct cell));
 
+  ci.nodeID = 0;
   ci.width[0] = 1.;
   ci.width[1] = 1.;
   ci.width[2] = 1.;
@@ -153,6 +155,7 @@ int main(int argc, char *argv[]) {
   ci.ti_gravity_end_min = 8;
   ci.ti_gravity_end_max = 8;
 
+  cj.nodeID = 0;
   cj.width[0] = 1.;
   cj.width[1] = 1.;
   cj.width[2] = 1.;
@@ -238,10 +241,11 @@ int main(int argc, char *argv[]) {
 
     double acc_true =
         acceleration(ci.gparts[0].mass, gp->x[0] - gp2->x[0], epsilon, rlr);
-    check_value(gp->a_grav[0], acc_true, "acceleration");
 
     /* message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] - gp2->x[0],
-     *         gp->a_grav[0], acc_true, gp->potential, pot_true); */
+       gp->a_grav[0], acc_true, gp->potential, pot_true); */
+
+    check_value(gp->a_grav[0], acc_true, "acceleration");
   }
 
   message("\n\t\t P-P interactions all good\n");

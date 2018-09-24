@@ -385,7 +385,7 @@ int task_lock(struct task *t) {
         char buff[MPI_MAX_ERROR_STRING];
         int len;
         MPI_Error_string(err, buff, &len);
-        error("Failed to test request on send/recv task (tag=%i, %s).",
+        error("Failed to test request on send/recv task (tag=%lld, %s).",
               t->flags, buff);
       }
       return res;

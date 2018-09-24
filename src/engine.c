@@ -236,7 +236,17 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       c->end_force = scheduler_addtask(s, task_type_end_force,
                                        task_subtype_none, 0, 0, c, NULL);
 
-      if (!is_with_cooling) scheduler_addunlock(s, c->end_force, c->kick2);
+      if (is_with_cooling) {
+
+        c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
+                                       0, 0, c, NULL);
+
+        scheduler_addunlock(s, c->end_force, c->cooling);
+        scheduler_addunlock(s, c->cooling, c->kick2);
+
+      } else {
+        scheduler_addunlock(s, c->end_force, c->kick2);
+      }
       scheduler_addunlock(s, c->kick2, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
     }
@@ -266,7 +276,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
-  const int is_with_cooling = (e->policy & engine_policy_cooling);
   const int is_with_sourceterms = (e->policy & engine_policy_sourceterms);
 
   /* Are we in a super-cell ? */
@@ -297,15 +306,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
       c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
                                          task_subtype_none, 0, 0, c, NULL);
 #endif
-
-      /* Cooling task */
-      if (is_with_cooling) {
-        c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
-                                       0, 0, c, NULL);
-
-        scheduler_addunlock(s, c->super->end_force, c->cooling);
-        scheduler_addunlock(s, c->cooling, c->super->kick2);
-      }
 
       /* add source terms */
       if (is_with_sourceterms) {
@@ -390,7 +390,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   }
 
   /* We are below the super-cell but not below the maximal splitting depth */
-  else if (c->super_gravity != NULL && c->depth <= space_subdepth_grav) {
+  else if (c->super_gravity != NULL && c->depth < space_subdepth_grav) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
@@ -1218,7 +1218,7 @@ void engine_redistribute(struct engine *e) {
  */
 void engine_repartition(struct engine *e) {
 
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
 
   ticks tic = getticks();
 
@@ -1276,7 +1276,7 @@ void engine_repartition(struct engine *e) {
             clocks_getunit());
 #else
   if (e->reparttype->type != REPART_NONE)
-    error("SWIFT was not compiled with MPI and METIS support.");
+    error("SWIFT was not compiled with MPI and METIS or ParMETIS support.");
 
   /* Clear the repartition flag. */
   e->forcerepart = 0;
@@ -1746,6 +1746,8 @@ void engine_exchange_cells(struct engine *e) {
   /* Exchange the cell structure with neighbouring ranks. */
   proxy_cells_exchange(e->proxies, e->nr_proxies, e->s, with_gravity);
 
+  ticks tic2 = getticks();
+
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
   size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0;
@@ -1779,6 +1781,12 @@ void engine_exchange_cells(struct engine *e) {
       error("Failed to allocate foreign spart data.");
   }
 
+  if (e->verbose)
+    message("Counting and allocating arrays took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
   struct gpart *gparts = s->gparts_foreign;
@@ -1803,6 +1811,10 @@ void engine_exchange_cells(struct engine *e) {
   s->nr_parts_foreign = parts - s->parts_foreign;
   s->nr_gparts_foreign = gparts - s->gparts_foreign;
   s->nr_sparts_foreign = sparts - s->sparts_foreign;
+
+  if (e->verbose)
+    message("Recursively linking arrays took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2832,9 +2844,13 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       }
 #endif
 
-      /* Note that we do not need to link the M-M tasks */
-      /* since we already did so when splitting the gravity */
-      /* tasks. */
+      /* Multipole-multipole interaction of progenies */
+    } else if (t_type == task_type_grav_mm) {
+
+      atomic_inc(&ci->nr_mm_tasks);
+      atomic_inc(&cj->nr_mm_tasks);
+      engine_addlink(e, &ci->grav_mm, t);
+      engine_addlink(e, &cj->grav_mm, t);
     }
   }
 }
@@ -2863,6 +2879,10 @@ void engine_link_gravity_tasks(struct engine *e) {
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
+    struct cell *ci_parent = (ci->parent != NULL) ? ci->parent : ci;
+    struct cell *cj_parent =
+        (cj != NULL && cj->parent != NULL) ? cj->parent : cj;
+
 /* Node ID (if running with MPI) */
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
@@ -2882,8 +2902,8 @@ void engine_link_gravity_tasks(struct engine *e) {
       /* drift ---+-> gravity --> grav_down */
       /* init  --/    */
       scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
-      scheduler_addunlock(sched, ci->init_grav_out, t);
-      scheduler_addunlock(sched, t, ci->grav_down_in);
+      scheduler_addunlock(sched, ci_parent->init_grav_out, t);
+      scheduler_addunlock(sched, t, ci_parent->grav_down_in);
     }
 
     /* Self-interaction for external gravity ? */
@@ -2906,8 +2926,8 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
         scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
-        scheduler_addunlock(sched, ci->init_grav_out, t);
-        scheduler_addunlock(sched, t, ci->grav_down_in);
+        scheduler_addunlock(sched, ci_parent->init_grav_out, t);
+        scheduler_addunlock(sched, t, ci_parent->grav_down_in);
       }
       if (cj_nodeID == nodeID) {
 
@@ -2915,8 +2935,11 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* init  --/    */
         if (ci->super_gravity != cj->super_gravity) /* Avoid double unlock */
           scheduler_addunlock(sched, cj->super_gravity->drift_gpart, t);
-        scheduler_addunlock(sched, cj->init_grav_out, t);
-        scheduler_addunlock(sched, t, cj->grav_down_in);
+
+        if (ci_parent != cj_parent) { /* Avoid double unlock */
+          scheduler_addunlock(sched, cj_parent->init_grav_out, t);
+          scheduler_addunlock(sched, t, cj_parent->grav_down_in);
+        }
       }
     }
 
@@ -2929,8 +2952,8 @@ void engine_link_gravity_tasks(struct engine *e) {
       /* drift ---+-> gravity --> grav_down */
       /* init  --/    */
       scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
-      scheduler_addunlock(sched, ci->init_grav_out, t);
-      scheduler_addunlock(sched, t, ci->grav_down_in);
+      scheduler_addunlock(sched, ci_parent->init_grav_out, t);
+      scheduler_addunlock(sched, t, ci_parent->grav_down_in);
     }
 
     /* Sub-self-interaction for external gravity ? */
@@ -2954,8 +2977,8 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
         scheduler_addunlock(sched, ci->super_gravity->drift_gpart, t);
-        scheduler_addunlock(sched, ci->init_grav_out, t);
-        scheduler_addunlock(sched, t, ci->grav_down_in);
+        scheduler_addunlock(sched, ci_parent->init_grav_out, t);
+        scheduler_addunlock(sched, t, ci_parent->grav_down_in);
       }
       if (cj_nodeID == nodeID) {
 
@@ -2963,8 +2986,11 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* init  --/    */
         if (ci->super_gravity != cj->super_gravity) /* Avoid double unlock */
           scheduler_addunlock(sched, cj->super_gravity->drift_gpart, t);
-        scheduler_addunlock(sched, cj->init_grav_out, t);
-        scheduler_addunlock(sched, t, cj->grav_down_in);
+
+        if (ci_parent != cj_parent) { /* Avoid double unlock */
+          scheduler_addunlock(sched, cj_parent->init_grav_out, t);
+          scheduler_addunlock(sched, t, cj_parent->grav_down_in);
+        }
       }
     }
 
@@ -2974,14 +3000,16 @@ void engine_link_gravity_tasks(struct engine *e) {
       if (ci_nodeID == nodeID) {
 
         /* init -----> gravity --> grav_down */
-        scheduler_addunlock(sched, ci->init_grav_out, t);
-        scheduler_addunlock(sched, t, ci->grav_down_in);
+        scheduler_addunlock(sched, ci_parent->init_grav_out, t);
+        scheduler_addunlock(sched, t, ci_parent->grav_down_in);
       }
       if (cj_nodeID == nodeID) {
 
         /* init -----> gravity --> grav_down */
-        scheduler_addunlock(sched, cj->init_grav_out, t);
-        scheduler_addunlock(sched, t, cj->grav_down_in);
+        if (ci_parent != cj_parent) { /* Avoid double unlock */
+          scheduler_addunlock(sched, cj_parent->init_grav_out, t);
+          scheduler_addunlock(sched, t, cj_parent->grav_down_in);
+        }
       }
     }
   }
@@ -3573,6 +3601,8 @@ void engine_maketasks(struct engine *e) {
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
 
+    tic2 = getticks();
+
     /* Loop over the proxies and add the send tasks, which also generates the
      * cell tags for super-cells. */
     for (int pid = 0; pid < e->nr_proxies; pid++) {
@@ -3601,8 +3631,20 @@ void engine_maketasks(struct engine *e) {
                                          NULL);
     }
 
+    if (e->verbose)
+      message("Creating send tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+    tic2 = getticks();
+
     /* Exchange the cell tags. */
     proxy_tags_exchange(e->proxies, e->nr_proxies, s);
+
+    if (e->verbose)
+      message("Exchanging cell tags took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+    tic2 = getticks();
 
     /* Loop over the proxies and add the recv tasks, which relies on having the
      * cell tags. */
@@ -3629,6 +3671,10 @@ void engine_maketasks(struct engine *e) {
           if (p->cells_in_type[k] & proxy_cell_type_gravity)
             engine_addtasks_recv_gravity(e, p->cells_in[k], NULL);
     }
+
+    if (e->verbose)
+      message("Creating recv tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
   }
 #endif
 
@@ -4113,8 +4159,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Subgrid tasks */
-    else if (t_type == task_type_cooling || t_type == task_type_sourceterms) {
-      if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
+    else if (t_type == task_type_cooling) {
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
+        scheduler_activate(s, t);
     }
   }
 }
@@ -4316,9 +4363,12 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   /* Re-build the space. */
   space_rebuild(e->s, e->verbose);
 
+  /* Construct the list of purely local cells */
+  space_list_local_cells(e->s);
+
   /* Re-compute the mesh forces */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
-    pm_mesh_compute_potential(e->mesh, e->s, e->verbose);
+    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
 
   /* Re-compute the maximal RMS displacement constraint */
   if (e->policy & engine_policy_cosmology)
@@ -4474,9 +4524,14 @@ void engine_barrier(struct engine *e) {
 }
 
 /**
- * @brief Mapping function to collect the data from the kick.
+ * @brief Recursive function gathering end-of-step data.
  *
- * @param c A super-cell.
+ * We recurse until we encounter a timestep or time-step MPI recv task
+ * as the values will have been set at that level. We then bring these
+ * values upwards.
+ *
+ * @param c The #cell to recurse into.
+ * @param e The #engine.
  */
 void engine_collect_end_of_step_recurse(struct cell *c,
                                         const struct engine *e) {
@@ -4535,6 +4590,17 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   c->s_updated = s_updated;
 }
 
+/**
+ * @brief Mapping function to collect the data from the end of the step
+ *
+ * This function will call a recursive function on all the top-level cells
+ * to collect the information we are after.
+ *
+ * @param map_data The list of cells with tasks on this node.
+ * @param num_elements The number of elements in the list this thread will work
+ * on.
+ * @param extra_data The #engine.
+ */
 void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
                                        void *extra_data) {
 
@@ -4635,7 +4701,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
 
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,
-                 s->local_cells_top, s->nr_local_cells, sizeof(int), 0, &data);
+                 s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
+                 sizeof(int), 0, &data);
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(&e->collect_group1, data.updates, data.g_updates,
@@ -5098,19 +5165,21 @@ void engine_step(struct engine *e) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
+        "%6d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
     if (!e->restarting)
-      fprintf(e->file_timesteps,
-              "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f "
-              "%6d\n",
-              e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
-              e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-              e->s_updates, e->wallclock_time, e->step_props);
+      fprintf(
+          e->file_timesteps,
+          "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
+          "%6d\n",
+          e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
+          e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
+          e->s_updates, e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
 
@@ -5220,7 +5289,8 @@ void engine_step(struct engine *e) {
   e->s_updates_since_rebuild += e->collect_group1.s_updates;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (e->ti_end_min == e->ti_current) error("Obtained a time-step of size 0");
+  if (e->ti_end_min == e->ti_current && e->ti_end_min < max_nr_timesteps)
+    error("Obtained a time-step of size 0");
 #endif
 
   /********************************************************/
@@ -5266,10 +5336,11 @@ void engine_check_for_dumps(struct engine *e) {
   /* Do we want to perform structure finding? */
   int run_stf = 0;
   if ((e->policy & engine_policy_structure_finding)) {
-    if (e->stf_output_freq_format == STEPS && e->step % e->deltaStepSTF == 0)
+    if (e->stf_output_freq_format == io_stf_steps &&
+        e->step % e->delta_step_stf == 0)
       run_stf = 1;
-    else if (e->stf_output_freq_format == TIME &&
-             e->ti_end_min > e->ti_nextSTF && e->ti_nextSTF > 0)
+    else if (e->stf_output_freq_format == io_stf_time &&
+             e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0)
       run_stf = 1;
   }
 
@@ -5394,7 +5465,7 @@ void engine_check_for_dumps(struct engine *e) {
     /* Perform structure finding? */
     if (run_stf) {
 
-    // MATTHIEU: Add a drift_all here. And check the order with the order i/o
+    // MATTHIEU: Add a drift_all here. And check the order with the other i/o
     // options.
 
 #ifdef HAVE_VELOCIRAPTOR
@@ -5402,7 +5473,8 @@ void engine_check_for_dumps(struct engine *e) {
       velociraptor_invoke(e);
 
       /* ... and find the next output time */
-      if (e->stf_output_freq_format == TIME) engine_compute_next_stf_time(e);
+      if (e->stf_output_freq_format == io_stf_time)
+        engine_compute_next_stf_time(e);
 #endif
     }
 
@@ -5421,12 +5493,9 @@ void engine_check_for_dumps(struct engine *e) {
 
     /* Do we want to perform structure finding? */
     run_stf = 0;
-    if ((e->policy & engine_policy_structure_finding)) {
-      if (e->stf_output_freq_format == STEPS && e->step % e->deltaStepSTF == 0)
-        run_stf = 1;
-      else if (e->stf_output_freq_format == TIME &&
-               e->ti_end_min > e->ti_nextSTF && e->ti_nextSTF > 0)
-        run_stf = 1;
+    if ((e->policy & engine_policy_structure_finding) &&
+        e->stf_output_freq_format == io_stf_time) {
+      if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) run_stf = 1;
     }
   }
 
@@ -5506,14 +5575,17 @@ void engine_unskip(struct engine *e) {
 #endif  // WITH_PROFILER
 
   /* Move the active local cells to the top of the list. */
-  int *local_cells = e->s->local_cells_top;
+  int *local_cells = e->s->local_cells_with_tasks_top;
   int num_active_cells = 0;
-  for (int k = 0; k < s->nr_local_cells; k++) {
+  for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
+
     if ((e->policy & engine_policy_hydro && cell_is_active_hydro(c, e)) ||
-        (e->policy &
-             (engine_policy_self_gravity | engine_policy_external_gravity) &&
+        (e->policy & engine_policy_self_gravity &&
+         cell_is_active_gravity(c, e)) ||
+        (e->policy & engine_policy_external_gravity &&
          cell_is_active_gravity(c, e))) {
+
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
       num_active_cells += 1;
@@ -5702,6 +5774,10 @@ void engine_reconstruct_multipoles(struct engine *e) {
 void engine_makeproxies(struct engine *e) {
 
 #ifdef WITH_MPI
+  /* Let's time this */
+  const ticks tic = getticks();
+
+  /* Useful local information */
   const int nodeID = e->nodeID;
   const struct space *s = e->s;
 
@@ -5728,9 +5804,6 @@ void engine_makeproxies(struct engine *e) {
                         cell_width[1] * cell_width[1] +
                         cell_width[2] * cell_width[2];
   const double r_max = sqrt(r_max2);
-
-  /* Let's time this */
-  const ticks tic = getticks();
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
@@ -6250,12 +6323,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
-  e->snapshot_label_first =
-      parser_get_opt_param_int(params, "Snapshots:label_first", 0);
-  if (e->snapshot_label_first < 0)
-    error("Snapshots:label_first must be zero or positive");
-  e->snapshot_label_delta =
-      parser_get_opt_param_int(params, "Snapshots:label_delta", 1);
+  e->snapshot_int_time_label_on =
+      parser_get_opt_param_int(params, "Snapshots:int_time_label_on", 0);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->snapshot_output_count = 0;
@@ -6317,6 +6386,33 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
     e->ti_current = 0;
   }
 
+  /* Initialise VELOCIraptor output. */
+  if (e->policy & engine_policy_structure_finding) {
+    parser_get_param_string(params, "StructureFinding:basename",
+                            e->stfBaseName);
+    e->time_first_stf_output =
+        parser_get_opt_param_double(params, "StructureFinding:time_first", 0.);
+    e->a_first_stf_output = parser_get_opt_param_double(
+        params, "StructureFinding:scale_factor_first", 0.1);
+    e->stf_output_freq_format =
+        parser_get_param_int(params, "StructureFinding:output_time_format");
+
+    if (e->stf_output_freq_format == io_stf_steps) {
+      e->delta_step_stf =
+          parser_get_param_int(params, "StructureFinding:delta_step");
+    } else if (e->stf_output_freq_format == io_stf_time) {
+      e->delta_time_stf =
+          parser_get_param_double(params, "StructureFinding:delta_time");
+    } else {
+      error(
+          "Invalid flag (%d) set for output time format of structure finding.",
+          e->stf_output_freq_format);
+    }
+
+    /* overwrite input if outputlist */
+    if (e->output_list_stf) e->stf_output_freq_format = io_stf_time;
+  }
+
   engine_init_output_lists(e, params);
 }
 
@@ -6367,33 +6463,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->restart_file = restart_file;
   e->restart_next = 0;
   e->restart_dt = 0;
-  e->timeFirstSTFOutput = 0;
   engine_rank = nodeID;
-
-  /* Initialise VELOCIraptor. */
-  if (e->policy & engine_policy_structure_finding) {
-    parser_get_param_string(params, "StructureFinding:basename",
-                            e->stfBaseName);
-    e->timeFirstSTFOutput =
-        parser_get_param_double(params, "StructureFinding:time_first");
-    e->a_first_stf = parser_get_opt_param_double(
-        params, "StructureFinding:scale_factor_first", 0.1);
-    e->stf_output_freq_format =
-        parser_get_param_int(params, "StructureFinding:output_time_format");
-    if (e->stf_output_freq_format == STEPS) {
-      e->deltaStepSTF =
-          parser_get_param_int(params, "StructureFinding:delta_step");
-    } else if (e->stf_output_freq_format == TIME) {
-      e->deltaTimeSTF =
-          parser_get_param_double(params, "StructureFinding:delta_time");
-    } else
-      error(
-          "Invalid flag (%d) set for output time format of structure finding.",
-          e->stf_output_freq_format);
-
-    /* overwrite input if outputlist */
-    if (e->output_list_stf) e->stf_output_freq_format = TIME;
-  }
 
   /* Get the number of queues */
   int nr_queues =
@@ -6592,7 +6662,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
               engine_step_prop_snapshot, engine_step_prop_restarts);
 
       fprintf(e->file_timesteps,
-              "# %6s %14s %14s %10s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
+              "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
               "Step", "Time", "Scale-factor", "Redshift", "Time-step",
               "Time-bins", "Updates", "g-Updates", "s-Updates",
               "Wall-clock time", clocks_getunit(), "Props");
@@ -6620,6 +6690,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
         "Final simulation time (t_end = %e) must be larger than the start time "
         "(t_beg = %e)",
         e->time_end, e->time_begin);
+
+  /* Check we don't have inappropriate time labels */
+  if ((e->snapshot_int_time_label_on == 1) && (e->time_end <= 1.f))
+    error("Snapshot integer time labels enabled but end time <= 1");
 
   /* Check we have sensible time-step values */
   if (e->dt_min > e->dt_max)
@@ -6677,17 +6751,17 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           e->a_first_statistics, e->cosmology->a_begin);
 
     if ((e->policy & engine_policy_structure_finding) &&
-        (e->stf_output_freq_format == TIME)) {
+        (e->stf_output_freq_format == io_stf_time)) {
 
-      if (e->deltaTimeSTF <= 1.)
-        error("Time between STF (%e) must be > 1.", e->deltaTimeSTF);
+      if (e->delta_time_stf <= 1.)
+        error("Time between STF (%e) must be > 1.", e->delta_time_stf);
 
-      if (e->a_first_stf < e->cosmology->a_begin)
+      if (e->a_first_stf_output < e->cosmology->a_begin)
         error(
             "Scale-factor of first stf output (%e) must be after the "
             "simulation "
             "start a=%e.",
-            e->a_first_stf, e->cosmology->a_begin);
+            e->a_first_stf_output, e->cosmology->a_begin);
     }
   } else {
 
@@ -6713,23 +6787,21 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           e->time_first_statistics, e->time_begin);
 
     if ((e->policy & engine_policy_structure_finding) &&
-        (e->stf_output_freq_format == TIME)) {
+        (e->stf_output_freq_format == io_stf_time)) {
 
-      if (e->deltaTimeSTF <= 0.)
-        error("Time between STF (%e) must be positive.", e->deltaTimeSTF);
+      if (e->delta_time_stf <= 0.)
+        error("Time between STF (%e) must be positive.", e->delta_time_stf);
 
-      if (e->timeFirstSTFOutput < e->time_begin)
+      if (e->time_first_stf_output < e->time_begin)
         error("Time of first STF (%e) must be after the simulation start t=%e.",
-              e->timeFirstSTFOutput, e->time_begin);
+              e->time_first_stf_output, e->time_begin);
     }
   }
 
   if (e->policy & engine_policy_structure_finding) {
     /* Find the time of the first stf output */
-    if (e->stf_output_freq_format == TIME) {
+    if (e->stf_output_freq_format == io_stf_time)
       engine_compute_next_stf_time(e);
-      message("Next STF step will be: %lld", e->ti_nextSTF);
-    }
   }
 
   /* Get the total mass */
@@ -7063,54 +7135,56 @@ void engine_compute_next_statistics_time(struct engine *e) {
 void engine_compute_next_stf_time(struct engine *e) {
   /* Do output_list file case */
   if (e->output_list_stf) {
-    output_list_read_next_time(e->output_list_stf, e, "stf", &e->ti_nextSTF);
+    output_list_read_next_time(e->output_list_stf, e, "stf", &e->ti_next_stf);
     return;
   }
 
   /* Find upper-bound on last output */
   double time_end;
   if (e->policy & engine_policy_cosmology)
-    time_end = e->cosmology->a_end * e->deltaTimeSTF;
+    time_end = e->cosmology->a_end * e->delta_time_stf;
   else
-    time_end = e->time_end + e->deltaTimeSTF;
+    time_end = e->time_end + e->delta_time_stf;
 
   /* Find next snasphot above current time */
-  double time = e->timeFirstSTFOutput;
-
+  double time;
+  if (e->policy & engine_policy_cosmology)
+    time = e->a_first_stf_output;
+  else
+    time = e->time_first_stf_output;
   while (time < time_end) {
 
     /* Output time on the integer timeline */
     if (e->policy & engine_policy_cosmology)
-      e->ti_nextSTF = log(time / e->cosmology->a_begin) / e->time_base;
+      e->ti_next_stf = log(time / e->cosmology->a_begin) / e->time_base;
     else
-      e->ti_nextSTF = (time - e->time_begin) / e->time_base;
+      e->ti_next_stf = (time - e->time_begin) / e->time_base;
 
     /* Found it? */
-    if (e->ti_nextSTF > e->ti_current) break;
+    if (e->ti_next_stf > e->ti_current) break;
 
     if (e->policy & engine_policy_cosmology)
-      time *= e->deltaTimeSTF;
+      time *= e->delta_time_stf;
     else
-      time += e->deltaTimeSTF;
+      time += e->delta_time_stf;
   }
 
   /* Deal with last snapshot */
-  if (e->ti_nextSTF >= max_nr_timesteps) {
-    e->ti_nextSTF = -1;
+  if (e->ti_next_stf >= max_nr_timesteps) {
+    e->ti_next_stf = -1;
     if (e->verbose) message("No further output time.");
   } else {
 
     /* Be nice, talk... */
     if (e->policy & engine_policy_cosmology) {
-      const float next_snapshot_time =
-          exp(e->ti_nextSTF * e->time_base) * e->cosmology->a_begin;
+      const float next_stf_time =
+          exp(e->ti_next_stf * e->time_base) * e->cosmology->a_begin;
       if (e->verbose)
-        message("Next output time set to a=%e.", next_snapshot_time);
+        message("Next VELOCIraptor time set to a=%e.", next_stf_time);
     } else {
-      const float next_snapshot_time =
-          e->ti_nextSTF * e->time_base + e->time_begin;
+      const float next_stf_time = e->ti_next_stf * e->time_base + e->time_begin;
       if (e->verbose)
-        message("Next output time set to t=%e.", next_snapshot_time);
+        message("Next VELOCIraptor time set to t=%e.", next_stf_time);
     }
   }
 }
@@ -7151,14 +7225,14 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
   /* Deal with stf */
   double stf_time_first;
   e->output_list_stf = NULL;
-  output_list_init(&e->output_list_stf, e, "StructureFinding", &e->deltaTimeSTF,
-                   &stf_time_first);
+  output_list_init(&e->output_list_stf, e, "StructureFinding",
+                   &e->delta_time_stf, &stf_time_first);
 
   if (e->output_list_stf) {
     if (e->policy & engine_policy_cosmology)
-      e->a_first_stf = stf_time_first;
+      e->a_first_stf_output = stf_time_first;
     else
-      e->timeFirstSTFOutput = stf_time_first;
+      e->time_first_stf_output = stf_time_first;
   }
 }
 

@@ -32,7 +32,7 @@
  * This is a wrapper for the GNU intrinsic with an implementation (from
  * Hacker's Delight) if the compiler intrinsics are not available.
  */
-__attribute__((always_inline)) INLINE static int intrinsics_clz(
+__attribute__((always_inline, const)) INLINE static int intrinsics_clz(
     unsigned int x) {
 
 #ifdef __GNUC__
@@ -70,9 +70,10 @@ __attribute__((always_inline)) INLINE static int intrinsics_clz(
  * @brief Returns the number of leading 0-bits in x, starting at the most
  * significant bit position. If x is 0, the result is undefined.
  *
- * This is a wrapper for the GNU intrinsic with an implementation.
+ * This is a wrapper for the GNU intrinsic with a place-holder for a future
+ * version in cases where the compiler intrinsic is not available.
  */
-__attribute__((always_inline)) INLINE static int intrinsics_clzll(
+__attribute__((always_inline, const)) INLINE static int intrinsics_clzll(
     unsigned long long x) {
 
 #ifdef __GNUC__
@@ -89,7 +90,7 @@ __attribute__((always_inline)) INLINE static int intrinsics_clzll(
  * This is a wrapper for the GNU intrinsic with an implementation (from
  * Hacker's Delight) if the compiler intrinsics are not available.
  */
-__attribute__((always_inline)) INLINE static int intrinsics_popcount(
+__attribute__((always_inline, const)) INLINE static int intrinsics_popcount(
     unsigned int x) {
 
 #ifdef __GNUC__
@@ -111,7 +112,7 @@ __attribute__((always_inline)) INLINE static int intrinsics_popcount(
  * This is a wrapper for the GNU intrinsic with an implementation (from
  * Hacker's Delight) if the compiler intrinsics are not available.
  */
-__attribute__((always_inline)) INLINE static int intrinsics_popcountll(
+__attribute__((always_inline, const)) INLINE static int intrinsics_popcountll(
     unsigned long long x) {
 
 #ifdef __GNUC__

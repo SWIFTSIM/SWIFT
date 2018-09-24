@@ -126,6 +126,65 @@ struct potential_derivatives_M2P {
 };
 
 /**
+ * @brief Converts the derivatives from a distance vector to its opposite.
+ *
+ * From a series of tensors D_xxx(r), compute D_xxx(-r).
+ * This can be computed efficiently by flipping the sign of all the odd
+ * derivative terms.
+ *
+ * @param pot The derivatives of the potential.
+ */
+__attribute__((always_inline)) INLINE static void
+potential_derivatives_flip_signs(struct potential_derivatives_M2L *pot) {
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+  /* 1st order terms */
+  pot->D_100 = -pot->D_100;
+  pot->D_010 = -pot->D_010;
+  pot->D_001 = -pot->D_001;
+#endif
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+  /* 3rd order terms */
+  pot->D_300 = -pot->D_300;
+  pot->D_030 = -pot->D_030;
+  pot->D_003 = -pot->D_003;
+  pot->D_210 = -pot->D_210;
+  pot->D_201 = -pot->D_201;
+  pot->D_021 = -pot->D_021;
+  pot->D_120 = -pot->D_120;
+  pot->D_012 = -pot->D_012;
+  pot->D_102 = -pot->D_102;
+  pot->D_111 = -pot->D_111;
+#endif
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+  /* 5th order terms */
+  pot->D_500 = -pot->D_500;
+  pot->D_050 = -pot->D_050;
+  pot->D_005 = -pot->D_005;
+  pot->D_410 = -pot->D_410;
+  pot->D_401 = -pot->D_401;
+  pot->D_041 = -pot->D_041;
+  pot->D_140 = -pot->D_140;
+  pot->D_014 = -pot->D_014;
+  pot->D_104 = -pot->D_104;
+  pot->D_320 = -pot->D_320;
+  pot->D_302 = -pot->D_302;
+  pot->D_032 = -pot->D_032;
+  pot->D_230 = -pot->D_230;
+  pot->D_023 = -pot->D_023;
+  pot->D_203 = -pot->D_203;
+  pot->D_311 = -pot->D_311;
+  pot->D_131 = -pot->D_131;
+  pot->D_113 = -pot->D_113;
+  pot->D_122 = -pot->D_122;
+  pot->D_212 = -pot->D_212;
+  pot->D_221 = -pot->D_221;
+#endif
+}
+
+/**
  * @brief Compute all the relevent derivatives of the softened and truncated
  * gravitational potential for the M2L kernel.
  *
@@ -141,7 +200,7 @@ struct potential_derivatives_M2P {
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
-compute_potential_derivatives_M2L(const float r_x, const float r_y,
+potential_derivatives_compute_M2L(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
                                   const float eps_inv, const int periodic,
@@ -397,7 +456,7 @@ compute_potential_derivatives_M2L(const float r_x, const float r_y,
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline)) INLINE static void
-compute_potential_derivatives_M2P(const float r_x, const float r_y,
+potential_derivatives_compute_M2P(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
                                   const float eps_inv, const int periodic,

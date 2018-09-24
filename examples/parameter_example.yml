@@ -32,7 +32,8 @@ SPH:
   max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
   initial_temperature:   0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
   minimal_temperature:   0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
-  H_mass_fraction:       0.76     # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy.
+  H_mass_fraction:       0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
+  H_ionization_temperature: 1e4   # (Optional) Temperature of the transition from neutral to ionized Hydrogen for primoridal gas.
 
 # Parameters for the self-gravity scheme
 Gravity:
@@ -77,8 +78,7 @@ Snapshots:
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
   compression: 0          # (Optional) Set the level of compression of the HDF5 datasets [0-9]. 0 does no compression.
-  label_first: 0          # (Optional) An additional offset for the snapshot output label
-  label_delta: 1          # (Optional) Set the integer increment between snapshot output labels
+  int_time_label_on:   0  # (Optional) Enable to label the snapshots using the time rounded to an integer (in internal units)
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
   UnitLength_in_cgs:   1  # (Optional) Unit system for the outputs (Centimeters)
   UnitVelocity_in_cgs: 1  # (Optional) Unit system for the outputs (Centimeters per second)
@@ -120,20 +120,23 @@ Restarts:
 
 # Parameters governing domain decomposition
 DomainDecomposition:
-  initial_type:     simple_metis # (Optional) The initial decomposition strategy: "grid",
-                                 #            "simple_metis", "weighted_metis", or "vectorized".
-  initial_grid: [10,10,10] # (Optional) Grid sizes if the "grid" strategy is chosen.
+  initial_type:     memory  # (Optional) The initial decomposition strategy: "grid",
+                            #            "region", "memory", or "vectorized".
+  initial_grid: [10,10,10]  # (Optional) Grid sizes if the "grid" strategy is chosen.
 
   repartition_type: costs/costs # (Optional) The re-decomposition strategy, one of:
-                            # "none/none", "costs/costs", "counts/none", "none/costs", "counts/costs",
-                            # "costs/time" or "none/time".
-                            # These are vertex/edge weights with "costs" as task timing, "counts" as
-                            # sum of particles and "time" as the expected time of the next updates
+                            # "none/none", "costs/costs", "none/costs", "costs/none" or "costs/time".
+                            # These are vertex/edge weights with "costs" as task timing
+                            # and "time" as the expected time of the next updates
 
   trigger:          0.05    # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
                             # new decomposition, or number of steps (>1) between decompositions
   minfrac:          0.9     # (Optional) Fractional of all particles that should be updated in previous step when
                             # using CPU time trigger
+  usemetis          0       # Use serial METIS when ParMETIS is also available.
+  adaptive          1       # Use adaptive repartition when ParMETIS is available, otherwise simple refinement.
+  itr               100     # When adaptive defines the ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0.
+                            # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
 
 # Parameters related to the equation of state ------------------------------------------
 
