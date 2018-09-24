@@ -3219,6 +3219,7 @@ void cell_check_timesteps(struct cell *c) {
  *
  * The particle is inhibited and will officially be removed at the next rebuild.
  *
+ * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
  * @param p The #part to remove.
  * @param xp The extended data of the particle to remove.
@@ -3240,6 +3241,7 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
  *
  * The particle is inhibited and will officially be removed at the next rebuild.
  *
+ * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
  * @param gp The #gpart to remove.
  */
@@ -3262,6 +3264,7 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
  *
  * The particle is inhibited and will officially be removed at the next rebuild.
  *
+ * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
  * @param sp The #spart to remove.
  */
@@ -3275,6 +3278,35 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
   /* Mark the particle as inhibited */
   sp->time_bin = time_bin_inhibited;
   if (sp->gpart) sp->gpart->time_bin = time_bin_inhibited;
+}
+
+/**
+ * @brief "Remove" a gas particle from the calculation and convert its gpart
+ * friend to a dark matter particle.
+ *
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param e The #engine running on this node.
+ * @param c The #cell from which to remove the particle.
+ * @param p The #part to remove.
+ * @param xp The extended data of the particle to remove.
+ */
+void cell_convert_part_to_dark_matter(const struct engine *e, struct cell *c,
+                                      struct part *p, struct xpart *xp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  /* Mark the particle as inhibited */
+  p->time_bin = time_bin_inhibited;
+
+  if (p->gpart) {
+    p->gpart->type = swift_type_dark_matter;
+    p->gpart->id_or_neg_offset = p->id;
+  } else {
+    error("Trying to convert part without gpart friend to dark matter!");
+  }
 }
 
 /**
