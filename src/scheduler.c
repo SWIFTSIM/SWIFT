@@ -346,7 +346,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
               subtaskID_names[task_subtype_stars_density]);
   fprintf(f, "\t};\n");
 
- /* Write down the number of relation */
+  /* Write down the number of relation */
   for (int ta_type = 0; ta_type < task_type_count; ta_type++) {
 
     for (int ta_subtype = 0; ta_subtype < task_subtype_count; ta_subtype++) {
