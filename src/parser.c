@@ -367,7 +367,7 @@ static void parse_line(char *line, struct swift_params *params) {
         /* Trim trailing space before parsing line for a value. */
         char no_space_line[PARSER_MAX_LINE_SIZE];
         strcpy(no_space_line, trim_trailing(trim_line));
-        
+
         parse_value(no_space_line, params);
       }
       /* Check for invalid lines,not including the start and end of file. */
