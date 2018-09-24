@@ -43,23 +43,22 @@ void set_quantities(struct part *restrict p,
                     const struct phys_const *restrict internal_const, float nh,
                     double u) {
 
-  const float gamma = 5.0 / 3.0;
   float scale_factor = 1.0 / (1.0 + cosmo->z);
   double hydrogen_number_density =
       nh * pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3);
   p->rho = hydrogen_number_density * internal_const->const_proton_mass /
            p->chemistry_data.metal_mass_fraction[chemistry_element_H];
 
-  float pressure = (u * pow(scale_factor, 2)) / cooling->internal_energy_scale *
-                   p->rho * (gamma - 1.0);
-  p->entropy = pressure / (pow(p->rho, gamma));
+  float pressure = (u * scale_factor * scale_factor) / cooling->internal_energy_scale *
+                   p->rho * (hydro_gamma_minus_one);
+  p->entropy = pressure * (pow(p->rho, -hydro_gamma));
 
   // Using hydro_set_init_internal_energy seems to work better for higher z for
   // setting the internal energy correctly However, with Gadget2 this just sets
   // the entropy to the internal energy, which needs to be converted somehow
   if (cosmo->z >= 1)
     hydro_set_init_internal_energy(
-        p, (u * pow(scale_factor, 2)) / cooling->internal_energy_scale);
+        p, (u * scale_factor * scale_factor) / cooling->internal_energy_scale);
 }
 
 /*
