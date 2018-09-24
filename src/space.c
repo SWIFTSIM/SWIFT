@@ -1396,7 +1396,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
  * @param verbose Are we talkative ?
  */
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
-                                int *count_inibibited_parts, int verbose) {
+                                int *count_inhibited_parts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1416,6 +1416,8 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
   threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
                  s->nr_parts, sizeof(struct part), 0, &data);
 
+  *count_inhibited_parts = data.count_inhibited_part;
+
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -1433,7 +1435,7 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
  * @param verbose Are we talkative ?
  */
 void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
-                                 int *count_inibibited_gparts, int verbose) {
+                                 int *count_inhibited_gparts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1453,6 +1455,8 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
   threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
                  s->gparts, s->nr_gparts, sizeof(struct gpart), 0, &data);
 
+  *count_inhibited_gparts = data.count_inhibited_gpart;
+
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -1466,11 +1470,11 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
  * @param s The #space.
  * @param sind The array of indices to fill.
  * @param cell_counts The cell counters to update.
- * @param count_inhibited_gparts (return) The number of #gpart to remove.
+ * @param count_inhibited_sparts (return) The number of #spart to remove.
  * @param verbose Are we talkative ?
  */
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
-                                 int *count_inibibited_gparts, int verbose) {
+                                 int *count_inhibited_sparts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1489,6 +1493,8 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
 
   threadpool_map(&s->e->threadpool, space_sparts_get_cell_index_mapper,
                  s->sparts, s->nr_sparts, sizeof(struct spart), 0, &data);
+
+  *count_inhibited_sparts = data.count_inhibited_spart;
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
