@@ -119,8 +119,8 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
  * @param ta The #task
  * @param ta_name The formatted string
  */
-void scheduler_task_dependency_name(
-    int ta_type, int ta_subtype, char *ta_name) {
+void scheduler_task_dependency_name(int ta_type, int ta_subtype,
+                                    char *ta_name) {
 
   /* Check input */
   if (ta_type < 0 || ta_type >= task_type_count)
@@ -128,14 +128,14 @@ void scheduler_task_dependency_name(
 
   if (ta_subtype < 0 || ta_subtype >= task_subtype_count)
     error("Unknown task subtype %i with type %s", ta_subtype,
-	  taskID_names[ta_type]);
-  
+          taskID_names[ta_type]);
+
   /* construct line */
   if (ta_subtype == task_subtype_none)
     sprintf(ta_name, "%s", taskID_names[ta_type]);
   else
     sprintf(ta_name, "\"%s %s\"", taskID_names[ta_type],
-	    subtaskID_names[ta_subtype]);
+            subtaskID_names[ta_subtype]);
 }
 
 /**
@@ -227,7 +227,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
         error("Not enough memory, please increase max_nber_dep");
 
       /* Increase counter of relation */
-      count_rel[ind/2 + k] += 1;
+      count_rel[ind / 2 + k] += 1;
 
       /* Not written yet => write it */
       if (!written) {
@@ -237,8 +237,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
         char tb_name[200];
 
         /* construct line */
-	scheduler_task_dependency_name(ta->type, ta->subtype, ta_name);
-	scheduler_task_dependency_name(tb->type, tb->subtype, tb_name);
+        scheduler_task_dependency_name(ta->type, ta->subtype, ta_name);
+        scheduler_task_dependency_name(tb->type, tb->subtype, tb_name);
 
         /* Change colour of implicit tasks */
         if (ta->implicit)
@@ -339,29 +339,29 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
     for (int ta_subtype = 0; ta_subtype < task_subtype_count; ta_subtype++) {
 
       /* Get task indice */
-      const int ind = (ta_type * task_subtype_count + ta_subtype) * max_nber_dep;
+      const int ind =
+          (ta_type * task_subtype_count + ta_subtype) * max_nber_dep;
 
       /* Loop over dependencies */
       for (int k = 0; k < max_nber_dep; k++) {
-	
-	if (count_rel[ind + k] == 0)
-	  continue;
 
-	/* Get task type */
-	const int i = 2 * (ind + k);
-	int tb_type = table[i];
-	int tb_subtype = table[i+1];
+        if (count_rel[ind + k] == 0) continue;
 
-	/* Get names */
-	char ta_name[200];
-	char tb_name[200];
-    
-	scheduler_task_dependency_name(ta_type, ta_subtype, ta_name);
-	scheduler_task_dependency_name(tb_type, tb_subtype, tb_name);
-    
-	/* Write to the fle */
-	fprintf(f, "\t %s->%s[label=%i];\n", ta_name, tb_name, count_rel[ind + k]);
+        /* Get task type */
+        const int i = 2 * (ind + k);
+        int tb_type = table[i];
+        int tb_subtype = table[i + 1];
 
+        /* Get names */
+        char ta_name[200];
+        char tb_name[200];
+
+        scheduler_task_dependency_name(ta_type, ta_subtype, ta_name);
+        scheduler_task_dependency_name(tb_type, tb_subtype, tb_name);
+
+        /* Write to the fle */
+        fprintf(f, "\t %s->%s[label=%i];\n", ta_name, tb_name,
+                count_rel[ind + k]);
       }
     }
   }
