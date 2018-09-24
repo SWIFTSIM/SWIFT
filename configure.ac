@@ -369,7 +369,7 @@ if test "$enable_opt" = "yes" ; then
          AC_MSG_WARN([Do not know how to disable vectorization for this compiler])
       fi
    elif test "$enable_hand_vec" = "yes"; then
-      AC_DEFINE([WITH_VECTORIZATION],1,[Enable vectorization])
+      AC_DEFINE([WITH_VECTORIZATION],1,[Enable hand-written vectorization])
       HAVEVECTORIZATION=1
    fi
 fi
