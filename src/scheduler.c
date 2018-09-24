@@ -114,6 +114,31 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 }
 
 /**
+ * @brief generate the dependency name for the tasks
+ *
+ * @param ta The #task
+ * @param ta_name The formatted string
+ */
+void scheduler_task_dependency_name(
+    int ta_type, int ta_subtype, char *ta_name) {
+
+  /* Check input */
+  if (ta_type < 0 || ta_type >= task_type_count)
+    error("Unknown task type %i", ta_type);
+
+  if (ta_subtype < 0 || ta_subtype >= task_subtype_count)
+    error("Unknown task subtype %i with type %s", ta_subtype,
+	  taskID_names[ta_type]);
+  
+  /* construct line */
+  if (ta_subtype == task_subtype_none)
+    sprintf(ta_name, "%s", taskID_names[ta_type]);
+  else
+    sprintf(ta_name, "\"%s %s\"", taskID_names[ta_type],
+	    subtaskID_names[ta_subtype]);
+}
+
+/**
  * @brief Write a dot file with the task dependencies.
  *
  * Run plot_task_dependencies.sh for an example of how to use it
@@ -139,10 +164,15 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
    * task_subtype  */
   int *table = (int *)malloc(nber_relation * sizeof(int));
   if (table == NULL)
-    error("Error allocating memory for task-dependency graph.");
+    error("Error allocating memory for task-dependency graph (table).");
+
+  int *count_rel = (int *)malloc(nber_relation * sizeof(int) / 2);
+  if (count_rel == NULL)
+    error("Error allocating memory for task-dependency graph (count_rel).");
 
   /* Reset everything */
   for (int i = 0; i < nber_relation; i++) table[i] = -1;
+  for (int i = 0; i < nber_relation / 2; i++) count_rel[i] = 0;
 
   /* Create file */
   char filename[200] = "dependency_graph.dot";
@@ -189,12 +219,15 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
         }
 
         k += 1;
-        cur = &cur[3];
+        cur = &cur[2];
       }
 
       /* max_nber_dep is too small */
       if (k == max_nber_dep)
         error("Not enough memory, please increase max_nber_dep");
+
+      /* Increase counter of relation */
+      count_rel[ind/2 + k] += 1;
 
       /* Not written yet => write it */
       if (!written) {
@@ -204,20 +237,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
         char tb_name[200];
 
         /* construct line */
-        if (ta->subtype == task_subtype_none)
-          sprintf(ta_name, "%s", taskID_names[ta->type]);
-        else
-          sprintf(ta_name, "\"%s %s\"", taskID_names[ta->type],
-                  subtaskID_names[ta->subtype]);
-
-        if (tb->subtype == task_subtype_none)
-          sprintf(tb_name, "%s", taskID_names[tb->type]);
-        else
-          sprintf(tb_name, "\"%s %s\"", taskID_names[tb->type],
-                  subtaskID_names[tb->subtype]);
-
-        /* Write to the ffile */
-        fprintf(f, "\t %s->%s;\n", ta_name, tb_name);
+	scheduler_task_dependency_name(ta->type, ta->subtype, ta_name);
+	scheduler_task_dependency_name(tb->type, tb->subtype, tb_name);
 
         /* Change colour of implicit tasks */
         if (ta->implicit)
@@ -311,6 +332,39 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   if (gravity_cluster[4])
     fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_mm]);
   fprintf(f, "\t};\n");
+
+  /* Write down the number of relation */
+  for (int ta_type = 0; ta_type < task_type_count; ta_type++) {
+
+    for (int ta_subtype = 0; ta_subtype < task_subtype_count; ta_subtype++) {
+
+      /* Get task indice */
+      const int ind = (ta_type * task_subtype_count + ta_subtype) * max_nber_dep;
+
+      /* Loop over dependencies */
+      for (int k = 0; k < max_nber_dep; k++) {
+	
+	if (count_rel[ind + k] == 0)
+	  continue;
+
+	/* Get task type */
+	const int i = 2 * (ind + k);
+	int tb_type = table[i];
+	int tb_subtype = table[i+1];
+
+	/* Get names */
+	char ta_name[200];
+	char tb_name[200];
+    
+	scheduler_task_dependency_name(ta_type, ta_subtype, ta_name);
+	scheduler_task_dependency_name(tb_type, tb_subtype, tb_name);
+    
+	/* Write to the fle */
+	fprintf(f, "\t %s->%s[label=%i];\n", ta_name, tb_name, count_rel[ind + k]);
+
+      }
+    }
+  }
 
   /* Be clean */
   fprintf(f, "}");
