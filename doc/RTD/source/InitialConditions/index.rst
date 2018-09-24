@@ -123,7 +123,7 @@ RuntimePars
 
 In the ``/RuntimePars/``, the following attributes are required:
 
-+ ``PeriodicBoundaryConditionsOn``, a flag to tell the code whether or not you
++ ``PeriodicBoundariesOn``, a flag to tell the code whether or not you
   have periodic boundaries switched on. Again, this is historical; it should be
   set to 1 (default) if you have the code running in periodic mode, or 0 otherwise.
 
