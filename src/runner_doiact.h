@@ -972,7 +972,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[sort_i[pid].i];
-      const int pi_inhibited = part_is_inhibited(pi, e);
       const float hi = pi->h;
 
       /* Skip inactive particles */
@@ -1031,7 +1030,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               pjz, ci->width[2]);
 
         /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current && !pi_inhibited)
+        if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current && !pj_inhibited)
           error("Particle pj not drifted to current time");
@@ -1057,7 +1056,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
       /* Get a hold of the jth part in cj. */
       struct part *pj = &parts_j[sort_j[pjd].i];
-      const int pj_inhibited = part_is_inhibited(pj, e);
       const float hj = pj->h;
 
       /* Skip inactive particles */
@@ -1118,7 +1116,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current && !pj_inhibited)
+        if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
 
@@ -1360,7 +1358,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pj */
         struct part *pj = &parts_j[sort_active_j[pjd].i];
-        const int pj_inhibited = part_is_inhibited(pj, e);
         const float hj = pj->h;
 
         /* Get the position of pj in the right frame */
@@ -1402,7 +1399,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current && !pj_inhibited)
+        if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
 
@@ -1522,7 +1519,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pi */
         struct part *pi = &parts_i[sort_active_i[pid].i];
-        const int pi_inhibited = part_is_inhibited(pi, e);
         const float hi = pi->h;
         const float hig2 = hi * hi * kernel_gamma2;
 
@@ -1563,7 +1559,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               pjz, ci->width[2]);
 
         /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current && !pi_inhibited)
+        if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current && !pj_inhibited)
           error("Particle pj not drifted to current time");
@@ -1992,7 +1988,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[indt[pjd]];
-        const int pj_inhibited = part_is_inhibited(pj, e);
         const float hj = pj->h;
 
         /* Compute the pairwise distance. */
@@ -2007,7 +2002,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current && !pj_inhibited)
+        if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
 
