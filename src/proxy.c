@@ -269,6 +269,40 @@ void proxy_cells_exchange_second(struct proxy *p) {
 #endif
 }
 
+#ifdef WITH_MPI
+
+void proxy_cells_count_mapper(void *map_data, int num_elements,
+                              void *extra_data) {
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    if (cells[k].sendto) cells[k].pcell_size = cell_getsize(&cells[k]);
+  }
+}
+
+struct pack_mapper_data {
+  struct space *s;
+  int *offset;
+  struct pcell *pcells;
+  int with_gravity;
+};
+
+void proxy_cells_pack_mapper(void *map_data, int num_elements,
+                             void *extra_data) {
+  struct cell *cells = (struct cell *)map_data;
+  struct pack_mapper_data *data = (struct pack_mapper_data *)extra_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    if (cells[k].sendto) {
+      ptrdiff_t ind = &cells[k] - data->s->cells_top;
+      cells[k].pcell = &data->pcells[data->offset[ind]];
+      cell_pack(&cells[k], cells[k].pcell, data->with_gravity);
+    }
+  }
+}
+
+#endif  // WITH_MPI
+
 /**
  * @brief Exchange the cell structures with all proxies.
  *
@@ -292,13 +326,14 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 
   /* Run through the cells and get the size of the ones that will be sent off.
    */
+  threadpool_map(&s->e->threadpool, proxy_cells_count_mapper, s->cells_top,
+                 s->nr_cells, sizeof(struct cell), /*chunk=*/0,
+                 /*extra_data=*/NULL);
   int count_out = 0;
   int offset[s->nr_cells];
   for (int k = 0; k < s->nr_cells; k++) {
     offset[k] = count_out;
-    if (s->cells_top[k].sendto)
-      count_out +=
-          (s->cells_top[k].pcell_size = cell_getsize(&s->cells_top[k]));
+    if (s->cells_top[k].sendto) count_out += s->cells_top[k].pcell_size;
   }
 
   /* Allocate the pcells. */
@@ -308,11 +343,9 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     error("Failed to allocate pcell buffer.");
 
   /* Pack the cells. */
-  for (int k = 0; k < s->nr_cells; k++)
-    if (s->cells_top[k].sendto) {
-      cell_pack(&s->cells_top[k], &pcells[offset[k]], with_gravity);
-      s->cells_top[k].pcell = &pcells[offset[k]];
-    }
+  struct pack_mapper_data data = {s, offset, pcells, with_gravity};
+  threadpool_map(&s->e->threadpool, proxy_cells_pack_mapper, s->cells_top,
+                 s->nr_cells, sizeof(struct cell), /*chunk=*/0, &data);
 
   /* Launch the first part of the exchange. */
   for (int k = 0; k < num_proxies; k++) {
