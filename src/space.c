@@ -609,25 +609,27 @@ void space_rebuild(struct space *s, int verbose) {
   const int local_nodeID = s->e->nodeID;
 
   /* Move non-local parts and inhibited parts to the end of the list. */
-  for (size_t k = 0; k < nr_parts; /* void */) {
-    if (ind[k] == -1 || cells_top[ind[k]].nodeID != local_nodeID) {
-      nr_parts -= 1;
-      /* Swap the particle */
-      memswap(&s->parts[k], &s->parts[nr_parts], sizeof(struct part));
-      /* Swap the link with the gpart */
-      if (s->parts[k].gpart != NULL) {
-        s->parts[k].gpart->id_or_neg_offset = -k;
+  if (s->e->nr_nodes  > 1 || count_inhibited_parts > 0) {
+    for (size_t k = 0; k < nr_parts; /* void */) {
+      if (ind[k] == -1 || cells_top[ind[k]].nodeID != local_nodeID) {
+	nr_parts -= 1;
+	/* Swap the particle */
+	memswap(&s->parts[k], &s->parts[nr_parts], sizeof(struct part));
+	/* Swap the link with the gpart */
+	if (s->parts[k].gpart != NULL) {
+	  s->parts[k].gpart->id_or_neg_offset = -k;
+	}
+	if (s->parts[nr_parts].gpart != NULL) {
+	  s->parts[nr_parts].gpart->id_or_neg_offset = -nr_parts;
+	}
+	/* Swap the xpart */
+	memswap(&s->xparts[k], &s->xparts[nr_parts], sizeof(struct xpart));
+	/* Swap the index */
+	memswap(&ind[k], &ind[nr_parts], sizeof(int));
+      } else {
+	/* Increment when not exchanging otherwise we need to retest "k".*/
+	k++;
       }
-      if (s->parts[nr_parts].gpart != NULL) {
-        s->parts[nr_parts].gpart->id_or_neg_offset = -nr_parts;
-      }
-      /* Swap the xpart */
-      memswap(&s->xparts[k], &s->xparts[nr_parts], sizeof(struct xpart));
-      /* Swap the index */
-      memswap(&ind[k], &ind[nr_parts], sizeof(int));
-    } else {
-      /* Increment when not exchanging otherwise we need to retest "k".*/
-      k++;
     }
   }
 
@@ -650,23 +652,25 @@ void space_rebuild(struct space *s, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local sparts and inhibited sparts to the end of the list. */
-  for (size_t k = 0; k < nr_sparts; /* void */) {
-    if (sind[k] == -1 || cells_top[sind[k]].nodeID != local_nodeID) {
-      nr_sparts -= 1;
-      /* Swap the particle */
-      memswap(&s->sparts[k], &s->sparts[nr_sparts], sizeof(struct spart));
-      /* Swap the link with the gpart */
-      if (s->sparts[k].gpart != NULL) {
-        s->sparts[k].gpart->id_or_neg_offset = -k;
+  if (s->e->nr_nodes  > 1 || count_inhibited_sparts > 0) {
+    for (size_t k = 0; k < nr_sparts; /* void */) {
+      if (sind[k] == -1 || cells_top[sind[k]].nodeID != local_nodeID) {
+	nr_sparts -= 1;
+	/* Swap the particle */
+	memswap(&s->sparts[k], &s->sparts[nr_sparts], sizeof(struct spart));
+	/* Swap the link with the gpart */
+	if (s->sparts[k].gpart != NULL) {
+	  s->sparts[k].gpart->id_or_neg_offset = -k;
+	}
+	if (s->sparts[nr_sparts].gpart != NULL) {
+	  s->sparts[nr_sparts].gpart->id_or_neg_offset = -nr_sparts;
+	}
+	/* Swap the index */
+	memswap(&sind[k], &sind[nr_sparts], sizeof(int));
+      } else {
+	/* Increment when not exchanging otherwise we need to retest "k".*/
+	k++;
       }
-      if (s->sparts[nr_sparts].gpart != NULL) {
-        s->sparts[nr_sparts].gpart->id_or_neg_offset = -nr_sparts;
-      }
-      /* Swap the index */
-      memswap(&sind[k], &sind[nr_sparts], sizeof(int));
-    } else {
-      /* Increment when not exchanging otherwise we need to retest "k".*/
-      k++;
     }
   }
 
@@ -689,29 +693,31 @@ void space_rebuild(struct space *s, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local gparts and inhibited parts to the end of the list. */
-  for (size_t k = 0; k < nr_gparts; /* void */) {
-    if (gind[k] == -1 || cells_top[gind[k]].nodeID != local_nodeID) {
-      nr_gparts -= 1;
-      /* Swap the particle */
-      memswap(&s->gparts[k], &s->gparts[nr_gparts], sizeof(struct gpart));
-      /* Swap the link with part/spart */
-      if (s->gparts[k].type == swift_type_gas) {
-        s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      } else if (s->gparts[k].type == swift_type_stars) {
-        s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      }
-      if (s->gparts[nr_gparts].type == swift_type_gas) {
-        s->parts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+  if (s->e->nr_nodes  > 1 || count_inhibited_gparts > 0) {
+    for (size_t k = 0; k < nr_gparts; /* void */) {
+      if (gind[k] == -1 || cells_top[gind[k]].nodeID != local_nodeID) {
+	nr_gparts -= 1;
+	/* Swap the particle */
+	memswap(&s->gparts[k], &s->gparts[nr_gparts], sizeof(struct gpart));
+	/* Swap the link with part/spart */
+	if (s->gparts[k].type == swift_type_gas) {
+	  s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+	} else if (s->gparts[k].type == swift_type_stars) {
+	  s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+	}
+	if (s->gparts[nr_gparts].type == swift_type_gas) {
+	  s->parts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
             &s->gparts[nr_gparts];
-      } else if (s->gparts[nr_gparts].type == swift_type_stars) {
-        s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+	} else if (s->gparts[nr_gparts].type == swift_type_stars) {
+	  s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
             &s->gparts[nr_gparts];
+	}
+	/* Swap the index */
+	memswap(&gind[k], &gind[nr_gparts], sizeof(int));
+      } else {
+	/* Increment when not exchanging otherwise we need to retest "k".*/
+	k++;
       }
-      /* Swap the index */
-      memswap(&gind[k], &gind[nr_gparts], sizeof(int));
-    } else {
-      /* Increment when not exchanging otherwise we need to retest "k".*/
-      k++;
     }
   }
 
