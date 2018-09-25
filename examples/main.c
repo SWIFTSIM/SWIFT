@@ -507,6 +507,10 @@ int main(int argc, char *argv[]) {
     error("Cannot reconstruct m-poles every step over MPI (yet).");
 #endif
 
+#ifdef WITH_MPI
+  if (with_feedback) error("Can't run with feedback over MPI (yet).");
+#endif
+
 #if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
   if (with_structure_finding && nr_nodes > 1)
     error("VEOCIraptor not yet enabled over MPI.");
