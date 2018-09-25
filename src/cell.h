@@ -622,6 +622,10 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
                        struct gpart *gp);
 void cell_remove_spart(const struct engine *e, struct cell *c,
                        struct spart *sp);
+void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
+                                struct part *p, struct xpart *xp);
+void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
+				 struct spart *sp);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s);
 int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
