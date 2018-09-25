@@ -73,10 +73,9 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
 /**
  * @brief Computes the overlap between the parts array of two given cells.
  *
- * TYPE is the type of parts (e.g. #part, #gpart, #spart)
- *
- * @param ci The first #cell.
- * @param cj The second #cell.
+ * @param TYPE is the type of parts (e.g. #part, #gpart, #spart)
+ * @param ARRAY is the array of this specific type.
+ * @param COUNT is the number of elements in the array.
  */
 #define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                               \
   __attribute__((always_inline))                                            \

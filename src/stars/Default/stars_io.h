@@ -81,10 +81,11 @@ INLINE static void stars_write_particles(const struct spart *sparts,
  *
  * By default, takes the values provided by the hydro.
  *
- * @param p The #stars_props.
+ * @param sp The #stars_props.
  * @param phys_const The physical constants in the internal unit system.
  * @param us The internal unit system.
  * @param params The parsed parameters.
+ * @param p The already read-in properties of the hydro scheme.
  */
 INLINE static void stars_props_init(struct stars_props *sp,
                                     const struct phys_const *phys_const,
@@ -126,7 +127,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
 /**
  * @brief Print the global properties of the stars scheme.
  *
- * @param p The #stars_props.
+ * @param sp The #stars_props.
  */
 INLINE static void stars_props_print(const struct stars_props *sp) {
 

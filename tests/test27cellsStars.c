@@ -53,12 +53,13 @@
  * a DOPAIR or DOSELF calcuation.
  *
  * @param n The cube root of the number of particles.
- * @param n The cube root of the number of star particles.
+ * @param n_stars The cube root of the number of star particles.
  * @param offset The position of the cell offset from (0,0,0).
  * @param size The cell size.
  * @param h The smoothing length of the particles in units of the inter-particle
  * separation.
- * @param partId The running counter of IDs.
+ * @param partId The running counter of IDs for gas.
+ * @param spartId The running counter of IDs for stars.
  * @param pert The perturbation to apply to the particles in the cell in units
  * of the inter-particle separation.
  * @param h_pert The perturbation to apply to the smoothing length.

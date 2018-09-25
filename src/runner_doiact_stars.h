@@ -89,8 +89,8 @@ void runner_doself_stars_density(struct runner *r, struct cell *c, int timer) {
  * @brief Calculate the number density of cj #part around the ci #spart
  *
  * @param r runner task
- * @param c cell
- * @param timer 1 if the time is to be recorded.
+ * @param ci The first #cell
+ * @param cj The second #cell
  */
 void runner_dosubpair_stars_density(struct runner *r, struct cell *restrict ci,
                                     struct cell *restrict cj) {
@@ -324,7 +324,7 @@ void runner_doself_subset_stars_density(struct runner *r,
 
 * @param r The #runner.
 * @param ci The first #cell.
-* @param parts The #spart to interact.
+* @param sparts The #spart to interact.
 * @param ind The list of indices of particles in @c ci to interact with.
 * @param scount The number of particles in @c ind.
 */

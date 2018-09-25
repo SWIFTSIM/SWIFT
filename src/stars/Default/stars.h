@@ -97,6 +97,7 @@ __attribute__((always_inline)) INLINE static void stars_kick_extra(
  * @brief Finishes the calculation of density on stars
  *
  * @param sp The particle to act upon
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void stars_end_density(
     struct spart* sp, const struct cosmology* cosmo) {
