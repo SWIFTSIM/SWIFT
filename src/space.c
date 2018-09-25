@@ -633,8 +633,9 @@ void space_rebuild(struct space *s, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all parts are in the correct places. */
+  int check_count_inhibited_part = 0;
   for (size_t k = 0; k < nr_parts; k++) {
-    if (cells_top[ind[k]].nodeID != local_nodeID) {
+    if (ind[k] == -1 || cells_top[ind[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local parts to send list");
     }
   }
@@ -642,7 +643,10 @@ void space_rebuild(struct space *s, int verbose) {
     if (ind[k] != -1 && cells_top[ind[k]].nodeID == local_nodeID) {
       error("Failed to remove local parts from send list");
     }
+    if (ind[k] == -1) ++check_count_inhibited_part;
   }
+  if (check_count_inhibited_part != count_inhibited_parts)
+    error("Counts of inhibited particles do not match!");
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local sparts and inhibited sparts to the end of the list. */
@@ -667,9 +671,10 @@ void space_rebuild(struct space *s, int verbose) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all sparts are in the correct place (untested). */
+  /* Check that all sparts are in the correct place. */
+  int check_count_inhibited_spart = 0;
   for (size_t k = 0; k < nr_sparts; k++) {
-    if (cells_top[sind[k]].nodeID != local_nodeID) {
+    if (sind[k] == -1 || cells_top[sind[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local sparts to send list");
     }
   }
@@ -677,7 +682,10 @@ void space_rebuild(struct space *s, int verbose) {
     if (sind[k] != -1 && cells_top[sind[k]].nodeID == local_nodeID) {
       error("Failed to remove local sparts from send list");
     }
+    if (sind[k] == -1) ++check_count_inhibited_spart;
   }
+  if (check_count_inhibited_spart != count_inhibited_sparts)
+    error("Counts of inhibited s-particles do not match!");
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local gparts and inhibited parts to the end of the list. */
@@ -708,9 +716,10 @@ void space_rebuild(struct space *s, int verbose) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all gparts are in the correct place (untested). */
+  /* Check that all gparts are in the correct place. */
+  int check_count_inhibited_gpart = 0;
   for (size_t k = 0; k < nr_gparts; k++) {
-    if (cells_top[gind[k]].nodeID != local_nodeID) {
+    if (gind[k] == -1 || cells_top[gind[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local gparts to send list");
     }
   }
@@ -718,7 +727,10 @@ void space_rebuild(struct space *s, int verbose) {
     if (gind[k] != -1 && cells_top[gind[k]].nodeID == local_nodeID) {
       error("Failed to remove local gparts from send list");
     }
+    if (gind[k] == -1) ++check_count_inhibited_gpart;
   }
+  if (check_count_inhibited_gpart != count_inhibited_gparts)
+    error("Counts of inhibited g-particles do not match!");
 #endif /* SWIFT_DEBUG_CHECKS */
 
 #ifdef WITH_MPI
