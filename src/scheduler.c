@@ -120,14 +120,14 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
  * @param ta_subtype The #task type.
  * @param ta_name (return) The formatted string
  */
-void scheduler_task_dependency_name(enum task_types ta_type,
-                                    enum task_subtypes ta_subtype,
+void scheduler_task_dependency_name(int ta_type, int ta_subtype,
                                     char *ta_name) {
 
   /* Check input */
-  if (ta_type >= task_type_count) error("Unknown task type %i", ta_type);
+  if ((ta_type < 0) || (ta_type >= task_type_count))
+    error("Unknown task type %i", ta_type);
 
-  if (ta_subtype >= task_subtype_count)
+  if ((ta_subtype < 0) || (ta_subtype >= task_subtype_count))
     error("Unknown task subtype %i with type %s", ta_subtype,
           taskID_names[ta_type]);
 
