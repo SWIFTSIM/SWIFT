@@ -322,6 +322,16 @@ AC_ARG_ENABLE([vec],
    [enable_vec="yes"]
 )
 
+#  Disable hand written vectorisation. Slightly odd implementation as want 
+# to describe as --disable-hand-vec, but macro is enable (there is no enable action).
+AC_ARG_ENABLE([hand-vec],
+   [AS_HELP_STRING([--disable-hand-vec],
+     [Disable intrinsic vectorization]
+   )],
+   [enable_hand_vec="$enableval"],
+   [enable_hand_vec="yes"]
+)
+
 HAVEVECTORIZATION=0
 
 if test "$enable_opt" = "yes" ; then
@@ -345,7 +355,6 @@ if test "$enable_opt" = "yes" ; then
        fi
    fi
 
-
    if test "$enable_vec" = "no"; then
       if test "$ax_cv_c_compiler_vendor" = "intel"; then
       	 CFLAGS="$CFLAGS -no-vec -no-simd"
@@ -359,8 +368,8 @@ if test "$enable_opt" = "yes" ; then
       else
          AC_MSG_WARN([Do not know how to disable vectorization for this compiler])
       fi
-   else
-      AC_DEFINE([WITH_VECTORIZATION],1,[Enable vectorization])
+   elif test "$enable_hand_vec" = "yes"; then
+      AC_DEFINE([WITH_VECTORIZATION],1,[Enable hand-written vectorization])
       HAVEVECTORIZATION=1
    fi
 fi
