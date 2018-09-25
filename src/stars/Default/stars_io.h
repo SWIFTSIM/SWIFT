@@ -142,7 +142,8 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
       "(max|dlog(h)/dt|=%f).",
       pow_dimension(expf(sp->log_max_h_change)), sp->log_max_h_change);
 
-  message("Maximal smoothing length allowed: %.4f", sp->h_max);
+  if (sp->h_max != FLT_MAX)
+    message("Maximal smoothing length allowed: %.4f", sp->h_max);
 
   message("Maximal iterations in ghost task set to %d",
           sp->max_smoothing_iterations);
