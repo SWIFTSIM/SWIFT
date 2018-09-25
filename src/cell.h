@@ -282,6 +282,18 @@ struct cell {
   /*! Task propagating the multipole to the particles */
   struct task *grav_down;
 
+  /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
+  struct task *stars_ghost_in;
+
+  /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
+  struct task *stars_ghost_out;
+
+  /*! The star ghost task itself */
+  struct task *stars_ghost;
+
+  /*! Linked list of the tasks computing this cell's star density. */
+  struct link *stars_density;
+
   /*! Task for cooling */
   struct task *cooling;
 
@@ -523,6 +535,7 @@ void cell_check_gpart_drift_point(struct cell *c, void *data);
 void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
 int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
@@ -535,6 +548,8 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s);
 void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
                                       struct scheduler *s);
+void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
+                                       struct scheduler *s);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_drift_part(struct cell *c, struct scheduler *s);
@@ -581,6 +596,32 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair star task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_stars_task(const struct cell *c) {
+
+  // LOIC: To implement
+  return 0;
+}
+
+/**
+ * @brief Can a sub-self stars task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_stars_task(const struct cell *c) {
+
+  // LOIC: To implement
+  return 0;
+}
+
+/**
  * @brief Can a pair hydro task associated with a cell be split into smaller
  * sub-tasks.
  *
@@ -612,6 +653,32 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
   /* Note: No need for more checks here as all the sub-pairs and sub-self */
   /* tasks will be created. So no need to check for h_max */
   return c->split && (space_stretch * kernel_gamma * c->h_max < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a pair stars task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_pair_stars_task(
+    const struct cell *c) {
+
+  // LOIC: To implement
+  return 0;
+}
+
+/**
+ * @brief Can a self stars task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_self_stars_task(
+    const struct cell *c) {
+
+  // LOIC: To implement
+  return 0;
 }
 
 /**

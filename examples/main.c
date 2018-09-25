@@ -98,6 +98,7 @@ void print_help_message(void) {
   printf("  %2s %14s %s\n", "-r", "", "Continue using restart files.");
   printf("  %2s %14s %s\n", "-s", "", "Run with hydrodynamics.");
   printf("  %2s %14s %s\n", "-S", "", "Run with stars.");
+  printf("  %2s %14s %s\n", "-b", "", "Run with stars feedback.");
   printf("  %2s %14s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
          "specified.");
@@ -135,6 +136,7 @@ int main(int argc, char *argv[]) {
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
+  struct stars_props stars_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct sourceterms sourceterms;
@@ -192,6 +194,7 @@ int main(int argc, char *argv[]) {
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_stars = 0;
+  int with_feedback = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
@@ -208,7 +211,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tv:xy:Y:")) != -1)
+  while ((c = getopt(argc, argv, "abcCdDef:FgGhMn:o:P:rsSt:Tv:xy:Y:")) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -216,6 +219,9 @@ int main(int argc, char *argv[]) {
 #else
         error("Need NUMA support for thread affinity");
 #endif
+        break;
+      case 'b':
+        with_feedback = 1;
         break;
       case 'c':
         with_cosmology = 1;
@@ -379,6 +385,15 @@ int main(int argc, char *argv[]) {
     if (myrank == 0)
       printf(
           "Error: Cannot process stars without gravity, -g or -G must be "
+          "chosen.\n");
+    if (myrank == 0) print_help_message();
+    return 1;
+  }
+
+  if (!with_stars && with_feedback) {
+    if (myrank == 0)
+      printf(
+          "Error: Cannot process feedback without stars, -S must be "
           "chosen.\n");
     if (myrank == 0) print_help_message();
     return 1;
@@ -681,6 +696,13 @@ int main(int argc, char *argv[]) {
     else
       bzero(&eos, sizeof(struct eos_parameters));
 
+    /* Initialise the stars properties */
+    if (with_stars)
+      stars_props_init(&stars_properties, &prog_const, &us, params,
+                       &hydro_properties);
+    else
+      bzero(&stars_properties, sizeof(struct stars_props));
+
     /* Initialise the gravity properties */
     if (with_self_gravity)
       gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology);
@@ -752,7 +774,7 @@ int main(int argc, char *argv[]) {
     /* Check once and for all that we don't have unwanted links */
     if (!with_stars && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
-        if (gparts[k].type == swift_type_star) error("Linking problem");
+        if (gparts[k].type == swift_type_stars) error("Linking problem");
     }
     if (!with_hydro && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
@@ -778,7 +800,7 @@ int main(int argc, char *argv[]) {
 
     if (myrank == 0)
       message(
-          "Read %lld gas particles, %lld star particles and %lld gparts from "
+          "Read %lld gas particles, %lld stars particles and %lld gparts from "
           "the ICs.",
           N_total[0], N_total[2], N_total[1]);
 
@@ -887,6 +909,7 @@ int main(int argc, char *argv[]) {
     if (with_cooling) engine_policies |= engine_policy_cooling;
     if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
     if (with_stars) engine_policies |= engine_policy_stars;
+    if (with_feedback) engine_policies |= engine_policy_feedback;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
 
@@ -894,8 +917,8 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
-                &hydro_properties, &gravity_properties, &mesh, &potential,
-                &cooling_func, &chemistry, &sourceterms);
+                &hydro_properties, &gravity_properties, &stars_properties,
+                &mesh, &potential, &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 
@@ -910,7 +933,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) {
       long long N_DM = N_total[1] - N_total[2] - N_total[0];
       message(
-          "Running on %lld gas particles, %lld star particles and %lld DM "
+          "Running on %lld gas particles, %lld stars particles and %lld DM "
           "particles (%lld gravity particles)",
           N_total[0], N_total[2], N_total[1] > 0 ? N_DM : 0, N_total[1]);
       message(

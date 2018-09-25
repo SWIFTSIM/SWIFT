@@ -61,6 +61,7 @@
 #include "scheduler.h"
 #include "space.h"
 #include "space_getsid.h"
+#include "stars.h"
 #include "timers.h"
 #include "tools.h"
 
@@ -1114,7 +1115,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
           if (gparts[j].type == swift_type_gas) {
             parts[-gparts[j].id_or_neg_offset - parts_offset].gpart =
                 &gparts[j];
-          } else if (gparts[j].type == swift_type_star) {
+          } else if (gparts[j].type == swift_type_stars) {
             sparts[-gparts[j].id_or_neg_offset - sparts_offset].gpart =
                 &gparts[j];
           }
@@ -1124,7 +1125,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
         gbuff[k] = temp_buff;
         if (gparts[k].type == swift_type_gas) {
           parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
-        } else if (gparts[k].type == swift_type_star) {
+        } else if (gparts[k].type == swift_type_stars) {
           sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart =
               &gparts[k];
         }
@@ -2018,6 +2019,19 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 }
 
 /**
+ * @brief Traverse a sub-cell task and activate the stars drift tasks that are
+ * required by a stars task
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in.
+ * @param s The task #scheduler.
+ */
+void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
+                                       struct scheduler *s) {
+  // LOIC: to implement
+}
+
+/**
  * @brief Traverse a sub-cell task and activate the gravity drift tasks that
  * are required by a self gravity task.
  *
@@ -2499,6 +2513,159 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->grav_down_in != NULL) scheduler_activate(s, c->grav_down_in);
     if (c->grav_mesh != NULL) scheduler_activate(s, c->grav_mesh);
     if (c->grav_long_range != NULL) scheduler_activate(s, c->grav_long_range);
+  }
+
+  return rebuild;
+}
+
+/**
+ * @brief Un-skips all the stars tasks associated with a given cell and checks
+ * if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
+  struct engine *e = s->space->e;
+  const int nodeID = e->nodeID;
+  int rebuild = 0;
+
+  /* Un-skip the density tasks involved with this cell. */
+  for (struct link *l = c->stars_density; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_stars(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_stars(cj, e) : 0;
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active && ci->nodeID == nodeID) ||
+        (cj_active && cj->nodeID == nodeID)) {
+      scheduler_activate(s, t);
+
+      /* Activate drifts */
+      if (t->type == task_type_self) {
+        if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (ci->nodeID == nodeID) cell_activate_drift_gpart(ci, s);
+      }
+
+      /* Set the correct sorting flags and activate hydro drifts */
+      else if (t->type == task_type_pair) {
+        /* Store some values. */
+        atomic_or(&ci->requires_sorts, 1 << t->flags);
+        atomic_or(&cj->requires_sorts, 1 << t->flags);
+        ci->dx_max_sort_old = ci->dx_max_sort;
+        cj->dx_max_sort_old = cj->dx_max_sort;
+
+        /* Activate the drift tasks. */
+        if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (cj->nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+        /* Check the sorts and activate them if needed. */
+        cell_activate_sorts(ci, t->flags, s);
+        cell_activate_sorts(cj, t->flags, s);
+      }
+      /* Store current values of dx_max and h_max. */
+      else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {
+        cell_activate_subcell_stars_tasks(t->ci, t->cj, s);
+      }
+    }
+
+    /* Only interested in pair interactions as of here. */
+    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+
+      /* Check whether there was too much particle motion, i.e. the
+         cell neighbour conditions were violated. */
+      if (cell_need_rebuild_for_pair(ci, cj)) rebuild = 1;
+
+#ifdef WITH_MPI
+      error("MPI with stars not implemented");
+      /* /\* Activate the send/recv tasks. *\/ */
+      /* if (ci->nodeID != nodeID) { */
+
+      /*   /\* If the local cell is active, receive data from the foreign cell.
+       * *\/ */
+      /*   if (cj_active) { */
+      /*     scheduler_activate(s, ci->recv_xv); */
+      /*     if (ci_active) { */
+      /*       scheduler_activate(s, ci->recv_rho); */
+
+      /*     } */
+      /*   } */
+
+      /*   /\* If the foreign cell is active, we want its ti_end values. *\/ */
+      /*   if (ci_active) scheduler_activate(s, ci->recv_ti); */
+
+      /*   /\* Is the foreign cell active and will need stuff from us? *\/ */
+      /*   if (ci_active) { */
+
+      /*     scheduler_activate_send(s, cj->send_xv, ci->nodeID); */
+
+      /*     /\* Drift the cell which will be sent; note that not all sent */
+      /*        particles will be drifted, only those that are needed. *\/ */
+      /*     cell_activate_drift_part(cj, s); */
+
+      /*     /\* If the local cell is also active, more stuff will be needed.
+       * *\/ */
+      /*     if (cj_active) { */
+      /*       scheduler_activate_send(s, cj->send_rho, ci->nodeID); */
+
+      /*     } */
+      /*   } */
+
+      /*   /\* If the local cell is active, send its ti_end values. *\/ */
+      /*   if (cj_active) scheduler_activate_send(s, cj->send_ti, ci->nodeID);
+       */
+
+      /* } else if (cj->nodeID != nodeID) { */
+
+      /*   /\* If the local cell is active, receive data from the foreign cell.
+       * *\/ */
+      /*   if (ci_active) { */
+      /*     scheduler_activate(s, cj->recv_xv); */
+      /*     if (cj_active) { */
+      /*       scheduler_activate(s, cj->recv_rho); */
+
+      /*     } */
+      /*   } */
+
+      /*   /\* If the foreign cell is active, we want its ti_end values. *\/ */
+      /*   if (cj_active) scheduler_activate(s, cj->recv_ti); */
+
+      /*   /\* Is the foreign cell active and will need stuff from us? *\/ */
+      /*   if (cj_active) { */
+
+      /*     scheduler_activate_send(s, ci->send_xv, cj->nodeID); */
+
+      /*     /\* Drift the cell which will be sent; note that not all sent */
+      /*        particles will be drifted, only those that are needed. *\/ */
+      /*     cell_activate_drift_part(ci, s); */
+
+      /*     /\* If the local cell is also active, more stuff will be needed.
+       * *\/ */
+      /*     if (ci_active) { */
+
+      /*       scheduler_activate_send(s, ci->send_rho, cj->nodeID); */
+
+      /*     } */
+      /*   } */
+
+      /*   /\* If the local cell is active, send its ti_end values. *\/ */
+      /*   if (ci_active) scheduler_activate_send(s, ci->send_ti, cj->nodeID);
+       */
+      /* } */
+#endif
+    }
+  }
+
+  /* Unskip all the other task types. */
+  if (c->nodeID == nodeID && cell_is_active_stars(c, e)) {
+
+    if (c->stars_ghost_in != NULL) scheduler_activate(s, c->stars_ghost_in);
+    if (c->stars_ghost_out != NULL) scheduler_activate(s, c->stars_ghost_out);
+    if (c->stars_ghost != NULL) scheduler_activate(s, c->stars_ghost);
   }
 
   return rebuild;
