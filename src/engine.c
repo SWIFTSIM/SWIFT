@@ -6329,7 +6329,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->snapshot_output_count = 0;
-  e->stf_output_count = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->dt_max_RMS_displacement = FLT_MAX;

@@ -235,7 +235,6 @@ struct engine {
   double a_first_stf_output;
   double time_first_stf_output;
   double delta_time_stf;
-  int stf_output_count;
 
   /* Output_List for the structure finding */
   struct output_list *output_list_stf;
