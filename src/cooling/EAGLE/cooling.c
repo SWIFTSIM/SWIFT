@@ -94,6 +94,8 @@ void cooling_update(const struct phys_const *phys_const,
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  * @param dt The time-step of this particle.
+ * @param minimum_internal_energy the minimal internal energy 
+ * allowed in by SWIFT. Read from yml file into engine struct.
  */
 void cooling_cool_part(const struct phys_const *restrict phys_const,
                        const struct unit_system *restrict us,
@@ -183,7 +185,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   // calculate du/dt
   float cooling_du_dt = 0.0;
   if (dt > 0) {
-    cooling_du_dt = (u - u_start*cooling->internal_energy_scale) / dt / cooling->power_scale;
+    cooling_du_dt = (u/cooling->internal_energy_scale - u_start) / dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   }
 
   /* Update the internal energy time derivative */
@@ -232,16 +234,19 @@ eagle_helium_reionization_extraheat(
 }
 
 /*
- * @brief Calculates cooling rate by interpolating 4d tables
- * of cooling rates which depend on redshift, temperature (log base 10),
- * hydrogen number density, helium fraction and metal abundances.
- * Only the temperature changes when cooling a given particle, so
+ * @brief Calculates cooling rate for given internal energy by interpolating
+ * EAGLE cooling tables which depend on redshift, temperature,
+ * hydrogen number density, helium fraction and metal abundance. Since
+ * only the temperature changes when cooling a given particle, the
  * redshift, hydrogen number density and helium fraction indices and
- * offsets passed in.
+ * offsets passed in. Also calculates derivative of cooling rate with 
+ * respect to internal energy, which is used in Newton's method for 
+ * integrating the cooling equation.
+ * 
  *
  * @param log_10_u Log base 10 of internal energy
- * @param dlambda_du Pointer to value to be set to rate
- * of change of cooling rate with respect to internal energy
+ * @param dlambda_du Pointer to value to be set to derivative
+ * of cooling rate with respect to internal energy
  * @param n_h_i Particle hydrogen number density index
  * @param d_n_h Particle hydrogen number density offset
  * @param He_i Particle helium fraction index
@@ -251,7 +256,11 @@ eagle_helium_reionization_extraheat(
  * @param cosmo Cosmology structure
  * @param internal_const Physical constants structure
  * @param element_lambda Pointer to array for printing contribution
- * to cooling rate from each of the metals.
+ * to cooling rate from each of the metals. This is used only for
+ * testing and is set to non-NULL when this function is called 
+ * in eagle_print_metal_cooling_rate. Setting element_lambda to NULL 
+ * will skip writing to this array (as is done in eagle_cooling_rate, 
+ * when running SWIFT).
  * @param solar_ratio Array of ratios of particle metal abundances
  * to solar metal abundances
  */
@@ -262,18 +271,22 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
     const struct cosmology *restrict cosmo,
     const struct phys_const *internal_const, double *element_lambda,
     float *solar_ratio) {
-  double solar_electron_abundance, solar_electron_abundance1,
-      solar_electron_abundance2, elem_cool1, elem_cool2;
   double n_h = chemistry_get_number_density(p, cosmo, chemistry_element_H,
                                             internal_const) *
                cooling->number_density_scale;
   double z = cosmo->z;
-  double cooling_rate = 0.0, temp_lambda, temp_lambda1, temp_lambda2;
-  float du;
-  double h_plus_he_electron_abundance;
+  double cooling_rate = 0.0, temp_lambda, h_plus_he_electron_abundance;
+  double solar_electron_abundance;  
+  // used for calculating dlambda_du
+  double temp_lambda1, temp_lambda2;
   double h_plus_he_electron_abundance1;
   double h_plus_he_electron_abundance2;
+  double solar_electron_abundance1;
+  double solar_electron_abundance2; 
+  double elem_cool1, elem_cool2;
+  float du;
 
+  // counter, temperature index, value, and offset
   int i, temp_i;
   double temp;
   float d_temp;
@@ -323,6 +336,8 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
   }
   cooling_rate += temp_lambda;
   *dlambda_du += (temp_lambda2 - temp_lambda1) / du;
+  
+  // If we're testing cooling rate contributions write to array
   if (element_lambda != NULL) element_lambda[0] = temp_lambda;
 
   /* ------------------ */
@@ -624,7 +639,8 @@ __attribute__((always_inline)) INLINE float newton_iter(
         eagle_cooling_rate(logu_old, &dLambdaNet_du, n_h_i, d_n_h, He_i, d_He,
                            p, cooling, cosmo, phys_const, abundance_ratio);
 
-    // Newton iteration.
+    // Newton iteration. For details on how the cooling equation is integrated
+    // see documentation in theory/Cooling/
     logu = logu_old - (1.0 - u_ini * exp(-logu_old) -
                        LambdaNet * ratefact * dt * exp(-logu_old)) /
                           (1.0 - dLambdaNet_du * ratefact * dt);
@@ -853,10 +869,6 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->number_density_scale =
       units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) /
       units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  cooling->power_scale = units_cgs_conversion_factor(us, UNIT_CONV_POWER) /
-                         units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  cooling->temperature_scale =
-      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
   cooling->proton_mass_cgs = phys_const->const_proton_mass *
                              units_cgs_conversion_factor(us, UNIT_CONV_MASS);
