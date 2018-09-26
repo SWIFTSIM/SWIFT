@@ -1608,13 +1608,14 @@ AC_MSG_RESULT([
    Stellar model      : $with_stars
    Feedback model     : $with_feedback
 
-   Individual timers     : $enable_timers
-   Task debugging        : $enable_task_debugging
-   Threadpool debugging  : $enable_threadpool_debugging
-   Debugging checks      : $enable_debugging_checks
-   Interaction debugging : $enable_debug_interactions
-   Naive interactions    : $enable_naive_interactions
-   Gravity checks        : $gravity_force_checks
-   Custom icbrtf         : $enable_custom_icbrtf
+   Individual timers           : $enable_timers
+   Task debugging              : $enable_task_debugging
+   Threadpool debugging        : $enable_threadpool_debugging
+   Debugging checks            : $enable_debugging_checks
+   Interaction debugging       : $enable_debug_interactions
+   Stars interaction debugging : $enable_debug_interactions_stars
+   Naive interactions          : $enable_naive_interactions
+   Gravity checks              : $gravity_force_checks
+   Custom icbrtf               : $enable_custom_icbrtf
 
  ------------------------])
