@@ -76,11 +76,11 @@ struct cooling_function_data {
   float *SolarAbundances;
   float *SolarElectronAbundance;
 
-  /* Normalisation constants that are frequently used */
+  /* Normalisation constants that are frequently used 
+   * Multiply by these values to go from internal to cgs
+   * units for relevant quantity */
   double internal_energy_scale;
   double number_density_scale;
-  double temperature_scale;
-  double power_scale;
 
   /* filepath to EAGLE cooling tables */
   char cooling_table_path[eagle_table_path_name_length];

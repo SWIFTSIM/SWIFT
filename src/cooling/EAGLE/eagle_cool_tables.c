@@ -100,7 +100,8 @@ void GetCoolingRedshifts(struct cooling_function_data *cooling) {
 
   if (fscanf(infile, "%s", buffer) != EOF) {
     cooling->N_Redshifts = atoi(buffer);
-    cooling->Redshifts = (float *)malloc(cooling->N_Redshifts * sizeof(float));
+    if (posix_memalign((void **)&cooling->Redshifts, SWIFT_STRUCT_ALIGNMENT, cooling->N_Redshifts*sizeof(float)) != 0)
+      error("Failed to allocate redshift table");
 
     while (fscanf(infile, "%s", buffer) != EOF) {
       cooling->Redshifts[i] = atof(buffer);
@@ -164,11 +165,16 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
   status = H5Dclose(dataset);
 
   // allocate arrays of values for each of the above quantities
-  cooling->Temp = malloc(cooling->N_Temp * sizeof(float));
-  cooling->nH = malloc(cooling->N_nH * sizeof(float));
-  cooling->HeFrac = malloc(cooling->N_He * sizeof(float));
-  cooling->SolarAbundances = malloc(cooling->N_SolarAbundances * sizeof(float));
-  cooling->Therm = malloc(cooling->N_Temp * sizeof(float));
+  if (posix_memalign((void **)&cooling->Temp, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * sizeof(float)) !=0) 
+    error("Failed to allocate temperature table");
+  if (posix_memalign((void **)&cooling->Therm, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * sizeof(float)) !=0)
+    error("Failed to allocate internal energy table");
+  if (posix_memalign((void **)&cooling->nH, SWIFT_STRUCT_ALIGNMENT, cooling->N_nH * sizeof(float)) !=0) 
+    error("Failed to allocate nH table");
+  if (posix_memalign((void **)&cooling->HeFrac, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * sizeof(float)) !=0)
+    error("Failed to allocate HeFrac table");
+  if (posix_memalign((void **)&cooling->SolarAbundances, SWIFT_STRUCT_ALIGNMENT, cooling->N_SolarAbundances * sizeof(float)) !=0)
+    error("Failed to allocate Solar abundances table");
 
   // read in values for each of the arrays
   dataset = H5Dopen(tempfile_id, "/Solar/Temperature_bins", H5P_DEFAULT);
@@ -243,31 +249,31 @@ struct cooling_tables get_redshift_invariant_table(
   float *he_net_cooling_rate;
   float *he_electron_abundance;
 
-  // allocate temporary arrays (needed to change order of dimensions
-  // of arrays)
-  net_cooling_rate =
-      (float *)malloc(cooling->N_Temp * cooling->N_nH * sizeof(float));
-  electron_abundance =
-      (float *)malloc(cooling->N_Temp * cooling->N_nH * sizeof(float));
-  temperature = (float *)malloc(cooling->N_He * cooling->N_Temp *
-                                cooling->N_nH * sizeof(float));
-  he_net_cooling_rate = (float *)malloc(cooling->N_He * cooling->N_Temp *
-                                        cooling->N_nH * sizeof(float));
-  he_electron_abundance = (float *)malloc(cooling->N_He * cooling->N_Temp *
-                                          cooling->N_nH * sizeof(float));
+  // Allocate arrays for reading in cooling tables. 
+  if (posix_memalign((void **)&net_cooling_rate, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate net_cooling_rate array");
+  if (posix_memalign((void **)&electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate electron_abundance array");
+  if (posix_memalign((void **)&temperature, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate temperature array");
+  if (posix_memalign((void **)&he_net_cooling_rate, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate he_net_cooling_rate array");
+  if (posix_memalign((void **)&he_electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate he_electron_abundance array");
 
-  // allocate arrays that the values will be assigned to
-  cooling_table.metal_heating = (float *)malloc(
-      cooling->N_Elements * cooling->N_Temp * cooling->N_nH * sizeof(float));
-  cooling_table.electron_abundance =
-      (float *)malloc(cooling->N_Temp * cooling->N_nH * sizeof(float));
-  cooling_table.temperature = (float *)malloc(cooling->N_He * cooling->N_Temp *
-                                              cooling->N_nH * sizeof(float));
-  cooling_table.H_plus_He_heating = (float *)malloc(
-      cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float));
-  cooling_table.H_plus_He_electron_abundance = (float *)malloc(
-      cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float));
+  // Allocate arrays to store cooling tables. 
+  if (posix_memalign((void **)&cooling_table.metal_heating, SWIFT_STRUCT_ALIGNMENT, cooling->N_Elements * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate metal_heating array");
+  if (posix_memalign((void **)&cooling_table.electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate electron_abundance array");
+  if (posix_memalign((void **)&cooling_table.temperature, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate temperature array");
+  if (posix_memalign((void **)&cooling_table.H_plus_He_heating, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate H_plus_He_heating array");
+  if (posix_memalign((void **)&cooling_table.H_plus_He_electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate H_plus_He_electron_abundance array");
 
+  // Decide which high redshift table to read. Indices set in cooling_update
   if (cooling->low_z_index == -1) {
     sprintf(fname, "%sz_8.989nocompton.hdf5", cooling->cooling_table_path);
   } else if (cooling->low_z_index == -2) {
@@ -285,6 +291,10 @@ struct cooling_tables get_redshift_invariant_table(
     if (status < 0) error("error reading cooling rate table");
     status = H5Dclose(dataset);
 
+    // Transpose from order tables are stored in (temperature, nH)
+    // to (nH, temperature, metal species) where fastest 
+    // varying index is on right. Tables contain cooling rates but we 
+    // want rate of change of internal energy, hence minus sign.
     for (j = 0; j < cooling->N_Temp; j++) {
       for (k = 0; k < cooling->N_nH; k++) {
         table_index = row_major_index_2d(j, k, cooling->N_Temp, cooling->N_nH);
@@ -316,6 +326,10 @@ struct cooling_tables get_redshift_invariant_table(
                    he_electron_abundance);
   status = H5Dclose(dataset);
 
+  // Transpose from order tables are stored in (helium fraction, temperature,
+  // nH) to (nH, helium fraction, temperature) where fastest 
+  // varying index is on right. Tables contain cooling rates but we 
+  // want rate of change of internal energy, hence minus sign.
   for (i = 0; i < cooling->N_He; i++) {
     for (j = 0; j < cooling->N_Temp; j++) {
       for (k = 0; k < cooling->N_nH; k++) {
@@ -340,6 +354,8 @@ struct cooling_tables get_redshift_invariant_table(
                    electron_abundance);
   status = H5Dclose(dataset);
 
+  // Transpose from order tables are stored in (temperature, nH) to 
+  // (nH, temperature) where fastest varying index is on right.
   for (i = 0; i < cooling->N_Temp; i++) {
     for (j = 0; j < cooling->N_nH; j++) {
       table_index = row_major_index_2d(i, j, cooling->N_Temp, cooling->N_nH);
@@ -400,33 +416,33 @@ struct cooling_tables get_cooling_table(
   float *he_net_cooling_rate;
   float *he_electron_abundance;
 
-  // allocate temporary arrays (needed to change order of dimensions
-  // of arrays)
-  net_cooling_rate =
-      (float *)malloc(cooling->N_Temp * cooling->N_nH * sizeof(float));
-  electron_abundance =
-      (float *)malloc(cooling->N_Temp * cooling->N_nH * sizeof(float));
-  temperature = (float *)malloc(cooling->N_He * cooling->N_Temp *
-                                cooling->N_nH * sizeof(float));
-  he_net_cooling_rate = (float *)malloc(cooling->N_He * cooling->N_Temp *
-                                        cooling->N_nH * sizeof(float));
-  he_electron_abundance = (float *)malloc(cooling->N_He * cooling->N_Temp *
-                                          cooling->N_nH * sizeof(float));
+  // Allocate arrays for reading in cooling tables. 
+  if (posix_memalign((void **)&net_cooling_rate, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate net_cooling_rate array");
+  if (posix_memalign((void **)&electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate electron_abundance array");
+  if (posix_memalign((void **)&temperature, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate temperature array");
+  if (posix_memalign((void **)&he_net_cooling_rate, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate he_net_cooling_rate array");
+  if (posix_memalign((void **)&he_electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate he_electron_abundance array");
 
-  // allocate arrays that the values will be assigned to
-  cooling_table.metal_heating =
-      (float *)malloc(2 * cooling->N_Elements * cooling->N_Temp *
-                      cooling->N_nH * sizeof(float));
-  cooling_table.electron_abundance =
-      (float *)malloc(2 * cooling->N_Temp * cooling->N_nH * sizeof(float));
-  cooling_table.temperature = (float *)malloc(
-      2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float));
-  cooling_table.H_plus_He_heating = (float *)malloc(
-      2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float));
-  cooling_table.H_plus_He_electron_abundance = (float *)malloc(
-      2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float));
+  // Allocate arrays to store cooling tables. Arrays contain two tables of 
+  // cooling rates with one table being for the redshift above current redshift and one below.
+  if (posix_memalign((void **)&cooling_table.metal_heating, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_Elements * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate metal_heating array");
+  if (posix_memalign((void **)&cooling_table.electron_abundance, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate electron_abundance array");
+  if (posix_memalign((void **)&cooling_table.temperature, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate temperature array");
+  if (posix_memalign((void **)&cooling_table.H_plus_He_heating, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate H_plus_He_heating array");
+  if (posix_memalign((void **)&cooling_table.H_plus_He_electron_abundance, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate H_plus_He_electron_abundance array");
 
-  // repeat for each redshift
+  // Read in tables, transpose so that values for indices which vary most are
+  // adjacent. Repeat for redshift above and redshift below current value. 
   for (int z_index = cooling->low_z_index; z_index <= cooling->high_z_index;
        z_index++) {
     sprintf(fname, "%sz_%1.3f.hdf5", cooling->cooling_table_path,
@@ -446,6 +462,10 @@ struct cooling_tables get_cooling_table(
       if (status < 0) error("error reading metal cooling rate table");
       status = H5Dclose(dataset);
 
+      // Transpose from order tables are stored in (temperature, nH)
+      // to (redshift, nH, temperature, metal species) where fastest 
+      // varying index is on right. Tables contain cooling rates but we 
+      // want rate of change of internal energy, hence minus sign.
       for (i = 0; i < cooling->N_nH; i++) {
         for (j = 0; j < cooling->N_Temp; j++) {
           table_index =
@@ -479,6 +499,9 @@ struct cooling_tables get_cooling_table(
                      he_electron_abundance);
     status = H5Dclose(dataset);
 
+    // Transpose from order tables are stored in (helium fraction, temperature,
+    // nH) to (redshift, nH, helium fraction, temperature) where fastest 
+    // varying index is on right.
     for (i = 0; i < cooling->N_He; i++) {
       for (j = 0; j < cooling->N_Temp; j++) {
         for (k = 0; k < cooling->N_nH; k++) {
@@ -504,6 +527,8 @@ struct cooling_tables get_cooling_table(
                      electron_abundance);
     status = H5Dclose(dataset);
 
+    // Transpose from order tables are stored in (temperature, nH) to 
+    // (redshift, nH, temperature) where fastest varying index is on right.
     for (i = 0; i < cooling->N_Temp; i++) {
       for (j = 0; j < cooling->N_nH; j++) {
         table_index = row_major_index_2d(i, j, cooling->N_Temp, cooling->N_nH);
