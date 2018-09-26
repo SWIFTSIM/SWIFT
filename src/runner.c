@@ -268,7 +268,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Let's cool ! */
-        cooling_cool_part(constants, us, cosmo, cooling_func, p, xp, dt_cool);
+        cooling_cool_part(constants, us, cosmo, cooling_func, p, xp, dt_cool,e->hydro_properties->minimal_internal_energy);
       }
     }
   }
