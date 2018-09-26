@@ -189,6 +189,7 @@ void velociraptor_invoke(struct engine *e) {
   const size_t nr_hydro_parts = s->nr_parts;
   const int nr_cells = s->nr_cells;
   int *cell_node_ids = NULL;
+  static int stf_output_count = 0;
 
   /* Allow thread to run on any core for the duration of the call to
    * VELOCIraptor so that
@@ -222,8 +223,8 @@ void velociraptor_invoke(struct engine *e) {
     snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
              e->stfBaseName, e->step);
   } else if (e->stf_output_freq_format == io_stf_time) {
-    snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04e.VELOCIraptor",
-             e->stfBaseName, e->time);
+    snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
+             e->stfBaseName, stf_output_count);
   }
 
   /* Allocate and populate an array of swift_vel_parts to be passed to
@@ -281,6 +282,8 @@ void velociraptor_invoke(struct engine *e) {
   /* Free cell node ids after VELOCIraptor has copied them. */
   free(cell_node_ids);
   free(swift_parts);
+
+  stf_output_count++;
 
   message("VELOCIraptor took %.3f %s on rank %d.",
           clocks_from_ticks(getticks() - tic), clocks_getunit(), engine_rank);
