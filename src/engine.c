@@ -3596,7 +3596,8 @@ void engine_maketasks(struct engine *e) {
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
 #ifdef WITH_MPI
-  if (e->policy & engine_policy_stars) error("Cannot run stars with MPI");
+  if (e->policy & engine_policy_feedback)
+    error("Cannot run stellar feedback with MPI (yet).");
 
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
