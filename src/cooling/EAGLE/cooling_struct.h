@@ -19,11 +19,6 @@
 #ifndef SWIFT_COOLING_STRUCT_EAGLE_H
 #define SWIFT_COOLING_STRUCT_EAGLE_H
 
-// EAGLE defined constants
-#define eagle_element_name_length 20
-#define eagle_metal_cooling_on 1
-#define eagle_max_iterations 15
-
 static const int eagle_table_path_name_length = 500;
 
 /*

@@ -44,6 +44,9 @@
 #include "physical_constants.h"
 #include "units.h"
 
+static const int newton_max_iterations = 15;
+static const int bisection_max_iterations = 150;
+
 static const float explicit_tolerance = 0.05;
 static const float newton_tolerance =
     1.0e-2;  // lower than bisection_tol because using log(u)
@@ -583,7 +586,7 @@ __attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
  * timestep. This replaces bisection scheme used in EAGLE to minimize the
  * number of array accesses. Integration defaults to bisection scheme (see
  * function bisection_iter) if this function does not converge within a
- * specified number of steps (eagle_max_iterations)
+ * specified number of steps 
  *
  * @param logu_init Initial guess for log(internal energy)
  * @param u_ini Internal energy at beginning of hydro step
@@ -656,8 +659,8 @@ __attribute__((always_inline)) INLINE float newton_iter(
 
     i++;
   } while (fabs(logu - logu_old) > newton_tolerance &&
-           i < eagle_max_iterations);
-  if (i >= eagle_max_iterations) {
+           i < newton_max_iterations);
+  if (i >= newton_max_iterations) {
     // flag to trigger bisection scheme
     *bisection_flag = 1;
   }
@@ -762,9 +765,9 @@ __attribute__((always_inline)) INLINE float bisection_iter(
     }
     i++;
   } while (fabs(u_upper - u_lower) / u_next > bisection_tolerance &&
-           i < 50 * eagle_max_iterations);
+           i < bisection_max_iterations);
 
-  if (i >= 50 * eagle_max_iterations)
+  if (i >= bisection_max_iterations)
     error("Particle id %llu failed to converge", p->id);
 
   return log(u_upper);
