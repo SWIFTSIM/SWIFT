@@ -280,6 +280,7 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
   double z = cosmo->z;
   double cooling_rate = 0.0, temp_lambda, h_plus_he_electron_abundance;
   double solar_electron_abundance;  
+
   // used for calculating dlambda_du
   double temp_lambda1, temp_lambda2;
   double h_plus_he_electron_abundance1;
@@ -308,16 +309,9 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
   /* ------------------ */
 
   // contribution to cooling and electron abundance from H, He.
-  if (z > cooling->reionisation_redshift) {
-    temp_lambda =
-        interpolate_3d(cooling->table.H_plus_He_heating, n_h_i, He_i, temp_i,
-                       d_n_h, d_He, d_temp, cooling->N_nH, cooling->N_He,
-                       cooling->N_Temp, &temp_lambda2, &temp_lambda1);
-    h_plus_he_electron_abundance = interpolate_3d(
-        cooling->table.H_plus_He_electron_abundance, n_h_i, He_i, temp_i, d_n_h,
-        d_He, d_temp, cooling->N_nH, cooling->N_He, cooling->N_Temp,
-        &h_plus_he_electron_abundance2, &h_plus_he_electron_abundance1);
-  } else if (z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
+  if (z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
+    // If we're using the high redshift tables then we don't interpolate
+    // in redshift
     temp_lambda =
         interpolate_3d(cooling->table.H_plus_He_heating, n_h_i, He_i, temp_i,
                        d_n_h, d_He, d_temp, cooling->N_nH, cooling->N_He,
@@ -327,6 +321,7 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
         d_He, d_temp, cooling->N_nH, cooling->N_He, cooling->N_Temp,
         &h_plus_he_electron_abundance2, &h_plus_he_electron_abundance1);
   } else {
+    // Using normal tables, have to interpolate in redshift
     temp_lambda = interpolate_4d(
         cooling->table.H_plus_He_heating, 0, n_h_i, He_i, temp_i, cooling->dz,
         d_n_h, d_He, d_temp, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp,
@@ -370,28 +365,9 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
   // electron abundance to solar electron abundance then by the ratio of the
   // particle metal abundance to solar metal abundance.
 
-  if (z > cooling->reionisation_redshift) {
-    solar_electron_abundance =
-        interpolate_2d(cooling->table.electron_abundance, n_h_i, temp_i, d_n_h,
-                       d_temp, cooling->N_nH, cooling->N_Temp,
-                       &solar_electron_abundance2, &solar_electron_abundance1);
-
-    for (i = 0; i < cooling->N_Elements; i++) {
-      temp_lambda =
-          interpolate_3d(cooling->table.metal_heating, n_h_i, temp_i, i, d_n_h,
-                         d_temp, 0.0, cooling->N_nH, cooling->N_Temp,
-                         cooling->N_Elements, &elem_cool2, &elem_cool1) *
-          (h_plus_he_electron_abundance / solar_electron_abundance) *
-          solar_ratio[i + 2];
-      cooling_rate += temp_lambda;
-      *dlambda_du += (elem_cool2 * h_plus_he_electron_abundance2 /
-                          solar_electron_abundance2 -
-                      elem_cool1 * h_plus_he_electron_abundance1 /
-                          solar_electron_abundance1) /
-                     du * solar_ratio[i + 2];
-      if (element_lambda != NULL) element_lambda[i + 2] = temp_lambda;
-    }
-  } else if (z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
+  if (z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
+    // If we're using the high redshift tables then we don't interpolate
+    // in redshift
     solar_electron_abundance =
         interpolate_2d(cooling->table.electron_abundance, n_h_i, temp_i, d_n_h,
                        d_temp, cooling->N_nH, cooling->N_Temp,
@@ -413,6 +389,7 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
       if (element_lambda != NULL) element_lambda[i + 2] = temp_lambda;
     }
   } else {
+    // Using normal tables, have to interpolate in redshift
     solar_electron_abundance = interpolate_3d(
         cooling->table.electron_abundance, 0, n_h_i, temp_i, cooling->dz, d_n_h,
         d_temp, 2, cooling->N_nH, cooling->N_Temp, &solar_electron_abundance2,
@@ -469,14 +446,10 @@ __attribute__((always_inline)) INLINE double eagle_cooling_rate(
   double *element_lambda = NULL;
   double lambda_net = 0.0;
 
+  // calculate cooling rate and set dLambdaNet_du
   lambda_net = eagle_metal_cooling_rate(
       logu / M_LN10, dLambdaNet_du, n_h_i, d_n_h, He_i, d_He, p, cooling, cosmo,
       internal_const, element_lambda, abundance_ratio);
-  if (isnan(lambda_net))
-    error(
-        "Eagle cooling.c lambda_net is nan id logu z_index dz %llu %.5e %d "
-        "%.5e \n",
-        p->id, logu, cooling->z_index, cooling->dz);
 
   return lambda_net;
 }
@@ -503,14 +476,26 @@ double eagle_print_metal_cooling_rate(
     const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo,
     const struct phys_const *internal_const, float *abundance_ratio) {
-  double *element_lambda, lambda_net = 0.0, dLambdaNet_du;
+
+  // array to store contributions to cooling rates from each of the 
+  // elements
+  double *element_lambda;
   element_lambda = malloc((cooling->N_Elements + 2) * sizeof(double));
+
+  // cooling rate, derivative of cooling rate and internal energy
+  double lambda_net = 0.0, dLambdaNet_du;
   double u = hydro_get_physical_internal_energy(p, cosmo) *
              cooling->internal_energy_scale;
 
+  // Open files for writing contributions to cooling rate. Each element
+  // gets its own file. 
   char output_filename[32];
   FILE **output_file = malloc((cooling->N_Elements + 2) * sizeof(FILE *));
+  
+  // Once this flag reaches 1 we stop overwriting and start appending. 
   print_cooling_rate_contribution_flag += 1.0 / (cooling->N_Elements + 2);
+
+  // Loop over each element
   for (int element = 0; element < cooling->N_Elements + 2; element++) {
     sprintf(output_filename, "%s%d%s", "cooling_element_", element, ".dat");
     if (print_cooling_rate_contribution_flag < 1) {
@@ -527,10 +512,13 @@ double eagle_print_metal_cooling_rate(
     }
   }
 
+  // calculate cooling rates
   for (int j = 0; j < cooling->N_Elements + 2; j++) element_lambda[j] = 0.0;
   lambda_net = eagle_metal_cooling_rate(
       log10(u), &dLambdaNet_du, n_h_i, d_n_h, He_i, d_He, p, cooling, cosmo,
       internal_const, element_lambda, abundance_ratio);
+
+  // write cooling rate contributions to their own files.
   for (int j = 0; j < cooling->N_Elements + 2; j++) {
     fprintf(output_file[j], "%.5e\n", element_lambda[j]);
   }
@@ -546,6 +534,14 @@ double eagle_print_metal_cooling_rate(
  * @brief Calculate ratio of particle element abundances
  * to solar abundance. This replaces set_Cooling_SolarAbundances
  * function in EAGLE.
+ * Multiple if statements are necessary because order of elements
+ * in tables is different from chemistry_element enum.
+ * Tables: H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe
+ * Enum: H, He, C, N, O, Ne, Mg, Si, Fe
+ * The order in ratio_solar is:
+ * H, He, C, N, O, Ne, Mg, Si, Fe, S, Ca
+ * Hence Fe, S, Ca need to be treated separately to be put in the
+ * correct place in the output array. 
  *
  * @param p Pointer to particle data
  * @param cooling Pointer to cooling data
