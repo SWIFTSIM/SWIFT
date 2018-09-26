@@ -14,3 +14,8 @@ particles will be generated at startup.
 
 MD5 check-sum of the ICS: 
 ba9ab4f00a70d39fa601a4a59984b343  SantaBarbara.hdf5
+
+You can use the script run_velociraptor.sh to also run a basic 3D FoF
+with VELOCIraptor on your output data. You will need to set the
+VELOCIRAPTOR_PATH environment variable to tell us where the stf-gas
+binary lives.
