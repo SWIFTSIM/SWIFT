@@ -817,7 +817,6 @@ void cooling_init_backend(struct swift_params *parameter_file,
                           const struct phys_const *phys_const,
                           struct cooling_function_data *cooling) {
 
-  char fname[512];
 
   // read some parameters
   parser_get_param_string(parameter_file, "EagleCooling:filename",
@@ -843,6 +842,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   // read in cooling table header
   GetCoolingRedshifts(cooling);
+  char fname[eagle_table_path_name_length + 12];
   sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
   ReadCoolingHeader(fname, cooling);
 

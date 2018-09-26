@@ -24,6 +24,8 @@
 #define eagle_metal_cooling_on 1
 #define eagle_max_iterations 15
 
+static const int eagle_table_path_name_length = 500;
+
 /*
  * @brief struct containing cooling tables
  *
@@ -81,7 +83,7 @@ struct cooling_function_data {
   double power_scale;
 
   /* filepath to EAGLE cooling tables */
-  char cooling_table_path[500];
+  char cooling_table_path[eagle_table_path_name_length];
 
   /* Some constants read in from yml file relevant to EAGLE cooling */
   float reionisation_redshift;
