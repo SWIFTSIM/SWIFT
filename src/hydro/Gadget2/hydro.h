@@ -645,9 +645,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float dt_grav, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-  /* Do not decrease the entropy by more than a factor of 2 */
+  /* Do not decrease the entropy by more than a factor of 2
+   * 0.49 factor used to prevent rounding error causing slight 
+   * negative entropy and causing a crash on some particles.*/
   if (dt_therm > 0. && p->entropy_dt * dt_therm < -0.5f * xp->entropy_full) {
-    p->entropy_dt = -0.5f * xp->entropy_full / dt_therm;
+    p->entropy_dt = -0.49f * xp->entropy_full / dt_therm;
   }
   xp->entropy_full += p->entropy_dt * dt_therm;
 

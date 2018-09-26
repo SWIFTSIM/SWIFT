@@ -100,7 +100,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
                        const struct cosmology *restrict cosmo,
                        const struct cooling_function_data *restrict cooling,
                        struct part *restrict p, struct xpart *restrict xp,
-                       float dt) {
+                       float dt, float minimum_internal_energy) {
 
   float XH, HeFrac;
   double inn_h;
@@ -108,10 +108,14 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   int He_i, n_h_i;
   float d_He, d_n_h;
   const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (isnan(hydro_du_dt)) error("hydro_du_dt is nan. particle id %llu", p->id);
+#endif
+  float u_start = hydro_get_physical_internal_energy(p,cosmo);
 
-  double u_old =
-      (hydro_get_physical_internal_energy(p, cosmo) + hydro_du_dt * dt) *
-      cooling->internal_energy_scale;
+  double u_old = (u_start + hydro_du_dt * dt) * cooling->internal_energy_scale;
+  if (u_old < minimum_internal_energy*cooling->internal_energy_scale) u_old = minimum_internal_energy*cooling->internal_energy_scale; 
+
 
   dt *= units_cgs_conversion_factor(us, UNIT_CONV_TIME);
 
@@ -145,42 +149,45 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   get_index_1d(cooling->nH, cooling->N_nH, log10(inn_h), &n_h_i, &d_n_h);
 
   // Start cooling, compute cooling rate
-  LambdaNet =
-      LambdaTune / (dt * ratefact) +
-      eagle_cooling_rate(log(u_ini), &dLambdaNet_du, n_h_i, d_n_h, He_i, d_He,
-                         p, cooling, cosmo, phys_const, abundance_ratio);
+  if (dt > 0) {
+    LambdaNet =
+        LambdaTune / (dt * ratefact) +
+        eagle_cooling_rate(log(u_ini), &dLambdaNet_du, n_h_i, d_n_h, He_i, d_He,
+                           p, cooling, cosmo, phys_const, abundance_ratio);
 
-  if (fabs(ratefact * LambdaNet * dt) < explicit_tolerance * u_old) {
-    // if cooling rate is small, take the explicit solution
-    u = u_old + ratefact * LambdaNet * dt;
-  } else {
-    float logu;
+    if (fabs(ratefact * LambdaNet * dt) < explicit_tolerance * u_old) {
+      // if cooling rate is small, take the explicit solution
+      u = u_old + ratefact * LambdaNet * dt;
+    } else {
+      float logu;
 
-    if (dt > 0) {
-      // newton method
-      double logu_ini = log(u_ini);
-      int bisection_flag = 0;
-      logu = newton_iter(logu_ini, u_ini, n_h_i, d_n_h, He_i, d_He, LambdaTune,
-                         p, cosmo, cooling, phys_const, abundance_ratio, dt,
-                         &bisection_flag);
-      if (bisection_flag == 1) {
-        // newton method didn't work, so revert to bisection
-        logu = bisection_iter(logu_ini, u_ini, n_h_i, d_n_h, He_i, d_He,
-                              LambdaTune, p, cosmo, cooling, phys_const,
-                              abundance_ratio, dt);
+      if (dt > 0) {
+        // newton method
+        double logu_ini = log(u_ini);
+        int bisection_flag = 0;
+        logu = newton_iter(logu_ini, u_ini, n_h_i, d_n_h, He_i, d_He, LambdaTune,
+                           p, cosmo, cooling, phys_const, abundance_ratio, dt,
+                           &bisection_flag);
+        if (bisection_flag == 1) {
+          // newton method didn't work, so revert to bisection
+          logu = bisection_iter(logu_ini, u_ini, n_h_i, d_n_h, He_i, d_He,
+                                LambdaTune, p, cosmo, cooling, phys_const,
+                                abundance_ratio, dt);
+        }
+        u = exp(logu);
       }
-      u = exp(logu);
     }
   }
+  if (u < minimum_internal_energy*cooling->internal_energy_scale) u = minimum_internal_energy*cooling->internal_energy_scale;
 
   // calculate du/dt
   float cooling_du_dt = 0.0;
   if (dt > 0) {
-    cooling_du_dt = (u - u_ini) / dt / cooling->power_scale / cosmo->a2_inv;
+    cooling_du_dt = (u - u_start*cooling->internal_energy_scale) / dt / cooling->power_scale;
   }
 
   /* Update the internal energy time derivative */
-  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt + cooling_du_dt);
+  hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy +=

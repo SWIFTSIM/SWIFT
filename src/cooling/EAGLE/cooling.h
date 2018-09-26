@@ -70,7 +70,7 @@ void cooling_cool_part(const struct phys_const *restrict,
                        const struct unit_system *restrict,
                        const struct cosmology *restrict,
                        const struct cooling_function_data *restrict,
-                       struct part *restrict, struct xpart *restrict, float);
+                       struct part *restrict, struct xpart *restrict, float, float);
 
 float cooling_timestep(const struct cooling_function_data *restrict,
                        const struct phys_const *restrict,
