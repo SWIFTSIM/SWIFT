@@ -3234,6 +3234,9 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
   /* Mark the particle as inhibited */
   p->time_bin = time_bin_inhibited;
   if (p->gpart) p->gpart->time_bin = time_bin_inhibited;
+
+  /* Un-link the part */
+  p->gpart = NULL;
 }
 
 /**
@@ -3278,6 +3281,9 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
   /* Mark the particle as inhibited */
   sp->time_bin = time_bin_inhibited;
   if (sp->gpart) sp->gpart->time_bin = time_bin_inhibited;
+
+  /* Un-link the spart */
+  sp->gpart = NULL;
 }
 
 /**
@@ -3294,19 +3300,29 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
 void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                 struct part *p, struct xpart *xp) {
 
-  /* Quick cross-check */
+  /* Quick cross-checks */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
+
+  if (p->gpart == NULL)
+    error("Trying to convert part without gpart friend to dark matter!");
+
+  /* Get a handle */
+  struct gpart *gp = p->gpart;
 
   /* Mark the particle as inhibited */
   p->time_bin = time_bin_inhibited;
 
-  if (p->gpart) {
-    p->gpart->type = swift_type_dark_matter;
-    p->gpart->id_or_neg_offset = p->id;
-  } else {
-    error("Trying to convert part without gpart friend to dark matter!");
-  }
+  /* Un-link the part */
+  p->gpart = NULL;
+
+  /* Mark the gpart as dark matter */
+  gp->type = swift_type_dark_matter;
+  gp->id_or_neg_offset = p->id;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  gp->ti_kick = p->ti_kick;
+#endif
 }
 
 /**
@@ -3320,21 +3336,31 @@ void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
  * @param sp The #spart to remove.
  */
 void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
-				 struct spart *sp) {
+                                 struct spart *sp) {
 
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
+  if (sp->gpart == NULL)
+    error("Trying to convert spart without gpart friend to dark matter!");
+
+  /* Get a handle */
+  struct gpart *gp = sp->gpart;
+
   /* Mark the particle as inhibited */
   sp->time_bin = time_bin_inhibited;
 
-  if (sp->gpart) {
-    sp->gpart->type = swift_type_dark_matter;
-    sp->gpart->id_or_neg_offset = sp->id;
-  } else {
-    error("Trying to convert part without gpart friend to dark matter!");
-  }
+  /* Un-link the spart */
+  sp->gpart = NULL;
+
+  /* Mark the gpart as dark matter */
+  gp->type = swift_type_dark_matter;
+  gp->id_or_neg_offset = sp->id;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  gp->ti_kick = sp->ti_kick;
+#endif
 }
 
 /**

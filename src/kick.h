@@ -45,8 +45,8 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
   if (gp->ti_kick != ti_start)
     error(
         "g-particle has not been kicked to the current time gp->ti_kick=%lld, "
-        "ti_start=%lld, ti_end=%lld",
-        gp->ti_kick, ti_start, ti_end);
+        "ti_start=%lld, ti_end=%lld id=%lld",
+        gp->ti_kick, ti_start, ti_end, gp->id_or_neg_offset);
 
   gp->ti_kick = ti_end;
 #endif
@@ -85,8 +85,8 @@ __attribute__((always_inline)) INLINE static void kick_part(
   if (p->ti_kick != ti_start)
     error(
         "particle has not been kicked to the current time p->ti_kick=%lld, "
-        "ti_start=%lld, ti_end=%lld",
-        p->ti_kick, ti_start, ti_end);
+        "ti_start=%lld, ti_end=%lld id=%lld",
+        p->ti_kick, ti_start, ti_end, p->id);
 
   p->ti_kick = ti_end;
 #endif
@@ -133,8 +133,8 @@ __attribute__((always_inline)) INLINE static void kick_spart(
   if (sp->ti_kick != ti_start)
     error(
         "s-particle has not been kicked to the current time sp->ti_kick=%lld, "
-        "ti_start=%lld, ti_end=%lld",
-        sp->ti_kick, ti_start, ti_end);
+        "ti_start=%lld, ti_end=%lld id=%lld",
+        sp->ti_kick, ti_start, ti_end, sp->id);
 
   sp->ti_kick = ti_end;
 #endif

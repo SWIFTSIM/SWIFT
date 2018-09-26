@@ -2053,6 +2053,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
         if (p->rho > 1.5e7 && e->step > 2) {
           message("Removing particle id=%lld rho=%e", p->id, p->rho);
           cell_convert_part_to_gpart(e, c, p, xp);
+          // cell_remove_part(e,c,p,xp);
         }
       }
     }
