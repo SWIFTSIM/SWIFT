@@ -910,6 +910,22 @@ fi
 AC_SUBST([VELOCIRAPTOR_LIBS])
 AM_CONDITIONAL([HAVEVELOCIRAPTOR],[test -n "$VELOCIRAPTOR_LIBS"])
 
+# Check for dummy VELOCIraptor.
+AC_ARG_ENABLE([dummy-velociraptor],
+    [AS_HELP_STRING([--enable-dummy-velociraptor],
+       [Enable dummy velociraptor compilation @<:@yes/no@:>@]
+    )],
+    [enable_dummy_velociraptor="$enableval"],
+    [enable_dummy_velociraptor="no"]
+)
+
+if test "$enable_dummy_velociraptor" = "yes"; then
+  have_velociraptor="yes"
+
+  AC_DEFINE(HAVE_VELOCIRAPTOR,1,[The VELOCIraptor library appears to be present.])
+  AC_DEFINE(HAVE_DUMMY_VELOCIRAPTOR,1,[The dummy VELOCIraptor library is present.])
+fi
+
 # Check for floating-point execeptions
 AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
     [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
