@@ -652,13 +652,17 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param dt The time-step of this particle.
+ * @param hydro_properties the hydro_props struct, used for
+ * getting the minimal internal energy allowed in by SWIFT.
+ * Read from yml file into engine struct.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, struct xpart* restrict xp, double dt) {
+    struct part* restrict p, struct xpart* restrict xp, double dt,
+    const struct hydro_props *restrict hydro_properties) {
 
   if (dt == 0.) return;
 

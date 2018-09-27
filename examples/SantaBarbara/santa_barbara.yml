@@ -57,3 +57,25 @@ InitialConditions:
   cleanup_velocity_factors: 1       # ICs were generated for Gadget, we need to get rid of sqrt(a) factors in the velocity
   generate_gas_in_ics: 1            # Generate gas particles from the DM-only ICs
   cleanup_smoothing_lengths: 1      # Since we generate gas, make use of the (expensive) cleaning-up procedure.
+
+EAGLEChemistry:
+  InitMetallicity:         0.0
+  InitAbundance_Hydrogen:  0.752
+  InitAbundance_Helium:    0.248
+  InitAbundance_Carbon:    0.0
+  InitAbundance_Nitrogen:  0.0
+  InitAbundance_Oxygen:    0.0
+  InitAbundance_Neon:      0.0
+  InitAbundance_Magnesium: 0.0
+  InitAbundance_Silicon:   0.0
+  InitAbundance_Iron:      0.0
+  CalciumOverSilicon:      0.0
+  SulphurOverSilicon:      0.0
+
+EagleCooling:
+  filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/
+  reionisation_redshift:   8.898
+  he_reion_z_center:       3.5
+  he_reion_z_sigma:        0.5
+  he_reion_ev_pH:          2.0
+

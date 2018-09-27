@@ -74,13 +74,17 @@ INLINE static void cooling_update(const struct phys_const* phys_const,
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  * @param dt The time-step of this particle.
+ * @param hydro_properties the hydro_props struct, used for
+ * getting the minimal internal energy allowed in by SWIFT.
+ * Read from yml file into engine struct.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, struct xpart* restrict xp, float dt) {
+    struct part* restrict p, struct xpart* restrict xp, float dt,
+    const struct hydro_props *restrict hydro_properties) {
 
   /* Internal energy floor */
   const float u_floor = cooling->min_energy;
@@ -89,7 +93,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   const float u_old = hydro_get_physical_internal_energy(p, cosmo);
 
   /* Current du_dt */
-  const float hydro_du_dt = hydro_get_internal_energy_dt(p);
+  const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p,cosmo);
 
   /* Get cooling function properties */
   float cooling_du_dt = -cooling->cooling_rate;
@@ -102,7 +106,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   }
 
   /* Update the internal energy time derivative */
-  hydro_set_internal_energy_dt(p, hydro_du_dt + cooling_du_dt);
+  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt + cooling_du_dt);
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy += -hydro_get_mass(p) * cooling_du_dt * dt;
