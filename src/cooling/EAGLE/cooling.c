@@ -226,9 +226,9 @@ eagle_helium_reionization_extraheat(
     double he_reion_erg_pG = cooling->he_reion_ev_pH / cooling->proton_mass_cgs;
     extra_heating += he_reion_erg_pG *
                      (erf((z - dz - cooling->he_reion_z_center) /
-                          (pow(2., 0.5) * cooling->he_reion_z_sigma)) -
+                          (M_SQRT2 * cooling->he_reion_z_sigma)) -
                       erf((z - cooling->he_reion_z_center) /
-                          (pow(2., 0.5) * cooling->he_reion_z_sigma))) /
+                          (M_SQRT2 * cooling->he_reion_z_sigma))) /
                      2.0;
   } else
     extra_heating = 0.0;
@@ -351,7 +351,7 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
     // T_gam = cooling->T_CMB_0 * (1 + z);
 
     temp_lambda = -cooling->compton_rate_cgs *
-                  (temp - cooling->T_CMB_0 * (1 + z)) * pow((1 + z), 4) *
+                  (temp - cooling->T_CMB_0 * (1 + z)) * (1 + z) * (1 + z) * (1 + z) * (1 + z) *
                   h_plus_he_electron_abundance / n_h;
     cooling_rate += temp_lambda;
     if (element_lambda != NULL) element_lambda[1] = temp_lambda;
