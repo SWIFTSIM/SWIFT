@@ -97,15 +97,17 @@ void cooling_update(const struct phys_const *phys_const,
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  * @param dt The time-step of this particle.
- * @param minimum_internal_energy the minimal internal energy 
- * allowed in by SWIFT. Read from yml file into engine struct.
+ * @param hydro_properties the hydro_props struct, used for 
+ * getting the minimal internal energy allowed in by SWIFT. 
+ * Read from yml file into engine struct.
  */
 void cooling_cool_part(const struct phys_const *restrict phys_const,
                        const struct unit_system *restrict us,
                        const struct cosmology *restrict cosmo,
                        const struct cooling_function_data *restrict cooling,
                        struct part *restrict p, struct xpart *restrict xp,
-                       float dt, float minimum_internal_energy) {
+                       float dt,
+		       const struct hydro_props *restrict hydro_properties) {
 
   float XH, HeFrac;
   double inn_h;
@@ -119,7 +121,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   float u_start = hydro_get_physical_internal_energy(p,cosmo);
 
   double u_old = (u_start + hydro_du_dt * dt) * cooling->internal_energy_scale;
-  if (u_old < minimum_internal_energy*cooling->internal_energy_scale) u_old = minimum_internal_energy*cooling->internal_energy_scale; 
+  if (u_old < hydro_properties->minimal_internal_energy*cooling->internal_energy_scale) u_old = hydro_properties->minimal_internal_energy*cooling->internal_energy_scale; 
 
 
   dt *= units_cgs_conversion_factor(us, UNIT_CONV_TIME);
@@ -144,8 +146,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   ratefact = inn_h * (XH / cooling->proton_mass_cgs);
 
   /* set helium and hydrogen reheating term */
-  if (cooling->he_reion_flag == 1)
-    LambdaTune = eagle_helium_reionization_extraheat(cooling->z_index,
+  LambdaTune = eagle_helium_reionization_extraheat(cooling->z_index,
                                                      cooling->dz, cooling);
 
   // compute hydrogen number density and helium fraction table indices
@@ -183,7 +184,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
       }
     }
   }
-  if (u < minimum_internal_energy*cooling->internal_energy_scale) u = minimum_internal_energy*cooling->internal_energy_scale;
+  if (u < hydro_properties->minimal_internal_energy*cooling->internal_energy_scale) u = hydro_properties->minimal_internal_energy*cooling->internal_energy_scale;
 
   // calculate du/dt
   float cooling_du_dt = 0.0;
@@ -222,16 +223,13 @@ eagle_helium_reionization_extraheat(
   // #endif
 
   /* Helium reionization */
-  if (cooling->he_reion_flag == 1) {
-    double he_reion_erg_pG = cooling->he_reion_ev_pH / cooling->proton_mass_cgs;
-    extra_heating += he_reion_erg_pG *
-                     (erf((z - dz - cooling->he_reion_z_center) /
-                          (M_SQRT2 * cooling->he_reion_z_sigma)) -
-                      erf((z - cooling->he_reion_z_center) /
-                          (M_SQRT2 * cooling->he_reion_z_sigma))) /
-                     2.0;
-  } else
-    extra_heating = 0.0;
+  double he_reion_erg_pG = cooling->he_reion_ev_pH / cooling->proton_mass_cgs;
+  extra_heating += he_reion_erg_pG *
+                   (erf((z - dz - cooling->he_reion_z_center) /
+                        (M_SQRT2 * cooling->he_reion_z_sigma)) -
+                    erf((z - cooling->he_reion_z_center) /
+                        (M_SQRT2 * cooling->he_reion_z_sigma))) /
+                   2.0;
 
   return extra_heating;
 }
@@ -842,8 +840,6 @@ void cooling_init_backend(struct swift_params *parameter_file,
       parameter_file, "EAGLEChemistry:CalciumOverSilicon");
   cooling->sulphur_over_silicon_ratio = parser_get_param_float(
       parameter_file, "EAGLEChemistry:SulphurOverSilicon");
-  cooling->he_reion_flag =
-      parser_get_param_float(parameter_file, "EagleCooling:he_reion");
   cooling->he_reion_z_center =
       parser_get_param_float(parameter_file, "EagleCooling:he_reion_z_center");
   cooling->he_reion_z_sigma =

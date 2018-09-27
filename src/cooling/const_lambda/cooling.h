@@ -1,6 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Tom Theuns (tom.theuns@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Richard Bower (r.g.bower@durham.ac.uk)
  *                    Stefan Arridge  (stefan.arridge@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,16 +19,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+
 #ifndef SWIFT_COOLING_CONST_LAMBDA_H
 #define SWIFT_COOLING_CONST_LAMBDA_H
-
-/**
- * @file src/cooling/const_lambda/cooling.h
- * @brief Routines related to the "constant lambda" cooling function.
- *
- * This model assumes a constant cooling rate Lambda irrespective of redshift
- * or density.
- */
 
 /* Config parameters. */
 #include "../config.h"
@@ -45,39 +40,46 @@
 #include "units.h"
 
 /**
- * @brief Calculates du/dt in CGS units for a particle.
+ * @brief Common operations performed on the cooling function at a
+ * given time-step or redshift.
  *
- * The cooling rate is \f$\frac{du}{dt} = -\frac{\Lambda}{n_H^2}
- * \frac{n_H^2}{\rho} \f$, where \f$ \frac{\Lambda}{n_H^2} \f$ is a constant in
- * this model (lambda_nH2_cgs in #cooling_function_data).
- * The returned value is in physical [erg * g^-1 * s^-1].
- *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
  * @param cosmo The current cosmological model.
- * @param hydro_props The properties of the hydro scheme.
  * @param cooling The #cooling_function_data used in the run.
- * @param p Pointer to the particle data.
- * @return The change in energy per unit mass due to cooling for this particle
- * in cgs units [erg * g^-1 * s^-1].
  */
-__attribute__((always_inline)) INLINE static double cooling_rate_cgs(
-    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+INLINE static void cooling_update(const struct phys_const* phys_const,
+                                  const struct unit_system* us,
+                                  const struct cosmology* cosmo,
+                                  struct cooling_function_data* cooling) {
+  // Add content if required.
+}
+
+/**
+ * @brief Calculates du/dt in code units for a particle.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data..
+ */
+__attribute__((always_inline)) INLINE static float cooling_rate(
+    const struct phys_const* const phys_const, const struct unit_system* us,
+    const struct cosmology* restrict cosmo,
     const struct cooling_function_data* cooling, const struct part* p) {
 
-  /* Get particle density [g * cm^-3] */
-  const double rho = hydro_get_physical_density(p, cosmo);
-  const double rho_cgs = rho * cooling->conv_factor_density_to_cgs;
+  /* Get particle density */
+  const float rho = hydro_get_physical_density(p, cosmo);
 
-  /* Get Hydrogen mass fraction */
-  const double X_H = hydro_props->hydrogen_mass_fraction;
+  /* Get cooling function properties */
+  const float X_H = cooling->hydrogen_mass_abundance;
 
-  /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
-  const double n_H_cgs = X_H * rho_cgs * cooling->proton_mass_cgs_inv;
-
-  /* Calculate du_dt ((Lambda / n_H^2) * n_H^2 / rho) */
-  const double du_dt_cgs =
-      -cooling->lambda_nH2_cgs * n_H_cgs * n_H_cgs / rho_cgs;
-
-  return du_dt_cgs;
+  /* Calculate du_dt */
+  const float du_dt = -cooling->lambda *
+                      (X_H * rho / phys_const->const_proton_mass) *
+                      (X_H * rho / phys_const->const_proton_mass) / rho;
+  return du_dt;
 }
 
 /**
@@ -86,125 +88,79 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param cosmo The current cosmological model.
- * @param hydro_props The properties of the hydro scheme.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
- * @param xp Pointer to the particle' extended data.
  * @param dt The time-step of this particle.
- * @param dt_therm The time-step operator used for thermal quantities.
+ * @param hydro_properties the hydro_props struct, used for
+ * getting the minimal internal energy allowed in by SWIFT.
+ * Read from yml file into engine struct.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
-    const struct hydro_props* hydro_props,
     const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, struct xpart* restrict xp, const float dt,
-    const float dt_therm) {
-
-  /* Nothing to do here? */
-  if (dt == 0.) return;
+    struct part* restrict p, struct xpart* restrict xp, float dt,
+    const struct hydro_props *restrict hydro_properties) {
 
   /* Internal energy floor */
-  const float u_floor = hydro_props->minimal_internal_energy;
+  const float u_floor = cooling->min_energy;
 
   /* Current energy */
-  const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
+  const float u_old = hydro_get_physical_internal_energy(p, cosmo);
 
-  /* Current du_dt in physical coordinates (internal units) */
-  const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
+  /* Current du_dt */
+  const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p,cosmo);
 
-  /* Calculate cooling du_dt (in cgs units) */
-  const double cooling_du_dt_cgs =
-      cooling_rate_cgs(cosmo, hydro_props, cooling, p);
+  /* Calculate cooling du_dt */
+  float cooling_du_dt = cooling_rate(phys_const, us, cosmo, cooling, p);
 
-  /* Convert to internal units */
-  float cooling_du_dt =
-      cooling_du_dt_cgs * cooling->conv_factor_energy_rate_from_cgs;
-
-  /* Add cosmological term */
-  cooling_du_dt *= cosmo->a * cosmo->a;
-
-  float total_du_dt = hydro_du_dt + cooling_du_dt;
-
-  /* We now need to check that we are not going to go below any of the limits */
-
-  /* First, check whether we may end up below the minimal energy after
-   * this step 1/2 kick + another 1/2 kick that could potentially be for
-   * a time-step twice as big. We hence check for 1.5 delta_t. */
-  if (u_old + total_du_dt * 1.5 * dt_therm < u_floor) {
-    total_du_dt = (u_floor - u_old) / (1.5f * dt_therm);
-  }
-
-  /* Second, check whether the energy used in the prediction could get negative.
-   * We need to check for the 1/2 dt kick followed by a full time-step drift
-   * that could potentially be for a time-step twice as big. We hence check
-   * for 2.5 delta_t but this time against 0 energy not the minimum */
-  if (u_old + total_du_dt * 2.5 * dt_therm < 0.) {
-    total_du_dt = -u_old / ((2.5f + 0.0001f) * dt_therm);
+  /* Integrate cooling equation to enforce energy floor */
+  /* Factor of 1.5 included since timestep could potentially double */
+  if (u_old + (hydro_du_dt + cooling_du_dt) * 1.5f * dt < u_floor) {
+    cooling_du_dt = -(u_old + 1.5f * dt * hydro_du_dt - u_floor) / (1.5f * dt);
   }
 
   /* Update the internal energy time derivative */
-  hydro_set_physical_internal_energy_dt(p, cosmo, total_du_dt);
+  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt + cooling_du_dt);
 
-  /* Store the radiated energy (assuming dt will not change) */
-  xp->cooling_data.radiated_energy +=
-      -hydro_get_mass(p) * (total_du_dt - hydro_du_dt) * dt_therm;
+  /* Store the radiated energy */
+  xp->cooling_data.radiated_energy += -hydro_get_mass(p) * cooling_du_dt * dt;
 }
 
 /**
- * @brief Computes the time-step due to cooling for this particle.
- *
- * We compute a time-step \f$ \alpha \frac{u}{du/dt} \f$ in physical
- * coordinates. \f$\alpha\f$ is a parameter of the cooling function.
+ * @brief Computes the time-step due to cooling
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
- * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param p Pointer to the particle data.
- * @param xp Pointer to the extended data of the particle.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
     const struct cosmology* restrict cosmo,
-    const struct unit_system* restrict us,
-    const struct hydro_props* hydro_props, const struct part* restrict p,
-    const struct xpart* restrict xp) {
+    const struct unit_system* restrict us, const struct part* restrict p) {
 
-  /* Start with the case where there is no limit */
-  if (cooling->cooling_tstep_mult == FLT_MAX) return FLT_MAX;
+  /* Get current internal energy */
+  const float u = hydro_get_physical_internal_energy(p, cosmo);
+  const float du_dt = cooling_rate(phys_const, us, cosmo, cooling, p);
 
-  /* Get current internal energy and cooling rate */
-  const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
-  const double cooling_du_dt_cgs =
-      cooling_rate_cgs(cosmo, hydro_props, cooling, p);
-
-  /* Convert to internal units */
-  const float cooling_du_dt =
-      cooling_du_dt_cgs * cooling->conv_factor_energy_rate_from_cgs;
-
-  /* If we are close to (or below) the limit, we ignore the condition */
-  if (u < 1.01f * hydro_props->minimal_internal_energy || cooling_du_dt == 0.f)
+  /* If we are close to (or below) the energy floor, we ignore the condition */
+  if (u < 1.01f * cooling->min_energy)
     return FLT_MAX;
   else
-    return cooling->cooling_tstep_mult * u / fabsf(cooling_du_dt);
+    return cooling->cooling_tstep_mult * u / fabsf(du_dt);
 }
 
 /**
  * @brief Sets the cooling properties of the (x-)particles to a valid start
  * state.
  *
- * Nothing to do here. Just set the radiated energy counter to 0.
- *
- * @param phys_const The physical constants in internal units.
- * @param cooling The properties of the cooling function.
- * @param us The internal system of units.
- * @param cosmo The current cosmological model.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
+ * @param cooling The properties of the cooling function.
  */
 __attribute__((always_inline)) INLINE static void cooling_first_init_part(
     const struct phys_const* restrict phys_const,
@@ -240,23 +196,30 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
                                         const struct phys_const* phys_const,
                                         struct cooling_function_data* cooling) {
 
-  /* Read in the cooling parameters */
-  cooling->lambda_nH2_cgs =
-      parser_get_param_double(parameter_file, "LambdaCooling:lambda_nH2_cgs");
-  cooling->cooling_tstep_mult = parser_get_opt_param_float(
-      parameter_file, "LambdaCooling:cooling_tstep_mult", FLT_MAX);
+  const double lambda_cgs =
+      parser_get_param_double(parameter_file, "LambdaCooling:lambda_cgs");
+  const float min_temperature = parser_get_param_double(
+      parameter_file, "LambdaCooling:minimum_temperature");
+  cooling->hydrogen_mass_abundance = parser_get_param_double(
+      parameter_file, "LambdaCooling:hydrogen_mass_abundance");
+  cooling->mean_molecular_weight = parser_get_param_double(
+      parameter_file, "LambdaCooling:mean_molecular_weight");
+  cooling->cooling_tstep_mult = parser_get_param_double(
+      parameter_file, "LambdaCooling:cooling_tstep_mult");
 
-  /* Some useful conversion values */
-  cooling->conv_factor_density_to_cgs =
-      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
-  cooling->conv_factor_energy_rate_from_cgs =
-      units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
-      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  /* convert minimum temperature into minimum internal energy */
+  const float u_floor =
+      phys_const->const_boltzmann_k * min_temperature /
+      (hydro_gamma_minus_one * cooling->mean_molecular_weight *
+       phys_const->const_proton_mass);
 
-  /* Useful constants */
-  cooling->proton_mass_cgs_inv =
-      1. / (phys_const->const_proton_mass *
-            units_cgs_conversion_factor(us, UNIT_CONV_MASS));
+  cooling->min_energy = u_floor;
+
+  /* convert lambda to code units */
+  cooling->lambda = lambda_cgs *
+                    units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
+                    (units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) *
+                     units_cgs_conversion_factor(us, UNIT_CONV_VOLUME));
 }
 
 /**
@@ -268,16 +231,11 @@ static INLINE void cooling_print_backend(
     const struct cooling_function_data* cooling) {
 
   message(
-      "Cooling function is 'Constant lambda' with Lambda/n_H^2=%g [erg * s^-1 "
-      "* "
-      "cm^3]",
-      cooling->lambda_nH2_cgs);
-
-  if (cooling->cooling_tstep_mult == FLT_MAX)
-    message("Cooling function time-step size is unlimited");
-  else
-    message("Cooling function time-step size limited to %f of u/(du/dt)",
-            cooling->cooling_tstep_mult);
+      "Cooling function is 'Constant lambda' with "
+      "(lambda,min_energy,hydrogen_mass_abundance,mean_molecular_weight) "
+      "=  (%g,%g,%g,%g)",
+      cooling->lambda, cooling->min_energy, cooling->hydrogen_mass_abundance,
+      cooling->mean_molecular_weight);
 }
 
 #endif /* SWIFT_COOLING_CONST_LAMBDA_H */
