@@ -197,8 +197,12 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   if (dt > 0) {
     cooling_du_dt = (u/cooling->internal_energy_scale - u_start) / dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   }
+
+  /* Update the internal energy time derivative */
+  hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
+
   float du;
-  if (p->id == 5439098268095) message("Particle id %llu cooling initial energy %.5e final energy %.5e initial temperature %.5e final temperature %.5e cooling du/dt %.5e hydro du/dt %.5e LambdaNet %.5e", 
+  if (p->id == 5439098268095) message("Particle id %llu cooling initial energy %.5e final energy %.5e initial temperature %.5e final temperature %.5e cooling du/dt %.5e hydro du/dt %.5e entropy_dt %.5e", 
                                        p->id, 
 				       u_start*cooling->internal_energy_scale, 
 				       u, 
@@ -206,10 +210,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 				       exp(M_LN10*eagle_convert_u_to_temp(log10(u), &du, n_h_i, He_i, d_n_h, d_He, cooling, cosmo)),
 				       cooling_du_dt,
 				       hydro_du_dt*cooling->internal_energy_scale/units_cgs_conversion_factor(us, UNIT_CONV_TIME),
-				       LambdaNet);
-
-  /* Update the internal energy time derivative */
-  hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
+				       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, cooling_du_dt));
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy +=
