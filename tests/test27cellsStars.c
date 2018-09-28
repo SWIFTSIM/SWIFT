@@ -73,14 +73,14 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
-  if (posix_memalign((void **)&cell->parts, part_align,
+  if (posix_memalign((void **)&cell->hydro.parts, part_align,
                      count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
-  bzero(cell->parts, count * sizeof(struct part));
+  bzero(cell->hydro.parts, count * sizeof(struct part));
 
   /* Construct the parts */
-  struct part *part = cell->parts;
+  struct part *part = cell->hydro.parts;
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
@@ -159,11 +159,11 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
 
   /* Cell properties */
   cell->split = 0;
-  cell->h_max = h_max;
-  cell->count = count;
+  cell->hydro.h_max = h_max;
+  cell->hydro.count = count;
   cell->scount = scount;
-  cell->dx_max_part = 0.;
-  cell->dx_max_sort = 0.;
+  cell->hydro.dx_max = 0.;
+  cell->hydro.dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
@@ -171,27 +171,27 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_old_part = 8;
-  cell->ti_hydro_end_min = 8;
-  cell->ti_hydro_end_max = 8;
-  cell->ti_gravity_end_min = 8;
-  cell->ti_gravity_end_max = 8;
+  cell->hydro.ti_old = 8;
+  cell->hydro.ti_end_min = 8;
+  cell->hydro.ti_end_max = 8;
+  cell->grav.ti_end_min = 8;
+  cell->grav.ti_end_max = 8;
   cell->nodeID = NODE_ID;
 
-  shuffle_particles(cell->parts, cell->count);
+  shuffle_particles(cell->hydro.parts, cell->hydro.count);
   shuffle_sparticles(cell->sparts, cell->scount);
 
-  cell->sorted = 0;
-  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
+  cell->hydro.sorted = 0;
+  for (int k = 0; k < 13; k++) cell->hydro.sort[k] = NULL;
 
   return cell;
 }
 
 void clean_up(struct cell *ci) {
-  free(ci->parts);
+  free(ci->hydro.parts);
   free(ci->sparts);
   for (int k = 0; k < 13; k++)
-    if (ci->sort[k] != NULL) free(ci->sort[k]);
+    if (ci->hydro.sort[k] != NULL) free(ci->hydro.sort[k]);
   free(ci);
 }
 

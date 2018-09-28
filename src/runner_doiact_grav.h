@@ -48,8 +48,9 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_old_multipole != e->ti_current) error("c->multipole not drifted.");
-  if (c->multipole->pot.ti_init != e->ti_current)
+  if (c->grav.ti_old_multipole != e->ti_current)
+    error("c->multipole not drifted.");
+  if (c->grav.multipole->pot.ti_init != e->ti_current)
     error("c->field tensor not initialised");
 #endif
 
@@ -65,22 +66,22 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
       if (cp != NULL && cell_is_active_gravity(cp, e)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (cp->ti_old_multipole != e->ti_current)
+        if (cp->grav.ti_old_multipole != e->ti_current)
           error("cp->multipole not drifted.");
-        if (cp->multipole->pot.ti_init != e->ti_current)
+        if (cp->grav.multipole->pot.ti_init != e->ti_current)
           error("cp->field tensor not initialised");
 #endif
         /* If the tensor received any contribution, push it down */
-        if (c->multipole->pot.interacted) {
+        if (c->grav.multipole->pot.interacted) {
 
           struct grav_tensor shifted_tensor;
 
           /* Shift the field tensor */
-          gravity_L2L(&shifted_tensor, &c->multipole->pot, cp->multipole->CoM,
-                      c->multipole->CoM);
+          gravity_L2L(&shifted_tensor, &c->grav.multipole->pot,
+                      cp->grav.multipole->CoM, c->grav.multipole->CoM);
 
           /* Add it to this level's tensor */
-          gravity_field_tensors_add(&cp->multipole->pot, &shifted_tensor);
+          gravity_field_tensors_add(&cp->grav.multipole->pot, &shifted_tensor);
         }
 
         /* Recurse */
@@ -93,16 +94,16 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
     /* Leaf case */
 
     /* We can abort early if no interactions via multipole happened */
-    if (!c->multipole->pot.interacted) return;
+    if (!c->grav.multipole->pot.interacted) return;
 
     if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
     /* Cell properties */
-    struct gpart *gparts = c->gparts;
-    const int gcount = c->gcount;
-    const struct grav_tensor *pot = &c->multipole->pot;
-    const double CoM[3] = {c->multipole->CoM[0], c->multipole->CoM[1],
-                           c->multipole->CoM[2]};
+    struct gpart *gparts = c->grav.gparts;
+    const int gcount = c->grav.gcount;
+    const struct grav_tensor *pot = &c->grav.multipole->pot;
+    const double CoM[3] = {c->grav.multipole->CoM[0], c->grav.multipole->CoM[1],
+                           c->grav.multipole->CoM[2]};
 
     /* Apply accelerations to the particles */
     for (int i = 0; i < gcount; ++i) {
@@ -117,7 +118,7 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
         /* Check that particles have been drifted to the current time */
         if (gp->ti_drift != e->ti_current)
           error("gpart not drifted to current time");
-        if (c->multipole->pot.ti_init != e->ti_current)
+        if (c->grav.multipole->pot.ti_init != e->ti_current)
           error("c->field tensor not initialised");
 
         /* Check that the particle was initialised */
@@ -479,7 +480,7 @@ static INLINE void runner_dopair_grav_pm_full(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    const float r_max_j = cj->multipole->r_max;
+    const float r_max_j = cj->grav.multipole->r_max;
     const float r_max2 = r_max_j * r_max_j;
     const float theta_crit2 = e->gravity_properties->theta_crit2;
 
@@ -505,7 +506,7 @@ static INLINE void runner_dopair_grav_pm_full(
 #ifdef SWIFT_DEBUG_CHECKS
     /* Update the interaction counter */
     if (pid < gcount_i)
-      gparts_i[pid].num_interacted += cj->multipole->m_pole.num_gpart;
+      gparts_i[pid].num_interacted += cj->grav.multipole->m_pole.num_gpart;
 #endif
   }
 }
@@ -606,7 +607,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    const float r_max_j = cj->multipole->r_max;
+    const float r_max_j = cj->grav.multipole->r_max;
     const float r_max2 = r_max_j * r_max_j;
     const float theta_crit2 = e->gravity_properties->theta_crit2;
 
@@ -632,7 +633,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
 #ifdef SWIFT_DEBUG_CHECKS
     /* Update the interaction counter */
     if (pid < gcount_i)
-      gparts_i[pid].num_interacted += cj->multipole->m_pole.num_gpart;
+      gparts_i[pid].num_interacted += cj->grav.multipole->m_pole.num_gpart;
 #endif
   }
 }
@@ -685,9 +686,9 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
   /* Let's start by checking things are drifted */
   if (!cell_are_gpart_drifted(ci, e)) error("Un-drifted gparts");
   if (!cell_are_gpart_drifted(cj, e)) error("Un-drifted gparts");
-  if (cj_active && ci->ti_old_multipole != e->ti_current)
+  if (cj_active && ci->grav.ti_old_multipole != e->ti_current)
     error("Un-drifted multipole");
-  if (ci_active && cj->ti_old_multipole != e->ti_current)
+  if (ci_active && cj->grav.ti_old_multipole != e->ti_current)
     error("Un-drifted multipole");
 
   /* Caches to play with */
@@ -699,24 +700,24 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
   const double shift_j[3] = {0., 0., 0.};
 
   /* Recover the multipole info and shift the CoM locations */
-  const float rmax_i = ci->multipole->r_max;
-  const float rmax_j = cj->multipole->r_max;
+  const float rmax_i = ci->grav.multipole->r_max;
+  const float rmax_j = cj->grav.multipole->r_max;
   const float rmax2_i = rmax_i * rmax_i;
   const float rmax2_j = rmax_j * rmax_j;
-  const struct multipole *multi_i = &ci->multipole->m_pole;
-  const struct multipole *multi_j = &cj->multipole->m_pole;
-  const float CoM_i[3] = {(float)(ci->multipole->CoM[0] - shift_i[0]),
-                          (float)(ci->multipole->CoM[1] - shift_i[1]),
-                          (float)(ci->multipole->CoM[2] - shift_i[2])};
-  const float CoM_j[3] = {(float)(cj->multipole->CoM[0] - shift_j[0]),
-                          (float)(cj->multipole->CoM[1] - shift_j[1]),
-                          (float)(cj->multipole->CoM[2] - shift_j[2])};
+  const struct multipole *multi_i = &ci->grav.multipole->m_pole;
+  const struct multipole *multi_j = &cj->grav.multipole->m_pole;
+  const float CoM_i[3] = {(float)(ci->grav.multipole->CoM[0] - shift_i[0]),
+                          (float)(ci->grav.multipole->CoM[1] - shift_i[1]),
+                          (float)(ci->grav.multipole->CoM[2] - shift_i[2])};
+  const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0] - shift_j[0]),
+                          (float)(cj->grav.multipole->CoM[1] - shift_j[1]),
+                          (float)(cj->grav.multipole->CoM[2] - shift_j[2])};
 
   /* Start by constructing particle caches */
 
   /* Computed the padded counts */
-  const int gcount_i = ci->gcount;
-  const int gcount_j = cj->gcount;
+  const int gcount_i = ci->grav.gcount;
+  const int gcount_j = cj->grav.gcount;
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
   const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
 
@@ -729,10 +730,10 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
 
   /* Fill the caches */
   gravity_cache_populate(e->max_active_bin, allow_mpole, periodic, dim,
-                         ci_cache, ci->gparts, gcount_i, gcount_padded_i,
+                         ci_cache, ci->grav.gparts, gcount_i, gcount_padded_i,
                          shift_i, CoM_j, rmax2_j, ci, e->gravity_properties);
   gravity_cache_populate(e->max_active_bin, allow_mpole, periodic, dim,
-                         cj_cache, cj->gparts, gcount_j, gcount_padded_j,
+                         cj_cache, cj->grav.gparts, gcount_j, gcount_padded_j,
                          shift_j, CoM_i, rmax2_i, cj, e->gravity_properties);
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
@@ -745,25 +746,27 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
 
       /* First the P2P */
       runner_dopair_grav_pp_full(ci_cache, cj_cache, gcount_i, gcount_j,
-                                 gcount_padded_j, periodic, dim, e, ci->gparts,
-                                 cj->gparts);
+                                 gcount_padded_j, periodic, dim, e,
+                                 ci->grav.gparts, cj->grav.gparts);
 
       /* Then the M2P */
       if (allow_mpole)
         runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                   periodic, dim, e, ci->gparts, gcount_i, cj);
+                                   periodic, dim, e, ci->grav.gparts, gcount_i,
+                                   cj);
     }
     if (cj_active && symmetric) {
 
       /* First the P2P */
       runner_dopair_grav_pp_full(cj_cache, ci_cache, gcount_j, gcount_i,
-                                 gcount_padded_i, periodic, dim, e, cj->gparts,
-                                 ci->gparts);
+                                 gcount_padded_i, periodic, dim, e,
+                                 cj->grav.gparts, ci->grav.gparts);
 
       /* Then the M2P */
       if (allow_mpole)
         runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
-                                   periodic, dim, e, cj->gparts, gcount_j, ci);
+                                   periodic, dim, e, cj->grav.gparts, gcount_j,
+                                   ci);
     }
 
   } else { /* Periodic BC */
@@ -787,26 +790,26 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
         /* First the (truncated) P2P */
         runner_dopair_grav_pp_truncated(ci_cache, cj_cache, gcount_i, gcount_j,
                                         gcount_padded_j, dim, r_s_inv, e,
-                                        ci->gparts, cj->gparts);
+                                        ci->grav.gparts, cj->grav.gparts);
 
         /* Then the M2P */
         if (allow_mpole)
           runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j,
-                                          multi_j, dim, r_s_inv, e, ci->gparts,
-                                          gcount_i, cj);
+                                          multi_j, dim, r_s_inv, e,
+                                          ci->grav.gparts, gcount_i, cj);
       }
       if (cj_active && symmetric) {
 
         /* First the (truncated) P2P */
         runner_dopair_grav_pp_truncated(cj_cache, ci_cache, gcount_j, gcount_i,
                                         gcount_padded_i, dim, r_s_inv, e,
-                                        cj->gparts, ci->gparts);
+                                        cj->grav.gparts, ci->grav.gparts);
 
         /* Then the M2P */
         if (allow_mpole)
           runner_dopair_grav_pm_truncated(cj_cache, gcount_padded_j, CoM_i,
-                                          multi_i, dim, r_s_inv, e, cj->gparts,
-                                          gcount_j, ci);
+                                          multi_i, dim, r_s_inv, e,
+                                          cj->grav.gparts, gcount_j, ci);
       }
 
     } else {
@@ -819,34 +822,34 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
         /* First the (Newtonian) P2P */
         runner_dopair_grav_pp_full(ci_cache, cj_cache, gcount_i, gcount_j,
                                    gcount_padded_j, periodic, dim, e,
-                                   ci->gparts, cj->gparts);
+                                   ci->grav.gparts, cj->grav.gparts);
 
         /* Then the M2P */
         if (allow_mpole)
           runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                     periodic, dim, e, ci->gparts, gcount_i,
-                                     cj);
+                                     periodic, dim, e, ci->grav.gparts,
+                                     gcount_i, cj);
       }
       if (cj_active && symmetric) {
 
         /* First the (Newtonian) P2P */
         runner_dopair_grav_pp_full(cj_cache, ci_cache, gcount_j, gcount_i,
                                    gcount_padded_i, periodic, dim, e,
-                                   cj->gparts, ci->gparts);
+                                   cj->grav.gparts, ci->grav.gparts);
 
         /* Then the M2P */
         if (allow_mpole)
           runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
-                                     periodic, dim, e, cj->gparts, gcount_j,
-                                     ci);
+                                     periodic, dim, e, cj->grav.gparts,
+                                     gcount_j, ci);
       }
     }
   }
 
   /* Write back to the particles */
-  if (ci_active) gravity_cache_write_back(ci_cache, ci->gparts, gcount_i);
+  if (ci_active) gravity_cache_write_back(ci_cache, ci->grav.gparts, gcount_i);
   if (cj_active && symmetric)
-    gravity_cache_write_back(cj_cache, cj->gparts, gcount_j);
+    gravity_cache_write_back(cj_cache, cj->grav.gparts, gcount_j);
 
   TIMER_TOC(timer_dopair_grav_pp);
 }
@@ -1094,7 +1097,7 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->gcount == 0) error("Doing self gravity on an empty cell !");
+  if (c->grav.gcount == 0) error("Doing self gravity on an empty cell !");
 #endif
 
   /* Anything to do here? */
@@ -1115,7 +1118,7 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
                          c->loc[2] + 0.5 * c->width[2]};
 
   /* Computed the padded counts */
-  const int gcount = c->gcount;
+  const int gcount = c->grav.gcount;
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1125,7 +1128,7 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 #endif
 
   /* Fill the cache */
-  gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, c->gparts,
+  gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, c->grav.gparts,
                                   gcount, gcount_padded, loc, c,
                                   e->gravity_properties);
 
@@ -1133,29 +1136,31 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   if (!periodic) {
 
     /* Not periodic -> Can always use Newtonian potential */
-    runner_doself_grav_pp_full(ci_cache, gcount, gcount_padded, e, c->gparts);
+    runner_doself_grav_pp_full(ci_cache, gcount, gcount_padded, e,
+                               c->grav.gparts);
 
   } else {
 
     /* Get the maximal distance between any two particles */
-    const double max_r = 2. * c->multipole->r_max;
+    const double max_r = 2. * c->grav.multipole->r_max;
 
     /* Do we need to use the truncated interactions ? */
     if (max_r > min_trunc) {
 
       /* Periodic but far-away cells must use the truncated potential */
       runner_doself_grav_pp_truncated(ci_cache, gcount, gcount_padded, r_s_inv,
-                                      e, c->gparts);
+                                      e, c->grav.gparts);
 
     } else {
 
       /* Periodic but close-by cells can use the full Newtonian potential */
-      runner_doself_grav_pp_full(ci_cache, gcount, gcount_padded, e, c->gparts);
+      runner_doself_grav_pp_full(ci_cache, gcount, gcount_padded, e,
+                                 c->grav.gparts);
     }
   }
 
   /* Write back to the particles */
-  gravity_cache_write_back(ci_cache, c->gparts, gcount);
+  gravity_cache_write_back(ci_cache, c->grav.gparts, gcount);
 
   TIMER_TOC(timer_doself_grav_pp);
 }
@@ -1187,8 +1192,8 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
     error("Invalid state in symmetric M-M calculation!");
 
   /* Short-cut to the multipole */
-  const struct multipole *multi_i = &ci->multipole->m_pole;
-  const struct multipole *multi_j = &cj->multipole->m_pole;
+  const struct multipole *multi_i = &ci->grav.multipole->m_pole;
+  const struct multipole *multi_j = &cj->grav.multipole->m_pole;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Interacting a cell with itself using M2L");
@@ -1199,29 +1204,29 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
   if (multi_j->num_gpart == 0)
     error("Multipole j does not seem to have been set.");
 
-  if (ci->multipole->pot.ti_init != e->ti_current)
+  if (ci->grav.multipole->pot.ti_init != e->ti_current)
     error("ci->grav tensor not initialised.");
 
-  if (ci->multipole->pot.ti_init != e->ti_current)
+  if (ci->grav.multipole->pot.ti_init != e->ti_current)
     error("cj->grav tensor not initialised.");
 
-  if (ci->ti_old_multipole != e->ti_current)
+  if (ci->grav.ti_old_multipole != e->ti_current)
     error(
-        "Undrifted multipole ci->ti_old_multipole=%lld ci->nodeID=%d "
+        "Undrifted multipole ci->grav.ti_old_multipole=%lld ci->nodeID=%d "
         "cj->nodeID=%d e->ti_current=%lld",
-        ci->ti_old_multipole, ci->nodeID, cj->nodeID, e->ti_current);
+        ci->grav.ti_old_multipole, ci->nodeID, cj->nodeID, e->ti_current);
 
-  if (cj->ti_old_multipole != e->ti_current)
+  if (cj->grav.ti_old_multipole != e->ti_current)
     error(
-        "Undrifted multipole cj->ti_old_multipole=%lld cj->nodeID=%d "
+        "Undrifted multipole cj->grav.ti_old_multipole=%lld cj->nodeID=%d "
         "ci->nodeID=%d e->ti_current=%lld",
-        cj->ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
+        cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 #endif
 
   /* Let's interact at this level */
-  gravity_M2L_symmetric(&ci->multipole->pot, &cj->multipole->pot, multi_i,
-                        multi_j, ci->multipole->CoM, cj->multipole->CoM, props,
-                        periodic, dim, r_s_inv);
+  gravity_M2L_symmetric(&ci->grav.multipole->pot, &cj->grav.multipole->pot,
+                        multi_i, multi_j, ci->grav.multipole->CoM,
+                        cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
@@ -1251,7 +1256,7 @@ static INLINE void runner_dopair_grav_mm_nonsym(
   if (!cell_is_active_gravity_mm(ci, e) || ci->nodeID != engine_rank) return;
 
   /* Short-cut to the multipole */
-  const struct multipole *multi_j = &cj->multipole->m_pole;
+  const struct multipole *multi_j = &cj->grav.multipole->m_pole;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Interacting a cell with itself using M2L");
@@ -1259,19 +1264,19 @@ static INLINE void runner_dopair_grav_mm_nonsym(
   if (multi_j->num_gpart == 0)
     error("Multipole does not seem to have been set.");
 
-  if (ci->multipole->pot.ti_init != e->ti_current)
+  if (ci->grav.multipole->pot.ti_init != e->ti_current)
     error("ci->grav tensor not initialised.");
 
-  if (cj->ti_old_multipole != e->ti_current)
+  if (cj->grav.ti_old_multipole != e->ti_current)
     error(
-        "Undrifted multipole cj->ti_old_multipole=%lld cj->nodeID=%d "
+        "Undrifted multipole cj->grav.ti_old_multipole=%lld cj->nodeID=%d "
         "ci->nodeID=%d e->ti_current=%lld",
-        cj->ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
+        cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 #endif
 
   /* Let's interact at this level */
-  gravity_M2L_nonsym(&ci->multipole->pot, multi_j, ci->multipole->CoM,
-                     cj->multipole->CoM, props, periodic, dim, r_s_inv);
+  gravity_M2L_nonsym(&ci->grav.multipole->pot, multi_j, ci->grav.multipole->CoM,
+                     cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
@@ -1296,8 +1301,8 @@ static INLINE void runner_dopair_grav_mm(struct runner *r,
       cell_is_active_gravity_mm(cj, e) && (cj->nodeID == e->nodeID);
 
   /* Do we need drifting first? */
-  if (ci->ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
-  if (cj->ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
+  if (ci->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
+  if (cj->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
 
   /* Interact! */
   if (do_i && do_j)
@@ -1356,14 +1361,14 @@ static INLINE void runner_dopair_recursive_grav_pm(struct runner *r,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Early abort? */
-  if (ci->gcount == 0 || cj->gcount == 0)
+  if (ci->grav.gcount == 0 || cj->grav.gcount == 0)
     error("Doing pair gravity on an empty cell !");
 
   /* Sanity check */
   if (ci == cj) error("Pair interaction between a cell and itself.");
 
-  if (cj->ti_old_multipole != e->ti_current)
-    error("cj->multipole not drifted.");
+  if (cj->grav.ti_old_multipole != e->ti_current)
+    error("cj->grav.multipole not drifted.");
 #endif
 
   /* Can we recurse further? */
@@ -1384,7 +1389,7 @@ static INLINE void runner_dopair_recursive_grav_pm(struct runner *r,
     struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
 
     /* Computed the padded counts */
-    const int gcount_i = ci->gcount;
+    const int gcount_i = ci->grav.gcount;
     const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1394,32 +1399,33 @@ static INLINE void runner_dopair_recursive_grav_pm(struct runner *r,
 #endif
 
     /* Recover the multipole info and the CoM locations */
-    const struct multipole *multi_j = &cj->multipole->m_pole;
-    const float r_max = cj->multipole->r_max;
-    const float CoM_j[3] = {(float)(cj->multipole->CoM[0]),
-                            (float)(cj->multipole->CoM[1]),
-                            (float)(cj->multipole->CoM[2])};
+    const struct multipole *multi_j = &cj->grav.multipole->m_pole;
+    const float r_max = cj->grav.multipole->r_max;
+    const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0]),
+                            (float)(cj->grav.multipole->CoM[1]),
+                            (float)(cj->grav.multipole->CoM[2])};
 
     /* Fill the cache */
     gravity_cache_populate_all_mpole(
-        e->max_active_bin, periodic, dim, ci_cache, ci->gparts, gcount_i,
+        e->max_active_bin, periodic, dim, ci_cache, ci->grav.gparts, gcount_i,
         gcount_padded_i, ci, CoM_j, r_max * r_max, e->gravity_properties);
 
     /* Can we use the Newtonian version or do we need the truncated one ? */
     if (!periodic) {
 
       runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                 periodic, dim, e, ci->gparts, gcount_i, cj);
+                                 periodic, dim, e, ci->grav.gparts, gcount_i,
+                                 cj);
 
     } else {
 
       runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                      dim, r_s_inv, e, ci->gparts, gcount_i,
-                                      cj);
+                                      dim, r_s_inv, e, ci->grav.gparts,
+                                      gcount_i, cj);
     }
 
     /* Write back to the particles */
-    gravity_cache_write_back(ci_cache, ci->gparts, gcount_i);
+    gravity_cache_write_back(ci_cache, ci->grav.gparts, gcount_i);
   }
 }
 
@@ -1457,8 +1463,8 @@ static INLINE void runner_dopair_recursive_grav(struct runner *r,
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-  const int gcount_i = ci->gcount;
-  const int gcount_j = cj->gcount;
+  const int gcount_i = ci->grav.gcount;
+  const int gcount_j = cj->grav.gcount;
 
   /* Early abort? */
   if (gcount_i == 0 || gcount_j == 0)
@@ -1467,17 +1473,19 @@ static INLINE void runner_dopair_recursive_grav(struct runner *r,
   /* Sanity check */
   if (ci == cj) error("Pair interaction between a cell and itself.");
 
-  if (cell_is_active_gravity(ci, e) && ci->ti_old_multipole != e->ti_current)
-    error("ci->multipole not drifted.");
-  if (cell_is_active_gravity(cj, e) && cj->ti_old_multipole != e->ti_current)
-    error("cj->multipole not drifted.");
+  if (cell_is_active_gravity(ci, e) &&
+      ci->grav.ti_old_multipole != e->ti_current)
+    error("ci->grav.multipole not drifted.");
+  if (cell_is_active_gravity(cj, e) &&
+      cj->grav.ti_old_multipole != e->ti_current)
+    error("cj->grav.multipole not drifted.");
 #endif
 
   TIMER_TIC;
 
   /* Recover the multipole information */
-  struct gravity_tensors *const multi_i = ci->multipole;
-  struct gravity_tensors *const multi_j = cj->multipole;
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+  struct gravity_tensors *const multi_j = cj->grav.multipole;
 
   /* Get the distance between the CoMs */
   double dx = multi_i->CoM[0] - multi_j->CoM[0];
@@ -1599,7 +1607,7 @@ static INLINE void runner_doself_recursive_grav(struct runner *r,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Early abort? */
-  if (c->gcount == 0) error("Doing self gravity on an empty cell !");
+  if (c->grav.gcount == 0) error("Doing self gravity on an empty cell !");
 #endif
 
   TIMER_TIC;
@@ -1666,17 +1674,17 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     error("Non-local cell in long-range gravity task!");
 
   /* Check multipole has been drifted */
-  if (ci->ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
+  if (ci->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(ci, e);
 
   /* Get this cell's multipole information */
-  struct gravity_tensors *const multi_i = ci->multipole;
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
 
   /* Find this cell's top-level (great-)parent */
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
 
   /* Recover the top-level multipole (for distance checks) */
-  struct gravity_tensors *const multi_top = top->multipole;
+  struct gravity_tensors *const multi_top = top->grav.multipole;
   const double CoM_rebuild_top[3] = {multi_top->CoM_rebuild[0],
                                      multi_top->CoM_rebuild[1],
                                      multi_top->CoM_rebuild[2]};
@@ -1687,7 +1695,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Handle on the top-level cell and it's gravity business*/
     struct cell *cj = &cells[n];
-    const struct gravity_tensors *const multi_j = cj->multipole;
+    const struct gravity_tensors *const multi_j = cj->grav.multipole;
 
     /* Avoid self contributions */
     if (top == cj) continue;

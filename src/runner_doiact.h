@@ -145,10 +145,10 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   /* Anything to do here? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
-  const int count_i = ci->count;
-  const int count_j = cj->count;
-  struct part *restrict parts_i = ci->parts;
-  struct part *restrict parts_j = cj->parts;
+  const int count_i = ci->hydro.count;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_i = ci->hydro.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -245,10 +245,10 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   /* Anything to do here? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
-  const int count_i = ci->count;
-  const int count_j = cj->count;
-  struct part *restrict parts_i = ci->parts;
-  struct part *restrict parts_j = cj->parts;
+  const int count_i = ci->hydro.count;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_i = ci->hydro.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -354,8 +354,8 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  const int count = c->count;
-  struct part *restrict parts = c->parts;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
@@ -448,8 +448,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  const int count = c->count;
-  struct part *restrict parts = c->parts;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
@@ -544,8 +544,8 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
   TIMER_TIC;
 
-  const int count_j = cj->count;
-  struct part *restrict parts_j = cj->parts;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -626,16 +626,16 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
   TIMER_TIC;
 
-  const int count_j = cj->count;
-  struct part *restrict parts_j = cj->parts;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_j = cj->sort[sid];
-  const float dxj = cj->dx_max_sort;
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
+  const float dxj = cj->hydro.dx_max_sort;
 
   /* Parts are on the left? */
   if (!flipped) {
@@ -782,8 +782,8 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
   sid = sortlistID[sid];
 
   /* Has the cell cj been sorted? */
-  if (!(cj->sorted & (1 << sid)) ||
-      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
 #endif
 
@@ -822,8 +822,8 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  const int count_i = ci->count;
-  struct part *restrict parts_j = ci->parts;
+  const int count_i = ci->hydro.count;
+  struct part *restrict parts_j = ci->hydro.parts;
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
@@ -919,29 +919,29 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->sort[sid];
-  const struct entry *restrict sort_j = cj->sort[sid];
+  const struct entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
   const float shift_threshold_x =
-      2. * ci->width[0] + 2. * max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[0] + 2. * max(ci->hydro.dx_max, cj->hydro.dx_max);
   const float shift_threshold_y =
-      2. * ci->width[1] + 2. * max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[1] + 2. * max(ci->hydro.dx_max, cj->hydro.dx_max);
   const float shift_threshold_z =
-      2. * ci->width[2] + 2. * max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[2] + 2. * max(ci->hydro.dx_max, cj->hydro.dx_max);
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
-  const double hi_max = ci->h_max * kernel_gamma - rshift;
-  const double hj_max = cj->h_max * kernel_gamma;
-  const int count_i = ci->count;
-  const int count_j = cj->count;
-  struct part *restrict parts_i = ci->parts;
-  struct part *restrict parts_j = cj->parts;
+  const double hi_max = ci->hydro.h_max * kernel_gamma - rshift;
+  const double hj_max = cj->hydro.h_max * kernel_gamma;
+  const int count_i = ci->hydro.count;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_i = ci->hydro.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
-  const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+  const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -1141,49 +1141,51 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) ||
-      ci->dx_max_sort_old > space_maxreldx * ci->dmin)
+  if (!(ci->hydro.sorted & (1 << sid)) ||
+      ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
     error("Interacting unsorted cells.");
-  if (!(cj->sorted & (1 << sid)) ||
-      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->sort[sid];
-  const struct entry *restrict sort_j = cj->sort[sid];
+  const struct entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
 
   /* Check that the dx_max_sort values in the cell are indeed an upper
      bound on particle movement. */
-  for (int pid = 0; pid < ci->count; pid++) {
-    const struct part *p = &ci->parts[sort_i[pid].i];
+  for (int pid = 0; pid < ci->hydro.count; pid++) {
+    const struct part *p = &ci->hydro.parts[sort_i[pid].i];
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
-            1.0e-4 * max(fabsf(d), ci->dx_max_sort_old) &&
-        fabsf(d - sort_i[pid].d) - ci->dx_max_sort > ci->width[0] * 1.0e-10)
+    if (fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
+            1.0e-4 * max(fabsf(d), ci->hydro.dx_max_sort_old) &&
+        fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
+            ci->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
-          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
-          "ci->dx_max_sort_old=%e",
-          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->dx_max_sort,
-          ci->dx_max_sort_old);
+          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->hydro.dx_max_sort=%e "
+          "ci->hydro.dx_max_sort_old=%e",
+          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->hydro.dx_max_sort,
+          ci->hydro.dx_max_sort_old);
   }
-  for (int pjd = 0; pjd < cj->count; pjd++) {
-    const struct part *p = &cj->parts[sort_j[pjd].i];
+  for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
+    const struct part *p = &cj->hydro.parts[sort_j[pjd].i];
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
-    if ((fabsf(d - sort_j[pjd].d) - cj->dx_max_sort) >
-            1.0e-4 * max(fabsf(d), cj->dx_max_sort_old) &&
-        (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort) > cj->width[0] * 1.0e-10)
+    if ((fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort) >
+            1.0e-4 * max(fabsf(d), cj->hydro.dx_max_sort_old) &&
+        (fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort) >
+            cj->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
-          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "
-          "cj->dx_max_sort_old=%e",
-          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
-          cj->dx_max_sort_old);
+          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->hydro.dx_max_sort=%e "
+          "cj->hydro.dx_max_sort_old=%e",
+          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->hydro.dx_max_sort,
+          cj->hydro.dx_max_sort_old);
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -1222,33 +1224,33 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  struct entry *restrict sort_i = ci->sort[sid];
-  struct entry *restrict sort_j = cj->sort[sid];
+  struct entry *restrict sort_i = ci->hydro.sort[sid];
+  struct entry *restrict sort_j = cj->hydro.sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
   const float shift_threshold_x =
-      2. * ci->width[0] + 2. * max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[0] + 2. * max(ci->hydro.dx_max, cj->hydro.dx_max);
   const float shift_threshold_y =
-      2. * ci->width[1] + 2. * max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[1] + 2. * max(ci->hydro.dx_max, cj->hydro.dx_max);
   const float shift_threshold_z =
-      2. * ci->width[2] + 2. * max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[2] + 2. * max(ci->hydro.dx_max, cj->hydro.dx_max);
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
-  const double hi_max = ci->h_max;
-  const double hj_max = cj->h_max;
-  const int count_i = ci->count;
-  const int count_j = cj->count;
-  struct part *restrict parts_i = ci->parts;
-  struct part *restrict parts_j = cj->parts;
+  const double hi_max = ci->hydro.h_max;
+  const double hj_max = cj->hydro.h_max;
+  const int count_i = ci->hydro.count;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_i = ci->hydro.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
 
   /* Maximal displacement since last rebuild */
-  const double dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+  const double dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
 
   /* Position on the axis of the particles closest to the interface */
   const double di_max = sort_i[count_i - 1].d;
@@ -1654,49 +1656,51 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) ||
-      ci->dx_max_sort_old > space_maxreldx * ci->dmin)
+  if (!(ci->hydro.sorted & (1 << sid)) ||
+      ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
     error("Interacting unsorted cells.");
-  if (!(cj->sorted & (1 << sid)) ||
-      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->sort[sid];
-  const struct entry *restrict sort_j = cj->sort[sid];
+  const struct entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
 
   /* Check that the dx_max_sort values in the cell are indeed an upper
      bound on particle movement. */
-  for (int pid = 0; pid < ci->count; pid++) {
-    const struct part *p = &ci->parts[sort_i[pid].i];
+  for (int pid = 0; pid < ci->hydro.count; pid++) {
+    const struct part *p = &ci->hydro.parts[sort_i[pid].i];
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
-            1.0e-4 * max(fabsf(d), ci->dx_max_sort_old) &&
-        fabsf(d - sort_i[pid].d) - ci->dx_max_sort > ci->width[0] * 1.0e-10)
+    if (fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
+            1.0e-4 * max(fabsf(d), ci->hydro.dx_max_sort_old) &&
+        fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
+            ci->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
-          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
-          "ci->dx_max_sort_old=%e",
-          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->dx_max_sort,
-          ci->dx_max_sort_old);
+          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->hydro.dx_max_sort=%e "
+          "ci->hydro.dx_max_sort_old=%e",
+          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->hydro.dx_max_sort,
+          ci->hydro.dx_max_sort_old);
   }
-  for (int pjd = 0; pjd < cj->count; pjd++) {
-    const struct part *p = &cj->parts[sort_j[pjd].i];
+  for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
+    const struct part *p = &cj->hydro.parts[sort_j[pjd].i];
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
-            1.0e-4 * max(fabsf(d), cj->dx_max_sort_old) &&
-        fabsf(d - sort_j[pjd].d) - cj->dx_max_sort > cj->width[0] * 1.0e-10)
+    if (fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort >
+            1.0e-4 * max(fabsf(d), cj->hydro.dx_max_sort_old) &&
+        fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort >
+            cj->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
-          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "
-          "cj->dx_max_sort_old=%e",
-          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
-          cj->dx_max_sort_old);
+          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->hydro.dx_max_sort=%e "
+          "cj->hydro.dx_max_sort_old=%e",
+          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->hydro.dx_max_sort,
+          cj->hydro.dx_max_sort_old);
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -1726,8 +1730,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   TIMER_TIC;
 
-  struct part *restrict parts = c->parts;
-  const int count = c->count;
+  struct part *restrict parts = c->hydro.parts;
+  const int count = c->hydro.count;
 
   /* Set up indt. */
   int *indt = NULL;
@@ -1874,7 +1878,7 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->h_max_old * kernel_gamma > c->dmin)
+  if (c->hydro.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   /* Check that cells are drifted. */
@@ -1903,8 +1907,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   TIMER_TIC;
 
-  struct part *restrict parts = c->parts;
-  const int count = c->count;
+  struct part *restrict parts = c->hydro.parts;
+  const int count = c->hydro.count;
 
   /* Set up indt. */
   int *indt = NULL;
@@ -2041,7 +2045,7 @@ void DOSELF2_BRANCH(struct runner *r, struct cell *c) {
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->h_max_old * kernel_gamma > c->dmin)
+  if (c->hydro.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   /* Check that cells are drifted. */
@@ -2079,7 +2083,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Should we even bother? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
-  if (ci->count == 0 || cj->count == 0) return;
+  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Get the type of pair if not specified explicitly. */
   double shift[3];
@@ -2295,18 +2299,18 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
       error("Interacting undrifted cells.");
 
     /* Do any of the cells need to be sorted first? */
-    if (!(ci->sorted & (1 << sid)) ||
-        ci->dx_max_sort_old > ci->dmin * space_maxreldx)
+    if (!(ci->hydro.sorted & (1 << sid)) ||
+        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
       error(
-          "Interacting unsorted cell. ci->dx_max_sort_old=%e ci->dmin=%e "
+          "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
           "ci->sorted=%d sid=%d",
-          ci->dx_max_sort_old, ci->dmin, ci->sorted, sid);
-    if (!(cj->sorted & (1 << sid)) ||
-        cj->dx_max_sort_old > cj->dmin * space_maxreldx)
+          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid);
+    if (!(cj->hydro.sorted & (1 << sid)) ||
+        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
       error(
-          "Interacting unsorted cell. cj->dx_max_sort_old=%e cj->dmin=%e "
+          "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
           "cj->sorted=%d sid=%d",
-          cj->dx_max_sort_old, cj->dmin, cj->sorted, sid);
+          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid);
 
     /* Compute the interactions. */
     DOPAIR1_BRANCH(r, ci, cj);
@@ -2327,7 +2331,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->count == 0 || !cell_is_active_hydro(ci, r->e)) return;
+  if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, r->e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_hydro_task(ci)) {
@@ -2376,7 +2380,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Should we even bother? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
-  if (ci->count == 0 || cj->count == 0) return;
+  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Get the type of pair if not specified explicitly. */
   double shift[3];
@@ -2592,18 +2596,18 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
       error("Interacting undrifted cells.");
 
     /* Do any of the cells need to be sorted first? */
-    if (!(ci->sorted & (1 << sid)) ||
-        ci->dx_max_sort_old > ci->dmin * space_maxreldx)
+    if (!(ci->hydro.sorted & (1 << sid)) ||
+        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
       error(
-          "Interacting unsorted cell. ci->dx_max_sort_old=%e ci->dmin=%e "
+          "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
           "ci->sorted=%d sid=%d",
-          ci->dx_max_sort_old, ci->dmin, ci->sorted, sid);
-    if (!(cj->sorted & (1 << sid)) ||
-        cj->dx_max_sort_old > cj->dmin * space_maxreldx)
+          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid);
+    if (!(cj->hydro.sorted & (1 << sid)) ||
+        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
       error(
-          "Interacting unsorted cell. cj->dx_max_sort_old=%e cj->dmin=%e "
+          "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
           "cj->sorted=%d sid=%d",
-          cj->dx_max_sort_old, cj->dmin, cj->sorted, sid);
+          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid);
 
     /* Compute the interactions. */
     DOPAIR2_BRANCH(r, ci, cj);
@@ -2624,7 +2628,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->count == 0 || !cell_is_active_hydro(ci, r->e)) return;
+  if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, r->e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_hydro_task(ci)) {
@@ -2659,15 +2663,16 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   if (!cell_is_active_hydro(ci, e) &&
       (cj == NULL || !cell_is_active_hydro(cj, e)))
     return;
-  if (ci->count == 0 || (cj != NULL && cj->count == 0)) return;
+  if (ci->hydro.count == 0 || (cj != NULL && cj->hydro.count == 0)) return;
 
   /* Find out in which sub-cell of ci the parts are. */
   struct cell *sub = NULL;
   if (ci->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL) {
-        if (&parts[ind[0]] >= &ci->progeny[k]->parts[0] &&
-            &parts[ind[0]] < &ci->progeny[k]->parts[ci->progeny[k]->count]) {
+        if (&parts[ind[0]] >= &ci->progeny[k]->hydro.parts[0] &&
+            &parts[ind[0]] <
+                &ci->progeny[k]->hydro.parts[ci->progeny[k]->hydro.count]) {
           sub = ci->progeny[k];
           break;
         }

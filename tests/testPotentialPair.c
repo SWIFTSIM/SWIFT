@@ -149,11 +149,11 @@ int main(int argc, char *argv[]) {
   ci.loc[0] = 0.;
   ci.loc[1] = 0.;
   ci.loc[2] = 0.;
-  ci.gcount = 1;
-  ci.ti_old_gpart = 8;
-  ci.ti_old_multipole = 8;
-  ci.ti_gravity_end_min = 8;
-  ci.ti_gravity_end_max = 8;
+  ci.grav.gcount = 1;
+  ci.grav.ti_old_gpart = 8;
+  ci.grav.ti_old_multipole = 8;
+  ci.grav.ti_end_min = 8;
+  ci.grav.ti_end_max = 8;
 
   cj.nodeID = 0;
   cj.width[0] = 1.;
@@ -162,39 +162,39 @@ int main(int argc, char *argv[]) {
   cj.loc[0] = 1.;
   cj.loc[1] = 0.;
   cj.loc[2] = 0.;
-  cj.gcount = num_tests;
-  cj.ti_old_gpart = 8;
-  cj.ti_old_multipole = 8;
-  cj.ti_gravity_end_min = 8;
-  cj.ti_gravity_end_max = 8;
+  cj.grav.gcount = num_tests;
+  cj.grav.ti_old_gpart = 8;
+  cj.grav.ti_old_multipole = 8;
+  cj.grav.ti_end_min = 8;
+  cj.grav.ti_end_max = 8;
 
   /* Allocate multipoles */
-  ci.multipole =
+  ci.grav.multipole =
       (struct gravity_tensors *)malloc(sizeof(struct gravity_tensors));
-  cj.multipole =
+  cj.grav.multipole =
       (struct gravity_tensors *)malloc(sizeof(struct gravity_tensors));
-  bzero(ci.multipole, sizeof(struct gravity_tensors));
-  bzero(cj.multipole, sizeof(struct gravity_tensors));
+  bzero(ci.grav.multipole, sizeof(struct gravity_tensors));
+  bzero(cj.grav.multipole, sizeof(struct gravity_tensors));
 
   /* Set the multipoles */
-  ci.multipole->r_max = 0.1;
-  cj.multipole->r_max = 0.1;
+  ci.grav.multipole->r_max = 0.1;
+  cj.grav.multipole->r_max = 0.1;
 
   /* Allocate the particles */
-  if (posix_memalign((void **)&ci.gparts, gpart_align,
-                     ci.gcount * sizeof(struct gpart)) != 0)
+  if (posix_memalign((void **)&ci.grav.gparts, gpart_align,
+                     ci.grav.gcount * sizeof(struct gpart)) != 0)
     error("Error allocating gparts for cell ci");
-  bzero(ci.gparts, ci.gcount * sizeof(struct gpart));
+  bzero(ci.grav.gparts, ci.grav.gcount * sizeof(struct gpart));
 
-  if (posix_memalign((void **)&cj.gparts, gpart_align,
-                     cj.gcount * sizeof(struct gpart)) != 0)
+  if (posix_memalign((void **)&cj.grav.gparts, gpart_align,
+                     cj.grav.gcount * sizeof(struct gpart)) != 0)
     error("Error allocating gparts for cell ci");
-  bzero(cj.gparts, cj.gcount * sizeof(struct gpart));
+  bzero(cj.grav.gparts, cj.grav.gcount * sizeof(struct gpart));
 
   /* Create the mass-less test particles */
   for (int n = 0; n < num_tests; ++n) {
 
-    struct gpart *gp = &cj.gparts[n];
+    struct gpart *gp = &cj.grav.gparts[n];
 
     gp->x[0] = 1. + (n + 1) / ((double)num_tests);
     gp->x[1] = 0.5;
@@ -213,15 +213,15 @@ int main(int argc, char *argv[]) {
   /***********************************************/
 
   /* Create the massive particle */
-  ci.gparts[0].x[0] = 0.;
-  ci.gparts[0].x[1] = 0.5;
-  ci.gparts[0].x[2] = 0.5;
-  ci.gparts[0].mass = 1.;
-  ci.gparts[0].time_bin = 1;
-  ci.gparts[0].type = swift_type_dark_matter;
-  ci.gparts[0].id_or_neg_offset = 1;
+  ci.grav.gparts[0].x[0] = 0.;
+  ci.grav.gparts[0].x[1] = 0.5;
+  ci.grav.gparts[0].x[2] = 0.5;
+  ci.grav.gparts[0].mass = 1.;
+  ci.grav.gparts[0].time_bin = 1;
+  ci.grav.gparts[0].type = swift_type_dark_matter;
+  ci.grav.gparts[0].id_or_neg_offset = 1;
 #ifdef SWIFT_DEBUG_CHECKS
-  ci.gparts[0].ti_drift = 8;
+  ci.grav.gparts[0].ti_drift = 8;
 #endif
 
   /* Now compute the forces */
@@ -229,18 +229,18 @@ int main(int argc, char *argv[]) {
 
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {
-    const struct gpart *gp = &cj.gparts[n];
-    const struct gpart *gp2 = &ci.gparts[0];
+    const struct gpart *gp = &cj.grav.gparts[n];
+    const struct gpart *gp2 = &ci.grav.gparts[0];
     const double epsilon = gravity_get_softening(gp, &props);
 
 #if defined(POTENTIAL_GRAVITY)
     double pot_true =
-        potential(ci.gparts[0].mass, gp->x[0] - gp2->x[0], epsilon, rlr);
+        potential(ci.grav.gparts[0].mass, gp->x[0] - gp2->x[0], epsilon, rlr);
     check_value(gp->potential, pot_true, "potential");
 #endif
 
-    double acc_true =
-        acceleration(ci.gparts[0].mass, gp->x[0] - gp2->x[0], epsilon, rlr);
+    double acc_true = acceleration(ci.grav.gparts[0].mass, gp->x[0] - gp2->x[0],
+                                   epsilon, rlr);
 
     /* message("x=%e f=%e f_true=%e pot=%e pot_true=%e", gp->x[0] - gp2->x[0],
        gp->a_grav[0], acc_true, gp->potential, pot_true); */
@@ -251,7 +251,7 @@ int main(int argc, char *argv[]) {
   message("\n\t\t P-P interactions all good\n");
 
   /* Reset the accelerations */
-  for (int n = 0; n < num_tests; ++n) gravity_init_gpart(&cj.gparts[n]);
+  for (int n = 0; n < num_tests; ++n) gravity_init_gpart(&cj.grav.gparts[n]);
 
   /**********************************/
   /* Test the basic PM interactions */
@@ -260,22 +260,22 @@ int main(int argc, char *argv[]) {
   /* Set an opening angle that allows P-M interactions */
   props.theta_crit2 = 1.;
 
-  ci.gparts[0].mass = 0.;
-  ci.multipole->CoM[0] = 0.;
-  ci.multipole->CoM[1] = 0.5;
-  ci.multipole->CoM[2] = 0.5;
+  ci.grav.gparts[0].mass = 0.;
+  ci.grav.multipole->CoM[0] = 0.;
+  ci.grav.multipole->CoM[1] = 0.5;
+  ci.grav.multipole->CoM[2] = 0.5;
 
-  bzero(&ci.multipole->m_pole, sizeof(struct multipole));
-  bzero(&cj.multipole->m_pole, sizeof(struct multipole));
-  ci.multipole->m_pole.M_000 = 1.;
+  bzero(&ci.grav.multipole->m_pole, sizeof(struct multipole));
+  bzero(&cj.grav.multipole->m_pole, sizeof(struct multipole));
+  ci.grav.multipole->m_pole.M_000 = 1.;
 
   /* Now compute the forces */
   runner_dopair_grav_pp(&r, &ci, &cj, 1, 1);
 
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {
-    const struct gpart *gp = &cj.gparts[n];
-    const struct gravity_tensors *mpole = ci.multipole;
+    const struct gpart *gp = &cj.grav.gparts[n];
+    const struct gravity_tensors *mpole = ci.grav.multipole;
     const double epsilon = gravity_get_softening(gp, &props);
 
 #if defined(POTENTIAL_GRAVITY)
@@ -297,7 +297,7 @@ int main(int argc, char *argv[]) {
 #ifndef GADGET2_LONG_RANGE_CORRECTION
 
   /* Reset the accelerations */
-  for (int n = 0; n < num_tests; ++n) gravity_init_gpart(&cj.gparts[n]);
+  for (int n = 0; n < num_tests; ++n) gravity_init_gpart(&cj.grav.gparts[n]);
 
   /***************************************/
   /* Test the truncated PM interactions  */
@@ -314,8 +314,8 @@ int main(int argc, char *argv[]) {
 
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {
-    const struct gpart *gp = &cj.gparts[n];
-    const struct gravity_tensors *mpole = ci.multipole;
+    const struct gpart *gp = &cj.grav.gparts[n];
+    const struct gravity_tensors *mpole = ci.grav.multipole;
     const double epsilon = gravity_get_softening(gp, &props);
 
 #if defined(POTENTIAL_GRAVITY)
@@ -342,57 +342,57 @@ int main(int argc, char *argv[]) {
   /************************************************/
 
   /* Reset the accelerations */
-  for (int n = 0; n < num_tests; ++n) gravity_init_gpart(&cj.gparts[n]);
+  for (int n = 0; n < num_tests; ++n) gravity_init_gpart(&cj.grav.gparts[n]);
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER >= 3
 
   /* Let's make ci more interesting */
-  free(ci.gparts);
-  ci.gcount = 8;
-  if (posix_memalign((void **)&ci.gparts, gpart_align,
-                     ci.gcount * sizeof(struct gpart)) != 0)
+  free(ci.grav.gparts);
+  ci.grav.gcount = 8;
+  if (posix_memalign((void **)&ci.grav.gparts, gpart_align,
+                     ci.grav.gcount * sizeof(struct gpart)) != 0)
     error("Error allocating gparts for cell ci");
-  bzero(ci.gparts, ci.gcount * sizeof(struct gpart));
+  bzero(ci.grav.gparts, ci.grav.gcount * sizeof(struct gpart));
 
   /* Place particles on a simple cube of side-length 0.2 */
   for (int n = 0; n < 8; ++n) {
     if (n & 1)
-      ci.gparts[n].x[0] = 0.0 - 0.1;
+      ci.grav.gparts[n].x[0] = 0.0 - 0.1;
     else
-      ci.gparts[n].x[0] = 0.0 + 0.1;
+      ci.grav.gparts[n].x[0] = 0.0 + 0.1;
 
     if (n & 2)
-      ci.gparts[n].x[1] = 0.5 - 0.1;
+      ci.grav.gparts[n].x[1] = 0.5 - 0.1;
     else
-      ci.gparts[n].x[1] = 0.5 + 0.1;
+      ci.grav.gparts[n].x[1] = 0.5 + 0.1;
 
     if (n & 2)
-      ci.gparts[n].x[2] = 0.5 - 0.1;
+      ci.grav.gparts[n].x[2] = 0.5 - 0.1;
     else
-      ci.gparts[n].x[2] = 0.5 + 0.1;
+      ci.grav.gparts[n].x[2] = 0.5 + 0.1;
 
-    ci.gparts[n].mass = 1. / 8.;
+    ci.grav.gparts[n].mass = 1. / 8.;
 
-    ci.gparts[n].time_bin = 1;
-    ci.gparts[n].type = swift_type_dark_matter;
-    ci.gparts[n].id_or_neg_offset = 1;
+    ci.grav.gparts[n].time_bin = 1;
+    ci.grav.gparts[n].type = swift_type_dark_matter;
+    ci.grav.gparts[n].id_or_neg_offset = 1;
 #ifdef SWIFT_DEBUG_CHECKS
-    ci.gparts[n].ti_drift = 8;
+    ci.grav.gparts[n].ti_drift = 8;
 #endif
   }
 
   /* Now let's make a multipole out of it. */
-  gravity_reset(ci.multipole);
-  gravity_P2M(ci.multipole, ci.gparts, ci.gcount);
+  gravity_reset(ci.grav.multipole);
+  gravity_P2M(ci.grav.multipole, ci.grav.gparts, ci.grav.gcount);
 
-  gravity_multipole_print(&ci.multipole->m_pole);
+  gravity_multipole_print(&ci.grav.multipole->m_pole);
 
   /* Compute the forces */
   runner_dopair_grav_pp(&r, &ci, &cj, 1, 1);
 
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {
-    const struct gpart *gp = &cj.gparts[n];
+    const struct gpart *gp = &cj.grav.gparts[n];
 
 #if defined(POTENTIAL_GRAVITY)
     double pot_true = 0;
@@ -400,7 +400,7 @@ int main(int argc, char *argv[]) {
     double acc_true[3] = {0., 0., 0.};
 
     for (int i = 0; i < 8; ++i) {
-      const struct gpart *gp2 = &ci.gparts[i];
+      const struct gpart *gp2 = &ci.grav.gparts[i];
       const double epsilon = gravity_get_softening(gp, &props);
 
       const double dx[3] = {gp2->x[0] - gp->x[0], gp2->x[1] - gp->x[1],
@@ -421,7 +421,7 @@ int main(int argc, char *argv[]) {
 #endif
     check_value_backend(gp->a_grav[0], acc_true[0], "acceleration", 1e-2, 1e-6);
 
-    /* const struct gravity_tensors *mpole = ci.multipole; */
+    /* const struct gravity_tensors *mpole = ci.grav.multipole; */
     /* message("x=%e f=%e f_true=%e pot=%e pot_true=%e %e %e", */
     /*         gp->x[0] - mpole->CoM[0], gp->a_grav[0], acc_true[0],
      * gp->potential, */
@@ -432,9 +432,9 @@ int main(int argc, char *argv[]) {
 
 #endif
 
-  free(ci.multipole);
-  free(cj.multipole);
-  free(ci.gparts);
-  free(cj.gparts);
+  free(ci.grav.multipole);
+  free(cj.grav.multipole);
+  free(ci.grav.gparts);
+  free(cj.grav.gparts);
   return 0;
 }

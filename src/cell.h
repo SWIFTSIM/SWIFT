@@ -97,16 +97,15 @@ struct pcell {
 
     /*! Number of #part in this cell. */
     int count;
-    
+
   } hydro;
 
-  
   /*! Gravity variables */
   struct {
 
     /*! This cell's gravity-related tensors */
     struct multipole m_pole;
-  
+
     /*! Centre of mass. */
     double CoM[3];
 
@@ -139,7 +138,6 @@ struct pcell {
 
   } grav;
 
-  
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
 
@@ -172,7 +170,6 @@ struct pcell_step {
 
   } hydro;
 
-  
   /*! Grav variables */
   struct {
 
@@ -182,7 +179,6 @@ struct pcell_step {
     /*! Minimal integer end-of-timestep in this cell (gravity) */
     integertime_t ti_end_max;
   } grav;
-  
 };
 
 /**
@@ -225,8 +221,8 @@ struct cell {
     /*! Pointer for the sorted indices. */
     struct entry *sort[13];
 
-    /*! Super cell, i.e. the highest-level parent cell that has a hydro pair/self
-     * tasks */
+    /*! Super cell, i.e. the highest-level parent cell that has a hydro
+     * pair/self tasks */
     struct cell *super;
 
     /*! Last (integer) time the cell's part were drifted forward in time. */
@@ -247,7 +243,8 @@ struct cell {
     /*! Maximum end of (integer) time step in this cell for hydro tasks. */
     integertime_t ti_end_max;
 
-    /*! Maximum beginning of (integer) time step in this cell for hydro tasks. */
+    /*! Maximum beginning of (integer) time step in this cell for hydro tasks.
+     */
     integertime_t ti_beg_max;
 
     /*! Nr of #part in this cell. */
@@ -255,7 +252,7 @@ struct cell {
 
     /*! Spin lock for various uses (#part case). */
     swift_lock_type lock;
-    
+
     /*! Number of #part updated in this cell. */
     int updated;
 
@@ -276,7 +273,7 @@ struct cell {
 
     /*! Bit mask of sorts that need to be computed for this cell. */
     unsigned int do_sort;
-     
+
     /*! Does this cell need to be drifted (hydro)? */
     char do_drift;
 
@@ -285,7 +282,7 @@ struct cell {
 
     /*! Do any of this cell's sub-cells need to be sorted? */
     char do_sub_sort;
- 
+
     /*! Bit-mask indicating the sorted directions */
     unsigned int sorted;
 
@@ -344,12 +341,12 @@ struct cell {
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-    
+
     /*! Last (integer) time the cell's sort arrays were updated. */
     integertime_t ti_sort;
-    
+
 #endif
-    
+
   } hydro;
 
   /*! Grav variables */
@@ -367,20 +364,20 @@ struct cell {
 
     /*! Minimum end of (integer) time step in this cell for gravity tasks. */
     integertime_t ti_end_min;
-    
+
     /*! Maximum end of (integer) time step in this cell for gravity tasks. */
     integertime_t ti_end_max;
 
     /*! Maximum beginning of (integer) time step in this cell for gravity tasks.
      */
     integertime_t ti_beg_max;
-    
+
     /*! Last (integer) time the cell's gpart were drifted forward in time. */
     integertime_t ti_old_gpart;
 
     /*! Last (integer) time the cell's multipole was drifted forward in time. */
     integertime_t ti_old_multipole;
-    
+
     /*! Nr of #gpart in this cell. */
     int gcount;
 
@@ -428,7 +425,7 @@ struct cell {
 
     /*! Task propagating the mesh forces to the particles */
     struct task *mesh;
-    
+
     /*! Task propagating the multipole to the particles */
     struct task *down;
 
@@ -447,7 +444,6 @@ struct cell {
 
   } grav;
 
-  
   /*! The first kick task */
   struct task *kick1;
 
@@ -625,8 +621,8 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
-  return c->split &&
-         ((kernel_gamma * c->hydro.h_max_old + c->hydro.dx_max_old) < 0.5f * c->dmin);
+  return c->split && ((kernel_gamma * c->hydro.h_max_old +
+                       c->hydro.dx_max_old) < 0.5f * c->dmin);
 }
 
 /**
@@ -682,7 +678,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
   /* the sub-cell sizes ? */
   /* Note that since tasks are create after a rebuild no need to take */
   /* into account any part motion (i.e. dx_max == 0 here) */
-  return c->split && (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin);
+  return c->split &&
+         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -699,7 +696,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
   /* the sub-cell sizes ? */
   /* Note: No need for more checks here as all the sub-pairs and sub-self */
   /* tasks will be created. So no need to check for h_max */
-  return c->split && (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin);
+  return c->split &&
+         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -767,8 +765,8 @@ __attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
-  return (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) + ci->hydro.dx_max +
-              cj->hydro.dx_max >
+  return (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
+              ci->hydro.dx_max + cj->hydro.dx_max >
           cj->dmin);
 }
 
@@ -784,7 +782,8 @@ __attribute__((always_inline)) INLINE static void cell_tag(struct cell *c) {
   if (c->mpi.tag > 0) error("setting tag for already tagged cell");
 #endif
 
-  if (c->mpi.tag < 0 && (c->mpi.tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
+  if (c->mpi.tag < 0 &&
+      (c->mpi.tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
     error("Ran out of cell tags.");
 #else
   error("SWIFT was not compiled with MPI enabled.");

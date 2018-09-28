@@ -152,19 +152,19 @@ void get_solution(const struct cell *main_cell, struct solution_part *solution,
                   float density, enum velocity_field vel,
                   enum pressure_field press, float size) {
 
-  for (int i = 0; i < main_cell->count; ++i) {
+  for (int i = 0; i < main_cell->hydro.count; ++i) {
 
-    solution[i].id = main_cell->parts[i].id;
+    solution[i].id = main_cell->hydro.parts[i].id;
 
-    solution[i].x[0] = main_cell->parts[i].x[0];
-    solution[i].x[1] = main_cell->parts[i].x[1];
-    solution[i].x[2] = main_cell->parts[i].x[2];
+    solution[i].x[0] = main_cell->hydro.parts[i].x[0];
+    solution[i].x[1] = main_cell->hydro.parts[i].x[1];
+    solution[i].x[2] = main_cell->hydro.parts[i].x[2];
 
-    solution[i].v[0] = main_cell->parts[i].v[0];
-    solution[i].v[1] = main_cell->parts[i].v[1];
-    solution[i].v[2] = main_cell->parts[i].v[2];
+    solution[i].v[0] = main_cell->hydro.parts[i].v[0];
+    solution[i].v[1] = main_cell->hydro.parts[i].v[1];
+    solution[i].v[2] = main_cell->hydro.parts[i].v[2];
 
-    solution[i].h = main_cell->parts[i].h;
+    solution[i].h = main_cell->hydro.parts[i].h;
 
     solution[i].rho = density;
 
@@ -213,9 +213,9 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
                      enum velocity_field vel, enum pressure_field press,
                      float size, float density) {
 
-  for (int i = 0; i < c->count; ++i) {
+  for (int i = 0; i < c->hydro.count; ++i) {
 
-    struct part *p = &c->parts[i];
+    struct part *p = &c->hydro.parts[i];
 
     set_velocity(p, vel, size);
     set_energy_state(p, press, size, density);
@@ -272,20 +272,20 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
-  if (posix_memalign((void **)&cell->parts, part_align,
+  if (posix_memalign((void **)&cell->hydro.parts, part_align,
                      count * sizeof(struct part)) != 0)
     error("couldn't allocate particles, no. of particles: %d", (int)count);
-  if (posix_memalign((void **)&cell->xparts, xpart_align,
+  if (posix_memalign((void **)&cell->hydro.xparts, xpart_align,
                      count * sizeof(struct xpart)) != 0)
     error("couldn't allocate particles, no. of x-particles: %d", (int)count);
-  bzero(cell->parts, count * sizeof(struct part));
-  bzero(cell->xparts, count * sizeof(struct xpart));
+  bzero(cell->hydro.parts, count * sizeof(struct part));
+  bzero(cell->hydro.xparts, count * sizeof(struct xpart));
 
   float h_max = 0.f;
 
   /* Construct the parts */
-  struct part *part = cell->parts;
-  struct xpart *xpart = cell->xparts;
+  struct part *part = cell->hydro.parts;
+  struct xpart *xpart = cell->hydro.xparts;
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
@@ -346,11 +346,11 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
 
   /* Cell properties */
   cell->split = 0;
-  cell->h_max = h_max;
-  cell->count = count;
-  cell->gcount = 0;
-  cell->dx_max_part = 0.;
-  cell->dx_max_sort = 0.;
+  cell->hydro.h_max = h_max;
+  cell->hydro.count = count;
+  cell->grav.gcount = 0;
+  cell->hydro.dx_max = 0.;
+  cell->hydro.dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
@@ -358,24 +358,24 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_old_part = 8;
-  cell->ti_hydro_end_min = 8;
-  cell->ti_hydro_end_max = 8;
+  cell->hydro.ti_old = 8;
+  cell->hydro.ti_end_min = 8;
+  cell->hydro.ti_end_max = 8;
   cell->nodeID = NODE_ID;
 
-  // shuffle_particles(cell->parts, cell->count);
+  // shuffle_particles(cell->hydro.parts, cell->hydro.count);
 
-  cell->sorted = 0;
-  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
+  cell->hydro.sorted = 0;
+  for (int k = 0; k < 13; k++) cell->hydro.sort[k] = NULL;
 
   return cell;
 }
 
 void clean_up(struct cell *ci) {
-  free(ci->parts);
-  free(ci->xparts);
+  free(ci->hydro.parts);
+  free(ci->hydro.xparts);
   for (int k = 0; k < 13; k++)
-    if (ci->sort[k] != NULL) free(ci->sort[k]);
+    if (ci->hydro.sort[k] != NULL) free(ci->hydro.sort[k]);
   free(ci);
 }
 
@@ -397,37 +397,38 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
-  for (int pid = 0; pid < main_cell->count; pid++) {
+  for (int pid = 0; pid < main_cell->hydro.count; pid++) {
     fprintf(file,
             "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
             "%8.5f "
             "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
-            main_cell->parts[pid].id, main_cell->parts[pid].x[0],
-            main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
-            main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
-            main_cell->parts[pid].v[2], main_cell->parts[pid].h,
-            hydro_get_comoving_density(&main_cell->parts[pid]),
+            main_cell->hydro.parts[pid].id, main_cell->hydro.parts[pid].x[0],
+            main_cell->hydro.parts[pid].x[1], main_cell->hydro.parts[pid].x[2],
+            main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
+            main_cell->hydro.parts[pid].v[2], main_cell->hydro.parts[pid].h,
+            hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
 #if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||   \
     defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) || \
     defined(HOPKINS_PU_SPH)
             0.f,
 #else
-            main_cell->parts[pid].density.div_v,
+            main_cell->hydro.parts[pid].density.div_v,
 #endif
-            hydro_get_drifted_comoving_entropy(&main_cell->parts[pid]),
-            hydro_get_drifted_comoving_internal_energy(&main_cell->parts[pid]),
-            hydro_get_comoving_pressure(&main_cell->parts[pid]),
-            hydro_get_comoving_soundspeed(&main_cell->parts[pid]),
-            main_cell->parts[pid].a_hydro[0], main_cell->parts[pid].a_hydro[1],
-            main_cell->parts[pid].a_hydro[2], main_cell->parts[pid].force.h_dt,
+            hydro_get_drifted_comoving_entropy(&main_cell->hydro.parts[pid]),
+            hydro_get_drifted_comoving_internal_energy(&main_cell->hydro.parts[pid]),
+            hydro_get_comoving_pressure(&main_cell->hydro.parts[pid]),
+            hydro_get_comoving_soundspeed(&main_cell->hydro.parts[pid]),
+            main_cell->hydro.parts[pid].a_hydro[0], main_cell->hydro.parts[pid].a_hydro[1],
+            main_cell->hydro.parts[pid].a_hydro[2], main_cell->hydro.parts[pid].force.h_dt,
 #if defined(GADGET2_SPH)
-            main_cell->parts[pid].force.v_sig, main_cell->parts[pid].entropy_dt,
-            0.f
+            main_cell->hydro.parts[pid].force.v_sig,
+            main_cell->hydro.parts[pid].entropy_dt, 0.f
 #elif defined(DEFAULT_SPH)
-            main_cell->parts[pid].force.v_sig, 0.f,
-            main_cell->parts[pid].force.u_dt
+            main_cell->hydro.parts[pid].force.v_sig, 0.f,
+            main_cell->hydro.parts[pid].force.u_dt
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH)
-            main_cell->parts[pid].force.v_sig, 0.f, main_cell->parts[pid].u_dt
+            main_cell->hydro.parts[pid].force.v_sig, 0.f,
+            main_cell->hydro.parts[pid].u_dt
 #else
             0.f, 0.f, 0.f
 #endif
@@ -438,7 +439,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
     fprintf(file, "# Solution ---------------------------------------------\n");
 
-    for (int pid = 0; pid < main_cell->count; pid++) {
+    for (int pid = 0; pid < main_cell->hydro.count; pid++) {
       fprintf(file,
               "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
               "%8.5f %8.5f "
@@ -640,7 +641,7 @@ int main(int argc, char *argv[]) {
 
   /* Construct the real solution */
   struct solution_part *solution = (struct solution_part *)malloc(
-      main_cell->count * sizeof(struct solution_part));
+      main_cell->hydro.count * sizeof(struct solution_part));
   get_solution(main_cell, solution, rho, vel, press, size);
 
   ticks timings[27];
@@ -657,8 +658,8 @@ int main(int argc, char *argv[]) {
 
     /* Reset particles. */
     for (int i = 0; i < 125; ++i) {
-      for (int pid = 0; pid < cells[i]->count; ++pid)
-        hydro_init_part(&cells[i]->parts[pid], &space.hs);
+      for (int pid = 0; pid < cells[i]->hydro.count; ++pid)
+        hydro_init_part(&cells[i]->hydro.parts[pid], &space.hs);
     }
 
     /* First, sort stuff */
@@ -767,8 +768,8 @@ int main(int argc, char *argv[]) {
     }
 
     for (int i = 0; i < 125; ++i) {
-      for (int pid = 0; pid < cells[i]->count; ++pid)
-        hydro_init_part(&cells[i]->parts[pid], &space.hs);
+      for (int pid = 0; pid < cells[i]->hydro.count; ++pid)
+        hydro_init_part(&cells[i]->hydro.parts[pid], &space.hs);
     }
   }
 
