@@ -407,7 +407,7 @@ __attribute__((always_inline)) INLINE float interpolate_4d(
 /*
  * @brief Interpolates temperature from internal energy based on table and
  * calculates the size of the internal energy cell for the specified
- * internal energy.
+ * internal energy. Returns log base 10 of temperature.
  *
  * @param log_10_u Log base 10 of internal energy
  * @param delta_u Pointer to size of internal energy cell
@@ -426,21 +426,21 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
     const struct cosmology *restrict cosmo) {
 
   int u_i;
-  float d_u, logT;
+  float d_u, log_10_T;
   double upper, lower;
 
   get_index_1d(cooling->Therm, cooling->N_Temp, log_10_u, &u_i, &d_u);
 
   if (cosmo->z > cooling->reionisation_redshift) {
-    logT = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
+    log_10_T = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
                           d_He, d_u, cooling->N_nH, cooling->N_He,
                           cooling->N_Temp, &upper, &lower);
   } else if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-    logT = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
+    log_10_T = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
                           d_He, d_u, cooling->N_nH, cooling->N_He,
                           cooling->N_Temp, &upper, &lower);
   } else {
-    logT = interpolate_4d(cooling->table.temperature, 0, n_h_i, He_i, u_i,
+    log_10_T = interpolate_4d(cooling->table.temperature, 0, n_h_i, He_i, u_i,
                           cooling->dz, d_n_h, d_He, d_u, 2, cooling->N_nH,
                           cooling->N_He, cooling->N_Temp, &upper, &lower, 0);
   }
@@ -448,7 +448,7 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
   *delta_u =
       exp(cooling->Therm[u_i + 1] * M_LN10) - exp(cooling->Therm[u_i] * M_LN10);
 
-  return logT;
+  return log_10_T;
 }
 
 #endif

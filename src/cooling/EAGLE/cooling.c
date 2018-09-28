@@ -44,15 +44,21 @@
 #include "physical_constants.h"
 #include "units.h"
 
+// Maximum number of iterations for newton
+// and bisection integration schemes
 static const int newton_max_iterations = 15;
 static const int bisection_max_iterations = 150;
 
+// Tolerances for termination criteria.
 static const float explicit_tolerance = 0.05;
-static const float newton_tolerance =
-    1.0e-2;  // lower than bisection_tol because using log(u)
+static const float newton_tolerance = 1.0e-2;
 static const float bisection_tolerance = 1.0e-6;
-static const double bracket_factor =
-    1.0488088481701;  // sqrt(1.1) to match EAGLE
+static const double bracket_factor = 1.0488088481701; // = sqrt(1.1) to match EAGLE
+
+// Flag used for printing cooling rate contribution from each 
+// element. For testing only. Incremented by 1/(number of elements)
+// until reaches 1 after which point append to files instead of
+// writing new file.
 static float print_cooling_rate_contribution_flag = 0;
 
 /**
@@ -191,6 +197,16 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   if (dt > 0) {
     cooling_du_dt = (u/cooling->internal_energy_scale - u_start) / dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   }
+  float du;
+  if (p->id == 5439098268095) message("Particle id %llu cooling initial energy %.5e final energy %.5e initial temperature %.5e final temperature %.5e cooling du/dt %.5e hydro du/dt %.5e LambdaNet %.5e", 
+                                       p->id, 
+				       u_start*cooling->internal_energy_scale, 
+				       u, 
+				       exp(M_LN10*eagle_convert_u_to_temp(log10(u_start*cooling->internal_energy_scale), &du, n_h_i, He_i, d_n_h, d_He, cooling, cosmo)),
+				       exp(M_LN10*eagle_convert_u_to_temp(log10(u), &du, n_h_i, He_i, d_n_h, d_He, cooling, cosmo)),
+				       cooling_du_dt,
+				       hydro_du_dt*cooling->internal_energy_scale/units_cgs_conversion_factor(us, UNIT_CONV_TIME),
+				       LambdaNet);
 
   /* Update the internal energy time derivative */
   hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
