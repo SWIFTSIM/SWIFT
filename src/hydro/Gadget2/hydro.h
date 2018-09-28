@@ -495,9 +495,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  if (p->id == 5439098268095 || isnan(pressure)) message("Particle id %llu density %.5e entropy %.5e pressure %.5e", p->id, p->rho, p->entropy, pressure);
 
   /* Compute the sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  if (p->id == 5439098268095 || isnan(soundspeed)) message("Particle id %llu density %.5e pressure %.5e soundspeed %.5e", p->id, p->rho, pressure, soundspeed);
 
   /* Divide the pressure by the density squared to get the SPH term */
   const float P_over_rho2 = pressure * rho_inv * rho_inv;
@@ -594,6 +596,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf(w2);
 
   /* Predict the entropy */
+  if (p->entropy + p->entropy_dt * dt_therm < 0) error("entropy negative particle id %llu old entropy %.5e d_entropy %.5e entropy_dt %.5e dt therm %.5e", p->id, p->entropy, p->entropy_dt*dt_therm, p->entropy_dt, dt_therm);
   p->entropy += p->entropy_dt * dt_therm;
 
   /* Re-compute the pressure */
