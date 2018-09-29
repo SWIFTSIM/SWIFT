@@ -98,6 +98,7 @@ void print_help_message(void) {
   printf("  %2s %14s %s\n", "-r", "", "Continue using restart files.");
   printf("  %2s %14s %s\n", "-s", "", "Run with hydrodynamics.");
   printf("  %2s %14s %s\n", "-S", "", "Run with stars.");
+  printf("  %2s %14s %s\n", "-b", "", "Run with stars feedback.");
   printf("  %2s %14s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
          "specified.");
@@ -135,6 +136,7 @@ int main(int argc, char *argv[]) {
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
+  struct stars_props stars_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct sourceterms sourceterms;
@@ -193,6 +195,7 @@ int main(int argc, char *argv[]) {
   int with_hydro = 0;
   int with_stars = 0;
   int with_fof = 0;
+  int with_feedback = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
@@ -209,7 +212,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:FgGhMn:o:P:rsSt:Tuv:xy:Y:")) != -1)
+  while ((c = getopt(argc, argv, "abcCdDef:FgGhMn:o:P:rsSt:Tuv:xy:Y:")) != -1)
     switch (c) {
       case 'a':
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
@@ -217,6 +220,9 @@ int main(int argc, char *argv[]) {
 #else
         error("Need NUMA support for thread affinity");
 #endif
+        break;
+      case 'b':
+        with_feedback = 1;
         break;
       case 'c':
         with_cosmology = 1;
@@ -396,6 +402,15 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (!with_stars && with_feedback) {
+    if (myrank == 0)
+      printf(
+          "Error: Cannot process feedback without stars, -S must be "
+          "chosen.\n");
+    if (myrank == 0) print_help_message();
+    return 1;
+  }
+
 /* Let's pin the main thread, now we know if affinity will be used. */
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
   if (with_aff &&
@@ -498,6 +513,21 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
+  /* Temporary early aborts for modes not supported over MPI. */
+#ifdef WITH_MPI
+  if (with_mpole_reconstruction && nr_nodes > 1)
+    error("Cannot reconstruct m-poles every step over MPI (yet).");
+#endif
+
+#ifdef WITH_MPI
+  if (with_feedback) error("Can't run with feedback over MPI (yet).");
+#endif
+
+#if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
+  if (with_structure_finding && nr_nodes > 1)
+    error("VEOCIraptor not yet enabled over MPI.");
+#endif
+
   /* Check that we can write the snapshots by testing if the output
    * directory exists and is searchable and writable. */
   char basename[PARSER_MAX_LINE_SIZE];
@@ -528,12 +558,20 @@ int main(int argc, char *argv[]) {
 
   /* Let's report what we did */
   if (myrank == 0) {
-    message("Using initial partition %s",
+#if defined(HAVE_PARMETIS)
+    if (reparttype.usemetis)
+      message("Using METIS serial partitioning:");
+    else
+      message("Using ParMETIS partitioning:");
+#else
+    message("Using METIS serial partitioning:");
+#endif
+    message("  initial partitioning: %s",
             initial_partition_name[initial_partition.type]);
     if (initial_partition.type == INITPART_GRID)
-      message("grid set to [ %i %i %i ].", initial_partition.grid[0],
+      message("    grid set to [ %i %i %i ].", initial_partition.grid[0],
               initial_partition.grid[1], initial_partition.grid[2]);
-    message("Using %s repartitioning", repartition_name[reparttype.type]);
+    message("  repartitioning: %s", repartition_name[reparttype.type]);
   }
 #endif
 
@@ -674,6 +712,13 @@ int main(int argc, char *argv[]) {
     else
       bzero(&eos, sizeof(struct eos_parameters));
 
+    /* Initialise the stars properties */
+    if (with_stars)
+      stars_props_init(&stars_properties, &prog_const, &us, params,
+                       &hydro_properties);
+    else
+      bzero(&stars_properties, sizeof(struct stars_props));
+
     /* Initialise the gravity properties */
     if (with_self_gravity)
       gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology);
@@ -741,20 +786,11 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
-#ifdef WITH_MPI
-    //if (periodic && with_self_gravity)
-    //  error("Periodic self-gravity over MPI temporarily disabled.");
-#endif
-
-#if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
-    if (with_structure_finding) error("VEOCIraptor not yet enabled over MPI.");
-#endif
-
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check once and for all that we don't have unwanted links */
     if (!with_stars && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
-        if (gparts[k].type == swift_type_star) error("Linking problem");
+        if (gparts[k].type == swift_type_stars) error("Linking problem");
     }
     if (!with_hydro && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
@@ -780,31 +816,17 @@ int main(int argc, char *argv[]) {
 
     if (myrank == 0)
       message(
-          "Read %lld gas particles, %lld star particles and %lld gparts from "
-          "the "
-          "ICs.",
+          "Read %lld gas particles, %lld stars particles and %lld gparts from "
+          "the ICs.",
           N_total[0], N_total[2], N_total[1]);
 
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);
 
-    /* Initialise the long-range gravity mesh */
-    if (with_self_gravity && periodic) {
-#ifdef HAVE_FFTW
-      pm_mesh_init(&mesh, &gravity_properties, dim);
-#else
-      /* Need the FFTW library if periodic and self gravity. */
-      error(
-          "No FFTW library found. Cannot compute periodic long-range forces.");
-#endif
-    } else {
-      pm_mesh_init_no_mesh(&mesh, dim);
-    }
-
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
-               Nspart, periodic, replicate, generate_gas_in_ics,
+               Nspart, periodic, replicate, generate_gas_in_ics, with_hydro,
                with_self_gravity, talking, dry_run);
 
     if (myrank == 0) {
@@ -812,6 +834,19 @@ int main(int argc, char *argv[]) {
       message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
               clocks_getunit());
       fflush(stdout);
+    }
+
+    /* Initialise the long-range gravity mesh */
+    if (with_self_gravity && periodic) {
+#ifdef HAVE_FFTW
+      pm_mesh_init(&mesh, &gravity_properties, s.dim, nr_threads);
+#else
+      /* Need the FFTW library if periodic and self gravity. */
+      error(
+          "No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
+    } else {
+      pm_mesh_init_no_mesh(&mesh, s.dim);
     }
 
     /* Check that the matter content matches the cosmology given in the
@@ -891,6 +926,7 @@ int main(int argc, char *argv[]) {
     if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
     if (with_stars) engine_policies |= engine_policy_stars;
     if (with_fof) engine_policies |= engine_policy_fof;
+    if (with_feedback) engine_policies |= engine_policy_feedback;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
 
@@ -898,8 +934,8 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
-                &hydro_properties, &gravity_properties, &mesh, &potential,
-                &cooling_func, &chemistry, &sourceterms);
+                &hydro_properties, &gravity_properties, &stars_properties,
+                &mesh, &potential, &cooling_func, &chemistry, &sourceterms);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 
@@ -917,15 +953,14 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) {
       long long N_DM = N_total[1] - N_total[2] - N_total[0];
       message(
-          "Running on %lld gas particles, %lld star particles and %lld DM "
+          "Running on %lld gas particles, %lld stars particles and %lld DM "
           "particles (%lld gravity particles)",
           N_total[0], N_total[2], N_total[1] > 0 ? N_DM : 0, N_total[1]);
       message(
-          "from t=%.3e until t=%.3e with %d threads and %d queues "
-          "(dt_min=%.3e, "
-          "dt_max=%.3e)...",
-          e.time_begin, e.time_end, e.nr_threads, e.sched.nr_queues, e.dt_min,
-          e.dt_max);
+          "from t=%.3e until t=%.3e with %d ranks, %d threads / rank and %d "
+          "task queues / rank (dt_min=%.3e, dt_max=%.3e)...",
+          e.time_begin, e.time_end, nr_nodes, e.nr_threads, e.sched.nr_queues,
+          e.dt_min, e.dt_max);
       fflush(stdout);
     }
   }
@@ -985,7 +1020,7 @@ int main(int argc, char *argv[]) {
 
   /* Legend */
   if (myrank == 0) {
-    printf("# %6s %14s %14s %10s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
+    printf("# %6s %14s %12s %12s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
            "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
            "Updates", "g-Updates", "s-Updates", "Wall-clock time",
            clocks_getunit(), "Props");
@@ -1070,7 +1105,7 @@ int main(int argc, char *argv[]) {
             if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
               fprintf(
                   file_thread,
-                  " %03i %i %i %i %i %lli %lli %i %i %i %i %i %i\n", myrank,
+                  " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n", myrank,
                   e.sched.tasks[l].rid, e.sched.tasks[l].type,
                   e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
                   e.sched.tasks[l].tic, e.sched.tasks[l].toc,
@@ -1155,18 +1190,19 @@ int main(int argc, char *argv[]) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
+        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
+        "%6d\n",
         e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
         e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
         e.wallclock_time, e.step_props);
     fflush(stdout);
 
-    fprintf(
-        e.file_timesteps,
-        "  %6d %14e %14e %10.5f %14e %4d %4d %12lld %12lld %12lld %21.3f %6d\n",
-        e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
-        e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-        e.wallclock_time, e.step_props);
+    fprintf(e.file_timesteps,
+            "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
+            "%6d\n",
+            e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
+            e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
+            e.s_updates, e.wallclock_time, e.step_props);
     fflush(e.file_timesteps);
   }
 

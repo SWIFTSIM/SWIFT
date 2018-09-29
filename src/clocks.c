@@ -29,6 +29,7 @@
 #include "../config.h"
 
 /* Standard headers. */
+#include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -279,4 +280,24 @@ double clocks_get_cputime_used(void) {
   struct tms tmstic;
   times(&tmstic);
   return (double)(tmstic.tms_utime + tmstic.tms_cutime);
+}
+
+/**
+ * @brief Return an integer based on the current time.
+ *
+ * Normally this will be the remainder of the current number of nanoseconds
+ * so not very dissimilar in the most significant figures unless the time
+ * between calls is greater than INT_MAX nanoseconds. For faster calls use
+ * fewer figures, if that matters.
+ *
+ * @result an integer.
+ */
+int clocks_random_seed(void) {
+#ifdef HAVE_CLOCK_GETTIME
+  struct timespec timespec;
+  clock_gettime(CLOCK_REALTIME, &timespec);
+  return (timespec.tv_nsec % INT_MAX);
+#else
+  return (getticks() % INT_MAX);
+#endif
 }

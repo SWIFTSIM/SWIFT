@@ -479,14 +479,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
+                     (pi->v[2] - pj->v[2]) * dx[2];
+
+  /* Add Hubble flow */
+  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = (dvdr < 0.f) ? dvdr : 0.f;
+  const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
@@ -599,14 +602,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
+                     (pi->v[2] - pj->v[2]) * dx[2];
+
+  /* Add Hubble flow */
+  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = (dvdr < 0.f) ? dvdr : 0.f;
+  const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
@@ -671,7 +677,7 @@ runner_iact_nonsym_1_vec_force(
   vector dvx, dvy, dvz;
   vector xi, xj;
   vector hid_inv, hjd_inv;
-  vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
+  vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr, dvdr_Hubble;
   vector piax, piay, piaz;
   vector pih_dt;
   vector v_sig;
@@ -723,14 +729,14 @@ runner_iact_nonsym_1_vec_force(
   dvz.v = vec_sub(viz.v, vjz.v);
 
   /* Compute dv dot r. */
-  dvdr.v =
-      vec_fma(dvx.v, dx->v,
-              vec_fma(dvy.v, dy->v,
-                      vec_fma(dvz.v, dz->v, vec_mul(v_a2_Hubble.v, r2->v))));
+  dvdr.v = vec_fma(dvx.v, dx->v, vec_fma(dvy.v, dy->v, vec_mul(dvz.v, dz->v)));
+
+  /* Add Hubble flow */
+  dvdr_Hubble.v = vec_add(dvdr.v, vec_mul(v_a2_Hubble.v, r2->v));
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
-  omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
+  omega_ij.v = vec_fmin(dvdr_Hubble.v, vec_setzero());
   mu_ij.v = vec_mul(v_fac_mu.v,
                     vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
 
@@ -806,7 +812,7 @@ runner_iact_nonsym_2_vec_force(
   vector dvx, dvy, dvz;
   vector ui, uj;
   vector hid_inv, hjd_inv;
-  vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
+  vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr, dvdr_Hubble;
   vector piax, piay, piaz;
   vector pih_dt;
   vector v_sig;
@@ -817,7 +823,7 @@ runner_iact_nonsym_2_vec_force(
   vector dvx_2, dvy_2, dvz_2;
   vector ui_2, uj_2;
   vector hjd_inv_2;
-  vector wi_dx_2, wj_dx_2, wi_dr_2, wj_dr_2, dvdr_2;
+  vector wi_dx_2, wj_dx_2, wi_dr_2, wj_dr_2, dvdr_2, dvdr_Hubble_2;
   vector piax_2, piay_2, piaz_2;
   vector pih_dt_2;
   vector v_sig_2;
@@ -903,18 +909,18 @@ runner_iact_nonsym_2_vec_force(
   dvz_2.v = vec_sub(viz.v, vjz_2.v);
 
   /* Compute dv dot r. */
-  dvdr.v = vec_fma(
-      dvx.v, dx.v,
-      vec_fma(dvy.v, dy.v, vec_fma(dvz.v, dz.v, vec_mul(v_a2_Hubble.v, r2.v))));
-  dvdr_2.v = vec_fma(
-      dvx_2.v, dx_2.v,
-      vec_fma(dvy_2.v, dy_2.v,
-              vec_fma(dvz_2.v, dz_2.v, vec_mul(v_a2_Hubble.v, r2_2.v))));
+  dvdr.v = vec_fma(dvx.v, dx.v, vec_fma(dvy.v, dy.v, vec_mul(dvz.v, dz.v)));
+  dvdr_2.v = vec_fma(dvx_2.v, dx_2.v,
+                     vec_fma(dvy_2.v, dy_2.v, vec_mul(dvz_2.v, dz_2.v)));
+
+  /* Add the Hubble flow */
+  dvdr_Hubble.v = vec_add(dvdr.v, vec_mul(v_a2_Hubble.v, r2.v));
+  dvdr_Hubble_2.v = vec_add(dvdr_2.v, vec_mul(v_a2_Hubble.v, r2_2.v));
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
-  omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
-  omega_ij_2.v = vec_fmin(dvdr_2.v, vec_setzero());
+  omega_ij.v = vec_fmin(dvdr_Hubble.v, vec_setzero());
+  omega_ij_2.v = vec_fmin(dvdr_Hubble_2.v, vec_setzero());
   mu_ij.v = vec_mul(v_fac_mu.v,
                     vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
   mu_ij_2.v = vec_mul(

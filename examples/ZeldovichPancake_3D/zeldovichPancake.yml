@@ -24,7 +24,8 @@ Snapshots:
   basename:            zeldovichPancake # Common part of the name of output files
   time_first:          0.       # Time of the first output (in internal units)
   delta_time:          1.04     # Time difference between consecutive outputs (in internal units)
-  scale_factor_first: 0.00991
+  scale_factor_first:  0.00991
+  compression:         4
 
 # Parameters governing the conserved quantities statistics
 Statistics:

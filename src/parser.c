@@ -363,7 +363,12 @@ static void parse_line(char *line, struct swift_params *params) {
 
       /* Check if the line contains a value and parse it. */
       if (strchr(trim_line, PARSER_VALUE_CHAR)) {
-        parse_value(trim_line, params);
+
+        /* Trim trailing space before parsing line for a value. */
+        char no_space_line[PARSER_MAX_LINE_SIZE];
+        strcpy(no_space_line, trim_trailing(trim_line));
+
+        parse_value(no_space_line, params);
       }
       /* Check for invalid lines,not including the start and end of file. */
       else if (strcmp(trim_line, PARSER_START_OF_FILE) &&

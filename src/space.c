@@ -66,6 +66,8 @@ int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
 int space_subsize_self_hydro = space_subsize_self_hydro_default;
 int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
+int space_subsize_pair_stars = space_subsize_pair_stars_default;
+int space_subsize_self_stars = space_subsize_self_stars_default;
 int space_subdepth_grav = space_subdepth_grav_default;
 int space_maxsize = space_maxsize_default;
 #ifdef SWIFT_DEBUG_CHECKS
@@ -164,10 +166,12 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
                          multipole_rec_end);
     c->sorts = NULL;
     c->nr_tasks = 0;
+    c->nr_mm_tasks = 0;
     c->density = NULL;
     c->gradient = NULL;
     c->force = NULL;
     c->grav = NULL;
+    c->grav_mm = NULL;
     c->dx_max_part = 0.0f;
     c->dx_max_sort = 0.0f;
     c->sorted = 0;
@@ -180,6 +184,10 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->ghost_in = NULL;
     c->ghost_out = NULL;
     c->ghost = NULL;
+    c->stars_ghost_in = NULL;
+    c->stars_ghost_out = NULL;
+    c->stars_ghost = NULL;
+    c->stars_density = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -202,6 +210,13 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->do_sub_sort = 0;
     c->do_grav_sub_drift = 0;
     c->do_sub_drift = 0;
+    c->ti_hydro_end_min = -1;
+    c->ti_hydro_end_max = -1;
+    c->ti_gravity_end_min = -1;
+    c->ti_gravity_end_max = -1;
+#ifdef SWIFT_DEBUG_CHECKS
+    c->cellID = 0;
+#endif
     if (s->gravity) bzero(c->multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
       if (c->sort[i] != NULL) {
@@ -209,6 +224,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
         c->sort[i] = NULL;
       }
 #if WITH_MPI
+    c->tag = -1;
+
     c->recv_xv = NULL;
     c->recv_rho = NULL;
     c->recv_gradient = NULL;
@@ -228,9 +245,16 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
  * @brief Free up any allocated cells.
  */
 void space_free_cells(struct space *s) {
+
+  ticks tic = getticks();
+
   threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper, s->cells_top,
                  s->nr_cells, sizeof(struct cell), 0, s);
   s->maxdepth = 0;
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -249,10 +273,17 @@ void space_regrid(struct space *s, int verbose) {
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
   if (nr_parts > 0) {
-    if (s->cells_top != NULL) {
+    if (s->local_cells_top != NULL) {
+      for (int k = 0; k < s->nr_local_cells; ++k) {
+        const struct cell *c = &s->cells_top[s->local_cells_top[k]];
+        if (c->h_max > h_max) {
+          h_max = s->cells_top[k].h_max;
+        }
+      }
+    } else if (s->cells_top != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
-        if (s->cells_top[k].nodeID == engine_rank &&
-            s->cells_top[k].h_max > h_max) {
+        const struct cell *c = &s->cells_top[k];
+        if (c->nodeID == engine_rank && c->h_max > h_max) {
           h_max = s->cells_top[k].h_max;
         }
       }
@@ -332,7 +363,7 @@ void space_regrid(struct space *s, int verbose) {
 
   /* Are we about to allocate new top level cells without a regrid?
    * Can happen when restarting the application. */
-  int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
+  const int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
 #endif
 
   /* Do we need to re-build the upper-level cells? */
@@ -349,6 +380,7 @@ void space_regrid(struct space *s, int verbose) {
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
       space_free_cells(s);
+      free(s->local_cells_with_tasks_top);
       free(s->local_cells_top);
       free(s->cells_top);
       free(s->multipoles_top);
@@ -393,6 +425,12 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Set cell index into list of top-level cells. */
     for(int i = 0; i < s->nr_cells; i++) s->cell_index[i] = i;
+    
+    /* Allocate the indices of local cells with tasks */
+    if (posix_memalign((void **)&s->local_cells_with_tasks_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of local top-level cells.");
+    bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
@@ -429,7 +467,14 @@ void space_regrid(struct space *s, int verbose) {
           c->ti_old_part = ti_current;
           c->ti_old_gpart = ti_current;
           c->ti_old_multipole = ti_current;
+#ifdef WITH_MPI
+          c->tag = -1;
+#endif  // WITH_MPI
           if (s->gravity) c->multipole = &s->multipoles_top[cid];
+#ifdef SWIFT_DEBUG_CHECKS
+          c->cellID = -last_cell_id;
+          last_cell_id++;
+#endif
         }
 
     /* Be verbose about the change. */
@@ -452,7 +497,7 @@ void space_regrid(struct space *s, int verbose) {
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");
         struct partition initial_partition;
-#ifdef HAVE_METIS
+#if defined(HAVE_PARMETIS) || defined(HAVE_METIS)
         initial_partition.type = INITPART_METIS_NOWEIGHT;
 #else
         initial_partition.type = INITPART_VECTORIZE;
@@ -644,13 +689,13 @@ void space_rebuild(struct space *s, int verbose) {
       /* Swap the link with part/spart */
       if (s->gparts[k].type == swift_type_gas) {
         s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      } else if (s->gparts[k].type == swift_type_star) {
+      } else if (s->gparts[k].type == swift_type_stars) {
         s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
       if (s->gparts[nr_gparts].type == swift_type_gas) {
         s->parts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
             &s->gparts[nr_gparts];
-      } else if (s->gparts[nr_gparts].type == swift_type_star) {
+      } else if (s->gparts[nr_gparts].type == swift_type_stars) {
         s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
             &s->gparts[nr_gparts];
       }
@@ -921,6 +966,12 @@ void space_rebuild(struct space *s, int verbose) {
     c->ti_old_part = ti_current;
     c->ti_old_gpart = ti_current;
     c->ti_old_multipole = ti_current;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    c->cellID = -last_cell_id;
+    last_cell_id++;
+#endif
+
     if (c->nodeID == engine_rank) {
       c->parts = finger;
       c->xparts = xfinger;
@@ -943,7 +994,7 @@ void space_rebuild(struct space *s, int verbose) {
   /* Check that the multipole construction went OK */
   if (s->gravity)
     for (int k = 0; k < s->nr_cells; k++)
-      cell_check_multipole(&s->cells_top[k], NULL);
+      cell_check_multipole(&s->cells_top[k]);
 #endif
 
   /* Clean up any stray sort indices in the cell buffer. */
@@ -1545,7 +1596,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
         memswap(&ind[j], &target_cid, sizeof(int));
         if (gparts[j].type == swift_type_gas) {
           parts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
-        } else if (gparts[j].type == swift_type_star) {
+        } else if (gparts[j].type == swift_type_stars) {
           sparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
         }
       }
@@ -1553,7 +1604,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
       ind[k] = target_cid;
       if (gparts[k].type == swift_type_gas) {
         parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
-      } else if (gparts[k].type == swift_type_star) {
+      } else if (gparts[k].type == swift_type_stars) {
         sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
       }
     }
@@ -1840,6 +1891,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->do_sub_sort = 0;
       cp->do_grav_sub_drift = 0;
       cp->do_sub_drift = 0;
+#ifdef WITH_MPI
+      cp->tag = -1;
+#endif  // WITH_MPI
 #ifdef SWIFT_DEBUG_CHECKS
       cp->cellID = last_cell_id++;
 #endif
@@ -2317,7 +2371,7 @@ void space_free_buff_sort_indices(struct space *s) {
 
 /**
  * @brief Construct the list of top-level cells that have any tasks in
- * their hierarchy.
+ * their hierarchy on this MPI rank.
  *
  * This assumes the list has been pre-allocated at a regrid.
  *
@@ -2325,15 +2379,38 @@ void space_free_buff_sort_indices(struct space *s) {
  */
 void space_list_cells_with_tasks(struct space *s) {
 
-  /* Let's rebuild the list of local top-level cells */
-  s->nr_local_cells = 0;
+  s->nr_local_cells_with_tasks = 0;
+
   for (int i = 0; i < s->nr_cells; ++i)
     if (cell_has_tasks(&s->cells_top[i])) {
+      s->local_cells_with_tasks_top[s->nr_local_cells_with_tasks] = i;
+      s->nr_local_cells_with_tasks++;
+    }
+  if (s->e->verbose)
+    message("Have %d local top-level cells with tasks (total=%d)",
+            s->nr_local_cells_with_tasks, s->nr_cells);
+}
+
+/**
+ * @brief Construct the list of local top-level cells.
+ *
+ * This assumes the list has been pre-allocated at a regrid.
+ *
+ * @param s The #space.
+ */
+void space_list_local_cells(struct space *s) {
+
+  s->nr_local_cells = 0;
+
+  for (int i = 0; i < s->nr_cells; ++i)
+    if (s->cells_top[i].nodeID == engine_rank) {
       s->local_cells_top[s->nr_local_cells] = i;
       s->nr_local_cells++;
     }
+
   if (s->e->verbose)
-    message("Have %d local cells (total=%d)", s->nr_local_cells, s->nr_cells);
+    message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
+            s->nr_cells);
 }
 
 void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
@@ -2366,7 +2443,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
       xp->v_full[2] = gp->v_full[2];
     }
 
-    else if (gp->type == swift_type_star) {
+    else if (gp->type == swift_type_stars) {
 
       /* Get it's stellar friend */
       struct spart *sp = &s->sparts[-gp->id_or_neg_offset];
@@ -2406,7 +2483,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
   const struct hydro_props *hydro_props = s->e->hydro_properties;
   const float u_init = hydro_props->initial_internal_energy;
-  const float u_min = hydro_props->minimal_internal_energy;
 
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct cooling_function_data *cool_func = e->cooling_func;
@@ -2435,7 +2511,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
     /* Overwrite the internal energy? */
     if (u_init > 0.f) hydro_set_init_internal_energy(&p[k], u_init);
-    if (u_min > 0.f) hydro_set_init_internal_energy(&p[k], u_min);
 
     /* Also initialise the chemistry */
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
@@ -2565,7 +2640,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    star_first_init_spart(&sp[k]);
+    stars_first_init_spart(&sp[k]);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (sp[k].gpart && sp[k].gpart->id_or_neg_offset != -(k + delta))
@@ -2581,7 +2656,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
 /**
  * @brief Initialises all the s-particles by setting them into a valid state
  *
- * Calls star_first_init_spart() on all the particles
+ * Calls stars_first_init_spart() on all the particles
  */
 void space_first_init_sparts(struct space *s, int verbose) {
   const ticks tic = getticks();
@@ -2646,16 +2721,43 @@ void space_init_gparts(struct space *s, int verbose) {
             clocks_getunit());
 }
 
+void space_init_sparts_mapper(void *restrict map_data, int scount,
+                              void *restrict extra_data) {
+
+  struct spart *restrict sparts = (struct spart *)map_data;
+  for (int k = 0; k < scount; k++) stars_init_spart(&sparts[k]);
+}
+
+/**
+ * @brief Calls the #spart initialisation function on all particles in the
+ * space.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_init_sparts(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  if (s->nr_sparts > 0)
+    threadpool_map(&s->e->threadpool, space_init_sparts_mapper, s->sparts,
+                   s->nr_sparts, sizeof(struct spart), 0, NULL);
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
 void space_convert_quantities_mapper(void *restrict map_data, int count,
                                      void *restrict extra_data) {
   struct space *s = (struct space *)extra_data;
   const struct cosmology *cosmo = s->e->cosmology;
+  const struct hydro_props *hydro_props = s->e->hydro_properties;
   struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
 
   for (int k = 0; k < count; k++)
-    hydro_convert_quantities(&parts[k], &xparts[k], cosmo);
+    hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
 }
 
 /**
@@ -2687,13 +2789,14 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param dim Spatial dimensions of the domain.
  * @param parts Array of Gas particles.
  * @param gparts Array of Gravity particles.
- * @param sparts Array of star particles.
+ * @param sparts Array of stars particles.
  * @param Npart The number of Gas particles in the space.
  * @param Ngpart The number of Gravity particles in the space.
- * @param Nspart The number of star particles in the space.
+ * @param Nspart The number of stars particles in the space.
  * @param periodic flag whether the domain is periodic or not.
  * @param replicate How many replications along each direction do we want?
  * @param generate_gas_in_ics Are we generating gas particles from the gparts?
+ * @param hydro flag whether we are doing hydro or not?
  * @param self_gravity flag whether we are doing gravity or not?
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
@@ -2707,8 +2810,8 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
                 size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
-                int replicate, int generate_gas_in_ics, int self_gravity,
-                int verbose, int dry_run) {
+                int replicate, int generate_gas_in_ics, int hydro,
+                int self_gravity, int verbose, int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -2719,6 +2822,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->dim[2] = dim[2];
   s->periodic = periodic;
   s->gravity = self_gravity;
+  s->hydro = hydro;
   s->nr_parts = Npart;
   s->size_parts = Npart;
   s->parts = parts;
@@ -2798,6 +2902,12 @@ void space_init(struct space *s, struct swift_params *params,
   space_subsize_self_grav =
       parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_grav",
                                space_subsize_self_grav_default);
+  space_subsize_pair_stars =
+      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_stars",
+                               space_subsize_pair_stars_default);
+  space_subsize_self_stars =
+      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_stars",
+                               space_subsize_self_stars_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
   space_subdepth_grav = parser_get_opt_param_int(
@@ -2811,6 +2921,8 @@ void space_init(struct space *s, struct swift_params *params,
             space_subsize_pair_hydro, space_subsize_self_hydro);
     message("sub_size_pair_grav set to %d, sub_size_self_grav set to %d",
             space_subsize_pair_grav, space_subsize_self_grav);
+    message("sub_size_pair_stars set to %d, sub_size_self_stars set to %d",
+            space_subsize_pair_stars, space_subsize_self_stars);
   }
 
   /* Apply h scaling */
@@ -2901,6 +3013,10 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
+
+#ifdef SWIFT_DEBUG_CHECKS
+  last_cell_id = 1;
+#endif
 
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);
@@ -3028,8 +3144,28 @@ void space_replicate(struct space *s, int replicate, int verbose) {
 #endif
 }
 
+/**
+ * @brief Duplicate all the dark matter particles to create the same number
+ * of gas particles with mass ratios given by the cosmology.
+ *
+ * Note that this function alters the dark matter particle masses and positions.
+ * Velocities are unchanged. We also leave the thermodynamic properties of the
+ * gas un-initialised as they will be given a value from the parameter file at a
+ * later stage.
+ *
+ * @param s The #space to create the particles in.
+ * @param cosmo The current #cosmology model.
+ * @param verbose Are we talkative?
+ */
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         int verbose) {
+
+  /* Check that this is a sensible ting to do */
+  if (!s->hydro)
+    error(
+        "Cannot generate gas from ICs if we are running without "
+        "hydrodynamics. Need to run with -s and the corresponding "
+        "hydrodynamics parameters in the YAML file.");
 
   if (verbose) message("Generating gas particles from gparts");
 
@@ -3115,6 +3251,8 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
     /* Set the smoothing length to the mean inter-particle separation */
     p->h = 30. * d;
+
+    /* Note that the thermodynamic properties (u, S, ...) will be set later */
   }
 
   /* Replace the content of the space */
@@ -3263,6 +3401,7 @@ void space_clean(struct space *s) {
   free(s->cells_top);
   free(s->multipoles_top);
   free(s->local_cells_top);
+  free(s->local_cells_with_tasks_top);
   free(s->parts);
   free(s->xparts);
   free(s->gparts);
@@ -3318,6 +3457,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->multipoles_top = NULL;
   s->multipoles_sub = NULL;
   s->local_cells_top = NULL;
+  s->local_cells_with_tasks_top = NULL;
   s->grav_top_level = NULL;
 #ifdef WITH_MPI
   s->parts_foreign = NULL;
@@ -3366,7 +3506,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
                         NULL, "sparts");
   }
 
-  /* Need to reconnect the gravity parts to their hydro and star particles. */
+  /* Need to reconnect the gravity parts to their hydro and stars particles. */
   /* Re-link the parts. */
   if (s->nr_parts > 0 && s->nr_gparts > 0)
     part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);

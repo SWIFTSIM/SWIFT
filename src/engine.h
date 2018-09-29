@@ -72,10 +72,11 @@ enum engine_policy {
   engine_policy_cooling = (1 << 13),
   engine_policy_sourceterms = (1 << 14),
   engine_policy_stars = (1 << 15),
-  engine_policy_fof = (1 << 16),
-  engine_policy_structure_finding = (1 << 17)
+  engine_policy_structure_finding = (1 << 16),
+  engine_policy_feedback = (1 << 17),
+  engine_policy_fof = (1 << 18)
 };
-#define engine_maxpolicy 17
+#define engine_maxpolicy 18
 extern const char *engine_policy_names[];
 
 /**
@@ -99,6 +100,7 @@ enum engine_step_properties {
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost 1000
+#define engine_max_sparts_per_ghost 1000
 
 /**
  * @brief The rank of the engine as a global variable (for messages).
@@ -225,23 +227,22 @@ struct engine {
 
   char snapshot_base_name[PARSER_MAX_LINE_SIZE];
   int snapshot_compression;
-  int snapshot_label_first;
-  int snapshot_label_delta;
+  int snapshot_int_time_label_on;
   struct unit_system *snapshot_units;
   int snapshot_output_count;
 
   /* Structure finding information */
   int stf_output_freq_format;
-  double a_first_stf;
-  double timeFirstSTFOutput;
-  double deltaTimeSTF;
-  int deltaStepSTF;
+  int delta_step_stf;
+  double a_first_stf_output;
+  double time_first_stf_output;
+  double delta_time_stf;
 
   /* Output_List for the structure finding */
   struct output_list *output_list_stf;
 
   /* Integer time of the next stf output */
-  integertime_t ti_nextSTF;
+  integertime_t ti_next_stf;
 
   char stfBaseName[PARSER_MAX_LINE_SIZE];
 
@@ -325,6 +326,9 @@ struct engine {
   /* Properties of the hydro scheme */
   const struct hydro_props *hydro_properties;
 
+  /* Properties of the star model */
+  const struct stars_props *stars_properties;
+
   /* Properties of the self-gravity scheme */
   struct gravity_props *gravity_properties;
 
@@ -393,7 +397,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
-                 struct gravity_props *gravity, struct pm_mesh *mesh,
+                 struct gravity_props *gravity, const struct stars_props *stars,
+                 struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
                  const struct chemistry_global_data *chemistry,

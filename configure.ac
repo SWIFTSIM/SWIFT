@@ -270,6 +270,18 @@ elif test "$gravity_force_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_GRAVITY_FORCE_CHECKS], [$enableval] ,[Enable gravity brute-force checks])
 fi
 
+# Check whether we want to switch on glass making
+AC_ARG_ENABLE([glass-making],
+   [AS_HELP_STRING([--enable-glass-making],
+     [Activate the glass-making procedure by reversing the sign of gravity @<:@yes/no@:>@]
+   )],
+   [gravity_glass_making="$enableval"],
+   [gravity_glass_making="no"]
+)
+if test "$gravity_glass_making" == "yes"; then
+   AC_DEFINE([SWIFT_MAKE_GRAVITY_GLASS], 1, [Make the code run in a way to produce a glass file for gravity/cosmology])
+fi
+
 # Check if we want to zero the gravity forces for all particles below some ID.
 AC_ARG_ENABLE([no-gravity-below-id],
    [AS_HELP_STRING([--enable-no-gravity-below-id],
@@ -310,6 +322,16 @@ AC_ARG_ENABLE([vec],
    [enable_vec="yes"]
 )
 
+#  Disable hand written vectorisation. Slightly odd implementation as want 
+# to describe as --disable-hand-vec, but macro is enable (there is no enable action).
+AC_ARG_ENABLE([hand-vec],
+   [AS_HELP_STRING([--disable-hand-vec],
+     [Disable intrinsic vectorization]
+   )],
+   [enable_hand_vec="$enableval"],
+   [enable_hand_vec="yes"]
+)
+
 HAVEVECTORIZATION=0
 
 if test "$enable_opt" = "yes" ; then
@@ -333,7 +355,6 @@ if test "$enable_opt" = "yes" ; then
        fi
    fi
 
-
    if test "$enable_vec" = "no"; then
       if test "$ax_cv_c_compiler_vendor" = "intel"; then
       	 CFLAGS="$CFLAGS -no-vec -no-simd"
@@ -347,8 +368,8 @@ if test "$enable_opt" = "yes" ; then
       else
          AC_MSG_WARN([Do not know how to disable vectorization for this compiler])
       fi
-   else
-      AC_DEFINE([WITH_VECTORIZATION],1,[Enable vectorization])
+   elif test "$enable_hand_vec" = "yes"; then
+      AC_DEFINE([WITH_VECTORIZATION],1,[Enable hand-written vectorization])
       HAVEVECTORIZATION=1
    fi
 fi
@@ -484,18 +505,20 @@ AC_CHECK_LIB(pthread, posix_fallocate,
 	     AC_DEFINE([HAVE_POSIX_FALLOCATE], [1], [The posix library implements file allocation functions.]),
 	     AC_MSG_WARN(POSIX implementation does not have file allocation functions.))
 
-# Check for METIS. Note AX_LIB_METIS exists, but cannot be configured
-# to be default off (i.e. given no option it tries to locate METIS), so we
-# don't use that.
+# Check for METIS.
 have_metis="no"
 AC_ARG_WITH([metis],
     [AS_HELP_STRING([--with-metis=PATH],
-       [root directory where metis is installed @<:@yes/no@:>@]
+       [root directory where METIS is installed @<:@yes/no@:>@]
     )],
     [with_metis="$withval"],
     [with_metis="no"]
 )
+
+METIS_LIBS=""
 if test "x$with_metis" != "xno"; then
+
+# Check if we have METIS.
    if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
       METIS_LIBS="-L$with_metis/lib -lmetis"
       METIS_INCS="-I$with_metis/include"
@@ -503,14 +526,66 @@ if test "x$with_metis" != "xno"; then
       METIS_LIBS="-lmetis"
       METIS_INCS=""
    fi
-   have_metis="yes"
-   AC_CHECK_LIB([metis],[METIS_PartGraphKway],
-      AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.]),
-      AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LIBS)
+   AC_CHECK_LIB([metis],[METIS_PartGraphKway], [have_metis="yes"],
+                [have_metis="no"], $METIS_LIBS)
+   if test "$have_metis" == "yes"; then
+      AC_DEFINE([HAVE_METIS],1,[The METIS library is present.])
+   else
+      AC_MSG_ERROR("Failed to find a METIS library")
+   fi
 fi
+
 AC_SUBST([METIS_LIBS])
 AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
+
+# Check for ParMETIS note we can have both as ParMETIS uses METIS.
+have_parmetis="no"
+AC_ARG_WITH([parmetis],
+    [AS_HELP_STRING([--with-parmetis=PATH],
+       [root directory where ParMETIS is installed @<:@yes/no@:>@]
+    )],
+    [with_parmetis="$withval"],
+    [with_parmetis="no"]
+)
+
+if test "x$with_parmetis" != "xno"; then
+
+# Check if we have ParMETIS.
+   if test "x$with_parmetis" != "xyes" -a "x$with_parmetis" != "x"; then
+      PARMETIS_LIBS="-L$with_parmetis/lib -lparmetis"
+      PARMETIS_INCS="-I$with_parmetis/include"
+   else
+      PARMETIS_LIBS="-lparmetis"
+      PARMETIS_INCS=""
+   fi
+   AC_CHECK_LIB([parmetis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
+                [have_parmetis="no"], $PARMETIS_LIBS)
+   if test "$have_parmetis" == "no"; then
+
+# A build may use an external METIS library, check for that.
+
+      if test "x$with_parmetis" != "xyes" -a "x$with_parmetis" != "x"; then
+         PARMETIS_LIBS="-L$with_parmetis/lib -lparmetis -lmetis"
+         PARMETIS_INCS="-I$with_parmetis/include"
+      else
+         PARMETIS_LIBS="-lparmetis -lmetis"
+         PARMETIS_INCS=""
+      fi
+      AC_CHECK_LIB([parmetis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
+                   [have_parmetis="no"], [$METIS_LIBS $PARMETIS_LIBS])
+
+   fi
+   if test "$have_parmetis" == "yes"; then
+      AC_DEFINE([HAVE_PARMETIS],1,[The ParMETIS library is present.])
+   else
+      AC_MSG_ERROR("Failed to find a ParMETIS library")
+   fi
+fi
+
+AC_SUBST([PARMETIS_LIBS])
+AC_SUBST([PARMETIS_INCS])
+AM_CONDITIONAL([HAVEPARMETIS],[test -n "$PARMETIS_LIBS"])
 
 # METIS fixed width integer printing can require this, so define. Only needed
 # for some non C99 compilers, i.e. C++ pre C++11.
@@ -522,7 +597,8 @@ AH_VERBATIM([__STDC_FORMAT_MACROS],
 
 # Check for FFTW. We test for this in the standard directories by default,
 # and only disable if using --with-fftw=no or --without-fftw. When a value
-# is given GSL must be found.
+# is given FFTW must be found.
+# If FFTW is found, we check whether this is the threaded version.
 have_fftw="no"
 AC_ARG_WITH([fftw],
     [AS_HELP_STRING([--with-fftw=PATH],
@@ -532,6 +608,8 @@ AC_ARG_WITH([fftw],
     [with_fftw="test"]
 )
 if test "x$with_fftw" != "xno"; then
+
+   # Was FFTW's location specifically given?
    if test "x$with_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
       FFTW_LIBS="-L$with_fftw/lib -lfftw3"
       FFTW_INCS="-I$with_fftw/include"
@@ -539,21 +617,50 @@ if test "x$with_fftw" != "xno"; then
       FFTW_LIBS="-lfftw3"
       FFTW_INCS=""
    fi
+
    #  FFTW is not specified, so just check if we have it.
    if test "x$with_fftw" = "xtest"; then
       AC_CHECK_LIB([fftw3],[fftw_malloc],[have_fftw="yes"],[have_fftw="no"],$FFTW_LIBS)
       if test "x$have_fftw" != "xno"; then
       	 AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.])
       fi
+   # FFTW was specified, check that it was a valid location.
    else
       AC_CHECK_LIB([fftw3],[fftw_malloc],
          AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.]),
          AC_MSG_ERROR(something is wrong with the FFTW library!), $FFTW_LIBS)
       have_fftw="yes"
    fi
+
+   # FFTW was requested not to be used.
    if test "$have_fftw" = "no"; then
       FFTW_LIBS=""
       FFTW_INCS=""
+   fi
+
+   # Now, check whether we have the threaded version of FFTW
+   if test "x$have_fftw" = "xyes"; then
+
+      # Was FFTW's location specifically given?
+      if test "x$with_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
+        FFTW_THREADED_LIBS="-L$with_fftw/lib -lfftw3_threads -lfftw3"
+        FFTW_THREADED_INCS="-I$with_fftw/include"
+      else
+        FFTW_THREADED_LIBS="-lfftw3_threads -lfftw3"
+        FFTW_THREADED_INCS=""
+      fi
+
+      # Verify that the library is threaded
+      AC_CHECK_LIB([fftw3],[fftw_init_threads],[have_threaded_fftw="yes"],
+		   [have_threaded_fftw="no"], $FFTW_THREADED_LIBS)
+
+      # If found, update things
+      if test "x$have_threaded_fftw" = "xyes"; then
+         AC_DEFINE([HAVE_THREADED_FFTW],1,[The threaded FFTW library appears to be present.])
+         FFTW_LIBS=$FFTW_THREADED_LIBS
+         FFTW_INCS=$FFTW_THREADED_INCS
+	 have_fftw="yes - threaded"
+      fi
    fi
 fi
 AC_SUBST([FFTW_LIBS])
@@ -938,11 +1045,15 @@ case "$with_subgrid" in
 	with_subgrid_cooling=grackle
 	with_subgrid_chemistry=GEAR
 	with_subgrid_hydro=gadget2
+	with_subgrid_stars=GEAR
+	with_subgrid_feedback=thermal
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_hydro=gadget2
+	with_subgrid_stars=none
+	with_subgrid_feedback=none
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -1022,6 +1133,25 @@ case "$with_hydro" in
    ;;
 esac
 
+# Check if debugging interactions stars is switched on.
+AC_ARG_ENABLE([debug-interactions-stars],
+   [AS_HELP_STRING([--enable-debug-interactions-stars],
+     [Activate interaction debugging for stars, logging a maximum of @<:@N@:>@ neighbours. Defaults to 256 if no value set.]
+   )],
+   [enable_debug_interactions_stars="$enableval"],
+   [enable_debug_interactions_stars="no"]
+)
+if test "$enable_debug_interactions_stars" != "no"; then
+    AC_DEFINE([DEBUG_INTERACTIONS_STARS],1,[Enable interaction debugging for stars])
+    if test "$enable_debug_interactions_stars" == "yes"; then
+      AC_DEFINE([MAX_NUM_OF_NEIGHBOURS_STARS],256,[The maximum number of particle neighbours to be logged for stars])
+      [enable_debug_interactions_stars="yes (Logging up to 256 neighbours)"]
+    else
+      AC_DEFINE_UNQUOTED([MAX_NUM_OF_NEIGHBOURS_STARS], [$enableval] ,[The maximum number of particle neighbours to be logged for stars])
+      [enable_debug_interactions_stars="yes (Logging up to $enableval neighbours)"]
+    fi
+fi
+
 # Check if debugging interactions is switched on.
 AC_ARG_ENABLE([debug-interactions],
    [AS_HELP_STRING([--enable-debug-interactions],
@@ -1044,6 +1174,7 @@ if test "$enable_debug_interactions" != "no"; then
     [enable_debug_interactions="no (only available for gadget2 hydro scheme)"]
   fi
 fi
+
 
 # SPH Kernel function
 AC_ARG_WITH([kernel],
@@ -1294,6 +1425,64 @@ case "$with_chemistry" in
    ;;
 esac
 
+# Stellar model.
+AC_ARG_WITH([stars],
+   [AS_HELP_STRING([--with-stars=<model>],
+      [Stellar model to use @<:@none, GEAR, debug default: none@:>@]
+   )],
+   [with_stars="$withval"],
+   [with_stars="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_stars" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-stars together])
+   else
+      with_stars="$with_subgrid_stars"
+   fi
+fi
+
+case "$with_stars" in
+   GEAR)
+      AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
+   ;;
+   none)
+   ;;
+
+   *)
+      AC_MSG_ERROR([Unknown stellar model: $with_stars])
+   ;;
+esac
+
+# Feedback model
+AC_ARG_WITH([feedback],
+   [AS_HELP_STRING([--with-feedback=<model>],
+      [Feedback model to use @<:@none, thermal, debug default: none@:>@]
+   )],
+   [with_feedback="$withval"],
+   [with_feedback="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_feedback" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-feedback together])
+   else
+      with_feedback="$with_subgrid_feedback"
+   fi
+fi
+
+case "$with_feedback" in
+   thermal)
+      AC_DEFINE([FEEDBACK_THERMAL], [1], [Thermal Blastwave])
+   ;;
+   none)
+   ;;
+
+   *)
+      AC_MSG_ERROR([Unknown feedback model: $with_feedback])
+   ;;
+esac
+
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
@@ -1353,6 +1542,8 @@ AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
 AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
 AC_CONFIG_FILES([tests/test27cellsPerturbed.sh], [chmod +x tests/test27cellsPerturbed.sh])
+AC_CONFIG_FILES([tests/test27cellsStars.sh], [chmod +x tests/test27cellsStars.sh])
+AC_CONFIG_FILES([tests/test27cellsStarsPerturbed.sh], [chmod +x tests/test27cellsStarsPerturbed.sh])
 AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
 AC_CONFIG_FILES([tests/test125cellsPerturbed.sh], [chmod +x tests/test125cellsPerturbed.sh])
 AC_CONFIG_FILES([tests/testPeriodicBC.sh], [chmod +x tests/testPeriodicBC.sh])
@@ -1360,6 +1551,7 @@ AC_CONFIG_FILES([tests/testPeriodicBCPerturbed.sh], [chmod +x tests/testPeriodic
 AC_CONFIG_FILES([tests/testInteractions.sh], [chmod +x tests/testInteractions.sh])
 AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 AC_CONFIG_FILES([tests/testSelectOutput.sh], [chmod +x tests/testSelectOutput.sh])
+AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 
 # Save the compilation options
 AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
@@ -1388,7 +1580,7 @@ AC_MSG_RESULT([
    MPI enabled          : $enable_mpi
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5
-   Metis enabled        : $have_metis
+   METIS/ParMETIS       : $have_metis / $have_parmetis
    FFTW3 enabled        : $have_fftw
    GSL enabled          : $have_gsl
    libNUMA enabled      : $have_numa
@@ -1408,18 +1600,22 @@ AC_MSG_RESULT([
    Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order
    No gravity below ID : $no_gravity_below_id
+   Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
 
    Cooling function   : $with_cooling
    Chemistry          : $with_chemistry
+   Stellar model      : $with_stars
+   Feedback model     : $with_feedback
 
-   Individual timers     : $enable_timers
-   Task debugging        : $enable_task_debugging
-   Threadpool debugging  : $enable_threadpool_debugging
-   Debugging checks      : $enable_debugging_checks
-   Interaction debugging : $enable_debug_interactions
-   Naive interactions    : $enable_naive_interactions
-   Gravity checks        : $gravity_force_checks
-   Custom icbrtf         : $enable_custom_icbrtf
+   Individual timers           : $enable_timers
+   Task debugging              : $enable_task_debugging
+   Threadpool debugging        : $enable_threadpool_debugging
+   Debugging checks            : $enable_debugging_checks
+   Interaction debugging       : $enable_debug_interactions
+   Stars interaction debugging : $enable_debug_interactions_stars
+   Naive interactions          : $enable_naive_interactions
+   Gravity checks              : $gravity_force_checks
+   Custom icbrtf               : $enable_custom_icbrtf
 
  ------------------------])

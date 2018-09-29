@@ -490,6 +490,10 @@ float units_general_a_factor(const struct unit_system* us,
 /**
  * @brief Returns a string containing the exponents of the base units making up
  * the conversion factors (expressed in terms of the 5 fundamental units)
+ *
+ * Note that in accordance with the SWIFT philosphy, there are no h-factors
+ * in any units and hence in the string returned here.
+ *
  * @param buffer The buffer in which to write (The buffer must be long enough,
  * 140 chars at most)
  * @param us The UnitsSystem in use.
@@ -501,7 +505,7 @@ void units_general_cgs_conversion_string(char* buffer,
                                          const float baseUnitsExponants[5]) {
   char temp[20];
   const double a_exp = units_general_a_factor(us, baseUnitsExponants);
-  const double h_exp = units_general_h_factor(us, baseUnitsExponants);
+  const double h_exp = 0.; /* There are no h-factors in SWIFT outputs. */
 
   /* Check whether we are unitless or not */
   char isAllNonZero = 1;

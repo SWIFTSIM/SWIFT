@@ -58,6 +58,11 @@ make_integer_timestep(float new_dt, timebin_t old_bin, integertime_t ti_current,
   if (new_dti > current_dti) {
     if ((max_nr_timesteps - ti_end) % new_dti > 0) new_dti = current_dti;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (new_dti == 0) error("Computed an integer time-step of size 0");
+#endif
+
   return new_dti;
 }
 
@@ -181,7 +186,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
     const struct spart *restrict sp, const struct engine *restrict e) {
 
   /* Stellar time-step */
-  float new_dt_star = star_compute_timestep(sp);
+  float new_dt_stars = stars_compute_timestep(sp);
 
   /* Gravity time-step */
   float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;
@@ -196,7 +201,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
         sp->gpart, a_hydro, e->gravity_properties, e->cosmology);
 
   /* Take the minimum of all */
-  float new_dt = min3(new_dt_star, new_dt_self, new_dt_ext);
+  float new_dt = min3(new_dt_stars, new_dt_self, new_dt_ext);
 
   /* Apply the maximal displacement constraint (FLT_MAX  if non-cosmological)*/
   new_dt = min(new_dt, e->dt_max_RMS_displacement);

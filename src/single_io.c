@@ -471,10 +471,10 @@ void read_ic_single(const char* fileName,
 
   /* Allocate memory to store star particles */
   if (with_stars) {
-    *Nstars = N[swift_type_star];
+    *Nstars = N[swift_type_stars];
     if (posix_memalign((void**)sparts, spart_align,
                        *Nstars * sizeof(struct spart)) != 0)
-      error("Error while allocating memory for star particles");
+      error("Error while allocating memory for stars particles");
     bzero(*sparts, *Nstars * sizeof(struct spart));
   }
 
@@ -483,7 +483,7 @@ void read_ic_single(const char* fileName,
     Ndm = N[swift_type_dark_matter];
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
-               (with_stars ? N[swift_type_star] : 0);
+               (with_stars ? N[swift_type_stars] : 0);
     if (posix_memalign((void**)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
@@ -532,10 +532,10 @@ void read_ic_single(const char* fileName,
         }
         break;
 
-      case swift_type_star:
+      case swift_type_stars:
         if (with_stars) {
           Nparticles = *Nstars;
-          star_read_particles(*sparts, list, &num_fields);
+          stars_read_particles(*sparts, list, &num_fields);
         }
         break;
 
@@ -568,7 +568,7 @@ void read_ic_single(const char* fileName,
 
     /* Duplicate the star particles into gparts */
     if (with_stars)
-      io_duplicate_star_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + *Ngas);
+      io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + *Ngas);
 
     threadpool_clean(&tp);
   }
@@ -624,13 +624,12 @@ void write_output_single(struct engine* e, const char* baseName,
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  if (e->snapshot_label_delta == 1)
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->snapshot_output_count + e->snapshot_label_first);
-  else
+  if (e->snapshot_int_time_label_on)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
-             e->snapshot_output_count * e->snapshot_label_delta +
-                 e->snapshot_label_first);
+             (int)round(e->time));
+  else
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->snapshot_output_count);
 
   /* First time, we need to create the XMF file */
   if (e->snapshot_output_count == 0) xmf_create_file(baseName);
@@ -731,6 +730,15 @@ void write_output_single(struct engine* e, const char* baseName,
                       H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating gravity group");
     gravity_props_print_snapshot(h_grp, e->gravity_properties);
+    H5Gclose(h_grp);
+  }
+
+  /* Print the stellar parameters */
+  if (e->policy & engine_policy_stars) {
+    h_grp = H5Gcreate(h_file, "/StarsScheme", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating stars group");
+    stars_props_print_snapshot(h_grp, e->stars_properties);
     H5Gclose(h_grp);
   }
 
@@ -846,9 +854,9 @@ void write_output_single(struct engine* e, const char* baseName,
         darkmatter_write_particles(dmparts, list, &num_fields);
         break;
 
-      case swift_type_star:
+      case swift_type_stars:
         N = Nstars;
-        star_write_particles(sparts, list, &num_fields);
+        stars_write_particles(sparts, list, &num_fields);
         break;
 
       default:

@@ -20,10 +20,10 @@ TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   1e-2  # The end time of the simulation (in internal units).
   dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
 Scheduler:
-  max_top_level_cells: 20
+  max_top_level_cells: 16
 
 # Parameters governing the snapshots
 Snapshots:
@@ -44,7 +44,7 @@ Gravity:
   theta:                  0.7      # Opening angle (Multipole acceptance criterion)
   comoving_softening:     0.0026994 # Comoving softening length (in internal units).
   max_physical_softening: 0.0007    # Physical softening length (in internal units).
-  mesh_side_length:       64
+  mesh_side_length:       128
 
 # Parameters for the hydrodynamics scheme
 SPH:

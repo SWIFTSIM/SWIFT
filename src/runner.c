@@ -96,6 +96,9 @@
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
 
+/* Import the stars loop functions. */
+#include "runner_doiact_stars.h"
+
 /**
  * @brief Perform source terms
  *
@@ -130,6 +133,210 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
   }
 
   if (timer) TIMER_TOC(timer_dosource);
+}
+
+/**
+ * @brief Intermediate task after the density to check that the smoothing
+ * lengths are correct.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
+
+  struct spart *restrict sparts = c->sparts;
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct stars_props *stars_properties = e->stars_properties;
+  const float stars_h_max = stars_properties->h_max;
+  const float eps = stars_properties->h_tolerance;
+  const float stars_eta_dim = pow_dimension(stars_properties->eta_neighbours);
+  const int max_smoothing_iter = stars_properties->max_smoothing_iterations;
+  int redo = 0, scount = 0;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active_stars(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_stars_ghost(r, c->progeny[k], 0);
+  } else {
+
+    /* Init the list of active particles that have to be updated. */
+    int *sid = NULL;
+    if ((sid = (int *)malloc(sizeof(int) * c->scount)) == NULL)
+      error("Can't allocate memory for sid.");
+    for (int k = 0; k < c->scount; k++)
+      if (spart_is_active(&sparts[k], e)) {
+        sid[scount] = k;
+        ++scount;
+      }
+
+    /* While there are particles that need to be updated... */
+    for (int num_reruns = 0; scount > 0 && num_reruns < max_smoothing_iter;
+         num_reruns++) {
+
+      /* Reset the redo-count. */
+      redo = 0;
+
+      /* Loop over the remaining active parts in this cell. */
+      for (int i = 0; i < scount; i++) {
+
+        /* Get a direct pointer on the part. */
+        struct spart *sp = &sparts[sid[i]];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Is this part within the timestep? */
+        if (!spart_is_active(sp, e))
+          error("Ghost applied to inactive particle");
+#endif
+
+        /* Get some useful values */
+        const float h_old = sp->h;
+        const float h_old_dim = pow_dimension(h_old);
+        const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
+        float h_new;
+        int has_no_neighbours = 0;
+
+        if (sp->density.wcount == 0.f) { /* No neighbours case */
+
+          /* Flag that there were no neighbours */
+          has_no_neighbours = 1;
+
+          /* Double h and try again */
+          h_new = 2.f * h_old;
+        } else {
+
+          /* Finish the density calculation */
+          stars_end_density(sp, cosmo);
+
+          /* Compute one step of the Newton-Raphson scheme */
+          const float n_sum = sp->density.wcount * h_old_dim;
+          const float n_target = stars_eta_dim;
+          const float f = n_sum - n_target;
+          const float f_prime =
+              sp->density.wcount_dh * h_old_dim +
+              hydro_dimension * sp->density.wcount * h_old_dim_minus_one;
+
+          /* Avoid floating point exception from f_prime = 0 */
+          h_new = h_old - f / (f_prime + FLT_MIN);
+#ifdef SWIFT_DEBUG_CHECKS
+          if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
+            error(
+                "Smoothing length correction not going in the right direction");
+#endif
+
+          /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
+          h_new = min(h_new, 2.f * h_old);
+          h_new = max(h_new, 0.5f * h_old);
+        }
+
+        /* Check whether the particle has an inappropriate smoothing length */
+        if (fabsf(h_new - h_old) > eps * h_old) {
+
+          /* Ok, correct then */
+          sp->h = h_new;
+
+          /* If below the absolute maximum, try again */
+          if (sp->h < stars_h_max) {
+
+            /* Flag for another round of fun */
+            sid[redo] = sid[i];
+            redo += 1;
+
+            /* Re-initialise everything */
+            stars_init_spart(sp);
+
+            /* Off we go ! */
+            continue;
+
+          } else {
+
+            /* Ok, this particle is a lost cause... */
+            sp->h = stars_h_max;
+
+            /* Do some damage control if no neighbours at all were found */
+            if (has_no_neighbours) {
+              stars_spart_has_no_neighbours(sp, cosmo);
+            }
+          }
+        }
+
+        /* We now have a particle whose smoothing length has converged */
+
+        /* Compute the stellar evolution  */
+        stars_evolve_spart(sp, stars_properties, cosmo);
+      }
+
+      /* We now need to treat the particles whose smoothing length had not
+       * converged again */
+
+      /* Re-set the counter for the next loop (potentially). */
+      scount = redo;
+      if (scount > 0) {
+
+        /* Climb up the cell hierarchy. */
+        for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+
+          /* Run through this cell's density interactions. */
+          for (struct link *l = finger->density; l != NULL; l = l->next) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (l->t->ti_run < r->e->ti_current)
+              error("Density task should have been run.");
+#endif
+
+            /* Self-interaction? */
+            if (l->t->type == task_type_self)
+              runner_doself_subset_branch_stars_density(r, finger, sparts, sid,
+                                                        scount);
+
+            /* Otherwise, pair interaction? */
+            else if (l->t->type == task_type_pair) {
+
+              /* Left or right? */
+              if (l->t->ci == finger)
+                runner_dopair_subset_branch_stars_density(
+                    r, finger, sparts, sid, scount, l->t->cj);
+              else
+                runner_dopair_subset_branch_stars_density(
+                    r, finger, sparts, sid, scount, l->t->ci);
+            }
+
+            /* Otherwise, sub-self interaction? */
+            else if (l->t->type == task_type_sub_self)
+              runner_dosub_subset_stars_density(r, finger, sparts, sid, scount,
+                                                NULL, -1, 1);
+
+            /* Otherwise, sub-pair interaction? */
+            else if (l->t->type == task_type_sub_pair) {
+
+              /* Left or right? */
+              if (l->t->ci == finger)
+                runner_dosub_subset_stars_density(r, finger, sparts, sid,
+                                                  scount, l->t->cj, -1, 1);
+              else
+                runner_dosub_subset_stars_density(r, finger, sparts, sid,
+                                                  scount, l->t->ci, -1, 1);
+            }
+          }
+        }
+      }
+    }
+
+    if (scount) {
+      error("Smoothing length failed to converge on %i particles.", scount);
+    }
+
+    /* Be clean */
+    free(sid);
+  }
+
+  if (timer) TIMER_TOC(timer_do_stars_ghost);
 }
 
 /**
@@ -642,6 +849,9 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xparts = c->xparts;
   const int count = c->count;
   const struct engine *e = r->e;
+  const integertime_t ti_end = e->ti_current;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const double time_base = e->time_base;
   const struct cosmology *cosmo = e->cosmology;
 
   TIMER_TIC;
@@ -669,8 +879,19 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* As of here, particle force variables will be set. */
 
+        /* Calculate the time-step for passing to hydro_prepare_force.
+         * This is the physical time between the start and end of the time-step
+         * without any scale-factor powers. */
+        double dt_alpha;
+        if (with_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(p->time_bin);
+          dt_alpha = cosmology_get_delta_time(cosmo, ti_end - ti_step, ti_end);
+        } else {
+          dt_alpha = get_timestep(p->time_bin, time_base);
+        }
+
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, cosmo);
+        hydro_prepare_force(p, xp, cosmo, dt_alpha);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -784,9 +1005,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Skip if h is already h_max and we don't have enough neighbours */
           if ((p->h >= hydro_h_max) && (f < 0.f)) {
 
-          /* We have a particle whose smoothing length is already set (wants to
-           * be larger but has already hit the maximum). So, just tidy up as if
-           * the smoothing length had converged correctly  */
+          /* We have a particle whose smoothing length is already set (wants
+           * to be larger but has already hit the maximum). So, just tidy up
+           * as if the smoothing length had converged correctly  */
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -803,10 +1024,26 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_reset_gradient(p);
 
 #else
+            /* Calculate the time-step for passing to hydro_prepare_force, used
+             * for the evolution of alpha factors (i.e. those involved in the
+             * artificial viscosity and thermal conduction terms) */
+            const int with_cosmology = (e->policy & engine_policy_cosmology);
+            const double time_base = e->time_base;
+            const integertime_t ti_end = e->ti_current;
+            double dt_alpha;
+
+            if (with_cosmology) {
+              const integertime_t ti_step = get_integer_timestep(p->time_bin);
+              dt_alpha =
+                  cosmology_get_delta_time(cosmo, ti_end - ti_step, ti_end);
+            } else {
+              dt_alpha = get_timestep(p->time_bin, time_base);
+            }
+
             /* As of here, particle force variables will be set. */
 
             /* Compute variables required for the force loop */
-            hydro_prepare_force(p, xp, cosmo);
+            hydro_prepare_force(p, xp, cosmo, dt_alpha);
 
             /* The particle force values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -885,10 +1122,25 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_reset_gradient(p);
 
 #else
+        /* Calculate the time-step for passing to hydro_prepare_force, used for
+         * the evolution of alpha factors (i.e. those involved in the artificial
+         * viscosity and thermal conduction terms) */
+        const int with_cosmology = (e->policy & engine_policy_cosmology);
+        const integertime_t ti_end = e->ti_current;
+        const double time_base = e->time_base;
+        double dt_alpha;
+
+        if (with_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(p->time_bin);
+          dt_alpha = cosmology_get_delta_time(cosmo, ti_end - ti_step, ti_end);
+        } else {
+          dt_alpha = get_timestep(p->time_bin, time_base);
+        }
+
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, cosmo);
+        hydro_prepare_force(p, xp, cosmo, dt_alpha);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -995,6 +1247,35 @@ static void runner_do_unskip_hydro(struct cell *c, struct engine *e) {
 }
 
 /**
+ * @brief Unskip any stars tasks associated with active cells.
+ *
+ * @param c The cell.
+ * @param e The engine.
+ */
+static void runner_do_unskip_stars(struct cell *c, struct engine *e) {
+
+  /* Ignore empty cells. */
+  if (c->scount == 0) return;
+
+  /* Skip inactive cells. */
+  if (!cell_is_active_stars(c, e)) return;
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        runner_do_unskip_stars(cp, e);
+      }
+    }
+  }
+
+  /* Unskip any active tasks. */
+  const int forcerebuild = cell_unskip_stars_tasks(c, &e->sched);
+  if (forcerebuild) atomic_inc(&e->forcerebuild);
+}
+
+/**
  * @brief Unskip any gravity tasks associated with active cells.
  *
  * @param c The cell.
@@ -1047,6 +1328,9 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
       if ((e->policy & engine_policy_self_gravity) ||
           (e->policy & engine_policy_external_gravity))
         runner_do_unskip_gravity(c, e);
+
+      /* Stars tasks */
+      if (e->policy & engine_policy_stars) runner_do_unskip_stars(c, e);
     }
   }
 }
@@ -1212,7 +1496,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-    /* Loop over the star particles in this cell. */
+    /* Loop over the stars particles in this cell. */
     for (int k = 0; k < scount; k++) {
 
       /* Get a handle on the s-part. */
@@ -1424,7 +1708,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 #endif
 
         /* Prepare the values to be drifted */
-        star_reset_predicted_values(sp);
+        stars_reset_predicted_values(sp);
       }
     }
   }
@@ -1639,7 +1923,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next starting point for this cell ? */
         ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
 
-      } else { /* star particle is inactive */
+      } else { /* stars particle is inactive */
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, sp->time_bin);
@@ -1688,6 +1972,15 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->ti_gravity_end_min = ti_gravity_end_min;
   c->ti_gravity_end_max = ti_gravity_end_max;
   c->ti_gravity_beg_max = ti_gravity_beg_max;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->ti_hydro_end_min == e->ti_current &&
+      c->ti_hydro_end_min < max_nr_timesteps)
+    error("End of next hydro step is current time!");
+  if (c->ti_gravity_end_min == e->ti_current &&
+      c->ti_gravity_end_min < max_nr_timesteps)
+    error("End of next gravity step is current time!");
+#endif
 
   if (timer) TIMER_TOC(timer_timestep);
 }
@@ -1757,13 +2050,21 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
         /* Finish the force calculation */
         gravity_end_force(gp, G_newton, potential_normalisation, periodic);
 
+#ifdef SWIFT_MAKE_GRAVITY_GLASS
+
+        /* Negate the gravity forces */
+        gp->a_grav[0] *= -1.f;
+        gp->a_grav[1] *= -1.f;
+        gp->a_grav[2] *= -1.f;
+#endif
+
 #ifdef SWIFT_NO_GRAVITY_BELOW_ID
 
         /* Get the ID of the gpart */
         long long id = 0;
         if (gp->type == swift_type_gas)
           id = e->s->parts[-gp->id_or_neg_offset].id;
-        else if (gp->type == swift_type_star)
+        else if (gp->type == swift_type_stars)
           id = e->s->sparts[-gp->id_or_neg_offset].id;
         else if (gp->type == swift_type_black_hole)
           error("Unexisting type");
@@ -1794,7 +2095,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
             long long my_id = 0;
             if (gp->type == swift_type_gas)
               my_id = e->s->parts[-gp->id_or_neg_offset].id;
-            else if (gp->type == swift_type_star)
+            else if (gp->type == swift_type_stars)
               my_id = e->s->sparts[-gp->id_or_neg_offset].id;
             else if (gp->type == swift_type_black_hole)
               error("Unexisting type");
@@ -1814,7 +2115,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-    /* Loop over the star particles in this cell. */
+    /* Loop over the stars particles in this cell. */
     for (int k = 0; k < scount; k++) {
 
       /* Get a handle on the spart. */
@@ -1822,7 +2123,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (spart_is_active(sp, e)) {
 
         /* Finish the force loop */
-        star_end_force(sp);
+        stars_end_force(sp);
       }
     }
   }
@@ -1947,11 +2248,6 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
       if (gparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, gparts[k].time_bin);
       time_bin_max = max(time_bin_max, gparts[k].time_bin);
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (gparts[k].ti_drift != ti_current)
-        error("Received un-drifted g-particle !");
-#endif
     }
 
     /* Convert into a time */
@@ -2026,11 +2322,6 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
       if (sparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, sparts[k].time_bin);
       time_bin_max = max(time_bin_max, sparts[k].time_bin);
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (sparts[k].ti_drift != ti_current)
-        error("Received un-drifted s-particle !");
-#endif
     }
 
     /* Convert into a time */
@@ -2060,8 +2351,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* ... and store. */
-  c->ti_gravity_end_min = ti_gravity_end_min;
-  c->ti_gravity_end_max = ti_gravity_end_max;
+  // c->ti_gravity_end_min = ti_gravity_end_min;
+  // c->ti_gravity_end_max = ti_gravity_end_max;
   c->ti_old_gpart = ti_current;
 
   if (timer) TIMER_TOC(timer_dorecv_spart);
@@ -2147,6 +2438,8 @@ void *runner_main(void *data) {
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
+          else if (t->subtype == task_subtype_stars_density)
+            runner_doself_stars_density(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2162,6 +2455,8 @@ void *runner_main(void *data) {
             runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_stars_density)
+            runner_dopair_stars_density(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2175,6 +2470,8 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
+          else if (t->subtype == task_subtype_stars_density)
+            runner_dosub_self_stars_density(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2188,6 +2485,8 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
+          else if (t->subtype == task_subtype_stars_density)
+            runner_dosub_pair_stars_density(r, ci, cj, t->flags, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2210,6 +2509,9 @@ void *runner_main(void *data) {
           runner_do_extra_ghost(r, ci, 1);
           break;
 #endif
+        case task_type_stars_ghost:
+          runner_do_stars_ghost(r, ci, 1);
+          break;
         case task_type_drift_part:
           runner_do_drift_part(r, ci, 1);
           break;
@@ -2266,7 +2568,7 @@ void *runner_main(void *data) {
           runner_do_grav_long_range(r, t->ci, 1);
           break;
         case task_type_grav_mm:
-          runner_dopair_grav_mm_symmetric(r, t->ci, t->cj);
+          runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
           break;
         case task_type_cooling:
           runner_do_cooling(r, t->ci, 1);

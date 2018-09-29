@@ -96,7 +96,7 @@ pl.rcParams.update(PLOT_PARAMS)
 colours = ["cyan", "lightgray", "darkblue", "yellow", "tan", "dodgerblue",
            "sienna", "aquamarine", "bisque", "blue", "green", "lightgreen",
            "brown", "purple", "moccasin", "olivedrab", "chartreuse",
-           "darksage", "darkgreen", "green", "mediumseagreen",
+           "olive", "darkgreen", "green", "mediumseagreen",
            "mediumaquamarine", "darkslategrey", "mediumturquoise",
            "black", "cadetblue", "skyblue", "red", "slategray", "gold",
            "slateblue", "blueviolet", "mediumorchid", "firebrick",

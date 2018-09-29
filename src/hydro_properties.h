@@ -80,6 +80,9 @@ struct hydro_props {
 
   /*! Primoridal hydrogen mass fraction for initial energy conversion */
   float hydrogen_mass_fraction;
+
+  /*! Temperature of the neutral to ionized transition of Hydrogen */
+  float hydrogen_ionization_temperature;
 };
 
 void hydro_props_print(const struct hydro_props *p);

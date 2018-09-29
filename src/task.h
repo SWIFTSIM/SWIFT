@@ -66,6 +66,9 @@ enum task_types {
   task_type_grav_mesh,
   task_type_cooling,
   task_type_sourceterms,
+  task_type_stars_ghost_in,
+  task_type_stars_ghost,
+  task_type_stars_ghost_out,
   task_type_count
 } __attribute__((packed));
 
@@ -85,6 +88,7 @@ enum task_subtypes {
   task_subtype_gpart,
   task_subtype_multipole,
   task_subtype_spart,
+  task_subtype_stars_density,
   task_subtype_count
 } __attribute__((packed));
 
@@ -95,6 +99,7 @@ enum task_actions {
   task_action_none,
   task_action_part,
   task_action_gpart,
+  task_action_spart,
   task_action_all,
   task_action_multipole,
   task_action_count
@@ -128,6 +133,9 @@ struct task {
   /*! List of tasks unlocked by this one */
   struct task **unlock_tasks;
 
+  /*! Flags used to carry additional information (e.g. sort directions) */
+  long long flags;
+
 #ifdef WITH_MPI
 
   /*! Buffer for this task's communications */
@@ -138,16 +146,13 @@ struct task {
 
 #endif
 
-  /*! Flags used to carry additional information (e.g. sort directions) */
-  int flags;
-
   /*! Rank of a task in the order */
   int rank;
 
   /*! Weight of the task */
   float weight;
 
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /*! Individual cost estimate for this task. */
   float cost;
 #endif

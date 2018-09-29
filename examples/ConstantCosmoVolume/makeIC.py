@@ -25,7 +25,7 @@ T_i = 100.           # Initial temperature of the gas (in K)
 z_i = 100.           # Initial redshift
 gamma = 5./3.        # Gas adiabatic index
 numPart_1D = 32
-#glassFile = "glassCube_32.hdf5"
+glassFile = "gravity_glassCube_32.hdf5"
 fileName = "constantBox.hdf5"
 
 
@@ -56,17 +56,16 @@ unit_u_in_si = unit_v_in_si**2
 #---------------------------------------------------
 
 # Read the glass file
-#glass = h5py.File(glassFile, "r" )
+glass = h5py.File(glassFile, "r" )
 
 # Read particle positions and h from the glass
-#pos = glass["/PartType0/Coordinates"][:,:]
-#h = glass["/PartType0/SmoothingLength"][:] * 0.3
-#glass.close()
+pos = glass["/PartType1/Coordinates"][:,:]
+glass.close()
 
 # Total number of particles
-#numPart = size(h)
-#if numPart != numPart_1D**3:
-#  print "Non-matching glass file"
+numPart = size(pos)/3
+if numPart != numPart_1D**3:
+  print("Non-matching glass file")
 numPart = numPart_1D**3
 
 # Set box size and interparticle distance
@@ -78,9 +77,7 @@ a_i = 1. / (1. + z_i)
 m_i = boxSize**3 * rho_0 / numPart
 
 # Build the arrays
-#pos *= boxSize
-#h *= boxSize
-coords = zeros((numPart, 3))
+pos *= boxSize
 v = zeros((numPart, 3))
 ids = linspace(1, numPart, numPart)
 m = zeros(numPart)
@@ -92,9 +89,9 @@ for i in range(numPart_1D):
   for j in range(numPart_1D):
     for k in range(numPart_1D):
       index = i * numPart_1D**2 + j * numPart_1D + k
-      coords[index,0] = (i + 0.5) * delta_x
-      coords[index,1] = (j + 0.5) * delta_x
-      coords[index,2] = (k + 0.5) * delta_x
+      #coords[index,0] = (i + 0.5) * delta_x
+      #coords[index,1] = (j + 0.5) * delta_x
+      #coords[index,2] = (k + 0.5) * delta_x
       u[index] = kB_in_SI * T_i / (gamma - 1.) / mH_in_kg
       h[index] = 1.2348 * delta_x
       m[index] = m_i
@@ -103,7 +100,7 @@ for i in range(numPart_1D):
       v[index,2] = 0.
 
 # Unit conversion
-coords /= unit_l_in_si
+pos /= unit_l_in_si
 v /= unit_v_in_si
 m /= unit_m_in_si
 h /= unit_l_in_si
@@ -140,7 +137,7 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 
 #Particle group
 grp = file.create_group("/PartType0")
-grp.create_dataset('Coordinates', data=coords, dtype='d', compression="gzip", shuffle=True)
+grp.create_dataset('Coordinates', data=pos, dtype='d', compression="gzip", shuffle=True)
 grp.create_dataset('Velocities', data=v, dtype='f',compression="gzip", shuffle=True)
 grp.create_dataset('Masses', data=m, dtype='f', compression="gzip", shuffle=True)
 grp.create_dataset('SmoothingLength', data=h, dtype='f', compression="gzip", shuffle=True)

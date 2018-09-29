@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,47 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_STAR_PART_H
-#define SWIFT_DEFAULT_STAR_PART_H
+#ifndef SWIFT_DEFAULT_STARS_DEBUG_H
+#define SWIFT_DEFAULT_STARS_DEBUG_H
 
-/* Some standard headers. */
-#include <stdlib.h>
+__attribute__((always_inline)) INLINE static void stars_debug_particle(
+    const struct spart* p) {
+  printf(
+      "x=[%.3e,%.3e,%.3e], "
+      "v_full=[%.3e,%.3e,%.3e] p->mass=%.3e \n t_begin=%d, t_end=%d\n",
+      p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
+      p->mass, p->ti_begin, p->ti_end);
+}
 
-/**
- * @brief Particle fields for the star particles.
- *
- * All quantities related to gravity are stored in the associate #gpart.
- */
-struct spart {
-
-  /*! Particle ID. */
-  long long id;
-
-  /*! Pointer to corresponding gravity part. */
-  struct gpart* gpart;
-
-  /*! Particle position. */
-  double x[3];
-
-  /*! Particle velocity. */
-  float v[3];
-
-  /*! Star mass */
-  float mass;
-
-  /*! Particle time bin */
-  timebin_t time_bin;
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-  /* Time of the last drift */
-  integertime_t ti_drift;
-
-  /* Time of the last kick */
-  integertime_t ti_kick;
-
-#endif
-
-} SWIFT_STRUCT_ALIGN;
-
-#endif /* SWIFT_DEFAULT_STAR_PART_H */
+#endif /* SWIFT_DEFAULT_STARS_DEBUG_H */

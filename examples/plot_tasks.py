@@ -112,24 +112,27 @@ pl.rcParams.update(PLOT_PARAMS)
 TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair",
              "init_grav", "init_grav_out", "ghost_in", "ghost", "ghost_out", "extra_ghost", "drift_part", "drift_gpart",
              "end_force", "kick1", "kick2", "timestep", "send", "recv", "grav_long_range", "grav_mm", "grav_down_in", 
-             "grav_down", "grav_mesh", "cooling", "sourceterms", "count"]
+             "grav_down", "grav_mesh", "cooling", "sourceterms",
+             "stars_ghost_in", "stars_ghost",   "stars_ghost_out",
+             "count"]
 
 SUBTYPES = ["none", "density", "gradient", "force", "grav", "external_grav",
-            "tend", "xv", "rho", "gpart", "multipole", "spart", "count"]
+            "tend", "xv", "rho", "gpart", "multipole", "spart", "stars_density", "count"]
 
 #  Task/subtypes of interest.
 FULLTYPES = ["self/force", "self/density", "self/grav", "sub_self/force",
              "sub_self/density", "pair/force", "pair/density", "pair/grav",
              "sub_pair/force",
              "sub_pair/density", "recv/xv", "send/xv", "recv/rho", "send/rho",
-             "recv/tend", "send/tend", "recv/gpart", "send/gpart"]
+             "recv/tend", "send/tend", "recv/gpart", "send/gpart", "self/stars_density",
+             "pair/stars_density", "sub_self/stars_density", "sub_pair/stars_density"]
 
 #  A number of colours for the various types. Recycled when there are
 #  more task types than colours...
 colours = ["cyan", "lightgray", "darkblue", "yellow", "tan", "dodgerblue",
            "sienna", "aquamarine", "bisque", "blue", "green", "lightgreen",
            "brown", "purple", "moccasin", "olivedrab", "chartreuse",
-           "darksage", "darkgreen", "green", "mediumseagreen",
+           "olive", "darkgreen", "green", "mediumseagreen",
            "mediumaquamarine", "darkslategrey", "mediumturquoise",
            "black", "cadetblue", "skyblue", "red", "slategray", "gold",
            "slateblue", "blueviolet", "mediumorchid", "firebrick",

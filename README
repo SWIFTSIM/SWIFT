@@ -34,6 +34,7 @@ Valid options are:
   -r                Continue using restart files.
   -s                Run with hydrodynamics.
   -S                Run with stars.
+  -b                Run with stars feedback.
   -t          {int} The number of threads to use on each MPI rank. Defaults to 1 if not specified.
   -T                Print timers every time-step.
   -v           [12] Increase the level of verbosity:
