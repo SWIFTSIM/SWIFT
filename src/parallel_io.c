@@ -783,12 +783,12 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     bzero(*parts, *Ngas * sizeof(struct part));
   }
 
-  /* Allocate memory to store star particles */
+  /* Allocate memory to store stars particles */
   if (with_stars) {
-    *Nstars = N[swift_type_star];
+    *Nstars = N[swift_type_stars];
     if (posix_memalign((void**)sparts, spart_align,
                        *Nstars * sizeof(struct spart)) != 0)
-      error("Error while allocating memory for star particles");
+      error("Error while allocating memory for stars particles");
     bzero(*sparts, *Nstars * sizeof(struct spart));
   }
 
@@ -797,7 +797,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     Ndm = N[1];
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
-               (with_stars ? N[swift_type_star] : 0);
+               (with_stars ? N[swift_type_stars] : 0);
     if (posix_memalign((void**)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
@@ -846,10 +846,10 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         }
         break;
 
-      case swift_type_star:
+      case swift_type_stars:
         if (with_stars) {
           Nparticles = *Nstars;
-          star_read_particles(*sparts, list, &num_fields);
+          stars_read_particles(*sparts, list, &num_fields);
         }
         break;
 
@@ -882,9 +882,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     /* Duplicate the hydro particles into gparts */
     if (with_hydro) io_duplicate_hydro_gparts(&tp, *parts, *gparts, *Ngas, Ndm);
 
-    /* Duplicate the star particles into gparts */
+    /* Duplicate the stars particles into gparts */
     if (with_stars)
-      io_duplicate_star_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + *Ngas);
+      io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + *Ngas);
 
     threadpool_clean(&tp);
   }
@@ -1033,7 +1033,16 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
     H5Gclose(h_grp);
   }
 
-  /* Print the gravity parameters */
+  /* Print the stellar parameters */
+  if (e->policy & engine_policy_stars) {
+    h_grp = H5Gcreate(h_file, "/StarsScheme", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating stars group");
+    stars_props_print_snapshot(h_grp, e->stars_properties);
+    H5Gclose(h_grp);
+  }
+
+  /* Print the cosmological parameters */
   h_grp =
       H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating cosmology group");
@@ -1099,8 +1108,8 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         darkmatter_write_particles(gparts, list, &num_fields);
         break;
 
-      case swift_type_star:
-        star_write_particles(sparts, list, &num_fields);
+      case swift_type_stars:
+        stars_write_particles(sparts, list, &num_fields);
         break;
 
       default:
@@ -1356,9 +1365,9 @@ void write_output_parallel(struct engine* e, const char* baseName,
         darkmatter_write_particles(dmparts, list, &num_fields);
         break;
 
-      case swift_type_star:
+      case swift_type_stars:
         Nparticles = Nstars;
-        star_write_particles(sparts, list, &num_fields);
+        stars_write_particles(sparts, list, &num_fields);
         break;
 
       default:

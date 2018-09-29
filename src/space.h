@@ -70,6 +70,8 @@ struct fof {
 #define space_subsize_self_hydro_default 32000
 #define space_subsize_pair_grav_default 256000000
 #define space_subsize_self_grav_default 32000
+#define space_subsize_pair_stars_default 256000000
+#define space_subsize_self_stars_default 32000
 #define space_subdepth_grav_default 2
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
@@ -85,6 +87,8 @@ extern int space_subsize_pair_hydro;
 extern int space_subsize_self_hydro;
 extern int space_subsize_pair_grav;
 extern int space_subsize_self_grav;
+extern int space_subsize_pair_stars;
+extern int space_subsize_self_stars;
 extern int space_subdepth_grav;
 
 /**
@@ -285,6 +289,7 @@ void space_first_init_gparts(struct space *s, int verbose);
 void space_first_init_sparts(struct space *s, int verbose);
 void space_init_parts(struct space *s, int verbose);
 void space_init_gparts(struct space *s, int verbose);
+void space_init_sparts(struct space *s, int verbose);
 void space_convert_quantities(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);
 void space_check_drift_point(struct space *s, integertime_t ti_drift,

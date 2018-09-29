@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STAR_IO_H
-#define SWIFT_STAR_IO_H
+#ifndef SWIFT_STARS_IO_H
+#define SWIFT_STARS_IO_H
 
 #include "./const.h"
 
-#include "./stars/Default/star_io.h"
+#include "./stars/Default/stars_io.h"
 
-#endif /* SWIFT_STAR_IO_H */
+#endif /* SWIFT_STARS_IO_H */

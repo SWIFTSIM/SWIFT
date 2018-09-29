@@ -54,10 +54,12 @@ infile = args.input
 TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair",
              "init_grav", "init_grav_out", "ghost_in", "ghost", "ghost_out", "extra_ghost", "drift_part", "drift_gpart",
              "end_force", "kick1", "kick2", "timestep", "send", "recv", "grav_long_range", "grav_mm", "grav_down_in", 
-             "grav_down", "grav_mesh", "cooling", "sourceterms", "count"]
+             "grav_down", "grav_mesh", "cooling", "sourceterms",
+             "stars_ghost_in", "stars_ghost",   "stars_ghost_out",
+             "count"]
 
 SUBTYPES = ["none", "density", "gradient", "force", "grav", "external_grav",
-            "tend", "xv", "rho", "gpart", "multipole", "spart", "count"]
+            "tend", "xv", "rho", "gpart", "multipole", "spart", "stars_density", "count"]
 
 SIDS = ["(-1,-1,-1)", "(-1,-1, 0)", "(-1,-1, 1)", "(-1, 0,-1)",
         "(-1, 0, 0)", "(-1, 0, 1)", "(-1, 1,-1)", "(-1, 1, 0)",
