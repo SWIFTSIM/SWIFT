@@ -1218,6 +1218,8 @@ void fof_search_tree(struct space *s) {
 
   }
 
+  message("Sorting groups...");
+
   /* Find global properties. */
 #ifdef WITH_MPI
   MPI_Allreduce(&num_groups_local, &num_groups, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -1284,15 +1286,40 @@ void fof_search_tree(struct space *s) {
     for (size_t i = 0; i < nr_gparts; i++) gparts[i].group_id = group_id_default;
 
     /* Re-label the groups between group_id_offset - num_groups. */
-    for (size_t i = 0; i < nr_gparts; i++) {
-      const size_t root = fof_find_global(i, group_index);
+    for(int i = 0; i < num_groups; i++) {
+      const size_t root = global_group_sizes[i].index;
+      
+      if(is_local(root, nr_gparts)) {
 
-      for(int j = 0; j < num_groups; j++) {
-        if(root == global_group_sizes[j].index) {
-          gparts[i].group_id = group_id_offset + j;
+        gparts[root - node_offset].group_id = group_id_offset + i;
+      }
+
+    }
+
+    /* Update group ID of all particles that are not the root of a group. */
+    for (size_t i = 0; i < nr_gparts; i++) {
+      size_t root = node_offset + i;
+      int foreign = 0;
+
+      /* FOF find */
+      while (root != group_index[root - node_offset]) {
+        root = group_index[root - node_offset];
+        if (!is_local(root, nr_gparts)) {
+          foreign = 1;
           break;
         }
       }
+
+      /* For particles that have foreign roots search the root list. */
+      if(foreign) {
+        for(int j = 0; j < num_groups; j++) {
+          if(root == global_group_sizes[j].index) {
+            gparts[i].group_id = group_id_offset + j;
+            break;
+          }
+        }
+      }
+      else gparts[i].group_id = gparts[root - node_offset].group_id;
     }
 
     /* Clean up memory. */
@@ -1324,10 +1351,9 @@ void fof_search_tree(struct space *s) {
 
     message("Largest group by size: %d", max_group_size);
     message("Largest group by mass: %e", max_group_mass);
-  
+  }
     message("FOF search took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
-  }
 
 }
 
