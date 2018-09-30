@@ -301,6 +301,15 @@ void proxy_cells_pack_mapper(void *map_data, int num_elements,
   }
 }
 
+void proxy_cells_exchange_first_mapper(void *map_data, int num_elements,
+                                       void *extra_data) {
+  struct proxy *proxies = (struct proxy *)map_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    proxy_cells_exchange_first(&proxies[k]);
+  }
+}
+
 struct wait_and_unpack_mapper_data {
   struct space *s;
   int num_proxies;
@@ -342,7 +351,6 @@ void proxy_cells_wait_and_unpack_mapper(void *unused_map_data, int num_elements,
  */
 void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
                           struct space *s, const int with_gravity) {
-
 #ifdef WITH_MPI
 
   MPI_Request *reqs;
@@ -376,8 +384,10 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
                  s->nr_cells, sizeof(struct cell), /*chunk=*/0, &data);
 
   /* Launch the first part of the exchange. */
+  threadpool_map(&s->e->threadpool, proxy_cells_exchange_first_mapper, proxies,
+                 num_proxies, sizeof(struct proxy), /*chunk=*/0,
+                 /*extra_data=*/NULL);
   for (int k = 0; k < num_proxies; k++) {
-    proxy_cells_exchange_first(&proxies[k]);
     reqs_in[k] = proxies[k].req_cells_count_in;
     reqs_out[k] = proxies[k].req_cells_count_out;
   }
