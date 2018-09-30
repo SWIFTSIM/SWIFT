@@ -24,6 +24,8 @@ doc/Doxyfile
 
 examples/swift
 examples/swift_mpi
+examples/fof
+examples/fof_mpi
 examples/*/*.xmf
 examples/*/*.h5
 examples/*/*.png
