@@ -412,7 +412,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
-                           int clean_h_values);
+                           int clean_h_values, int compute_init_accel);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);

@@ -998,7 +998,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Initialise the particles */
-    engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
+    engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values, 1);
 
     /* Write the state of the system before starting time integration. */
     engine_dump_snapshot(&e);

@@ -4958,10 +4958,10 @@ void engine_first_init_particles(struct engine *e) {
  * @param flag_entropy_ICs Did the 'Internal Energy' of the particles actually
  * contain entropy ?
  * @param clean_h_values Are we cleaning up the values of h before building
- * the tasks ?
+ * @param compute_init_accel Are we computing the initial acceleration of particles?
  */
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
-                           int clean_h_values) {
+                           int clean_h_values, int compute_init_accel) {
 
   struct space *s = e->s;
 
@@ -5051,6 +5051,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
   if (e->nodeID == 0) scheduler_write_dependencies(&e->sched, e->verbose);
+
+  /* Exit if only computing the FOF. */
+  if(!compute_init_accel) return;
 
   /* Run the 0th time-step */
   TIMER_TIC2;
@@ -5351,7 +5354,7 @@ void engine_check_for_dumps(struct engine *e) {
       run_stf = 1;
   }
   /* Do we want to perform a FOF search? */
-  if ((e->policy & engine_policy_fof) && e->dump_snapshot)
+  if (e->policy & engine_policy_fof)
     e->run_fof = 1;
 
   /* Store information before attempting extra dump-related drifts */
