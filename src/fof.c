@@ -43,7 +43,6 @@
 MPI_Datatype fof_mpi_type;
 MPI_Datatype group_length_mpi_type;
 #endif
-FILE *fof_file;
 size_t node_offset;
 
 /* Initialises parameters for the FOF search. */
@@ -669,6 +668,8 @@ void fof_search_foreign_cells(struct space *s) {
 
   message("Searching foreign cells for links.");
 
+  ticks tic = getticks();
+
   /* Make group IDs globally unique. */  
   for (size_t i = 0; i < nr_gparts; i++) group_index[i] += node_offset;
   
@@ -752,7 +753,12 @@ void fof_search_foreign_cells(struct space *s) {
       }
     }
   }
+    
+  message("Initialising interface cells and particle roots took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
+  tic = getticks();
+  
   struct scheduler *sched = &e->sched;
   struct task *tasks = sched->tasks;
 
@@ -773,6 +779,12 @@ void fof_search_foreign_cells(struct space *s) {
   /* Perform send and receive tasks. */
   engine_launch(e);
 
+  message("MPI send/recv comms took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+  
+  tic = getticks();
+
+  /* TODO: Parallelise with threadpool. */  
   /* Loop over each interface cell and find all particle links with foreign cells. */
   for(int i=0; i<interface_cell_count; i++) {
 
@@ -796,8 +808,13 @@ void fof_search_foreign_cells(struct space *s) {
   /* Clean up memory. */
   free(interface_cells);
 
+  message("Searching for foreign links took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+  
   message("Rank %d found %d unique group links between local and foreign groups.", engine_rank, group_link_count);
 
+  tic = getticks();
+  
   struct fof_mpi *global_group_links = NULL;
   int *displ = NULL, *group_link_counts = NULL;
   int global_group_link_count = 0;
@@ -832,6 +849,11 @@ void fof_search_foreign_cells(struct space *s) {
   free(displ);
   free(group_links);
 
+  message("Global comms took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+  
+  tic = getticks();
+  
   /* Transform the group IDs to a local list going from 0-group_count so a union-find can be performed. */
   size_t *global_group_index = NULL, *global_group_id = NULL, *global_group_size = NULL;
   double *global_group_mass = NULL;
@@ -915,6 +937,11 @@ void fof_search_foreign_cells(struct space *s) {
 
   }
 
+  message("Global comms took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+  
+  tic = getticks();
+
   /* Create a global_group_index list of groups across MPI domains so that you can perform a union-find locally on each node. */
   /* The value of which is an offset into global_group_id, which is the actual root. */
   for(int i=0; i<group_count; i++) global_group_index[i] = i;
@@ -924,6 +951,7 @@ void fof_search_foreign_cells(struct space *s) {
   
     int find_i = 0, find_j = 0;
 
+    /* TODO: Sort array to get offset or allocate array for initial root positions. */
     /* Find group offset into global_group_id */
     for(int j=0; j<group_count; j++) {  
       if(global_group_id[j] == global_group_links[i].group_i) {
@@ -951,6 +979,11 @@ void fof_search_foreign_cells(struct space *s) {
     else global_group_index[root_j] = root_i;
 
   }
+  
+  message("global_group_index construction took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
 
   /* Update each group locally with new root information. */
   for(int i=0; i<group_count; i++) {
@@ -1000,6 +1033,9 @@ void fof_search_foreign_cells(struct space *s) {
     }
 
   }
+
+  message("Updating groups locally took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Clean up memory. */
   free(global_group_links);
@@ -1171,11 +1207,19 @@ void fof_search_tree(struct space *s) {
 
 #ifdef WITH_MPI
   if (nr_nodes > 1) {
+  
+    ticks tic_mpi = getticks();
+    
     /* Search for group links across MPI domains. */
     fof_search_foreign_cells(s);
+
+    message("fof_search_foreign_cells() took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
   }  
 #endif
  
+  message("Calculating group properties...");
+
   size_t num_groups_local = 0, num_parts_in_groups_local = 0, max_group_size_local = 0;
   double max_group_mass_local = 0;
   
@@ -1285,6 +1329,7 @@ void fof_search_tree(struct space *s) {
     /* Set default group ID again. */
     for (size_t i = 0; i < nr_gparts; i++) gparts[i].group_id = group_id_default;
 
+    /* TODO: Think of better way to set group ID of particles that have a foreign root. */
     /* Re-label the groups between group_id_offset - num_groups. */
     for(int i = 0; i < num_groups; i++) {
       const size_t root = global_group_sizes[i].index;
@@ -1331,6 +1376,8 @@ void fof_search_tree(struct space *s) {
 
   s->fof_data.num_groups = num_groups;
 
+  message("Dumping data...");
+
   /* Dump group data. */ 
 #ifdef WITH_MPI
   if (nr_nodes > 1) {
@@ -1354,6 +1401,10 @@ void fof_search_tree(struct space *s) {
   }
     message("FOF search took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+#ifdef WITH_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
 }
 
