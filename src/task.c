@@ -96,8 +96,8 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
   }
 
 TASK_CELL_OVERLAP(part, hydro.parts, hydro.count);
-TASK_CELL_OVERLAP(gpart, grav.gparts, grav.gcount);
-TASK_CELL_OVERLAP(spart, sparts, scount);
+TASK_CELL_OVERLAP(gpart, grav.parts, grav.count);
+TASK_CELL_OVERLAP(spart, stars.parts, stars.count);
 
 /**
  * @brief Returns the #task_actions for a given task.
@@ -160,11 +160,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_timestep:
     case task_type_send:
     case task_type_recv:
-      if (t->ci->hydro.count > 0 && t->ci->grav.gcount > 0)
+      if (t->ci->hydro.count > 0 && t->ci->grav.count > 0)
         return task_action_all;
       else if (t->ci->hydro.count > 0)
         return task_action_part;
-      else if (t->ci->grav.gcount > 0)
+      else if (t->ci->grav.count > 0)
         return task_action_gpart;
       else
         error("Task without particles");
@@ -247,10 +247,10 @@ float task_overlap(const struct task *restrict ta,
 
     /* Compute the union of the cell data. */
     size_t size_union = 0;
-    if (ta->ci != NULL) size_union += ta->ci->grav.gcount;
-    if (ta->cj != NULL) size_union += ta->cj->grav.gcount;
-    if (tb->ci != NULL) size_union += tb->ci->grav.gcount;
-    if (tb->cj != NULL) size_union += tb->cj->grav.gcount;
+    if (ta->ci != NULL) size_union += ta->ci->grav.count;
+    if (ta->cj != NULL) size_union += ta->cj->grav.count;
+    if (tb->ci != NULL) size_union += tb->ci->grav.count;
+    if (tb->cj != NULL) size_union += tb->cj->grav.count;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_gpart(ta->ci, tb->ci) +
@@ -266,10 +266,10 @@ float task_overlap(const struct task *restrict ta,
 
     /* Compute the union of the cell data. */
     size_t size_union = 0;
-    if (ta->ci != NULL) size_union += ta->ci->scount;
-    if (ta->cj != NULL) size_union += ta->cj->scount;
-    if (tb->ci != NULL) size_union += tb->ci->scount;
-    if (tb->cj != NULL) size_union += tb->cj->scount;
+    if (ta->ci != NULL) size_union += ta->ci->stars.count;
+    if (ta->cj != NULL) size_union += ta->cj->stars.count;
+    if (tb->ci != NULL) size_union += tb->ci->stars.count;
+    if (tb->cj != NULL) size_union += tb->cj->stars.count;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_spart(ta->ci, tb->ci) +
@@ -397,7 +397,7 @@ int task_lock(struct task *t) {
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
-      if (ci->hydro.hold || ci->grav.ghold) return 0;
+      if (ci->hydro.hold || ci->grav.phold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       if (cell_glocktree(ci) != 0) {
         cell_unlocktree(ci);
@@ -413,7 +413,7 @@ int task_lock(struct task *t) {
 
     case task_type_drift_gpart:
     case task_type_grav_mesh:
-      if (ci->grav.ghold) return 0;
+      if (ci->grav.phold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
       break;
 
@@ -421,7 +421,7 @@ int task_lock(struct task *t) {
     case task_type_sub_self:
       if (subtype == task_subtype_grav) {
         /* Lock the gparts and the m-pole */
-        if (ci->grav.ghold || ci->grav.mhold) return 0;
+        if (ci->grav.phold || ci->grav.mhold) return 0;
         if (cell_glocktree(ci) != 0)
           return 0;
         else if (cell_mlocktree(ci) != 0) {
@@ -437,7 +437,7 @@ int task_lock(struct task *t) {
     case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
         /* Lock the gparts and the m-pole in both cells */
-        if (ci->grav.ghold || cj->grav.ghold) return 0;
+        if (ci->grav.phold || cj->grav.phold) return 0;
         if (cell_glocktree(ci) != 0) return 0;
         if (cell_glocktree(cj) != 0) {
           cell_gunlocktree(ci);
@@ -465,7 +465,7 @@ int task_lock(struct task *t) {
 
     case task_type_grav_down:
       /* Lock the gparts and the m-poles */
-      if (ci->grav.ghold || ci->grav.mhold) return 0;
+      if (ci->grav.phold || ci->grav.mhold) return 0;
       if (cell_glocktree(ci) != 0)
         return 0;
       else if (cell_mlocktree(ci) != 0) {

@@ -347,8 +347,8 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
   const float H = cosmo->H;
 
   /* Implements a double-for loop and checks every interaction */
-  for (int i = 0; i < ci->scount; ++i) {
-    struct spart *spi = &ci->sparts[i];
+  for (int i = 0; i < ci->stars.count; ++i) {
+    struct spart *spi = &ci->stars.parts[i];
 
     float hi = spi->h;
     float hig2 = hi * hi * kernel_gamma2;
@@ -377,9 +377,9 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
   }
 
   /* Reverse double-for loop and checks every interaction */
-  for (int j = 0; j < cj->scount; ++j) {
+  for (int j = 0; j < cj->stars.count; ++j) {
 
-    struct spart *spj = &cj->sparts[j];
+    struct spart *spj = &cj->stars.parts[j];
     float hj = spj->h;
     float hjg2 = hj * hj * kernel_gamma2;
 
@@ -510,9 +510,9 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
   const float H = cosmo->H;
 
   /* Implements a double-for loop and checks every interaction */
-  for (int i = 0; i < ci->scount; ++i) {
+  for (int i = 0; i < ci->stars.count; ++i) {
 
-    spi = &ci->sparts[i];
+    spi = &ci->stars.parts[i];
     hi = spi->h;
     hig2 = hi * hi * kernel_gamma2;
 

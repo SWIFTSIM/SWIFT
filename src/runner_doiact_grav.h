@@ -99,8 +99,8 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
     if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
     /* Cell properties */
-    struct gpart *gparts = c->grav.gparts;
-    const int gcount = c->grav.gcount;
+    struct gpart *gparts = c->grav.parts;
+    const int gcount = c->grav.count;
     const struct grav_tensor *pot = &c->grav.multipole->pot;
     const double CoM[3] = {c->grav.multipole->CoM[0], c->grav.multipole->CoM[1],
                            c->grav.multipole->CoM[2]};
@@ -716,8 +716,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
   /* Start by constructing particle caches */
 
   /* Computed the padded counts */
-  const int gcount_i = ci->grav.gcount;
-  const int gcount_j = cj->grav.gcount;
+  const int gcount_i = ci->grav.count;
+  const int gcount_j = cj->grav.count;
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
   const int gcount_padded_j = gcount_j - (gcount_j % VEC_SIZE) + VEC_SIZE;
 
@@ -730,10 +730,10 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
 
   /* Fill the caches */
   gravity_cache_populate(e->max_active_bin, allow_mpole, periodic, dim,
-                         ci_cache, ci->grav.gparts, gcount_i, gcount_padded_i,
+                         ci_cache, ci->grav.parts, gcount_i, gcount_padded_i,
                          shift_i, CoM_j, rmax2_j, ci, e->gravity_properties);
   gravity_cache_populate(e->max_active_bin, allow_mpole, periodic, dim,
-                         cj_cache, cj->grav.gparts, gcount_j, gcount_padded_j,
+                         cj_cache, cj->grav.parts, gcount_j, gcount_padded_j,
                          shift_j, CoM_i, rmax2_i, cj, e->gravity_properties);
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
@@ -747,12 +747,12 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
       /* First the P2P */
       runner_dopair_grav_pp_full(ci_cache, cj_cache, gcount_i, gcount_j,
                                  gcount_padded_j, periodic, dim, e,
-                                 ci->grav.gparts, cj->grav.gparts);
+                                 ci->grav.parts, cj->grav.parts);
 
       /* Then the M2P */
       if (allow_mpole)
         runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                   periodic, dim, e, ci->grav.gparts, gcount_i,
+                                   periodic, dim, e, ci->grav.parts, gcount_i,
                                    cj);
     }
     if (cj_active && symmetric) {
@@ -760,12 +760,12 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
       /* First the P2P */
       runner_dopair_grav_pp_full(cj_cache, ci_cache, gcount_j, gcount_i,
                                  gcount_padded_i, periodic, dim, e,
-                                 cj->grav.gparts, ci->grav.gparts);
+                                 cj->grav.parts, ci->grav.parts);
 
       /* Then the M2P */
       if (allow_mpole)
         runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
-                                   periodic, dim, e, cj->grav.gparts, gcount_j,
+                                   periodic, dim, e, cj->grav.parts, gcount_j,
                                    ci);
     }
 
@@ -790,26 +790,26 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
         /* First the (truncated) P2P */
         runner_dopair_grav_pp_truncated(ci_cache, cj_cache, gcount_i, gcount_j,
                                         gcount_padded_j, dim, r_s_inv, e,
-                                        ci->grav.gparts, cj->grav.gparts);
+                                        ci->grav.parts, cj->grav.parts);
 
         /* Then the M2P */
         if (allow_mpole)
           runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j,
                                           multi_j, dim, r_s_inv, e,
-                                          ci->grav.gparts, gcount_i, cj);
+                                          ci->grav.parts, gcount_i, cj);
       }
       if (cj_active && symmetric) {
 
         /* First the (truncated) P2P */
         runner_dopair_grav_pp_truncated(cj_cache, ci_cache, gcount_j, gcount_i,
                                         gcount_padded_i, dim, r_s_inv, e,
-                                        cj->grav.gparts, ci->grav.gparts);
+                                        cj->grav.parts, ci->grav.parts);
 
         /* Then the M2P */
         if (allow_mpole)
           runner_dopair_grav_pm_truncated(cj_cache, gcount_padded_j, CoM_i,
                                           multi_i, dim, r_s_inv, e,
-                                          cj->grav.gparts, gcount_j, ci);
+                                          cj->grav.parts, gcount_j, ci);
       }
 
     } else {
@@ -822,34 +822,34 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
         /* First the (Newtonian) P2P */
         runner_dopair_grav_pp_full(ci_cache, cj_cache, gcount_i, gcount_j,
                                    gcount_padded_j, periodic, dim, e,
-                                   ci->grav.gparts, cj->grav.gparts);
+                                   ci->grav.parts, cj->grav.parts);
 
         /* Then the M2P */
         if (allow_mpole)
           runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                     periodic, dim, e, ci->grav.gparts,
-                                     gcount_i, cj);
+                                     periodic, dim, e, ci->grav.parts, gcount_i,
+                                     cj);
       }
       if (cj_active && symmetric) {
 
         /* First the (Newtonian) P2P */
         runner_dopair_grav_pp_full(cj_cache, ci_cache, gcount_j, gcount_i,
                                    gcount_padded_i, periodic, dim, e,
-                                   cj->grav.gparts, ci->grav.gparts);
+                                   cj->grav.parts, ci->grav.parts);
 
         /* Then the M2P */
         if (allow_mpole)
           runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
-                                     periodic, dim, e, cj->grav.gparts,
-                                     gcount_j, ci);
+                                     periodic, dim, e, cj->grav.parts, gcount_j,
+                                     ci);
       }
     }
   }
 
   /* Write back to the particles */
-  if (ci_active) gravity_cache_write_back(ci_cache, ci->grav.gparts, gcount_i);
+  if (ci_active) gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
   if (cj_active && symmetric)
-    gravity_cache_write_back(cj_cache, cj->grav.gparts, gcount_j);
+    gravity_cache_write_back(cj_cache, cj->grav.parts, gcount_j);
 
   TIMER_TOC(timer_dopair_grav_pp);
 }
@@ -1097,7 +1097,7 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grav.gcount == 0) error("Doing self gravity on an empty cell !");
+  if (c->grav.count == 0) error("Doing self gravity on an empty cell !");
 #endif
 
   /* Anything to do here? */
@@ -1118,7 +1118,7 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
                          c->loc[2] + 0.5 * c->width[2]};
 
   /* Computed the padded counts */
-  const int gcount = c->grav.gcount;
+  const int gcount = c->grav.count;
   const int gcount_padded = gcount - (gcount % VEC_SIZE) + VEC_SIZE;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1128,7 +1128,7 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 #endif
 
   /* Fill the cache */
-  gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, c->grav.gparts,
+  gravity_cache_populate_no_mpole(e->max_active_bin, ci_cache, c->grav.parts,
                                   gcount, gcount_padded, loc, c,
                                   e->gravity_properties);
 
@@ -1137,7 +1137,7 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
     /* Not periodic -> Can always use Newtonian potential */
     runner_doself_grav_pp_full(ci_cache, gcount, gcount_padded, e,
-                               c->grav.gparts);
+                               c->grav.parts);
 
   } else {
 
@@ -1149,18 +1149,18 @@ static INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
       /* Periodic but far-away cells must use the truncated potential */
       runner_doself_grav_pp_truncated(ci_cache, gcount, gcount_padded, r_s_inv,
-                                      e, c->grav.gparts);
+                                      e, c->grav.parts);
 
     } else {
 
       /* Periodic but close-by cells can use the full Newtonian potential */
       runner_doself_grav_pp_full(ci_cache, gcount, gcount_padded, e,
-                                 c->grav.gparts);
+                                 c->grav.parts);
     }
   }
 
   /* Write back to the particles */
-  gravity_cache_write_back(ci_cache, c->grav.gparts, gcount);
+  gravity_cache_write_back(ci_cache, c->grav.parts, gcount);
 
   TIMER_TOC(timer_doself_grav_pp);
 }
@@ -1361,7 +1361,7 @@ static INLINE void runner_dopair_recursive_grav_pm(struct runner *r,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Early abort? */
-  if (ci->grav.gcount == 0 || cj->grav.gcount == 0)
+  if (ci->grav.count == 0 || cj->grav.count == 0)
     error("Doing pair gravity on an empty cell !");
 
   /* Sanity check */
@@ -1389,7 +1389,7 @@ static INLINE void runner_dopair_recursive_grav_pm(struct runner *r,
     struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
 
     /* Computed the padded counts */
-    const int gcount_i = ci->grav.gcount;
+    const int gcount_i = ci->grav.count;
     const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1407,25 +1407,25 @@ static INLINE void runner_dopair_recursive_grav_pm(struct runner *r,
 
     /* Fill the cache */
     gravity_cache_populate_all_mpole(
-        e->max_active_bin, periodic, dim, ci_cache, ci->grav.gparts, gcount_i,
+        e->max_active_bin, periodic, dim, ci_cache, ci->grav.parts, gcount_i,
         gcount_padded_i, ci, CoM_j, r_max * r_max, e->gravity_properties);
 
     /* Can we use the Newtonian version or do we need the truncated one ? */
     if (!periodic) {
 
       runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                 periodic, dim, e, ci->grav.gparts, gcount_i,
+                                 periodic, dim, e, ci->grav.parts, gcount_i,
                                  cj);
 
     } else {
 
       runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                      dim, r_s_inv, e, ci->grav.gparts,
-                                      gcount_i, cj);
+                                      dim, r_s_inv, e, ci->grav.parts, gcount_i,
+                                      cj);
     }
 
     /* Write back to the particles */
-    gravity_cache_write_back(ci_cache, ci->grav.gparts, gcount_i);
+    gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
   }
 }
 
@@ -1463,8 +1463,8 @@ static INLINE void runner_dopair_recursive_grav(struct runner *r,
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-  const int gcount_i = ci->grav.gcount;
-  const int gcount_j = cj->grav.gcount;
+  const int gcount_i = ci->grav.count;
+  const int gcount_j = cj->grav.count;
 
   /* Early abort? */
   if (gcount_i == 0 || gcount_j == 0)
@@ -1607,7 +1607,7 @@ static INLINE void runner_doself_recursive_grav(struct runner *r,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Early abort? */
-  if (c->grav.gcount == 0) error("Doing self gravity on an empty cell !");
+  if (c->grav.count == 0) error("Doing self gravity on an empty cell !");
 #endif
 
   TIMER_TIC;

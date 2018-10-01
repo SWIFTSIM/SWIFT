@@ -278,7 +278,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
     /* Pad cache with fake particles that exist outside the cell so will not
      * interact. We use values of the same magnitude (but negative!) as the real
      * particles to avoid overflow problems. */
-    const double max_dx = ci->hydro.dx_max;
+    const double max_dx = ci->hydro.dx_max_part;
     const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
                                  -(2. * ci->width[1] + max_dx),
                                  -(2. * ci->width[2] + max_dx)};
@@ -326,7 +326,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
     /* Pad cache with fake particles that exist outside the cell so will not
      * interact. We use values of the same magnitude (but negative!) as the real
      * particles to avoid overflow problems. */
-    const double max_dx = ci->hydro.dx_max;
+    const double max_dx = ci->hydro.dx_max_part;
     const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
                                  -(2. * ci->width[1] + max_dx),
                                  -(2. * ci->width[2] + max_dx)};
@@ -491,11 +491,14 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
 #ifdef SWIFT_DEBUG_CHECKS
   const float shift_threshold_x =
-      2. * ci->width[0] + 2. * max(ci->hydro.dx_max, cj->hydro.dx_max);
+      2. * ci->width[0] +
+      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_y =
-      2. * ci->width[1] + 2. * max(ci->hydro.dx_max, cj->hydro.dx_max);
+      2. * ci->width[1] +
+      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_z =
-      2. * ci->width[2] + 2. * max(ci->hydro.dx_max, cj->hydro.dx_max);
+      2. * ci->width[2] +
+      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
 
   /* Make sure that particle positions have been shifted correctly. */
   for (int i = 0; i < ci_cache_count; i++) {
@@ -529,7 +532,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact. We use values of the same magnitude (but negative!) as the real
    * particles to avoid overflow problems. */
-  const double max_dx = max(ci->hydro.dx_max, cj->hydro.dx_max);
+  const double max_dx = max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
                                -(2. * ci->width[1] + max_dx),
                                -(2. * ci->width[2] + max_dx)};
@@ -723,7 +726,7 @@ cache_read_two_partial_cells_sorted_force(
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact. We use values of the same magnitude (but negative!) as the real
    * particles to avoid overflow problems. */
-  const double max_dx = max(ci->hydro.dx_max, cj->hydro.dx_max);
+  const double max_dx = max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
                                -(2. * ci->width[1] + max_dx),
                                -(2. * ci->width[2] + max_dx)};

@@ -348,8 +348,8 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->split = 0;
   cell->hydro.h_max = h_max;
   cell->hydro.count = count;
-  cell->grav.gcount = 0;
-  cell->hydro.dx_max = 0.;
+  cell->grav.count = 0;
+  cell->hydro.dx_max_part = 0.;
   cell->hydro.dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
@@ -358,7 +358,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->hydro.ti_old = 8;
+  cell->hydro.ti_old_part = 8;
   cell->hydro.ti_end_min = 8;
   cell->hydro.ti_end_max = 8;
   cell->nodeID = NODE_ID;

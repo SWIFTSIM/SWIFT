@@ -122,8 +122,8 @@ void map_cellcheck(struct cell *c, void *data) {
   }
 
   /* Loop over all gparts and check if they are in the cell. */
-  for (int k = 0; k < c->grav.gcount; k++) {
-    struct gpart *p = &c->grav.gparts[k];
+  for (int k = 0; k < c->grav.count; k++) {
+    struct gpart *p = &c->grav.parts[k];
     if (p->x[0] < c->loc[0] || p->x[1] < c->loc[1] || p->x[2] < c->loc[2] ||
         p->x[0] > c->loc[0] + c->width[0] ||
         p->x[1] > c->loc[1] + c->width[1] ||

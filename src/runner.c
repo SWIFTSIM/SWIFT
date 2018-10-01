@@ -145,7 +145,7 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
-  struct spart *restrict sparts = c->sparts;
+  struct spart *restrict sparts = c->stars.parts;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct stars_props *stars_properties = e->stars_properties;
@@ -168,9 +168,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
     /* Init the list of active particles that have to be updated. */
     int *sid = NULL;
-    if ((sid = (int *)malloc(sizeof(int) * c->scount)) == NULL)
+    if ((sid = (int *)malloc(sizeof(int) * c->stars.count)) == NULL)
       error("Can't allocate memory for sid.");
-    for (int k = 0; k < c->scount; k++)
+    for (int k = 0; k < c->stars.count; k++)
       if (spart_is_active(&sparts[k], e)) {
         sid[scount] = k;
         ++scount;
@@ -348,8 +348,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 
-  struct gpart *restrict gparts = c->grav.gparts;
-  const int gcount = c->grav.gcount;
+  struct gpart *restrict gparts = c->grav.parts;
+  const int gcount = c->grav.count;
   const struct engine *e = r->e;
   const struct external_potential *potential = e->external_potential;
   const struct phys_const *constants = e->physical_constants;
@@ -391,8 +391,8 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
 
-  struct gpart *restrict gparts = c->grav.gparts;
-  const int gcount = c->grav.gcount;
+  struct gpart *restrict gparts = c->grav.parts;
+  const int gcount = c->grav.count;
   const struct engine *e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1265,7 +1265,7 @@ static void runner_do_unskip_hydro(struct cell *c, struct engine *e) {
 static void runner_do_unskip_stars(struct cell *c, struct engine *e) {
 
   /* Ignore empty cells. */
-  if (c->scount == 0) return;
+  if (c->stars.count == 0) return;
 
   /* Skip inactive cells. */
   if (!cell_is_active_stars(c, e)) return;
@@ -1294,7 +1294,7 @@ static void runner_do_unskip_stars(struct cell *c, struct engine *e) {
 static void runner_do_unskip_gravity(struct cell *c, struct engine *e) {
 
   /* Ignore empty cells. */
-  if (c->grav.gcount == 0) return;
+  if (c->grav.count == 0) return;
 
   /* Skip inactive cells. */
   if (!cell_is_active_gravity(c, e)) return;
@@ -1391,11 +1391,11 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
-  struct gpart *restrict gparts = c->grav.gparts;
-  struct spart *restrict sparts = c->sparts;
+  struct gpart *restrict gparts = c->grav.parts;
+  struct spart *restrict sparts = c->stars.parts;
   const int count = c->hydro.count;
-  const int gcount = c->grav.gcount;
-  const int scount = c->scount;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
@@ -1564,12 +1564,12 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   const struct hydro_props *hydro_props = e->hydro_properties;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int count = c->hydro.count;
-  const int gcount = c->grav.gcount;
-  const int scount = c->scount;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
-  struct gpart *restrict gparts = c->grav.gparts;
-  struct spart *restrict sparts = c->sparts;
+  struct gpart *restrict gparts = c->grav.parts;
+  struct spart *restrict sparts = c->stars.parts;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
@@ -1738,20 +1738,20 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const int count = c->hydro.count;
-  const int gcount = c->grav.gcount;
-  const int scount = c->scount;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
-  struct gpart *restrict gparts = c->grav.gparts;
-  struct spart *restrict sparts = c->sparts;
+  struct gpart *restrict gparts = c->grav.parts;
+  struct spart *restrict sparts = c->stars.parts;
 
   TIMER_TIC;
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) {
     c->hydro.updated = 0;
-    c->grav.g_updated = 0;
-    c->s_updated = 0;
+    c->grav.updated = 0;
+    c->stars.updated = 0;
     return;
   }
 
@@ -1961,8 +1961,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
         /* And aggregate */
         updated += cp->hydro.updated;
-        g_updated += cp->grav.g_updated;
-        s_updated += cp->s_updated;
+        g_updated += cp->grav.updated;
+        s_updated += cp->stars.updated;
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_end_max = max(cp->hydro.ti_end_max, ti_hydro_end_max);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
@@ -1974,8 +1974,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
   /* Store the values. */
   c->hydro.updated = updated;
-  c->grav.g_updated = g_updated;
-  c->s_updated = s_updated;
+  c->grav.updated = g_updated;
+  c->stars.updated = s_updated;
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
@@ -2009,11 +2009,11 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   const struct space *s = e->s;
   const struct cosmology *cosmo = e->cosmology;
   const int count = c->hydro.count;
-  const int gcount = c->grav.gcount;
-  const int scount = c->scount;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
   struct part *restrict parts = c->hydro.parts;
-  struct gpart *restrict gparts = c->grav.gparts;
-  struct spart *restrict sparts = c->sparts;
+  struct gpart *restrict gparts = c->grav.parts;
+  struct spart *restrict sparts = c->stars.parts;
   const int periodic = s->periodic;
   const float G_newton = e->physical_constants->const_newton_G;
 
@@ -2214,7 +2214,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   /* ... and store. */
   // c->hydro.ti_end_min = ti_hydro_end_min;
   // c->hydro.ti_end_max = ti_hydro_end_max;
-  c->hydro.ti_old = ti_current;
+  c->hydro.ti_old_part = ti_current;
   c->hydro.h_max = h_max;
 
   if (timer) TIMER_TOC(timer_dorecv_part);
@@ -2235,8 +2235,8 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
 
 #ifdef WITH_MPI
 
-  const struct gpart *restrict gparts = c->grav.gparts;
-  const size_t nr_gparts = c->grav.gcount;
+  const struct gpart *restrict gparts = c->grav.parts;
+  const size_t nr_gparts = c->grav.count;
   const integertime_t ti_current = r->e->ti_current;
 
   TIMER_TIC;
@@ -2268,7 +2268,7 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   /* Otherwise, recurse and collect. */
   else {
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL && c->progeny[k]->grav.gcount > 0) {
+      if (c->progeny[k] != NULL && c->progeny[k]->grav.count > 0) {
         runner_do_recv_gpart(r, c->progeny[k], 0);
         ti_gravity_end_min =
             min(ti_gravity_end_min, c->progeny[k]->grav.ti_end_min);
@@ -2289,7 +2289,7 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   /* ... and store. */
   // c->grav.ti_end_min = ti_gravity_end_min;
   // c->grav.ti_end_max = ti_gravity_end_max;
-  c->grav.ti_old_gpart = ti_current;
+  c->grav.ti_old_part = ti_current;
 
   if (timer) TIMER_TOC(timer_dorecv_gpart);
 
@@ -2309,8 +2309,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
 
 #ifdef WITH_MPI
 
-  const struct spart *restrict sparts = c->sparts;
-  const size_t nr_sparts = c->scount;
+  const struct spart *restrict sparts = c->stars.parts;
+  const size_t nr_sparts = c->stars.count;
   const integertime_t ti_current = r->e->ti_current;
 
   TIMER_TIC;
@@ -2342,7 +2342,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
   /* Otherwise, recurse and collect. */
   else {
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL && c->progeny[k]->scount > 0) {
+      if (c->progeny[k] != NULL && c->progeny[k]->stars.count > 0) {
         runner_do_recv_spart(r, c->progeny[k], 0);
         ti_gravity_end_min =
             min(ti_gravity_end_min, c->progeny[k]->grav.ti_end_min);
@@ -2363,7 +2363,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
   /* ... and store. */
   // c->grav.ti_end_min = ti_gravity_end_min;
   // c->grav.ti_end_max = ti_gravity_end_max;
-  c->grav.ti_old_gpart = ti_current;
+  c->grav.ti_old_part = ti_current;
 
   if (timer) TIMER_TOC(timer_dorecv_spart);
 

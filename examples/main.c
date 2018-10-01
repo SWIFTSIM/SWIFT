@@ -1096,10 +1096,10 @@ int main(int argc, char *argv[]) {
                           ? e.sched.tasks[l].cj->hydro.count
                           : 0,
                       (e.sched.tasks[l].ci != NULL)
-                          ? e.sched.tasks[l].ci->grav.gcount
+                          ? e.sched.tasks[l].ci->grav.count
                           : 0,
                       (e.sched.tasks[l].cj != NULL)
-                          ? e.sched.tasks[l].cj->grav.gcount
+                          ? e.sched.tasks[l].cj->grav.count
                           : 0,
                       e.sched.tasks[l].flags, e.sched.tasks[l].sid);
             }
@@ -1134,9 +1134,9 @@ int main(int argc, char *argv[]) {
               (e.sched.tasks[l].cj == NULL) ? 0
                                             : e.sched.tasks[l].cj->hydro.count,
               (e.sched.tasks[l].ci == NULL) ? 0
-                                            : e.sched.tasks[l].ci->grav.gcount,
+                                            : e.sched.tasks[l].ci->grav.count,
               (e.sched.tasks[l].cj == NULL) ? 0
-                                            : e.sched.tasks[l].cj->grav.gcount,
+                                            : e.sched.tasks[l].cj->grav.count,
               e.sched.tasks[l].sid);
         }
       }

@@ -274,8 +274,8 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
     message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
   }
-  if (c->hydro.dx_max != dx_max) {
-    message("%d Inconsistent dx_max: %f != %f", *depth, c->hydro.dx_max,
+  if (c->hydro.dx_max_part != dx_max) {
+    message("%d Inconsistent dx_max: %f != %f", *depth, c->hydro.dx_max_part,
             dx_max);
     message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
@@ -317,13 +317,13 @@ static void dumpCells_map(struct cell *c, void *data) {
 #endif
 
   /* Only cells with particles are dumped. */
-  if (c->hydro.count > 0 || c->grav.gcount > 0 || c->scount > 0) {
+  if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0) {
 
     /* In MPI mode we may only output cells with foreign partners.
      * These define the edges of the partitions. */
     int ismpiactive = 0;
 #if WITH_MPI
-    ismpiactive = (c->hydro.send_xv != NULL);
+    ismpiactive = (c->mpi.hydro.send_xv != NULL);
     if (mpiactive)
       mpiactive = ismpiactive;
     else
@@ -351,11 +351,11 @@ static void dumpCells_map(struct cell *c, void *data) {
         const struct part *parts = c->hydro.parts;
         for (int k = 0; k < c->hydro.count; k++)
           if (part_is_active(&parts[k], e)) pactcount++;
-        struct gpart *gparts = c->grav.gparts;
-        for (int k = 0; k < c->grav.gcount; k++)
+        struct gpart *gparts = c->grav.parts;
+        for (int k = 0; k < c->grav.count; k++)
           if (gpart_is_active(&gparts[k], e)) pactcount++;
-        struct spart *sparts = c->sparts;
-        for (int k = 0; k < c->scount; k++)
+        struct spart *sparts = c->stars.parts;
+        for (int k = 0; k < c->stars.count; k++)
           if (spart_is_active(&sparts[k], e)) pactcount++;
       }
 
@@ -363,8 +363,8 @@ static void dumpCells_map(struct cell *c, void *data) {
               "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d %6d %6d "
               "%6.1f %20lld %6d %6d %6d %6d %6d %6d %6d\n",
               c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
-              c->width[2], e->step, c->hydro.count, c->grav.gcount, c->scount,
-              pactcount, c->depth, ntasks, c->hydro.ti_end_min,
+              c->width[2], e->step, c->hydro.count, c->grav.count,
+              c->stars.count, pactcount, c->depth, ntasks, c->hydro.ti_end_min,
               get_time_bin(c->hydro.ti_end_min), (c->super == c),
               (c->parent == NULL), cell_is_active_hydro(c, e), c->nodeID,
               c->nodeID == e->nodeID, ismpiactive);

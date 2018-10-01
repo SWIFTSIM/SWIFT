@@ -172,28 +172,28 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.force = NULL;
     c->grav.grav = NULL;
     c->grav.mm = NULL;
-    c->hydro.dx_max = 0.0f;
-    c->hydro.dx_max = 0.0f;
+    c->hydro.dx_max_part = 0.0f;
+    c->hydro.dx_max_sort = 0.0f;
     c->hydro.sorted = 0;
     c->hydro.count = 0;
-    c->grav.gcount = 0;
-    c->scount = 0;
+    c->grav.count = 0;
+    c->stars.count = 0;
     c->grav.init = NULL;
     c->grav.init_out = NULL;
     c->hydro.extra_ghost = NULL;
     c->hydro.ghost_in = NULL;
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
-    c->stars_ghost_in = NULL;
-    c->stars_ghost_out = NULL;
-    c->stars_ghost = NULL;
-    c->stars_density = NULL;
+    c->stars.ghost_in = NULL;
+    c->stars.ghost_out = NULL;
+    c->stars.ghost = NULL;
+    c->stars.density = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
     c->hydro.end_force = NULL;
     c->hydro.drift = NULL;
-    c->grav.drift_gpart = NULL;
+    c->grav.drift = NULL;
     c->hydro.cooling = NULL;
     c->sourceterms = NULL;
     c->grav.long_range = NULL;
@@ -205,8 +205,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.super = c;
     c->hydro.parts = NULL;
     c->hydro.xparts = NULL;
-    c->grav.gparts = NULL;
-    c->sparts = NULL;
+    c->grav.parts = NULL;
+    c->stars.parts = NULL;
     c->hydro.do_sub_sort = 0;
     c->grav.do_sub_drift = 0;
     c->hydro.do_sub_drift = 0;
@@ -226,16 +226,16 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 #if WITH_MPI
     c->mpi.tag = -1;
 
-    c->hydro.recv_xv = NULL;
-    c->hydro.recv_rho = NULL;
-    c->hydro.recv_gradient = NULL;
-    c->grav.recv = NULL;
+    c->mpi.hydro.recv_xv = NULL;
+    c->mpi.hydro.recv_rho = NULL;
+    c->mpi.hydro.recv_gradient = NULL;
+    c->mpi.grav.recv = NULL;
     c->mpi.recv_ti = NULL;
 
-    c->hydro.send_xv = NULL;
-    c->hydro.send_rho = NULL;
-    c->hydro.send_gradient = NULL;
-    c->grav.send = NULL;
+    c->mpi.hydro.send_xv = NULL;
+    c->mpi.hydro.send_rho = NULL;
+    c->mpi.hydro.send_gradient = NULL;
+    c->mpi.grav.send = NULL;
     c->mpi.send_ti = NULL;
 #endif
   }
@@ -429,11 +429,11 @@ void space_regrid(struct space *s, int verbose) {
     for (int k = 0; k < s->nr_cells; k++) {
       if (lock_init(&s->cells_top[k].hydro.lock) != 0)
         error("Failed to init spinlock for hydro.");
-      if (lock_init(&s->cells_top[k].grav.glock) != 0)
+      if (lock_init(&s->cells_top[k].grav.plock) != 0)
         error("Failed to init spinlock for gravity.");
       if (lock_init(&s->cells_top[k].grav.mlock) != 0)
         error("Failed to init spinlock for multipoles.");
-      if (lock_init(&s->cells_top[k].slock) != 0)
+      if (lock_init(&s->cells_top[k].stars.lock) != 0)
         error("Failed to init spinlock for stars.");
     }
 
@@ -452,13 +452,13 @@ void space_regrid(struct space *s, int verbose) {
           c->dmin = dmin;
           c->depth = 0;
           c->hydro.count = 0;
-          c->grav.gcount = 0;
-          c->scount = 0;
+          c->grav.count = 0;
+          c->stars.count = 0;
           c->super = c;
           c->hydro.super = c;
           c->grav.super = c;
-          c->hydro.ti_old = ti_current;
-          c->grav.ti_old_gpart = ti_current;
+          c->hydro.ti_old_part = ti_current;
+          c->grav.ti_old_part = ti_current;
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
@@ -860,7 +860,7 @@ void space_rebuild(struct space *s, int verbose) {
   sind[nr_sparts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_sparts; k++) {
     if (sind[k] < sind[k + 1]) {
-      cells_top[sind[k]].scount = k - last_sindex + 1;
+      cells_top[sind[k]].stars.count = k - last_sindex + 1;
       last_sindex = k + 1;
     }
   }
@@ -932,7 +932,7 @@ void space_rebuild(struct space *s, int verbose) {
   gind[nr_gparts] = s->nr_cells;
   for (size_t k = 0; k < nr_gparts; k++) {
     if (gind[k] < gind[k + 1]) {
-      cells_top[gind[k]].grav.gcount = k - last_gindex + 1;
+      cells_top[gind[k]].grav.count = k - last_gindex + 1;
       last_gindex = k + 1;
     }
   }
@@ -956,8 +956,8 @@ void space_rebuild(struct space *s, int verbose) {
   struct spart *sfinger = s->sparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
-    c->hydro.ti_old = ti_current;
-    c->grav.ti_old_gpart = ti_current;
+    c->hydro.ti_old_part = ti_current;
+    c->grav.ti_old_part = ti_current;
     c->grav.ti_old_multipole = ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -968,12 +968,12 @@ void space_rebuild(struct space *s, int verbose) {
     if (c->nodeID == engine_rank) {
       c->hydro.parts = finger;
       c->hydro.xparts = xfinger;
-      c->grav.gparts = gfinger;
-      c->sparts = sfinger;
+      c->grav.parts = gfinger;
+      c->stars.parts = sfinger;
       finger = &finger[c->hydro.count];
       xfinger = &xfinger[c->hydro.count];
-      gfinger = &gfinger[c->grav.gcount];
-      sfinger = &sfinger[c->scount];
+      gfinger = &gfinger[c->grav.count];
+      sfinger = &sfinger[c->stars.count];
     }
   }
   // message( "hooking up cells took %.3f %s." ,
@@ -1770,19 +1770,19 @@ void space_map_cells_pre(struct space *s, int full,
  * @param s The #space in which the cell lives.
  * @param c The #cell to split recursively.
  * @param buff A buffer for particle sorting, should be of size at least
- *        c->count or @c NULL.
+ *        c->hydro.count or @c NULL.
  * @param sbuff A buffer for particle sorting, should be of size at least
- *        c->scount or @c NULL.
+ *        c->stars.count or @c NULL.
  * @param gbuff A buffer for particle sorting, should be of size at least
- *        c->gcount or @c NULL.
+ *        c->grav.count or @c NULL.
  */
 void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *buff, struct cell_buff *sbuff,
                            struct cell_buff *gbuff) {
 
   const int count = c->hydro.count;
-  const int gcount = c->grav.gcount;
-  const int scount = c->scount;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
   const int with_gravity = s->gravity;
   const int depth = c->depth;
   int maxdepth = 0;
@@ -1792,8 +1792,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
   struct part *parts = c->hydro.parts;
-  struct gpart *gparts = c->grav.gparts;
-  struct spart *sparts = c->sparts;
+  struct gpart *gparts = c->grav.parts;
+  struct spart *sparts = c->stars.parts;
   struct xpart *xparts = c->hydro.xparts;
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
@@ -1857,10 +1857,10 @@ void space_split_recursive(struct space *s, struct cell *c,
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
       cp->hydro.count = 0;
-      cp->grav.gcount = 0;
-      cp->scount = 0;
-      cp->hydro.ti_old = c->hydro.ti_old;
-      cp->grav.ti_old_gpart = c->grav.ti_old_gpart;
+      cp->grav.count = 0;
+      cp->stars.count = 0;
+      cp->hydro.ti_old_part = c->hydro.ti_old_part;
+      cp->grav.ti_old_part = c->grav.ti_old_part;
       cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
       cp->loc[0] = c->loc[0];
       cp->loc[1] = c->loc[1];
@@ -1875,7 +1875,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->depth = c->depth + 1;
       cp->split = 0;
       cp->hydro.h_max = 0.f;
-      cp->hydro.dx_max = 0.f;
+      cp->hydro.dx_max_part = 0.f;
       cp->hydro.dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
@@ -1894,8 +1894,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Split the cell's partcle data. */
-    cell_split(c, c->hydro.parts - s->parts, c->sparts - s->sparts, buff, sbuff,
-               gbuff);
+    cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts, buff,
+               sbuff, gbuff);
 
     /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
@@ -1907,7 +1907,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       struct cell *cp = c->progeny[k];
 
       /* Remove any progeny with zero particles. */
-      if (cp->hydro.count == 0 && cp->grav.gcount == 0 && cp->scount == 0) {
+      if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0) {
 
         space_recycle(s, cp);
         c->progeny[k] = NULL;
@@ -1920,8 +1920,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
-        progeny_gbuff += cp->grav.gcount;
-        progeny_sbuff += cp->scount;
+        progeny_gbuff += cp->grav.count;
+        progeny_sbuff += cp->stars.count;
 
         /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
@@ -2110,7 +2110,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (s->gravity) {
       if (gcount > 0) {
 
-        gravity_P2M(c->grav.multipole, c->grav.gparts, c->grav.gcount);
+        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count);
 
       } else {
 
@@ -2149,10 +2149,10 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->owner = ((c->hydro.parts - s->parts) % s->nr_parts) * s->nr_queues /
                s->nr_parts;
   else if (s->nr_sparts > 0)
-    c->owner =
-        ((c->sparts - s->sparts) % s->nr_sparts) * s->nr_queues / s->nr_sparts;
+    c->owner = ((c->stars.parts - s->sparts) % s->nr_sparts) * s->nr_queues /
+               s->nr_sparts;
   else if (s->nr_gparts > 0)
-    c->owner = ((c->grav.gparts - s->gparts) % s->nr_gparts) * s->nr_queues /
+    c->owner = ((c->grav.parts - s->gparts) % s->nr_gparts) * s->nr_queues /
                s->nr_gparts;
   else
     c->owner = 0; /* Ok, there is really nothing on this rank... */
@@ -2203,8 +2203,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 void space_recycle(struct space *s, struct cell *c) {
 
   /* Clear the cell. */
-  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0 ||
-      lock_destroy(&c->mlock) != 0 || lock_destroy(&c->slock) != 0)
+  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
+      lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0)
     error("Failed to destroy spinlocks.");
 
   /* Lock the space. */
@@ -2252,8 +2252,8 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   /* Clean up the list of cells. */
   for (struct cell *c = cell_list_begin; c != NULL; c = c->next) {
     /* Clear the cell. */
-    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0 ||
-        lock_destroy(&c->mlock) != 0 || lock_destroy(&c->slock) != 0)
+    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
+        lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0)
       error("Failed to destroy spinlocks.");
 
     /* Count this cell. */
@@ -2349,9 +2349,9 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
     cells[j]->grav.multipole = temp;
     cells[j]->nodeID = -1;
     if (lock_init(&cells[j]->hydro.lock) != 0 ||
-        lock_init(&cells[j]->grav.glock) != 0 ||
+        lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
-        lock_init(&cells[j]->slock) != 0)
+        lock_init(&cells[j]->stars.lock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
 }

@@ -39,15 +39,16 @@ __attribute__((always_inline)) INLINE static int cell_are_part_drifted(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->hydro.ti_old > e->ti_current)
+  if (c->hydro.ti_old_part > e->ti_current)
     error(
-        "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
+        "Cell has been drifted too far forward in time! c->ti_old_part=%lld "
+        "(t=%e) "
         "and e->ti_current=%lld (t=%e, a=%e)",
-        c->hydro.ti_old, c->hydro.ti_old * e->time_base, e->ti_current,
-        e->ti_current * e->time_base, e->cosmology->a);
+        c->hydro.ti_old_part, c->hydro.ti_old_part * e->time_base,
+        e->ti_current, e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
-  return (c->hydro.ti_old == e->ti_current);
+  return (c->hydro.ti_old_part == e->ti_current);
 }
 
 /**
@@ -62,15 +63,15 @@ __attribute__((always_inline)) INLINE static int cell_are_gpart_drifted(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grav.ti_old_gpart > e->ti_current)
+  if (c->grav.ti_old_part > e->ti_current)
     error(
         "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
         "and e->ti_current=%lld (t=%e)",
-        c->grav.ti_old_gpart, c->grav.ti_old_gpart * e->time_base,
-        e->ti_current, e->ti_current * e->time_base);
+        c->grav.ti_old_part, c->grav.ti_old_part * e->time_base, e->ti_current,
+        e->ti_current * e->time_base);
 #endif
 
-  return (c->grav.ti_old_gpart == e->ti_current);
+  return (c->grav.ti_old_part == e->ti_current);
 }
 
 /* Are cells / particles active for regular tasks ? */

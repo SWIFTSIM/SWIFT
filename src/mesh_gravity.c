@@ -185,8 +185,8 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho, int N,
  */
 void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, int N,
                             double fac, const double dim[3]) {
-  const int gcount = c->grav.gcount;
-  const struct gpart* gparts = c->grav.gparts;
+  const int gcount = c->grav.count;
+  const struct gpart* gparts = c->grav.parts;
 
   /* Assign all the gpart of that cell to the mesh */
   for (int i = 0; i < gcount; ++i)

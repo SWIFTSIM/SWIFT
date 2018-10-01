@@ -137,32 +137,32 @@ int main(int argc, char *argv[]) {
   c.loc[0] = 0.;
   c.loc[1] = 0.;
   c.loc[2] = 0.;
-  c.grav.gcount = 1 + num_tests;
-  c.grav.ti_old_gpart = 8;
+  c.grav.count = 1 + num_tests;
+  c.grav.ti_old_part = 8;
   c.grav.ti_end_min = 8;
   c.grav.ti_end_max = 8;
 
-  if (posix_memalign((void **)&c.grav.gparts, gpart_align,
-                     c.grav.gcount * sizeof(struct gpart)) != 0)
+  if (posix_memalign((void **)&c.grav.parts, gpart_align,
+                     c.grav.count * sizeof(struct gpart)) != 0)
     error("Impossible to allocate memory for the gparts.");
-  bzero(c.grav.gparts, c.grav.gcount * sizeof(struct gpart));
+  bzero(c.grav.parts, c.grav.count * sizeof(struct gpart));
 
   /* Create the massive particle */
-  c.grav.gparts[0].x[0] = 0.;
-  c.grav.gparts[0].x[1] = 0.5;
-  c.grav.gparts[0].x[2] = 0.5;
-  c.grav.gparts[0].mass = 1.;
-  c.grav.gparts[0].time_bin = 1;
-  c.grav.gparts[0].type = swift_type_dark_matter;
-  c.grav.gparts[0].id_or_neg_offset = 1;
+  c.grav.parts[0].x[0] = 0.;
+  c.grav.parts[0].x[1] = 0.5;
+  c.grav.parts[0].x[2] = 0.5;
+  c.grav.parts[0].mass = 1.;
+  c.grav.parts[0].time_bin = 1;
+  c.grav.parts[0].type = swift_type_dark_matter;
+  c.grav.parts[0].id_or_neg_offset = 1;
 #ifdef SWIFT_DEBUG_CHECKS
-  c.grav.gparts[0].ti_drift = 8;
+  c.grav.parts[0].ti_drift = 8;
 #endif
 
   /* Create the mass-less particles */
   for (int n = 1; n < num_tests + 1; ++n) {
 
-    struct gpart *gp = &c.grav.gparts[n];
+    struct gpart *gp = &c.grav.parts[n];
 
     gp->x[0] = n / ((double)num_tests);
     gp->x[1] = 0.5;
@@ -181,22 +181,22 @@ int main(int argc, char *argv[]) {
 
   /* Verify everything */
   for (int n = 1; n < num_tests + 1; ++n) {
-    const struct gpart *gp = &c.grav.gparts[n];
+    const struct gpart *gp = &c.grav.parts[n];
 
     const double epsilon = gravity_get_softening(gp, &props);
 
 #if defined(POTENTIAL_GRAVITY)
-    double pot_true = potential(c.grav.gparts[0].mass, gp->x[0], epsilon, rlr);
+    double pot_true = potential(c.grav.parts[0].mass, gp->x[0], epsilon, rlr);
     check_value(gp->potential, pot_true, "potential");
 #endif
 
     double acc_true =
-        acceleration(c.grav.gparts[0].mass, gp->x[0], epsilon, rlr);
+        acceleration(c.grav.parts[0].mass, gp->x[0], epsilon, rlr);
     check_value(gp->a_grav[0], acc_true, "acceleration");
 
     // message("x=%e f=%e f_true=%e", gp->x[0], gp->a_grav[0], acc_true);
   }
 
-  free(c.grav.gparts);
+  free(c.grav.parts);
   return 0;
 }

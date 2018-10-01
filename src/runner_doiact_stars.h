@@ -40,9 +40,9 @@ void runner_doself_stars_density(struct runner *r, struct cell *c, int timer) {
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  const int scount = c->scount;
+  const int scount = c->stars.count;
   const int count = c->hydro.count;
-  struct spart *restrict sparts = c->sparts;
+  struct spart *restrict sparts = c->stars.parts;
   struct part *restrict parts = c->hydro.parts;
 
   /* Loop over the sparts in ci. */
@@ -101,9 +101,9 @@ void runner_dosubpair_stars_density(struct runner *r, struct cell *restrict ci,
   /* Anything to do here? */
   if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
 
-  const int scount_i = ci->scount;
+  const int scount_i = ci->stars.count;
   const int count_j = cj->hydro.count;
-  struct spart *restrict sparts_i = ci->sparts;
+  struct spart *restrict sparts_i = ci->stars.parts;
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
@@ -382,15 +382,16 @@ void runner_dosub_subset_stars_density(struct runner *r, struct cell *ci,
   if (!cell_is_active_stars(ci, e) &&
       (cj == NULL || !cell_is_active_stars(cj, e)))
     return;
-  if (ci->scount == 0 || (cj != NULL && cj->scount == 0)) return;
+  if (ci->stars.count == 0 || (cj != NULL && cj->stars.count == 0)) return;
 
   /* Find out in which sub-cell of ci the parts are. */
   struct cell *sub = NULL;
   if (ci->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL) {
-        if (&sparts[ind[0]] >= &ci->progeny[k]->sparts[0] &&
-            &sparts[ind[0]] < &ci->progeny[k]->sparts[ci->progeny[k]->scount]) {
+        if (&sparts[ind[0]] >= &ci->progeny[k]->stars.parts[0] &&
+            &sparts[ind[0]] <
+                &ci->progeny[k]->stars.parts[ci->progeny[k]->stars.count]) {
           sub = ci->progeny[k];
           break;
         }
@@ -1067,7 +1068,7 @@ void runner_dosub_pair_stars_density(struct runner *r, struct cell *ci,
 
   /* Should we even bother? */
   if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
-  if (ci->scount == 0 || cj->scount == 0) return;
+  if (ci->stars.count == 0 || cj->stars.count == 0) return;
 
   /* Get the type of pair if not specified explicitly. */
   double shift[3];
@@ -1386,7 +1387,7 @@ void runner_dosub_self_stars_density(struct runner *r, struct cell *ci,
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->scount == 0 || !cell_is_active_stars(ci, r->e)) return;
+  if (ci->stars.count == 0 || !cell_is_active_stars(ci, r->e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_stars_task(ci)) {

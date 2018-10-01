@@ -122,7 +122,7 @@ int cell_link_parts(struct cell *c, struct part *parts) {
  */
 int cell_link_gparts(struct cell *c, struct gpart *gparts) {
 
-  c->grav.gparts = gparts;
+  c->grav.parts = gparts;
 
   /* Fill the progeny recursively, depth-first. */
   if (c->split) {
@@ -134,7 +134,7 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
   }
 
   /* Return the total number of linked particles. */
-  return c->grav.gcount;
+  return c->grav.count;
 }
 
 /**
@@ -147,7 +147,7 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
  */
 int cell_link_sparts(struct cell *c, struct spart *sparts) {
 
-  c->sparts = sparts;
+  c->stars.parts = sparts;
 
   /* Fill the progeny recursively, depth-first. */
   if (c->split) {
@@ -159,7 +159,7 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
   }
 
   /* Return the total number of linked particles. */
-  return c->scount;
+  return c->stars.count;
 }
 
 /**
@@ -184,12 +184,12 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->hydro.ti_end_max = c->hydro.ti_end_max;
   pc->grav.ti_end_min = c->grav.ti_end_min;
   pc->grav.ti_end_max = c->grav.ti_end_max;
-  pc->hydro.ti_old = c->hydro.ti_old;
-  pc->grav.ti_old_gpart = c->grav.ti_old_gpart;
+  pc->hydro.ti_old_part = c->hydro.ti_old_part;
+  pc->grav.ti_old_part = c->grav.ti_old_part;
   pc->grav.ti_old_multipole = c->grav.ti_old_multipole;
   pc->hydro.count = c->hydro.count;
-  pc->grav.gcount = c->grav.gcount;
-  pc->scount = c->scount;
+  pc->grav.count = c->grav.count;
+  pc->stars.count = c->stars.count;
 
   /* Copy the Multipole related information */
   if (with_gravity) {
@@ -286,12 +286,12 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->hydro.ti_end_max = pc->hydro.ti_end_max;
   c->grav.ti_end_min = pc->grav.ti_end_min;
   c->grav.ti_end_max = pc->grav.ti_end_max;
-  c->hydro.ti_old = pc->hydro.ti_old;
-  c->grav.ti_old_gpart = pc->grav.ti_old_gpart;
+  c->hydro.ti_old_part = pc->hydro.ti_old_part;
+  c->grav.ti_old_part = pc->grav.ti_old_part;
   c->grav.ti_old_multipole = pc->grav.ti_old_multipole;
   c->hydro.count = pc->hydro.count;
-  c->grav.gcount = pc->grav.gcount;
-  c->scount = pc->scount;
+  c->grav.count = pc->grav.count;
+  c->stars.count = pc->stars.count;
 #ifdef SWIFT_DEBUG_CHECKS
   c->cellID = pc->cellID;
 #endif
@@ -321,8 +321,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       struct cell *temp;
       space_getcells(s, 1, &temp);
       temp->hydro.count = 0;
-      temp->grav.gcount = 0;
-      temp->scount = 0;
+      temp->grav.count = 0;
+      temp->stars.count = 0;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
@@ -335,7 +335,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       if (k & 1) temp->loc[2] += temp->width[2];
       temp->depth = c->depth + 1;
       temp->split = 0;
-      temp->hydro.dx_max = 0.f;
+      temp->hydro.dx_max_part = 0.f;
       temp->hydro.dx_max_sort = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
@@ -409,7 +409,7 @@ int cell_pack_end_step(struct cell *restrict c,
   pcells[0].hydro.ti_end_max = c->hydro.ti_end_max;
   pcells[0].grav.ti_end_min = c->grav.ti_end_min;
   pcells[0].grav.ti_end_max = c->grav.ti_end_max;
-  pcells[0].hydro.dx_max = c->hydro.dx_max;
+  pcells[0].hydro.dx_max_part = c->hydro.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -445,7 +445,7 @@ int cell_unpack_end_step(struct cell *restrict c,
   c->hydro.ti_end_max = pcells[0].hydro.ti_end_max;
   c->grav.ti_end_min = pcells[0].grav.ti_end_min;
   c->grav.ti_end_max = pcells[0].grav.ti_end_max;
-  c->hydro.dx_max = pcells[0].hydro.dx_max;
+  c->hydro.dx_max_part = pcells[0].hydro.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -603,16 +603,16 @@ int cell_glocktree(struct cell *c) {
   TIMER_TIC
 
   /* First of all, try to lock this cell. */
-  if (c->grav.ghold || lock_trylock(&c->grav.glock) != 0) {
+  if (c->grav.phold || lock_trylock(&c->grav.plock) != 0) {
     TIMER_TOC(timer_locktree);
     return 1;
   }
 
   /* Did somebody hold this cell in the meantime? */
-  if (c->grav.ghold) {
+  if (c->grav.phold) {
 
     /* Unlock this cell. */
-    if (lock_unlock(&c->grav.glock) != 0) error("Failed to unlock cell.");
+    if (lock_unlock(&c->grav.plock) != 0) error("Failed to unlock cell.");
 
     /* Admit defeat. */
     TIMER_TOC(timer_locktree);
@@ -624,13 +624,13 @@ int cell_glocktree(struct cell *c) {
   for (finger = c->parent; finger != NULL; finger = finger->parent) {
 
     /* Lock this cell. */
-    if (lock_trylock(&finger->grav.glock) != 0) break;
+    if (lock_trylock(&finger->grav.plock) != 0) break;
 
     /* Increment the hold. */
-    atomic_inc(&finger->grav.ghold);
+    atomic_inc(&finger->grav.phold);
 
     /* Unlock the cell. */
-    if (lock_unlock(&finger->grav.glock) != 0) error("Failed to unlock cell.");
+    if (lock_unlock(&finger->grav.plock) != 0) error("Failed to unlock cell.");
   }
 
   /* If we reached the top of the tree, we're done. */
@@ -645,10 +645,10 @@ int cell_glocktree(struct cell *c) {
     /* Undo the holds up to finger. */
     for (struct cell *finger2 = c->parent; finger2 != finger;
          finger2 = finger2->parent)
-      atomic_dec(&finger2->grav.ghold);
+      atomic_dec(&finger2->grav.phold);
 
     /* Unlock this cell. */
-    if (lock_unlock(&c->grav.glock) != 0) error("Failed to unlock cell.");
+    if (lock_unlock(&c->grav.plock) != 0) error("Failed to unlock cell.");
 
     /* Admit defeat. */
     TIMER_TOC(timer_locktree);
@@ -731,16 +731,16 @@ int cell_slocktree(struct cell *c) {
   TIMER_TIC
 
   /* First of all, try to lock this cell. */
-  if (c->shold || lock_trylock(&c->slock) != 0) {
+  if (c->stars.hold || lock_trylock(&c->stars.lock) != 0) {
     TIMER_TOC(timer_locktree);
     return 1;
   }
 
   /* Did somebody hold this cell in the meantime? */
-  if (c->shold) {
+  if (c->stars.hold) {
 
     /* Unlock this cell. */
-    if (lock_unlock(&c->slock) != 0) error("Failed to unlock cell.");
+    if (lock_unlock(&c->stars.lock) != 0) error("Failed to unlock cell.");
 
     /* Admit defeat. */
     TIMER_TOC(timer_locktree);
@@ -752,13 +752,13 @@ int cell_slocktree(struct cell *c) {
   for (finger = c->parent; finger != NULL; finger = finger->parent) {
 
     /* Lock this cell. */
-    if (lock_trylock(&finger->slock) != 0) break;
+    if (lock_trylock(&finger->stars.lock) != 0) break;
 
     /* Increment the hold. */
-    atomic_inc(&finger->shold);
+    atomic_inc(&finger->stars.hold);
 
     /* Unlock the cell. */
-    if (lock_unlock(&finger->slock) != 0) error("Failed to unlock cell.");
+    if (lock_unlock(&finger->stars.lock) != 0) error("Failed to unlock cell.");
   }
 
   /* If we reached the top of the tree, we're done. */
@@ -773,10 +773,10 @@ int cell_slocktree(struct cell *c) {
     /* Undo the holds up to finger. */
     for (struct cell *finger2 = c->parent; finger2 != finger;
          finger2 = finger2->parent)
-      atomic_dec(&finger2->shold);
+      atomic_dec(&finger2->stars.hold);
 
     /* Unlock this cell. */
-    if (lock_unlock(&c->slock) != 0) error("Failed to unlock cell.");
+    if (lock_unlock(&c->stars.lock) != 0) error("Failed to unlock cell.");
 
     /* Admit defeat. */
     TIMER_TOC(timer_locktree);
@@ -813,11 +813,11 @@ void cell_gunlocktree(struct cell *c) {
   TIMER_TIC
 
   /* First of all, try to unlock this cell. */
-  if (lock_unlock(&c->grav.glock) != 0) error("Failed to unlock cell.");
+  if (lock_unlock(&c->grav.plock) != 0) error("Failed to unlock cell.");
 
   /* Climb up the tree and unhold the parents. */
   for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
-    atomic_dec(&finger->grav.ghold);
+    atomic_dec(&finger->grav.phold);
 
   TIMER_TOC(timer_locktree);
 }
@@ -851,11 +851,11 @@ void cell_sunlocktree(struct cell *c) {
   TIMER_TIC
 
   /* First of all, try to unlock this cell. */
-  if (lock_unlock(&c->slock) != 0) error("Failed to unlock cell.");
+  if (lock_unlock(&c->stars.lock) != 0) error("Failed to unlock cell.");
 
   /* Climb up the tree and unhold the parents. */
   for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
-    atomic_dec(&finger->shold);
+    atomic_dec(&finger->stars.hold);
 
   TIMER_TOC(timer_locktree);
 }
@@ -867,23 +867,24 @@ void cell_sunlocktree(struct cell *c) {
  * @param parts_offset Offset of the cell parts array relative to the
  *        space's parts array, i.e. c->hydro.parts - s->parts.
  * @param sparts_offset Offset of the cell sparts array relative to the
- *        space's sparts array, i.e. c->sparts - s->sparts.
- * @param buff A buffer with at least max(c->hydro.count, c->grav.gcount)
+ *        space's sparts array, i.e. c->stars.parts - s->stars.parts.
+ * @param buff A buffer with at least max(c->hydro.count, c->grav.count)
  * entries, used for sorting indices.
- * @param sbuff A buffer with at least max(c->scount, c->grav.gcount) entries,
- *        used for sorting indices for the sparts.
- * @param gbuff A buffer with at least max(c->hydro.count, c->grav.gcount)
+ * @param sbuff A buffer with at least max(c->stars.count, c->grav.count)
+ * entries, used for sorting indices for the sparts.
+ * @param gbuff A buffer with at least max(c->hydro.count, c->grav.count)
  * entries, used for sorting indices for the gparts.
  */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                 struct cell_buff *buff, struct cell_buff *sbuff,
                 struct cell_buff *gbuff) {
 
-  const int count = c->hydro.count, gcount = c->grav.gcount, scount = c->scount;
+  const int count = c->hydro.count, gcount = c->grav.count,
+            scount = c->stars.count;
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
-  struct gpart *gparts = c->grav.gparts;
-  struct spart *sparts = c->sparts;
+  struct gpart *gparts = c->grav.parts;
+  struct spart *sparts = c->stars.parts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
                            c->loc[2] + c->width[2] / 2};
@@ -1075,8 +1076,8 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
 
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
-    c->progeny[k]->scount = bucket_count[k];
-    c->progeny[k]->sparts = &c->sparts[bucket_offset[k]];
+    c->progeny[k]->stars.count = bucket_count[k];
+    c->progeny[k]->stars.parts = &c->stars.parts[bucket_offset[k]];
   }
 
   /* Finally, do the same song and dance for the gparts. */
@@ -1137,8 +1138,8 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
 
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
-    c->progeny[k]->grav.gcount = bucket_count[k];
-    c->progeny[k]->grav.gparts = &c->grav.gparts[bucket_offset[k]];
+    c->progeny[k]->grav.count = bucket_count[k];
+    c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
   }
 }
 
@@ -1226,9 +1227,9 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
   /* Only check local cells */
   if (c->nodeID != engine_rank) return;
 
-  if (c->hydro.ti_old != ti_drift)
+  if (c->hydro.ti_old_part != ti_drift)
     error("Cell in an incorrect time-zone! c->hydro.ti_old=%lld ti_drift=%lld",
-          c->hydro.ti_old, ti_drift);
+          c->hydro.ti_old_part, ti_drift);
 
   for (int i = 0; i < c->hydro.count; ++i)
     if (c->hydro.parts[i].ti_drift != ti_drift)
@@ -1257,21 +1258,21 @@ void cell_check_gpart_drift_point(struct cell *c, void *data) {
   /* Only check local cells */
   if (c->nodeID != engine_rank) return;
 
-  if (c->grav.ti_old_gpart != ti_drift)
+  if (c->grav.ti_old_part != ti_drift)
     error(
-        "Cell in an incorrect time-zone! c->grav.ti_old_gpart=%lld "
+        "Cell in an incorrect time-zone! c->grav.ti_old_part=%lld "
         "ti_drift=%lld",
-        c->grav.ti_old_gpart, ti_drift);
+        c->grav.ti_old_part, ti_drift);
 
-  for (int i = 0; i < c->grav.gcount; ++i)
-    if (c->grav.gparts[i].ti_drift != ti_drift)
+  for (int i = 0; i < c->grav.count; ++i)
+    if (c->grav.parts[i].ti_drift != ti_drift)
       error("g-part in an incorrect time-zone! gp->ti_drift=%lld ti_drift=%lld",
-            c->grav.gparts[i].ti_drift, ti_drift);
+            c->grav.parts[i].ti_drift, ti_drift);
 
-  for (int i = 0; i < c->scount; ++i)
-    if (c->sparts[i].ti_drift != ti_drift)
+  for (int i = 0; i < c->stars.count; ++i)
+    if (c->stars.parts[i].ti_drift != ti_drift)
       error("s-part in an incorrect time-zone! sp->ti_drift=%lld ti_drift=%lld",
-            c->sparts[i].ti_drift, ti_drift);
+            c->stars.parts[i].ti_drift, ti_drift);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -1397,8 +1398,8 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current) {
 
   } else {
 
-    if (c->grav.gcount > 0) {
-      gravity_P2M(c->grav.multipole, c->grav.gparts, c->grav.gcount);
+    if (c->grav.count > 0) {
+      gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count);
       const double dx =
           c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] * 0.5
               ? c->grav.multipole->CoM[0] - c->loc[0]
@@ -1489,10 +1490,10 @@ void cell_check_multipole(struct cell *c) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) cell_check_multipole(c->progeny[k]);
 
-  if (c->grav.gcount > 0) {
+  if (c->grav.count > 0) {
 
     /* Brute-force calculation */
-    gravity_P2M(&ma, c->grav.gparts, c->grav.gcount);
+    gravity_P2M(&ma, c->grav.parts, c->grav.count);
 
     /* Now  compare the multipole expansion */
     if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
@@ -1599,10 +1600,10 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
      if this has not yet been done. */
   if (c == c->grav.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->grav.drift_gpart == NULL)
-      error("Trying to activate un-existing c->grav.drift_gpart");
+    if (c->grav.drift == NULL)
+      error("Trying to activate un-existing c->grav.drift");
 #endif
-    scheduler_activate(s, c->grav.drift_gpart);
+    scheduler_activate(s, c->grav.drift);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !parent->grav.do_sub_drift;
@@ -1610,10 +1611,10 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
       parent->grav.do_sub_drift = 1;
       if (parent == c->grav.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if (parent->grav.drift_gpart == NULL)
-          error("Trying to activate un-existing parent->grav.drift_gpart");
+        if (parent->grav.drift == NULL)
+          error("Trying to activate un-existing parent->grav.drift");
 #endif
-        scheduler_activate(s, parent->grav.drift_gpart);
+        scheduler_activate(s, parent->grav.drift);
         break;
       }
     }
@@ -1689,10 +1690,10 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
   const struct engine *e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
-  ci->hydro.dx_max_old = ci->hydro.dx_max;
+  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
   ci->hydro.h_max_old = ci->hydro.h_max;
   if (cj != NULL) {
-    cj->hydro.dx_max_old = cj->hydro.dx_max;
+    cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
     cj->hydro.h_max_old = cj->hydro.h_max;
   }
 
@@ -2062,7 +2063,7 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
   if (cj == NULL) {
 
     /* Do anything? */
-    if (ci->grav.gcount == 0 || !cell_is_active_gravity(ci, e)) return;
+    if (ci->grav.count == 0 || !cell_is_active_gravity(ci, e)) return;
 
     /* Recurse? */
     if (ci->split) {
@@ -2090,7 +2091,7 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     /* Anything to do here? */
     if (!cell_is_active_gravity(ci, e) && !cell_is_active_gravity(cj, e))
       return;
-    if (ci->grav.gcount == 0 || cj->grav.gcount == 0) return;
+    if (ci->grav.count == 0 || cj->grav.count == 0) return;
 
     /* Atomically drift the multipole in ci */
     lock_lock(&ci->grav.mlock);
@@ -2279,12 +2280,12 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
-          scheduler_activate(s, ci->hydro.recv_xv);
+          scheduler_activate(s, ci->mpi.hydro.recv_xv);
           if (ci_active) {
-            scheduler_activate(s, ci->hydro.recv_rho);
+            scheduler_activate(s, ci->mpi.hydro.recv_rho);
 
 #ifdef EXTRA_HYDRO_LOOP
-            scheduler_activate(s, ci->hydro.recv_gradient);
+            scheduler_activate(s, ci->mpi.hydro.recv_gradient);
 #endif
           }
         }
@@ -2295,7 +2296,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
-          scheduler_activate_send(s, cj->hydro.send_xv, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -2303,10 +2304,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
           /* If the local cell is also active, more stuff will be needed. */
           if (cj_active) {
-            scheduler_activate_send(s, cj->hydro.send_rho, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.hydro.send_rho, ci_nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
-            scheduler_activate_send(s, cj->hydro.send_gradient, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.hydro.send_gradient, ci_nodeID);
 #endif
           }
         }
@@ -2318,12 +2319,12 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
-          scheduler_activate(s, cj->hydro.recv_xv);
+          scheduler_activate(s, cj->mpi.hydro.recv_xv);
           if (cj_active) {
-            scheduler_activate(s, cj->hydro.recv_rho);
+            scheduler_activate(s, cj->mpi.hydro.recv_rho);
 
 #ifdef EXTRA_HYDRO_LOOP
-            scheduler_activate(s, cj->hydro.recv_gradient);
+            scheduler_activate(s, cj->mpi.hydro.recv_gradient);
 #endif
           }
         }
@@ -2334,7 +2335,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
 
-          scheduler_activate_send(s, ci->hydro.send_xv, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -2343,10 +2344,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           /* If the local cell is also active, more stuff will be needed. */
           if (ci_active) {
 
-            scheduler_activate_send(s, ci->hydro.send_rho, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.hydro.send_rho, cj_nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
-            scheduler_activate_send(s, ci->hydro.send_gradient, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.hydro.send_gradient, cj_nodeID);
 #endif
           }
         }
@@ -2440,7 +2441,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       if (ci_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (cj_active) scheduler_activate(s, ci->grav.recv);
+        if (cj_active) scheduler_activate(s, ci->mpi.grav.recv);
 
         /* If the foreign cell is active, we want its ti_end values. */
         if (ci_active) scheduler_activate(s, ci->mpi.recv_ti);
@@ -2448,7 +2449,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
-          scheduler_activate_send(s, cj->grav.send, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.grav.send, ci_nodeID);
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
@@ -2462,7 +2463,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       } else if (cj_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active) scheduler_activate(s, cj->grav.recv);
+        if (ci_active) scheduler_activate(s, cj->mpi.grav.recv);
 
         /* If the foreign cell is active, we want its ti_end values. */
         if (cj_active) scheduler_activate(s, cj->mpi.recv_ti);
@@ -2470,7 +2471,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
 
-          scheduler_activate_send(s, ci->grav.send, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.grav.send, cj_nodeID);
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
@@ -2547,7 +2548,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
   int rebuild = 0;
 
   /* Un-skip the density tasks involved with this cell. */
-  for (struct link *l = c->stars_density; l != NULL; l = l->next) {
+  for (struct link *l = c->stars.density; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
@@ -2679,9 +2680,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_stars(c, e)) {
 
-    if (c->stars_ghost_in != NULL) scheduler_activate(s, c->stars_ghost_in);
-    if (c->stars_ghost_out != NULL) scheduler_activate(s, c->stars_ghost_out);
-    if (c->stars_ghost != NULL) scheduler_activate(s, c->stars_ghost);
+    if (c->stars.ghost_in != NULL) scheduler_activate(s, c->stars.ghost_in);
+    if (c->stars.ghost_out != NULL) scheduler_activate(s, c->stars.ghost_out);
+    if (c->stars.ghost != NULL) scheduler_activate(s, c->stars.ghost);
   }
 
   return rebuild;
@@ -2820,7 +2821,7 @@ int cell_has_tasks(struct cell *c) {
 void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
   const float hydro_h_max = e->hydro_properties->h_max;
-  const integertime_t ti_old_part = c->hydro.ti_old;
+  const integertime_t ti_old_part = c->hydro.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct part *const parts = c->hydro.parts;
   struct xpart *const xparts = c->hydro.xparts;
@@ -2852,7 +2853,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         cell_drift_part(cp, e, force);
 
         /* Update */
-        dx_max = max(dx_max, cp->hydro.dx_max);
+        dx_max = max(dx_max, cp->hydro.dx_max_part);
         dx_max_sort = max(dx_max_sort, cp->hydro.dx_max_sort);
         cell_h_max = max(cell_h_max, cp->hydro.h_max);
       }
@@ -2860,11 +2861,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
     /* Store the values */
     c->hydro.h_max = cell_h_max;
-    c->hydro.dx_max = dx_max;
+    c->hydro.dx_max_part = dx_max;
     c->hydro.dx_max_sort = dx_max_sort;
 
     /* Update the time of the last drift */
-    c->hydro.ti_old = ti_current;
+    c->hydro.ti_old_part = ti_current;
 
   } else if (!c->split && force && ti_current > ti_old_part) {
 
@@ -2966,11 +2967,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
     /* Store the values */
     c->hydro.h_max = cell_h_max;
-    c->hydro.dx_max = dx_max;
+    c->hydro.dx_max_part = dx_max;
     c->hydro.dx_max_sort = dx_max_sort;
 
     /* Update the time of the last drift */
-    c->hydro.ti_old = ti_current;
+    c->hydro.ti_old_part = ti_current;
   }
 
   /* Clear the drift flags. */
@@ -2987,10 +2988,10 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
  */
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
-  const integertime_t ti_old_gpart = c->grav.ti_old_gpart;
+  const integertime_t ti_old_gpart = c->grav.ti_old_part;
   const integertime_t ti_current = e->ti_current;
-  struct gpart *const gparts = c->grav.gparts;
-  struct spart *const sparts = c->sparts;
+  struct gpart *const gparts = c->grav.parts;
+  struct spart *const sparts = c->stars.parts;
 
   /* Drift irrespective of cell flags? */
   force |= c->grav.do_drift;
@@ -3017,7 +3018,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
     }
 
     /* Update the time of the last drift */
-    c->grav.ti_old_gpart = ti_current;
+    c->grav.ti_old_part = ti_current;
 
   } else if (!c->split && force && ti_current > ti_old_gpart) {
 
@@ -3030,7 +3031,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       dt_drift = (ti_current - ti_old_gpart) * e->time_base;
 
     /* Loop over all the g-particles in the cell */
-    const size_t nr_gparts = c->grav.gcount;
+    const size_t nr_gparts = c->grav.count;
     for (size_t k = 0; k < nr_gparts; k++) {
 
       /* Get a handle on the gpart. */
@@ -3075,7 +3076,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
     }
 
     /* Loop over all the star particles in the cell */
-    const size_t nr_sparts = c->scount;
+    const size_t nr_sparts = c->stars.count;
     for (size_t k = 0; k < nr_sparts; k++) {
 
       /* Get a handle on the spart. */
@@ -3097,7 +3098,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
     }
 
     /* Update the time of the last drift */
-    c->grav.ti_old_gpart = ti_current;
+    c->grav.ti_old_part = ti_current;
   }
 
   /* Clear the drift flags. */
