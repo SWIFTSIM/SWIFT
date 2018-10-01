@@ -16,34 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_VELOCIRAPTOR_PART_H
-#define SWIFT_VELOCIRAPTOR_PART_H
 
-#include "part_type.h"
+/* Config parameters. */
+#include "../config.h"
 
-/* SWIFT/VELOCIraptor particle. */
-struct swift_vel_part {
+/* Some standard headers. */
+#include <stddef.h>
 
-  /*! Particle ID. */
-  long long id;
+/* Local includes. */
+#include "velociraptor_interface.h"
+#include "swift_velociraptor_part.h"
 
-  /*! Particle position. */
-  double x[3];
-
-  /*! Particle velocity. */
-  float v[3];
-
-  /*! Particle mass. */
-  float mass;
-
-  /*! Gravitational potential */
-  float potential;
-
-  /*! Internal energy of gas particle */
-  float u;
-
-  /*! Type of the #gpart (DM, gas, star, ...) */
-  enum part_type type;
-};
-
-#endif /* SWIFT_VELOCIRAPTOR_PART_H */
+/* Dummy VELOCIraptor interface for testing compilation without linking the actual VELOCIraptor library. */
+#ifdef HAVE_DUMMY_VELOCIRAPTOR
+int InitVelociraptor(char *config_name, char *output_name,
+                     struct cosmoinfo cosmo_info, struct unitinfo unit_info,
+                     struct siminfo sim_info){return 0;}
+int InvokeVelociraptor(const size_t num_gravity_parts,
+                       const size_t num_hydro_parts,
+                       struct swift_vel_part *swift_parts,
+                       const int *cell_node_ids, char *output_name) {return 0;}
+#endif /* HAVE_DUMMY_VELOCIRAPTOR */
