@@ -190,12 +190,13 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
       }
     }
   }
-  if (u < hydro_properties->minimal_internal_energy*cooling->internal_energy_scale) u = hydro_properties->minimal_internal_energy*cooling->internal_energy_scale;
+  float delta_u = u - u_start*cooling->internal_energy_scale;
+  if (u_start*cooling->internal_energy_scale + 2.0*delta_u < hydro_properties->minimal_internal_energy*cooling->internal_energy_scale) u = hydro_properties->minimal_internal_energy*cooling->internal_energy_scale;
 
   // calculate du/dt
   float cooling_du_dt = 0.0;
   if (dt > 0) {
-    cooling_du_dt = (u/cooling->internal_energy_scale - u_start) / dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+    cooling_du_dt = (u/cooling->internal_energy_scale - u_start) / dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME) * cosmo->a * cosmo->a;
   }
 
   /* Update the internal energy time derivative */
