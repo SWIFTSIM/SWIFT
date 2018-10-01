@@ -487,6 +487,11 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   c->time_base = (c->log_a_end - c->log_a_begin) / max_nr_timesteps;
   c->time_base_inv = 1. / c->time_base;
 
+  /* If a_begin == a_end we hang */
+
+  if (c->a_begin >= c->a_end)
+    error("a_begin must be strictly before (and not equal to) a_end");
+
   /* Construct derived quantities */
 
   /* Curvature density (for closure) */
