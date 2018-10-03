@@ -112,7 +112,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
                        const struct cosmology *restrict cosmo,
                        const struct cooling_function_data *restrict cooling,
                        struct part *restrict p, struct xpart *restrict xp,
-                       float dt,
+                       float dt, float dt_therm,
 		       const struct hydro_props *restrict hydro_properties) {
 
   float XH, HeFrac;
@@ -124,11 +124,11 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 #ifdef SWIFT_DEBUG_CHECKS
   if (isnan(hydro_du_dt)) error("hydro_du_dt is nan. particle id %llu", p->id);
 #endif
-  float u_start = hydro_get_physical_internal_energy(p,cosmo);
+  float u_start = hydro_get_physical_internal_energy(p,xp,cosmo);
+  if (p->id == eagle_debug_particle_id) message("particle id %llu p->entropy %.5e xp->entropy %.5e entropy from u %.5e", p->id, p->entropy, xp->entropy_full, gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u_start));
 
-  double u_old = (u_start + hydro_du_dt * dt) * cooling->internal_energy_scale;
+  double u_old = (u_start + hydro_du_dt * dt_therm) * cooling->internal_energy_scale;
   if (u_old < hydro_properties->minimal_internal_energy*cooling->internal_energy_scale) u_old = hydro_properties->minimal_internal_energy*cooling->internal_energy_scale; 
-
 
   dt *= units_cgs_conversion_factor(us, UNIT_CONV_TIME);
 
@@ -190,28 +190,34 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
       }
     }
   }
-  float delta_u = u - u_start*cooling->internal_energy_scale;
-  if (u_start*cooling->internal_energy_scale + 2.0*delta_u < hydro_properties->minimal_internal_energy*cooling->internal_energy_scale) u = hydro_properties->minimal_internal_energy*cooling->internal_energy_scale;
+  float delta_u = u - u_old;
+  if (u_old + 2.0*delta_u < hydro_properties->minimal_internal_energy*cooling->internal_energy_scale) {
+    u = 0.5 * (hydro_properties->minimal_internal_energy*cooling->internal_energy_scale  + u_old);
+  }
 
   // calculate du/dt
   float cooling_du_dt = 0.0;
   if (dt > 0) {
-    cooling_du_dt = (u/cooling->internal_energy_scale - u_start) / dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME) * cosmo->a * cosmo->a;
+    cooling_du_dt = (u - u_old)/cooling->internal_energy_scale / dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME) * cosmo->a * cosmo->a;
   }
 
   /* Update the internal energy time derivative */
   hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
 
   float du;
-  if (p->id == 5439098268095) message("Particle id %llu cooling initial energy %.5e final energy %.5e initial temperature %.5e final temperature %.5e cooling du/dt %.5e hydro du/dt %.5e entropy_dt %.5e", 
+  if (p->id == eagle_debug_particle_id) message("Particle id %llu cooling initial energy %.5e final energy %.5e initial temperature %.5e final temperature %.5e cooling du/dt %.5e hydro du/dt %.5e entropy_dt %.5e, initial entropy %.5e, final entropy %.5e, d_entropy %.5e, dt %.5e, dt_therm %.5e", 
                                        p->id, 
 				       u_start*cooling->internal_energy_scale, 
 				       u, 
 				       exp(M_LN10*eagle_convert_u_to_temp(log10(u_start*cooling->internal_energy_scale), &du, n_h_i, He_i, d_n_h, d_He, cooling, cosmo)),
 				       exp(M_LN10*eagle_convert_u_to_temp(log10(u), &du, n_h_i, He_i, d_n_h, d_He, cooling, cosmo)),
 				       cooling_du_dt,
-				       hydro_du_dt*cooling->internal_energy_scale/units_cgs_conversion_factor(us, UNIT_CONV_TIME),
-				       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, cooling_du_dt));
+				       hydro_du_dt,
+				       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, cooling_du_dt),
+				       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u_old/cooling->internal_energy_scale),
+				       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u/cooling->internal_energy_scale),
+				       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, cooling_du_dt)*dt/units_cgs_conversion_factor(us, UNIT_CONV_TIME),
+				       dt/units_cgs_conversion_factor(us,UNIT_CONV_TIME), dt_therm);
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy +=
@@ -489,6 +495,7 @@ __attribute__((always_inline)) INLINE double eagle_cooling_rate(
  */
 double eagle_print_metal_cooling_rate(
     int n_h_i, float d_n_h, int He_i, float d_He, const struct part *restrict p,
+    const struct xpart *restrict xp,
     const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo,
     const struct phys_const *internal_const, float *abundance_ratio) {
@@ -500,7 +507,7 @@ double eagle_print_metal_cooling_rate(
 
   // cooling rate, derivative of cooling rate and internal energy
   double lambda_net = 0.0, dLambdaNet_du;
-  double u = hydro_get_physical_internal_energy(p, cosmo) *
+  double u = hydro_get_physical_internal_energy(p, xp, cosmo) *
              cooling->internal_energy_scale;
 
   // Open files for writing contributions to cooling rate. Each element

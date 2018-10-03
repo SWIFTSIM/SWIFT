@@ -19,6 +19,8 @@
 #ifndef SWIFT_GADGET2_HYDRO_H
 #define SWIFT_GADGET2_HYDRO_H
 
+#define eagle_debug_particle_id 1669479695137
+
 /**
  * @file Gadget2/hydro.h
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
@@ -495,11 +497,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  if (p->id == 5439098268095 || isnan(pressure)) message("Particle id %llu density %.5e entropy %.5e pressure %.5e", p->id, p->rho, p->entropy, pressure);
+  if (p->id == eagle_debug_particle_id || isnan(pressure)) message("Particle id %llu density %.5e entropy %.5e pressure %.5e", p->id, p->rho, p->entropy, pressure);
 
   /* Compute the sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
-  if (p->id == 5439098268095 || isnan(soundspeed)) message("Particle id %llu density %.5e pressure %.5e soundspeed %.5e", p->id, p->rho, pressure, soundspeed);
+  if (p->id == eagle_debug_particle_id || isnan(soundspeed)) message("Particle id %llu density %.5e pressure %.5e soundspeed %.5e", p->id, p->rho, pressure, soundspeed);
 
   /* Divide the pressure by the density squared to get the SPH term */
   const float P_over_rho2 = pressure * rho_inv * rho_inv;
@@ -564,6 +566,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->v[2] = xp->v_full[2];
 
   /* Re-set the entropy */
+  if (p->id == eagle_debug_particle_id) message("particle id %llu p->entropy %.5e xp->entropy_full %.5e", p->id, p->entropy, xp->entropy_full);
   p->entropy = xp->entropy_full;
 }
 
@@ -596,7 +599,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf(w2);
 
   /* Predict the entropy */
-  if (p->entropy + p->entropy_dt * dt_therm < 0) error("entropy negative particle id %llu old entropy %.5e d_entropy %.5e entropy_dt %.5e dt therm %.5e", p->id, p->entropy, p->entropy_dt*dt_therm, p->entropy_dt, dt_therm);
+  if (p->id == eagle_debug_particle_id) message("particle id %llu old entropy %.5e d_entropy %.5e entropy_dt %.5e dt therm %.5e", p->id, p->entropy, p->entropy_dt*dt_therm, p->entropy_dt, dt_therm);
+  if (p->entropy + p->entropy_dt * dt_therm <= 0) error("entropy negative particle id %llu old entropy %.5e d_entropy %.5e entropy_dt %.5e dt therm %.5e", p->id, p->entropy, p->entropy_dt*dt_therm, p->entropy_dt, dt_therm);
   p->entropy += p->entropy_dt * dt_therm;
 
   /* Re-compute the pressure */
@@ -649,20 +653,43 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
   /* Do not decrease the entropy by more than a factor of 2 */
-  if (dt_therm > 0. && p->entropy_dt * dt_therm < -0.5f * xp->entropy_full) {
-    p->entropy_dt = -0.5f * xp->entropy_full / dt_therm;
-  }
-  xp->entropy_full += p->entropy_dt * dt_therm;
+  //if (p->id == eagle_debug_particle_id) message("1 particle id %llu p->entropy %.5e xp->entropy %.5e entropy_dt %.5e dt %.5e", p->id, p->entropy, xp->entropy_full, p->entropy_dt, dt_therm);
+  //if (dt_therm > 0. && p->entropy_dt * dt_therm < -0.5f * xp->entropy_full) {
+  //  p->entropy_dt = -0.5f * xp->entropy_full / dt_therm;
+  //  if (p->id == eagle_debug_particle_id) message("2 particle id %llu p->entropy %.5e xp->entropy %.5e entropy_dt %.5e dt %.5e", p->id, p->entropy, xp->entropy_full, p->entropy_dt, dt_therm);
+  //}
+  //xp->entropy_full += p->entropy_dt * dt_therm;
 
   /* Apply the minimal energy limit */
   const float density = p->rho * cosmo->a3_inv;
   const float min_energy = hydro_props->minimal_internal_energy;
   const float min_entropy =
       gas_entropy_from_internal_energy(density, min_energy);
+  if (p->id == eagle_debug_particle_id) message("1 particle id %llu p->entropy %.5e xp->entropy %.5e min_entropy %.5e d_entropy %.5e entropy_dt %.5e dt %.5e", p->id, p->entropy, xp->entropy_full, min_entropy, p->entropy_dt*dt_therm, p->entropy_dt, dt_therm);
+
+  if (p->id == eagle_debug_particle_id) message("2 particle id %llu p->entropy %.5e xp->entropy %.5e min_entropy %.5e d_entropy %.5e entropy_dt %.5e dt %.5e", p->id, p->entropy, xp->entropy_full, min_entropy, p->entropy_dt*dt_therm, p->entropy_dt, dt_therm);
+  if (dt_therm > 0. && p->entropy_dt * dt_therm < -0.5f * (xp->entropy_full) ) {
+    if (p->id == eagle_debug_particle_id) message("3 particle id %llu p->entropy %.5e xp->entropy %.5e min_entropy %.5e d_entropy %.5e entropy_dt %.5e dt %.5e", p->id, p->entropy, xp->entropy_full, min_entropy, p->entropy_dt*dt_therm, p->entropy_dt, dt_therm);
+    //error("\n Particle id %llu cooling initial entropy %.5e (%.5e) final entropy %.5e  cooling entropy/dt %.5e timestep %.5e\n initial energy %.5e final energy %.5e \n After 2 steps, final entropy = %.5e", 
+    //          p->id, 
+    //          xp->entropy_full, 
+    //          p->entropy,
+    //          xp->entropy_full + p->entropy_dt * dt_therm,
+    //          p->entropy_dt,
+    //          dt_therm,
+    //          xp->entropy_full * min_energy/min_entropy,
+    //          (xp->entropy_full + p->entropy_dt * dt_therm)*min_energy/min_entropy,
+    //          xp->entropy_full + p->entropy_dt * 2. * dt_therm);
+    p->entropy_dt = -0.5f * (xp->entropy_full) / dt_therm; 
+  }
+  xp->entropy_full += p->entropy_dt * dt_therm;
+
+
   if (xp->entropy_full < min_entropy) {
     xp->entropy_full = min_entropy;
     p->entropy_dt = 0.f;
   }
+  if (p->id == eagle_debug_particle_id) message("4 particle id %llu p->entropy %.5e xp->entropy %.5e entropy_dt %.5e dt %.5e", p->id, p->entropy, xp->entropy_full, p->entropy_dt, dt_therm);
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, xp->entropy_full);
