@@ -167,7 +167,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     const double x[3] = {p->x[0], p->x[1], p->x[2]};
     const float m = hydro_get_mass(p);
     const float entropy = hydro_get_physical_entropy(p, cosmo);
-    const float u_inter = hydro_get_physical_internal_energy(p, cosmo);
+    const float u_inter = hydro_get_physical_internal_energy(p, xp, cosmo);
 
     /* Collect mass */
     stats.mass += m;

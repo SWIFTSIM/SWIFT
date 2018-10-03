@@ -181,13 +181,13 @@ int main(int argc, char **argv) {
   for (int j = 0; j < npts; j++) {
     set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh,
                    pow(10.0, 10.0 + j * 8.0 / npts));
-    u = hydro_get_physical_internal_energy(&p, &cosmo) *
+    u = hydro_get_physical_internal_energy(&p, &xp, &cosmo) *
         cooling.internal_energy_scale;
     float cooling_du_dt;
 
     // calculate cooling rates
     cooling_du_dt = eagle_print_metal_cooling_rate(
-        n_h_i, d_n_h, He_i, d_He, &p, &cooling, &cosmo, &internal_const,
+        n_h_i, d_n_h, He_i, d_He, &p, &xp, &cooling, &cosmo, &internal_const,
         abundance_ratio);
     fprintf(output_file, "%.5e %.5e\n", u, cooling_du_dt);
   }

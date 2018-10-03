@@ -49,6 +49,7 @@ double eagle_cooling_rate(double, double *, int, float, int, float,
 
 double eagle_print_metal_cooling_rate(
     int, float, int, float, const struct part *restrict,
+    const struct xpart *restrict,
     const struct cooling_function_data *restrict,
     const struct cosmology *restrict, const struct phys_const *, float *);
 
@@ -71,6 +72,7 @@ void cooling_cool_part(const struct phys_const *restrict,
                        const struct cosmology *restrict,
                        const struct cooling_function_data *restrict,
                        struct part *restrict, struct xpart *restrict, float,
+		       float,
 		       const struct hydro_props *restrict);
 
 float cooling_timestep(const struct cooling_function_data *restrict,
