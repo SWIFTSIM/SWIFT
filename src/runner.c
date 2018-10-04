@@ -253,22 +253,26 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         double dt_cool;
+	float dt_therm;
         if (with_cosmology) {
           const integertime_t ti_step = get_integer_timestep(p->time_bin);
           const integertime_t ti_begin =
               get_integer_time_begin(ti_current + 1, p->time_bin);
-          if (ti_begin > 0.0) {
+          //if (ti_begin > 0.0) {
             dt_cool =
                 cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-          } else {
-            dt_cool = 0.0;
-          }
+          //} else {
+          //  dt_cool = 0.0;
+          //}
+          dt_therm = cosmology_get_therm_kick_factor(e->cosmology, ti_begin,
+                                                     ti_begin + ti_step);
         } else {
           dt_cool = get_timestep(p->time_bin, time_base);
+	  dt_therm = dt_cool;
         }
 
         /* Let's cool ! */
-        cooling_cool_part(constants, us, cosmo, cooling_func, p, xp, dt_cool,e->hydro_properties);
+        cooling_cool_part(constants, us, cosmo, cooling_func, p, xp, dt_cool, dt_therm,e->hydro_properties);
       }
     }
   }
@@ -1209,6 +1213,9 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         }
 
         /* do the kick */
+#ifdef SWIFT_DEBUG_CHECKS
+        if (p->id == eagle_debug_particle_id) message("particle id %llu p->entropy %.5e xp->entropy_full %.5e entropy_dt %.5e dt_therm %.5e", p->id, p->entropy, xp->entropy_full, p->entropy_dt, dt_kick_therm);
+#endif
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
                   dt_kick_corr, cosmo, hydro_props, ti_begin,
                   ti_begin + ti_step / 2);
@@ -1379,6 +1386,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Finish the time-step with a second half-kick */
+#ifdef SWIFT_DEBUG_CHECKS
+        if (p->id == eagle_debug_particle_id) message("particle id %llu p->entropy %.5e xp->entropy_full %.5e entropy_dt %.5e dt_therm %.5e", p->id, p->entropy, xp->entropy_full, p->entropy_dt, dt_kick_therm);
+#endif
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
                   dt_kick_corr, cosmo, hydro_props, ti_begin + ti_step / 2,
                   ti_begin + ti_step);
