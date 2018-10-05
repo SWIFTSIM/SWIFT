@@ -129,7 +129,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   if (p->id == eagle_debug_particle_id) message("particle id %llu p->entropy %.5e xp->entropy %.5e entropy from u %.5e  (predicted %.5e)", p->id, p->entropy, xp->entropy_full, gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u_start), xp->entropy_full + p->entropy_dt * dt_therm);
 #endif
 
-  double u_old = (u_start + 1.5*hydro_du_dt * dt_therm) * cooling->internal_energy_scale;
+  double u_old = (u_start + hydro_du_dt * dt_therm) * cooling->internal_energy_scale;
   if (u_old < hydro_properties->minimal_internal_energy*cooling->internal_energy_scale) u_old = hydro_properties->minimal_internal_energy*cooling->internal_energy_scale; 
 
   dt *= units_cgs_conversion_factor(us, UNIT_CONV_TIME);
@@ -193,15 +193,17 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
     }
   }
   float delta_u = u - u_start*cooling->internal_energy_scale;    /* need to be safe for an extra half step ?? !! */
-  if (u_start*cooling->internal_energy_scale + 2.0*delta_u < hydro_properties->minimal_internal_energy*cooling->internal_energy_scale) {
+  if (u_start*cooling->internal_energy_scale + 2.5*delta_u < hydro_properties->minimal_internal_energy*cooling->internal_energy_scale) {
     if (p->id == eagle_debug_particle_id) message("particle id %llu caught by cooling rate check", p->id);
-    u = (1.0 - 1./2.0) * (hydro_properties->minimal_internal_energy*cooling->internal_energy_scale  + u_start*cooling->internal_energy_scale);
+    u = (1.0 - 1./2.5) * (hydro_properties->minimal_internal_energy*cooling->internal_energy_scale  + u_start*cooling->internal_energy_scale);
+    //delta_u = (hydro_properties->minimal_internal_energy - u_start)*cooling->internal_energy_scale / 2.5;
   }
 
   // Calculate du/dt
   float cooling_du_dt = 0.0;
   if (dt_therm > 0) {
     cooling_du_dt = (u/cooling->internal_energy_scale - u_start) / dt_therm ;
+    //cooling_du_dt = delta_u/(cooling->internal_energy_scale*dt_therm);
   }
 
   /* Update the internal energy time derivative */
