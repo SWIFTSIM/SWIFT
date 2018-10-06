@@ -322,6 +322,16 @@ AC_ARG_ENABLE([vec],
    [enable_vec="yes"]
 )
 
+#  Disable hand written vectorisation. Slightly odd implementation as want 
+# to describe as --disable-hand-vec, but macro is enable (there is no enable action).
+AC_ARG_ENABLE([hand-vec],
+   [AS_HELP_STRING([--disable-hand-vec],
+     [Disable intrinsic vectorization]
+   )],
+   [enable_hand_vec="$enableval"],
+   [enable_hand_vec="yes"]
+)
+
 HAVEVECTORIZATION=0
 
 if test "$enable_opt" = "yes" ; then
@@ -345,7 +355,6 @@ if test "$enable_opt" = "yes" ; then
        fi
    fi
 
-
    if test "$enable_vec" = "no"; then
       if test "$ax_cv_c_compiler_vendor" = "intel"; then
       	 CFLAGS="$CFLAGS -no-vec -no-simd"
@@ -359,8 +368,8 @@ if test "$enable_opt" = "yes" ; then
       else
          AC_MSG_WARN([Do not know how to disable vectorization for this compiler])
       fi
-   else
-      AC_DEFINE([WITH_VECTORIZATION],1,[Enable vectorization])
+   elif test "$enable_hand_vec" = "yes"; then
+      AC_DEFINE([WITH_VECTORIZATION],1,[Enable hand-written vectorization])
       HAVEVECTORIZATION=1
    fi
 fi
@@ -901,6 +910,22 @@ fi
 AC_SUBST([VELOCIRAPTOR_LIBS])
 AM_CONDITIONAL([HAVEVELOCIRAPTOR],[test -n "$VELOCIRAPTOR_LIBS"])
 
+# Check for dummy VELOCIraptor.
+AC_ARG_ENABLE([dummy-velociraptor],
+    [AS_HELP_STRING([--enable-dummy-velociraptor],
+       [Enable dummy velociraptor compilation @<:@yes/no@:>@]
+    )],
+    [enable_dummy_velociraptor="$enableval"],
+    [enable_dummy_velociraptor="no"]
+)
+
+if test "$enable_dummy_velociraptor" = "yes"; then
+  have_velociraptor="yes"
+
+  AC_DEFINE(HAVE_VELOCIRAPTOR,1,[The VELOCIraptor library appears to be present.])
+  AC_DEFINE(HAVE_DUMMY_VELOCIRAPTOR,1,[The dummy VELOCIraptor library is present.])
+fi
+
 # Check for floating-point execeptions
 AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
     [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
@@ -1036,11 +1061,15 @@ case "$with_subgrid" in
 	with_subgrid_cooling=grackle
 	with_subgrid_chemistry=GEAR
 	with_subgrid_hydro=gadget2
+	with_subgrid_stars=GEAR
+	with_subgrid_feedback=thermal
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_hydro=gadget2
+	with_subgrid_stars=none
+	with_subgrid_feedback=none
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -1120,6 +1149,25 @@ case "$with_hydro" in
    ;;
 esac
 
+# Check if debugging interactions stars is switched on.
+AC_ARG_ENABLE([debug-interactions-stars],
+   [AS_HELP_STRING([--enable-debug-interactions-stars],
+     [Activate interaction debugging for stars, logging a maximum of @<:@N@:>@ neighbours. Defaults to 256 if no value set.]
+   )],
+   [enable_debug_interactions_stars="$enableval"],
+   [enable_debug_interactions_stars="no"]
+)
+if test "$enable_debug_interactions_stars" != "no"; then
+    AC_DEFINE([DEBUG_INTERACTIONS_STARS],1,[Enable interaction debugging for stars])
+    if test "$enable_debug_interactions_stars" == "yes"; then
+      AC_DEFINE([MAX_NUM_OF_NEIGHBOURS_STARS],256,[The maximum number of particle neighbours to be logged for stars])
+      [enable_debug_interactions_stars="yes (Logging up to 256 neighbours)"]
+    else
+      AC_DEFINE_UNQUOTED([MAX_NUM_OF_NEIGHBOURS_STARS], [$enableval] ,[The maximum number of particle neighbours to be logged for stars])
+      [enable_debug_interactions_stars="yes (Logging up to $enableval neighbours)"]
+    fi
+fi
+
 # Check if debugging interactions is switched on.
 AC_ARG_ENABLE([debug-interactions],
    [AS_HELP_STRING([--enable-debug-interactions],
@@ -1142,6 +1190,7 @@ if test "$enable_debug_interactions" != "no"; then
     [enable_debug_interactions="no (only available for gadget2 hydro scheme)"]
   fi
 fi
+
 
 # SPH Kernel function
 AC_ARG_WITH([kernel],
@@ -1392,6 +1441,64 @@ case "$with_chemistry" in
    ;;
 esac
 
+# Stellar model.
+AC_ARG_WITH([stars],
+   [AS_HELP_STRING([--with-stars=<model>],
+      [Stellar model to use @<:@none, GEAR, debug default: none@:>@]
+   )],
+   [with_stars="$withval"],
+   [with_stars="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_stars" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-stars together])
+   else
+      with_stars="$with_subgrid_stars"
+   fi
+fi
+
+case "$with_stars" in
+   GEAR)
+      AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
+   ;;
+   none)
+   ;;
+
+   *)
+      AC_MSG_ERROR([Unknown stellar model: $with_stars])
+   ;;
+esac
+
+# Feedback model
+AC_ARG_WITH([feedback],
+   [AS_HELP_STRING([--with-feedback=<model>],
+      [Feedback model to use @<:@none, thermal, debug default: none@:>@]
+   )],
+   [with_feedback="$withval"],
+   [with_feedback="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_feedback" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-feedback together])
+   else
+      with_feedback="$with_subgrid_feedback"
+   fi
+fi
+
+case "$with_feedback" in
+   thermal)
+      AC_DEFINE([FEEDBACK_THERMAL], [1], [Thermal Blastwave])
+   ;;
+   none)
+   ;;
+
+   *)
+      AC_MSG_ERROR([Unknown feedback model: $with_feedback])
+   ;;
+esac
+
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
@@ -1451,6 +1558,8 @@ AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
 AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
 AC_CONFIG_FILES([tests/test27cellsPerturbed.sh], [chmod +x tests/test27cellsPerturbed.sh])
+AC_CONFIG_FILES([tests/test27cellsStars.sh], [chmod +x tests/test27cellsStars.sh])
+AC_CONFIG_FILES([tests/test27cellsStarsPerturbed.sh], [chmod +x tests/test27cellsStarsPerturbed.sh])
 AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
 AC_CONFIG_FILES([tests/test125cellsPerturbed.sh], [chmod +x tests/test125cellsPerturbed.sh])
 AC_CONFIG_FILES([tests/testPeriodicBC.sh], [chmod +x tests/testPeriodicBC.sh])
@@ -1512,14 +1621,17 @@ AC_MSG_RESULT([
 
    Cooling function   : $with_cooling
    Chemistry          : $with_chemistry
+   Stellar model      : $with_stars
+   Feedback model     : $with_feedback
 
-   Individual timers     : $enable_timers
-   Task debugging        : $enable_task_debugging
-   Threadpool debugging  : $enable_threadpool_debugging
-   Debugging checks      : $enable_debugging_checks
-   Interaction debugging : $enable_debug_interactions
-   Naive interactions    : $enable_naive_interactions
-   Gravity checks        : $gravity_force_checks
-   Custom icbrtf         : $enable_custom_icbrtf
+   Individual timers           : $enable_timers
+   Task debugging              : $enable_task_debugging
+   Threadpool debugging        : $enable_threadpool_debugging
+   Debugging checks            : $enable_debugging_checks
+   Interaction debugging       : $enable_debug_interactions
+   Stars interaction debugging : $enable_debug_interactions_stars
+   Naive interactions          : $enable_naive_interactions
+   Gravity checks              : $gravity_force_checks
+   Custom icbrtf               : $enable_custom_icbrtf
 
  ------------------------])

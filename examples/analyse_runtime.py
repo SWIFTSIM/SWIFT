@@ -52,8 +52,9 @@ labels = ['Gpart assignment', 'Mesh comunication', 'Forward Fourier transform', 
           'Making gravity tasks', 'Splitting tasks', 'Counting and linking tasks', 'Setting super-pointers', 'Linking gravity tasks',
           'Creating send tasks', 'Exchanging cell tags', 'Creating recv tasks', 'Setting unlocks', 'Ranking the tasks', 'scheduler_reweight:', 
           'space_rebuild:', 'engine_drift_all:', 'engine_unskip:', 'engine_collect_end_of_step:', 'engine_launch:', 'writing particle properties', 
-          'engine_repartition:', 'engine_exchange_cells:', 'Dumping restart files', 'engine_print_stats:', 'engine_marktasks:']
-is_rebuild = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1]
+          'engine_repartition:', 'engine_exchange_cells:', 'Dumping restart files', 'engine_print_stats:', 'engine_marktasks:', 
+          'Reading initial conditions', 'engine_print_task_counts:', 'engine_drift_top_multipoles:', 'Communicating rebuild flag']
+is_rebuild = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0]
 times = np.zeros(len(labels))
 counts = np.zeros(len(labels))
 
@@ -81,7 +82,7 @@ for i in range(num_files):
             # Extract the different blocks
             if re.search("%s took"%labels[i], line):
                 counts[i] += 1.
-                times[i] += float(re.findall(r'[+-]?([0-9]*[.])?[0-9]+', line)[-1])
+                times[i] += float(re.findall(r'[+-]?((\d+\.?\d*)|(\.\d+))', line)[-1][0])
 
         # Find the last line with meaningful output (avoid crash report, batch system stuf....)
         if re.findall(r'\[[0-9]{4}\][ ]\[*', line) or re.findall(r'^\[[0-9]*[.][0-9]+\][ ]', line):

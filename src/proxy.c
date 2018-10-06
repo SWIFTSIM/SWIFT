@@ -360,6 +360,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   MPI_Request *reqs_in = reqs;
   MPI_Request *reqs_out = &reqs[num_proxies];
 
+  ticks tic2 = getticks();
+
   /* Run through the cells and get the size of the ones that will be sent off.
    */
   threadpool_map(&s->e->threadpool, proxy_cells_count_mapper, s->cells_top,
@@ -372,16 +374,26 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     if (s->cells_top[k].sendto) count_out += s->cells_top[k].pcell_size;
   }
 
+  if (s->e->verbose)
+    message("Counting cells to send took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
   /* Allocate the pcells. */
   struct pcell *pcells = NULL;
   if (posix_memalign((void **)&pcells, SWIFT_CACHE_ALIGNMENT,
                      sizeof(struct pcell) * count_out) != 0)
     error("Failed to allocate pcell buffer.");
 
+  tic2 = getticks();
+
   /* Pack the cells. */
   struct pack_mapper_data data = {s, offset, pcells, with_gravity};
   threadpool_map(&s->e->threadpool, proxy_cells_pack_mapper, s->cells_top,
                  s->nr_cells, sizeof(struct cell), /*chunk=*/0, &data);
+
+  if (s->e->verbose)
+    message("Packing cells took %.3f %s.", clocks_from_ticks(getticks() - tic2),
+            clocks_getunit());
 
   /* Launch the first part of the exchange. */
   threadpool_map(&s->e->threadpool, proxy_cells_exchange_first_mapper, proxies,
@@ -413,12 +425,18 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     reqs_out[k] = proxies[k].req_cells_out;
   }
 
+  tic2 = getticks();
+
   /* Wait for each pcell array to come in from the proxies. */
   struct wait_and_unpack_mapper_data wait_and_unpack_data = {
       s, num_proxies, reqs_in, proxies, with_gravity};
   threadpool_map(&s->e->threadpool, proxy_cells_wait_and_unpack_mapper,
                  /*map_data=*/NULL, num_proxies, /*stride=*/0, /*chunk=*/0,
                  &wait_and_unpack_data);
+
+  if (s->e->verbose)
+    message("Un-packing cells took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Wait for all the sends to have finished too. */
   if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)

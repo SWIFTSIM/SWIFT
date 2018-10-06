@@ -88,7 +88,7 @@ void part_relink_parts_to_gparts(struct gpart *gparts, size_t N,
 void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
                                   struct spart *sparts) {
   for (size_t k = 0; k < N; k++) {
-    if (gparts[k].type == swift_type_star) {
+    if (gparts[k].type == swift_type_stars) {
       sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     }
   }
@@ -108,7 +108,7 @@ void part_relink_all_parts_to_gparts(struct gpart *gparts, size_t N,
   for (size_t k = 0; k < N; k++) {
     if (gparts[k].type == swift_type_gas) {
       parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
-    } else if (gparts[k].type == swift_type_star) {
+    } else if (gparts[k].type == swift_type_stars) {
       sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     }
   }
@@ -171,11 +171,11 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
         error("Linked particles are not at the same time !");
     }
 
-    else if (gparts[k].type == swift_type_star) {
+    else if (gparts[k].type == swift_type_stars) {
 
       /* Check that it is linked */
       if (gparts[k].id_or_neg_offset > 0)
-        error("Star gpart not linked to anything !");
+        error("Stars gpart not linked to anything !");
 
       /* Find its link */
       const struct spart *spart = &sparts[-gparts[k].id_or_neg_offset];

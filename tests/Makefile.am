@@ -28,7 +28,8 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetr
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
-	testCbrt testCosmology testOutputList testFormat.sh
+	testCbrt testCosmology testOutputList testFormat.sh \
+	test27cellsStars.sh test27cellsStarsPerturbed.sh
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
@@ -39,7 +40,8 @@ check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
-		 testSelectOutput testCbrt testCosmology testOutputList
+		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
+		 test27cellsStars_subset
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -75,6 +77,12 @@ test27cells_SOURCES = test27cells.c
 test27cells_subset_SOURCES = test27cells.c
 
 test27cells_subset_CFLAGS = $(AM_CFLAGS) -DTEST_DOSELF_SUBSET -DTEST_DOPAIR_SUBSET
+
+test27cellsStars_SOURCES = test27cellsStars.c
+
+test27cellsStars_subset_SOURCES = test27cellsStars.c
+
+test27cellsStars_subset_CFLAGS = $(AM_CFLAGS) -DTEST_DOSELF_SUBSET -DTEST_DOPAIR_SUBSET
 
 testPeriodicBC_SOURCES = testPeriodicBC.c
 
@@ -130,4 +138,6 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
 	     fft_params.yml tolerance_periodic_BC_normal.dat tolerance_periodic_BC_perturbed.dat \
 	     testEOS.sh testEOS_plot.sh testSelectOutput.sh selectOutput.yml \
              output_list_params.yml output_list_time.txt output_list_redshift.txt \
-             output_list_scale_factor.txt
+             output_list_scale_factor.txt testEOS.sh testEOS_plot.sh \
+	     test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
+	     star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat

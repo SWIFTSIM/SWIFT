@@ -48,20 +48,22 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",       "sort",          "self",
-    "pair",       "sub_self",      "sub_pair",
-    "init_grav",  "init_grav_out", "ghost_in",
-    "ghost",      "ghost_out",     "extra_ghost",
-    "drift_part", "drift_gpart",   "end_force",
-    "kick1",      "kick2",         "timestep",
-    "send",       "recv",          "grav_long_range",
-    "grav_mm",    "grav_down_in",  "grav_down",
-    "grav_mesh",  "cooling",       "sourceterms"};
+    "none",           "sort",          "self",
+    "pair",           "sub_self",      "sub_pair",
+    "init_grav",      "init_grav_out", "ghost_in",
+    "ghost",          "ghost_out",     "extra_ghost",
+    "drift_part",     "drift_gpart",   "end_force",
+    "kick1",          "kick2",         "timestep",
+    "send",           "recv",          "grav_long_range",
+    "grav_mm",        "grav_down_in",  "grav_down",
+    "grav_mesh",      "cooling",       "sourceterms",
+    "stars_ghost_in", "stars_ghost",   "stars_ghost_out"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
-    "none", "density", "gradient", "force", "grav",      "external_grav",
-    "tend", "xv",      "rho",      "gpart", "multipole", "spart"};
+    "none",          "density", "gradient",     "force", "grav",
+    "external_grav", "tend",    "xv",           "rho",   "gpart",
+    "multipole",     "spart",   "stars_density"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -71,46 +73,31 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
 /**
  * @brief Computes the overlap between the parts array of two given cells.
  *
- * @param ci The first #cell.
- * @param cj The second #cell.
+ * @param TYPE is the type of parts (e.g. #part, #gpart, #spart)
+ * @param ARRAY is the array of this specific type.
+ * @param COUNT is the number of elements in the array.
  */
-__attribute__((always_inline)) INLINE static size_t task_cell_overlap_part(
-    const struct cell *restrict ci, const struct cell *restrict cj) {
-
-  if (ci == NULL || cj == NULL) return 0;
-
-  if (ci->parts <= cj->parts &&
-      ci->parts + ci->count >= cj->parts + cj->count) {
-    return cj->count;
-  } else if (cj->parts <= ci->parts &&
-             cj->parts + cj->count >= ci->parts + ci->count) {
-    return ci->count;
+#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                               \
+  __attribute__((always_inline))                                            \
+      INLINE static size_t task_cell_overlap_##TYPE(                        \
+          const struct cell *restrict ci, const struct cell *restrict cj) { \
+                                                                            \
+    if (ci == NULL || cj == NULL) return 0;                                 \
+                                                                            \
+    if (ci->ARRAY <= cj->ARRAY &&                                           \
+        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {                   \
+      return cj->COUNT;                                                     \
+    } else if (cj->ARRAY <= ci->ARRAY &&                                    \
+               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) {            \
+      return ci->COUNT;                                                     \
+    }                                                                       \
+                                                                            \
+    return 0;                                                               \
   }
 
-  return 0;
-}
-
-/**
- * @brief Computes the overlap between the gparts array of two given cells.
- *
- * @param ci The first #cell.
- * @param cj The second #cell.
- */
-__attribute__((always_inline)) INLINE static size_t task_cell_overlap_gpart(
-    const struct cell *restrict ci, const struct cell *restrict cj) {
-
-  if (ci == NULL || cj == NULL) return 0;
-
-  if (ci->gparts <= cj->gparts &&
-      ci->gparts + ci->gcount >= cj->gparts + cj->gcount) {
-    return cj->gcount;
-  } else if (cj->gparts <= ci->gparts &&
-             cj->gparts + cj->gcount >= ci->gparts + ci->gcount) {
-    return ci->gcount;
-  }
-
-  return 0;
-}
+TASK_CELL_OVERLAP(part, parts, count);
+TASK_CELL_OVERLAP(gpart, gparts, gcount);
+TASK_CELL_OVERLAP(spart, sparts, scount);
 
 /**
  * @brief Returns the #task_actions for a given task.
@@ -135,6 +122,10 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_part;
       break;
 
+    case task_type_stars_ghost:
+      return task_action_spart;
+      break;
+
     case task_type_self:
     case task_type_pair:
     case task_type_sub_self:
@@ -145,6 +136,10 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         case task_subtype_gradient:
         case task_subtype_force:
           return task_action_part;
+          break;
+
+        case task_subtype_stars_density:
+          return task_action_all;
           break;
 
         case task_subtype_grav:
@@ -220,9 +215,13 @@ float task_overlap(const struct task *restrict ta,
   const int ta_part = (ta_act == task_action_part || ta_act == task_action_all);
   const int ta_gpart =
       (ta_act == task_action_gpart || ta_act == task_action_all);
+  const int ta_spart =
+      (ta_act == task_action_spart || ta_act == task_action_all);
   const int tb_part = (tb_act == task_action_part || tb_act == task_action_all);
   const int tb_gpart =
       (tb_act == task_action_gpart || tb_act == task_action_all);
+  const int tb_spart =
+      (tb_act == task_action_spart || tb_act == task_action_all);
 
   /* In the case where both tasks act on parts */
   if (ta_part && tb_part) {
@@ -258,6 +257,25 @@ float task_overlap(const struct task *restrict ta,
                                   task_cell_overlap_gpart(ta->ci, tb->cj) +
                                   task_cell_overlap_gpart(ta->cj, tb->ci) +
                                   task_cell_overlap_gpart(ta->cj, tb->cj);
+
+    return ((float)size_intersect) / (size_union - size_intersect);
+  }
+
+  /* In the case where both tasks act on sparts */
+  else if (ta_spart && tb_spart) {
+
+    /* Compute the union of the cell data. */
+    size_t size_union = 0;
+    if (ta->ci != NULL) size_union += ta->ci->scount;
+    if (ta->cj != NULL) size_union += ta->cj->scount;
+    if (tb->ci != NULL) size_union += tb->ci->scount;
+    if (tb->cj != NULL) size_union += tb->cj->scount;
+
+    /* Compute the intersection of the cell data. */
+    const size_t size_intersect = task_cell_overlap_spart(ta->ci, tb->ci) +
+                                  task_cell_overlap_spart(ta->ci, tb->cj) +
+                                  task_cell_overlap_spart(ta->cj, tb->ci) +
+                                  task_cell_overlap_spart(ta->cj, tb->cj);
 
     return ((float)size_intersect) / (size_union - size_intersect);
   }
