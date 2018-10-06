@@ -28,17 +28,21 @@
  */
 struct cooling_function_data {
 
-  /*! Cooling rate in internal units */
-  double lambda;
+  /*! Cooling rate in cgs units */
+  double lambda_cgs;
 
-  /*! Fraction of gas mass that is Hydrogen. Used to calculate n_H */
-  float hydrogen_mass_abundance;
+  /*! Conversion factor from internal units to cgs for density */
+  double conv_factor_cgs_density;
 
-  /*! 'mu', used to convert min_temperature to min_internal energy */
-  float mean_molecular_weight;
+  /*! Conversion factor from internal units to cgs for internal energy */
+  double conv_factor_cgs_energy;
 
-  /*! Minimally allowed internal energy of all the particles */
-  float min_energy;
+  /*! Conversion factor from internal units to cgs for internal energy
+   * derivative */
+  double conv_factor_cgs_energy_rate;
+
+  /*! Proton mass in cgs units */
+  double proton_mass_cgs;
 
   /*! Constant multiplication factor for time-step criterion */
   float cooling_tstep_mult;

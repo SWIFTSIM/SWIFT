@@ -66,6 +66,21 @@ hydro_get_physical_internal_energy(const struct part *restrict p,
 }
 
 /**
+ * @brief Returns the physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_physical_internal_energy2(const struct part *restrict p,
+                                    const struct xpart *restrict xp,
+                                    const struct cosmology *cosmo) {
+
+  return gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv,
+                                          xp->entropy_full);
+}
+
+/**
  * @brief Returns the comoving pressure of a particle
  *
  * @param p The particle of interest
@@ -204,30 +219,64 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 }
 
 /**
- * @brief Returns the time derivative of internal energy of a particle
+ * @brief Returns the time derivative of co-moving internal energy of a particle
  *
  * We assume a constant density.
  *
  * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static float hydro_get_internal_energy_dt(
-    const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float
+hydro_get_comoving_internal_energy_dt(const struct part *restrict p) {
 
   return gas_internal_energy_from_entropy(p->rho, p->entropy_dt);
 }
 
 /**
- * @brief Returns the time derivative of internal energy of a particle
+ * @brief Returns the time derivative of physical internal energy of a particle
  *
  * We assume a constant density.
  *
  * @param p The particle of interest.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_physical_internal_energy_dt(const struct part *restrict p,
+                                      const struct cosmology *cosmo) {
+
+  return gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv,
+                                          p->entropy_dt);
+}
+
+/**
+ * @brief Sets the time derivative of the co-moving internal energy of a
+ * particle
+ *
+ * We assume a constant density for the conversion to entropy.
+ *
+ * @param p The particle of interest.
  * @param du_dt The new time derivative of the internal energy.
  */
-__attribute__((always_inline)) INLINE static void hydro_set_internal_energy_dt(
-    struct part *restrict p, float du_dt) {
+__attribute__((always_inline)) INLINE static void
+hydro_set_comoving_internal_energy_dt(struct part *restrict p, float du_dt) {
 
   p->entropy_dt = gas_entropy_from_internal_energy(p->rho, du_dt);
+}
+
+/**
+ * @brief Sets the time derivative of the physical internal energy of a particle
+ *
+ * We assume a constant density for the conversion to entropy.
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param du_dt The time derivative of the internal energy.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_internal_energy_dt(struct part *restrict p,
+                                      const struct cosmology *restrict cosmo,
+                                      float du_dt) {
+  p->entropy_dt =
+      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, du_dt);
 }
 
 /**
