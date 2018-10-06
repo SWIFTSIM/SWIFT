@@ -19,7 +19,7 @@
 #ifndef SWIFT_COOLING_STRUCT_EAGLE_H
 #define SWIFT_COOLING_STRUCT_EAGLE_H
 
-static const int eagle_table_path_name_length = 500;
+#define eagle_table_path_name_length 500
 
 /*
  * @brief struct containing cooling tables

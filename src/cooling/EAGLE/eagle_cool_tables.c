@@ -243,11 +243,11 @@ struct cooling_tables get_redshift_invariant_table(
 
   int specs, i, j, k, table_index, cooling_index;
 
-  float *net_cooling_rate;
-  float *electron_abundance;
-  float *temperature;
-  float *he_net_cooling_rate;
-  float *he_electron_abundance;
+  float *net_cooling_rate = NULL;
+  float *electron_abundance = NULL;
+  float *temperature = NULL;
+  float *he_net_cooling_rate = NULL;
+  float *he_electron_abundance = NULL;
 
   // Allocate arrays for reading in cooling tables. 
   if (posix_memalign((void **)&net_cooling_rate, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
@@ -410,11 +410,11 @@ struct cooling_tables get_cooling_table(
 
   int specs, i, j, k, table_index, cooling_index;
 
-  float *net_cooling_rate;
-  float *electron_abundance;
-  float *temperature;
-  float *he_net_cooling_rate;
-  float *he_electron_abundance;
+  float *net_cooling_rate = NULL;
+  float *electron_abundance = NULL;
+  float *temperature = NULL;
+  float *he_net_cooling_rate = NULL;
+  float *he_electron_abundance = NULL;
 
   // Allocate arrays for reading in cooling tables. 
   if (posix_memalign((void **)&net_cooling_rate, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
