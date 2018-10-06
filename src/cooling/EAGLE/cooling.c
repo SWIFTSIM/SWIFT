@@ -216,16 +216,25 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
   /* Convert back to internal units */
   double delta_u = delta_u_cgs / cooling->internal_energy_scale;
+
+  /* We now need to check that we are not going to go below any of the limits */
   
-  /* Check whether we may end up below the minimal energy after 
-     this step 1/2 kick + a full drift step with a step twice as long */
+  /* First, check whether we may end up below the minimal energy after 
+   * this step 1/2 kick + another 1/2 kick that could potentially be for
+   * a time-step twice as big. We hence check for 1.5 delta_u. */
   if (u_start + 1.5 * delta_u < hydro_properties->minimal_internal_energy) {
 
     delta_u = (hydro_properties->minimal_internal_energy - u_start) / 1.5;
     message("particle id %llu caught by first cooling rate check", p->id);
   }
-  if (u_start + 2.5 * delta_u_cgs/cooling->internal_energy_scale < 0) {
 
+  /* Second, check whether the energy used in the prediction could get negative.
+   * We need to check for the 1/2 dt kick followed by a full time-step drift
+   * that could potentially be for a time-step twice as big. We hence check
+   * for 2.5 delta_u but this time against 0 energy not the minimum */
+  if (u_start + 2.5 * delta_u < 0.) {
+
+    /* To avoid numerical rounding bringing us below 0., we add a tiny tolerance */
     delta_u = -u_start / (2.5 + rounding_tolerance);
     message("particle id %llu caught by second cooling rate check", p->id);
   }
