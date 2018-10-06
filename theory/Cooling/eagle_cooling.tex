@@ -6,6 +6,7 @@
 \usepackage[super]{nth}
 
 \newcommand{\todo}[1]{{\textcolor{red}{TODO: #1}\\}}
+\newcommand{\swift}{{\sc Swift}\xspace}
 
 \newcommand{\D}[2]{\frac{d#1}{d#2}}
 \newcommand{\LL}{\left(}
@@ -23,7 +24,7 @@
 
 \subsection{Isochoric cooling}
 
-\todo{Discuss the fact that we want to do cooling at constant
+\todo{MATTHIEU: Discuss the fact that we want to do cooling at constant
   density.}
 
 \subsection{Time integration}
@@ -47,7 +48,12 @@ We then proceed to solve the implicit equation
 \begin{equation}
  u_{\rm final} = u_0 + \lambda(u_{\rm final}) \Delta t,
 \end{equation}
-where $\lambda$ is the cooling rate, which for a given particle varies
+where $\lambda$ is the cooling rate\footnote{Note this is not the
+  physical cooling rate $\Lambda/n_{\rm H}^2$ that is commonly
+  used. This is the change in energy over time $\frac{\partial
+    u}{\partial t}\big|_{\rm cool}$ from all the channels
+  including all the multiplicative factors coming in front of the
+  physical $\Lambda$.}, which for a given particle varies
 only with respect to $u$ throughout the duration of the timestep. The
 other dependencies of $\lambda$ (density, metallicity and redshift)
 are kept constant over the course of $\Delta t$. Crucially, we want to
@@ -75,6 +81,72 @@ energies and convert the total time derivative back to an entropy
 derivative. Since we already assume that cooling is performed at
 constant density, there is no loss in accuracy happening via this
 conversion procedure.
+
+\subsubsection{Energy floor and prediction step}
+
+In most applications, the cooling is not allowed to bring the internal
+energy below a certain value $u_{\rm min}$, usually expressed in the
+form of a minimal temperature. Additionally, and even in the absence
+of such a temperature floor, we must ensure that the energy does not
+become negative.
+
+Since the time-step size is not chosen in a way to fulfil these
+criteria, we have to limit the total rate of change of energy such
+that the limits are not reached. In practice this means modifying
+$\frac{\partial u}{\partial t}\big|_{\rm total}$ such that
+\begin{equation}
+  u(t) + \frac{\partial u}{\partial t}\bigg|_{\rm total} \times \Delta t \geq
+  u_{\rm min}
+\end{equation}
+is true. In the vast majority of cases, there is no need to modify the
+energy derivative but this may be necessary for some rapidly cooling
+particles.
+
+The time integration uses a leapfrog algorithm in its
+``Kick-Drift-Kick'' form. In the cases, where the time-step is
+constant, the condition as written above would be sufficient, however
+with variable $\Delta t$ this needs modifying. If the next time-step
+of a particle decreases in size, then the condition above will remain
+true. However, if the time-step size increases then we may violate the
+condition and integrate the energy to a value below $u_{\rm min}$. The
+time-step size is chosen in-between the application of the two kick
+operators\footnote{Effectively creating the chain
+  ``Kick-Drift-Kick-Timestep'', where the last operation fixes the
+  time-step size for the next kick-drift-kick cycle.}. We hence have
+to ensure that the integration of one half of the current step (the
+second kick) and one half of the next step (the first kick) does not
+lead to a value below the allowed minimum. In \swift, we do not allow
+the time-step to increase by more than a factor of $2$. This implies
+that we will at most integrate the internal energy forward in time for
+$1.5\Delta t$, where $\Delta t$ is the current value of the time-step
+size we used in all the equations thus far. An additional subtlety
+does, however, enter the scheme. The internal energy is not just used
+in the Kick operator. Because of the needs of the SPH scheme, the
+particles have to carry an estimate of the entropy at various points
+in time inside the step of this particle. This is especially important
+for inactive particles that act as sources for neighbouring active
+particles. We must hence not only protect for the next half-kick, we
+must also ensure that the value we estimated will be valid over the
+next drift step as well. This means completing the current half-kick
+and the next full drift, which could in principle double in size; this
+implies checking the limits over the next $2.5\Delta t$. However, for
+that variable, since it is an extrapolation and not the actual
+variable we integrate forward in time, we do not need to enforce the
+$u_{\rm min}$ limit. We must only ensure that the energy remains
+positive. Combining those two conditions, we conclude that we must
+enforce two limits:
+\begin{equation}
+  \left\lbrace
+  \begin{array}{ll}
+  \displaystyle\frac{\partial u}{\partial t}\bigg|_{\rm total}  \geq
+  -\displaystyle\frac{u(t) - u_{\rm min} }{1.5 \Delta t}, \Bigg.  \\
+  \displaystyle\frac{\partial u}{\partial t}\bigg|_{\rm total}  \geq
+  -\displaystyle\frac{u(t) - u_{\rm min} }{(2.5 + \epsilon) \Delta t},  
+  \end{array}
+  \right.
+\end{equation}
+where in the second equation we added a small value $\epsilon$ to
+ensure that we will not get negative values because of rounding errors.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Solution to the implicit cooling problem}
@@ -201,16 +273,16 @@ derivative of internal energy:
   \frac{\partial u}{\partial t}\bigg|_{\rm total} \equiv \frac{u_{\rm final} -
     u(t)}{\Delta t}.
 \end{equation}
-This allows us to construct the total eveolution of co-moving energy
-is
+This allows us to construct the total eveolution of co-moving energy:
 \begin{equation}
-  Y'_i(t)\big|_{\rm total} = a^2\times a^{3(\gamma-1)} \times
+  Y'_i(t)\big|_{\rm total} = a^{3(\gamma-1)} \times \frac{\Delta t}{\Delta
+    t_{\rm therm}} \times
   \frac{\partial u}{\partial t}\bigg|_{\rm total},
 \end{equation}
-where the first term is requred our definition of $\Delta t_{\rm
-  therm}$ and the second one is the conversion from physical to
-co-moving internal energy. The time integration routine then performs
-the same calculation as in the non-cooling case:
+where the first term is is the conversion from physical to co-moving
+internal energy and the second term is required by our definition of
+our time integration opertator. The time integration routine then performs the
+same calculation as in the non-cooling case:
 \begin{equation}
   u'_i(t+\Delta t) = u'_i(t) + Y'_i(t)\big|_{\rm total} \times {\Delta t_{\rm therm}}.
 \end{equation}
