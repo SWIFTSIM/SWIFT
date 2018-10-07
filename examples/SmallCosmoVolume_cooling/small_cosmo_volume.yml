@@ -56,3 +56,8 @@ InitialConditions:
   cleanup_velocity_factors:    1  
   generate_gas_in_ics: 1            # Generate gas particles from the DM-only ICs
   cleanup_smoothing_lengths: 1      # Since we generate gas, make use of the (expensive) cleaning-up procedure.
+
+# Constant lambda cooling function
+LambdaCooling:
+  lambda_cgs:                  1e-30 # Cooling rate (in cgs units)
+  cooling_tstep_mult:          1.0   # Dimensionless pre-factor for the time-step condition

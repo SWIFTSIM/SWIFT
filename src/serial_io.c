@@ -870,7 +870,7 @@ void write_output_serial(struct engine* e, const char* baseName,
     h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
                       H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating subgrid group");
-    cooling_write_flavour(h_grp);
+    cooling_write_flavour(h_grp, e->cooling_func);
     chemistry_write_flavour(h_grp);
     H5Gclose(h_grp);
 
