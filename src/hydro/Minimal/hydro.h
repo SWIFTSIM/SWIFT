@@ -336,6 +336,7 @@ hydro_set_physical_internal_energy_dt(struct part *restrict p,
 
   p->u_dt = du_dt * cosmo->a_factor_internal_energy;
 }
+
 /**
  * @brief Computes the hydro time-step of a given particle
  *

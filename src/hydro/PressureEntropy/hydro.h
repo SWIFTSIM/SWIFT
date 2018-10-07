@@ -65,7 +65,7 @@ hydro_get_comoving_internal_energy(const struct part *restrict p,
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_physical_internal_energy(const struct part *restrict p,
-				   const struct xpart *restrict xp,
+                                   const struct xpart *restrict xp,
                                    const struct cosmology *cosmo) {
 
   return gas_internal_energy_from_entropy(p->rho_bar * cosmo->a3_inv,
@@ -94,7 +94,8 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_physical_internal_energy(const struct part *restrict p,
                                            const struct cosmology *cosmo) {
 
-  return gas_internal_energy_from_entropy(p->rho_bar * cosmo->a3_inv, p->entropy);
+  return gas_internal_energy_from_entropy(p->rho_bar * cosmo->a3_inv,
+                                          p->entropy);
 }
 
 /**
@@ -274,8 +275,8 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
  *
  * @param p The particle of interest
  */
-__attribute__((always_inline)) INLINE static float hydro_get_comoving_internal_energy_dt(
-    const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static float
+hydro_get_comoving_internal_energy_dt(const struct part *restrict p) {
 
   return gas_internal_energy_from_entropy(p->rho_bar, p->entropy_dt);
 }
@@ -304,8 +305,8 @@ hydro_get_physical_internal_energy_dt(const struct part *restrict p,
  * @param p The particle of interest.
  * @param du_dt The new time derivative of the internal energy.
  */
-__attribute__((always_inline)) INLINE static void hydro_set_comoving_internal_energy_dt(
-    struct part *restrict p, float du_dt) {
+__attribute__((always_inline)) INLINE static void
+hydro_set_comoving_internal_energy_dt(struct part *restrict p, float du_dt) {
 
   p->entropy_dt = gas_entropy_from_internal_energy(p->rho_bar, du_dt);
 }
