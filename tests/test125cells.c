@@ -414,8 +414,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #else
             main_cell->parts[pid].density.div_v,
 #endif
-            hydro_get_comoving_entropy(&main_cell->parts[pid]),
-            hydro_get_comoving_internal_energy(&main_cell->parts[pid]),
+            hydro_get_drifted_comoving_entropy(&main_cell->parts[pid]),
+            hydro_get_drifted_comoving_internal_energy(&main_cell->parts[pid]),
             hydro_get_comoving_pressure(&main_cell->parts[pid]),
             hydro_get_comoving_soundspeed(&main_cell->parts[pid]),
             main_cell->parts[pid].a_hydro[0], main_cell->parts[pid].a_hydro[1],
