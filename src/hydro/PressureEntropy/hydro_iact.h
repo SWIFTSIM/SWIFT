@@ -259,7 +259,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float v_sig = ci + cj - 3.f * mu_ij;
+  const float v_sig = ci + cj - 2.f * const_viscosity_beta_over_alpha * mu_ij;
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
@@ -373,7 +373,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float v_sig = ci + cj - 3.f * mu_ij;
+  const float v_sig = ci + cj - 2.f * const_viscosity_beta_over_alpha * mu_ij;
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
