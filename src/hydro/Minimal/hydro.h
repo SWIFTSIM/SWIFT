@@ -69,6 +69,7 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_physical_internal_energy(const struct part *restrict p,
                                    const struct xpart *restrict xp,
                                    const struct cosmology *cosmo) {
+
   return xp->u_full * cosmo->a_factor_internal_energy;
 }
 
@@ -141,7 +142,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
 }
 
 /**
- * @brief Returns the physical entropy of a particl at the last
+ * @brief Returns the physical entropy of a particle at the last
  * time the particle was kicked.
  *
  * @param p The particle of interest.
