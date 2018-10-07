@@ -29,20 +29,20 @@
 #ifdef HAVE_HDF5
 
 /**
- * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
+ * @brief Writes the current model of cooling  to the file
+ * @param h_grp The HDF5 group in which to write
  */
 __attribute__((always_inline)) INLINE static void cooling_write_flavour(
-    hid_t h_grpsph) {
+    hid_t h_grp, const struct cooling_function_data* cooling) {
 
 #if COOLING_GRACKLE_MODE == 0
-  io_write_attribute_s(h_grpsph, "Cooling Model", "Grackle");
+  io_write_attribute_s(h_grp, "Cooling Model", "Grackle");
 #elif COOLING_GRACKLE_MODE == 1
-  io_write_attribute_s(h_grpsph, "Cooling Model", "Grackle1");
+  io_write_attribute_s(h_grp, "Cooling Model", "Grackle1");
 #elif COOLING_GRACKLE_MODE == 2
-  io_write_attribute_s(h_grpsph, "Cooling Model", "Grackle2");
+  io_write_attribute_s(h_grp, "Cooling Model", "Grackle2");
 #elif COOLING_GRACKLE_MODE == 3
-  io_write_attribute_s(h_grpsph, "Cooling Model", "Grackle3");
+  io_write_attribute_s(h_grp, "Cooling Model", "Grackle3");
 #else
   error("This function should be called only with one of the Grackle cooling.");
 #endif

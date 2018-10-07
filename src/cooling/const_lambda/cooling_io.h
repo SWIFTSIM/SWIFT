@@ -31,7 +31,7 @@
 #ifdef HAVE_HDF5
 
 /**
- * @brief Writes the current model of SPH to the file
+ * @brief Writes the current model of cooling to the file
  * @param h_grp The HDF5 group in which to write
  * @param cooling the parameters of the cooling function.
  */
