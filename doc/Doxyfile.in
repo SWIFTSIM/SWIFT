@@ -767,6 +767,7 @@ INPUT		       += @top_srcdir@/src/stars/Default
 INPUT		       += @top_srcdir@/src/riemann
 INPUT		       += @top_srcdir@/src/potential/point_mass
 INPUT		       += @top_srcdir@/src/equation_of_state/ideal_gas
+INPUT		       += @top_srcdir@/src/cooling/const_du
 INPUT		       += @top_srcdir@/src/cooling/const_lambda
 INPUT		       += @top_srcdir@/src/cooling/EAGLE
 INPUT		       += @top_srcdir@/src/chemistry/EAGLE

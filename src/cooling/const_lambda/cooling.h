@@ -146,7 +146,6 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
- * @param us The internal system of units.
  * @param cosmo The current cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
