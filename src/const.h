@@ -21,9 +21,10 @@
 #define SWIFT_CONST_H
 
 /* SPH Viscosity constants. */
-/* Cosmology defaults: a=0.8, b=1.5a. Planetary defaults: a=1.5, b=2.0a */ 
+/* Cosmology defaults: a=0.8, b=1.5. Planetary defaults: a=1.5, b=2.0 
+ * Note: beta is multiplied by alpha, as in e.g. Springel (2010) Eqn (33) */ 
 #define const_viscosity_alpha 0.8f
-#define const_viscosity_beta_over_alpha 1.5f
+#define const_viscosity_beta 1.5f
 
 #define const_viscosity_alpha_min \
   0.1f /* Values taken from (Price,2004), not used in legacy gadget mode */

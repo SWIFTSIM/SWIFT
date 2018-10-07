@@ -189,7 +189,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute sound speeds and signal velocity */
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-  const float v_sig = ci + cj - 2.f * const_viscosity_beta_over_alpha * mu_ij;
+  const float v_sig = ci + cj - 2.f * const_viscosity_beta * mu_ij;
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
@@ -315,7 +315,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float cj = pj->force.soundspeed;
 
   /* Signal velocity */
-  const float v_sig = ci + cj - 2.f * const_viscosity_beta_over_alpha * mu_ij;
+  const float v_sig = ci + cj - 2.f * const_viscosity_beta * mu_ij;
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
