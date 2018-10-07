@@ -44,7 +44,9 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
- * @param parts The particle array.
+ * Nothing to write for this scheme.
+ *
+ * @param xparts The extended particle array.
  * @param list The list of i/o properties to write.
  * @param cooling The #cooling_function_data
  *
@@ -53,6 +55,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
     const struct xpart* xparts, struct io_props* list,
     const struct cooling_function_data* cooling) {
+
   return 0;
 }
 

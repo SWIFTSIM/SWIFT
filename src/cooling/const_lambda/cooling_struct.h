@@ -32,17 +32,14 @@ struct cooling_function_data {
   double lambda_cgs;
 
   /*! Conversion factor from internal units to cgs for density */
-  double conv_factor_cgs_density;
+  double conv_factor_density_to_cgs;
 
-  /*! Conversion factor from internal units to cgs for internal energy */
-  double conv_factor_cgs_energy;
-
-  /*! Conversion factor from internal units to cgs for internal energy
+  /*! Conversion factor from internal units from cgs for internal energy
    * derivative */
-  double conv_factor_cgs_energy_rate;
+  double conv_factor_energy_rate_from_cgs;
 
-  /*! Proton mass in cgs units */
-  double proton_mass_cgs;
+  /*! Inverse of the proton mass in cgs units [g^-1] */
+  double proton_mass_cgs_inv;
 
   /*! Constant multiplication factor for time-step criterion */
   float cooling_tstep_mult;
