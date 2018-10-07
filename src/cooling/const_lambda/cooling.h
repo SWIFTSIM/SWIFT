@@ -159,6 +159,11 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct unit_system* restrict us,
     const struct hydro_props* hydro_props, const struct part* restrict p) {
 
+  /* Start with the case where there is no limit */
+  if (cooling->cooling_tstep_mult == FLT_MAX) {
+    return FLT_MAX;
+  }
+
   /* Get current internal energy and cooling rate */
   const float u = hydro_get_physical_internal_energy(p, cosmo);
   const double cooling_du_dt_cgs =
@@ -225,8 +230,8 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
   /* Read in the cooling parameters */
   cooling->lambda_cgs =
       parser_get_param_double(parameter_file, "LambdaCooling:lambda_cgs");
-  cooling->cooling_tstep_mult = parser_get_param_double(
-      parameter_file, "LambdaCooling:cooling_tstep_mult");
+  cooling->cooling_tstep_mult = parser_get_opt_param_float(
+      parameter_file, "LambdaCooling:cooling_tstep_mult", FLT_MAX);
 
   /* Some useful conversion values */
   cooling->conv_factor_density_to_cgs =
@@ -251,6 +256,12 @@ static INLINE void cooling_print_backend(
 
   message("Cooling function is 'Constant lambda' with Lambda=%g [cgs]",
           cooling->lambda_cgs);
+
+  if (cooling->cooling_tstep_mult == FLT_MAX)
+    message("Cooling function time-step size is unlimited");
+  else
+    message("Cooling function time-step size limited to %f of u/(du/dt)",
+            cooling->cooling_tstep_mult);
 }
 
 #endif /* SWIFT_COOLING_CONST_LAMBDA_H */

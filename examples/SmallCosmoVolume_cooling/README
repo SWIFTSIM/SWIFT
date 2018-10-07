@@ -7,6 +7,11 @@ on the options to cancel the h-factors and a-factors at reading time.
 We generate gas from the ICs using SWIFT's internal mechanism and set the
 temperature to the expected gas temperature at this redshift.
 
+This example runs with cooling switch on. Depending on the cooling
+model chosen at the time SWIFT was configured, the answer will be
+different. Interesting cases to compare to the no-cooling case are
+a constant cooling rate or Compton cooling.
+
 The 'plotTempEvolution.py' plots the temperature evolution of the gas
 in the simulated volume.
 

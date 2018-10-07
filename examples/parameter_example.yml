@@ -199,10 +199,7 @@ ConstCooling:
 # Constant lambda cooling function
 LambdaCooling:
   lambda_cgs:                  2.0   # Cooling rate (in cgs units)
-  minimum_temperature:         1.0e4 # Minimal temperature (Kelvin)
-  mean_molecular_weight:       0.59  # Mean molecular weight
-  hydrogen_mass_abundance:     0.75  # Hydrogen mass abundance (dimensionless)
-  cooling_tstep_mult:          1.0   # Dimensionless pre-factor for the time-step condition
+  cooling_tstep_mult:          1.0   # (Optional) Dimensionless pre-factor for the time-step condition.
 
 # Cooling with Grackle 3.0
 GrackleCooling:

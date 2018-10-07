@@ -59,5 +59,4 @@ InitialConditions:
 
 # Constant lambda cooling function
 LambdaCooling:
-  lambda_cgs:                  1e-30 # Cooling rate (in cgs units)
-  cooling_tstep_mult:          1.0   # Dimensionless pre-factor for the time-step condition
+  lambda_cgs:                  1e-26 # Cooling rate (in cgs units)

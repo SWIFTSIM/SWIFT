@@ -461,11 +461,11 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         double dt_cool, dt_therm;
-        ;
         if (with_cosmology) {
           const integertime_t ti_step = get_integer_timestep(p->time_bin);
           const integertime_t ti_begin =
-              get_integer_time_begin(ti_current + 1, p->time_bin);
+              get_integer_time_begin(ti_current - 1, p->time_bin);
+
           dt_cool =
               cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
           dt_therm = cosmology_get_therm_kick_factor(e->cosmology, ti_begin,
