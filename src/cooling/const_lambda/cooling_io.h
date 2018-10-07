@@ -31,20 +31,24 @@
 #ifdef HAVE_HDF5
 
 /**
- * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
+ * @brief Writes the current model of cooling to the file
+ * @param h_grp The HDF5 group in which to write
+ * @param cooling the parameters of the cooling function.
  */
 __attribute__((always_inline)) INLINE static void cooling_write_flavour(
-    hid_t h_grpsph) {
+    hid_t h_grp, const struct cooling_function_data* cooling) {
 
-  io_write_attribute_s(h_grpsph, "Cooling Model", "Constant Lambda");
+  io_write_attribute_s(h_grp, "Cooling Model", "Constant Lambda");
+  io_write_attribute_d(h_grp, "Lambda [cgs]", cooling->lambda_cgs);
 }
 #endif
 
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
- * @param parts The particle array.
+ * Nothing to write for this scheme.
+ *
+ * @param xparts The extended particle array.
  * @param list The list of i/o properties to write.
  * @param cooling The #cooling_function_data
  *
@@ -53,6 +57,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
     const struct xpart* xparts, struct io_props* list,
     const struct cooling_function_data* cooling) {
+
   return 0;
 }
 

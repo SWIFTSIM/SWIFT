@@ -36,6 +36,7 @@
 
 /* Local includes. */
 #include "chemistry.h"
+#include "cooling_io.h"
 #include "error.h"
 #include "hydro.h"
 #include "parser.h"
@@ -491,6 +492,10 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, struct xpart* restrict xp, double dt) {
 
+  error(
+      "Check cosmology factors (physical vs. co-moving and drifted vs. "
+      "un-drifted)!");
+
   /* set current time */
   code_units units = cooling->units;
   if (cooling->redshift == -1)
@@ -515,7 +520,8 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
 
   /* general particle data */
   gr_float density = hydro_get_physical_density(p, cosmo);
-  const double energy_before = hydro_get_physical_internal_energy(p, cosmo);
+  const double energy_before =
+      hydro_get_drifted_physical_internal_energy(p, cosmo);
   gr_float energy = energy_before;
 
   /* initialize density */
@@ -596,7 +602,8 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
   data.grid_end = grid_end;
 
   /* general particle data */
-  const gr_float energy_before = hydro_get_physical_internal_energy(p, cosmo);
+  const gr_float energy_before =
+      hydro_get_drifted_physical_internal_energy(p, cosmo);
   gr_float density = hydro_get_physical_density(p, cosmo);
   gr_float energy = energy_before;
 
@@ -641,13 +648,19 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
     const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, struct xpart* restrict xp, double dt) {
+    struct part* restrict p, struct xpart* restrict xp, double dt,
+    double dt_therm) {
+
+  error(
+      "Check cosmology factors (physical vs. co-moving and drifted vs. "
+      "un-drifted)!");
 
   if (dt == 0.) return;
 
   /* Current du_dt */
-  const float hydro_du_dt = hydro_get_internal_energy_dt(p);
+  const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* compute cooling rate */
   const float du_dt = cooling_rate(phys_const, us, cosmo, cooling, p, xp, dt);
@@ -656,7 +669,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   xp->cooling_data.radiated_energy += -du_dt * dt * hydro_get_mass(p);
 
   /* Update the internal energy */
-  hydro_set_internal_energy_dt(p, hydro_du_dt + du_dt);
+  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt + du_dt);
 }
 
 /**
@@ -674,7 +687,9 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
     const struct cosmology* restrict cosmo,
-    const struct unit_system* restrict us, const struct part* restrict p) {
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props, const struct part* restrict p,
+    const struct xpart* restrict xp) {
 
   return FLT_MAX;
 }
