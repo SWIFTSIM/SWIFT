@@ -267,8 +267,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   const float dvdotdx = min(dvdr, 0.0f);
 
   /* Get the signal velocity */
-  /* the magical factor 3 also appears in Gadget2 */
-  vmax -= 3.0f * dvdotdx * r_inv;
+  vmax -= 2.f * const_viscosity_beta_over_alpha * dvdotdx * r_inv;
 
   /* Store the signal velocity */
   pi->timestepvars.vmax = max(pi->timestepvars.vmax, vmax);
