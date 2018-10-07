@@ -24,7 +24,7 @@ k_in_J_K = 1.38064852e-23
 mH_in_kg = 1.6737236e-27
 
 # Number of snapshots generated
-n_snapshots = 160
+n_snapshots = 200
 
 import matplotlib
 matplotlib.use("Agg")

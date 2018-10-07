@@ -128,7 +128,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   if (e->policy & engine_policy_cooling)
     new_dt_cooling =
         cooling_timestep(e->cooling_func, e->physical_constants, e->cosmology,
-                         e->internal_units, e->hydro_properties, p);
+                         e->internal_units, e->hydro_properties, p, xp);
 
   /* Compute the next timestep (gravity condition) */
   float new_dt_grav = FLT_MAX, new_dt_self_grav = FLT_MAX,

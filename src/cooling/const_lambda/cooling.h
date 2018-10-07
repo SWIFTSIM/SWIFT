@@ -98,7 +98,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   const float u_floor = hydro_props->minimal_internal_energy;
 
   /* Current energy */
-  const float u_old = hydro_get_physical_internal_energy2(p, xp, cosmo);
+  const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
 
   /* Current du_dt in physical coordinates */
   const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
@@ -151,13 +151,15 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended data of the particle.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
     const struct cosmology* restrict cosmo,
     const struct unit_system* restrict us,
-    const struct hydro_props* hydro_props, const struct part* restrict p) {
+    const struct hydro_props* hydro_props, const struct part* restrict p,
+    const struct xpart* restrict xp) {
 
   /* Start with the case where there is no limit */
   if (cooling->cooling_tstep_mult == FLT_MAX) {
@@ -165,7 +167,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
   }
 
   /* Get current internal energy and cooling rate */
-  const float u = hydro_get_physical_internal_energy(p, cosmo);
+  const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
   const double cooling_du_dt_cgs =
       cooling_rate_cgs(cosmo, hydro_props, cooling, p);
 
@@ -174,7 +176,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
       cooling_du_dt_cgs * cooling->conv_factor_energy_rate_from_cgs;
 
   /* If we are close to (or below) the limit, we ignore the condition */
-  if (u < 1.01f * hydro_props->minimal_internal_energy)
+  if (u < 1.01f * hydro_props->minimal_internal_energy || cooling_du_dt == 0.f)
     return FLT_MAX;
   else
     return cooling->cooling_tstep_mult * u / fabsf(cooling_du_dt);
