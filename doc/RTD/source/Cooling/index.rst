@@ -45,6 +45,9 @@ to provide an HDF5 table computed by Cloudy.
 When starting a simulation without providing the different fractions, the code
 supposes an equilibrium and computes the fractions automatically.
 
+In order to compile SWIFT with Grackle, you need to provide the options ``with-grackle``
+and ``with-chemistry``.
+
 Eagle
 ~~~~~
 

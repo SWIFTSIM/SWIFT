@@ -878,6 +878,43 @@ if test "$with_hdf5" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
 
+# Check for grackle.
+have_grackle="no"
+AC_ARG_WITH([grackle],
+    [AS_HELP_STRING([--with-grackle=PATH],
+       [root directory where grackle is installed @<:@yes/no@:>@]
+    )],
+    [with_grackle="$withval"],
+    [with_grackle="no"]
+)
+if test "x$with_grackle" != "xno"; then
+   AC_PROG_FC
+   AC_FC_LIBRARY_LDFLAGS
+   if test "x$with_grackle" != "xyes" -a "x$with_grackle" != "x"; then
+      GRACKLE_LIBS="-L$with_grackle/lib -lgrackle"
+      GRACKLE_INCS="-I$with_grackle/include"
+   else
+      GRACKLE_LIBS="-lgrackle"
+      GRACKLE_INCS=""
+   fi
+
+   have_grackle="yes"
+
+   echo $GRACKLE_LIBS
+
+   AC_CHECK_LIB(
+      [grackle],
+      [initialize_chemistry_data],
+      [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.])
+        AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
+      ],
+      [AC_MSG_ERROR(Cannot find grackle library!)],
+      [$GRACKLE_LIBS])
+fi
+AC_SUBST([GRACKLE_LIBS])
+AC_SUBST([GRACKLE_INCS])
+AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
+
 # Check for VELOCIraptor.
 have_velociraptor="no"
 AC_ARG_WITH([velociraptor],
@@ -1321,43 +1358,6 @@ case "$with_riemann" in
       AC_MSG_ERROR([Unknown Riemann solver: $with_riemann])
    ;;
 esac
-
-# Check for grackle.
-have_grackle="no"
-AC_ARG_WITH([grackle],
-    [AS_HELP_STRING([--with-grackle=PATH],
-       [root directory where grackle is installed @<:@yes/no@:>@]
-    )],
-    [with_grackle="$withval"],
-    [with_grackle="no"]
-)
-if test "x$with_grackle" != "xno"; then
-   AC_PROG_FC
-   AC_FC_LIBRARY_LDFLAGS
-   if test "x$with_grackle" != "xyes" -a "x$with_grackle" != "x"; then
-      GRACKLE_LIBS="-L$with_grackle/lib -lgrackle"
-      GRACKLE_INCS="-I$with_grackle/include"
-   else
-      GRACKLE_LIBS="-lgrackle"
-      GRACKLE_INCS=""
-   fi
-
-   have_grackle="yes"
-
-   AC_CHECK_LIB(
-      [grackle],
-      [initialize_chemistry_data],
-      [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.])
-        AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
-      ],
-      [AC_MSG_ERROR(Cannot find grackle library!)],
-      [$GRACKLE_LIBS $GRACKLE_INCS $FCLIBS]
-   )
-fi
-AC_SUBST([GRACKLE_LIBS])
-AC_SUBST([GRACKLE_INCS])
-AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
-
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<function>],
