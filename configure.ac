@@ -1351,7 +1351,7 @@ if test "x$with_grackle" != "xno"; then
         AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
       ],
       [AC_MSG_ERROR(Cannot find grackle library!)],
-      [$GRACKLE_LIBS $GRACKLE_INCS $FCLIBS]
+      [$GRACKLE_LIBS $GRACKLE_INCS $FCLIBS -Wno-strict-prototypes]
    )
 fi
 AC_SUBST([GRACKLE_LIBS])
