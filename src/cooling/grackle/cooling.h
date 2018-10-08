@@ -491,12 +491,12 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, struct xpart* restrict xp, double dt) {
-  
+
   if (cosmo->Omega_m != 0. || cosmo->Omega_r != 0. || cosmo->Omega_k != 0. ||
       cosmo->Omega_lambda != 0. || cosmo->Omega_b != 0.)
     error(
-	  "Check cosmology factors (physical vs. co-moving and drifted vs. "
-	  "un-drifted)!");
+        "Check cosmology factors (physical vs. co-moving and drifted vs. "
+        "un-drifted)!");
 
   /* set current time */
   code_units units = cooling->units;
@@ -543,9 +543,8 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
   /* solve chemistry */
   chemistry_data chemistry_grackle = cooling->chemistry;
   chemistry_data_storage chemistry_rates = grackle_rates;
-  if (local_solve_chemistry(&chemistry_grackle,
-			    &chemistry_rates,
-			    &units, &data, dt) == 0) {
+  if (local_solve_chemistry(&chemistry_grackle, &chemistry_rates, &units, &data,
+                            dt) == 0) {
     error("Error in solve_chemistry.");
   }
 
@@ -617,8 +616,8 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
   gr_float cooling_time;
   chemistry_data chemistry_grackle = cooling->chemistry;
   chemistry_data_storage chemistry_rates = grackle_rates;
-  if (local_calculate_cooling_time(&chemistry_grackle, &chemistry_rates,
-				   &units, &data, &cooling_time) == 0) {
+  if (local_calculate_cooling_time(&chemistry_grackle, &chemistry_rates, &units,
+                                   &data, &cooling_time) == 0) {
     error("Error in calculate_cooling_time.");
   }
 
@@ -651,8 +650,8 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   if (cosmo->Omega_m != 0. || cosmo->Omega_r != 0. || cosmo->Omega_k != 0. ||
       cosmo->Omega_lambda != 0. || cosmo->Omega_b != 0.)
     error(
-	  "Check cosmology factors (physical vs. co-moving and drifted vs. "
-	  "un-drifted)!");
+        "Check cosmology factors (physical vs. co-moving and drifted vs. "
+        "un-drifted)!");
 
   if (dt == 0.) return;
 
