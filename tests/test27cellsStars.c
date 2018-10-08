@@ -73,14 +73,14 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
-  if (posix_memalign((void **)&cell->parts, part_align,
+  if (posix_memalign((void **)&cell->hydro.parts, part_align,
                      count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
-  bzero(cell->parts, count * sizeof(struct part));
+  bzero(cell->hydro.parts, count * sizeof(struct part));
 
   /* Construct the parts */
-  struct part *part = cell->parts;
+  struct part *part = cell->hydro.parts;
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
@@ -116,13 +116,13 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   }
 
   /* Construct the sparts */
-  if (posix_memalign((void **)&cell->sparts, spart_align,
+  if (posix_memalign((void **)&cell->stars.parts, spart_align,
                      scount * sizeof(struct spart)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)scount);
   }
-  bzero(cell->sparts, scount * sizeof(struct spart));
+  bzero(cell->stars.parts, scount * sizeof(struct spart));
 
-  struct spart *spart = cell->sparts;
+  struct spart *spart = cell->stars.parts;
   for (size_t x = 0; x < n_stars; ++x) {
     for (size_t y = 0; y < n_stars; ++y) {
       for (size_t z = 0; z < n_stars; ++z) {
@@ -159,11 +159,11 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
 
   /* Cell properties */
   cell->split = 0;
-  cell->h_max = h_max;
-  cell->count = count;
-  cell->scount = scount;
-  cell->dx_max_part = 0.;
-  cell->dx_max_sort = 0.;
+  cell->hydro.h_max = h_max;
+  cell->hydro.count = count;
+  cell->stars.count = scount;
+  cell->hydro.dx_max_part = 0.;
+  cell->hydro.dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
@@ -171,27 +171,27 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_old_part = 8;
-  cell->ti_hydro_end_min = 8;
-  cell->ti_hydro_end_max = 8;
-  cell->ti_gravity_end_min = 8;
-  cell->ti_gravity_end_max = 8;
+  cell->hydro.ti_old_part = 8;
+  cell->hydro.ti_end_min = 8;
+  cell->hydro.ti_end_max = 8;
+  cell->grav.ti_end_min = 8;
+  cell->grav.ti_end_max = 8;
   cell->nodeID = NODE_ID;
 
-  shuffle_particles(cell->parts, cell->count);
-  shuffle_sparticles(cell->sparts, cell->scount);
+  shuffle_particles(cell->hydro.parts, cell->hydro.count);
+  shuffle_sparticles(cell->stars.parts, cell->stars.count);
 
-  cell->sorted = 0;
-  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
+  cell->hydro.sorted = 0;
+  for (int k = 0; k < 13; k++) cell->hydro.sort[k] = NULL;
 
   return cell;
 }
 
 void clean_up(struct cell *ci) {
-  free(ci->parts);
-  free(ci->sparts);
+  free(ci->hydro.parts);
+  free(ci->stars.parts);
   for (int k = 0; k < 13; k++)
-    if (ci->sort[k] != NULL) free(ci->sort[k]);
+    if (ci->hydro.sort[k] != NULL) free(ci->hydro.sort[k]);
   free(ci);
 }
 
@@ -199,8 +199,8 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields(struct cell *c) {
-  for (int pid = 0; pid < c->scount; pid++) {
-    stars_init_spart(&c->sparts[pid]);
+  for (int pid = 0; pid < c->stars.count; pid++) {
+    stars_init_spart(&c->stars.parts[pid]);
   }
 }
 
@@ -208,12 +208,12 @@ void zero_particle_fields(struct cell *c) {
  * @brief Ends the loop by adding the appropriate coefficients
  */
 void end_calculation(struct cell *c, const struct cosmology *cosmo) {
-  for (int pid = 0; pid < c->scount; pid++) {
-    stars_end_density(&c->sparts[pid], cosmo);
+  for (int pid = 0; pid < c->stars.count; pid++) {
+    stars_end_density(&c->stars.parts[pid], cosmo);
 
     /* Recover the common "Neighbour number" definition */
-    c->sparts[pid].density.wcount *= pow_dimension(c->sparts[pid].h);
-    c->sparts[pid].density.wcount *= kernel_norm;
+    c->stars.parts[pid].density.wcount *= pow_dimension(c->stars.parts[pid].h);
+    c->stars.parts[pid].density.wcount *= kernel_norm;
   }
 }
 
@@ -231,11 +231,12 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
-  for (int pid = 0; pid < main_cell->scount; pid++) {
-    fprintf(file, "%6llu %10f %10f %10f %13e %13e\n", main_cell->sparts[pid].id,
-            main_cell->sparts[pid].x[0], main_cell->sparts[pid].x[1],
-            main_cell->sparts[pid].x[2], main_cell->sparts[pid].density.wcount,
-            main_cell->sparts[pid].density.wcount_dh);
+  for (int pid = 0; pid < main_cell->stars.count; pid++) {
+    fprintf(file, "%6llu %10f %10f %10f %13e %13e\n",
+            main_cell->stars.parts[pid].id, main_cell->stars.parts[pid].x[0],
+            main_cell->stars.parts[pid].x[1], main_cell->stars.parts[pid].x[2],
+            main_cell->stars.parts[pid].density.wcount,
+            main_cell->stars.parts[pid].density.wcount_dh);
   }
 
   /* Write all other cells */
@@ -249,11 +250,12 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
                 "# Offset: [%2d %2d %2d] -----------------------------------\n",
                 i - 1, j - 1, k - 1);
 
-        for (int pjd = 0; pjd < cj->scount; pjd++) {
-          fprintf(file, "%6llu %10f %10f %10f %13e %13e\n", cj->sparts[pjd].id,
-                  cj->sparts[pjd].x[0], cj->sparts[pjd].x[1],
-                  cj->sparts[pjd].x[2], cj->sparts[pjd].density.wcount,
-                  cj->sparts[pjd].density.wcount_dh);
+        for (int pjd = 0; pjd < cj->stars.count; pjd++) {
+          fprintf(file, "%6llu %10f %10f %10f %13e %13e\n",
+                  cj->stars.parts[pjd].id, cj->stars.parts[pjd].x[0],
+                  cj->stars.parts[pjd].x[1], cj->stars.parts[pjd].x[2],
+                  cj->stars.parts[pjd].density.wcount,
+                  cj->stars.parts[pjd].density.wcount_dh);
         }
       }
     }
@@ -433,10 +435,10 @@ int main(int argc, char *argv[]) {
 #if defined(TEST_DOSELF_SUBSET) || defined(TEST_DOPAIR_SUBSET)
     int *pid = NULL;
     int scount = 0;
-    if ((pid = (int *)malloc(sizeof(int) * main_cell->scount)) == NULL)
+    if ((pid = (int *)malloc(sizeof(int) * main_cell->stars.count)) == NULL)
       error("Can't allocate memory for pid.");
-    for (int k = 0; k < main_cell->scount; k++)
-      if (spart_is_active(&main_cell->sparts[k], &engine)) {
+    for (int k = 0; k < main_cell->stars.count; k++)
+      if (spart_is_active(&main_cell->stars.parts[k], &engine)) {
         pid[scount] = k;
         ++scount;
       }
@@ -448,7 +450,7 @@ int main(int argc, char *argv[]) {
         const ticks sub_tic = getticks();
 
 #ifdef TEST_DOPAIR_SUBSET
-        DOPAIR1_SUBSET(&runner, main_cell, main_cell->sparts, pid, scount,
+        DOPAIR1_SUBSET(&runner, main_cell, main_cell->stars.parts, pid, scount,
                        cells[j]);
 #else
         DOPAIR1(&runner, main_cell, cells[j]);
@@ -462,7 +464,7 @@ int main(int argc, char *argv[]) {
     const ticks self_tic = getticks();
 
 #ifdef TEST_DOSELF_SUBSET
-    DOSELF1_SUBSET(&runner, main_cell, main_cell->sparts, pid, scount);
+    DOSELF1_SUBSET(&runner, main_cell, main_cell->stars.parts, pid, scount);
 #else
     DOSELF1(&runner, main_cell);
 #endif

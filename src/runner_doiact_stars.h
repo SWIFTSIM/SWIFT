@@ -40,10 +40,10 @@ void runner_doself_stars_density(struct runner *r, struct cell *c, int timer) {
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  const int scount = c->scount;
-  const int count = c->count;
-  struct spart *restrict sparts = c->sparts;
-  struct part *restrict parts = c->parts;
+  const int scount = c->stars.count;
+  const int count = c->hydro.count;
+  struct spart *restrict sparts = c->stars.parts;
+  struct part *restrict parts = c->hydro.parts;
 
   /* Loop over the sparts in ci. */
   for (int sid = 0; sid < scount; sid++) {
@@ -101,10 +101,10 @@ void runner_dosubpair_stars_density(struct runner *r, struct cell *restrict ci,
   /* Anything to do here? */
   if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
 
-  const int scount_i = ci->scount;
-  const int count_j = cj->count;
-  struct spart *restrict sparts_i = ci->sparts;
-  struct part *restrict parts_j = cj->parts;
+  const int scount_i = ci->stars.count;
+  const int count_j = cj->hydro.count;
+  struct spart *restrict sparts_i = ci->stars.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -194,8 +194,8 @@ void runner_dopair_subset_stars_density(struct runner *r,
 
   TIMER_TIC;
 
-  const int count_j = cj->count;
-  struct part *restrict parts_j = cj->parts;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -269,8 +269,8 @@ void runner_doself_subset_stars_density(struct runner *r,
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  const int count_i = ci->count;
-  struct part *restrict parts_j = ci->parts;
+  const int count_i = ci->hydro.count;
+  struct part *restrict parts_j = ci->hydro.parts;
 
   /* Loop over the parts in ci. */
   for (int spid = 0; spid < scount; spid++) {
@@ -382,15 +382,16 @@ void runner_dosub_subset_stars_density(struct runner *r, struct cell *ci,
   if (!cell_is_active_stars(ci, e) &&
       (cj == NULL || !cell_is_active_stars(cj, e)))
     return;
-  if (ci->scount == 0 || (cj != NULL && cj->scount == 0)) return;
+  if (ci->stars.count == 0 || (cj != NULL && cj->stars.count == 0)) return;
 
   /* Find out in which sub-cell of ci the parts are. */
   struct cell *sub = NULL;
   if (ci->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL) {
-        if (&sparts[ind[0]] >= &ci->progeny[k]->sparts[0] &&
-            &sparts[ind[0]] < &ci->progeny[k]->sparts[ci->progeny[k]->scount]) {
+        if (&sparts[ind[0]] >= &ci->progeny[k]->stars.parts[0] &&
+            &sparts[ind[0]] <
+                &ci->progeny[k]->stars.parts[ci->progeny[k]->stars.count]) {
           sub = ci->progeny[k];
           break;
         }
@@ -962,7 +963,7 @@ void runner_doself_branch_stars_density(struct runner *r, struct cell *c) {
   if (!cell_is_active_stars(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->h_max_old * kernel_gamma > c->dmin)
+  if (c->hydro.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   runner_doself_stars_density(r, c, 1);
@@ -994,49 +995,51 @@ void runner_dopair_branch_stars_density(struct runner *r, struct cell *ci,
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) ||
-      ci->dx_max_sort_old > space_maxreldx * ci->dmin)
+  if (!(ci->hydro.sorted & (1 << sid)) ||
+      ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
     error("Interacting unsorted cells.");
-  if (!(cj->sorted & (1 << sid)) ||
-      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->sort[sid];
-  const struct entry *restrict sort_j = cj->sort[sid];
+  const struct entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
 
   /* Check that the dx_max_sort values in the cell are indeed an upper
      bound on particle movement. */
-  for (int pid = 0; pid < ci->count; pid++) {
-    const struct part *p = &ci->parts[sort_i[pid].i];
+  for (int pid = 0; pid < ci->hydro.count; pid++) {
+    const struct part *p = &ci->hydro.parts[sort_i[pid].i];
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
-            1.0e-4 * max(fabsf(d), ci->dx_max_sort_old) &&
-        fabsf(d - sort_i[pid].d) - ci->dx_max_sort > ci->width[0] * 1.0e-10)
+    if (fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
+            1.0e-4 * max(fabsf(d), ci->hydro.dx_max_sort_old) &&
+        fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
+            ci->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
-          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
-          "ci->dx_max_sort_old=%e",
-          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->dx_max_sort,
-          ci->dx_max_sort_old);
+          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->hydro.dx_max_sort=%e "
+          "ci->hydro.dx_max_sort_old=%e",
+          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->hydro.dx_max_sort,
+          ci->hydro.dx_max_sort_old);
   }
-  for (int pjd = 0; pjd < cj->count; pjd++) {
-    const struct part *p = &cj->parts[sort_j[pjd].i];
+  for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
+    const struct part *p = &cj->hydro.parts[sort_j[pjd].i];
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
-    if ((fabsf(d - sort_j[pjd].d) - cj->dx_max_sort) >
-            1.0e-4 * max(fabsf(d), cj->dx_max_sort_old) &&
-        (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort) > cj->width[0] * 1.0e-10)
+    if ((fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort) >
+            1.0e-4 * max(fabsf(d), cj->hydro.dx_max_sort_old) &&
+        (fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort) >
+            cj->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
-          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "
-          "cj->dx_max_sort_old=%e",
-          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
-          cj->dx_max_sort_old);
+          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->hydro.dx_max_sort=%e "
+          "cj->hydro.dx_max_sort_old=%e",
+          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->hydro.dx_max_sort,
+          cj->hydro.dx_max_sort_old);
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -1065,7 +1068,7 @@ void runner_dosub_pair_stars_density(struct runner *r, struct cell *ci,
 
   /* Should we even bother? */
   if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
-  if (ci->scount == 0 || cj->scount == 0) return;
+  if (ci->stars.count == 0 || cj->stars.count == 0) return;
 
   /* Get the type of pair if not specified explicitly. */
   double shift[3];
@@ -1357,11 +1360,11 @@ void runner_dosub_pair_stars_density(struct runner *r, struct cell *ci,
       error("Interacting undrifted cells.");
 
     /* Do any of the cells need to be sorted first? */
-    if (!(ci->sorted & (1 << sid)) ||
-        ci->dx_max_sort_old > ci->dmin * space_maxreldx)
+    if (!(ci->hydro.sorted & (1 << sid)) ||
+        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
       error("Interacting unsorted cell.");
-    if (!(cj->sorted & (1 << sid)) ||
-        cj->dx_max_sort_old > cj->dmin * space_maxreldx)
+    if (!(cj->hydro.sorted & (1 << sid)) ||
+        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
       error("Interacting unsorted cell.");
 
     /* Compute the interactions. */
@@ -1384,7 +1387,7 @@ void runner_dosub_self_stars_density(struct runner *r, struct cell *ci,
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->scount == 0 || !cell_is_active_stars(ci, r->e)) return;
+  if (ci->stars.count == 0 || !cell_is_active_stars(ci, r->e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_stars_task(ci)) {

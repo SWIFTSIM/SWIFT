@@ -135,15 +135,15 @@ void space_rebuild_recycle_rec(struct space *s, struct cell *c,
         *cell_rec_begin = c->progeny[k];
 
         if (s->gravity) {
-          c->progeny[k]->multipole->next = *multipole_rec_begin;
-          *multipole_rec_begin = c->progeny[k]->multipole;
+          c->progeny[k]->grav.multipole->next = *multipole_rec_begin;
+          *multipole_rec_begin = c->progeny[k]->grav.multipole;
         }
 
         if (*cell_rec_end == NULL) *cell_rec_end = *cell_rec_begin;
         if (s->gravity && *multipole_rec_end == NULL)
           *multipole_rec_end = *multipole_rec_begin;
 
-        c->progeny[k]->multipole = NULL;
+        c->progeny[k]->grav.multipole = NULL;
         c->progeny[k] = NULL;
       }
 }
@@ -164,79 +164,79 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     if (cell_rec_begin != NULL)
       space_recycle_list(s, cell_rec_begin, cell_rec_end, multipole_rec_begin,
                          multipole_rec_end);
-    c->sorts = NULL;
+    c->hydro.sorts = NULL;
     c->nr_tasks = 0;
-    c->nr_mm_tasks = 0;
-    c->density = NULL;
-    c->gradient = NULL;
-    c->force = NULL;
-    c->grav = NULL;
-    c->grav_mm = NULL;
-    c->dx_max_part = 0.0f;
-    c->dx_max_sort = 0.0f;
-    c->sorted = 0;
-    c->count = 0;
-    c->gcount = 0;
-    c->scount = 0;
-    c->init_grav = NULL;
-    c->init_grav_out = NULL;
-    c->extra_ghost = NULL;
-    c->ghost_in = NULL;
-    c->ghost_out = NULL;
-    c->ghost = NULL;
-    c->stars_ghost_in = NULL;
-    c->stars_ghost_out = NULL;
-    c->stars_ghost = NULL;
-    c->stars_density = NULL;
+    c->grav.nr_mm_tasks = 0;
+    c->hydro.density = NULL;
+    c->hydro.gradient = NULL;
+    c->hydro.force = NULL;
+    c->grav.grav = NULL;
+    c->grav.mm = NULL;
+    c->hydro.dx_max_part = 0.0f;
+    c->hydro.dx_max_sort = 0.0f;
+    c->hydro.sorted = 0;
+    c->hydro.count = 0;
+    c->grav.count = 0;
+    c->stars.count = 0;
+    c->grav.init = NULL;
+    c->grav.init_out = NULL;
+    c->hydro.extra_ghost = NULL;
+    c->hydro.ghost_in = NULL;
+    c->hydro.ghost_out = NULL;
+    c->hydro.ghost = NULL;
+    c->stars.ghost_in = NULL;
+    c->stars.ghost_out = NULL;
+    c->stars.ghost = NULL;
+    c->stars.density = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
-    c->end_force = NULL;
-    c->drift_part = NULL;
-    c->drift_gpart = NULL;
-    c->cooling = NULL;
+    c->hydro.end_force = NULL;
+    c->hydro.drift = NULL;
+    c->grav.drift = NULL;
+    c->hydro.cooling = NULL;
     c->sourceterms = NULL;
-    c->grav_long_range = NULL;
-    c->grav_down_in = NULL;
-    c->grav_down = NULL;
-    c->grav_mesh = NULL;
+    c->grav.long_range = NULL;
+    c->grav.down_in = NULL;
+    c->grav.down = NULL;
+    c->grav.mesh = NULL;
     c->super = c;
-    c->super_hydro = c;
-    c->super_gravity = c;
-    c->parts = NULL;
-    c->xparts = NULL;
-    c->gparts = NULL;
-    c->sparts = NULL;
-    c->do_sub_sort = 0;
-    c->do_grav_sub_drift = 0;
-    c->do_sub_drift = 0;
-    c->ti_hydro_end_min = -1;
-    c->ti_hydro_end_max = -1;
-    c->ti_gravity_end_min = -1;
-    c->ti_gravity_end_max = -1;
+    c->hydro.super = c;
+    c->grav.super = c;
+    c->hydro.parts = NULL;
+    c->hydro.xparts = NULL;
+    c->grav.parts = NULL;
+    c->stars.parts = NULL;
+    c->hydro.do_sub_sort = 0;
+    c->grav.do_sub_drift = 0;
+    c->hydro.do_sub_drift = 0;
+    c->hydro.ti_end_min = -1;
+    c->hydro.ti_end_max = -1;
+    c->grav.ti_end_min = -1;
+    c->grav.ti_end_max = -1;
 #ifdef SWIFT_DEBUG_CHECKS
     c->cellID = 0;
 #endif
-    if (s->gravity) bzero(c->multipole, sizeof(struct gravity_tensors));
+    if (s->gravity) bzero(c->grav.multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
-      if (c->sort[i] != NULL) {
-        free(c->sort[i]);
-        c->sort[i] = NULL;
+      if (c->hydro.sort[i] != NULL) {
+        free(c->hydro.sort[i]);
+        c->hydro.sort[i] = NULL;
       }
 #if WITH_MPI
-    c->tag = -1;
+    c->mpi.tag = -1;
 
-    c->recv_xv = NULL;
-    c->recv_rho = NULL;
-    c->recv_gradient = NULL;
-    c->recv_grav = NULL;
-    c->recv_ti = NULL;
+    c->mpi.hydro.recv_xv = NULL;
+    c->mpi.hydro.recv_rho = NULL;
+    c->mpi.hydro.recv_gradient = NULL;
+    c->mpi.grav.recv = NULL;
+    c->mpi.recv_ti = NULL;
 
-    c->send_xv = NULL;
-    c->send_rho = NULL;
-    c->send_gradient = NULL;
-    c->send_grav = NULL;
-    c->send_ti = NULL;
+    c->mpi.hydro.send_xv = NULL;
+    c->mpi.hydro.send_rho = NULL;
+    c->mpi.hydro.send_gradient = NULL;
+    c->mpi.grav.send = NULL;
+    c->mpi.send_ti = NULL;
 #endif
   }
 }
@@ -276,15 +276,15 @@ void space_regrid(struct space *s, int verbose) {
     if (s->local_cells_top != NULL) {
       for (int k = 0; k < s->nr_local_cells; ++k) {
         const struct cell *c = &s->cells_top[s->local_cells_top[k]];
-        if (c->h_max > h_max) {
-          h_max = s->cells_top[k].h_max;
+        if (c->hydro.h_max > h_max) {
+          h_max = s->cells_top[k].hydro.h_max;
         }
       }
     } else if (s->cells_top != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
         const struct cell *c = &s->cells_top[k];
-        if (c->nodeID == engine_rank && c->h_max > h_max) {
-          h_max = s->cells_top[k].h_max;
+        if (c->nodeID == engine_rank && c->hydro.h_max > h_max) {
+          h_max = s->cells_top[k].hydro.h_max;
         }
       }
     } else {
@@ -427,13 +427,13 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
-      if (lock_init(&s->cells_top[k].lock) != 0)
+      if (lock_init(&s->cells_top[k].hydro.lock) != 0)
         error("Failed to init spinlock for hydro.");
-      if (lock_init(&s->cells_top[k].glock) != 0)
+      if (lock_init(&s->cells_top[k].grav.plock) != 0)
         error("Failed to init spinlock for gravity.");
-      if (lock_init(&s->cells_top[k].mlock) != 0)
+      if (lock_init(&s->cells_top[k].grav.mlock) != 0)
         error("Failed to init spinlock for multipoles.");
-      if (lock_init(&s->cells_top[k].slock) != 0)
+      if (lock_init(&s->cells_top[k].stars.lock) != 0)
         error("Failed to init spinlock for stars.");
     }
 
@@ -451,19 +451,19 @@ void space_regrid(struct space *s, int verbose) {
           c->width[2] = s->width[2];
           c->dmin = dmin;
           c->depth = 0;
-          c->count = 0;
-          c->gcount = 0;
-          c->scount = 0;
+          c->hydro.count = 0;
+          c->grav.count = 0;
+          c->stars.count = 0;
           c->super = c;
-          c->super_hydro = c;
-          c->super_gravity = c;
-          c->ti_old_part = ti_current;
-          c->ti_old_gpart = ti_current;
-          c->ti_old_multipole = ti_current;
+          c->hydro.super = c;
+          c->grav.super = c;
+          c->hydro.ti_old_part = ti_current;
+          c->grav.ti_old_part = ti_current;
+          c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
-          c->tag = -1;
+          c->mpi.tag = -1;
 #endif  // WITH_MPI
-          if (s->gravity) c->multipole = &s->multipoles_top[cid];
+          if (s->gravity) c->grav.multipole = &s->multipoles_top[cid];
 #ifdef SWIFT_DEBUG_CHECKS
           c->cellID = -last_cell_id;
           last_cell_id++;
@@ -850,7 +850,7 @@ void space_rebuild(struct space *s, int verbose) {
   ind[nr_parts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_parts; k++) {
     if (ind[k] < ind[k + 1]) {
-      cells_top[ind[k]].count = k - last_index + 1;
+      cells_top[ind[k]].hydro.count = k - last_index + 1;
       last_index = k + 1;
     }
   }
@@ -860,7 +860,7 @@ void space_rebuild(struct space *s, int verbose) {
   sind[nr_sparts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_sparts; k++) {
     if (sind[k] < sind[k + 1]) {
-      cells_top[sind[k]].scount = k - last_sindex + 1;
+      cells_top[sind[k]].stars.count = k - last_sindex + 1;
       last_sindex = k + 1;
     }
   }
@@ -932,7 +932,7 @@ void space_rebuild(struct space *s, int verbose) {
   gind[nr_gparts] = s->nr_cells;
   for (size_t k = 0; k < nr_gparts; k++) {
     if (gind[k] < gind[k + 1]) {
-      cells_top[gind[k]].gcount = k - last_gindex + 1;
+      cells_top[gind[k]].grav.count = k - last_gindex + 1;
       last_gindex = k + 1;
     }
   }
@@ -956,9 +956,9 @@ void space_rebuild(struct space *s, int verbose) {
   struct spart *sfinger = s->sparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
-    c->ti_old_part = ti_current;
-    c->ti_old_gpart = ti_current;
-    c->ti_old_multipole = ti_current;
+    c->hydro.ti_old_part = ti_current;
+    c->grav.ti_old_part = ti_current;
+    c->grav.ti_old_multipole = ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
     c->cellID = -last_cell_id;
@@ -966,14 +966,14 @@ void space_rebuild(struct space *s, int verbose) {
 #endif
 
     if (c->nodeID == engine_rank) {
-      c->parts = finger;
-      c->xparts = xfinger;
-      c->gparts = gfinger;
-      c->sparts = sfinger;
-      finger = &finger[c->count];
-      xfinger = &xfinger[c->count];
-      gfinger = &gfinger[c->gcount];
-      sfinger = &sfinger[c->scount];
+      c->hydro.parts = finger;
+      c->hydro.xparts = xfinger;
+      c->grav.parts = gfinger;
+      c->stars.parts = sfinger;
+      finger = &finger[c->hydro.count];
+      xfinger = &xfinger[c->hydro.count];
+      gfinger = &gfinger[c->grav.count];
+      sfinger = &sfinger[c->stars.count];
     }
   }
   // message( "hooking up cells took %.3f %s." ,
@@ -1618,9 +1618,9 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
 void space_map_clearsort(struct cell *c, void *data) {
 
   for (int i = 0; i < 13; i++)
-    if (c->sort[i] != NULL) {
-      free(c->sort[i]);
-      c->sort[i] = NULL;
+    if (c->hydro.sort[i] != NULL) {
+      free(c->hydro.sort[i]);
+      c->hydro.sort[i] = NULL;
     }
 }
 
@@ -1637,7 +1637,7 @@ static void rec_map_parts(struct cell *c,
                           void *data) {
   /* No progeny? */
   if (!c->split)
-    for (int k = 0; k < c->count; k++) fun(&c->parts[k], c, data);
+    for (int k = 0; k < c->hydro.count; k++) fun(&c->hydro.parts[k], c, data);
 
   /* Otherwise, recurse. */
   else
@@ -1673,7 +1673,8 @@ static void rec_map_parts_xparts(struct cell *c,
 
   /* No progeny? */
   if (!c->split)
-    for (int k = 0; k < c->count; k++) fun(&c->parts[k], &c->xparts[k], c);
+    for (int k = 0; k < c->hydro.count; k++)
+      fun(&c->hydro.parts[k], &c->hydro.xparts[k], c);
 
   /* Otherwise, recurse. */
   else
@@ -1769,19 +1770,19 @@ void space_map_cells_pre(struct space *s, int full,
  * @param s The #space in which the cell lives.
  * @param c The #cell to split recursively.
  * @param buff A buffer for particle sorting, should be of size at least
- *        c->count or @c NULL.
+ *        c->hydro.count or @c NULL.
  * @param sbuff A buffer for particle sorting, should be of size at least
- *        c->scount or @c NULL.
+ *        c->stars.count or @c NULL.
  * @param gbuff A buffer for particle sorting, should be of size at least
- *        c->gcount or @c NULL.
+ *        c->grav.count or @c NULL.
  */
 void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *buff, struct cell_buff *sbuff,
                            struct cell_buff *gbuff) {
 
-  const int count = c->count;
-  const int gcount = c->gcount;
-  const int scount = c->scount;
+  const int count = c->hydro.count;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
   const int with_gravity = s->gravity;
   const int depth = c->depth;
   int maxdepth = 0;
@@ -1790,10 +1791,10 @@ void space_split_recursive(struct space *s, struct cell *c,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
-  struct part *parts = c->parts;
-  struct gpart *gparts = c->gparts;
-  struct spart *sparts = c->sparts;
-  struct xpart *xparts = c->xparts;
+  struct part *parts = c->hydro.parts;
+  struct gpart *gparts = c->grav.parts;
+  struct spart *sparts = c->stars.parts;
+  struct xpart *xparts = c->hydro.xparts;
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
 
@@ -1855,12 +1856,12 @@ void space_split_recursive(struct space *s, struct cell *c,
     space_getcells(s, 8, c->progeny);
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
-      cp->count = 0;
-      cp->gcount = 0;
-      cp->scount = 0;
-      cp->ti_old_part = c->ti_old_part;
-      cp->ti_old_gpart = c->ti_old_gpart;
-      cp->ti_old_multipole = c->ti_old_multipole;
+      cp->hydro.count = 0;
+      cp->grav.count = 0;
+      cp->stars.count = 0;
+      cp->hydro.ti_old_part = c->hydro.ti_old_part;
+      cp->grav.ti_old_part = c->grav.ti_old_part;
+      cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
       cp->loc[0] = c->loc[0];
       cp->loc[1] = c->loc[1];
       cp->loc[2] = c->loc[2];
@@ -1873,19 +1874,19 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (k & 1) cp->loc[2] += cp->width[2];
       cp->depth = c->depth + 1;
       cp->split = 0;
-      cp->h_max = 0.f;
-      cp->dx_max_part = 0.f;
-      cp->dx_max_sort = 0.f;
+      cp->hydro.h_max = 0.f;
+      cp->hydro.dx_max_part = 0.f;
+      cp->hydro.dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->super = NULL;
-      cp->super_hydro = NULL;
-      cp->super_gravity = NULL;
-      cp->do_sub_sort = 0;
-      cp->do_grav_sub_drift = 0;
-      cp->do_sub_drift = 0;
+      cp->hydro.super = NULL;
+      cp->grav.super = NULL;
+      cp->hydro.do_sub_sort = 0;
+      cp->grav.do_sub_drift = 0;
+      cp->hydro.do_sub_drift = 0;
 #ifdef WITH_MPI
-      cp->tag = -1;
+      cp->mpi.tag = -1;
 #endif  // WITH_MPI
 #ifdef SWIFT_DEBUG_CHECKS
       cp->cellID = last_cell_id++;
@@ -1893,8 +1894,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Split the cell's partcle data. */
-    cell_split(c, c->parts - s->parts, c->sparts - s->sparts, buff, sbuff,
-               gbuff);
+    cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts, buff,
+               sbuff, gbuff);
 
     /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
@@ -1906,7 +1907,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       struct cell *cp = c->progeny[k];
 
       /* Remove any progeny with zero particles. */
-      if (cp->count == 0 && cp->gcount == 0 && cp->scount == 0) {
+      if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0) {
 
         space_recycle(s, cp);
         c->progeny[k] = NULL;
@@ -1918,18 +1919,18 @@ void space_split_recursive(struct space *s, struct cell *c,
                               progeny_gbuff);
 
         /* Update the pointers in the buffers */
-        progeny_buff += cp->count;
-        progeny_gbuff += cp->gcount;
-        progeny_sbuff += cp->scount;
+        progeny_buff += cp->hydro.count;
+        progeny_gbuff += cp->grav.count;
+        progeny_sbuff += cp->stars.count;
 
         /* Update the cell-wide properties */
-        h_max = max(h_max, cp->h_max);
-        ti_hydro_end_min = min(ti_hydro_end_min, cp->ti_hydro_end_min);
-        ti_hydro_end_max = max(ti_hydro_end_max, cp->ti_hydro_end_max);
-        ti_hydro_beg_max = max(ti_hydro_beg_max, cp->ti_hydro_beg_max);
-        ti_gravity_end_min = min(ti_gravity_end_min, cp->ti_gravity_end_min);
-        ti_gravity_end_max = max(ti_gravity_end_max, cp->ti_gravity_end_max);
-        ti_gravity_beg_max = max(ti_gravity_beg_max, cp->ti_gravity_beg_max);
+        h_max = max(h_max, cp->hydro.h_max);
+        ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
+        ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
+        ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+        ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
+        ti_gravity_end_max = max(ti_gravity_end_max, cp->grav.ti_end_max);
+        ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
@@ -1940,7 +1941,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (s->gravity) {
 
       /* Reset everything */
-      gravity_reset(c->multipole);
+      gravity_reset(c->grav.multipole);
 
       /* Compute CoM and bulk velocity from all progenies */
       double CoM[3] = {0., 0., 0.};
@@ -1951,7 +1952,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       for (int k = 0; k < 8; ++k) {
         if (c->progeny[k] != NULL) {
-          const struct gravity_tensors *m = c->progeny[k]->multipole;
+          const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
 
           mass += m->m_pole.M_000;
 
@@ -1975,20 +1976,20 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Final operation on the CoM and bulk velocity */
       const double inv_mass = 1. / mass;
-      c->multipole->CoM[0] = CoM[0] * inv_mass;
-      c->multipole->CoM[1] = CoM[1] * inv_mass;
-      c->multipole->CoM[2] = CoM[2] * inv_mass;
-      c->multipole->m_pole.vel[0] = vel[0] * inv_mass;
-      c->multipole->m_pole.vel[1] = vel[1] * inv_mass;
-      c->multipole->m_pole.vel[2] = vel[2] * inv_mass;
+      c->grav.multipole->CoM[0] = CoM[0] * inv_mass;
+      c->grav.multipole->CoM[1] = CoM[1] * inv_mass;
+      c->grav.multipole->CoM[2] = CoM[2] * inv_mass;
+      c->grav.multipole->m_pole.vel[0] = vel[0] * inv_mass;
+      c->grav.multipole->m_pole.vel[1] = vel[1] * inv_mass;
+      c->grav.multipole->m_pole.vel[2] = vel[2] * inv_mass;
 
       /* Min max velocity along each axis */
-      c->multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
-      c->multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
-      c->multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
-      c->multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
-      c->multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
-      c->multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
+      c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+      c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+      c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+      c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+      c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+      c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
 
       /* Now shift progeny multipoles and add them up */
       struct multipole temp;
@@ -1996,45 +1997,52 @@ void space_split_recursive(struct space *s, struct cell *c,
       for (int k = 0; k < 8; ++k) {
         if (c->progeny[k] != NULL) {
           const struct cell *cp = c->progeny[k];
-          const struct multipole *m = &cp->multipole->m_pole;
+          const struct multipole *m = &cp->grav.multipole->m_pole;
 
           /* Contribution to multipole */
-          gravity_M2M(&temp, m, c->multipole->CoM, cp->multipole->CoM);
-          gravity_multipole_add(&c->multipole->m_pole, &temp);
+          gravity_M2M(&temp, m, c->grav.multipole->CoM,
+                      cp->grav.multipole->CoM);
+          gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
 
           /* Upper limit of max CoM<->gpart distance */
-          const double dx = c->multipole->CoM[0] - cp->multipole->CoM[0];
-          const double dy = c->multipole->CoM[1] - cp->multipole->CoM[1];
-          const double dz = c->multipole->CoM[2] - cp->multipole->CoM[2];
+          const double dx =
+              c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
+          const double dy =
+              c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
+          const double dz =
+              c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
           const double r2 = dx * dx + dy * dy + dz * dz;
-          r_max = max(r_max, cp->multipole->r_max + sqrt(r2));
+          r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
         }
       }
 
       /* Alternative upper limit of max CoM<->gpart distance */
-      const double dx = c->multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
-                            ? c->multipole->CoM[0] - c->loc[0]
-                            : c->loc[0] + c->width[0] - c->multipole->CoM[0];
-      const double dy = c->multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
-                            ? c->multipole->CoM[1] - c->loc[1]
-                            : c->loc[1] + c->width[1] - c->multipole->CoM[1];
-      const double dz = c->multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
-                            ? c->multipole->CoM[2] - c->loc[2]
-                            : c->loc[2] + c->width[2] - c->multipole->CoM[2];
+      const double dx =
+          c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+              ? c->grav.multipole->CoM[0] - c->loc[0]
+              : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
+      const double dy =
+          c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+              ? c->grav.multipole->CoM[1] - c->loc[1]
+              : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
+      const double dz =
+          c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+              ? c->grav.multipole->CoM[2] - c->loc[2]
+              : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
 
       /* Take minimum of both limits */
-      c->multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+      c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
 
       /* Store the value at rebuild time */
-      c->multipole->r_max_rebuild = c->multipole->r_max;
-      c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
-      c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
-      c->multipole->CoM_rebuild[2] = c->multipole->CoM[2];
+      c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
+      c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
+      c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
+      c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
 
       /* We know the first-order multipole (dipole) is 0. */
-      c->multipole->m_pole.M_100 = 0.f;
-      c->multipole->m_pole.M_010 = 0.f;
-      c->multipole->m_pole.M_001 = 0.f;
+      c->grav.multipole->m_pole.M_100 = 0.f;
+      c->grav.multipole->m_pole.M_010 = 0.f;
+      c->grav.multipole->m_pole.M_001 = 0.f;
 
     } /* Deal with gravity */
   }   /* Split or let it be? */
@@ -2102,50 +2110,50 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (s->gravity) {
       if (gcount > 0) {
 
-        gravity_P2M(c->multipole, c->gparts, c->gcount);
+        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count);
 
       } else {
 
         /* No gparts in that leaf cell */
 
         /* Set the values to something sensible */
-        gravity_multipole_init(&c->multipole->m_pole);
+        gravity_multipole_init(&c->grav.multipole->m_pole);
         if (c->nodeID == engine_rank) {
-          c->multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
-          c->multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
-          c->multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
-          c->multipole->r_max = 0.;
+          c->grav.multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
+          c->grav.multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
+          c->grav.multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
+          c->grav.multipole->r_max = 0.;
         }
       }
 
       /* Store the value at rebuild time */
-      c->multipole->r_max_rebuild = c->multipole->r_max;
-      c->multipole->CoM_rebuild[0] = c->multipole->CoM[0];
-      c->multipole->CoM_rebuild[1] = c->multipole->CoM[1];
-      c->multipole->CoM_rebuild[2] = c->multipole->CoM[2];
+      c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
+      c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
+      c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
+      c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
     }
   }
 
   /* Set the values for this cell. */
-  c->h_max = h_max;
-  c->ti_hydro_end_min = ti_hydro_end_min;
-  c->ti_hydro_end_max = ti_hydro_end_max;
-  c->ti_hydro_beg_max = ti_hydro_beg_max;
-  c->ti_gravity_end_min = ti_gravity_end_min;
-  c->ti_gravity_end_max = ti_gravity_end_max;
-  c->ti_gravity_beg_max = ti_gravity_beg_max;
+  c->hydro.h_max = h_max;
+  c->hydro.ti_end_min = ti_hydro_end_min;
+  c->hydro.ti_end_max = ti_hydro_end_max;
+  c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->grav.ti_end_min = ti_gravity_end_min;
+  c->grav.ti_end_max = ti_gravity_end_max;
+  c->grav.ti_beg_max = ti_gravity_beg_max;
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */
   if (s->nr_parts > 0)
-    c->owner =
-        ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
+    c->owner = ((c->hydro.parts - s->parts) % s->nr_parts) * s->nr_queues /
+               s->nr_parts;
   else if (s->nr_sparts > 0)
-    c->owner =
-        ((c->sparts - s->sparts) % s->nr_sparts) * s->nr_queues / s->nr_sparts;
+    c->owner = ((c->stars.parts - s->sparts) % s->nr_sparts) * s->nr_queues /
+               s->nr_sparts;
   else if (s->nr_gparts > 0)
-    c->owner =
-        ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
+    c->owner = ((c->grav.parts - s->gparts) % s->nr_gparts) * s->nr_queues /
+               s->nr_gparts;
   else
     c->owner = 0; /* Ok, there is really nothing on this rank... */
 
@@ -2195,8 +2203,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 void space_recycle(struct space *s, struct cell *c) {
 
   /* Clear the cell. */
-  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0 ||
-      lock_destroy(&c->mlock) != 0 || lock_destroy(&c->slock) != 0)
+  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
+      lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0)
     error("Failed to destroy spinlocks.");
 
   /* Lock the space. */
@@ -2204,8 +2212,8 @@ void space_recycle(struct space *s, struct cell *c) {
 
   /* Hook the multipole back in the buffer */
   if (s->gravity) {
-    c->multipole->next = s->multipoles_sub;
-    s->multipoles_sub = c->multipole;
+    c->grav.multipole->next = s->multipoles_sub;
+    s->multipoles_sub = c->grav.multipole;
   }
 
   /* Hook this cell into the buffer. */
@@ -2244,8 +2252,8 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   /* Clean up the list of cells. */
   for (struct cell *c = cell_list_begin; c != NULL; c = c->next) {
     /* Clear the cell. */
-    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->glock) != 0 ||
-        lock_destroy(&c->mlock) != 0 || lock_destroy(&c->slock) != 0)
+    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
+        lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0)
       error("Failed to destroy spinlocks.");
 
     /* Count this cell. */
@@ -2324,8 +2332,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
     /* Hook the multipole */
     if (s->gravity) {
-      cells[j]->multipole = s->multipoles_sub;
-      s->multipoles_sub = cells[j]->multipole->next;
+      cells[j]->grav.multipole = s->multipoles_sub;
+      s->multipoles_sub = cells[j]->grav.multipole->next;
     }
   }
 
@@ -2335,13 +2343,15 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
     for (int k = 0; k < 13; k++)
-      if (cells[j]->sort[k] != NULL) free(cells[j]->sort[k]);
-    struct gravity_tensors *temp = cells[j]->multipole;
+      if (cells[j]->hydro.sort[k] != NULL) free(cells[j]->hydro.sort[k]);
+    struct gravity_tensors *temp = cells[j]->grav.multipole;
     bzero(cells[j], sizeof(struct cell));
-    cells[j]->multipole = temp;
+    cells[j]->grav.multipole = temp;
     cells[j]->nodeID = -1;
-    if (lock_init(&cells[j]->lock) != 0 || lock_init(&cells[j]->glock) != 0 ||
-        lock_init(&cells[j]->mlock) != 0 || lock_init(&cells[j]->slock) != 0)
+    if (lock_init(&cells[j]->hydro.lock) != 0 ||
+        lock_init(&cells[j]->grav.plock) != 0 ||
+        lock_init(&cells[j]->grav.mlock) != 0 ||
+        lock_init(&cells[j]->stars.lock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
 }
@@ -2355,9 +2365,9 @@ void space_free_buff_sort_indices(struct space *s) {
   for (struct cell *finger = s->cells_sub; finger != NULL;
        finger = finger->next) {
     for (int k = 0; k < 13; k++)
-      if (finger->sort[k] != NULL) {
-        free(finger->sort[k]);
-        finger->sort[k] = NULL;
+      if (finger->hydro.sort[k] != NULL) {
+        free(finger->hydro.sort[k]);
+        finger->hydro.sort[k] = NULL;
       }
   }
 }
