@@ -36,6 +36,9 @@ struct cooling_function_data {
   /*! Conversion factor from internal units to cgs for density */
   double conv_factor_density_to_cgs;
 
+  /*! Conversion factor from internal units to cgs for internal energy */
+  double conv_factor_energy_to_cgs;
+
   /*! Conversion factor from internal units from cgs for internal energy
    * derivative */
   double conv_factor_energy_rate_from_cgs;
