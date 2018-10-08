@@ -415,11 +415,14 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].density.div_v,
 #endif
             hydro_get_drifted_comoving_entropy(&main_cell->hydro.parts[pid]),
-            hydro_get_drifted_comoving_internal_energy(&main_cell->hydro.parts[pid]),
+            hydro_get_drifted_comoving_internal_energy(
+                &main_cell->hydro.parts[pid]),
             hydro_get_comoving_pressure(&main_cell->hydro.parts[pid]),
             hydro_get_comoving_soundspeed(&main_cell->hydro.parts[pid]),
-            main_cell->hydro.parts[pid].a_hydro[0], main_cell->hydro.parts[pid].a_hydro[1],
-            main_cell->hydro.parts[pid].a_hydro[2], main_cell->hydro.parts[pid].force.h_dt,
+            main_cell->hydro.parts[pid].a_hydro[0],
+            main_cell->hydro.parts[pid].a_hydro[1],
+            main_cell->hydro.parts[pid].a_hydro[2],
+            main_cell->hydro.parts[pid].force.h_dt,
 #if defined(GADGET2_SPH)
             main_cell->hydro.parts[pid].force.v_sig,
             main_cell->hydro.parts[pid].entropy_dt, 0.f
