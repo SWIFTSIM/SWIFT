@@ -185,6 +185,7 @@ void velociraptor_invoke(struct engine *e) {
   struct space *s = e->s;
   struct gpart *gparts = s->gparts;
   struct part *parts = s->parts;
+  struct xpart *xparts = s->xparts;
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_hydro_parts = s->nr_parts;
   const int nr_cells = s->nr_cells;
@@ -261,7 +262,8 @@ void velociraptor_invoke(struct engine *e) {
       swift_parts[i].id = parts[-gparts[i].id_or_neg_offset].id;
       swift_parts[i].u =
           hydro_get_physical_internal_energy(
-              &parts[-gparts[i].id_or_neg_offset], e->cosmology) *
+              &parts[-gparts[i].id_or_neg_offset],
+              &xparts[-gparts[i].id_or_neg_offset], e->cosmology) *
           energy_scale;
     } else if (gparts[i].type == swift_type_dark_matter) {
       swift_parts[i].id = gparts[i].id_or_neg_offset;
