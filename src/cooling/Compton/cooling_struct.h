@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *                    Stefan Arridge  (stefan.arridge@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,16 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_CONST_LAMBDA_H
-#define SWIFT_COOLING_STRUCT_CONST_LAMBDA_H
-
-/**
- * @file src/cooling/const_lambda/cooling_struct.h
- * @brief Structures related to the "constant lambda" cooling function.
- *
- * This model assumes a constant cooling rate Lambda irrespective of redshift
- * or density.
- */
+#ifndef SWIFT_COOLING_STRUCT_COMPTON_H
+#define SWIFT_COOLING_STRUCT_COMPTON_H
 
 /**
  * @brief Properties of the cooling function.
@@ -59,4 +50,4 @@ struct cooling_xpart_data {
   float radiated_energy;
 };
 
-#endif /* SWIFT_COOLING_STRUCT_CONST_LAMBDA_H */
+#endif /* SWIFT_COOLING_STRUCT_COMPTON_H */

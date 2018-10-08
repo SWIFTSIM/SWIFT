@@ -21,6 +21,15 @@
 #ifndef SWIFT_COOLING_CONST_DU_IO_H
 #define SWIFT_COOLING_CONST_DU_IO_H
 
+/**
+ * @file src/cooling/const_du/cooling_io.h
+ * @brief i/o routines related to the "constant cooling" cooling function.
+ *
+ * This is the simplest possible cooling function. A constant cooling rate
+ * (du/dt) with a minimal energy floor is applied. Should be used as a template
+ * for more realistic functions.
+ */
+
 /* Config parameters. */
 #include "../config.h"
 

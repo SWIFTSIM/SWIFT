@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *                    Stefan Arridge  (stefan.arridge@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,16 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_CONST_LAMBDA_IO_H
-#define SWIFT_COOLING_CONST_LAMBDA_IO_H
-
-/**
- * @file src/cooling/const_lambda/cooling_io.h
- * @brief i/o routines related to the "constant lambda" cooling function.
- *
- * This model assumes a constant cooling rate Lambda irrespective of redshift
- * or density.
- */
+#ifndef SWIFT_COOLING_IO_COMPTON_H
+#define SWIFT_COOLING_IO_COMPTON_H
 
 /* Config parameters. */
 #include "../config.h"
@@ -67,4 +58,4 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   return 0;
 }
 
-#endif /* SWIFT_COOLING_CONST_LAMBDA_IO_H */
+#endif /* SWIFT_COOLING_IO_COMPTON_H */

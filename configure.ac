@@ -1385,6 +1385,9 @@ case "$with_cooling" in
    const-lambda)
       AC_DEFINE([COOLING_CONST_LAMBDA], [1], [Const Lambda cooling function])
    ;;
+   compton)
+      AC_DEFINE([COOLING_COMPTON], [1], [Compton cooling off the CMB])
+   ;;
    grackle)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       AC_DEFINE([COOLING_GRACKLE_MODE], [0], [Grackle chemistry network, mode 0])
