@@ -47,8 +47,10 @@
 /**
  * @brief Calculates du/dt in CGS units for a particle.
  *
- * The cooling rate is \f$\frac{du}{dt} = -\Lambda \frac{n_H^2}{\rho} \f$ and
- * the returned value is in physical [erg * g^-1 * s^-1].
+ * The cooling rate is \f$\frac{du}{dt} = -\frac{\Lambda}{n_H^2}
+ * \frac{n_H^2}{\rho} \f$, where \f$ \frac{\Lambda}{n_H^2} \f$ is a constant in
+ * this model (lambda_nH2_cgs in #cooling_function_data).
+ * The returned value is in physical [erg * g^-1 * s^-1].
  *
  * @param cosmo The current cosmological model.
  * @param hydro_props The properties of the hydro scheme.
@@ -61,18 +63,19 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
     const struct cooling_function_data* cooling, const struct part* p) {
 
-  /* Get particle density */
+  /* Get particle density [g * cm^-3] */
   const double rho = hydro_get_physical_density(p, cosmo);
   const double rho_cgs = rho * cooling->conv_factor_density_to_cgs;
 
   /* Get Hydrogen mass fraction */
   const double X_H = hydro_props->hydrogen_mass_fraction;
 
-  /* Hydrogen number density (X_H * rho / m_p) */
+  /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
   const double n_H_cgs = X_H * rho_cgs * cooling->proton_mass_cgs_inv;
 
-  /* Calculate du_dt (Lambda * n_H^2 / rho) */
-  const double du_dt_cgs = -cooling->lambda_cgs * n_H_cgs * n_H_cgs / rho_cgs;
+  /* Calculate du_dt ((Lambda / n_H^2) * n_H^2 / rho) */
+  const double du_dt_cgs =
+      -cooling->lambda_nH2_cgs * n_H_cgs * n_H_cgs / rho_cgs;
 
   return du_dt_cgs;
 }
@@ -238,8 +241,8 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
                                         struct cooling_function_data* cooling) {
 
   /* Read in the cooling parameters */
-  cooling->lambda_cgs =
-      parser_get_param_double(parameter_file, "LambdaCooling:lambda_cgs");
+  cooling->lambda_nH2_cgs =
+      parser_get_param_double(parameter_file, "LambdaCooling:lambda_nH2_cgs");
   cooling->cooling_tstep_mult = parser_get_opt_param_float(
       parameter_file, "LambdaCooling:cooling_tstep_mult", FLT_MAX);
 
@@ -265,9 +268,10 @@ static INLINE void cooling_print_backend(
     const struct cooling_function_data* cooling) {
 
   message(
-      "Cooling function is 'Constant lambda' with Lambda=%g [erg * s^-1 * "
-      "cm^-3]",
-      cooling->lambda_cgs);
+      "Cooling function is 'Constant lambda' with Lambda/n_H^2=%g [erg * s^-1 "
+      "* "
+      "cm^3]",
+      cooling->lambda_nH2_cgs);
 
   if (cooling->cooling_tstep_mult == FLT_MAX)
     message("Cooling function time-step size is unlimited");

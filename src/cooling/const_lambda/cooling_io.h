@@ -45,7 +45,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
     hid_t h_grp, const struct cooling_function_data* cooling) {
 
   io_write_attribute_s(h_grp, "Cooling Model", "Constant Lambda");
-  io_write_attribute_d(h_grp, "Lambda [cgs]", cooling->lambda_cgs);
+  io_write_attribute_d(h_grp, "Lambda/n_H^2 [cgs]", cooling->lambda_nH2_cgs);
 }
 #endif
 

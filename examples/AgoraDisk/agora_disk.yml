@@ -49,7 +49,7 @@ InitialConditions:
 
 # Dimensionless pre-factor for the time-step condition
 LambdaCooling:
-  lambda_cgs:                  1.0e-22    # Cooling rate (in cgs units)
+  lambda_nH2_cgs:              1e-22 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
   cooling_tstep_mult:          1.0        # Dimensionless pre-factor for the time-step condition
 
 # Cooling with Grackle 2.0

@@ -71,7 +71,7 @@ git = sim["Code"].attrs["Git Revision"]
 cooling_model = sim["/SubgridScheme"].attrs["Cooling Model"]
 
 if cooling_model == "Constant Lambda":
-    Lambda = sim["/SubgridScheme"].attrs["Lambda [cgs]"][0]
+    Lambda = sim["/SubgridScheme"].attrs["Lambda/n_H^2 [cgs]"][0]
     
 # Cosmological parameters
 H_0 = sim["/Cosmology"].attrs["H0 [internal units]"][0]
