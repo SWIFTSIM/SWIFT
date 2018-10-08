@@ -163,7 +163,7 @@ legend(loc="upper left", frameon=False, handlelength=1.5)
 
 # Cooling model
 if cooling_model == "Constant Lambda":
-    text(1e-2, 6e4, "$\Lambda_{\\rm const} = %.1f\\times10^{%d}~[\\rm{cgs}]$"%(Lambda/10.**(int(log10(Lambda))), log10(Lambda)), fontsize=8)
+    text(1e-2, 6e4, "$\Lambda_{\\rm const}/n_{\\rm H}^2 = %.1f\\times10^{%d}~[\\rm{cgs}]$"%(Lambda/10.**(int(log10(Lambda))), log10(Lambda)), fontsize=7)
 else:
     text(1e-2, 6e4, "No cooling")
     
