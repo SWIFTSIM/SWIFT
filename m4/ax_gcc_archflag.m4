@@ -65,7 +65,7 @@
 #   modified version of the Autoconf Macro, you may extend this special
 #   exception to the GPL to apply to your modified version as well.
 
-#serial 21 (modified for SWIFT)
+#serial 22 (modified for SWIFT)
 
 AC_DEFUN([AX_GCC_ARCHFLAG],
 [AC_REQUIRE([AC_PROG_CC])
@@ -201,6 +201,10 @@ case $host_cpu in
        *POWER4*|*power4*|*gq*) ax_gcc_arch="power4 970";;
        *POWER5*|*power5*|*gr*|*gs*) ax_gcc_arch="power5 power4 970";;
        603ev|8240) ax_gcc_arch="$cputype 603e 603";;
+       *POWER7*) ax_gcc_arch="power7";;
+       *POWER8*) ax_gcc_arch="power8";;
+       *POWER9*) ax_gcc_arch="power9";;
+       *POWER10*) ax_gcc_arch="power10";;
        *) ax_gcc_arch=$cputype ;;
      esac
      ax_gcc_arch="$ax_gcc_arch powerpc"
