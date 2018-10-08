@@ -38,34 +38,45 @@
 /**
  * @brief Calculates du/dt in CGS units for a particle.
  *
- * The cooling rate is \f$\frac{du}{dt} = -\Lambda \frac{n_H^2}{\rho} \f$ and
- * the returned value is in physical [erg * g^-1 * s^-1].
  *
  * @param cosmo The current cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param cooling The #cooling_function_data used in the run.
+ * @param z The current redshift
  * @param p Pointer to the particle data.
  * @return The change in energy per unit mass due to cooling for this particle
  * in cgs units [erg * g^-1 * s^-1].
  */
-__attribute__((always_inline)) INLINE static double cooling_rate_cgs(
+__attribute__((always_inline)) INLINE static double Compton_cooling_rate_cgs(
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const struct cooling_function_data* cooling, const struct part* p) {
+    const struct cooling_function_data* cooling, const double z,
+    const struct part* p) {
 
   /* Get particle density */
   const double rho = hydro_get_physical_density(p, cosmo);
   const double rho_cgs = rho * cooling->conv_factor_density_to_cgs;
 
-  /* Get Hydrogen mass fraction */
-  const double X_H = hydro_props->hydrogen_mass_fraction;
+  /* Powers of (1 + z) */
+  const double zp1 = z + 1.;
+  const double zp1p2 = zp1 * zp1;
+  const double zp1p4 = zp1p2 * zp1p2; /* (1 + z)^4 */
 
-  /* Hydrogen number density (X_H * rho / m_p) */
-  const double n_H_cgs = X_H * rho_cgs * cooling->proton_mass_cgs_inv;
+  /* CMB temperature at this redshift */
+  const double T_CMB = cooling->const_T_CMB_0 * zp1;
 
-  /* Calculate du_dt (Lambda * n_H^2 / rho) */
-  const double du_dt_cgs = -cooling->lambda_cgs * n_H_cgs * n_H_cgs / rho_cgs;
+  /* Particle temperature */
+  const double T = 1;
 
-  return du_dt_cgs;
+  /* Temperature difference with the CMB */
+  const double delta_T = T - T_CMB;
+
+  /* Electron density */
+  const double electron_density_cgs =
+      rho_cgs * cooling->electron_abundance * cooling->proton_mass_cgs_inv;
+
+  /* Compton formula */
+  return cooling->const_Compton_rate_cgs * delta_T * zp1p4 *
+         electron_density_cgs / rho_cgs;
 }
 
 /**
@@ -104,7 +115,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
   /* Calculate cooling du_dt (in cgs units) */
   const double cooling_du_dt_cgs =
-      cooling_rate_cgs(cosmo, hydro_props, cooling, p);
+      Compton_cooling_rate_cgs(cosmo, hydro_props, cooling, cosmo->z, p);
 
   /* Convert to internal units */
   float cooling_du_dt =
@@ -143,8 +154,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 /**
  * @brief Computes the time-step due to cooling for this particle.
  *
- * We compute a time-step \f$ \alpha \frac{u}{du/dt} \f$ in physical
- * coordinates. \f$\alpha\f$ is a parameter of the cooling function.
+ * We impose no time-step limit.
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
@@ -162,23 +172,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct hydro_props* hydro_props, const struct part* restrict p,
     const struct xpart* restrict xp) {
 
-  /* Start with the case where there is no limit */
-  if (cooling->cooling_tstep_mult == FLT_MAX) return FLT_MAX;
-
-  /* Get current internal energy and cooling rate */
-  const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
-  const double cooling_du_dt_cgs =
-      cooling_rate_cgs(cosmo, hydro_props, cooling, p);
-
-  /* Convert to internal units */
-  const float cooling_du_dt =
-      cooling_du_dt_cgs * cooling->conv_factor_energy_rate_from_cgs;
-
-  /* If we are close to (or below) the limit, we ignore the condition */
-  if (u < 1.01f * hydro_props->minimal_internal_energy || cooling_du_dt == 0.f)
-    return FLT_MAX;
-  else
-    return cooling->cooling_tstep_mult * u / fabsf(cooling_du_dt);
+  return FLT_MAX;
 }
 
 /**
@@ -228,12 +222,6 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
                                         const struct phys_const* phys_const,
                                         struct cooling_function_data* cooling) {
 
-  /* Read in the cooling parameters */
-  cooling->lambda_cgs =
-      parser_get_param_double(parameter_file, "LambdaCooling:lambda_cgs");
-  cooling->cooling_tstep_mult = parser_get_opt_param_float(
-      parameter_file, "LambdaCooling:cooling_tstep_mult", FLT_MAX);
-
   /* Some useful conversion values */
   cooling->conv_factor_density_to_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
@@ -245,6 +233,29 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
   cooling->proton_mass_cgs_inv =
       1. / (phys_const->const_proton_mass *
             units_cgs_conversion_factor(us, UNIT_CONV_MASS));
+
+  /* Temperature of the CMB in CGS */
+  const double T_CMB_0 = phys_const->const_T_CMB_0 *
+                         units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+  cooling->const_T_CMB_0 = T_CMB_0; /* [K] */
+
+  /* Compute the coefficient at the front of the Compton cooling expression */
+  const double radiation_constant =
+      4. * phys_const->const_stefan_boltzmann / phys_const->const_speed_light_c;
+  const double compton_coefficient =
+      4. * radiation_constant * phys_const->const_thomson_cross_section *
+      phys_const->const_boltzmann_k /
+      (phys_const->const_electron_mass * phys_const->const_speed_light_c);
+  const float dimension_coefficient[5] = {1, 2, -3, 0, -5};
+
+  /* This should be ~1.0178085e-37 [g cm^2 s^-3 K^-5] */
+  const double compton_coefficient_cgs =
+      compton_coefficient *
+      units_general_cgs_conversion_factor(us, dimension_coefficient);
+
+  /* And now the Compton rate [g cm^2 s^-3 K^-1] == [erg s^-1 K^-1]*/
+  cooling->const_Compton_rate_cgs =
+      compton_coefficient_cgs * T_CMB_0 * T_CMB_0 * T_CMB_0 * T_CMB_0;
 }
 
 /**
@@ -255,16 +266,7 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
 static INLINE void cooling_print_backend(
     const struct cooling_function_data* cooling) {
 
-  message(
-      "Cooling function is 'Constant lambda' with Lambda=%g [erg * s^-1 * "
-      "cm^-3]",
-      cooling->lambda_cgs);
-
-  if (cooling->cooling_tstep_mult == FLT_MAX)
-    message("Cooling function time-step size is unlimited");
-  else
-    message("Cooling function time-step size limited to %f of u/(du/dt)",
-            cooling->cooling_tstep_mult);
+  message("Cooling function is 'Compton cooling'.");
 }
 
 #endif /* SWIFT_COOLING_COMPTON_H */

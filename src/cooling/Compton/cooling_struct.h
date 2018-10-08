@@ -24,8 +24,14 @@
  */
 struct cooling_function_data {
 
-  /*! Cooling rate in physical cgs units [erg * s^-1 * cm^-3] */
-  double lambda_cgs;
+  /*! Compton rate in cgs [g cm^2 s^-3 K^-1] */
+  double const_Compton_rate_cgs;
+
+  /*! Temperature of the CMB at redshift 0 in cgs [K] */
+  double const_T_CMB_0;
+
+  /*! Primordial electron abundance [-] */
+  double electron_abundance;
 
   /*! Conversion factor from internal units to cgs for density */
   double conv_factor_density_to_cgs;
@@ -36,9 +42,6 @@ struct cooling_function_data {
 
   /*! Inverse of the proton mass in cgs units [g^-1] */
   double proton_mass_cgs_inv;
-
-  /*! Constant multiplication factor for time-step criterion */
-  float cooling_tstep_mult;
 };
 
 /**
