@@ -227,7 +227,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Compute signal velocity */
   v_sig = pi->force.soundspeed + pj->force.soundspeed - 
-          2.f * const_viscosity_beta * omega_ij;
+          const_viscosity_beta * omega_ij;
 
   /* Compute viscosity parameter */
   alpha_ij = -0.5f * (pi->alpha + pj->alpha);
@@ -337,7 +337,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Compute signal velocity */
   v_sig = pi->force.soundspeed + pj->force.soundspeed - 
-          2.f * const_viscosity_beta * omega_ij;
+          const_viscosity_beta * omega_ij;
 
   /* Compute viscosity parameter */
   alpha_ij = -0.5f * (pi->alpha + pj->alpha);
