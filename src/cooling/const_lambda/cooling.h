@@ -42,12 +42,15 @@
 /**
  * @brief Calculates du/dt in CGS units for a particle.
  *
- * The cooling rate is \f$\frac{du}{dt} = -\Lambda \frac{n_H^2}{\rho} \f$.
+ * The cooling rate is \f$\frac{du}{dt} = -\Lambda \frac{n_H^2}{\rho} \f$ and
+ * the returned value is in physical [erg * g^-1 * s^-1].
  *
  * @param cosmo The current cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param cooling The #cooling_function_data used in the run.
- * @param p Pointer to the particle data..
+ * @param p Pointer to the particle data.
+ * @return The change in energy per unit mass due to cooling for this particle
+ * in cgs units [erg * g^-1 * s^-1].
  */
 __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
@@ -100,7 +103,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
 
-  /* Current du_dt in physical coordinates */
+  /* Current du_dt in physical coordinates (internal units) */
   const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* Calculate cooling du_dt (in cgs units) */
@@ -136,13 +139,16 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   /* Update the internal energy time derivative */
   hydro_set_physical_internal_energy_dt(p, cosmo, total_du_dt);
 
-  /* Store the radiated energy (assuming we did not hit the limiter) */
+  /* Store the radiated energy (assuming dt will not change) */
   xp->cooling_data.radiated_energy +=
-      -hydro_get_mass(p) * cooling_du_dt * dt_therm;
+      -hydro_get_mass(p) * (total_du_dt - hydro_du_dt) * dt_therm;
 }
 
 /**
  * @brief Computes the time-step due to cooling for this particle.
+ *
+ * We compute a time-step \f$ \alpha \frac{u}{du/dt} \f$ in physical
+ * coordinates. \f$\alpha\f$ is a parameter of the cooling function.
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
@@ -161,9 +167,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct xpart* restrict xp) {
 
   /* Start with the case where there is no limit */
-  if (cooling->cooling_tstep_mult == FLT_MAX) {
-    return FLT_MAX;
-  }
+  if (cooling->cooling_tstep_mult == FLT_MAX) return FLT_MAX;
 
   /* Get current internal energy and cooling rate */
   const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
@@ -255,8 +259,10 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
 static INLINE void cooling_print_backend(
     const struct cooling_function_data* cooling) {
 
-  message("Cooling function is 'Constant lambda' with Lambda=%g [cgs]",
-          cooling->lambda_cgs);
+  message(
+      "Cooling function is 'Constant lambda' with Lambda=%g [erg * s^-1 * "
+      "cm^-3]",
+      cooling->lambda_cgs);
 
   if (cooling->cooling_tstep_mult == FLT_MAX)
     message("Cooling function time-step size is unlimited");

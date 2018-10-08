@@ -59,4 +59,4 @@ InitialConditions:
 
 # Constant lambda cooling function
 LambdaCooling:
-  lambda_cgs:                  1e-26 # Cooling rate (in cgs units)
+  lambda_cgs:                  1e-26 # Cooling rate (in cgs units [erg * s^-1 * cm^-3])

@@ -28,7 +28,7 @@
  */
 struct cooling_function_data {
 
-  /*! Cooling rate in cgs units */
+  /*! Cooling rate in physical cgs units [erg * s^-1 * cm^-3] */
   double lambda_cgs;
 
   /*! Conversion factor from internal units to cgs for density */
