@@ -21,3 +21,4 @@ difference is the parameter file that will need to be adapted for SWIFT.
    EquationOfState/index
    NewOption/index
    Task/index
+   VELOCIraptorInterface/index
