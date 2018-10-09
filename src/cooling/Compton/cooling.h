@@ -121,15 +121,19 @@ __attribute__((always_inline)) INLINE static double Compton_cooling_rate_cgs(
 
   /* Particle temperature */
   const double u_cgs = u * cooling->conv_factor_energy_to_cgs;
-  const double T = temperature_from_internal_energy(
-      u_cgs, H_mass_fraction, T_transition, 1., 1.);  // MATTHIEU
+  const double T = temperature_from_internal_energy(u_cgs, H_mass_fraction,
+                                                    T_transition, 1., 1.);
+  // MATTHIEU: to do: get H mass in cgs and k_B in cgs.
+
+  /* Electron abundance */
+  double electron_abundance = 0.;  // MATTHIEU: To do: compute X_e
 
   /* Temperature difference with the CMB */
   const double delta_T = T - T_CMB;
 
   /* Electron density */
   const double electron_density_cgs =
-      rho_cgs * cooling->electron_abundance * cooling->proton_mass_cgs_inv;
+      rho_cgs * electron_abundance * cooling->proton_mass_cgs_inv;
 
   /* Compton formula */
   return cooling->const_Compton_rate_cgs * delta_T * zp1p4 *
