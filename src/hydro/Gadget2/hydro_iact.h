@@ -741,8 +741,8 @@ runner_iact_nonsym_1_vec_force(
                     vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
-  v_sig.v = vec_fnma(vec_set1(const_viscosity_beta), 
-                     mu_ij.v, vec_add(ci.v, cj.v));
+  v_sig.v =
+      vec_fnma(vec_set1(const_viscosity_beta), mu_ij.v, vec_add(ci.v, cj.v));
 
   /* Now construct the full viscosity term */
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
@@ -928,10 +928,10 @@ runner_iact_nonsym_2_vec_force(
       v_fac_mu.v, vec_mul(ri_2.v, omega_ij_2.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
-  v_sig.v = vec_fnma(vec_set1(const_viscosity_beta), 
-                     mu_ij.v, vec_add(ci.v, cj.v));
-  v_sig_2.v = vec_fnma(vec_set1(const_viscosity_beta), 
-                       mu_ij_2.v, vec_add(ci.v, cj_2.v));
+  v_sig.v =
+      vec_fnma(vec_set1(const_viscosity_beta), mu_ij.v, vec_add(ci.v, cj.v));
+  v_sig_2.v = vec_fnma(vec_set1(const_viscosity_beta), mu_ij_2.v,
+                       vec_add(ci.v, cj_2.v));
 
   /* Now construct the full viscosity term */
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));

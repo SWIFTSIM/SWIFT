@@ -25,7 +25,7 @@
  * @brief Minimal conservative implementation of SPH (Neighbour loop equations)
  *
  * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch (optional). 
+ * viscosity term with the Balsara (1995) switch (optional).
  * No thermal conduction term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with

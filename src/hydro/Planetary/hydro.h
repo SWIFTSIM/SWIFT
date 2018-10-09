@@ -26,7 +26,7 @@
  * equations) with multiple materials.
  *
  * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch (optional). 
+ * viscosity term with the Balsara (1995) switch (optional).
  * No thermal conduction term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
@@ -45,7 +45,7 @@
 #include "minmax.h"
 
 /*
- * Note: Define PLANETARY_SPH_NO_BALSARA to disable the Balsara (1995) switch 
+ * Note: Define PLANETARY_SPH_NO_BALSARA to disable the Balsara (1995) switch
  * for the artificial viscosity and use the vanilla Monaghan (1992) instead.
  * i.e. compile with:  make CFLAGS=-DPLANETARY_SPH_NO_BALSARA
  */

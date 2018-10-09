@@ -21,8 +21,8 @@
 #define SWIFT_CONST_H
 
 /* SPH Viscosity constants. */
-/* Cosmology defaults: a=0.8, b=3.0. Planetary defaults: a=1.5, b=4.0 
- * Beta is defined as in e.g. Price (2010) Eqn (103) */ 
+/* Cosmology defaults: a=0.8, b=3.0. Planetary defaults: a=1.5, b=4.0
+ * Beta is defined as in e.g. Price (2010) Eqn (103) */
 #define const_viscosity_alpha 0.8f
 #define const_viscosity_beta 3.0f
 
