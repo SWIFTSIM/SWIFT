@@ -79,9 +79,16 @@ GrackleCooling:
   OutputMode: 1 # Write in output corresponding primordial chemistry mode
   MaxSteps: 1000
   ConvergenceLimit: 1e-2
+
+EagleCooling:
+  filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/
+  reionisation_redshift:   20
+  he_reion_z_center:       3.5
+  he_reion_z_sigma:        0.5
+  he_reion_ev_pH:          2.0
   
 EagleCooling:
-    filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/
+  filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/
   reionisation_redshift:   8.898
 
 EAGLEChemistry:

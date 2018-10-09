@@ -45,6 +45,22 @@
 #include "units.h"
 
 /**
+ * @brief Common operations performed on the cooling function at a
+ * given time-step or redshift.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ */
+INLINE static void cooling_update(const struct phys_const* phys_const,
+                                  const struct unit_system* us,
+                                  const struct cosmology* cosmo,
+                                  struct cooling_function_data* cooling) {
+  // Add content if required.
+}
+
+/**
  * @brief Calculates du/dt in CGS units for a particle.
  *
  * The cooling rate is \f$\frac{du}{dt} = -\frac{\Lambda}{n_H^2}

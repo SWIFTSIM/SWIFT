@@ -1454,6 +1454,9 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         }
 
         /* do the kick */
+#ifdef SWIFT_DEBUG_CHECKS
+        if (p->id == eagle_debug_particle_id) message("particle id %llu p->entropy %.5e xp->entropy_full %.5e entropy_dt %.5e dt_therm %.5e", p->id, p->entropy, xp->entropy_full, p->entropy_dt, dt_kick_therm);
+#endif
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
                   dt_kick_corr, cosmo, hydro_props, ti_begin,
                   ti_begin + ti_step / 2);
@@ -1624,6 +1627,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Finish the time-step with a second half-kick */
+#ifdef SWIFT_DEBUG_CHECKS
+        if (p->id == eagle_debug_particle_id) message("particle id %llu p->entropy %.5e xp->entropy_full %.5e entropy_dt %.5e dt_therm %.5e", p->id, p->entropy, xp->entropy_full, p->entropy_dt, dt_kick_therm);
+#endif
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
                   dt_kick_corr, cosmo, hydro_props, ti_begin + ti_step / 2,
                   ti_begin + ti_step);

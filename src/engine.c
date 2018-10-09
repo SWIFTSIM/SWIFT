@@ -5008,6 +5008,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     cooling_update(e->physical_constants, e->internal_units, e->cosmology,
                    e->cooling_func);
 
+  /* Update the cooling function */
+  if (e->policy & engine_policy_cooling)
+    cooling_update(e->physical_constants, e->internal_units, e->cosmology,
+                   e->cooling_func);
+
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e);
