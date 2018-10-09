@@ -5002,12 +5002,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_parts(s, e->verbose);
   space_init_gparts(s, e->verbose);
   space_init_sparts(s, e->verbose);
-
-  /* Update the cooling function */
-  //if (e->policy & engine_policy_cooling)
-  //  cooling_update(e->physical_constants, e->internal_units, e->cosmology,
-  //                 e->cooling_func);
-
+  
+/* Update the cooling function */
+  if (e->policy & engine_policy_cooling)
+    cooling_update(e->physical_constants, e->internal_units, e->cosmology,
+                   e->cooling_func);
 
   /* Now, launch the calculation */
   TIMER_TIC;
@@ -5189,7 +5188,7 @@ void engine_step(struct engine *e) {
         "%6d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-        e->s_updates, e->wallclock_time, e->step_props,  (n_eagle_cooling_rate_calls_1 - n_eagle_cooling_rate_calls_3)/n_eagle_cooling_rate_calls_2, n_eagle_cooling_rate_calls_2, n_eagle_cooling_rate_calls_3, ((float) n_eagle_cooling_rate_calls_3)/((float) n_eagle_cooling_rate_calls_2));
+        e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
     if (!e->restarting)
@@ -5202,9 +5201,6 @@ void engine_step(struct engine *e) {
           e->s_updates, e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
-  n_eagle_cooling_rate_calls_1 = 0;
-  n_eagle_cooling_rate_calls_2 = 0;
-  n_eagle_cooling_rate_calls_3 = 0;
 
   /* We need some cells to exist but not the whole task stuff. */
   if (e->restarting) space_rebuild(e->s, e->verbose);
@@ -5231,6 +5227,11 @@ void engine_step(struct engine *e) {
     e->time_old = e->ti_old * e->time_base + e->time_begin;
     e->time_step = (e->ti_current - e->ti_old) * e->time_base;
   }
+
+  /* Update the cooling function */
+  if (e->policy & engine_policy_cooling)
+    cooling_update(e->physical_constants, e->internal_units, e->cosmology,
+                   e->cooling_func);
 
   /*****************************************************/
   /* OK, we now know what the next end of time-step is */

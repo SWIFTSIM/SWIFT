@@ -37,22 +37,6 @@
 #include "units.h"
 
 /**
- * @brief Common operations performed on the cooling function at a
- * given time-step or redshift.
- *
- * @param phys_const The physical constants in internal units.
- * @param us The internal system of units.
- * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
- */
-INLINE static void cooling_update(const struct phys_const* phys_const,
-                                  const struct unit_system* us,
-                                  const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling) {
-  // Add content if required.
-}
-
-/**
  * @brief Apply the cooling function to a particle.
  *
  * We do nothing.
@@ -60,21 +44,21 @@ INLINE static void cooling_update(const struct phys_const* phys_const,
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param cosmo The current cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  * @param dt The time-step of this particle.
- * @param hydro_properties the hydro_props struct, used for
- * getting the minimal internal energy allowed in by SWIFT.
- * Read from yml file into engine struct.
+ * @param dt_therm The time-step operator used for thermal quantities.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
     const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, struct xpart* restrict xp, float dt,
-    const struct hydro_props *restrict hydro_properties) {}
+    struct part* restrict p, struct xpart* restrict xp, const float dt,
+    const float dt_therm) {}
 
 /**
  * @brief Computes the cooling time-step.
@@ -84,14 +68,18 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
  * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended data of the particle.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
     const struct cosmology* restrict cosmo,
-    const struct unit_system* restrict us, const struct part* restrict p) {
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props, const struct part* restrict p,
+    const struct xpart* restrict xp) {
 
   return FLT_MAX;
 }

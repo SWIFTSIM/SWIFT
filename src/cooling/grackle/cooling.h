@@ -36,6 +36,7 @@
 
 /* Local includes. */
 #include "chemistry.h"
+#include "cooling_io.h"
 #include "error.h"
 #include "hydro.h"
 #include "parser.h"
@@ -46,22 +47,6 @@
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
-
-/**
- * @brief Common operations performed on the cooling function at a
- * given time-step or redshift.
- *
- * @param phys_const The physical constants in internal units.
- * @param us The internal system of units.
- * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
- */
-INLINE static void cooling_update(const struct phys_const* phys_const,
-                                  const struct unit_system* us,
-                                  const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling) {
-  // Add content if required.
-}
 
 /* prototypes */
 static gr_float cooling_time(
@@ -507,6 +492,12 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, struct xpart* restrict xp, double dt) {
 
+  if (cosmo->Omega_m != 0. || cosmo->Omega_r != 0. || cosmo->Omega_k != 0. ||
+      cosmo->Omega_lambda != 0. || cosmo->Omega_b != 0.)
+    error(
+        "Check cosmology factors (physical vs. co-moving and drifted vs. "
+        "un-drifted)!");
+
   /* set current time */
   code_units units = cooling->units;
   if (cooling->redshift == -1)
@@ -531,7 +522,8 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
 
   /* general particle data */
   gr_float density = hydro_get_physical_density(p, cosmo);
-  const double energy_before = hydro_get_physical_internal_energy(p, cosmo);
+  const double energy_before =
+      hydro_get_drifted_physical_internal_energy(p, cosmo);
   gr_float energy = energy_before;
 
   /* initialize density */
@@ -550,22 +542,11 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
 
   /* solve chemistry */
   chemistry_data chemistry_grackle = cooling->chemistry;
-  chemistry_data_storage my_rates = grackle_rates;
-  int error_code = _solve_chemistry(
-      &chemistry_grackle, &my_rates, &units, dt, data.grid_dx, data.grid_rank,
-      data.grid_dimension, data.grid_start, data.grid_end, data.density,
-      data.internal_energy, data.x_velocity, data.y_velocity, data.z_velocity,
-      data.HI_density, data.HII_density, data.HM_density, data.HeI_density,
-      data.HeII_density, data.HeIII_density, data.H2I_density,
-      data.H2II_density, data.DI_density, data.DII_density, data.HDI_density,
-      data.e_density, data.metal_density, data.volumetric_heating_rate,
-      data.specific_heating_rate, data.RT_heating_rate,
-      data.RT_HI_ionization_rate, data.RT_HeI_ionization_rate,
-      data.RT_HeII_ionization_rate, data.RT_H2_dissociation_rate, NULL);
-  if (error_code == 0) error("Error in solve_chemistry.");
-  // if (solve_chemistry(&units, &data, dt) == 0) {
-  //  error("Error in solve_chemistry.");
-  //}
+  chemistry_data_storage chemistry_rates = grackle_rates;
+  if (local_solve_chemistry(&chemistry_grackle, &chemistry_rates, &units, &data,
+                            dt) == 0) {
+    error("Error in solve_chemistry.");
+  }
 
   /* copy from grackle data to particle */
   cooling_copy_from_grackle(data, p, xp, density);
@@ -612,7 +593,8 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
   data.grid_end = grid_end;
 
   /* general particle data */
-  const gr_float energy_before = hydro_get_physical_internal_energy(p, cosmo);
+  const gr_float energy_before =
+      hydro_get_drifted_physical_internal_energy(p, cosmo);
   gr_float density = hydro_get_physical_density(p, cosmo);
   gr_float energy = energy_before;
 
@@ -632,7 +614,10 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
 
   /* Compute cooling time */
   gr_float cooling_time;
-  if (calculate_cooling_time(&units, &data, &cooling_time) == 0) {
+  chemistry_data chemistry_grackle = cooling->chemistry;
+  chemistry_data_storage chemistry_rates = grackle_rates;
+  if (local_calculate_cooling_time(&chemistry_grackle, &chemistry_rates, &units,
+                                   &data, &cooling_time) == 0) {
     error("Error in calculate_cooling_time.");
   }
 
@@ -652,22 +637,26 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param dt The time-step of this particle.
- * @param hydro_properties the hydro_props struct, used for
- * getting the minimal internal energy allowed in by SWIFT.
- * Read from yml file into engine struct.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, double dt,
-    const struct hydro_props *restrict hydro_properties) {
+    double dt_therm) {
+
+  if (cosmo->Omega_m != 0. || cosmo->Omega_r != 0. || cosmo->Omega_k != 0. ||
+      cosmo->Omega_lambda != 0. || cosmo->Omega_b != 0.)
+    error(
+        "Check cosmology factors (physical vs. co-moving and drifted vs. "
+        "un-drifted)!");
 
   if (dt == 0.) return;
 
   /* Current du_dt */
-  const float hydro_du_dt = hydro_get_internal_energy_dt(p);
+  const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* compute cooling rate */
   const float du_dt = cooling_rate(phys_const, us, cosmo, cooling, p, xp, dt);
@@ -676,7 +665,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   xp->cooling_data.radiated_energy += -du_dt * dt * hydro_get_mass(p);
 
   /* Update the internal energy */
-  hydro_set_internal_energy_dt(p, hydro_du_dt + du_dt);
+  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt + du_dt);
 }
 
 /**
@@ -694,7 +683,9 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
     const struct cosmology* restrict cosmo,
-    const struct unit_system* restrict us, const struct part* restrict p) {
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props, const struct part* restrict p,
+    const struct xpart* restrict xp) {
 
   return FLT_MAX;
 }

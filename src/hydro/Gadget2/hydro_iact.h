@@ -487,7 +487,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
-  if (isnan(balsara_i) || isnan(balsara_j)) message("balsara_i balsara_j %.5e %.5e", balsara_i, balsara_j);
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
@@ -495,13 +494,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Signal velocity */
   const float v_sig = ci + cj - 3.f * mu_ij;
-  if (isnan(v_sig)) message("v_sig is nan terms %.5e %.5e %.5e ", ci, cj, mu_ij);
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
   const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
                      (balsara_i + balsara_j) / rho_ij;
-  if (isnan(visc)) error("visc is nan terms %.5e %.5e %.5e %.5e %.5e %.5e ", const_viscosity_alpha, v_sig, mu_ij, balsara_i, balsara_j, rho_ij);
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -529,8 +526,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
-  //if (pi->id == 5439098268095) message("Particle id %llu entropy_dt %.5e increment %.5e terms %.5e %.5e %.5e",pi->id,pi->entropy_dt, mj * visc_term * dvdr, mj, visc_term, dvdr);
-  //if (pj->id == 5439098268095) message("Particle id %llu entropy_dt %.5e increment %.5e terms %.5e %.5e %.5e",pj->id,pj->entropy_dt, mi * visc_term * dvdr, mi, visc_term, dvdr);
   pi->entropy_dt += mj * visc_term * dvdr;
   pj->entropy_dt += mi * visc_term * dvdr;
 
@@ -615,7 +610,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
-  if (isnan(balsara_i) || isnan(balsara_j)) message("balsara_i balsara_j %.5e %.5e", balsara_i, balsara_j);
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
@@ -623,13 +617,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Signal velocity */
   const float v_sig = ci + cj - 3.f * mu_ij;
-  if (isnan(v_sig)) message("v_sig is nan terms %.5e %.5e %.5e ", ci, cj, mu_ij);
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
   const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
                      (balsara_i + balsara_j) / rho_ij;
-  if (isnan(visc)) error("visc is nan terms %.5e %.5e %.5e %.5e %.5e %.5e ", const_viscosity_alpha, v_sig, mu_ij, balsara_i, balsara_j, rho_ij);
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -651,7 +643,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
   /* Change in entropy */
-  //if (pi->id == 5439098268095) message("Particle id %llu entropy_dt %.5e increment %.5e terms %.5e %.5e %.5e",pi->id,pi->entropy_dt, mj * visc_term * dvdr, mj, visc_term, dvdr);
   pi->entropy_dt += mj * visc_term * dvdr;
 
 #ifdef DEBUG_INTERACTIONS_SPH

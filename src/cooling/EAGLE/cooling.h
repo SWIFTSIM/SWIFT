@@ -70,16 +70,18 @@ void abundance_ratio_to_solar(const struct part *restrict,
 void cooling_cool_part(const struct phys_const *restrict,
                        const struct unit_system *restrict,
                        const struct cosmology *restrict,
+		       const struct hydro_props *restrict,
                        const struct cooling_function_data *restrict,
-                       struct part *restrict, struct xpart *restrict, float,
-		       float,
-		       const struct hydro_props *restrict);
+                       struct part *restrict, struct xpart *restrict, 
+		       float, float);
 
 float cooling_timestep(const struct cooling_function_data *restrict,
                        const struct phys_const *restrict,
                        const struct cosmology *restrict,
                        const struct unit_system *restrict,
-                       const struct part *restrict);
+		       const struct hydro_props*,
+                       const struct part *restrict,
+		       const struct xpart *restrict);
 
 void cooling_first_init_part(const struct phys_const *restrict,
                              const struct unit_system *restrict,

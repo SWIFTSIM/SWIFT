@@ -110,10 +110,10 @@ void cooling_update(const struct phys_const *phys_const,
 void cooling_cool_part(const struct phys_const *restrict phys_const,
                        const struct unit_system *restrict us,
                        const struct cosmology *restrict cosmo,
+		       const struct hydro_props *restrict hydro_properties,
                        const struct cooling_function_data *restrict cooling,
                        struct part *restrict p, struct xpart *restrict xp,
-                       float dt, float dt_therm,
-		       const struct hydro_props *restrict hydro_properties) {
+                       float dt, float dt_therm) {
 
   float XH, HeFrac;
   double inn_h;
@@ -125,9 +125,6 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   if (isnan(hydro_du_dt)) error("hydro_du_dt is nan. particle id %llu", p->id);
 #endif
   float u_start = hydro_get_physical_internal_energy(p,xp,cosmo);
-#ifdef SWIFT_DEBUG_CHECKS
-  if (p->id == eagle_debug_particle_id) message("particle id %llu p->entropy %.5e xp->entropy %.5e entropy from u %.5e  (predicted %.5e)", p->id, p->entropy, xp->entropy_full, gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u_start), xp->entropy_full + p->entropy_dt * dt_therm);
-#endif
 
   double u_old = (u_start + hydro_du_dt * dt_therm) * cooling->internal_energy_scale;
   if (u_old < hydro_properties->minimal_internal_energy*cooling->internal_energy_scale) u_old = hydro_properties->minimal_internal_energy*cooling->internal_energy_scale; 
@@ -194,7 +191,6 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   }
   float delta_u = u - u_start*cooling->internal_energy_scale;    /* need to be safe for an extra half step ?? !! */
   if (u_start*cooling->internal_energy_scale + 2.5*delta_u < hydro_properties->minimal_internal_energy*cooling->internal_energy_scale) {
-    if (p->id == eagle_debug_particle_id) message("particle id %llu caught by cooling rate check", p->id);
     u = (1.0 - 1./2.5) * (hydro_properties->minimal_internal_energy*cooling->internal_energy_scale  + u_start*cooling->internal_energy_scale);
     //delta_u = (hydro_properties->minimal_internal_energy - u_start)*cooling->internal_energy_scale / 2.5;
   }
@@ -208,21 +204,6 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
   /* Update the internal energy time derivative */
   hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
-#ifdef SWIFT_DEBUG_CHECKS
-  if (p->id == eagle_debug_particle_id) message("Particle id %llu cooling initial energy %.5e ( %.5e ) final energy %.5e  cooling du/dt %.5e hydro du/dt %.5e d_entropy %.5e \n  initial entropy %.5e ( %.5e ), final entropy %.5e, \n  entropy in 2dt %.5e (dt %.5e, %.5e)",
-        p->id,
-        u_old,
-        u_start * cooling->internal_energy_scale,
-        u,
-        cooling_du_dt,
-        hydro_du_dt,
-        gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, cooling_du_dt*dt_therm),
-        gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u_old/cooling->internal_energy_scale),
-        gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u_start),
-        gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u/cooling->internal_energy_scale),
-        gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u_old/cooling->internal_energy_scale + cooling_du_dt*2.0*dt/units_cgs_conversion_factor(us, UNIT_CONV_TIME)),
-        dt/units_cgs_conversion_factor(us,UNIT_CONV_TIME), dt_therm) ;
-#endif
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy +=
@@ -810,7 +791,10 @@ __attribute__((always_inline)) INLINE float cooling_timestep(
     const struct cooling_function_data *restrict cooling,
     const struct phys_const *restrict phys_const,
     const struct cosmology *restrict cosmo,
-    const struct unit_system *restrict us, const struct part *restrict p) {
+    const struct unit_system *restrict us,
+    const struct hydro_props* hydro_props,
+    const struct part *restrict p,
+    const struct xpart *restrict xp) {
 
   return FLT_MAX;
 }
