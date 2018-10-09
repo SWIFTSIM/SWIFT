@@ -1028,6 +1028,11 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
   for (int k = 0; k < gcount; k++) {
     const double m = gparts[k].mass;
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gparts[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle in P2M. Should have been remvoed earlier.");
+#endif
+
     mass += m;
     com[0] += gparts[k].x[0] * m;
     com[1] += gparts[k].x[1] * m;

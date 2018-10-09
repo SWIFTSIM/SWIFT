@@ -2013,7 +2013,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
+  // struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   const int periodic = s->periodic;
@@ -2043,7 +2043,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
-      struct xpart *restrict xp = &xparts[k];
+      // struct xpart *restrict xp = &xparts[k];
 
       if (part_is_active(p, e)) {
 

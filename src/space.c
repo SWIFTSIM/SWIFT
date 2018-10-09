@@ -1924,6 +1924,10 @@ void space_split_recursive(struct space *s, struct cell *c,
                          sizeof(struct cell_buff) * count) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < count; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parts[k].time_bin == time_bin_inhibited)
+          error("Inhibited particle present in space_split()");
+#endif
         buff[k].x[0] = parts[k].x[0];
         buff[k].x[1] = parts[k].x[1];
         buff[k].x[2] = parts[k].x[2];
@@ -1934,6 +1938,10 @@ void space_split_recursive(struct space *s, struct cell *c,
                          sizeof(struct cell_buff) * gcount) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < gcount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (gparts[k].time_bin == time_bin_inhibited)
+          error("Inhibited particle present in space_split()");
+#endif
         gbuff[k].x[0] = gparts[k].x[0];
         gbuff[k].x[1] = gparts[k].x[1];
         gbuff[k].x[2] = gparts[k].x[2];
@@ -1944,6 +1952,10 @@ void space_split_recursive(struct space *s, struct cell *c,
                          sizeof(struct cell_buff) * scount) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < scount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (sparts[k].time_bin == time_bin_inhibited)
+          error("Inhibited particle present in space_split()");
+#endif
         sbuff[k].x[0] = sparts[k].x[0];
         sbuff[k].x[1] = sparts[k].x[1];
         sbuff[k].x[2] = sparts[k].x[2];
