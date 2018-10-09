@@ -85,7 +85,7 @@ unit_length_in_si = 0.01 * unit_length_in_cgs
 unit_mass_in_si = 0.001 * unit_mass_in_cgs
 unit_time_in_si = unit_time_in_cgs
 
-# Primoridal ean molecular weight as a function of temperature
+# Primoridal mean molecular weight as a function of temperature
 def mu(T, H_frac=H_mass_fraction, T_trans=H_transition_temp):
     if T > T_trans:
         return 4. / (8. - 5. * (1. - H_frac))
@@ -163,7 +163,7 @@ legend(loc="upper left", frameon=False, handlelength=1.5)
 
 # Cooling model
 if cooling_model == "Constant Lambda":
-    text(1e-2, 6e4, "$\Lambda_{\\rm const} = %.1f\\times10^{%d}~[\\rm{cgs}]$"%(Lambda/10.**(int(log10(Lambda))), log10(Lambda)), fontsize=8)
+    text(1e-2, 6e4, "$\Lambda_{\\rm const}/n_{\\rm H}^2 = %.1f\\times10^{%d}~[\\rm{cgs}]$"%(Lambda/10.**(int(log10(Lambda))), log10(Lambda)), fontsize=7)
 else:
     text(1e-2, 6e4, "No cooling")
     

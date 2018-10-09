@@ -36,20 +36,71 @@
 #include "units.h"
 
 /**
+ * @brief Compute the mean molecular weight as a function of temperature for
+ * primordial gas.
+ *
+ * @param T The temperature of the gas [K].
+ * @param H_mass_fraction The hydrogen mass fraction of the gas.
+ * @param T_trans The temperature of the transition from HII to HI [K].
+ */
+__attribute__((always_inline, const)) INLINE static double
+mean_molecular_weight(const double T, const double H_mass_fraction,
+                      const double T_transition) {
+
+  if (T > T_transition)
+    return 4. / (8. - 5. * (1. - H_mass_fraction));
+  else
+    return 4. / (1. + 3. * H_mass_fraction);
+}
+
+/**
+ * @brief Compute the temperature for a given internal energy per unit mass
+ * assuming primordial gas.
+ *
+ * @param u_cgs The internal energy per unit mass of the gas [erg * g^-1].
+ * @param H_mass_fraction The hydrogen mass fraction of the gas.
+ * @param T_trans The temperature of the transition from HII to HI [K].
+ * @param m_H_cgs The mass of the Hydorgen atom [g].
+ * @param k_B_cgs The Boltzmann constant in cgs units [erg * K^-1]
+ * @return The temperature of the gas [K]
+ */
+__attribute__((always_inline, const)) INLINE static double
+temperature_from_internal_energy(const double u_cgs,
+                                 const double H_mass_fraction,
+                                 const double T_transition,
+                                 const double m_H_cgs, const double k_B_cgs) {
+
+  const double T_over_mu = hydro_gamma_minus_one * u_cgs * m_H_cgs / k_B_cgs;
+
+  const double mu_high =
+      mean_molecular_weight(T_transition + 1., H_mass_fraction, T_transition);
+  const double mu_low =
+      mean_molecular_weight(T_transition - 1., H_mass_fraction, T_transition);
+
+  if (T_over_mu > (T_transition + 1.) / mu_high)
+    return T_over_mu * mu_high;
+  else if (T_over_mu < (T_transition - 1.) / mu_low)
+    return T_over_mu * mu_low;
+  else
+    return T_transition;
+}
+
+/**
  * @brief Calculates du/dt in CGS units for a particle.
  *
  *
  * @param cosmo The current cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param cooling The #cooling_function_data used in the run.
- * @param z The current redshift
+ * @param z The current redshift.
+ * @param u The current internal energy in internal units.
  * @param p Pointer to the particle data.
  * @return The change in energy per unit mass due to cooling for this particle
  * in cgs units [erg * g^-1 * s^-1].
  */
 __attribute__((always_inline)) INLINE static double Compton_cooling_rate_cgs(
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const struct cooling_function_data* cooling, const double z,
+    const struct cooling_function_data* cooling, const double z, const double u,
     const struct part* p) {
 
   /* Get particle density */
@@ -64,15 +115,25 @@ __attribute__((always_inline)) INLINE static double Compton_cooling_rate_cgs(
   /* CMB temperature at this redshift */
   const double T_CMB = cooling->const_T_CMB_0 * zp1;
 
+  /* Gas properties */
+  const double H_mass_fraction = hydro_props->hydrogen_mass_fraction;
+  const double T_transition = hydro_props->hydrogen_ionization_temperature;
+
   /* Particle temperature */
-  const double T = 1;
+  const double u_cgs = u * cooling->conv_factor_energy_to_cgs;
+  const double T = temperature_from_internal_energy(u_cgs, H_mass_fraction,
+                                                    T_transition, 1., 1.);
+  // MATTHIEU: to do: get H mass in cgs and k_B in cgs.
+
+  /* Electron abundance */
+  double electron_abundance = 0.;  // MATTHIEU: To do: compute X_e
 
   /* Temperature difference with the CMB */
   const double delta_T = T - T_CMB;
 
   /* Electron density */
   const double electron_density_cgs =
-      rho_cgs * cooling->electron_abundance * cooling->proton_mass_cgs_inv;
+      rho_cgs * electron_abundance * cooling->proton_mass_cgs_inv;
 
   /* Compton formula */
   return cooling->const_Compton_rate_cgs * delta_T * zp1p4 *
@@ -115,7 +176,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
   /* Calculate cooling du_dt (in cgs units) */
   const double cooling_du_dt_cgs =
-      Compton_cooling_rate_cgs(cosmo, hydro_props, cooling, cosmo->z, p);
+      Compton_cooling_rate_cgs(cosmo, hydro_props, cooling, cosmo->z, u_old, p);
 
   /* Convert to internal units */
   float cooling_du_dt =
@@ -225,6 +286,8 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
   /* Some useful conversion values */
   cooling->conv_factor_density_to_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  cooling->conv_factor_energy_to_cgs =
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   cooling->conv_factor_energy_rate_from_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);

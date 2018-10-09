@@ -30,11 +30,11 @@ struct cooling_function_data {
   /*! Temperature of the CMB at redshift 0 in cgs [K] */
   double const_T_CMB_0;
 
-  /*! Primordial electron abundance [-] */
-  double electron_abundance;
-
   /*! Conversion factor from internal units to cgs for density */
   double conv_factor_density_to_cgs;
+
+  /*! Conversion factor from internal units to cgs for internal energy */
+  double conv_factor_energy_to_cgs;
 
   /*! Conversion factor from internal units from cgs for internal energy
    * derivative */
