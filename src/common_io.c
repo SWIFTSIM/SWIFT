@@ -634,9 +634,9 @@ void io_prepare_dm_gparts_mapper(void* restrict data, int Ndm, void* dummy) {
   /* Let's give all these gparts a negative id */
   for (int i = 0; i < Ndm; ++i) {
 
-    /* 0 or negative ids are not allowed */
-    if (gparts[i].id_or_neg_offset <= 0)
-      error("0 or negative ID for DM particle %i: ID=%lld", i,
+    /* Negative ids are not allowed */
+    if (gparts[i].id_or_neg_offset < 0)
+      error("Negative ID for DM particle %i: ID=%lld", i,
             gparts[i].id_or_neg_offset);
 
     /* Set gpart type */
