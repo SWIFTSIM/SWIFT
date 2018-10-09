@@ -53,7 +53,7 @@ static const int bisection_max_iterations = 150;
 static const float explicit_tolerance = 0.05;
 static const float newton_tolerance = 1.0e-2;
 static const float bisection_tolerance = 1.0e-6;
-static const float rounding_tolerance = 1.0e-5;
+static const float rounding_tolerance = 1.0e-4;
 static const double bracket_factor = 1.0488088481701; // = sqrt(1.1) to match EAGLE
 
 // Flag used for printing cooling rate contribution from each 
@@ -129,14 +129,6 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   if (isnan(hydro_du_dt)) error("hydro_du_dt is nan. particle id %llu", p->id);
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (p->id == eagle_debug_particle_id) 
-    message("particle id %llu p->entropy %.5e xp->entropy %.5e entropy from u %.5e  (predicted %.5e)", 
-	    p->id, p->entropy, xp->entropy_full, 
-	    gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u_start), 
-	    xp->entropy_full + p->entropy_dt * dt_therm);
-#endif
-  
   /* Get internal energy at the end of the next kick step (assuming dt does not increase) */
   double u_0 = (u_start + hydro_du_dt * dt_therm);
   
@@ -222,46 +214,22 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   /* First, check whether we may end up below the minimal energy after 
    * this step 1/2 kick + another 1/2 kick that could potentially be for
    * a time-step twice as big. We hence check for 1.5 delta_u. */
-  if (u_start + 1.5 * delta_u < hydro_properties->minimal_internal_energy) {
-
+  if (u_start + 1.5 * delta_u < hydro_properties->minimal_internal_energy) 
     delta_u = (hydro_properties->minimal_internal_energy - u_start) / 1.5;
-    message("particle id %llu caught by first cooling rate check", p->id);
-  }
 
   /* Second, check whether the energy used in the prediction could get negative.
    * We need to check for the 1/2 dt kick followed by a full time-step drift
    * that could potentially be for a time-step twice as big. We hence check
-   * for 2.5 delta_u but this time against 0 energy not the minimum */
-  if (u_start + 2.5 * delta_u < 0.) {
-
-    /* To avoid numerical rounding bringing us below 0., we add a tiny tolerance */
+   * for 2.5 delta_u but this time against 0 energy not the minimum. 
+   * To avoid numerical rounding bringing us below 0., we add a tiny tolerance. */
+  if (u_start + 2.5 * delta_u < 0.) 
     delta_u = -u_start / (2.5 + rounding_tolerance);
-    message("particle id %llu caught by second cooling rate check", p->id);
-  }
 
   /* Turn this into a rate of change */
   const float cooling_du_dt = delta_u / dt_therm ;
 
   /* Update the internal energy time derivative */
   hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (p->id == eagle_debug_particle_id) {
-message("Particle id %llu cooling initial energy %.5e ( %.5e ) final energy %.5e  cooling du/dt %.5e hydro du/dt %.5e d_entropy %.5e \n  initial entropy %.5e ( %.5e ), final entropy %.5e, \n  entropy in 2dt %.5e (dt %.5e, %.5e)",
-        p->id,
-        u_0,
-        u_start * cooling->internal_energy_scale,
-        u_final_cgs / cooling->internal_energy_scale,
-        cooling_du_dt,
-        hydro_du_dt,
-        gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, cooling_du_dt*dt_therm),
-        gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u_0/cooling->internal_energy_scale),
-        gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u_start),
-        gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u_final_cgs/cooling->internal_energy_scale),
-        gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u_0/cooling->internal_energy_scale + cooling_du_dt*2.0*dt/units_cgs_conversion_factor(us, UNIT_CONV_TIME)),
-        dt/units_cgs_conversion_factor(us,UNIT_CONV_TIME), dt_therm) ;
-  }
-#endif
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy -= hydro_get_mass(p) * cooling_du_dt * dt;

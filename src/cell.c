@@ -2896,9 +2896,6 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       struct xpart *const xp = &xparts[k];
 
       /* Drift... */
-#ifdef SWIFT_DEBUG_CHECKS
-      if (p->id == eagle_debug_particle_id) message("particle id %llu p->entropy %.5e xp->entropy %.5e", p->id, p->entropy, xp->entropy_full);
-#endif
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current);
 
