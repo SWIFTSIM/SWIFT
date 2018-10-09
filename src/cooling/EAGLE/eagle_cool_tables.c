@@ -129,10 +129,7 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
 
   // read sizes of array dimensions
   tempfile_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
-
-  if (tempfile_id < 0) {
-    error("[ReadCoolingHeader()]: unable to open file %s\n", fname);
-  }
+  if (tempfile_id < 0) error("unable to open file %s\n", fname);
 
   // read size of each table of values
   dataset =
@@ -141,28 +138,37 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
                    &cooling->N_Temp);
   if (status < 0) error("error reading number of temperature bins");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   dataset = H5Dopen(tempfile_id, "/Header/Number_of_density_bins", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    &cooling->N_nH);
+  if (status < 0) error("error reading number of density bins");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   dataset =
       H5Dopen(tempfile_id, "/Header/Number_of_helium_fractions", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    &cooling->N_He);
+  if (status < 0) error("error reading number of He fraction bins");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   dataset = H5Dopen(tempfile_id, "/Header/Abundances/Number_of_abundances",
                     H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    &cooling->N_SolarAbundances);
+  if (status < 0) error("error reading number of solar abundance bins");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   dataset = H5Dopen(tempfile_id, "/Header/Number_of_metals", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    &cooling->N_Elements);
+  if (status < 0) error("error reading number of metal bins");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   // allocate arrays of values for each of the above quantities
   if (posix_memalign((void **)&cooling->Temp, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * sizeof(float)) !=0) 
@@ -180,30 +186,40 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
   dataset = H5Dopen(tempfile_id, "/Solar/Temperature_bins", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    cooling->Temp);
+  if (status < 0) error("error reading temperature bins");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   dataset = H5Dopen(tempfile_id, "/Solar/Hydrogen_density_bins", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    cooling->nH);
+  if (status < 0) error("error reading H density bins");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   dataset = H5Dopen(tempfile_id, "/Metal_free/Helium_mass_fraction_bins",
                     H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    cooling->HeFrac);
+  if (status < 0) error("error reading He fraction bins");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   dataset = H5Dopen(tempfile_id, "/Header/Abundances/Solar_mass_fractions",
                     H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    cooling->SolarAbundances);
+  if (status < 0) error("error reading solar mass fraction bins");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   dataset = H5Dopen(tempfile_id, "/Metal_free/Temperature/Energy_density_bins",
                     H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    cooling->Therm);
+  if (status < 0) error("error reading internal energy bins");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   // Convert to temperature, density and internal energy arrays to log10
   for (i = 0; i < cooling->N_Temp; i++) {
@@ -281,6 +297,7 @@ struct cooling_tables get_redshift_invariant_table(
   }
 
   file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
+  if (file_id < 0) error("unable to open file %s\n", fname);
 
   // read in cooling rates due to metals
   for (specs = 0; specs < cooling->N_Elements; specs++) {
@@ -288,8 +305,9 @@ struct cooling_tables get_redshift_invariant_table(
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      net_cooling_rate);
-    if (status < 0) error("error reading cooling rate table");
+    if (status < 0) error("error reading metal cooling rate table");
     status = H5Dclose(dataset);
+    if (status < 0) error("error closing cooling dataset");
 
     // Transpose from order tables are stored in (temperature, nH)
     // to (nH, temperature, metal species) where fastest 
@@ -312,19 +330,25 @@ struct cooling_tables get_redshift_invariant_table(
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    he_net_cooling_rate);
+  if (status < 0) error("error reading metal free cooling rate table");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   strcpy(set_name, "/Metal_free/Temperature/Temperature");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    temperature);
+  if (status < 0) error("error reading temperature table");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   strcpy(set_name, "/Metal_free/Electron_density_over_n_h");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    he_electron_abundance);
+  if (status < 0) error("error reading electron density table");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   // Transpose from order tables are stored in (helium fraction, temperature,
   // nH) to (nH, helium fraction, temperature) where fastest 
@@ -352,7 +376,9 @@ struct cooling_tables get_redshift_invariant_table(
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    electron_abundance);
+  if (status < 0) error("error reading solar electron density table");
   status = H5Dclose(dataset);
+  if (status < 0) error("error closing cooling dataset");
 
   // Transpose from order tables are stored in (temperature, nH) to 
   // (nH, temperature) where fastest varying index is on right.
@@ -366,6 +392,7 @@ struct cooling_tables get_redshift_invariant_table(
   }
 
   status = H5Fclose(file_id);
+  if (status < 0) error("error closing file");
 
   free(net_cooling_rate);
   free(electron_abundance);
@@ -448,10 +475,7 @@ struct cooling_tables get_cooling_table(
     sprintf(fname, "%sz_%1.3f.hdf5", cooling->cooling_table_path,
             cooling->Redshifts[z_index]);
     file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
-
-    if (file_id < 0) {
-      error("unable to open file %s", fname);
-    }
+    if (file_id < 0) error("unable to open file %s", fname);
 
     // read in cooling rates due to metals
     for (specs = 0; specs < cooling->N_Elements; specs++) {
@@ -461,6 +485,7 @@ struct cooling_tables get_cooling_table(
                        net_cooling_rate);
       if (status < 0) error("error reading metal cooling rate table");
       status = H5Dclose(dataset);
+      if (status < 0) error("error closing cooling dataset");
 
       // Transpose from order tables are stored in (temperature, nH)
       // to (redshift, nH, temperature, metal species) where fastest 
@@ -485,19 +510,25 @@ struct cooling_tables get_cooling_table(
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      he_net_cooling_rate);
+    if (status < 0) error("error reading metal free cooling rate table");
     status = H5Dclose(dataset);
+    if (status < 0) error("error closing cooling dataset");
 
     strcpy(set_name, "/Metal_free/Temperature/Temperature");
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      temperature);
+    if (status < 0) error("error reading temperature table");
     status = H5Dclose(dataset);
+    if (status < 0) error("error closing cooling dataset");
 
     strcpy(set_name, "/Metal_free/Electron_density_over_n_h");
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      he_electron_abundance);
+    if (status < 0) error("error reading electron density table");
     status = H5Dclose(dataset);
+    if (status < 0) error("error closing cooling dataset");
 
     // Transpose from order tables are stored in (helium fraction, temperature,
     // nH) to (redshift, nH, helium fraction, temperature) where fastest 
@@ -525,7 +556,9 @@ struct cooling_tables get_cooling_table(
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      electron_abundance);
+    if (status < 0) error("error reading solar electron density table");
     status = H5Dclose(dataset);
+    if (status < 0) error("error closing cooling dataset");
 
     // Transpose from order tables are stored in (temperature, nH) to 
     // (redshift, nH, temperature) where fastest varying index is on right.
@@ -540,6 +573,7 @@ struct cooling_tables get_cooling_table(
     }
 
     status = H5Fclose(file_id);
+    if (status < 0) error("error closing file");
   }
 
   free(net_cooling_rate);
