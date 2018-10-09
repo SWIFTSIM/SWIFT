@@ -776,6 +776,11 @@ void fof_search_foreign_cells(struct space *s) {
     } 
   }
 
+  message("MPI send/recv task activation took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+  
+  tic = getticks();
+
   /* Perform send and receive tasks. */
   engine_launch(e);
 
@@ -819,6 +824,15 @@ void fof_search_foreign_cells(struct space *s) {
   int *displ = NULL, *group_link_counts = NULL;
   int global_group_link_count = 0;
 
+  ticks comms_tic = getticks();
+  
+  MPI_Barrier(MPI_COMM_WORLD);
+  
+  message("Imbalance took: %.3f %s.",
+        clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
+
+  comms_tic = getticks();
+
   /* Sum the total number of links across MPI domains over each MPI rank. */
   MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     
@@ -848,6 +862,9 @@ void fof_search_foreign_cells(struct space *s) {
   /* Clean up memory. */
   free(displ);
   free(group_links);
+
+  message("Communication took: %.3f %s.",
+        clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
 
   message("Global comms took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -937,7 +954,7 @@ void fof_search_foreign_cells(struct space *s) {
 
   }
 
-  message("Global comms took: %.3f %s.",
+  message("Global list compression took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
   
   tic = getticks();
@@ -1065,7 +1082,7 @@ void fof_search_tree(struct space *s) {
   struct fof_CoM *group_CoM;
   int num_groups = 0, num_parts_in_groups = 0, max_group_size = 0;
   double max_group_mass = 0;
-  ticks tic = getticks();
+  ticks tic_total = getticks();
 
   char output_file_name[FILENAME_BUFFER_SIZE];
   snprintf(output_file_name, FILENAME_BUFFER_SIZE, s->fof_data.base_name);
@@ -1142,10 +1159,15 @@ void fof_search_tree(struct space *s) {
   bzero(group_mass, nr_gparts * sizeof(double));
   bzero(group_CoM, nr_gparts * sizeof(struct fof_CoM));
 
+  ticks tic = getticks();
+
   /* Perform local FOF using the threadpool. */
   threadpool_map(&s->e->threadpool, fof_search_tree_mapper, s->local_cells_top,
                  s->nr_local_cells, sizeof(int), 1, s);
 
+  message("Local FOF took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+  
   struct fof_CoM *group_bc = NULL;
   int *com_set = NULL;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -1264,6 +1286,8 @@ void fof_search_tree(struct space *s) {
 
   message("Sorting groups...");
 
+  tic = getticks();
+
   /* Find global properties. */
 #ifdef WITH_MPI
   MPI_Allreduce(&num_groups_local, &num_groups, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -1374,6 +1398,9 @@ void fof_search_tree(struct space *s) {
   }
 #endif
 
+  message("Group sorting took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   s->fof_data.num_groups = num_groups;
 
   message("Dumping data...");
@@ -1400,7 +1427,7 @@ void fof_search_tree(struct space *s) {
     message("Largest group by mass: %e", max_group_mass);
   }
     message("FOF search took: %.3f %s.",
-        clocks_from_ticks(getticks() - tic), clocks_getunit());
+        clocks_from_ticks(getticks() - tic_total), clocks_getunit());
 
 #ifdef WITH_MPI
     MPI_Barrier(MPI_COMM_WORLD);
