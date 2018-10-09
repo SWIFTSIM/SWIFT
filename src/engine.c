@@ -5385,6 +5385,9 @@ void engine_step(struct engine *e) {
  */
 void engine_check_for_dumps(struct engine *e) {
 
+  const int with_stf = (e->policy & engine_policy_structure_finding);
+  const int stf_time_output = (e->stf_output_freq_format == io_stf_time);
+
   /* Save some statistics ? */
   int save_stats = 0;
   if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) save_stats = 1;
@@ -5396,12 +5399,12 @@ void engine_check_for_dumps(struct engine *e) {
 
   /* Do we want to perform structure finding? */
   int run_stf = 0;
-  if ((e->policy & engine_policy_structure_finding)) {
-    if (e->stf_output_freq_format == io_stf_steps &&
-        e->step % e->delta_step_stf == 0)
+  if (with_stf && stf_time_output) {
+    if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0)
       run_stf = 1;
-    else if (e->stf_output_freq_format == io_stf_time &&
-             e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0)
+  }
+  if (with_stf && !stf_time_output) {
+    if(e->step % e->delta_step_stf == 0)
       run_stf = 1;
   }
 
@@ -5554,8 +5557,7 @@ void engine_check_for_dumps(struct engine *e) {
 
     /* Do we want to perform structure finding? */
     run_stf = 0;
-    if ((e->policy & engine_policy_structure_finding) &&
-        e->stf_output_freq_format == io_stf_time) {
+    if (with_stf && stf_time_output) {
       if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) run_stf = 1;
     }
   }
