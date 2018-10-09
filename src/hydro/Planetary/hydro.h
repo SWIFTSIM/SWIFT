@@ -26,8 +26,8 @@
  * equations) with multiple materials.
  *
  * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
- * term is implemented.
+ * viscosity term with the Balsara (1995) switch (optional). 
+ * No thermal conduction term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
  * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
@@ -45,9 +45,9 @@
 #include "minmax.h"
 
 /*
- * Note: Define PLANETARY_SPH_BALSARA to use the Balsara (1995) switch for
- * the artificial viscosity, instead of the default Monaghan (1992).
- * i.e. compile with:  make CFLAGS=-DPLANETARY_SPH_BALSARA  to use.
+ * Note: Define PLANETARY_SPH_NO_BALSARA to disable the Balsara (1995) switch 
+ * for the artificial viscosity and use the vanilla Monaghan (1992) instead.
+ * i.e. compile with:  make CFLAGS=-DPLANETARY_SPH_NO_BALSARA
  */
 
 /**
@@ -495,7 +495,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const float dt_alpha) {
 
-#ifdef PLANETARY_SPH_BALSARA
+#ifndef PLANETARY_SPH_NO_BALSARA
   const float fac_mu = cosmo->a_factor_mu;
 
   /* Compute the norm of the curl */
@@ -505,7 +505,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the norm of div v */
   const float abs_div_v = fabsf(p->density.div_v);
-#endif  // PLANETARY_SPH_BALSARA
+#endif
 
   /* Compute the pressure */
   const float pressure =
@@ -527,20 +527,20 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     grad_h_term = 0.f;
   }
 
-#ifdef PLANETARY_SPH_BALSARA
+#ifndef PLANETARY_SPH_NO_BALSARA
   /* Compute the Balsara switch */
   const float balsara =
       abs_div_v / (abs_div_v + curl_v + 0.0001f * fac_mu * soundspeed / p->h);
-#endif  // PLANETARY_SPH_BALSARA
+#endif
 
   /* Update variables. */
   p->force.f = grad_h_term;
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-#ifdef PLANETARY_SPH_BALSARA
+#ifndef PLANETARY_SPH_NO_BALSARA
   p->force.balsara = balsara;
-#endif  // PLANETARY_SPH_BALSARA
+#endif
 }
 
 /**
