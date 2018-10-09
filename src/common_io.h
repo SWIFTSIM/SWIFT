@@ -56,12 +56,6 @@ enum IO_DATA_TYPE {
   CHAR
 };
 
-/**
- * @brief The different formats for when to run structure finding.
- *
- */
-enum io_stf_output_format { io_stf_steps = 0, io_stf_time };
-
 #if defined(HAVE_HDF5)
 
 hid_t io_hdf5_type(enum IO_DATA_TYPE type);
