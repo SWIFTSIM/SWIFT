@@ -5400,12 +5400,10 @@ void engine_check_for_dumps(struct engine *e) {
   /* Do we want to perform structure finding? */
   int run_stf = 0;
   if (with_stf && stf_time_output) {
-    if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0)
-      run_stf = 1;
+    if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) run_stf = 1;
   }
   if (with_stf && !stf_time_output) {
-    if(e->step % e->delta_step_stf == 0)
-      run_stf = 1;
+    if (e->step % e->delta_step_stf == 0) run_stf = 1;
   }
 
   /* Store information before attempting extra dump-related drifts */
