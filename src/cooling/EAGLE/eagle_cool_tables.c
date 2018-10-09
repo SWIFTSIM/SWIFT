@@ -109,6 +109,13 @@ void GetCoolingRedshifts(struct cooling_function_data *cooling) {
     }
   }
   fclose(infile);
+
+  /* EAGLE cooling assumes cooling->Redshifts table is in increasing order. Test
+   * this. */
+  for (i = 0; i < cooling->N_Redshifts - 2; i++)
+    if (cooling->Redshifts[i + 1] < cooling->Redshifts[i]) {
+      error("table should be in increasing order\n");
+    }
 }
 
 /*

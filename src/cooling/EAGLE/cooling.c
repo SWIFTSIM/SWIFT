@@ -937,8 +937,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->low_z_index = -10;
   /* set previous_z_index and z_index_initialised to indicate we haven't
    * calculated z_index yet */
-  cooling->previous_z_index = -1;
-  cooling->z_index_initialised = 0;
+  cooling->previous_z_index = cooling->N_Redshifts - 2;
+  cooling->z_index_initialised = 1;
 }
 
 /**

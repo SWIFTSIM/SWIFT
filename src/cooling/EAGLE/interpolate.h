@@ -45,11 +45,6 @@
 #include "physical_constants.h"
 #include "units.h"
 
-// Used for identifying first call to get_redshift_index and previous redshift
-// index
-// static int z_index_initialised = 0;
-// static int previous_z_index = -1;
-
 /**
  * @brief Returns the 1d index of element with 2d indices i,j
  * from a flattened 2d array in row major order
@@ -148,19 +143,7 @@ __attribute__((always_inline)) INLINE void get_index_1d(float *table,
 __attribute__((always_inline)) INLINE void get_redshift_index(
     float z, int *z_index, float *dz,
     struct cooling_function_data *restrict cooling) {
-  int i, iz;
-
-  if (cooling->z_index_initialised == 0) {
-    cooling->z_index_initialised = 1;
-    cooling->previous_z_index = cooling->N_Redshifts - 2;
-
-    /* this routine assumes cooling_redshifts table is in increasing order. Test
-     * this. */
-    for (i = 0; i < cooling->N_Redshifts - 2; i++)
-      if (cooling->Redshifts[i + 1] < cooling->Redshifts[i]) {
-        error("table should be in increasing order\n");
-      }
-  }
+  int iz;
 
   /* before the earliest redshift or before hydrogen reionization, flag for
    * collisional cooling */
@@ -431,11 +414,7 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
 
   get_index_1d(cooling->Therm, cooling->N_Temp, log_10_u, &u_i, &d_u);
 
-  if (cosmo->z > cooling->reionisation_redshift) {
-    log_10_T = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
-                          d_He, d_u, cooling->N_nH, cooling->N_He,
-                          cooling->N_Temp, &upper, &lower);
-  } else if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
+  if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
     log_10_T = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
                           d_He, d_u, cooling->N_nH, cooling->N_He,
                           cooling->N_Temp, &upper, &lower);
