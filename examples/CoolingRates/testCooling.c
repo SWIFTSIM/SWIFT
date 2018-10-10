@@ -172,10 +172,9 @@ int main(int argc, char **argv) {
   // internal energies
   u = 1.0e14;
   set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh, u);
-  float inn_h = chemistry_get_number_density(&p, &cosmo, chemistry_element_H,
-                                             &internal_const) *
-                cooling.number_density_scale;
-  get_index_1d(cooling.nH, cooling.N_nH, log10(inn_h), &n_h_i, &d_n_h);
+  float n_h = hydro_get_physical_density(&p, &cosmo) * XH / internal_const.const_proton_mass
+                 *cooling.number_density_scale;
+  get_index_1d(cooling.nH, cooling.N_nH, log10(n_h), &n_h_i, &d_n_h);
 
   // Loop over internal energy
   for (int j = 0; j < npts; j++) {
