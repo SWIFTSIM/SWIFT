@@ -731,14 +731,14 @@ void fof_search_foreign_cells(struct space *s) {
     for(int j=0; j<e->proxies[i].nr_cells_out; j++) {
 
       /* Only include gravity cells. */
-      if(e->proxies[i].cells_out_type[j] == proxy_cell_type_gravity) num_cells_out++;
+      if(e->proxies[i].cells_out_type[j] & proxy_cell_type_gravity) num_cells_out++;
     
     }
 
     for(int j=0; j<e->proxies[i].nr_cells_in; j++) {
 
       /* Only include gravity cells. */
-      if(e->proxies[i].cells_in_type[j] == proxy_cell_type_gravity) num_cells_in++;
+      if(e->proxies[i].cells_in_type[j] & proxy_cell_type_gravity) num_cells_in++;
     
     }
   }
@@ -762,7 +762,7 @@ void fof_search_foreign_cells(struct space *s) {
     for(int j=0; j<e->proxies[i].nr_cells_out; j++) {
 
       /* Skip non-gravity cells. */
-      if(e->proxies[i].cells_out_type[j] != proxy_cell_type_gravity) continue; 
+      if(!(e->proxies[i].cells_out_type[j] & proxy_cell_type_gravity)) continue; 
       
       struct cell *restrict local_cell = e->proxies[i].cells_out[j];
 
@@ -772,7 +772,7 @@ void fof_search_foreign_cells(struct space *s) {
       for(int k=0; k<e->proxies[i].nr_cells_in; k++) {
       
         /* Skip non-gravity cells. */
-        if(e->proxies[i].cells_in_type[k] != proxy_cell_type_gravity) continue; 
+        if(!(e->proxies[i].cells_in_type[k] & proxy_cell_type_gravity)) continue; 
         
         struct cell *restrict foreign_cell = e->proxies[i].cells_in[k];
       
@@ -811,6 +811,8 @@ void fof_search_foreign_cells(struct space *s) {
   message("Finding local/foreign cell pairs and initialising particle roots took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
 
+  message("Pairs of touching cells: %d", cell_pair_count);
+
   tic = getticks();
   
   struct scheduler *sched = &e->sched;
@@ -843,9 +845,21 @@ void fof_search_foreign_cells(struct space *s) {
   
   tic = getticks();
   
-  /* Perform search of group links between local and foreign cells with the threadpool. */
-  threadpool_map(&s->e->threadpool, fof_find_foreign_links_mapper, cell_pairs,
-                 cell_pair_count, sizeof(struct cell_pair_indices), 1, s);
+  /* Perform search of group links between local and foreign cells by looping over cell pairs. */
+  for (int ind = 0; ind < cell_pair_count; ind++) {
+    
+    /* Get the local and foreign cells to recurse on. */
+    struct cell *restrict local_cell = cell_pairs[ind].local;
+    struct cell *restrict foreign_cell = cell_pairs[ind].foreign;
+      
+    rec_fof_search_pair_foreign(local_cell, foreign_cell, s, dim, search_r2, &s->fof_data.group_link_count, &s->fof_data.group_links, &s->fof_data.group_links_size);
+
+  }
+  
+  /* TODO: Perform search of group links between local and foreign cells with the threadpool. */
+  //threadpool_map(&s->e->threadpool, fof_find_foreign_links_mapper, cell_pairs,
+  //               cell_pair_count, sizeof(struct cell_pair_indices), 1, s);
+
 
   group_link_count = s->fof_data.group_link_count;
 
