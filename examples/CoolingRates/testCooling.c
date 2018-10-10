@@ -44,8 +44,9 @@ void set_quantities(struct part *restrict p,
                     double u) {
 
   float scale_factor = 1.0 / (1.0 + cosmo->z);
-  double hydrogen_number_density =
-      nh * pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3);
+  float length_scale = units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
+  float hydrogen_number_density =
+      nh * length_scale * length_scale * length_scale;
   p->rho = hydrogen_number_density * internal_const->const_proton_mass /
            p->chemistry_data.metal_mass_fraction[chemistry_element_H];
 
@@ -165,7 +166,7 @@ int main(int argc, char **argv) {
     // hydrogen number density not specified in options
     nh = 1.0e-1;
   } else {
-    nh = pow(10.0, log_10_nh);
+    nh = exp(log_10_nh * M_LN10);
   }
 
   // set internal energy to dummy value, will get reset when looping over
@@ -179,7 +180,7 @@ int main(int argc, char **argv) {
   // Loop over internal energy
   for (int j = 0; j < npts; j++) {
     set_quantities(&p, &us, &cooling, &cosmo, &internal_const, nh,
-                   pow(10.0, 10.0 + j * 8.0 / npts));
+                   exp((10.0 + j * 8.0 / npts) * M_LN10));
     u = hydro_get_physical_internal_energy(&p, &xp, &cosmo) *
         cooling.internal_energy_scale;
     float cooling_du_dt;
