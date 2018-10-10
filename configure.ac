@@ -1575,8 +1575,9 @@ AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 # Save the compilation options
 AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
 
-# Make sure the latest git revision string gets included
-touch src/version.c
+# Make sure the latest git revision string gets included, when we are
+# working in a checked out repository.
+test -d ${srcdir}/.git && touch ${srcdir}/src/version.c
 
 #  Need to define this, instead of using fifth argument of AC_INIT, until
 #  2.64. Defer until now as this redefines PACKAGE_URL, which can emit a
