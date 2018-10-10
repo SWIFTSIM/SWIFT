@@ -1,8 +1,17 @@
+# Plots contribution to cooling rates from each of the different metals
+# based on cooling_output.dat and cooling_element_*.dat files produced
+# by testCooling. 
+
 import matplotlib.pyplot as plt
 
+# Number of metals tracked by EAGLE cooling
 elements = 11
+
+# Declare arrays of internal energy and cooling rate
 u = []
 cooling_rate = [[] for i in range(elements+1)]
+
+# Read in total cooling rate
 file_in = open('cooling_output.dat', 'r')
 for line in file_in:
 	data = line.split()
@@ -11,6 +20,7 @@ for line in file_in:
 
 file_in.close()
 
+# Read in contributions to cooling rates from each of the elements
 for elem in range(elements):
 	file_in = open('cooling_element_'+str(elem)+'.dat','r')
 	for line in file_in:
@@ -18,6 +28,7 @@ for elem in range(elements):
         	cooling_rate[elem+1].append(-float(data[0]))
 	file_in.close()
 
+# Plot
 ax = plt.subplot(111)
 p0, = plt.loglog(u, cooling_rate[0], linewidth = 0.5, color = 'k', label = 'Total')
 p1, = plt.loglog(u, cooling_rate[1], linewidth = 0.5, color = 'k', linestyle = '--', label = 'H + He')
