@@ -171,12 +171,12 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
   /* Let's compute the internal energy at the end of the step */
   double u_final_cgs;
-  double dummy;
+  double *dummy = NULL;
 
   /* First try an explicit integration (note we ignore the derivative) */
   const double LambdaNet =
     LambdaTune / (dt_cgs * ratefact) +
-    eagle_cooling_rate(log(u_0_cgs), &dummy, n_h_i, d_n_h, He_i, d_He,
+    eagle_cooling_rate(log(u_0_cgs), dummy, n_h_i, d_n_h, He_i, d_He,
 			 p, cooling, cosmo, phys_const, abundance_ratio);
   
   /* if cooling rate is small, take the explicit solution */
@@ -281,7 +281,8 @@ eagle_helium_reionization_extraheat(
  *
  * @param log_10_u Log base 10 of internal energy
  * @param dlambda_du Pointer to value to be set to derivative
- * of cooling rate with respect to internal energy
+ * of cooling rate with respect to internal energy. If set to
+ * NULL do not compute derivative.
  * @param n_h_i Particle hydrogen number density index
  * @param d_n_h Particle hydrogen number density offset
  * @param He_i Particle helium fraction index
@@ -314,20 +315,18 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
   double solar_electron_abundance;  
 
   // used for calculating dlambda_du
-  double temp_lambda1, temp_lambda2;
-  double h_plus_he_electron_abundance1;
-  double h_plus_he_electron_abundance2;
-  double solar_electron_abundance1;
-  double solar_electron_abundance2; 
-  double elem_cool1, elem_cool2;
+  double temp_lambda_high, temp_lambda_low;
+  double h_plus_he_electron_abundance_high;
+  double h_plus_he_electron_abundance_low;
+  double solar_electron_abundance_high; 
+  double solar_electron_abundance_low;
+  double elem_cool_low, elem_cool_high;
   float du;
 
   // counter, temperature index, value, and offset
   int i, temp_i;
   double temp;
   float d_temp;
-
-  *dlambda_du = 0.0;
 
   // interpolate to get temperature of particles, find where we are in
   // the temperature table.
@@ -347,25 +346,60 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
     temp_lambda =
         interpolate_3d(cooling->table.H_plus_He_heating, n_h_i, He_i, temp_i,
                        d_n_h, d_He, d_temp, cooling->N_nH, cooling->N_He,
-                       cooling->N_Temp, &temp_lambda2, &temp_lambda1);
+                       cooling->N_Temp);
     h_plus_he_electron_abundance = interpolate_3d(
         cooling->table.H_plus_He_electron_abundance, n_h_i, He_i, temp_i, d_n_h,
-        d_He, d_temp, cooling->N_nH, cooling->N_He, cooling->N_Temp,
-        &h_plus_he_electron_abundance2, &h_plus_he_electron_abundance1);
+        d_He, d_temp, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+
+    // compute values at temperature gridpoints above and below input temperature
+    // for calculation of dlambda_du
+    //if (dlambda_du != NULL) {
+      temp_lambda_high =
+          interpolate_3d(cooling->table.H_plus_He_heating, n_h_i, He_i, temp_i,
+                         d_n_h, d_He, 1, cooling->N_nH, cooling->N_He,
+                         cooling->N_Temp);
+      temp_lambda_low =
+          interpolate_3d(cooling->table.H_plus_He_heating, n_h_i, He_i, temp_i,
+                         d_n_h, d_He, 0, cooling->N_nH, cooling->N_He,
+                         cooling->N_Temp);
+      h_plus_he_electron_abundance_high = interpolate_3d(
+          cooling->table.H_plus_He_electron_abundance, n_h_i, He_i, temp_i, d_n_h,
+          d_He, 1, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+      h_plus_he_electron_abundance_low = interpolate_3d(
+          cooling->table.H_plus_He_electron_abundance, n_h_i, He_i, temp_i, d_n_h,
+          d_He, 0, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+    //}
   } else {
     // Using normal tables, have to interpolate in redshift
     temp_lambda = interpolate_4d(
         cooling->table.H_plus_He_heating, 0, n_h_i, He_i, temp_i, cooling->dz,
-        d_n_h, d_He, d_temp, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp,
-        &temp_lambda2, &temp_lambda1, 0);
+        d_n_h, d_He, d_temp, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
     h_plus_he_electron_abundance = interpolate_4d(
         cooling->table.H_plus_He_electron_abundance, 0, n_h_i, He_i, temp_i,
         cooling->dz, d_n_h, d_He, d_temp, 2, cooling->N_nH, cooling->N_He,
-        cooling->N_Temp, &h_plus_he_electron_abundance2,
-        &h_plus_he_electron_abundance1, 0);
+        cooling->N_Temp);
+
+    // compute values at temperature gridpoints above and below input temperature
+    // for calculation of dlambda_du
+    if (dlambda_du != NULL) {
+      temp_lambda_high = interpolate_4d(
+          cooling->table.H_plus_He_heating, 0, n_h_i, He_i, temp_i, cooling->dz,
+          d_n_h, d_He, 1, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+      temp_lambda_low = interpolate_4d(
+          cooling->table.H_plus_He_heating, 0, n_h_i, He_i, temp_i, cooling->dz,
+          d_n_h, d_He, 0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+      h_plus_he_electron_abundance_high = interpolate_4d(
+          cooling->table.H_plus_He_electron_abundance, 0, n_h_i, He_i, temp_i,
+          cooling->dz, d_n_h, d_He, 1, 2, cooling->N_nH, cooling->N_He,
+          cooling->N_Temp);
+      h_plus_he_electron_abundance_low = interpolate_4d(
+          cooling->table.H_plus_He_electron_abundance, 0, n_h_i, He_i, temp_i,
+          cooling->dz, d_n_h, d_He, 0, 2, cooling->N_nH, cooling->N_He,
+          cooling->N_Temp);
+    }
   }
   cooling_rate += temp_lambda;
-  *dlambda_du += (temp_lambda2 - temp_lambda1) / du;
+  if (dlambda_du != NULL) *dlambda_du += (temp_lambda_high - temp_lambda_low) / du;
   
   // If we're testing cooling rate contributions write to array
   if (element_lambda != NULL) element_lambda[0] = temp_lambda;
@@ -379,8 +413,6 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
 
   if (z > cooling->Redshifts[cooling->N_Redshifts - 1] ||
       z > cooling->reionisation_redshift) {
-
-    // T_gam = cooling->T_CMB_0 * (1 + z);
 
     temp_lambda = -cooling->compton_rate_cgs *
                   (temp - cooling->T_CMB_0 * (1 + z)) * (1 + z) * (1 + z) * (1 + z) * (1 + z) *
@@ -402,45 +434,88 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
     // in redshift
     solar_electron_abundance =
         interpolate_2d(cooling->table.electron_abundance, n_h_i, temp_i, d_n_h,
-                       d_temp, cooling->N_nH, cooling->N_Temp,
-                       &solar_electron_abundance2, &solar_electron_abundance1);
+                       d_temp, cooling->N_nH, cooling->N_Temp);
+    // compute values at temperature gridpoints above and below input temperature
+    // for calculation of dlambda_du
+    if (dlambda_du != NULL) {
+    solar_electron_abundance_high =
+        interpolate_2d(cooling->table.electron_abundance, n_h_i, temp_i, d_n_h,
+                       1, cooling->N_nH, cooling->N_Temp);
+    solar_electron_abundance_low =
+        interpolate_2d(cooling->table.electron_abundance, n_h_i, temp_i, d_n_h,
+                       0, cooling->N_nH, cooling->N_Temp);
+    }
 
     for (i = 0; i < cooling->N_Elements; i++) {
       temp_lambda =
           interpolate_3d(cooling->table.metal_heating, n_h_i, temp_i, i, d_n_h,
                          d_temp, 0.0, cooling->N_nH, cooling->N_Temp,
-                         cooling->N_Elements, &elem_cool2, &elem_cool1) *
+                         cooling->N_Elements) *
           (h_plus_he_electron_abundance / solar_electron_abundance) *
           solar_ratio[i + 2];
       cooling_rate += temp_lambda;
-      *dlambda_du += (elem_cool2 * h_plus_he_electron_abundance2 /
-                          solar_electron_abundance2 -
-                      elem_cool1 * h_plus_he_electron_abundance1 /
-                          solar_electron_abundance1) /
-                     du * solar_ratio[i + 2];
+
+      // compute values at temperature gridpoints above and below input temperature
+      // for calculation of dlambda_du
+      if (dlambda_du != NULL) {
+        elem_cool_high =
+            interpolate_3d(cooling->table.metal_heating, n_h_i, temp_i, i, d_n_h,
+                           1, 0.0, cooling->N_nH, cooling->N_Temp,
+                           cooling->N_Elements);
+        elem_cool_low =
+            interpolate_3d(cooling->table.metal_heating, n_h_i, temp_i, i, d_n_h,
+                           0, 0.0, cooling->N_nH, cooling->N_Temp,
+                           cooling->N_Elements);
+        *dlambda_du += (elem_cool_high * h_plus_he_electron_abundance_high /
+                            solar_electron_abundance_high -
+                        elem_cool_low * h_plus_he_electron_abundance_low /
+                            solar_electron_abundance_low) /
+                       du * solar_ratio[i + 2];
+      }
       if (element_lambda != NULL) element_lambda[i + 2] = temp_lambda;
     }
   } else {
     // Using normal tables, have to interpolate in redshift
     solar_electron_abundance = interpolate_3d(
         cooling->table.electron_abundance, 0, n_h_i, temp_i, cooling->dz, d_n_h,
-        d_temp, 2, cooling->N_nH, cooling->N_Temp, &solar_electron_abundance2,
-        &solar_electron_abundance1);
+        d_temp, 2, cooling->N_nH, cooling->N_Temp);
+    // compute values at temperature gridpoints above and below input temperature
+    // for calculation of dlambda_du
+    if (dlambda_du != NULL) {
+      solar_electron_abundance_high = interpolate_3d(
+          cooling->table.electron_abundance, 0, n_h_i, temp_i, cooling->dz, d_n_h,
+          1, 2, cooling->N_nH, cooling->N_Temp);
+      solar_electron_abundance_low = interpolate_3d(
+          cooling->table.electron_abundance, 0, n_h_i, temp_i, cooling->dz, d_n_h,
+          0, 2, cooling->N_nH, cooling->N_Temp);
+    }
 
     for (i = 0; i < cooling->N_Elements; i++) {
       temp_lambda =
           interpolate_4d(cooling->table.metal_heating, 0, n_h_i, temp_i, i,
                          cooling->dz, d_n_h, d_temp, 0.0, 2, cooling->N_nH,
-                         cooling->N_Temp, cooling->N_Elements, &elem_cool2,
-                         &elem_cool1, 1) *
+                         cooling->N_Temp, cooling->N_Elements) *
           (h_plus_he_electron_abundance / solar_electron_abundance) *
           solar_ratio[i + 2];
       cooling_rate += temp_lambda;
-      *dlambda_du += (elem_cool2 * h_plus_he_electron_abundance2 /
-                          solar_electron_abundance2 -
-                      elem_cool1 * h_plus_he_electron_abundance1 /
-                          solar_electron_abundance1) /
-                     du * solar_ratio[i + 2];
+    
+      // compute values at temperature gridpoints above and below input temperature
+      // for calculation of dlambda_du
+      if (dlambda_du != NULL) {
+        elem_cool_high =
+            interpolate_4d(cooling->table.metal_heating, 0, n_h_i, temp_i, i,
+                           cooling->dz, d_n_h, 1, 0.0, 2, cooling->N_nH,
+                           cooling->N_Temp, cooling->N_Elements);
+        elem_cool_low =
+            interpolate_4d(cooling->table.metal_heating, 0, n_h_i, temp_i, i,
+                           cooling->dz, d_n_h, 0.0, 0.0, 2, cooling->N_nH,
+                           cooling->N_Temp, cooling->N_Elements);
+        *dlambda_du += (elem_cool_high * h_plus_he_electron_abundance_high /
+                            solar_electron_abundance_high -
+                        elem_cool_low * h_plus_he_electron_abundance_low /
+                            solar_electron_abundance_low) /
+                       du * solar_ratio[i + 2];
+      }
       if (element_lambda != NULL) element_lambda[i + 2] = temp_lambda;
     }
   }
@@ -642,7 +717,7 @@ __attribute__((always_inline)) INLINE float newton_iter(
     float dt, int *bisection_flag) {
 
   double logu, logu_old;
-  double dLambdaNet_du, LambdaNet;
+  double dLambdaNet_du = 0.0, LambdaNet;
 
   // table bounds
   const float log_table_bound_high =
@@ -721,7 +796,8 @@ __attribute__((always_inline)) INLINE float bisection_iter(
     const struct cooling_function_data *restrict cooling,
     const struct phys_const *restrict phys_const, float *abundance_ratio,
     float dt) {
-  double u_upper, u_lower, u_next, LambdaNet, dLambdaNet_du;
+  double u_upper, u_lower, u_next, LambdaNet;
+  double *dLambdaNet_du = NULL;
   int i = 0;
   double u_init = exp(logu_init);
 
@@ -740,7 +816,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
   u_upper = u_init;
   LambdaNet =
       (He_reion_heat / (dt * ratefact)) +
-      eagle_cooling_rate(log(u_init), &dLambdaNet_du, n_h_i, d_n_h, He_i, d_He,
+      eagle_cooling_rate(log(u_init), dLambdaNet_du, n_h_i, d_n_h, He_i, d_He,
                          p, cooling, cosmo, phys_const, abundance_ratio);
 
   if (LambdaNet < 0) {
@@ -749,14 +825,14 @@ __attribute__((always_inline)) INLINE float bisection_iter(
     u_upper *= bracket_factor;
 
     LambdaNet = (He_reion_heat / (dt * ratefact)) +
-                eagle_cooling_rate(log(u_lower), &dLambdaNet_du, n_h_i, d_n_h,
+                eagle_cooling_rate(log(u_lower), dLambdaNet_du, n_h_i, d_n_h,
                                    He_i, d_He, p, cooling, cosmo, phys_const,
                                    abundance_ratio);
     while (u_lower - u_ini - LambdaNet * ratefact * dt > 0) {
       u_lower /= bracket_factor;
       u_upper /= bracket_factor;
       LambdaNet = (He_reion_heat / (dt * ratefact)) +
-                  eagle_cooling_rate(log(u_lower), &dLambdaNet_du, n_h_i, d_n_h,
+                  eagle_cooling_rate(log(u_lower), dLambdaNet_du, n_h_i, d_n_h,
                                      He_i, d_He, p, cooling, cosmo, phys_const,
                                      abundance_ratio);
     }
@@ -766,14 +842,14 @@ __attribute__((always_inline)) INLINE float bisection_iter(
     u_upper *= bracket_factor;
 
     LambdaNet = (He_reion_heat / (dt * ratefact)) +
-                eagle_cooling_rate(log(u_upper), &dLambdaNet_du, n_h_i, d_n_h,
+                eagle_cooling_rate(log(u_upper), dLambdaNet_du, n_h_i, d_n_h,
                                    He_i, d_He, p, cooling, cosmo, phys_const,
                                    abundance_ratio);
     while (u_upper - u_ini - LambdaNet * ratefact * dt < 0) {
       u_lower *= bracket_factor;
       u_upper *= bracket_factor;
       LambdaNet = (He_reion_heat / (dt * ratefact)) +
-                  eagle_cooling_rate(log(u_upper), &dLambdaNet_du, n_h_i, d_n_h,
+                  eagle_cooling_rate(log(u_upper), dLambdaNet_du, n_h_i, d_n_h,
                                      He_i, d_He, p, cooling, cosmo, phys_const,
                                      abundance_ratio);
     }
@@ -784,7 +860,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
   do {
     u_next = 0.5 * (u_lower + u_upper);
     LambdaNet = (He_reion_heat / (dt * ratefact)) +
-                eagle_cooling_rate(log(u_next), &dLambdaNet_du, n_h_i, d_n_h,
+                eagle_cooling_rate(log(u_next), dLambdaNet_du, n_h_i, d_n_h,
                                    He_i, d_He, p, cooling, cosmo, phys_const,
                                    abundance_ratio);
     if (u_next - u_ini - LambdaNet * ratefact * dt > 0.0) {
@@ -935,10 +1011,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   /* set low_z_index to -10 to indicate we haven't read any tables yet */
   cooling->low_z_index = -10;
-  /* set previous_z_index and z_index_initialised to indicate we haven't
-   * calculated z_index yet */
+  /* set previous_z_index and to last value of redshift table*/
   cooling->previous_z_index = cooling->N_Redshifts - 2;
-  cooling->z_index_initialised = 1;
 }
 
 /**

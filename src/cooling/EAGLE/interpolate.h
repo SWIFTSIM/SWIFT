@@ -186,31 +186,16 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
  * @param i,j Indices of cell we are interpolating
  * @param dx,dy Offset within cell
  * @param nx,ny Table dimensions
- * @param upper Pointer to value set to the table value
- * when dy = 1 (used for calculating derivatives)
- * @param lower Pointer to value set to the table value
- * when dy = 0 (used for calculating derivatives)
  */
 __attribute__((always_inline)) INLINE float interpolate_2d(
-    const float *table, int i, int j, float dx, float dy, int nx, int ny,
-    double *upper, double *lower) {
-  float result;
-
+    const float *table, int i, int j, float dx, float dy, int nx, int ny) {
   const float table0 = table[row_major_index_2d(i, j, nx, ny)];
   const float table1 = table[row_major_index_2d(i, j + 1, nx, ny)];
   const float table2 = table[row_major_index_2d(i + 1, j, nx, ny)];
   const float table3 = table[row_major_index_2d(i + 1, j + 1, nx, ny)];
 
-  result = (1 - dx) * (1 - dy) * table0 + (1 - dx) * dy * table1 +
+  return (1 - dx) * (1 - dy) * table0 + (1 - dx) * dy * table1 +
            dx * (1 - dy) * table2 + dx * dy * table3;
-  dy = 1.0;
-  *upper = (1 - dx) * (1 - dy) * table0 + (1 - dx) * dy * table1 +
-           dx * (1 - dy) * table2 + dx * dy * table3;
-  dy = 0.0;
-  *lower = (1 - dx) * (1 - dy) * table0 + (1 - dx) * dy * table1 +
-           dx * (1 - dy) * table2 + dx * dy * table3;
-
-  return result;
 }
 
 /*
@@ -223,16 +208,10 @@ __attribute__((always_inline)) INLINE float interpolate_2d(
  * @param i,j,k Indices of cell we are interpolating
  * @param dx,dy,dz Offset within cell
  * @param nx,ny,nz Table dimensions
- * @param upper Pointer to value set to the table value at
- * the when dz = 1 (used for calculating derivatives)
- * @param lower Pointer to value set to the table value at
- * the when dz = 0 (used for calculating derivatives)
  */
 __attribute__((always_inline)) INLINE float interpolate_3d(
     const float *table, int i, int j, int k, float dx, float dy, float dz,
-    int nx, int ny, int nz, double *upper, double *lower) {
-  float result;
-
+    int nx, int ny, int nz) {
   const float table0 = table[row_major_index_3d(i, j, k, nx, ny, nz)];
   const float table1 = table[row_major_index_3d(i, j, k + 1, nx, ny, nz)];
   const float table2 = table[row_major_index_3d(i, j + 1, k, nx, ny, nz)];
@@ -243,25 +222,12 @@ __attribute__((always_inline)) INLINE float interpolate_3d(
   const float table7 =
       table[row_major_index_3d(i + 1, j + 1, k + 1, nx, ny, nz)];
 
-  result = (1 - dx) * (1 - dy) * (1 - dz) * table0 +
-           (1 - dx) * (1 - dy) * dz * table1 +
-           (1 - dx) * dy * (1 - dz) * table2 + (1 - dx) * dy * dz * table3 +
-           dx * (1 - dy) * (1 - dz) * table4 + dx * (1 - dy) * dz * table5 +
-           dx * dy * (1 - dz) * table6 + dx * dy * dz * table7;
-  dz = 1.0;
-  *upper = (1 - dx) * (1 - dy) * (1 - dz) * table0 +
-           (1 - dx) * (1 - dy) * dz * table1 +
-           (1 - dx) * dy * (1 - dz) * table2 + (1 - dx) * dy * dz * table3 +
-           dx * (1 - dy) * (1 - dz) * table4 + dx * (1 - dy) * dz * table5 +
-           dx * dy * (1 - dz) * table6 + dx * dy * dz * table7;
-  dz = 0.0;
-  *lower = (1 - dx) * (1 - dy) * (1 - dz) * table0 +
-           (1 - dx) * (1 - dy) * dz * table1 +
-           (1 - dx) * dy * (1 - dz) * table2 + (1 - dx) * dy * dz * table3 +
-           dx * (1 - dy) * (1 - dz) * table4 + dx * (1 - dy) * dz * table5 +
-           dx * dy * (1 - dz) * table6 + dx * dy * dz * table7;
-
-  return result;
+  return (1 - dx) * (1 - dy) * (1 - dz) * table0 +
+         (1 - dx) * (1 - dy) * dz * table1 +
+         (1 - dx) * dy * (1 - dz) * table2 + (1 - dx) * dy * dz * table3 +
+         dx * (1 - dy) * (1 - dz) * table4 + dx * (1 - dy) * dz * table5 +
+         dx * dy * (1 - dz) * table6 + 
+	 dx * dy * dz * table7;
 }
 
 /*
@@ -277,23 +243,10 @@ __attribute__((always_inline)) INLINE float interpolate_3d(
  * @param i,j,k,l Indices of cell we are interpolating
  * @param dx,dy,dz,dw Offset within cell
  * @param nx,ny,nz,nw Table dimensions
- * @param upper Pointer to value set to the table value at
- * the when dw = 1 when used for interpolating table
- * depending on metal species, dz = 1 otherwise
- * (used for calculating derivatives)
- * @param lower Pointer to value set to the table value at
- * the when dw = 0 when used for interpolating table
- * depending on metal species, dz = 0 otherwise
- * (used for calculating derivatives)
- * @param cooling_is_metal If using to interpolate cooling
- * table for one of the metals set to 1, else 0.
  */
 __attribute__((always_inline)) INLINE float interpolate_4d(
     const float *table, int i, int j, int k, int l, float dx, float dy,
-    float dz, float dw, int nx, int ny, int nz, int nw, double *upper,
-    double *lower, const int cooling_is_metal) {
-  float result;
-
+    float dz, float dw, int nx, int ny, int nz, int nw) {
   const float table0 = table[row_major_index_4d(i, j, k, l, nx, ny, nz, nw)];
   const float table1 =
       table[row_major_index_4d(i, j, k, l + 1, nx, ny, nz, nw)];
@@ -326,65 +279,22 @@ __attribute__((always_inline)) INLINE float interpolate_4d(
   const float table15 =
       table[row_major_index_4d(i + 1, j + 1, k + 1, l + 1, nx, ny, nz, nw)];
 
-  result = (1 - dx) * (1 - dy) * (1 - dz) * (1 - dw) * table0 +
-           (1 - dx) * (1 - dy) * (1 - dz) * dw * table1 +
-           (1 - dx) * (1 - dy) * dz * (1 - dw) * table2 +
-           (1 - dx) * (1 - dy) * dz * dw * table3 +
-           (1 - dx) * dy * (1 - dz) * (1 - dw) * table4 +
-           (1 - dx) * dy * (1 - dz) * dw * table5 +
-           (1 - dx) * dy * dz * (1 - dw) * table6 +
-           (1 - dx) * dy * dz * dw * table7 +
-           dx * (1 - dy) * (1 - dz) * (1 - dw) * table8 +
-           dx * (1 - dy) * (1 - dz) * dw * table9 +
-           dx * (1 - dy) * dz * (1 - dw) * table10 +
-           dx * (1 - dy) * dz * dw * table11 +
-           dx * dy * (1 - dz) * (1 - dw) * table12 +
-           dx * dy * (1 - dz) * dw * table13 +
-           dx * dy * dz * (1 - dw) * table14 + dx * dy * dz * dw * table15;
-  if (cooling_is_metal == 1) {
-    // interpolating metal species
-    dz = 1.0;
-  } else {
-    dw = 1.0;
-  }
-  *upper = (1 - dx) * (1 - dy) * (1 - dz) * (1 - dw) * table0 +
-           (1 - dx) * (1 - dy) * (1 - dz) * dw * table1 +
-           (1 - dx) * (1 - dy) * dz * (1 - dw) * table2 +
-           (1 - dx) * (1 - dy) * dz * dw * table3 +
-           (1 - dx) * dy * (1 - dz) * (1 - dw) * table4 +
-           (1 - dx) * dy * (1 - dz) * dw * table5 +
-           (1 - dx) * dy * dz * (1 - dw) * table6 +
-           (1 - dx) * dy * dz * dw * table7 +
-           dx * (1 - dy) * (1 - dz) * (1 - dw) * table8 +
-           dx * (1 - dy) * (1 - dz) * dw * table9 +
-           dx * (1 - dy) * dz * (1 - dw) * table10 +
-           dx * (1 - dy) * dz * dw * table11 +
-           dx * dy * (1 - dz) * (1 - dw) * table12 +
-           dx * dy * (1 - dz) * dw * table13 +
-           dx * dy * dz * (1 - dw) * table14 + dx * dy * dz * dw * table15;
-  if (cooling_is_metal == 1) {
-    // interpolating metal species
-    dz = 0.0;
-  } else {
-    dw = 0.0;
-  }
-  *lower = (1 - dx) * (1 - dy) * (1 - dz) * (1 - dw) * table0 +
-           (1 - dx) * (1 - dy) * (1 - dz) * dw * table1 +
-           (1 - dx) * (1 - dy) * dz * (1 - dw) * table2 +
-           (1 - dx) * (1 - dy) * dz * dw * table3 +
-           (1 - dx) * dy * (1 - dz) * (1 - dw) * table4 +
-           (1 - dx) * dy * (1 - dz) * dw * table5 +
-           (1 - dx) * dy * dz * (1 - dw) * table6 +
-           (1 - dx) * dy * dz * dw * table7 +
-           dx * (1 - dy) * (1 - dz) * (1 - dw) * table8 +
-           dx * (1 - dy) * (1 - dz) * dw * table9 +
-           dx * (1 - dy) * dz * (1 - dw) * table10 +
-           dx * (1 - dy) * dz * dw * table11 +
-           dx * dy * (1 - dz) * (1 - dw) * table12 +
-           dx * dy * (1 - dz) * dw * table13 +
-           dx * dy * dz * (1 - dw) * table14 + dx * dy * dz * dw * table15;
-
-  return result;
+  return (1 - dx) * (1 - dy) * (1 - dz) * (1 - dw) * table0 +
+         (1 - dx) * (1 - dy) * (1 - dz) * dw * table1 +
+         (1 - dx) * (1 - dy) * dz * (1 - dw) * table2 +
+         (1 - dx) * (1 - dy) * dz * dw * table3 +
+         (1 - dx) * dy * (1 - dz) * (1 - dw) * table4 +
+         (1 - dx) * dy * (1 - dz) * dw * table5 +
+         (1 - dx) * dy * dz * (1 - dw) * table6 +
+         (1 - dx) * dy * dz * dw * table7 +
+         dx * (1 - dy) * (1 - dz) * (1 - dw) * table8 +
+         dx * (1 - dy) * (1 - dz) * dw * table9 +
+         dx * (1 - dy) * dz * (1 - dw) * table10 +
+         dx * (1 - dy) * dz * dw * table11 +
+         dx * dy * (1 - dz) * (1 - dw) * table12 +
+         dx * dy * (1 - dz) * dw * table13 +
+         dx * dy * dz * (1 - dw) * table14 + 
+	 dx * dy * dz * dw * table15;
 }
 
 /*
@@ -410,18 +320,17 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
 
   int u_i;
   float d_u, log_10_T;
-  double upper, lower;
 
   get_index_1d(cooling->Therm, cooling->N_Temp, log_10_u, &u_i, &d_u);
 
   if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
     log_10_T = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
                           d_He, d_u, cooling->N_nH, cooling->N_He,
-                          cooling->N_Temp, &upper, &lower);
+                          cooling->N_Temp);
   } else {
     log_10_T = interpolate_4d(cooling->table.temperature, 0, n_h_i, He_i, u_i,
                           cooling->dz, d_n_h, d_He, d_u, 2, cooling->N_nH,
-                          cooling->N_He, cooling->N_Temp, &upper, &lower, 0);
+                          cooling->N_He, cooling->N_Temp);
   }
 
   *delta_u =

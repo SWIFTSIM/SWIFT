@@ -96,7 +96,7 @@ struct cooling_function_data {
   double compton_rate_cgs;
 
   /* redshift table indices and offset */
-  int z_index, previous_z_index, z_index_initialised;
+  int z_index, previous_z_index;
   float dz;
   int low_z_index, high_z_index;
 };
