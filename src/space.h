@@ -58,6 +58,11 @@ struct fof {
   size_t group_id_default;
   size_t group_id_offset;
   int group_links_size_default;
+
+  int group_link_count;
+  struct fof_mpi *group_links;
+  int group_links_size;
+
   char base_name[PARSER_MAX_LINE_SIZE];
 
 } SWIFT_STRUCT_ALIGN;

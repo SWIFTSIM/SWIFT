@@ -54,6 +54,13 @@ struct group_length {
 
 } SWIFT_STRUCT_ALIGN;
 
+/* Store local and foreign cell indices that touch. */
+struct cell_pair_indices {
+
+  struct cell *local, *foreign;
+
+} SWIFT_STRUCT_ALIGN;
+
 /* Function prototypes. */
 void fof_init(struct space *s, long long Ngas, long long Ngparts);
 void fof_search_cell(struct space *s, struct cell *c);
