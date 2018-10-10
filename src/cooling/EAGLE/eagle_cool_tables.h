@@ -41,13 +41,6 @@ void read_cooling_header(char *, struct cooling_function_data *);
 
 void allocate_cooling_tables(struct cooling_function_data *restrict);
 
-void get_redshift_invariant_table(
-    struct cooling_function_data *restrict);
-
-void get_cooling_table(struct cooling_function_data *restrict);
-
-void eagle_readtable(struct cooling_function_data *restrict);
-
 void eagle_check_cooling_tables(struct cooling_function_data *restrict, int);
 
 #endif

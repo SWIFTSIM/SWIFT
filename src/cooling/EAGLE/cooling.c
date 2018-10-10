@@ -90,7 +90,6 @@ void cooling_update(const struct phys_const *phys_const,
   }
   cooling->z_index = z_index;
   cooling->dz = dz;
-  message("z %.5e index %d dz %.5e", redshift, z_index, dz);
 
   eagle_check_cooling_tables(cooling, z_index);
 }

@@ -39,45 +39,6 @@ static const char *eagle_tables_element_names[9] = {
     "Carbon",  "Nitrogen", "Oxygen",  "Neon", "Magnesium",
     "Silicon", "Sulphur",  "Calcium", "Iron"};
 
-/*
- * @brief Constructs the data structure containting the relevant cooling tables
- * for the redshift index (set in cooling_update)
- *
- * @param cooling Cooling data structure
- */
-void eagle_readtable(
-    struct cooling_function_data *restrict cooling) {
-
-  if (cooling->z_index < 0) {
-    // z_index is set to < 0 in cooling_update if need
-    // to read any of the high redshift tables
-    get_redshift_invariant_table(cooling);
-  } else {
-    get_cooling_table(cooling);
-  }
-}
-
-/**
- * @brief Checks the tables that are currently loaded in memory and read
- * new ones if necessary.
- *
- * @param cooling The #cooling_function_data we play with.
- * @param index_z The index along the redshift axis of the tables of the current
- * z.
- */
-void eagle_check_cooling_tables(struct cooling_function_data *restrict cooling,
-                                int index_z) {
-
-  /* Do we already have the right table in memory? */
-  if (cooling->low_z_index == index_z) return;
-
-  /* Record the table indices */
-  cooling->low_z_index = index_z;
-  cooling->high_z_index = index_z + 1;
-
-  /* Load the damn thing */
-  eagle_readtable(cooling);
-}
 
 /*
  * @brief Reads in EAGLE table of redshift values
@@ -272,7 +233,7 @@ void allocate_cooling_tables(struct cooling_function_data *restrict cooling){
  *
  * @param cooling Cooling data structure
  */
-void get_redshift_invariant_table(
+static void get_redshift_invariant_table(
     struct cooling_function_data *restrict cooling) {
 #ifdef HAVE_HDF5
 
@@ -436,7 +397,7 @@ void get_redshift_invariant_table(
  * @param cooling Cooling data structure
  */
 
-void get_cooling_table(
+static void get_cooling_table(
     struct cooling_function_data *restrict cooling) {
 #ifdef HAVE_HDF5
 
@@ -587,4 +548,44 @@ void get_cooling_table(
 #else
   error("Need HDF5 to read cooling tables");
 #endif
+}
+
+/*
+ * @brief Constructs the data structure containting the relevant cooling tables
+ * for the redshift index (set in cooling_update)
+ *
+ * @param cooling Cooling data structure
+ */
+static void eagle_readtable(
+    struct cooling_function_data *restrict cooling) {
+
+  if (cooling->z_index < 0) {
+    // z_index is set to < 0 in cooling_update if need
+    // to read any of the high redshift tables
+    get_redshift_invariant_table(cooling);
+  } else {
+    get_cooling_table(cooling);
+  }
+}
+
+/**
+ * @brief Checks the tables that are currently loaded in memory and read
+ * new ones if necessary.
+ *
+ * @param cooling The #cooling_function_data we play with.
+ * @param index_z The index along the redshift axis of the tables of the current
+ * z.
+ */
+void eagle_check_cooling_tables(struct cooling_function_data *restrict cooling,
+                                int index_z) {
+
+  /* Do we already have the right table in memory? */
+  if (cooling->low_z_index == index_z) return;
+
+  /* Record the table indices */
+  cooling->low_z_index = index_z;
+  cooling->high_z_index = index_z + 1;
+
+  /* Load the damn thing */
+  eagle_readtable(cooling);
 }
