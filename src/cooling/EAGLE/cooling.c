@@ -90,6 +90,7 @@ void cooling_update(const struct phys_const *phys_const,
   }
   cooling->z_index = z_index;
   cooling->dz = dz;
+  message("z %.5e index %d dz %.5e", redshift, z_index, dz);
 
   eagle_check_cooling_tables(cooling, z_index);
 }
@@ -966,10 +967,13 @@ void cooling_init_backend(struct swift_params *parameter_file,
                              units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
 
   // read in cooling table header
-  GetCoolingRedshifts(cooling);
+  get_cooling_redshifts(cooling);
   char fname[eagle_table_path_name_length + 12];
   sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
-  ReadCoolingHeader(fname, cooling);
+  read_cooling_header(fname, cooling);
+
+  // Allocate space for cooling tables
+  allocate_cooling_tables(cooling);
 
   // compute conversion factors
   cooling->internal_energy_scale =

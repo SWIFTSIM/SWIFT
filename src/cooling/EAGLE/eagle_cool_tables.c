@@ -45,19 +45,16 @@ static const char *eagle_tables_element_names[9] = {
  *
  * @param cooling Cooling data structure
  */
-struct cooling_tables eagle_readtable(
+void eagle_readtable(
     struct cooling_function_data *restrict cooling) {
 
-  struct cooling_tables table;
   if (cooling->z_index < 0) {
     // z_index is set to < 0 in cooling_update if need
     // to read any of the high redshift tables
-    table = get_redshift_invariant_table(cooling);
+    get_redshift_invariant_table(cooling);
   } else {
-    table = get_cooling_table(cooling);
+    get_cooling_table(cooling);
   }
-
-  return table;
 }
 
 /**
@@ -79,7 +76,7 @@ void eagle_check_cooling_tables(struct cooling_function_data *restrict cooling,
   cooling->high_z_index = index_z + 1;
 
   /* Load the damn thing */
-  cooling->table = eagle_readtable(cooling);
+  eagle_readtable(cooling);
 }
 
 /*
@@ -87,7 +84,7 @@ void eagle_check_cooling_tables(struct cooling_function_data *restrict cooling,
  *
  * @param cooling Cooling data structure
  */
-void GetCoolingRedshifts(struct cooling_function_data *cooling) {
+void get_cooling_redshifts(struct cooling_function_data *cooling) {
   FILE *infile;
 
   int i = 0;
@@ -126,7 +123,7 @@ void GetCoolingRedshifts(struct cooling_function_data *cooling) {
  * @param fname Filepath for cooling table from which to read header
  * @param cooling Cooling data structure
  */
-void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
+void read_cooling_header(char *fname, struct cooling_function_data *cooling) {
 #ifdef HAVE_HDF5
   int i;
 
@@ -240,6 +237,28 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
 #endif
 }
 
+/**
+ * @brief Allocate space for cooling tables. 
+ *
+ * @param cooling cooling_function_data structure
+ */
+void allocate_cooling_tables(struct cooling_function_data *restrict cooling){
+
+  // Allocate arrays to store cooling tables. Arrays contain two tables of 
+  // cooling rates with one table being for the redshift above current redshift and one below.
+  if (posix_memalign((void **)&cooling->table.metal_heating, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_Elements * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate metal_heating array");
+  if (posix_memalign((void **)&cooling->table.electron_abundance, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate electron_abundance array");
+  if (posix_memalign((void **)&cooling->table.temperature, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate temperature array");
+  if (posix_memalign((void **)&cooling->table.H_plus_He_heating, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate H_plus_He_heating array");
+  if (posix_memalign((void **)&cooling->table.H_plus_He_electron_abundance, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
+    error("Failed to allocate H_plus_He_electron_abundance array");
+
+}
+
 /*
  * @brief Get the redshift invariant table of cooling rates (before reionization
  * at redshift ~9) Reads in table of cooling rates and electron abundances due
@@ -253,11 +272,10 @@ void ReadCoolingHeader(char *fname, struct cooling_function_data *cooling) {
  *
  * @param cooling Cooling data structure
  */
-struct cooling_tables get_redshift_invariant_table(
+void get_redshift_invariant_table(
     struct cooling_function_data *restrict cooling) {
 #ifdef HAVE_HDF5
 
-  struct cooling_tables cooling_table;
   hid_t file_id, dataset;
 
   herr_t status;
@@ -283,18 +301,6 @@ struct cooling_tables get_redshift_invariant_table(
     error("Failed to allocate he_net_cooling_rate array");
   if (posix_memalign((void **)&he_electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
     error("Failed to allocate he_electron_abundance array");
-
-  // Allocate arrays to store cooling tables. 
-  if (posix_memalign((void **)&cooling_table.metal_heating, SWIFT_STRUCT_ALIGNMENT, cooling->N_Elements * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
-    error("Failed to allocate metal_heating array");
-  if (posix_memalign((void **)&cooling_table.electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
-    error("Failed to allocate electron_abundance array");
-  if (posix_memalign((void **)&cooling_table.temperature, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
-    error("Failed to allocate temperature array");
-  if (posix_memalign((void **)&cooling_table.H_plus_He_heating, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
-    error("Failed to allocate H_plus_He_heating array");
-  if (posix_memalign((void **)&cooling_table.H_plus_He_electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
-    error("Failed to allocate H_plus_He_electron_abundance array");
 
   // Decide which high redshift table to read. Indices set in cooling_update
   if (cooling->low_z_index == -1) {
@@ -325,7 +331,7 @@ struct cooling_tables get_redshift_invariant_table(
         table_index = row_major_index_2d(j, k, cooling->N_Temp, cooling->N_nH);
         cooling_index = row_major_index_3d(
             k, j, specs, cooling->N_nH, cooling->N_Temp, cooling->N_Elements);
-        cooling_table.metal_heating[cooling_index] =
+        cooling->table.metal_heating[cooling_index] =
             -net_cooling_rate[table_index];
       }
     }
@@ -368,11 +374,11 @@ struct cooling_tables get_redshift_invariant_table(
                                          cooling->N_Temp, cooling->N_nH);
         cooling_index = row_major_index_3d(k, i, j, cooling->N_nH,
                                            cooling->N_He, cooling->N_Temp);
-        cooling_table.H_plus_He_heating[cooling_index] =
+        cooling->table.H_plus_He_heating[cooling_index] =
             -he_net_cooling_rate[table_index];
-        cooling_table.H_plus_He_electron_abundance[cooling_index] =
+        cooling->table.H_plus_He_electron_abundance[cooling_index] =
             he_electron_abundance[table_index];
-        cooling_table.temperature[cooling_index] =
+        cooling->table.temperature[cooling_index] =
             log10(temperature[table_index]);
       }
     }
@@ -393,7 +399,7 @@ struct cooling_tables get_redshift_invariant_table(
     for (j = 0; j < cooling->N_nH; j++) {
       table_index = row_major_index_2d(i, j, cooling->N_Temp, cooling->N_nH);
       cooling_index = row_major_index_2d(j, i, cooling->N_nH, cooling->N_Temp);
-      cooling_table.electron_abundance[cooling_index] =
+      cooling->table.electron_abundance[cooling_index] =
           electron_abundance[table_index];
     }
   }
@@ -411,7 +417,6 @@ struct cooling_tables get_redshift_invariant_table(
   message("done reading in redshift invariant table");
 #endif
 
-  return cooling_table;
 #else
   error("Need HDF5 to read cooling tables");
 #endif
@@ -431,11 +436,10 @@ struct cooling_tables get_redshift_invariant_table(
  * @param cooling Cooling data structure
  */
 
-struct cooling_tables get_cooling_table(
+void get_cooling_table(
     struct cooling_function_data *restrict cooling) {
 #ifdef HAVE_HDF5
 
-  struct cooling_tables cooling_table;
   hid_t file_id, dataset;
 
   herr_t status;
@@ -461,19 +465,6 @@ struct cooling_tables get_cooling_table(
     error("Failed to allocate he_net_cooling_rate array");
   if (posix_memalign((void **)&he_electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
     error("Failed to allocate he_electron_abundance array");
-
-  // Allocate arrays to store cooling tables. Arrays contain two tables of 
-  // cooling rates with one table being for the redshift above current redshift and one below.
-  if (posix_memalign((void **)&cooling_table.metal_heating, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_Elements * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
-    error("Failed to allocate metal_heating array");
-  if (posix_memalign((void **)&cooling_table.electron_abundance, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
-    error("Failed to allocate electron_abundance array");
-  if (posix_memalign((void **)&cooling_table.temperature, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
-    error("Failed to allocate temperature array");
-  if (posix_memalign((void **)&cooling_table.H_plus_He_heating, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
-    error("Failed to allocate H_plus_He_heating array");
-  if (posix_memalign((void **)&cooling_table.H_plus_He_electron_abundance, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
-    error("Failed to allocate H_plus_He_electron_abundance array");
 
   // Read in tables, transpose so that values for indices which vary most are
   // adjacent. Repeat for redshift above and redshift below current value. 
@@ -505,7 +496,7 @@ struct cooling_tables get_cooling_table(
           cooling_index = row_major_index_4d(
               z_index - cooling->low_z_index, i, j, specs, 2, cooling->N_nH,
               cooling->N_Temp, cooling->N_Elements);
-          cooling_table.metal_heating[cooling_index] =
+          cooling->table.metal_heating[cooling_index] =
               -net_cooling_rate[table_index];
         }
       }
@@ -548,11 +539,11 @@ struct cooling_tables get_cooling_table(
           cooling_index =
               row_major_index_4d(z_index - cooling->low_z_index, k, i, j, 2,
                                  cooling->N_nH, cooling->N_He, cooling->N_Temp);
-          cooling_table.H_plus_He_heating[cooling_index] =
+          cooling->table.H_plus_He_heating[cooling_index] =
               -he_net_cooling_rate[table_index];
-          cooling_table.H_plus_He_electron_abundance[cooling_index] =
+          cooling->table.H_plus_He_electron_abundance[cooling_index] =
               he_electron_abundance[table_index];
-          cooling_table.temperature[cooling_index] =
+          cooling->table.temperature[cooling_index] =
               log10(temperature[table_index]);
         }
       }
@@ -574,7 +565,7 @@ struct cooling_tables get_cooling_table(
         table_index = row_major_index_2d(i, j, cooling->N_Temp, cooling->N_nH);
         cooling_index = row_major_index_3d(z_index - cooling->low_z_index, j, i,
                                            2, cooling->N_nH, cooling->N_Temp);
-        cooling_table.electron_abundance[cooling_index] =
+        cooling->table.electron_abundance[cooling_index] =
             electron_abundance[table_index];
       }
     }
@@ -593,7 +584,6 @@ struct cooling_tables get_cooling_table(
   message("done reading in general cooling table");
 #endif
 
-  return cooling_table;
 #else
   error("Need HDF5 to read cooling tables");
 #endif
