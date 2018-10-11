@@ -5353,12 +5353,10 @@ void engine_check_for_dumps(struct engine *e) {
   /* Do we want to perform structure finding? */
   int run_stf = 0;
   if (with_stf && stf_time_output) {
-    if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0)
-      run_stf = 1;
+    if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) run_stf = 1;
   }
   if (with_stf && !stf_time_output) {
-    if(e->step % e->delta_step_stf == 0)
-      run_stf = 1;
+    if (e->step % e->delta_step_stf == 0) run_stf = 1;
   }
 
   /* Store information before attempting extra dump-related drifts */
@@ -5377,8 +5375,12 @@ void engine_check_for_dumps(struct engine *e) {
         /* Let's fake that we are at the common dump time */
         e->ti_current = e->ti_next_snapshot;
         e->max_active_bin = 0;
-        if (!(e->policy & engine_policy_cosmology))
-          e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+        if ((e->policy & engine_policy_cosmology)) {
+          cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
+          e->time = e->cosmology->time;
+        } else {
+          e->time = e->ti_next_stats * e->time_base + e->time_begin;
+        }
 
         /* Drift everyone */
         engine_drift_all(e);
@@ -5392,8 +5394,12 @@ void engine_check_for_dumps(struct engine *e) {
         /* Let's fake that we are at the stats dump time */
         e->ti_current = e->ti_next_stats;
         e->max_active_bin = 0;
-        if (!(e->policy & engine_policy_cosmology))
+        if ((e->policy & engine_policy_cosmology)) {
+          cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
+          e->time = e->cosmology->time;
+        } else {
           e->time = e->ti_next_stats * e->time_base + e->time_begin;
+        }
 
         /* Drift everyone */
         engine_drift_all(e);
@@ -5418,8 +5424,12 @@ void engine_check_for_dumps(struct engine *e) {
         /* Let's fake that we are at the snapshot dump time */
         e->ti_current = e->ti_next_snapshot;
         e->max_active_bin = 0;
-        if (!(e->policy & engine_policy_cosmology))
-          e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+        if ((e->policy & engine_policy_cosmology)) {
+          cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
+          e->time = e->cosmology->time;
+        } else {
+          e->time = e->ti_next_stats * e->time_base + e->time_begin;
+        }
 
         /* Drift everyone */
         engine_drift_all(e);
@@ -5449,8 +5459,12 @@ void engine_check_for_dumps(struct engine *e) {
       /* Let's fake that we are at the snapshot dump time */
       e->ti_current = e->ti_next_snapshot;
       e->max_active_bin = 0;
-      if (!(e->policy & engine_policy_cosmology))
-        e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
+      if ((e->policy & engine_policy_cosmology)) {
+        cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
+        e->time = e->cosmology->time;
+      } else {
+        e->time = e->ti_next_stats * e->time_base + e->time_begin;
+      }
 
       /* Drift everyone */
       engine_drift_all(e);
@@ -5466,8 +5480,12 @@ void engine_check_for_dumps(struct engine *e) {
       /* Let's fake that we are at the stats dump time */
       e->ti_current = e->ti_next_stats;
       e->max_active_bin = 0;
-      if (!(e->policy & engine_policy_cosmology))
+      if ((e->policy & engine_policy_cosmology)) {
+        cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
+        e->time = e->cosmology->time;
+      } else {
         e->time = e->ti_next_stats * e->time_base + e->time_begin;
+      }
 
       /* Drift everyone */
       engine_drift_all(e);
@@ -5482,10 +5500,25 @@ void engine_check_for_dumps(struct engine *e) {
     /* Perform structure finding? */
     if (run_stf) {
 
-    // MATTHIEU: Add a drift_all here. And check the order with the other i/o
-    // options.
-
 #ifdef HAVE_VELOCIRAPTOR
+
+      // MATTHIEU: Check the order with the other i/o options.
+      if (!dump_snapshot && !save_stats) {
+
+        /* Let's fake that we are at the stats dump time */
+        e->ti_current = e->ti_next_stf;
+        e->max_active_bin = 0;
+        if ((e->policy & engine_policy_cosmology)) {
+          cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
+          e->time = e->cosmology->time;
+        } else {
+          e->time = e->ti_next_stats * e->time_base + e->time_begin;
+        }
+
+        /* Drift everyone */
+        engine_drift_all(e);
+      }
+
       velociraptor_init(e);
       velociraptor_invoke(e);
 
@@ -5517,6 +5550,8 @@ void engine_check_for_dumps(struct engine *e) {
 
   /* Restore the information we stored */
   e->ti_current = ti_current;
+  if (e->policy & engine_policy_cosmology)
+    cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
   e->max_active_bin = max_active_bin;
   e->time = time;
 }
