@@ -1008,6 +1008,11 @@ int main(int argc, char *argv[]) {
   /* unused parameters */
   parser_write_params_to_file(params, "unused_parameters.yml", 0);
   
+  /* Write final output. */
+  engine_drift_all(&e);
+  engine_print_stats(&e);
+  engine_dump_snapshot(&e);
+
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(&cosmo);
