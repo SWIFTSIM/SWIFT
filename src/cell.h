@@ -320,9 +320,6 @@ struct cell {
     /*! The extra ghost task for complex hydro schemes */
     struct task *extra_ghost;
 
-    /*! The task to end the force calculation */
-    struct task *end_force;
-
     /*! Task for cooling */
     struct task *cooling;
 
@@ -506,6 +503,9 @@ struct cell {
 
   } mpi;
 #endif
+
+  /*! The task to end the force calculation */
+  struct task *end_force;
 
   /*! The first kick task */
   struct task *kick1;
