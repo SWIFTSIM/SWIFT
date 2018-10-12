@@ -82,9 +82,9 @@ void cooling_update(const struct phys_const *phys_const,
   int z_index = -1;
   float dz = 0.f;
   if (redshift > cooling->reionisation_redshift) {
-    z_index = -1;
-  } else if (redshift > cooling->Redshifts[cooling->N_Redshifts - 1]) {
     z_index = -2;
+  } else if (redshift > cooling->Redshifts[cooling->N_Redshifts - 1]) {
+    z_index = -1;
   } else {
     get_redshift_index(redshift, &z_index, &dz, cooling);
   }
@@ -189,14 +189,14 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
     int bisection_flag = 0;
     double log_u_final_cgs = newton_iter(log(u_0_cgs), u_0_cgs, n_h_i, d_n_h, He_i, d_He, LambdaTune,
-					 p, cosmo, cooling, phys_const, abundance_ratio, dt_cgs,
-					 &bisection_flag);
+        				 p, cosmo, cooling, phys_const, abundance_ratio, dt_cgs,
+        				 &bisection_flag);
     
     /* Alright, all else failed, let's bisect */
     if (bisection_flag)      
       log_u_final_cgs = bisection_iter(log(u_0_cgs), u_0_cgs, n_h_i, d_n_h, He_i, d_He,
-				       LambdaTune, p, cosmo, cooling, phys_const,
-				       abundance_ratio, dt_cgs);
+        			       LambdaTune, p, cosmo, cooling, phys_const,
+        			       abundance_ratio, dt_cgs);
     
     /* Undo the log */
     u_final_cgs = exp(log_u_final_cgs);
@@ -723,7 +723,7 @@ __attribute__((always_inline)) INLINE float newton_iter(
   // table bounds
   const float log_table_bound_high =
       (cooling->Therm[cooling->N_Temp - 1] + 1) / M_LOG10E;
-  const float log_table_bound_low = (cooling->Therm[0] + 1) / M_LOG10E;
+  const float log_table_bound_low = 1.0 / M_LOG10E;
   
   /* convert Hydrogen mass fraction in Hydrogen number density */
   const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];

@@ -85,6 +85,9 @@ struct cooling_function_data {
   float calcium_over_silicon_ratio;
   float sulphur_over_silicon_ratio;
 
+  /* Hydrogen reionisation parameters */
+  float h_reion_z_center;
+
   /* Helium reionisation parameters */
   float he_reion_ev_pH;
   float he_reion_z_center;
