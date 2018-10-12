@@ -1340,7 +1340,7 @@ static INLINE void runner_dopair_grav_mm_progenies(struct runner *r,
           const int flag = i * 8 + j;
 
           /* Did we agree to use an M-M interaction here at the last rebuild? */
-          if (flags & (1LL << flag)) runner_dopair_grav_mm(r, cpi, cpj);
+          if (flags & (1ULL << flag)) runner_dopair_grav_mm(r, cpi, cpj);
         }
       }
     }

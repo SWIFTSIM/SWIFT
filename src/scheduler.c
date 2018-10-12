@@ -1470,7 +1470,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                      * the information and operate according to the choices
                      * made here. */
                     const int flag = i * 8 + j;
-                    t->flags |= (1LL << flag);
+                    t->flags |= (1ULL << flag);
 
                   } else {
 
