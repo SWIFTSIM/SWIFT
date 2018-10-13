@@ -178,8 +178,14 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.dx_max_sort = 0.0f;
     c->hydro.sorted = 0;
     c->hydro.count = 0;
+    c->hydro.updated = 0;
+    c->hydro.inhibited = 0;
     c->grav.count = 0;
+    c->grav.updated = 0;
+    c->grav.inhibited = 0;
     c->stars.count = 0;
+    c->stars.updated = 0;
+    c->stars.inhibited = 0;
     c->grav.init = NULL;
     c->grav.init_out = NULL;
     c->hydro.extra_ghost = NULL;

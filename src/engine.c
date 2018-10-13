@@ -121,7 +121,8 @@ int engine_rank;
  */
 struct end_of_step_data {
 
-  size_t updates, g_updates, s_updates;
+  size_t updated, g_updated, s_updated;
+  size_t inhibited, g_inhibited, s_inhibited;
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
   struct engine *e;
@@ -4434,11 +4435,10 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   e->total_nr_gparts = num_particles[1];
   e->total_nr_sparts = num_particles[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
-  e->count_inhibited_parts = 0;
-  e->count_inhibited_gparts = 0;
-  e->count_inhibited_sparts = 0;
-#endif
+  /* Flag that there are no inhibited particles */
+  e->nr_inhibited_parts = 0;
+  e->nr_inhibited_gparts = 0;
+  e->nr_inhibited_sparts = 0;
 
   /* Re-compute the mesh forces */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
@@ -4625,6 +4625,7 @@ void engine_collect_end_of_step_recurse(struct cell *c,
 
   /* Counters for the different quantities. */
   size_t updated = 0, g_updated = 0, s_updated = 0;
+  size_t inhibited = 0, g_inhibited = 0, s_inhibited = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -4652,6 +4653,10 @@ void engine_collect_end_of_step_recurse(struct cell *c,
       g_updated += cp->grav.updated;
       s_updated += cp->stars.updated;
 
+      inhibited += cp->hydro.inhibited;
+      g_inhibited += cp->grav.inhibited;
+      s_inhibited += cp->stars.inhibited;
+
       /* Collected, so clear for next time. */
       cp->hydro.updated = 0;
       cp->grav.updated = 0;
@@ -4669,6 +4674,9 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   c->hydro.updated = updated;
   c->grav.updated = g_updated;
   c->stars.updated = s_updated;
+  c->hydro.inhibited = inhibited;
+  c->grav.inhibited = g_inhibited;
+  c->stars.inhibited = s_inhibited;
 }
 
 /**
@@ -4691,7 +4699,8 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   int *local_cells = (int *)map_data;
 
   /* Local collectible */
-  size_t updates = 0, g_updates = 0, s_updates = 0;
+  size_t updated = 0, g_updated = 0, s_updated = 0;
+  size_t inhibited = 0, g_inhibited = 0, s_inhibited = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -4716,9 +4725,13 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       ti_gravity_end_max = max(ti_gravity_end_max, c->grav.ti_end_max);
       ti_gravity_beg_max = max(ti_gravity_beg_max, c->grav.ti_beg_max);
 
-      updates += c->hydro.updated;
-      g_updates += c->grav.updated;
-      s_updates += c->stars.updated;
+      updated += c->hydro.updated;
+      g_updated += c->grav.updated;
+      s_updated += c->stars.updated;
+
+      inhibited += c->hydro.inhibited;
+      g_inhibited += c->grav.inhibited;
+      s_inhibited += c->stars.inhibited;
 
       /* Collected, so clear for next time. */
       c->hydro.updated = 0;
@@ -4730,9 +4743,13 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   /* Let's write back to the global data.
    * We use the space lock to garanty single access*/
   if (lock_lock(&s->lock) == 0) {
-    data->updates += updates;
-    data->g_updates += g_updates;
-    data->s_updates += s_updates;
+    data->updated += updated;
+    data->g_updated += g_updated;
+    data->s_updated += s_updated;
+
+    data->inhibited += inhibited;
+    data->g_inhibited += g_inhibited;
+    data->s_inhibited += s_inhibited;
 
     if (ti_hydro_end_min > e->ti_current)
       data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
@@ -4773,7 +4790,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   const ticks tic = getticks();
   const struct space *s = e->s;
   struct end_of_step_data data;
-  data.updates = 0, data.g_updates = 0, data.s_updates = 0;
+  data.updated = 0, data.g_updated = 0, data.s_updated = 0;
+  data.inhibited = 0, data.g_inhibited = 0, data.s_inhibited = 0;
   data.ti_hydro_end_min = max_nr_timesteps, data.ti_hydro_end_max = 0,
   data.ti_hydro_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_end_max = 0,
@@ -4786,11 +4804,11 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
                  sizeof(int), 0, &data);
 
   /* Store these in the temporary collection group. */
-  collectgroup1_init(&e->collect_group1, data.updates, data.g_updates,
-                     data.s_updates, data.ti_hydro_end_min,
-                     data.ti_hydro_end_max, data.ti_hydro_beg_max,
-                     data.ti_gravity_end_min, data.ti_gravity_end_max,
-                     data.ti_gravity_beg_max, e->forcerebuild);
+  collectgroup1_init(
+      &e->collect_group1, data.updated, data.g_updated, data.s_updated,
+      data.inhibited, data.g_inhibited, data.s_inhibited, data.ti_hydro_end_min,
+      data.ti_hydro_end_max, data.ti_hydro_beg_max, data.ti_gravity_end_min,
+      data.ti_gravity_end_max, data.ti_gravity_beg_max, e->forcerebuild);
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI
@@ -4815,21 +4833,37 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
             in_i[1], e->collect_group1.ti_gravity_end_min);
 
     long long in_ll[3], out_ll[3];
-    out_ll[0] = data.updates;
-    out_ll[1] = data.g_updates;
-    out_ll[2] = data.s_updates;
+    out_ll[0] = data.updated;
+    out_ll[1] = data.g_updated;
+    out_ll[2] = data.s_updated;
     if (MPI_Allreduce(out_ll, in_ll, 3, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate particle counts.");
-    if (in_ll[0] != (long long)e->collect_group1.updates)
-      error("Failed to get same updates, is %lld, should be %lld", in_ll[0],
-            e->collect_group1.updates);
-    if (in_ll[1] != (long long)e->collect_group1.g_updates)
-      error("Failed to get same g_updates, is %lld, should be %lld", in_ll[1],
-            e->collect_group1.g_updates);
-    if (in_ll[2] != (long long)e->collect_group1.s_updates)
-      error("Failed to get same s_updates, is %lld, should be %lld", in_ll[2],
-            e->collect_group1.s_updates);
+    if (in_ll[0] != (long long)e->collect_group1.updated)
+      error("Failed to get same updated, is %lld, should be %lld", in_ll[0],
+            e->collect_group1.updated);
+    if (in_ll[1] != (long long)e->collect_group1.g_updated)
+      error("Failed to get same g_updated, is %lld, should be %lld", in_ll[1],
+            e->collect_group1.g_updated);
+    if (in_ll[2] != (long long)e->collect_group1.s_updated)
+      error("Failed to get same s_updated, is %lld, should be %lld", in_ll[2],
+            e->collect_group1.s_updated);
+
+    out_ll[0] = data.inhibited;
+    out_ll[1] = data.g_inhibited;
+    out_ll[2] = data.s_inhibited;
+    if (MPI_Allreduce(out_ll, in_ll, 3, MPI_LONG_LONG_INT, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to aggregate particle counts.");
+    if (in_ll[0] != (long long)e->collect_group1.inhibited)
+      error("Failed to get same inhibited, is %lld, should be %lld", in_ll[0],
+            e->collect_group1.inhibited);
+    if (in_ll[1] != (long long)e->collect_group1.g_inhibited)
+      error("Failed to get same g_inhibited, is %lld, should be %lld", in_ll[1],
+            e->collect_group1.g_inhibited);
+    if (in_ll[2] != (long long)e->collect_group1.s_inhibited)
+      error("Failed to get same s_inhibited, is %lld, should be %lld", in_ll[2],
+            e->collect_group1.s_inhibited);
 
     int buff = 0;
     if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
@@ -5366,9 +5400,9 @@ void engine_step(struct engine *e) {
   /* Collect information about the next time-step */
   engine_collect_end_of_step(e, 1);
   e->forcerebuild = e->collect_group1.forcerebuild;
-  e->updates_since_rebuild += e->collect_group1.updates;
-  e->g_updates_since_rebuild += e->collect_group1.g_updates;
-  e->s_updates_since_rebuild += e->collect_group1.s_updates;
+  e->updates_since_rebuild += e->collect_group1.updated;
+  e->g_updates_since_rebuild += e->collect_group1.g_updated;
+  e->s_updates_since_rebuild += e->collect_group1.s_updated;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (e->ti_end_min == e->ti_current && e->ti_end_min < max_nr_timesteps)
