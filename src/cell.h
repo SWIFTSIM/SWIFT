@@ -326,6 +326,9 @@ struct cell {
     /*! Task for cooling */
     struct task *cooling;
 
+    /*! Task for star formation */
+    struct task *star_formation;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
     /*! Last (integer) time the cell's sort arrays were updated. */

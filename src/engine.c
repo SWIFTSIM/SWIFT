@@ -214,6 +214,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
   const int is_with_cooling = (e->policy & engine_policy_cooling);
+  const int is_with_star_formation = (e->policy & engine_policy_star_formation);
 
   /* Are we in a super-cell ? */
   if (c->super == c) {
@@ -247,7 +248,18 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       } else {
         scheduler_addunlock(s, c->hydro.end_force, c->kick2);
       }
-      scheduler_addunlock(s, c->kick2, c->timestep);
+
+      if (is_with_star_formation) {
+
+        c->hydro.star_formation = scheduler_addtask(
+            s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);
+
+        scheduler_addunlock(s, c->kick2, c->hydro.star_formation);
+        scheduler_addunlock(s, c->hydro.star_formation, c->timestep);
+
+      } else {
+        scheduler_addunlock(s, c->kick2, c->timestep);
+      }
       scheduler_addunlock(s, c->timestep, c->kick1);
     }
 
@@ -4204,6 +4216,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     else if (t_type == task_type_cooling) {
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
         scheduler_activate(s, t);
+    } else if (t_type == task_type_star_formation) {
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
+        scheduler_activate(s, t);
     }
   }
 }
@@ -4418,6 +4433,12 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   e->total_nr_parts = num_particles[0];
   e->total_nr_gparts = num_particles[1];
   e->total_nr_sparts = num_particles[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  e->count_inhibited_parts = 0;
+  e->count_inhibited_gparts = 0;
+  e->count_inhibited_sparts = 0;
+#endif
 
   /* Re-compute the mesh forces */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic)

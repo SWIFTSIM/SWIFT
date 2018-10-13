@@ -487,6 +487,28 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
+ *
+ */
+void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_star_formation(r, c->progeny[k], 0);
+  } else {
+  }
+
+  if (timer) TIMER_TOC(timer_do_star_formation);
+}
+
+/**
  * @brief Sort the entries in ascending order using QuickSort.
  *
  * @param sort The entries
@@ -2013,7 +2035,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   struct part *restrict parts = c->hydro.parts;
-  // struct xpart *restrict xparts = c->hydro.xparts;
+  struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   const int periodic = s->periodic;
@@ -2043,7 +2065,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
-      // struct xpart *restrict xp = &xparts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       if (part_is_active(p, e)) {
 
@@ -2052,9 +2074,9 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
         // MATTHIEU: Temporary star-formation law
         if (p->rho > 1.5e7 && e->step > 2) {
-          // message("Removing particle id=%lld rho=%e", p->id, p->rho);
+          message("Removing particle id=%lld rho=%e", p->id, p->rho);
           // cell_convert_part_to_gpart(e, c, p, xp);
-          // cell_remove_part(e,c,p,xp);
+          cell_remove_part(e, c, p, xp);
         }
       }
     }
@@ -2109,7 +2131,8 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
           /* Check that this gpart has interacted with all the other
            * particles (via direct or multipoles) in the box */
-          if (gp->num_interacted != e->total_nr_gparts) {
+          if (gp->num_interacted !=
+              e->total_nr_gparts - e->count_inhibited_gparts) {
 
             /* Get the ID of the gpart */
             long long my_id = 0;
@@ -2126,9 +2149,9 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally with all other gparts "
                 "gp->num_interacted=%lld, total_gparts=%lld (local "
-                "num_gparts=%zd)",
+                "num_gparts=%zd inhibited_gparts=%lld)",
                 my_id, part_type_names[gp->type], gp->num_interacted,
-                e->total_nr_gparts, e->s->nr_gparts);
+                e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts);
           }
         }
 #endif
@@ -2593,6 +2616,9 @@ void *runner_main(void *data) {
           break;
         case task_type_cooling:
           runner_do_cooling(r, t->ci, 1);
+          break;
+        case task_type_star_formation:
+          runner_do_star_formation(r, t->ci, 1);
           break;
         case task_type_sourceterms:
           runner_do_sourceterms(r, t->ci, 1);

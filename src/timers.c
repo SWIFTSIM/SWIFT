@@ -80,6 +80,7 @@ const char* timers_names[timer_count] = {
     "dorecv_gpart",
     "dorecv_spart",
     "do_cooling",
+    "do_star_formation",
     "gettask",
     "qget",
     "qsteal",

@@ -2380,6 +2380,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->hydro.end_force != NULL) scheduler_activate(s, c->hydro.end_force);
     if (c->hydro.cooling != NULL) scheduler_activate(s, c->hydro.cooling);
+    if (c->hydro.star_formation != NULL)
+      scheduler_activate(s, c->hydro.star_formation);
     if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
   }
 
@@ -2527,6 +2529,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->hydro.end_force != NULL) scheduler_activate(s, c->hydro.end_force);
     if ((e->policy & engine_policy_cooling) && c->hydro.cooling != NULL)
       scheduler_activate(s, c->hydro.cooling);
+    if ((e->policy & engine_policy_star_formation) &&
+        c->hydro.star_formation != NULL)
+      scheduler_activate(s, c->hydro.star_formation);
     if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
     if (c->grav.down_in != NULL) scheduler_activate(s, c->grav.down_in);
     if (c->grav.mesh != NULL) scheduler_activate(s, c->grav.mesh);

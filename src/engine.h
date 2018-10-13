@@ -73,9 +73,10 @@ enum engine_policy {
   engine_policy_sourceterms = (1 << 14),
   engine_policy_stars = (1 << 15),
   engine_policy_structure_finding = (1 << 16),
-  engine_policy_feedback = (1 << 17)
+  engine_policy_star_formation = (1 << 17),
+  engine_policy_feedback = (1 << 18)
 };
-#define engine_maxpolicy 17
+#define engine_maxpolicy 18
 extern const char *engine_policy_names[];
 
 /**
@@ -203,6 +204,12 @@ struct engine {
 
   /* Total numbers of particles in the system. */
   long long total_nr_parts, total_nr_gparts, total_nr_sparts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Total number of particles removed from the system since the last rebuild */
+  long long count_inhibited_parts, count_inhibited_gparts,
+      count_inhibited_sparts;
+#endif
 
   /* Total mass in the simulation */
   double total_mass;
