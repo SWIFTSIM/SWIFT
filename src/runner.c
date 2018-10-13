@@ -492,6 +492,9 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
 
   TIMER_TIC;
 
@@ -503,6 +506,24 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_star_formation(r, c->progeny[k], 0);
   } else {
+
+    /* Loop over the gas particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+
+      if (part_is_active(p, e)) {
+
+        // MATTHIEU: Temporary star-formation law
+        if (p->rho > 1.5e7 && e->step > 2) {
+          message("Removing particle id=%lld rho=%e", p->id, p->rho);
+          cell_convert_part_to_gpart(e, c, p, xp);
+          // cell_remove_part(e, c, p, xp);
+        }
+      }
+    }
   }
 
   if (timer) TIMER_TOC(timer_do_star_formation);
@@ -1778,6 +1799,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   }
 
   int updated = 0, g_updated = 0, s_updated = 0;
+  int inhibited = 0, g_inhibited = 0, s_inhibited = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -1837,6 +1859,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       }
 
       else { /* part is inactive */
+
+        /* Count the number of inhibited particles */
+        if (part_is_inhibited(p, e)) inhibited++;
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, p->time_bin);
@@ -1904,6 +1929,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
         } else { /* gpart is inactive */
 
+          /* Count the number of inhibited particles */
+          if (gpart_is_inhibited(gp, e)) g_inhibited++;
+
           const integertime_t ti_end =
               get_integer_time_end(ti_current, gp->time_bin);
 
@@ -1956,7 +1984,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
 
         /* star particle is inactive but not inhibited */
-      } else if (!spart_is_inhibited(sp, e)) {
+      } else {
+
+        /* Count the number of inhibited particles */
+        if (spart_is_inhibited(sp, e)) ++s_inhibited;
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, sp->time_bin);
@@ -1986,6 +2017,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         updated += cp->hydro.updated;
         g_updated += cp->grav.updated;
         s_updated += cp->stars.updated;
+        inhibited += cp->hydro.inhibited;
+        g_inhibited += cp->grav.inhibited;
+        s_inhibited += cp->stars.inhibited;
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_end_max = max(cp->hydro.ti_end_max, ti_hydro_end_max);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
@@ -1999,6 +2033,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->hydro.updated = updated;
   c->grav.updated = g_updated;
   c->stars.updated = s_updated;
+  c->hydro.inhibited = inhibited;
+  c->grav.inhibited = g_inhibited;
+  c->stars.inhibited = s_inhibited;
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
@@ -2035,7 +2072,6 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   const int periodic = s->periodic;
@@ -2065,19 +2101,11 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
-      struct xpart *restrict xp = &xparts[k];
 
       if (part_is_active(p, e)) {
 
         /* Finish the force loop */
         hydro_end_force(p, cosmo);
-
-        // MATTHIEU: Temporary star-formation law
-        if (p->rho > 1.5e7 && e->step > 2) {
-          message("Removing particle id=%lld rho=%e", p->id, p->rho);
-          // cell_convert_part_to_gpart(e, c, p, xp);
-          cell_remove_part(e, c, p, xp);
-        }
       }
     }
 
