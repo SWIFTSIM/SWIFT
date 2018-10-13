@@ -3238,7 +3238,13 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
 
   /* Mark the particle as inhibited */
   p->time_bin = time_bin_inhibited;
-  if (p->gpart) p->gpart->time_bin = time_bin_inhibited;
+
+  /* Mark the gpart as inhibited and stand-alone */
+  if (p->gpart) {
+    p->gpart->time_bin = time_bin_inhibited;
+    p->gpart->id_or_neg_offset = p->id;
+    p->gpart->type = swift_type_dark_matter;
+  }
 
   /* Un-link the part */
   p->gpart = NULL;
@@ -3283,9 +3289,13 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
-  /* Mark the particle as inhibited */
+  /* Mark the particle as inhibited and stand-alone */
   sp->time_bin = time_bin_inhibited;
-  if (sp->gpart) sp->gpart->time_bin = time_bin_inhibited;
+  if (sp->gpart) {
+    sp->gpart->time_bin = time_bin_inhibited;
+    sp->gpart->id_or_neg_offset = sp->id;
+    sp->gpart->type = swift_type_dark_matter;
+  }
 
   /* Un-link the spart */
   sp->gpart = NULL;
