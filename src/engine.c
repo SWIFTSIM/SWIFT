@@ -111,6 +111,7 @@ const char *engine_policy_names[] = {"none",
                                      "sourceterms",
                                      "stars",
                                      "structure finding",
+                                     "star formation",
                                      "feedback"};
 
 /** The rank of the engine as a global variable (for messages). */

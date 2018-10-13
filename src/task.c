@@ -123,6 +123,9 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_part;
       break;
 
+    case task_type_star_formation:
+      return task_action_all;
+
     case task_type_stars_ghost:
       return task_action_spart;
       break;
