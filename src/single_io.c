@@ -603,15 +603,14 @@ void write_output_single(struct engine* e, const char* baseName,
                          const struct unit_system* snapshot_units) {
 
   hid_t h_file = 0, h_grp = 0;
-  const size_t Ngas = e->s->nr_parts;
-  const size_t Nstars = e->s->nr_sparts;
-  const size_t Ntot = e->s->nr_gparts;
+  const size_t Ngas = e->total_nr_parts - e->nr_inhibited_parts;
+  const size_t Nstars = e->total_nr_sparts - e->nr_inhibited_sparts;
+  const size_t Ntot = e->total_nr_gparts - e->nr_inhibited_gparts;
   int periodic = e->s->periodic;
   int numFiles = 1;
   const struct part* parts = e->s->parts;
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
-  struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
   const struct cooling_function_data* cooling = e->cooling_func;
   struct swift_params* params = e->parameter_file;
@@ -828,6 +827,8 @@ void write_output_single(struct engine* e, const char* baseName,
     struct io_props list[100];
     size_t N = 0;
 
+    struct gpart* dmparts = NULL;
+  
     /* Write particle fields from the particle structure */
     switch (ptype) {
 
@@ -846,7 +847,7 @@ void write_output_single(struct engine* e, const char* baseName,
           error("Error while allocating temporart memory for DM particles");
         bzero(dmparts, Ndm * sizeof(struct gpart));
 
-        /* Collect the DM particles from gpart */
+        /* Collect the non-inhibited DM particles from gpart */
         io_collect_dm_gparts(gparts, Ntot, dmparts, Ndm);
 
         /* Write DM particles */

@@ -805,8 +805,9 @@ void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
     /* message("i=%zd count=%zd id=%lld part=%p", i, count, gparts[i].id,
      * gparts[i].part); */
 
-    /* And collect the DM ones */
-    if (gparts[i].type == swift_type_dark_matter) {
+    /* And collect the DM ones that have not been removed */
+    if (gparts[i].type == swift_type_dark_matter && 
+	gparts[i].time_bin != time_bin_inhibited) {
       dmparts[count] = gparts[i];
       count++;
     }
