@@ -199,7 +199,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
-    c->hydro.end_force = NULL;
+    c->end_force = NULL;
     c->hydro.drift = NULL;
     c->grav.drift = NULL;
     c->hydro.cooling = NULL;

@@ -157,6 +157,7 @@ int main(int argc, char *argv[]) {
   c.grav.parts[0].id_or_neg_offset = 1;
 #ifdef SWIFT_DEBUG_CHECKS
   c.grav.parts[0].ti_drift = 8;
+  c.grav.parts[0].initialised = 1;
 #endif
 
   /* Create the mass-less particles */
@@ -173,6 +174,7 @@ int main(int argc, char *argv[]) {
     gp->id_or_neg_offset = n + 1;
 #ifdef SWIFT_DEBUG_CHECKS
     gp->ti_drift = 8;
+    gp->initialised = 1;
 #endif
   }
 
