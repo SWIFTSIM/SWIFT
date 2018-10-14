@@ -828,7 +828,7 @@ void write_output_single(struct engine* e, const char* baseName,
     size_t N = 0;
 
     struct gpart* dmparts = NULL;
-  
+
     /* Write particle fields from the particle structure */
     switch (ptype) {
 
