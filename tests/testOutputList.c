@@ -151,6 +151,8 @@ int main(int argc, char *argv[]) {
   test_cosmo(&e, "ScaleFactor", with_assert);
   test_cosmo(&e, "Time", without_assert);
 
+  cosmology_clean(&cosmo);
+
   /* Write message and leave */
   message("Test done");
   return 0;

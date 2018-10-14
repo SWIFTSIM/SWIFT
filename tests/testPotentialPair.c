@@ -439,5 +439,10 @@ int main(int argc, char *argv[]) {
   free(cj.grav.multipole);
   free(ci.grav.parts);
   free(cj.grav.parts);
+
+  /* Clean up the caches */
+  gravity_cache_clean(&r.ci_gravity_cache);
+  gravity_cache_clean(&r.cj_gravity_cache);
+
   return 0;
 }
