@@ -1307,10 +1307,33 @@ void fof_search_tree(struct space *s) {
     group_CoM[root].x += gparts[i].mass * x;
     group_CoM[root].y += gparts[i].mass * y;
     group_CoM[root].z += gparts[i].mass * z;
+  }
+  
+#ifdef WITH_MPI
+
+  /* Find the number of local roots. */
+  int num_local_roots = 0;
+  for (size_t i = 0; i < nr_gparts; i++) {
+
+    if(group_index[i] == i && group_size[i] >= 1) num_local_roots++;
 
   }
 
-#ifdef WITH_MPI
+  size_t *local_roots = NULL;
+  int local_group_count = 0;
+
+  if (posix_memalign((void **)&local_roots, 32, num_local_roots * sizeof(size_t)) != 0)
+    error("Failed to allocate list of local roots.");
+
+  /* Find local roots before searching for foreign links and store their index. */
+  for (size_t i = 0; i < nr_gparts; i++) {
+
+    if(group_index[i] == i && group_size[i] >= 1) {
+      local_roots[local_group_count++] = i;
+    }
+
+  }
+
   if (nr_nodes > 1) {
   
     ticks tic_mpi = getticks();
@@ -1436,21 +1459,36 @@ void fof_search_tree(struct space *s) {
     /* Set default group ID again. */
     for (size_t i = 0; i < nr_gparts; i++) gparts[i].group_id = group_id_default;
 
-    /* TODO: Think of better way to set group ID of particles that have a foreign root. */
     /* Re-label the groups between group_id_offset - num_groups. */
     for(int i = 0; i < num_groups; i++) {
       const size_t root = global_group_sizes[i].index;
       
-      if(is_local(root, nr_gparts)) {
+      /* Only update local roots. */
+      if(is_local(root, nr_gparts)) gparts[root - node_offset].group_id = group_id_offset + i;
 
-        gparts[root - node_offset].group_id = group_id_offset + i;
+    }
+
+    /* Update local roots that have foreign roots. */
+    for (size_t i = 0; i < local_group_count; i++) {
+      size_t root = local_roots[i];
+      
+      /* For particles that have foreign roots update their group ID. */
+      if(!is_local(group_index[root], nr_gparts)) {
+        
+        for(int j = 0; j < num_groups; j++) {
+          if(group_index[root] == global_group_sizes[j].index) {
+            gparts[root].group_id = group_id_offset + j;
+            break;
+          }
+        }
+
       }
-
     }
 
     /* Update group ID of all particles that are not the root of a group. */
     for (size_t i = 0; i < nr_gparts; i++) {
       size_t root = node_offset + i;
+      size_t local_root = node_offset + i;
       int foreign = 0;
 
       /* FOF find */
@@ -1460,18 +1498,14 @@ void fof_search_tree(struct space *s) {
           foreign = 1;
           break;
         }
+
+        /* Store local root before index becomes foreign. */
+        local_root = root;
       }
 
-      /* For particles that have foreign roots search the root list. */
-      if(foreign) {
-        for(int j = 0; j < num_groups; j++) {
-          if(root == global_group_sizes[j].index) {
-            gparts[i].group_id = group_id_offset + j;
-            break;
-          }
-        }
-      }
-      else gparts[i].group_id = gparts[root - node_offset].group_id;
+      /* For particles that have foreign roots use local root to set group ID. */
+      gparts[i].group_id = gparts[local_root - node_offset].group_id;
+      
     }
 
     /* Clean up memory. */
