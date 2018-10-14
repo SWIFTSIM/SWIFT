@@ -380,10 +380,13 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
     }
   }
 
-  /* Be clean */
+  /* Close the file */
   fprintf(f, "}");
   fclose(f);
+
+  /* Be clean */
   free(table);
+  free(count_rel);
 
   if (verbose)
     message("Printing task graph took %.3f %s.",
