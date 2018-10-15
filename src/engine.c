@@ -6445,8 +6445,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
         parser_get_opt_param_double(params, "StructureFinding:time_first", 0.);
     e->a_first_stf_output = parser_get_opt_param_double(
         params, "StructureFinding:scale_factor_first", 0.1);
-    e->stf_output_freq_format = (enum io_stf_output_format)
-        parser_get_param_int(params, "StructureFinding:output_time_format");
+    e->stf_output_freq_format = (enum io_stf_output_format)parser_get_param_int(
+        params, "StructureFinding:output_time_format");
 
     if (e->stf_output_freq_format == io_stf_steps) {
       e->delta_step_stf =
