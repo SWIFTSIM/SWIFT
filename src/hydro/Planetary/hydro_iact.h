@@ -176,11 +176,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
 
-#ifndef PLANETARY_SPH_NO_BALSARA
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
-#endif
 
   /* Are the particles moving towards each other? */
   const float omega_ij = min(dvdr, 0.f);
@@ -193,12 +191,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-#ifdef PLANETARY_SPH_NO_BALSARA
-  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij / rho_ij;
-#else
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
-#endif
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -300,11 +293,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
 
-#ifndef PLANETARY_SPH_NO_BALSARA
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
-#endif
 
   /* Are the particles moving towards each other? */
   const float omega_ij = min(dvdr, 0.f);
@@ -319,12 +310,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-#ifdef PLANETARY_SPH_NO_BALSARA
-  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij / rho_ij;
-#else
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
+  const float visc = -0.25f * v_sig * mu_ij *
                      (balsara_i + balsara_j) / rho_ij;
-#endif
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;

@@ -863,6 +863,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const double time_base = e->time_base;
   const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
 
   TIMER_TIC;
 
@@ -901,7 +902,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, cosmo, dt_alpha);
+        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1034,6 +1035,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_reset_gradient(p);
 
 #else
+            /* This needs to be extracted here because otherwise it is an
+             * undefined variable for the schemes that use the extra ghost. */
+            const struct hydro_props *hydro_props = e->hydro_properties;
+
             /* Calculate the time-step for passing to hydro_prepare_force, used
              * for the evolution of alpha factors (i.e. those involved in the
              * artificial viscosity and thermal conduction terms) */
@@ -1053,7 +1058,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* As of here, particle force variables will be set. */
 
             /* Compute variables required for the force loop */
-            hydro_prepare_force(p, xp, cosmo, dt_alpha);
+            hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
 
             /* The particle force values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1132,6 +1137,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_reset_gradient(p);
 
 #else
+        /* This needs to be extracted here because otherwise it is an
+         * undefined variable for the schemes that use the extra ghost. */
+        const struct hydro_props *hydro_props = e->hydro_properties;
+
         /* Calculate the time-step for passing to hydro_prepare_force, used for
          * the evolution of alpha factors (i.e. those involved in the artificial
          * viscosity and thermal conduction terms) */
@@ -1150,7 +1159,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, cosmo, dt_alpha);
+        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */

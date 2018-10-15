@@ -497,8 +497,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -620,8 +619,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -654,8 +652,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 }
 
 #ifdef WITH_VECTORIZATION
-static const vector const_viscosity_alpha_fac =
-    FILL_VEC(-0.25f * const_viscosity_alpha);
 
 /**
  * @brief Force interaction computed using 1 vector
@@ -746,7 +742,7 @@ runner_iact_nonsym_1_vec_force(
 
   /* Now construct the full viscosity term */
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
-  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v,
+  visc.v = vec_div(vec_mul(vec_set1(-0.25f),
                            vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
                    rho_ij.v);
 
@@ -937,11 +933,11 @@ runner_iact_nonsym_2_vec_force(
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
   rho_ij_2.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho_2.v));
 
-  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v,
+  visc.v = vec_div(vec_mul(vec_set1(-0.25f),
                            vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
                    rho_ij.v);
   visc_2.v =
-      vec_div(vec_mul(const_viscosity_alpha_fac.v,
+      vec_div(vec_mul(vec_set1(-0.25f),
                       vec_mul(v_sig_2.v, vec_mul(mu_ij_2.v, balsara_2.v))),
               rho_ij_2.v);
 

@@ -458,12 +458,14 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  * @param cosmo The current cosmological model.
+ * @param hydro_props Hydrodynamic properties. 
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const float dt_alpha) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const float dt_alpha) {
   const float fac_mu = cosmo->a_factor_mu;
 
   /* Some smoothing length multiples. */
@@ -492,6 +494,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.balsara =
       normDiv_v / (normDiv_v + normRot_v + 0.0001f * fac_mu * fc * h_inv);
 
+  /* Set the AV property */
+  p->alpha = hydro_props->viscosity.alpha;
+
   /* Viscosity parameter decay time */
   /* const float tau = h / (2.f * const_viscosity_length * p->force.soundspeed);
    */
@@ -500,8 +505,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* const float S = max(-normDiv_v, 0.f); */
 
   /* Compute the particle's viscosity parameter time derivative */
-  /* const float alpha_dot = (const_viscosity_alpha_min - p->alpha) / tau + */
-  /*                         (const_viscosity_alpha_max - p->alpha) * S; */
+  /* const float alpha_dot = (hydro_props->viscosity.alpha_max) - p->alpha) / tau + */
+  /*                         (hydro_props->viscosity.alpha_max - p->alpha) * S; */
 
   /* Update particle's viscosity paramter */
   /* p->alpha += alpha_dot * (p->ti_end - p->ti_begin) * timeBase; */  // MATTHIEU
