@@ -7422,18 +7422,11 @@ void engine_clean(struct engine *e) {
   }
   free(e->runners);
   free(e->snapshot_units);
-  if (e->output_list_snapshots) {
-    output_list_clean(e->output_list_snapshots);
-    free(e->output_list_snapshots);
-  }
-  if (e->output_list_stats) {
-    output_list_clean(e->output_list_stats);
-    free(e->output_list_stats);
-  }
-  if (e->output_list_stf) {
-    output_list_clean(e->output_list_stf);
-    free(e->output_list_stf);
-  }
+
+  output_list_clean(&e->output_list_snapshots);
+  output_list_clean(&e->output_list_stats);
+  output_list_clean(&e->output_list_stf);
+
   free(e->links);
   free(e->cell_loc);
   scheduler_clean(&e->sched);
