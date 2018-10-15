@@ -76,7 +76,7 @@ void test_no_cosmo(struct engine *e, char *name, int with_assert) {
     output_time = (double)(ti_next * e->time_base) + e->time_begin;
   }
 
-  output_list_clean(list);
+  output_list_clean(&list);
 };
 
 void test_cosmo(struct engine *e, char *name, int with_assert) {
@@ -112,7 +112,7 @@ void test_cosmo(struct engine *e, char *name, int with_assert) {
     output_time = (double)exp(ti_next * e->time_base) * e->cosmology->a_begin;
   }
 
-  output_list_clean(list);
+  output_list_clean(&list);
 };
 
 int main(int argc, char *argv[]) {

@@ -266,8 +266,12 @@ void output_list_print(const struct output_list *outputlist) {
 /**
  * @brief Clean an #output_list
  */
-void output_list_clean(struct output_list *outputlist) {
-  free(outputlist->times);
+void output_list_clean(struct output_list **outputlist) {
+  if (*outputlist) {
+    free((*outputlist)->times);
+    free(*outputlist);
+    *outputlist = NULL;
+  }
 }
 
 /**
