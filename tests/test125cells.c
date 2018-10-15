@@ -590,6 +590,7 @@ int main(int argc, char *argv[]) {
   prog_const.const_newton_G = 1.f;
 
   struct hydro_props hp;
+  hydro_props_init_no_hydro(&hp);
   hp.eta_neighbours = h;
   hp.h_tolerance = 1e0;
   hp.h_max = FLT_MAX;
@@ -675,8 +676,8 @@ int main(int argc, char *argv[]) {
 /* Initialise the particle cache. */
 #ifdef WITH_VECTORIZATION
     runner.ci_cache.count = 0;
-    cache_init(&runner.ci_cache, 512);
     runner.cj_cache.count = 0;
+    cache_init(&runner.ci_cache, 512);
     cache_init(&runner.cj_cache, 512);
 #endif
 
@@ -724,8 +725,8 @@ int main(int argc, char *argv[]) {
 
 #ifdef WITH_VECTORIZATION
     /* Initialise the cache. */
-    runner.ci_cache.count = 0;
-    runner.cj_cache.count = 0;
+    cache_clean(&runner.ci_cache);
+    cache_clean(&runner.cj_cache);
     cache_init(&runner.ci_cache, 512);
     cache_init(&runner.cj_cache, 512);
 #endif
@@ -889,6 +890,9 @@ int main(int argc, char *argv[]) {
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 125; ++i) clean_up(cells[i]);
   free(solution);
+
+  cache_clean(&runner.ci_cache);
+  cache_clean(&runner.cj_cache);
 
   return 0;
 }
