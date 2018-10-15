@@ -62,7 +62,7 @@ struct cell_pair_indices {
 } SWIFT_STRUCT_ALIGN;
 
 /* Function prototypes. */
-void fof_init(struct space *s, long long Ngas, long long Ngparts);
+void fof_init(struct space *s, long long Ngas, long long Ngparts, long long Nstars);
 void fof_search_cell(struct space *s, struct cell *c);
 void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj);
 void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell *cj, int *link_count, struct fof_mpi **group_links, int *group_links_size);

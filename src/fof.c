@@ -46,7 +46,7 @@ MPI_Datatype group_length_mpi_type;
 size_t node_offset;
 
 /* Initialises parameters for the FOF search. */
-void fof_init(struct space *s, long long Ngas, long long Ngparts) {
+void fof_init(struct space *s, long long Ngas, long long Ngparts, long long Nstars) {
 
   struct engine *e = s->e;
 
@@ -78,7 +78,7 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts) {
 
   /* Calculate the particle linking length based upon the mean inter-particle
    * spacing of the DM particles. */
-  const int total_nr_dmparts = Ngparts - Ngas;
+  const long long total_nr_dmparts = Ngparts - Ngas - Nstars;
   double l_x = l_x_scale * (s->dim[0] / cbrt(total_nr_dmparts));
 
   l_x = parser_get_opt_param_double(e->parameter_file, "FOF:absolute_linking_length", l_x);
