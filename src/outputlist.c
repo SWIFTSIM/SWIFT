@@ -112,6 +112,9 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
     ind += 1;
   }
 
+  /* Cleanup */
+  free(line);
+
   if (ind != outputlist->size)
     error("Did not read the correct number of output times.");
 
