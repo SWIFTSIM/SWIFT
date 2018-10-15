@@ -114,6 +114,8 @@ int main(int argc, char *argv[]) {
   int haveoptwords1 = parser_get_opt_param_string_array(
       &param_file, "Simulation:optwords", &nvar_result, &var_result, noptwords,
       optwords);
+  parser_free_param_string_array(nvar_result, var_result);
+
   /* Check if we can read it again */
   int haveoptwords2 = parser_get_opt_param_string_array(
       &param_file, "Simulation:optwords", &nvar_result, &var_result, noptwords,
