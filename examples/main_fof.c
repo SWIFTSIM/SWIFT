@@ -1003,6 +1003,22 @@ int main(int argc, char *argv[]) {
 #endif
   }
 
+#ifdef SWIFT_DEBUG_THREADPOOL
+  /* Dump the task data using the given frequency. */
+  if (dump_threadpool) {
+    char dumpfile[52];
+#ifdef WITH_MPI
+    snprintf(dumpfile, 52, "threadpool_info-rank%d-step%d.dat", engine_rank, 0);
+#else
+    snprintf(dumpfile, 52, "threadpool_info-step%d.dat", 0);
+#endif  // WITH_MPI
+    threadpool_dump_log(&e.threadpool, dumpfile, 1);
+  } else {
+    threadpool_reset_log(&e.threadpool);
+  }
+#endif  // SWIFT_DEBUG_THREADPOOL
+
+
   /* used parameters */
   parser_write_params_to_file(params, "used_parameters.yml", 1);
   /* unused parameters */
