@@ -616,8 +616,10 @@ int main(int argc, char *argv[]) {
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 27; ++i) clean_up(cells[i]);
 
+#ifdef WITH_VECTORIZATION
   cache_clean(&runner.ci_cache);
   cache_clean(&runner.cj_cache);
+#endif
 
   return 0;
 }

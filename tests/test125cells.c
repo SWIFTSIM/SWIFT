@@ -891,8 +891,10 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < 125; ++i) clean_up(cells[i]);
   free(solution);
 
+#ifdef WITH_VECTORIZATION
   cache_clean(&runner.ci_cache);
   cache_clean(&runner.cj_cache);
+#endif
 
   return 0;
 }
