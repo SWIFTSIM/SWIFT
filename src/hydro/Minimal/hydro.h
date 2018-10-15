@@ -485,7 +485,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  * @param cosmo The current cosmological model.
- * @param hydro_props Hydrodynamic properties. 
+ * @param hydro_props Hydrodynamic properties.
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
  */
@@ -516,7 +516,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
       1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
 
   /* Compute the Balsara switch */
-  /* Pre-multiply in the AV factor; hydro_props are not passed to the iact functions */
+  /* Pre-multiply in the AV factor; hydro_props are not passed to the iact
+   * functions */
   const float balsara =
       hydro_props->viscosity.alpha * abs_div_v /
       (abs_div_v + curl_v + 0.0001f * fac_mu * soundspeed / p->h);

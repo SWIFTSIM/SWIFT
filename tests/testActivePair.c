@@ -170,8 +170,7 @@ void clean_up(struct cell *ci) {
 /**
  * @brief Initializes all particles field to be ready for a density calculation
  */
-void zero_particle_fields_density(struct cell *c,
-                                  const struct cosmology *cosmo,
+void zero_particle_fields_density(struct cell *c, const struct cosmology *cosmo,
                                   const struct hydro_props *hydro_props) {
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_init_part(&c->hydro.parts[pid], NULL);

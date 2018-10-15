@@ -742,9 +742,9 @@ runner_iact_nonsym_1_vec_force(
 
   /* Now construct the full viscosity term */
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
-  visc.v = vec_div(vec_mul(vec_set1(-0.25f),
-                           vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
-                   rho_ij.v);
+  visc.v = vec_div(
+      vec_mul(vec_set1(-0.25f), vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
+      rho_ij.v);
 
   /* Now, convolve with the kernel */
   visc_term.v =
@@ -933,9 +933,9 @@ runner_iact_nonsym_2_vec_force(
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
   rho_ij_2.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho_2.v));
 
-  visc.v = vec_div(vec_mul(vec_set1(-0.25f),
-                           vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
-                   rho_ij.v);
+  visc.v = vec_div(
+      vec_mul(vec_set1(-0.25f), vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
+      rho_ij.v);
   visc_2.v =
       vec_div(vec_mul(vec_set1(-0.25f),
                       vec_mul(v_sig_2.v, vec_mul(mu_ij_2.v, balsara_2.v))),
