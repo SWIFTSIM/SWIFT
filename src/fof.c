@@ -250,7 +250,7 @@ __attribute__((always_inline)) INLINE static void fof_union_by_size(size_t *root
 }
 #else
 __attribute__((always_inline)) INLINE static void fof_union(size_t *root_i, const size_t root_j,
-                                                          size_t *group_index) {
+							    size_t *group_index) {
 
   int result = 0;
 
@@ -290,34 +290,38 @@ __attribute__((always_inline)) INLINE static double cell_min_dist(
     const struct cell *ci, const struct cell *cj, const double *dim) {
 
   /* Get cell locations. */
-  const double cix = ci->loc[0];
-  const double ciy = ci->loc[1];
-  const double ciz = ci->loc[2];
-  const double cjx = cj->loc[0];
-  const double cjy = cj->loc[1];
-  const double cjz = cj->loc[2];
+  const double cix_min = ci->loc[0];
+  const double ciy_min = ci->loc[1];
+  const double ciz_min = ci->loc[2];
+  const double cjx_min = cj->loc[0];
+  const double cjy_min = cj->loc[1];
+  const double cjz_min = cj->loc[2];
+
+  const double cix_max = ci->loc[0] + ci->width[0];
+  const double ciy_max = ci->loc[1] + ci->width[1];
+  const double ciz_max = ci->loc[2] + ci->width[2];
+  const double cjx_max = cj->loc[0] + cj->width[0];
+  const double cjy_max = cj->loc[1] + cj->width[1];
+  const double cjz_max = cj->loc[2] + cj->width[2];
 
   /* Find the shortest distance between cells, remembering to account for
    * boundary conditions. */
   double dx[3], r2 = 0.0f;
-  dx[0] = min3(fabs(nearest(cix - cjx, dim[0])),
-               fabs(nearest(cix - (cjx + cj->width[0]), dim[0])),
-               fabs(nearest((cix + ci->width[0]) - cjx, dim[0])));
-  dx[0] = min(
-      dx[0], fabs(nearest((cix + ci->width[0]) - (cjx + cj->width[0]), dim[0])));
+  dx[0] = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
+               fabs(nearest(cix_min - cjx_max, dim[0])),
+               fabs(nearest(cix_max - cjx_min, dim[0])),
+	       fabs(nearest(cix_max - cjx_max, dim[0])));
 
-  dx[1] = min3(fabs(nearest(ciy - cjy, dim[1])),
-               fabs(nearest(ciy - (cjy + cj->width[1]), dim[1])),
-               fabs(nearest((ciy + ci->width[1]) - cjy, dim[1])));
-  dx[1] = min(
-      dx[1], fabs(nearest((ciy + ci->width[1]) - (cjy + cj->width[1]), dim[1])));
+  dx[1] = min4(fabs(nearest(ciy_min - cjy_min, dim[1])),
+               fabs(nearest(ciy_min - cjy_max, dim[1])),
+               fabs(nearest(ciy_max - cjy_min, dim[1])),
+	       fabs(nearest(ciy_max - cjy_max, dim[1])));
 
-  dx[2] = min3(fabs(nearest(ciz - cjz, dim[2])),
-               fabs(nearest(ciz - (cjz + cj->width[2]), dim[2])),
-               fabs(nearest((ciz + ci->width[2]) - cjz, dim[2])));
-  dx[2] = min(
-      dx[2], fabs(nearest((ciz + ci->width[2]) - (cjz + cj->width[2]), dim[2])));
-
+  dx[2] = min4(fabs(nearest(ciz_min - cjz_min, dim[2])),
+               fabs(nearest(ciz_min - cjz_max, dim[2])),
+               fabs(nearest(ciz_max - cjz_min, dim[2])),
+               fabs(nearest(ciz_max - cjz_max, dim[2])));
+  
   for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
 
   return r2;
@@ -339,6 +343,8 @@ static void rec_fof_search_pair(struct cell *ci, struct cell *cj, struct space *
    * boundary conditions. */
   const double r2 = cell_min_dist(ci, cj, dim);
 
+  if (ci == cj) error("Pair FOF called on same cell!!!");
+  
   /* Return if cells are out of range of each other. */
   if (r2 > search_r2) return;
 
@@ -353,12 +359,29 @@ static void rec_fof_search_pair(struct cell *ci, struct cell *cj, struct space *
       }
     }
   }
-  /* Perform FOF search between pairs of cells that are within the linking
-   * length and not the same cell. */
-  else if (ci != cj)
-    fof_search_pair_cells(s, ci, cj);
-  else if (ci == cj) error("Pair FOF called on same cell!!!");
+  else {
 
+    if(ci->split) {
+    
+      for (int k = 0; k < 8; k++) {
+	if (ci->progeny[k] != NULL)
+	  rec_fof_search_pair(ci->progeny[k], cj, s, dim, search_r2);
+      }
+    }
+    else if(cj->split) {
+      
+      for (int k = 0; k < 8; k++) {
+	if (cj->progeny[k] != NULL)
+	  rec_fof_search_pair(ci, cj->progeny[k], s, dim, search_r2);
+      }
+    }
+    else {
+    
+      /* Perform FOF search between pairs of cells that are within the linking
+       * length and not the same cell. */
+      fof_search_pair_cells(s, ci, cj);
+    }
+  }
 }
 
 #ifdef WITH_MPI
@@ -397,28 +420,37 @@ static void rec_fof_search_pair_foreign(struct cell *ci, struct cell *cj, struct
 
 /* Recurse on a cell and perform a FOF search between cells that are within
  * range. */
-static void rec_fof_search_self(struct cell *ci, struct space *s,
+static void rec_fof_search_self(struct cell *c, struct space *s,
                            const double *dim,
                            const double search_r2) {
 
+  const double l_x2 = s->l_x2;
+
+  const double max_dist = c->width[0] * c->width[0] +
+                          c->width[1] * c->width[1] +
+                          c->width[2] * c->width[2];
+  
+  /* Are all particles in the same group? */
+  if(max_dist  < l_x2) {  }
+    
   /* Recurse? */
-  if (ci->split) {
+  if (c->split) {
     
     /* Loop over all progeny. Perform pair and self recursion on progenies.*/
     for (int k = 0; k < 8; k++) {
-      if (ci->progeny[k] != NULL) {
+      if (c->progeny[k] != NULL) {
 
-        rec_fof_search_self(ci->progeny[k], s, dim, search_r2);
+        rec_fof_search_self(c->progeny[k], s, dim, search_r2);
 
-        for (int l = k+1; l < 8; l++)
-          if (ci->progeny[l] != NULL)
-            rec_fof_search_pair(ci->progeny[k], ci->progeny[l], s, dim, search_r2);
+	for (int l = k+1; l < 8; l++)
+          if (c->progeny[l] != NULL)
+            rec_fof_search_pair(c->progeny[k], c->progeny[l], s, dim, search_r2);
       }
     }
   }
   /* Otherwise, compute self-interaction. */
   else 
-    fof_search_cell(s, ci);
+    fof_search_cell(s, c);
 }
 
 /* Perform a FOF search on a single cell using the Union-Find algorithm.*/
@@ -436,7 +468,7 @@ void fof_search_cell(struct space *s, struct cell *c) {
   size_t *const offset = group_index + (ptrdiff_t)(gparts - s->gparts);
 
   if(c->nodeID != engine_rank) error("Performing self FOF search on foreign cell.");
-
+  
   /* Loop over particles and find which particles belong in the same group. */
   for (size_t i = 0; i < count; i++) {
 
@@ -479,6 +511,7 @@ void fof_search_cell(struct space *s, struct cell *c) {
 
     }
   }
+
 }
 
 /* Perform a FOF search on a pair of cells using the Union-Find algorithm.*/
@@ -489,7 +522,7 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
   struct gpart *gparts_i = ci->gparts;
   struct gpart *gparts_j = cj->gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double l_x2 = s->l_x2;
+  const float l_x2 = s->l_x2;
   size_t *group_index = s->fof_data.group_index;
 #ifdef UNION_BY_SIZE
   size_t *group_size = s->fof_data.group_size;
@@ -499,6 +532,13 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
   size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - s->gparts);
   size_t *const offset_j = group_index + (ptrdiff_t)(gparts_j - s->gparts);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if(offset_j > offset_i && (offset_j < offset_i + count_i))
+    error("Overlapping cells");
+  if(offset_i > offset_j && (offset_i < offset_j + count_j))
+    error("Overlapping cells");
+#endif
+  
   /* Account for boundary conditions.*/
   double shift[3] = {0.0, 0.0, 0.0};
 
@@ -507,9 +547,9 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
   double diff[3];
   for (int k = 0; k < 3; k++) {
     diff[k] = cj->loc[k] - ci->loc[k];
-    if (periodic && diff[k] < -dim[k] / 2)
+    if (periodic && diff[k] < -dim[k] * 0.5)
       shift[k] = dim[k];
-    else if (periodic && diff[k] > dim[k] / 2)
+    else if (periodic && diff[k] > dim[k] * 0.5)
       shift[k] = -dim[k];
     else
       shift[k] = 0.0;
@@ -558,6 +598,7 @@ void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
 #endif
     }
   }
+
 }
 
 /* Perform a FOF search between a local and foreign cell using the Union-Find algorithm. 
@@ -1296,7 +1337,7 @@ void fof_search_tree(struct space *s) {
           s->l_x2);
 
   node_offset = 0;
-
+  
 #ifdef WITH_MPI
   if (nr_nodes > 1) {
   
