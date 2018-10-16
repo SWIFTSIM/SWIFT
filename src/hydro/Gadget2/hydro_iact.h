@@ -525,8 +525,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += mj * visc_term * dvdr;
-  pj->entropy_dt += mi * visc_term * dvdr;
+  pi->entropy_dt += mj * visc_term * dvdr_Hubble;
+  pj->entropy_dt += mi * visc_term * dvdr_Hubble;
 
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
@@ -641,7 +641,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += mj * visc_term * dvdr;
+  pi->entropy_dt += mj * visc_term * dvdr_Hubble;
 
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */

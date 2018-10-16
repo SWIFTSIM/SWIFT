@@ -27,7 +27,10 @@
 
 void print_bytes(void *p, size_t len) {
   printf("(");
-  for (size_t i = 0; i < len; ++i) printf("%02x", ((unsigned char *)p)[i]);
+  for (size_t i = 0; i < len; ++i) {
+    printf("%02x", ((unsigned char *)p)[i]);
+    if (i % 4 == 3) printf("|");
+  }
   printf(")\n");
 }
 
@@ -60,6 +63,12 @@ void test(void) {
   pj.id = 2ll;
   pi.time_bin = 1;
   pj.time_bin = 1;
+
+  /* message("xi=[%e %e %e] vi=[%e %e %e] hi=%e", pi.x[0], pi.x[1], pi.x[2], */
+  /*         pi.v[0], pi.v[1], pi.v[2], pi.h); */
+
+  /* message("xj=[%e %e %e] vj=[%e %e %e] hj=%e", pj.x[0], pj.x[1], pj.x[2], */
+  /*         pj.v[0], pj.v[1], pj.v[2], pj.h); */
 
 #if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
   /* Give the primitive variables sensible values, since the Riemann solver does
@@ -162,8 +171,8 @@ void test(void) {
   if (i_not_ok) {
     printParticle_single(&pi, &xpi);
     printParticle_single(&pi2, &xpi);
-    print_bytes(&pj, sizeof(struct part));
-    print_bytes(&pj2, sizeof(struct part));
+    print_bytes(&pi, sizeof(struct part));
+    print_bytes(&pi2, sizeof(struct part));
     error("Particles 'pi' do not match after density (byte = %d)", i_not_ok);
   }
   if (j_not_ok) {
@@ -220,17 +229,15 @@ void test(void) {
     j_not_ok |= c_is_d;
   }
 #else
-  i_not_ok =
-      strncmp((const char *)&pi, (const char *)&pi2, sizeof(struct part));
-  j_not_ok =
-      strncmp((const char *)&pj, (const char *)&pj2, sizeof(struct part));
+  i_not_ok = memcmp((char *)&pi, (char *)&pi2, sizeof(struct part));
+  j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));
 #endif
 
   if (i_not_ok) {
     printParticle_single(&pi, &xpi);
     printParticle_single(&pi2, &xpi);
-    print_bytes(&pj, sizeof(struct part));
-    print_bytes(&pj2, sizeof(struct part));
+    print_bytes(&pi, sizeof(struct part));
+    print_bytes(&pi2, sizeof(struct part));
     error("Particles 'pi' do not match after force (byte = %d)", i_not_ok);
   }
   if (j_not_ok) {
@@ -240,6 +247,18 @@ void test(void) {
     print_bytes(&pj2, sizeof(struct part));
     error("Particles 'pj' do not match after force (byte = %d)", j_not_ok);
   }
+
+  /* message("xi =[%e %e %e] dAi/dt =%e", pi.x[0], pi.x[1], pi.x[2], */
+  /*         pi.entropy_dt); */
+
+  /* message("xi2=[%e %e %e] dAi2/dt=%e", pi2.x[0], pi2.x[1], pi2.x[2], */
+  /*         pi2.entropy_dt); */
+
+  /* message("xj =[%e %e %e] dAj/dt =%e", pj.x[0], pj.x[1], pj.x[2], */
+  /*         pj.entropy_dt); */
+
+  /* message("xj2=[%e %e %e] dAj2/dt=%e", pj2.x[0], pj2.x[1], pj2.x[2], */
+  /*         pj2.entropy_dt); */
 }
 
 int main(int argc, char *argv[]) {
