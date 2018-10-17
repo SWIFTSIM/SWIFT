@@ -58,6 +58,10 @@ struct cosmology {
    */
   double a_factor_mu;
 
+  /*! Inverse power of the scale-factor used for relative velocities in viscosity term
+   */
+  double a_factor_mu_inv;
+
   /*! Power of the scale-factor used for gravity accelerations */
   double a_factor_grav_accel;
 

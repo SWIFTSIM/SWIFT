@@ -481,18 +481,22 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
 
-  const float fac_mu = cosmo->a_factor_mu;
+  const float fac_mu_inv = cosmo->a_factor_mu_inv;
 
-  /* Inverse of the physical density */
+  /* Inverse of the co-moving density */
   const float rho_inv = 1.f / p->rho;
+
+  /* Inverse of the smoothing length */
+  const float h_inv = 1.f / p->h;
 
   /* Compute the norm of the curl */
   const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
                              p->density.rot_v[1] * p->density.rot_v[1] +
                              p->density.rot_v[2] * p->density.rot_v[2]);
 
-  /* Compute the norm of div v */
-  const float abs_div_v = fabsf(p->density.div_v);
+  /* Compute the norm of div v including the Hubble flow term */
+  const float div_physical_v = p->density.div_v + 3.f * cosmo->H;
+  const float abs_div_physical_v = fabsf(div_physical_v);
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
@@ -507,8 +511,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Pre-multiply in the AV factor; hydro_props are not passed to the iact
    * functions */
   const float balsara =
-      hydro_props->viscosity.alpha * abs_div_v /
-      (abs_div_v + curl_v + 0.0001f * fac_mu * soundspeed / p->h);
+      hydro_props->viscosity.alpha * abs_physical_div_v /
+    (abs_physical_div_v + curl_v + 0.0001f * fac_mu_inv * soundspeed * h_inv);
 
   /* Compute the "grad h" term */
   const float omega_inv =
