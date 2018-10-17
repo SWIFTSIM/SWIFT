@@ -194,40 +194,6 @@ __attribute__((always_inline)) INLINE static size_t update_root(
 
 }
 
-__attribute__((always_inline)) INLINE static void fof_union(size_t *root_i, const size_t root_j,
-                                                          size_t *group_index) {
-
-  int result = 0;
-
-  /* Loop until the root can be set to a new value. */
-  do {
-    size_t root_i_new = fof_find(*root_i, group_index);
-    const size_t root_j_new = fof_find(root_j, group_index);
-
-    /* Skip particles in the same group. */
-    if(root_i_new == root_j_new) return;
-
-    /* If the root ID of pj is lower than pi's root ID set pi's root to point to pj's. 
-     * Otherwise set pj's root to point to pi's.*/
-    if(root_j_new < root_i_new) {
-      
-      /* Updates the root and checks that its value has not been changed since being read. */
-      result = update_root(&group_index[root_i_new], root_j_new);
-      
-      /* Update root_i on the fly. */
-      *root_i = root_j_new;
-    }
-    else {
-      
-      /* Updates the root and checks that its value has not been changed since being read. */
-      result = update_root(&group_index[root_j_new], root_i_new);
-      
-      /* Update root_i on the fly. */
-      *root_i = root_i_new;
-    }
-  } while (result != 1);
-}
-
 #ifdef UNION_BY_SIZE
 __attribute__((always_inline)) INLINE static void fof_union_by_size(size_t *root_i, const size_t root_j,
                                                           size_t *group_index, size_t *group_size) {
@@ -274,6 +240,40 @@ __attribute__((always_inline)) INLINE static void fof_union_by_size(size_t *root
       /* Update root_i on the fly. */
       *root_i = root_i_new;
       
+    }
+  } while (result != 1);
+}
+#else
+__attribute__((always_inline)) INLINE static void fof_union(size_t *root_i, const size_t root_j,
+                                                          size_t *group_index) {
+
+  int result = 0;
+
+  /* Loop until the root can be set to a new value. */
+  do {
+    size_t root_i_new = fof_find(*root_i, group_index);
+    const size_t root_j_new = fof_find(root_j, group_index);
+
+    /* Skip particles in the same group. */
+    if(root_i_new == root_j_new) return;
+
+    /* If the root ID of pj is lower than pi's root ID set pi's root to point to pj's. 
+     * Otherwise set pj's root to point to pi's.*/
+    if(root_j_new < root_i_new) {
+      
+      /* Updates the root and checks that its value has not been changed since being read. */
+      result = update_root(&group_index[root_i_new], root_j_new);
+      
+      /* Update root_i on the fly. */
+      *root_i = root_j_new;
+    }
+    else {
+      
+      /* Updates the root and checks that its value has not been changed since being read. */
+      result = update_root(&group_index[root_j_new], root_i_new);
+      
+      /* Update root_i on the fly. */
+      *root_i = root_i_new;
     }
   } while (result != 1);
 }
@@ -1122,6 +1122,17 @@ void fof_search_foreign_cells(struct space *s) {
   /* The value of which is an offset into global_group_id, which is the actual root. */
   for(int i=0; i<group_count; i++) global_group_index[i] = i;
 
+#ifdef UNION_BY_SIZE
+  /* Store the original group size before incrementing in the Union-Find. */
+  size_t *orig_global_group_size = NULL;
+  
+  if (posix_memalign((void**)&orig_global_group_size, SWIFT_STRUCT_ALIGNMENT,
+                      group_count  * sizeof(size_t)) != 0)
+    error("Error while allocating memory for the displacement in memory for the global group link list");
+
+  for(int i=0; i<group_count; i++) orig_global_group_size[i] = global_group_size[i];
+#endif
+
   /* Perform a union-find on the group links. */
   for(int i=0; i<global_group_link_count; i++) {
   
@@ -1150,9 +1161,24 @@ void fof_search_foreign_cells(struct space *s) {
     size_t group_i = global_group_id[root_i];
     size_t group_j = global_group_id[root_j];
 
+    if(group_i == group_j) continue;
+
     /* Update roots accordingly. */
+#ifdef UNION_BY_SIZE
+    size_t size_i = global_group_size[root_i];
+    size_t size_j = global_group_size[root_j];
+    if(size_i < size_j) {
+      global_group_index[root_i] = root_j;
+      global_group_size[root_j] += size_i;
+    }
+    else {
+      global_group_index[root_j] = root_i;
+      global_group_size[root_i] += size_j;
+    }
+#else
     if(group_j < group_i) global_group_index[root_i] = root_j;
     else global_group_index[root_j] = root_i;
+#endif
 
   }
   
@@ -1170,12 +1196,16 @@ void fof_search_foreign_cells(struct space *s) {
     /* If the group is local update its root and size. */
     if(is_local(group_id, nr_gparts) && new_root != group_id) {
         group_index[group_id - node_offset] = new_root;
-        group_size[group_id - node_offset] -= global_group_size[i];
+
         group_mass[group_id - node_offset] -= global_group_mass[i];
         group_CoM[group_id - node_offset].x -= global_group_CoM[i].x;
         group_CoM[group_id - node_offset].y -= global_group_CoM[i].y;
         group_CoM[group_id - node_offset].z -= global_group_CoM[i].z;
-
+#ifdef UNION_BY_SIZE
+        group_size[group_id - node_offset] -= orig_global_group_size[i];
+#else
+        group_size[group_id - node_offset] -= global_group_size[i];
+#endif
     }
      
     /* If the group linked to a local root update its size. */
@@ -1204,7 +1234,12 @@ void fof_search_foreign_cells(struct space *s) {
       group_CoM[new_root - node_offset].y += (CoM_y * global_group_mass[i]);
       group_CoM[new_root - node_offset].z += (CoM_z * global_group_mass[i]);
 
+#ifdef UNION_BY_SIZE
+      /* Use group sizes before Union-Find */
+      group_size[new_root - node_offset] += orig_global_group_size[i];
+#else
       group_size[new_root - node_offset] += global_group_size[i];
+#endif
       group_mass[new_root - node_offset] += global_group_mass[i];
     }
 
@@ -1219,6 +1254,9 @@ void fof_search_foreign_cells(struct space *s) {
   free(global_group_size);
   free(global_group_mass);
   free(global_group_id);
+#ifdef UNION_BY_SIZE
+  free(orig_global_group_size);
+#endif
 
   message("Rank %d finished linking local roots to foreign roots.", engine_rank);
 
@@ -1404,7 +1442,7 @@ void fof_search_tree(struct space *s) {
   }
 
   size_t *local_roots = NULL;
-  int local_group_count = 0;
+  size_t local_group_count = 0;
 
   if (posix_memalign((void **)&local_roots, 32, num_local_roots * sizeof(size_t)) != 0)
     error("Failed to allocate list of local roots.");
@@ -1573,15 +1611,11 @@ void fof_search_tree(struct space *s) {
     for (size_t i = 0; i < nr_gparts; i++) {
       size_t root = node_offset + i;
       size_t local_root = node_offset + i;
-      int foreign = 0;
 
       /* FOF find */
       while (root != group_index[root - node_offset]) {
         root = group_index[root - node_offset];
-        if (!is_local(root, nr_gparts)) {
-          foreign = 1;
-          break;
-        }
+        if (!is_local(root, nr_gparts)) break;
 
         /* Store local root before index becomes foreign. */
         local_root = root;
@@ -1595,6 +1629,7 @@ void fof_search_tree(struct space *s) {
     /* Clean up memory. */
     free(group_counts);
     free(displ);
+    free(local_roots);
 
   }
 #endif
@@ -1648,7 +1683,7 @@ void fof_dump_group_data(char *out_file, struct space *s, struct group_length *g
   struct fof_CoM *group_CoM = s->fof_data.group_CoM;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   
-  fprintf(file, "# %10s %8s %10s %12s %12s %12s %12s\n", "Index", "Group ID", "Group Size", "Group Mass", "x CoM", "y CoM", "z CoM");
+  fprintf(file, "# %8s %10s %12s %12s %12s %12s\n", "Group ID", "Group Size", "Group Mass", "x CoM", "y CoM", "z CoM");
   fprintf(file, "#--------------------------------------------------------------------------------\n");
 
   for (int i = 0; i < s->fof_data.num_groups; i++) {
@@ -1662,7 +1697,7 @@ void fof_dump_group_data(char *out_file, struct space *s, struct group_length *g
       const double CoM_y = box_wrap(group_CoM[group_offset - node_offset].y, 0., dim[1]);
       const double CoM_z = box_wrap(group_CoM[group_offset - node_offset].z, 0., dim[2]);
 
-      fprintf(file, "  %10zu %8zu %10zu %12e %12e %12e %12e\n", group_offset - node_offset, gparts[group_offset - node_offset].group_id, group_size[group_offset - node_offset], group_mass[group_offset - node_offset], CoM_x, CoM_y, CoM_z);
+      fprintf(file, "  %8zu %10zu %12e %12e %12e %12e\n", gparts[group_offset - node_offset].group_id, group_size[group_offset - node_offset], group_mass[group_offset - node_offset], CoM_x, CoM_y, CoM_z);
     }
   }
 
