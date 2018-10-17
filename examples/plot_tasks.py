@@ -157,11 +157,11 @@ for task in SUBTYPES:
 
 #  For fiddling with colours...
 if args.verbose:
-    print "#Selected colours:"
+    print("#Selected colours:")
     for task in sorted(TASKCOLOURS.keys()):
-        print "# " + task + ": " + TASKCOLOURS[task]
+        print("# " + task + ": " + TASKCOLOURS[task])
     for task in sorted(SUBCOLOURS.keys()):
-        print "# " + task + ": " + SUBCOLOURS[task]
+        print("# " + task + ": " + SUBCOLOURS[task])
 
 #  Read input.
 data = pl.loadtxt( infile )
@@ -169,11 +169,11 @@ data = pl.loadtxt( infile )
 #  Do we have an MPI file?
 full_step = data[0,:]
 if full_step.size == 13:
-    print "# MPI mode"
+    print("# MPI mode")
     mpimode = True
     if ranks == None:
         ranks = range(int(max(data[:,0])) + 1)
-    print "# Number of ranks:", len(ranks)
+    print("# Number of ranks:", len(ranks))
     rankcol = 0
     threadscol = 1
     taskcol = 2
@@ -181,7 +181,7 @@ if full_step.size == 13:
     ticcol = 5
     toccol = 6
 else:
-    print "# non MPI mode"
+    print("# non MPI mode")
     ranks = [0]
     mpimode = False
     rankcol = -1
@@ -194,10 +194,10 @@ else:
 #  Get CPU_CLOCK to convert ticks into milliseconds.
 CPU_CLOCK = float(full_step[-1]) / 1000.0
 if args.verbose:
-    print "# CPU frequency:", CPU_CLOCK * 1000.0
+    print("# CPU frequency:", CPU_CLOCK * 1000.0)
 
 nthread = int(max(data[:,threadscol])) + 1
-print "# Number of threads:", nthread
+print("# Number of threads:", nthread)
 
 # Avoid start and end times of zero.
 sdata = data[data[:,ticcol] != 0]
@@ -224,24 +224,24 @@ if delta_t == 0:
         dt = toc_step - tic_step
         if dt > delta_t:
             delta_t = dt
-    print "# Data range: ", delta_t / CPU_CLOCK, "ms"
+    print("# Data range: ", delta_t / CPU_CLOCK, "ms")
 
 # Once more doing the real gather and plots this time.
 for rank in ranks:
-    print "# Processing rank: ", rank
+    print("# Processing rank: ", rank)
     if mpimode:
         data = sdata[sdata[:,rankcol] == rank]
         full_step = data[0,:]
     tic_step = int(full_step[ticcol])
     toc_step = int(full_step[toccol])
-    print "# Min tic = ", tic_step
+    print("# Min tic = ", tic_step)
     data = data[1:,:]
     typesseen = []
     nethread = 0
 
     #  Dummy image for ranks that have no tasks.
     if data.size == 0:
-        print "# Rank ", rank, " has no tasks"
+        print("# Rank ", rank, " has no tasks")
         fig = pl.figure()
         ax = fig.add_subplot(1,1,1)
         ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
@@ -367,6 +367,6 @@ for rank in ranks:
     else:
         outpng = outbase + ".png"
     pl.savefig(outpng)
-    print "Graphics done, output written to", outpng
+    print("Graphics done, output written to", outpng)
 
 sys.exit(0)

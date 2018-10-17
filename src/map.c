@@ -191,6 +191,13 @@ void map_h_max(struct part *p, struct cell *c, void *data) {
   if (p->h > (*p2)->h) *p2 = p;
 }
 
+void map_stars_h_max(struct spart *p, struct cell *c, void *data) {
+
+  struct spart **p2 = (struct spart **)data;
+
+  if (p->h > (*p2)->h) *p2 = p;
+}
+
 /**
  * @brief Mapping function for neighbour count.
  */
