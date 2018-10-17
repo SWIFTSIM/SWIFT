@@ -509,6 +509,10 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   c->H0 = H0_cgs * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   c->Hubble_time = 1. / c->H0;
 
+  /* Critical density at present day */
+  c->critical_density_0 =
+    3. * c->H0 * c->H0 / (8. * M_PI * phys_const->const_newton_G);
+
   /* Initialise the interpolation tables */
   c->drift_fac_interp_table = NULL;
   c->grav_kick_fac_interp_table = NULL;
@@ -565,6 +569,7 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->a_factor_grav_accel = 1.;
 
   c->critical_density = 0.;
+  c->critical_density_0 = 0.;
 
   c->time_step_factor = 1.;
 
