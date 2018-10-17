@@ -481,7 +481,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
 
-  const float fac_mu_inv = cosmo->a_factor_mu_inv;
+  const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
 
   /* Inverse of the co-moving density */
   const float rho_inv = 1.f / p->rho;
@@ -511,8 +511,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Pre-multiply in the AV factor; hydro_props are not passed to the iact
    * functions */
   const float balsara =
-      hydro_props->viscosity.alpha * abs_physical_div_v /
-    (abs_physical_div_v + curl_v + 0.0001f * fac_mu_inv * soundspeed * h_inv);
+      hydro_props->viscosity.alpha * abs_div_physical_v /
+    (abs_div_physical_v + curl_v + 0.0001f * fac_Balsara_eps * soundspeed * h_inv);
 
   /* Compute the "grad h" term */
   const float omega_inv =
