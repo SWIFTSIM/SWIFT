@@ -174,6 +174,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.mm = NULL;
     c->hydro.dx_max_part = 0.0f;
     c->hydro.dx_max_sort = 0.0f;
+    c->stars.dx_max_part = 0.f;
     c->hydro.sorted = 0;
     c->hydro.count = 0;
     c->grav.count = 0;
@@ -266,6 +267,7 @@ void space_free_cells(struct space *s) {
 void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
+  const size_t nr_sparts = s->nr_sparts;
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
@@ -279,6 +281,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->hydro.h_max > h_max) {
           h_max = s->cells_top[k].hydro.h_max;
         }
+        if (c->stars.h_max > h_max) {
+          h_max = s->cells_top[k].stars.h_max;
+        }
       }
     } else if (s->cells_top != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
@@ -286,10 +291,16 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->hydro.h_max > h_max) {
           h_max = s->cells_top[k].hydro.h_max;
         }
+        if (c->nodeID == engine_rank && c->stars.h_max > h_max) {
+          h_max = s->cells_top[k].stars.h_max;
+        }
       }
     } else {
       for (size_t k = 0; k < nr_parts; k++) {
         if (s->parts[k].h > h_max) h_max = s->parts[k].h;
+      }
+      for (size_t k = 0; k < nr_sparts; k++) {
+        if (s->sparts[k].h > h_max) h_max = s->sparts[k].h;
       }
     }
   }
@@ -1787,6 +1798,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
+  float stars_h_max = 0.f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -1877,6 +1889,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->hydro.h_max = 0.f;
       cp->hydro.dx_max_part = 0.f;
       cp->hydro.dx_max_sort = 0.f;
+      cp->stars.h_max = 0.f;
+      cp->stars.dx_max_part = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->super = NULL;
@@ -1925,6 +1939,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
+        stars_h_max = max(h_max, cp->stars.h_max);
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -2094,6 +2109,12 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
       gravity_time_bin_min = min(gravity_time_bin_min, sparts[k].time_bin);
       gravity_time_bin_max = max(gravity_time_bin_max, sparts[k].time_bin);
+      stars_h_max = max(stars_h_max, sparts[k].h);
+
+      /* Reset x_diff */
+      sparts[k].x_diff[0] = 0.f;
+      sparts[k].x_diff[1] = 0.f;
+      sparts[k].x_diff[2] = 0.f;
     }
 
     /* Convert into integer times */
@@ -2142,6 +2163,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_end_max = ti_gravity_end_max;
   c->grav.ti_beg_max = ti_gravity_beg_max;
+  c->stars.h_max = stars_h_max;
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */

@@ -38,6 +38,9 @@ struct spart {
   /*! Particle position. */
   double x[3];
 
+  /* Offset between current position and position at last tree rebuild. */
+  float x_diff[3];
+
   /*! Particle velocity. */
   float v[3];
 

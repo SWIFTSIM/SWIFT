@@ -144,6 +144,9 @@ struct pcell {
     /*! Number of #spart in this cell. */
     int count;
 
+    /*! Maximal smoothing length. */
+    double h_max;
+
   } stars;
 
   /*! Relative indices of the cell's progeny. */
@@ -188,6 +191,10 @@ struct pcell_step {
 
   /*! Stars variables */
   struct {
+
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
+
   } stars;
 };
 
@@ -426,6 +433,18 @@ struct cell {
     /*! Nr of #spart in this cell. */
     int count;
 
+    /*! Max smoothing length in this cell. */
+    double h_max;
+
+    /*! Values of h_max before the drifts, used for sub-cell tasks. */
+    float h_max_old;
+
+    /*! Maximum part movement in this cell since last construction. */
+    float dx_max_part;
+
+    /*! Values of dx_max before the drifts, used for sub-cell tasks. */
+    float dx_max_part_old;
+
     /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
     struct task *ghost_in;
 
@@ -662,8 +681,12 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 
-  // LOIC: To implement
-  return 0;
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return c->split && ((kernel_gamma * c->stars.h_max_old +
+                       c->stars.dx_max_part_old) < 0.5f * c->dmin);
 }
 
 /**
@@ -675,8 +698,8 @@ cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_stars_task(const struct cell *c) {
 
-  // LOIC: To implement
-  return 0;
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin);
 }
 
 /**
@@ -724,8 +747,13 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
 __attribute__((always_inline)) INLINE static int cell_can_split_pair_stars_task(
     const struct cell *c) {
 
-  // LOIC: To implement
-  return 0;
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius with some leeway smaller than */
+  /* the sub-cell sizes ? */
+  /* Note that since tasks are create after a rebuild no need to take */
+  /* into account any part motion (i.e. dx_max == 0 here) */
+  return c->split &&
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -737,8 +765,13 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_stars_task(
 __attribute__((always_inline)) INLINE static int cell_can_split_self_stars_task(
     const struct cell *c) {
 
-  // LOIC: To implement
-  return 0;
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius with some leeway smaller than */
+  /* the sub-cell sizes ? */
+  /* Note: No need for more checks here as all the sub-pairs and sub-self */
+  /* tasks will be created. So no need to check for h_max */
+  return c->split &&
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
 }
 
 /**

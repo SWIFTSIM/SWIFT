@@ -34,6 +34,7 @@ void map_wcount_min(struct part *p, struct cell *c, void *data);
 void map_wcount_max(struct part *p, struct cell *c, void *data);
 void map_h_min(struct part *p, struct cell *c, void *data);
 void map_h_max(struct part *p, struct cell *c, void *data);
+void map_stars_h_max(struct spart *p, struct cell *c, void *data);
 void map_icount(struct part *p, struct cell *c, void *data);
 void map_dump(struct part *p, struct cell *c, void *data);
 
