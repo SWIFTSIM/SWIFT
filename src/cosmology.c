@@ -158,7 +158,7 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
   c->a_factor_mu =
       pow(a, 0.5 * (3. * hydro_gamma - 5.)); /* a^{(3*gamma - 5) / 2} */
   c->a_factor_Balsara_eps =
-    pow(a, 0.5 * (1. - 3. * hydro_gamma)); /* a^{(1 - 3*gamma) / 2} */
+      pow(a, 0.5 * (1. - 3. * hydro_gamma)); /* a^{(1 - 3*gamma) / 2} */
 
   /* Redshift */
   c->z = a_inv - 1.;
@@ -550,6 +550,7 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->log_a_end = 0.;
 
   c->H = 0.;
+  c->H0 = 0.;
   c->a = 1.;
   c->z = 0.;
   c->a_inv = 1.;
