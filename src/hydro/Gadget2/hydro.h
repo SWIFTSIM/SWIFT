@@ -656,12 +656,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   xp->entropy_full += p->entropy_dt * dt_therm;
 
   /* Apply the minimal energy limit */
-  const float density = p->rho * cosmo->a3_inv;
-  const float min_energy = hydro_props->minimal_internal_energy;
-  const float min_entropy =
-      gas_entropy_from_internal_energy(density, min_energy);
-  if (xp->entropy_full < min_entropy) {
-    xp->entropy_full = min_entropy;
+  const float physical_density = p->rho * cosmo->a3_inv;
+  const float min_physical_energy = hydro_props->minimal_internal_energy;
+  const float min_physical_entropy =
+      gas_entropy_from_internal_energy(physical_density, min_physical_energy);
+  const float min_comoving_entropy = min_physical_entropy; /* A' = A */
+  if (xp->entropy_full < min_comoving_entropy) {
+    xp->entropy_full = min_comoving_entropy;
     p->entropy_dt = 0.f;
   }
 
@@ -693,20 +694,21 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-  /* We read u in the entropy field. We now get (comoving) S from (physical) u
-   * and (physical) rho. Note that comoving S == physical S */
+  /* We read u in the entropy field. We now get (comoving) A from (physical) u
+   * and (physical) rho. Note that comoving A (A') == physical A */
   xp->entropy_full =
       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, p->entropy);
   p->entropy = xp->entropy_full;
 
   /* Apply the minimal energy limit */
-  const float density = p->rho * cosmo->a3_inv;
-  const float min_energy = hydro_props->minimal_internal_energy;
-  const float min_entropy =
-      gas_entropy_from_internal_energy(density, min_energy);
-  if (xp->entropy_full < min_entropy) {
-    xp->entropy_full = min_entropy;
-    p->entropy = min_entropy;
+  const float physical_density = p->rho * cosmo->a3_inv;
+  const float min_physical_energy = hydro_props->minimal_internal_energy;
+  const float min_physical_entropy =
+      gas_entropy_from_internal_energy(physical_density, min_physical_energy);
+  const float min_comoving_entropy = min_physical_entropy; /* A' = A */
+  if (xp->entropy_full < min_comoving_entropy) {
+    xp->entropy_full = min_comoving_entropy;
+    p->entropy = min_comoving_entropy;
     p->entropy_dt = 0.f;
   }
 

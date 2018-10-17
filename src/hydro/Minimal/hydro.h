@@ -662,10 +662,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   xp->u_full += p->u_dt * dt_therm;
 
   /* Apply the minimal energy limit */
-  const float min_energy =
+  const float min_comoving_energy =
       hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-  if (xp->u_full < min_energy) {
-    xp->u_full = min_energy;
+  if (xp->u_full < min_comoving_energy) {
+    xp->u_full = min_comoving_energy;
     p->u_dt = 0.f;
   }
 
@@ -704,11 +704,11 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   xp->u_full = p->u;
 
   /* Apply the minimal energy limit */
-  const float min_energy =
+  const float min_comoving_energy =
       hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-  if (xp->u_full < min_energy) {
-    xp->u_full = min_energy;
-    p->u = min_energy;
+  if (xp->u_full < min_comoving_energy) {
+    xp->u_full = min_comoving_energy;
+    p->u = min_comoving_energy;
     p->u_dt = 0.f;
   }
 

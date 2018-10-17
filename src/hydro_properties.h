@@ -69,13 +69,13 @@ struct hydro_props {
   /*! Minimal temperature allowed */
   float minimal_temperature;
 
-  /*! Minimal internal energy per unit mass */
+  /*! Minimal physical internal energy per unit mass */
   float minimal_internal_energy;
 
   /*! Initial temperature */
   float initial_temperature;
 
-  /*! Initial internal energy per unit mass */
+  /*! Initial physical internal energy per unit mass */
   float initial_internal_energy;
 
   /*! Primordial hydrogen mass fraction for initial energy conversion */
