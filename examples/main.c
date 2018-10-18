@@ -941,7 +941,7 @@ int main(int argc, char *argv[]) {
                   talking, restart_file);
 
     /* Initialise the FOF parameters. */
-    if (with_fof) fof_init(&s, N_total[0], N_total[1]);
+    if (with_fof) fof_init(&s, N_total[0], N_total[1], N_total[2]);
     
     if (myrank == 0) {
       clocks_gettime(&toc);
