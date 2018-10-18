@@ -1035,8 +1035,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_reset_gradient(p);
 
 #else
-            /* This needs to be extracted here because otherwise it is an
-             * undefined variable for the schemes that use the extra ghost. */
             const struct hydro_props *hydro_props = e->hydro_properties;
 
             /* Calculate the time-step for passing to hydro_prepare_force, used
@@ -1068,6 +1066,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
+            /* Ok, we are done with this particle */
             continue;
           }
 
@@ -1137,8 +1136,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_reset_gradient(p);
 
 #else
-        /* This needs to be extracted here because otherwise it is an
-         * undefined variable for the schemes that use the extra ghost. */
         const struct hydro_props *hydro_props = e->hydro_properties;
 
         /* Calculate the time-step for passing to hydro_prepare_force, used for
