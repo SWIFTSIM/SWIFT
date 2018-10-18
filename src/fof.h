@@ -24,8 +24,17 @@
 #include "../config.h"
 
 /* Local headers */
-#include "cell.h"
-#include "space.h"
+#include "align.h"
+#include "parser.h"
+
+/* Avoid cyclic inclusions */
+struct space;
+
+struct fof_CoM {
+
+  double x, y, z;
+
+} SWIFT_STRUCT_ALIGN;
 
 /* MPI message required for FOF. */
 struct fof_mpi {
@@ -45,7 +54,36 @@ struct fof_mpi {
   /* The foreign particle's root ID.*/
   size_t group_j;
 
+  /* The local group's size.*/
+  size_t group_j_size;
+
+  /* The local group's mass.*/
+  double group_j_mass;
+  
+  /* The local group's CoM.*/
+  struct fof_CoM group_j_CoM;
+
 } SWIFT_STRUCT_ALIGN; 
+
+struct fof {
+
+  size_t *group_index;
+  size_t *group_size;
+  double *group_mass;
+  struct fof_CoM *group_CoM;
+  int num_groups;
+  size_t min_group_size;
+  size_t group_id_default;
+  size_t group_id_offset;
+  int group_links_size_default;
+
+  int group_link_count;
+  struct fof_mpi *group_links;
+  int group_links_size;
+
+  char base_name[PARSER_MAX_LINE_SIZE];
+
+} SWIFT_STRUCT_ALIGN;
 
 /* Store group size and offset into array. */
 struct group_length {

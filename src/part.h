@@ -34,6 +34,7 @@
 #include "align.h"
 #include "part_type.h"
 #include "timeline.h"
+#include "fof.h"
 
 /* Some constants. */
 #define part_align 128

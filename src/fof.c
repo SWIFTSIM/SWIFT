@@ -655,12 +655,19 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell
 
             /* Store the particle group properties for communication. */
             (*group_links)[*link_count].group_i = root_i;        
-            (*group_links)[*link_count].group_j = pj->group_id;        
             (*group_links)[*link_count].group_i_size = group_size[root_i - node_offset];
             (*group_links)[*link_count].group_i_mass = group_mass[root_i - node_offset];
             (*group_links)[*link_count].group_i_CoM.x = group_CoM[root_i - node_offset].x;
             (*group_links)[*link_count].group_i_CoM.y = group_CoM[root_i - node_offset].y;
             (*group_links)[*link_count].group_i_CoM.z = group_CoM[root_i - node_offset].z;
+            
+            (*group_links)[*link_count].group_j = pj->group_id;
+            (*group_links)[*link_count].group_j_size = pj->group_size;
+            (*group_links)[*link_count].group_j_mass = pj->group_mass;
+            (*group_links)[*link_count].group_j_CoM.x = pj->group_CoM.x;
+            (*group_links)[*link_count].group_j_CoM.y = pj->group_CoM.y;
+            (*group_links)[*link_count].group_j_CoM.z = pj->group_CoM.z;
+
             (*link_count)++;
           }  
         }
@@ -789,12 +796,19 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
     /* Copy the local links to the global list. */
     for(int i=0; i<local_link_count; i++) {
       (*group_links)[*group_link_count + i].group_i = local_group_links[i].group_i;        
-      (*group_links)[*group_link_count + i].group_j = local_group_links[i].group_j;        
       (*group_links)[*group_link_count + i].group_i_size = local_group_links[i].group_i_size;
       (*group_links)[*group_link_count + i].group_i_mass = local_group_links[i].group_i_mass;
       (*group_links)[*group_link_count + i].group_i_CoM.x = local_group_links[i].group_i_CoM.x;
       (*group_links)[*group_link_count + i].group_i_CoM.y = local_group_links[i].group_i_CoM.y;
       (*group_links)[*group_link_count + i].group_i_CoM.z = local_group_links[i].group_i_CoM.z;
+      
+      (*group_links)[*group_link_count + i].group_j = local_group_links[i].group_j;        
+      (*group_links)[*group_link_count + i].group_j_size = local_group_links[i].group_j_size;
+      (*group_links)[*group_link_count + i].group_j_mass = local_group_links[i].group_j_mass;
+      (*group_links)[*group_link_count + i].group_j_CoM.x = local_group_links[i].group_j_CoM.x;
+      (*group_links)[*group_link_count + i].group_j_CoM.y = local_group_links[i].group_j_CoM.y;
+      (*group_links)[*group_link_count + i].group_j_CoM.z = local_group_links[i].group_j_CoM.z;
+
     }
     (*group_link_count) += local_link_count;
   }
@@ -876,32 +890,36 @@ void fof_search_foreign_cells(struct space *s) {
   /* Loop over cells_in and cells_out for each proxy and find which cells are in range of each other to perform
    * the FOF search. Store local cells that are touching foreign cells in a list. */
   for(int i=0; i<e->nr_proxies; i++) {
-  
-    for(int j=0; j<e->proxies[i].nr_cells_out; j++) {
 
-      /* Skip non-gravity cells. */
-      if(!(e->proxies[i].cells_out_type[j] & proxy_cell_type_gravity)) continue; 
-      
-      struct cell *restrict local_cell = e->proxies[i].cells_out[j];
+    /* Only find links across an MPI domain on one rank. */
+    if(engine_rank == min(engine_rank, e->proxies[i].nodeID)) {
 
-      /* Skip empty cells. */
-      if(local_cell->gcount == 0) continue;
+      for(int j=0; j<e->proxies[i].nr_cells_out; j++) {
 
-      for(int k=0; k<e->proxies[i].nr_cells_in; k++) {
-      
         /* Skip non-gravity cells. */
-        if(!(e->proxies[i].cells_in_type[k] & proxy_cell_type_gravity)) continue; 
-        
-        struct cell *restrict foreign_cell = e->proxies[i].cells_in[k];
-      
+        if(!(e->proxies[i].cells_out_type[j] & proxy_cell_type_gravity)) continue; 
+
+        struct cell *restrict local_cell = e->proxies[i].cells_out[j];
+
         /* Skip empty cells. */
-        if(foreign_cell->gcount == 0) continue;
-        
-        /* Check if local cell has already been added to the local list of cells. */
-        const double r2 = cell_min_dist(local_cell, foreign_cell, dim);
-        if(r2 < search_r2) {
-          cell_pairs[cell_pair_count].local = local_cell;
-          cell_pairs[cell_pair_count++].foreign = foreign_cell;
+        if(local_cell->gcount == 0) continue;
+
+        for(int k=0; k<e->proxies[i].nr_cells_in; k++) {
+
+          /* Skip non-gravity cells. */
+          if(!(e->proxies[i].cells_in_type[k] & proxy_cell_type_gravity)) continue; 
+
+          struct cell *restrict foreign_cell = e->proxies[i].cells_in[k];
+
+          /* Skip empty cells. */
+          if(foreign_cell->gcount == 0) continue;
+
+          /* Check if local cell has already been added to the local list of cells. */
+          const double r2 = cell_min_dist(local_cell, foreign_cell, dim);
+          if(r2 < search_r2) {
+            cell_pairs[cell_pair_count].local = local_cell;
+            cell_pairs[cell_pair_count++].foreign = foreign_cell;
+          }
         }
       }
     }
@@ -918,10 +936,15 @@ void fof_search_foreign_cells(struct space *s) {
       /* Make a list of particle offsets into the global gparts array. */
       size_t *const offset = group_index + (ptrdiff_t)(gparts - s->gparts);
 
-      /* Set each particle's root found in the local FOF.*/
+      /* Set each particle's root and group properties found in the local FOF.*/
       for(int k=0; k<local_cell->gcount; k++) {
         const size_t root = fof_find_global(offset[k] - node_offset, group_index);  
         gparts[k].group_id = root;
+        gparts[k].group_size = group_size[root - node_offset];
+        gparts[k].group_mass = group_mass[root - node_offset];
+        gparts[k].group_CoM.x = group_CoM[root - node_offset].x;
+        gparts[k].group_CoM.y = group_CoM[root - node_offset].y;
+        gparts[k].group_CoM.z = group_CoM[root - node_offset].z;
       }
     }
   }
@@ -1034,82 +1057,52 @@ void fof_search_foreign_cells(struct space *s) {
   size_t *global_group_index = NULL, *global_group_id = NULL, *global_group_size = NULL;
   double *global_group_mass = NULL;
   struct fof_CoM *global_group_CoM = NULL;
+  const int global_group_list_size = 2 * global_group_link_count;
   int group_count = 0;
 
   if (posix_memalign((void**)&global_group_index, SWIFT_STRUCT_ALIGNMENT,
-                      global_group_link_count  * sizeof(size_t)) != 0)
+                      global_group_list_size  * sizeof(size_t)) != 0)
     error("Error while allocating memory for the displacement in memory for the global group link list");
   
   if (posix_memalign((void**)&global_group_id, SWIFT_STRUCT_ALIGNMENT,
-                      global_group_link_count  * sizeof(size_t)) != 0)
+                      global_group_list_size  * sizeof(size_t)) != 0)
     error("Error while allocating memory for the displacement in memory for the global group link list");
   
   if (posix_memalign((void**)&global_group_size, SWIFT_STRUCT_ALIGNMENT,
-                      global_group_link_count  * sizeof(size_t)) != 0)
+                      global_group_list_size  * sizeof(size_t)) != 0)
     error("Error while allocating memory for the displacement in memory for the global group link list");
   
   if (posix_memalign((void**)&global_group_mass, SWIFT_STRUCT_ALIGNMENT,
-                      global_group_link_count  * sizeof(double)) != 0)
+                      global_group_list_size  * sizeof(double)) != 0)
     error("Error while allocating memory for the displacement in memory for the global group link list");
 
   if (posix_memalign((void**)&global_group_CoM, SWIFT_STRUCT_ALIGNMENT,
-                      global_group_link_count  * sizeof(struct fof_CoM)) != 0)
+                      global_group_list_size  * sizeof(struct fof_CoM)) != 0)
     error("Error while allocating memory for the global group CoM.");
 
-  bzero(global_group_size, global_group_link_count * sizeof(size_t));
-  bzero(global_group_mass, global_group_link_count * sizeof(double));
-  bzero(global_group_CoM, global_group_link_count * sizeof(struct fof_CoM));
+  bzero(global_group_size, global_group_list_size * sizeof(size_t));
+  bzero(global_group_mass, global_group_list_size * sizeof(double));
+  bzero(global_group_CoM, global_group_list_size * sizeof(struct fof_CoM));
 
-  /* Compress the list of group links across an MPI domain by removing the symmetric cases. */
-  /* Store each group ID once along with its size. */
+  /* Store each group ID and its properties. */
   for(int i=0; i<global_group_link_count; i++) {
-    
-    int found_i = 0, found_j = 0;
+
     size_t group_i = global_group_links[i].group_i;
     size_t group_j = global_group_links[i].group_j;
 
-    /* Loop over list and check that the link doesn't already exist. */
-    for(int j=0; j<group_count; j++) {
-      if(global_group_id[j] == group_i) {
-        found_i = 1;
-        break;
-      }
-    }
-    
-    for(int j=0; j<group_count; j++) {
-      if(global_group_id[j] == group_j) {
-        found_j = 1;
-        break;
-      }
-    }
+    global_group_size[group_count] += global_group_links[i].group_i_size;
+    global_group_mass[group_count] += global_group_links[i].group_i_mass;
+    global_group_CoM[group_count].x += global_group_links[i].group_i_CoM.x;
+    global_group_CoM[group_count].y += global_group_links[i].group_i_CoM.y;
+    global_group_CoM[group_count].z += global_group_links[i].group_i_CoM.z;
+    global_group_id[group_count++] = group_i;
 
-    /* If it doesn't already exist in the list add it. */
-    if(!found_i) {
-      global_group_size[group_count] += global_group_links[i].group_i_size;
-      global_group_mass[group_count] += global_group_links[i].group_i_mass;
-      global_group_CoM[group_count].x += global_group_links[i].group_i_CoM.x;
-      global_group_CoM[group_count].y += global_group_links[i].group_i_CoM.y;
-      global_group_CoM[group_count].z += global_group_links[i].group_i_CoM.z;
-      global_group_id[group_count++] = group_i;
-    }
-    
-    if(!found_j) {
-      /* Need to search for group_j sizes as the group size is only known on the local node. */
-      for(int j=0; j<global_group_link_count; j++) {
-        if(global_group_links[j].group_i == group_j) {
-          
-          global_group_size[group_count] += global_group_links[j].group_i_size;
-          global_group_mass[group_count] += global_group_links[j].group_i_mass;
-          global_group_CoM[group_count].x += global_group_links[j].group_i_CoM.x;
-          global_group_CoM[group_count].y += global_group_links[j].group_i_CoM.y;
-          global_group_CoM[group_count].z += global_group_links[j].group_i_CoM.z;
-
-          break;
-        }
-      }
-
-      global_group_id[group_count++] = group_j;
-    }
+    global_group_size[group_count] += global_group_links[i].group_j_size;
+    global_group_mass[group_count] += global_group_links[i].group_j_mass;
+    global_group_CoM[group_count].x += global_group_links[i].group_j_CoM.x;
+    global_group_CoM[group_count].y += global_group_links[i].group_j_CoM.y;
+    global_group_CoM[group_count].z += global_group_links[i].group_j_CoM.z;
+    global_group_id[group_count++] = group_j;
 
   }
 

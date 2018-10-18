@@ -35,37 +35,10 @@
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
-//#include "fof.h"
 
 /* Avoid cyclic inclusions */
 struct cell;
 struct cosmology;
-
-struct fof_CoM {
-
-  double x, y, z;
-
-} SWIFT_STRUCT_ALIGN;
-
-struct fof {
-
-  size_t *group_index;
-  size_t *group_size;
-  double *group_mass;
-  struct fof_CoM *group_CoM;
-  int num_groups;
-  size_t min_group_size;
-  size_t group_id_default;
-  size_t group_id_offset;
-  int group_links_size_default;
-
-  int group_link_count;
-  struct fof_mpi *group_links;
-  int group_links_size;
-
-  char base_name[PARSER_MAX_LINE_SIZE];
-
-} SWIFT_STRUCT_ALIGN;
 
 /* Some constants. */
 #define space_cellallocchunk 1000
