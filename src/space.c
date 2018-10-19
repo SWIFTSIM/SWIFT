@@ -2845,7 +2845,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
-    space_generate_gas(s, cosmo, verbose);
+    space_generate_gas(s, cosmo, periodic, dim, verbose);
     parts = s->parts;
     gparts = s->gparts;
     Npart = s->nr_parts;
@@ -3161,7 +3161,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
  * @param verbose Are we talkative?
  */
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
-                        int verbose) {
+                        int periodic, double dim[3], int verbose) {
 
   /* Check that this is a sensible ting to do */
   if (!s->hydro)
@@ -3203,7 +3203,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
   /* Compute some constants */
   const double mass_ratio = cosmo->Omega_b / cosmo->Omega_m;
-  const double bg_density = cosmo->Omega_m * cosmo->critical_density;
+  const double bg_density = cosmo->Omega_m * cosmo->critical_density_0;
   const double bg_density_inv = 1. / bg_density;
 
   /* Update the particle properties */
@@ -3217,9 +3217,12 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     p->id = gp_gas->id_or_neg_offset * 2 + 1;
     gp_dm->id_or_neg_offset *= 2;
 
-    if (gp_dm->id_or_neg_offset <= 0) error("DM particle ID overflowd");
+    if (gp_dm->id_or_neg_offset < 0) 
+      error("DM particle ID overflowd (DM id=%lld gas id=%lld)", 
+	    gp_dm->id_or_neg_offset, p->id);
 
-    if (p->id <= 0) error("gas particle ID overflowd");
+    if (p->id < 0) 
+      error("gas particle ID overflowd (id=%lld)", p->id);
 
     /* Set the links correctly */
     p->gpart = gp_gas;
@@ -3228,8 +3231,8 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
     /* Compute positions shift */
     const double d = cbrt(gp_dm->mass * bg_density_inv);
-    const double shift_dm = d * mass_ratio;
-    const double shift_gas = d * (1. - mass_ratio);
+    const double shift_dm = 0.5 * d * mass_ratio;
+    const double shift_gas = 0.5 * d * (1. - mass_ratio);
 
     /* Set the masses */
     gp_dm->mass *= (1. - mass_ratio);
@@ -3240,12 +3243,27 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     gp_dm->x[0] += shift_dm;
     gp_dm->x[1] += shift_dm;
     gp_dm->x[2] += shift_dm;
-    gp_gas->x[0] += shift_gas;
-    gp_gas->x[1] += shift_gas;
-    gp_gas->x[2] += shift_gas;
+    gp_gas->x[0] -= shift_gas;
+    gp_gas->x[1] -= shift_gas;
+    gp_gas->x[2] -= shift_gas;
+    
+    /* Make sure the positions are identical between linked particles */
     p->x[0] = gp_gas->x[0];
     p->x[1] = gp_gas->x[1];
     p->x[2] = gp_gas->x[2];
+
+    /* Box-wrap the whole thing to be safe */
+    if (periodic) {
+      gp_dm->x[0] = box_wrap(gp_dm->x[0], 0., dim[0]);
+      gp_dm->x[1] = box_wrap(gp_dm->x[1], 0., dim[1]);
+      gp_dm->x[2] = box_wrap(gp_dm->x[2], 0., dim[2]);
+      gp_gas->x[0] = box_wrap(gp_gas->x[0], 0., dim[0]);
+      gp_gas->x[1] = box_wrap(gp_gas->x[1], 0., dim[1]);
+      gp_gas->x[2] = box_wrap(gp_gas->x[2], 0., dim[2]);
+      p->x[0] = box_wrap(p->x[0], 0., dim[0]);
+      p->x[1] = box_wrap(p->x[1], 0., dim[1]);
+      p->x[2] = box_wrap(p->x[2], 0., dim[2]);
+    }
 
     /* Also copy the velocities */
     p->v[0] = gp_gas->v_full[0];
@@ -3253,7 +3271,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     p->v[2] = gp_gas->v_full[2];
 
     /* Set the smoothing length to the mean inter-particle separation */
-    p->h = 30. * d;
+    p->h = d;
 
     /* Note that the thermodynamic properties (u, S, ...) will be set later */
   }
