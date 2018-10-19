@@ -511,7 +511,7 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
 
   /* Critical density at present day */
   c->critical_density_0 =
-    3. * c->H0 * c->H0 / (8. * M_PI * phys_const->const_newton_G);
+      3. * c->H0 * c->H0 / (8. * M_PI * phys_const->const_newton_G);
 
   /* Initialise the interpolation tables */
   c->drift_fac_interp_table = NULL;

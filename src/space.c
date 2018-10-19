@@ -3217,12 +3217,11 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     p->id = gp_gas->id_or_neg_offset * 2 + 1;
     gp_dm->id_or_neg_offset *= 2;
 
-    if (gp_dm->id_or_neg_offset < 0) 
-      error("DM particle ID overflowd (DM id=%lld gas id=%lld)", 
-	    gp_dm->id_or_neg_offset, p->id);
+    if (gp_dm->id_or_neg_offset < 0)
+      error("DM particle ID overflowd (DM id=%lld gas id=%lld)",
+            gp_dm->id_or_neg_offset, p->id);
 
-    if (p->id < 0) 
-      error("gas particle ID overflowd (id=%lld)", p->id);
+    if (p->id < 0) error("gas particle ID overflowd (id=%lld)", p->id);
 
     /* Set the links correctly */
     p->gpart = gp_gas;
@@ -3246,7 +3245,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     gp_gas->x[0] -= shift_gas;
     gp_gas->x[1] -= shift_gas;
     gp_gas->x[2] -= shift_gas;
-    
+
     /* Make sure the positions are identical between linked particles */
     p->x[0] = gp_gas->x[0];
     p->x[1] = gp_gas->x[1];
