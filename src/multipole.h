@@ -1030,7 +1030,7 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (gparts[k].time_bin == time_bin_inhibited)
-      error("Inhibited particle in P2M. Should have been remvoed earlier.");
+      error("Inhibited particle in P2M. Should have been removed earlier.");
 #endif
 
     mass += m;
