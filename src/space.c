@@ -3158,10 +3158,12 @@ void space_replicate(struct space *s, int replicate, int verbose) {
  *
  * @param s The #space to create the particles in.
  * @param cosmo The current #cosmology model.
+ * @param periodic Are we using periodic boundary conditions?
+ * @param dim The size of the box (for periodic wrapping).
  * @param verbose Are we talkative?
  */
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
-                        int periodic, double dim[3], int verbose) {
+                        int periodic, const double dim[3], int verbose) {
 
   /* Check that this is a sensible ting to do */
   if (!s->hydro)
