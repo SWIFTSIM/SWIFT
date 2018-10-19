@@ -769,7 +769,7 @@ runner_iact_nonsym_1_vec_force(
       vec_div(vec_mul(mj.v, vec_mul(dvdr.v, vec_mul(ri.v, wi_dr.v))), pjrho.v);
 
   /* Change in entropy */
-  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr.v));
+  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr_Hubble.v));
 
   /* Store the forces back on the particles. */
   a_hydro_xSum->v = vec_mask_sub(a_hydro_xSum->v, piax.v, mask);
@@ -981,8 +981,8 @@ runner_iact_nonsym_2_vec_force(
               pjrho_2.v);
 
   /* Change in entropy */
-  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr.v));
-  entropy_dt_2.v = vec_mul(mj_2.v, vec_mul(visc_term_2.v, dvdr_2.v));
+  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr_Hubble.v));
+  entropy_dt_2.v = vec_mul(mj_2.v, vec_mul(visc_term_2.v, dvdr_Hubble_2.v));
 
   /* Store the forces back on the particles. */
   if (mask_cond) {
