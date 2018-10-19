@@ -64,12 +64,6 @@ void test(void) {
   pi.time_bin = 1;
   pj.time_bin = 1;
 
-  /* message("xi=[%e %e %e] vi=[%e %e %e] hi=%e", pi.x[0], pi.x[1], pi.x[2], */
-  /*         pi.v[0], pi.v[1], pi.v[2], pi.h); */
-
-  /* message("xj=[%e %e %e] vj=[%e %e %e] hj=%e", pj.x[0], pj.x[1], pj.x[2], */
-  /*         pj.v[0], pj.v[1], pj.v[2], pj.h); */
-
 #if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
   /* Give the primitive variables sensible values, since the Riemann solver does
      not like negative densities and pressures */
@@ -247,18 +241,6 @@ void test(void) {
     print_bytes(&pj2, sizeof(struct part));
     error("Particles 'pj' do not match after force (byte = %d)", j_not_ok);
   }
-
-  /* message("xi =[%e %e %e] dAi/dt =%e", pi.x[0], pi.x[1], pi.x[2], */
-  /*         pi.entropy_dt); */
-
-  /* message("xi2=[%e %e %e] dAi2/dt=%e", pi2.x[0], pi2.x[1], pi2.x[2], */
-  /*         pi2.entropy_dt); */
-
-  /* message("xj =[%e %e %e] dAj/dt =%e", pj.x[0], pj.x[1], pj.x[2], */
-  /*         pj.entropy_dt); */
-
-  /* message("xj2=[%e %e %e] dAj2/dt=%e", pj2.x[0], pj2.x[1], pj2.x[2], */
-  /*         pj2.entropy_dt); */
 }
 
 int main(int argc, char *argv[]) {
