@@ -42,6 +42,7 @@ double clocks_from_ticks(ticks tics);
 ticks clocks_to_ticks(double interval);
 double clocks_diff_ticks(ticks tic, ticks toc);
 const char *clocks_get_timesincestart(void);
+double clocks_get_hours_since_start(void);
 
 double clocks_get_cputime_used(void);
 int clocks_random_seed(void);

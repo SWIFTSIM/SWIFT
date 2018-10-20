@@ -264,6 +264,17 @@ const char *clocks_get_timesincestart(void) {
 }
 
 /**
+ * Returns the wall-clock time since the start of execution in hours.
+ *
+ * Need to call clocks_set_cpufreq() to mark the start of execution.
+ *
+ * @result the time since the start of the execution
+ */
+double clocks_get_hours_since_start(void) {
+  return clocks_diff_ticks(getticks(), clocks_start) / (3600. * 1000.0);
+}
+
+/**
  * @brief return the cpu time used.
  *
  * Uses the times(2) function to access the user cpu times and returns the sum
