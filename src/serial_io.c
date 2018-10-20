@@ -398,7 +398,6 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param Ngas (output) The number of #part read from the file on that node.
  * @param Ngparts (output) The number of #gpart read from the file on that node.
  * @param Nstars (output) The number of #spart read from the file on that node.
- * @param periodic (output) 1 if the volume is periodic, 0 if not.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we reading gas particles ?
@@ -427,11 +426,11 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
 void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
                     struct spart** sparts, size_t* Ngas, size_t* Ngparts,
-                    size_t* Nstars, int* periodic, int* flag_entropy,
-                    int with_hydro, int with_gravity, int with_stars,
-                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
-                    int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
-                    int n_threads, int dry_run) {
+                    size_t* Nstars, int* flag_entropy, int with_hydro,
+                    int with_gravity, int with_stars, int cleanup_h,
+                    int cleanup_sqrt_a, double h, double a, int mpi_rank,
+                    int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
+                    int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -454,17 +453,6 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
     if (h_file < 0)
       error("Error while opening file '%s' for initial read.", fileName);
-
-    /* Open header to read simulation properties */
-    /* message("Reading runtime parameters..."); */
-    h_grp = H5Gopen(h_file, "/RuntimePars", H5P_DEFAULT);
-    if (h_grp < 0) error("Error while opening runtime parameters\n");
-
-    /* Read the relevant information */
-    io_read_attribute(h_grp, "PeriodicBoundariesOn", INT, periodic);
-
-    /* Close runtime parameters */
-    H5Gclose(h_grp);
 
     /* Open header to read simulation properties */
     /* message("Reading file header..."); */
@@ -560,7 +548,6 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
   /* Now need to broadcast that information to all ranks. */
   MPI_Bcast(flag_entropy, 1, MPI_INT, 0, comm);
-  MPI_Bcast(periodic, 1, MPI_INT, 0, comm);
   MPI_Bcast(&N_total, swift_type_count, MPI_LONG_LONG_INT, 0, comm);
   MPI_Bcast(dim, 3, MPI_DOUBLE, 0, comm);
   MPI_Bcast(ic_units, sizeof(struct unit_system), MPI_BYTE, 0, comm);
