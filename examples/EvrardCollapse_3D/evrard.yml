@@ -39,6 +39,7 @@ Gravity:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./evrard.hdf5       # The file to read
-
+  periodic:   0
+  
 PhysicalConstants:
   G: 1.

@@ -26,6 +26,7 @@ Snapshots:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  Isothermal.hdf5       # The file to read
+  periodic:   1
   shift:      [200.,200.,200.]      # Shift all particles to be in the potential
  
 # External potential parameters
