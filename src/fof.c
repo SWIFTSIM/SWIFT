@@ -825,8 +825,11 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
  * @brief Search foreign cells for links and communicate any found to the appropriate node.
  *
  * @param s Pointer to a #space.
+ * @param local_roots List of local roots.
  */
-void fof_search_foreign_cells(struct space *s) {
+size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
+
+  size_t local_root_count = 0;
 
 #ifdef WITH_MPI
 
@@ -1180,6 +1183,10 @@ void fof_search_foreign_cells(struct space *s) {
 
   tic = getticks();
 
+  if (posix_memalign((void**)local_roots, SWIFT_STRUCT_ALIGNMENT,
+                      group_count  * sizeof(size_t)) != 0)
+    error("Error while allocating memory for local roots");
+
   /* Update each group locally with new root information. */
   for(int i=0; i<group_count; i++) {
     
@@ -1199,6 +1206,10 @@ void fof_search_foreign_cells(struct space *s) {
 #else
         group_size[group_id - node_offset] -= global_group_size[i];
 #endif
+        
+        /* Store local root. */
+        (*local_roots)[local_root_count++] = group_id - node_offset;
+
     }
      
     /* If the group linked to a local root update its size. */
@@ -1255,6 +1266,7 @@ void fof_search_foreign_cells(struct space *s) {
 
 #endif /* WITH_MPI */
 
+  return local_root_count;
 }
 
 /* Perform a FOF search on gravity particles using the cells and applying the
@@ -1425,36 +1437,14 @@ void fof_search_tree(struct space *s) {
   }
   
 #ifdef WITH_MPI
-
-  /* Find the number of local roots. */
-  int num_local_roots = 0;
-  for (size_t i = 0; i < nr_gparts; i++) {
-
-    if(group_index[i] == i && group_size[i] >= 1) num_local_roots++;
-
-  }
-
+  size_t num_local_roots = 0;
   size_t *local_roots = NULL;
-  size_t local_group_count = 0;
-
-  if (posix_memalign((void **)&local_roots, 32, num_local_roots * sizeof(size_t)) != 0)
-    error("Failed to allocate list of local roots.");
-
-  /* Find local roots before searching for foreign links and store their index. */
-  for (size_t i = 0; i < nr_gparts; i++) {
-
-    if(group_index[i] == i && group_size[i] >= 1) {
-      local_roots[local_group_count++] = i;
-    }
-
-  }
-
   if (nr_nodes > 1) {
   
     ticks tic_mpi = getticks();
     
     /* Search for group links across MPI domains. */
-    fof_search_foreign_cells(s);
+    num_local_roots = fof_search_foreign_cells(s, &local_roots);
 
     message("fof_search_foreign_cells() took: %.3f %s.",
         clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
@@ -1584,7 +1574,7 @@ void fof_search_tree(struct space *s) {
     }
 
     /* Update local roots that have foreign roots. */
-    for (size_t i = 0; i < local_group_count; i++) {
+    for (size_t i = 0; i < num_local_roots; i++) {
       size_t root = local_roots[i];
       
       /* For particles that have foreign roots update their group ID. */
@@ -1623,7 +1613,6 @@ void fof_search_tree(struct space *s) {
     free(group_counts);
     free(displ);
     free(local_roots);
-
   }
 #endif
 
