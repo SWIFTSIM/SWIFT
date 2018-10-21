@@ -836,6 +836,7 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
 #ifdef WITH_MPI
 
   struct engine *e = s->e;
+  const size_t min_group_size = s->fof_data.min_group_size;
   size_t *group_index = s->fof_data.group_index;
   size_t *group_size = s->fof_data.group_size;
   double *group_mass = s->fof_data.group_mass;
@@ -1120,7 +1121,6 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
   /* The value of which is an offset into global_group_id, which is the actual root. */
   for(int i=0; i<group_count; i++) global_group_index[i] = i;
 
-#ifdef UNION_BY_SIZE
   /* Store the original group size before incrementing in the Union-Find. */
   size_t *orig_global_group_size = NULL;
   
@@ -1129,7 +1129,6 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
     error("Error while allocating memory for the displacement in memory for the global group link list");
 
   for(int i=0; i<group_count; i++) orig_global_group_size[i] = global_group_size[i];
-#endif
 
   /* Perform a union-find on the group links. */
   for(int i=0; i<global_group_link_count; i++) {
@@ -1162,9 +1161,9 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
     if(group_i == group_j) continue;
 
     /* Update roots accordingly. */
-#ifdef UNION_BY_SIZE
     size_t size_i = global_group_size[root_i];
     size_t size_j = global_group_size[root_j];
+#ifdef UNION_BY_SIZE
     if(size_i < size_j) {
       global_group_index[root_i] = root_j;
       global_group_size[root_j] += size_i;
@@ -1174,8 +1173,14 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
       global_group_size[root_i] += size_j;
     }
 #else
-    if(group_j < group_i) global_group_index[root_i] = root_j;
-    else global_group_index[root_j] = root_i;
+    if(group_j < group_i) {
+      global_group_index[root_i] = root_j;
+      global_group_size[root_j] += size_i;
+    }
+    else {
+      global_group_index[root_j] = root_i;
+      global_group_size[root_i] += size_j;
+    }
 #endif
 
   }
@@ -1193,7 +1198,8 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
   for(int i=0; i<group_count; i++) {
     
     size_t group_id = global_group_id[i];
-    size_t new_root = global_group_id[fof_find(global_group_index[i], global_group_index)];
+    size_t offset = fof_find(global_group_index[i], global_group_index);
+    size_t new_root = global_group_id[offset];
     
     /* If the group is local update its root and size. */
     if(is_local(group_id, nr_gparts) && new_root != group_id) {
@@ -1203,14 +1209,10 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
         group_CoM[group_id - node_offset].x -= global_group_CoM[i].x;
         group_CoM[group_id - node_offset].y -= global_group_CoM[i].y;
         group_CoM[group_id - node_offset].z -= global_group_CoM[i].z;
-#ifdef UNION_BY_SIZE
         group_size[group_id - node_offset] -= orig_global_group_size[i];
-#else
-        group_size[group_id - node_offset] -= global_group_size[i];
-#endif
-        
-        /* Store local root. */
-        (*local_roots)[local_root_count++] = group_id - node_offset;
+       
+        /* Store local root if the group is big enough. */
+        if(global_group_size[offset] >= min_group_size) (*local_roots)[local_root_count++] = group_id - node_offset;
 
     }
      
@@ -1240,12 +1242,8 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
       group_CoM[new_root - node_offset].y += (CoM_y * global_group_mass[i]);
       group_CoM[new_root - node_offset].z += (CoM_z * global_group_mass[i]);
 
-#ifdef UNION_BY_SIZE
       /* Use group sizes before Union-Find */
       group_size[new_root - node_offset] += orig_global_group_size[i];
-#else
-      group_size[new_root - node_offset] += global_group_size[i];
-#endif
       group_mass[new_root - node_offset] += global_group_mass[i];
     }
 
