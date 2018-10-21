@@ -99,10 +99,16 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
  * @brief Initialises a collectgroup1 struct ready for processing.
  *
  * @param grp1 The #collectgroup1 to initialise
- * @param updates the number of updated hydro particles on this node this step.
- * @param g_updates the number of updated gravity particles on this node this
+ * @param updated the number of updated hydro particles on this node this step.
+ * @param g_updated the number of updated gravity particles on this node this
  * step.
- * @param s_updates the number of updated star particles on this node this step.
+ * @param s_updated the number of updated star particles on this node this step.
+ * @param inhibited the number of inhibited hydro particles on this node this
+ * step.
+ * @param g_inhibited the number of inhibited gravity particles on this node
+ * this step.
+ * @param s_inhibited the number of inhibited star particles on this node this
+ * step.
  * @param ti_hydro_end_min the minimum end time for next hydro time step after
  * this step.
  * @param ti_hydro_end_max the maximum end time for next hydro time step after
