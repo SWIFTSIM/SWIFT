@@ -1383,11 +1383,6 @@ void engine_repartition_trigger(struct engine *e) {
 
 #ifdef WITH_MPI
 
-  if (e->step > 2 && e->step % 5 == 0) {
-    e->forcerepart = 1;
-    return;
-  }
-
   /* Do nothing if there have not been enough steps since the last
    * repartition, don't want to repeat this too often or immediately after
    * a repartition step. Also nothing to do when requested. */
