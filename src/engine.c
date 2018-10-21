@@ -873,10 +873,86 @@ void engine_redistribute(struct engine *e) {
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
   const int nr_cells = s->nr_cells;
+  struct xpart *xparts = s->xparts;
   struct part *parts = s->parts;
   struct gpart *gparts = s->gparts;
   struct spart *sparts = s->sparts;
   ticks tic = getticks();
+
+  size_t nr_parts = s->nr_parts;
+  size_t nr_gparts = s->nr_gparts;
+  size_t nr_sparts = s->nr_sparts;
+
+  /* Start by moving inhibited particles to the end of the arrays */
+  for (size_t k = 0; k < nr_parts; /* void */) {
+    if (parts[k].time_bin == time_bin_inhibited) {
+      nr_parts -= 1;
+
+      /* Swap the particle */
+      memswap(&parts[k], &parts[nr_parts], sizeof(struct part));
+
+      /* Swap the xpart */
+      memswap(&xparts[k], &xparts[nr_parts], sizeof(struct xpart));
+
+      /* Swap the link with the gpart */
+      if (parts[k].gpart != NULL) {
+        parts[k].gpart->id_or_neg_offset = -k;
+      }
+      if (parts[nr_parts].gpart != NULL) {
+        parts[nr_parts].gpart->id_or_neg_offset = -nr_parts;
+      }
+    } else {
+      k++;
+    }
+  }
+
+  /* Now move inhibited star particles to the end of the arrays */
+  for (size_t k = 0; k < nr_sparts; /* void */) {
+    if (sparts[k].time_bin == time_bin_inhibited) {
+      nr_sparts -= 1;
+
+      /* Swap the particle */
+      memswap(&s->sparts[k], &s->sparts[nr_sparts], sizeof(struct spart));
+
+      /* Swap the link with the gpart */
+      if (s->sparts[k].gpart != NULL) {
+        s->sparts[k].gpart->id_or_neg_offset = -k;
+      }
+      if (s->sparts[nr_sparts].gpart != NULL) {
+        s->sparts[nr_sparts].gpart->id_or_neg_offset = -nr_sparts;
+      }
+    } else {
+      k++;
+    }
+  }
+
+  /* Finally do the same with the gravity particles */
+  for (size_t k = 0; k < nr_gparts; /* void */) {
+    if (gparts[k].time_bin == time_bin_inhibited) {
+      nr_gparts -= 1;
+
+      /* Swap the particle */
+      memswap(&s->gparts[k], &s->gparts[nr_gparts], sizeof(struct gpart));
+
+      /* Swap the link with part/spart */
+      if (s->gparts[k].type == swift_type_gas) {
+        s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+      } else if (s->gparts[k].type == swift_type_stars) {
+        s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+      }
+      if (s->gparts[nr_gparts].type == swift_type_gas) {
+        s->parts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+            &s->gparts[nr_gparts];
+      } else if (s->gparts[nr_gparts].type == swift_type_stars) {
+        s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+            &s->gparts[nr_gparts];
+      }
+    } else {
+      k++;
+    }
+  }
+
+  /* Now we are ready to deal with real particles and can start the exchange. */
 
   /* Allocate temporary arrays to store the counts of particles to be sent
    * and the destination of each particle */
@@ -885,7 +961,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate counts temporary buffer.");
 
   int *dest;
-  if ((dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
+  if ((dest = (int *)malloc(sizeof(int) * nr_parts)) == NULL)
     error("Failed to allocate dest temporary buffer.");
 
   /* Simple index of node IDs, used for mappers over nodes. */
@@ -905,16 +981,16 @@ void engine_redistribute(struct engine *e) {
   redist_data.base = (void *)parts;
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_part, parts,
-                 s->nr_parts, sizeof(struct part), 0, &redist_data);
+                 nr_parts, sizeof(struct part), 0, &redist_data);
 
   /* Sort the particles according to their cell index. */
-  if (s->nr_parts > 0)
+  if (nr_parts > 0)
     space_parts_sort(s->parts, s->xparts, dest, &counts[nodeID * nr_nodes],
                      nr_nodes, 0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
-  for (size_t k = 0; k < s->nr_parts; k++) {
+  for (size_t k = 0; k < nr_parts; k++) {
     const struct part *p = &s->parts[k];
 
     /* New cell index */
@@ -938,7 +1014,7 @@ void engine_redistribute(struct engine *e) {
 
   /* We will need to re-link the gpart partners of parts, so save their
    * relative positions in the sent lists. */
-  if (s->nr_parts > 0 && s->nr_gparts > 0) {
+  if (nr_parts > 0 && nr_gparts > 0) {
 
     struct savelink_mapper_data savelink_data;
     savelink_data.nr_nodes = nr_nodes;
@@ -956,7 +1032,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate s_counts temporary buffer.");
 
   int *s_dest;
-  if ((s_dest = (int *)malloc(sizeof(int) * s->nr_sparts)) == NULL)
+  if ((s_dest = (int *)malloc(sizeof(int) * nr_sparts)) == NULL)
     error("Failed to allocate s_dest temporary buffer.");
 
   redist_data.counts = s_counts;
@@ -964,16 +1040,16 @@ void engine_redistribute(struct engine *e) {
   redist_data.base = (void *)sparts;
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_spart, sparts,
-                 s->nr_sparts, sizeof(struct spart), 0, &redist_data);
+                 nr_sparts, sizeof(struct spart), 0, &redist_data);
 
   /* Sort the particles according to their cell index. */
-  if (s->nr_sparts > 0)
+  if (nr_sparts > 0)
     space_sparts_sort(s->sparts, s_dest, &s_counts[nodeID * nr_nodes], nr_nodes,
                       0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
-  for (size_t k = 0; k < s->nr_sparts; k++) {
+  for (size_t k = 0; k < nr_sparts; k++) {
     const struct spart *sp = &s->sparts[k];
 
     /* New cell index */
@@ -996,7 +1072,7 @@ void engine_redistribute(struct engine *e) {
 #endif
 
   /* We need to re-link the gpart partners of sparts. */
-  if (s->nr_sparts > 0) {
+  if (nr_sparts > 0) {
 
     struct savelink_mapper_data savelink_data;
     savelink_data.nr_nodes = nr_nodes;
@@ -1014,7 +1090,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate g_gcount temporary buffer.");
 
   int *g_dest;
-  if ((g_dest = (int *)malloc(sizeof(int) * s->nr_gparts)) == NULL)
+  if ((g_dest = (int *)malloc(sizeof(int) * nr_gparts)) == NULL)
     error("Failed to allocate g_dest temporary buffer.");
 
   redist_data.counts = g_counts;
@@ -1022,16 +1098,16 @@ void engine_redistribute(struct engine *e) {
   redist_data.base = (void *)gparts;
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_gpart, gparts,
-                 s->nr_gparts, sizeof(struct gpart), 0, &redist_data);
+                 nr_gparts, sizeof(struct gpart), 0, &redist_data);
 
   /* Sort the gparticles according to their cell index. */
-  if (s->nr_gparts > 0)
+  if (nr_gparts > 0)
     space_gparts_sort(s->gparts, s->parts, s->sparts, g_dest,
                       &g_counts[nodeID * nr_nodes], nr_nodes);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
-  for (size_t k = 0; k < s->nr_gparts; k++) {
+  for (size_t k = 0; k < nr_gparts; k++) {
     const struct gpart *gp = &s->gparts[k];
 
     /* New cell index */
@@ -1106,49 +1182,50 @@ void engine_redistribute(struct engine *e) {
   /* Now each node knows how many parts, sparts and gparts will be transferred
    * to every other node.
    * Get the new numbers of particles for this node. */
-  size_t nr_parts = 0, nr_gparts = 0, nr_sparts = 0;
-  for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
+  size_t nr_parts_new = 0, nr_gparts_new = 0, nr_sparts_new = 0;
   for (int k = 0; k < nr_nodes; k++)
-    nr_gparts += g_counts[k * nr_nodes + nodeID];
+    nr_parts_new += counts[k * nr_nodes + nodeID];
   for (int k = 0; k < nr_nodes; k++)
-    nr_sparts += s_counts[k * nr_nodes + nodeID];
+    nr_gparts_new += g_counts[k * nr_nodes + nodeID];
+  for (int k = 0; k < nr_nodes; k++)
+    nr_sparts_new += s_counts[k * nr_nodes + nodeID];
 
   /* Now exchange the particles, type by type to keep the memory required
    * under control. */
 
   /* SPH particles. */
-  void *new_parts = engine_do_redistribute(counts, (char *)s->parts, nr_parts,
-                                           sizeof(struct part), part_align,
-                                           part_mpi_type, nr_nodes, nodeID);
+  void *new_parts = engine_do_redistribute(
+      counts, (char *)s->parts, nr_parts_new, sizeof(struct part), part_align,
+      part_mpi_type, nr_nodes, nodeID);
   free(s->parts);
   s->parts = (struct part *)new_parts;
-  s->nr_parts = nr_parts;
-  s->size_parts = engine_redistribute_alloc_margin * nr_parts;
+  s->nr_parts = nr_parts_new;
+  s->size_parts = engine_redistribute_alloc_margin * nr_parts_new;
 
   /* Extra SPH particle properties. */
-  new_parts = engine_do_redistribute(counts, (char *)s->xparts, nr_parts,
+  new_parts = engine_do_redistribute(counts, (char *)s->xparts, nr_parts_new,
                                      sizeof(struct xpart), xpart_align,
                                      xpart_mpi_type, nr_nodes, nodeID);
   free(s->xparts);
   s->xparts = (struct xpart *)new_parts;
 
   /* Gravity particles. */
-  new_parts = engine_do_redistribute(g_counts, (char *)s->gparts, nr_gparts,
+  new_parts = engine_do_redistribute(g_counts, (char *)s->gparts, nr_gparts_new,
                                      sizeof(struct gpart), gpart_align,
                                      gpart_mpi_type, nr_nodes, nodeID);
   free(s->gparts);
   s->gparts = (struct gpart *)new_parts;
-  s->nr_gparts = nr_gparts;
-  s->size_gparts = engine_redistribute_alloc_margin * nr_gparts;
+  s->nr_gparts = nr_gparts_new;
+  s->size_gparts = engine_redistribute_alloc_margin * nr_gparts_new;
 
   /* Star particles. */
-  new_parts = engine_do_redistribute(s_counts, (char *)s->sparts, nr_sparts,
+  new_parts = engine_do_redistribute(s_counts, (char *)s->sparts, nr_sparts_new,
                                      sizeof(struct spart), spart_align,
                                      spart_mpi_type, nr_nodes, nodeID);
   free(s->sparts);
   s->sparts = (struct spart *)new_parts;
-  s->nr_sparts = nr_sparts;
-  s->size_sparts = engine_redistribute_alloc_margin * nr_sparts;
+  s->nr_sparts = nr_sparts_new;
+  s->size_sparts = engine_redistribute_alloc_margin * nr_sparts_new;
 
   /* All particles have now arrived. Time for some final operations on the
      stuff we just received */
@@ -1175,7 +1252,7 @@ void engine_redistribute(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
-  for (size_t k = 0; k < nr_parts; k++) {
+  for (size_t k = 0; k < nr_parts_new; k++) {
     const int cid = cell_getid(s->cdim, s->parts[k].x[0] * s->iwidth[0],
                                s->parts[k].x[1] * s->iwidth[1],
                                s->parts[k].x[2] * s->iwidth[2]);
@@ -1183,7 +1260,7 @@ void engine_redistribute(struct engine *e) {
       error("Received particle (%zu) that does not belong here (nodeID=%i).", k,
             cells[cid].nodeID);
   }
-  for (size_t k = 0; k < nr_gparts; k++) {
+  for (size_t k = 0; k < nr_gparts_new; k++) {
     const int cid = cell_getid(s->cdim, s->gparts[k].x[0] * s->iwidth[0],
                                s->gparts[k].x[1] * s->iwidth[1],
                                s->gparts[k].x[2] * s->iwidth[2]);
@@ -1191,7 +1268,7 @@ void engine_redistribute(struct engine *e) {
       error("Received g-particle (%zu) that does not belong here (nodeID=%i).",
             k, cells[cid].nodeID);
   }
-  for (size_t k = 0; k < nr_sparts; k++) {
+  for (size_t k = 0; k < nr_sparts_new; k++) {
     const int cid = cell_getid(s->cdim, s->sparts[k].x[0] * s->iwidth[0],
                                s->sparts[k].x[1] * s->iwidth[1],
                                s->sparts[k].x[2] * s->iwidth[2]);
@@ -1201,8 +1278,8 @@ void engine_redistribute(struct engine *e) {
   }
 
   /* Verify that the links are correct */
-  part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
-                    nr_sparts, e->verbose);
+  part_verify_links(s->parts, s->gparts, s->sparts, nr_parts_new, nr_gparts_new,
+                    nr_sparts_new, e->verbose);
 #endif
 
   /* Be verbose about what just happened. */
@@ -1211,7 +1288,7 @@ void engine_redistribute(struct engine *e) {
     for (int k = 0; k < nr_cells; k++)
       if (cells[k].nodeID == nodeID) my_cells += 1;
     message("node %i now has %zu parts, %zu sparts and %zu gparts in %i cells.",
-            nodeID, nr_parts, nr_sparts, nr_gparts, my_cells);
+            nodeID, nr_parts_new, nr_sparts_new, nr_gparts_new, my_cells);
   }
 
   /* Flag that a redistribute has taken place */
