@@ -67,8 +67,8 @@ The rest of this page describes all the SWIFT parameters, split by
 section. A list of all the possible parameters is kept in the file
 ``examples/parameter_examples.yml``.
 
-InternalUnitSystem
-------------------
+Internal Unit System
+--------------------
 
 This section describes the units used internally by the code. This is
 the system of units in which all the equations are solved. All
@@ -126,28 +126,6 @@ system <https://en.wikipedia.org/wiki/FFF_system>`_ one would use
 
 The value of the physical constants in this system is left as an
 exercise for the reader [#f1]_.
-   
-PhysicalConstants
------------------
-
-For some idealised test it can be useful to overwrite the value of
-some physical constants. In particular the value of the gravitational
-constant. SWIFT offers an optional parameter to overwrite the value of
-that constant.
-
-.. code:: YAML
-
-   PhysicalConstants:
-     G:   1
-
-Note that this set :math:`G` to the specified value in the internal system
-of units. Setting a value of `1` when using the system of units (10^10 Msun,
-Mpc, km/s) will mean that :math:`G_N=1` in these units [#f2]_ instead of the
-normal value :math:`G_N=43.00927`.
-
-This option is only used for specific tests and debugging. This entire
-section of the YAML file can typically be left out.
-
 
 Cosmology
 ---------
@@ -197,15 +175,38 @@ use the following parameters:
      w_0:            -1.0          # (Optional)
      w_a:            0.            # (Optional)
 
-      
+When running a non-cosmological simulation (i.e. without the ``-c`` runtime
+flag) this section of the YAML file is entirely ignored.
+     
 Gravity
 -------
 
 SPH
 ---
 
-TimeIntegration
----------------
+Time Integration
+----------------
+
+Physical Constants
+------------------
+
+For some idealised test it can be useful to overwrite the value of
+some physical constants. In particular the value of the gravitational
+constant. SWIFT offers an optional parameter to overwrite the value of
+that constant.
+
+.. code:: YAML
+
+   PhysicalConstants:
+     G:   1
+
+Note that this set :math:`G` to the specified value in the internal system
+of units. Setting a value of `1` when using the system of units (10^10 Msun,
+Mpc, km/s) will mean that :math:`G_N=1` in these units [#f2]_ instead of the
+normal value :math:`G_N=43.00927`.
+
+This option is only used for specific tests and debugging. This entire
+section of the YAML file can typically be left out.
 
 Snapshots
 ---------
@@ -227,9 +228,8 @@ Restarts
 Scheduler
 ---------
 
-DomainDecomposition
--------------------
-
+Domain Decomposition
+--------------------
 
 .. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's contant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
 
