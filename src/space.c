@@ -563,10 +563,10 @@ void space_regrid(struct space *s, int verbose) {
  * @brief Re-build the cells as well as the tasks.
  *
  * @param s The #space in which to update the cells.
+ * @param repartitioned Did we just repartition?
  * @param verbose Print messages to stdout or not
- *
  */
-void space_rebuild(struct space *s, int verbose) {
+void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   const ticks tic = getticks();
 
@@ -623,10 +623,19 @@ void space_rebuild(struct space *s, int verbose) {
     space_sparts_get_cell_index(s, sind, cell_spart_counts,
                                 &count_inhibited_sparts, verbose);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (repartitioned && count_inhibited_parts)
+    error("We just repartitioned but still found inhibited parts.");
+  if (repartitioned && count_inhibited_sparts)
+    error("We just repartitioned but still found inhibited sparts.");
+  if (repartitioned && count_inhibited_gparts)
+    error("We just repartitioned but still found inhibited gparts.");
+#endif
+
   const int local_nodeID = s->e->nodeID;
 
   /* Move non-local parts and inhibited parts to the end of the list. */
-  if (s->e->nr_nodes > 1 || count_inhibited_parts > 0) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
     for (size_t k = 0; k < nr_parts; /* void */) {
 
       /* Inhibited particle or foreign particle */
@@ -677,7 +686,7 @@ void space_rebuild(struct space *s, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local sparts and inhibited sparts to the end of the list. */
-  if (s->e->nr_nodes > 1 || count_inhibited_sparts > 0) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_sparts > 0)) {
     for (size_t k = 0; k < nr_sparts; /* void */) {
 
       /* Inhibited particle or foreign particle */
@@ -726,7 +735,7 @@ void space_rebuild(struct space *s, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local gparts and inhibited parts to the end of the list. */
-  if (s->e->nr_nodes > 1 || count_inhibited_gparts > 0) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_gparts > 0)) {
     for (size_t k = 0; k < nr_gparts; /* void */) {
 
       /* Inhibited particle or foreign particle */
@@ -782,18 +791,31 @@ void space_rebuild(struct space *s, int verbose) {
 #ifdef WITH_MPI
 
   /* Exchange the strays, note that this potentially re-allocates
-     the parts arrays. */
-  size_t nr_parts_exchanged = s->nr_parts - nr_parts;
-  size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
-  size_t nr_sparts_exchanged = s->nr_sparts - nr_sparts;
-  engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged,
-                         nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged,
-                         nr_sparts, &sind[nr_sparts], &nr_sparts_exchanged);
+     the parts arrays. This can be skipped if we just repartitioned aspace
+     there should be no strays */
+  if (!repartitioned) {
 
-  /* Set the new particle counts. */
-  s->nr_parts = nr_parts + nr_parts_exchanged;
-  s->nr_gparts = nr_gparts + nr_gparts_exchanged;
-  s->nr_sparts = nr_sparts + nr_sparts_exchanged;
+    size_t nr_parts_exchanged = s->nr_parts - nr_parts;
+    size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
+    size_t nr_sparts_exchanged = s->nr_sparts - nr_sparts;
+    engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged,
+                           nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged,
+                           nr_sparts, &sind[nr_sparts], &nr_sparts_exchanged);
+
+    /* Set the new particle counts. */
+    s->nr_parts = nr_parts + nr_parts_exchanged;
+    s->nr_gparts = nr_gparts + nr_gparts_exchanged;
+    s->nr_sparts = nr_sparts + nr_sparts_exchanged;
+  } else {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (s->nr_parts != nr_parts)
+      error("Number of parts changing after repartition");
+    if (s->nr_sparts != nr_sparts)
+      error("Number of sparts changing after repartition");
+    if (s->nr_gparts != nr_gparts)
+      error("Number of gparts changing after repartition");
+#endif
+  }
 
   /* Clear non-local cell counts. */
   for (int k = 0; k < s->nr_cells; k++) {

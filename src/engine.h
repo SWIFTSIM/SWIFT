@@ -427,7 +427,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             const size_t offset_gparts, const int *ind_gpart,
                             size_t *Ngpart, const size_t offset_sparts,
                             const int *ind_spart, size_t *Nspart);
-void engine_rebuild(struct engine *e, int clean_h_values);
+void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
 void engine_makeproxies(struct engine *e);

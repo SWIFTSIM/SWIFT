@@ -1383,6 +1383,11 @@ void engine_repartition_trigger(struct engine *e) {
 
 #ifdef WITH_MPI
 
+  if (e->step > 2 && e->step % 5 == 0) {
+    e->forcerepart = 1;
+    return;
+  }
+
   /* Do nothing if there have not been enough steps since the last
    * repartition, don't want to repeat this too often or immediately after
    * a repartition step. Also nothing to do when requested. */
@@ -4483,10 +4488,12 @@ int engine_estimate_nr_tasks(struct engine *e) {
  * @brief Rebuild the space and tasks.
  *
  * @param e The #engine.
+ * @param repartitioned Did we just redistribute?
  * @param clean_smoothing_length_values Are we cleaning up the values of
  * the smoothing lengths before building the tasks ?
  */
-void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
+void engine_rebuild(struct engine *e, int repartitioned,
+                    int clean_smoothing_length_values) {
 
   const ticks tic = getticks();
 
@@ -4495,7 +4502,7 @@ void engine_rebuild(struct engine *e, int clean_smoothing_length_values) {
   e->restarting = 0;
 
   /* Re-build the space. */
-  space_rebuild(e->s, e->verbose);
+  space_rebuild(e->s, repartitioned, e->verbose);
 
   /* Construct the list of purely local cells */
   space_list_local_cells(e->s);
@@ -4605,6 +4612,7 @@ void engine_prepare(struct engine *e) {
   const ticks tic = getticks();
 
   int drifted_all = 0;
+  int repartitioned = 0;
 
   /* Unskip active tasks and check for rebuild */
   if (!e->forcerebuild && !e->forcerepart && !e->restarting) engine_unskip(e);
@@ -4629,6 +4637,7 @@ void engine_prepare(struct engine *e) {
 
     /* And repartition */
     engine_repartition(e);
+    repartitioned = 1;
   }
 
   /* Do we need rebuilding ? */
@@ -4638,7 +4647,7 @@ void engine_prepare(struct engine *e) {
     if (!e->restarting && !drifted_all) engine_drift_all(e);
 
     /* And rebuild */
-    engine_rebuild(e, 0);
+    engine_rebuild(e, repartitioned, 0);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -5168,7 +5177,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->nodeID == 0) message("Computing initial gas densities.");
 
   /* Construct all cells and tasks to start everything */
-  engine_rebuild(e, clean_h_values);
+  engine_rebuild(e, 0, clean_h_values);
 
   /* No time integration. We just want the density and ghosts */
   engine_skip_force_and_kick(e);
@@ -5391,7 +5400,7 @@ void engine_step(struct engine *e) {
   }
 
   /* We need some cells to exist but not the whole task stuff. */
-  if (e->restarting) space_rebuild(e->s, e->verbose);
+  if (e->restarting) space_rebuild(e->s, 0, e->verbose);
 
   /* Move forward in time */
   e->ti_old = e->ti_current;
