@@ -3379,14 +3379,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Duplicates the first hydro loop and construct all the
- * dependencies for the stars
+ * @brief Creates all the task dependencies for the stars
  *
- * This is done by looping over all the previously constructed tasks
- * and adding another task involving the same cells but this time
- * corresponding to the second hydro loop over neighbours.
- * With all the relevant tasks for a given cell available, we construct
- * all the dependencies for that cell.
+ * @param map_data The tasks
+ * @param num_elements number of tasks
+ * @param extra_data The #engine
  */
 void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
                                     void *extra_data) {
@@ -3408,8 +3405,9 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
 
       /* Now, build all the dependencies for the stars */
       engine_make_stars_loops_dependencies(sched, t, t->ci);
-      scheduler_addunlock(sched, t->ci->stars.ghost_out,
-                          t->ci->super->end_force);
+      if (t->ci == t->ci->super)
+        scheduler_addunlock(sched, t->ci->super->stars.ghost_out,
+                            t->ci->super->end_force);
     }
 
     /* Otherwise, pair interaction? */
@@ -5165,6 +5163,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
   if (e->nodeID == 0) scheduler_write_dependencies(&e->sched, e->verbose);
+  if (e->nodeID == 0) scheduler_write_task_level(&e->sched);
 
   /* Run the 0th time-step */
   TIMER_TIC2;
@@ -5242,6 +5241,20 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
             part_h_max = c->hydro.parts[k].h;
         }
         c->hydro.h_max = max(part_h_max, c->hydro.h_max);
+      }
+    }
+  }
+
+  if (s->cells_top != NULL && s->nr_sparts > 0) {
+    for (int i = 0; i < s->nr_cells; i++) {
+      struct cell *c = &s->cells_top[i];
+      if (c->nodeID == engine_rank && c->stars.count > 0) {
+        float spart_h_max = c->stars.parts[0].h;
+        for (int k = 1; k < c->stars.count; k++) {
+          if (c->stars.parts[k].h > spart_h_max)
+            spart_h_max = c->stars.parts[k].h;
+        }
+        c->stars.h_max = max(spart_h_max, c->stars.h_max);
       }
     }
   }
@@ -7525,18 +7538,11 @@ void engine_clean(struct engine *e) {
   }
   free(e->runners);
   free(e->snapshot_units);
-  if (e->output_list_snapshots) {
-    output_list_clean(e->output_list_snapshots);
-    free(e->output_list_snapshots);
-  }
-  if (e->output_list_stats) {
-    output_list_clean(e->output_list_stats);
-    free(e->output_list_stats);
-  }
-  if (e->output_list_stf) {
-    output_list_clean(e->output_list_stf);
-    free(e->output_list_stf);
-  }
+
+  output_list_clean(&e->output_list_snapshots);
+  output_list_clean(&e->output_list_stats);
+  output_list_clean(&e->output_list_stf);
+
   free(e->links);
   free(e->cell_loc);
   scheduler_clean(&e->sched);

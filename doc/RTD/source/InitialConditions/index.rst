@@ -176,7 +176,9 @@ as peculiar velocities divided by ``sqrt(a)``. This can be undone by swicthing
 on the parameter ``InitialConditions:cleanup_velocity_factors`` in the
 :ref:`Parameter_File_label`.
 
-     
+
+.. _ICs_units_label:
+
 Optional Components
 -------------------
 

@@ -126,13 +126,11 @@ struct part {
       /*! Derivative of density with respect to h */
       float rho_dh;
 
-#ifndef PLANETARY_SPH_NO_BALSARA
       /*! Velocity divergence. */
       float div_v;
 
       /*! Velocity curl. */
       float rot_v[3];
-#endif
 
     } density;
 
@@ -160,10 +158,8 @@ struct part {
       /*! Time derivative of smoothing length  */
       float h_dt;
 
-#ifndef PLANETARY_SPH_NO_BALSARA
       /*! Balsara switch */
       float balsara;
-#endif
 
     } force;
   };

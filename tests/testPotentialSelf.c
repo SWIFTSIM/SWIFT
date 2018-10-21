@@ -200,5 +200,10 @@ int main(int argc, char *argv[]) {
   }
 
   free(c.grav.parts);
+
+  /* Clean up the caches */
+  gravity_cache_clean(&r.ci_gravity_cache);
+
+  /* All done! */
   return 0;
 }

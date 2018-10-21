@@ -87,6 +87,33 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
+
+  /* Compute dv dot r */
+  float dv[3], curlvr[3];
+
+  const float faci = mj * wi_dx * r_inv;
+  const float facj = mi * wj_dx * r_inv;
+
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+  pi->density.div_v -= faci * dvdr;
+  pj->density.div_v -= facj * dvdr;
+
+  /* Compute dv cross r */
+  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+  pi->density.rot_v[0] += faci * curlvr[0];
+  pi->density.rot_v[1] += faci * curlvr[1];
+  pi->density.rot_v[2] += faci * curlvr[2];
+
+  pj->density.rot_v[0] += facj * curlvr[0];
+  pj->density.rot_v[1] += facj * curlvr[1];
+  pj->density.rot_v[2] += facj * curlvr[2];
 }
 
 /**
@@ -129,6 +156,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+  /* Compute dv dot r */
+  float dv[3], curlvr[3];
+
+  const float faci = mj * wi_dx * r_inv;
+
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+  pi->density.div_v -= faci * dvdr;
+
+  /* Compute dv cross r */
+  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+  pi->density.rot_v[0] += faci * curlvr[0];
+  pi->density.rot_v[1] += faci * curlvr[1];
+  pi->density.rot_v[2] += faci * curlvr[2];
 }
 
 /**
@@ -207,9 +255,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float cj = pj->force.soundspeed;
   const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
+  /* Grab balsara switches */
+  const float balsara_i = pi->force.balsara;
+  const float balsara_j = pj->force.balsara;
+
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij / rho_ij;
+  const float visc = -0.25f * v_sig * (balsara_i + balsara_j) * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -330,9 +382,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float cj = pj->force.soundspeed;
   const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
+  /* Grab balsara switches */
+  const float balsara_i = pi->force.balsara;
+  const float balsara_j = pj->force.balsara;
+
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij / rho_ij;
+  const float visc = -0.25f * v_sig * (balsara_i + balsara_j) * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;

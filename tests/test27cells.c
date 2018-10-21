@@ -456,6 +456,7 @@ int main(int argc, char *argv[]) {
   space.dim[2] = 3.;
 
   struct hydro_props hp;
+  hydro_props_init_no_hydro(&hp);
   hp.eta_neighbours = h;
   hp.h_tolerance = 1e0;
   hp.h_max = FLT_MAX;
@@ -614,6 +615,11 @@ int main(int argc, char *argv[]) {
 
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 27; ++i) clean_up(cells[i]);
+
+#ifdef WITH_VECTORIZATION
+  cache_clean(&runner.ci_cache);
+  cache_clean(&runner.cj_cache);
+#endif
 
   return 0;
 }

@@ -34,7 +34,8 @@
  */
 void check_value(float a, float b, const char* s) {
   if (fabsf(a - b) / fabsf(a + b) > 1.e-6f)
-    error("Values are inconsistent: %12.15e %12.15e (%s)!", a, b, s);
+    error("Values are inconsistent: %12.15e %12.15e rel=%e (%s)!", a, b,
+          fabsf(a - b) / fabsf(a + b), s);
 }
 
 /**
@@ -77,36 +78,61 @@ void check_constants(void) {
 void check_functions(float x) {
 
   float val_a, val_b;
+  const double xx = x;
 
-  val_a = powf(x, -hydro_gamma);
+#if defined(HYDRO_GAMMA_5_3)
+#define hydro_gamma_d (5. / 3.)
+#elif defined(HYDRO_GAMMA_7_5)
+#define hydro_gamma_d (7. / 5.)
+#elif defined(HYDRO_GAMMA_4_3)
+#define hydro_gamma_d (4. / 3.)
+#elif defined(HYDRO_GAMMA_2_1)
+#define hydro_gamma_d (2. / 1.)
+#else
+#error "Need to choose an adiabatic index!"
+#endif
+
+  val_a = pow(xx, hydro_gamma_d);
+  val_b = pow_gamma(x);
+  check_value(val_a, val_b, "x^gamma");
+
+  val_a = pow(xx, hydro_gamma_d - 1.0);
+  val_b = pow_gamma_minus_one(x);
+  check_value(val_a, val_b, "x^(gamma - 1)");
+
+  val_a = pow(xx, -(hydro_gamma_d - 1.0));
+  val_b = pow_minus_gamma_minus_one(x);
+  check_value(val_a, val_b, "x^(-(gamma - 1))");
+
+  val_a = pow(xx, -hydro_gamma_d);
   val_b = pow_minus_gamma(x);
   check_value(val_a, val_b, "x^(-gamma)");
 
-  val_a = powf(x, 2.0f / (hydro_gamma - 1.0f));
+  val_a = pow(xx, 2.0 / (hydro_gamma_d - 1.0));
   val_b = pow_two_over_gamma_minus_one(x);
   check_value(val_a, val_b, "x^(2/(gamma-1))");
 
-  val_a = powf(x, 2.0f * hydro_gamma / (hydro_gamma - 1.0f));
+  val_a = pow(xx, 2.0 * hydro_gamma_d / (hydro_gamma_d - 1.0));
   val_b = pow_two_gamma_over_gamma_minus_one(x);
   check_value(val_a, val_b, "x^((2 gamma)/(gamma-1))");
 
-  val_a = powf(x, 0.5f * (hydro_gamma - 1.0f) / hydro_gamma);
+  val_a = pow(xx, (hydro_gamma_d - 1.0) / (2.0 * hydro_gamma_d));
   val_b = pow_gamma_minus_one_over_two_gamma(x);
   check_value(val_a, val_b, "x^((gamma-1)/(2 gamma))");
 
-  val_a = powf(x, -0.5f * (hydro_gamma + 1.0f) / hydro_gamma);
+  val_a = pow(xx, -(hydro_gamma_d + 1.0) / (2.0 * hydro_gamma_d));
   val_b = pow_minus_gamma_plus_one_over_two_gamma(x);
   check_value(val_a, val_b, "x^(-(gamma+1)/(2 gamma))");
 
-  val_a = powf(x, 1.0f / hydro_gamma);
+  val_a = pow(xx, 1.0 / hydro_gamma_d);
   val_b = pow_one_over_gamma(x);
   check_value(val_a, val_b, "x^(1/gamma)");
 
-  val_a = powf(x, 3.f * hydro_gamma - 2.f);
+  val_a = pow(xx, 3. * hydro_gamma_d - 2.);
   val_b = pow_three_gamma_minus_two(x);
   check_value(val_a, val_b, "x^(3gamma - 2)");
 
-  val_a = powf(x, (3.f * hydro_gamma - 5.f) / 2.f);
+  val_a = pow(xx, (3. * hydro_gamma_d - 5.) / 2.);
   val_b = pow_three_gamma_minus_five_over_two(x);
   check_value(val_a, val_b, "x^((3gamma - 5)/2)");
 }

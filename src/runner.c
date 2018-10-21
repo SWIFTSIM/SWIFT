@@ -283,7 +283,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
           /* Run through this cell's density interactions. */
-          for (struct link *l = finger->hydro.density; l != NULL; l = l->next) {
+          for (struct link *l = finger->stars.density; l != NULL; l = l->next) {
 
 #ifdef SWIFT_DEBUG_CHECKS
             if (l->t->ti_run < r->e->ti_current)
@@ -905,6 +905,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const double time_base = e->time_base;
   const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
 
   TIMER_TIC;
 
@@ -943,7 +944,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, cosmo, dt_alpha);
+        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1076,6 +1077,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_reset_gradient(p);
 
 #else
+            const struct hydro_props *hydro_props = e->hydro_properties;
+
             /* Calculate the time-step for passing to hydro_prepare_force, used
              * for the evolution of alpha factors (i.e. those involved in the
              * artificial viscosity and thermal conduction terms) */
@@ -1095,7 +1098,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* As of here, particle force variables will be set. */
 
             /* Compute variables required for the force loop */
-            hydro_prepare_force(p, xp, cosmo, dt_alpha);
+            hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
 
             /* The particle force values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1105,6 +1108,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
+            /* Ok, we are done with this particle */
             continue;
           }
 
@@ -1174,6 +1178,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_reset_gradient(p);
 
 #else
+        const struct hydro_props *hydro_props = e->hydro_properties;
+
         /* Calculate the time-step for passing to hydro_prepare_force, used for
          * the evolution of alpha factors (i.e. those involved in the artificial
          * viscosity and thermal conduction terms) */
@@ -1192,7 +1198,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, cosmo, dt_alpha);
+        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -2372,6 +2378,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
   const struct spart *restrict sparts = c->stars.parts;
   const size_t nr_sparts = c->stars.count;
   const integertime_t ti_current = r->e->ti_current;
+
+  error("Need to add h_max computation");
 
   TIMER_TIC;
 

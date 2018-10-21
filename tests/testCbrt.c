@@ -125,5 +125,6 @@ int main(int argc, char *argv[]) {
   message("x * icbrtf   took %9.3f %s (acc = %18.11e).",
           clocks_from_ticks(getticks() - tic_ours), clocks_getunit(), acc_ours);
 
+  free(data);
   return 0;
 }

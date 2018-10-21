@@ -15,6 +15,8 @@ difference is the parameter file that will need to be adapted for SWIFT.
    :maxdepth: 2
 
    GettingStarted/index
+   CommandLineOptions/index
+   ParameterFiles/index
    InitialConditions/index
    HydroSchemes/index
    Cooling/index
