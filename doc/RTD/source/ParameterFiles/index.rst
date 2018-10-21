@@ -145,7 +145,8 @@ of units. Setting a value of `1` when using the system of units (10^10 Msun,
 Mpc, km/s) will mean that :math:`G_N=1` in these units [#f2]_ instead of the
 normal value :math:`G_N=43.00927`.
 
-This option is only used for specific tests and debugging.
+This option is only used for specific tests and debugging. This entire
+section of the YAML file can typically be left out.
 
 
 Cosmology
@@ -180,7 +181,7 @@ If unspecified these parameters default to the default
 :math:`\Lambda\rm{CDM}` values of :math:`w_0 = -1` and :math:`w_a = 0`.
 
 For a Planck+13 cosmological model (ignoring radiation density as is
-commonly done and running from :math:`z=127` to :math:`z=0`, one would hence
+commonly done) and running from :math:`z=127` to :math:`z=0`, one would hence
 use the following parameters:
 
 .. code:: YAML
@@ -208,6 +209,14 @@ TimeIntegration
 
 Snapshots
 ---------
+
+Some additional specific options for the snapshot outputs are described in the
+following pages:
+
+.. toctree::
+   :maxdepth: 1
+
+   output_selection
 
 Statistics
 ----------
