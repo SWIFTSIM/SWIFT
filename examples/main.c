@@ -1062,6 +1062,7 @@ int main(int argc, char *argv[]) {
     /* Did we exceed the maximal runtime? */
     if (clocks_get_hours_since_start() > restart_max_hours_runtime) {
       force_stop = 1;
+      message("Runtime limit reached, dumping restart files...");
       if (resubmit_after_max_hours) resubmit = 1;
     }
 
@@ -1238,7 +1239,10 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) force_stop = restart_stop_now(restart_dir, 1);
 
   /* Did we want to run a re-submission command just before dying? */
-  if (myrank == 0 && resubmit) restart_resubmit(resubmit_command);
+  if (myrank == 0 && resubmit) {
+    message("Running the resubmission command.");
+    restart_resubmit(resubmit_command);
+  }
 
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
