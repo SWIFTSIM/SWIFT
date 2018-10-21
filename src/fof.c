@@ -45,6 +45,8 @@ MPI_Datatype group_length_mpi_type;
 #endif
 size_t node_offset;
 
+#define UNION_BY_SIZE 1
+
 /* Initialises parameters for the FOF search. */
 void fof_init(struct space *s, long long Ngas, long long Ngparts, long long Nstars) {
 
@@ -1535,6 +1537,8 @@ void fof_search_tree(struct space *s) {
   
   if (nr_nodes > 1) {
 
+    ticks sort_tic = getticks();
+    
     int *displ = NULL, *group_counts = NULL;
 
     if (posix_memalign((void **)&global_group_sizes, 32, num_groups * sizeof(struct group_length)) != 0)
@@ -1558,8 +1562,20 @@ void fof_search_tree(struct space *s) {
     /* Gather the global link list on all ranks. */
     MPI_Allgatherv(high_group_sizes, num_groups_local, group_length_mpi_type, global_group_sizes, group_counts, displ, group_length_mpi_type, MPI_COMM_WORLD);
 
+    message("Global sorting comms took: %.3f %s.",
+          clocks_from_ticks(getticks() - sort_tic), clocks_getunit());
+
+    sort_tic = getticks();
+
     /* Sort the groups */
     qsort(global_group_sizes, num_groups, sizeof(struct group_length), cmp_func);
+
+    message("qsort took: %.3f %s.",
+          clocks_from_ticks(getticks() - sort_tic), clocks_getunit());
+
+    sort_tic = getticks();
+   
+    ticks tic1 = getticks();
 
     /* Set default group ID again. */
     for (size_t i = 0; i < nr_gparts; i++) gparts[i].group_id = group_id_default;
@@ -1572,6 +1588,11 @@ void fof_search_tree(struct space *s) {
       if(is_local(root, nr_gparts)) gparts[root - node_offset].group_id = group_id_offset + i;
 
     }
+
+    message("Re-labelling roots took: %.3f %s.",
+          clocks_from_ticks(getticks() - tic1), clocks_getunit());
+
+    ticks tic2 = getticks();
 
     /* Update local roots that have foreign roots. */
     for (size_t i = 0; i < num_local_roots; i++) {
@@ -1589,6 +1610,11 @@ void fof_search_tree(struct space *s) {
 
       }
     }
+    
+    message("Updating local roots that have foreign took: %.3f %s.",
+          clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+    ticks tic3 = getticks();
 
     /* Update group ID of all particles that are not the root of a group. */
     for (size_t i = 0; i < nr_gparts; i++) {
@@ -1608,6 +1634,12 @@ void fof_search_tree(struct space *s) {
       gparts[i].group_id = gparts[local_root - node_offset].group_id;
       
     }
+    
+    message("Setting all part group IDs took: %.3f %s.",
+          clocks_from_ticks(getticks() - tic3), clocks_getunit());
+
+    message("Setting group IDs took: %.3f %s.",
+          clocks_from_ticks(getticks() - sort_tic), clocks_getunit());
 
     /* Clean up memory. */
     free(group_counts);
