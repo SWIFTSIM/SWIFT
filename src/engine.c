@@ -735,7 +735,7 @@ struct savelink_mapper_data {
       for (int k = 0; k < counts[nodeID * nr_nodes + node]; k++) {             \
         if (parts[k + offset].gpart != NULL) {                                 \
           if (CHECKS)                                                          \
-            if (parts[k].gpart->id_or_neg_offset > 0)                          \
+            if (parts[k + offset].gpart->id_or_neg_offset > 0)                 \
               error("Trying to link a partnerless " #TYPE "!");                \
           parts[k + offset].gpart->id_or_neg_offset = -count;                  \
           count++;                                                             \
