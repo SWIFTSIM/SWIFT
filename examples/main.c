@@ -607,7 +607,8 @@ int main(int argc, char *argv[]) {
   /* What command should we run to resubmit at the end? */
   char resubmit_command[PARSER_MAX_LINE_SIZE];
   if (resubmit_after_max_hours)
-    parser_get_param_string(params, "Restarts:basename", resubmit_command);
+    parser_get_param_string(params, "Restarts:resubmit_command",
+                            resubmit_command);
 
   /* If restarting, look for the restart files. */
   if (restart) {
