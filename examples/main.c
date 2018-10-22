@@ -1057,8 +1057,8 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
 
       /* Make sure output file is empty, only on one rank. */
-      char dumpfile[30];
-      snprintf(dumpfile, 30, "thread_info_MPI-step%d.dat", j + 1);
+      char dumpfile[35];
+      snprintf(dumpfile, sizeof(dumpfile), "thread_info_MPI-step%d.dat", j + 1);
       FILE *file_thread;
       if (myrank == 0) {
         file_thread = fopen(dumpfile, "w");
@@ -1114,8 +1114,8 @@ int main(int argc, char *argv[]) {
       }
 
 #else
-      char dumpfile[30];
-      snprintf(dumpfile, 30, "thread_info-step%d.dat", j + 1);
+      char dumpfile[32];
+      snprintf(dumpfile, sizeof(dumpfile), "thread_info-step%d.dat", j + 1);
       FILE *file_thread;
       file_thread = fopen(dumpfile, "w");
       /* Add some information to help with the plots */
