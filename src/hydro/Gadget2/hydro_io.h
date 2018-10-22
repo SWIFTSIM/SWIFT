@@ -128,6 +128,16 @@ INLINE static void convert_part_potential(const struct engine* e,
     ret[0] = 0.f;
 }
 
+INLINE static void convert_part_inhibited(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+
+  if (p->time_bin == time_bin_inhibited)
+    error("Writing inhibited particle to the snapshot!");
+
+  ret[0] = p->time_bin;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -141,7 +151,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 10;
+  *num_fields = 12;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
@@ -168,6 +178,13 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
                                               UNIT_CONV_POTENTIAL, parts,
                                               xparts, convert_part_potential);
+
+  list[10] = io_make_output_field("Timebin", CHAR, 1, UNIT_CONV_NO_UNITS, parts,
+                                  time_bin);
+
+  list[11] = io_make_output_field_convert_part("Inhibited", FLOAT, 1,
+                                               UNIT_CONV_NO_UNITS, parts,
+                                               xparts, convert_part_inhibited);
 
 #ifdef DEBUG_INTERACTIONS_SPH
 
