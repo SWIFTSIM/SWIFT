@@ -1005,6 +1005,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
 #endif /* WITH_MPI */
 
+  /* Mark that there are no inhibited particles left */
+  s->nr_inhibited_parts = 0;
+  s->nr_inhibited_gparts = 0;
+  s->nr_inhibited_sparts = 0;
+
   /* Sort the gparts according to their cells. */
   if (nr_gparts > 0)
     space_gparts_sort(s->gparts, s->parts, s->sparts, gind, cell_gpart_counts,

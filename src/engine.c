@@ -4868,7 +4868,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 void engine_collect_end_of_step(struct engine *e, int apply) {
 
   const ticks tic = getticks();
-  const struct space *s = e->s;
+  struct space *s = e->s;
   struct end_of_step_data data;
   data.updated = 0, data.g_updated = 0, data.s_updated = 0;
   data.inhibited = 0, data.g_inhibited = 0, data.s_inhibited = 0;
@@ -4882,6 +4882,11 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,
                  s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
                  sizeof(int), 0, &data);
+
+  /* Store the local number of inhibited particles */
+  s->nr_inhibited_parts = data.inhibited;
+  s->nr_inhibited_gparts = data.g_inhibited;
+  s->nr_inhibited_sparts = data.s_inhibited;
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(

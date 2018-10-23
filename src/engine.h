@@ -206,7 +206,7 @@ struct engine {
   long long total_nr_parts, total_nr_gparts, total_nr_sparts;
 
   /* The total number of inhibted particles in the system. */
-  size_t nr_inhibited_parts, nr_inhibited_gparts, nr_inhibited_sparts;
+  long long nr_inhibited_parts, nr_inhibited_gparts, nr_inhibited_sparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Total number of particles removed from the system since the last rebuild */

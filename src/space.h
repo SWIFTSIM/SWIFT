@@ -146,6 +146,15 @@ struct space {
   /*! The total number of g-parts in the space. */
   size_t nr_sparts, size_sparts;
 
+  /*! Number of inhibted gas particles in the space */
+  size_t nr_inhibited_parts;
+
+  /*! Number of inhibted gravity particles in the space */
+  size_t nr_inhibited_gparts;
+
+  /*! Number of inhibted star particles in the space */
+  size_t nr_inhibited_sparts;
+
   /*! The particle data (cells have pointers to this). */
   struct part *parts;
 
