@@ -752,15 +752,16 @@ void write_output_serial(struct engine* e, const char* baseName,
   const size_t Ntot = e->s->nr_gparts;
   const size_t Ngas = e->s->nr_parts;
   const size_t Nstars = e->s->nr_sparts;
-  //const size_t Nbaryons = Ngas + Nstars;
-  //const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
+  // const size_t Nbaryons = Ngas + Nstars;
+  // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
   /* Number of particles that we will write */
-  const size_t Ntot_written = e->s->nr_gparts - e->s->nr_inhibited_sparts;  
+  const size_t Ntot_written = e->s->nr_gparts - e->s->nr_inhibited_sparts;
   const size_t Ngas_written = e->s->nr_parts - e->s->nr_inhibited_parts;
   const size_t Nstars_written = e->s->nr_sparts - e->s->nr_inhibited_gparts;
   const size_t Nbaryons_written = Ngas_written + Nstars_written;
-  const size_t Ndm_written = Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
+  const size_t Ndm_written =
+      Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
@@ -772,7 +773,8 @@ void write_output_serial(struct engine* e, const char* baseName,
              e->snapshot_output_count);
 
   /* Compute offset in the file and total number of particles */
-  size_t N[swift_type_count] = {Ngas_written, Ndm_written, 0, 0, Nstars_written, 0};
+  size_t N[swift_type_count] = {
+      Ngas_written, Ndm_written, 0, 0, Nstars_written, 0};
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
   MPI_Exscan(&N, &offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
@@ -1018,97 +1020,99 @@ void write_output_serial(struct engine* e, const char* baseName,
         struct io_props list[100];
         size_t Nparticles = 0;
 
-	struct part* parts_written = NULL;
-	struct xpart* xparts_written = NULL;
-	struct gpart* gparts_written = NULL;
-	struct spart* sparts_written = NULL;
+        struct part* parts_written = NULL;
+        struct xpart* xparts_written = NULL;
+        struct gpart* gparts_written = NULL;
+        struct spart* sparts_written = NULL;
 
         /* Write particle fields from the particle structure */
         switch (ptype) {
 
-          case swift_type_gas:
-	    {
-	      if (Ngas == Ngas_written) {
-		
-		/* No inhibted particles: easy case */
-		Nparticles = Ngas;
-		hydro_write_particles(parts, xparts, list, &num_fields);
-		num_fields += chemistry_write_particles(parts, list + num_fields);
-		num_fields += cooling_write_particles(xparts, list + num_fields, e->cooling_func);
-	      }
-	      else {
-		
-		/* Ok, we need to fish out the particles we want */
-		Nparticles = Ngas_written;
-		
-		/* Allocate temporary arrays */
-		if (posix_memalign((void**)&parts_written, part_align, Ngas_written * sizeof(struct part)) != 0)
-		  error("Error while allocating temporart memory for parts");
-		if (posix_memalign((void**)&xparts_written, xpart_align, Ngas_written * sizeof(struct xpart)) != 0)
-		  error("Error while allocating temporart memory for xparts");
-		
-		/* Collect the particles we want to write */
-		io_collect_parts_to_write(parts, xparts, parts_written, xparts_written, Ngas, Ngas_written);
-		
-		/* Select the fields to write */
-		hydro_write_particles(parts_written, xparts_written, list, &num_fields);
-		num_fields += chemistry_write_particles(parts_written, list + num_fields);
-		num_fields += cooling_write_particles(xparts_written, list + num_fields, e->cooling_func);
-	      }	  
-	    }
-	    break;
+          case swift_type_gas: {
+            if (Ngas == Ngas_written) {
 
-          case swift_type_dark_matter:
-	    {
-	      if(Ntot == Ndm_written) {
-		
-		/* This is a DM-only run without inhibited particles */
-		Nparticles = Ntot;
-		darkmatter_write_particles(gparts, list, &num_fields);
-	      }
-	      else {
-		
-		/* Ok, we need to fish out the particles we want */
-		Nparticles = Ndm_written;
-		
-		/* Allocate temporary array */
-		if (posix_memalign((void**)&gparts_written, gpart_align, Ndm_written * sizeof(struct gpart)) != 0)
-		  error("Error while allocating temporart memory for gparts");
-		
-		/* Collect the non-inhibited DM particles from gpart */
-		io_collect_gparts_to_write(gparts, gparts_written, Ntot, Ndm_written);
-		
-		/* Write DM particles */
-		darkmatter_write_particles(gparts_written, list, &num_fields);
-	      }
-	    }
-            break;
-	    
-          case swift_type_stars:
-	    {
-	      if(Nstars == Nstars_written) {
-		
-		/* No inhibted particles: easy case */
-		Nparticles = Nstars;
-		stars_write_particles(sparts, list, &num_fields);
-	      }
-	      else {
-		
-		/* Ok, we need to fish out the particles we want */
-		Nparticles = Nstars_written;
-		
-		/* Allocate temporary arrays */
-		if (posix_memalign((void**)&sparts_written, spart_align, Nstars_written * sizeof(struct spart)) != 0)
-		  error("Error while allocating temporart memory for sparts");
-		
-		/* Collect the particles we want to write */
-		io_collect_sparts_to_write(sparts, sparts_written, Nstars, Nstars_written);
-		
-		/* Select the fields to write */
-		stars_write_particles(sparts, list, &num_fields);
-	      }
-	    }
-            break;
+              /* No inhibted particles: easy case */
+              Nparticles = Ngas;
+              hydro_write_particles(parts, xparts, list, &num_fields);
+              num_fields += chemistry_write_particles(parts, list + num_fields);
+              num_fields += cooling_write_particles(xparts, list + num_fields,
+                                                    e->cooling_func);
+            } else {
+
+              /* Ok, we need to fish out the particles we want */
+              Nparticles = Ngas_written;
+
+              /* Allocate temporary arrays */
+              if (posix_memalign((void**)&parts_written, part_align,
+                                 Ngas_written * sizeof(struct part)) != 0)
+                error("Error while allocating temporart memory for parts");
+              if (posix_memalign((void**)&xparts_written, xpart_align,
+                                 Ngas_written * sizeof(struct xpart)) != 0)
+                error("Error while allocating temporart memory for xparts");
+
+              /* Collect the particles we want to write */
+              io_collect_parts_to_write(parts, xparts, parts_written,
+                                        xparts_written, Ngas, Ngas_written);
+
+              /* Select the fields to write */
+              hydro_write_particles(parts_written, xparts_written, list,
+                                    &num_fields);
+              num_fields +=
+                  chemistry_write_particles(parts_written, list + num_fields);
+              num_fields += cooling_write_particles(
+                  xparts_written, list + num_fields, e->cooling_func);
+            }
+          } break;
+
+          case swift_type_dark_matter: {
+            if (Ntot == Ndm_written) {
+
+              /* This is a DM-only run without inhibited particles */
+              Nparticles = Ntot;
+              darkmatter_write_particles(gparts, list, &num_fields);
+            } else {
+
+              /* Ok, we need to fish out the particles we want */
+              Nparticles = Ndm_written;
+
+              /* Allocate temporary array */
+              if (posix_memalign((void**)&gparts_written, gpart_align,
+                                 Ndm_written * sizeof(struct gpart)) != 0)
+                error("Error while allocating temporart memory for gparts");
+
+              /* Collect the non-inhibited DM particles from gpart */
+              io_collect_gparts_to_write(gparts, gparts_written, Ntot,
+                                         Ndm_written);
+
+              /* Write DM particles */
+              darkmatter_write_particles(gparts_written, list, &num_fields);
+            }
+          } break;
+
+          case swift_type_stars: {
+            if (Nstars == Nstars_written) {
+
+              /* No inhibted particles: easy case */
+              Nparticles = Nstars;
+              stars_write_particles(sparts, list, &num_fields);
+            } else {
+
+              /* Ok, we need to fish out the particles we want */
+              Nparticles = Nstars_written;
+
+              /* Allocate temporary arrays */
+              if (posix_memalign((void**)&sparts_written, spart_align,
+                                 Nstars_written * sizeof(struct spart)) != 0)
+                error("Error while allocating temporart memory for sparts");
+
+              /* Collect the particles we want to write */
+              io_collect_sparts_to_write(sparts, sparts_written, Nstars,
+                                         Nstars_written);
+
+              /* Select the fields to write */
+              stars_write_particles(sparts, list, &num_fields);
+            }
+          } break;
 
           default:
             error("Particle Type %d not yet supported. Aborting", ptype);
@@ -1130,10 +1134,10 @@ void write_output_serial(struct engine* e, const char* baseName,
         }
 
         /* Free temporary array */
-	if(parts_written) free(parts_written);
-	if(xparts_written) free(xparts_written);
-	if(gparts_written) free(gparts_written);
-	if(sparts_written) free(sparts_written);
+        if (parts_written) free(parts_written);
+        if (xparts_written) free(xparts_written);
+        if (gparts_written) free(gparts_written);
+        if (sparts_written) free(sparts_written);
 
         /* Close particle group */
         H5Gclose(h_grp);

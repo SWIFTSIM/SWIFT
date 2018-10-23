@@ -791,16 +791,19 @@ void io_duplicate_stars_gparts(struct threadpool* tp,
  *
  * @param parts The array of #part containing all particles.
  * @param xparts The array of #xpart containing all particles.
- * @param parts_written The array of #part to fill with particles we want to write.
- * @param xparts_written The array of #xpart  to fill with particles we want to write.
+ * @param parts_written The array of #part to fill with particles we want to
+ * write.
+ * @param xparts_written The array of #xpart  to fill with particles we want to
+ * write.
  * @param Nparts The total number of #part.
  * @param Nparts_written The total number of #part to write.
  */
 void io_collect_parts_to_write(const struct part* restrict parts,
-			       const struct xpart* restrict xparts,
-			       struct part* restrict parts_written,
-			       struct xpart* restrict xparts_written,
-			       const size_t Nparts, const size_t Nparts_written) {
+                               const struct xpart* restrict xparts,
+                               struct part* restrict parts_written,
+                               struct xpart* restrict xparts_written,
+                               const size_t Nparts,
+                               const size_t Nparts_written) {
 
   size_t count = 0;
 
@@ -808,7 +811,7 @@ void io_collect_parts_to_write(const struct part* restrict parts,
   for (size_t i = 0; i < Nparts; ++i) {
 
     /* And collect the ones that have not been removed */
-    if(parts[i].time_bin != time_bin_inhibited) {
+    if (parts[i].time_bin != time_bin_inhibited) {
 
       parts_written[count] = parts[i];
       xparts_written[count] = xparts[i];
@@ -826,13 +829,15 @@ void io_collect_parts_to_write(const struct part* restrict parts,
  * @brief Copy every non-inhibited #spart into the sparts_written array.
  *
  * @param sparts The array of #spart containing all particles.
- * @param sparts_written The array of #spart to fill with particles we want to write.
+ * @param sparts_written The array of #spart to fill with particles we want to
+ * write.
  * @param Nsparts The total number of #part.
  * @param Nsparts_written The total number of #part to write.
  */
 void io_collect_sparts_to_write(const struct spart* restrict sparts,
-				struct spart* restrict sparts_written,
-				const size_t Nsparts, const size_t Nsparts_written) {
+                                struct spart* restrict sparts_written,
+                                const size_t Nsparts,
+                                const size_t Nsparts_written) {
 
   size_t count = 0;
 
@@ -840,7 +845,7 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
   for (size_t i = 0; i < Nsparts; ++i) {
 
     /* And collect the ones that have not been removed */
-    if(sparts[i].time_bin != time_bin_inhibited) {
+    if (sparts[i].time_bin != time_bin_inhibited) {
 
       sparts_written[count] = sparts[i];
       count++;
@@ -857,13 +862,15 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
  * @brief Copy every non-inhibited DM #gpart into the gparts_written array.
  *
  * @param gparts The array of #gpart containing all particles.
- * @param gparts_written The array of #gpart to fill with particles we want to write.
+ * @param gparts_written The array of #gpart to fill with particles we want to
+ * write.
  * @param Ngparts The total number of #part.
  * @param Ngparts_written The total number of #part to write.
  */
 void io_collect_gparts_to_write(const struct gpart* restrict gparts,
-				struct gpart* restrict gparts_written,
-				const size_t Ngparts, const size_t Ngparts_written) {
+                                struct gpart* restrict gparts_written,
+                                const size_t Ngparts,
+                                const size_t Ngparts_written) {
 
   size_t count = 0;
 
@@ -871,8 +878,8 @@ void io_collect_gparts_to_write(const struct gpart* restrict gparts,
   for (size_t i = 0; i < Ngparts; ++i) {
 
     /* And collect the ones that have not been removed */
-    if((gparts[i].time_bin != time_bin_inhibited) &&
-       (gparts[i].type == swift_type_dark_matter)) {
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].type == swift_type_dark_matter)) {
 
       gparts_written[count] = gparts[i];
       count++;
