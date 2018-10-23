@@ -399,28 +399,25 @@ static void rec_fof_search_pair(struct cell *ci, struct cell *cj, struct space *
       }
     }
   }
+  else if(ci->split) {
+    
+    for (int k = 0; k < 8; k++) {
+      if (ci->progeny[k] != NULL)
+	rec_fof_search_pair(ci->progeny[k], cj, s, dim, search_r2);
+    }
+  }
+  else if(cj->split) {
+    
+    for (int k = 0; k < 8; k++) {
+      if (cj->progeny[k] != NULL)
+	rec_fof_search_pair(ci, cj->progeny[k], s, dim, search_r2);
+    }
+  }
   else {
 
-    if(ci->split) {
-    
-      for (int k = 0; k < 8; k++) {
-	if (ci->progeny[k] != NULL)
-	  rec_fof_search_pair(ci->progeny[k], cj, s, dim, search_r2);
-      }
-    }
-    else if(cj->split) {
-      
-      for (int k = 0; k < 8; k++) {
-	if (cj->progeny[k] != NULL)
-	  rec_fof_search_pair(ci, cj->progeny[k], s, dim, search_r2);
-      }
-    }
-    else {
-    
-      /* Perform FOF search between pairs of cells that are within the linking
-       * length and not the same cell. */
-      fof_search_pair_cells(s, ci, cj);
-    }
+    /* Perform FOF search between pairs of cells that are within the linking
+     * length and not the same cell. */
+    fof_search_pair_cells(s, ci, cj);
   }
 }
 
