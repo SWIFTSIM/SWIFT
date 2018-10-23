@@ -609,7 +609,6 @@ void write_output_single(struct engine* e, const char* baseName,
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
-  const struct cooling_function_data* cooling = e->cooling_func;
   struct swift_params* params = e->parameter_file;
   
   /* Number of particles currently in the arrays */
@@ -852,7 +851,7 @@ void write_output_single(struct engine* e, const char* baseName,
 	    N = Ngas;
 	    hydro_write_particles(parts, xparts, list, &num_fields);
 	    num_fields += chemistry_write_particles(parts, list + num_fields);
-	    num_fields += cooling_write_particles(xparts, list + num_fields, cooling);
+	    num_fields += cooling_write_particles(xparts, list + num_fields, e->cooling_func);
 	  }
 	  else {
 
@@ -871,7 +870,7 @@ void write_output_single(struct engine* e, const char* baseName,
 	    /* Select the fields to write */
 	    hydro_write_particles(parts_written, xparts_written, list, &num_fields);
 	    num_fields += chemistry_write_particles(parts_written, list + num_fields);
-	    num_fields += cooling_write_particles(xparts_written, list + num_fields, cooling);
+	    num_fields += cooling_write_particles(xparts_written, list + num_fields, e->cooling_func);
 	  }	  
 	}
         break;
