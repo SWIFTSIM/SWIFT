@@ -287,7 +287,7 @@ __attribute__((always_inline)) INLINE static void fof_union(size_t *root_i, cons
 /* Find the shortest distance between cells, remembering to account for boundary
  * conditions. */
 __attribute__((always_inline)) INLINE static double cell_min_dist(
-    const struct cell *restrict ci, const struct cell *restrict cj, const double *dim) {
+    const struct cell *restrict ci, const struct cell *restrict cj, const double dim[3]) {
 
   /* Get cell locations. */
   const double cix_min = ci->loc[0];
@@ -376,7 +376,7 @@ __attribute__((always_inline)) INLINE static int is_local(const size_t group_id,
 /* Recurse on a pair of cells and perform a FOF search between cells that are within
  * range. */
 static void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict cj, struct space *s,
-                           const double *dim,
+                           const double dim[3],
                            const double search_r2) {
 
   /* Find the shortest distance between cells, remembering to account for
@@ -458,7 +458,7 @@ static void rec_fof_search_pair_foreign(struct cell *ci, struct cell *cj, struct
 /* Recurse on a cell and perform a FOF search between cells that are within
  * range. */
 static void rec_fof_search_self(struct cell *c, struct space *s,
-                           const double *dim,
+                           const double dim[3],
                            const double search_r2) {
 
   const double l_x2 = s->l_x2;
