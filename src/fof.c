@@ -287,7 +287,7 @@ __attribute__((always_inline)) INLINE static void fof_union(size_t *root_i, cons
 /* Find the shortest distance between cells, remembering to account for boundary
  * conditions. */
 __attribute__((always_inline)) INLINE static double cell_min_dist(
-    const struct cell *ci, const struct cell *cj, const double *dim) {
+    const struct cell *restrict ci, const struct cell *restrict cj, const double *dim) {
 
   /* Get cell locations. */
   const double cix_min = ci->loc[0];
@@ -375,7 +375,7 @@ __attribute__((always_inline)) INLINE static int is_local(const size_t group_id,
 
 /* Recurse on a pair of cells and perform a FOF search between cells that are within
  * range. */
-static void rec_fof_search_pair(struct cell *ci, struct cell *cj, struct space *s,
+static void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict cj, struct space *s,
                            const double *dim,
                            const double search_r2) {
 
@@ -552,7 +552,7 @@ void fof_search_cell(struct space *s, struct cell *c) {
 }
 
 /* Perform a FOF search on a pair of cells using the Union-Find algorithm.*/
-void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj) {
+void fof_search_pair_cells(struct space *s, struct cell *restrict ci, struct cell *restrict cj) {
 
   const size_t count_i = ci->gcount;
   const size_t count_j = cj->gcount;
