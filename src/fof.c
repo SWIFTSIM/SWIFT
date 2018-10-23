@@ -158,12 +158,15 @@ __attribute__((always_inline)) INLINE static size_t fof_find(const size_t i,
 
   size_t root = i;
   while (root != group_index[root]) {
+#ifdef PATH_HALVING
+    atomic_cas(&group_index[root], group_index[root], group_index[group_index[root]]);
+#endif
     root = group_index[root];
   }
 
   /* Perform path compression. */
-  // int index = i;
-  // while(index != root) {
+  //int index = i;
+  //while(index != root) {
   //  int next = group_index[index];
   //  group_index[index] = root;
   //  index = next;
