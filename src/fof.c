@@ -304,9 +304,47 @@ __attribute__((always_inline)) INLINE static double cell_min_dist(
   const double cjy_max = cj->loc[1] + cj->width[1];
   const double cjz_max = cj->loc[2] + cj->width[2];
 
+  double not_same_range[3];
+
+  /* If two cells are in the same range of coordinates along
+     any of the 3 axis, the distance along this axis is 0 */
+  if(ci->width[0] > cj->width[0]) {
+    if((cix_min <= cjx_min) && (cjx_max <= cix_max))
+      not_same_range[0] = 0.;
+    else
+      not_same_range[0] = 1.;
+  } else {
+    if((cjx_min <= cix_min) && (cix_max <= cjx_max))
+      not_same_range[0] = 0.;
+    else
+      not_same_range[0] = 1.;
+  }
+  if(ci->width[1] > cj->width[1]) {
+    if((ciy_min <= cjy_min) && (cjy_max <= ciy_max))
+      not_same_range[1] = 0.;
+    else
+      not_same_range[1] = 1.;
+  } else {
+    if((cjy_min <= ciy_min) && (ciy_max <= cjy_max))
+      not_same_range[1] = 0.;
+    else
+      not_same_range[1] = 1.;
+  }
+  if(ci->width[2] > cj->width[2]) {
+    if((ciz_min <= cjz_min) && (cjz_max <= ciz_max))
+      not_same_range[2] = 0.;
+    else
+      not_same_range[2] = 1.;
+  } else {
+    if((cjz_min <= ciz_min) && (ciz_max <= cjz_max))
+      not_same_range[2] = 0.;
+    else
+      not_same_range[2] = 1.;
+  }
+   
   /* Find the shortest distance between cells, remembering to account for
    * boundary conditions. */
-  double dx[3], r2 = 0.0f;
+  double dx[3];
   dx[0] = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
                fabs(nearest(cix_min - cjx_max, dim[0])),
                fabs(nearest(cix_max - cjx_min, dim[0])),
@@ -321,8 +359,10 @@ __attribute__((always_inline)) INLINE static double cell_min_dist(
                fabs(nearest(ciz_min - cjz_max, dim[2])),
                fabs(nearest(ciz_max - cjz_min, dim[2])),
                fabs(nearest(ciz_max - cjz_max, dim[2])));
-  
-  for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
+
+  double r2 = 0.;
+  for (int k = 0; k < 3; k++)
+    r2 += dx[k] * dx[k] * not_same_range[k];
 
   return r2;
 }
