@@ -1224,8 +1224,8 @@ int main(int argc, char *argv[]) {
 
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
-  if (with_cosmology) cosmology_clean(&cosmo);
-  if (with_self_gravity) pm_mesh_clean(&mesh);
+  if (with_cosmology) cosmology_clean(e.cosmology);
+  if (with_self_gravity) pm_mesh_clean(e.mesh);
   engine_clean(&e);
   free(params);
 
