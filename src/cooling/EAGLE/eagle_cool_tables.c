@@ -577,14 +577,14 @@ static void eagle_readtable(
  * z.
  */
 void eagle_check_cooling_tables(struct cooling_function_data *restrict cooling,
-                                int index_z) {
+                                const int restart_flag) {
 
   /* Do we already have the right table in memory? */
-  if (cooling->low_z_index == index_z) return;
+  if (cooling->low_z_index == cooling->z_index && restart_flag != 0) return;
 
   /* Record the table indices */
-  cooling->low_z_index = index_z;
-  cooling->high_z_index = index_z + 1;
+  cooling->low_z_index = cooling->z_index;
+  cooling->high_z_index = cooling->z_index + 1;
 
   /* Load the damn thing */
   eagle_readtable(cooling);

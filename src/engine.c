@@ -5005,8 +5005,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   
   /* Update the cooling function */
   if (e->policy & engine_policy_cooling)
-    cooling_update(e->physical_constants, e->internal_units, e->cosmology,
-                   e->cooling_func);
+    cooling_update(e->cosmology, e->cooling_func, 0);
 
   /* Now, launch the calculation */
   TIMER_TIC;
@@ -5230,8 +5229,7 @@ void engine_step(struct engine *e) {
 
   /* Update the cooling function */
   if (e->policy & engine_policy_cooling)
-    cooling_update(e->physical_constants, e->internal_units, e->cosmology,
-                   e->cooling_func);
+    cooling_update(e->cosmology, e->cooling_func, 0);
 
   /*****************************************************/
   /* OK, we now know what the next end of time-step is */
@@ -7536,7 +7534,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   struct cooling_function_data *cooling_func =
       (struct cooling_function_data *)malloc(
           sizeof(struct cooling_function_data));
-  cooling_struct_restore(cooling_func, stream);
+  cooling_struct_restore(cooling_func, stream, e->cosmology);
   e->cooling_func = cooling_func;
 
   struct chemistry_global_data *chemistry =

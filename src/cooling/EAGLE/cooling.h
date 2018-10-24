@@ -98,7 +98,6 @@ void cooling_init_backend(struct swift_params *, const struct unit_system *,
 
 void cooling_print_backend(const struct cooling_function_data *);
 
-void cooling_update(const struct phys_const *, const struct unit_system *,
-                    const struct cosmology *, struct cooling_function_data *);
+void cooling_update(const struct cosmology *, struct cooling_function_data *, const int);
 
 #endif /* SWIFT_COOLING_EAGLE_H */

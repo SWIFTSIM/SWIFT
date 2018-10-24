@@ -73,8 +73,17 @@ void cooling_struct_dump(const struct cooling_function_data* cooling,
  * @param cooling the struct
  * @param stream the file stream
  */
-void cooling_struct_restore(const struct cooling_function_data* cooling,
-                            FILE* stream) {
+void cooling_struct_restore(struct cooling_function_data* cooling,
+                            FILE* stream, const struct cosmology* cosmo) {
   restart_read_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
                       stream, NULL, "cooling function");
+
+  get_cooling_redshifts(cooling);
+  char fname[eagle_table_path_name_length + 12];
+  sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
+  read_cooling_header(fname, cooling);
+  message("finished reading cooling header");
+  allocate_cooling_tables(cooling);
+  cooling_update(cosmo, cooling, 1); 
+  message("finished reading cooling tables");
 }
