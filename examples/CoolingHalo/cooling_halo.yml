@@ -32,7 +32,8 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  CoolingHalo.hdf5       # The file to read
- 
+  periodic:   1
+  
 # External potential parameters
 IsothermalPotential:
   vrot:            200.     # rotation speed of isothermal potential in internal units

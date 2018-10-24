@@ -681,6 +681,28 @@ int main(int argc, char *argv[]) {
       phys_const_print(&prog_const);
     }
 
+    /* Read particles and space information from ICs */
+    char ICfileName[200] = "";
+    parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
+    const int periodic =
+        parser_get_param_int(params, "InitialConditions:periodic");
+    const int replicate =
+        parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
+    clean_smoothing_length_values = parser_get_opt_param_int(
+        params, "InitialConditions:cleanup_smoothing_lengths", 0);
+    const int cleanup_h = parser_get_opt_param_int(
+        params, "InitialConditions:cleanup_h_factors", 0);
+    const int cleanup_sqrt_a = parser_get_opt_param_int(
+        params, "InitialConditions:cleanup_velocity_factors", 0);
+    const int generate_gas_in_ics = parser_get_opt_param_int(
+        params, "InitialConditions:generate_gas_in_ics", 0);
+
+    /* Some checks that we are not doing something stupid */
+    if (generate_gas_in_ics && flag_entropy_ICs)
+      error("Can't generate gas if the entropy flag is set in the ICs.");
+    if (generate_gas_in_ics && !with_cosmology)
+      error("Can't generate gas if the run is not cosmological.");
+
     /* Initialise the cosmology */
     if (with_cosmology)
       cosmology_init(params, &us, &prog_const, &cosmo);
@@ -709,27 +731,12 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
-      gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology);
+      gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology,
+                         periodic);
     else
       bzero(&gravity_properties, sizeof(struct gravity_props));
 
-    /* Read particles and space information from (GADGET) ICs */
-    char ICfileName[200] = "";
-    parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
-    const int replicate =
-        parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
-    clean_smoothing_length_values = parser_get_opt_param_int(
-        params, "InitialConditions:cleanup_smoothing_lengths", 0);
-    const int cleanup_h = parser_get_opt_param_int(
-        params, "InitialConditions:cleanup_h_factors", 0);
-    const int cleanup_sqrt_a = parser_get_opt_param_int(
-        params, "InitialConditions:cleanup_velocity_factors", 0);
-    const int generate_gas_in_ics = parser_get_opt_param_int(
-        params, "InitialConditions:generate_gas_in_ics", 0);
-    if (generate_gas_in_ics && flag_entropy_ICs)
-      error("Can't generate gas if the entropy flag is set in the ICs.");
-    if (generate_gas_in_ics && !with_cosmology)
-      error("Can't generate gas if the run is not cosmological.");
+    /* Be verbose about what happens next */
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
     if (myrank == 0 && cleanup_h)
       message("Cleaning up h-factors (h=%f)", cosmo.h);
@@ -740,20 +747,19 @@ int main(int argc, char *argv[]) {
     /* Get ready to read particles of all kinds */
     size_t Ngas = 0, Ngpart = 0, Nspart = 0;
     double dim[3] = {0., 0., 0.};
-    int periodic = 0;
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                     &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                     &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
                      (with_external_gravity || with_self_gravity), with_stars,
                      cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
                      nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                      dry_run);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                   &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                   &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
                    cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
                    nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
@@ -761,7 +767,7 @@ int main(int argc, char *argv[]) {
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                   &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                   &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
                    cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
                    dry_run);

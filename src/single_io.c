@@ -314,7 +314,6 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param Ngas (output) number of Gas particles read.
  * @param Ngparts (output) The number of #gpart read.
  * @param Nstars (output) The number of #spart read.
- * @param periodic (output) 1 if the volume is periodic, 0 if not.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we reading gas particles ?
@@ -339,10 +338,10 @@ void read_ic_single(const char* fileName,
                     const struct unit_system* internal_units, double dim[3],
                     struct part** parts, struct gpart** gparts,
                     struct spart** sparts, size_t* Ngas, size_t* Ngparts,
-                    size_t* Nstars, int* periodic, int* flag_entropy,
-                    int with_hydro, int with_gravity, int with_stars,
-                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
-                    int n_threads, int dry_run) {
+                    size_t* Nstars, int* flag_entropy, int with_hydro,
+                    int with_gravity, int with_stars, int cleanup_h,
+                    int cleanup_sqrt_a, double h, double a, int n_threads,
+                    int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -358,17 +357,6 @@ void read_ic_single(const char* fileName,
   /* message("Opening file '%s' as IC.", fileName); */
   h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
   if (h_file < 0) error("Error while opening file '%s'.", fileName);
-
-  /* Open header to read simulation properties */
-  /* message("Reading runtime parameters..."); */
-  h_grp = H5Gopen(h_file, "/RuntimePars", H5P_DEFAULT);
-  if (h_grp < 0) error("Error while opening runtime parameters\n");
-
-  /* Read the relevant information */
-  io_read_attribute(h_grp, "PeriodicBoundariesOn", INT, periodic);
-
-  /* Close runtime parameters */
-  H5Gclose(h_grp);
 
   /* Open header to read simulation properties */
   /* message("Reading file header..."); */

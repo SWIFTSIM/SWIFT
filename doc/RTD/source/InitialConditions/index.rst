@@ -117,15 +117,6 @@ GADGET-2 based analysis programs:
 + ``Time``, time of the start of the simulation in internal units or expressed
   as a scale-factor for cosmological runs. SWIFT ignores this and reads it from
   the parameter file.
-  
-RuntimePars
-~~~~~~~~~~~
-
-In the ``/RuntimePars/``, the following attributes are required:
-
-+ ``PeriodicBoundariesOn``, a flag to tell the code whether or not you
-  have periodic boundaries switched on. Again, this is historical; it should be
-  set to 1 (default) if you have the code running in periodic mode, or 0 otherwise.
 
 
 Particle Data
@@ -145,7 +136,7 @@ individual particle type (e.g. ``/PartType0/``) that have the following *dataset
   velocities divided by ``sqrt(a)`` (see below for a fix).
 + ``ParticleIDs``, an array of length N that are unique identifying numbers for
   each particle. Note that these have to be unique to a particle, and cannot be
-  the same even between particle types. The **IDs must be >1**. 0 or negative
+  the same even between particle types. The **IDs must be >= 0**. Negative
   IDs will be rejected by the code.
 + ``Masses``, an array of length N that gives the masses of the particles.
 
@@ -216,8 +207,6 @@ You should have an HDF5 file with the following structure:
      Flag_Entropy_ICs=0
      NumPart_Total=[0, 1, 0, 0, 4, 5]
      NumPart_Total_HighWord=[0, 0, 0, 0, 0, 0]
-   RuntimePars/
-     PeriodicBoundariesOn=1
    Units/
      Unit current in cgs (U_I)=1.0
      Unit length in cgs (U_L)=1.0
