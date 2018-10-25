@@ -492,6 +492,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
@@ -516,9 +517,12 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
       if (part_is_active(p, e)) {
 
+        const float rho = hydro_get_physical_density(p, cosmo);
+
         // MATTHIEU: Temporary star-formation law
-        if (p->rho > 1.5e7 && e->step > 2) {
-          message("Removing particle id=%lld rho=%e", p->id, p->rho);
+        // Do not use this at home.
+        if (rho > 1.5e7 && e->step > 2) {
+          message("Removing particle id=%lld rho=%e", p->id, rho);
           cell_convert_part_to_gpart(e, c, p, xp);
         }
       }
