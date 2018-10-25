@@ -73,9 +73,10 @@ enum engine_policy {
   engine_policy_sourceterms = (1 << 14),
   engine_policy_stars = (1 << 15),
   engine_policy_structure_finding = (1 << 16),
-  engine_policy_feedback = (1 << 17)
+  engine_policy_star_formation = (1 << 17),
+  engine_policy_feedback = (1 << 18)
 };
-#define engine_maxpolicy 17
+#define engine_maxpolicy 18
 extern const char *engine_policy_names[];
 
 /**
@@ -203,6 +204,15 @@ struct engine {
 
   /* Total numbers of particles in the system. */
   long long total_nr_parts, total_nr_gparts, total_nr_sparts;
+
+  /* The total number of inhibted particles in the system. */
+  long long nr_inhibited_parts, nr_inhibited_gparts, nr_inhibited_sparts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Total number of particles removed from the system since the last rebuild */
+  long long count_inhibited_parts, count_inhibited_gparts,
+      count_inhibited_sparts;
+#endif
 
   /* Total mass in the simulation */
   double total_mass;
@@ -412,12 +422,12 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
-void engine_exchange_strays(struct engine *e, size_t offset_parts,
-                            int *ind_part, size_t *Npart, size_t offset_gparts,
-                            int *ind_gpart, size_t *Ngpart,
-                            size_t offset_sparts, int *ind_spart,
-                            size_t *Nspart);
-void engine_rebuild(struct engine *e, int clean_h_values);
+void engine_exchange_strays(struct engine *e, const size_t offset_parts,
+                            const int *ind_part, size_t *Npart,
+                            const size_t offset_gparts, const int *ind_gpart,
+                            size_t *Ngpart, const size_t offset_sparts,
+                            const int *ind_spart, size_t *Nspart);
+void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
 void engine_makeproxies(struct engine *e);

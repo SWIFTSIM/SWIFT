@@ -270,6 +270,9 @@ struct cell {
     /*! Number of #part updated in this cell. */
     int updated;
 
+    /*! Number of #part inhibited in this cell. */
+    int inhibited;
+
     /*! Is the #part data of this cell being used in a sub-cell? */
     int hold;
 
@@ -330,6 +333,9 @@ struct cell {
     /*! Task for cooling */
     struct task *cooling;
 
+    /*! Task for star formation */
+    struct task *star_formation;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
     /*! Last (integer) time the cell's sort arrays were updated. */
@@ -379,6 +385,9 @@ struct cell {
 
     /*! Number of #gpart updated in this cell. */
     int updated;
+
+    /*! Number of #gpart inhibited in this cell. */
+    int inhibited;
 
     /*! Is the #gpart data of this cell being used in a sub-cell? */
     int phold;
@@ -459,6 +468,9 @@ struct cell {
 
     /*! Number of #spart updated in this cell. */
     int updated;
+
+    /*! Number of #spart inhibited in this cell. */
+    int inhibited;
 
     /*! Is the #spart data of this cell being used in a sub-cell? */
     int hold;
@@ -635,6 +647,16 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 int cell_has_tasks(struct cell *c);
+void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
+                      struct xpart *xp);
+void cell_remove_gpart(const struct engine *e, struct cell *c,
+                       struct gpart *gp);
+void cell_remove_spart(const struct engine *e, struct cell *c,
+                       struct spart *sp);
+void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
+                                struct part *p, struct xpart *xp);
+void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
+                                 struct spart *sp);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s);
 int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,

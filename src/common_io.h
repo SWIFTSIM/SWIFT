@@ -35,6 +35,7 @@
 struct part;
 struct gpart;
 struct spart;
+struct xpart;
 struct io_props;
 struct engine;
 struct threadpool;
@@ -91,8 +92,20 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 size_t io_sizeof_type(enum IO_DATA_TYPE type);
 int io_is_double_precision(enum IO_DATA_TYPE type);
 
-void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
-                          struct gpart* const dmparts, size_t Ndm);
+void io_collect_parts_to_write(const struct part* restrict parts,
+                               const struct xpart* restrict xparts,
+                               struct part* restrict parts_written,
+                               struct xpart* restrict xparts_written,
+                               const size_t Nparts,
+                               const size_t Nparts_written);
+void io_collect_sparts_to_write(const struct spart* restrict sparts,
+                                struct spart* restrict sparts_written,
+                                const size_t Nsparts,
+                                const size_t Nsparts_written);
+void io_collect_gparts_to_write(const struct gpart* restrict gparts,
+                                struct gpart* restrict gparts_written,
+                                const size_t Ngparts,
+                                const size_t Ngparts_written);
 void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
                           size_t Ndm);
 void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,

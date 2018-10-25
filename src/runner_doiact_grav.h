@@ -121,6 +121,9 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
         if (c->grav.multipole->pot.ti_init != e->ti_current)
           error("c->field tensor not initialised");
 
+        /* Check that we are not updated an inhibited particle */
+        if (gpart_is_inhibited(gp, e)) error("Updating an inhibited particle!");
+
         /* Check that the particle was initialised */
         if (gp->initialised == 0)
           error("Adding forces to an un-initialised gpart.");
@@ -226,8 +229,18 @@ static INLINE void runner_dopair_grav_pp_full(
       /* Check that particles have been drifted to the current time */
       if (gparts_i[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
+      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts_j[pjd], e))
         error("gpj not drifted to current time");
+
+      /* Check that we are not updated an inhibited particle */
+      if (gpart_is_inhibited(&gparts_i[pid], e))
+        error("Updating an inhibited particle!");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (pjd < gcount_j && gpart_is_inhibited(&gparts_j[pjd], e) &&
+          mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
 
       /* Check that the particle was initialised */
       if (gparts_i[pid].initialised == 0)
@@ -247,7 +260,8 @@ static INLINE void runner_dopair_grav_pp_full(
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
-      if (pjd < gcount_j) gparts_i[pid].num_interacted++;
+      if (pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e))
+        gparts_i[pid].num_interacted++;
 #endif
     }
 
@@ -356,8 +370,18 @@ static INLINE void runner_dopair_grav_pp_truncated(
       /* Check that particles have been drifted to the current time */
       if (gparts_i[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
+      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts_j[pjd], e))
         error("gpj not drifted to current time");
+
+      /* Check that we are not updated an inhibited particle */
+      if (gpart_is_inhibited(&gparts_i[pid], e))
+        error("Updating an inhibited particle!");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (pjd < gcount_j && gpart_is_inhibited(&gparts_j[pjd], e) &&
+          mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
 
       /* Check that the particle was initialised */
       if (gparts_i[pid].initialised == 0)
@@ -377,7 +401,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
-      if (pjd < gcount_j) gparts_i[pid].num_interacted++;
+      if (pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e))
+        gparts_i[pid].num_interacted++;
 #endif
     }
 
@@ -449,6 +474,10 @@ static INLINE void runner_dopair_grav_pm_full(
     /* Check that particles have been drifted to the current time */
     if (gparts_i[pid].ti_drift != e->ti_current)
       error("gpi not drifted to current time");
+
+    /* Check that we are not updated an inhibited particle */
+    if (gpart_is_inhibited(&gparts_i[pid], e))
+      error("Updating an inhibited particle!");
 
     /* Check that the particle was initialised */
     if (gparts_i[pid].initialised == 0)
@@ -578,6 +607,10 @@ static INLINE void runner_dopair_grav_pm_truncated(
     /* Check that particles have been drifted to the current time */
     if (gparts_i[pid].ti_drift != e->ti_current)
       error("gpi not drifted to current time");
+
+    /* Check that we are not updated an inhibited particle */
+    if (gpart_is_inhibited(&gparts_i[pid], e))
+      error("Updating an inhibited particle!");
 
     /* Check that the particle was initialised */
     if (gparts_i[pid].initialised == 0)
@@ -925,8 +958,17 @@ static INLINE void runner_doself_grav_pp_full(
       /* Check that particles have been drifted to the current time */
       if (gparts[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current)
+      if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts[pjd], e))
         error("gpj not drifted to current time");
+
+      /* Check that we are not updated an inhibited particle */
+      if (gpart_is_inhibited(&gparts[pid], e))
+        error("Updating an inhibited particle!");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (pjd < gcount && gpart_is_inhibited(&gparts[pjd], e) && mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
 
       /* Check that the particle was initialised */
       if (gparts[pid].initialised == 0)
@@ -946,7 +988,8 @@ static INLINE void runner_doself_grav_pp_full(
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
-      if (pjd < gcount) gparts[pid].num_interacted++;
+      if (pjd < gcount && !gpart_is_inhibited(&gparts[pjd], e))
+        gparts[pid].num_interacted++;
 #endif
     }
 
@@ -1039,8 +1082,17 @@ static INLINE void runner_doself_grav_pp_truncated(
       /* Check that particles have been drifted to the current time */
       if (gparts[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current)
+      if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts[pjd], e))
         error("gpj not drifted to current time");
+
+      /* Check that we are not updated an inhibited particle */
+      if (gpart_is_inhibited(&gparts[pid], e))
+        error("Updating an inhibited particle!");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (pjd < gcount && gpart_is_inhibited(&gparts[pjd], e) && mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
 
       /* Check that the particle was initialised */
       if (gparts[pid].initialised == 0)
@@ -1060,7 +1112,8 @@ static INLINE void runner_doself_grav_pp_truncated(
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
-      if (pjd < gcount) gparts[pid].num_interacted++;
+      if (pjd < gcount && !gpart_is_inhibited(&gparts[pjd], e))
+        gparts[pid].num_interacted++;
 #endif
     }
 

@@ -146,6 +146,15 @@ struct space {
   /*! The total number of g-parts in the space. */
   size_t nr_sparts, size_sparts;
 
+  /*! Number of inhibted gas particles in the space */
+  size_t nr_inhibited_parts;
+
+  /*! Number of inhibted gravity particles in the space */
+  size_t nr_inhibited_gparts;
+
+  /*! Number of inhibted star particles in the space */
+  size_t nr_inhibited_sparts;
+
   /*! The particle data (cells have pointers to this). */
   struct part *parts;
 
@@ -232,7 +241,7 @@ void space_map_parts_xparts(struct space *s,
                                         struct cell *c));
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
-void space_rebuild(struct space *s, int verbose);
+void space_rebuild(struct space *s, int repartitioned, int verbose);
 void space_recycle(struct space *s, struct cell *c);
 void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct cell *cell_list_end,
@@ -244,11 +253,11 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data);
 void space_list_local_cells(struct space *s);
 void space_list_cells_with_tasks(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
-                                struct cell *cells, int verbose);
+                                int *count_inibibited_parts, int verbose);
 void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
-                                 struct cell *cells, int verbose);
+                                 int *count_inibibited_gparts, int verbose);
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
-                                 struct cell *cells, int verbose);
+                                 int *count_inibibited_sparts, int verbose);
 void space_synchronize_particle_positions(struct space *s);
 void space_do_parts_sort(void);
 void space_do_gparts_sort(void);

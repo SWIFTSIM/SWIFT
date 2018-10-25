@@ -48,16 +48,17 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",           "sort",          "self",
-    "pair",           "sub_self",      "sub_pair",
-    "init_grav",      "init_grav_out", "ghost_in",
-    "ghost",          "ghost_out",     "extra_ghost",
-    "drift_part",     "drift_gpart",   "end_force",
-    "kick1",          "kick2",         "timestep",
-    "send",           "recv",          "grav_long_range",
-    "grav_mm",        "grav_down_in",  "grav_down",
-    "grav_mesh",      "cooling",       "sourceterms",
-    "stars_ghost_in", "stars_ghost",   "stars_ghost_out"};
+    "none",           "sort",           "self",
+    "pair",           "sub_self",       "sub_pair",
+    "init_grav",      "init_grav_out",  "ghost_in",
+    "ghost",          "ghost_out",      "extra_ghost",
+    "drift_part",     "drift_gpart",    "end_force",
+    "kick1",          "kick2",          "timestep",
+    "send",           "recv",           "grav_long_range",
+    "grav_mm",        "grav_down_in",   "grav_down",
+    "grav_mesh",      "cooling",        "star_formation",
+    "sourceterms",    "stars_ghost_in", "stars_ghost",
+    "stars_ghost_out"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
@@ -121,6 +122,9 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_sourceterms:
       return task_action_part;
       break;
+
+    case task_type_star_formation:
+      return task_action_all;
 
     case task_type_stars_ghost:
       return task_action_spart;

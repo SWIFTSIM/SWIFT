@@ -1246,7 +1246,8 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
           c->hydro.ti_old_part, ti_drift);
 
   for (int i = 0; i < c->hydro.count; ++i)
-    if (c->hydro.parts[i].ti_drift != ti_drift)
+    if (c->hydro.parts[i].ti_drift != ti_drift &&
+        c->hydro.parts[i].time_bin != time_bin_inhibited)
       error("part in an incorrect time-zone! p->ti_drift=%lld ti_drift=%lld",
             c->hydro.parts[i].ti_drift, ti_drift);
 #else
@@ -1279,12 +1280,14 @@ void cell_check_gpart_drift_point(struct cell *c, void *data) {
         c->grav.ti_old_part, ti_drift);
 
   for (int i = 0; i < c->grav.count; ++i)
-    if (c->grav.parts[i].ti_drift != ti_drift)
+    if (c->grav.parts[i].ti_drift != ti_drift &&
+        c->grav.parts[i].time_bin != time_bin_inhibited)
       error("g-part in an incorrect time-zone! gp->ti_drift=%lld ti_drift=%lld",
             c->grav.parts[i].ti_drift, ti_drift);
 
   for (int i = 0; i < c->stars.count; ++i)
-    if (c->stars.parts[i].ti_drift != ti_drift)
+    if (c->stars.parts[i].ti_drift != ti_drift &&
+        c->stars.parts[i].time_bin != time_bin_inhibited)
       error("s-part in an incorrect time-zone! sp->ti_drift=%lld ti_drift=%lld",
             c->stars.parts[i].ti_drift, ti_drift);
 #else
@@ -2745,6 +2748,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->end_force != NULL) scheduler_activate(s, c->end_force);
     if (c->hydro.cooling != NULL) scheduler_activate(s, c->hydro.cooling);
+    if (c->hydro.star_formation != NULL)
+      scheduler_activate(s, c->hydro.star_formation);
     if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
   }
 
@@ -2892,6 +2897,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->end_force != NULL) scheduler_activate(s, c->end_force);
     if ((e->policy & engine_policy_cooling) && c->hydro.cooling != NULL)
       scheduler_activate(s, c->hydro.cooling);
+    if ((e->policy & engine_policy_star_formation) &&
+        c->hydro.star_formation != NULL)
+      scheduler_activate(s, c->hydro.star_formation);
     if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
     if (c->grav.down_in != NULL) scheduler_activate(s, c->grav.down_in);
     if (c->grav.mesh != NULL) scheduler_activate(s, c->grav.mesh);
@@ -3263,6 +3271,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       struct part *const p = &parts[k];
       struct xpart *const xp = &xparts[k];
 
+      /* Ignore inhibited particles */
+      if (part_is_inhibited(p, e)) continue;
+
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current);
@@ -3417,6 +3428,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       /* Get a handle on the gpart. */
       struct gpart *const gp = &gparts[k];
 
+      /* Ignore inhibited particles */
+      if (gpart_is_inhibited(gp, e)) continue;
+
       /* Drift... */
       drift_gpart(gp, dt_drift, ti_old_gpart, ti_current);
 
@@ -3461,6 +3475,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Get a handle on the spart. */
       struct spart *const sp = &sparts[k];
+
+      /* Ignore inhibited particles */
+      if (spart_is_inhibited(sp, e)) continue;
 
       /* Drift... */
       drift_spart(sp, dt_drift, ti_old_gpart, ti_current);
@@ -3597,6 +3614,165 @@ void cell_check_timesteps(struct cell *c) {
   }
 #else
   error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief "Remove" a gas particle from the calculation.
+ *
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param e The #engine running on this node.
+ * @param c The #cell from which to remove the particle.
+ * @param p The #part to remove.
+ * @param xp The extended data of the particle to remove.
+ */
+void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
+                      struct xpart *xp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  /* Mark the particle as inhibited */
+  p->time_bin = time_bin_inhibited;
+
+  /* Mark the gpart as inhibited and stand-alone */
+  if (p->gpart) {
+    p->gpart->time_bin = time_bin_inhibited;
+    p->gpart->id_or_neg_offset = p->id;
+    p->gpart->type = swift_type_dark_matter;
+  }
+
+  /* Un-link the part */
+  p->gpart = NULL;
+}
+
+/**
+ * @brief "Remove" a gravity particle from the calculation.
+ *
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param e The #engine running on this node.
+ * @param c The #cell from which to remove the particle.
+ * @param gp The #gpart to remove.
+ */
+void cell_remove_gpart(const struct engine *e, struct cell *c,
+                       struct gpart *gp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  if (gp->type != swift_type_dark_matter)
+    error("Trying to remove a non-dark matter gpart.");
+
+  /* Mark the particle as inhibited */
+  gp->time_bin = time_bin_inhibited;
+}
+
+/**
+ * @brief "Remove" a star particle from the calculation.
+ *
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param e The #engine running on this node.
+ * @param c The #cell from which to remove the particle.
+ * @param sp The #spart to remove.
+ */
+void cell_remove_spart(const struct engine *e, struct cell *c,
+                       struct spart *sp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  /* Mark the particle as inhibited and stand-alone */
+  sp->time_bin = time_bin_inhibited;
+  if (sp->gpart) {
+    sp->gpart->time_bin = time_bin_inhibited;
+    sp->gpart->id_or_neg_offset = sp->id;
+    sp->gpart->type = swift_type_dark_matter;
+  }
+
+  /* Un-link the spart */
+  sp->gpart = NULL;
+}
+
+/**
+ * @brief "Remove" a gas particle from the calculation and convert its gpart
+ * friend to a dark matter particle.
+ *
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param e The #engine running on this node.
+ * @param c The #cell from which to remove the particle.
+ * @param p The #part to remove.
+ * @param xp The extended data of the particle to remove.
+ */
+void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
+                                struct part *p, struct xpart *xp) {
+
+  /* Quick cross-checks */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  if (p->gpart == NULL)
+    error("Trying to convert part without gpart friend to dark matter!");
+
+  /* Get a handle */
+  struct gpart *gp = p->gpart;
+
+  /* Mark the particle as inhibited */
+  p->time_bin = time_bin_inhibited;
+
+  /* Un-link the part */
+  p->gpart = NULL;
+
+  /* Mark the gpart as dark matter */
+  gp->type = swift_type_dark_matter;
+  gp->id_or_neg_offset = p->id;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  gp->ti_kick = p->ti_kick;
+#endif
+}
+
+/**
+ * @brief "Remove" a spart particle from the calculation and convert its gpart
+ * friend to a dark matter particle.
+ *
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param e The #engine running on this node.
+ * @param c The #cell from which to remove the particle.
+ * @param sp The #spart to remove.
+ */
+void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
+                                 struct spart *sp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  if (sp->gpart == NULL)
+    error("Trying to convert spart without gpart friend to dark matter!");
+
+  /* Get a handle */
+  struct gpart *gp = sp->gpart;
+
+  /* Mark the particle as inhibited */
+  sp->time_bin = time_bin_inhibited;
+
+  /* Un-link the spart */
+  sp->gpart = NULL;
+
+  /* Mark the gpart as dark matter */
+  gp->type = swift_type_dark_matter;
+  gp->id_or_neg_offset = sp->id;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  gp->ti_kick = sp->ti_kick;
 #endif
 }
 
