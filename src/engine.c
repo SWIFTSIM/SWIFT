@@ -5869,12 +5869,15 @@ void engine_unskip(struct engine *e) {
 void engine_do_drift_all_mapper(void *map_data, int num_elements,
                                 void *extra_data) {
 
-  struct engine *e = (struct engine *)extra_data;
-  struct cell *cells = (struct cell *)map_data;
+  const struct engine *e = (const struct engine *)extra_data;
+  struct space *s = e->s;
+  int *local_cells = (int *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &cells[ind];
-    if (c != NULL && c->nodeID == e->nodeID) {
+    struct cell *c = &s->cells_top[local_cells[ind]];
+
+    if (c->nodeID == e->nodeID) {
+
       /* Drift all the particles */
       cell_drift_part(c, e, 1);
 
@@ -5910,8 +5913,9 @@ void engine_drift_all(struct engine *e) {
   }
 #endif
 
-  threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
-                 e->s->nr_cells, sizeof(struct cell), 0, e);
+  threadpool_map(&e->threadpool, engine_do_drift_all_mapper,
+                 e->s->local_cells_with_tasks_top,
+                 e->s->nr_local_cells_with_tasks, sizeof(int), 0, e);
 
   /* Synchronize particle positions */
   space_synchronize_particle_positions(e->s);

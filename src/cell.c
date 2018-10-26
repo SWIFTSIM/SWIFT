@@ -1309,12 +1309,12 @@ void cell_check_multipole_drift_point(struct cell *c, void *data) {
 
   const integertime_t ti_drift = *(integertime_t *)data;
 
-  if (c->grav.ti_old_multipole != ti_drift)
+  if (c->grav.ti_old_multipole != ti_drift && c->nodeID == engine_rank)
     error(
         "Cell multipole in an incorrect time-zone! "
         "c->grav.ti_old_multipole=%lld "
-        "ti_drift=%lld (depth=%d)",
-        c->grav.ti_old_multipole, ti_drift, c->depth);
+        "ti_drift=%lld (depth=%d, node=%d)",
+        c->grav.ti_old_multipole, ti_drift, c->depth, c->nodeID);
 
 #else
   error("Calling debugging code without debugging flag activated.");
