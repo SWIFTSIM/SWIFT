@@ -1597,8 +1597,9 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
  * @param num_bins Total number of bins (length of count).
  * @param parts_offset Offset of the #part array from the global #part array.
  */
-void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
-                      int *counts, int num_bins, ptrdiff_t parts_offset) {
+void space_parts_sort(struct part *parts, struct xpart *xparts,
+                      int *restrict ind, int *restrict counts, int num_bins,
+                      ptrdiff_t parts_offset) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
   if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
@@ -1659,8 +1660,9 @@ void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
  * @param sparts_offset Offset of the #spart array from the global #spart.
  * array.
  */
-void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
-                       int num_bins, ptrdiff_t sparts_offset) {
+void space_sparts_sort(struct spart *sparts, int *restrict ind,
+                       int *restrict counts, int num_bins,
+                       ptrdiff_t sparts_offset) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
   if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
@@ -1719,8 +1721,8 @@ void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
  * @param num_bins Total number of bins (length of counts).
  */
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
-                       struct spart *sparts, int *ind, int *counts,
-                       int num_bins) {
+                       struct spart *sparts, int *restrict ind,
+                       int *restrict counts, int num_bins) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
   if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
