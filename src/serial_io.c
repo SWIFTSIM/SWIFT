@@ -153,7 +153,37 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
       float* temp_f = temp;
-      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      float maximum = 0.f;
+      float minimum = FLT_MAX;
+#endif
+
+      /* Loop that converts the Units */
+      for (size_t i = 0; i < num_elements; ++i) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Find the absolute minimum and maximum values */
+        const float abstemp_f = fabsf(temp_f[i]);
+        if (abstemp_f != 0.f) {
+          maximum = max(maximum, abstemp_f);
+          minimum = min(minimum, abstemp_f);
+        }
+#endif
+
+        /* Convert the float units */
+        temp_f[i] *= factor;
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* The two possible errors: larger than float or smaller
+       * than float precision. */
+      if (factor * maximum > FLT_MAX) {
+        error("Unit conversion results in numbers larger than floats");
+      } else if (factor * minimum < FLT_MIN) {
+        error("Numbers smaller than float precision");
+      }
+#endif
     }
   }
 
