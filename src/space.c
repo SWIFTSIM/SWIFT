@@ -2699,11 +2699,17 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
 void space_synchronize_particle_positions(struct space *s) {
 
+  const ticks tic = getticks();
+
   if ((s->nr_gparts > 0 && s->nr_parts > 0) ||
       (s->nr_gparts > 0 && s->nr_sparts > 0))
     threadpool_map(&s->e->threadpool,
                    space_synchronize_particle_positions_mapper, s->gparts,
                    s->nr_gparts, sizeof(struct gpart), 0, (void *)s);
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 void space_first_init_parts_mapper(void *restrict map_data, int count,
