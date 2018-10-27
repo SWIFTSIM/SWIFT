@@ -1241,6 +1241,9 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
   /* Only check local cells */
   if (c->nodeID != engine_rank) return;
 
+  /* Only check cells with content */
+  if (c->hydro.count == 0) return;
+
   if (c->hydro.ti_old_part != ti_drift)
     error("Cell in an incorrect time-zone! c->hydro.ti_old=%lld ti_drift=%lld",
           c->hydro.ti_old_part, ti_drift);
@@ -1272,6 +1275,9 @@ void cell_check_gpart_drift_point(struct cell *c, void *data) {
 
   /* Only check local cells */
   if (c->nodeID != engine_rank) return;
+
+  /* Only check cells with content */
+  if (c->grav.count == 0) return;
 
   if (c->grav.ti_old_part != ti_drift)
     error(
@@ -1309,7 +1315,13 @@ void cell_check_multipole_drift_point(struct cell *c, void *data) {
 
   const integertime_t ti_drift = *(integertime_t *)data;
 
-  if (c->grav.ti_old_multipole != ti_drift && c->nodeID == engine_rank)
+  /* Only check local cells */
+  if (c->nodeID != engine_rank) return;
+
+  /* Only check cells with content */
+  if (c->grav.count == 0) return;
+
+  if (c->grav.ti_old_multipole != ti_drift)
     error(
         "Cell multipole in an incorrect time-zone! "
         "c->grav.ti_old_multipole=%lld "
