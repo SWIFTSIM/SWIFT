@@ -119,6 +119,9 @@ struct space {
   /*! Number of *local* top-level cells with tasks */
   int nr_local_cells_with_tasks;
 
+  /*! Number of top-level cells that have >0 #gpart */
+  int nr_cells_with_gparts;
+
   /*! The (level 0) cells themselves. */
   struct cell *cells_top;
 
@@ -136,6 +139,9 @@ struct space {
 
   /*! The indices of the *local* top-level cells with tasks */
   int *local_cells_with_tasks_top;
+
+  /*! The indices of the top-level cells that have >0 #gpart */
+  int *cells_with_gparts_top;
 
   /*! The total number of parts in the space. */
   size_t nr_parts, size_parts;
@@ -252,6 +258,7 @@ void space_split(struct space *s, struct cell *cells, int nr_cells,
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);
 void space_list_local_cells(struct space *s);
 void space_list_cells_with_tasks(struct space *s);
+void space_list_cells_with_gparts(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
                                 int *count_inibibited_parts, int verbose);
 void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
