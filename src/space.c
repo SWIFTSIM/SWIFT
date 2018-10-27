@@ -2590,7 +2590,7 @@ void space_list_cells_with_gparts(struct space *s) {
     }
 
   if (s->e->verbose)
-    message("Have %d top-level cells with tasks (total=%d)",
+    message("Have %d top-level cells with gparts (total=%d)",
             s->nr_cells_with_gparts, s->nr_cells);
 
   if (s->e->verbose)
