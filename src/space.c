@@ -1063,7 +1063,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif
 
   /* Hook the cells up to the parts. */
-  // tic = getticks();
+  ticks tic2 = getticks();
   struct part *finger = s->parts;
   struct xpart *xfinger = s->xparts;
   struct gpart *gfinger = s->gparts;
@@ -1090,8 +1090,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       sfinger = &sfinger[c->stars.count];
     }
   }
-  // message( "hooking up cells took %.3f %s." ,
-  // clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (verbose)
+    message("hooking up cells took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */
@@ -2569,6 +2570,8 @@ void space_free_buff_sort_indices(struct space *s) {
  */
 void space_list_cells_with_tasks(struct space *s) {
 
+  const ticks tic = getticks();
+
   s->nr_local_cells_with_tasks = 0;
 
   for (int i = 0; i < s->nr_cells; ++i)
@@ -2579,6 +2582,10 @@ void space_list_cells_with_tasks(struct space *s) {
   if (s->e->verbose)
     message("Have %d local top-level cells with tasks (total=%d)",
             s->nr_local_cells_with_tasks, s->nr_cells);
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2589,6 +2596,8 @@ void space_list_cells_with_tasks(struct space *s) {
  * @param s The #space.
  */
 void space_list_local_cells(struct space *s) {
+
+  const ticks tic = getticks();
 
   s->nr_local_cells = 0;
 
@@ -2601,6 +2610,10 @@ void space_list_local_cells(struct space *s) {
   if (s->e->verbose)
     message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
             s->nr_cells);
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
