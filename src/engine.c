@@ -4558,7 +4558,7 @@ void engine_rebuild(struct engine *e, int repartitioned,
 #endif
 
   /* Make a short list of cells with any gpart. */
-  space_list_cells_with_gparts(e->s);
+  space_list_cells_with_particles(e->s);
 
   /* Re-build the tasks. */
   engine_maketasks(e);

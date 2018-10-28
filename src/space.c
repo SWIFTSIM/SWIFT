@@ -401,7 +401,7 @@ void space_regrid(struct space *s, int verbose) {
       space_free_cells(s);
       free(s->local_cells_with_tasks_top);
       free(s->local_cells_top);
-      free(s->cells_with_gparts_top);
+      free(s->cells_with_particles_top);
       free(s->cells_top);
       free(s->multipoles_top);
     }
@@ -446,10 +446,10 @@ void space_regrid(struct space *s, int verbose) {
     bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
 
     /* Allocate the indices of cells with gparts */
-    if (posix_memalign((void **)&s->cells_with_gparts_top,
+    if (posix_memalign((void **)&s->cells_with_particles_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-      error("Failed to allocate indices of top-level cells with gparts.");
-    bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
+      error("Failed to allocate indices of top-level cells with particles.");
+    bzero(s->cells_with_particles_top, s->nr_cells * sizeof(int));
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
@@ -2568,30 +2568,30 @@ void space_free_buff_sort_indices(struct space *s) {
 }
 
 /**
- * @brief Construct the list of top-level cells that have any gpart
- * and hence a non-zero multipole.
+ * @brief Construct the list of top-level cells that have any particle
  *
  * This assumes the list has been pre-allocated at a regrid.
  *
  * @param s The #space.
  */
-void space_list_cells_with_gparts(struct space *s) {
+void space_list_cells_with_particles(struct space *s) {
 
   const ticks tic = getticks();
 
-  s->nr_cells_with_gparts = 0;
+  s->nr_cells_with_particles = 0;
 
   if (!s->gravity) return;
 
   for (int i = 0; i < s->nr_cells; ++i)
-    if (s->multipoles_top[i].m_pole.M_000 > 0.f) {
-      s->cells_with_gparts_top[s->nr_cells_with_gparts] = i;
-      s->nr_cells_with_gparts++;
+    if ((s->cells_top[i].hydro.count > 0) || (s->cells_top[i].grav.count > 0) ||
+        (s->cells_top[i].stars.count > 0)) {
+      s->cells_with_particles_top[s->nr_cells_with_particles] = i;
+      s->nr_cells_with_particles++;
     }
 
   if (s->e->verbose)
-    message("Have %d top-level cells with gparts (total=%d)",
-            s->nr_cells_with_gparts, s->nr_cells);
+    message("Have %d top-level cells with particles (total=%d)",
+            s->nr_cells_with_particles, s->nr_cells);
 
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3668,7 +3668,7 @@ void space_clean(struct space *s) {
   free(s->multipoles_top);
   free(s->local_cells_top);
   free(s->local_cells_with_tasks_top);
-  free(s->cells_with_gparts_top);
+  free(s->cells_with_particles_top);
   free(s->parts);
   free(s->xparts);
   free(s->gparts);
@@ -3721,7 +3721,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->multipoles_sub = NULL;
   s->local_cells_top = NULL;
   s->local_cells_with_tasks_top = NULL;
-  s->cells_with_gparts_top = NULL;
+  s->cells_with_particles_top = NULL;
   s->grav_top_level = NULL;
 #ifdef WITH_MPI
   s->parts_foreign = NULL;
