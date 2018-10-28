@@ -4499,9 +4499,6 @@ void engine_rebuild(struct engine *e, int repartitioned,
   /* Re-build the space. */
   space_rebuild(e->s, repartitioned, e->verbose);
 
-  /* Construct the list of purely local cells */
-  space_list_local_cells(e->s);
-
   /* Update the global counters of particles */
   long long num_particles[3] = {e->s->nr_parts, e->s->nr_gparts,
                                 e->s->nr_sparts};
@@ -4556,9 +4553,6 @@ void engine_rebuild(struct engine *e, int repartitioned,
       error("Total particles in multipoles inconsistent with engine");
   }
 #endif
-
-  /* Make a short list of cells with any gpart. */
-  space_list_cells_with_particles(e->s);
 
   /* Re-build the tasks. */
   engine_maketasks(e);

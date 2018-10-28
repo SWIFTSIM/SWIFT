@@ -256,9 +256,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
 void space_split(struct space *s, struct cell *cells, int nr_cells,
                  int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);
-void space_list_local_cells(struct space *s);
 void space_list_cells_with_tasks(struct space *s);
-void space_list_cells_with_particles(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
                                 int *count_inibibited_parts, int verbose);
 void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,

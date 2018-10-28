@@ -1069,12 +1069,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                       nr_sparts, verbose);
 #endif
 
-  /* Hook the cells up to the parts. */
+  /* Hook the cells up to the parts. Make list of local and non-empty cells */
   ticks tic2 = getticks();
   struct part *finger = s->parts;
   struct xpart *xfinger = s->xparts;
   struct gpart *gfinger = s->gparts;
   struct spart *sfinger = s->sparts;
+  s->nr_cells_with_particles = 0;
+  s->nr_local_cells = 0;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
     c->hydro.ti_old_part = ti_current;
@@ -1095,11 +1097,28 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       xfinger = &xfinger[c->hydro.count];
       gfinger = &gfinger[c->grav.count];
       sfinger = &sfinger[c->stars.count];
+
+      /* Add this cell to the list of local cells */
+      s->local_cells_top[s->nr_local_cells] = k;
+      s->nr_local_cells++;
+    }
+
+    if ((cells_top[k].hydro.count > 0) || (cells_top[k].grav.count > 0) ||
+        (cells_top[k].stars.count > 0)) {
+
+      /* Add this cell to the list of non-empty cells */
+      s->cells_with_particles_top[s->nr_cells_with_particles] = k;
+      s->nr_cells_with_particles++;
     }
   }
-  if (verbose)
+  if (verbose) {
+    message("Have %d top-level cells with particles (total=%d)",
+            s->nr_cells_with_particles, s->nr_cells);
+    message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
+            s->nr_cells);
     message("hooking up cells took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  }
 
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */
@@ -2568,37 +2587,6 @@ void space_free_buff_sort_indices(struct space *s) {
 }
 
 /**
- * @brief Construct the list of top-level cells that have any particle
- *
- * This assumes the list has been pre-allocated at a regrid.
- *
- * @param s The #space.
- */
-void space_list_cells_with_particles(struct space *s) {
-
-  const ticks tic = getticks();
-
-  s->nr_cells_with_particles = 0;
-
-  if (!s->gravity) return;
-
-  for (int i = 0; i < s->nr_cells; ++i)
-    if ((s->cells_top[i].hydro.count > 0) || (s->cells_top[i].grav.count > 0) ||
-        (s->cells_top[i].stars.count > 0)) {
-      s->cells_with_particles_top[s->nr_cells_with_particles] = i;
-      s->nr_cells_with_particles++;
-    }
-
-  if (s->e->verbose)
-    message("Have %d top-level cells with particles (total=%d)",
-            s->nr_cells_with_particles, s->nr_cells);
-
-  if (s->e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-}
-
-/**
  * @brief Construct the list of top-level cells that have any tasks in
  * their hierarchy on this MPI rank.
  *
@@ -2620,34 +2608,6 @@ void space_list_cells_with_tasks(struct space *s) {
   if (s->e->verbose)
     message("Have %d local top-level cells with tasks (total=%d)",
             s->nr_local_cells_with_tasks, s->nr_cells);
-
-  if (s->e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-}
-
-/**
- * @brief Construct the list of local top-level cells.
- *
- * This assumes the list has been pre-allocated at a regrid.
- *
- * @param s The #space.
- */
-void space_list_local_cells(struct space *s) {
-
-  const ticks tic = getticks();
-
-  s->nr_local_cells = 0;
-
-  for (int i = 0; i < s->nr_cells; ++i)
-    if (s->cells_top[i].nodeID == engine_rank) {
-      s->local_cells_top[s->nr_local_cells] = i;
-      s->nr_local_cells++;
-    }
-
-  if (s->e->verbose)
-    message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
-            s->nr_cells);
 
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
