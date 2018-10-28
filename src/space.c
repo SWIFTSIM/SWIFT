@@ -1122,7 +1122,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */
-  space_split(s, cells_top, s->nr_cells, verbose);
+  space_split(s, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the multipole construction went OK */
@@ -1149,12 +1149,12 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
  * @param nr_cells The number of cells.
  * @param verbose Are we talkative ?
  */
-void space_split(struct space *s, struct cell *cells, int nr_cells,
-                 int verbose) {
+void space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  threadpool_map(&s->e->threadpool, space_split_mapper, cells, nr_cells,
+  threadpool_map(&s->e->threadpool, space_split_mapper,
+                 s->cells_with_particles_top, s->nr_cells_with_particles,
                  sizeof(struct cell), 0, s);
 
   if (verbose)
@@ -2391,10 +2391,12 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
-  struct cell *restrict cells_top = (struct cell *)map_data;
+  struct cell *cells_top = s->cells_top;
+  int *cells_with_particles = (int *)map_data;
 
+  /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[ind];
+    struct cell *c = &cells_top[cells_with_particles[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL);
   }
 

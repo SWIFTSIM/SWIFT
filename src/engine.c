@@ -5868,10 +5868,11 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
 
   const struct engine *e = (const struct engine *)extra_data;
   struct space *s = e->s;
+  struct cell *cells_top = s->cells_top;
   int *local_cells = (int *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &s->cells_top[local_cells[ind]];
+    struct cell *c = &cells_top[local_cells[ind]];
 
     if (c->nodeID == e->nodeID) {
 
