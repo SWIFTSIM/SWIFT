@@ -1103,8 +1103,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       s->nr_local_cells++;
     }
 
-    if ((cells_top[k].hydro.count > 0) || (cells_top[k].grav.count > 0) ||
-        (cells_top[k].stars.count > 0)) {
+    if ((c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0)) {
 
       /* Add this cell to the list of non-empty cells */
       s->cells_with_particles_top[s->nr_cells_with_particles] = k;
@@ -1155,7 +1154,7 @@ void space_split(struct space *s, int verbose) {
 
   threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->cells_with_particles_top, s->nr_cells_with_particles,
-                 sizeof(struct cell), 0, s);
+                 sizeof(int), 0, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
