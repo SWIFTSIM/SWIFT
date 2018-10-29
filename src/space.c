@@ -283,26 +283,33 @@ void space_regrid(struct space *s, int verbose) {
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
   if (nr_parts > 0) {
-    if (s->local_cells_top != NULL) {
-      for (int k = 0; k < s->nr_local_cells; ++k) {
-        const struct cell *c = &s->cells_top[s->local_cells_top[k]];
+
+    /* Can we use the list of local non-empty top-level cells? */
+    if (s->local_cells_with_particles_top != NULL) {
+      for (int k = 0; k < s->nr_local_cells_with_particles; ++k) {
+        const struct cell *c =
+            &s->cells_top[s->local_cells_with_particles_top[k]];
         if (c->hydro.h_max > h_max) {
-          h_max = s->cells_top[k].hydro.h_max;
+          h_max = c->hydro.h_max;
         }
         if (c->stars.h_max > h_max) {
-          h_max = s->cells_top[k].stars.h_max;
+          h_max = c->stars.h_max;
         }
       }
+
+      /* Can we instead use all the top-level cells? */
     } else if (s->cells_top != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
         const struct cell *c = &s->cells_top[k];
         if (c->nodeID == engine_rank && c->hydro.h_max > h_max) {
-          h_max = s->cells_top[k].hydro.h_max;
+          h_max = c->hydro.h_max;
         }
         if (c->nodeID == engine_rank && c->stars.h_max > h_max) {
-          h_max = s->cells_top[k].stars.h_max;
+          h_max = c->stars.h_max;
         }
       }
+
+      /* Last option: run through the particles */
     } else {
       for (size_t k = 0; k < nr_parts; k++) {
         if (s->parts[k].h > h_max) h_max = s->parts[k].h;
