@@ -5012,6 +5012,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     }
   }
 
+  /* Exit if only computing the FOF. */
+  if(!compute_init_accel) return;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
   long long num_gpart_mpole = 0;
@@ -5051,9 +5054,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
   if (e->nodeID == 0) scheduler_write_dependencies(&e->sched, e->verbose);
-
-  /* Exit if only computing the FOF. */
-  if(!compute_init_accel) return;
 
   /* Run the 0th time-step */
   TIMER_TIC2;
