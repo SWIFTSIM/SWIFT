@@ -993,7 +993,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Initialise the particles */
-    engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values, 1);
+    engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values, 0);
 
     /* Perform first FOF search after the first snapshot dump. */
     fof_search_tree(&s);
