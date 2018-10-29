@@ -122,6 +122,9 @@ struct space {
   /*! Number of top-level cells that have >0 particle (of any kind) */
   int nr_cells_with_particles;
 
+  /*! Number of top-level cells that have >0 particle (of any kind) */
+  int nr_local_cells_with_particles;
+
   /*! The (level 0) cells themselves. */
   struct cell *cells_top;
 
@@ -142,6 +145,9 @@ struct space {
 
   /*! The indices of the top-level cells that have >0 #gpart */
   int *cells_with_particles_top;
+
+  /*! The indices of the top-level cells that have >0 #gpart */
+  int *local_cells_with_particles_top;
 
   /*! The total number of parts in the space. */
   size_t nr_parts, size_parts;

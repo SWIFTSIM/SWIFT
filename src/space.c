@@ -402,6 +402,7 @@ void space_regrid(struct space *s, int verbose) {
       free(s->local_cells_with_tasks_top);
       free(s->local_cells_top);
       free(s->cells_with_particles_top);
+      free(s->local_cells_with_particles_top);
       free(s->cells_top);
       free(s->multipoles_top);
     }
@@ -445,11 +446,19 @@ void space_regrid(struct space *s, int verbose) {
       error("Failed to allocate indices of local top-level cells with tasks.");
     bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
 
-    /* Allocate the indices of cells with gparts */
+    /* Allocate the indices of cells with particles */
     if (posix_memalign((void **)&s->cells_with_particles_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of top-level cells with particles.");
     bzero(s->cells_with_particles_top, s->nr_cells * sizeof(int));
+
+    /* Allocate the indices of local cells with particles */
+    if (posix_memalign((void **)&s->local_cells_with_particles_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error(
+          "Failed to allocate indices of local top-level cells with "
+          "particles.");
+    bzero(s->local_cells_with_particles_top, s->nr_cells * sizeof(int));
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
@@ -1076,6 +1085,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   struct gpart *gfinger = s->gparts;
   struct spart *sfinger = s->sparts;
   s->nr_cells_with_particles = 0;
+  s->nr_local_cells_with_particles = 0;
   s->nr_local_cells = 0;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
@@ -1088,7 +1098,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     last_cell_id++;
 #endif
 
-    if (c->nodeID == engine_rank) {
+    const int is_local = (c->nodeID == engine_rank);
+    const int has_particles =
+        (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0);
+
+    if (is_local) {
       c->hydro.parts = finger;
       c->hydro.xparts = xfinger;
       c->grav.parts = gfinger;
@@ -1103,16 +1117,25 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       s->nr_local_cells++;
     }
 
-    if ((c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0)) {
+    if (has_particles) {
 
       /* Add this cell to the list of non-empty cells */
       s->cells_with_particles_top[s->nr_cells_with_particles] = k;
       s->nr_cells_with_particles++;
     }
+
+    if (is_local && has_particles) {
+
+      /* Add this cell to the list of non-empty cells */
+      s->local_cells_with_particles_top[s->nr_local_cells_with_particles] = k;
+      s->nr_local_cells_with_particles++;
+    }
   }
   if (verbose) {
     message("Have %d top-level cells with particles (total=%d)",
             s->nr_cells_with_particles, s->nr_cells);
+    message("Have %d local top-level cells with particles (total=%d)",
+            s->nr_local_cells_with_particles, s->nr_cells);
     message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
             s->nr_cells);
     message("hooking up cells took %.3f %s.",
@@ -3630,6 +3653,7 @@ void space_clean(struct space *s) {
   free(s->local_cells_top);
   free(s->local_cells_with_tasks_top);
   free(s->cells_with_particles_top);
+  free(s->local_cells_with_particles_top);
   free(s->parts);
   free(s->xparts);
   free(s->gparts);
@@ -3683,6 +3707,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->local_cells_top = NULL;
   s->local_cells_with_tasks_top = NULL;
   s->cells_with_particles_top = NULL;
+  s->local_cells_with_particles_top = NULL;
   s->grav_top_level = NULL;
 #ifdef WITH_MPI
   s->parts_foreign = NULL;
