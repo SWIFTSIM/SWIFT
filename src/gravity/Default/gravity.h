@@ -28,7 +28,6 @@
 #include "kernel_gravity.h"
 #include "minmax.h"
 
-
 /**
  * @brief Returns the mass of a particle
  *
@@ -147,7 +146,6 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[0] = 0.f;
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
-  gp->last_output = SHRT_MAX;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM = 0.f;

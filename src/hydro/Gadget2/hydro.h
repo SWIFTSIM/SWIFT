@@ -788,7 +788,7 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
 __attribute__((always_inline)) INLINE static int xpart_should_write(
     const struct xpart *xp, const struct engine *e) {
 
-  return (xp->logger_data.last_output > e->log->delta_step);  
+  return (xp->logger_data.last_output > e->log->delta_step);
 }
 #endif
 

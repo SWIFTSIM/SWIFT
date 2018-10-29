@@ -279,9 +279,6 @@ struct cell {
     /*! Values of h_max before the drifts, used for sub-cell tasks. */
     float h_max_old;
 
-    /*! The logger task */
-    struct task *logger;
-
     /*! The task to compute time-steps */
     struct task *timestep;
 
@@ -555,6 +552,9 @@ struct cell {
 
   /*! Task for source terms */
   struct task *sourceterms;
+
+  /*! The logger task */
+  struct task *logger;
 
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;

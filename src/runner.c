@@ -899,7 +899,7 @@ void runner_do_init_grav(struct runner *r, struct cell *c, int timer) {
  * @param timer Are we timing this ?
  */
 void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
-  
+
 #ifdef EXTRA_HYDRO_LOOP
 
   struct part *restrict parts = c->hydro.parts;
@@ -2506,7 +2506,6 @@ void *runner_main(void *data) {
       t->ti_run = e->ti_current;
 #endif
 
-
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
@@ -2613,8 +2612,8 @@ void *runner_main(void *data) {
           runner_do_end_force(r, ci, 1);
           break;
         case task_type_logger:
-	  runner_do_logger(r, ci, 1);
-	  break;
+          runner_do_logger(r, ci, 1);
+          break;
         case task_type_timestep:
           runner_do_timestep(r, ci, 1);
           break;
@@ -2694,7 +2693,6 @@ void *runner_main(void *data) {
   return NULL;
 }
 
-
 /**
  * @brief Write the required particles through the logger.
  *
@@ -2708,13 +2706,12 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   const struct engine *e = r->e;
-  struct part *restrict parts = c->parts;
-  struct xpart *restrict xparts = c->xparts;
-  const int count = c->count;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
+  const int count = c->hydro.count;
 
   /* Anything to do here? */
-  if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e))
-    return;
+  if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -2732,35 +2729,30 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       /* If particle needs to be kicked */
       if (part_is_starting(p, e)) {
 
-	if (xpart_should_write(xp, e))
-	  {
-	    /* Write particle */
-	    logger_log_part(e->log, p, logger_mask_x | logger_mask_v | logger_mask_a |
-			    logger_mask_u | logger_mask_h | logger_mask_rho |
-			    logger_mask_consts,
-			    &xp->logger_data.last_offset);
-	    //message("Offset: %lu", p->last_offset);
-	    /* Set counter back to zero */
-	    xp->logger_data.last_output = 0;
-	  }
-	else
-	  /* Update counter */
-	  xp->logger_data.last_output += 1;
+        if (xpart_should_write(xp, e)) {
+          /* Write particle */
+          logger_log_part(e->log, p,
+                          logger_mask_x | logger_mask_v | logger_mask_a |
+                              logger_mask_u | logger_mask_h | logger_mask_rho |
+                              logger_mask_consts,
+                          &xp->logger_data.last_offset);
+          // message("Offset: %lu", p->last_offset);
+          /* Set counter back to zero */
+          xp->logger_data.last_output = 0;
+        } else
+          /* Update counter */
+          xp->logger_data.last_output += 1;
       }
     }
-
   }
 
-  if (c->gcount > 0)
-    error("gparts not implemented");
+  if (c->grav.count > 0) error("gparts not implemented");
 
-  if (c->scount > 0)
-    error("sparts not implemented");
-  
+  if (c->stars.count > 0) error("sparts not implemented");
+
   if (timer) TIMER_TOC(timer_logger);
 
 #else
   error("Logger disabled, please enable it during configuration");
 #endif
-  
 }

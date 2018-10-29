@@ -30,8 +30,8 @@
 #include "units.h"
 
 void write_index_single(struct engine* e, const char* baseName,
-			const struct unit_system* internal_units,
-			const struct unit_system* snapshot_units);
+                        const struct unit_system* internal_units,
+                        const struct unit_system* snapshot_units);
 #endif
 
 #endif /* SWIFT_LOGGER_IO_H */

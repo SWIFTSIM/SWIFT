@@ -118,7 +118,7 @@ struct logger_parameters {
 
   /* size of a data type in bytes */
   size_t data_type_size;
-  
+
   /* number of different mask */
   size_t nber_mask;
 
@@ -127,12 +127,10 @@ struct logger_parameters {
 
   /* data size of each mask */
   size_t *masks_data_size;
-  
+
   /* label of each mask */
   char *masks_name;
-
 };
-
 
 /* structure containing global data */
 struct logger {
@@ -140,7 +138,7 @@ struct logger {
   short int delta_step;
 
   /* Logger basename */
-  char base_name[LOGGER_STRING_LENGTH];  
+  char base_name[LOGGER_STRING_LENGTH];
 
   /* File name of the dump file */
   struct dump *dump;
@@ -168,8 +166,7 @@ struct logger_part_data {
   size_t last_offset;
 };
 
-INLINE static  void logger_part_data_init(
-    struct logger_part_data *logger ) {
+INLINE static void logger_part_data_init(struct logger_part_data *logger) {
   logger->last_offset = 0;
   logger->last_output = SHRT_MAX;
 }
@@ -189,22 +186,24 @@ extern const unsigned int logger_datatype_size[];
 /* Function prototypes. */
 int logger_compute_chunk_size(unsigned int mask);
 void logger_log_all(struct logger *log, const struct engine *e);
-void logger_log_part(struct logger *log, const struct part *p, unsigned int mask, size_t *offset);
-void logger_log_gpart(struct logger *log, const struct gpart *p, unsigned int mask, size_t *offset);
-void logger_init(struct logger *log, const struct swift_params *params);
+void logger_log_part(struct logger *log, const struct part *p,
+                     unsigned int mask, size_t *offset);
+void logger_log_gpart(struct logger *log, const struct gpart *p,
+                      unsigned int mask, size_t *offset);
+void logger_init(struct logger *log, struct swift_params *params);
 void logger_clean(struct logger *log);
 void logger_log_timestamp(struct logger *log, integertime_t t, size_t *offset);
 void logger_ensure_size(struct logger *log, size_t total_nr_parts,
-    size_t total_nr_gparts, size_t total_nr_sparts);
-void logger_write_file_header(struct logger *log, const struct engine* e);
+                        size_t total_nr_gparts, size_t total_nr_sparts);
+void logger_write_file_header(struct logger *log, const struct engine *e);
 
 int logger_read_part(struct part *p, size_t *offset, const char *buff);
 int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff);
 int logger_read_timestamp(unsigned long long int *t, size_t *offset,
                           const char *buff);
 
-void logger_parameters_init(struct logger_parameters* log_params);
-void logger_parameters_clean(struct logger_parameters* log_params);
+void logger_parameters_init(struct logger_parameters *log_params);
+void logger_parameters_clean(struct logger_parameters *log_params);
 
 #endif /* WITH_LOGGER */
 

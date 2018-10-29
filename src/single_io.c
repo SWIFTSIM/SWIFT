@@ -314,7 +314,7 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
   /* Write XMF description for this data set */
   if (xmfFile != NULL)
     xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N,
-		   props.dimension, props.type);
+                   props.dimension, props.type);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE];
@@ -994,6 +994,5 @@ void write_output_single(struct engine* e, const char* baseName,
 
   e->snapshot_output_count++;
 }
-
 
 #endif /* HAVE_HDF5 */

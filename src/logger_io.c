@@ -63,16 +63,16 @@
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
  *
- * Creates an HDF5 output file and writes the offset and id of particles contained
- * in the engine. If such a file already exists, it is erased and replaced
- * by the new one.
+ * Creates an HDF5 output file and writes the offset and id of particles
+ * contained in the engine. If such a file already exists, it is erased and
+ * replaced by the new one.
  *
  * Calls #error() if an error occurs.
  *
  */
 void write_index_single(struct engine* e, const char* baseName,
-                         const struct unit_system* internal_units,
-                         const struct unit_system* snapshot_units) {
+                        const struct unit_system* internal_units,
+                        const struct unit_system* snapshot_units) {
 
   hid_t h_file = 0, h_grp = 0;
   const size_t Ngas = e->s->nr_parts;
@@ -81,13 +81,13 @@ void write_index_single(struct engine* e, const char* baseName,
   int periodic = e->s->periodic;
   int numFiles = 1;
   struct part* parts = e->s->parts;
-  struct xpart *xparts = e->s->xparts;
-  //struct gpart* gparts = e->s->gparts;
+  struct xpart* xparts = e->s->xparts;
+  // struct gpart* gparts = e->s->gparts;
   struct gpart* dmparts = NULL;
-  //struct spart* sparts = e->s->sparts;
+  // struct spart* sparts = e->s->sparts;
   static int outputCount = 0;
 
-  struct logger *log = e->log;
+  struct logger* log = e->log;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
@@ -182,7 +182,14 @@ void write_index_single(struct engine* e, const char* baseName,
   h_grp =
       H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating parameters group");
-  parser_write_params_to_hdf5(e->parameter_file, h_grp);
+  parser_write_params_to_hdf5(e->parameter_file, h_grp, 1);
+  H5Gclose(h_grp);
+
+  /* Print the runtime unused parameters */
+  h_grp = H5Gcreate(h_file, "/UnusedParameters", H5P_DEFAULT, H5P_DEFAULT,
+                    H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating parameters group");
+  parser_write_params_to_hdf5(e->parameter_file, h_grp, 0);
   H5Gclose(h_grp);
 
   /* Print the system of Units used in the spashot */
@@ -249,17 +256,17 @@ void write_index_single(struct engine* e, const char* baseName,
 
       case swift_type_gas:
         N = Ngas;
-	hydro_write_index(parts, xparts, list, &num_fields);
+        hydro_write_index(parts, xparts, list, &num_fields);
         break;
 
       case swift_type_dark_matter:
-	error("TODO");
-	break;
-	  
-      case swift_type_star:
+        error("TODO");
+        break;
+
+      case swift_type_stars:
         N = Nstars;
-	error("TODO");
-        //star_write_index(sparts, list, &num_fields);
+        error("TODO");
+        // star_write_index(sparts, list, &num_fields);
         break;
 
       default:
@@ -279,7 +286,6 @@ void write_index_single(struct engine* e, const char* baseName,
 
     /* Close particle group */
     H5Gclose(h_grp);
-
   }
 
   /* message("Done writing particles..."); */

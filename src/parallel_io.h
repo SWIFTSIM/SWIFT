@@ -29,6 +29,7 @@
 
 /* Includes. */
 #include "engine.h"
+#include "io_properties.h"
 #include "part.h"
 #include "units.h"
 

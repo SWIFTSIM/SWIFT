@@ -115,8 +115,7 @@ const char *engine_policy_names[] = {"none",
                                      "structure finding",
                                      "star formation",
                                      "feedback",
-				     "logger"
-};
+                                     "logger"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -233,10 +232,9 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
                                    c, NULL);
 
 #if defined(WITH_LOGGER)
-	c->logger = scheduler_addtask(s, task_type_logger, task_subtype_none, 0, 0,
-				      c, NULL);
+      c->logger = scheduler_addtask(s, task_type_logger, task_subtype_none, 0,
+                                    0, c, NULL);
 #endif
-	
 
       c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
                                    c, NULL);
@@ -277,7 +275,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 #if defined(WITH_LOGGER)
       scheduler_addunlock(s, c->kick1, c->logger);
 #endif
-}
+    }
 
   } else { /* We are above the super-cell so need to go deeper */
 
@@ -4260,7 +4258,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* logger tasks ? */
     else if (t->type == task_type_logger) {
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
-	scheduler_activate(s, t);
+        scheduler_activate(s, t);
     }
 
     /* Gravity stuff ? */
@@ -5215,10 +5213,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
 #ifdef WITH_LOGGER
   logger_log_timestamp(e->log, e->ti_current, &e->log->timestamp_offset);
-  logger_ensure_size(e->log, e->total_nr_parts, e->total_nr_gparts,
-		     0);
+  logger_ensure_size(e->log, e->total_nr_parts, e->total_nr_gparts, 0);
 #endif
-  
+
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e);
@@ -5470,8 +5467,7 @@ void engine_step(struct engine *e) {
 
 #ifdef WITH_LOGGER
   logger_log_timestamp(e->log, e->ti_current, &e->log->timestamp_offset);
-  logger_ensure_size(e->log, e->total_nr_parts, e->total_nr_gparts,
-		     0);
+  logger_ensure_size(e->log, e->total_nr_parts, e->total_nr_gparts, 0);
 #endif
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
@@ -5625,9 +5621,9 @@ void engine_check_for_dumps(struct engine *e) {
         /* Dump everything */
         engine_print_stats(e);
 #ifdef WITH_LOGGER
-	engine_dump_index(e);
+        engine_dump_index(e);
 #else
-	engine_dump_snapshot(e);
+        engine_dump_snapshot(e);
 #endif
 
       } else if (e->ti_next_stats < e->ti_next_snapshot) {
@@ -5659,9 +5655,9 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Dump snapshot */
 #ifdef WITH_LOGGER
-	engine_dump_index(e);
+        engine_dump_index(e);
 #else
-	engine_dump_snapshot(e);
+        engine_dump_snapshot(e);
 #endif
 
       } else if (e->ti_next_stats > e->ti_next_snapshot) {
@@ -5681,9 +5677,9 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Dump snapshot */
 #ifdef WITH_LOGGER
-	engine_dump_index(e);
+        engine_dump_index(e);
 #else
-	engine_dump_snapshot(e);
+        engine_dump_snapshot(e);
 #endif
 
         /* Let's fake that we are at the stats dump time */
@@ -6484,8 +6480,8 @@ void engine_dump_snapshot(struct engine *e) {
                       MPI_INFO_NULL);
 #endif
 #else
-    write_output_single(e, e->snapshot_base_name, e->internal_units,
-			e->snapshot_units);
+  write_output_single(e, e->snapshot_base_name, e->internal_units,
+                      e->snapshot_units);
 #endif
 #endif
 
@@ -6524,7 +6520,7 @@ void engine_dump_index(struct engine *e) {
 
   /* Dump... */
   write_index_single(e, e->log->base_name, e->internal_units,
-		     e->snapshot_units);
+                     e->snapshot_units);
 
   e->dump_snapshot = 0;
 
@@ -6702,9 +6698,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->last_repartition = 0;
 #endif
 
-
 #if defined(WITH_LOGGER)
-  e->log = (struct logger *) malloc(sizeof(struct logger));
+  e->log = (struct logger *)malloc(sizeof(struct logger));
   logger_init(e->log, params);
 #endif
 
@@ -7166,8 +7161,9 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
 #if defined(WITH_LOGGER)
   if (e->nodeID == 0)
-    message("WARNING: There is currently no way of predicting the output "
-	    "size, please use it carefully");
+    message(
+        "WARNING: There is currently no way of predicting the output "
+        "size, please use it carefully");
 #endif
 
   /* Find the time of the first snapshot output */

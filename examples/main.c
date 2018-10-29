@@ -1006,7 +1006,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
-  /* Write the state of the system before starting time integration. */
+    /* Write the state of the system before starting time integration. */
 #ifdef WITH_LOGGER
     logger_ensure_size(e.log, e.total_nr_parts, e.total_nr_gparts, 0);
     logger_log_all(e.log, &e);
