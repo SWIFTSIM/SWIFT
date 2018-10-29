@@ -4257,7 +4257,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* logger tasks ? */
     else if (t->type == task_type_logger) {
-      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e) ||
+          cell_is_active_stars(t->ci, e))
         scheduler_activate(s, t);
     }
 
@@ -6513,16 +6514,31 @@ void engine_dump_index(struct engine *e) {
                           e->policy & engine_policy_self_gravity);
 
   /* Be verbose about this */
-  if (e->nodeID == 0) message("writing index at t=%e.", e->time);
+  if (e->nodeID == 0) {
+    if (e->policy & engine_policy_cosmology)
+      message("Writing index at a=%e",
+              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
+    else
+      message("Writing index at t=%e",
+              e->ti_current * e->time_base + e->time_begin);
+  }
 #else
-  if (e->verbose) message("writing index at t=%e.", e->time);
+  if (e->verbose) {
+    if (e->policy & engine_policy_cosmology)
+      message("Writing index at a=%e",
+              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
+    else
+      message("Writing index at t=%e",
+              e->ti_current * e->time_base + e->time_begin);
+  }
 #endif
 
   /* Dump... */
   write_index_single(e, e->log->base_name, e->internal_units,
                      e->snapshot_units);
 
-  e->dump_snapshot = 0;
+  /* Flag that we dumped a snapshot */
+  e->step_props |= engine_step_prop_snapshot;
 
   clocks_gettime(&time2);
   if (e->verbose)

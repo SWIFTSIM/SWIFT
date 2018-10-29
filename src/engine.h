@@ -317,9 +317,6 @@ struct engine {
   struct logger *log;
 #endif
 
-  /* Need to dump a snapshot ? */
-  int dump_snapshot;
-
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
 

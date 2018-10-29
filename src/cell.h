@@ -279,9 +279,6 @@ struct cell {
     /*! Values of h_max before the drifts, used for sub-cell tasks. */
     float h_max_old;
 
-    /*! The task to compute time-steps */
-    struct task *timestep;
-
     /*! Values of dx_max before the drifts, used for sub-cell tasks. */
     float dx_max_part_old;
 
