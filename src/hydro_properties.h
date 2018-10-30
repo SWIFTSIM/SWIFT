@@ -69,20 +69,36 @@ struct hydro_props {
   /*! Minimal temperature allowed */
   float minimal_temperature;
 
-  /*! Minimal internal energy per unit mass */
+  /*! Minimal physical internal energy per unit mass */
   float minimal_internal_energy;
 
   /*! Initial temperature */
   float initial_temperature;
 
-  /*! Initial internal energy per unit mass */
+  /*! Initial physical internal energy per unit mass */
   float initial_internal_energy;
 
-  /*! Primoridal hydrogen mass fraction for initial energy conversion */
+  /*! Primordial hydrogen mass fraction for initial energy conversion */
   float hydrogen_mass_fraction;
 
   /*! Temperature of the neutral to ionized transition of Hydrogen */
   float hydrogen_ionization_temperature;
+
+  /*! Artificial viscosity parameters */
+  struct {
+    /*! For the fixed, simple case. Also used to set the initial AV
+        coefficient for variable schemes. */
+    float alpha;
+
+    /*! Artificial viscosity (max) for the variable case (e.g. M&M) */
+    float alpha_max;
+
+    /*! Artificial viscosity (min) for the variable case (e.g. M&M) */
+    float alpha_min;
+
+    /*! The decay length of the artificial viscosity (used in M&M, etc.) */
+    float length;
+  } viscosity;
 };
 
 void hydro_props_print(const struct hydro_props *p);
@@ -98,5 +114,8 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p);
 /* Dump/restore. */
 void hydro_props_struct_dump(const struct hydro_props *p, FILE *stream);
 void hydro_props_struct_restore(const struct hydro_props *p, FILE *stream);
+
+/* Setup for tests */
+void hydro_props_init_no_hydro(struct hydro_props *p);
 
 #endif /* SWIFT_HYDRO_PROPERTIES */

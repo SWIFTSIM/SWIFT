@@ -25,9 +25,9 @@
  * @file src/cooling/const_du/cooling.h
  * @brief Routines related to the "constant cooling" cooling function.
  *
- * This is the simplest possible cooling function. A constant cooling rate with
- * a minimal energy floor is applied. Should be used as a template for more
- * realistic functions.
+ * This is the simplest possible cooling function. A constant cooling rate
+ * (du/dt) with a minimal energy floor is applied. Should be used as a template
+ * for more realistic functions.
  */
 
 /* Config parameters. */
@@ -54,26 +54,30 @@
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param cosmo The current cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  * @param dt The time-step of this particle.
+ * @param dt_therm The time-step operator used for thermal quantities.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
     const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, struct xpart* restrict xp, float dt) {
+    struct part* restrict p, struct xpart* restrict xp, const float dt,
+    const float dt_therm) {
 
   /* Internal energy floor */
   const float u_floor = cooling->min_energy;
 
   /* Get current internal energy */
-  const float u_old = hydro_get_physical_internal_energy(p, cosmo);
+  const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
 
   /* Current du_dt */
-  const float hydro_du_dt = hydro_get_internal_energy_dt(p);
+  const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* Get cooling function properties */
   float cooling_du_dt = -cooling->cooling_rate;
@@ -86,7 +90,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   }
 
   /* Update the internal energy time derivative */
-  hydro_set_internal_energy_dt(p, hydro_du_dt + cooling_du_dt);
+  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt + cooling_du_dt);
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy += -hydro_get_mass(p) * cooling_du_dt * dt;
@@ -103,16 +107,21 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
  * @param us The internal system of units.
+ * @param hydro_props The properties of the hydro scheme.
  * @param p Pointer to the particle data.
+ * @param xp Pointer to the extedended particle data.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
     const struct cosmology* restrict cosmo,
-    const struct unit_system* restrict us, const struct part* restrict p) {
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props, const struct part* restrict p,
+    const struct xpart* xp) {
 
   const float cooling_rate = cooling->cooling_rate;
-  const float internal_energy = hydro_get_physical_internal_energy(p, cosmo);
+  const float internal_energy =
+      hydro_get_physical_internal_energy(p, xp, cosmo);
   return cooling->cooling_tstep_mult * internal_energy / fabsf(cooling_rate);
 }
 
@@ -126,7 +135,10 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
+ * @param phys_const The physical constants in internal units.
  * @param cooling The properties of the cooling function.
+ * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void cooling_first_init_part(
     const struct phys_const* restrict phys_const,

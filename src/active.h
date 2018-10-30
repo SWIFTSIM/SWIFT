@@ -39,15 +39,16 @@ __attribute__((always_inline)) INLINE static int cell_are_part_drifted(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_old_part > e->ti_current)
+  if (c->hydro.ti_old_part > e->ti_current)
     error(
-        "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
+        "Cell has been drifted too far forward in time! c->ti_old_part=%lld "
+        "(t=%e) "
         "and e->ti_current=%lld (t=%e, a=%e)",
-        c->ti_old_part, c->ti_old_part * e->time_base, e->ti_current,
-        e->ti_current * e->time_base, e->cosmology->a);
+        c->hydro.ti_old_part, c->hydro.ti_old_part * e->time_base,
+        e->ti_current, e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
-  return (c->ti_old_part == e->ti_current);
+  return (c->hydro.ti_old_part == e->ti_current);
 }
 
 /**
@@ -62,15 +63,15 @@ __attribute__((always_inline)) INLINE static int cell_are_gpart_drifted(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_old_gpart > e->ti_current)
+  if (c->grav.ti_old_part > e->ti_current)
     error(
         "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
         "and e->ti_current=%lld (t=%e)",
-        c->ti_old_gpart, c->ti_old_gpart * e->time_base, e->ti_current,
+        c->grav.ti_old_part, c->grav.ti_old_part * e->time_base, e->ti_current,
         e->ti_current * e->time_base);
 #endif
 
-  return (c->ti_old_gpart == e->ti_current);
+  return (c->grav.ti_old_part == e->ti_current);
 }
 
 /* Are cells / particles active for regular tasks ? */
@@ -86,15 +87,15 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_hydro_end_min < e->ti_current)
+  if (c->hydro.ti_end_min < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e, a=%e)",
-        c->ti_hydro_end_min, c->ti_hydro_end_min * e->time_base, e->ti_current,
+        c->hydro.ti_end_min, c->hydro.ti_end_min * e->time_base, e->ti_current,
         e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
-  return (c->ti_hydro_end_min == e->ti_current);
+  return (c->hydro.ti_end_min == e->ti_current);
 }
 
 /**
@@ -108,14 +109,14 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active_hydro(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_hydro_end_max < e->ti_current)
+  if (c->hydro.ti_end_max < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_max=%lld "
         "e->ti_current=%lld",
-        c->ti_hydro_end_max, e->ti_current);
+        c->hydro.ti_end_max, e->ti_current);
 #endif
 
-  return (c->ti_hydro_end_max == e->ti_current);
+  return (c->hydro.ti_end_max == e->ti_current);
 }
 
 /**
@@ -129,15 +130,15 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_gravity_end_min < e->ti_current)
+  if (c->grav.ti_end_min < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e, a=%e)",
-        c->ti_gravity_end_min, c->ti_gravity_end_min * e->time_base,
-        e->ti_current, e->ti_current * e->time_base, e->cosmology->a);
+        c->grav.ti_end_min, c->grav.ti_end_min * e->time_base, e->ti_current,
+        e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
-  return (c->ti_gravity_end_min == e->ti_current);
+  return (c->grav.ti_end_min == e->ti_current);
 }
 
 /**
@@ -150,7 +151,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
 __attribute__((always_inline)) INLINE static int cell_is_active_gravity_mm(
     const struct cell *c, const struct engine *e) {
 
-  return (c->ti_gravity_end_min == e->ti_current);
+  return (c->grav.ti_end_min == e->ti_current);
 }
 
 /**
@@ -164,14 +165,14 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active_gravity(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_gravity_end_max < e->ti_current)
+  if (c->grav.ti_end_max < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_max=%lld "
         "e->ti_current=%lld",
-        c->ti_gravity_end_max, e->ti_current);
+        c->grav.ti_end_max, e->ti_current);
 #endif
 
-  return (c->ti_gravity_end_max == e->ti_current);
+  return (c->grav.ti_end_max == e->ti_current);
 }
 
 /**
@@ -277,6 +278,42 @@ __attribute__((always_inline)) INLINE static int spart_is_active(
   return (spart_bin <= max_active_bin);
 }
 
+/**
+ * @brief Has this particle been inhibited?
+ *
+ * @param p The #part.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part is inhibited, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int part_is_inhibited(
+    const struct part *p, const struct engine *e) {
+  return p->time_bin == time_bin_inhibited;
+}
+
+/**
+ * @brief Has this gravity particle been inhibited?
+ *
+ * @param gp The #gpart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part is inhibited, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int gpart_is_inhibited(
+    const struct gpart *gp, const struct engine *e) {
+  return gp->time_bin == time_bin_inhibited;
+}
+
+/**
+ * @brief Has this star particle been inhibited?
+ *
+ * @param sp The #spart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part is inhibited, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int spart_is_inhibited(
+    const struct spart *sp, const struct engine *e) {
+  return sp->time_bin == time_bin_inhibited;
+}
+
 /* Are cells / particles active for kick1 tasks ? */
 
 /**
@@ -290,15 +327,15 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_hydro(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_hydro_beg_max > e->ti_current)
+  if (c->hydro.ti_beg_max > e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e, a=%e)",
-        c->ti_hydro_beg_max, c->ti_hydro_beg_max * e->time_base, e->ti_current,
+        c->hydro.ti_beg_max, c->hydro.ti_beg_max * e->time_base, e->ti_current,
         e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
-  return (c->ti_hydro_beg_max == e->ti_current);
+  return (c->hydro.ti_beg_max == e->ti_current);
 }
 
 /**
@@ -312,15 +349,15 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_gravity(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->ti_gravity_beg_max > e->ti_current)
+  if (c->grav.ti_beg_max > e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e, a=%e)",
-        c->ti_gravity_beg_max, c->ti_gravity_beg_max * e->time_base,
-        e->ti_current, e->ti_current * e->time_base, e->cosmology->a);
+        c->grav.ti_beg_max, c->grav.ti_beg_max * e->time_base, e->ti_current,
+        e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
-  return (c->ti_gravity_beg_max == e->ti_current);
+  return (c->grav.ti_beg_max == e->ti_current);
 }
 
 /**

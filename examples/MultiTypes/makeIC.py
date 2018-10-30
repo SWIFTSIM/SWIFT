@@ -93,10 +93,6 @@ for n in range(num_files):
     grp.attrs["MassTable"] = [0.0, massDM, 0.0, 0.0, 0.0, 0.0]
     grp.attrs["Flag_Entropy_ICs"] = 0
     grp.attrs["Dimension"] = 3
-
-    #Runtime parameters
-    grp = file.create_group("/RuntimePars")
-    grp.attrs["PeriodicBoundariesOn"] = periodic
     
     #Units
     grp = file.create_group("/Units")

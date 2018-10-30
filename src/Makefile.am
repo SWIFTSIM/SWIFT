@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the non-standard paths to the included library headers
-AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS)
+AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(GRACKLE_INCS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
@@ -25,7 +25,7 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 GIT_CMD = @GIT_CMD@
 
 # Additional dependencies for shared libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIB) $(GSL_LIBS)
+EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS)
@@ -133,6 +133,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  potential/sine_wave/potential.h \
 		 cooling/none/cooling.h cooling/none/cooling_struct.h \
                  cooling/none/cooling_io.h \
+		 cooling/Compton/cooling.h cooling/Compton/cooling_struct.h \
+                 cooling/Compton/cooling_io.h \
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
                  cooling/const_du/cooling_io.h \
                  cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \

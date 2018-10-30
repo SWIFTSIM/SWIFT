@@ -23,11 +23,11 @@
 
 /**
  * @file src/cooling/const_du/cooling_struct.h
- * @brief Structure related to the "constant cooling" cooling function.
+ * @brief Structures related to the "constant cooling" cooling function.
  *
- * This is the simplest possible cooling function. A constant cooling rate with
- * a minimal energy floor is applied. Should be used as a template for more
- * realistic functions.
+ * This is the simplest possible cooling function. A constant cooling rate
+ * (du/dt) with a minimal energy floor is applied. Should be used as a template
+ * for more realistic functions.
  */
 
 /**

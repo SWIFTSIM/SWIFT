@@ -124,6 +124,12 @@ struct part {
       /*! Derivative of density with respect to h */
       float rho_dh;
 
+      /*! Velocity divergence */
+      float div_v;
+
+      /*! Velocity curl */
+      float rot_v[3];
+
     } density;
 
     /**
@@ -149,6 +155,9 @@ struct part {
 
       /*! Time derivative of smoothing length  */
       float h_dt;
+
+      /*! Balsara switch */
+      float balsara;
 
     } force;
   };

@@ -35,6 +35,7 @@
 #include "error.h"
 #include "restart.h"
 #include "tools.h"
+#include "version.h"
 
 #define PARSER_COMMENT_STRING "#"
 #define PARSER_COMMENT_CHAR '#'
@@ -1158,7 +1159,13 @@ void parser_write_params_to_file(const struct swift_params *params,
   char *token;
 
   /* Start of file identifier in YAML. */
-  fprintf(file, "%s\n", PARSER_START_OF_FILE);
+  fprintf(file, "%s\n\n", PARSER_START_OF_FILE);
+
+  fprintf(file, "# SWIFT used parameter file\n");
+  fprintf(file, "# Code version: %s\n", package_version());
+  fprintf(file, "# git revision: %s\n", git_revision());
+  fprintf(file, "# git branch: %s\n", git_branch());
+  fprintf(file, "# git date: %s\n", git_date());
 
   /* Flags to track which parameters are written. */
   int *written = (int *)calloc(params->paramCount, sizeof(int));

@@ -39,7 +39,8 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./zeldovichPancake.hdf5       # The file to read
-
+  periodic:   1
+  
 Scheduler:
   max_top_level_cells: 8
   cell_split_size:     50

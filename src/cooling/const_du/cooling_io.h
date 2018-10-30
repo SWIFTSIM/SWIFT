@@ -21,6 +21,15 @@
 #ifndef SWIFT_COOLING_CONST_DU_IO_H
 #define SWIFT_COOLING_CONST_DU_IO_H
 
+/**
+ * @file src/cooling/const_du/cooling_io.h
+ * @brief i/o routines related to the "constant cooling" cooling function.
+ *
+ * This is the simplest possible cooling function. A constant cooling rate
+ * (du/dt) with a minimal energy floor is applied. Should be used as a template
+ * for more realistic functions.
+ */
+
 /* Config parameters. */
 #include "../config.h"
 
@@ -31,19 +40,20 @@
 
 /**
  * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
+ * @param h_grp The HDF5 group in which to write
+ * @param cooling the parameters of the cooling function.
  */
 __attribute__((always_inline)) INLINE static void cooling_write_flavour(
-    hid_t h_grpsph) {
+    hid_t h_grp, const struct cooling_function_data* cooling) {
 
-  io_write_attribute_s(h_grpsph, "Cooling Model", "Constant du/dt");
+  io_write_attribute_s(h_grp, "Cooling Model", "Constant du/dt");
 }
 #endif
 
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
- * @param parts The particle array.
+ * @param xparts The exended particle data array.
  * @param list The list of i/o properties to write.
  * @param cooling The #cooling_function_data
  *

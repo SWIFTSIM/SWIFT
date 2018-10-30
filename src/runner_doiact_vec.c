@@ -270,10 +270,10 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
     int *max_index_i, int *max_index_j, int *init_pi, int *init_pj,
     const timebin_t max_active_bin, const int active_ci, const int active_cj) {
 
-  const struct part *restrict parts_i = ci->parts;
-  const struct part *restrict parts_j = cj->parts;
+  const struct part *restrict parts_i = ci->hydro.parts;
+  const struct part *restrict parts_j = cj->hydro.parts;
 
-  int first_pi = 0, last_pj = cj->count - 1;
+  int first_pi = 0, last_pj = cj->hydro.count - 1;
   int temp, active_id;
 
   /* Only populate max_index array for local actve cells. */
@@ -281,7 +281,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
 
     /* Find the leftmost active particle in cell i that interacts with any
      * particle in cell j. */
-    first_pi = ci->count;
+    first_pi = ci->hydro.count;
     active_id = first_pi - 1;
     while (first_pi > 0 && sort_i[first_pi - 1].d + dx_max + hi_max > dj_min) {
       first_pi--;
@@ -295,7 +295,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
 
     /* Find the maximum index into cell j for each particle in range in cell i.
      */
-    if (first_pi < ci->count) {
+    if (first_pi < ci->hydro.count) {
 
       /* Start from the first particle in cell j. */
       temp = 0;
@@ -305,33 +305,33 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
           sort_i[first_pi].d + pi->h * kernel_gamma + dx_max - rshift;
 
       /* Loop through particles in cell j until they are not in range of pi.
-       * Make sure that temp stays between 0 and cj->count - 1.*/
-      while (temp < cj->count - 1 && first_di > sort_j[temp].d) temp++;
+       * Make sure that temp stays between 0 and cj->hydro.count - 1.*/
+      while (temp < cj->hydro.count - 1 && first_di > sort_j[temp].d) temp++;
 
       max_index_i[first_pi] = temp;
 
       /* Populate max_index_i for remaining particles that are within range. */
-      for (int i = first_pi + 1; i < ci->count; i++) {
+      for (int i = first_pi + 1; i < ci->hydro.count; i++) {
         temp = max_index_i[i - 1];
         pi = &parts_i[sort_i[i].i];
 
         const float di = sort_i[i].d + pi->h * kernel_gamma + dx_max - rshift;
 
-        /* Make sure that temp stays between 0 and cj->count - 1.*/
-        while (temp < cj->count - 1 && di > sort_j[temp].d) temp++;
+        /* Make sure that temp stays between 0 and cj->hydro.count - 1.*/
+        while (temp < cj->hydro.count - 1 && di > sort_j[temp].d) temp++;
 
         max_index_i[i] = temp;
       }
     } else {
       /* Make sure that max index is set to first particle in cj.*/
-      max_index_i[ci->count - 1] = 0;
+      max_index_i[ci->hydro.count - 1] = 0;
     }
   } else {
     /* Make sure that foreign cells are only read into the cache if the local
      * cell requires it.
      * Also ensure that it does not require any particles from cj. */
-    first_pi = ci->count - 1;
-    max_index_i[ci->count - 1] = 0;
+    first_pi = ci->hydro.count - 1;
+    max_index_i[ci->hydro.count - 1] = 0;
   }
 
   /* Only populate max_index array for local actve cells. */
@@ -340,7 +340,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
      * particle in cell i. */
     last_pj = -1;
     active_id = last_pj;
-    while (last_pj < cj->count &&
+    while (last_pj < cj->hydro.count &&
            sort_j[last_pj + 1].d - hj_max - dx_max < di_max) {
       last_pj++;
       /* Store the index of the particle if it is active. */
@@ -356,7 +356,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
     if (last_pj >= 0) {
 
       /* Start from the last particle in cell i. */
-      temp = ci->count - 1;
+      temp = ci->hydro.count - 1;
 
       const struct part *pj = &parts_j[sort_j[last_pj].i];
       const float last_dj =
@@ -379,14 +379,14 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
       }
     } else {
       /* Make sure that max index is set to last particle in ci.*/
-      max_index_j[0] = ci->count - 1;
+      max_index_j[0] = ci->hydro.count - 1;
     }
   } else {
     /* Make sure that foreign cells are only read into the cache if the local
      * cell requires it.
      * Also ensure that it does not require any particles from ci. */
     last_pj = 0;
-    max_index_j[0] = ci->count - 1;
+    max_index_j[0] = ci->hydro.count - 1;
   }
 
   *init_pi = first_pi;
@@ -430,10 +430,10 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
     int *init_pj, const timebin_t max_active_bin, const int active_ci,
     const int active_cj) {
 
-  const struct part *restrict parts_i = ci->parts;
-  const struct part *restrict parts_j = cj->parts;
+  const struct part *restrict parts_i = ci->hydro.parts;
+  const struct part *restrict parts_j = cj->hydro.parts;
 
-  int first_pi = 0, last_pj = cj->count - 1;
+  int first_pi = 0, last_pj = cj->hydro.count - 1;
   int temp, active_id;
 
   /* Only populate max_index array for local actve cells. */
@@ -441,7 +441,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
 
     /* Find the leftmost active particle in cell i that interacts with any
      * particle in cell j. */
-    first_pi = ci->count;
+    first_pi = ci->hydro.count;
     active_id = first_pi - 1;
     while (first_pi > 0 && sort_i[first_pi - 1].d + dx_max + h_max > dj_min) {
       first_pi--;
@@ -455,7 +455,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
 
     /* Find the maximum index into cell j for each particle in range in cell i.
      */
-    if (first_pi < ci->count) {
+    if (first_pi < ci->hydro.count) {
 
       /* Start from the first particle in cell j. */
       temp = 0;
@@ -466,34 +466,34 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
                              rshift;
 
       /* Loop through particles in cell j until they are not in range of pi.
-       * Make sure that temp stays between 0 and cj->count - 1.*/
-      while (temp < cj->count - 1 && first_di > sort_j[temp].d) temp++;
+       * Make sure that temp stays between 0 and cj->hydro.count - 1.*/
+      while (temp < cj->hydro.count - 1 && first_di > sort_j[temp].d) temp++;
 
       max_index_i[first_pi] = temp;
 
       /* Populate max_index_i for remaining particles that are within range. */
-      for (int i = first_pi + 1; i < ci->count; i++) {
+      for (int i = first_pi + 1; i < ci->hydro.count; i++) {
         temp = max_index_i[i - 1];
         pi = &parts_i[sort_i[i].i];
 
         const float di = sort_i[i].d + max(pi->h, hj_max_raw) * kernel_gamma +
                          dx_max - rshift;
 
-        /* Make sure that temp stays between 0 and cj->count - 1.*/
-        while (temp < cj->count - 1 && di > sort_j[temp].d) temp++;
+        /* Make sure that temp stays between 0 and cj->hydro.count - 1.*/
+        while (temp < cj->hydro.count - 1 && di > sort_j[temp].d) temp++;
 
         max_index_i[i] = temp;
       }
     } else {
       /* Make sure that max index is set to first particle in cj.*/
-      max_index_i[ci->count - 1] = 0;
+      max_index_i[ci->hydro.count - 1] = 0;
     }
   } else {
     /* Make sure that foreign cells are only read into the cache if the local
      * cell requires it.
      * Also ensure that it does not require any particles from cj. */
-    first_pi = ci->count - 1;
-    max_index_i[ci->count - 1] = 0;
+    first_pi = ci->hydro.count - 1;
+    max_index_i[ci->hydro.count - 1] = 0;
   }
 
   /* Only populate max_index array for local actve cells. */
@@ -502,7 +502,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
      * particle in cell i. */
     last_pj = -1;
     active_id = last_pj;
-    while (last_pj < cj->count &&
+    while (last_pj < cj->hydro.count &&
            sort_j[last_pj + 1].d - h_max - dx_max < di_max) {
       last_pj++;
       /* Store the index of the particle if it is active. */
@@ -518,7 +518,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
     if (last_pj >= 0) {
 
       /* Start from the last particle in cell i. */
-      temp = ci->count - 1;
+      temp = ci->hydro.count - 1;
 
       const struct part *pj = &parts_j[sort_j[last_pj].i];
       const float last_dj = sort_j[last_pj].d - dx_max -
@@ -543,14 +543,14 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
       }
     } else {
       /* Make sure that max index is set to last particle in ci.*/
-      max_index_j[0] = ci->count - 1;
+      max_index_j[0] = ci->hydro.count - 1;
     }
   } else {
     /* Make sure that foreign cells are only read into the cache if the local
      * cell requires it.
      * Also ensure that it does not require any particles from ci. */
     last_pj = 0;
-    max_index_j[0] = ci->count - 1;
+    max_index_j[0] = ci->hydro.count - 1;
   }
 
   *init_pi = first_pi;
@@ -655,8 +655,8 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
   /* Get some local variables */
   const struct engine *e = r->e;
   const timebin_t max_active_bin = e->max_active_bin;
-  struct part *restrict parts = c->parts;
-  const int count = c->count;
+  struct part *restrict parts = c->hydro.parts;
+  const int count = c->hydro.count;
 
   TIMER_TIC;
 
@@ -888,7 +888,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
-  const int count = c->count;
+  const int count = c->hydro.count;
 
   TIMER_TIC;
 
@@ -1016,7 +1016,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
                             vec_is_mask_true(v_doi_mask2_self_check);
 
 #ifdef DEBUG_INTERACTIONS_SPH
-      struct part *restrict parts_i = c->parts;
+      struct part *restrict parts_i = c->hydro.parts;
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
         if (doi_mask & (1 << bit_index)) {
           if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
@@ -1113,8 +1113,8 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
   const struct engine *e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
   const timebin_t max_active_bin = e->max_active_bin;
-  struct part *restrict parts = c->parts;
-  const int count = c->count;
+  struct part *restrict parts = c->hydro.parts;
+  const int count = c->hydro.count;
 
   TIMER_TIC;
 
@@ -1322,19 +1322,19 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->sort[sid];
-  const struct entry *restrict sort_j = cj->sort[sid];
+  const struct entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
 
   /* Get some other useful values. */
-  const int count_i = ci->count;
-  const int count_j = cj->count;
-  const double hi_max = ci->h_max * kernel_gamma - rshift;
-  const double hj_max = cj->h_max * kernel_gamma;
-  struct part *restrict parts_i = ci->parts;
-  struct part *restrict parts_j = cj->parts;
+  const int count_i = ci->hydro.count;
+  const int count_j = cj->hydro.count;
+  const double hi_max = ci->hydro.h_max * kernel_gamma - rshift;
+  const double hj_max = cj->hydro.h_max * kernel_gamma;
+  struct part *restrict parts_i = ci->hydro.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
-  const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+  const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
   const int active_ci = cell_is_active_hydro(ci, e) && ci_local;
   const int active_cj = cell_is_active_hydro(cj, e) && cj_local;
 
@@ -1693,11 +1693,11 @@ void runner_dopair_subset_density_vec(struct runner *r,
 
   TIMER_TIC;
 
-  const int count_j = cj->count;
+  const int count_j = cj->hydro.count;
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_j = cj->sort[sid];
-  const float dxj = cj->dx_max_sort;
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
+  const float dxj = cj->hydro.dx_max_sort;
 
   /* Get both particle caches from the runner and re-allocate
    * them if they are not big enough for the cells. */
@@ -1806,7 +1806,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
 #ifdef DEBUG_INTERACTIONS_SPH
-        struct part *restrict parts_j = cj->parts;
+        struct part *restrict parts_j = cj->hydro.parts;
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
@@ -1935,7 +1935,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
 #ifdef DEBUG_INTERACTIONS_SPH
-        struct part *restrict parts_j = cj->parts;
+        struct part *restrict parts_j = cj->hydro.parts;
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
@@ -2007,21 +2007,21 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->sort[sid];
-  const struct entry *restrict sort_j = cj->sort[sid];
+  const struct entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
 
   /* Get some other useful values. */
-  const int count_i = ci->count;
-  const int count_j = cj->count;
-  const double hi_max = ci->h_max * kernel_gamma;
-  const double hj_max = cj->h_max * kernel_gamma;
-  const double hi_max_raw = ci->h_max;
-  const double hj_max_raw = cj->h_max;
-  struct part *restrict parts_i = ci->parts;
-  struct part *restrict parts_j = cj->parts;
+  const int count_i = ci->hydro.count;
+  const int count_j = cj->hydro.count;
+  const double hi_max = ci->hydro.h_max * kernel_gamma;
+  const double hj_max = cj->hydro.h_max * kernel_gamma;
+  const double hi_max_raw = ci->hydro.h_max;
+  const double hj_max_raw = cj->hydro.h_max;
+  struct part *restrict parts_i = ci->hydro.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
-  const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+  const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
   const int active_ci = cell_is_active_hydro(ci, e) && ci_local;
   const int active_cj = cell_is_active_hydro(cj, e) && cj_local;
 

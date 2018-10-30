@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_NONE_H
-#define SWIFT_COOLING_STRUCT_NONE_H
+#ifndef SWIFT_COOLING_STRUCT_GRACKLE_H
+#define SWIFT_COOLING_STRUCT_GRACKLE_H
+
+#include "../config.h"
 
 /* include grackle */
 #include <grackle.h>
-
-#include "../config.h"
 
 /**
  * @file src/cooling/none/cooling_struct.h
@@ -113,4 +113,4 @@ struct cooling_xpart_data {
   float metal_frac;
 };
 
-#endif /* SWIFT_COOLING_STRUCT_NONE_H */
+#endif /* SWIFT_COOLING_STRUCT_GRACKLE_H */

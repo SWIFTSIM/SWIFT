@@ -86,7 +86,7 @@ INLINE static void load_table_HM80(struct HM80_params *mat, char *table_file) {
 
   // Load table contents from file
   FILE *f = fopen(table_file, "r");
-  int c;
+  if (f == NULL) error("Impossible to open HM80 EoS file '%s'", table_file);
 
   // Ignore header lines
   char buffer[100];
@@ -96,8 +96,8 @@ INLINE static void load_table_HM80(struct HM80_params *mat, char *table_file) {
   }
 
   // Table properties
-  c = fscanf(f, "%f %f %d %f %f %d", &mat->log_rho_min, &mat->log_rho_max,
-             &mat->num_rho, &mat->log_u_min, &mat->log_u_max, &mat->num_u);
+  int c = fscanf(f, "%f %f %d %f %f %d", &mat->log_rho_min, &mat->log_rho_max,
+                 &mat->num_rho, &mat->log_u_min, &mat->log_u_max, &mat->num_u);
   if (c != 6) {
     error("Failed to read EOS table %s", table_file);
   }

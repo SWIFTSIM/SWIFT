@@ -82,7 +82,7 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
 
   // Load table contents from file
   FILE *f = fopen(table_file, "r");
-  int c;
+  if (f == NULL) error("Impossible to open SESAME EoS file '%s'", table_file);
 
   // Ignore header lines
   char buffer[100];
@@ -93,7 +93,7 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
   float ignore;
 
   // Table properties
-  c = fscanf(f, "%d %d", &mat->num_rho, &mat->num_T);
+  int c = fscanf(f, "%d %d", &mat->num_rho, &mat->num_T);
   if (c != 2) {
     error("Failed to read EOS table %s", table_file);
   }
