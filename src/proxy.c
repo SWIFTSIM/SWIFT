@@ -326,10 +326,11 @@ void proxy_cells_wait_and_unpack_mapper(void *unused_map_data, int num_elements,
   for (int k = 0; k < num_elements; k++) {
     int pid = MPI_UNDEFINED;
     MPI_Status status;
-    if (MPI_Waitany(data->num_proxies, data->reqs_in, &pid, &status) !=
+    int res;
+    if ((res = MPI_Waitany(data->num_proxies, data->reqs_in, &pid, &status)) !=
             MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
-      error("MPI_Waitany failed.");
+      mpi_error(res, "MPI_Waitany failed.");
     // message( "cell data from proxy %i has arrived." , pid );
     for (int count = 0, j = 0; j < data->proxies[pid].nr_cells_in; j++)
       count += cell_unpack(&data->proxies[pid].pcells_in[count],
