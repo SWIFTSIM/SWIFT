@@ -1124,13 +1124,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       s->nr_local_cells++;
     }
 
-    if (has_particles) {
-
-      /* Add this cell to the list of non-empty cells */
-      s->cells_with_particles_top[s->nr_cells_with_particles] = k;
-      s->nr_cells_with_particles++;
-    }
-
     if (is_local && has_particles) {
 
       /* Add this cell to the list of non-empty cells */
@@ -1139,8 +1132,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     }
   }
   if (verbose) {
-    message("Have %d top-level cells with particles (total=%d)",
-            s->nr_cells_with_particles, s->nr_cells);
     message("Have %d local top-level cells with particles (total=%d)",
             s->nr_local_cells_with_particles, s->nr_cells);
     message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
@@ -1183,7 +1174,8 @@ void space_split(struct space *s, int verbose) {
   const ticks tic = getticks();
 
   threadpool_map(&s->e->threadpool, space_split_mapper,
-                 s->cells_with_particles_top, s->nr_cells_with_particles,
+                 s->local_cells_with_particles_top,
+		 s->nr_local_cells_with_particles,
                  sizeof(int), 0, s);
 
   if (verbose)
@@ -2421,11 +2413,11 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
   struct cell *cells_top = s->cells_top;
-  int *cells_with_particles = (int *)map_data;
+  int *local_cells_with_particles = (int *)map_data;
 
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[cells_with_particles[ind]];
+    struct cell *c = &cells_top[local_cells_with_particles[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL);
   }
 
@@ -2433,7 +2425,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   /* All cells and particles should have consistent h_max values. */
   for (int ind = 0; ind < num_cells; ind++) {
     int depth = 0;
-    if (!checkCellhdxmax(&cells_top[ind], &depth))
+    const struct cell *c = &cells_top[local_cells_with_particles[ind]];
+    if (!checkCellhdxmax(c, &depth))
       message("    at cell depth %d", depth);
   }
 #endif
@@ -2630,15 +2623,30 @@ void space_list_cells_with_tasks(struct space *s) {
   const ticks tic = getticks();
 
   s->nr_local_cells_with_tasks = 0;
+  s->nr_cells_with_particles = 0;
 
-  for (int i = 0; i < s->nr_cells; ++i)
-    if (cell_has_tasks(&s->cells_top[i])) {
+  for (int i = 0; i < s->nr_cells; ++i) {
+    struct cell *c = &s->cells_top[i];
+
+    if (cell_has_tasks(c)) {
       s->local_cells_with_tasks_top[s->nr_local_cells_with_tasks] = i;
       s->nr_local_cells_with_tasks++;
     }
-  if (s->e->verbose)
+
+    const int has_particles =
+      (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) || (c->grav.multipole->m_pole.M_000 > 0.f);
+
+    if(has_particles) {
+      s->cells_with_particles_top[s->nr_cells_with_particles] = i;
+      s->nr_cells_with_particles++;
+    } 
+  }
+  if (s->e->verbose) {
     message("Have %d local top-level cells with tasks (total=%d)",
             s->nr_local_cells_with_tasks, s->nr_cells);
+    message("Have %d top-level cells with particles (total=%d)",
+	    s->nr_cells_with_particles, s->nr_cells);
+  }
 
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
