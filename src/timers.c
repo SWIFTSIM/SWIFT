@@ -93,6 +93,8 @@ const char* timers_names[timer_count] = {
     "dopair_subset_stars_density",
     "dosubpair_stars_density",
     "dosub_self_stars_density",
+    "dosub_pair_stars_density",
+    "dosub_subset_stars_density",
 };
 
 /* File to store the timers */

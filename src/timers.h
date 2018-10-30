@@ -89,11 +89,13 @@ enum {
   timer_step,
   timer_doself_stars_density,
   timer_dopair_stars_density,
-  timer_dostars_ghost,
+  timer_do_stars_ghost,
   timer_doself_subset_stars_density,
   timer_dopair_subset_stars_density,
   timer_dosubpair_stars_density,
   timer_dosub_self_stars_density,
+  timer_dosub_pair_stars_density,
+  timer_dosub_subset_stars_density,
   timer_count,
 };
 

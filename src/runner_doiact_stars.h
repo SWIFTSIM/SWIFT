@@ -242,7 +242,7 @@ void runner_dopair_subset_stars_density(struct runner *r,
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
 
-  TIMER_TOC(timer_dopair_subset_naive);
+  TIMER_TOC(timer_dopair_subset_stars_density);
 }
 
 /**
@@ -943,7 +943,7 @@ void runner_dosub_subset_stars_density(struct runner *r, struct cell *ci,
 
   } /* otherwise, pair interaction. */
 
-  if (gettimer) TIMER_TOC(timer_dosub_subset);
+  if (gettimer) TIMER_TOC(timer_dosub_subset_stars_density);
 }
 
 /**
@@ -1368,7 +1368,7 @@ void runner_dosub_pair_stars_density(struct runner *r, struct cell *ci,
     runner_dopair_branch_stars_density(r, ci, cj);
   }
 
-  if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);
+  if (gettimer) TIMER_TOC(timer_dosub_pair_stars_density);
 }
 
 /**
