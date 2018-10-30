@@ -276,7 +276,7 @@ void proxy_cells_count_mapper(void *map_data, int num_elements,
   struct cell *cells = (struct cell *)map_data;
 
   for (int k = 0; k < num_elements; k++) {
-    if (cells[k].sendto) cells[k].pcell_size = cell_getsize(&cells[k]);
+    if (cells[k].mpi.sendto) cells[k].mpi.pcell_size = cell_getsize(&cells[k]);
   }
 }
 
@@ -293,10 +293,10 @@ void proxy_cells_pack_mapper(void *map_data, int num_elements,
   struct pack_mapper_data *data = (struct pack_mapper_data *)extra_data;
 
   for (int k = 0; k < num_elements; k++) {
-    if (cells[k].sendto) {
+    if (cells[k].mpi.sendto) {
       ptrdiff_t ind = &cells[k] - data->s->cells_top;
-      cells[k].pcell = &data->pcells[data->offset[ind]];
-      cell_pack(&cells[k], cells[k].pcell, data->with_gravity);
+      cells[k].mpi.pcell = &data->pcells[data->offset[ind]];
+      cell_pack(&cells[k], cells[k].mpi.pcell, data->with_gravity);
     }
   }
 }
@@ -373,7 +373,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   int offset[s->nr_cells];
   for (int k = 0; k < s->nr_cells; k++) {
     offset[k] = count_out;
-    if (s->cells_top[k].mpi.sendto) count_out += s->cells_top[k].pcell_size;
+    if (s->cells_top[k].mpi.sendto) count_out += s->cells_top[k].mpi.pcell_size;
   }
 
   if (s->e->verbose)
