@@ -78,7 +78,7 @@ enum engine_policy {
   engine_policy_feedback = (1 << 18)
 };
 #define engine_maxpolicy 18
-extern const char *engine_policy_names[];
+extern const char *engine_policy_names[engine_maxpolicy+2];
 
 /**
  * @brief The different unusual events that can take place in a time-step.
@@ -90,7 +90,8 @@ enum engine_step_properties {
   engine_step_prop_repartition = (1 << 2),
   engine_step_prop_statistics = (1 << 3),
   engine_step_prop_snapshot = (1 << 4),
-  engine_step_prop_restarts = (1 << 5)
+  engine_step_prop_restarts = (1 << 5),
+  engine_step_prop_logger_index = (1 << 6)
 };
 
 /* Some constants */

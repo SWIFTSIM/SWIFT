@@ -57,7 +57,7 @@ AC_C_RESTRICT
 # logger
 AC_ARG_ENABLE([logger],
 	[AS_HELP_STRING([--enable-logger],
-		[enable the logger output format]
+		[enable the particle logger]
 	)],
 	[with_logger="${enableval}"],
 	[with_logger="no"]
@@ -1622,7 +1622,7 @@ AC_MSG_RESULT([
    CPU profiler         : $have_profiler
    Pthread barriers     : $have_pthread_barrier
    VELOCIraptor enabled : $have_velociraptor
-   Logger               : $with_logger
+   Particle Logger      : $with_logger
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension

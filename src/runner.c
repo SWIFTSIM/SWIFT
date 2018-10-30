@@ -2713,7 +2713,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   /* Anything to do here? */
   if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e)) return;
 
-  /* Recurse? */
+  /* Recurse? Avoid spending too much time in useless cells. */
   if (c->split) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_logger(r, c->progeny[k], 0);
@@ -2726,22 +2726,25 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
 
-      /* If particle needs to be kicked */
+      /* If particle needs to be log */
+      /* This is the same function than part_is_active, except for
+       * debugging checks */
       if (part_is_starting(p, e)) {
 
-        if (xpart_should_write(xp, e)) {
+        if (logger_should_write(&xp->logger_data, e->log)) {
           /* Write particle */
+	  /* Currently writing everything, should adapt it through time */
           logger_log_part(e->log, p,
                           logger_mask_x | logger_mask_v | logger_mask_a |
                               logger_mask_u | logger_mask_h | logger_mask_rho |
                               logger_mask_consts,
                           &xp->logger_data.last_offset);
-          // message("Offset: %lu", p->last_offset);
+
           /* Set counter back to zero */
-          xp->logger_data.last_output = 0;
+          xp->logger_data.steps_since_last_output = 0;
         } else
           /* Update counter */
-          xp->logger_data.last_output += 1;
+          xp->logger_data.steps_since_last_output += 1;
       }
     }
   }

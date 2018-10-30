@@ -751,10 +751,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->a_grav[2] = 0.f;
   xp->entropy_full = p->entropy;
 
-#ifdef WITH_LOGGER
-  logger_part_data_init(&xp->logger_data);
-#endif
-
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
 }
@@ -775,20 +771,5 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
 
   p->entropy = u_init;
 }
-
-#ifdef WITH_LOGGER
-/**
- * @brief Should this particle write its data now ?
- *
- * @param xp The #xpart.
- * @param e The #engine containing information about the current time.
- * @return 1 if the #part should write, 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int xpart_should_write(
-    const struct xpart *xp, const struct engine *e) {
-
-  return (xp->logger_data.last_output > e->log->delta_step);
-}
-#endif
 
 #endif /* SWIFT_GADGET2_HYDRO_H */

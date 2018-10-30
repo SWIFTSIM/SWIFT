@@ -57,6 +57,7 @@ struct xpart {
   struct cooling_xpart_data cooling_data;
 
 #ifdef WITH_LOGGER
+  /* Additional data for the particle logger */
   struct logger_part_data logger_data;
 #endif
 

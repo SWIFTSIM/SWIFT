@@ -114,8 +114,7 @@ const char *engine_policy_names[] = {"none",
                                      "stars",
                                      "structure finding",
                                      "star formation",
-                                     "feedback",
-                                     "logger"};
+                                     "feedback"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -5213,7 +5212,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_sparts(s, e->verbose);
 
 #ifdef WITH_LOGGER
+  /* Mark the first time step in the particle logger file. */
   logger_log_timestamp(e->log, e->ti_current, &e->log->timestamp_offset);
+  /* Make sure that we have enough space in the particle logger file
+   * to store the particles in current time step. */
   logger_ensure_size(e->log, e->total_nr_parts, e->total_nr_gparts, 0);
 #endif
 
@@ -5467,7 +5469,10 @@ void engine_step(struct engine *e) {
     e->forcerebuild = 1;
 
 #ifdef WITH_LOGGER
+  /* Mark the current time step in the particle logger file. */
   logger_log_timestamp(e->log, e->ti_current, &e->log->timestamp_offset);
+  /* Make sure that we have enough space in the particle logger file
+   * to store the particles in current time step. */
   logger_ensure_size(e->log, e->total_nr_parts, e->total_nr_gparts, 0);
 #endif
 
@@ -5622,6 +5627,7 @@ void engine_check_for_dumps(struct engine *e) {
         /* Dump everything */
         engine_print_stats(e);
 #ifdef WITH_LOGGER
+	/* Write a file containing the offsets in the particle logger. */
         engine_dump_index(e);
 #else
         engine_dump_snapshot(e);
@@ -5656,6 +5662,7 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Dump snapshot */
 #ifdef WITH_LOGGER
+	/* Write a file containing the offsets in the particle logger. */
         engine_dump_index(e);
 #else
         engine_dump_snapshot(e);
@@ -5678,6 +5685,7 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Dump snapshot */
 #ifdef WITH_LOGGER
+	/* Write a file containing the offsets in the particle logger. */
         engine_dump_index(e);
 #else
         engine_dump_snapshot(e);
@@ -5717,6 +5725,7 @@ void engine_check_for_dumps(struct engine *e) {
 
       /* Dump... */
 #ifdef WITH_LOGGER
+	/* Write a file containing the offsets in the particle logger. */
       engine_dump_index(e);
 #else
       engine_dump_snapshot(e);
@@ -6506,23 +6515,6 @@ void engine_dump_index(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all cells have been drifted to the current time.
-   * That can include cells that have not
-   * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_current,
-                          e->policy & engine_policy_self_gravity);
-
-  /* Be verbose about this */
-  if (e->nodeID == 0) {
-    if (e->policy & engine_policy_cosmology)
-      message("Writing index at a=%e",
-              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
-    else
-      message("Writing index at t=%e",
-              e->ti_current * e->time_base + e->time_begin);
-  }
-#else
   if (e->verbose) {
     if (e->policy & engine_policy_cosmology)
       message("Writing index at a=%e",
@@ -6531,14 +6523,13 @@ void engine_dump_index(struct engine *e) {
       message("Writing index at t=%e",
               e->ti_current * e->time_base + e->time_begin);
   }
-#endif
 
   /* Dump... */
   write_index_single(e, e->log->base_name, e->internal_units,
                      e->snapshot_units);
 
   /* Flag that we dumped a snapshot */
-  e->step_props |= engine_step_prop_snapshot;
+  e->step_props |= engine_step_prop_logger_index;
 
   clocks_gettime(&time2);
   if (e->verbose)

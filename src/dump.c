@@ -57,11 +57,15 @@ void *dump_get(struct dump *d, size_t count, size_t *offset) {
 
 /**
  * @brief Ensure that at least size bytes are available in the #dump.
+ *
+ * @param d The #dump.
+ * @param required_size The required size for the #dump
+ * @param increase_size If not enough size, increase by this amount
  */
-void dump_ensure(struct dump *d, size_t size) {
+void dump_ensure(struct dump *d, size_t required_size, size_t increase_size) {
 
   /* If we have enough space already, just bail. */
-  if (d->size - d->count > size) return;
+  if (d->size - d->count > required_size) return;
 
   /* Unmap the current data. */
   if (munmap(d->data, d->size) != 0) {
@@ -73,7 +77,7 @@ void dump_ensure(struct dump *d, size_t size) {
   const size_t trunc_count = d->count & d->page_mask;
   d->file_offset += trunc_count;
   d->count -= trunc_count;
-  d->size = (size * dump_grow_ensure_factor + ~d->page_mask) & d->page_mask;
+  d->size = (increase_size + ~d->page_mask) & d->page_mask;
 
   /* Re-allocate the file size. */
   if (posix_fallocate(d->fd, d->file_offset, d->size) != 0) {

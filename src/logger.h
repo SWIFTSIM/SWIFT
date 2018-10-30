@@ -29,8 +29,9 @@
 
 /* Forward declaration */
 struct dump;
-struct part;
 struct gpart;
+struct part;
+/* TODO remove dependency */
 struct engine;
 
 /**
@@ -120,7 +121,7 @@ struct logger_parameters {
   size_t data_type_size;
 
   /* number of different mask */
-  size_t nber_mask;
+  size_t number_mask;
 
   /* value of each masks */
   size_t *masks;
@@ -130,6 +131,9 @@ struct logger_parameters {
 
   /* label of each mask */
   char *masks_name;
+
+  /* Size of a chunk if every mask are activated */
+  size_t total_size;
 };
 
 /* structure containing global data */
@@ -146,9 +150,6 @@ struct logger {
   /* timestamp offset for logger*/
   size_t timestamp_offset;
 
-  /* size of the buffer */
-  size_t buffer_size;
-
   /* scaling factor when buffer is too small */
   float buffer_scale;
 
@@ -160,16 +161,11 @@ struct logger {
 /* required structure for each particle type */
 struct logger_part_data {
   /* Number of particle updates since last output */
-  short int last_output;
+  int steps_since_last_output;
 
   /* offset of last particle log entry */
   size_t last_offset;
 };
-
-INLINE static void logger_part_data_init(struct logger_part_data *logger) {
-  logger->last_offset = 0;
-  logger->last_output = SHRT_MAX;
-}
 
 enum logger_datatype {
   logger_data_int,
@@ -204,6 +200,29 @@ int logger_read_timestamp(unsigned long long int *t, size_t *offset,
 
 void logger_parameters_init(struct logger_parameters *log_params);
 void logger_parameters_clean(struct logger_parameters *log_params);
+
+/**
+ * @brief Initialize the logger data for a particle.
+ *
+ * @param logger The #logger_part_data.
+ */
+INLINE static void logger_part_data_init(struct logger_part_data *logger) {
+  logger->last_offset = 0;
+  logger->steps_since_last_output = SHRT_MAX;
+}
+
+/**
+ * @brief Should this particle write its data now ?
+ *
+ * @param xp The #xpart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part should write, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int logger_should_write(
+    const struct logger_part_data *logger_data, const struct logger *log) {
+
+  return (logger_data->steps_since_last_output > log->delta_step);
+}
 
 #endif /* WITH_LOGGER */
 

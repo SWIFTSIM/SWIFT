@@ -48,7 +48,9 @@ const unsigned int logger_datatype_size[logger_data_count] = {
 };
 
 /**
- * @brief Write the header of a chunk (offset + mask)
+ * @brief Write the header of a chunk (offset + mask).
+ *
+ * This is maybe broken for big(?) endian.
  *
  * @param buff The writing buffer
  * @param mask The mask to write
@@ -90,6 +92,8 @@ void logger_write_data(struct dump *d, size_t *offset, size_t size,
 
 /**
  * @brief Write a parameter to the file
+ *
+ * TODO Make it thread safe or remove it.
  *
  * write data in the following order: name, data type, data.
  * It should be used only for the file header.
@@ -179,6 +183,13 @@ int logger_compute_chunk_size(unsigned int mask) {
  * @param e The #engine
  */
 void logger_log_all(struct logger *log, const struct engine *e) {
+
+  /* Ensure that enough space is available */
+  logger_ensure_size(log, e->total_nr_parts, e->total_nr_gparts, 0);
+#ifdef SWIFT_DEBUG_CHECKS
+  message("Need to implement stars");
+#endif
+
   /* some constants */
   const struct space *s = e->s;
   const unsigned int mask = logger_mask_x | logger_mask_v | logger_mask_a |
@@ -189,7 +200,7 @@ void logger_log_all(struct logger *log, const struct engine *e) {
   for (long long i = 0; i < e->total_nr_parts; i++) {
     logger_log_part(log, &s->parts[i], mask,
                     &s->xparts[i].logger_data.last_offset);
-    s->xparts[i].logger_data.last_output = 0;
+    s->xparts[i].logger_data.steps_since_last_output = 0;
   }
 
   /* loop over all gparts */
@@ -384,20 +395,9 @@ void logger_ensure_size(struct logger *log, size_t total_nr_parts,
   struct logger_parameters *log_params = log->params;
 
   /* count part memory */
-  size_t limit = log_params->offset_size + log_params->mask_size;
-
-  for (size_t i = 0; i < log_params->nber_mask; i++) {
-    if (log_params->masks[i] != logger_mask_timestamp)
-      limit += log_params->masks_data_size[i];
-  }
+  size_t limit = log_params->total_size;
 
   limit *= total_nr_parts;
-
-  /* check if enough place for all particles */
-  if (log->buffer_size < limit) {
-    log->buffer_size = log->buffer_scale * limit;
-    message("Increasing buffer size to %.3f GB", log->buffer_size * 1e-9);
-  }
 
   /* count gpart memory */
   if (total_nr_gparts > 0) error("Not implemented");
@@ -406,7 +406,7 @@ void logger_ensure_size(struct logger *log, size_t total_nr_parts,
   if (total_nr_sparts > 0) error("Not implemented");
 
   /* ensure enough space in dump */
-  dump_ensure(log->dump, log->buffer_size);
+  dump_ensure(log->dump, limit, log->buffer_scale * limit);
 }
 
 /**
@@ -418,10 +418,9 @@ void logger_ensure_size(struct logger *log, size_t total_nr_parts,
 void logger_init(struct logger *log, struct swift_params *params) {
   /* read parameters */
   log->delta_step = parser_get_param_int(params, "Logger:delta_step");
-  log->buffer_size =
-      parser_get_param_float(params, "Logger:mmaped_buffer_size") * 1e9;
+  size_t buffer_size = parser_get_param_float(params, "Logger:initial_buffer_size") * 1e9;
   log->buffer_scale =
-      parser_get_opt_param_float(params, "Logger:buffer_scale", 1.2);
+      parser_get_opt_param_float(params, "Logger:buffer_scale", 10);
   parser_get_param_string(params, "Logger:basename", log->base_name);
 
   /* set initial value of parameters */
@@ -441,10 +440,8 @@ void logger_init(struct logger *log, struct swift_params *params) {
   log->dump = malloc(sizeof(struct dump));
   struct dump *dump_file = log->dump;
 
-  dump_init(dump_file, logger_name_file, log->buffer_size);
+  dump_init(dump_file, logger_name_file, buffer_size);
 
-  /* ensure enough place in dump */
-  dump_ensure(dump_file, log->buffer_size);
 }
 
 /**
@@ -490,7 +487,7 @@ void logger_write_file_header(struct logger *log, const struct engine *e) {
   logger_write_data(dump, &file_offset, logger_datatype_size[logger_data_bool],
                     &reversed);
 
-  /* will write the offset of the first particle here */
+  /* placeholder to write the offset of the first log here */
   char *skip_header = dump_get(dump, log_params.offset_size, &file_offset);
 
   /* write number of bytes used for names */
@@ -507,11 +504,11 @@ void logger_write_file_header(struct logger *log, const struct engine *e) {
 
   /* write number of masks */
   logger_write_data(dump, &file_offset, log_params.number_size,
-                    &log_params.nber_mask);
+                    &log_params.number_mask);
 
   /* write masks */
   // loop over all mask type
-  for (size_t i = 0; i < log_params.nber_mask; i++) {
+  for (size_t i = 0; i < log_params.number_mask; i++) {
     // mask name
     size_t j = i * log_params.label_size;
     logger_write_data(dump, &file_offset, log_params.label_size,
@@ -544,8 +541,6 @@ void logger_write_file_header(struct logger *log, const struct engine *e) {
 
   /* free memory */
   free(name);
-
-  dump_ensure(log->dump, log->buffer_size);
 }
 
 /**
@@ -561,10 +556,10 @@ void logger_parameters_init(struct logger_parameters *log_params) {
   log_params->number_size = 1;
   log_params->data_type_size = 1;
 
-  log_params->nber_mask = 8;
+  log_params->number_mask = 8;
 
   /* set masks array */
-  log_params->masks = malloc(sizeof(size_t) * log_params->nber_mask);
+  log_params->masks = malloc(sizeof(size_t) * log_params->number_mask);
   log_params->masks[0] = logger_mask_x;
   log_params->masks[1] = logger_mask_v;
   log_params->masks[2] = logger_mask_a;
@@ -575,7 +570,7 @@ void logger_parameters_init(struct logger_parameters *log_params) {
   log_params->masks[7] = logger_mask_timestamp;
 
   /* set the mask names */
-  size_t block_size = log_params->label_size * log_params->nber_mask;
+  size_t block_size = log_params->label_size * log_params->number_mask;
   log_params->masks_name = malloc(block_size);
   char *cur_name = log_params->masks_name;
 
@@ -613,7 +608,7 @@ void logger_parameters_init(struct logger_parameters *log_params) {
   cur_name += log_params->label_size;
 
   /* set the data size */
-  log_params->masks_data_size = malloc(sizeof(size_t) * log_params->nber_mask);
+  log_params->masks_data_size = malloc(sizeof(size_t) * log_params->number_mask);
   log_params->masks_data_size[0] = 3 * sizeof(double);
   log_params->masks_data_size[1] = 3 * sizeof(float);
   log_params->masks_data_size[2] = 3 * sizeof(float);
@@ -622,6 +617,14 @@ void logger_parameters_init(struct logger_parameters *log_params) {
   log_params->masks_data_size[5] = sizeof(float);
   log_params->masks_data_size[6] = sizeof(float) + sizeof(long long);
   log_params->masks_data_size[7] = sizeof(integertime_t);
+
+  /* Compute the size of a chunk if all the mask are activated */
+  log_params->total_size = logger_offset_size + logger_mask_size;
+  
+  for (size_t i = 0; i < log_params->number_mask; i++) {
+    if (log_params->masks[i] != logger_mask_timestamp)
+      log_params->total_size += log_params->masks_data_size[i];
+  }
 
   // todo masks_type
 }
