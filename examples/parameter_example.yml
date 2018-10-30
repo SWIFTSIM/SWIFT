@@ -123,7 +123,7 @@ Restarts:
   stop_steps:         100        # (Optional) how many steps to process before checking if the <subdir>/stop file exists. When present the application will attempt to exit early, dumping restart files first.
   max_run_time:       24.0       # (optional) Maximal wall-clock time in hours. The application will exit when this limit is reached.
   resubmit_on_exit:   0          # (Optional) whether to run a command when exiting after the time limit has been reached.
-  resubmit_command:   ./resub.sh # (Optional) Command to run when time limit is reached. Compulsory if resubmit_on_exit is switched on.
+  resubmit_command:   ./resub.sh # (Optional) Command to run when time limit is reached. Compulsory if resubmit_on_exit is switched on. Note potentially unsafe.
 
 # Parameters governing domain decomposition
 DomainDecomposition:

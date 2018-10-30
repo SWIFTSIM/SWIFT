@@ -1241,8 +1241,11 @@ int main(int argc, char *argv[]) {
 
   /* Did we want to run a re-submission command just before dying? */
   if (myrank == 0 && resubmit) {
-    message("Running the resubmission command.");
+    message("Running the resubmission command:");
     restart_resubmit(resubmit_command);
+    fflush(stdout);
+    fflush(stderr);
+    message("resubmission command completed.");
   }
 
   /* Clean everything */
