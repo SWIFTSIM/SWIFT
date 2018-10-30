@@ -35,7 +35,6 @@
 #include "approx_math.h"
 #include "cosmology.h"
 #include "dimension.h"
-#include "engine.h"
 #include "equation_of_state.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"

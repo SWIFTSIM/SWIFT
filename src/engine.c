@@ -6545,7 +6545,7 @@ void engine_dump_index(struct engine *e) {
     message("writing particle indices took %.3f %s.",
             (float)clocks_diff(&time1, &time2), clocks_getunit());
 #else
-  error("Logger disabled");
+  error("SWIFT was not compiled with the logger");
 #endif
 }
 
@@ -7327,6 +7327,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   }
 
 #ifdef WITH_LOGGER
+  /* Write the particle logger header */
   logger_write_file_header(e->log, e);
 #endif
 
