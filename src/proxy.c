@@ -322,15 +322,18 @@ void proxy_cells_wait_and_unpack_mapper(void *unused_map_data, int num_elements,
                                         void *extra_data) {
   struct wait_and_unpack_mapper_data *data =
       (struct wait_and_unpack_mapper_data *)extra_data;
+  static swift_lock_type waitall_lock = 0;
 
   for (int k = 0; k < num_elements; k++) {
     int pid = MPI_UNDEFINED;
     MPI_Status status;
     int res;
+    lock_lock(&waitall_lock);
     if ((res = MPI_Waitany(data->num_proxies, data->reqs_in, &pid, &status)) !=
             MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
       mpi_error(res, "MPI_Waitany failed.");
+    if (lock_unlock(&waitall_lock) != 0) error("Unlocking borked.");
     // message( "cell data from proxy %i has arrived." , pid );
     for (int count = 0, j = 0; j < data->proxies[pid].nr_cells_in; j++)
       count += cell_unpack(&data->proxies[pid].pcells_in[count],
