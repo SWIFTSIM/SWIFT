@@ -24,21 +24,31 @@
 #include <stddef.h>
 
 /* Local includes. */
+#include "error.h"
 #include "swift_velociraptor_part.h"
 #include "velociraptor_interface.h"
 
 /* Dummy VELOCIraptor interface for testing compilation without linking the
  * actual VELOCIraptor library. */
 #ifdef HAVE_DUMMY_VELOCIRAPTOR
+struct cosmoinfo {};
+struct unitinfo {};
+struct cell_loc {};
+struct siminfo {};
+
 int InitVelociraptor(char *config_name, char *output_name,
                      struct cosmoinfo cosmo_info, struct unitinfo unit_info,
                      struct siminfo sim_info) {
+
+  error("This is only a dummy. Call the real one!");
   return 0;
 }
 int InvokeVelociraptor(const size_t num_gravity_parts,
                        const size_t num_hydro_parts,
                        struct swift_vel_part *swift_parts,
                        const int *cell_node_ids, char *output_name) {
+
+  error("This is only a dummy. Call the real one!");
   return 0;
 }
 #endif /* HAVE_DUMMY_VELOCIRAPTOR */

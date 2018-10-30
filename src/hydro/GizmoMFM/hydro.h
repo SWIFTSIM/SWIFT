@@ -451,12 +451,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  * @param cosmo The current cosmological model.
+ * @param hydro_props Hydrodynamic properties.
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const float dt_alpha) {
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const float dt_alpha) {
 
   /* Initialise values that are used in the force loop */
   p->flux.momentum[0] = 0.0f;
@@ -731,6 +733,33 @@ hydro_get_physical_internal_energy(const struct part* restrict p,
 }
 
 /**
+ * @brief Returns the comoving internal energy of a particle drifted to the
+ * current time.
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_drifted_comoving_internal_energy(const struct part* restrict p) {
+
+  return hydro_get_comoving_internal_energy(p);
+}
+
+/**
+ * @brief Returns the physical internal energy of a particle drifted to the
+ * current time.
+ *
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_drifted_physical_internal_energy(const struct part* restrict p,
+                                           const struct cosmology* cosmo) {
+
+  return hydro_get_comoving_internal_energy(p) *
+         cosmo->a_factor_internal_energy;
+}
+
+/**
  * @brief Returns the comoving entropy of a particle
  *
  * @param p The particle of interest.
@@ -753,6 +782,21 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
  */
 __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
     const struct part* restrict p, const struct cosmology* cosmo) {
+
+  /* Note: no cosmological conversion required here with our choice of
+   * coordinates. */
+  return hydro_get_comoving_entropy(p);
+}
+
+/**
+ * @brief Returns the physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_drifted_physical_entropy(const struct part* restrict p,
+                                   const struct cosmology* cosmo) {
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */

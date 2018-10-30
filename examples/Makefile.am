@@ -19,7 +19,7 @@
 MYFLAGS = 
 
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS)
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(GRACKLE_INCS)
 
 AM_LDFLAGS = $(HDF5_LDFLAGS)
 
@@ -84,7 +84,8 @@ EXTRA_DIST = CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/make
 	     PerturbedBox_3D/makeIC.py PerturbedBox_3D/perturbedBox.yml PerturbedBox_3D/run.sh \
 	     PMillennium-384/p-mill-384.yml \
 	     PMillennium-768/p-mill-768.yml \
-	     SantaBarbara/README SantaBarbara/getIC.sh SantaBarbara/santa_barbara.yml \
+	     SantaBarbara/README SantaBarbara/getIC.sh SantaBarbara/santa_barbara.yml SantaBarbara/run.sh \
+	     SantaBarbara_low/README SantaBarbara_low/getIC.sh SantaBarbara_low/santa_barbara.yml SantaBarbara_low/run.sh \
 	     SedovBlast_1D/makeIC.py SedovBlast_1D/plotSolution.py SedovBlast_1D/run.sh SedovBlast_1D/sedov.yml \
 	     SedovBlast_2D/getGlass.sh SedovBlast_2D/makeIC.py SedovBlast_2D/plotSolution.py SedovBlast_2D/run.sh SedovBlast_2D/sedov.yml \
 	     SedovBlast_3D/getGlass.sh SedovBlast_3D/makeIC.py SedovBlast_3D/plotSolution.py SedovBlast_3D/run.sh SedovBlast_3D/sedov.yml \

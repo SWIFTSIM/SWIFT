@@ -593,8 +593,22 @@ int main(int argc, char *argv[]) {
 
   /* How often to check for the stop file and dump restarts and exit the
    * application. */
-  int restart_stop_steps =
+  const int restart_stop_steps =
       parser_get_opt_param_int(params, "Restarts:stop_steps", 100);
+
+  /* Get the maximal wall-clock time of this run */
+  const float restart_max_hours_runtime =
+      parser_get_opt_param_float(params, "Restarts:max_run_time", FLT_MAX);
+
+  /* Do we want to resubmit when we hit the limit? */
+  const int resubmit_after_max_hours =
+      parser_get_opt_param_int(params, "Restarts:resubmit_on_exit", 0);
+
+  /* What command should we run to resubmit at the end? */
+  char resubmit_command[PARSER_MAX_LINE_SIZE];
+  if (resubmit_after_max_hours)
+    parser_get_param_string(params, "Restarts:resubmit_command",
+                            resubmit_command);
 
   /* If restarting, look for the restart files. */
   if (restart) {
@@ -681,6 +695,28 @@ int main(int argc, char *argv[]) {
       phys_const_print(&prog_const);
     }
 
+    /* Read particles and space information from ICs */
+    char ICfileName[200] = "";
+    parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
+    const int periodic =
+        parser_get_param_int(params, "InitialConditions:periodic");
+    const int replicate =
+        parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
+    clean_smoothing_length_values = parser_get_opt_param_int(
+        params, "InitialConditions:cleanup_smoothing_lengths", 0);
+    const int cleanup_h = parser_get_opt_param_int(
+        params, "InitialConditions:cleanup_h_factors", 0);
+    const int cleanup_sqrt_a = parser_get_opt_param_int(
+        params, "InitialConditions:cleanup_velocity_factors", 0);
+    const int generate_gas_in_ics = parser_get_opt_param_int(
+        params, "InitialConditions:generate_gas_in_ics", 0);
+
+    /* Some checks that we are not doing something stupid */
+    if (generate_gas_in_ics && flag_entropy_ICs)
+      error("Can't generate gas if the entropy flag is set in the ICs.");
+    if (generate_gas_in_ics && !with_cosmology)
+      error("Can't generate gas if the run is not cosmological.");
+
     /* Initialise the cosmology */
     if (with_cosmology)
       cosmology_init(params, &us, &prog_const, &cosmo);
@@ -709,27 +745,12 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
-      gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology);
+      gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology,
+                         periodic);
     else
       bzero(&gravity_properties, sizeof(struct gravity_props));
 
-    /* Read particles and space information from (GADGET) ICs */
-    char ICfileName[200] = "";
-    parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
-    const int replicate =
-        parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
-    clean_smoothing_length_values = parser_get_opt_param_int(
-        params, "InitialConditions:cleanup_smoothing_lengths", 0);
-    const int cleanup_h = parser_get_opt_param_int(
-        params, "InitialConditions:cleanup_h_factors", 0);
-    const int cleanup_sqrt_a = parser_get_opt_param_int(
-        params, "InitialConditions:cleanup_velocity_factors", 0);
-    const int generate_gas_in_ics = parser_get_opt_param_int(
-        params, "InitialConditions:generate_gas_in_ics", 0);
-    if (generate_gas_in_ics && flag_entropy_ICs)
-      error("Can't generate gas if the entropy flag is set in the ICs.");
-    if (generate_gas_in_ics && !with_cosmology)
-      error("Can't generate gas if the run is not cosmological.");
+    /* Be verbose about what happens next */
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
     if (myrank == 0 && cleanup_h)
       message("Cleaning up h-factors (h=%f)", cosmo.h);
@@ -740,20 +761,19 @@ int main(int argc, char *argv[]) {
     /* Get ready to read particles of all kinds */
     size_t Ngas = 0, Ngpart = 0, Nspart = 0;
     double dim[3] = {0., 0., 0.};
-    int periodic = 0;
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                     &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                     &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
                      (with_external_gravity || with_self_gravity), with_stars,
                      cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
                      nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                      dry_run);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                   &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                   &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
                    cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
                    nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
@@ -761,7 +781,7 @@ int main(int argc, char *argv[]) {
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                   &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, with_hydro,
+                   &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
                    cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
                    dry_run);
@@ -917,6 +937,9 @@ int main(int argc, char *argv[]) {
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
 
+    // MATTHIEU: Temporary star formation law
+    // engine_policies |= engine_policy_star_formation;
+
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
@@ -1025,7 +1048,7 @@ int main(int argc, char *argv[]) {
 
   /* Main simulation loop */
   /* ==================== */
-  int force_stop = 0;
+  int force_stop = 0, resubmit = 0;
   for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps && !force_stop;
        j++) {
 
@@ -1046,6 +1069,13 @@ int main(int argc, char *argv[]) {
         message("Forcing application exit, dumping restart files...");
     }
 
+    /* Did we exceed the maximal runtime? */
+    if (clocks_get_hours_since_start() > restart_max_hours_runtime) {
+      force_stop = 1;
+      message("Runtime limit reached, dumping restart files...");
+      if (resubmit_after_max_hours) resubmit = 1;
+    }
+
     /* Also if using nsteps to exit, will not have saved any restarts on exit,
      * make sure we do that (useful in testing only). */
     if (force_stop || (e.restart_onexit && e.step - 1 == nsteps))
@@ -1057,8 +1087,8 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
 
       /* Make sure output file is empty, only on one rank. */
-      char dumpfile[30];
-      snprintf(dumpfile, 30, "thread_info_MPI-step%d.dat", j + 1);
+      char dumpfile[35];
+      snprintf(dumpfile, sizeof(dumpfile), "thread_info_MPI-step%d.dat", j + 1);
       FILE *file_thread;
       if (myrank == 0) {
         file_thread = fopen(dumpfile, "w");
@@ -1084,21 +1114,24 @@ int main(int argc, char *argv[]) {
           int count = 0;
           for (int l = 0; l < e.sched.nr_tasks; l++) {
             if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
-              fprintf(
-                  file_thread,
-                  " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n", myrank,
-                  e.sched.tasks[l].rid, e.sched.tasks[l].type,
-                  e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
-                  e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-                  (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count
-                                                : 0,
-                  (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->count
-                                                : 0,
-                  (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->gcount
-                                                : 0,
-                  (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->gcount
-                                                : 0,
-                  e.sched.tasks[l].flags, e.sched.tasks[l].sid);
+              fprintf(file_thread,
+                      " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n",
+                      myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
+                      e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
+                      e.sched.tasks[l].tic, e.sched.tasks[l].toc,
+                      (e.sched.tasks[l].ci != NULL)
+                          ? e.sched.tasks[l].ci->hydro.count
+                          : 0,
+                      (e.sched.tasks[l].cj != NULL)
+                          ? e.sched.tasks[l].cj->hydro.count
+                          : 0,
+                      (e.sched.tasks[l].ci != NULL)
+                          ? e.sched.tasks[l].ci->grav.count
+                          : 0,
+                      (e.sched.tasks[l].cj != NULL)
+                          ? e.sched.tasks[l].cj->grav.count
+                          : 0,
+                      e.sched.tasks[l].flags, e.sched.tasks[l].sid);
             }
             fflush(stdout);
             count++;
@@ -1111,8 +1144,8 @@ int main(int argc, char *argv[]) {
       }
 
 #else
-      char dumpfile[30];
-      snprintf(dumpfile, 30, "thread_info-step%d.dat", j + 1);
+      char dumpfile[32];
+      snprintf(dumpfile, sizeof(dumpfile), "thread_info-step%d.dat", j + 1);
       FILE *file_thread;
       file_thread = fopen(dumpfile, "w");
       /* Add some information to help with the plots */
@@ -1126,10 +1159,14 @@ int main(int argc, char *argv[]) {
               e.sched.tasks[l].rid, e.sched.tasks[l].type,
               e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
               e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-              (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->count,
-              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count,
-              (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->gcount,
-              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->gcount,
+              (e.sched.tasks[l].ci == NULL) ? 0
+                                            : e.sched.tasks[l].ci->hydro.count,
+              (e.sched.tasks[l].cj == NULL) ? 0
+                                            : e.sched.tasks[l].cj->hydro.count,
+              (e.sched.tasks[l].ci == NULL) ? 0
+                                            : e.sched.tasks[l].ci->grav.count,
+              (e.sched.tasks[l].cj == NULL) ? 0
+                                            : e.sched.tasks[l].cj->grav.count,
               e.sched.tasks[l].sid);
         }
       }
@@ -1188,17 +1225,19 @@ int main(int argc, char *argv[]) {
   }
 
   /* Write final output. */
-  engine_drift_all(&e);
-  engine_print_stats(&e);
-  engine_dump_snapshot(&e);
+  if (!force_stop) {
+    engine_drift_all(&e);
+    engine_print_stats(&e);
+    engine_dump_snapshot(&e);
 
 #ifdef HAVE_VELOCIRAPTOR
-  /* Call VELOCIraptor at the end of the run to find groups. */
-  if (e.policy & engine_policy_structure_finding) {
-    velociraptor_init(&e);
-    velociraptor_invoke(&e);
-  }
+    /* Call VELOCIraptor at the end of the run to find groups. */
+    if (e.policy & engine_policy_structure_finding) {
+      velociraptor_init(&e);
+      velociraptor_invoke(&e);
+    }
 #endif
+  }
 
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
@@ -1209,10 +1248,19 @@ int main(int argc, char *argv[]) {
    * stop file if normal exit happened first. */
   if (myrank == 0) force_stop = restart_stop_now(restart_dir, 1);
 
+  /* Did we want to run a re-submission command just before dying? */
+  if (myrank == 0 && resubmit) {
+    message("Running the resubmission command:");
+    restart_resubmit(resubmit_command);
+    fflush(stdout);
+    fflush(stderr);
+    message("resubmission command completed.");
+  }
+
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
-  if (with_cosmology) cosmology_clean(&cosmo);
-  if (with_self_gravity) pm_mesh_clean(&mesh);
+  if (with_cosmology) cosmology_clean(e.cosmology);
+  if (with_self_gravity) pm_mesh_clean(e.mesh);
   engine_clean(&e);
   free(params);
 

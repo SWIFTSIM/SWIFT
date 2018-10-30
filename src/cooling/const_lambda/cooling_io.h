@@ -1,8 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Tom Theuns (tom.theuns@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *                    Richard Bower (r.g.bower@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *                    Stefan Arridge  (stefan.arridge@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,6 +20,14 @@
 #ifndef SWIFT_COOLING_CONST_LAMBDA_IO_H
 #define SWIFT_COOLING_CONST_LAMBDA_IO_H
 
+/**
+ * @file src/cooling/const_lambda/cooling_io.h
+ * @brief i/o routines related to the "constant lambda" cooling function.
+ *
+ * This model assumes a constant cooling rate Lambda irrespective of redshift
+ * or density.
+ */
+
 /* Config parameters. */
 #include "../config.h"
 
@@ -31,20 +37,24 @@
 #ifdef HAVE_HDF5
 
 /**
- * @brief Writes the current model of SPH to the file
- * @param h_grpsph The HDF5 group in which to write
+ * @brief Writes the current model of cooling to the file
+ * @param h_grp The HDF5 group in which to write
+ * @param cooling the parameters of the cooling function.
  */
 __attribute__((always_inline)) INLINE static void cooling_write_flavour(
-    hid_t h_grpsph) {
+    hid_t h_grp, const struct cooling_function_data* cooling) {
 
-  io_write_attribute_s(h_grpsph, "Cooling Model", "Constant Lambda");
+  io_write_attribute_s(h_grp, "Cooling Model", "Constant Lambda");
+  io_write_attribute_d(h_grp, "Lambda/n_H^2 [cgs]", cooling->lambda_nH2_cgs);
 }
 #endif
 
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
- * @param parts The particle array.
+ * Nothing to write for this scheme.
+ *
+ * @param xparts The extended particle array.
  * @param list The list of i/o properties to write.
  * @param cooling The #cooling_function_data
  *
@@ -53,6 +63,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
     const struct xpart* xparts, struct io_props* list,
     const struct cooling_function_data* cooling) {
+
   return 0;
 }
 

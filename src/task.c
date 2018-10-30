@@ -48,16 +48,17 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",           "sort",          "self",
-    "pair",           "sub_self",      "sub_pair",
-    "init_grav",      "init_grav_out", "ghost_in",
-    "ghost",          "ghost_out",     "extra_ghost",
-    "drift_part",     "drift_gpart",   "end_force",
-    "kick1",          "kick2",         "timestep",
-    "send",           "recv",          "grav_long_range",
-    "grav_mm",        "grav_down_in",  "grav_down",
-    "grav_mesh",      "cooling",       "sourceterms",
-    "stars_ghost_in", "stars_ghost",   "stars_ghost_out"};
+    "none",           "sort",           "self",
+    "pair",           "sub_self",       "sub_pair",
+    "init_grav",      "init_grav_out",  "ghost_in",
+    "ghost",          "ghost_out",      "extra_ghost",
+    "drift_part",     "drift_gpart",    "end_force",
+    "kick1",          "kick2",          "timestep",
+    "send",           "recv",           "grav_long_range",
+    "grav_mm",        "grav_down_in",   "grav_down",
+    "grav_mesh",      "cooling",        "star_formation",
+    "sourceterms",    "stars_ghost_in", "stars_ghost",
+    "stars_ghost_out"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
@@ -95,9 +96,9 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
     return 0;                                                               \
   }
 
-TASK_CELL_OVERLAP(part, parts, count);
-TASK_CELL_OVERLAP(gpart, gparts, gcount);
-TASK_CELL_OVERLAP(spart, sparts, scount);
+TASK_CELL_OVERLAP(part, hydro.parts, hydro.count);
+TASK_CELL_OVERLAP(gpart, grav.parts, grav.count);
+TASK_CELL_OVERLAP(spart, stars.parts, stars.count);
 
 /**
  * @brief Returns the #task_actions for a given task.
@@ -121,6 +122,9 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_sourceterms:
       return task_action_part;
       break;
+
+    case task_type_star_formation:
+      return task_action_all;
 
     case task_type_stars_ghost:
       return task_action_spart;
@@ -160,11 +164,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_timestep:
     case task_type_send:
     case task_type_recv:
-      if (t->ci->count > 0 && t->ci->gcount > 0)
+      if (t->ci->hydro.count > 0 && t->ci->grav.count > 0)
         return task_action_all;
-      else if (t->ci->count > 0)
+      else if (t->ci->hydro.count > 0)
         return task_action_part;
-      else if (t->ci->gcount > 0)
+      else if (t->ci->grav.count > 0)
         return task_action_gpart;
       else
         error("Task without particles");
@@ -172,13 +176,13 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_init_grav:
     case task_type_grav_mm:
+    case task_type_grav_long_range:
       return task_action_multipole;
       break;
 
     case task_type_drift_gpart:
     case task_type_grav_down:
     case task_type_grav_mesh:
-    case task_type_grav_long_range:
       return task_action_gpart;
       break;
 
@@ -228,10 +232,10 @@ float task_overlap(const struct task *restrict ta,
 
     /* Compute the union of the cell data. */
     size_t size_union = 0;
-    if (ta->ci != NULL) size_union += ta->ci->count;
-    if (ta->cj != NULL) size_union += ta->cj->count;
-    if (tb->ci != NULL) size_union += tb->ci->count;
-    if (tb->cj != NULL) size_union += tb->cj->count;
+    if (ta->ci != NULL) size_union += ta->ci->hydro.count;
+    if (ta->cj != NULL) size_union += ta->cj->hydro.count;
+    if (tb->ci != NULL) size_union += tb->ci->hydro.count;
+    if (tb->cj != NULL) size_union += tb->cj->hydro.count;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_part(ta->ci, tb->ci) +
@@ -247,10 +251,10 @@ float task_overlap(const struct task *restrict ta,
 
     /* Compute the union of the cell data. */
     size_t size_union = 0;
-    if (ta->ci != NULL) size_union += ta->ci->gcount;
-    if (ta->cj != NULL) size_union += ta->cj->gcount;
-    if (tb->ci != NULL) size_union += tb->ci->gcount;
-    if (tb->cj != NULL) size_union += tb->cj->gcount;
+    if (ta->ci != NULL) size_union += ta->ci->grav.count;
+    if (ta->cj != NULL) size_union += ta->cj->grav.count;
+    if (tb->ci != NULL) size_union += tb->ci->grav.count;
+    if (tb->cj != NULL) size_union += tb->cj->grav.count;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_gpart(ta->ci, tb->ci) +
@@ -266,10 +270,10 @@ float task_overlap(const struct task *restrict ta,
 
     /* Compute the union of the cell data. */
     size_t size_union = 0;
-    if (ta->ci != NULL) size_union += ta->ci->scount;
-    if (ta->cj != NULL) size_union += ta->cj->scount;
-    if (tb->ci != NULL) size_union += tb->ci->scount;
-    if (tb->cj != NULL) size_union += tb->cj->scount;
+    if (ta->ci != NULL) size_union += ta->ci->stars.count;
+    if (ta->cj != NULL) size_union += ta->cj->stars.count;
+    if (tb->ci != NULL) size_union += tb->ci->stars.count;
+    if (tb->cj != NULL) size_union += tb->cj->stars.count;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_spart(ta->ci, tb->ci) +
@@ -397,7 +401,7 @@ int task_lock(struct task *t) {
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
-      if (ci->hold || ci->ghold) return 0;
+      if (ci->hydro.hold || ci->grav.phold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       if (cell_glocktree(ci) != 0) {
         cell_unlocktree(ci);
@@ -407,13 +411,13 @@ int task_lock(struct task *t) {
 
     case task_type_drift_part:
     case task_type_sort:
-      if (ci->hold) return 0;
+      if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       break;
 
     case task_type_drift_gpart:
     case task_type_grav_mesh:
-      if (ci->ghold) return 0;
+      if (ci->grav.phold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
       break;
 
@@ -421,7 +425,7 @@ int task_lock(struct task *t) {
     case task_type_sub_self:
       if (subtype == task_subtype_grav) {
         /* Lock the gparts and the m-pole */
-        if (ci->ghold || ci->mhold) return 0;
+        if (ci->grav.phold || ci->grav.mhold) return 0;
         if (cell_glocktree(ci) != 0)
           return 0;
         else if (cell_mlocktree(ci) != 0) {
@@ -437,7 +441,7 @@ int task_lock(struct task *t) {
     case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
         /* Lock the gparts and the m-pole in both cells */
-        if (ci->ghold || cj->ghold) return 0;
+        if (ci->grav.phold || cj->grav.phold) return 0;
         if (cell_glocktree(ci) != 0) return 0;
         if (cell_glocktree(cj) != 0) {
           cell_gunlocktree(ci);
@@ -454,7 +458,7 @@ int task_lock(struct task *t) {
         }
       } else {
         /* Lock the parts in both cells */
-        if (ci->hold || cj->hold) return 0;
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
         if (cell_locktree(cj) != 0) {
           cell_unlocktree(ci);
@@ -465,7 +469,7 @@ int task_lock(struct task *t) {
 
     case task_type_grav_down:
       /* Lock the gparts and the m-poles */
-      if (ci->ghold || ci->mhold) return 0;
+      if (ci->grav.phold || ci->grav.mhold) return 0;
       if (cell_glocktree(ci) != 0)
         return 0;
       else if (cell_mlocktree(ci) != 0) {
@@ -476,13 +480,13 @@ int task_lock(struct task *t) {
 
     case task_type_grav_long_range:
       /* Lock the m-poles */
-      if (ci->mhold) return 0;
+      if (ci->grav.mhold) return 0;
       if (cell_mlocktree(ci) != 0) return 0;
       break;
 
     case task_type_grav_mm:
       /* Lock both m-poles */
-      if (ci->mhold || cj->mhold) return 0;
+      if (ci->grav.mhold || cj->grav.mhold) return 0;
       if (cell_mlocktree(ci) != 0) return 0;
       if (cell_mlocktree(cj) != 0) {
         cell_munlocktree(ci);

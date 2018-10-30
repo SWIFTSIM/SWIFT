@@ -141,7 +141,8 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
 #else
           p->density.div_v,
 #endif
-          hydro_get_comoving_entropy(p), hydro_get_comoving_internal_energy(p),
+          hydro_get_drifted_comoving_entropy(p),
+          hydro_get_drifted_comoving_internal_energy(p),
           hydro_get_comoving_pressure(p), hydro_get_comoving_soundspeed(p),
           p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->force.h_dt,
 #if defined(GADGET2_SPH)
