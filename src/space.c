@@ -1160,13 +1160,12 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 }
 
 /**
- * @brief Split particles between cells of a hierarchy
+ * @brief Split particles between cells of a hierarchy.
  *
  * This is done in parallel using threads in the #threadpool.
+ * Only do this for the local non-empty top-level cells.
  *
  * @param s The #space.
- * @param cells The cell hierarchy.
- * @param nr_cells The number of cells.
  * @param verbose Are we talkative ?
  */
 void space_split(struct space *s, int verbose) {
@@ -1175,8 +1174,7 @@ void space_split(struct space *s, int verbose) {
 
   threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,
-		 s->nr_local_cells_with_particles,
-                 sizeof(int), 0, s);
+                 s->nr_local_cells_with_particles, sizeof(int), 0, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2426,8 +2424,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   for (int ind = 0; ind < num_cells; ind++) {
     int depth = 0;
     const struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    if (!checkCellhdxmax(c, &depth))
-      message("    at cell depth %d", depth);
+    if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
   }
 #endif
 }
@@ -2612,13 +2609,14 @@ void space_free_buff_sort_indices(struct space *s) {
 
 /**
  * @brief Construct the list of top-level cells that have any tasks in
- * their hierarchy on this MPI rank.
+ * their hierarchy on this MPI rank. Also construct the list of top-level
+ * cells on any rank that have > 0 particles (of any kind).
  *
  * This assumes the list has been pre-allocated at a regrid.
  *
  * @param s The #space.
  */
-void space_list_cells_with_tasks(struct space *s) {
+void space_list_useful_top_level_cells(struct space *s) {
 
   const ticks tic = getticks();
 
@@ -2633,19 +2631,20 @@ void space_list_cells_with_tasks(struct space *s) {
       s->nr_local_cells_with_tasks++;
     }
 
-    const int has_particles =
-      (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) || (c->grav.multipole->m_pole.M_000 > 0.f);
+    const int has_particles = (c->hydro.count > 0) || (c->grav.count > 0) ||
+                              (c->stars.count > 0) ||
+                              (c->grav.multipole->m_pole.M_000 > 0.f);
 
-    if(has_particles) {
+    if (has_particles) {
       s->cells_with_particles_top[s->nr_cells_with_particles] = i;
       s->nr_cells_with_particles++;
-    } 
+    }
   }
   if (s->e->verbose) {
     message("Have %d local top-level cells with tasks (total=%d)",
             s->nr_local_cells_with_tasks, s->nr_cells);
     message("Have %d top-level cells with particles (total=%d)",
-	    s->nr_cells_with_particles, s->nr_cells);
+            s->nr_cells_with_particles, s->nr_cells);
   }
 
   if (s->e->verbose)

@@ -4558,7 +4558,7 @@ void engine_rebuild(struct engine *e, int repartitioned,
   engine_maketasks(e);
 
   /* Make the list of top-level cells that have tasks */
-  space_list_cells_with_tasks(e->s);
+  space_list_useful_top_level_cells(e->s);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time.
