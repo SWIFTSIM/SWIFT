@@ -72,11 +72,6 @@ struct engine;
  * indicated that this is the first message for the given particle/timestamp.
  */
 
-/* header constants
- * Thoses are definitions from the format and therefore should not be changed!
- * Size in bytes
- */
-
 /* Some constants. */
 #define logger_mask_x 1
 #define logger_mask_v 2
@@ -87,21 +82,8 @@ struct engine;
 #define logger_mask_consts 64
 #define logger_mask_timestamp 128
 
-/* size of a mask */
-#define logger_mask_size 1
-
-/* size of an offset */
-#define logger_offset_size 7
-
-/* size of the version information */
-#define logger_version_size 20
-
-/* size of the size information */
-#define logger_header_number_size 2
-
-extern char logger_version[logger_version_size];
-
-#define LOGGER_STRING_LENGTH 200
+/* Size of the strings. */
+#define logger_string_length 200
 
 /* parameters of the logger */
 struct logger_parameters {
@@ -142,7 +124,7 @@ struct logger {
   short int delta_step;
 
   /* Logger basename */
-  char base_name[LOGGER_STRING_LENGTH];
+  char base_name[logger_string_length];
 
   /* File name of the dump file */
   struct dump *dump;

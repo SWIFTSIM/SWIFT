@@ -40,6 +40,23 @@
 #include "part.h"
 #include "units.h"
 
+/* header constants
+ * Thoses are definitions from the format and therefore should not be changed!
+ * Size in bytes
+ */
+/* size of a mask */
+#define logger_mask_size 1
+
+/* size of an offset */
+#define logger_offset_size 7
+
+/* size of the version information */
+#define logger_version_size 20
+
+/* size of the size information */
+#define logger_header_number_size 2
+
+
 char logger_version[logger_version_size] = "0.1";
 
 const unsigned int logger_datatype_size[logger_data_count] = {
