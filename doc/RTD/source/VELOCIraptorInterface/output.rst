@@ -149,13 +149,23 @@ the mass structure of the halo, so the exact profile and the inertia tensor.
 
 NFW profile properties:
 """""""""""""""""""""""
++ ``Xc``, ``Yc`` and ``Zc``: The x,y and z centre positions of the
+  halos.
+  
+  Centres are calculated using first all particles belonging to the
+  structure and then VELOCIraptor uses shrinking spheres to iterate to
+  a centre, stopping once the sphere contains <10% of all the
+  particles (this value can be changed to smaller amounts and there is
+  also a minimum particle number which can also be changed).
+  
++ ``Xc_gas``, ``Yc_gas``, ``Zc_gas``: The offset of the centre
+  positions of the halo based on the gas, to find the position of the
+  gas the offsets need to be added to ``Xc``, ``Yc`` and ``Zc``.
 
 + ``cNFW``: The concentration of the halo.
-+ ``Xc``, ``Yc`` and ``Zc``: The x,y and z centre positions of the halos 
-  [#center]_.
-+ ``Xc_gas``, ``Yc_gas``, ``Zc_gas``: The offset of the centre positions of
-  the halo based on the gas, to find the position of the gas the offsets 
-  need to be added to ``Xc``, ``Yc`` and ``Zc``. 
+
+  This is calculated using Vmax and Vvir, not using a fitted profile.
+  
 + ``VXc``, ``VYc`` and ``VZc`` are the velocities in the centre of the halo
   [#check]_.
 + ``VXc_gas``, ``VYc_gas`` and ``VZc_gas`` are the velocities of the gas  in
