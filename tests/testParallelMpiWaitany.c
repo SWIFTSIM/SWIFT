@@ -45,9 +45,6 @@ void *thread_func(void *data_in) {
 }
 
 int main(int argc, char **argv) {
-  // Number of threads per rank.
-  const int num_threads_per_rank = 10;
-
   // Initialize the MPI environment.
   MPI_Init(NULL, NULL);
 
@@ -105,6 +102,10 @@ int main(int argc, char **argv) {
 
   // Just to be sure, make sure the sends are all done.
   MPI_Waitall(num_ranks, requests_out, MPI_STATUSES_IGNORE);
+
+  // Clean up allocated memory.
+  free(data_in);
+  free(data_out);
 
   // Finalize the MPI environment.
   MPI_Finalize();
