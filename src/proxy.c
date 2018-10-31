@@ -316,6 +316,7 @@ struct wait_and_unpack_mapper_data {
   MPI_Request *reqs_in;
   struct proxy *proxies;
   int with_gravity;
+  swift_lock_type lock;
 };
 
 void proxy_cells_wait_and_unpack_mapper(void *unused_map_data, int num_elements,
@@ -327,10 +328,14 @@ void proxy_cells_wait_and_unpack_mapper(void *unused_map_data, int num_elements,
     int pid = MPI_UNDEFINED;
     MPI_Status status;
     int res;
+    lock_lock(&data->lock);
     if ((res = MPI_Waitany(data->num_proxies, data->reqs_in, &pid, &status)) !=
             MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
       mpi_error(res, "MPI_Waitany failed.");
+    if (lock_unlock(&data->lock) != 0) {
+      error("Failed to release lock.");
+    }
     // message( "cell data from proxy %i has arrived." , pid );
     for (int count = 0, j = 0; j < data->proxies[pid].nr_cells_in; j++)
       count += cell_unpack(&data->proxies[pid].pcells_in[count],
@@ -430,16 +435,14 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   tic2 = getticks();
 
   /* Wait for each pcell array to come in from the proxies. */
+  /* TODO(pedro): This struct currently contains a lock to avoid calling
+     MPI_Waitany in parallel (https://github.com/open-mpi/ompi/issues/6004).
+     This should be removed once this works corectly in OpenMPI and IntelMPI. */
   struct wait_and_unpack_mapper_data wait_and_unpack_data = {
-      s, num_proxies, reqs_in, proxies, with_gravity};
-  /* TODO(pedro): This is currently broken because MPI_Waitany segfaults
-                  if called concurrently. We've filed bugs for OpenMPI
-                  and IntelMPI, and should uncomment this once they are
-                  fixed. */
-  // threadpool_map(&s->e->threadpool, proxy_cells_wait_and_unpack_mapper,
-  //                /*map_data=*/NULL, num_proxies, /*stride=*/0, /*chunk=*/0,
-  //                &wait_and_unpack_data);
-  proxy_cells_wait_and_unpack_mapper(NULL, num_proxies, &wait_and_unpack_data);
+      s, num_proxies, reqs_in, proxies, with_gravity, lock_static_initializer};
+  threadpool_map(&s->e->threadpool, proxy_cells_wait_and_unpack_mapper,
+                 /*map_data=*/NULL, num_proxies, /*stride=*/0, /*chunk=*/0,
+                 &wait_and_unpack_data);
 
   if (s->e->verbose)
     message("Un-packing cells took %.3f %s.",
