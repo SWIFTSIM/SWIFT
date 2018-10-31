@@ -5,10 +5,10 @@
 // as it has incoming receives, which all call MPI_Waitany concurrently.
 //
 // Compile with:
-//   mpicc testParallelMpiWaitany.c
+//   mpicc testParallelMpiWaitany.c -g -Wall
 //
 // Run with:
-//    mpirun -n 10 ./a.out
+//    mpirun --oversubscribe -n 100 ./a.out
 
 #include <mpi.h>
 #include <pthread.h>
@@ -46,7 +46,12 @@ void *thread_func(void *data_in) {
 
 int main(int argc, char **argv) {
   // Initialize the MPI environment.
-  MPI_Init(NULL, NULL);
+  int provided;
+  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+  if (provided != MPI_THREAD_MULTIPLE) {
+    fprintf(stderr, "MPI_Init_thread does not provide MPI_THREAD_MULTIPLE.\n");
+    abort();
+  }
 
   // Get the number of processes.
   int num_ranks;
