@@ -329,7 +329,7 @@ static void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict 
   const double r2 = cell_min_dist(ci, cj, dim);
 
   if (ci == cj) error("Pair FOF called on same cell!!!");
-  
+
   /* Return if cells are out of range of each other. */
   if (r2 > search_r2) return;
 
@@ -345,21 +345,18 @@ static void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict 
     }
   }
   else if(ci->split) {
-    
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL)
-	rec_fof_search_pair(ci->progeny[k], cj, s, dim, search_r2);
+        rec_fof_search_pair(ci->progeny[k], cj, s, dim, search_r2);
     }
   }
   else if(cj->split) {
-    
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL)
-	rec_fof_search_pair(ci, cj->progeny[k], s, dim, search_r2);
+        rec_fof_search_pair(ci, cj->progeny[k], s, dim, search_r2);
     }
   }
   else {
-
     /* Perform FOF search between pairs of cells that are within the linking
      * length and not the same cell. */
     fof_search_pair_cells(s, ci, cj);
@@ -377,6 +374,8 @@ static void rec_fof_search_pair_foreign(struct cell *ci, struct cell *cj, struct
    * boundary conditions. */
   const double r2 = cell_min_dist(ci, cj, dim);
 
+  if (ci == cj) error("Pair FOF called on same cell!!!");
+  
   /* Return if cells are out of range of each other. */
   if (r2 > search_r2) return;
 
@@ -391,12 +390,24 @@ static void rec_fof_search_pair_foreign(struct cell *ci, struct cell *cj, struct
       }
     }
   }
-  /* Perform FOF search between pairs of cells that are within the linking
-   * length and not the same cell. */
-  else if (ci != cj)
+  else if(ci->split) {
+    
+    for (int k = 0; k < 8; k++) {
+      if (ci->progeny[k] != NULL)
+        rec_fof_search_pair_foreign(ci->progeny[k], cj, s, dim, search_r2, link_count, group_links, group_links_size);
+    }
+  }
+  else if(cj->split) {
+    for (int k = 0; k < 8; k++) {
+      if (cj->progeny[k] != NULL)
+        rec_fof_search_pair_foreign(ci, cj->progeny[k], s, dim, search_r2, link_count, group_links, group_links_size);
+    }
+  }
+  else {
+    /* Perform FOF search between pairs of cells that are within the linking
+     * length and not the same cell. */
     fof_search_pair_cells_foreign(s, ci, cj, link_count, group_links, group_links_size);
-  else if (ci == cj) error("Pair FOF called on same cell!!!");
-
+  }
 }
 #endif
 
