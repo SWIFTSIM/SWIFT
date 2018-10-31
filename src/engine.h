@@ -77,8 +77,8 @@ enum engine_policy {
   engine_policy_star_formation = (1 << 17),
   engine_policy_feedback = (1 << 18)
 };
-#define engine_maxpolicy 18
-extern const char *engine_policy_names[engine_maxpolicy + 2];
+#define engine_maxpolicy 19
+extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
  * @brief The different unusual events that can take place in a time-step.

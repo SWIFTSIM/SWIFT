@@ -419,7 +419,8 @@ void logger_init(struct logger *log, struct swift_params *params) {
   /* read parameters */
   log->delta_step = parser_get_param_int(params, "Logger:delta_step");
   size_t buffer_size =
-      parser_get_param_float(params, "Logger:initial_buffer_size") * 1e9;
+      parser_get_opt_param_float(params, "Logger:initial_buffer_size", 0.5) *
+      1e9;
   log->buffer_scale =
       parser_get_opt_param_float(params, "Logger:buffer_scale", 10);
   parser_get_param_string(params, "Logger:basename", log->base_name);
