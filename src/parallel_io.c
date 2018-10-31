@@ -433,7 +433,7 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   /* Add a line to the XMF */
   if (xmfFile != NULL)
     xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N_total,
-		   props.dimension, props.type);
+                   props.dimension, props.type);
 
   /* Close everything */
   H5Pclose(h_plist_id);

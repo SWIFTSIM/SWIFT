@@ -78,7 +78,7 @@ enum engine_policy {
   engine_policy_feedback = (1 << 18)
 };
 #define engine_maxpolicy 18
-extern const char *engine_policy_names[engine_maxpolicy+2];
+extern const char *engine_policy_names[engine_maxpolicy + 2];
 
 /**
  * @brief The different unusual events that can take place in a time-step.
@@ -315,7 +315,7 @@ struct engine {
   struct repartition *reparttype;
 
 #ifdef WITH_LOGGER
-  struct logger *log;
+  struct logger *logger;
 #endif
 
   /* How many steps have we done with the same set of tasks? */

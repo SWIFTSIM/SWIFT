@@ -2700,7 +2700,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     logger_part_data_init(&xp[k].logger_data);
 #endif
 
-
     /* Overwrite the internal energy? */
     if (u_init > 0.f) hydro_set_init_internal_energy(&p[k], u_init);
 

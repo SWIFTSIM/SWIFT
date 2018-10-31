@@ -5213,10 +5213,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
 #ifdef WITH_LOGGER
   /* Mark the first time step in the particle logger file. */
-  logger_log_timestamp(e->log, e->ti_current, &e->log->timestamp_offset);
+  logger_log_timestamp(e->logger, e->ti_current, &e->logger->timestamp_offset);
   /* Make sure that we have enough space in the particle logger file
    * to store the particles in current time step. */
-  logger_ensure_size(e->log, e->total_nr_parts, e->total_nr_gparts, 0);
+  logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
 #endif
 
   /* Now, launch the calculation */
@@ -5470,10 +5470,10 @@ void engine_step(struct engine *e) {
 
 #ifdef WITH_LOGGER
   /* Mark the current time step in the particle logger file. */
-  logger_log_timestamp(e->log, e->ti_current, &e->log->timestamp_offset);
+  logger_log_timestamp(e->logger, e->ti_current, &e->logger->timestamp_offset);
   /* Make sure that we have enough space in the particle logger file
    * to store the particles in current time step. */
-  logger_ensure_size(e->log, e->total_nr_parts, e->total_nr_gparts, 0);
+  logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
 #endif
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
@@ -5627,7 +5627,7 @@ void engine_check_for_dumps(struct engine *e) {
         /* Dump everything */
         engine_print_stats(e);
 #ifdef WITH_LOGGER
-	/* Write a file containing the offsets in the particle logger. */
+        /* Write a file containing the offsets in the particle logger. */
         engine_dump_index(e);
 #else
         engine_dump_snapshot(e);
@@ -5662,7 +5662,7 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Dump snapshot */
 #ifdef WITH_LOGGER
-	/* Write a file containing the offsets in the particle logger. */
+        /* Write a file containing the offsets in the particle logger. */
         engine_dump_index(e);
 #else
         engine_dump_snapshot(e);
@@ -5685,7 +5685,7 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Dump snapshot */
 #ifdef WITH_LOGGER
-	/* Write a file containing the offsets in the particle logger. */
+        /* Write a file containing the offsets in the particle logger. */
         engine_dump_index(e);
 #else
         engine_dump_snapshot(e);
@@ -5725,7 +5725,7 @@ void engine_check_for_dumps(struct engine *e) {
 
       /* Dump... */
 #ifdef WITH_LOGGER
-	/* Write a file containing the offsets in the particle logger. */
+      /* Write a file containing the offsets in the particle logger. */
       engine_dump_index(e);
 #else
       engine_dump_snapshot(e);
@@ -6525,7 +6525,7 @@ void engine_dump_index(struct engine *e) {
   }
 
   /* Dump... */
-  write_index_single(e, e->log->base_name, e->internal_units,
+  write_index_single(e, e->logger->base_name, e->internal_units,
                      e->snapshot_units);
 
   /* Flag that we dumped a snapshot */
@@ -6706,8 +6706,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 #endif
 
 #if defined(WITH_LOGGER)
-  e->log = (struct logger *)malloc(sizeof(struct logger));
-  logger_init(e->log, params);
+  e->logger = (struct logger *)malloc(sizeof(struct logger));
+  logger_init(e->logger, params);
 #endif
 
   /* Make the space link back to the engine. */
@@ -7319,7 +7319,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
 #ifdef WITH_LOGGER
   /* Write the particle logger header */
-  logger_write_file_header(e->log, e);
+  logger_write_file_header(e->logger, e);
 #endif
 
   /* Free the affinity stuff */
@@ -7742,8 +7742,8 @@ void engine_clean(struct engine *e) {
   free(e->links);
   free(e->cell_loc);
 #if defined(WITH_LOGGER)
-  logger_clean(e->log);
-  free(e->log);
+  logger_clean(e->logger);
+  free(e->logger);
 #endif
   scheduler_clean(&e->sched);
   space_clean(e->s);

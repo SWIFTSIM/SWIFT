@@ -2731,10 +2731,10 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
        * debugging checks */
       if (part_is_starting(p, e)) {
 
-        if (logger_should_write(&xp->logger_data, e->log)) {
+        if (logger_should_write(&xp->logger_data, e->logger)) {
           /* Write particle */
-	  /* Currently writing everything, should adapt it through time */
-          logger_log_part(e->log, p,
+          /* Currently writing everything, should adapt it through time */
+          logger_log_part(e->logger, p,
                           logger_mask_x | logger_mask_v | logger_mask_a |
                               logger_mask_u | logger_mask_h | logger_mask_rho |
                               logger_mask_consts,

@@ -34,7 +34,6 @@ void write_index_single(struct engine* e, const char* baseName,
                         const struct unit_system* internal_units,
                         const struct unit_system* snapshot_units);
 
-
 /**
  * @brief Specifies which particle fields to write to a dataset
  *

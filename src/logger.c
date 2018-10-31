@@ -418,7 +418,8 @@ void logger_ensure_size(struct logger *log, size_t total_nr_parts,
 void logger_init(struct logger *log, struct swift_params *params) {
   /* read parameters */
   log->delta_step = parser_get_param_int(params, "Logger:delta_step");
-  size_t buffer_size = parser_get_param_float(params, "Logger:initial_buffer_size") * 1e9;
+  size_t buffer_size =
+      parser_get_param_float(params, "Logger:initial_buffer_size") * 1e9;
   log->buffer_scale =
       parser_get_opt_param_float(params, "Logger:buffer_scale", 10);
   parser_get_param_string(params, "Logger:basename", log->base_name);
@@ -441,7 +442,6 @@ void logger_init(struct logger *log, struct swift_params *params) {
   struct dump *dump_file = log->dump;
 
   dump_init(dump_file, logger_name_file, buffer_size);
-
 }
 
 /**
@@ -608,7 +608,8 @@ void logger_parameters_init(struct logger_parameters *log_params) {
   cur_name += log_params->label_size;
 
   /* set the data size */
-  log_params->masks_data_size = malloc(sizeof(size_t) * log_params->number_mask);
+  log_params->masks_data_size =
+      malloc(sizeof(size_t) * log_params->number_mask);
   log_params->masks_data_size[0] = 3 * sizeof(double);
   log_params->masks_data_size[1] = 3 * sizeof(float);
   log_params->masks_data_size[2] = 3 * sizeof(float);
@@ -620,7 +621,7 @@ void logger_parameters_init(struct logger_parameters *log_params) {
 
   /* Compute the size of a chunk if all the mask are activated */
   log_params->total_size = logger_offset_size + logger_mask_size;
-  
+
   for (size_t i = 0; i < log_params->number_mask; i++) {
     if (log_params->masks[i] != logger_mask_timestamp)
       log_params->total_size += log_params->masks_data_size[i];
