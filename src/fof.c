@@ -45,7 +45,7 @@ MPI_Datatype group_length_mpi_type;
 #endif
 size_t node_offset;
 
-#define UNION_BY_SIZE 1
+#define UNION_BY_SIZE_OVER_MPI 1
 
 /* Initialises parameters for the FOF search. */
 void fof_init(struct space *s, long long Ngas, long long Ngparts, long long Nstars) {
@@ -106,8 +106,8 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts, long long Nsta
   }
 #endif
 
-#ifdef UNION_BY_SIZE
-  message("Performing FOF using union by size.");
+#ifdef UNION_BY_SIZE_OVER_MPI
+  message("Performing FOF over MPI using union by size and union by rank locally.");
 #else
   message("Performing FOF using union by rank.");
 #endif
@@ -185,11 +185,7 @@ __attribute__((always_inline)) INLINE static size_t update_root(
   old_val = *address;
 
   test_val = old_val;
-#ifdef UNION_BY_SIZE
-  new_val = y;
-#else
   new_val = min(old_val, y);
-#endif
 
   /* atomic_cas returns old_val if *size_t_ptr has not changed since being read.*/
   old_val = atomic_cas(size_t_ptr, test_val, new_val);
@@ -199,56 +195,6 @@ __attribute__((always_inline)) INLINE static size_t update_root(
 
 }
 
-#ifdef UNION_BY_SIZE
-__attribute__((always_inline)) INLINE static void fof_union_by_size(size_t *root_i, const size_t root_j,
-                                                          size_t *group_index, size_t *group_size) {
-
-  int result = 0;
-
-  /* Loop until the root can be set to a new value. */
-  do {
-    size_t root_i_new = fof_find(*root_i, group_index);
-    const size_t root_j_new = fof_find(root_j, group_index);
-
-    /* Skip particles in the same group. */
-    if(root_i_new == root_j_new) return;
-
-    const size_t size_i = group_size[root_i_new];
-    const size_t size_j = group_size[root_j_new];
-
-    /* If group_i is smaller than group_j set group_i's root to point to group_j's. 
-     * Otherwise set group_j's root to point to group_i's.*/
-    if(size_i < size_j) {
-      
-      /* Updates the root and checks that its value has not been changed since being read. */
-      result = update_root(&group_index[root_i_new], root_j_new);
-      
-      if(result) {
-        atomic_add(&group_size[root_j_new], size_i);
-        atomic_sub(&group_size[root_i_new], size_i);
-      }
-
-      /* Update root_i on the fly. */
-      *root_i = root_j_new;
-
-    }
-    else {
-      
-      /* Updates the root and checks that its value has not been changed since being read. */
-      result = update_root(&group_index[root_j_new], root_i_new);
-      
-      if(result) {
-        atomic_add(&group_size[root_i_new], size_j);
-        atomic_sub(&group_size[root_j_new], size_j);
-      }
-
-      /* Update root_i on the fly. */
-      *root_i = root_i_new;
-      
-    }
-  } while (result != 1);
-}
-#else
 __attribute__((always_inline)) INLINE static void fof_union(size_t *root_i, const size_t root_j,
 							    size_t *group_index) {
 
@@ -282,7 +228,6 @@ __attribute__((always_inline)) INLINE static void fof_union(size_t *root_i, cons
     }
   } while (result != 1);
 }
-#endif
 
 /* Find the shortest distance between cells, remembering to account for boundary
  * conditions. */
@@ -497,9 +442,6 @@ void fof_search_cell(struct space *s, struct cell *c) {
   struct gpart *gparts = c->gparts;
   const double l_x2 = s->l_x2;
   size_t *group_index = s->fof_data.group_index;
-#ifdef UNION_BY_SIZE
-  size_t *group_size = s->fof_data.group_size;
-#endif
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset = group_index + (ptrdiff_t)(gparts - s->gparts);
@@ -540,11 +482,7 @@ void fof_search_cell(struct space *s, struct cell *c) {
 
       /* Hit or miss? */
       if (r2 < l_x2)
-#ifdef UNION_BY_SIZE
-        fof_union_by_size(&root_i, root_j, group_index, group_size);
-#else
         fof_union(&root_i, root_j, group_index);
-#endif
 
     }
   }
@@ -561,9 +499,6 @@ void fof_search_pair_cells(struct space *s, struct cell *restrict ci, struct cel
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const float l_x2 = s->l_x2;
   size_t *group_index = s->fof_data.group_index;
-#ifdef UNION_BY_SIZE
-  size_t *group_size = s->fof_data.group_size;
-#endif
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - s->gparts);
@@ -628,11 +563,7 @@ void fof_search_pair_cells(struct space *s, struct cell *restrict ci, struct cel
 
       /* Hit or miss? */
       if (r2 < l_x2)
-#ifdef UNION_BY_SIZE
-        fof_union_by_size(&root_i, root_j, group_index, group_size);
-#else
         fof_union(&root_i, root_j, group_index);
-#endif
     }
   }
 
@@ -1244,7 +1175,7 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
     /* Update roots accordingly. */
     size_t size_i = global_group_size[root_i];
     size_t size_j = global_group_size[root_j];
-#ifdef UNION_BY_SIZE
+#ifndef UNION_BY_SIZE_OVER_MPI
     if(size_i < size_j) {
       global_group_index[root_i] = root_j;
       global_group_size[root_j] += size_i;
@@ -1339,7 +1270,7 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
   free(global_group_size);
   free(global_group_mass);
   free(global_group_id);
-#ifdef UNION_BY_SIZE
+#ifndef UNION_BY_SIZE_OVER_MPI
   free(orig_global_group_size);
 #endif
 
@@ -1438,11 +1369,7 @@ void fof_search_tree(struct space *s) {
   group_mass = s->fof_data.group_mass;
   group_CoM = s->fof_data.group_CoM;
  
-#ifdef UNION_BY_SIZE
-  for(size_t i=0; i<nr_gparts; i++) group_size[i] = 1;
-#else
   bzero(group_size, nr_gparts * sizeof(size_t));
-#endif 
   bzero(group_mass, nr_gparts * sizeof(double));
   bzero(group_CoM, nr_gparts * sizeof(struct fof_CoM));
 
@@ -1473,10 +1400,7 @@ void fof_search_tree(struct space *s) {
   for (size_t i = 0; i < nr_gparts; i++) {
     size_t root = fof_find(i, group_index);
     
-#ifndef UNION_BY_SIZE 
     group_size[root]++;
-#endif
-
     group_mass[root] += gparts[i].mass;
 
     double x = gparts[i].x[0];
