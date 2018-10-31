@@ -1233,7 +1233,7 @@ int main(int argc, char *argv[]) {
     engine_drift_all(&e);
     engine_print_stats(&e);
 #ifdef WITH_LOGGER
-    logger_log_all(parts, e.total_nr_parts, e.logger_dump);
+    logger_log_all(e.logger, &e);
     engine_dump_index(&e);
 #endif
     // write a final snapshot with logger, in order to facilitate a restart
