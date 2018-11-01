@@ -73,14 +73,16 @@ struct engine;
  */
 
 /* Some constants. */
-#define logger_mask_x 1
-#define logger_mask_v 2
-#define logger_mask_a 4
-#define logger_mask_u 8
-#define logger_mask_h 16
-#define logger_mask_rho 32
-#define logger_mask_consts 64
-#define logger_mask_timestamp 128
+enum logger_masks {
+  logger_mask_x = (1 << 0),
+  logger_mask_v = (1 << 1),
+  logger_mask_a = (1 << 2),
+  logger_mask_u = (1 << 3),
+  logger_mask_h = (1 << 4),
+  logger_mask_rho = (1 << 5),
+  logger_mask_consts = (1 << 6),
+  logger_mask_timestamp = (1 << 7),
+};
 
 /* Size of the strings. */
 #define logger_string_length 200
