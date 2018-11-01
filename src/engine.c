@@ -67,6 +67,8 @@
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
+#include "logger.h"
+#include "logger_io.h"
 #include "map.h"
 #include "memswap.h"
 #include "minmax.h"
@@ -228,6 +230,11 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
                                    c, NULL);
 
+#if defined(WITH_LOGGER)
+      c->logger = scheduler_addtask(s, task_type_logger, task_subtype_none, 0,
+                                    0, c, NULL);
+#endif
+
       c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
                                    c, NULL);
 
@@ -263,6 +270,10 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->kick2, c->timestep);
       }
       scheduler_addunlock(s, c->timestep, c->kick1);
+
+#if defined(WITH_LOGGER)
+      scheduler_addunlock(s, c->kick1, c->logger);
+#endif
     }
 
   } else { /* We are above the super-cell so need to go deeper */
@@ -4288,6 +4299,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
 
+    /* logger tasks ? */
+    else if (t->type == task_type_logger) {
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e) ||
+          cell_is_active_stars(t->ci, e))
+        scheduler_activate(s, t);
+    }
+
     /* Gravity stuff ? */
     else if (t_type == task_type_grav_down || t_type == task_type_grav_mesh ||
              t_type == task_type_grav_long_range ||
@@ -4474,6 +4492,9 @@ int engine_estimate_nr_tasks(struct engine *e) {
   if (e->policy & engine_policy_stars) {
     n1 += 2;
   }
+#if defined(WITH_LOGGER)
+  n1 += 1;
+#endif
 
 #ifdef WITH_MPI
 
@@ -4544,9 +4565,6 @@ void engine_rebuild(struct engine *e, int repartitioned,
   /* Re-build the space. */
   space_rebuild(e->s, repartitioned, e->verbose);
 
-  /* Construct the list of purely local cells */
-  space_list_local_cells(e->s);
-
   /* Update the global counters of particles */
   long long num_particles[3] = {e->s->nr_parts, e->s->nr_gparts,
                                 e->s->nr_sparts};
@@ -4606,7 +4624,7 @@ void engine_rebuild(struct engine *e, int repartitioned,
   engine_maketasks(e);
 
   /* Make the list of top-level cells that have tasks */
-  space_list_cells_with_tasks(e->s);
+  space_list_useful_top_level_cells(e->s);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time.
@@ -5235,6 +5253,14 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_gparts(s, e->verbose);
   space_init_sparts(s, e->verbose);
 
+#ifdef WITH_LOGGER
+  /* Mark the first time step in the particle logger file. */
+  logger_log_timestamp(e->logger, e->ti_current, &e->logger->timestamp_offset);
+  /* Make sure that we have enough space in the particle logger file
+   * to store the particles in current time step. */
+  logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
+#endif
+
   /* Now, launch the calculation */
   TIMER_TIC;
   engine_launch(e);
@@ -5484,6 +5510,14 @@ void engine_step(struct engine *e) {
        ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
     e->forcerebuild = 1;
 
+#ifdef WITH_LOGGER
+  /* Mark the current time step in the particle logger file. */
+  logger_log_timestamp(e->logger, e->ti_current, &e->logger->timestamp_offset);
+  /* Make sure that we have enough space in the particle logger file
+   * to store the particles in current time step. */
+  logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
+#endif
+
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
     engine_drift_all(e);
@@ -5634,7 +5668,12 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Dump everything */
         engine_print_stats(e);
+#ifdef WITH_LOGGER
+        /* Write a file containing the offsets in the particle logger. */
+        engine_dump_index(e);
+#else
         engine_dump_snapshot(e);
+#endif
 
       } else if (e->ti_next_stats < e->ti_next_snapshot) {
 
@@ -5664,7 +5703,12 @@ void engine_check_for_dumps(struct engine *e) {
         engine_drift_all(e);
 
         /* Dump snapshot */
+#ifdef WITH_LOGGER
+        /* Write a file containing the offsets in the particle logger. */
+        engine_dump_index(e);
+#else
         engine_dump_snapshot(e);
+#endif
 
       } else if (e->ti_next_stats > e->ti_next_snapshot) {
 
@@ -5682,7 +5726,12 @@ void engine_check_for_dumps(struct engine *e) {
         engine_drift_all(e);
 
         /* Dump snapshot */
+#ifdef WITH_LOGGER
+        /* Write a file containing the offsets in the particle logger. */
+        engine_dump_index(e);
+#else
         engine_dump_snapshot(e);
+#endif
 
         /* Let's fake that we are at the stats dump time */
         e->ti_current = e->ti_next_stats;
@@ -5717,7 +5766,12 @@ void engine_check_for_dumps(struct engine *e) {
       engine_drift_all(e);
 
       /* Dump... */
+#ifdef WITH_LOGGER
+      /* Write a file containing the offsets in the particle logger. */
+      engine_dump_index(e);
+#else
       engine_dump_snapshot(e);
+#endif
 
       /* ... and find the next output time */
       engine_compute_next_snapshot_time(e);
@@ -5914,12 +5968,16 @@ void engine_unskip(struct engine *e) {
 void engine_do_drift_all_mapper(void *map_data, int num_elements,
                                 void *extra_data) {
 
-  struct engine *e = (struct engine *)extra_data;
-  struct cell *cells = (struct cell *)map_data;
+  const struct engine *e = (const struct engine *)extra_data;
+  struct space *s = e->s;
+  struct cell *cells_top = s->cells_top;
+  int *local_cells = (int *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &cells[ind];
-    if (c != NULL && c->nodeID == e->nodeID) {
+    struct cell *c = &cells_top[local_cells[ind]];
+
+    if (c->nodeID == e->nodeID) {
+
       /* Drift all the particles */
       cell_drift_part(c, e, 1);
 
@@ -5955,8 +6013,9 @@ void engine_drift_all(struct engine *e) {
   }
 #endif
 
-  threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
-                 e->s->nr_cells, sizeof(struct cell), 0, e);
+  threadpool_map(&e->threadpool, engine_do_drift_all_mapper,
+                 e->s->local_cells_with_tasks_top,
+                 e->s->nr_local_cells_with_tasks, sizeof(int), 0, e);
 
   /* Synchronize particle positions */
   space_synchronize_particle_positions(e->s);
@@ -6492,6 +6551,42 @@ void engine_dump_snapshot(struct engine *e) {
             (float)clocks_diff(&time1, &time2), clocks_getunit());
 }
 
+/**
+ * @brief Writes an index file with the current state of the engine
+ *
+ * @param e The #engine.
+ */
+void engine_dump_index(struct engine *e) {
+
+#if defined(WITH_LOGGER)
+  struct clocks_time time1, time2;
+  clocks_gettime(&time1);
+
+  if (e->verbose) {
+    if (e->policy & engine_policy_cosmology)
+      message("Writing index at a=%e",
+              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
+    else
+      message("Writing index at t=%e",
+              e->ti_current * e->time_base + e->time_begin);
+  }
+
+  /* Dump... */
+  write_index_single(e, e->logger->base_name, e->internal_units,
+                     e->snapshot_units);
+
+  /* Flag that we dumped a snapshot */
+  e->step_props |= engine_step_prop_logger_index;
+
+  clocks_gettime(&time2);
+  if (e->verbose)
+    message("writing particle indices took %.3f %s.",
+            (float)clocks_diff(&time1, &time2), clocks_getunit());
+#else
+  error("SWIFT was not compiled with the logger");
+#endif
+}
+
 #ifdef HAVE_SETAFFINITY
 /**
  * @brief Returns the initial affinity the main thread is using.
@@ -6655,6 +6750,11 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 #ifdef WITH_MPI
   e->cputime_last_step = 0;
   e->last_repartition = 0;
+#endif
+
+#if defined(WITH_LOGGER)
+  e->logger = (struct logger *)malloc(sizeof(struct logger));
+  logger_init(e->logger, params);
 #endif
 
   /* Make the space link back to the engine. */
@@ -7113,7 +7213,14 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
                 MPI_COMM_WORLD);
 #endif
 
-  /* Find the time of the first snapshot  output */
+#if defined(WITH_LOGGER)
+  if (e->nodeID == 0)
+    message(
+        "WARNING: There is currently no way of predicting the output "
+        "size, please use it carefully");
+#endif
+
+  /* Find the time of the first snapshot output */
   engine_compute_next_snapshot_time(e);
 
   /* Find the time of the first statistics output */
@@ -7257,7 +7364,12 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     }
   }
 
-/* Free the affinity stuff */
+#ifdef WITH_LOGGER
+  /* Write the particle logger header */
+  logger_write_file_header(e->logger, e);
+#endif
+
+  /* Free the affinity stuff */
 #if defined(HAVE_SETAFFINITY)
   if (with_aff) {
     free(cpuid);
@@ -7676,6 +7788,10 @@ void engine_clean(struct engine *e) {
 
   free(e->links);
   free(e->cell_loc);
+#if defined(WITH_LOGGER)
+  logger_clean(e->logger);
+  free(e->logger);
+#endif
   scheduler_clean(&e->sched);
   space_clean(e->s);
   threadpool_clean(&e->threadpool);

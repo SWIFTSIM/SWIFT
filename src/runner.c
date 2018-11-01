@@ -53,6 +53,7 @@
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "kick.h"
+#include "logger.h"
 #include "minmax.h"
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
@@ -2610,6 +2611,9 @@ void *runner_main(void *data) {
         case task_type_end_force:
           runner_do_end_force(r, ci, 1);
           break;
+        case task_type_logger:
+          runner_do_logger(r, ci, 1);
+          break;
         case task_type_timestep:
           runner_do_timestep(r, ci, 1);
           break;
@@ -2687,4 +2691,71 @@ void *runner_main(void *data) {
 
   /* Be kind, rewind. */
   return NULL;
+}
+
+/**
+ * @brief Write the required particles through the logger.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_logger(struct runner *r, struct cell *c, int timer) {
+
+#ifdef WITH_LOGGER
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
+  const int count = c->hydro.count;
+
+  /* Anything to do here? */
+  if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e)) return;
+
+  /* Recurse? Avoid spending too much time in useless cells. */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_logger(r, c->progeny[k], 0);
+  } else {
+
+    /* Loop over the parts in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+
+      /* If particle needs to be log */
+      /* This is the same function than part_is_active, except for
+       * debugging checks */
+      if (part_is_starting(p, e)) {
+
+        if (logger_should_write(&xp->logger_data, e->logger)) {
+          /* Write particle */
+          /* Currently writing everything, should adapt it through time */
+          logger_log_part(e->logger, p,
+                          logger_mask_x | logger_mask_v | logger_mask_a |
+                              logger_mask_u | logger_mask_h | logger_mask_rho |
+                              logger_mask_consts,
+                          &xp->logger_data.last_offset);
+
+          /* Set counter back to zero */
+          xp->logger_data.steps_since_last_output = 0;
+        } else
+          /* Update counter */
+          xp->logger_data.steps_since_last_output += 1;
+      }
+    }
+  }
+
+  if (c->grav.count > 0) error("gparts not implemented");
+
+  if (c->stars.count > 0) error("sparts not implemented");
+
+  if (timer) TIMER_TOC(timer_logger);
+
+#else
+  error("Logger disabled, please enable it during configuration");
+#endif
 }

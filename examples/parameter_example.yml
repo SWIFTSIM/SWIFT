@@ -91,6 +91,13 @@ Snapshots:
   output_list_on:      0  # (Optional) Enable the output list
   output_list:         snaplist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
 
+# Parameters governing the logger snapshot system
+Logger:
+  delta_step:           10     # Update the particle log every this many updates
+  initial_buffer_size:  1      # buffer size in GB
+  buffer_scale:		10     # (Optional) When buffer size is too small, update it with required memory times buffer_scale
+  basename:             index  # Common part of the filenames
+  
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:           1e-2     # Time between statistics output

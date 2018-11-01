@@ -443,4 +443,5 @@ __attribute__((always_inline)) INLINE static int spart_is_starting(
 
   return (spart_bin <= max_active_bin);
 }
+
 #endif /* SWIFT_ACTIVE_H */

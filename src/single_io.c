@@ -312,8 +312,9 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
   if (h_err < 0) error("Error while writing data array '%s'.", props.name);
 
   /* Write XMF description for this data set */
-  xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N,
-                 props.dimension, props.type);
+  if (xmfFile != NULL)
+    xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N,
+                   props.dimension, props.type);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE];

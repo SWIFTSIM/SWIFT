@@ -133,6 +133,8 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct spart *sparts, size_t nr_parts, size_t nr_gparts,
                        size_t nr_sparts, int verbose) {
 
+  ticks tic = getticks();
+
   for (size_t k = 0; k < nr_gparts; ++k) {
 
     /* We have a DM particle */
@@ -246,6 +248,9 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
   }
 
   if (verbose) message("All links OK");
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 #ifdef WITH_MPI

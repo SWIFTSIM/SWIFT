@@ -1718,7 +1718,8 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   /* Recover the list of top-level cells */
   struct cell *cells = e->s->cells_top;
-  const int nr_cells = e->s->nr_cells;
+  int *cells_with_particles = e->s->cells_with_particles_top;
+  const int nr_cells_with_particles = e->s->nr_cells_with_particles;
 
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e)) return;
@@ -1744,10 +1745,10 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   /* Loop over all the top-level cells and go for a M-M interaction if
    * well-separated */
-  for (int n = 0; n < nr_cells; ++n) {
+  for (int n = 0; n < nr_cells_with_particles; ++n) {
 
     /* Handle on the top-level cell and it's gravity business*/
-    struct cell *cj = &cells[n];
+    const struct cell *cj = &cells[cells_with_particles[n]];
     const struct gravity_tensors *const multi_j = cj->grav.multipole;
 
     /* Avoid self contributions */

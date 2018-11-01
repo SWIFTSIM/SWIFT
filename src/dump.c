@@ -48,17 +48,24 @@
  */
 void *dump_get(struct dump *d, size_t count, size_t *offset) {
   size_t local_offset = atomic_add(&d->count, count);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (d->count > d->size) error("Dump file is too small.");
+#endif
   *offset = local_offset + d->file_offset;
   return (char *)d->data + local_offset;
 }
 
 /**
  * @brief Ensure that at least size bytes are available in the #dump.
+ *
+ * @param d The #dump.
+ * @param required_size The required size for the #dump
+ * @param increase_size If not enough size, increase by this amount
  */
-void dump_ensure(struct dump *d, size_t size) {
+void dump_ensure(struct dump *d, size_t required_size, size_t increase_size) {
 
   /* If we have enough space already, just bail. */
-  if (d->size - d->count > size) return;
+  if (d->size - d->count > required_size) return;
 
   /* Unmap the current data. */
   if (munmap(d->data, d->size) != 0) {
@@ -70,7 +77,7 @@ void dump_ensure(struct dump *d, size_t size) {
   const size_t trunc_count = d->count & d->page_mask;
   d->file_offset += trunc_count;
   d->count -= trunc_count;
-  d->size = (size * dump_grow_ensure_factor + ~d->page_mask) & d->page_mask;
+  d->size = (d->count + increase_size + ~d->page_mask) & d->page_mask;
 
   /* Re-allocate the file size. */
   if (posix_fallocate(d->fd, d->file_offset, d->size) != 0) {
@@ -121,7 +128,9 @@ void dump_close(struct dump *d) {
  */
 void dump_init(struct dump *d, const char *filename, size_t size) {
 
-  /* Create the output file. */
+  /* Create the output file.
+     The option O_RDWR seems to be required by mmap.
+  */
   if ((d->fd = open(filename, O_CREAT | O_RDWR, 0660)) == -1) {
     error("Failed to create dump file '%s' (%s).", filename, strerror(errno));
   }
