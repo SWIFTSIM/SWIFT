@@ -13,7 +13,9 @@ for some of the main routines of SWIFT.
    :maxdepth: 2
 
    main
+   engine
    interaction
    misc
+   todo
 
 
