@@ -328,6 +328,11 @@ void proxy_cells_wait_and_unpack_mapper(void *unused_map_data, int num_elements,
     int pid = MPI_UNDEFINED;
     MPI_Status status;
     int res;
+
+    /* We need a lock to prevent concurrent calls to MPI_Waitany on
+       the same array of requests since this is not supported in the MPI
+       standard (v3.1). This is not really a problem since the threads
+       would block inside MPI_Waitany anyway. */
     lock_lock(&data->lock);
     if ((res = MPI_Waitany(data->num_proxies, data->reqs_in, &pid, &status)) !=
             MPI_SUCCESS ||
@@ -336,6 +341,7 @@ void proxy_cells_wait_and_unpack_mapper(void *unused_map_data, int num_elements,
     if (lock_unlock(&data->lock) != 0) {
       error("Failed to release lock.");
     }
+
     // message( "cell data from proxy %i has arrived." , pid );
     for (int count = 0, j = 0; j < data->proxies[pid].nr_cells_in; j++)
       count += cell_unpack(&data->proxies[pid].pcells_in[count],
@@ -435,9 +441,6 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   tic2 = getticks();
 
   /* Wait for each pcell array to come in from the proxies. */
-  /* TODO(pedro): This struct currently contains a lock to avoid calling
-     MPI_Waitany in parallel (https://github.com/open-mpi/ompi/issues/6004).
-     This should be removed once this works corectly in OpenMPI and IntelMPI. */
   struct wait_and_unpack_mapper_data wait_and_unpack_data = {
       s, num_proxies, reqs_in, proxies, with_gravity, lock_static_initializer};
   threadpool_map(&s->e->threadpool, proxy_cells_wait_and_unpack_mapper,
