@@ -26,6 +26,7 @@
 
 /* Includes. */
 #include "engine.h"
+#include "io_properties.h"
 #include "part.h"
 #include "units.h"
 
@@ -41,6 +42,12 @@ void read_ic_single(const char* fileName,
 void write_output_single(struct engine* e, const char* baseName,
                          const struct unit_system* internal_units,
                          const struct unit_system* snapshot_units);
+
+void writeArray(const struct engine* e, hid_t grp, char* fileName,
+                FILE* xmfFile, char* partTypeGroupName,
+                const struct io_props props, size_t N,
+                const struct unit_system* internal_units,
+                const struct unit_system* snapshot_units);
 
 #endif /* HAVE_HDF5 && !WITH_MPI */
 

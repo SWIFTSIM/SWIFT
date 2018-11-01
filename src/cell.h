@@ -550,6 +550,9 @@ struct cell {
   /*! Task for source terms */
   struct task *sourceterms;
 
+  /*! The logger task */
+  struct task *logger;
+
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
 

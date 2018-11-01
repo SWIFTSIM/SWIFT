@@ -54,6 +54,19 @@ AX_COMPILER_VERSION
 #  Restrict support.
 AC_C_RESTRICT
 
+# logger
+AC_ARG_ENABLE([logger],
+	[AS_HELP_STRING([--enable-logger],
+		[enable the particle logger]
+	)],
+	[with_logger="${enableval}"],
+	[with_logger="no"]
+)
+
+if test "$with_logger" = "yes"; then
+   AC_DEFINE([WITH_LOGGER], 1, [logger enabled])
+fi
+
 # Interprocedural optimization support. Needs special handling for linking and
 # archiving as well as compilation with Intels, needs to be done before
 # libtool is configured (to use correct LD).
@@ -1609,6 +1622,7 @@ AC_MSG_RESULT([
    CPU profiler         : $have_profiler
    Pthread barriers     : $have_pthread_barrier
    VELOCIraptor enabled : $have_velociraptor
+   Particle Logger      : $with_logger
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension

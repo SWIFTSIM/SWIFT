@@ -431,8 +431,9 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   io_write_attribute_s(h_data, "Conversion factor", buffer);
 
   /* Add a line to the XMF */
-  xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N_total,
-                 props.dimension, props.type);
+  if (xmfFile != NULL)
+    xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N_total,
+                   props.dimension, props.type);
 
   /* Close everything */
   H5Pclose(h_plist_id);

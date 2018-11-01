@@ -48,6 +48,12 @@ void write_output_serial(struct engine* e, const char* baseName,
                          const struct unit_system* snapshot_units, int mpi_rank,
                          int mpi_size, MPI_Comm comm, MPI_Info info);
 
+void writeArray(const struct engine* e, hid_t grp, char* fileName,
+                FILE* xmfFile, char* partTypeGroupName,
+                const struct io_props props, size_t N, long long N_total,
+                int mpi_rank, long long offset,
+                const struct unit_system* internal_units,
+                const struct unit_system* snapshot_units);
 #endif
 
 #endif /* SWIFT_SERIAL_IO_H */

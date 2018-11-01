@@ -300,8 +300,9 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
   if (h_data < 0) error("Error while creating dataspace '%s'.", props.name);
 
   /* Write XMF description for this data set */
-  xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N_total,
-                 props.dimension, props.type);
+  if (xmfFile != NULL)
+    xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N_total,
+                   props.dimension, props.type);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE];

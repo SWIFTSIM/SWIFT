@@ -38,6 +38,7 @@
 #include "clocks.h"
 #include "collectgroup.h"
 #include "cooling_struct.h"
+#include "dump.h"
 #include "gravity_properties.h"
 #include "mesh_gravity.h"
 #include "parser.h"
@@ -76,8 +77,8 @@ enum engine_policy {
   engine_policy_star_formation = (1 << 17),
   engine_policy_feedback = (1 << 18)
 };
-#define engine_maxpolicy 18
-extern const char *engine_policy_names[];
+#define engine_maxpolicy 19
+extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
  * @brief The different unusual events that can take place in a time-step.
@@ -89,7 +90,8 @@ enum engine_step_properties {
   engine_step_prop_repartition = (1 << 2),
   engine_step_prop_statistics = (1 << 3),
   engine_step_prop_snapshot = (1 << 4),
-  engine_step_prop_restarts = (1 << 5)
+  engine_step_prop_restarts = (1 << 5),
+  engine_step_prop_logger_index = (1 << 6)
 };
 
 /* Some constants */
@@ -312,6 +314,10 @@ struct engine {
   int forcerepart;
   struct repartition *reparttype;
 
+#ifdef WITH_LOGGER
+  struct logger *logger;
+#endif
+
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
 
@@ -415,6 +421,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 void engine_config(int restart, struct engine *e, struct swift_params *params,
                    int nr_nodes, int nodeID, int nr_threads, int with_aff,
                    int verbose, const char *restart_file);
+void engine_dump_index(struct engine *e);
 void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
