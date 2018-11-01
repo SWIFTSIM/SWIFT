@@ -2633,7 +2633,7 @@ void space_list_useful_top_level_cells(struct space *s) {
 
     const int has_particles = (c->hydro.count > 0) || (c->grav.count > 0) ||
                               (c->stars.count > 0) ||
-                              (c->grav.multipole->m_pole.M_000 > 0.f);
+                              (c->grav.multipole != NULL && c->grav.multipole->m_pole.M_000 > 0.f);
 
     if (has_particles) {
       s->cells_with_particles_top[s->nr_cells_with_particles] = i;
