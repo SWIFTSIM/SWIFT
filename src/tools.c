@@ -744,8 +744,8 @@ int compare_particles(struct part *a, struct part *b, double threshold) {
     }
   }
   for (int k = 0; k < 3; k++) {
-    if (compare_values(a->a_hydro[k], b->a_hydro[k], threshold, &absDiff, &absSum,
-                       &relDiff)) {
+    if (compare_values(a->a_hydro[k], b->a_hydro[k], threshold, &absDiff,
+                       &absSum, &relDiff)) {
       message(
           "Relative difference (%e) larger than tolerance (%e) for a_hydro[%d] "
           "of particle %lld.",
@@ -798,8 +798,8 @@ int compare_particles(struct part *a, struct part *b, double threshold) {
     message("a = %e, b = %e", a->force.h_dt, b->force.h_dt);
     result = 1;
   }
-  if (compare_values(a->force.v_sig, b->force.v_sig, threshold, &absDiff, &absSum,
-                     &relDiff)) {
+  if (compare_values(a->force.v_sig, b->force.v_sig, threshold, &absDiff,
+                     &absSum, &relDiff)) {
     message(
         "Relative difference (%e) larger than tolerance (%e) for v_sig of "
         "particle %lld.",
