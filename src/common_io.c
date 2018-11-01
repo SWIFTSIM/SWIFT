@@ -378,7 +378,7 @@ void io_write_engine_policy(hid_t h_file, const struct engine* e) {
   const hid_t h_grp = H5Gcreate1(h_file, "/Policy", 0);
   if (h_grp < 0) error("Error while creating policy group");
 
-  for (int i = 1; i <= engine_maxpolicy; ++i)
+  for (int i = 1; i < engine_maxpolicy; ++i)
     if (e->policy & (1 << i))
       io_write_attribute_i(h_grp, engine_policy_names[i + 1], 1);
     else
