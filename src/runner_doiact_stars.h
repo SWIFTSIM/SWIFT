@@ -944,7 +944,7 @@ void runner_dosub_subset_stars_density(struct runner *r, struct cell *ci,
 
   } /* otherwise, pair interaction. */
 
-  if (gettimer) TIMER_TOC(timer_dosub_subset_stars_density);
+  if (gettimer) TIMER_TOC(timer_dosub_subset_pair_stars_density);
 }
 
 /**
