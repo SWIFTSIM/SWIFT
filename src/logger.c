@@ -56,7 +56,6 @@
 /* size of the size information */
 #define logger_header_number_size 2
 
-
 char logger_version[logger_version_size] = "0.1";
 
 const unsigned int logger_datatype_size[logger_data_count] = {
