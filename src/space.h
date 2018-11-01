@@ -143,10 +143,10 @@ struct space {
   /*! The indices of the *local* top-level cells with tasks */
   int *local_cells_with_tasks_top;
 
-  /*! The indices of the top-level cells that have >0 #gpart */
+  /*! The indices of the top-level cells that have >0 particles (of any kind) */
   int *cells_with_particles_top;
 
-  /*! The indices of the top-level cells that have >0 #gpart */
+  /*! The indices of the top-level cells that have >0 particles (of any kind) */
   int *local_cells_with_particles_top;
 
   /*! The total number of parts in the space. */
