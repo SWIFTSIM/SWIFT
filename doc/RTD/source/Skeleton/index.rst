@@ -16,6 +16,7 @@ for some of the main routines of SWIFT.
    engine
    interaction
    misc
+   glossary
    todo
 
 
