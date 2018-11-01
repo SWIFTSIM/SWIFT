@@ -3747,7 +3747,7 @@ void engine_makeproxies(struct engine *e) {
               /* In the gravity case, check distances using the MAC. */
               if (with_gravity) {
 
-                /* We don't have multipoles yet (or there CoMs) so we will have
+                /* We don't have multipoles yet (or their CoMs) so we will have
                    to cook up something based on cell locations only. We hence
                    need an upper limit on the distance that the CoMs in those
                    cells could have. We then can decide whether we are too close
@@ -3887,7 +3887,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Make the proxies. */
   engine_makeproxies(e);
 
-  /* Re-allocate the local parts. */
+  /* Re-allocate the local parts to add buffer space */
   if (e->verbose)
     message("Re-allocating parts array from %zu to %zu.", s->size_parts,
             (size_t)(s->nr_parts * 1.2));
@@ -4452,7 +4452,12 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
    * do this once we've made at least one call to engine_entry_affinity and
    * maybe numa_node_of_cpu(sched_getcpu()), even if the engine isn't already
    * pinned. */
-  if (with_aff) engine_unpin();
+  /* If you don't have NUMA libs, it doesn't need to be pinned.
+   * If you have libs, you want to pin all the worker threads to one CPU (not core),
+   * and you don't need the master thread pinned any more (for the moment). 
+   * Each thread is pinned to a core within one CPU, but we have to make sure that 
+   * they're all on the CPU that started the job. */
+  if (with_aff) engine_unpin(); 
 #endif
 
   if (with_aff && nodeID == 0) {
