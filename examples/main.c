@@ -889,6 +889,10 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
+    /* The following two checks used to be useful, but aren't
+     * anymore, so they'll probably disappear soon. Don't
+     * care too much about them. */
+
     /* Verify that each particle is in it's proper cell. */
     if (talking && !dry_run) {
       int icount = 0;
