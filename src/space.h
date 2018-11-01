@@ -119,6 +119,12 @@ struct space {
   /*! Number of *local* top-level cells with tasks */
   int nr_local_cells_with_tasks;
 
+  /*! Number of top-level cells that have >0 particle (of any kind) */
+  int nr_cells_with_particles;
+
+  /*! Number of top-level cells that have >0 particle (of any kind) */
+  int nr_local_cells_with_particles;
+
   /*! The (level 0) cells themselves. */
   struct cell *cells_top;
 
@@ -136,6 +142,12 @@ struct space {
 
   /*! The indices of the *local* top-level cells with tasks */
   int *local_cells_with_tasks_top;
+
+  /*! The indices of the top-level cells that have >0 particles (of any kind) */
+  int *cells_with_particles_top;
+
+  /*! The indices of the top-level cells that have >0 particles (of any kind) */
+  int *local_cells_with_particles_top;
 
   /*! The total number of parts in the space. */
   size_t nr_parts, size_parts;
@@ -247,11 +259,9 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct cell *cell_list_end,
                         struct gravity_tensors *multipole_list_begin,
                         struct gravity_tensors *multipole_list_end);
-void space_split(struct space *s, struct cell *cells, int nr_cells,
-                 int verbose);
+void space_split(struct space *s, int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);
-void space_list_local_cells(struct space *s);
-void space_list_cells_with_tasks(struct space *s);
+void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
                                 int *count_inibibited_parts, int verbose);
 void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,

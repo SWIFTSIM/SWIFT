@@ -4520,9 +4520,6 @@ void engine_rebuild(struct engine *e, int repartitioned,
   /* Re-build the space. */
   space_rebuild(e->s, repartitioned, e->verbose);
 
-  /* Construct the list of purely local cells */
-  space_list_local_cells(e->s);
-
   /* Update the global counters of particles */
   long long num_particles[3] = {e->s->nr_parts, e->s->nr_gparts,
                                 e->s->nr_sparts};
@@ -4582,7 +4579,7 @@ void engine_rebuild(struct engine *e, int repartitioned,
   engine_maketasks(e);
 
   /* Make the list of top-level cells that have tasks */
-  space_list_cells_with_tasks(e->s);
+  space_list_useful_top_level_cells(e->s);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time.
@@ -5926,12 +5923,16 @@ void engine_unskip(struct engine *e) {
 void engine_do_drift_all_mapper(void *map_data, int num_elements,
                                 void *extra_data) {
 
-  struct engine *e = (struct engine *)extra_data;
-  struct cell *cells = (struct cell *)map_data;
+  const struct engine *e = (const struct engine *)extra_data;
+  struct space *s = e->s;
+  struct cell *cells_top = s->cells_top;
+  int *local_cells = (int *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &cells[ind];
-    if (c != NULL && c->nodeID == e->nodeID) {
+    struct cell *c = &cells_top[local_cells[ind]];
+
+    if (c->nodeID == e->nodeID) {
+
       /* Drift all the particles */
       cell_drift_part(c, e, 1);
 
@@ -5967,8 +5968,9 @@ void engine_drift_all(struct engine *e) {
   }
 #endif
 
-  threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
-                 e->s->nr_cells, sizeof(struct cell), 0, e);
+  threadpool_map(&e->threadpool, engine_do_drift_all_mapper,
+                 e->s->local_cells_with_tasks_top,
+                 e->s->nr_local_cells_with_tasks, sizeof(int), 0, e);
 
   /* Synchronize particle positions */
   space_synchronize_particle_positions(e->s);
