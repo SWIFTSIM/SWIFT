@@ -2369,8 +2369,10 @@ void engine_exchange_top_multipoles(struct engine *e) {
     }
   }
   if (counter != e->total_nr_gparts)
-    error("Total particles in multipoles inconsistent with engine.\n "
-          "  counter = %lld, nr_gparts = %lld", counter, e->total_nr_gparts);
+    error(
+        "Total particles in multipoles inconsistent with engine.\n "
+        "  counter = %lld, nr_gparts = %lld",
+        counter, e->total_nr_gparts);
 #endif
 
 #else
