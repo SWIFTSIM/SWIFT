@@ -316,6 +316,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   int count = 1;
 
   /* Fill the progeny recursively, depth-first. */
+  c->split = 0;
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
       struct cell *temp;
