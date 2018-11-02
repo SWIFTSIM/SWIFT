@@ -445,8 +445,11 @@ void engine_unpin(void);
 void engine_clean(struct engine *e);
 int engine_estimate_nr_tasks(struct engine *e);
 
-/* Function prototypes, engine_marktasks.c. */
+/* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);
+
+/* Function prototypes, engine_marktasks.c. */
+int engine_marktasks(struct engine *e);
 
 #ifdef HAVE_SETAFFINITY
 cpu_set_t *engine_entry_affinity(void);
