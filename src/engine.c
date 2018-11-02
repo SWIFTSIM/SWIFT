@@ -2343,9 +2343,11 @@ void engine_exchange_top_multipoles(struct engine *e) {
    * multi-pole is present on more than one node (two things guaranteed by the
    * domain decomposition).
    */
-  MPI_Allreduce(MPI_IN_PLACE, e->s->multipoles_top,
-                e->s->nr_cells * sizeof(struct gravity_tensors), MPI_BYTE,
-                MPI_BOR, MPI_COMM_WORLD);
+  int err = MPI_Allreduce(MPI_IN_PLACE, e->s->multipoles_top,
+                          e->s->nr_cells * sizeof(struct gravity_tensors),
+                          MPI_BYTE, MPI_BOR, MPI_COMM_WORLD);
+  if (err != MPI_SUCCESS)
+    mpi_error(err, "Failed to all-reduce the top-level multipoles.");
 
 #ifdef SWIFT_DEBUG_CHECKS
   long long counter = 0;
