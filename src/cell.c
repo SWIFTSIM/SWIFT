@@ -3161,7 +3161,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
     /* All top-level cells get an MPI tag. */
 #ifdef WITH_MPI
-    if (c->mpi.sendto) cell_ensure_tagged(c);
+    cell_ensure_tagged(c);
 #endif
 
     /* Super-pointer for hydro */
