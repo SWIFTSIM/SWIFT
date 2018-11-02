@@ -245,7 +245,10 @@ for rank in ranks:
         fig = pl.figure()
         ax = fig.add_subplot(1,1,1)
         ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
-        ax.set_ylim(0, nthread*expand)
+        if nthread == 0:
+            ax.set_ylim(0, expand)
+        else:
+            ax.set_ylim(0, nthread*expand)
         if mintic < 0:
             start_t = tic_step
         else:
@@ -305,7 +308,7 @@ for rank in ranks:
         fig = pl.figure()
         ax = fig.add_subplot(1,1,1)
         ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
-        ax.set_ylim(0, nethread)
+        ax.set_ylim(0.5, nethread+1.0)
         for i in range(nethread):
 
             #  Collect ranges and colours into arrays.
@@ -327,19 +330,16 @@ for rank in ranks:
                     typesseen.append(qtask)
 
             #  Now plot.
-            ax.broken_barh(tictocs, [i+0.05,0.90], facecolors = colours, linewidth=0)
+            ax.broken_barh(tictocs, [i+0.55,0.9], facecolors = colours, linewidth=0)
 
 
     #  Legend and room for it.
-    nrow = len(typesseen) / 5
-    ax.fill_between([0, 0], nethread+0.5, nethread + nrow + 0.5, facecolor="white")
-    ax.set_ylim(0, nethread + 0.5)
+    nrow = len(typesseen) / 8
+    ax.fill_between([0, 0], nethread, nethread + nrow, facecolor="white")
     if data.size > 0 and not args.nolegend:
-        ax.fill_between([0, 0], nethread+0.5, nethread + nrow + 0.5, facecolor="white")
-        ax.set_ylim(0, nethread + 0.5)
-        ax.legend(loc=1, shadow=True, bbox_to_anchor=(0., 1.05 ,1., 0.2), mode="expand", ncol=5)
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width, box.height*0.8])
+        ax.fill_between([0, 0], nethread, nethread + nrow, facecolor="white")
+        ax.legend(loc="lower left", shadow=True,
+                  bbox_to_anchor=(0., 1.0, 1., 0.2), mode="expand", ncol=8)
 
     # Start and end of time-step
     if mintic < 0:
@@ -366,7 +366,7 @@ for rank in ranks:
         outpng = outbase + str(rank) + ".png"
     else:
         outpng = outbase + ".png"
-    pl.savefig(outpng)
+    pl.savefig(outpng, bbox_inches="tight")
     print("Graphics done, output written to", outpng)
 
 sys.exit(0)
