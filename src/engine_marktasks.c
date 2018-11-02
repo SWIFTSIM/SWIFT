@@ -550,4 +550,3 @@ int engine_marktasks(struct engine *e) {
   /* All is well... */
   return rebuild_space;
 }
-
