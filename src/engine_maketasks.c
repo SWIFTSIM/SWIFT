@@ -26,22 +26,12 @@
 #include "../config.h"
 
 /* Some standard headers. */
-#include <float.h>
-#include <limits.h>
-#include <sched.h>
-#include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
-#endif
-
-#ifdef HAVE_LIBNUMA
-#include <numa.h>
 #endif
 
 /* Load the profiler header, if needed. */
