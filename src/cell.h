@@ -850,12 +850,8 @@ __attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
  *
  * @param c The #cell to tag.
  */
-__attribute__((always_inline)) INLINE static void cell_tag(struct cell *c) {
+__attribute__((always_inline)) INLINE static void cell_ensure_tagged(struct cell *c) {
 #ifdef WITH_MPI
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (c->mpi.tag > 0) error("setting tag for already tagged cell");
-#endif
 
   lock_lock(&c->hydro.lock);
   if (c->mpi.tag < 0 &&

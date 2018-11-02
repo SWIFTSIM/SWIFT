@@ -1497,7 +1497,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
     if (t_xv == NULL) {
 
       /* Make sure this cell is tagged. */
-      cell_tag(ci);
+      cell_ensure_tagged(ci);
 
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->mpi.tag,
                                0, ci, cj);
@@ -1589,7 +1589,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     if (t_grav == NULL) {
 
       /* Make sure this cell is tagged. */
-      cell_tag(ci);
+      cell_ensure_tagged(ci);
 
       t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
                                  ci->mpi.tag, 0, ci, cj);
@@ -1652,7 +1652,7 @@ void engine_addtasks_send_timestep(struct engine *e, struct cell *ci,
     if (t_ti == NULL) {
 
       /* Make sure this cell is tagged. */
-      cell_tag(ci);
+      cell_ensure_tagged(ci);
 
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
                                ci->mpi.tag, 0, ci, cj);

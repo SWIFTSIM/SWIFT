@@ -344,6 +344,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       c->split = 1;
       count += cell_unpack(&pc[pc->progeny[k]], temp, s, with_gravity);
     }
+  c->split = (count > 1);
 
   /* Return the total number of unpacked cells. */
   c->mpi.pcell_size = count;
@@ -3160,7 +3161,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
     /* All top-level cells get an MPI tag. */
 #ifdef WITH_MPI
-    if (c->mpi.tag < 0 && c->mpi.sendto) cell_tag(c);
+    if (c->mpi.sendto) cell_ensure_tagged(c);
 #endif
 
     /* Super-pointer for hydro */
