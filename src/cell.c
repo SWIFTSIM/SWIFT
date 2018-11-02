@@ -344,7 +344,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       c->split = 1;
       count += cell_unpack(&pc[pc->progeny[k]], temp, s, with_gravity);
     }
-  c->split = (count > 1);
 
   /* Return the total number of unpacked cells. */
   c->mpi.pcell_size = count;
