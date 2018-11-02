@@ -391,7 +391,7 @@ struct engine {
   int restart_max_tasks;
 };
 
-/* Function prototypes. */
+/* Function prototypes, engine.c. */
 void engine_addlink(struct engine *e, struct link **l, struct task *t);
 void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
@@ -427,7 +427,6 @@ void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
 void engine_step(struct engine *e);
-void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
 void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             const int *ind_part, size_t *Npart,
@@ -445,6 +444,12 @@ void engine_pin(void);
 void engine_unpin(void);
 void engine_clean(struct engine *e);
 int engine_estimate_nr_tasks(struct engine *e);
+
+/* Function prototypes, engine_maketasks.c. */
+void engine_maketasks(struct engine *e);
+
+/* Function prototypes, engine_marktasks.c. */
+int engine_marktasks(struct engine *e);
 
 #ifdef HAVE_SETAFFINITY
 cpu_set_t *engine_entry_affinity(void);

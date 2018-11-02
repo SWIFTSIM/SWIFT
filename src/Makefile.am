@@ -52,8 +52,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     logger_io.h
 
 # Common source files
-AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
-    serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
+AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c \
+    engine_marktasks.c serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potential.c hydro_properties.c \
