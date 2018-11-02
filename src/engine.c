@@ -2356,6 +2356,9 @@ void engine_exchange_top_multipoles(struct engine *e) {
   for (int i = 0; i < e->s->nr_cells; ++i) {
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
     counter += m->m_pole.num_gpart;
+    if (m->m_pole.num_gpart < 0) {
+      error("m->m_pole.num_gpart is negative: %lld", m->m_pole.num_gpart);
+    }
     if (m->m_pole.M_000 > 0.) {
       if (m->CoM[0] < 0. || m->CoM[0] > e->s->dim[0])
         error("Invalid multipole position in X");
@@ -2366,7 +2369,8 @@ void engine_exchange_top_multipoles(struct engine *e) {
     }
   }
   if (counter != e->total_nr_gparts)
-    error("Total particles in multipoles inconsistent with engine");
+    error("Total particles in multipoles inconsistent with engine.\n "
+          "  counter = %lld, nr_gparts = %lld", counter, e->total_nr_gparts);
 #endif
 
 #else
