@@ -850,7 +850,8 @@ __attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
  *
  * @param c The #cell to tag.
  */
-__attribute__((always_inline)) INLINE static void cell_ensure_tagged(struct cell *c) {
+__attribute__((always_inline)) INLINE static void cell_ensure_tagged(
+    struct cell *c) {
 #ifdef WITH_MPI
 
   lock_lock(&c->hydro.lock);
