@@ -477,7 +477,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   struct unit_system* ic_units =
       (struct unit_system*)malloc(sizeof(struct unit_system));
 
-  /* First read some information about the content */
+  /* First read some information about the content */ 
+  /* For now, we can only handle 1 IC file for everyone */
   if (mpi_rank == 0) {
 
     /* Open file */
