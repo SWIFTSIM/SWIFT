@@ -228,8 +228,8 @@ void proxy_cells_exchange_first(struct proxy *p) {
                   p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                   &p->req_cells_count_in);
   if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv nr of pcells.");
-    // message( "irecv pcells count on node %i from node %i." , p->mynodeID ,
-    // p->nodeID ); fflush(stdout);
+  // message( "irecv pcells count on node %i from node %i." , p->mynodeID ,
+  // p->nodeID ); fflush(stdout);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -261,8 +261,8 @@ void proxy_cells_exchange_second(struct proxy *p) {
                       MPI_COMM_WORLD, &p->req_cells_in);
 
   if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv part data.");
-    // message( "irecv pcells (%i) on node %i from node %i." , p->size_pcells_in
-    // , p->mynodeID , p->nodeID ); fflush(stdout);
+  // message( "irecv pcells (%i) on node %i from node %i." , p->size_pcells_in
+  // , p->mynodeID , p->nodeID ); fflush(stdout);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -409,7 +409,6 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
             clocks_getunit());
 
   /* Launch the first part of the exchange. */
-  message("Launching proxy_cells_exchange_first...");
   threadpool_map(&s->e->threadpool, proxy_cells_exchange_first_mapper, proxies,
                  num_proxies, sizeof(struct proxy), /*chunk=*/0,
                  /*extra_data=*/NULL);
@@ -417,10 +416,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     reqs_in[k] = proxies[k].req_cells_count_in;
     reqs_out[k] = proxies[k].req_cells_count_out;
   }
-  message("Done launching proxy_cells_exchange_first.");
 
   /* Wait for each count to come in and start the recv. */
-  message("Launching proxy_cells_exchange_second...");
   for (int k = 0; k < num_proxies; k++) {
     int pid = MPI_UNDEFINED;
     MPI_Status status;
@@ -430,13 +427,10 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     // message( "request from proxy %i has arrived." , pid );
     proxy_cells_exchange_second(&proxies[pid]);
   }
-  message("Done launching proxy_cells_exchange_second.");
 
   /* Wait for all the sends to have finished too. */
-  message("Waiting for all sends (counts) to finish...");
   if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     error("MPI_Waitall on sends failed.");
-  message("Done waiting for all sends (counts) to finish.");
 
   /* Set the requests for the cells. */
   for (int k = 0; k < num_proxies; k++) {
@@ -447,23 +441,19 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   tic2 = getticks();
 
   /* Wait for each pcell array to come in from the proxies. */
-  message("Launching proxy_cells_wait_and_unpack_mappers...");
   struct wait_and_unpack_mapper_data wait_and_unpack_data = {
       s, num_proxies, reqs_in, proxies, with_gravity, lock_static_initializer};
   threadpool_map(&s->e->threadpool, proxy_cells_wait_and_unpack_mapper,
                  /*map_data=*/NULL, num_proxies, /*stride=*/0, /*chunk=*/0,
                  &wait_and_unpack_data);
-  message("Done launching proxy_cells_wait_and_unpack_mappers.");
 
   if (s->e->verbose)
     message("Un-packing cells took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Wait for all the sends to have finished too. */
-  message("Waiting for all sends (cells) to finish...");
   if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     error("MPI_Waitall on sends failed.");
-  message("Done waiting for all sends (cells) to finish.");
 
   /* Clean up. */
   free(reqs);
