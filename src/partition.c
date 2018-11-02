@@ -1056,6 +1056,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 #endif
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+/* Helper struct for partition_gather weights. */
 struct weights_mapper_data {
   double *weights_e;
   double *weights_v;
@@ -1068,6 +1070,14 @@ struct weights_mapper_data {
   struct cell *cells;
 };
 
+/**
+ * @brief Threadpool mapper function to gather cell edge and vertex weights
+ *        from the associated tasks.
+ *
+ * @map_data part of the data to process in this mapper.
+ * @num_elements the number of data elements to process.
+ * @extra_data additional data for the mapper context.
+ */
 void partition_gather_weights(void *map_data, int num_elements,
                               void *extra_data) {
 
