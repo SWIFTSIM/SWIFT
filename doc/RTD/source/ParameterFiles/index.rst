@@ -181,6 +181,13 @@ flag) this section of the YAML file is entirely ignored.
 Gravity
 -------
 
+The behaviour of the self-gravity solver can be modifed by the parameters
+provided in this section. The theory document puts these parameters into the
+context of the equations being solved. We give a brief overview here.
+
+* The co-moving softening used for all particles :math:`\epsilon_{c}`: ``comoving_softening``
+* The 
+
 SPH
 ---
 
