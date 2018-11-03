@@ -185,9 +185,63 @@ The behaviour of the self-gravity solver can be modifed by the parameters
 provided in this section. The theory document puts these parameters into the
 context of the equations being solved. We give a brief overview here.
 
-* The co-moving softening used for all particles :math:`\epsilon_{c}`: ``comoving_softening``
-* The 
+* The Plummer-equivalent co-moving softening length used for all particles :math:`\epsilon_{com}`: ``comoving_softening``,
+* The Plummer-equivalent maximal physical softening length used for all particles :math:`\epsilon_{max}`: ``comoving_softening``, 
 
+At any redshift :math:`z`, the Plummer-equivalent softening length used by the
+code will be :math:`\epsilon=\min(\epsilon_{max},
+\frac{\epsilon_{com}}{z+1})`. This is expressed in internal units.
+
+* The opening angle (multipole acceptance criterion) used in the FMM :math:`\theta`: ``theta``,
+* The time-step size pre-factor :math:`\eta`: ``eta``,
+  
+The time-step of a given particle is given by :math:`\Delta t =
+\eta\sqrt{\frac{\epsilon}{|\overrightarrow{a}|}}`, where
+:math:`\overrightarrow{a}` is the particle's acceleration. Power et al. (2003) recommend using :math:`\eta=0.025`.
+The last tree-related parameter is
+
+* The tree rebuild frequency: ``rebuild_frequency``.
+
+Thqe tree rebuild frequency is an optional parameter defaulting to
+:math:`0.01`. It is used to trigger the re-construction of the tree every time a
+fraction of the particles have been integrated (kicked) forward in time.
+
+Simulations using periodic boundary conditions use additional parameters for the
+Particle-Mesh part of the calculation. The last three are optional:
+
+* The number cells along each axis of the mesh :math:`N`: ``mesh_side_length``,
+* The mesh smoothing scale in units of the mesh cell-size :math:`a_{\rm
+  smooth}`: ``a_smooth`` (default: ``1.25``),
+* The scale above which the short-range forces are assumed to be 0 (in units of
+  the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
+  cut,max}`: ``r_cut_max`` (default: ``4.5``),
+* The scale bewlo which the short-range forces are assumed to be exactly Newtonian (in units of
+  the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
+  cut,min}`: ``r_cut_min`` (default: ``0.1``),
+  
+For most runs, the default values can be used. Only the number of cells along
+each axis needs to be sepcified. The remaining three values are best described
+in the context of the full set of equations in the theory documents.
+  
+As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
+simulation:
+
+.. code:: YAML
+	  
+   # Parameters for the self-gravity scheme for the EAGLE-100 box
+   Gravity:
+     eta:          0.025              
+     theta:        0.7                
+     comoving_softening:     0.0026994  # 0.7 proper kpc at z=2.8.
+     max_physical_softening: 0.0007     # 0.7 proper kpc
+     rebuild_frequency:      0.01       # Default optional value
+     mesh_side_length:       512       
+     a_smooth:     1.25                 # Default optional value
+     r_cut_max:    4.5                  # Default optional value
+     r_cut_min:    0.1                  # Default optional value
+
+
+      
 SPH
 ---
 
