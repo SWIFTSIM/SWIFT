@@ -207,6 +207,13 @@ struct gravity_tensors {
   };
 } SWIFT_STRUCT_ALIGN;
 
+#ifdef WITH_MPI
+/* MPI datatypes for transfers */
+extern MPI_Datatype multipole_mpi_type;
+extern MPI_Op multipole_mpi_reduce_op;
+void multipole_create_mpi_types(void);
+#endif
+
 /**
  * @brief Reset the data of a #multipole.
  *
