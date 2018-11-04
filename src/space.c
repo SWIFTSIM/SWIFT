@@ -3727,6 +3727,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->cells_with_particles_top = NULL;
   s->local_cells_with_particles_top = NULL;
   s->grav_top_level = NULL;
+  s->nr_local_cells_with_tasks = 0;
+  s->nr_cells_with_particles = 0;
 #ifdef WITH_MPI
   s->parts_foreign = NULL;
   s->size_parts_foreign = 0;
