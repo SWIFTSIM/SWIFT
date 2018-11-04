@@ -3407,7 +3407,7 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
     /* When restarting, we loop over all top-level cells */
     cells_top = (struct cell *)map_data;
     local_cells_with_tasks_top = NULL;
-    
+
   } else {
 
     /* In any other case, we use th list of local cells with tasks */
@@ -3472,7 +3472,7 @@ void engine_drift_all(struct engine *e) {
   } else {
 
     /* When restarting, the list of local cells with tasks does not yet
-    /* exist. We use the raw list of top-level cells instead */
+       exist. We use the raw list of top-level cells instead */
     threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
                    e->s->nr_cells, sizeof(struct cell), 0, e);
   }
