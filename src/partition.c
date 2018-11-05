@@ -1275,8 +1275,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
   ticks tic = getticks();
 
-  threadpool_map(&s->e->threadpool, partition_gather_weights,
-                 tasks, nr_tasks, sizeof(struct task), 0, &weights_data);
+  threadpool_map(&s->e->threadpool, partition_gather_weights, tasks, nr_tasks,
+                 sizeof(struct task), 0, &weights_data);
   if (s->e->verbose)
     message("weight mapper took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -1801,8 +1801,7 @@ static int check_complete(struct space *s, int verbose, int nregions) {
  */
 static void check_weights(struct task *tasks, int nr_tasks,
                           struct weights_mapper_data *mydata,
-                          double *ref_weights_v,
-                          double *ref_weights_e) {
+                          double *ref_weights_v, double *ref_weights_e) {
 
   int *inds = mydata->inds;
   int eweights = mydata->eweights;
@@ -1950,8 +1949,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
     sum += weights_v[k];
   }
   if (fabs(sum - refsum) > 1.0) {
-    error("vertex partition weights are not consistent (%f!=%f)",
-          sum, refsum);
+    error("vertex partition weights are not consistent (%f!=%f)", sum, refsum);
   } else {
     refsum = 0.0;
     sum = 0.0;
@@ -1960,8 +1958,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
       sum += weights_e[k];
     }
     if (fabs(sum - refsum) > 1.0) {
-      error("edge partition weights are not consistent (%f!=%f)",
-            sum, refsum);
+      error("edge partition weights are not consistent (%f!=%f)", sum, refsum);
     }
   }
   message("partition weights checked successfully");
