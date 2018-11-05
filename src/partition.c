@@ -1061,7 +1061,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 struct weights_mapper_data {
   double *weights_e;
   double *weights_v;
-  int *inds;
+  idx_t *inds;
   int eweights;
   int nodeID;
   int timebins;
@@ -1092,7 +1092,7 @@ void partition_gather_weights(void *map_data, int num_elements,
 
   double *weights_e = mydata->weights_e;
   double *weights_v = mydata->weights_v;
-  int *inds = mydata->inds;
+  idx_t *inds = mydata->inds;
   int eweights = mydata->eweights;
   int nodeID = mydata->nodeID;
   int nr_cells = mydata->nr_cells;
@@ -1803,7 +1803,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
                           struct weights_mapper_data *mydata,
                           double *ref_weights_v, double *ref_weights_e) {
 
-  int *inds = mydata->inds;
+  idx_t *inds = mydata->inds;
   int eweights = mydata->eweights;
   int nodeID = mydata->nodeID;
   int nr_cells = mydata->nr_cells;
