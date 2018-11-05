@@ -230,7 +230,7 @@ static void mpicollectgroup1_reduce(void *in, void *inout, int *len,
                                     MPI_Datatype *datatype) {
 
   for (int i = 0; i < *len; ++i)
-    doreduce1(&((struct mpicollectgroup1 *)inout)[0],
+    doreduce1(&((struct mpicollectgroup1 *)inout)[i],
               &((const struct mpicollectgroup1 *)in)[i]);
 }
 
