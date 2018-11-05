@@ -443,7 +443,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* End force ? */
-    else if (t_type == task_type_end_force) {
+    else if (t_type == task_type_end_force ||
+             t_type == task_type_end_force_in) {
 
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
         scheduler_activate(s, t);

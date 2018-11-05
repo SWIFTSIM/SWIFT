@@ -53,7 +53,9 @@ enum task_types {
   task_type_extra_ghost,
   task_type_drift_part,
   task_type_drift_gpart,
+  task_type_drift_gpart_out, /* Implicit */
   task_type_end_force,
+  task_type_end_force_in, /* Implicit */
   task_type_kick1,
   task_type_kick2,
   task_type_timestep,

@@ -404,6 +404,9 @@ struct cell {
     /*! The drift task for gparts */
     struct task *drift;
 
+    /*! Implicit task (going up- and down the tree) for the #gpart drifts */
+    struct task *drift_out;
+
     /*! Linked list of the tasks computing this cell's gravity forces. */
     struct link *grav;
 
@@ -537,6 +540,9 @@ struct cell {
 
   /*! The task to end the force calculation */
   struct task *end_force;
+
+  /*! Implicit task (going up- and down the tree) for the end force */
+  struct task *end_force_in;
 
   /*! The first kick task */
   struct task *kick1;

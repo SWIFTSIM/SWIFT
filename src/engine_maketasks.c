@@ -169,7 +169,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
 #else
       /* The send_rho task should unlock the super_hydro-cell's kick task. */
-      scheduler_addunlock(s, t_rho, ci->super->end_force);
+      scheduler_addunlock(s, t_rho, ci->super->end_force_in);
 
       /* The send_rho task depends on the cell's ghost task. */
       scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, t_rho);
@@ -462,6 +462,11 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       c->end_force = scheduler_addtask(s, task_type_end_force,
                                        task_subtype_none, 0, 0, c, NULL);
 
+      /* Implicit task for the up pass */
+      c->end_force_in = scheduler_addtask(s, task_type_end_force_in,
+                                          task_subtype_none, 0, 1, c, NULL);
+
+      /* Subgrid tasks */
       if (is_with_cooling) {
 
         c->hydro.cooling = scheduler_addtask(s, task_type_cooling,
@@ -485,21 +490,35 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       } else {
         scheduler_addunlock(s, c->kick2, c->timestep);
       }
+
+      scheduler_addunlock(s, c->end_force_in, c->end_force);
       scheduler_addunlock(s, c->timestep, c->kick1);
 
 #if defined(WITH_LOGGER)
       scheduler_addunlock(s, c->kick1, c->logger);
 #endif
     }
-
-  } else { /* We are above the super-cell so need to go deeper */
-
-    /* Recurse. */
-    if (c->split)
-      for (int k = 0; k < 8; k++)
-        if (c->progeny[k] != NULL)
-          engine_make_hierarchical_tasks_common(e, c->progeny[k]);
   }
+
+  /* We are below the super-cell but not below the maximal splitting depth */
+  else if ((c->super != NULL) &&
+           ((c->maxdepth - c->depth) >= space_subdepth_diff_grav)) {
+
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+
+      c->end_force_in = scheduler_addtask(s, task_type_end_force_in,
+                                          task_subtype_none, 0, 1, c, NULL);
+
+      scheduler_addunlock(s, c->end_force_in, c->parent->end_force_in);
+    }
+  }
+
+  /* Recurse. */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_make_hierarchical_tasks_common(e, c->progeny[k]);
 }
 
 /**
@@ -544,6 +563,8 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                          task_subtype_none, 0, 0, c, NULL);
 
         /* Implicit tasks for the up and down passes */
+        c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
+                                              task_subtype_none, 0, 1, c, NULL);
         c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
                                              task_subtype_none, 0, 1, c, NULL);
         c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
@@ -562,6 +583,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
         /* Link in the implicit tasks */
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
+        scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
       }
     }
@@ -1129,7 +1151,7 @@ void engine_link_gravity_tasks(struct engine *e) {
 
       /* drift ---+-> gravity --> grav_down */
       /* init  --/    */
-      scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
+      scheduler_addunlock(sched, ci->grav.super->grav.drift_out, t);
       scheduler_addunlock(sched, ci_parent->grav.init_out, t);
       scheduler_addunlock(sched, t, ci_parent->grav.down_in);
     }
@@ -1142,8 +1164,8 @@ void engine_link_gravity_tasks(struct engine *e) {
 #endif
 
       /* drift -----> gravity --> end_force */
-      scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
-      scheduler_addunlock(sched, t, ci->super->end_force);
+      scheduler_addunlock(sched, ci->grav.super->grav.drift_out, t);
+      scheduler_addunlock(sched, t, ci->end_force_in);
     }
 
     /* Otherwise, pair interaction? */
@@ -1153,7 +1175,7 @@ void engine_link_gravity_tasks(struct engine *e) {
 
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
-        scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
+        scheduler_addunlock(sched, ci->grav.super->grav.drift_out, t);
         scheduler_addunlock(sched, ci_parent->grav.init_out, t);
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
@@ -1162,7 +1184,7 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
         if (ci->grav.super != cj->grav.super) /* Avoid double unlock */
-          scheduler_addunlock(sched, cj->grav.super->grav.drift, t);
+          scheduler_addunlock(sched, cj->grav.super->grav.drift_out, t);
 
         if (ci_parent != cj_parent) { /* Avoid double unlock */
           scheduler_addunlock(sched, cj_parent->grav.init_out, t);
@@ -1179,7 +1201,7 @@ void engine_link_gravity_tasks(struct engine *e) {
 #endif
       /* drift ---+-> gravity --> grav_down */
       /* init  --/    */
-      scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
+      scheduler_addunlock(sched, ci->grav.super->grav.drift_out, t);
       scheduler_addunlock(sched, ci_parent->grav.init_out, t);
       scheduler_addunlock(sched, t, ci_parent->grav.down_in);
     }
@@ -1193,8 +1215,8 @@ void engine_link_gravity_tasks(struct engine *e) {
 #endif
 
       /* drift -----> gravity --> end_force */
-      scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
-      scheduler_addunlock(sched, t, ci->super->end_force);
+      scheduler_addunlock(sched, ci->grav.super->grav.drift_out, t);
+      scheduler_addunlock(sched, t, ci->end_force_in);
     }
 
     /* Otherwise, sub-pair interaction? */
@@ -1204,7 +1226,7 @@ void engine_link_gravity_tasks(struct engine *e) {
 
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
-        scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
+        scheduler_addunlock(sched, ci->grav.super->grav.drift_out, t);
         scheduler_addunlock(sched, ci_parent->grav.init_out, t);
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
@@ -1213,7 +1235,7 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
         if (ci->grav.super != cj->grav.super) /* Avoid double unlock */
-          scheduler_addunlock(sched, cj->grav.super->grav.drift, t);
+          scheduler_addunlock(sched, cj->grav.super->grav.drift_out, t);
 
         if (ci_parent != cj_parent) { /* Avoid double unlock */
           scheduler_addunlock(sched, cj_parent->grav.init_out, t);
@@ -1349,7 +1371,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Now, build all the dependencies for the hydro */
       engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci,
                                            with_cooling);
-      scheduler_addunlock(sched, t3, t->ci->super->end_force);
+      scheduler_addunlock(sched, t3, t->ci->super->end_force_in);
 #else
 
       /* Start by constructing the task for the second hydro loop */
@@ -1361,7 +1383,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Now, build all the dependencies for the hydro */
       engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
-      scheduler_addunlock(sched, t2, t->ci->super->end_force);
+      scheduler_addunlock(sched, t2, t->ci->end_force_in);
 #endif
     }
 
@@ -1396,14 +1418,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci,
                                              with_cooling);
-        scheduler_addunlock(sched, t3, t->ci->super->end_force);
+        scheduler_addunlock(sched, t3, t->ci->super->end_force_in);
       }
       if (t->cj->nodeID == nodeID) {
         if (t->ci->hydro.super != t->cj->hydro.super)
           engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->cj,
                                                with_cooling);
         if (t->ci->super != t->cj->super)
-          scheduler_addunlock(sched, t3, t->cj->super->end_force);
+          scheduler_addunlock(sched, t3, t->cj->super->end_force_in);
       }
 
 #else
@@ -1420,14 +1442,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
-        scheduler_addunlock(sched, t2, t->ci->super->end_force);
+        scheduler_addunlock(sched, t2, t->ci->super->end_force_in);
       }
       if (t->cj->nodeID == nodeID) {
         if (t->ci->hydro.super != t->cj->hydro.super)
           engine_make_hydro_loops_dependencies(sched, t, t2, t->cj,
                                                with_cooling);
         if (t->ci->super != t->cj->super)
-          scheduler_addunlock(sched, t2, t->cj->super->end_force);
+          scheduler_addunlock(sched, t2, t->cj->super->end_force_in);
       }
 
 #endif
@@ -1461,7 +1483,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci,
                                              with_cooling);
-        scheduler_addunlock(sched, t3, t->ci->super->end_force);
+        scheduler_addunlock(sched, t3, t->ci->super->end_force_in);
       }
 
 #else
@@ -1477,7 +1499,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
-        scheduler_addunlock(sched, t2, t->ci->super->end_force);
+        scheduler_addunlock(sched, t2, t->ci->super->end_force_in);
       }
 #endif
     }
@@ -1517,14 +1539,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci,
                                              with_cooling);
-        scheduler_addunlock(sched, t3, t->ci->super->end_force);
+        scheduler_addunlock(sched, t3, t->ci->super->end_force_in);
       }
       if (t->cj->nodeID == nodeID) {
         if (t->ci->hydro.super != t->cj->hydro.super)
           engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->cj,
                                                with_cooling);
         if (t->ci->super != t->cj->super)
-          scheduler_addunlock(sched, t3, t->cj->super->end_force);
+          scheduler_addunlock(sched, t3, t->cj->super->end_force_in);
       }
 
 #else
@@ -1541,14 +1563,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci, with_cooling);
-        scheduler_addunlock(sched, t2, t->ci->super->end_force);
+        scheduler_addunlock(sched, t2, t->ci->super->end_force_in);
       }
       if (t->cj->nodeID == nodeID) {
         if (t->ci->hydro.super != t->cj->hydro.super)
           engine_make_hydro_loops_dependencies(sched, t, t2, t->cj,
                                                with_cooling);
         if (t->ci->super != t->cj->super)
-          scheduler_addunlock(sched, t2, t->cj->super->end_force);
+          scheduler_addunlock(sched, t2, t->cj->super->end_force_in);
       }
 #endif
     }
@@ -1584,7 +1606,7 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
       engine_make_stars_loops_dependencies(sched, t, t->ci);
       if (t->ci == t->ci->super)
         scheduler_addunlock(sched, t->ci->super->stars.ghost_out,
-                            t->ci->super->end_force);
+                            t->ci->super->end_force_in);
     }
 
     /* Otherwise, pair interaction? */
