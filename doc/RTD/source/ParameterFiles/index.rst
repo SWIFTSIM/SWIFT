@@ -181,6 +181,67 @@ flag) this section of the YAML file is entirely ignored.
 Gravity
 -------
 
+The behaviour of the self-gravity solver can be modifed by the parameters
+provided in this section. The theory document puts these parameters into the
+context of the equations being solved. We give a brief overview here.
+
+* The Plummer-equivalent co-moving softening length used for all particles :math:`\epsilon_{com}`: ``comoving_softening``,
+* The Plummer-equivalent maximal physical softening length used for all particles :math:`\epsilon_{max}`: ``comoving_softening``, 
+
+At any redshift :math:`z`, the Plummer-equivalent softening length used by the
+code will be :math:`\epsilon=\min(\epsilon_{max},
+\frac{\epsilon_{com}}{z+1})`. This is expressed in internal units.
+
+* The opening angle (multipole acceptance criterion) used in the FMM :math:`\theta`: ``theta``,
+* The time-step size pre-factor :math:`\eta`: ``eta``,
+  
+The time-step of a given particle is given by :math:`\Delta t =
+\eta\sqrt{\frac{\epsilon}{|\overrightarrow{a}|}}`, where
+:math:`\overrightarrow{a}` is the particle's acceleration. Power et al. (2003) recommend using :math:`\eta=0.025`.
+The last tree-related parameter is
+
+* The tree rebuild frequency: ``rebuild_frequency``.
+
+Thqe tree rebuild frequency is an optional parameter defaulting to
+:math:`0.01`. It is used to trigger the re-construction of the tree every time a
+fraction of the particles have been integrated (kicked) forward in time.
+
+Simulations using periodic boundary conditions use additional parameters for the
+Particle-Mesh part of the calculation. The last three are optional:
+
+* The number cells along each axis of the mesh :math:`N`: ``mesh_side_length``,
+* The mesh smoothing scale in units of the mesh cell-size :math:`a_{\rm
+  smooth}`: ``a_smooth`` (default: ``1.25``),
+* The scale above which the short-range forces are assumed to be 0 (in units of
+  the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
+  cut,max}`: ``r_cut_max`` (default: ``4.5``),
+* The scale bewlo which the short-range forces are assumed to be exactly Newtonian (in units of
+  the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
+  cut,min}`: ``r_cut_min`` (default: ``0.1``),
+  
+For most runs, the default values can be used. Only the number of cells along
+each axis needs to be sepcified. The remaining three values are best described
+in the context of the full set of equations in the theory documents.
+  
+As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
+simulation:
+
+.. code:: YAML
+	  
+   # Parameters for the self-gravity scheme for the EAGLE-100 box
+   Gravity:
+     eta:          0.025              
+     theta:        0.7                
+     comoving_softening:     0.0026994  # 0.7 proper kpc at z=2.8.
+     max_physical_softening: 0.0007     # 0.7 proper kpc
+     rebuild_frequency:      0.01       # Default optional value
+     mesh_side_length:       512       
+     a_smooth:     1.25                 # Default optional value
+     r_cut_max:    4.5                  # Default optional value
+     r_cut_min:    0.1                  # Default optional value
+
+
+      
 SPH
 ---
 
@@ -191,9 +252,9 @@ Physical Constants
 ------------------
 
 For some idealised test it can be useful to overwrite the value of
-some physical constants. In particular the value of the gravitational
+some physical constants; in particular the value of the gravitational
 constant. SWIFT offers an optional parameter to overwrite the value of
-that constant.
+:math:`G_N`. 
 
 .. code:: YAML
 
@@ -206,7 +267,8 @@ Mpc, km/s) will mean that :math:`G_N=1` in these units [#f2]_ instead of the
 normal value :math:`G_N=43.00927`.
 
 This option is only used for specific tests and debugging. This entire
-section of the YAML file can typically be left out.
+section of the YAML file can typically be left out. More constants may
+be handled in the same way in future versions.
 
 Snapshots
 ---------
@@ -224,6 +286,85 @@ Statistics
 
 Restarts
 --------
+
+SWIFT can write check-pointing files and restart from them. The behaviour of
+this mechanism is driven by the options int he `Restarts` section of the YAML
+parameter file. All the parameters are optional but default to values that
+ensure a reasonable behaviour. 
+
+* Wether or not to enable the dump of restart files: ``enable`` (default:
+  ``1``).
+
+This parameter acts a master-switch for the check-pointing capabilities. All the
+other options require the ``enable`` parameter to be set to ``1``.
+  
+* Wether or not to save a copy of the previous set of check-pointing files:
+  ``save`` (default: ``1``),
+* Wether or not to dump a set of restart file on regular exit: ``onexit``
+  (default: ``0``),
+* The wall-clock time in hours between two sets of restart files:
+  ``delta_hours`` (default: ``6.0``).
+  
+Note that there is no buffer time added to the ``delta_hours`` value. If the
+system's batch queue run time limit is set to 6 hours, the user must specify a
+smaller value to allow for enough time to safely dump the check-point files.
+
+* The sub-directory in which to store the restart files: ``subdir`` (default:
+  ``restart``),
+* The basename of the restart files: ``basename`` (default: ``swift``)
+
+If the directory does not exist, SWIFT will create it.  When resuming a run,
+SWIFT, will look for files with the name provided in the sub-directory specified
+here. The files themselves are named ``basename_000001.rst`` where the basenme
+is replaced by the user-specified name and the 6-digits number corresponds to
+the MPI-rank. SWIFT writes one file per MPI rank. If the ``save`` option has
+been activated, the previous set of restart files will be named
+``basename_000000.rst.prev``.
+
+SWIFT can also be stopped by creating an empty file called ``stop`` in the
+directory where the code runs. This will make SWIFT dump a fresh set of restart
+file (irrespective of the specified ``delta_time`` between dumps) and exit
+cleanly. One parameter governs this behaviour:
+
+* Number of steps between two checks for the presence of a ``stop`` file:
+  ``stop_steps`` (default: ``100``).
+
+The default value is chosen such that SWIFT does not need to poll the
+file-system to often, which can take a significant amount of time on distributed
+systems. For runs where the small time-steps take a much larger amount of time,
+a smaller value is recommended to allow for a finer control over when the code
+can be stopped.
+
+Finally, SWIFT can automatically stop after a specified amount of wall-clock
+time. The code can also run a command when exiting in this fashion, which can be
+used, for instance, to interact with the batch queue system:
+
+* Maximal wall-clock run time in hours: ``max_run_time`` (default: ``24.0``),
+* Whether or not to run a command on exit: ``resubmit_on_exit`` (default:
+  ``0``),
+* The command to run on exit: ``resubmit_command`` (default: ``./resub.sh``).
+
+Note that no check is performed on the validity of the command to run. SWIFT
+simply calls ``system()`` with the user-specified command.
+
+To run SWIFT, dumping check-pointing files every 6 hours and running for 24
+hours after which a shell command will be run, one would use:
+
+.. code:: YAML
+	  
+  Restarts:
+    enable:             1          
+    save:               1          # Keep copies
+    onexit:             0          
+    subdir:             restart    # Sub-directory of the directory where SWIFT is run
+    basename:           swift      
+    delta_hours:        6.0        
+    stop_steps:         100        
+    max_run_time:       24.0       # In hours 
+    resubmit_on_exit:   1          
+    resubmit_command:   ./resub.sh 
+
+
 
 Scheduler
 ---------

@@ -3397,12 +3397,34 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
                                 void *extra_data) {
 
   const struct engine *e = (const struct engine *)extra_data;
+  const int restarting = e->restarting;
   struct space *s = e->s;
-  struct cell *cells_top = s->cells_top;
-  int *local_cells = (int *)map_data;
+  struct cell *cells_top;
+  int *local_cells_with_tasks_top;
+
+  if (restarting) {
+
+    /* When restarting, we loop over all top-level cells */
+    cells_top = (struct cell *)map_data;
+    local_cells_with_tasks_top = NULL;
+
+  } else {
+
+    /* In any other case, we use th list of local cells with tasks */
+    cells_top = s->cells_top;
+    local_cells_with_tasks_top = (int *)map_data;
+  }
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &cells_top[local_cells[ind]];
+
+    struct cell *c;
+
+    /* When restarting, the list of local cells with tasks does not
+       yet exist. We use the raw list of top-level cells instead */
+    if (restarting)
+      c = &cells_top[ind];
+    else
+      c = &cells_top[local_cells_with_tasks_top[ind]];
 
     if (c->nodeID == e->nodeID) {
 
@@ -3441,9 +3463,19 @@ void engine_drift_all(struct engine *e) {
   }
 #endif
 
-  threadpool_map(&e->threadpool, engine_do_drift_all_mapper,
-                 e->s->local_cells_with_tasks_top,
-                 e->s->nr_local_cells_with_tasks, sizeof(int), 0, e);
+  if (!e->restarting) {
+
+    /* Normal case: We have a list of local cells with tasks to play with */
+    threadpool_map(&e->threadpool, engine_do_drift_all_mapper,
+                   e->s->local_cells_with_tasks_top,
+                   e->s->nr_local_cells_with_tasks, sizeof(int), 0, e);
+  } else {
+
+    /* When restarting, the list of local cells with tasks does not yet
+       exist. We use the raw list of top-level cells instead */
+    threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
+                   e->s->nr_cells, sizeof(struct cell), 0, e);
+  }
 
   /* Synchronize particle positions */
   space_synchronize_particle_positions(e->s);
