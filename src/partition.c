@@ -1277,8 +1277,9 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
   threadpool_map(&s->e->threadpool, partition_gather_weights,
                  tasks, nr_tasks, sizeof(struct task), 0, &weights_data);
-  message("weight mapper took %.3f %s.", clocks_from_ticks(getticks() - tic),
-          clocks_getunit());
+  if (s->e->verbose)
+    message("weight mapper took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
   check_weights(tasks, nr_tasks, &weights_data, weights_v, weights_e);
@@ -1963,6 +1964,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
             sum, refsum);
     }
   }
+  message("partition weights checked successfully");
 }
 #endif
 #endif
