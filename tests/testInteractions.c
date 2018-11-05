@@ -16,12 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
+/* Some standard headers. */
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+/* Local includes */
 #include "swift.h"
 
 /* Other schemes need to be added here if they are not vectorized, otherwise
