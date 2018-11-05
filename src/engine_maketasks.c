@@ -501,8 +501,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   }
 
   /* We are below the super-cell but not below the maximal splitting depth */
-  else if ((c->super != NULL) &&
-           ((c->maxdepth - c->depth) >= space_subdepth_diff_grav)) {
+  else if (c->super != NULL) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
