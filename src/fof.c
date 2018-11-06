@@ -449,8 +449,8 @@ static void rec_fof_search_self(struct cell *c, struct space *s,
 /* Perform a FOF search on a single cell using the Union-Find algorithm.*/
 void fof_search_cell(struct space *s, struct cell *c) {
 
-  const size_t count = c->gcount;
-  struct gpart *gparts = c->gparts;
+  const size_t count = c->grav.count;
+  struct gpart *gparts = c->grav.parts;
   const double l_x2 = s->l_x2;
   size_t *group_index = s->fof_data.group_index;
 
@@ -503,10 +503,10 @@ void fof_search_cell(struct space *s, struct cell *c) {
 /* Perform a FOF search on a pair of cells using the Union-Find algorithm.*/
 void fof_search_pair_cells(struct space *s, struct cell *restrict ci, struct cell *restrict cj) {
 
-  const size_t count_i = ci->gcount;
-  const size_t count_j = cj->gcount;
-  struct gpart *gparts_i = ci->gparts;
-  struct gpart *gparts_j = cj->gparts;
+  const size_t count_i = ci->grav.count;
+  const size_t count_j = cj->grav.count;
+  struct gpart *gparts_i = ci->grav.parts;
+  struct gpart *gparts_j = cj->grav.parts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const float l_x2 = s->l_x2;
   size_t *group_index = s->fof_data.group_index;
@@ -584,10 +584,10 @@ void fof_search_pair_cells(struct space *s, struct cell *restrict ci, struct cel
  * Store any links found between particles.*/
 void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell *cj, int *link_count, struct fof_mpi **group_links, int *group_links_size) {
 
-  const size_t count_i = ci->gcount;
-  const size_t count_j = cj->gcount;
-  struct gpart *gparts_i = ci->gparts;
-  struct gpart *gparts_j = cj->gparts;
+  const size_t count_i = ci->grav.count;
+  const size_t count_j = cj->grav.count;
+  struct gpart *gparts_i = ci->grav.parts;
+  struct gpart *gparts_j = cj->grav.parts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double l_x2 = s->l_x2;
   size_t *group_index = s->fof_data.group_index;
@@ -734,7 +734,7 @@ void fof_search_tree_mapper(void *map_data, int num_elements,
     if(ci->nodeID == engine_rank) {
 
       /* Skip empty cells. */
-      if(ci->gcount == 0) continue;
+      if(ci->grav.count == 0) continue;
 
       /* Perform FOF search on local particles within the cell. */
       rec_fof_search_self(ci, s, dim, search_r2);
@@ -749,7 +749,7 @@ void fof_search_tree_mapper(void *map_data, int num_elements,
         if(cj->nodeID == engine_rank) {
           
           /* Skip empty cells. */
-          if(cj->gcount == 0) continue;
+          if(cj->grav.count == 0) continue;
 
           rec_fof_search_pair(ci, cj, s, dim, search_r2);
         }
@@ -931,7 +931,7 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
         struct cell *restrict local_cell = e->proxies[i].cells_out[j];
 
         /* Skip empty cells. */
-        if(local_cell->gcount == 0) continue;
+        if(local_cell->grav.count == 0) continue;
 
         for(int k=0; k<e->proxies[i].nr_cells_in; k++) {
 
@@ -941,7 +941,7 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
           struct cell *restrict foreign_cell = e->proxies[i].cells_in[k];
 
           /* Skip empty cells. */
-          if(foreign_cell->gcount == 0) continue;
+          if(foreign_cell->grav.count == 0) continue;
 
           /* Check if local cell has already been added to the local list of cells. */
           const double r2 = cell_min_dist(local_cell, foreign_cell, dim);
@@ -960,13 +960,13 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
     for(int j=0; j<e->proxies[i].nr_cells_out; j++) {
 
       struct cell *restrict local_cell = e->proxies[i].cells_out[j];
-      struct gpart *gparts = local_cell->gparts;
+      struct gpart *gparts = local_cell->grav.parts;
   
       /* Make a list of particle offsets into the global gparts array. */
       size_t *const offset = group_index + (ptrdiff_t)(gparts - s->gparts);
 
       /* Set each particle's root and group properties found in the local FOF.*/
-      for(int k=0; k<local_cell->gcount; k++) {
+      for(int k=0; k<local_cell->grav.count; k++) {
         const size_t root = fof_find_global(offset[k] - node_offset, group_index);  
         gparts[k].group_id = root;
         gparts[k].group_size = group_size[root - node_offset];
