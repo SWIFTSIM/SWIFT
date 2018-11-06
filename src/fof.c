@@ -185,7 +185,7 @@ __attribute__((always_inline)) INLINE static size_t update_root(
   old_val = *address;
 
   test_val = old_val;
-  new_val = min(old_val, y);
+  new_val = y;
 
   /* atomic_cas returns old_val if *size_t_ptr has not changed since being read.*/
   old_val = atomic_cas(size_t_ptr, test_val, new_val);
