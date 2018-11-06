@@ -178,48 +178,66 @@ void test_log_timestamps(struct logger *log) {
 
   /* The timestamp to log. */
   unsigned long long int t = 10;
+  double time = 0.1;
 
   /* Start with an offset at the end of the dump. */
   size_t offset = d->count;
 
   /* Log three consecutive timestamps. */
-  logger_log_timestamp(log, t, &offset);
+  logger_log_timestamp(log, t, time, &offset);
   printf("Logged timestamp %020llu at offset %#016zx.\n", t, offset);
   t += 10;
-  logger_log_timestamp(log, t, &offset);
+  time = 0.2;
+  logger_log_timestamp(log, t, time, &offset);
   printf("Logged timestamp %020llu at offset %#016zx.\n", t, offset);
   t += 10;
-  logger_log_timestamp(log, t, &offset);
+  time = 0.3;
+  logger_log_timestamp(log, t, time, &offset);
   printf("Logged timestamp %020llu at offset %#016zx.\n", t, offset);
 
   /* Recover the three timestamps. */
   size_t offset_old = offset;
   t = 0;
-  int mask = logger_read_timestamp(&t, &offset, (const char *)d->data);
+  time = 0;
+  int mask = logger_read_timestamp(&t, &time, &offset, (const char *)d->data);
   printf("Recovered timestamp %020llu at offset %#016zx with mask %#04x.\n", t,
          offset_old, mask);
   if (t != 30) {
     printf("FAIL: could not recover correct timestamp.\n");
     abort();
   }
+  if (time != 0.3) {
+    printf("FAIL: could not recover correct time %g.\n", time);
+    abort();
+  }
 
   offset_old = offset;
   t = 0;
-  mask = logger_read_timestamp(&t, &offset, (const char *)d->data);
+  time = 0;
+  mask = logger_read_timestamp(&t, &time, &offset, (const char *)d->data);
   printf("Recovered timestamp %020llu at offset %#016zx with mask %#04x.\n", t,
          offset_old, mask);
   if (t != 20) {
     printf("FAIL: could not recover correct timestamp.\n");
     abort();
   }
+  if (time != 0.2) {
+    printf("FAIL: could not recover correct time.\n");
+    abort();
+  }
 
   offset_old = offset;
   t = 0;
-  mask = logger_read_timestamp(&t, &offset, (const char *)d->data);
+  time = 0;
+  mask = logger_read_timestamp(&t, &time, &offset, (const char *)d->data);
   printf("Recovered timestamp %020llu at offset %#016zx with mask %#04x.\n", t,
          offset_old, mask);
   if (t != 10) {
     printf("FAIL: could not recover correct timestamp.\n");
+    abort();
+  }
+  if (time != 0.1) {
+    printf("FAIL: could not recover correct time.\n");
     abort();
   }
 }

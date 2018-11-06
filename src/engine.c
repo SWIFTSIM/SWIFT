@@ -2678,7 +2678,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
 #ifdef WITH_LOGGER
   /* Mark the first time step in the particle logger file. */
-  logger_log_timestamp(e->logger, e->ti_current, &e->logger->timestamp_offset);
+  logger_log_timestamp(e->logger, e->ti_current, e->time,
+                       &e->logger->timestamp_offset);
   /* Make sure that we have enough space in the particle logger file
    * to store the particles in current time step. */
   logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
@@ -2935,7 +2936,8 @@ void engine_step(struct engine *e) {
 
 #ifdef WITH_LOGGER
   /* Mark the current time step in the particle logger file. */
-  logger_log_timestamp(e->logger, e->ti_current, &e->logger->timestamp_offset);
+  logger_log_timestamp(e->logger, e->ti_current, e->time,
+                       &e->logger->timestamp_offset);
   /* Make sure that we have enough space in the particle logger file
    * to store the particles in current time step. */
   logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);

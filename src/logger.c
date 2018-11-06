@@ -161,6 +161,7 @@ int logger_compute_chunk_size(unsigned int mask) {
 
     /* A timestamp consists of an unsigned long long int. */
     size += sizeof(unsigned long long int);
+    size += sizeof(double);
 
   } else {
 
@@ -369,11 +370,12 @@ void logger_log_gpart(struct logger *log, const struct gpart *p,
  *
  * @param log The #logger
  * @param timestamp time to write
+ * @param time time or scale factor
  * @param offset Pointer to the offset of the previous log of this particle;
  * (return) offset of this log.
  */
 void logger_log_timestamp(struct logger *log, integertime_t timestamp,
-                          size_t *offset) {
+                          double time, size_t *offset) {
   struct dump *dump = log->dump;
 
   /* Start by computing the size of the message. */
@@ -389,6 +391,10 @@ void logger_log_timestamp(struct logger *log, integertime_t timestamp,
 
   /* Store the timestamp. */
   memcpy(buff, &timestamp, sizeof(integertime_t));
+  buff += sizeof(integertime_t);
+
+  /* Store the time */
+  memcpy(buff, &time, sizeof(double));
 
   /* Update the log message offset. */
   *offset = offset_new;
@@ -634,7 +640,7 @@ void logger_parameters_init(struct logger_parameters *log_params) {
   log_params->masks_data_size[4] = sizeof(float);
   log_params->masks_data_size[5] = sizeof(float);
   log_params->masks_data_size[6] = sizeof(float) + sizeof(long long);
-  log_params->masks_data_size[7] = sizeof(integertime_t);
+  log_params->masks_data_size[7] = sizeof(integertime_t) + sizeof(double);
 
   /* Compute the size of a chunk if all the mask are activated */
   log_params->total_size = logger_offset_size + logger_mask_size;
@@ -824,8 +830,8 @@ int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff) {
  *
  * @return The mask containing the values read.
  */
-int logger_read_timestamp(unsigned long long int *t, size_t *offset,
-                          const char *buff) {
+int logger_read_timestamp(unsigned long long int *t, double *time,
+                          size_t *offset, const char *buff) {
 
   /* Jump to the offset. */
   buff = &buff[*offset];
@@ -845,6 +851,10 @@ int logger_read_timestamp(unsigned long long int *t, size_t *offset,
 
   /* Copy the timestamp value from the buffer. */
   memcpy(t, buff, sizeof(unsigned long long int));
+  buff += sizeof(unsigned long long int);
+
+  /* Copy the timestamp value from the buffer. */
+  memcpy(time, buff, sizeof(double));
 
   /* Finally, return the mask of the values we just read. */
   return mask;
