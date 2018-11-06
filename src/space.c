@@ -505,14 +505,14 @@ void space_regrid(struct space *s, int verbose) {
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
-	  c->mpi.hydro.recv_xv = NULL;
-	  c->mpi.hydro.recv_rho = NULL;
-	  c->mpi.hydro.recv_gradient = NULL;
-	  c->mpi.hydro.send_xv = NULL;
-	  c->mpi.hydro.send_rho = NULL;
-	  c->mpi.hydro.send_gradient = NULL;
-	  c->mpi.grav.recv = NULL;
-	  c->mpi.grav.send = NULL;
+          c->mpi.hydro.recv_xv = NULL;
+          c->mpi.hydro.recv_rho = NULL;
+          c->mpi.hydro.recv_gradient = NULL;
+          c->mpi.hydro.send_xv = NULL;
+          c->mpi.hydro.send_rho = NULL;
+          c->mpi.hydro.send_gradient = NULL;
+          c->mpi.grav.recv = NULL;
+          c->mpi.grav.send = NULL;
 #endif  // WITH_MPI
           if (s->gravity) c->grav.multipole = &s->multipoles_top[cid];
 #ifdef SWIFT_DEBUG_CHECKS

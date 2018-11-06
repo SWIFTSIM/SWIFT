@@ -486,7 +486,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       } else {
         scheduler_addunlock(s, c->kick2, c->timestep);
       }
-      
+
       scheduler_addunlock(s, c->timestep, c->kick1);
 
 #if defined(WITH_LOGGER)
@@ -498,8 +498,8 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
     /* Recurse. */
     if (c->split)
       for (int k = 0; k < 8; k++)
-	if (c->progeny[k] != NULL)
-	  engine_make_hierarchical_tasks_common(e, c->progeny[k]);
+        if (c->progeny[k] != NULL)
+          engine_make_hierarchical_tasks_common(e, c->progeny[k]);
   }
 }
 
@@ -572,7 +572,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   }
 
   /* We are below the super-cell but not below the maximal splitting depth */
-  else if ((c->grav.super != NULL)  &&
+  else if ((c->grav.super != NULL) &&
            ((c->maxdepth - c->depth) >= space_subdepth_diff_grav)) {
 
     /* Local tasks only... */
@@ -581,7 +581,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
       if (is_self_gravity) {
 
         c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
-					      task_subtype_none, 0, 1, c, NULL);
+                                              task_subtype_none, 0, 1, c, NULL);
 
         c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
                                              task_subtype_none, 0, 1, c, NULL);
@@ -1169,9 +1169,8 @@ void engine_link_gravity_tasks(struct engine *e) {
 
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
-
         if (ci_parent != cj_parent) { /* Avoid double unlock */
-	  scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
+          scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
           scheduler_addunlock(sched, cj_parent->grav.init_out, t);
           scheduler_addunlock(sched, t, cj_parent->grav.down_in);
         }
@@ -1219,9 +1218,8 @@ void engine_link_gravity_tasks(struct engine *e) {
 
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
-
         if (ci_parent != cj_parent) { /* Avoid double unlock */
-	  scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
+          scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
           scheduler_addunlock(sched, cj_parent->grav.init_out, t);
           scheduler_addunlock(sched, t, cj_parent->grav.down_in);
         }
