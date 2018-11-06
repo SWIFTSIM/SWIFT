@@ -242,6 +242,8 @@ static INLINE void potential_init_backend(
       error("Please specify one of the 3 variables M200, V200 or R200");
     }
 
+    message("M200 = %g, R200 = %g, V200 = %g",M200, R200, V200);
+
     /* get the concentration from the parameter file */
     const double concentration = parser_get_param_double(parameter_file, 
                   "HernquistPotential:concentration");

@@ -25,7 +25,7 @@ TimeIntegration:
 Snapshots:
   basename:   output      # Common part of the name of output files
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
+  delta_time: 0.001        # Time difference between consecutive outputs (in internal units)
 
   
 # Parameters governing the conserved quantities statistics
@@ -43,8 +43,8 @@ HernquistPotential:
   useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
   position:        [0.,0.,0.]    # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
   idealizeddisk:   1        # Run with an idealized galaxy disk
-  R200:            10.     # M200 of the galaxy disk
-  h:               0.704    # reduced Hubble constant
+  M200:            30.0   # M200 of the galaxy disk
+  h:               0.704    # reduced Hubble constant (value does not specify the used units!)
   concentration:   7.1      # concentration of the Halo
   MD:              0.0434370991372   # Disk mass fraction
   MB:              0.00705852860979  # Bulge mass fraction
