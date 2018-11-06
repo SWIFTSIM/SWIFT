@@ -1,8 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016  Tom Theuns (tom.theuns@durham.ac.uk)
- *                     Stefan Arridge (stefan.arridge@durham.ac.uk)
- *                     Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_POTENTIAL_ISOTHERMAL_H
-#define SWIFT_POTENTIAL_ISOTHERMAL_H
+#ifndef SWIFT_POTENTIAL_HERNQUIST_H
+#define SWIFT_POTENTIAL_HERNQUIST_H
 
 /* Config parameters. */
 #include "../config.h"
@@ -36,32 +34,36 @@
 #include "units.h"
 
 /**
- * @brief External Potential Properties - Isothermal sphere case with
- * central softening
+ * @brief External Potential Properties - Hernquist potential
  */
 struct external_potential {
 
   /*! Position of the centre of potential */
   double x[3];
 
-  /*! Rotation velocity */
-  double vrot;
+  /*! Mass of the halo */
+  double mass;
 
-  /*! Square of vrot, the circular velocity which defines the isothermal
-   * potential devided by Newton's constant */
-  double vrot2_over_G;
+  /*! Scale length (often as a, to prevent confusion with the cosmological
+   * scale-factor we use al) */
+  double al;
 
   /*! Square of the softening length. Acceleration tends to zero within this
    * distance from the origin */
   double epsilon2;
 
-  /*! Time-step condition pre-factor */
+  /* Minimum timestep of the potential given by the timestep multiple
+   * times the orbital time at the softening length */
+  double mintime;
+
+  /*! Time-step condition pre-factor, is multiplied times the circular orbital
+   * time to get the time steps */
   double timestep_mult;
 };
 
 /**
- * @brief Computes the time-step due to the acceleration from an isothermal
- * potential.
+ * @brief Computes the time-step in a Hernquist potential based on a
+ *        fraction of the circular orbital time
  *
  * @param time The current time.
  * @param potential The #external_potential used in the run.
@@ -73,38 +75,37 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
     const struct phys_const* restrict phys_const,
     const struct gpart* restrict g) {
 
+  const float G_newton = phys_const->const_newton_G;
+
+  /* Calculate the relative potential with respect to the centre of the
+   * potential */
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
 
-  const float r2_plus_epsilon2_inv =
-      1.f / (dx * dx + dy * dy + dz * dz + potential->epsilon2);
-  const float drdv =
-      dx * (g->v_full[0]) + dy * (g->v_full[1]) + dz * (g->v_full[2]);
-  const double vrot = potential->vrot;
+  /* calculate the radius  */
+  const float r = sqrtf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
+  const float sqrtgm_inv = 1.f / sqrtf(G_newton * potential->mass);
 
-  const float dota_x = vrot * vrot * r2_plus_epsilon2_inv *
-                       (g->v_full[0] - 2.f * drdv * dx * r2_plus_epsilon2_inv);
-  const float dota_y = vrot * vrot * r2_plus_epsilon2_inv *
-                       (g->v_full[1] - 2.f * drdv * dy * r2_plus_epsilon2_inv);
-  const float dota_z = vrot * vrot * r2_plus_epsilon2_inv *
-                       (g->v_full[2] - 2.f * drdv * dz * r2_plus_epsilon2_inv);
-  const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
-  const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
-                    g->a_grav[2] * g->a_grav[2];
+  /* Calculate the circular orbital period */
+  const float period = 2.f * M_PI * sqrtf(r) * potential->al *
+                       (1 + r / potential->al) * sqrtgm_inv;
 
-  return potential->timestep_mult * sqrtf(a_2 / dota_2);
+  /* Time-step as a fraction of the cirecular orbital time */
+  const float time_step = potential->timestep_mult * period;
+
+  return max(time_step, potential->mintime);
 }
 
 /**
- * @brief Computes the gravitational acceleration from an isothermal potential.
+ * @brief Computes the gravitational acceleration from an Hernquist potential.
  *
  * Note that the accelerations are multiplied by Newton's G constant
  * later on.
  *
- * a_x = -(v_rot^2 / G) * x / (r^2 + epsilon^2)
- * a_y = -(v_rot^2 / G) * y / (r^2 + epsilon^2)
- * a_z = -(v_rot^2 / G) * z / (r^2 + epsilon^2)
+ * a_x = - GM / (a+r)^2 * x/r
+ * a_y = - GM / (a+r)^2 * y/r
+ * a_z = - GM / (a+r)^2 * z/r
  *
  * @param time The current time.
  * @param potential The #external_potential used in the run.
@@ -115,13 +116,16 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* g) {
 
+  /* Determine the position relative to the centre of the potential */
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
-  const float r2_plus_epsilon2_inv =
-      1.f / (dx * dx + dy * dy + dz * dz + potential->epsilon2);
 
-  const float term = -potential->vrot2_over_G * r2_plus_epsilon2_inv;
+  /* Calculate the acceleration */
+  const float r = sqrtf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
+  const float r_plus_a_inv = 1.f / (r + potential->al);
+  const float r_plus_a_inv2 = r_plus_a_inv * r_plus_a_inv;
+  const float term = -potential->mass * r_plus_a_inv2 / r;
 
   g->a_grav[0] += term * dx;
   g->a_grav[1] += term * dy;
@@ -130,9 +134,9 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 
 /**
  * @brief Computes the gravitational potential energy of a particle in an
- * isothermal potential.
+ * Hernquist potential.
  *
- * phi = -0.5 * vrot^2 * ln(r^2 + epsilon^2)
+ * phi = - GM/(r+a)
  *
  * @param time The current time (unused here).
  * @param potential The #external_potential used in the run.
@@ -147,9 +151,9 @@ external_gravity_get_potential_energy(
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
-
-  return 0.5f * potential->vrot * potential->vrot *
-         logf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
+  const float r = sqrtf(dx * dx + dy * dy + dz * dz);
+  const float r_plus_alinv = 1.f / (r + potential->al);
+  return -phys_const->const_newton_G * potential->mass * r_plus_alinv;
 }
 
 /**
@@ -167,12 +171,12 @@ static INLINE void potential_init_backend(
     struct external_potential* potential) {
 
   /* Read in the position of the centre of potential */
-  parser_get_param_double_array(parameter_file, "IsothermalPotential:position",
+  parser_get_param_double_array(parameter_file, "HernquistPotential:position",
                                 3, potential->x);
 
   /* Is the position absolute or relative to the centre of the box? */
   const int useabspos =
-      parser_get_param_int(parameter_file, "IsothermalPotential:useabspos");
+      parser_get_param_int(parameter_file, "HernquistPotential:useabspos");
 
   if (!useabspos) {
     potential->x[0] += s->dim[0] / 2.;
@@ -180,31 +184,40 @@ static INLINE void potential_init_backend(
     potential->x[2] += s->dim[2] / 2.;
   }
 
-  potential->vrot =
-      parser_get_param_double(parameter_file, "IsothermalPotential:vrot");
+  /* Read the other parameters of the model */
+  potential->mass =
+      parser_get_param_double(parameter_file, "HernquistPotential:mass");
+  potential->al =
+      parser_get_param_double(parameter_file, "HernquistPotential:scalelength");
   potential->timestep_mult = parser_get_param_float(
-      parameter_file, "IsothermalPotential:timestep_mult");
-  const double epsilon =
-      parser_get_param_double(parameter_file, "IsothermalPotential:epsilon");
-  potential->vrot2_over_G =
-      potential->vrot * potential->vrot / phys_const->const_newton_G;
+      parameter_file, "HernquistPotential:timestep_mult");
+  const float epsilon =
+      parser_get_param_double(parameter_file, "HernquistPotential:epsilon");
   potential->epsilon2 = epsilon * epsilon;
+
+  /* Compute the minimal time-step. */
+  /* This is the circular orbital time at the softened radius */
+  const float sqrtgm = sqrtf(phys_const->const_newton_G * potential->mass);
+  potential->mintime = 2.f * sqrtf(epsilon) * potential->al * M_PI *
+                       (1 + epsilon / potential->al) / sqrtgm *
+                       potential->timestep_mult;
 }
 
 /**
- * @brief Prints the properties of the external potential to stdout.
+ * @brief prints the properties of the external potential to stdout.
  *
- * @param  potential The external potential properties.
+ * @param  potential the external potential properties.
  */
-static INLINE void potential_print_backend(
+static inline void potential_print_backend(
     const struct external_potential* potential) {
 
   message(
-      "External potential is 'Isothermal' with properties are (x,y,z) = (%e, "
-      "%e, %e), vrot = %e "
-      "timestep multiplier = %e, epsilon = %e",
-      potential->x[0], potential->x[1], potential->x[2], potential->vrot,
-      potential->timestep_mult, sqrtf(potential->epsilon2));
+      "external potential is 'hernquist' with properties are (x,y,z) = (%e, "
+      "%e, %e), mass = %e "
+      "scale length = %e , minimum time = %e "
+      "timestep multiplier = %e",
+      potential->x[0], potential->x[1], potential->x[2], potential->mass,
+      potential->al, potential->mintime, potential->timestep_mult);
 }
 
-#endif /* SWIFT_ISOTHERMAL_H */
+#endif /* SWIFT_POTENTIAL_HERNQUIST_H */
