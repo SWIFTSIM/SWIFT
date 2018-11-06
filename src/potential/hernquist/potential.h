@@ -193,7 +193,7 @@ static INLINE void potential_init_backend(
 
   /* check whether we use the more advanced idealized disk setting */
   const int usedisk = parser_get_opt_param_int(parameter_file, 
-            "HernquistPotential:idealizeddisc", idealized_disk_default);
+            "HernquistPotential:idealizeddisk", idealized_disk_default);
 
   if (!usedisk) {
     /* Read the parameters of the model in the case of the simple
