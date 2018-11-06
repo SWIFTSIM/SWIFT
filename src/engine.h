@@ -50,17 +50,6 @@
 #include "task.h"
 #include "units.h"
 
-// Counters for checking number of calls to each integration scheme
-int n_particles_cooled;
-int n_particles_newton_converged_1;
-int n_particles_newton_converged_2;
-int n_particles_bisection_converged;
-int n_newton_iterations_1;
-int n_newton_iterations_2;
-int n_bisection_iterations;
-int n_bisection_table_lookups;
-int n_times_limit_du_dt;
-
 /**
  * @brief The different policies the #engine can follow.
  */

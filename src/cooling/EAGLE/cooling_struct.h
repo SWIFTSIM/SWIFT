@@ -26,19 +26,19 @@
  *
  */
 struct cooling_tables {
-  // array of heating rates due to metals
+  /* array of heating rates due to metals */
   float *metal_heating;
 
-  // array of heating rates due to hydrogen and helium
+  /* array of heating rates due to hydrogen and helium */
   float *H_plus_He_heating;
 
-  // array of electron abundances due to hydrogen and helium
+  /* array of electron abundances due to hydrogen and helium */
   float *H_plus_He_electron_abundance;
 
-  // array of temperatures
+  /* array of temperatures */
   float *temperature;
 
-  // array of electron abundances due to metals
+  /* array of electron abundances due to metals */
   float *electron_abundance;
 };
 
@@ -102,6 +102,9 @@ struct cooling_function_data {
   int z_index, previous_z_index;
   float dz;
   int low_z_index, high_z_index;
+
+  /* Flag for using newton integration, read from YAML file */
+  int newton_flag;
 };
 
 /**

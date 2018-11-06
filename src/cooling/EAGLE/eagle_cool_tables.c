@@ -92,11 +92,11 @@ void read_cooling_header(char *fname, struct cooling_function_data *cooling) {
 
   herr_t status;
 
-  // read sizes of array dimensions
+  /* read sizes of array dimensions */
   tempfile_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
   if (tempfile_id < 0) error("unable to open file %s\n", fname);
 
-  // read size of each table of values
+  /* read size of each table of values */
   dataset =
       H5Dopen(tempfile_id, "/Header/Number_of_temperature_bins", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -135,7 +135,7 @@ void read_cooling_header(char *fname, struct cooling_function_data *cooling) {
   status = H5Dclose(dataset);
   if (status < 0) error("error closing cooling dataset");
 
-  // allocate arrays of values for each of the above quantities
+  /* allocate arrays of values for each of the above quantities */
   if (posix_memalign((void **)&cooling->Temp, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * sizeof(float)) !=0) 
     error("Failed to allocate temperature table");
   if (posix_memalign((void **)&cooling->Therm, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * sizeof(float)) !=0)
@@ -147,7 +147,7 @@ void read_cooling_header(char *fname, struct cooling_function_data *cooling) {
   if (posix_memalign((void **)&cooling->SolarAbundances, SWIFT_STRUCT_ALIGNMENT, cooling->N_SolarAbundances * sizeof(float)) !=0)
     error("Failed to allocate Solar abundances table");
 
-  // read in values for each of the arrays
+  /* read in values for each of the arrays */
   dataset = H5Dopen(tempfile_id, "/Solar/Temperature_bins", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    cooling->Temp);
@@ -186,7 +186,7 @@ void read_cooling_header(char *fname, struct cooling_function_data *cooling) {
   status = H5Dclose(dataset);
   if (status < 0) error("error closing cooling dataset");
 
-  // Convert to temperature, density and internal energy arrays to log10
+  /* Convert to temperature, density and internal energy arrays to log10 */
   for (i = 0; i < cooling->N_Temp; i++) {
     cooling->Temp[i] = log10(cooling->Temp[i]);
     cooling->Therm[i] = log10(cooling->Therm[i]);
@@ -205,8 +205,8 @@ void read_cooling_header(char *fname, struct cooling_function_data *cooling) {
  */
 void allocate_cooling_tables(struct cooling_function_data *restrict cooling){
 
-  // Allocate arrays to store cooling tables. Arrays contain two tables of 
-  // cooling rates with one table being for the redshift above current redshift and one below.
+  /* Allocate arrays to store cooling tables. Arrays contain two tables of 
+   * cooling rates with one table being for the redshift above current redshift and one below. */
   if (posix_memalign((void **)&cooling->table.metal_heating, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_Elements * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
     error("Failed to allocate metal_heating array");
   if (posix_memalign((void **)&cooling->table.electron_abundance, SWIFT_STRUCT_ALIGNMENT, 2 * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
@@ -251,7 +251,7 @@ static void get_redshift_invariant_table(
   float *he_net_cooling_rate = NULL;
   float *he_electron_abundance = NULL;
 
-  // Allocate arrays for reading in cooling tables. 
+  /* Allocate arrays for reading in cooling tables.  */
   if (posix_memalign((void **)&net_cooling_rate, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
     error("Failed to allocate net_cooling_rate array");
   if (posix_memalign((void **)&electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
@@ -263,7 +263,7 @@ static void get_redshift_invariant_table(
   if (posix_memalign((void **)&he_electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
     error("Failed to allocate he_electron_abundance array");
 
-  // Decide which high redshift table to read. Indices set in cooling_update
+  /* Decide which high redshift table to read. Indices set in cooling_update */
   if (cooling->low_z_index == -1) {
     sprintf(fname, "%sz_8.989nocompton.hdf5", cooling->cooling_table_path);
   } else if (cooling->low_z_index == -2) {
@@ -273,7 +273,7 @@ static void get_redshift_invariant_table(
   file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
   if (file_id < 0) error("unable to open file %s\n", fname);
 
-  // read in cooling rates due to metals
+  /* read in cooling rates due to metals */
   for (specs = 0; specs < cooling->N_Elements; specs++) {
     sprintf(set_name, "/%s/Net_Cooling", eagle_tables_element_names[specs]);
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
@@ -283,10 +283,10 @@ static void get_redshift_invariant_table(
     status = H5Dclose(dataset);
     if (status < 0) error("error closing cooling dataset");
 
-    // Transpose from order tables are stored in (temperature, nH)
-    // to (nH, temperature, metal species) where fastest 
-    // varying index is on right. Tables contain cooling rates but we 
-    // want rate of change of internal energy, hence minus sign.
+    /* Transpose from order tables are stored in (temperature, nH)
+     * to (nH, temperature, metal species) where fastest 
+     * varying index is on right. Tables contain cooling rates but we 
+     * want rate of change of internal energy, hence minus sign. */
     for (j = 0; j < cooling->N_Temp; j++) {
       for (k = 0; k < cooling->N_nH; k++) {
         table_index = row_major_index_2d(j, k, cooling->N_Temp, cooling->N_nH);
@@ -298,8 +298,8 @@ static void get_redshift_invariant_table(
     }
   }
 
-  // read in cooling rates due to hydrogen and helium, H + He electron
-  // abundances, temperatures
+  /* read in cooling rates due to hydrogen and helium, H + He electron
+   * abundances, temperatures */
   strcpy(set_name, "/Metal_free/Net_Cooling");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -324,10 +324,10 @@ static void get_redshift_invariant_table(
   status = H5Dclose(dataset);
   if (status < 0) error("error closing cooling dataset");
 
-  // Transpose from order tables are stored in (helium fraction, temperature,
-  // nH) to (nH, helium fraction, temperature) where fastest 
-  // varying index is on right. Tables contain cooling rates but we 
-  // want rate of change of internal energy, hence minus sign.
+  /* Transpose from order tables are stored in (helium fraction, temperature,
+   * nH) to (nH, helium fraction, temperature) where fastest 
+   * varying index is on right. Tables contain cooling rates but we 
+   * want rate of change of internal energy, hence minus sign. */
   for (i = 0; i < cooling->N_He; i++) {
     for (j = 0; j < cooling->N_Temp; j++) {
       for (k = 0; k < cooling->N_nH; k++) {
@@ -345,7 +345,7 @@ static void get_redshift_invariant_table(
     }
   }
 
-  // read in electron densities due to metals
+  /* read in electron densities due to metals */
   strcpy(set_name, "/Solar/Electron_density_over_n_h");
   dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -354,8 +354,8 @@ static void get_redshift_invariant_table(
   status = H5Dclose(dataset);
   if (status < 0) error("error closing cooling dataset");
 
-  // Transpose from order tables are stored in (temperature, nH) to 
-  // (nH, temperature) where fastest varying index is on right.
+  /* Transpose from order tables are stored in (temperature, nH) to 
+   * (nH, temperature) where fastest varying index is on right. */
   for (i = 0; i < cooling->N_Temp; i++) {
     for (j = 0; j < cooling->N_nH; j++) {
       table_index = row_major_index_2d(i, j, cooling->N_Temp, cooling->N_nH);
@@ -415,7 +415,7 @@ static void get_cooling_table(
   float *he_net_cooling_rate = NULL;
   float *he_electron_abundance = NULL;
 
-  // Allocate arrays for reading in cooling tables. 
+  /* Allocate arrays for reading in cooling tables.  */
   if (posix_memalign((void **)&net_cooling_rate, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
     error("Failed to allocate net_cooling_rate array");
   if (posix_memalign((void **)&electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
@@ -427,8 +427,8 @@ static void get_cooling_table(
   if (posix_memalign((void **)&he_electron_abundance, SWIFT_STRUCT_ALIGNMENT, cooling->N_He * cooling->N_Temp * cooling->N_nH * sizeof(float)) !=0)
     error("Failed to allocate he_electron_abundance array");
 
-  // Read in tables, transpose so that values for indices which vary most are
-  // adjacent. Repeat for redshift above and redshift below current value. 
+  /* Read in tables, transpose so that values for indices which vary most are
+   * adjacent. Repeat for redshift above and redshift below current value.  */
   for (int z_index = cooling->low_z_index; z_index <= cooling->high_z_index;
        z_index++) {
     sprintf(fname, "%sz_%1.3f.hdf5", cooling->cooling_table_path,
@@ -436,7 +436,7 @@ static void get_cooling_table(
     file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
     if (file_id < 0) error("unable to open file %s", fname);
 
-    // read in cooling rates due to metals
+    /* read in cooling rates due to metals */
     for (specs = 0; specs < cooling->N_Elements; specs++) {
       sprintf(set_name, "/%s/Net_Cooling", eagle_tables_element_names[specs]);
       dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
@@ -446,10 +446,10 @@ static void get_cooling_table(
       status = H5Dclose(dataset);
       if (status < 0) error("error closing cooling dataset");
 
-      // Transpose from order tables are stored in (temperature, nH)
-      // to (redshift, nH, temperature, metal species) where fastest 
-      // varying index is on right. Tables contain cooling rates but we 
-      // want rate of change of internal energy, hence minus sign.
+      /* Transpose from order tables are stored in (temperature, nH)
+       * to (redshift, nH, temperature, metal species) where fastest 
+       * varying index is on right. Tables contain cooling rates but we 
+       * want rate of change of internal energy, hence minus sign. */
       for (i = 0; i < cooling->N_nH; i++) {
         for (j = 0; j < cooling->N_Temp; j++) {
           table_index =
@@ -463,8 +463,8 @@ static void get_cooling_table(
       }
     }
 
-    // read in cooling rates due to hydrogen and helium, H + He electron
-    // abundances, temperatures
+    /* read in cooling rates due to hydrogen and helium, H + He electron
+     * abundances, temperatures */
     strcpy(set_name, "/Metal_free/Net_Cooling");
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -489,9 +489,9 @@ static void get_cooling_table(
     status = H5Dclose(dataset);
     if (status < 0) error("error closing cooling dataset");
 
-    // Transpose from order tables are stored in (helium fraction, temperature,
-    // nH) to (redshift, nH, helium fraction, temperature) where fastest 
-    // varying index is on right.
+    /* Transpose from order tables are stored in (helium fraction, temperature,
+     * nH) to (redshift, nH, helium fraction, temperature) where fastest 
+     * varying index is on right. */
     for (i = 0; i < cooling->N_He; i++) {
       for (j = 0; j < cooling->N_Temp; j++) {
         for (k = 0; k < cooling->N_nH; k++) {
@@ -510,7 +510,7 @@ static void get_cooling_table(
       }
     }
 
-    // read in electron densities due to metals
+    /* read in electron densities due to metals */
     strcpy(set_name, "/Solar/Electron_density_over_n_h");
     dataset = H5Dopen(file_id, set_name, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -519,8 +519,8 @@ static void get_cooling_table(
     status = H5Dclose(dataset);
     if (status < 0) error("error closing cooling dataset");
 
-    // Transpose from order tables are stored in (temperature, nH) to 
-    // (redshift, nH, temperature) where fastest varying index is on right.
+    /* Transpose from order tables are stored in (temperature, nH) to 
+     * (redshift, nH, temperature) where fastest varying index is on right. */
     for (i = 0; i < cooling->N_Temp; i++) {
       for (j = 0; j < cooling->N_nH; j++) {
         table_index = row_major_index_2d(i, j, cooling->N_Temp, cooling->N_nH);
@@ -560,8 +560,8 @@ static void eagle_readtable(
     struct cooling_function_data *restrict cooling) {
 
   if (cooling->z_index < 0) {
-    // z_index is set to < 0 in cooling_update if need
-    // to read any of the high redshift tables
+    /* z_index is set to < 0 in cooling_update if need
+     * to read any of the high redshift tables */
     get_redshift_invariant_table(cooling);
   } else {
     get_cooling_table(cooling);

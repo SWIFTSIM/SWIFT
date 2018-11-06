@@ -99,22 +99,22 @@ __attribute__((always_inline)) INLINE int row_major_index_4d(int i, int j,
 __attribute__((always_inline)) INLINE void get_index_1d(float *table,
                                                         int ntable, double x,
                                                         int *i, float *dx) {
-  // Used for deciding whether to use table endpoints when finding index of a
-  // variable
+  /* Used for deciding whether to use table endpoints when finding index of a
+   * variable */
   const float table_bound_tolerance = 1.e-4;
 
   float dxm1 = (float)(ntable - 1) / (table[ntable - 1] - table[0]);
 
   if ((float)x <= table[0] + table_bound_tolerance) {
-    // x less than first table element, use first element
+    /* x less than first table element, use first element */
     *i = 0;
     *dx = 0;
   } else if ((float)x >= table[ntable - 1] - table_bound_tolerance) {
-    // x greater than last table element, use last element
+    /* x greater than last table element, use last element */
     *i = ntable - 2;
     *dx = 1;
   } else {
-    // x inside table range, interpolate
+    /* x inside table range, interpolate */
     *i = (int)floor(((float)x - table[0]) * dxm1);
 #ifdef SWIFT_DEBUG_CHECKS
     if (*i > ntable || *i < 0)
@@ -323,6 +323,9 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
 
   get_index_1d(cooling->Therm, cooling->N_Temp, log_10_u, &u_i, &d_u);
 
+  /* Interpolate temperature table to return temperature for current 
+   * internal energy (use 3D interpolation for high redshift table, 
+   * otherwise 4D) */ 
   if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
     log_10_T = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
                           d_He, d_u, cooling->N_nH, cooling->N_He,
@@ -333,6 +336,10 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
                           cooling->N_He, cooling->N_Temp);
   }
 
+  /* Interpolate temperature table to return temperature for internal energy
+   * at grid point above current internal energy for computing dT_du used for
+   * calculation of dlambda_du in cooling.c (use 3D interpolation for high redshift table, 
+   * otherwise 4D) */ 
   if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
     log_10_T_high = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
                           d_He, 1.0, cooling->N_nH, cooling->N_He,
@@ -343,6 +350,10 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
                           cooling->N_He, cooling->N_Temp);
   }
 
+  /* Interpolate temperature table to return temperature for internal energy
+   * at grid point below current internal energy for computing dT_du used for
+   * calculation of dlambda_du in cooling.c (use 3D interpolation for high redshift table, 
+   * otherwise 4D) */ 
   if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
     log_10_T_low = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
                           d_He, 0.0, cooling->N_nH, cooling->N_He,
@@ -353,9 +364,9 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
                           cooling->N_He, cooling->N_Temp);
   }
 
+  /* Calculate dT/du */
   float delta_u =
       exp(cooling->Therm[u_i + 1] * M_LN10) - exp(cooling->Therm[u_i] * M_LN10);
-
   *dT_du = (exp(M_LN10*log_10_T_high) - exp(M_LN10*log_10_T_low)) / delta_u;
 
   return log_10_T;

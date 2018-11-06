@@ -5184,51 +5184,22 @@ void engine_step(struct engine *e) {
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
-        "%6d %6d %6d %6d %6d %.5e %.5e %.5e %.5e %d \n",
+        "%6d \n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-        e->s_updates, e->wallclock_time, e->step_props,
-	n_particles_cooled,
-	n_particles_newton_converged_1,
-	n_particles_newton_converged_2,
-	n_particles_bisection_converged,
-	(float)n_newton_iterations_1/(float)n_particles_newton_converged_1,
-	(float)n_newton_iterations_2/(float)n_particles_newton_converged_2,
-	(float)n_bisection_iterations/(float)n_particles_bisection_converged,
-	(float)n_bisection_table_lookups/(float)n_particles_bisection_converged,
-	n_times_limit_du_dt);
+        e->s_updates, e->wallclock_time, e->step_props);
     fflush(stdout);
 
     if (!e->restarting)
       fprintf(
           e->file_timesteps,
           "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
-          "%6d %6d %6d %6d %6d %.5e %.5e %.5e %.5e %d \n",
+          "%6d \n",
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-          e->s_updates, e->wallclock_time, e->step_props,
-	  n_particles_cooled,
-	  n_particles_newton_converged_1,
-	  n_particles_newton_converged_2,
-	  n_particles_bisection_converged,
-	  (float)n_newton_iterations_1/(float)n_particles_newton_converged_1,
-	  (float)n_newton_iterations_2/(float)n_particles_newton_converged_2,
-	  (float)n_bisection_iterations/(float)n_particles_bisection_converged,
-	  (float)n_bisection_table_lookups/(float)n_particles_bisection_converged,
-	  n_times_limit_du_dt);
+          e->s_updates, e->wallclock_time, e->step_props);
     fflush(e->file_timesteps);
   }
-
-  // Temporary counters for checking number of calls to each integration scheme
-  n_particles_cooled = 0;
-  n_particles_newton_converged_1 = 0;
-  n_particles_newton_converged_2 = 0;
-  n_particles_bisection_converged = 0;
-  n_newton_iterations_1 = 0;
-  n_newton_iterations_2 = 0;
-  n_bisection_iterations = 0;
-  n_bisection_table_lookups = 0;
-  n_times_limit_du_dt = 0;
 
   /* We need some cells to exist but not the whole task stuff. */
   if (e->restarting) space_rebuild(e->s, e->verbose);
