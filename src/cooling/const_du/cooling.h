@@ -54,10 +54,9 @@
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
  */
-INLINE static void cooling_update(const struct phys_const* phys_const,
-                                  const struct unit_system* us,
-                                  const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling) {
+INLINE static void cooling_update(const struct cosmology *cosmo,
+                    		  struct cooling_function_data *cooling,
+		                  const int restart_flag) {
   // Add content if required.
 }
 
@@ -203,6 +202,21 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
   cooling->cooling_tstep_mult = parser_get_param_double(
       parameter_file, "ConstCooling:cooling_tstep_mult");
 }
+
+/**
+ * @brief Restore cooling tables (if applicable) after
+ * restart
+ *
+ * Nothing to do here
+ *
+ * @param cooling the cooling_function_data structure
+ * @param cosmo cosmology structure
+ */
+static INLINE void cooling_restore_tables(struct cooling_function_data* cooling,
+                                          const struct cosmology* cosmo){
+
+}
+
 
 /**
  * @brief Prints the properties of the cooling model to stdout.

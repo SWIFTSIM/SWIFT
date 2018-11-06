@@ -78,10 +78,5 @@ void cooling_struct_restore(struct cooling_function_data* cooling,
   restart_read_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
                       stream, NULL, "cooling function");
 
-  get_cooling_redshifts(cooling);
-  char fname[eagle_table_path_name_length + 12];
-  sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
-  read_cooling_header(fname, cooling);
-  allocate_cooling_tables(cooling);
-  cooling_update(cosmo, cooling, 1); 
+  cooling_restore_tables(cooling, cosmo);
 }

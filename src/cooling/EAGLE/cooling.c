@@ -1052,6 +1052,24 @@ void cooling_init_backend(struct swift_params *parameter_file,
 }
 
 /**
+ * @brief Restore cooling tables (if applicable) after
+ * restart
+ *
+ * @param cooling the cooling_function_data structure
+ * @param cosmo cosmology structure
+ */
+void cooling_restore_tables(struct cooling_function_data* cooling,
+                            const struct cosmology* cosmo){
+
+  get_cooling_redshifts(cooling);
+  char fname[eagle_table_path_name_length + 12];
+  sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
+  read_cooling_header(fname, cooling);
+  allocate_cooling_tables(cooling);
+  cooling_update(cosmo, cooling, 1);
+}
+
+/**
  * @brief Prints the properties of the cooling model to stdout.
  *
  * @param cooling The properties of the cooling function.
