@@ -619,18 +619,25 @@ void runner_do_sort_ascending(struct entry *sort, int N) {
  * @param c The #cell to check.
  * @param flags The sorting flags to check.
  */
-void runner_check_sorts(struct cell *c, int flags) {
-
 #ifdef SWIFT_DEBUG_CHECKS
-  if (flags & ~c->hydro.sorted) error("Inconsistent sort flags (downward)!");
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL && c->progeny[k]->hydro.count > 0)
-        runner_check_sorts(c->progeny[k], c->hydro.sorted);
+#define RUNNER_CHECK_SORTS(TYPE)                                               \
+  void runner_check_sorts_##TYPE(struct cell *c, int flags) {                  \
+                                                                               \
+    if (flags & ~c->TYPE.sorted) error("Inconsistent sort flags (downward)!"); \
+    if (c->split)                                                              \
+      for (int k = 0; k < 8; k++)                                              \
+        if (c->progeny[k] != NULL && c->progeny[k]->TYPE.count > 0)            \
+          runner_check_sorts_##TYPE(c->progeny[k], c->TYPE.sorted);            \
+  }
 #else
-  error("Calling debugging code without debugging flag activated.");
+#define RUNNER_CHECK_SORTS(TYPE)                                       \
+  void runner_check_sorts_##TYPE(struct cell *c, int flags) {          \
+    error("Calling debugging code without debugging flag activated."); \
+  }
 #endif
-}
+
+RUNNER_CHECK_SORTS(hydro)
+RUNNER_CHECK_SORTS(stars)
 
 /**
  * @brief Sort the particles in the given cell along all cardinal directions.
@@ -643,8 +650,8 @@ void runner_check_sorts(struct cell *c, int flags) {
  * @param clock Flag indicating whether to record the timing or not, needed
  *      for recursive calls.
  */
-void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
-                    int clock) {
+void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
+                          int cleanup, int clock) {
 
   struct entry *fingers[8];
   const int count = c->hydro.count;
@@ -669,7 +676,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure the sort flags are consistent (downward). */
-  runner_check_sorts(c, c->hydro.sorted);
+  runner_check_sorts_hydro(c, c->hydro.sorted);
 
   /* Make sure the sort flags are consistent (upard). */
   for (struct cell *finger = c->parent; finger != NULL;
@@ -701,10 +708,10 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL && c->progeny[k]->hydro.count > 0) {
         /* Only propagate cleanup if the progeny is stale. */
-        runner_do_sort(r, c->progeny[k], flags,
-                       cleanup && (c->progeny[k]->hydro.dx_max_sort >
-                                   space_maxreldx * c->progeny[k]->dmin),
-                       0);
+        runner_do_hydro_sort(r, c->progeny[k], flags,
+                             cleanup && (c->progeny[k]->hydro.dx_max_sort >
+                                         space_maxreldx * c->progeny[k]->dmin),
+                             0);
         dx_max_sort = max(dx_max_sort, c->progeny[k]->hydro.dx_max_sort);
         dx_max_sort_old =
             max(dx_max_sort_old, c->progeny[k]->hydro.dx_max_sort_old);
@@ -838,7 +845,7 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
   }
 
   /* Make sure the sort flags are consistent (downward). */
-  runner_check_sorts(c, flags);
+  runner_check_sorts_hydro(c, flags);
 
   /* Make sure the sort flags are consistent (upward). */
   for (struct cell *finger = c->parent; finger != NULL;
@@ -854,6 +861,224 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int cleanup,
   c->hydro.requires_sorts = 0;
 
   if (clock) TIMER_TOC(timer_dosort);
+}
+
+/**
+ * @brief Sort the stars particles in the given cell along all cardinal
+ * directions.
+ *
+ * @param r The #runner.
+ * @param c The #cell.
+ * @param flags Cell flag.
+ * @param cleanup If true, re-build the sorts for the selected flags instead
+ *        of just adding them.
+ * @param clock Flag indicating whether to record the timing or not, needed
+ *      for recursive calls.
+ */
+void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
+                          int cleanup, int clock) {
+
+  struct entry *fingers[8];
+  const int count = c->stars.count;
+  struct spart *sparts = c->stars.parts;
+  float buff[8];
+
+  TIMER_TIC;
+
+  /* We need to do the local sorts plus whatever was requested further up. */
+  flags |= c->stars.do_sort;
+  if (cleanup) {
+    c->stars.sorted = 0;
+  } else {
+    flags &= ~c->stars.sorted;
+  }
+  if (flags == 0 && !c->stars.do_sub_sort) return;
+
+  /* Check that the particles have been moved to the current time */
+  if (flags && !cell_are_spart_drifted(c, r->e))
+    error("Sorting un-drifted cell c->nodeID=%d", c->nodeID);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure the sort flags are consistent (downward). */
+  runner_check_sorts_stars(c, c->stars.sorted);
+
+  /* Make sure the sort flags are consistent (upward). */
+  for (struct cell *finger = c->parent; finger != NULL;
+       finger = finger->parent) {
+    if (finger->stars.sorted & ~c->stars.sorted)
+      error("Inconsistent sort flags (upward).");
+  }
+
+  /* Update the sort timer which represents the last time the sorts
+     were re-set. */
+  if (c->stars.sorted == 0) c->stars.ti_sort = r->e->ti_current;
+#endif
+
+  /* start by allocating the entry arrays in the requested dimensions. */
+  for (int j = 0; j < 13; j++) {
+    if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
+      if ((c->stars.sort[j] = (struct entry *)malloc(sizeof(struct entry) *
+                                                     (count + 1))) == NULL)
+        error("Failed to allocate sort memory.");
+    }
+  }
+
+  /* Does this cell have any progeny? */
+  if (c->split) {
+
+    /* Fill in the gaps within the progeny. */
+    float dx_max_sort = 0.0f;
+    float dx_max_sort_old = 0.0f;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL && c->progeny[k]->stars.count > 0) {
+        /* Only propagate cleanup if the progeny is stale. */
+        runner_do_stars_sort(r, c->progeny[k], flags,
+                             cleanup && (c->progeny[k]->stars.dx_max_sort >
+                                         space_maxreldx * c->progeny[k]->dmin),
+                             0);
+        dx_max_sort = max(dx_max_sort, c->progeny[k]->stars.dx_max_sort);
+        dx_max_sort_old =
+            max(dx_max_sort_old, c->progeny[k]->stars.dx_max_sort_old);
+      }
+    }
+    c->stars.dx_max_sort = dx_max_sort;
+    c->stars.dx_max_sort_old = dx_max_sort_old;
+
+    /* Loop over the 13 different sort arrays. */
+    for (int j = 0; j < 13; j++) {
+
+      /* Has this sort array been flagged? */
+      if (!(flags & (1 << j))) continue;
+
+      /* Init the particle index offsets. */
+      int off[8];
+      off[0] = 0;
+      for (int k = 1; k < 8; k++)
+        if (c->progeny[k - 1] != NULL)
+          off[k] = off[k - 1] + c->progeny[k - 1]->stars.count;
+        else
+          off[k] = off[k - 1];
+
+      /* Init the entries and indices. */
+      int inds[8];
+      for (int k = 0; k < 8; k++) {
+        inds[k] = k;
+        if (c->progeny[k] != NULL && c->progeny[k]->stars.count > 0) {
+          fingers[k] = c->progeny[k]->stars.sort[j];
+          buff[k] = fingers[k]->d;
+          off[k] = off[k];
+        } else
+          buff[k] = FLT_MAX;
+      }
+
+      /* Sort the buffer. */
+      for (int i = 0; i < 7; i++)
+        for (int k = i + 1; k < 8; k++)
+          if (buff[inds[k]] < buff[inds[i]]) {
+            int temp_i = inds[i];
+            inds[i] = inds[k];
+            inds[k] = temp_i;
+          }
+
+      /* For each entry in the new sort list. */
+      struct entry *finger = c->stars.sort[j];
+      for (int ind = 0; ind < count; ind++) {
+
+        /* Copy the minimum into the new sort array. */
+        finger[ind].d = buff[inds[0]];
+        finger[ind].i = fingers[inds[0]]->i + off[inds[0]];
+
+        /* Update the buffer. */
+        fingers[inds[0]] += 1;
+        buff[inds[0]] = fingers[inds[0]]->d;
+
+        /* Find the smallest entry. */
+        for (int k = 1; k < 8 && buff[inds[k]] < buff[inds[k - 1]]; k++) {
+          int temp_i = inds[k - 1];
+          inds[k - 1] = inds[k];
+          inds[k] = temp_i;
+        }
+
+      } /* Merge. */
+
+      /* Add a sentinel. */
+      c->stars.sort[j][count].d = FLT_MAX;
+      c->stars.sort[j][count].i = 0;
+
+      /* Mark as sorted. */
+      atomic_or(&c->stars.sorted, 1 << j);
+
+    } /* loop over sort arrays. */
+
+  } /* progeny? */
+
+  /* Otherwise, just sort. */
+  else {
+
+    /* Reset the sort distance */
+    if (c->stars.sorted == 0) {
+
+      /* And the individual sort distances if we are a local cell */
+      for (int k = 0; k < count; k++) {
+        sparts[k].x_diff_sort[0] = 0.0f;
+        sparts[k].x_diff_sort[1] = 0.0f;
+        sparts[k].x_diff_sort[2] = 0.0f;
+      }
+      c->stars.dx_max_sort_old = 0.f;
+      c->stars.dx_max_sort = 0.f;
+    }
+
+    /* Fill the sort array. */
+    for (int k = 0; k < count; k++) {
+      const double px[3] = {sparts[k].x[0], sparts[k].x[1], sparts[k].x[2]};
+      for (int j = 0; j < 13; j++)
+        if (flags & (1 << j)) {
+          c->stars.sort[j][k].i = k;
+          c->stars.sort[j][k].d = px[0] * runner_shift[j][0] +
+                                  px[1] * runner_shift[j][1] +
+                                  px[2] * runner_shift[j][2];
+        }
+    }
+
+    /* Add the sentinel and sort. */
+    for (int j = 0; j < 13; j++)
+      if (flags & (1 << j)) {
+        c->stars.sort[j][count].d = FLT_MAX;
+        c->stars.sort[j][count].i = 0;
+        runner_do_sort_ascending(c->stars.sort[j], count);
+        atomic_or(&c->stars.sorted, 1 << j);
+      }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify the sorting. */
+  for (int j = 0; j < 13; j++) {
+    if (!(flags & (1 << j))) continue;
+    struct entry *finger = c->stars.sort[j];
+    for (int k = 1; k < count; k++) {
+      if (finger[k].d < finger[k - 1].d)
+        error("Sorting failed, ascending array.");
+      if (finger[k].i >= count) error("Sorting failed, indices borked.");
+    }
+  }
+
+  /* Make sure the sort flags are consistent (downward). */
+  runner_check_sorts_stars(c, flags);
+
+  /* Make sure the sort flags are consistent (upward). */
+  for (struct cell *finger = c->parent; finger != NULL;
+       finger = finger->parent) {
+    if (finger->stars.sorted & ~c->stars.sorted)
+      error("Inconsistent sort flags.");
+  }
+#endif
+
+  /* Clear the cell's sort flags. */
+  c->stars.do_sort = 0;
+  c->stars.do_sub_sort = 0;
+  c->stars.requires_sorts = 0;
+
+  if (clock) TIMER_TOC(timer_do_stars_sort);
 }
 
 /**
@@ -1814,6 +2039,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps;
 
   /* No children? */
   if (!c->split) {
@@ -1990,6 +2216,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
         ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
 
+        ti_stars_end_min = min(ti_current + ti_new_step, ti_stars_end_min);
+
         /* What is the next starting point for this cell ? */
         ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
 
@@ -2005,6 +2233,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next sync-point ? */
         ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
         ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+
+        ti_stars_end_min = min(ti_end, ti_stars_end_min);
 
         const integertime_t ti_beg =
             get_integer_time_begin(ti_current + 1, sp->time_bin);
@@ -2036,6 +2266,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
         ti_gravity_end_max = max(cp->grav.ti_end_max, ti_gravity_end_max);
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
+        ti_stars_end_min = min(cp->stars.ti_end_min, ti_stars_end_min);
       }
   }
 
@@ -2052,6 +2283,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_end_max = ti_gravity_end_max;
   c->grav.ti_beg_max = ti_gravity_beg_max;
+  c->stars.ti_end_min = ti_stars_end_min;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_end_min == e->ti_current &&
@@ -2060,6 +2292,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   if (c->grav.ti_end_min == e->ti_current &&
       c->grav.ti_end_min < max_nr_timesteps)
     error("End of next gravity step is current time!");
+  if (c->stars.ti_end_min == e->ti_current &&
+      c->stars.ti_end_min < max_nr_timesteps)
+    error("End of next stars step is current time!");
 #endif
 
   if (timer) TIMER_TOC(timer_timestep);
@@ -2576,11 +2811,17 @@ void *runner_main(void *data) {
 
         case task_type_sort:
           /* Cleanup only if any of the indices went stale. */
-          runner_do_sort(r, ci, t->flags,
-                         ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin,
-                         1);
+          runner_do_hydro_sort(
+              r, ci, t->flags,
+              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
+          break;
+        case task_type_stars_sort:
+          /* Cleanup only if any of the indices went stale. */
+          runner_do_stars_sort(
+              r, ci, t->flags,
+              ci->stars.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
           break;
         case task_type_init_grav:
           runner_do_init_grav(r, ci, 1);

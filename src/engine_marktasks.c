@@ -128,7 +128,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_is_active_stars(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
-          cell_activate_drift_gpart(ci, s);
+          cell_activate_drift_spart(ci, s);
         }
       }
 
@@ -195,9 +195,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, t);
 
         /* Set the correct sorting flags */
-        if (t_type == task_type_pair &&
-            (t_subtype == task_subtype_density ||
-             t_subtype == task_subtype_stars_density)) {
+        if (t_type == task_type_pair && t_subtype == task_subtype_density) {
 
           /* Store some values. */
           atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
@@ -217,8 +215,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
-                 (t_subtype == task_subtype_density ||
-                  t_subtype == task_subtype_stars_density)) {
+                 t_subtype == task_subtype_density) {
           cell_activate_subcell_hydro_tasks(t->ci, t->cj, s);
         }
       }
@@ -233,26 +230,40 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Set the correct sorting flags */
         if (t_type == task_type_pair) {
 
+          /* Do ci */
           /* Store some values. */
-          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
           atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+          atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
+
           cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+          ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
 
           /* Activate the hydro drift tasks. */
-          if (ci_nodeID == nodeID) {
-            cell_activate_drift_part(ci, s);
-            cell_activate_drift_gpart(ci, s);
-          }
-          if (cj_nodeID == nodeID) {
-            cell_activate_drift_part(cj, s);
-            cell_activate_drift_gpart(cj, s);
-          }
+          if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+
+          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+          /* Check the sorts and activate them if needed. */
+          cell_activate_sorts(cj, t->flags, s);
+
+          cell_activate_stars_sorts(ci, t->flags, s);
+
+          /* Do cj */
+          /* Store some values. */
+          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+          atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
+
+          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+          cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
+
+          /* Activate the hydro drift tasks. */
+          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+
+          if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
 
           /* Check the sorts and activate them if needed. */
           cell_activate_sorts(ci, t->flags, s);
-          cell_activate_sorts(cj, t->flags, s);
-
+          cell_activate_stars_sorts(cj, t->flags, s);
         }
 
         /* Store current values of dx_max and h_max. */

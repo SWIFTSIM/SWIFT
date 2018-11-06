@@ -79,7 +79,8 @@ const char *taskID_names[task_type_count] = {"none",
                                              "logger",
                                              "stars_ghost_in",
                                              "stars_ghost",
-                                             "stars_ghost_out"};
+                                             "stars_ghost_out",
+                                             "stars_sort"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
@@ -148,6 +149,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_all;
 
     case task_type_stars_ghost:
+    case task_type_stars_sort:
       return task_action_spart;
       break;
 
@@ -343,11 +345,17 @@ void task_unlock(struct task *t) {
       cell_gunlocktree(ci);
       break;
 
+    case task_type_stars_sort:
+      cell_sunlocktree(ci);
+      break;
+
     case task_type_self:
     case task_type_sub_self:
       if (subtype == task_subtype_grav) {
         cell_gunlocktree(ci);
         cell_munlocktree(ci);
+      } else if (subtype == task_subtype_stars_density) {
+        cell_sunlocktree(ci);
       } else {
         cell_unlocktree(ci);
       }
@@ -360,6 +368,9 @@ void task_unlock(struct task *t) {
         cell_gunlocktree(cj);
         cell_munlocktree(ci);
         cell_munlocktree(cj);
+      } else if (subtype == task_subtype_stars_density) {
+        cell_sunlocktree(ci);
+        cell_sunlocktree(cj);
       } else {
         cell_unlocktree(ci);
         cell_unlocktree(cj);
@@ -441,6 +452,11 @@ int task_lock(struct task *t) {
       if (cell_locktree(ci) != 0) return 0;
       break;
 
+    case task_type_stars_sort:
+      if (ci->stars.hold) return 0;
+      if (cell_slocktree(ci) != 0) return 0;
+      break;
+
     case task_type_drift_gpart:
     case task_type_grav_mesh:
       if (ci->grav.phold) return 0;
@@ -458,7 +474,12 @@ int task_lock(struct task *t) {
           cell_gunlocktree(ci);
           return 0;
         }
+
+      } else if (subtype == task_subtype_stars_density) {
+        if (ci->stars.hold) return 0;
+        if (cell_slocktree(ci) != 0) return 0;
       } else {
+        if (ci->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
       }
       break;
@@ -480,6 +501,13 @@ int task_lock(struct task *t) {
           cell_gunlocktree(ci);
           cell_gunlocktree(cj);
           cell_munlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_stars_density) {
+        if (ci->stars.hold || cj->stars.hold) return 0;
+        if (cell_slocktree(ci) != 0) return 0;
+        if (cell_slocktree(cj) != 0) {
+          cell_sunlocktree(ci);
           return 0;
         }
       } else {

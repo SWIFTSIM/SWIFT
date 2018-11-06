@@ -7,5 +7,5 @@ then
     ./getIC.sh
 fi
 
-../swift -b -G -s -S -t 8 dwarf_galaxy.yml 2>&1 | tee output.log
+../swift -b -G -s -S -t 8 $@ dwarf_galaxy.yml 2>&1 | tee output.log
 
