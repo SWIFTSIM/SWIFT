@@ -190,6 +190,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->hydro.count = c->hydro.count;
   pc->grav.count = c->grav.count;
   pc->stars.count = c->stars.count;
+  pc->maxdepth = c->maxdepth;
 
   /* Copy the Multipole related information */
   if (with_gravity) {
@@ -292,6 +293,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->hydro.count = pc->hydro.count;
   c->grav.count = pc->grav.count;
   c->stars.count = pc->stars.count;
+  c->maxdepth = pc->maxdepth;
+
 #ifdef SWIFT_DEBUG_CHECKS
   c->cellID = pc->cellID;
 #endif

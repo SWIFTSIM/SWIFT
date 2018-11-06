@@ -149,6 +149,9 @@ struct pcell {
 
   } stars;
 
+  /*! Maximal depth in that part of the tree */
+  int maxdepth;
+
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
 
