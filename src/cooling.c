@@ -82,8 +82,6 @@ void cooling_struct_restore(struct cooling_function_data* cooling,
   char fname[eagle_table_path_name_length + 12];
   sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
   read_cooling_header(fname, cooling);
-  message("finished reading cooling header");
   allocate_cooling_tables(cooling);
   cooling_update(cosmo, cooling, 1); 
-  message("finished reading cooling tables");
 }

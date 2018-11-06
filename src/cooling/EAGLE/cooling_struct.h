@@ -47,7 +47,7 @@ struct cooling_tables {
  */
 struct cooling_function_data {
 
-  /* Cooling table variables */
+  /* Cooling table */
   struct cooling_tables table;
 
   /* Size of table dimensions */

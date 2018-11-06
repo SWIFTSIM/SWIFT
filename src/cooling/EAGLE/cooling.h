@@ -100,4 +100,5 @@ void cooling_print_backend(const struct cooling_function_data *);
 
 void cooling_update(const struct cosmology *, struct cooling_function_data *, const int);
 
+void dump_cooling_struct(const struct cooling_function_data *);
 #endif /* SWIFT_COOLING_EAGLE_H */
