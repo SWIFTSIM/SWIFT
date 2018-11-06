@@ -2030,7 +2030,7 @@ void engine_maketasks(struct engine *e) {
                    sched->nr_tasks, sizeof(struct task), 0, e);
 
   if (e->verbose)
-    message("Linking stars tasks took %.3f %s (including reweight).",
+    message("Linking stars tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
 #ifdef WITH_MPI
