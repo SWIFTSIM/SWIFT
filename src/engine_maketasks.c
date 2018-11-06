@@ -462,10 +462,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       c->end_force = scheduler_addtask(s, task_type_end_force,
                                        task_subtype_none, 0, 0, c, NULL);
 
-      /* Implicit task for the up pass */
-      c->end_force_in = scheduler_addtask(s, task_type_end_force_in,
-                                          task_subtype_none, 0, 1, c, NULL);
-
       /* Subgrid tasks */
       if (is_with_cooling) {
 
@@ -491,33 +487,20 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->kick2, c->timestep);
       }
       
-      //scheduler_addunlock(s, c->end_force_in, c->end_force);
       scheduler_addunlock(s, c->timestep, c->kick1);
 
 #if defined(WITH_LOGGER)
       scheduler_addunlock(s, c->kick1, c->logger);
 #endif
     }
+  } else { /* We are above the super-cell so need to go deeper */
+
+    /* Recurse. */
+    if (c->split)
+      for (int k = 0; k < 8; k++)
+	if (c->progeny[k] != NULL)
+	  engine_make_hierarchical_tasks_common(e, c->progeny[k]);
   }
-
-  /* We are below the super-cell but not below the maximal splitting depth */
-  else if (c->super != NULL) {
-
-    /* Local tasks only... */
-    if (c->nodeID == e->nodeID) {
-
-      c->end_force_in = scheduler_addtask(s, task_type_end_force_in,
-                                          task_subtype_none, 0, 1, c, NULL);
-
-      scheduler_addunlock(s, c->end_force_in, c->parent->end_force_in);
-    }
-  }
-
-  /* Recurse. */
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        engine_make_hierarchical_tasks_common(e, c->progeny[k]);
 }
 
 /**
