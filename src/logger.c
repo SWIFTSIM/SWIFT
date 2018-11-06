@@ -375,7 +375,7 @@ void logger_log_gpart(struct logger *log, const struct gpart *p,
  * (return) offset of this log.
  */
 void logger_log_timestamp(struct logger *log, integertime_t timestamp,
-			  double time, size_t *offset) {
+                          double time, size_t *offset) {
   struct dump *dump = log->dump;
 
   /* Start by computing the size of the message. */
@@ -830,8 +830,8 @@ int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff) {
  *
  * @return The mask containing the values read.
  */
-int logger_read_timestamp(unsigned long long int *t, double *time, size_t *offset,
-                          const char *buff) {
+int logger_read_timestamp(unsigned long long int *t, double *time,
+                          size_t *offset, const char *buff) {
 
   /* Jump to the offset. */
   buff = &buff[*offset];
