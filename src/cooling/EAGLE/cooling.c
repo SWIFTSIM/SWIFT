@@ -146,10 +146,9 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   abundance_ratio_to_solar(p, cooling, abundance_ratio);
 
   /* Get the H and He mass fractions */
-  // TODO: change to smoothed metal mass fraction
-  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
-  const float HeFrac = p->chemistry_data.metal_mass_fraction[chemistry_element_He] /
-    (XH + p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
+  const float XH = p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
+  const float HeFrac = p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_He] /
+    (XH + p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_He]);
 
   /* convert Hydrogen mass fraction in Hydrogen number density */
   const double n_h = hydro_get_physical_density(p, cosmo) * XH / phys_const->const_proton_mass
@@ -318,8 +317,7 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
   double solar_electron_abundance;  
   
   /* convert Hydrogen mass fraction in Hydrogen number density */
-  // TODO: change to smoothed metal mass fraction
-  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+  const float XH = p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
   const double n_h = hydro_get_physical_density(p, cosmo) * XH / phys_const->const_proton_mass
                  *cooling->number_density_scale;
 
@@ -676,25 +674,22 @@ __attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
     if (elem == chemistry_element_Fe) {
       /* NOTE: solar abundances have iron last with calcium and sulphur directly
        * before, hence +2 */
-  // TODO: change to smoothed metal mass fraction
-      ratio_solar[elem] = p->chemistry_data.metal_mass_fraction[elem] /
+      ratio_solar[elem] = p->chemistry_data.smoothed_metal_mass_fraction[elem] /
                           cooling->SolarAbundances[elem + 2];
     } else {
-  // TODO: change to smoothed metal mass fraction
-      ratio_solar[elem] = p->chemistry_data.metal_mass_fraction[elem] /
+      ratio_solar[elem] = p->chemistry_data.smoothed_metal_mass_fraction[elem] /
                           cooling->SolarAbundances[elem];
     }
   }
 
   /* assign ratios for Ca and S, note positions of these elements occur before
    * Fe */
-  // TODO: change to smoothed metal mass fraction
   ratio_solar[chemistry_element_count] =
-      p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
+      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_Si] *
       cooling->sulphur_over_silicon_ratio /
       cooling->SolarAbundances[chemistry_element_count - 1];
   ratio_solar[chemistry_element_count + 1] =
-      p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
+      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_Si] *
       cooling->calcium_over_silicon_ratio /
       cooling->SolarAbundances[chemistry_element_count];
 }
@@ -740,8 +735,7 @@ __attribute__((always_inline)) INLINE float newton_iter(
       (cooling->Therm[0] + 0.05) / M_LOG10E;
   
   /* convert Hydrogen mass fraction in Hydrogen number density */
-  // TODO: change to smoothed metal mass fraction
-  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+  const float XH = p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
   const double n_h = hydro_get_physical_density(p, cosmo) * XH / phys_const->const_proton_mass
                  *cooling->number_density_scale;
 
@@ -824,8 +818,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
   double u_init = exp(logu_init);
 
   /* convert Hydrogen mass fraction in Hydrogen number density */
-  // TODO: change to smoothed metal mass fraction
-  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+  const float XH = p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
   const double n_h = hydro_get_physical_density(p, cosmo) * XH / phys_const->const_proton_mass
                  *cooling->number_density_scale;
 

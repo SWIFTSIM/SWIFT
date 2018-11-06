@@ -39,7 +39,49 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    struct part *restrict pj, float a, float H) {
+
+  struct chemistry_part_data *chi = &pi->chemistry_data;
+  struct chemistry_part_data *chj = &pj->chemistry_data;
+
+  float wi, wi_dx;
+  float wj, wj_dx;
+
+  /* Get the masses. */
+  const float mi = pi->mass;
+  const float mj = pj->mass;
+
+  /* Get r */
+  const float r = sqrtf(r2);
+
+  /* Compute the kernel function for pi */
+  const float ui = r / hi;
+  kernel_deval(ui, &wi, &wi_dx);
+
+  /* Compute the kernel function for pj */
+  const float uj = r / hj;
+  kernel_deval(uj, &wj, &wj_dx);
+
+  /* Compute contribution to the smooth metallicity */
+  for (int i = 0; i < chemistry_element_count; i++) {
+    chi->smoothed_metal_mass_fraction[i] +=
+        mj * chj->metal_mass_fraction[i] * wi;
+    chj->smoothed_metal_mass_fraction[i] +=
+        mi * chi->metal_mass_fraction[i] * wj;
+  }
+ 
+  // Smooth metal mass fraction of all metals
+  chi->smoothed_metal_mass_fraction_total +=
+      mj * chj->metal_mass_fraction_total * wi;
+  chj->smoothed_metal_mass_fraction_total +=
+      mi * chi->metal_mass_fraction_total * wj;
+  
+  // Smooth iron mass fraction from SNIa
+  chi->smoothed_iron_mass_fraction_from_SNIa +=
+      mj * chj->iron_mass_fraction_from_SNIa * wi;
+  chj->smoothed_iron_mass_fraction_from_SNIa +=
+      mi * chi->iron_mass_fraction_from_SNIa * wj;
+}
 
 /**
  * @brief do chemistry computation after the runner_iact_density (non symmetric
@@ -56,6 +98,38 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {}
+    const struct part *restrict pj, float a, float H) {
+    
+  struct chemistry_part_data *chi = &pi->chemistry_data;
+  const struct chemistry_part_data *chj = &pj->chemistry_data;
+
+  float wi, wi_dx;
+
+  /* Get the masses. */
+  const float mj = pj->mass;
+
+  /* Get r */
+  const float r = sqrtf(r2);
+
+  /* Compute the kernel function for pi */
+  const float ui = r / hi;
+  kernel_deval(ui, &wi, &wi_dx);
+
+  /* Compute contribution to the smooth metallicity */
+  for (int i = 0; i < chemistry_element_count; i++) {
+    chi->smoothed_metal_mass_fraction[i] +=
+        mj * chj->metal_mass_fraction[i] * wi;
+  }
+
+  // Smooth metal mass fraction of all metals
+  chi->smoothed_metal_mass_fraction_total +=
+      mj * chj->metal_mass_fraction_total * wi;
+
+
+  // Smooth iron mass fraction from SNIa
+  chi->smoothed_iron_mass_fraction_from_SNIa +=
+      mj * chj->iron_mass_fraction_from_SNIa * wi;
+
+}
 
 #endif /* SWIFT_EAGLE_CHEMISTRY_IACT_H */
