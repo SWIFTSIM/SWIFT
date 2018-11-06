@@ -854,7 +854,7 @@ int logger_read_timestamp(unsigned long long int *t, double *time, size_t *offse
   buff += sizeof(unsigned long long int);
 
   /* Copy the timestamp value from the buffer. */
-  memcpy(time, buff, sizeof(unsigned long long int));
+  memcpy(time, buff, sizeof(double));
 
   /* Finally, return the mask of the values we just read. */
   return mask;
