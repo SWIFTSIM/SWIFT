@@ -54,9 +54,11 @@ struct cosmology {
   /*! Power of the scale-factor used for sound-speed conversion to physical */
   double a_factor_sound_speed;
 
-  /*! Power of the scale-factor used for relative velocities in viscosity term
-   */
+  /*! Power of the scale-factor used for relative velocities in visc. terms */
   double a_factor_mu;
+
+  /*! {ower of the scale-factor used for epsilon term in the Balsara switch */
+  double a_factor_Balsara_eps;
 
   /*! Power of the scale-factor used for gravity accelerations */
   double a_factor_grav_accel;
@@ -72,6 +74,9 @@ struct cosmology {
 
   /*! The critical density at the current redshift (in internal units) */
   double critical_density;
+
+  /*! The critical density at redshift 0 (in internal units) */
+  double critical_density_0;
 
   /*! Conversion factor from internal time-step size to cosmological step */
   double time_step_factor;

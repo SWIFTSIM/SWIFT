@@ -16,8 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
+/* Local headers. */
 #include <string.h>
+
+/* Local includes */
 #include "error.h"
 #include "riemann/riemann_trrs.h"
 #include "tools.h"

@@ -45,6 +45,19 @@ to provide an HDF5 table computed by Cloudy.
 When starting a simulation without providing the different fractions, the code
 supposes an equilibrium and computes the fractions automatically.
 
+In order to compile SWIFT with Grackle, you need to provide the options ``with-grackle``
+and ``with-chemistry``.
+
+You will need a Grackle version later than 3.1. To compile it, run
+the following commands from the root directory of Grackle:
+``./configure; cd src/clib``.
+Update the variables ``LOCAL_HDF5_INSTALL`` and ``MACH_INSTALL_PREFIX`` in
+the file ``src/clib/Make.mach.linux-gnu``.
+Finish with ``make machine-linux-gnu; make && make install``.
+If you encounter any problem, you can look at the `Grackle documentation <https://grackle.readthedocs.io/en/latest/>`_
+
+You can now provide the path given for ``MACH_INSTALL_PREFIX`` to ``with-grackle``.
+
 Eagle
 ~~~~~
 

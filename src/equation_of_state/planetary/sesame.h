@@ -82,21 +82,19 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
 
   // Load table contents from file
   FILE *f = fopen(table_file, "r");
-  int c;
+  if (f == NULL) error("Failed to open the SESAME EoS file '%s'", table_file);
 
   // Ignore header lines
   char buffer[100];
   for (int i = 0; i < 5; i++) {
     if (fgets(buffer, 100, f) == NULL)
-      error("Something incorrect happening with the file header.");
+      error("Failed to read the SESAME EoS file header %s", table_file);
   }
   float ignore;
 
   // Table properties
-  c = fscanf(f, "%d %d", &mat->num_rho, &mat->num_T);
-  if (c != 2) {
-    error("Failed to read EOS table %s", table_file);
-  }
+  int c = fscanf(f, "%d %d", &mat->num_rho, &mat->num_T);
+  if (c != 2) error("Failed to read the SESAME EoS table %s", table_file);
 
   // Ignore the first elements of rho = 0, T = 0
   mat->num_rho--;
@@ -118,23 +116,17 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
     // Ignore the first elements of rho = 0, T = 0
     if (i_rho == -1) {
       c = fscanf(f, "%f", &ignore);
-      if (c != 1) {
-        error("Failed to read EOS table %s", table_file);
-      }
+      if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
     } else {
       c = fscanf(f, "%f", &mat->table_log_rho[i_rho]);
-      if (c != 1) {
-        error("Failed to read EOS table %s", table_file);
-      }
+      if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
     }
   }
 
   // Temperatures (ignored)
   for (int i_T = -1; i_T < mat->num_T; i_T++) {
     c = fscanf(f, "%f", &ignore);
-    if (c != 1) {
-      error("Failed to read EOS table %s", table_file);
-    }
+    if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
   }
 
   // Sp. int. energies (not log yet), pressures, sound speeds, and entropies
@@ -143,18 +135,14 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
       // Ignore the first elements of rho = 0, T = 0
       if ((i_T == -1) || (i_rho == -1)) {
         c = fscanf(f, "%f %f %f %f", &ignore, &ignore, &ignore, &ignore);
-        if (c != 4) {
-          error("Failed to read EOS table %s", table_file);
-        }
+        if (c != 4) error("Failed to read the SESAME EoS table %s", table_file);
       } else {
         c = fscanf(f, "%f %f %f %f",
                    &mat->table_log_u_rho_T[i_rho * mat->num_T + i_T],
                    &mat->table_P_rho_T[i_rho * mat->num_T + i_T],
                    &mat->table_c_rho_T[i_rho * mat->num_T + i_T],
                    &mat->table_s_rho_T[i_rho * mat->num_T + i_T]);
-        if (c != 4) {
-          error("Failed to read EOS table %s", table_file);
-        }
+        if (c != 4) error("Failed to read the SESAME EoS table %s", table_file);
       }
     }
   }

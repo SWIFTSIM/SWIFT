@@ -34,6 +34,8 @@
 #include "./cooling/const_du/cooling.h"
 #elif defined(COOLING_CONST_LAMBDA)
 #include "./cooling/const_lambda/cooling.h"
+#elif defined(COOLING_COMPTON)
+#include "./cooling/Compton/cooling.h"
 #elif defined(COOLING_GRACKLE)
 #include "./cooling/grackle/cooling.h"
 #elif defined(COOLING_EAGLE)

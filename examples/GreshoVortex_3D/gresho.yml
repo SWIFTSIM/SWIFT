@@ -35,3 +35,4 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./greshoVortex.hdf5     # The file to read
+  periodic:   1

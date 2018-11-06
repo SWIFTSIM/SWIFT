@@ -84,10 +84,6 @@ grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["Dimension"] = 3
 
-#Runtime parameters
-grp = fileOutput.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = 1
-
 #Units
 grp = fileOutput.create_group("/Units")
 grp.attrs["Unit length in cgs (U_L)"] = 1.

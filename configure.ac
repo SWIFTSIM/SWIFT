@@ -54,6 +54,19 @@ AX_COMPILER_VERSION
 #  Restrict support.
 AC_C_RESTRICT
 
+# logger
+AC_ARG_ENABLE([logger],
+	[AS_HELP_STRING([--enable-logger],
+		[enable the particle logger]
+	)],
+	[with_logger="${enableval}"],
+	[with_logger="no"]
+)
+
+if test "$with_logger" = "yes"; then
+   AC_DEFINE([WITH_LOGGER], 1, [logger enabled])
+fi
+
 # Interprocedural optimization support. Needs special handling for linking and
 # archiving as well as compilation with Intels, needs to be done before
 # libtool is configured (to use correct LD).
@@ -878,6 +891,43 @@ if test "$with_hdf5" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
 
+# Check for grackle.
+have_grackle="no"
+AC_ARG_WITH([grackle],
+    [AS_HELP_STRING([--with-grackle=PATH],
+       [root directory where grackle is installed @<:@yes/no@:>@]
+    )],
+    [with_grackle="$withval"],
+    [with_grackle="no"]
+)
+if test "x$with_grackle" != "xno"; then
+   AC_PROG_FC
+   AC_FC_LIBRARY_LDFLAGS
+   if test "x$with_grackle" != "xyes" -a "x$with_grackle" != "x"; then
+      GRACKLE_LIBS="-L$with_grackle/lib -lgrackle"
+      GRACKLE_INCS="-I$with_grackle/include"
+   else
+      GRACKLE_LIBS="-lgrackle"
+      GRACKLE_INCS=""
+   fi
+
+   have_grackle="yes"
+
+   echo $GRACKLE_LIBS
+
+   AC_CHECK_LIB(
+      [grackle],
+      [initialize_chemistry_data],
+      [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.])
+        AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
+      ],
+      [AC_MSG_ERROR(Cannot find grackle library!)],
+      [$GRACKLE_LIBS])
+fi
+AC_SUBST([GRACKLE_LIBS])
+AC_SUBST([GRACKLE_INCS])
+AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
+
 # Check for VELOCIraptor.
 have_velociraptor="no"
 AC_ARG_WITH([velociraptor],
@@ -909,6 +959,22 @@ if test "x$with_velociraptor" != "xno"; then
 fi
 AC_SUBST([VELOCIRAPTOR_LIBS])
 AM_CONDITIONAL([HAVEVELOCIRAPTOR],[test -n "$VELOCIRAPTOR_LIBS"])
+
+# Check for dummy VELOCIraptor.
+AC_ARG_ENABLE([dummy-velociraptor],
+    [AS_HELP_STRING([--enable-dummy-velociraptor],
+       [Enable dummy velociraptor compilation @<:@yes/no@:>@]
+    )],
+    [enable_dummy_velociraptor="$enableval"],
+    [enable_dummy_velociraptor="no"]
+)
+
+if test "$enable_dummy_velociraptor" = "yes"; then
+  have_velociraptor="yes"
+
+  AC_DEFINE(HAVE_VELOCIRAPTOR,1,[The VELOCIraptor library appears to be present.])
+  AC_DEFINE(HAVE_DUMMY_VELOCIRAPTOR,1,[The dummy VELOCIraptor library is present.])
+fi
 
 # Check for floating-point execeptions
 AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
@@ -1305,43 +1371,6 @@ case "$with_riemann" in
       AC_MSG_ERROR([Unknown Riemann solver: $with_riemann])
    ;;
 esac
-
-# Check for grackle.
-have_grackle="no"
-AC_ARG_WITH([grackle],
-    [AS_HELP_STRING([--with-grackle=PATH],
-       [root directory where grackle is installed @<:@yes/no@:>@]
-    )],
-    [with_grackle="$withval"],
-    [with_grackle="no"]
-)
-if test "x$with_grackle" != "xno"; then
-   AC_PROG_FC
-   AC_FC_LIBRARY_LDFLAGS
-   if test "x$with_grackle" != "xyes" -a "x$with_grackle" != "x"; then
-      GRACKLE_LIBS="-L$with_grackle/lib -lgrackle"
-      GRACKLE_INCS="-I$with_grackle/include"
-   else
-      GRACKLE_LIBS="-lgrackle"
-      GRACKLE_INCS=""
-   fi
-
-   have_grackle="yes"
-
-   AC_CHECK_LIB(
-      [grackle],
-      [initialize_chemistry_data],
-      [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.])
-        AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
-      ],
-      [AC_MSG_ERROR(Cannot find grackle library!)],
-      [$GRACKLE_LIBS $GRACKLE_INCS $FCLIBS]
-   )
-fi
-AC_SUBST([GRACKLE_LIBS])
-AC_SUBST([GRACKLE_INCS])
-AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
-
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<function>],
@@ -1368,6 +1397,9 @@ case "$with_cooling" in
    ;;
    const-lambda)
       AC_DEFINE([COOLING_CONST_LAMBDA], [1], [Const Lambda cooling function])
+   ;;
+   compton)
+      AC_DEFINE([COOLING_COMPTON], [1], [Compton cooling off the CMB])
    ;;
    grackle)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
@@ -1486,7 +1518,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, softened-isothermal, disc-patch, sine-wave, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, softened-isothermal, nfw, hernquist, disc-patch, sine-wave, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -1500,6 +1532,12 @@ case "$with_potential" in
    ;;
    isothermal)
       AC_DEFINE([EXTERNAL_POTENTIAL_ISOTHERMAL], [1], [Isothermal external potential])
+   ;;
+   hernquist)
+      AC_DEFINE([EXTERNAL_POTENTIAL_HERNQUIST], [1], [Hernquist external potential])
+   ;;
+   nfw)
+      AC_DEFINE([EXTERNAL_POTENTIAL_NFW], [1], [Navarro-Frenk-White external potential])
    ;;
    disc-patch)
       AC_DEFINE([EXTERNAL_POTENTIAL_DISC_PATCH], [1], [Disc-patch external potential])
@@ -1556,8 +1594,9 @@ AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 # Save the compilation options
 AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
 
-# Make sure the latest git revision string gets included
-touch src/version.c
+# Make sure the latest git revision string gets included, when we are
+# working in a checked out repository.
+test -d ${srcdir}/.git && touch ${srcdir}/src/version.c
 
 #  Need to define this, instead of using fifth argument of AC_INIT, until
 #  2.64. Defer until now as this redefines PACKAGE_URL, which can emit a
@@ -1589,6 +1628,7 @@ AC_MSG_RESULT([
    CPU profiler         : $have_profiler
    Pthread barriers     : $have_pthread_barrier
    VELOCIraptor enabled : $have_velociraptor
+   Particle Logger      : $with_logger
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension

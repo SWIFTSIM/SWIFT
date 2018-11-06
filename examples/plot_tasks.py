@@ -112,7 +112,7 @@ pl.rcParams.update(PLOT_PARAMS)
 TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair",
              "init_grav", "init_grav_out", "ghost_in", "ghost", "ghost_out", "extra_ghost", "drift_part", "drift_gpart",
              "end_force", "kick1", "kick2", "timestep", "send", "recv", "grav_long_range", "grav_mm", "grav_down_in", 
-             "grav_down", "grav_mesh", "cooling", "sourceterms",
+             "grav_down", "grav_mesh", "cooling", "star_formation", "sourceterms",
              "stars_ghost_in", "stars_ghost",   "stars_ghost_out",
              "count"]
 
@@ -157,11 +157,11 @@ for task in SUBTYPES:
 
 #  For fiddling with colours...
 if args.verbose:
-    print "#Selected colours:"
+    print("#Selected colours:")
     for task in sorted(TASKCOLOURS.keys()):
-        print "# " + task + ": " + TASKCOLOURS[task]
+        print("# " + task + ": " + TASKCOLOURS[task])
     for task in sorted(SUBCOLOURS.keys()):
-        print "# " + task + ": " + SUBCOLOURS[task]
+        print("# " + task + ": " + SUBCOLOURS[task])
 
 #  Read input.
 data = pl.loadtxt( infile )
@@ -169,11 +169,11 @@ data = pl.loadtxt( infile )
 #  Do we have an MPI file?
 full_step = data[0,:]
 if full_step.size == 13:
-    print "# MPI mode"
+    print("# MPI mode")
     mpimode = True
     if ranks == None:
         ranks = range(int(max(data[:,0])) + 1)
-    print "# Number of ranks:", len(ranks)
+    print("# Number of ranks:", len(ranks))
     rankcol = 0
     threadscol = 1
     taskcol = 2
@@ -181,7 +181,7 @@ if full_step.size == 13:
     ticcol = 5
     toccol = 6
 else:
-    print "# non MPI mode"
+    print("# non MPI mode")
     ranks = [0]
     mpimode = False
     rankcol = -1
@@ -194,10 +194,10 @@ else:
 #  Get CPU_CLOCK to convert ticks into milliseconds.
 CPU_CLOCK = float(full_step[-1]) / 1000.0
 if args.verbose:
-    print "# CPU frequency:", CPU_CLOCK * 1000.0
+    print("# CPU frequency:", CPU_CLOCK * 1000.0)
 
 nthread = int(max(data[:,threadscol])) + 1
-print "# Number of threads:", nthread
+print("# Number of threads:", nthread)
 
 # Avoid start and end times of zero.
 sdata = data[data[:,ticcol] != 0]
@@ -224,28 +224,31 @@ if delta_t == 0:
         dt = toc_step - tic_step
         if dt > delta_t:
             delta_t = dt
-    print "# Data range: ", delta_t / CPU_CLOCK, "ms"
+    print("# Data range: ", delta_t / CPU_CLOCK, "ms")
 
 # Once more doing the real gather and plots this time.
 for rank in ranks:
-    print "# Processing rank: ", rank
+    print("# Processing rank: ", rank)
     if mpimode:
         data = sdata[sdata[:,rankcol] == rank]
         full_step = data[0,:]
     tic_step = int(full_step[ticcol])
     toc_step = int(full_step[toccol])
-    print "# Min tic = ", tic_step
+    print("# Min tic = ", tic_step)
     data = data[1:,:]
     typesseen = []
     nethread = 0
 
     #  Dummy image for ranks that have no tasks.
     if data.size == 0:
-        print "# Rank ", rank, " has no tasks"
+        print("# Rank ", rank, " has no tasks")
         fig = pl.figure()
         ax = fig.add_subplot(1,1,1)
         ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
-        ax.set_ylim(0, nthread*expand)
+        if nthread == 0:
+            ax.set_ylim(0, expand)
+        else:
+            ax.set_ylim(0, nthread*expand)
         if mintic < 0:
             start_t = tic_step
         else:
@@ -305,7 +308,7 @@ for rank in ranks:
         fig = pl.figure()
         ax = fig.add_subplot(1,1,1)
         ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
-        ax.set_ylim(0, nethread)
+        ax.set_ylim(0.5, nethread+1.0)
         for i in range(nethread):
 
             #  Collect ranges and colours into arrays.
@@ -327,19 +330,16 @@ for rank in ranks:
                     typesseen.append(qtask)
 
             #  Now plot.
-            ax.broken_barh(tictocs, [i+0.05,0.90], facecolors = colours, linewidth=0)
+            ax.broken_barh(tictocs, [i+0.55,0.9], facecolors = colours, linewidth=0)
 
 
     #  Legend and room for it.
-    nrow = len(typesseen) / 5
-    ax.fill_between([0, 0], nethread+0.5, nethread + nrow + 0.5, facecolor="white")
-    ax.set_ylim(0, nethread + 0.5)
+    nrow = len(typesseen) / 8
+    ax.fill_between([0, 0], nethread, nethread + nrow, facecolor="white")
     if data.size > 0 and not args.nolegend:
-        ax.fill_between([0, 0], nethread+0.5, nethread + nrow + 0.5, facecolor="white")
-        ax.set_ylim(0, nethread + 0.5)
-        ax.legend(loc=1, shadow=True, bbox_to_anchor=(0., 1.05 ,1., 0.2), mode="expand", ncol=5)
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width, box.height*0.8])
+        ax.fill_between([0, 0], nethread, nethread + nrow, facecolor="white")
+        ax.legend(loc="lower left", shadow=True,
+                  bbox_to_anchor=(0., 1.0, 1., 0.2), mode="expand", ncol=8)
 
     # Start and end of time-step
     if mintic < 0:
@@ -366,7 +366,7 @@ for rank in ranks:
         outpng = outbase + str(rank) + ".png"
     else:
         outpng = outbase + ".png"
-    pl.savefig(outpng)
-    print "Graphics done, output written to", outpng
+    pl.savefig(outpng, bbox_inches="tight")
+    print("Graphics done, output written to", outpng)
 
 sys.exit(0)

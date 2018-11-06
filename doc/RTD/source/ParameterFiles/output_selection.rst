@@ -1,23 +1,17 @@
 .. Parameter File
    Loic Hausammann, 1 june 2018
 
-.. _Parameter_File_label:
-
-Parameter File
-==============
-
-To run SWIFT, you will need to provide a ``yaml`` parameter file.  An example is
-given in ``examples/parameter_file.yml`` which should contain all possible
-parameters.  Each section in this file corresponds to a different option in
-SWIFT and are not always required depending on the configuration options and
-the run time parameters.
+.. _Output_list_label:
 
 Output List
 ~~~~~~~~~~~
 
-In the sections ``Snapshots`` and ``Statistics``, you can specify the options ``output_list_on`` and ``output_list``  which receive an int and a filename.
-The ``output_list_on`` enable or not the output list and ``output_list`` is the filename containing the output times.
-With the file header, you can choose between writing redshifts, scale factors or times.
+In the sections ``Snapshots`` and ``Statistics``, you can specify the
+options ``output_list_on`` and ``output_list`` which receive an int
+and a filename.  The ``output_list_on`` enable or not the output list
+and ``output_list`` is the filename containing the output times.  With
+the file header, you can choose between writing redshifts, scale
+factors or times.
 
 Example of file containing with times (in internal units)::
 
@@ -42,6 +36,8 @@ Example of file with redshift::
   10
   5
 
+.. _Output_selection_label:
+  
 Output Selection
 ~~~~~~~~~~~~~~~~
 

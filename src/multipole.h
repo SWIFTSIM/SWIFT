@@ -207,6 +207,13 @@ struct gravity_tensors {
   };
 } SWIFT_STRUCT_ALIGN;
 
+#ifdef WITH_MPI
+/* MPI datatypes for transfers */
+extern MPI_Datatype multipole_mpi_type;
+extern MPI_Op multipole_mpi_reduce_op;
+void multipole_create_mpi_types(void);
+#endif
+
 /**
  * @brief Reset the data of a #multipole.
  *
@@ -1027,6 +1034,11 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
   /* Collect the particle data for CoM. */
   for (int k = 0; k < gcount; k++) {
     const double m = gparts[k].mass;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gparts[k].time_bin == time_bin_inhibited)
+      error("Inhibited particle in P2M. Should have been removed earlier.");
+#endif
 
     mass += m;
     com[0] += gparts[k].x[0] * m;

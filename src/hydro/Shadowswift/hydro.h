@@ -295,12 +295,14 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  * @param cosmo The current cosmological model.
+ * @param hydro_props Hydrodynamic properties.
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const float dt_alpha) {
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const float dt_alpha) {
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.0f;

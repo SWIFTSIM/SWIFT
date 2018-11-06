@@ -378,7 +378,7 @@ void io_write_engine_policy(hid_t h_file, const struct engine* e) {
   const hid_t h_grp = H5Gcreate1(h_file, "/Policy", 0);
   if (h_grp < 0) error("Error while creating policy group");
 
-  for (int i = 1; i <= engine_maxpolicy; ++i)
+  for (int i = 1; i < engine_maxpolicy; ++i)
     if (e->policy & (1 << i))
       io_write_attribute_i(h_grp, engine_policy_names[i + 1], 1);
     else
@@ -634,9 +634,9 @@ void io_prepare_dm_gparts_mapper(void* restrict data, int Ndm, void* dummy) {
   /* Let's give all these gparts a negative id */
   for (int i = 0; i < Ndm; ++i) {
 
-    /* 0 or negative ids are not allowed */
-    if (gparts[i].id_or_neg_offset <= 0)
-      error("0 or negative ID for DM particle %i: ID=%lld", i,
+    /* Negative ids are not allowed */
+    if (gparts[i].id_or_neg_offset < 0)
+      error("Negative ID for DM particle %i: ID=%lld", i,
             gparts[i].id_or_neg_offset);
 
     /* Set gpart type */
@@ -787,35 +787,109 @@ void io_duplicate_stars_gparts(struct threadpool* tp,
 }
 
 /**
- * @brief Copy every DM #gpart into the dmparts array.
+ * @brief Copy every non-inhibited #part into the parts_written array.
  *
- * @param gparts The array of #gpart containing all particles.
- * @param Ntot The number of #gpart.
- * @param dmparts The array of #gpart containg DM particles to be filled.
- * @param Ndm The number of DM particles.
+ * @param parts The array of #part containing all particles.
+ * @param xparts The array of #xpart containing all particles.
+ * @param parts_written The array of #part to fill with particles we want to
+ * write.
+ * @param xparts_written The array of #xpart  to fill with particles we want to
+ * write.
+ * @param Nparts The total number of #part.
+ * @param Nparts_written The total number of #part to write.
  */
-void io_collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
-                          struct gpart* const dmparts, size_t Ndm) {
+void io_collect_parts_to_write(const struct part* restrict parts,
+                               const struct xpart* restrict xparts,
+                               struct part* restrict parts_written,
+                               struct xpart* restrict xparts_written,
+                               const size_t Nparts,
+                               const size_t Nparts_written) {
 
   size_t count = 0;
 
-  /* Loop over all gparts */
-  for (size_t i = 0; i < Ntot; ++i) {
+  /* Loop over all parts */
+  for (size_t i = 0; i < Nparts; ++i) {
 
-    /* message("i=%zd count=%zd id=%lld part=%p", i, count, gparts[i].id,
-     * gparts[i].part); */
+    /* And collect the ones that have not been removed */
+    if (parts[i].time_bin != time_bin_inhibited) {
 
-    /* And collect the DM ones */
-    if (gparts[i].type == swift_type_dark_matter) {
-      dmparts[count] = gparts[i];
+      parts_written[count] = parts[i];
+      xparts_written[count] = xparts[i];
       count++;
     }
   }
 
   /* Check that everything is fine */
-  if (count != Ndm)
-    error("Collected the wrong number of dm particles (%zu vs. %zu expected)",
-          count, Ndm);
+  if (count != Nparts_written)
+    error("Collected the wrong number of particles (%zu vs. %zu expected)",
+          count, Nparts_written);
+}
+
+/**
+ * @brief Copy every non-inhibited #spart into the sparts_written array.
+ *
+ * @param sparts The array of #spart containing all particles.
+ * @param sparts_written The array of #spart to fill with particles we want to
+ * write.
+ * @param Nsparts The total number of #part.
+ * @param Nsparts_written The total number of #part to write.
+ */
+void io_collect_sparts_to_write(const struct spart* restrict sparts,
+                                struct spart* restrict sparts_written,
+                                const size_t Nsparts,
+                                const size_t Nsparts_written) {
+
+  size_t count = 0;
+
+  /* Loop over all parts */
+  for (size_t i = 0; i < Nsparts; ++i) {
+
+    /* And collect the ones that have not been removed */
+    if (sparts[i].time_bin != time_bin_inhibited) {
+
+      sparts_written[count] = sparts[i];
+      count++;
+    }
+  }
+
+  /* Check that everything is fine */
+  if (count != Nsparts_written)
+    error("Collected the wrong number of s-particles (%zu vs. %zu expected)",
+          count, Nsparts_written);
+}
+
+/**
+ * @brief Copy every non-inhibited DM #gpart into the gparts_written array.
+ *
+ * @param gparts The array of #gpart containing all particles.
+ * @param gparts_written The array of #gpart to fill with particles we want to
+ * write.
+ * @param Ngparts The total number of #part.
+ * @param Ngparts_written The total number of #part to write.
+ */
+void io_collect_gparts_to_write(const struct gpart* restrict gparts,
+                                struct gpart* restrict gparts_written,
+                                const size_t Ngparts,
+                                const size_t Ngparts_written) {
+
+  size_t count = 0;
+
+  /* Loop over all parts */
+  for (size_t i = 0; i < Ngparts; ++i) {
+
+    /* And collect the ones that have not been removed */
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].type == swift_type_dark_matter)) {
+
+      gparts_written[count] = gparts[i];
+      count++;
+    }
+  }
+
+  /* Check that everything is fine */
+  if (count != Ngparts_written)
+    error("Collected the wrong number of s-particles (%zu vs. %zu expected)",
+          count, Ngparts_written);
 }
 
 /**

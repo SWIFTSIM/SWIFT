@@ -27,17 +27,16 @@ Statistics:
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature: 100.       # Kelvin
   
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./coolingBox.hdf5     # The file to read
-
+  periodic:   1
+  
 # Dimensionless pre-factor for the time-step condition
 LambdaCooling:
-  lambda_cgs:                  1.0e-22    # Cooling rate (in cgs units)
-  minimum_temperature:         1.0e4      # Minimal temperature (Kelvin)
-  mean_molecular_weight:       0.59       # Mean molecular weight
-  hydrogen_mass_abundance:     0.75       # Hydrogen mass abundance (dimensionless)
+  lambda_nH2_cgs:              1e-22 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
   cooling_tstep_mult:          1.0        # Dimensionless pre-factor for the time-step condition
 
 # Cooling with Grackle 2.0
