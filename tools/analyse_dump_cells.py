@@ -65,28 +65,28 @@ for i in range(4, len(sys.argv)):
         continue
 
     #  Select cells that are on the current rank and are top-level cells.
-    rdata = data[data[:,localcol] == 1]
-    tdata = rdata[rdata[:,topcol] == 1]
+    rdata = data[data[:, localcol] == 1]
+    tdata = rdata[rdata[:, topcol] == 1]
 
     #  Separation of the cells is in data.
-    xwidth = tdata[0,xwcol]
-    ywidth = tdata[0,ywcol]
-    zwidth = tdata[0,zwcol]
+    xwidth = tdata[0, xwcol]
+    ywidth = tdata[0, ywcol]
+    zwidth = tdata[0, zwcol]
 
     #  Fill space nx, ny,n nz with all toplevel cells and flag their active
     #  state.
-    space = np.zeros((nx,ny,nz))
+    space = np.zeros((nx, ny, nz))
     actives = []
     for line in tdata:
         ix = int(np.rint(line[xcol] / xwidth))
         iy = int(np.rint(line[ycol] / ywidth))
         iz = int(np.rint(line[zcol] / zwidth))
         active = int(line[activecol])
-        space[ix,iy,iz] = 1 + active
+        space[ix, iy, iz] = 1 + active
         tcount = tcount + 1
         if active == 1:
             actives.append([ix, iy, iz, line])
-    
+
     #  Report all active cells and flag any without 26 neighbours. These are
     #  on the edge of the partition volume and will have foreign neighbour
     #  cells.
@@ -125,4 +125,3 @@ for i in range(4, len(sys.argv)):
 print("# top cells: ", tcount, " active: ", len(allactives), " on edge: ", onedge)
 
 sys.exit(0)
-
