@@ -2666,6 +2666,12 @@ void *runner_main(void *data) {
         case task_type_sourceterms:
           runner_do_sourceterms(r, t->ci, 1);
           break;
+        case task_type_fof_self:
+          runner_do_fof_self(r, t->ci, 1);
+          break;
+        case task_type_fof_pair:
+          runner_do_fof_pair(r, t->ci, t->cj, 1);
+          break;
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }
@@ -2758,4 +2764,45 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
 #else
   error("Logger disabled, please enable it during configuration");
 #endif
+}
+
+/**
+ * @brief Recursively search for FOF groups in a single cell.
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
+ 
+  TIMER_TIC;
+
+  struct space *s = r->e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double search_r2 = s->l_x2;
+
+  rec_fof_search_self(c, s, dim, search_r2);
+
+  if(timer) TIMER_TOC(timer_fof_self);
+}
+
+/**
+ * @brief Recursively search for FOF groups between a pair of cells.
+ *
+ * @param r runner task
+ * @param ci cell i
+ * @param cj cell j
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj, int timer) {
+ 
+  TIMER_TIC;
+
+  struct space *s = r->e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double search_r2 = s->l_x2;
+
+  rec_fof_search_pair(ci, cj, s, dim, search_r2);
+
+  if(timer) TIMER_TOC(timer_fof_pair);
 }
