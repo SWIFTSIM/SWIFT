@@ -14,10 +14,13 @@ Gravity:
   comoving_softening:     0.0026994 # Comoving softening length (in internal units).
   max_physical_softening: 0.0007    # Physical softening length (in internal units).
 
+Schedular:
+  max_top_level_cells:       48        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
+
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.    # The starting time of the simulation (in internal units).
-  time_end:          1.    # The end time of the simulation (in internal units).
+  time_end:          2.    # The end time of the simulation (in internal units).
   dt_min:            1e-6  # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
 
