@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 ################################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)

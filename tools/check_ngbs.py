@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import h5py as h
 import numpy as np
 import matplotlib
