@@ -47,13 +47,13 @@ mpicol = 20
 
 #  Command-line arguments.
 if len(sys.argv) < 5:
-    print "usage: ", sys.argv[0], " nx ny nz cell1.dat cell2.dat ..."
+    print("usage: ", sys.argv[0], " nx ny nz cell1.dat cell2.dat ...")
     sys.exit(1)
 nx = int(sys.argv[1])
 ny = int(sys.argv[2])
 nz = int(sys.argv[3])
 
-print "# x y z onedge"
+print("# x y z onedge")
 allactives = []
 onedge = 0
 tcount = 0
@@ -116,13 +116,13 @@ for i in range(4, len(sys.argv)):
                         count = count + 1
         if count < 27:
             onedge = onedge + 1
-            print active[3][0], active[3][1], active[3][2], 1
+            print(active[3][0], active[3][1], active[3][2], 1)
         else:
-            print active[3][0], active[3][1], active[3][2], 0
+            print(active[3][0], active[3][1], active[3][2], 0)
 
     allactives.extend(actives)
 
-print "# top cells: ", tcount, " active: ", len(allactives), " on edge: ", onedge
+print("# top cells: ", tcount, " active: ", len(allactives), " on edge: ", onedge)
 
 sys.exit(0)
 

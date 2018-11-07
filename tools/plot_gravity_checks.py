@@ -73,7 +73,7 @@ exact_a = exact_a[sort_index, :]
 exact_pot = exact_pot[sort_index]
 exact_a_norm = np.sqrt(exact_a[:,0]**2 + exact_a[:,1]**2 + exact_a[:,2]**2)
 
-print "Number of particles tested:", np.size(exact_ids)
+print("Number of particles tested:", np.size(exact_ids))
     
 # Start the plot
 plt.figure()
@@ -103,23 +103,23 @@ if len(gadget2_file_list) != 0:
 
     # Cross-checks
     if not np.array_equal(exact_ids, gadget2_ids):
-        print "Comparing different IDs !"
+        print("Comparing different IDs !")
 
     if np.max(np.abs(exact_pos - gadget2_pos)/np.abs(gadget2_pos)) > 1e-6:
-        print "Comparing different positions ! max difference:"
+        print("Comparing different positions ! max difference:")
         index = np.argmax(exact_pos[:,0]**2 + exact_pos[:,1]**2 + exact_pos[:,2]**2 - gadget2_pos[:,0]**2 - gadget2_pos[:,1]**2 - gadget2_pos[:,2]**2)
-        print "Gadget2 (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "exact (id=%d):"%exact_ids[index], exact_pos[index,:], "\n"
+        print("Gadget2 (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "exact (id=%d):"%exact_ids[index], exact_pos[index,:], "\n")
 
     diff = np.abs(exact_a_norm - gadget2_exact_a_norm) / np.abs(gadget2_exact_a_norm)
     max_diff = np.max(diff)
     if max_diff > 2e-6:
-        print "Comparing different exact accelerations !"
-        print "Median=", np.median(diff), "Mean=", np.mean(diff), "99%=", np.percentile(diff, 99)
-        print "max difference ( relative diff =", max_diff, "):"
+        print("Comparing different exact accelerations !")
+        print("Median=", np.median(diff), "Mean=", np.mean(diff), "99%=", np.percentile(diff, 99))
+        print("max difference ( relative diff =", max_diff, "):")
         #index = np.argmax(exact_a[:,0]**2 + exact_a[:,1]**2 + exact_a[:,2]**2 - gadget2_a_exact[:,0]**2 - gadget2_a_exact[:,1]**2 - gadget2_a_exact[:,2]**2)
         index = np.argmax(diff)
-        print "a_exact --- Gadget2:", gadget2_a_exact[index,:], "exact:", exact_a[index,:]
-        print "pos ---     Gadget2: (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "exact (id=%d):"%gadget2_ids[index], gadget2_pos[index,:],"\n"
+        print("a_exact --- Gadget2:", gadget2_a_exact[index,:], "exact:", exact_a[index,:])
+        print("pos ---     Gadget2: (id=%d):"%gadget2_ids[index], gadget2_pos[index,:], "exact (id=%d):"%gadget2_ids[index], gadget2_pos[index,:],"\n")
 
     
     # Compute the error norm
@@ -154,12 +154,12 @@ if len(gadget2_file_list) != 0:
     max_y = np.max(error_y)
     max_z = np.max(error_z)
 
-    print "Gadget-2 ---- "
-    print "Norm: median= %f 99%%= %f max= %f"%(norm_median, norm_per99, norm_max)
-    print "X   : median= %f 99%%= %f max= %f"%(median_x, per99_x, max_x)
-    print "Y   : median= %f 99%%= %f max= %f"%(median_y, per99_y, max_y)
-    print "Z   : median= %f 99%%= %f max= %f"%(median_z, per99_z, max_z)
-    print ""
+    print("Gadget-2 ---- ")
+    print("Norm: median= %f 99%%= %f max= %f"%(norm_median, norm_per99, norm_max))
+    print("X   : median= %f 99%%= %f max= %f"%(median_x, per99_x, max_x))
+    print("Y   : median= %f 99%%= %f max= %f"%(median_y, per99_y, max_y))
+    print("Z   : median= %f 99%%= %f max= %f"%(median_z, per99_z, max_z))
+    print("")
 
     plt.subplot(231)    
     plt.text(min_error * 1.5, 1.55, "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$"%(norm_median, norm_per99), ha="left", va="top", alpha=0.8)
@@ -194,20 +194,20 @@ for i in range(num_order):
 
     # Cross-checks
     if not np.array_equal(exact_ids, ids):
-        print "Comparing different IDs !"
+        print("Comparing different IDs !")
 
     if np.max(np.abs(exact_pos - pos)/np.abs(pos)) > 1e-6:
-        print "Comparing different positions ! max difference:"
+        print("Comparing different positions ! max difference:")
         index = np.argmax(exact_pos[:,0]**2 + exact_pos[:,1]**2 + exact_pos[:,2]**2 - pos[:,0]**2 - pos[:,1]**2 - pos[:,2]**2)
-        print "SWIFT (id=%d):"%ids[index], pos[index,:], "exact (id=%d):"%exact_ids[index], exact_pos[index,:], "\n"
+        print("SWIFT (id=%d):"%ids[index], pos[index,:], "exact (id=%d):"%exact_ids[index], exact_pos[index,:], "\n")
     
     # Compute the error norm
     diff = exact_a - a_grav
     diff_pot = exact_pot - pot
 
     # Correct for different normalization of potential
-    print "Difference in normalization of potential:", np.mean(diff_pot),
-    print "std_dev=", np.std(diff_pot), "99-percentile:", np.percentile(diff_pot, 99)-np.median(diff_pot), "1-percentile:", np.median(diff_pot) - np.percentile(diff_pot, 1)
+    print("Difference in normalization of potential:", np.mean(diff_pot), end=' ')
+    print("std_dev=", np.std(diff_pot), "99-percentile:", np.percentile(diff_pot, 99)-np.median(diff_pot), "1-percentile:", np.median(diff_pot) - np.percentile(diff_pot, 1))
 
     exact_pot -= np.mean(diff_pot)
     diff_pot = exact_pot - pot
@@ -245,13 +245,13 @@ for i in range(num_order):
     max_z = np.max(error_z)
     max_pot = np.max(error_pot)
 
-    print "Order %d ---- "%order[i]
-    print "Norm: median= %f 99%%= %f max= %f"%(norm_median, norm_per99, norm_max)
-    print "X   : median= %f 99%%= %f max= %f"%(median_x, per99_x, max_x)
-    print "Y   : median= %f 99%%= %f max= %f"%(median_y, per99_y, max_y)
-    print "Z   : median= %f 99%%= %f max= %f"%(median_z, per99_z, max_z)
-    print "Pot : median= %f 99%%= %f max= %f"%(median_pot, per99_pot, max_pot)
-    print ""
+    print("Order %d ---- "%order[i])
+    print("Norm: median= %f 99%%= %f max= %f"%(norm_median, norm_per99, norm_max))
+    print("X   : median= %f 99%%= %f max= %f"%(median_x, per99_x, max_x))
+    print("Y   : median= %f 99%%= %f max= %f"%(median_y, per99_y, max_y))
+    print("Z   : median= %f 99%%= %f max= %f"%(median_z, per99_z, max_z))
+    print("Pot : median= %f 99%%= %f max= %f"%(median_pot, per99_pot, max_pot))
+    print("")
     
     plt.subplot(231)    
     plt.semilogx(bins, error_x_hist, color=cols[i],label="SWIFT m-poles order %d"%order[i])

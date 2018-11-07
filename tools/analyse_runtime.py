@@ -70,7 +70,7 @@ lastline = ''
 for i in range(num_files):
 
     filename = sys.argv[i + 1]
-    print "Analysing", filename
+    print("Analysing", filename)
 
     # Open stdout file
     file = open(filename, 'r')
@@ -98,9 +98,9 @@ times /= 1000.
 
 # Total time
 total_measured_time = np.sum(times)
-print "\nTotal measured time: %.3f s"%total_measured_time
+print("\nTotal measured time: %.3f s"%total_measured_time)
 
-print "Total time:", total_time, "s\n"
+print("Total time:", total_time, "s\n")
 
 # Ratios
 time_ratios = times / total_time
@@ -127,7 +127,7 @@ important_times = [0.]
 important_ratios = [0.,]
 important_labels = ['Others (all below %.1f\%%)'%(threshold*100), ]
 important_is_rebuild = [0] 
-print "Elements in 'Other' category (<%.1f%%):"%(threshold*100)
+print("Elements in 'Other' category (<%.1f%%):"%(threshold*100))
 for i in range(len(labels)):
     if time_ratios[i] > threshold:
         important_times.append(times[i])
@@ -137,9 +137,9 @@ for i in range(len(labels)):
     else:
         important_times[0] += times[i]
         important_ratios[0] += time_ratios[i]
-        print " - '%-30s': %.4f%%"%(labels[i], time_ratios[i] * 100)
+        print(" - '%-30s': %.4f%%"%(labels[i], time_ratios[i] * 100))
 
-print "\nUnaccounted for: %.4f%%\n"%(100 * (total_time - total_measured_time) / total_time)
+print("\nUnaccounted for: %.4f%%\n"%(100 * (total_time - total_measured_time) / total_time))
 
 important_ratios = np.array(important_ratios)
 important_is_rebuild = np.array(important_is_rebuild)

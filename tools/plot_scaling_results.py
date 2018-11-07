@@ -58,7 +58,7 @@ inputFileNames = []
 
 # Work out how many data series there are
 if len(sys.argv) == 1:
-  print "Please specify an input file in the arguments."
+  print("Please specify an input file in the arguments.")
   sys.exit()
 else:
   for fileName in sys.argv[1:]:
@@ -177,23 +177,23 @@ def parse_files():
 def print_results(totalTime,parallelEff,version):
  
   for i in range(0,numOfSeries):
-    print " "
-    print "------------------------------------"
-    print version[i]
-    print "------------------------------------"
-    print "Wall clock time for: {} time steps".format(numTimesteps)
-    print "------------------------------------"
+    print(" ")
+    print("------------------------------------")
+    print(version[i])
+    print("------------------------------------")
+    print("Wall clock time for: {} time steps".format(numTimesteps))
+    print("------------------------------------")
     
     for j in range(0,len(threadList[i])):
-      print str(threadList[i][j]) + " threads: {}".format(totalTime[i][j])
+      print(str(threadList[i][j]) + " threads: {}".format(totalTime[i][j]))
     
-    print " "
-    print "------------------------------------"
-    print "Parallel Efficiency for: {} time steps".format(numTimesteps)
-    print "------------------------------------"
+    print(" ")
+    print("------------------------------------")
+    print("Parallel Efficiency for: {} time steps".format(numTimesteps))
+    print("------------------------------------")
     
     for j in range(0,len(threadList[i])):
-      print str(threadList[i][j]) + " threads: {}".format(parallelEff[i][j])
+      print(str(threadList[i][j]) + " threads: {}".format(parallelEff[i][j]))
 
   return
 

@@ -105,14 +105,14 @@ maxcolours = len(colours)
 
 #  Read header. First two lines.
 with open(infile) as infid:
-    head = [next(infid) for x in xrange(2)]
+    head = [next(infid) for x in range(2)]
 header = head[1][2:].strip()
 header = eval(header)
 nthread = int(header['num_threads']) + 1
 CPU_CLOCK = float(header['cpufreq']) / 1000.0
-print "Number of threads: ", nthread
+print("Number of threads: ", nthread)
 if args.verbose:
-    print "CPU frequency:", CPU_CLOCK * 1000.0
+    print("CPU frequency:", CPU_CLOCK * 1000.0)
 
 #  Read input.
 data = pl.genfromtxt(infile, dtype=None, delimiter=" ")
@@ -143,7 +143,7 @@ chunks = pl.array(chunks)
 mintic_step = min(tics)
 tic_step = mintic_step
 toc_step = max(tocs)
-print "# Min tic = ", mintic_step
+print("# Min tic = ", mintic_step)
 if mintic > 0:
     tic_step = mintic
 
@@ -153,7 +153,7 @@ if delta_t == 0:
     dt = toc_step - tic_step
     if dt > delta_t:
         delta_t = dt
-    print "Data range: ", delta_t / CPU_CLOCK, "ms"
+    print("Data range: ", delta_t / CPU_CLOCK, "ms")
 
 #  Once more doing the real gather and plots this time.
 start_t = float(tic_step)
@@ -163,7 +163,7 @@ end_t = (toc_step - start_t) / CPU_CLOCK
 
 #  Get all "task" names and assign colours.
 TASKTYPES = pl.unique(funcs)
-print TASKTYPES
+print(TASKTYPES)
 
 #  Set colours of task/subtype.
 TASKCOLOURS = {}
@@ -174,11 +174,11 @@ for task in TASKTYPES:
 
 #  For fiddling with colours...
 if args.verbose:
-    print "#Selected colours:"
+    print("#Selected colours:")
     for task in sorted(TASKCOLOURS.keys()):
-        print "# " + task + ": " + TASKCOLOURS[task]
+        print("# " + task + ": " + TASKCOLOURS[task])
     for task in sorted(SUBCOLOURS.keys()):
-        print "# " + task + ": " + SUBCOLOURS[task]
+        print("# " + task + ": " + SUBCOLOURS[task])
 
 tasks = {}
 tasks[-1] = []
@@ -265,7 +265,7 @@ if expand == 1:
     ax.set_ylabel("Thread ID", labelpad=0 )
 else:
     ax.set_ylabel("Thread ID * " + str(expand), labelpad=0 )
-ax.set_yticks(pl.array(range(nthread)), True)
+ax.set_yticks(pl.array(list(range(nthread))), True)
 
 loc = plticker.MultipleLocator(base=expand)
 ax.yaxis.set_major_locator(loc)
@@ -273,6 +273,6 @@ ax.grid(True, which='major', axis="y", linestyle="-")
 
 pl.show()
 pl.savefig(outpng)
-print "Graphics done, output written to", outpng
+print("Graphics done, output written to", outpng)
 
 sys.exit(0)
