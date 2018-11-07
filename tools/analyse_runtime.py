@@ -58,10 +58,15 @@ labels = [
     "Forward Fourier transform",
     "Green function",
     "Backwards Fourier transform",
+    "engine_recompute_displacement_constraint:",
+    "engine_exchange_top_multipoles:",
+    "updating particle counts",
     "Making gravity tasks",
+    "Making hydro tasks",
     "Splitting tasks",
     "Counting and linking tasks",
     "Setting super-pointers",
+    "Making extra hydroloop tasks",
     "Linking gravity tasks",
     "Creating send tasks",
     "Exchanging cell tags",
@@ -69,6 +74,7 @@ labels = [
     "Setting unlocks",
     "Ranking the tasks",
     "scheduler_reweight:",
+    "space_list_useful_top_level_cells:",
     "space_rebuild:",
     "engine_drift_all:",
     "engine_unskip:",
@@ -84,6 +90,10 @@ labels = [
     "engine_print_task_counts:",
     "engine_drift_top_multipoles:",
     "Communicating rebuild flag",
+    "engine_split:",
+    "space_init",
+    "engine_init",
+    "engine_repartition_trigger"
 ]
 is_rebuild = [
     1,
@@ -103,6 +113,12 @@ is_rebuild = [
     1,
     1,
     1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
     0,
     0,
     0,
@@ -117,6 +133,10 @@ is_rebuild = [
     0,
     0,
     0,
+    0,
+    0,
+    0,
+    0
 ]
 times = np.zeros(len(labels))
 counts = np.zeros(len(labels))
@@ -144,7 +164,7 @@ lastline = ""
 for i in range(num_files):
 
     filename = sys.argv[i + 1]
-    print("Analysing", filename)
+    print("Analysing %s" % filename)
 
     # Open stdout file
     file = open(filename, "r")
@@ -178,7 +198,7 @@ times /= 1000.0
 total_measured_time = np.sum(times)
 print("\nTotal measured time: %.3f s" % total_measured_time)
 
-print("Total time:", total_time, "s\n")
+print("Total time: %f  s\n" % total_time)
 
 # Ratios
 time_ratios = times / total_time
@@ -196,6 +216,7 @@ is_rebuild = np.array(is_rebuild)
 # Sort in order of importance
 order = np.argsort(-times)
 times = times[order]
+counts = counts[order]
 time_ratios = time_ratios[order]
 is_rebuild = is_rebuild[order]
 labels = np.take(labels, order)
@@ -205,7 +226,8 @@ important_times = [0.0]
 important_ratios = [0.0]
 important_labels = ["Others (all below %.1f\%%)" % (threshold * 100)]
 important_is_rebuild = [0]
-print("Elements in 'Other' category (<%.1f%%):" % (threshold * 100))
+need_print = True
+print("Time spent in the different code sections:")
 for i in range(len(labels)):
     if time_ratios[i] > threshold:
         important_times.append(times[i])
@@ -213,10 +235,15 @@ for i in range(len(labels)):
         important_labels.append(labels[i])
         important_is_rebuild.append(is_rebuild[i])
     else:
+        if need_print:
+            print("Elements in 'Other' category (<%.1f%%):" % (threshold * 100))
+            need_print = False
         important_times[0] += times[i]
         important_ratios[0] += time_ratios[i]
-        print(" - '%-30s': %.4f%%" % (labels[i], time_ratios[i] * 100))
 
+    print(" - '%-40s' (%5d calls): %.4f%%" % (labels[i], counts[i], time_ratios[i] * 100))
+
+# Anything unaccounted for?
 print(
     "\nUnaccounted for: %.4f%%\n"
     % (100 * (total_time - total_measured_time) / total_time)
