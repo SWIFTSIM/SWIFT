@@ -91,6 +91,7 @@ if __name__ == "__main__":
 
     # Creation of first frame
     fig, ax = plt.subplots(1, 1, figsize=(1, 1), frameon=False)
+    ax.axis("off")  # Remove annoying black frame.
 
     data_x, data_y, density = load_and_extract("kelvinhelmholtz_0000.hdf5")
 
