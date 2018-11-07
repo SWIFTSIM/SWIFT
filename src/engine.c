@@ -1916,6 +1916,9 @@ int engine_estimate_nr_tasks(struct engine *e) {
   if (e->policy & engine_policy_stars) {
     n1 += 2;
   }
+  if (e->policy & engine_policy_fof) {
+    n1 += 2;
+  }
 #if defined(WITH_LOGGER)
   n1 += 1;
 #endif

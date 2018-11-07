@@ -96,6 +96,8 @@ enum {
   timer_dosubpair_stars_density,
   timer_dosub_self_stars_density,
   timer_logger,
+  timer_fof_self,
+  timer_fof_pair,
   timer_count,
 };
 

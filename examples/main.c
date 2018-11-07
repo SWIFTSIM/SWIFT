@@ -945,7 +945,6 @@ int main(int argc, char *argv[]) {
     if (with_cooling) engine_policies |= engine_policy_cooling;
     if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
     if (with_stars) engine_policies |= engine_policy_stars;
-    if (with_fof) engine_policies |= engine_policy_fof;
     if (with_feedback) engine_policies |= engine_policy_feedback;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;

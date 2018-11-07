@@ -95,6 +95,8 @@ const char* timers_names[timer_count] = {
     "dosubpair_stars_density",
     "dosub_self_stars_density",
     "logger",
+    "fof_self",
+    "fof_pair",
 };
 
 /* File to store the timers */

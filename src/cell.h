@@ -428,6 +428,9 @@ struct cell {
     /*! Task propagating the multipole to the particles */
     struct task *down;
 
+    /*! Tasks for FOF */
+    struct task *fof_self, *fof_pair;
+    
     /*! Number of M-M tasks that are associated with this cell. */
     short int nr_mm_tasks;
 
