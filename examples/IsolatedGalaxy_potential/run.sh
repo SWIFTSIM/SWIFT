@@ -1,4 +1,10 @@
 #!/bin/bash
 
+if [ ! -e reddeathgalaxy.hdf5 ]
+then
+    echo "Fetching initial conditons for the isolated galaxy with an external potential ..."
+    ./getIC.sh
+fi 
+
 ../swift -g -G -S -t 16 isolated_galaxy.yml 2>&1 | tee output.log
 
