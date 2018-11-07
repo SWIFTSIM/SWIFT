@@ -45,6 +45,12 @@
 #include "./hydro/PressureEnergy/hydro.h"
 #include "./hydro/PressureEnergy/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Pressure-Energy SPH (Hopkins 2013)"
+#elif defined(HOPKINS_PU_SPH_MONAGHAN)
+#include "./hydro/PressureEnergyMorrisMonaghanAV/hydro.h"
+#include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_iact.h"
+#define SPH_IMPLEMENTATION                                                \
+  "Pressure-Energy SPH (Hopkins 2013) with a Morris and Monaghan (1997) " \
+  "variable artificial viscosity."
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro.h"
 #include "./hydro/Default/hydro_iact.h"
