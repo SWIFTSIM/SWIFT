@@ -757,7 +757,7 @@ void engine_make_hierarchical_tasks_stars(struct engine *e, struct cell *c) {
 void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
 
-  struct engine *e = ((struct engine **)extra_data)[0];
+  struct engine *e = (struct engine *) extra_data;
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
@@ -802,15 +802,12 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
 
-    /* Is that cell local ? */
-    if (ci->nodeID != nodeID) continue;
+    /* If the cell is local build a self-interaction */
+    if (ci->nodeID == nodeID)
+      scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
+			NULL);
 
-    /* If the cells is local build a self-interaction */
-    scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
-
-    /* Recover the multipole information */
-    const struct gravity_tensors *const multi_i = ci->grav.multipole;
-    const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
+    message("delta_m=%d delta_p=%d", delta_m, delta_p);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_getid(cdim, i, j, k) != cid)
@@ -824,54 +821,41 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 #endif
 
     /* Loop over every other cell within (Manhattan) range delta */
-    for (int x = -delta_m; x <= delta_p; x++) {
-      int ii = i + x;
-      if (ii >= cdim[0])
-        ii -= cdim[0];
-      else if (ii < 0)
-        ii += cdim[0];
-      for (int y = -delta_m; y <= delta_p; y++) {
-        int jj = j + y;
-        if (jj >= cdim[1])
-          jj -= cdim[1];
-        else if (jj < 0)
-          jj += cdim[1];
-        for (int z = -delta_m; z <= delta_p; z++) {
-          int kk = k + z;
-          if (kk >= cdim[2])
-            kk -= cdim[2];
-          else if (kk < 0)
-            kk += cdim[2];
+    for (int ii = -delta_m; ii <= delta_p; ii++) {
+      int iii = i + ii;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -delta_m; jj <= delta_p; jj++) {
+        int jjj = j + jj;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -delta_m; kk <= delta_p; kk++) {
+          int kkk = k + kk;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
 
           /* Get the cell */
-          const int cjd = cell_getid(cdim, ii, jj, kk);
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
-#ifdef SWIFT_DEBUG_CHECKS
-          const int iii = cjd / (cdim[1] * cdim[2]);
-          const int jjj = (cjd / cdim[2]) % cdim[1];
-          const int kkk = cjd % cdim[2];
-
-          if (ii != iii || jj != jjj || kk != kkk)
-            error(
-                "Incorrect calculation of indices (iii,jjj,kkk)=(%d,%d,%d) "
-                "cjd=%d",
-                iii, jjj, kkk, cjd);
-#endif
-
           /* Avoid duplicates of local pairs*/
-          if (cid <= cjd && cj->nodeID == nodeID) continue;
-
-          /* Skip cells without gravity particles */
-          if (cj->grav.count == 0) continue;
+          if (cid >= cjd || cj->grav.count == 0 ||
+	      (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
 
           /* Recover the multipole information */
-          const struct gravity_tensors *const multi_j = cj->grav.multipole;
+	  const struct gravity_tensors *multi_i = ci->grav.multipole;
+          const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+	  if(multi_i == NULL && ci->nodeID != nodeID)
+	    error("Multipole of ci was not exchanged properly via the proxies");
+	  if(multi_j == NULL && cj->nodeID != nodeID)
+	    error("Multipole of cj was not exchanged properly via the proxies");
 
           /* Get the distance between the CoMs */
-          double dx = CoM_i[0] - multi_j->CoM[0];
-          double dy = CoM_i[1] - multi_j->CoM[1];
-          double dz = CoM_i[2] - multi_j->CoM[2];
+          double dx = multi_i->CoM[0] - multi_j->CoM[0];
+          double dy = multi_i->CoM[1] - multi_j->CoM[1];
+          double dz = multi_i->CoM[2] - multi_j->CoM[2];
 
           /* Apply BC */
           if (periodic) {
@@ -894,6 +878,11 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
                               ci, cj);
+
+	  if(ci->nodeID == nodeID && cj->nodeID != engine_rank)
+	    atomic_inc(&ci->num_foreign_pair_grav);	    
+	  if(cj->nodeID == nodeID && ci->nodeID != engine_rank)
+	    atomic_inc(&cj->num_foreign_pair_grav);
           }
         }
       }
@@ -935,12 +924,14 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 void engine_make_self_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
-  struct task **ghosts = NULL;
+
+  for(int i = 0; i<s->nr_cells; ++i) {
+    s->cells_top[i].num_foreign_pair_grav = 0;
+  }
 
   /* Create the multipole self and pair tasks. */
-  void *extra_data[2] = {e, ghosts};
   threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
-                 s->nr_cells, 1, 0, extra_data);
+                 s->nr_cells, 1, 0, e);
 }
 
 /**
@@ -1763,6 +1754,8 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
+
+    /* Integer indices of the cell in the top-level grid */
     const int i = cid / (cdim[1] * cdim[2]);
     const int j = (cid / cdim[2]) % cdim[1];
     const int k = cid % cdim[2];
@@ -1773,7 +1766,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Skip cells without hydro particles */
     if (ci->hydro.count == 0) continue;
 
-    /* If the cells is local build a self-interaction */
+    /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID)
       scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
                         NULL);
@@ -1805,6 +1798,11 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
           scheduler_addtask(sched, task_type_pair, task_subtype_density, sid, 0,
                             ci, cj);
+
+	  if(ci->nodeID == nodeID && cj->nodeID != engine_rank)
+	    atomic_inc(&ci->num_foreign_pair_hydro);	    
+	  if(cj->nodeID == nodeID && ci->nodeID != engine_rank)
+	    atomic_inc(&cj->num_foreign_pair_hydro);
         }
       }
     }
@@ -1828,6 +1826,10 @@ void engine_maketasks(struct engine *e) {
   scheduler_reset(sched, engine_estimate_nr_tasks(e));
 
   ticks tic2 = getticks();
+
+  for(int i = 0; i<s->nr_cells; ++i) {
+    s->cells_top[i].num_foreign_pair_hydro = 0;
+  }
 
   /* Construct the first hydro loop over neighbours */
   if (e->policy & engine_policy_hydro)
@@ -2087,4 +2089,13 @@ void engine_maketasks(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  if(e->nodeID == 0)
+    for(int i = 0; i < e->s->nr_cells; ++i) {
+      message("cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d num_foreign_hydro= %d",
+	      i, e->s->cells_top[i].num_grav_proxies, e->s->cells_top[i].num_hydro_proxies,
+	      e->s->cells_top[i].num_foreign_pair_grav, e->s->cells_top[i].num_foreign_pair_hydro);
+    }
+
+	
 }

@@ -205,6 +205,11 @@ struct pcell_step {
  */
 struct cell {
 
+  int num_hydro_proxies;
+  int num_grav_proxies;
+  int num_foreign_pair_hydro;
+  int num_foreign_pair_grav;
+
   /*! The cell location on the grid. */
   double loc[3];
 
