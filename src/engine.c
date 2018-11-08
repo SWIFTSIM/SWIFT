@@ -1625,19 +1625,14 @@ void engine_exchange_top_multipoles(struct engine *e) {
   /* Each node (space) has constructed its own top-level multipoles.
    * We now need to make sure every other node has a copy of everything.
    *
-   * WARNING: Adult stuff ahead: don't do this at home!
-   *
-   * Since all nodes have their top-level multi-poles computed
-   * and all foreign ones set to 0 (all bytes), we can gather all the m-poles
-   * by doing a bit-wise OR reduction across all the nodes directly in
-   * place inside the multi-poles_top array.
-   * This only works if the foreign m-poles on every nodes are zeroed and no
-   * multi-pole is present on more than one node (two things guaranteed by the
-   * domain decomposition).
+   * We use our home-made reduction operation that simply performs a XOR
+   * operation on the multipoles. Since only local multipoles are non-zero and
+   * each multipole is only present once, the bit-by-bit XOR will
+   * create the desired result.
    */
-  int err = MPI_Allreduce(MPI_IN_PLACE, e->s->multipoles_top,
-                          e->s->nr_cells * sizeof(struct gravity_tensors),
-                          MPI_BYTE, MPI_BOR, MPI_COMM_WORLD);
+  int err = MPI_Allreduce(MPI_IN_PLACE, e->s->multipoles_top, e->s->nr_cells,
+                          multipole_mpi_type, multipole_mpi_reduce_op,
+                          MPI_COMM_WORLD);
   if (err != MPI_SUCCESS)
     mpi_error(err, "Failed to all-reduce the top-level multipoles.");
 
@@ -2700,7 +2695,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
 #ifdef WITH_LOGGER
   /* Mark the first time step in the particle logger file. */
-  logger_log_timestamp(e->logger, e->ti_current, &e->logger->timestamp_offset);
+  logger_log_timestamp(e->logger, e->ti_current, e->time,
+                       &e->logger->timestamp_offset);
   /* Make sure that we have enough space in the particle logger file
    * to store the particles in current time step. */
   logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
@@ -2957,7 +2953,8 @@ void engine_step(struct engine *e) {
 
 #ifdef WITH_LOGGER
   /* Mark the current time step in the particle logger file. */
-  logger_log_timestamp(e->logger, e->ti_current, &e->logger->timestamp_offset);
+  logger_log_timestamp(e->logger, e->ti_current, e->time,
+                       &e->logger->timestamp_offset);
   /* Make sure that we have enough space in the particle logger file
    * to store the particles in current time step. */
   logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
@@ -4743,6 +4740,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_types();
+  multipole_create_mpi_types();
   stats_create_mpi_type();
   proxy_create_mpi_type();
   task_create_mpi_comms();

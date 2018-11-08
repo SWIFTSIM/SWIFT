@@ -17,15 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_MINIMAL_HYDRO_IACT_H
-#define SWIFT_MINIMAL_HYDRO_IACT_H
+#ifndef SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_IACT_H
+#define SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_IACT_H
 
 /**
  * @file PressureEnergy/hydro_iact.h
  * @brief P-U implementation of SPH (Neighbour loop equations)
  *
- * The thermal variable is the internal energy (u). A simple constant
- * viscosity term with a Balsara switch is implemented.
+ * The thermal variable is the internal energy (u). A simple variable
+ * viscosity term (Morris & Monaghan 1997) with a Balsara switch is
+ * implemented.
  *
  * No thermal conduction term is implemented.
  *
@@ -244,7 +245,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute sound speeds and signal velocity */
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
+  const float v_sig = ci + cj - 3.f * mu_ij;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
@@ -252,7 +253,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
+  const float alpha = 0.5f * (pi->alpha + pj->alpha);
+  const float visc =
+      -0.25f * alpha * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -371,7 +374,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute sound speeds and signal velocity */
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
+  const float v_sig = ci + cj - 3.f * mu_ij;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
@@ -379,7 +382,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
+  const float alpha = 0.5f * (pi->alpha + pj->alpha);
+  const float visc =
+      -0.25f * alpha * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -409,7 +414,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term;
 
-  /* Internal energy time derivatibe */
+  /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
 
   /* Get the time derivative for h. */
@@ -419,4 +424,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 }
 
-#endif /* SWIFT_MINIMAL_HYDRO_IACT_H */
+#endif /* SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_IACT_H */

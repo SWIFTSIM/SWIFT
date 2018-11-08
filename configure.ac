@@ -1150,7 +1150,7 @@ esac
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, debug default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, debug default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -1176,6 +1176,9 @@ case "$with_hydro" in
    ;;
    pressure-energy)
       AC_DEFINE([HOPKINS_PU_SPH], [1], [Pressure-Energy SPH])
+   ;;
+   pressure-energy-monaghan)
+      AC_DEFINE([HOPKINS_PU_SPH_MONAGHAN], [1], [Pressure-Energy SPH with M&M Variable A.V.])
    ;;
    default)
       AC_DEFINE([DEFAULT_SPH], [1], [Default SPH])
