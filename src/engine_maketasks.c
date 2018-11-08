@@ -807,8 +807,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
       scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
 			NULL);
 
-    message("delta_m=%d delta_p=%d", delta_m, delta_p);
-
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_getid(cdim, i, j, k) != cid)
       error("Incorrect calculation of indices (i,j,k)=(%d,%d,%d) cid=%d", i, j,
