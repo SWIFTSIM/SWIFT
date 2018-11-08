@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.collections as collections
 import matplotlib.ticker as plticker
@@ -43,27 +44,59 @@ parser = argparse.ArgumentParser(description="Plot threadpool function graphs")
 
 parser.add_argument("input", help="Threadpool data file (-Y output)")
 parser.add_argument("outpng", help="Name for output graphic file (PNG)")
-parser.add_argument("-l", "--limit", dest="limit",
-                    help="Upper time limit in millisecs (def: depends on data)",
-                    default=0, type=float)
-parser.add_argument("-e", "--expand", dest="expand",
-                    help="Thread expansion factor (def: 1)",
-                    default=1, type=int)
-parser.add_argument("--height", dest="height",
-                    help="Height of plot in inches (def: 4)",
-                    default=4., type=float)
-parser.add_argument("--width", dest="width",
-                    help="Width of plot in inches (def: 16)",
-                    default=16., type=float)
-parser.add_argument("--nolegend", dest="nolegend",
-                    help="Whether to show the legend (def: False)",
-                    default=False, action="store_true")
-parser.add_argument("-v", "--verbose", dest="verbose",
-                    help="Show colour assignments and other details (def: False)",
-                    default=False, action="store_true")
-parser.add_argument("-m", "--mintic", dest="mintic",
-                    help="Value of the smallest tic (def: least in input file)",
-                    default=-1, type=int)
+parser.add_argument(
+    "-l",
+    "--limit",
+    dest="limit",
+    help="Upper time limit in millisecs (def: depends on data)",
+    default=0,
+    type=float,
+)
+parser.add_argument(
+    "-e",
+    "--expand",
+    dest="expand",
+    help="Thread expansion factor (def: 1)",
+    default=1,
+    type=int,
+)
+parser.add_argument(
+    "--height",
+    dest="height",
+    help="Height of plot in inches (def: 4)",
+    default=4.0,
+    type=float,
+)
+parser.add_argument(
+    "--width",
+    dest="width",
+    help="Width of plot in inches (def: 16)",
+    default=16.0,
+    type=float,
+)
+parser.add_argument(
+    "--nolegend",
+    dest="nolegend",
+    help="Whether to show the legend (def: False)",
+    default=False,
+    action="store_true",
+)
+parser.add_argument(
+    "-v",
+    "--verbose",
+    dest="verbose",
+    help="Show colour assignments and other details (def: False)",
+    default=False,
+    action="store_true",
+)
+parser.add_argument(
+    "-m",
+    "--mintic",
+    dest="mintic",
+    help="Value of the smallest tic (def: least in input file)",
+    default=-1,
+    type=int,
+)
 
 args = parser.parse_args()
 infile = args.input
@@ -73,46 +106,80 @@ expand = args.expand
 mintic = args.mintic
 
 #  Basic plot configuration.
-PLOT_PARAMS = {"axes.labelsize": 10,
-               "axes.titlesize": 10,
-               "font.size": 12,
-               "legend.fontsize": 12,
-               "xtick.labelsize": 10,
-               "ytick.labelsize": 10,
-               "figure.figsize" : (args.width, args.height),
-               "figure.subplot.left" : 0.03,
-               "figure.subplot.right" : 0.995,
-               "figure.subplot.bottom" : 0.09,
-               "figure.subplot.top" : 0.99,
-               "figure.subplot.wspace" : 0.,
-               "figure.subplot.hspace" : 0.,
-               "lines.markersize" : 6,
-               "lines.linewidth" : 3.
-               }
+PLOT_PARAMS = {
+    "axes.labelsize": 10,
+    "axes.titlesize": 10,
+    "font.size": 12,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "figure.figsize": (args.width, args.height),
+    "figure.subplot.left": 0.03,
+    "figure.subplot.right": 0.995,
+    "figure.subplot.bottom": 0.09,
+    "figure.subplot.top": 0.99,
+    "figure.subplot.wspace": 0.0,
+    "figure.subplot.hspace": 0.0,
+    "lines.markersize": 6,
+    "lines.linewidth": 3.0,
+}
 pl.rcParams.update(PLOT_PARAMS)
 
 #  A number of colours for the various types. Recycled when there are
 #  more task types than colours...
-colours = ["cyan", "lightgray", "darkblue", "yellow", "tan", "dodgerblue",
-           "sienna", "aquamarine", "bisque", "blue", "green", "lightgreen",
-           "brown", "purple", "moccasin", "olivedrab", "chartreuse",
-           "olive", "darkgreen", "green", "mediumseagreen",
-           "mediumaquamarine", "darkslategrey", "mediumturquoise",
-           "black", "cadetblue", "skyblue", "red", "slategray", "gold",
-           "slateblue", "blueviolet", "mediumorchid", "firebrick",
-           "magenta", "hotpink", "pink", "orange", "lightgreen"]
+colours = [
+    "cyan",
+    "lightgray",
+    "darkblue",
+    "yellow",
+    "tan",
+    "dodgerblue",
+    "sienna",
+    "aquamarine",
+    "bisque",
+    "blue",
+    "green",
+    "lightgreen",
+    "brown",
+    "purple",
+    "moccasin",
+    "olivedrab",
+    "chartreuse",
+    "olive",
+    "darkgreen",
+    "green",
+    "mediumseagreen",
+    "mediumaquamarine",
+    "darkslategrey",
+    "mediumturquoise",
+    "black",
+    "cadetblue",
+    "skyblue",
+    "red",
+    "slategray",
+    "gold",
+    "slateblue",
+    "blueviolet",
+    "mediumorchid",
+    "firebrick",
+    "magenta",
+    "hotpink",
+    "pink",
+    "orange",
+    "lightgreen",
+]
 maxcolours = len(colours)
 
 #  Read header. First two lines.
 with open(infile) as infid:
-    head = [next(infid) for x in xrange(2)]
+    head = [next(infid) for x in range(2)]
 header = head[1][2:].strip()
 header = eval(header)
-nthread = int(header['num_threads']) + 1
-CPU_CLOCK = float(header['cpufreq']) / 1000.0
-print "Number of threads: ", nthread
+nthread = int(header["num_threads"]) + 1
+CPU_CLOCK = float(header["cpufreq"]) / 1000.0
+print("Number of threads: ", nthread)
 if args.verbose:
-    print "CPU frequency:", CPU_CLOCK * 1000.0
+    print("CPU frequency:", CPU_CLOCK * 1000.0)
 
 #  Read input.
 data = pl.genfromtxt(infile, dtype=None, delimiter=" ")
@@ -127,7 +194,7 @@ for i in data:
     if i[0] != "#":
         funcs.append(i[0].replace("_mapper", ""))
         if i[1] < 0:
-            threads.append(nthread-1)
+            threads.append(nthread - 1)
         else:
             threads.append(i[1])
         chunks.append(i[2])
@@ -143,7 +210,7 @@ chunks = pl.array(chunks)
 mintic_step = min(tics)
 tic_step = mintic_step
 toc_step = max(tocs)
-print "# Min tic = ", mintic_step
+print("# Min tic = ", mintic_step)
 if mintic > 0:
     tic_step = mintic
 
@@ -153,7 +220,7 @@ if delta_t == 0:
     dt = toc_step - tic_step
     if dt > delta_t:
         delta_t = dt
-    print "Data range: ", delta_t / CPU_CLOCK, "ms"
+    print("Data range: ", delta_t / CPU_CLOCK, "ms")
 
 #  Once more doing the real gather and plots this time.
 start_t = float(tic_step)
@@ -163,7 +230,7 @@ end_t = (toc_step - start_t) / CPU_CLOCK
 
 #  Get all "task" names and assign colours.
 TASKTYPES = pl.unique(funcs)
-print TASKTYPES
+print(TASKTYPES)
 
 #  Set colours of task/subtype.
 TASKCOLOURS = {}
@@ -174,15 +241,15 @@ for task in TASKTYPES:
 
 #  For fiddling with colours...
 if args.verbose:
-    print "#Selected colours:"
+    print("#Selected colours:")
     for task in sorted(TASKCOLOURS.keys()):
-        print "# " + task + ": " + TASKCOLOURS[task]
+        print("# " + task + ": " + TASKCOLOURS[task])
     for task in sorted(SUBCOLOURS.keys()):
-        print "# " + task + ": " + SUBCOLOURS[task]
+        print("# " + task + ": " + SUBCOLOURS[task])
 
 tasks = {}
 tasks[-1] = []
-for i in range(nthread*expand):
+for i in range(nthread * expand):
     tasks[i] = []
 
 #  Counters for each thread when expanding.
@@ -211,7 +278,7 @@ nthread = nthread * expand
 
 typesseen = []
 fig = pl.figure()
-ax = fig.add_subplot(1,1,1)
+ax = fig.add_subplot(1, 1, 1)
 ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
 ax.set_ylim(0, nthread)
 
@@ -222,7 +289,7 @@ j = 0
 for task in tasks[nthread - expand]:
     tictocs.append((task["tic"], task["toc"] - task["tic"]))
     colours.append(task["colour"])
-ax.broken_barh(tictocs, [0,(nthread-1)], facecolors = colours, linewidth=0, alpha=0.15)
+ax.broken_barh(tictocs, [0, (nthread - 1)], facecolors=colours, linewidth=0, alpha=0.15)
 
 # And we don't plot the fake thread.
 nthread = nthread - expand
@@ -243,36 +310,38 @@ for i in range(nthread):
             typesseen.append(qtask)
 
     #  Now plot.
-    ax.broken_barh(tictocs, [i+0.05,0.90], facecolors = colours, linewidth=0)
+    ax.broken_barh(tictocs, [i + 0.05, 0.90], facecolors=colours, linewidth=0)
 
 #  Legend and room for it.
 nrow = len(typesseen) / 5
 if not args.nolegend:
-    ax.fill_between([0, 0], nthread+0.5, nthread + nrow + 0.5, facecolor="white")
+    ax.fill_between([0, 0], nthread + 0.5, nthread + nrow + 0.5, facecolor="white")
     ax.set_ylim(0, nthread + 0.5)
-    ax.legend(loc=1, shadow=True, bbox_to_anchor=(0., 1.05 ,1., 0.2), mode="expand", ncol=5)
+    ax.legend(
+        loc=1, shadow=True, bbox_to_anchor=(0.0, 1.05, 1.0, 0.2), mode="expand", ncol=5
+    )
     box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width, box.height*0.8])
-    
+    ax.set_position([box.x0, box.y0, box.width, box.height * 0.8])
+
 # Start and end of time-step
-real_start_t = (mintic_step - tic_step)/ CPU_CLOCK
-ax.plot([real_start_t, real_start_t], [0, nthread + nrow + 1], 'k--', linewidth=1)
+real_start_t = (mintic_step - tic_step) / CPU_CLOCK
+ax.plot([real_start_t, real_start_t], [0, nthread + nrow + 1], "k--", linewidth=1)
 
-ax.plot([end_t, end_t], [0, nthread + nrow + 1], 'k--', linewidth=1)
+ax.plot([end_t, end_t], [0, nthread + nrow + 1], "k--", linewidth=1)
 
-ax.set_xlabel("Wall clock time [ms]", labelpad=0.)
+ax.set_xlabel("Wall clock time [ms]", labelpad=0.0)
 if expand == 1:
-    ax.set_ylabel("Thread ID", labelpad=0 )
+    ax.set_ylabel("Thread ID", labelpad=0)
 else:
-    ax.set_ylabel("Thread ID * " + str(expand), labelpad=0 )
-ax.set_yticks(pl.array(range(nthread)), True)
+    ax.set_ylabel("Thread ID * " + str(expand), labelpad=0)
+ax.set_yticks(pl.array(list(range(nthread))), True)
 
 loc = plticker.MultipleLocator(base=expand)
 ax.yaxis.set_major_locator(loc)
-ax.grid(True, which='major', axis="y", linestyle="-")
+ax.grid(True, which="major", axis="y", linestyle="-")
 
 pl.show()
 pl.savefig(outpng)
-print "Graphics done, output written to", outpng
+print("Graphics done, output written to", outpng)
 
 sys.exit(0)
