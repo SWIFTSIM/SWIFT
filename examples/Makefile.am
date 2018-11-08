@@ -1,4 +1,4 @@
-# tHIS FIle is part of SWIFT.
+# This file is part of SWIFT.
 # Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
 #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
 #
@@ -105,18 +105,3 @@ EXTRA_DIST = CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/make
 
 # Default parameter file
 EXTRA_DIST += parameter_example.yml
-
-# Scripts to plot task graphs
-EXTRA_DIST += plot_tasks.py analyse_tasks.py process_plot_tasks_MPI process_plot_tasks
-
-# Scripts to plot threadpool 'task' graphs
-EXTRA_DIST += analyse_threadpool_tasks.py \
-              plot_threadpool.py \
-              process_plot_threadpool
-
-# Script for scaling plot
-EXTRA_DIST += plot_scaling_results.py \
-              plot_scaling_results_breakdown.py
-
-# Script for gravity accuracy
-EXTRA_DIST += plot_gravity_checks.py
