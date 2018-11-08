@@ -149,10 +149,10 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
     /* message("Converting ! factor=%e", factor); */
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = temp;
+      double* temp_d = (double*)temp;
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
-      float* temp_f = temp;
+      float* temp_f = (float*)temp;
 
 #ifdef SWIFT_DEBUG_CHECKS
       float maximum = 0.f;
@@ -220,7 +220,7 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
   }
 
   /* Copy temporary buffer to particle data */
-  char* temp_c = temp;
+  char* temp_c = (char*)temp;
   for (size_t i = 0; i < N; ++i)
     memcpy(props.field + i * props.partSize, &temp_c[i * copySize], copySize);
 
@@ -474,7 +474,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   long long offset[swift_type_count] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
-  struct unit_system* ic_units = malloc(sizeof(struct unit_system));
+  struct unit_system* ic_units =
+      (struct unit_system*)malloc(sizeof(struct unit_system));
 
   /* First read some information about the content */
   if (mpi_rank == 0) {
@@ -592,8 +593,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[0];
-    if (posix_memalign((void*)parts, part_align, *Ngas * sizeof(struct part)) !=
-        0)
+    if (posix_memalign((void**)parts, part_align,
+                       *Ngas * sizeof(struct part)) != 0)
       error("Error while allocating memory for SPH particles");
     bzero(*parts, *Ngas * sizeof(struct part));
   }
@@ -601,7 +602,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store stars particles */
   if (with_stars) {
     *Nstars = N[swift_type_stars];
-    if (posix_memalign((void*)sparts, spart_align,
+    if (posix_memalign((void**)sparts, spart_align,
                        *Nstars * sizeof(struct spart)) != 0)
       error("Error while allocating memory for stars particles");
     bzero(*sparts, *Nstars * sizeof(struct spart));
@@ -613,7 +614,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
                (with_stars ? N[swift_type_stars] : 0);
-    if (posix_memalign((void*)gparts, gpart_align,
+    if (posix_memalign((void**)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
