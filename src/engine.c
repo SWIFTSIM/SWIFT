@@ -3696,7 +3696,7 @@ void engine_makeproxies(struct engine *e) {
               const int cjd = cell_getid(cdim, iii, jjj, kkk);
 	      
               /* Early abort (same cell) */
-              if (cid == cjd) continue;
+              if (cid >= cjd) continue;
 	      
               /* Early abort (both same node) */
               if (cells[cid].nodeID == nodeID && cells[cjd].nodeID == nodeID)
