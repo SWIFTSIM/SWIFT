@@ -697,7 +697,7 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
   /* Recover some useful constants */
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
-  const float dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
+  const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1], (float)e->mesh->dim[2]};
   const float r_s_inv = e->mesh->r_s_inv;
   const double min_trunc = e->mesh->r_cut_min;
 
@@ -1406,7 +1406,7 @@ static INLINE void runner_dopair_recursive_grav_pm(struct runner *r,
   /* Some constants */
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
-  const float dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
+  const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1], (float)e->mesh->dim[2]};
   const float r_s_inv = e->mesh->r_s_inv;
 
   /* Anything to do here? */
