@@ -40,28 +40,25 @@
 #include "part.h"
 #include "units.h"
 
-/* header constants
+/*
  * Thoses are definitions from the format and therefore should not be changed!
- * Size in bytes
  */
-/* size of a mask */
+/* number of bytes for a mask */
 #define logger_mask_size 1
 
-/* size of an offset */
+/* number bytes for an offset */
 #define logger_offset_size 7
 
-/* size of the version information */
+/* number of bytes for the version information */
 #define logger_version_size 20
 
-/* size of the size information */
-#define logger_header_number_size 2
+/* number of bytes for the labels in the header */
+#define logger_label_size 20
+
+/* number of bytes for the number in the header */
+#define logger_number_size 4
 
 char logger_version[logger_version_size] = "0.1";
-
-const unsigned int logger_datatype_size[logger_data_count] = {
-    sizeof(int),  sizeof(float),     sizeof(double),
-    sizeof(char), sizeof(long long), 1,
-};
 
 /**
  * @brief Write the header of a chunk (offset + mask).
@@ -104,39 +101,8 @@ void logger_write_data(struct dump *d, size_t *offset, size_t size,
 
   /* write data to the buffer */
   memcpy(buff, p, size);
-}
 
-/**
- * @brief Write a parameter to the file
- *
- * TODO Make it thread safe or remove it.
- *
- * write data in the following order: name, data type, data.
- * It should be used only for the file header.
- *
- * @param d #dump file
- * @param params #logger_parameters file format informations
- * @param offset (return) offset of the next chunk
- * @param p pointer to the data
- * @param name Label of the parameter (should be smaller than log->name)
- * @param data_type #logger_datatype to write
- */
-void logger_write_general_data(struct dump *d,
-                               const struct logger_parameters *params,
-                               size_t *offset, const void *p, char *name,
-                               size_t data_type) {
-  /* write name */
-  logger_write_data(d, offset, params->label_size, name);
-
-  /* write data type */
-  logger_write_data(d, offset, params->data_type_size, &data_type);
-
-  /* write value */
-  if (data_type >= logger_data_count) error("Not implemented");
-  size_t size = logger_datatype_size[data_type];
-
-  logger_write_data(d, offset, size, p);
-
+  /* Update offset to end of chunk */
   *offset += size;
 }
 
@@ -414,10 +380,8 @@ void logger_log_timestamp(struct logger *log, integertime_t timestamp,
 void logger_ensure_size(struct logger *log, size_t total_nr_parts,
                         size_t total_nr_gparts, size_t total_nr_sparts) {
 
-  struct logger_parameters *log_params = log->params;
-
   /* count part memory */
-  size_t limit = log_params->total_size;
+  size_t limit = log->max_chunk_size;
 
   limit *= total_nr_parts;
 
@@ -429,6 +393,142 @@ void logger_ensure_size(struct logger *log, size_t total_nr_parts,
 
   /* ensure enough space in dump */
   dump_ensure(log->dump, limit, log->buffer_scale * limit);
+}
+
+/**
+ * @brief Generate a list of the mask size.
+ *
+ * This function requires a call to free on the pointer.
+ *
+ * @param log The #logger.
+ */
+int *logger_get_list_mask_size(const struct logger *log) {
+  int *output = malloc(sizeof(int) * log->number_masks);
+  if (output == NULL)
+    error("Unable to allocate memory");
+
+  /* Position */
+  output[0] = 3 * sizeof(double);
+  /* Velocity */
+  output[1] = 3 * sizeof(float);
+  /* Acceleration */
+  output[2] = 3 * sizeof(float);
+  /* Internal Energy */
+  output[3] = sizeof(float);
+  /* Smoothing Length */
+  output[4] = sizeof(float);
+  /* Density */
+  output[5] = sizeof(float);
+  /* Constants */
+  output[6] = sizeof(float) + sizeof(long long);
+  /* Time stamp */
+  output[7] = sizeof(integertime_t) + sizeof(double);
+
+  return output;
+}
+
+/**
+ * @brief Generate a list of the mask names.
+ *
+ * This function requires a call to free on the pointer.
+ *
+ * @param log The #logger.
+ */
+char *logger_get_list_mask_name(const struct logger *log) {
+  size_t block_size = logger_label_size * log->number_masks;
+  char *output = malloc(block_size);
+  if (output == NULL)
+    error("Unable to allocate memory");
+
+  char *cur_name = output;
+
+  /* set the mask names */
+  char tmp[logger_label_size];
+  strcpy(tmp, "position");
+  memcpy(cur_name, &tmp, logger_label_size);
+  cur_name += logger_label_size;
+
+  strcpy(tmp, "velocity");
+  memcpy(cur_name, &tmp, logger_label_size);
+  cur_name += logger_label_size;
+
+  strcpy(tmp, "acceleration");
+  memcpy(cur_name, &tmp, logger_label_size);
+  cur_name += logger_label_size;
+
+  strcpy(tmp, "entropy");
+  memcpy(cur_name, &tmp, logger_label_size);
+  cur_name += logger_label_size;
+
+  strcpy(tmp, "cutoff radius");
+  memcpy(cur_name, &tmp, logger_label_size);
+  cur_name += logger_label_size;
+
+  strcpy(tmp, "density");
+  memcpy(cur_name, &tmp, logger_label_size);
+  cur_name += logger_label_size;
+
+  strcpy(tmp, "consts");
+  memcpy(cur_name, &tmp, logger_label_size);
+  cur_name += logger_label_size;
+
+  strcpy(tmp, "timestamp");
+  memcpy(cur_name, &tmp, logger_label_size);
+  cur_name += logger_label_size;
+
+  return output;
+}
+
+
+/**
+ * @brief Generate a list of the masks.
+ *
+ * This function requires a call to free on the pointer.
+ *
+ * @param log The #logger.
+ */
+int *logger_get_list_mask(const struct logger *log) {
+  int *output = malloc(sizeof(int) * log->number_masks);
+  if (output == NULL)
+    error("Unable to allocate memory");
+
+  /* Position */
+  output[0] = logger_mask_x;
+  /* Velocity */
+  output[1] = logger_mask_v;
+  /* Acceleration */
+  output[2] = logger_mask_a;
+  /* Internal Energy */
+  output[3] = logger_mask_u;
+  /* Smoothing Length */
+  output[4] = logger_mask_h;
+  /* Density */
+  output[5] = logger_mask_rho;
+  /* Constants */
+  output[6] = logger_mask_consts;
+  /* Time stamp */
+  output[7] = logger_mask_timestamp;
+
+  return output;
+}
+
+/**
+ * @brief Compute the maximal size of a chunk.
+ *
+ * @param log The #logger.
+ */
+int logger_compute_max_chunk_size(const struct logger *log) {
+
+  int *output = logger_get_list_mask_size(log);
+
+  int max_size = logger_offset_size + logger_mask_size;
+  /* Loop over all fields except timestamp */
+  for (int i = 0; i < log->number_masks - 1; i++) {
+    max_size += output[i];
+  }
+
+  free(output);
+  return max_size;
 }
 
 /**
@@ -455,11 +555,10 @@ void logger_init(struct logger *log, struct swift_params *params) {
   strcpy(logger_name_file, log->base_name);
   strcat(logger_name_file, ".dump");
 
-  /* init parameters */
-  log->params =
-      (struct logger_parameters *)malloc(sizeof(struct logger_parameters));
-  logger_parameters_init(log->params);
-
+  /* Define some constants */
+  log->number_masks = 8;
+  log->max_chunk_size = logger_compute_max_chunk_size(log);
+  
   /* init dump */
   log->dump = malloc(sizeof(struct dump));
   struct dump *dump_file = log->dump;
@@ -474,8 +573,8 @@ void logger_init(struct logger *log, struct swift_params *params) {
  */
 void logger_clean(struct logger *log) {
   dump_close(log->dump);
-  logger_parameters_clean(log->params);
-  free(log->params);
+  free(log->dump);
+  log->dump = NULL;
 }
 
 /**
@@ -488,7 +587,6 @@ void logger_clean(struct logger *log) {
 void logger_write_file_header(struct logger *log, const struct engine *e) {
 
   /* get required variables */
-  const struct logger_parameters log_params = *log->params;
   struct dump *dump = log->dump;
 
   size_t file_offset = dump->file_offset;
@@ -501,167 +599,47 @@ void logger_write_file_header(struct logger *log, const struct engine *e) {
   /* Write version information */
   logger_write_data(dump, &file_offset, logger_version_size, &logger_version);
 
-  /* write number of bytes used for the offsets */
-  logger_write_data(dump, &file_offset, logger_header_number_size,
-                    &log_params.offset_size);
-
   /* write offset direction */
-  int reversed = 0;
-  logger_write_data(dump, &file_offset, logger_datatype_size[logger_data_bool],
+  const int reversed = 0;
+  logger_write_data(dump, &file_offset, logger_number_size,
                     &reversed);
 
   /* placeholder to write the offset of the first log here */
-  char *skip_header = dump_get(dump, log_params.offset_size, &file_offset);
+  char *skip_header = dump_get(dump, logger_offset_size, &file_offset);
 
   /* write number of bytes used for names */
-  logger_write_data(dump, &file_offset, logger_header_number_size,
-                    &log_params.label_size);
-
-  /* write number of bytes used for numbers */
-  logger_write_data(dump, &file_offset, logger_header_number_size,
-                    &log_params.number_size);
-
-  /* write number of bytes used for masks */
-  logger_write_data(dump, &file_offset, logger_header_number_size,
-                    &log_params.mask_size);
+  const int label_size = logger_label_size;
+  logger_write_data(dump, &file_offset, logger_number_size,
+                    &label_size);
 
   /* write number of masks */
-  logger_write_data(dump, &file_offset, log_params.number_size,
-                    &log_params.number_mask);
+  logger_write_data(dump, &file_offset, logger_number_size,
+                    &log->number_masks);
 
+  /* Get masks informations */
+  int *mask_sizes = logger_get_list_mask_size(log);
+  int *masks = logger_get_list_mask(log);
+  char *mask_names = logger_get_list_mask_name(log);
+  
   /* write masks */
   // loop over all mask type
-  for (size_t i = 0; i < log_params.number_mask; i++) {
+  for (int i = 0; i < log->number_masks; i++) {
     // mask name
-    size_t j = i * log_params.label_size;
-    logger_write_data(dump, &file_offset, log_params.label_size,
-                      &log_params.masks_name[j]);
-
-    // mask
-    logger_write_data(dump, &file_offset, log_params.mask_size,
-                      &log_params.masks[i]);
+    size_t j = i * logger_label_size;
+    logger_write_data(dump, &file_offset, logger_label_size,
+                      &mask_names[j]);
 
     // mask size
-    logger_write_data(dump, &file_offset, log_params.number_size,
-                      &log_params.masks_data_size[i]);
+    logger_write_data(dump, &file_offset, logger_number_size,
+                      &mask_sizes[i]);
   }
-
-  /* write mask data */
-  // TODO
-  /* loop over each mask and each data in this mask */
-  /* write number of bytes for each field */
-  /* write data type (float, double, ...) */
-  /* write data name (mass, id, ...) */
-
-  /* Write data */
-  char *name = malloc(sizeof(char) * log_params.label_size);
-  strcpy(name, "time_base");
-  logger_write_general_data(dump, &log_params, &file_offset, &e->time_base,
-                            name, logger_data_double);
-
+  /* cleanup memory */
+  free(mask_sizes);
+  free(masks);
+  free(mask_names);
+  
   /* last step: write first offset */
-  memcpy(skip_header, &file_offset, log_params.offset_size);
-
-  /* free memory */
-  free(name);
-}
-
-/**
- * @brief initialize the #logger_parameters with the format informations
- *
- * @param log_params #logger_parameters to initialize
- */
-void logger_parameters_init(struct logger_parameters *log_params) {
-  /* set parameters */
-  log_params->label_size = 20;
-  log_params->offset_size = 7;
-  log_params->mask_size = 1;
-  log_params->number_size = 1;
-  log_params->data_type_size = 1;
-
-  log_params->number_mask = 8;
-
-  /* set masks array */
-  log_params->masks = malloc(sizeof(size_t) * log_params->number_mask);
-  log_params->masks[0] = logger_mask_x;
-  log_params->masks[1] = logger_mask_v;
-  log_params->masks[2] = logger_mask_a;
-  log_params->masks[3] = logger_mask_u;
-  log_params->masks[4] = logger_mask_h;
-  log_params->masks[5] = logger_mask_rho;
-  log_params->masks[6] = logger_mask_consts;
-  log_params->masks[7] = logger_mask_timestamp;
-
-  /* set the mask names */
-  size_t block_size = log_params->label_size * log_params->number_mask;
-  log_params->masks_name = malloc(block_size);
-  char *cur_name = log_params->masks_name;
-
-  char tmp[log_params->label_size];
-  strcpy(tmp, "position");
-  memcpy(cur_name, &tmp, log_params->label_size);
-  cur_name += log_params->label_size;
-
-  strcpy(tmp, "velocity");
-  memcpy(cur_name, &tmp, log_params->label_size);
-  cur_name += log_params->label_size;
-
-  strcpy(tmp, "acceleration");
-  memcpy(cur_name, &tmp, log_params->label_size);
-  cur_name += log_params->label_size;
-
-  strcpy(tmp, "entropy");
-  memcpy(cur_name, &tmp, log_params->label_size);
-  cur_name += log_params->label_size;
-
-  strcpy(tmp, "cutoff radius");
-  memcpy(cur_name, &tmp, log_params->label_size);
-  cur_name += log_params->label_size;
-
-  strcpy(tmp, "density");
-  memcpy(cur_name, &tmp, log_params->label_size);
-  cur_name += log_params->label_size;
-
-  strcpy(tmp, "consts");
-  memcpy(cur_name, &tmp, log_params->label_size);
-  cur_name += log_params->label_size;
-
-  strcpy(tmp, "timestamp");
-  memcpy(cur_name, &tmp, log_params->label_size);
-  cur_name += log_params->label_size;
-
-  /* set the data size */
-  log_params->masks_data_size =
-      malloc(sizeof(size_t) * log_params->number_mask);
-  log_params->masks_data_size[0] = 3 * sizeof(double);
-  log_params->masks_data_size[1] = 3 * sizeof(float);
-  log_params->masks_data_size[2] = 3 * sizeof(float);
-  log_params->masks_data_size[3] = sizeof(float);
-  log_params->masks_data_size[4] = sizeof(float);
-  log_params->masks_data_size[5] = sizeof(float);
-  log_params->masks_data_size[6] = sizeof(float) + sizeof(long long);
-  log_params->masks_data_size[7] = sizeof(integertime_t) + sizeof(double);
-
-  /* Compute the size of a chunk if all the mask are activated */
-  log_params->total_size = logger_offset_size + logger_mask_size;
-
-  for (size_t i = 0; i < log_params->number_mask; i++) {
-    if (log_params->masks[i] != logger_mask_timestamp)
-      log_params->total_size += log_params->masks_data_size[i];
-  }
-
-  // todo masks_type
-}
-
-/**
- * @brief Clean the #logger_parameters
- *
- * @param log_params The #logger_parameters
- */
-void logger_parameters_clean(struct logger_parameters *log_params) {
-  free(log_params->masks);
-  free(log_params->masks_name);
-  free(log_params->masks_data_size);
+  memcpy(skip_header, &file_offset, logger_offset_size);
 }
 
 /**

@@ -81,44 +81,11 @@ enum logger_masks {
   logger_mask_h = (1 << 4),
   logger_mask_rho = (1 << 5),
   logger_mask_consts = (1 << 6),
-  logger_mask_timestamp = (1 << 7),
+  logger_mask_timestamp = (1 << 7), /* Need to be the last */
 };
 
 /* Size of the strings. */
 #define logger_string_length 200
-
-/* parameters of the logger */
-struct logger_parameters {
-  /* size of a label in bytes */
-  size_t label_size;
-
-  /* size of an offset in bytes */
-  size_t offset_size;
-
-  /* size of a mask in bytes */
-  size_t mask_size;
-
-  /* size of a number in bytes */
-  size_t number_size;
-
-  /* size of a data type in bytes */
-  size_t data_type_size;
-
-  /* number of different mask */
-  size_t number_mask;
-
-  /* value of each masks */
-  size_t *masks;
-
-  /* data size of each mask */
-  size_t *masks_data_size;
-
-  /* label of each mask */
-  char *masks_name;
-
-  /* Size of a chunk if every mask are activated */
-  size_t total_size;
-};
 
 /* structure containing global data */
 struct logger {
@@ -137,8 +104,11 @@ struct logger {
   /* scaling factor when buffer is too small */
   float buffer_scale;
 
-  /* logger parameters */
-  struct logger_parameters *params;
+  /* Size of a chunk if every mask are activated */
+  int max_chunk_size;
+
+  /* Number of masks used in the logger */
+  int number_masks;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -150,18 +120,6 @@ struct logger_part_data {
   /* offset of last particle log entry */
   size_t last_offset;
 };
-
-enum logger_datatype {
-  logger_data_int,
-  logger_data_float,
-  logger_data_double,
-  logger_data_char,
-  logger_data_longlong,
-  logger_data_bool,
-  logger_data_count /* should be last */
-};
-
-extern const unsigned int logger_datatype_size[];
 
 /* Function prototypes. */
 int logger_compute_chunk_size(unsigned int mask);
@@ -182,9 +140,6 @@ int logger_read_part(struct part *p, size_t *offset, const char *buff);
 int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff);
 int logger_read_timestamp(unsigned long long int *t, double *time,
                           size_t *offset, const char *buff);
-
-void logger_parameters_init(struct logger_parameters *log_params);
-void logger_parameters_clean(struct logger_parameters *log_params);
 
 /**
  * @brief Initialize the logger data for a particle.
