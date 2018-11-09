@@ -23,7 +23,10 @@ group sizes, the interesting data in the ``.catalog_group`` files are:
 
 + The ``group_size``: gives a list of all the halos and the number of particles
   in the halo, this list is numbered from 0 until the number of groups minus
-  one. It is important that the groups are not ordered in any way [#order]_ 
+  one. It is important that the groups are not ordered in any way [#order]_.
+  It is also important to note that the group size includes both the bound and
+  unbound particles; always use the ``Offset`` and ``Offset_unbound`` data
+  when reading from the ``catalog_particles`` files.
 + The ``Num_of_groups`` or ``Total_num_of_groups``: gives the total number of
   groups in the snapshot.
 + The ``Offset`` list: This list gives the offset off the particles. In the
