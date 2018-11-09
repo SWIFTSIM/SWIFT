@@ -1447,7 +1447,7 @@ esac
 # Stellar model.
 AC_ARG_WITH([stars],
    [AS_HELP_STRING([--with-stars=<model>],
-      [Stellar model to use @<:@none, GEAR, debug default: none@:>@]
+      [Stellar model to use @<:@none, GEAR, EAGLE, debug default: none@:>@]
    )],
    [with_stars="$withval"],
    [with_stars="none"]
@@ -1464,6 +1464,9 @@ fi
 case "$with_stars" in
    GEAR)
       AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
+   ;;
+   EAGLE)
+      AC_DEFINE([STARS_EAGLE], [1], [EAGLE stellar model])
    ;;
    none)
    ;;

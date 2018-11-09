@@ -16,15 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STARS_IO_H
-#define SWIFT_STARS_IO_H
+#ifndef SWIFT_DEFAULT_STARS_DEBUG_H
+#define SWIFT_DEFAULT_STARS_DEBUG_H
 
-#include "./const.h"
+__attribute__((always_inline)) INLINE static void stars_debug_particle(
+    const struct spart* p) {
+  printf(
+      "x=[%.3e,%.3e,%.3e], "
+      "v_full=[%.3e,%.3e,%.3e] p->mass=%.3e \n t_begin=%d, t_end=%d\n",
+      p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
+      p->mass, p->ti_begin, p->ti_end);
+}
 
-#if defined(STARS_EAGLE)
-#include "./stars/EAGLE/stars_io.h"
-#else
-#include "./stars/Default/stars_io.h"
-#endif
-
-#endif /* SWIFT_STARS_IO_H */
+#endif /* SWIFT_DEFAULT_STARS_DEBUG_H */
