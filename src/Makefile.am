@@ -136,6 +136,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 	 	 stars.h stars_io.h \
 		 stars/Default/stars.h stars/Default/stars_iact.h stars/Default/stars_io.h \
 		 stars/Default/stars_debug.h stars/Default/stars_part.h  \
+		 stars/EAGLE/stars.h stars/EAGLE/stars_iact.h stars/EAGLE/stars_io.h \
+		 stars/EAGLE/stars_debug.h stars/EAGLE/stars_part.h  \
 	         potential/none/potential.h potential/point_mass/potential.h \
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
                  potential/sine_wave/potential.h \
