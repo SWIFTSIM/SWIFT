@@ -3612,15 +3612,17 @@ void engine_makeproxies(struct engine *e) {
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
   const double theta_crit2 = e->gravity_properties->theta_crit2;
-  const double max_distance = e->mesh->r_cut_max;
+  const double max_mesh_dist = e->mesh->r_cut_max;
+  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
   /* Maximal distance between CoMs and any particle in the cell */
   const double r_max2 = cell_width[0] * cell_width[0] +
                         cell_width[1] * cell_width[1] +
                         cell_width[2] * cell_width[2];
-  const double r_max = sqrt(r_max2);
 
-  message("PROXIES: r_max= %e max_distance= %e", r_max, max_distance);
+  /* Maximal distance assuming the CoM can have moved by from the centre by 
+     engine_max_proxy_centre_frac (default: 20%) of the cell */
+  const double r_max = sqrt(r_max2) * 0.5 * (1. + 2. * engine_max_proxy_centre_frac);
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
@@ -3673,11 +3675,7 @@ void engine_makeproxies(struct engine *e) {
 	
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k);
-	
-        /* and it's location */
-        const double loc_i[3] = {cells[cid].loc[0], cells[cid].loc[1],
-                                 cells[cid].loc[2]};
-	
+		
         /* Loop over all its neighbours neighbours in range. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
           int iii = i + ii;
@@ -3738,44 +3736,20 @@ void engine_makeproxies(struct engine *e) {
                    for an M2L interaction and hence require a proxy as this pair
                    of cells cannot rely on just an M2L calculation. */
 
-                const double loc_j[3] = {cells[cjd].loc[0], cells[cjd].loc[1],
-                                         cells[cjd].loc[2]};
-
-                /* Start with the distance between the cell centres. */
-                double dx = loc_i[0] - loc_j[0];
-                double dy = loc_i[1] - loc_j[1];
-                double dz = loc_i[2] - loc_j[2];
-
-                /* Apply BC */
-                if (periodic) {
-                  dx = nearest(dx, dim[0]);
-                  dy = nearest(dy, dim[1]);
-                  dz = nearest(dz, dim[2]);
-                }
-
-                /* Add to it for the case where the future CoMs are in the
-                 * corners */
-                dx += cell_width[0];
-                dy += cell_width[1];
-                dz += cell_width[2];
-
-                /* This is a crazy upper-bound but the best we can do */
-                const double r2 = dx * dx + dy * dy + dz * dz;
-
-                /* Minimal distance between any pair of particles */
-                const double min_radius = sqrt(r2) - 2. * r_max;
+		/* Minimal distance between any two points in the cells */
+		const double min_dist2 = cell_min_dist2_same_size(&cells[cid], &cells[cjd], periodic, dim);
 
                 /* Are we beyond the distance where the truncated forces are 0
                  * but not too far such that M2L can be used? */
                 if (periodic) {
 
-                  if ((min_radius < max_distance) &&
-                      (!gravity_M2L_accept(r_max, r_max, theta_crit2, r2)))
+                  if ((min_dist2 < max_mesh_dist2) &&
+                      (!gravity_M2L_accept(r_max, r_max, theta_crit2, min_dist2)))
                     proxy_type |= (int)proxy_cell_type_gravity;
 
                 } else {
 
-                  if (!gravity_M2L_accept(r_max, r_max, theta_crit2, r2))
+                  if (!gravity_M2L_accept(r_max, r_max, theta_crit2, min_dist2))
                     proxy_type |= (int)proxy_cell_type_gravity;
                 }
               }

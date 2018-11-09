@@ -890,11 +890,13 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 	      const struct proxy *p = &e->proxies[proxy_id];
 	      
 	      /* Check whether the cell exists in the proxy */
-	      int n = 0;
-	      for (n = 0; n < p->nr_cells_in; n++) 
-		if(p->cells_in[n] == cj)
+	      int n = 0, err = 1;
+	      for (; n < p->nr_cells_in; n++) 
+		if(p->cells_in[n] == cj) {
+		  err = 0;
 		  break;
-	      if(n == p->nr_cells_in)
+		}
+	      if(err)
 		error("Cell %d not found in the proxy but trying to construct grav task!",
 		      cjd);
 	    }
@@ -908,11 +910,13 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 	      const struct proxy *p = &e->proxies[proxy_id];
 	      
 	      /* Check whether the cell exists in the proxy */
-	      int n = 0;
-	      for (n = 0; n < p->nr_cells_in; n++) 
-		if(p->cells_in[n] == ci)
+	      int n = 0, err = 1;
+	      for (; n < p->nr_cells_in; n++) 
+		if(p->cells_in[n] == ci) {
+		  err = 0;
 		  break;
-	      if(n == p->nr_cells_in)
+		}
+	      if(err)
 		error("Cell %d not found in the proxy but trying to construct grav task!",
 		      cid);	  
 	    }
@@ -2058,6 +2062,13 @@ void engine_maketasks(struct engine *e) {
   if (e->verbose)
     message("Linking stars tasks took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  if(e->nodeID == 0)
+    for(int i = 0; i < e->s->nr_cells; ++i) {
+      message("cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d num_foreign_hydro= %d",
+	      i, e->s->cells_top[i].num_grav_proxies, e->s->cells_top[i].num_hydro_proxies,
+	      e->s->cells_top[i].num_foreign_pair_grav, e->s->cells_top[i].num_foreign_pair_hydro);
+    }
 
 #ifdef WITH_MPI
   if (e->policy & engine_policy_feedback)
