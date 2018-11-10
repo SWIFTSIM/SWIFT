@@ -1080,9 +1080,9 @@ static void check_weights(struct task *tasks, int nr_tasks,
  * @brief Threadpool mapper function to gather cell edge and vertex weights
  *        from the associated tasks.
  *
- * @map_data part of the data to process in this mapper.
- * @num_elements the number of data elements to process.
- * @extra_data additional data for the mapper context.
+ * @param map_data part of the data to process in this mapper.
+ * @param num_elements the number of data elements to process.
+ * @param extra_data additional data for the mapper context.
  */
 void partition_gather_weights(void *map_data, int num_elements,
                               void *extra_data) {
