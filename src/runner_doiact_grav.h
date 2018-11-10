@@ -1714,7 +1714,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double theta_crit2 = e->gravity_properties->theta_crit2;
-  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
 
   TIMER_TIC;
 
@@ -1759,24 +1759,11 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
-    /* Get the distance between the CoMs at the last rebuild*/
-    double dx_r = CoM_rebuild_top[0] - multi_j->CoM_rebuild[0];
-    double dy_r = CoM_rebuild_top[1] - multi_j->CoM_rebuild[1];
-    double dz_r = CoM_rebuild_top[2] - multi_j->CoM_rebuild[2];
-
-    /* Apply BC */
-    if (periodic) {
-      dx_r = nearest(dx_r, dim[0]);
-      dy_r = nearest(dy_r, dim[1]);
-      dz_r = nearest(dz_r, dim[2]);
-    }
-    const double r2_rebuild = dx_r * dx_r + dy_r * dy_r + dz_r * dz_r;
-
-    const double max_radius =
-        sqrt(r2_rebuild) - (multi_top->r_max_rebuild + multi_j->r_max_rebuild);
+    /* Minimal distance between any pair of particles */
+    const double min_radius2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
-    if (periodic && max_radius > max_distance) {
+    if (periodic && min_radius2 > max_distance2) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Need to account for the interactions we missed */
@@ -1790,6 +1777,19 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       continue;
     }
 
+    /* Get the distance between the CoMs at the last rebuild*/
+    double dx_r = CoM_rebuild_top[0] - multi_j->CoM_rebuild[0];
+    double dy_r = CoM_rebuild_top[1] - multi_j->CoM_rebuild[1];
+    double dz_r = CoM_rebuild_top[2] - multi_j->CoM_rebuild[2];
+    
+    /* Apply BC */
+    if (periodic) {
+      dx_r = nearest(dx_r, dim[0]);
+      dy_r = nearest(dy_r, dim[1]);
+      dz_r = nearest(dz_r, dim[2]);
+    }
+    const double r2_rebuild = dx_r * dx_r + dy_r * dy_r + dz_r * dz_r;
+    
     /* Are we in charge of this cell pair? */
     if (gravity_M2L_accept(multi_top->r_max_rebuild, multi_j->r_max_rebuild,
                            theta_crit2, r2_rebuild)) {

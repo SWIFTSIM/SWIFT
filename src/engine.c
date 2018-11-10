@@ -3615,15 +3615,20 @@ void engine_makeproxies(struct engine *e) {
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
-  /* Maximal distance between CoMs and any particle in the cell */
-  const double r_max2 = cell_width[0] * cell_width[0] +
+  message("max_dist = %e", max_mesh_dist2);
+
+  /* Distance between centre of the cell and corners */
+  const double r_diag2 = cell_width[0] * cell_width[0] +
                         cell_width[1] * cell_width[1] +
                         cell_width[2] * cell_width[2];
+  const double r_diag = 0.5 * sqrt(r_diag2);
 
-  /* Maximal distance assuming the CoM can have moved by from the centre by 
-     engine_max_proxy_centre_frac (default: 20%) of the cell */
-  const double r_max = sqrt(r_max2) * 0.5 * (1. + 2. * engine_max_proxy_centre_frac);
-
+  /* Maximal distance from a shifted CoM to centre of cell */
+  const double delta_CoM = engine_max_proxy_centre_frac * r_diag;
+  
+  /* Maximal distance from shifted CoM to any corner */
+  const double r_max = r_diag + 2. * delta_CoM;
+  
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
     if ((e->proxy_ind = (int *)malloc(sizeof(int) * e->nr_nodes)) == NULL)
@@ -3632,20 +3637,20 @@ void engine_makeproxies(struct engine *e) {
   e->nr_proxies = 0;
 
   /* Compute how many cells away we need to walk */
-  int delta = 1; /*hydro case */
+  int delta_cells = 1; /*hydro case */
 
   /* Gravity needs to take the opening angle into account */
   if (with_gravity) {
     const double distance = 2. * r_max * theta_crit_inv;
-    delta = (int)(distance / cells[0].dmin) + 1;
+    delta_cells = (int)(distance / cells[0].dmin) + 1;
   }
 
   /* Turn this into upper and lower bounds for loops */
-  int delta_m = delta;
-  int delta_p = delta;
+  int delta_m = delta_cells;
+  int delta_p = delta_cells;
 
   /* Special case where every cell is in range of every other one */
-  if (delta >= cdim[0] / 2) {
+  if (delta_cells >= cdim[0] / 2) {
     if (cdim[0] % 2 == 0) {
       delta_m = cdim[0] / 2;
       delta_p = cdim[0] / 2 - 1;
@@ -3660,13 +3665,13 @@ void engine_makeproxies(struct engine *e) {
     cells[i].num_grav_proxies = 0;
   }
 
-
+  message("delta_m=%d delta_p=%d", delta_m, delta_p);
   /* Let's be verbose about this choice */
   if (e->verbose)
     message(
         "Looking for proxies up to %d top-level cells away (delta_m=%d "
         "delta_p=%d)",
-        delta, delta_m, delta_p);
+        delta_cells, delta_m, delta_p);
 
   /* Loop over each cell in the space. */
   for (int i = 0; i < cdim[0]; i++) {
@@ -3737,19 +3742,23 @@ void engine_makeproxies(struct engine *e) {
                    of cells cannot rely on just an M2L calculation. */
 
 		/* Minimal distance between any two points in the cells */
-		const double min_dist2 = cell_min_dist2_same_size(&cells[cid], &cells[cjd], periodic, dim);
+		const double min_dist_centres2 = cell_min_dist2_same_size(&cells[cid], &cells[cjd], periodic, dim);
+
+		/* Let's now assume the CoMs will shift a bit */
+		const double min_dist_CoM = sqrt(min_dist_centres2) - 2. * delta_CoM;
+		const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
 
                 /* Are we beyond the distance where the truncated forces are 0
                  * but not too far such that M2L can be used? */
                 if (periodic) {
 
-                  if ((min_dist2 < max_mesh_dist2) &&
-                      (!gravity_M2L_accept(r_max, r_max, theta_crit2, min_dist2)))
+                  if ((min_dist_CoM2 < max_mesh_dist2) &&
+                      (!gravity_M2L_accept(r_max, r_max, theta_crit2, min_dist_CoM2)))
                     proxy_type |= (int)proxy_cell_type_gravity;
 
                 } else {
 
-                  if (!gravity_M2L_accept(r_max, r_max, theta_crit2, min_dist2))
+                  if (!gravity_M2L_accept(r_max, r_max, theta_crit2, min_dist_CoM2))
                     proxy_type |= (int)proxy_cell_type_gravity;
                 }
               }

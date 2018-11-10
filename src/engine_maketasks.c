@@ -767,6 +767,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   struct cell *cells = s->cells_top;
   const double theta_crit = e->gravity_properties->theta_crit;
   const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
 
   /* Compute how many cells away we need to walk */
   const double distance = 2.5 * cells[0].width[0] / theta_crit;
@@ -807,17 +808,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
       scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
 			NULL);
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cell_getid(cdim, i, j, k) != cid)
-      error("Incorrect calculation of indices (i,j,k)=(%d,%d,%d) cid=%d", i, j,
-            k, cid);
-
-    if (multi_i->r_max != multi_i->r_max_rebuild)
-      error(
-          "Multipole size not equal ot it's size after rebuild. But we just "
-          "rebuilt...");
-#endif
-
     /* Loop over every other cell within (Manhattan) range delta */
     for (int ii = -delta_m; ii <= delta_p; ii++) {
       int iii = i + ii;
@@ -836,7 +826,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
-          /* Avoid duplicates of local pairs*/
+          /* Avoid duplicates, empty cells and completely foreign pairs */
           if (cid >= cjd || cj->grav.count == 0 ||
 	      (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
@@ -850,25 +840,11 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 	  if(multi_j == NULL && cj->nodeID != nodeID)
 	    error("Multipole of cj was not exchanged properly via the proxies");
 
-          /* Get the distance between the CoMs */
-          double dx = multi_i->CoM[0] - multi_j->CoM[0];
-          double dy = multi_i->CoM[1] - multi_j->CoM[1];
-          double dz = multi_i->CoM[2] - multi_j->CoM[2];
-
-          /* Apply BC */
-          if (periodic) {
-            dx = nearest(dx, dim[0]);
-            dy = nearest(dy, dim[1]);
-            dz = nearest(dz, dim[2]);
-          }
-          const double r2 = dx * dx + dy * dy + dz * dz;
-
           /* Minimal distance between any pair of particles */
-          const double min_radius =
-              sqrt(r2) - (multi_i->r_max + multi_j->r_max);
+          const double min_radius2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
 
           /* Are we beyond the distance where the truncated forces are 0 ?*/
-          if (periodic && min_radius > max_distance) continue;
+          if (periodic && min_radius2 > max_distance2) continue;
 
           /* Are the cells too close for a MM interaction ? */
           if (!cell_can_use_pair_mm_rebuild(ci, cj, e, s)) {
@@ -2066,8 +2042,8 @@ void engine_maketasks(struct engine *e) {
   if(e->nodeID == 0)
     for(int i = 0; i < e->s->nr_cells; ++i) {
       message("cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d num_foreign_hydro= %d",
-	      i, e->s->cells_top[i].num_grav_proxies, e->s->cells_top[i].num_hydro_proxies,
-	      e->s->cells_top[i].num_foreign_pair_grav, e->s->cells_top[i].num_foreign_pair_hydro);
+  	      i, e->s->cells_top[i].num_grav_proxies, e->s->cells_top[i].num_hydro_proxies,
+  	      e->s->cells_top[i].num_foreign_pair_grav, e->s->cells_top[i].num_foreign_pair_hydro);
     }
 
 #ifdef WITH_MPI
