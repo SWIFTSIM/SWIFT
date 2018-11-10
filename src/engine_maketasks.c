@@ -902,10 +902,10 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
             }
 #endif
 
-            if (ci->nodeID == nodeID && cj->nodeID != engine_rank)
-              atomic_inc(&ci->num_foreign_pair_grav);
-            if (cj->nodeID == nodeID && ci->nodeID != engine_rank)
-              atomic_inc(&cj->num_foreign_pair_grav);
+            /* if (ci->nodeID == nodeID && cj->nodeID != engine_rank) */
+            /*   atomic_inc(&ci->num_foreign_pair_grav); */
+            /* if (cj->nodeID == nodeID && ci->nodeID != engine_rank) */
+            /*   atomic_inc(&cj->num_foreign_pair_grav); */
           }
         }
       }
@@ -948,9 +948,9 @@ void engine_make_self_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
 
-  for (int i = 0; i < s->nr_cells; ++i) {
-    s->cells_top[i].num_foreign_pair_grav = 0;
-  }
+  /* for (int i = 0; i < s->nr_cells; ++i) { */
+  /*   s->cells_top[i].num_foreign_pair_grav = 0; */
+  /* } */
 
   /* Create the multipole self and pair tasks. */
   threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
@@ -1864,10 +1864,10 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           }
 #endif
 
-          if (ci->nodeID == nodeID && cj->nodeID != engine_rank)
-            atomic_inc(&ci->num_foreign_pair_hydro);
-          if (cj->nodeID == nodeID && ci->nodeID != engine_rank)
-            atomic_inc(&cj->num_foreign_pair_hydro);
+          /* if (ci->nodeID == nodeID && cj->nodeID != engine_rank) */
+          /*   atomic_inc(&ci->num_foreign_pair_hydro); */
+          /* if (cj->nodeID == nodeID && ci->nodeID != engine_rank) */
+          /*   atomic_inc(&cj->num_foreign_pair_hydro); */
         }
       }
     }
@@ -1892,9 +1892,9 @@ void engine_maketasks(struct engine *e) {
 
   ticks tic2 = getticks();
 
-  for (int i = 0; i < s->nr_cells; ++i) {
-    s->cells_top[i].num_foreign_pair_hydro = 0;
-  }
+  /* for (int i = 0; i < s->nr_cells; ++i) { */
+  /*   s->cells_top[i].num_foreign_pair_hydro = 0; */
+  /* } */
 
   /* Construct the first hydro loop over neighbours */
   if (e->policy & engine_policy_hydro)
@@ -2043,16 +2043,16 @@ void engine_maketasks(struct engine *e) {
     message("Linking stars tasks took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  if (e->nodeID == 0)
-    for (int i = 0; i < e->s->nr_cells; ++i) {
-      message(
-          "cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d "
-          "num_foreign_hydro= %d",
-          i, e->s->cells_top[i].num_grav_proxies,
-          e->s->cells_top[i].num_hydro_proxies,
-          e->s->cells_top[i].num_foreign_pair_grav,
-          e->s->cells_top[i].num_foreign_pair_hydro);
-    }
+  /* if (e->nodeID == 0) */
+  /*   for (int i = 0; i < e->s->nr_cells; ++i) { */
+  /*     message( */
+  /*         "cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d " */
+  /*         "num_foreign_hydro= %d", */
+  /*         i, e->s->cells_top[i].num_grav_proxies, */
+  /*         e->s->cells_top[i].num_hydro_proxies, */
+  /*         e->s->cells_top[i].num_foreign_pair_grav, */
+  /*         e->s->cells_top[i].num_foreign_pair_hydro); */
+  /*   } */
 
 #ifdef WITH_MPI
   if (e->policy & engine_policy_feedback)
@@ -2166,14 +2166,14 @@ void engine_maketasks(struct engine *e) {
     message("took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-  if (e->nodeID == 0)
-    for (int i = 0; i < e->s->nr_cells; ++i) {
-      message(
-          "cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d "
-          "num_foreign_hydro= %d",
-          i, e->s->cells_top[i].num_grav_proxies,
-          e->s->cells_top[i].num_hydro_proxies,
-          e->s->cells_top[i].num_foreign_pair_grav,
-          e->s->cells_top[i].num_foreign_pair_hydro);
-    }
+  /* if (e->nodeID == 0) */
+  /*   for (int i = 0; i < e->s->nr_cells; ++i) { */
+  /*     message( */
+  /*         "cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d " */
+  /*         "num_foreign_hydro= %d", */
+  /*         i, e->s->cells_top[i].num_grav_proxies, */
+  /*         e->s->cells_top[i].num_hydro_proxies, */
+  /*         e->s->cells_top[i].num_foreign_pair_grav, */
+  /*         e->s->cells_top[i].num_foreign_pair_hydro); */
+  /*   } */
 }
