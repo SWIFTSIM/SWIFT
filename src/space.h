@@ -119,6 +119,12 @@ struct space {
   /*! Number of *local* top-level cells with tasks */
   int nr_local_cells_with_tasks;
 
+  /*! Number of top-level cells that have >0 particle (of any kind) */
+  int nr_cells_with_particles;
+
+  /*! Number of top-level cells that have >0 particle (of any kind) */
+  int nr_local_cells_with_particles;
+
   /*! The (level 0) cells themselves. */
   struct cell *cells_top;
 
@@ -137,6 +143,12 @@ struct space {
   /*! The indices of the *local* top-level cells with tasks */
   int *local_cells_with_tasks_top;
 
+  /*! The indices of the top-level cells that have >0 particles (of any kind) */
+  int *cells_with_particles_top;
+
+  /*! The indices of the top-level cells that have >0 particles (of any kind) */
+  int *local_cells_with_particles_top;
+
   /*! The total number of parts in the space. */
   size_t nr_parts, size_parts;
 
@@ -145,6 +157,15 @@ struct space {
 
   /*! The total number of g-parts in the space. */
   size_t nr_sparts, size_sparts;
+
+  /*! Number of inhibted gas particles in the space */
+  size_t nr_inhibited_parts;
+
+  /*! Number of inhibted gravity particles in the space */
+  size_t nr_inhibited_gparts;
+
+  /*! Number of inhibted star particles in the space */
+  size_t nr_inhibited_sparts;
 
   /*! The particle data (cells have pointers to this). */
   struct part *parts;
@@ -205,7 +226,7 @@ struct space {
 #endif
 };
 
-/* function prototypes. */
+/* Function prototypes. */
 void space_free_buff_sort_indices(struct space *s);
 void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
                       int *counts, int num_bins, ptrdiff_t parts_offset);
@@ -232,23 +253,21 @@ void space_map_parts_xparts(struct space *s,
                                         struct cell *c));
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
-void space_rebuild(struct space *s, int verbose);
+void space_rebuild(struct space *s, int repartitioned, int verbose);
 void space_recycle(struct space *s, struct cell *c);
 void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct cell *cell_list_end,
                         struct gravity_tensors *multipole_list_begin,
                         struct gravity_tensors *multipole_list_end);
-void space_split(struct space *s, struct cell *cells, int nr_cells,
-                 int verbose);
+void space_split(struct space *s, int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);
-void space_list_local_cells(struct space *s);
-void space_list_cells_with_tasks(struct space *s);
+void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
-                                struct cell *cells, int verbose);
+                                int *count_inibibited_parts, int verbose);
 void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
-                                 struct cell *cells, int verbose);
+                                 int *count_inibibited_gparts, int verbose);
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
-                                 struct cell *cells, int verbose);
+                                 int *count_inibibited_sparts, int verbose);
 void space_synchronize_particle_positions(struct space *s);
 void space_do_parts_sort(void);
 void space_do_gparts_sort(void);
@@ -268,7 +287,7 @@ void space_check_top_multipoles_drift_point(struct space *s,
 void space_check_timesteps(struct space *s);
 void space_replicate(struct space *s, int replicate, int verbose);
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
-                        int verbose);
+                        int periodic, const double dim[3], int verbose);
 void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
                            int rank);
 void space_reset_task_counters(struct space *s);

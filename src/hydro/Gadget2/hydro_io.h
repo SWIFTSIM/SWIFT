@@ -200,8 +200,6 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
   io_write_attribute_s(
       h_grpsph, "Viscosity Model",
       "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
-  io_write_attribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
-  io_write_attribute_f(h_grpsph, "Viscosity beta", 3.f);
 }
 
 /**

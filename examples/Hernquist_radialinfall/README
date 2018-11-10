@@ -1,0 +1,3 @@
+This example generates 5 particles at radii of 10, 20, 30, 40 and 50 kpc
+without velocitiy and follows the evolution of these particles in an Hernquist
+potential as they are free falling.

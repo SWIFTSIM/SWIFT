@@ -53,6 +53,7 @@
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "kick.h"
+#include "logger.h"
 #include "minmax.h"
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
@@ -283,7 +284,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
           /* Run through this cell's density interactions. */
-          for (struct link *l = finger->hydro.density; l != NULL; l = l->next) {
+          for (struct link *l = finger->stars.density; l != NULL; l = l->next) {
 
 #ifdef SWIFT_DEBUG_CHECKS
             if (l->t->ti_run < r->e->ti_current)
@@ -484,6 +485,52 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   }
 
   if (timer) TIMER_TOC(timer_do_cooling);
+}
+
+/**
+ *
+ */
+void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_star_formation(r, c->progeny[k], 0);
+  } else {
+
+    /* Loop over the gas particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+
+      if (part_is_active(p, e)) {
+
+        const float rho = hydro_get_physical_density(p, cosmo);
+
+        // MATTHIEU: Temporary star-formation law
+        // Do not use this at home.
+        if (rho > 1.5e7 && e->step > 2) {
+          message("Removing particle id=%lld rho=%e", p->id, rho);
+          cell_convert_part_to_gpart(e, c, p, xp);
+        }
+      }
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_do_star_formation);
 }
 
 /**
@@ -863,6 +910,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const double time_base = e->time_base;
   const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
 
   TIMER_TIC;
 
@@ -901,7 +949,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, cosmo, dt_alpha);
+        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1034,6 +1082,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_reset_gradient(p);
 
 #else
+            const struct hydro_props *hydro_props = e->hydro_properties;
+
             /* Calculate the time-step for passing to hydro_prepare_force, used
              * for the evolution of alpha factors (i.e. those involved in the
              * artificial viscosity and thermal conduction terms) */
@@ -1053,7 +1103,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* As of here, particle force variables will be set. */
 
             /* Compute variables required for the force loop */
-            hydro_prepare_force(p, xp, cosmo, dt_alpha);
+            hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
 
             /* The particle force values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1063,6 +1113,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
+            /* Ok, we are done with this particle */
             continue;
           }
 
@@ -1132,6 +1183,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_reset_gradient(p);
 
 #else
+        const struct hydro_props *hydro_props = e->hydro_properties;
+
         /* Calculate the time-step for passing to hydro_prepare_force, used for
          * the evolution of alpha factors (i.e. those involved in the artificial
          * viscosity and thermal conduction terms) */
@@ -1150,7 +1203,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, cosmo, dt_alpha);
+        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1756,6 +1809,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   }
 
   int updated = 0, g_updated = 0, s_updated = 0;
+  int inhibited = 0, g_inhibited = 0, s_inhibited = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -1815,6 +1869,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       }
 
       else { /* part is inactive */
+
+        /* Count the number of inhibited particles */
+        if (part_is_inhibited(p, e)) inhibited++;
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, p->time_bin);
@@ -1882,6 +1939,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
         } else { /* gpart is inactive */
 
+          /* Count the number of inhibited particles */
+          if (gpart_is_inhibited(gp, e)) g_inhibited++;
+
           const integertime_t ti_end =
               get_integer_time_end(ti_current, gp->time_bin);
 
@@ -1933,7 +1993,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* What is the next starting point for this cell ? */
         ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
 
-      } else { /* stars particle is inactive */
+        /* star particle is inactive but not inhibited */
+      } else {
+
+        /* Count the number of inhibited particles */
+        if (spart_is_inhibited(sp, e)) ++s_inhibited;
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, sp->time_bin);
@@ -1963,6 +2027,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         updated += cp->hydro.updated;
         g_updated += cp->grav.updated;
         s_updated += cp->stars.updated;
+        inhibited += cp->hydro.inhibited;
+        g_inhibited += cp->grav.inhibited;
+        s_inhibited += cp->stars.inhibited;
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_end_max = max(cp->hydro.ti_end_max, ti_hydro_end_max);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
@@ -1976,6 +2043,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->hydro.updated = updated;
   c->grav.updated = g_updated;
   c->stars.updated = s_updated;
+  c->hydro.inhibited = inhibited;
+  c->grav.inhibited = g_inhibited;
+  c->stars.inhibited = s_inhibited;
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
@@ -2099,7 +2169,8 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
 
           /* Check that this gpart has interacted with all the other
            * particles (via direct or multipoles) in the box */
-          if (gp->num_interacted != e->total_nr_gparts) {
+          if (gp->num_interacted !=
+              e->total_nr_gparts - e->count_inhibited_gparts) {
 
             /* Get the ID of the gpart */
             long long my_id = 0;
@@ -2116,9 +2187,9 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally with all other gparts "
                 "gp->num_interacted=%lld, total_gparts=%lld (local "
-                "num_gparts=%zd)",
+                "num_gparts=%zd inhibited_gparts=%lld)",
                 my_id, part_type_names[gp->type], gp->num_interacted,
-                e->total_nr_gparts, e->s->nr_gparts);
+                e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts);
           }
         }
 #endif
@@ -2312,6 +2383,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int timer) {
   const struct spart *restrict sparts = c->stars.parts;
   const size_t nr_sparts = c->stars.count;
   const integertime_t ti_current = r->e->ti_current;
+
+  error("Need to add h_max computation");
 
   TIMER_TIC;
 
@@ -2538,6 +2611,9 @@ void *runner_main(void *data) {
         case task_type_end_force:
           runner_do_end_force(r, ci, 1);
           break;
+        case task_type_logger:
+          runner_do_logger(r, ci, 1);
+          break;
         case task_type_timestep:
           runner_do_timestep(r, ci, 1);
           break;
@@ -2584,6 +2660,9 @@ void *runner_main(void *data) {
         case task_type_cooling:
           runner_do_cooling(r, t->ci, 1);
           break;
+        case task_type_star_formation:
+          runner_do_star_formation(r, t->ci, 1);
+          break;
         case task_type_sourceterms:
           runner_do_sourceterms(r, t->ci, 1);
           break;
@@ -2612,4 +2691,71 @@ void *runner_main(void *data) {
 
   /* Be kind, rewind. */
   return NULL;
+}
+
+/**
+ * @brief Write the required particles through the logger.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_logger(struct runner *r, struct cell *c, int timer) {
+
+#ifdef WITH_LOGGER
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
+  const int count = c->hydro.count;
+
+  /* Anything to do here? */
+  if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e)) return;
+
+  /* Recurse? Avoid spending too much time in useless cells. */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_logger(r, c->progeny[k], 0);
+  } else {
+
+    /* Loop over the parts in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+
+      /* If particle needs to be log */
+      /* This is the same function than part_is_active, except for
+       * debugging checks */
+      if (part_is_starting(p, e)) {
+
+        if (logger_should_write(&xp->logger_data, e->logger)) {
+          /* Write particle */
+          /* Currently writing everything, should adapt it through time */
+          logger_log_part(e->logger, p,
+                          logger_mask_x | logger_mask_v | logger_mask_a |
+                              logger_mask_u | logger_mask_h | logger_mask_rho |
+                              logger_mask_consts,
+                          &xp->logger_data.last_offset);
+
+          /* Set counter back to zero */
+          xp->logger_data.steps_since_last_output = 0;
+        } else
+          /* Update counter */
+          xp->logger_data.steps_since_last_output += 1;
+      }
+    }
+  }
+
+  if (c->grav.count > 0) error("gparts not implemented");
+
+  if (c->stars.count > 0) error("sparts not implemented");
+
+  if (timer) TIMER_TOC(timer_logger);
+
+#else
+  error("Logger disabled, please enable it during configuration");
+#endif
 }

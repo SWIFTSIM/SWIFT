@@ -963,7 +963,7 @@ void runner_doself_branch_stars_density(struct runner *r, struct cell *c) {
   if (!cell_is_active_stars(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->hydro.h_max_old * kernel_gamma > c->dmin)
+  if (c->stars.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   runner_doself_stars_density(r, c, 1);

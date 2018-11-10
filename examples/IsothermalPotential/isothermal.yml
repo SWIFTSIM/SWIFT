@@ -26,10 +26,13 @@ Snapshots:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  Isothermal.hdf5       # The file to read
+  periodic:   1
   shift:      [200.,200.,200.]      # Shift all particles to be in the potential
  
 # External potential parameters
 IsothermalPotential:
+  useabspos:       0          # Whether to use absolute position (1) or relative potential to centre of box (0)
+  position:        [0.,0.,0.]
   vrot:            200.       # rotation speed of isothermal potential in internal units
   timestep_mult:   0.01       # controls time step
   epsilon:         0.         # No softening at the centre of the halo

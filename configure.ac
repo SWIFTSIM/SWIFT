@@ -54,6 +54,19 @@ AX_COMPILER_VERSION
 #  Restrict support.
 AC_C_RESTRICT
 
+# logger
+AC_ARG_ENABLE([logger],
+	[AS_HELP_STRING([--enable-logger],
+		[enable the particle logger]
+	)],
+	[with_logger="${enableval}"],
+	[with_logger="no"]
+)
+
+if test "$with_logger" = "yes"; then
+   AC_DEFINE([WITH_LOGGER], 1, [logger enabled])
+fi
+
 # Interprocedural optimization support. Needs special handling for linking and
 # archiving as well as compilation with Intels, needs to be done before
 # libtool is configured (to use correct LD).
@@ -1137,7 +1150,7 @@ esac
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, debug default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, debug default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -1163,6 +1176,9 @@ case "$with_hydro" in
    ;;
    pressure-energy)
       AC_DEFINE([HOPKINS_PU_SPH], [1], [Pressure-Energy SPH])
+   ;;
+   pressure-energy-monaghan)
+      AC_DEFINE([HOPKINS_PU_SPH_MONAGHAN], [1], [Pressure-Energy SPH with M&M Variable A.V.])
    ;;
    default)
       AC_DEFINE([DEFAULT_SPH], [1], [Default SPH])
@@ -1505,7 +1521,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, softened-isothermal, disc-patch, sine-wave, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, softened-isothermal, nfw, hernquist, disc-patch, sine-wave, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -1519,6 +1535,12 @@ case "$with_potential" in
    ;;
    isothermal)
       AC_DEFINE([EXTERNAL_POTENTIAL_ISOTHERMAL], [1], [Isothermal external potential])
+   ;;
+   hernquist)
+      AC_DEFINE([EXTERNAL_POTENTIAL_HERNQUIST], [1], [Hernquist external potential])
+   ;;
+   nfw)
+      AC_DEFINE([EXTERNAL_POTENTIAL_NFW], [1], [Navarro-Frenk-White external potential])
    ;;
    disc-patch)
       AC_DEFINE([EXTERNAL_POTENTIAL_DISC_PATCH], [1], [Disc-patch external potential])
@@ -1560,6 +1582,7 @@ AM_CONDITIONAL([HAVEEAGLECOOLING], [test $with_cooling = "EAGLE"])
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/CoolingRates/Makefile examples/CoolingBox/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
+AC_CONFIG_FILES([tools/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
 AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
@@ -1578,8 +1601,9 @@ AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 # Save the compilation options
 AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
 
-# Make sure the latest git revision string gets included
-touch src/version.c
+# Make sure the latest git revision string gets included, when we are
+# working in a checked out repository.
+test -d ${srcdir}/.git && touch ${srcdir}/src/version.c
 
 #  Need to define this, instead of using fifth argument of AC_INIT, until
 #  2.64. Defer until now as this redefines PACKAGE_URL, which can emit a
@@ -1611,6 +1635,7 @@ AC_MSG_RESULT([
    CPU profiler         : $have_profiler
    Pthread barriers     : $have_pthread_barrier
    VELOCIraptor enabled : $have_velociraptor
+   Particle Logger      : $with_logger
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension

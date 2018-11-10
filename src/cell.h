@@ -144,6 +144,9 @@ struct pcell {
     /*! Number of #spart in this cell. */
     int count;
 
+    /*! Maximal smoothing length. */
+    double h_max;
+
   } stars;
 
   /*! Relative indices of the cell's progeny. */
@@ -188,6 +191,10 @@ struct pcell_step {
 
   /*! Stars variables */
   struct {
+
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
+
   } stars;
 };
 
@@ -263,6 +270,9 @@ struct cell {
     /*! Number of #part updated in this cell. */
     int updated;
 
+    /*! Number of #part inhibited in this cell. */
+    int inhibited;
+
     /*! Is the #part data of this cell being used in a sub-cell? */
     int hold;
 
@@ -320,11 +330,11 @@ struct cell {
     /*! The extra ghost task for complex hydro schemes */
     struct task *extra_ghost;
 
-    /*! The task to end the force calculation */
-    struct task *end_force;
-
     /*! Task for cooling */
     struct task *cooling;
+
+    /*! Task for star formation */
+    struct task *star_formation;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -375,6 +385,9 @@ struct cell {
 
     /*! Number of #gpart updated in this cell. */
     int updated;
+
+    /*! Number of #gpart inhibited in this cell. */
+    int inhibited;
 
     /*! Is the #gpart data of this cell being used in a sub-cell? */
     int phold;
@@ -429,6 +442,18 @@ struct cell {
     /*! Nr of #spart in this cell. */
     int count;
 
+    /*! Max smoothing length in this cell. */
+    double h_max;
+
+    /*! Values of h_max before the drifts, used for sub-cell tasks. */
+    float h_max_old;
+
+    /*! Maximum part movement in this cell since last construction. */
+    float dx_max_part;
+
+    /*! Values of dx_max before the drifts, used for sub-cell tasks. */
+    float dx_max_part_old;
+
     /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
     struct task *ghost_in;
 
@@ -443,6 +468,9 @@ struct cell {
 
     /*! Number of #spart updated in this cell. */
     int updated;
+
+    /*! Number of #spart inhibited in this cell. */
+    int inhibited;
 
     /*! Is the #spart data of this cell being used in a sub-cell? */
     int hold;
@@ -507,6 +535,9 @@ struct cell {
   } mpi;
 #endif
 
+  /*! The task to end the force calculation */
+  struct task *end_force;
+
   /*! The first kick task */
   struct task *kick1;
 
@@ -518,6 +549,9 @@ struct cell {
 
   /*! Task for source terms */
   struct task *sourceterms;
+
+  /*! The logger task */
+  struct task *logger;
 
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
@@ -616,6 +650,16 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 int cell_has_tasks(struct cell *c);
+void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
+                      struct xpart *xp);
+void cell_remove_gpart(const struct engine *e, struct cell *c,
+                       struct gpart *gp);
+void cell_remove_spart(const struct engine *e, struct cell *c,
+                       struct spart *sp);
+void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
+                                struct part *p, struct xpart *xp);
+void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
+                                 struct spart *sp);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s);
 int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
@@ -662,8 +706,12 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 
-  // LOIC: To implement
-  return 0;
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return c->split && ((kernel_gamma * c->stars.h_max_old +
+                       c->stars.dx_max_part_old) < 0.5f * c->dmin);
 }
 
 /**
@@ -675,8 +723,8 @@ cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_stars_task(const struct cell *c) {
 
-  // LOIC: To implement
-  return 0;
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin);
 }
 
 /**
@@ -724,8 +772,13 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
 __attribute__((always_inline)) INLINE static int cell_can_split_pair_stars_task(
     const struct cell *c) {
 
-  // LOIC: To implement
-  return 0;
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius with some leeway smaller than */
+  /* the sub-cell sizes ? */
+  /* Note that since tasks are create after a rebuild no need to take */
+  /* into account any part motion (i.e. dx_max == 0 here) */
+  return c->split &&
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -737,8 +790,13 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_stars_task(
 __attribute__((always_inline)) INLINE static int cell_can_split_self_stars_task(
     const struct cell *c) {
 
-  // LOIC: To implement
-  return 0;
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius with some leeway smaller than */
+  /* the sub-cell sizes ? */
+  /* Note: No need for more checks here as all the sub-pairs and sub-self */
+  /* tasks will be created. So no need to check for h_max */
+  return c->split &&
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
 }
 
 /**

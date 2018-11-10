@@ -380,10 +380,13 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
     }
   }
 
-  /* Be clean */
+  /* Close the file */
   fprintf(f, "}");
   fclose(f);
+
+  /* Be clean */
   free(table);
+  free(count_rel);
 
   if (verbose)
     message("Printing task graph took %.3f %s.",
@@ -872,8 +875,6 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
  * @param s The #scheduler we are working in.
  */
 static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
-
-  // LOIC: This is un-tested. Need to verify that it works.
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -1467,7 +1468,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                      * the information and operate according to the choices
                      * made here. */
                     const int flag = i * 8 + j;
-                    t->flags |= (1LL << flag);
+                    t->flags |= (1ULL << flag);
 
                   } else {
 
@@ -1826,6 +1827,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     const float gcount_i = (t->ci != NULL) ? t->ci->grav.count : 0.f;
     const float gcount_j = (t->cj != NULL) ? t->cj->grav.count : 0.f;
     const float scount_i = (t->ci != NULL) ? t->ci->stars.count : 0.f;
+    const float scount_j = (t->cj != NULL) ? t->cj->stars.count : 0.f;
 
     switch (t->type) {
       case task_type_sort:
@@ -1834,22 +1836,30 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_self:
-        // LOIC: Need to do something for stars here
         if (t->subtype == task_subtype_grav)
           cost = 1.f * (wscale * gcount_i) * gcount_i;
         else if (t->subtype == task_subtype_external_grav)
           cost = 1.f * wscale * gcount_i;
+        else if (t->subtype == task_subtype_stars_density)
+          cost = 1.f * wscale * scount_i * count_i;
         else
           cost = 1.f * (wscale * count_i) * count_i;
         break;
 
       case task_type_pair:
-        // LOIC: Need to do something for stars here
         if (t->subtype == task_subtype_grav) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
+        } else if (t->subtype == task_subtype_stars_density) {
+          if (t->ci->nodeID != nodeID)
+            cost = 3.f * wscale * count_i * scount_j * sid_scale[t->flags];
+          else if (t->cj->nodeID != nodeID)
+            cost = 3.f * wscale * scount_i * count_j * sid_scale[t->flags];
+          else
+            cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
+                   sid_scale[t->flags];
         } else {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
@@ -1859,23 +1869,34 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_sub_pair:
-        // LOIC: Need to do something for stars here
-        if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
 #ifdef SWIFT_DEBUG_CHECKS
-          if (t->flags < 0) error("Negative flag value!");
+        if (t->flags < 0) error("Negative flag value!");
 #endif
-          cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+        if (t->subtype == task_subtype_stars_density) {
+          if (t->ci->nodeID != nodeID) {
+            cost = 3.f * (wscale * count_i) * scount_j * sid_scale[t->flags];
+          } else if (t->cj->nodeID != nodeID) {
+            cost = 3.f * (wscale * scount_i) * count_j * sid_scale[t->flags];
+          } else {
+            cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
+                   sid_scale[t->flags];
+          }
+
         } else {
-#ifdef SWIFT_DEBUG_CHECKS
-          if (t->flags < 0) error("Negative flag value!");
-#endif
-          cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+            cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+          } else {
+            cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+          }
         }
         break;
 
       case task_type_sub_self:
-        // LOIC: Need to do something for stars here
-        cost = 1.f * (wscale * count_i) * count_i;
+        if (t->subtype == task_subtype_stars_density) {
+          cost = 1.f * (wscale * scount_i) * count_i;
+        } else {
+          cost = 1.f * (wscale * count_i) * count_i;
+        }
         break;
       case task_type_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
@@ -2102,6 +2123,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_kick1:
       case task_type_kick2:
       case task_type_stars_ghost:
+      case task_type_logger:
       case task_type_timestep:
         qid = t->ci->super->owner;
         break;
@@ -2522,4 +2544,62 @@ void scheduler_free_tasks(struct scheduler *s) {
     s->tid_active = NULL;
   }
   s->size = 0;
+}
+
+/**
+ * @brief write down each task level
+ */
+void scheduler_write_task_level(const struct scheduler *s) {
+  /* init */
+  const int max_depth = 30;
+  const struct task *tasks = s->tasks;
+  int nr_tasks = s->nr_tasks;
+
+  /* Init counter */
+  int size = task_type_count * task_subtype_count * max_depth;
+  int *count = (int *)malloc(size * sizeof(int));
+  if (count == NULL) error("Failed to allocate memory");
+
+  for (int i = 0; i < size; i++) count[i] = 0;
+
+  /* Count tasks */
+  for (int i = 0; i < nr_tasks; i++) {
+    const struct task *t = &tasks[i];
+    if (t->ci) {
+
+      if ((int)t->ci->depth >= max_depth)
+        error("Cell is too deep, you need to increase max_depth");
+
+      int ind = t->type * task_subtype_count * max_depth;
+      ind += t->subtype * max_depth;
+      ind += (int)t->ci->depth;
+
+      count[ind] += 1;
+    }
+  }
+
+  /* Open file */
+  char filename[200] = "task_level.txt";
+  FILE *f = fopen(filename, "w");
+  if (f == NULL) error("Error opening task level file.");
+
+  /* Print header */
+  fprintf(f, "# task_type, task_subtype, depth, count\n");
+
+  /* Print tasks level */
+  for (int i = 0; i < size; i++) {
+    if (count[i] == 0) continue;
+
+    int type = i / (task_subtype_count * max_depth);
+    int subtype = i - task_subtype_count * max_depth * type;
+    subtype /= max_depth;
+    int depth = i - task_subtype_count * max_depth * type;
+    depth -= subtype * max_depth;
+    fprintf(f, "%s %s %i %i\n", taskID_names[type], subtaskID_names[subtype],
+            depth, count[i]);
+  }
+
+  /* clean up */
+  fclose(f);
+  free(count);
 }

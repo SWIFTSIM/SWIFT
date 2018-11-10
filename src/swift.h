@@ -46,6 +46,7 @@
 #include "hydro_properties.h"
 #include "lock.h"
 #include "logger.h"
+#include "logger_io.h"
 #include "map.h"
 #include "mesh_gravity.h"
 #include "multipole.h"

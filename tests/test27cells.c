@@ -275,7 +275,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
 #if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
             0.f,
-#elif defined(HOPKINS_PU_SPH)
+#elif defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
             main_cell->hydro.parts[pid].density.pressure_bar_dh,
 #else
             main_cell->hydro.parts[pid].density.rho_dh,
@@ -283,7 +283,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].density.wcount,
             main_cell->hydro.parts[pid].density.wcount_dh,
 #if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH) || \
-    defined(HOPKINS_PU_SPH)
+    defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
             main_cell->hydro.parts[pid].density.div_v,
             main_cell->hydro.parts[pid].density.rot_v[0],
             main_cell->hydro.parts[pid].density.rot_v[1],
@@ -456,6 +456,7 @@ int main(int argc, char *argv[]) {
   space.dim[2] = 3.;
 
   struct hydro_props hp;
+  hydro_props_init_no_hydro(&hp);
   hp.eta_neighbours = h;
   hp.h_tolerance = 1e0;
   hp.h_max = FLT_MAX;
@@ -614,6 +615,11 @@ int main(int argc, char *argv[]) {
 
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 27; ++i) clean_up(cells[i]);
+
+#ifdef WITH_VECTORIZATION
+  cache_clean(&runner.ci_cache);
+  cache_clean(&runner.cj_cache);
+#endif
 
   return 0;
 }

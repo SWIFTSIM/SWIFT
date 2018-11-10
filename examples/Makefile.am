@@ -1,4 +1,4 @@
-# tHIS FIle is part of SWIFT.
+# This file is part of SWIFT.
 # Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
 #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
 #
@@ -84,7 +84,8 @@ EXTRA_DIST = CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/make
 	     PerturbedBox_3D/makeIC.py PerturbedBox_3D/perturbedBox.yml PerturbedBox_3D/run.sh \
 	     PMillennium-384/p-mill-384.yml \
 	     PMillennium-768/p-mill-768.yml \
-	     SantaBarbara/README SantaBarbara/getIC.sh SantaBarbara/santa_barbara.yml \
+	     SantaBarbara/README SantaBarbara/getIC.sh SantaBarbara/santa_barbara.yml SantaBarbara/run.sh \
+	     SantaBarbara_low/README SantaBarbara_low/getIC.sh SantaBarbara_low/santa_barbara.yml SantaBarbara_low/run.sh \
 	     SedovBlast_1D/makeIC.py SedovBlast_1D/plotSolution.py SedovBlast_1D/run.sh SedovBlast_1D/sedov.yml \
 	     SedovBlast_2D/getGlass.sh SedovBlast_2D/makeIC.py SedovBlast_2D/plotSolution.py SedovBlast_2D/run.sh SedovBlast_2D/sedov.yml \
 	     SedovBlast_3D/getGlass.sh SedovBlast_3D/makeIC.py SedovBlast_3D/plotSolution.py SedovBlast_3D/run.sh SedovBlast_3D/sedov.yml \
@@ -104,18 +105,3 @@ EXTRA_DIST = CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/make
 
 # Default parameter file
 EXTRA_DIST += parameter_example.yml
-
-# Scripts to plot task graphs
-EXTRA_DIST += plot_tasks.py analyse_tasks.py process_plot_tasks_MPI process_plot_tasks
-
-# Scripts to plot threadpool 'task' graphs
-EXTRA_DIST += analyse_threadpool_tasks.py \
-              plot_threadpool.py \
-              process_plot_threadpool
-
-# Script for scaling plot
-EXTRA_DIST += plot_scaling_results.py \
-              plot_scaling_results_breakdown.py
-
-# Script for gravity accuracy
-EXTRA_DIST += plot_gravity_checks.py

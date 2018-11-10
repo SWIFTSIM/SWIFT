@@ -34,7 +34,8 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  Disc-Patch-dynamic.hdf5       # The file to read
-
+  periodic:   1
+  
 # External potential parameters
 DiscPatchPotential:
   surface_density: 10.

@@ -18,6 +18,9 @@
  ******************************************************************************/
 
 /* Some standard headers. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <stdlib.h>
 
 /* Includes. */
@@ -26,7 +29,6 @@
 int main(int argc, char *argv[]) {
 
   size_t Ngas = 0, Ngpart = 0, Nspart = 0;
-  int periodic = -1;
   int flag_entropy_ICs = -1;
   int i, j, k;
   double dim[3];
@@ -48,8 +50,8 @@ int main(int argc, char *argv[]) {
 
   /* Read data */
   read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &sparts, &Ngas,
-                 &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, 1, 1, 0, 0, 0,
-                 1., 1., 1, 0);
+                 &Ngpart, &Nspart, &flag_entropy_ICs, 1, 1, 0, 0, 0, 1., 1., 1,
+                 0);
 
   /* Check global properties read are correct */
   assert(dim[0] == boxSize);
@@ -57,7 +59,6 @@ int main(int argc, char *argv[]) {
   assert(dim[2] == boxSize);
   assert(Ngas == L * L * L);
   assert(Ngpart == L * L * L);
-  assert(periodic == 1);
 
   /* Check particles */
   for (size_t n = 0; n < Ngas; ++n) {

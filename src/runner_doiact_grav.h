@@ -121,6 +121,9 @@ static INLINE void runner_do_grav_down(struct runner *r, struct cell *c,
         if (c->grav.multipole->pot.ti_init != e->ti_current)
           error("c->field tensor not initialised");
 
+        /* Check that we are not updated an inhibited particle */
+        if (gpart_is_inhibited(gp, e)) error("Updating an inhibited particle!");
+
         /* Check that the particle was initialised */
         if (gp->initialised == 0)
           error("Adding forces to an un-initialised gpart.");
@@ -226,8 +229,18 @@ static INLINE void runner_dopair_grav_pp_full(
       /* Check that particles have been drifted to the current time */
       if (gparts_i[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
+      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts_j[pjd], e))
         error("gpj not drifted to current time");
+
+      /* Check that we are not updated an inhibited particle */
+      if (gpart_is_inhibited(&gparts_i[pid], e))
+        error("Updating an inhibited particle!");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (pjd < gcount_j && gpart_is_inhibited(&gparts_j[pjd], e) &&
+          mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
 
       /* Check that the particle was initialised */
       if (gparts_i[pid].initialised == 0)
@@ -247,7 +260,8 @@ static INLINE void runner_dopair_grav_pp_full(
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
-      if (pjd < gcount_j) gparts_i[pid].num_interacted++;
+      if (pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e))
+        gparts_i[pid].num_interacted++;
 #endif
     }
 
@@ -356,8 +370,18 @@ static INLINE void runner_dopair_grav_pp_truncated(
       /* Check that particles have been drifted to the current time */
       if (gparts_i[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current)
+      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts_j[pjd], e))
         error("gpj not drifted to current time");
+
+      /* Check that we are not updated an inhibited particle */
+      if (gpart_is_inhibited(&gparts_i[pid], e))
+        error("Updating an inhibited particle!");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (pjd < gcount_j && gpart_is_inhibited(&gparts_j[pjd], e) &&
+          mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
 
       /* Check that the particle was initialised */
       if (gparts_i[pid].initialised == 0)
@@ -377,7 +401,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
-      if (pjd < gcount_j) gparts_i[pid].num_interacted++;
+      if (pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e))
+        gparts_i[pid].num_interacted++;
 #endif
     }
 
@@ -449,6 +474,10 @@ static INLINE void runner_dopair_grav_pm_full(
     /* Check that particles have been drifted to the current time */
     if (gparts_i[pid].ti_drift != e->ti_current)
       error("gpi not drifted to current time");
+
+    /* Check that we are not updated an inhibited particle */
+    if (gpart_is_inhibited(&gparts_i[pid], e))
+      error("Updating an inhibited particle!");
 
     /* Check that the particle was initialised */
     if (gparts_i[pid].initialised == 0)
@@ -579,6 +608,10 @@ static INLINE void runner_dopair_grav_pm_truncated(
     if (gparts_i[pid].ti_drift != e->ti_current)
       error("gpi not drifted to current time");
 
+    /* Check that we are not updated an inhibited particle */
+    if (gpart_is_inhibited(&gparts_i[pid], e))
+      error("Updating an inhibited particle!");
+
     /* Check that the particle was initialised */
     if (gparts_i[pid].initialised == 0)
       error("Adding forces to an un-initialised gpart.");
@@ -664,7 +697,8 @@ static INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
   /* Recover some useful constants */
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
-  const float dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
+  const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
+                        (float)e->mesh->dim[2]};
   const float r_s_inv = e->mesh->r_s_inv;
   const double min_trunc = e->mesh->r_cut_min;
 
@@ -925,8 +959,17 @@ static INLINE void runner_doself_grav_pp_full(
       /* Check that particles have been drifted to the current time */
       if (gparts[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current)
+      if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts[pjd], e))
         error("gpj not drifted to current time");
+
+      /* Check that we are not updated an inhibited particle */
+      if (gpart_is_inhibited(&gparts[pid], e))
+        error("Updating an inhibited particle!");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (pjd < gcount && gpart_is_inhibited(&gparts[pjd], e) && mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
 
       /* Check that the particle was initialised */
       if (gparts[pid].initialised == 0)
@@ -946,7 +989,8 @@ static INLINE void runner_doself_grav_pp_full(
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
-      if (pjd < gcount) gparts[pid].num_interacted++;
+      if (pjd < gcount && !gpart_is_inhibited(&gparts[pjd], e))
+        gparts[pid].num_interacted++;
 #endif
     }
 
@@ -1039,8 +1083,17 @@ static INLINE void runner_doself_grav_pp_truncated(
       /* Check that particles have been drifted to the current time */
       if (gparts[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current)
+      if (pjd < gcount && gparts[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts[pjd], e))
         error("gpj not drifted to current time");
+
+      /* Check that we are not updated an inhibited particle */
+      if (gpart_is_inhibited(&gparts[pid], e))
+        error("Updating an inhibited particle!");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (pjd < gcount && gpart_is_inhibited(&gparts[pjd], e) && mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
 
       /* Check that the particle was initialised */
       if (gparts[pid].initialised == 0)
@@ -1060,7 +1113,8 @@ static INLINE void runner_doself_grav_pp_truncated(
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
-      if (pjd < gcount) gparts[pid].num_interacted++;
+      if (pjd < gcount && !gpart_is_inhibited(&gparts[pjd], e))
+        gparts[pid].num_interacted++;
 #endif
     }
 
@@ -1340,7 +1394,7 @@ static INLINE void runner_dopair_grav_mm_progenies(struct runner *r,
           const int flag = i * 8 + j;
 
           /* Did we agree to use an M-M interaction here at the last rebuild? */
-          if (flags & (1LL << flag)) runner_dopair_grav_mm(r, cpi, cpj);
+          if (flags & (1ULL << flag)) runner_dopair_grav_mm(r, cpi, cpj);
         }
       }
     }
@@ -1353,7 +1407,8 @@ static INLINE void runner_dopair_recursive_grav_pm(struct runner *r,
   /* Some constants */
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
-  const float dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
+  const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
+                        (float)e->mesh->dim[2]};
   const float r_s_inv = e->mesh->r_s_inv;
 
   /* Anything to do here? */
@@ -1665,7 +1720,8 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   /* Recover the list of top-level cells */
   struct cell *cells = e->s->cells_top;
-  const int nr_cells = e->s->nr_cells;
+  int *cells_with_particles = e->s->cells_with_particles_top;
+  const int nr_cells_with_particles = e->s->nr_cells_with_particles;
 
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e)) return;
@@ -1691,10 +1747,10 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   /* Loop over all the top-level cells and go for a M-M interaction if
    * well-separated */
-  for (int n = 0; n < nr_cells; ++n) {
+  for (int n = 0; n < nr_cells_with_particles; ++n) {
 
     /* Handle on the top-level cell and it's gravity business*/
-    struct cell *cj = &cells[n];
+    const struct cell *cj = &cells[cells_with_particles[n]];
     const struct gravity_tensors *const multi_j = cj->grav.multipole;
 
     /* Avoid self contributions */

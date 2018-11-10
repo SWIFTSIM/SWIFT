@@ -48,7 +48,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
     gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
-    mesh_gravity.h cbrt.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h
+    mesh_gravity.h cbrt.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
+    logger_io.h
 
 # source files for EAGLE cooling
 EAGLE_COOLING_SOURCES =
@@ -58,8 +59,8 @@ cooling/EAGLE/eagle_cool_tables.c
 endif
 
 # Common source files
-AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
-    serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
+AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c \
+    engine_marktasks.c serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potential.c hydro_properties.c \
@@ -68,13 +69,14 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     part_type.c xmf.c gravity_properties.c gravity.c \
     collectgroup.c hydro_space.c equation_of_state.c \
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
-    outputlist.c velociraptor_dummy.c $(EAGLE_COOLING_SOURCES)
+    outputlist.c velociraptor_dummy.c logger_io.c $(EAGLE_COOLING_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 gravity_iact.h kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h  \
                  runner_doiact_nosort.h runner_doiact_stars.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h \
 		 adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h dump.h logger.h sign.h \
+		 logger_io.h \
 		 gravity.h gravity_io.h gravity_cache.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \

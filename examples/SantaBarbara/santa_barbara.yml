@@ -53,6 +53,7 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./SantaBarbara.hdf5
+  periodic:   1
   cleanup_h_factors: 1              # ICs were generated for Gadget, we need to get rid of h-factors
   cleanup_velocity_factors: 1       # ICs were generated for Gadget, we need to get rid of sqrt(a) factors in the velocity
   generate_gas_in_ics: 1            # Generate gas particles from the DM-only ICs

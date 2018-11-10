@@ -494,14 +494,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float v_sig = ci + cj - 3.f * mu_ij;
-  if (isnan(v_sig)) message("v_sig is nan terms %.5e %.5e %.5e ", ci, cj, mu_ij);
+  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
-  if (isnan(visc)) error("visc is nan terms %.5e %.5e %.5e %.5e %.5e %.5e ", const_viscosity_alpha, v_sig, mu_ij, balsara_i, balsara_j, rho_ij);
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -529,10 +526,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
-  //if (pi->id == 5439098268095) message("Particle id %llu entropy_dt %.5e increment %.5e terms %.5e %.5e %.5e",pi->id,pi->entropy_dt, mj * visc_term * dvdr, mj, visc_term, dvdr);
-  //if (pj->id == 5439098268095) message("Particle id %llu entropy_dt %.5e increment %.5e terms %.5e %.5e %.5e",pj->id,pj->entropy_dt, mi * visc_term * dvdr, mi, visc_term, dvdr);
-  pi->entropy_dt += mj * visc_term * dvdr;
-  pj->entropy_dt += mi * visc_term * dvdr;
+  pi->entropy_dt += mj * visc_term * dvdr_Hubble;
+  pj->entropy_dt += mi * visc_term * dvdr_Hubble;
 
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
@@ -622,14 +617,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float v_sig = ci + cj - 3.f * mu_ij;
-  if (isnan(v_sig)) message("v_sig is nan terms %.5e %.5e %.5e ", ci, cj, mu_ij);
+  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
-  if (isnan(visc)) error("visc is nan terms %.5e %.5e %.5e %.5e %.5e %.5e ", const_viscosity_alpha, v_sig, mu_ij, balsara_i, balsara_j, rho_ij);
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -651,8 +643,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
   /* Change in entropy */
-  //if (pi->id == 5439098268095) message("Particle id %llu entropy_dt %.5e increment %.5e terms %.5e %.5e %.5e",pi->id,pi->entropy_dt, mj * visc_term * dvdr, mj, visc_term, dvdr);
-  pi->entropy_dt += mj * visc_term * dvdr;
+  pi->entropy_dt += mj * visc_term * dvdr_Hubble;
 
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
@@ -663,8 +654,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 }
 
 #ifdef WITH_VECTORIZATION
-static const vector const_viscosity_alpha_fac =
-    FILL_VEC(-0.25f * const_viscosity_alpha);
 
 /**
  * @brief Force interaction computed using 1 vector
@@ -750,13 +739,14 @@ runner_iact_nonsym_1_vec_force(
                     vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
-  v_sig.v = vec_fnma(vec_set1(3.f), mu_ij.v, vec_add(ci.v, cj.v));
+  v_sig.v =
+      vec_fnma(vec_set1(const_viscosity_beta), mu_ij.v, vec_add(ci.v, cj.v));
 
   /* Now construct the full viscosity term */
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
-  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v,
-                           vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
-                   rho_ij.v);
+  visc.v = vec_div(
+      vec_mul(vec_set1(-0.25f), vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
+      rho_ij.v);
 
   /* Now, convolve with the kernel */
   visc_term.v =
@@ -781,7 +771,7 @@ runner_iact_nonsym_1_vec_force(
       vec_div(vec_mul(mj.v, vec_mul(dvdr.v, vec_mul(ri.v, wi_dr.v))), pjrho.v);
 
   /* Change in entropy */
-  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr.v));
+  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr_Hubble.v));
 
   /* Store the forces back on the particles. */
   a_hydro_xSum->v = vec_mask_sub(a_hydro_xSum->v, piax.v, mask);
@@ -936,18 +926,20 @@ runner_iact_nonsym_2_vec_force(
       v_fac_mu.v, vec_mul(ri_2.v, omega_ij_2.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
-  v_sig.v = vec_fnma(vec_set1(3.f), mu_ij.v, vec_add(ci.v, cj.v));
-  v_sig_2.v = vec_fnma(vec_set1(3.f), mu_ij_2.v, vec_add(ci.v, cj_2.v));
+  v_sig.v =
+      vec_fnma(vec_set1(const_viscosity_beta), mu_ij.v, vec_add(ci.v, cj.v));
+  v_sig_2.v = vec_fnma(vec_set1(const_viscosity_beta), mu_ij_2.v,
+                       vec_add(ci.v, cj_2.v));
 
   /* Now construct the full viscosity term */
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
   rho_ij_2.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho_2.v));
 
-  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v,
-                           vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
-                   rho_ij.v);
+  visc.v = vec_div(
+      vec_mul(vec_set1(-0.25f), vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
+      rho_ij.v);
   visc_2.v =
-      vec_div(vec_mul(const_viscosity_alpha_fac.v,
+      vec_div(vec_mul(vec_set1(-0.25f),
                       vec_mul(v_sig_2.v, vec_mul(mu_ij_2.v, balsara_2.v))),
               rho_ij_2.v);
 
@@ -991,8 +983,8 @@ runner_iact_nonsym_2_vec_force(
               pjrho_2.v);
 
   /* Change in entropy */
-  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr.v));
-  entropy_dt_2.v = vec_mul(mj_2.v, vec_mul(visc_term_2.v, dvdr_2.v));
+  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr_Hubble.v));
+  entropy_dt_2.v = vec_mul(mj_2.v, vec_mul(visc_term_2.v, dvdr_Hubble_2.v));
 
   /* Store the forces back on the particles. */
   if (mask_cond) {

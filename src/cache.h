@@ -834,6 +834,7 @@ static INLINE void cache_clean(struct cache *c) {
     free(c->balsara);
     free(c->soundspeed);
   }
+  c->count = 0;
 }
 
 #endif /* WITH_VECTORIZATION */

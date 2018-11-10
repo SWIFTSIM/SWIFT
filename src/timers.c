@@ -80,6 +80,7 @@ const char* timers_names[timer_count] = {
     "dorecv_gpart",
     "dorecv_spart",
     "do_cooling",
+    "do_star_formation",
     "gettask",
     "qget",
     "qsteal",
@@ -93,6 +94,7 @@ const char* timers_names[timer_count] = {
     "dopair_subset_stars_density",
     "dosubpair_stars_density",
     "dosub_self_stars_density",
+    "logger",
 };
 
 /* File to store the timers */

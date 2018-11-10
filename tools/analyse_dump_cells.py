@@ -47,13 +47,13 @@ mpicol = 20
 
 #  Command-line arguments.
 if len(sys.argv) < 5:
-    print "usage: ", sys.argv[0], " nx ny nz cell1.dat cell2.dat ..."
+    print("usage: ", sys.argv[0], " nx ny nz cell1.dat cell2.dat ...")
     sys.exit(1)
 nx = int(sys.argv[1])
 ny = int(sys.argv[2])
 nz = int(sys.argv[3])
 
-print "# x y z onedge"
+print("# x y z onedge")
 allactives = []
 onedge = 0
 tcount = 0
@@ -65,28 +65,28 @@ for i in range(4, len(sys.argv)):
         continue
 
     #  Select cells that are on the current rank and are top-level cells.
-    rdata = data[data[:,localcol] == 1]
-    tdata = rdata[rdata[:,topcol] == 1]
+    rdata = data[data[:, localcol] == 1]
+    tdata = rdata[rdata[:, topcol] == 1]
 
     #  Separation of the cells is in data.
-    xwidth = tdata[0,xwcol]
-    ywidth = tdata[0,ywcol]
-    zwidth = tdata[0,zwcol]
+    xwidth = tdata[0, xwcol]
+    ywidth = tdata[0, ywcol]
+    zwidth = tdata[0, zwcol]
 
     #  Fill space nx, ny,n nz with all toplevel cells and flag their active
     #  state.
-    space = np.zeros((nx,ny,nz))
+    space = np.zeros((nx, ny, nz))
     actives = []
     for line in tdata:
         ix = int(np.rint(line[xcol] / xwidth))
         iy = int(np.rint(line[ycol] / ywidth))
         iz = int(np.rint(line[zcol] / zwidth))
         active = int(line[activecol])
-        space[ix,iy,iz] = 1 + active
+        space[ix, iy, iz] = 1 + active
         tcount = tcount + 1
         if active == 1:
             actives.append([ix, iy, iz, line])
-    
+
     #  Report all active cells and flag any without 26 neighbours. These are
     #  on the edge of the partition volume and will have foreign neighbour
     #  cells.
@@ -116,13 +116,12 @@ for i in range(4, len(sys.argv)):
                         count = count + 1
         if count < 27:
             onedge = onedge + 1
-            print active[3][0], active[3][1], active[3][2], 1
+            print(active[3][0], active[3][1], active[3][2], 1)
         else:
-            print active[3][0], active[3][1], active[3][2], 0
+            print(active[3][0], active[3][1], active[3][2], 0)
 
     allactives.extend(actives)
 
-print "# top cells: ", tcount, " active: ", len(allactives), " on edge: ", onedge
+print("# top cells: ", tcount, " active: ", len(allactives), " on edge: ", onedge)
 
 sys.exit(0)
-

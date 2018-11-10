@@ -70,11 +70,11 @@ snap = int(sys.argv[1])
 sim = h5py.File("sodShock_%04d.hdf5"%snap, "r")
 boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
-scheme = sim["/HydroScheme"].attrs["Scheme"]
-kernel = sim["/HydroScheme"].attrs["Kernel function"]
+scheme = str(sim["/HydroScheme"].attrs["Scheme"])
+kernel = str(sim["/HydroScheme"].attrs["Kernel function"])
 neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
 eta = sim["/HydroScheme"].attrs["Kernel eta"]
-git = sim["Code"].attrs["Git Revision"]
+git = str(sim["Code"].attrs["Git Revision"])
 
 x = sim["/PartType0/Coordinates"][:,0]
 v = sim["/PartType0/Velocities"][:,0]
@@ -82,6 +82,11 @@ u = sim["/PartType0/InternalEnergy"][:]
 S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 rho = sim["/PartType0/Density"][:]
+try:
+    alpha = sim["/PartType0/Viscosity"][:]
+    plot_alpha = True 
+except:
+    plot_alpha = False
 
 N = 1000  # Number of points
 x_min = -1.
@@ -259,14 +264,23 @@ ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
 xlim(-0.5, 0.5)
 ylim(0.8, 2.2)
 
-# Entropy profile ---------------------------------
+# Entropy/alpha profile ---------------------------------
 subplot(235)
-plot(x, S, '.', color='r', ms=4.0)
-plot(x_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
+
+if plot_alpha:
+    plot(x, alpha, '.', color='r', ms=4.0)
+    ylabel(r"${\rm{Viscosity}}~\alpha$", labelpad=0)
+    # Show location of shock
+    plot([x_56, x_56], [-100, 100], color="k", alpha=0.5, ls="dashed", lw=1.2)
+    ylim(0, 1)
+else:
+    plot(x, S, '.', color='r', ms=4.0)
+    plot(x_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
+    ylabel("${\\rm{Entropy}}~S$", labelpad=0)
+    ylim(0.8, 3.8)
+
 xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Entropy}}~S$", labelpad=0)
 xlim(-0.5, 0.5)
-ylim(0.8, 3.8)
 
 # Information -------------------------------------
 subplot(236, frameon=False)
@@ -284,5 +298,6 @@ ylim(0, 1)
 xticks([])
 yticks([])
 
+tight_layout()
 
 savefig("SodShock.png", dpi=200)

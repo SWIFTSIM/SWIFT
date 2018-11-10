@@ -56,7 +56,7 @@ INLINE static void cooling_update(const struct cosmology *cosmo,
  *
  * @param T The temperature of the gas [K].
  * @param H_mass_fraction The hydrogen mass fraction of the gas.
- * @param T_trans The temperature of the transition from HII to HI [K].
+ * @param T_transition The temperature of the transition from HII to HI [K].
  */
 __attribute__((always_inline, const)) INLINE static double
 mean_molecular_weight(const double T, const double H_mass_fraction,
@@ -74,7 +74,7 @@ mean_molecular_weight(const double T, const double H_mass_fraction,
  *
  * @param u_cgs The internal energy per unit mass of the gas [erg * g^-1].
  * @param H_mass_fraction The hydrogen mass fraction of the gas.
- * @param T_trans The temperature of the transition from HII to HI [K].
+ * @param T_transition The temperature of the transition from HII to HI [K].
  * @param m_H_cgs The mass of the Hydorgen atom [g].
  * @param k_B_cgs The Boltzmann constant in cgs units [erg * K^-1]
  * @return The temperature of the gas [K]

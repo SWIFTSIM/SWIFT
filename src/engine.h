@@ -38,6 +38,7 @@
 #include "clocks.h"
 #include "collectgroup.h"
 #include "cooling_struct.h"
+#include "dump.h"
 #include "gravity_properties.h"
 #include "mesh_gravity.h"
 #include "parser.h"
@@ -49,6 +50,7 @@
 #include "space.h"
 #include "task.h"
 #include "units.h"
+#include "velociraptor_interface.h"
 
 /**
  * @brief The different policies the #engine can follow.
@@ -72,10 +74,11 @@ enum engine_policy {
   engine_policy_sourceterms = (1 << 14),
   engine_policy_stars = (1 << 15),
   engine_policy_structure_finding = (1 << 16),
-  engine_policy_feedback = (1 << 17)
+  engine_policy_star_formation = (1 << 17),
+  engine_policy_feedback = (1 << 18)
 };
-#define engine_maxpolicy 17
-extern const char *engine_policy_names[];
+#define engine_maxpolicy 19
+extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
  * @brief The different unusual events that can take place in a time-step.
@@ -87,7 +90,8 @@ enum engine_step_properties {
   engine_step_prop_repartition = (1 << 2),
   engine_step_prop_statistics = (1 << 3),
   engine_step_prop_snapshot = (1 << 4),
-  engine_step_prop_restarts = (1 << 5)
+  engine_step_prop_restarts = (1 << 5),
+  engine_step_prop_logger_index = (1 << 6)
 };
 
 /* Some constants */
@@ -203,6 +207,15 @@ struct engine {
   /* Total numbers of particles in the system. */
   long long total_nr_parts, total_nr_gparts, total_nr_sparts;
 
+  /* The total number of inhibted particles in the system. */
+  long long nr_inhibited_parts, nr_inhibited_gparts, nr_inhibited_sparts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Total number of particles removed from the system since the last rebuild */
+  long long count_inhibited_parts, count_inhibited_gparts,
+      count_inhibited_sparts;
+#endif
+
   /* Total mass in the simulation */
   double total_mass;
 
@@ -230,7 +243,7 @@ struct engine {
   int snapshot_output_count;
 
   /* Structure finding information */
-  int stf_output_freq_format;
+  enum io_stf_output_format stf_output_freq_format;
   int delta_step_stf;
   double a_first_stf_output;
   double time_first_stf_output;
@@ -300,6 +313,10 @@ struct engine {
   /* Force the engine to repartition ? */
   int forcerepart;
   struct repartition *reparttype;
+
+#ifdef WITH_LOGGER
+  struct logger *logger;
+#endif
 
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
@@ -374,7 +391,7 @@ struct engine {
   int restart_max_tasks;
 };
 
-/* Function prototypes. */
+/* Function prototypes, engine.c. */
 void engine_addlink(struct engine *e, struct link **l, struct task *t);
 void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
@@ -404,19 +421,19 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 void engine_config(int restart, struct engine *e, struct swift_params *params,
                    int nr_nodes, int nodeID, int nr_threads, int with_aff,
                    int verbose, const char *restart_file);
+void engine_dump_index(struct engine *e);
 void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
 void engine_step(struct engine *e);
-void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
-void engine_exchange_strays(struct engine *e, size_t offset_parts,
-                            int *ind_part, size_t *Npart, size_t offset_gparts,
-                            int *ind_gpart, size_t *Ngpart,
-                            size_t offset_sparts, int *ind_spart,
-                            size_t *Nspart);
-void engine_rebuild(struct engine *e, int clean_h_values);
+void engine_exchange_strays(struct engine *e, const size_t offset_parts,
+                            const int *ind_part, size_t *Npart,
+                            const size_t offset_gparts, const int *ind_gpart,
+                            size_t *Ngpart, const size_t offset_sparts,
+                            const int *ind_spart, size_t *Nspart);
+void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
 void engine_makeproxies(struct engine *e);
@@ -427,6 +444,12 @@ void engine_pin(void);
 void engine_unpin(void);
 void engine_clean(struct engine *e);
 int engine_estimate_nr_tasks(struct engine *e);
+
+/* Function prototypes, engine_maketasks.c. */
+void engine_maketasks(struct engine *e);
+
+/* Function prototypes, engine_marktasks.c. */
+int engine_marktasks(struct engine *e);
 
 #ifdef HAVE_SETAFFINITY
 cpu_set_t *engine_entry_affinity(void);

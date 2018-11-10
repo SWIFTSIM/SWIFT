@@ -58,7 +58,7 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
 void output_list_init(struct output_list **list, const struct engine *e,
                       const char *name, double *delta_time, double *time_first);
 void output_list_print(const struct output_list *outputlist);
-void output_list_clean(struct output_list *outputlist);
+void output_list_clean(struct output_list **outputlist);
 void output_list_struct_dump(struct output_list *list, FILE *stream);
 void output_list_struct_restore(struct output_list *list, FILE *stream);
 

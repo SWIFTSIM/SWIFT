@@ -16,8 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
+/* Some standard headers. */
 #include <stdlib.h>
+
+/* Local headers. */
 #include "error.h"
 #include "hydro/Shadowswift/voronoi3d_algorithm.h"
 #include "part.h"

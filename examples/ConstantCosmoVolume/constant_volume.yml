@@ -39,7 +39,8 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./constantBox.hdf5
-
+  periodic:   1
+  
 Scheduler:
   max_top_level_cells: 8
   cell_split_size:     50

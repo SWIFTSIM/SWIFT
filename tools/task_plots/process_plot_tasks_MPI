@@ -87,10 +87,22 @@ echo $list | xargs -n 3 | while read f s g; do
 <ul style="list-style-type:none">
 <li>
 EOF
+
+    cat <<EOF3 > step${s}r.html
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<body>
+EOF3
+
     for i in $(seq 0 $nrank); do
-        cat <<EOF2 >> index.html
-<a href="step${s}r${i}.html"><img src="step${s}r${i}.png" width=400px/></a>
-EOF2
+
+        cat <<EOF >> index.html
+<a href="step${s}r.html"><img src="step${s}r${i}.png" width=400px/></a>
+EOF
+        cat <<EOF3 >> step${s}r.html
+<a href="step${s}r${i}.html"><img src="step${s}r${i}.png"/></a>
+EOF3
+
     cat <<EOF2 > step${s}r${i}.html
  <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
@@ -104,7 +116,14 @@ cat <<EOF2 >> step${s}r${i}.html
 </body>
 </html>
 EOF2
+
     done
+
+cat <<EOF3 >> step${s}r.html
+</body>
+</html>
+EOF3
+
 cat <<EOF >> index.html
 </li>
 </ul>

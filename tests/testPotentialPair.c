@@ -205,6 +205,7 @@ int main(int argc, char *argv[]) {
     gp->id_or_neg_offset = n + 1;
 #ifdef SWIFT_DEBUG_CHECKS
     gp->ti_drift = 8;
+    gp->initialised = 1;
 #endif
   }
 
@@ -222,6 +223,7 @@ int main(int argc, char *argv[]) {
   ci.grav.parts[0].id_or_neg_offset = 1;
 #ifdef SWIFT_DEBUG_CHECKS
   ci.grav.parts[0].ti_drift = 8;
+  ci.grav.parts[0].initialised = 1;
 #endif
 
   /* Now compute the forces */
@@ -378,6 +380,7 @@ int main(int argc, char *argv[]) {
     ci.grav.parts[n].id_or_neg_offset = 1;
 #ifdef SWIFT_DEBUG_CHECKS
     ci.grav.parts[n].ti_drift = 8;
+    ci.grav.parts[n].initialised = 1;
 #endif
   }
 
@@ -436,5 +439,10 @@ int main(int argc, char *argv[]) {
   free(cj.grav.multipole);
   free(ci.grav.parts);
   free(cj.grav.parts);
+
+  /* Clean up the caches */
+  gravity_cache_clean(&r.ci_gravity_cache);
+  gravity_cache_clean(&r.cj_gravity_cache);
+
   return 0;
 }

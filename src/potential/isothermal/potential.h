@@ -148,7 +148,7 @@ external_gravity_get_potential_energy(
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
 
-  return -0.5f * potential->vrot * potential->vrot *
+  return 0.5f * potential->vrot * potential->vrot *
          logf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
 }
 
@@ -166,11 +166,19 @@ static INLINE void potential_init_backend(
     const struct unit_system* us, const struct space* s,
     struct external_potential* potential) {
 
+  /* Read in the position of the centre of potential */
   parser_get_param_double_array(parameter_file, "IsothermalPotential:position",
                                 3, potential->x);
-  potential->x[0] += s->dim[0] / 2.;
-  potential->x[1] += s->dim[1] / 2.;
-  potential->x[2] += s->dim[2] / 2.;
+
+  /* Is the position absolute or relative to the centre of the box? */
+  const int useabspos =
+      parser_get_param_int(parameter_file, "IsothermalPotential:useabspos");
+
+  if (!useabspos) {
+    potential->x[0] += s->dim[0] / 2.;
+    potential->x[1] += s->dim[1] / 2.;
+    potential->x[2] += s->dim[2] / 2.;
+  }
 
   potential->vrot =
       parser_get_param_double(parameter_file, "IsothermalPotential:vrot");

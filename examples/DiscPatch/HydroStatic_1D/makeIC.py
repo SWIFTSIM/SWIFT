@@ -168,10 +168,6 @@ grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["Dimension"] = 1
 
-#Runtime parameters
-grp = file.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = 1
-
 # write gas particles
 grp0   = file.create_group("/PartType0")
 

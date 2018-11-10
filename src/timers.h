@@ -81,6 +81,7 @@ enum {
   timer_dorecv_gpart,
   timer_dorecv_spart,
   timer_do_cooling,
+  timer_do_star_formation,
   timer_gettask,
   timer_qget,
   timer_qsteal,
@@ -94,6 +95,7 @@ enum {
   timer_dopair_subset_stars_density,
   timer_dosubpair_stars_density,
   timer_dosub_self_stars_density,
+  timer_logger,
   timer_count,
 };
 

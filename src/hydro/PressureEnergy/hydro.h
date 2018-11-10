@@ -472,8 +472,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
   p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 
-  /* Finish calculation of the velocity divergence */
-  p->density.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
+  /* Finish calculation of the velocity divergence, including hubble flow term
+   */
+  p->density.div_v *=
+      h_inv_dim_plus_one * rho_inv * a_inv2 + cosmo->H * hydro_dimension;
 }
 
 /**
@@ -524,12 +526,14 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  * @param cosmo The current cosmological model.
+ * @param hydro_props Hydrodynamic properties.
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const float dt_alpha) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const float dt_alpha) {
 
   const float fac_mu = cosmo->a_factor_mu;
 
@@ -546,7 +550,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the Balsara switch */
   const float balsara =
-      abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed * fac_mu / p->h);
+      hydro_props->viscosity.alpha * abs_div_v /
+      (abs_div_v + curl_v + 0.0001f * soundspeed * fac_mu / p->h);
 
   /* Compute the "grad h" term */
   const float common_factor = p->h / (hydro_dimension * p->density.wcount);

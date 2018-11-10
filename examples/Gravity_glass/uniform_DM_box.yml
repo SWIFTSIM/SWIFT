@@ -42,3 +42,4 @@ Statistics:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./uniform_DM_box.hdf5
+  periodic:   1

@@ -102,10 +102,6 @@ grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["Dimension"] = 3
 
-# Runtime parameters
-grp = file.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = periodic
-
 # set seed for random number
 np.random.seed(1234)
 

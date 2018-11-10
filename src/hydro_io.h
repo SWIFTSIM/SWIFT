@@ -31,6 +31,8 @@
 #include "./hydro/PressureEntropy/hydro_io.h"
 #elif defined(HOPKINS_PU_SPH)
 #include "./hydro/PressureEnergy/hydro_io.h"
+#elif defined(HOPKINS_PU_SPH_MONAGHAN)
+#include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_io.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_io.h"
 #elif defined(GIZMO_MFV_SPH)

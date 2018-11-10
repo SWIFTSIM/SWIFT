@@ -26,7 +26,6 @@ import sys
 # reconstruction
 
 # Parameters
-periodic= 1      # 1 For periodic box
 gamma = 5./3.     # Gas adiabatic index
 gridtype = "cartesian"
 if len(sys.argv) > 1:
@@ -152,10 +151,6 @@ grp.attrs["Time"] = 0.0
 grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-
-#Runtime parameters
-grp = file.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = periodic
 
 #Particle group
 grp = file.create_group("/PartType0")

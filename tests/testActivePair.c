@@ -33,7 +33,8 @@
 
 /* Typdef function pointer for interaction function. */
 typedef void (*interaction_func)(struct runner *, struct cell *, struct cell *);
-typedef void (*init_func)(struct cell *, const struct cosmology *);
+typedef void (*init_func)(struct cell *, const struct cosmology *,
+                          const struct hydro_props *);
 typedef void (*finalise_func)(struct cell *, const struct cosmology *);
 
 /**
@@ -110,7 +111,8 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 /* Set the thermodynamic variable */
 #if defined(GADGET2_SPH)
         part->entropy = 1.f;
-#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH)
+#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) || \
+    defined(HOPKINS_PU_SPH_MONAGHAN)
         part->u = 1.f;
 #elif defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;
@@ -169,8 +171,8 @@ void clean_up(struct cell *ci) {
 /**
  * @brief Initializes all particles field to be ready for a density calculation
  */
-void zero_particle_fields_density(struct cell *c,
-                                  const struct cosmology *cosmo) {
+void zero_particle_fields_density(struct cell *c, const struct cosmology *cosmo,
+                                  const struct hydro_props *hydro_props) {
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_init_part(&c->hydro.parts[pid], NULL);
   }
@@ -179,7 +181,8 @@ void zero_particle_fields_density(struct cell *c,
 /**
  * @brief Initializes all particles field to be ready for a force calculation
  */
-void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo) {
+void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
+                                const struct hydro_props *hydro_props) {
   for (int pid = 0; pid < c->hydro.count; pid++) {
     struct part *p = &c->hydro.parts[pid];
     struct xpart *xp = &c->hydro.xparts[pid];
@@ -209,7 +212,7 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo) {
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
 #endif /* PRESSURE-ENTROPY */
-#ifdef HOPKINS_PU_SPH
+#if defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
     p->rho = 1.f;
     p->pressure_bar = 0.6666666;
     p->density.rho_dh = 0.f;
@@ -219,7 +222,7 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo) {
 #endif /* PRESSURE-ENERGY */
 
     /* And prepare for a round of force tasks. */
-    hydro_prepare_force(p, xp, cosmo, 0.);
+    hydro_prepare_force(p, xp, cosmo, hydro_props, 0.);
     hydro_reset_acceleration(p);
   }
 }
@@ -299,8 +302,8 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
   runner_do_sort(runner, *cj, 0x1FFF, 0, 0);
 
   /* Zero the fields */
-  init(*ci, runner->e->cosmology);
-  init(*cj, runner->e->cosmology);
+  init(*ci, runner->e->cosmology, runner->e->hydro_properties);
+  init(*cj, runner->e->cosmology, runner->e->hydro_properties);
 
   /* Run the test */
   vec_interaction(runner, *ci, *cj);
@@ -315,8 +318,8 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
   /* Now perform a brute-force version for accuracy tests */
 
   /* Zero the fields */
-  init(*ci, runner->e->cosmology);
-  init(*cj, runner->e->cosmology);
+  init(*ci, runner->e->cosmology, runner->e->hydro_properties);
+  init(*cj, runner->e->cosmology, runner->e->hydro_properties);
 
   /* Run the brute-force test */
   serial_interaction(runner, *ci, *cj);
@@ -487,6 +490,7 @@ int main(int argc, char *argv[]) {
   struct space space;
   struct engine engine;
   struct cosmology cosmo;
+  struct hydro_props hydro_props;
   struct runner *runner;
   char c;
   static long long partId = 0;
@@ -571,6 +575,8 @@ int main(int argc, char *argv[]) {
 
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
+  hydro_props_init_no_hydro(&hydro_props);
+  engine.hydro_properties = &hydro_props;
 
   if (posix_memalign((void **)&runner, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct runner)) != 0) {

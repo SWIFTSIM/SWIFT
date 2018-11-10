@@ -102,9 +102,11 @@ struct parallel_sort {
  */
 struct index_data {
   struct space *s;
-  struct cell *cells;
   int *ind;
   int *cell_counts;
+  int count_inhibited_part;
+  int count_inhibited_gpart;
+  int count_inhibited_spart;
 };
 
 /**
@@ -174,10 +176,17 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.mm = NULL;
     c->hydro.dx_max_part = 0.0f;
     c->hydro.dx_max_sort = 0.0f;
+    c->stars.dx_max_part = 0.f;
     c->hydro.sorted = 0;
     c->hydro.count = 0;
+    c->hydro.updated = 0;
+    c->hydro.inhibited = 0;
     c->grav.count = 0;
+    c->grav.updated = 0;
+    c->grav.inhibited = 0;
     c->stars.count = 0;
+    c->stars.updated = 0;
+    c->stars.inhibited = 0;
     c->grav.init = NULL;
     c->grav.init_out = NULL;
     c->hydro.extra_ghost = NULL;
@@ -191,7 +200,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
-    c->hydro.end_force = NULL;
+    c->end_force = NULL;
     c->hydro.drift = NULL;
     c->grav.drift = NULL;
     c->hydro.cooling = NULL;
@@ -266,6 +275,7 @@ void space_free_cells(struct space *s) {
 void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
+  const size_t nr_sparts = s->nr_sparts;
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
@@ -273,23 +283,39 @@ void space_regrid(struct space *s, int verbose) {
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
   if (nr_parts > 0) {
-    if (s->local_cells_top != NULL) {
-      for (int k = 0; k < s->nr_local_cells; ++k) {
-        const struct cell *c = &s->cells_top[s->local_cells_top[k]];
+
+    /* Can we use the list of local non-empty top-level cells? */
+    if (s->local_cells_with_particles_top != NULL) {
+      for (int k = 0; k < s->nr_local_cells_with_particles; ++k) {
+        const struct cell *c =
+            &s->cells_top[s->local_cells_with_particles_top[k]];
         if (c->hydro.h_max > h_max) {
-          h_max = s->cells_top[k].hydro.h_max;
+          h_max = c->hydro.h_max;
+        }
+        if (c->stars.h_max > h_max) {
+          h_max = c->stars.h_max;
         }
       }
+
+      /* Can we instead use all the top-level cells? */
     } else if (s->cells_top != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
         const struct cell *c = &s->cells_top[k];
         if (c->nodeID == engine_rank && c->hydro.h_max > h_max) {
-          h_max = s->cells_top[k].hydro.h_max;
+          h_max = c->hydro.h_max;
+        }
+        if (c->nodeID == engine_rank && c->stars.h_max > h_max) {
+          h_max = c->stars.h_max;
         }
       }
+
+      /* Last option: run through the particles */
     } else {
       for (size_t k = 0; k < nr_parts; k++) {
         if (s->parts[k].h > h_max) h_max = s->parts[k].h;
+      }
+      for (size_t k = 0; k < nr_sparts; k++) {
+        if (s->sparts[k].h > h_max) h_max = s->sparts[k].h;
       }
     }
   }
@@ -382,6 +408,8 @@ void space_regrid(struct space *s, int verbose) {
       space_free_cells(s);
       free(s->local_cells_with_tasks_top);
       free(s->local_cells_top);
+      free(s->cells_with_particles_top);
+      free(s->local_cells_with_particles_top);
       free(s->cells_top);
       free(s->multipoles_top);
     }
@@ -422,8 +450,22 @@ void space_regrid(struct space *s, int verbose) {
     /* Allocate the indices of local cells with tasks */
     if (posix_memalign((void **)&s->local_cells_with_tasks_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-      error("Failed to allocate indices of local top-level cells.");
+      error("Failed to allocate indices of local top-level cells with tasks.");
     bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
+
+    /* Allocate the indices of cells with particles */
+    if (posix_memalign((void **)&s->cells_with_particles_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of top-level cells with particles.");
+    bzero(s->cells_with_particles_top, s->nr_cells * sizeof(int));
+
+    /* Allocate the indices of local cells with particles */
+    if (posix_memalign((void **)&s->local_cells_with_particles_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error(
+          "Failed to allocate indices of local top-level cells with "
+          "particles.");
+    bzero(s->local_cells_with_particles_top, s->nr_cells * sizeof(int));
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
@@ -451,6 +493,7 @@ void space_regrid(struct space *s, int verbose) {
           c->width[2] = s->width[2];
           c->dmin = dmin;
           c->depth = 0;
+          c->split = 0;
           c->hydro.count = 0;
           c->grav.count = 0;
           c->stars.count = 0;
@@ -544,10 +587,10 @@ void space_regrid(struct space *s, int verbose) {
  * @brief Re-build the cells as well as the tasks.
  *
  * @param s The #space in which to update the cells.
+ * @param repartitioned Did we just repartition?
  * @param verbose Print messages to stdout or not
- *
  */
-void space_rebuild(struct space *s, int verbose) {
+void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   const ticks tic = getticks();
 
@@ -563,6 +606,9 @@ void space_rebuild(struct space *s, int verbose) {
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
+  int count_inhibited_parts = 0;
+  int count_inhibited_gparts = 0;
+  int count_inhibited_sparts = 0;
   struct cell *restrict cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
@@ -576,7 +622,8 @@ void space_rebuild(struct space *s, int verbose) {
   if (cell_part_counts == NULL)
     error("Failed to allocate cell part count buffer.");
   if (s->size_parts > 0)
-    space_parts_get_cell_index(s, ind, cell_part_counts, cells_top, verbose);
+    space_parts_get_cell_index(s, ind, cell_part_counts, &count_inhibited_parts,
+                               verbose);
 
   /* Run through the gravity particles and get their cell index. */
   const size_t gind_size = s->size_gparts + 100;
@@ -586,7 +633,8 @@ void space_rebuild(struct space *s, int verbose) {
   if (cell_gpart_counts == NULL)
     error("Failed to allocate cell gpart count buffer.");
   if (s->size_gparts > 0)
-    space_gparts_get_cell_index(s, gind, cell_gpart_counts, cells_top, verbose);
+    space_gparts_get_cell_index(s, gind, cell_gpart_counts,
+                                &count_inhibited_gparts, verbose);
 
   /* Run through the star particles and get their cell index. */
   const size_t sind_size = s->size_sparts + 100;
@@ -596,137 +644,202 @@ void space_rebuild(struct space *s, int verbose) {
   if (cell_spart_counts == NULL)
     error("Failed to allocate cell gpart count buffer.");
   if (s->size_sparts > 0)
-    space_sparts_get_cell_index(s, sind, cell_spart_counts, cells_top, verbose);
+    space_sparts_get_cell_index(s, sind, cell_spart_counts,
+                                &count_inhibited_sparts, verbose);
 
-#ifdef WITH_MPI
+#ifdef SWIFT_DEBUG_CHECKS
+  if (repartitioned && count_inhibited_parts)
+    error("We just repartitioned but still found inhibited parts.");
+  if (repartitioned && count_inhibited_sparts)
+    error("We just repartitioned but still found inhibited sparts.");
+  if (repartitioned && count_inhibited_gparts)
+    error("We just repartitioned but still found inhibited gparts.");
+#endif
+
   const int local_nodeID = s->e->nodeID;
 
-  /* Move non-local parts to the end of the list. */
-  for (size_t k = 0; k < nr_parts;) {
-    if (cells_top[ind[k]].nodeID != local_nodeID) {
-      nr_parts -= 1;
-      /* Swap the particle */
-      memswap(&s->parts[k], &s->parts[nr_parts], sizeof(struct part));
-      /* Swap the link with the gpart */
-      if (s->parts[k].gpart != NULL) {
-        s->parts[k].gpart->id_or_neg_offset = -k;
+  /* Move non-local parts and inhibited parts to the end of the list. */
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
+    for (size_t k = 0; k < nr_parts; /* void */) {
+
+      /* Inhibited particle or foreign particle */
+      if (ind[k] == -1 || cells_top[ind[k]].nodeID != local_nodeID) {
+
+        /* One fewer particle */
+        nr_parts -= 1;
+
+        /* Swap the particle */
+        memswap(&s->parts[k], &s->parts[nr_parts], sizeof(struct part));
+
+        /* Swap the link with the gpart */
+        if (s->parts[k].gpart != NULL) {
+          s->parts[k].gpart->id_or_neg_offset = -k;
+        }
+        if (s->parts[nr_parts].gpart != NULL) {
+          s->parts[nr_parts].gpart->id_or_neg_offset = -nr_parts;
+        }
+
+        /* Swap the xpart */
+        memswap(&s->xparts[k], &s->xparts[nr_parts], sizeof(struct xpart));
+        /* Swap the index */
+        memswap(&ind[k], &ind[nr_parts], sizeof(int));
+
+      } else {
+        /* Increment when not exchanging otherwise we need to retest "k".*/
+        k++;
       }
-      if (s->parts[nr_parts].gpart != NULL) {
-        s->parts[nr_parts].gpart->id_or_neg_offset = -nr_parts;
-      }
-      /* Swap the xpart */
-      memswap(&s->xparts[k], &s->xparts[nr_parts], sizeof(struct xpart));
-      /* Swap the index */
-      memswap(&ind[k], &ind[nr_parts], sizeof(int));
-    } else {
-      /* Increment when not exchanging otherwise we need to retest "k".*/
-      k++;
     }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all parts are in the correct places. */
+  int check_count_inhibited_part = 0;
   for (size_t k = 0; k < nr_parts; k++) {
-    if (cells_top[ind[k]].nodeID != local_nodeID) {
+    if (ind[k] == -1 || cells_top[ind[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local parts to send list");
     }
   }
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
-    if (cells_top[ind[k]].nodeID == local_nodeID) {
+    if (ind[k] != -1 && cells_top[ind[k]].nodeID == local_nodeID) {
       error("Failed to remove local parts from send list");
     }
+    if (ind[k] == -1) ++check_count_inhibited_part;
   }
-#endif
+  if (check_count_inhibited_part != count_inhibited_parts)
+    error("Counts of inhibited particles do not match!");
+#endif /* SWIFT_DEBUG_CHECKS */
 
-  /* Move non-local sparts to the end of the list. */
-  for (size_t k = 0; k < nr_sparts;) {
-    if (cells_top[sind[k]].nodeID != local_nodeID) {
-      nr_sparts -= 1;
-      /* Swap the particle */
-      memswap(&s->sparts[k], &s->sparts[nr_sparts], sizeof(struct spart));
-      /* Swap the link with the gpart */
-      if (s->sparts[k].gpart != NULL) {
-        s->sparts[k].gpart->id_or_neg_offset = -k;
+  /* Move non-local sparts and inhibited sparts to the end of the list. */
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_sparts > 0)) {
+    for (size_t k = 0; k < nr_sparts; /* void */) {
+
+      /* Inhibited particle or foreign particle */
+      if (sind[k] == -1 || cells_top[sind[k]].nodeID != local_nodeID) {
+
+        /* One fewer particle */
+        nr_sparts -= 1;
+
+        /* Swap the particle */
+        memswap(&s->sparts[k], &s->sparts[nr_sparts], sizeof(struct spart));
+
+        /* Swap the link with the gpart */
+        if (s->sparts[k].gpart != NULL) {
+          s->sparts[k].gpart->id_or_neg_offset = -k;
+        }
+        if (s->sparts[nr_sparts].gpart != NULL) {
+          s->sparts[nr_sparts].gpart->id_or_neg_offset = -nr_sparts;
+        }
+
+        /* Swap the index */
+        memswap(&sind[k], &sind[nr_sparts], sizeof(int));
+
+      } else {
+        /* Increment when not exchanging otherwise we need to retest "k".*/
+        k++;
       }
-      if (s->sparts[nr_sparts].gpart != NULL) {
-        s->sparts[nr_sparts].gpart->id_or_neg_offset = -nr_sparts;
-      }
-      /* Swap the index */
-      memswap(&sind[k], &sind[nr_sparts], sizeof(int));
-    } else {
-      /* Increment when not exchanging otherwise we need to retest "k".*/
-      k++;
     }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all sparts are in the correct place (untested). */
+  /* Check that all sparts are in the correct place. */
+  int check_count_inhibited_spart = 0;
   for (size_t k = 0; k < nr_sparts; k++) {
-    if (cells_top[sind[k]].nodeID != local_nodeID) {
+    if (sind[k] == -1 || cells_top[sind[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local sparts to send list");
     }
   }
   for (size_t k = nr_sparts; k < s->nr_sparts; k++) {
-    if (cells_top[sind[k]].nodeID == local_nodeID) {
+    if (sind[k] != -1 && cells_top[sind[k]].nodeID == local_nodeID) {
       error("Failed to remove local sparts from send list");
     }
+    if (sind[k] == -1) ++check_count_inhibited_spart;
   }
-#endif
+  if (check_count_inhibited_spart != count_inhibited_sparts)
+    error("Counts of inhibited s-particles do not match!");
+#endif /* SWIFT_DEBUG_CHECKS */
 
-  /* Move non-local gparts to the end of the list. */
-  for (size_t k = 0; k < nr_gparts;) {
-    if (cells_top[gind[k]].nodeID != local_nodeID) {
-      nr_gparts -= 1;
-      /* Swap the particle */
-      memswap(&s->gparts[k], &s->gparts[nr_gparts], sizeof(struct gpart));
-      /* Swap the link with part/spart */
-      if (s->gparts[k].type == swift_type_gas) {
-        s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      } else if (s->gparts[k].type == swift_type_stars) {
-        s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+  /* Move non-local gparts and inhibited parts to the end of the list. */
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_gparts > 0)) {
+    for (size_t k = 0; k < nr_gparts; /* void */) {
+
+      /* Inhibited particle or foreign particle */
+      if (gind[k] == -1 || cells_top[gind[k]].nodeID != local_nodeID) {
+
+        /* One fewer particle */
+        nr_gparts -= 1;
+
+        /* Swap the particle */
+        memswap(&s->gparts[k], &s->gparts[nr_gparts], sizeof(struct gpart));
+
+        /* Swap the link with part/spart */
+        if (s->gparts[k].type == swift_type_gas) {
+          s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+        } else if (s->gparts[k].type == swift_type_stars) {
+          s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+        }
+        if (s->gparts[nr_gparts].type == swift_type_gas) {
+          s->parts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+              &s->gparts[nr_gparts];
+        } else if (s->gparts[nr_gparts].type == swift_type_stars) {
+          s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+              &s->gparts[nr_gparts];
+        }
+
+        /* Swap the index */
+        memswap(&gind[k], &gind[nr_gparts], sizeof(int));
+      } else {
+        /* Increment when not exchanging otherwise we need to retest "k".*/
+        k++;
       }
-      if (s->gparts[nr_gparts].type == swift_type_gas) {
-        s->parts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
-            &s->gparts[nr_gparts];
-      } else if (s->gparts[nr_gparts].type == swift_type_stars) {
-        s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
-            &s->gparts[nr_gparts];
-      }
-      /* Swap the index */
-      memswap(&gind[k], &gind[nr_gparts], sizeof(int));
-    } else {
-      /* Increment when not exchanging otherwise we need to retest "k".*/
-      k++;
     }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all gparts are in the correct place (untested). */
+  /* Check that all gparts are in the correct place. */
+  int check_count_inhibited_gpart = 0;
   for (size_t k = 0; k < nr_gparts; k++) {
-    if (cells_top[gind[k]].nodeID != local_nodeID) {
+    if (gind[k] == -1 || cells_top[gind[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local gparts to send list");
     }
   }
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
-    if (cells_top[gind[k]].nodeID == local_nodeID) {
+    if (gind[k] != -1 && cells_top[gind[k]].nodeID == local_nodeID) {
       error("Failed to remove local gparts from send list");
     }
+    if (gind[k] == -1) ++check_count_inhibited_gpart;
   }
-#endif
+  if (check_count_inhibited_gpart != count_inhibited_gparts)
+    error("Counts of inhibited g-particles do not match!");
+#endif /* SWIFT_DEBUG_CHECKS */
+
+#ifdef WITH_MPI
 
   /* Exchange the strays, note that this potentially re-allocates
-     the parts arrays. */
-  size_t nr_parts_exchanged = s->nr_parts - nr_parts;
-  size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
-  size_t nr_sparts_exchanged = s->nr_sparts - nr_sparts;
-  engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged,
-                         nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged,
-                         nr_sparts, &sind[nr_sparts], &nr_sparts_exchanged);
+     the parts arrays. This can be skipped if we just repartitioned aspace
+     there should be no strays */
+  if (!repartitioned) {
 
-  /* Set the new particle counts. */
-  s->nr_parts = nr_parts + nr_parts_exchanged;
-  s->nr_gparts = nr_gparts + nr_gparts_exchanged;
-  s->nr_sparts = nr_sparts + nr_sparts_exchanged;
+    size_t nr_parts_exchanged = s->nr_parts - nr_parts;
+    size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
+    size_t nr_sparts_exchanged = s->nr_sparts - nr_sparts;
+    engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged,
+                           nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged,
+                           nr_sparts, &sind[nr_sparts], &nr_sparts_exchanged);
+
+    /* Set the new particle counts. */
+    s->nr_parts = nr_parts + nr_parts_exchanged;
+    s->nr_gparts = nr_gparts + nr_gparts_exchanged;
+    s->nr_sparts = nr_sparts + nr_sparts_exchanged;
+  } else {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (s->nr_parts != nr_parts)
+      error("Number of parts changing after repartition");
+    if (s->nr_sparts != nr_sparts)
+      error("Number of sparts changing after repartition");
+    if (s->nr_gparts != nr_gparts)
+      error("Number of gparts changing after repartition");
+#endif
+  }
 
   /* Clear non-local cell counts. */
   for (int k = 0; k < s->nr_cells; k++) {
@@ -788,6 +901,12 @@ void space_rebuild(struct space *s, int verbose) {
   }
   nr_sparts = s->nr_sparts;
 
+#else /* WITH_MPI */
+
+  /* Update the part and spart counters */
+  s->nr_parts = nr_parts;
+  s->nr_sparts = nr_sparts;
+
 #endif /* WITH_MPI */
 
   /* Sort the parts according to their cells. */
@@ -799,6 +918,9 @@ void space_rebuild(struct space *s, int verbose) {
   /* Verify that the part have been sorted correctly. */
   for (size_t k = 0; k < nr_parts; k++) {
     const struct part *p = &s->parts[k];
+
+    if (p->time_bin == time_bin_inhibited)
+      error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
     const int new_ind =
@@ -816,7 +938,7 @@ void space_rebuild(struct space *s, int verbose) {
         p->x[2] < c->loc[2] || p->x[2] > c->loc[2] + c->width[2])
       error("part not sorted into the right top-level cell!");
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Sort the sparts according to their cells. */
   if (nr_sparts > 0)
@@ -826,6 +948,9 @@ void space_rebuild(struct space *s, int verbose) {
   /* Verify that the spart have been sorted correctly. */
   for (size_t k = 0; k < nr_sparts; k++) {
     const struct spart *sp = &s->sparts[k];
+
+    if (sp->time_bin == time_bin_inhibited)
+      error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
     const int new_sind =
@@ -843,7 +968,7 @@ void space_rebuild(struct space *s, int verbose) {
         sp->x[2] < c->loc[2] || sp->x[2] > c->loc[2] + c->width[2])
       error("spart not sorted into the right top-level cell!");
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Extract the cell counts from the sorted indices. */
   size_t last_index = 0;
@@ -897,7 +1022,17 @@ void space_rebuild(struct space *s, int verbose) {
   }
   nr_gparts = s->nr_gparts;
 
+#else /* WITH_MPI */
+
+  /* Update the gpart counter */
+  s->nr_gparts = nr_gparts;
+
 #endif /* WITH_MPI */
+
+  /* Mark that there are no inhibited particles left */
+  s->nr_inhibited_parts = 0;
+  s->nr_inhibited_gparts = 0;
+  s->nr_inhibited_sparts = 0;
 
   /* Sort the gparts according to their cells. */
   if (nr_gparts > 0)
@@ -908,6 +1043,9 @@ void space_rebuild(struct space *s, int verbose) {
   /* Verify that the gpart have been sorted correctly. */
   for (size_t k = 0; k < nr_gparts; k++) {
     const struct gpart *gp = &s->gparts[k];
+
+    if (gp->time_bin == time_bin_inhibited)
+      error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
     const int new_gind =
@@ -925,7 +1063,7 @@ void space_rebuild(struct space *s, int verbose) {
         gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2])
       error("gpart not sorted into the right top-level cell!");
   }
-#endif
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Extract the cell counts from the sorted indices. */
   size_t last_gindex = 0;
@@ -948,12 +1086,15 @@ void space_rebuild(struct space *s, int verbose) {
                       nr_sparts, verbose);
 #endif
 
-  /* Hook the cells up to the parts. */
-  // tic = getticks();
+  /* Hook the cells up to the parts. Make list of local and non-empty cells */
+  ticks tic2 = getticks();
   struct part *finger = s->parts;
   struct xpart *xfinger = s->xparts;
   struct gpart *gfinger = s->gparts;
   struct spart *sfinger = s->sparts;
+  s->nr_cells_with_particles = 0;
+  s->nr_local_cells_with_particles = 0;
+  s->nr_local_cells = 0;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
     c->hydro.ti_old_part = ti_current;
@@ -965,7 +1106,11 @@ void space_rebuild(struct space *s, int verbose) {
     last_cell_id++;
 #endif
 
-    if (c->nodeID == engine_rank) {
+    const int is_local = (c->nodeID == engine_rank);
+    const int has_particles =
+        (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0);
+
+    if (is_local) {
       c->hydro.parts = finger;
       c->hydro.xparts = xfinger;
       c->grav.parts = gfinger;
@@ -974,14 +1119,31 @@ void space_rebuild(struct space *s, int verbose) {
       xfinger = &xfinger[c->hydro.count];
       gfinger = &gfinger[c->grav.count];
       sfinger = &sfinger[c->stars.count];
+
+      /* Add this cell to the list of local cells */
+      s->local_cells_top[s->nr_local_cells] = k;
+      s->nr_local_cells++;
+    }
+
+    if (is_local && has_particles) {
+
+      /* Add this cell to the list of non-empty cells */
+      s->local_cells_with_particles_top[s->nr_local_cells_with_particles] = k;
+      s->nr_local_cells_with_particles++;
     }
   }
-  // message( "hooking up cells took %.3f %s." ,
-  // clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (verbose) {
+    message("Have %d local top-level cells with particles (total=%d)",
+            s->nr_local_cells_with_particles, s->nr_cells);
+    message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
+            s->nr_cells);
+    message("hooking up cells took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  }
 
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */
-  space_split(s, cells_top, s->nr_cells, verbose);
+  space_split(s, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the multipole construction went OK */
@@ -999,22 +1161,21 @@ void space_rebuild(struct space *s, int verbose) {
 }
 
 /**
- * @brief Split particles between cells of a hierarchy
+ * @brief Split particles between cells of a hierarchy.
  *
  * This is done in parallel using threads in the #threadpool.
+ * Only do this for the local non-empty top-level cells.
  *
  * @param s The #space.
- * @param cells The cell hierarchy.
- * @param nr_cells The number of cells.
  * @param verbose Are we talkative ?
  */
-void space_split(struct space *s, struct cell *cells, int nr_cells,
-                 int verbose) {
+void space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  threadpool_map(&s->e->threadpool, space_split_mapper, cells, nr_cells,
-                 sizeof(struct cell), 0, s);
+  threadpool_map(&s->e->threadpool, space_split_mapper,
+                 s->local_cells_with_particles_top,
+                 s->nr_local_cells_with_particles, sizeof(int), 0, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1084,6 +1245,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   /* Init the local collectors */
   float min_mass = FLT_MAX;
   float sum_vel_norm = 0.f;
+  int count_inhibited_part = 0;
 
   /* Loop over the parts. */
   for (int k = 0; k < nr_parts; k++) {
@@ -1115,8 +1277,15 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
             pos_z);
 #endif
 
-    ind[k] = index;
-    cell_counts[index]++;
+    /* Is this particle to be removed? */
+    if (p->time_bin == time_bin_inhibited) {
+      ind[k] = -1;
+      ++count_inhibited_part;
+    } else {
+      /* List its top-level cell index */
+      ind[k] = index;
+      cell_counts[index]++;
+    }
 
     /* Compute minimal mass */
     min_mass = min(min_mass, hydro_get_mass(p));
@@ -1134,6 +1303,9 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   for (int k = 0; k < s->nr_cells; k++)
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
+
+  /* Write the count of inhibited parts */
+  atomic_add(&data->count_inhibited_part, count_inhibited_part);
 
   /* Write back the minimal part mass and velocity sum */
   atomic_min_f(&s->min_part_mass, min_mass);
@@ -1173,6 +1345,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   /* Init the local collectors */
   float min_mass = FLT_MAX;
   float sum_vel_norm = 0.f;
+  int count_inhibited_gpart = 0;
 
   for (int k = 0; k < nr_gparts; k++) {
 
@@ -1203,12 +1376,22 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
             pos_z);
 #endif
 
-    ind[k] = index;
-    cell_counts[index]++;
+    /* Is this particle to be removed? */
+    if (gp->time_bin == time_bin_inhibited) {
+      ind[k] = -1;
+      ++count_inhibited_gpart;
+    } else {
+      /* List its top-level cell index */
+      ind[k] = index;
+      cell_counts[index]++;
+    }
 
-    /* Compute minimal mass */
     if (gp->type == swift_type_dark_matter) {
+
+      /* Compute minimal mass */
       min_mass = min(min_mass, gp->mass);
+
+      /* Compute sum of velocity norm */
       sum_vel_norm += gp->v_full[0] * gp->v_full[0] +
                       gp->v_full[1] * gp->v_full[1] +
                       gp->v_full[2] * gp->v_full[2];
@@ -1224,6 +1407,9 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   for (int k = 0; k < s->nr_cells; k++)
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
+
+  /* Write the count of inhibited gparts */
+  atomic_add(&data->count_inhibited_gpart, count_inhibited_gpart);
 
   /* Write back the minimal part mass and velocity sum */
   atomic_min_f(&s->min_gpart_mass, min_mass);
@@ -1263,6 +1449,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   /* Init the local collectors */
   float min_mass = FLT_MAX;
   float sum_vel_norm = 0.f;
+  int count_inhibited_spart = 0;
 
   for (int k = 0; k < nr_sparts; k++) {
 
@@ -1293,8 +1480,15 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
             pos_z);
 #endif
 
-    ind[k] = index;
-    cell_counts[index]++;
+    /* Is this particle to be removed? */
+    if (sp->time_bin == time_bin_inhibited) {
+      ind[k] = -1;
+      ++count_inhibited_spart;
+    } else {
+      /* List its top-level cell index */
+      ind[k] = index;
+      cell_counts[index]++;
+    }
 
     /* Compute minimal mass */
     min_mass = min(min_mass, sp->mass);
@@ -1314,6 +1508,9 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
 
+  /* Write the count of inhibited parts */
+  atomic_add(&data->count_inhibited_spart, count_inhibited_spart);
+
   /* Write back the minimal part mass and velocity sum */
   atomic_min_f(&s->min_spart_mass, min_mass);
   atomic_add_f(&s->sum_spart_vel_norm, sum_vel_norm);
@@ -1327,11 +1524,11 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
  * @param s The #space.
  * @param ind The array of indices to fill.
  * @param cell_counts The cell counters to update.
- * @param cells The array of #cell to update.
+ * @param count_inhibited_parts (return) The number of #part to remove.
  * @param verbose Are we talkative ?
  */
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
-                                struct cell *cells, int verbose) {
+                                int *count_inhibited_parts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1342,12 +1539,16 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
   /* Pack the extra information */
   struct index_data data;
   data.s = s;
-  data.cells = cells;
   data.ind = ind;
   data.cell_counts = cell_counts;
+  data.count_inhibited_part = 0;
+  data.count_inhibited_gpart = 0;
+  data.count_inhibited_spart = 0;
 
   threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
                  s->nr_parts, sizeof(struct part), 0, &data);
+
+  *count_inhibited_parts = data.count_inhibited_part;
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1362,11 +1563,11 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
  * @param s The #space.
  * @param gind The array of indices to fill.
  * @param cell_counts The cell counters to update.
- * @param cells The array of #cell to update.
+ * @param count_inhibited_gparts (return) The number of #gpart to remove.
  * @param verbose Are we talkative ?
  */
 void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
-                                 struct cell *cells, int verbose) {
+                                 int *count_inhibited_gparts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1377,12 +1578,16 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
   /* Pack the extra information */
   struct index_data data;
   data.s = s;
-  data.cells = cells;
   data.ind = gind;
   data.cell_counts = cell_counts;
+  data.count_inhibited_part = 0;
+  data.count_inhibited_gpart = 0;
+  data.count_inhibited_spart = 0;
 
   threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
                  s->gparts, s->nr_gparts, sizeof(struct gpart), 0, &data);
+
+  *count_inhibited_gparts = data.count_inhibited_gpart;
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1397,11 +1602,11 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
  * @param s The #space.
  * @param sind The array of indices to fill.
  * @param cell_counts The cell counters to update.
- * @param cells The array of #cell to update.
+ * @param count_inhibited_sparts (return) The number of #spart to remove.
  * @param verbose Are we talkative ?
  */
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
-                                 struct cell *cells, int verbose) {
+                                 int *count_inhibited_sparts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1412,12 +1617,16 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
   /* Pack the extra information */
   struct index_data data;
   data.s = s;
-  data.cells = cells;
   data.ind = sind;
   data.cell_counts = cell_counts;
+  data.count_inhibited_part = 0;
+  data.count_inhibited_gpart = 0;
+  data.count_inhibited_spart = 0;
 
   threadpool_map(&s->e->threadpool, space_sparts_get_cell_index_mapper,
                  s->sparts, s->nr_sparts, sizeof(struct spart), 0, &data);
+
+  *count_inhibited_sparts = data.count_inhibited_spart;
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1435,8 +1644,9 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
  * @param num_bins Total number of bins (length of count).
  * @param parts_offset Offset of the #part array from the global #part array.
  */
-void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
-                      int *counts, int num_bins, ptrdiff_t parts_offset) {
+void space_parts_sort(struct part *parts, struct xpart *xparts,
+                      int *restrict ind, int *restrict counts, int num_bins,
+                      ptrdiff_t parts_offset) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
   if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
@@ -1497,8 +1707,9 @@ void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
  * @param sparts_offset Offset of the #spart array from the global #spart.
  * array.
  */
-void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
-                       int num_bins, ptrdiff_t sparts_offset) {
+void space_sparts_sort(struct spart *sparts, int *restrict ind,
+                       int *restrict counts, int num_bins,
+                       ptrdiff_t sparts_offset) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
   if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
@@ -1557,8 +1768,8 @@ void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
  * @param num_bins Total number of bins (length of counts).
  */
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
-                       struct spart *sparts, int *ind, int *counts,
-                       int num_bins) {
+                       struct spart *sparts, int *restrict ind,
+                       int *restrict counts, int num_bins) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
   if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
@@ -1787,6 +1998,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
+  float stars_h_max = 0.f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -1806,6 +2018,10 @@ void space_split_recursive(struct space *s, struct cell *c,
                          sizeof(struct cell_buff) * count) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < count; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parts[k].time_bin == time_bin_inhibited)
+          error("Inhibited particle present in space_split()");
+#endif
         buff[k].x[0] = parts[k].x[0];
         buff[k].x[1] = parts[k].x[1];
         buff[k].x[2] = parts[k].x[2];
@@ -1816,6 +2032,10 @@ void space_split_recursive(struct space *s, struct cell *c,
                          sizeof(struct cell_buff) * gcount) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < gcount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (gparts[k].time_bin == time_bin_inhibited)
+          error("Inhibited particle present in space_split()");
+#endif
         gbuff[k].x[0] = gparts[k].x[0];
         gbuff[k].x[1] = gparts[k].x[1];
         gbuff[k].x[2] = gparts[k].x[2];
@@ -1826,6 +2046,10 @@ void space_split_recursive(struct space *s, struct cell *c,
                          sizeof(struct cell_buff) * scount) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < scount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (sparts[k].time_bin == time_bin_inhibited)
+          error("Inhibited particle present in space_split()");
+#endif
         sbuff[k].x[0] = sparts[k].x[0];
         sbuff[k].x[1] = sparts[k].x[1];
         sbuff[k].x[2] = sparts[k].x[2];
@@ -1877,6 +2101,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->hydro.h_max = 0.f;
       cp->hydro.dx_max_part = 0.f;
       cp->hydro.dx_max_sort = 0.f;
+      cp->stars.h_max = 0.f;
+      cp->stars.dx_max_part = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->super = NULL;
@@ -1925,6 +2151,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
+        stars_h_max = max(h_max, cp->stars.h_max);
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -2094,6 +2321,12 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
       gravity_time_bin_min = min(gravity_time_bin_min, sparts[k].time_bin);
       gravity_time_bin_max = max(gravity_time_bin_max, sparts[k].time_bin);
+      stars_h_max = max(stars_h_max, sparts[k].h);
+
+      /* Reset x_diff */
+      sparts[k].x_diff[0] = 0.f;
+      sparts[k].x_diff[1] = 0.f;
+      sparts[k].x_diff[2] = 0.f;
     }
 
     /* Convert into integer times */
@@ -2142,6 +2375,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_end_max = ti_gravity_end_max;
   c->grav.ti_beg_max = ti_gravity_beg_max;
+  c->stars.h_max = stars_h_max;
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */
@@ -2177,10 +2411,12 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
-  struct cell *restrict cells_top = (struct cell *)map_data;
+  struct cell *cells_top = s->cells_top;
+  int *local_cells_with_particles = (int *)map_data;
 
+  /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[ind];
+    struct cell *c = &cells_top[local_cells_with_particles[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL);
   }
 
@@ -2188,8 +2424,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   /* All cells and particles should have consistent h_max values. */
   for (int ind = 0; ind < num_cells; ind++) {
     int depth = 0;
-    if (!checkCellhdxmax(&cells_top[ind], &depth))
-      message("    at cell depth %d", depth);
+    const struct cell *c = &cells_top[local_cells_with_particles[ind]];
+    if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
   }
 #endif
 }
@@ -2374,46 +2610,47 @@ void space_free_buff_sort_indices(struct space *s) {
 
 /**
  * @brief Construct the list of top-level cells that have any tasks in
- * their hierarchy on this MPI rank.
+ * their hierarchy on this MPI rank. Also construct the list of top-level
+ * cells on any rank that have > 0 particles (of any kind).
  *
  * This assumes the list has been pre-allocated at a regrid.
  *
  * @param s The #space.
  */
-void space_list_cells_with_tasks(struct space *s) {
+void space_list_useful_top_level_cells(struct space *s) {
+
+  const ticks tic = getticks();
 
   s->nr_local_cells_with_tasks = 0;
+  s->nr_cells_with_particles = 0;
 
-  for (int i = 0; i < s->nr_cells; ++i)
-    if (cell_has_tasks(&s->cells_top[i])) {
+  for (int i = 0; i < s->nr_cells; ++i) {
+    struct cell *c = &s->cells_top[i];
+
+    if (cell_has_tasks(c)) {
       s->local_cells_with_tasks_top[s->nr_local_cells_with_tasks] = i;
       s->nr_local_cells_with_tasks++;
     }
-  if (s->e->verbose)
+
+    const int has_particles =
+        (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
+        (c->grav.multipole != NULL && c->grav.multipole->m_pole.M_000 > 0.f);
+
+    if (has_particles) {
+      s->cells_with_particles_top[s->nr_cells_with_particles] = i;
+      s->nr_cells_with_particles++;
+    }
+  }
+  if (s->e->verbose) {
     message("Have %d local top-level cells with tasks (total=%d)",
             s->nr_local_cells_with_tasks, s->nr_cells);
-}
-
-/**
- * @brief Construct the list of local top-level cells.
- *
- * This assumes the list has been pre-allocated at a regrid.
- *
- * @param s The #space.
- */
-void space_list_local_cells(struct space *s) {
-
-  s->nr_local_cells = 0;
-
-  for (int i = 0; i < s->nr_cells; ++i)
-    if (s->cells_top[i].nodeID == engine_rank) {
-      s->local_cells_top[s->nr_local_cells] = i;
-      s->nr_local_cells++;
-    }
+    message("Have %d top-level cells with particles (total=%d)",
+            s->nr_cells_with_particles, s->nr_cells);
+  }
 
   if (s->e->verbose)
-    message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
-            s->nr_cells);
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
@@ -2461,11 +2698,17 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
 void space_synchronize_particle_positions(struct space *s) {
 
+  const ticks tic = getticks();
+
   if ((s->nr_gparts > 0 && s->nr_parts > 0) ||
       (s->nr_gparts > 0 && s->nr_sparts > 0))
     threadpool_map(&s->e->threadpool,
                    space_synchronize_particle_positions_mapper, s->gparts,
                    s->nr_gparts, sizeof(struct gpart), 0, (void *)s);
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 void space_first_init_parts_mapper(void *restrict map_data, int count,
@@ -2511,6 +2754,9 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
 
     hydro_first_init_part(&p[k], &xp[k]);
+#ifdef WITH_LOGGER
+    logger_part_data_init(&xp[k].logger_data);
+#endif
 
     /* Overwrite the internal energy? */
     if (u_init > 0.f) hydro_set_init_internal_energy(&p[k], u_init);
@@ -2845,7 +3091,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
-    space_generate_gas(s, cosmo, verbose);
+    space_generate_gas(s, cosmo, periodic, dim, verbose);
     parts = s->parts;
     gparts = s->gparts;
     Npart = s->nr_parts;
@@ -3158,10 +3404,12 @@ void space_replicate(struct space *s, int replicate, int verbose) {
  *
  * @param s The #space to create the particles in.
  * @param cosmo The current #cosmology model.
+ * @param periodic Are we using periodic boundary conditions?
+ * @param dim The size of the box (for periodic wrapping).
  * @param verbose Are we talkative?
  */
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
-                        int verbose) {
+                        int periodic, const double dim[3], int verbose) {
 
   /* Check that this is a sensible ting to do */
   if (!s->hydro)
@@ -3203,7 +3451,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
   /* Compute some constants */
   const double mass_ratio = cosmo->Omega_b / cosmo->Omega_m;
-  const double bg_density = cosmo->Omega_m * cosmo->critical_density;
+  const double bg_density = cosmo->Omega_m * cosmo->critical_density_0;
   const double bg_density_inv = 1. / bg_density;
 
   /* Update the particle properties */
@@ -3217,9 +3465,11 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     p->id = gp_gas->id_or_neg_offset * 2 + 1;
     gp_dm->id_or_neg_offset *= 2;
 
-    if (gp_dm->id_or_neg_offset <= 0) error("DM particle ID overflowd");
+    if (gp_dm->id_or_neg_offset < 0)
+      error("DM particle ID overflowd (DM id=%lld gas id=%lld)",
+            gp_dm->id_or_neg_offset, p->id);
 
-    if (p->id <= 0) error("gas particle ID overflowd");
+    if (p->id < 0) error("gas particle ID overflowd (id=%lld)", p->id);
 
     /* Set the links correctly */
     p->gpart = gp_gas;
@@ -3228,8 +3478,8 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
     /* Compute positions shift */
     const double d = cbrt(gp_dm->mass * bg_density_inv);
-    const double shift_dm = d * mass_ratio;
-    const double shift_gas = d * (1. - mass_ratio);
+    const double shift_dm = 0.5 * d * mass_ratio;
+    const double shift_gas = 0.5 * d * (1. - mass_ratio);
 
     /* Set the masses */
     gp_dm->mass *= (1. - mass_ratio);
@@ -3240,12 +3490,27 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     gp_dm->x[0] += shift_dm;
     gp_dm->x[1] += shift_dm;
     gp_dm->x[2] += shift_dm;
-    gp_gas->x[0] += shift_gas;
-    gp_gas->x[1] += shift_gas;
-    gp_gas->x[2] += shift_gas;
+    gp_gas->x[0] -= shift_gas;
+    gp_gas->x[1] -= shift_gas;
+    gp_gas->x[2] -= shift_gas;
+
+    /* Make sure the positions are identical between linked particles */
     p->x[0] = gp_gas->x[0];
     p->x[1] = gp_gas->x[1];
     p->x[2] = gp_gas->x[2];
+
+    /* Box-wrap the whole thing to be safe */
+    if (periodic) {
+      gp_dm->x[0] = box_wrap(gp_dm->x[0], 0., dim[0]);
+      gp_dm->x[1] = box_wrap(gp_dm->x[1], 0., dim[1]);
+      gp_dm->x[2] = box_wrap(gp_dm->x[2], 0., dim[2]);
+      gp_gas->x[0] = box_wrap(gp_gas->x[0], 0., dim[0]);
+      gp_gas->x[1] = box_wrap(gp_gas->x[1], 0., dim[1]);
+      gp_gas->x[2] = box_wrap(gp_gas->x[2], 0., dim[2]);
+      p->x[0] = box_wrap(p->x[0], 0., dim[0]);
+      p->x[1] = box_wrap(p->x[1], 0., dim[1]);
+      p->x[2] = box_wrap(p->x[2], 0., dim[2]);
+    }
 
     /* Also copy the velocities */
     p->v[0] = gp_gas->v_full[0];
@@ -3253,7 +3518,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     p->v[2] = gp_gas->v_full[2];
 
     /* Set the smoothing length to the mean inter-particle separation */
-    p->h = 30. * d;
+    p->h = d;
 
     /* Note that the thermodynamic properties (u, S, ...) will be set later */
   }
@@ -3405,6 +3670,8 @@ void space_clean(struct space *s) {
   free(s->multipoles_top);
   free(s->local_cells_top);
   free(s->local_cells_with_tasks_top);
+  free(s->cells_with_particles_top);
+  free(s->local_cells_with_particles_top);
   free(s->parts);
   free(s->xparts);
   free(s->gparts);
@@ -3457,7 +3724,11 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->multipoles_sub = NULL;
   s->local_cells_top = NULL;
   s->local_cells_with_tasks_top = NULL;
+  s->cells_with_particles_top = NULL;
+  s->local_cells_with_particles_top = NULL;
   s->grav_top_level = NULL;
+  s->nr_local_cells_with_tasks = 0;
+  s->nr_cells_with_particles = 0;
 #ifdef WITH_MPI
   s->parts_foreign = NULL;
   s->size_parts_foreign = 0;

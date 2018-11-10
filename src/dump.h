@@ -27,9 +27,6 @@
 /* Standard headers */
 #include <stdlib.h>
 
-/* Some constants. */
-#define dump_grow_ensure_factor 10
-
 /** The dump struct. */
 struct dump {
 
@@ -54,7 +51,7 @@ struct dump {
 
 /* Function prototypes. */
 void dump_init(struct dump *d, const char *filename, size_t size);
-void dump_ensure(struct dump *d, size_t size);
+void dump_ensure(struct dump *d, size_t required_size, size_t increase_size);
 void dump_sync(struct dump *d);
 void dump_close(struct dump *d);
 void *dump_get(struct dump *d, size_t count, size_t *offset);
