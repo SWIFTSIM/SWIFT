@@ -29,7 +29,6 @@ rc('font',**{'family':'sans-serif','sans-serif':['Times']})
 
 import numpy as np
 import h5py as h5
-import sys
 
 # function for interpolating 1d table of cooling rates
 def interpol_lambda(u_list,cooling_rate,u):
@@ -68,7 +67,6 @@ unit_length = units.attrs["Unit length in cgs (U_L)"]
 unit_time = units.attrs["Unit time in cgs (U_t)"]
 unit_vel = unit_length/unit_time
 
-rho = rho*unit_mass/(unit_length**3)
 
 # Read snapshots
 if len(sys.argv) >= 4:
@@ -87,6 +85,9 @@ for i in range(nsnap):
     t_snapshots_cgs[i] = snap["/Header"].attrs["Time"] * unit_time
     scale_factor[i] = snap["/Header"].attrs["Scale-factor"]
 
+print(rho, rho*unit_mass/(unit_length**3)/(scale_factor[0]**3))
+rho = rho*unit_mass/(unit_length**3)/(scale_factor[0]**3)
+
 # calculate analytic solution. Since cooling rate is constant,
 # temperature decrease in linear in time.
 # read Lambda and temperatures from table
@@ -100,7 +101,8 @@ for line in file_in:
 
 tfinal = t_snapshots_cgs[nsnap-1]
 tfirst = t_snapshots_cgs[0]
-nt = nsnap*10
+#nt = nsnap*10
+nt = 128
 dt = (tfinal-tfirst)/nt
 
 t_sol = np.zeros(int(nt))
@@ -114,12 +116,13 @@ for j in range(int(nt-1)):
 	t_sol[j+1] = t_sol[j] + dt
 	Lambda_net = interpol_lambda(internal_energy,cooling_rate,u_sol[j])
 	if int(sys.argv[4]) == 1:
-		nH = 0.702*rho/(m_p)/scale_factor[0]**3
+		nH = 0.702*rho/m_p
 		ratefact = nH*0.702/m_p
 	else:
-		nH = 0.752*rho/(m_p)/scale_factor[0]**3
+		nH = 0.752*rho/m_p
 		ratefact = nH*0.752/m_p
 	u_next = u - Lambda_net*ratefact*dt
+	print(u_next, u, ratefact, Lambda_net, dt, nH)
 	u_sol[j+1] = u_next
 	u = u_next
 u_sol = u_sol*scale_factor[0]**2

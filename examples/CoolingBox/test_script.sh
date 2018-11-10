@@ -5,11 +5,11 @@ max_number() {
 }
 
 # loop over redshift
-for z in $(seq 0.01 5.0 25.01); do
+for z in 6.0; do
   # loop over solar and zero metal abundances
-  for solar in 1; do
+  for solar in 0; do
     # loop over log_10 hydrogen number density
-    for nh_exp in $(seq -3 2.0 -1); do
+    for nh_exp in $(seq -4 1 -1); do
       #change parameters in yml file for calculating explicit ode solution of cooling
       cd ../CoolingRates
       if [ $solar == 1 ]
@@ -79,7 +79,7 @@ for z in $(seq 0.01 5.0 25.01); do
         
       # set starting, ending redshift, how often to write to file
       a_begin=$(python -c "print 1.0/(1.0+$z)")
-      a_end=$(python -c "print min(1.0, $a_begin*1.0001)")
+      a_end=$(python -c "print min(1.0, $a_begin*1.01)")
       first_ouput_a=$a_begin
       delta_a=$(python -c "print 1.0 + ($a_end/$a_begin - 1.0)/500.")
       sed -i "/a_begin: / s/: \+[[:alnum:],\.,-]\+/: $a_begin/g" coolingBox.yml
@@ -90,7 +90,7 @@ for z in $(seq 0.01 5.0 25.01); do
       # change hydrogen number density
       nh=$(python -c "print 3.555*10.0**($nh_exp+7)/(1.0+$z)**3")
       sed -i "/^rho =/ s/= \S*/= $nh/g" makeIC.py
-      for pressure_index in 7; do
+      for pressure_index in 6; do
         pressure=$(python -c "print 4.5*10.0**($pressure_index + $nh_exp + 3)/(1.0+$z)")
         # change pressure (and hence energy)
         sed -i "/^P =/ s/= \S*/= $pressure/g" makeIC.py
@@ -98,7 +98,7 @@ for z in $(seq 0.01 5.0 25.01); do
 	rm coolingBox_*hdf5
   
         # run cooling box
-        ./run.sh
+	../swift -s -c -C -t 16 coolingBox.yml
   
         max=0
         for file in $( ls -lth coolingBox_*.hdf5 | head -n 1 ); do

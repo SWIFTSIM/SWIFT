@@ -115,7 +115,6 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   cpd->smoothed_iron_mass_fraction_from_SNIa +=
       m * cpd->iron_mass_fraction_from_SNIa * kernel_root;
   cpd->smoothed_iron_mass_fraction_from_SNIa *= factor;
-  if(p->id == 1) message("id %llu Smoothed iron mass fraction %.5e unsmoothed %.5e", p->id, cpd->smoothed_iron_mass_fraction_from_SNIa, cpd->iron_mass_fraction_from_SNIa);
 }
 
 /**

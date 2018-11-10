@@ -21,6 +21,7 @@ ACLOCAL_AMFLAGS = -I m4
 # Show the way...
 SUBDIRS = src examples doc tests 
 if HAVEEAGLECOOLING
+SUBDIRS += examples/CoolingBox
 SUBDIRS += examples/CoolingRates
 endif
 

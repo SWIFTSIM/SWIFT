@@ -132,6 +132,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
   /* Get internal energy at the end of the next kick step (assuming dt does not increase) */
   double u_0 = (u_start + hydro_du_dt * dt_therm);
+  u_0 = u_start;
   
   /* Check for minimal energy */
   u_0 = max(u_0, hydro_properties->minimal_internal_energy);
@@ -218,6 +219,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
     u_final_cgs = exp(log_u_final_cgs);
   }
+  if (p->id == 1) message("id %llu u_final %.5e u_0 %.5e ratefact %.5e Lambda %.5e dt %.5e rho %.5e nh %.5e rho internal comoving %.5e", p->id, u_final_cgs, u_0_cgs, ratefact, LambdaNet, dt_cgs, hydro_get_physical_density(p, cosmo)*units_cgs_conversion_factor(us,UNIT_CONV_DENSITY), n_h, p->rho);
   
   /* Expected change in energy over the next kick step (assuming no change in dt) */
   const double delta_u_cgs = u_final_cgs - u_start_cgs;
@@ -262,15 +264,16 @@ __attribute__((always_inline)) INLINE double
 eagle_helium_reionization_extraheat(
     double z, double dz, const struct cooling_function_data *restrict cooling) {
 
-  double he_reion_erg_pG = cooling->he_reion_ev_pH / cooling->proton_mass_cgs;
-  double extra_heating = he_reion_erg_pG *
-                   (erf((z - dz - cooling->he_reion_z_center) /
-                        (M_SQRT2 * cooling->he_reion_z_sigma)) -
-                    erf((z - cooling->he_reion_z_center) /
-                        (M_SQRT2 * cooling->he_reion_z_sigma))) /
-                   2.0;
+  //double he_reion_erg_pG = cooling->he_reion_ev_pH / cooling->proton_mass_cgs;
+  //double extra_heating = he_reion_erg_pG *
+  //                 (erf((z - dz - cooling->he_reion_z_center) /
+  //                      (M_SQRT2 * cooling->he_reion_z_sigma)) -
+  //                  erf((z - cooling->he_reion_z_center) /
+  //                      (M_SQRT2 * cooling->he_reion_z_sigma))) /
+  //                 2.0;
 
-  return extra_heating;
+  //return extra_heating;
+  return 0.0;
 }
 
 /*
