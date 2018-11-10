@@ -3619,16 +3619,16 @@ void engine_makeproxies(struct engine *e) {
 
   /* Distance between centre of the cell and corners */
   const double r_diag2 = cell_width[0] * cell_width[0] +
-                        cell_width[1] * cell_width[1] +
-                        cell_width[2] * cell_width[2];
+                         cell_width[1] * cell_width[1] +
+                         cell_width[2] * cell_width[2];
   const double r_diag = 0.5 * sqrt(r_diag2);
 
   /* Maximal distance from a shifted CoM to centre of cell */
   const double delta_CoM = engine_max_proxy_centre_frac * r_diag;
-  
+
   /* Maximal distance from shifted CoM to any corner */
   const double r_max = r_diag + 2. * delta_CoM;
-  
+
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
     if ((e->proxy_ind = (int *)malloc(sizeof(int) * e->nr_nodes)) == NULL)
@@ -3660,7 +3660,7 @@ void engine_makeproxies(struct engine *e) {
     }
   }
 
-  for(int i = 0; i < e->s->nr_cells; ++i) {
+  for (int i = 0; i < e->s->nr_cells; ++i) {
     cells[i].num_hydro_proxies = 0;
     cells[i].num_grav_proxies = 0;
   }
@@ -3677,30 +3677,30 @@ void engine_makeproxies(struct engine *e) {
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
-	
+
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k);
-		
+
         /* Loop over all its neighbours neighbours in range. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
           int iii = i + ii;
-	  if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-	  iii = (iii + cdim[0]) % cdim[0];
+          if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+          iii = (iii + cdim[0]) % cdim[0];
           for (int jj = -delta_m; jj <= delta_p; jj++) {
-	    int jjj = j + jj;
-	    if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-	    jjj = (jjj + cdim[1]) % cdim[1];
+            int jjj = j + jj;
+            if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+            jjj = (jjj + cdim[1]) % cdim[1];
             for (int kk = -delta_m; kk <= delta_p; kk++) {
-	      int kkk = k + kk;
-	      if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-	      kkk = (kkk + cdim[2]) % cdim[2];
-	      
+              int kkk = k + kk;
+              if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+              kkk = (kkk + cdim[2]) % cdim[2];
+
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, iii, jjj, kkk);
-	      
+
               /* Early abort (same cell) */
               if (cid >= cjd) continue;
-	      
+
               /* Early abort (both same node) */
               if (cells[cid].nodeID == nodeID && cells[cjd].nodeID == nodeID)
                 continue;
@@ -3708,7 +3708,7 @@ void engine_makeproxies(struct engine *e) {
               /* Early abort (both foreign node) */
               if (cells[cid].nodeID != nodeID && cells[cjd].nodeID != nodeID)
                 continue;
-	      
+
               int proxy_type = 0;
 
               /* In the hydro case, only care about direct neighbours */
@@ -3719,14 +3719,11 @@ void engine_makeproxies(struct engine *e) {
 
                 /* This is super-ugly but checks for direct neighbours */
                 /* with periodic BC */
-                if (((abs(i - iii) <= 1 ||
-                      abs(i- iii - cdim[0]) <= 1 ||
+                if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
                       abs(i - iii + cdim[0]) <= 1) &&
-                     (abs(j - jjj) <= 1 ||
-                      abs(j - jjj - cdim[1]) <= 1 ||
+                     (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
                       abs(j - jjj + cdim[1]) <= 1) &&
-                     (abs(k - kkk) <= 1 ||
-                      abs(k - kkk - cdim[2]) <= 1 ||
+                     (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
                       abs(k - kkk + cdim[2]) <= 1)))
                   proxy_type |= (int)proxy_cell_type_hydro;
               }
@@ -3741,24 +3738,28 @@ void engine_makeproxies(struct engine *e) {
                    for an M2L interaction and hence require a proxy as this pair
                    of cells cannot rely on just an M2L calculation. */
 
-		/* Minimal distance between any two points in the cells */
-		const double min_dist_centres2 = cell_min_dist2_same_size(&cells[cid], &cells[cjd], periodic, dim);
+                /* Minimal distance between any two points in the cells */
+                const double min_dist_centres2 = cell_min_dist2_same_size(
+                    &cells[cid], &cells[cjd], periodic, dim);
 
-		/* Let's now assume the CoMs will shift a bit */
-		const double min_dist_CoM = sqrt(min_dist_centres2) - 2. * delta_CoM;
-		const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
+                /* Let's now assume the CoMs will shift a bit */
+                const double min_dist_CoM =
+                    sqrt(min_dist_centres2) - 2. * delta_CoM;
+                const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
 
                 /* Are we beyond the distance where the truncated forces are 0
                  * but not too far such that M2L can be used? */
                 if (periodic) {
 
                   if ((min_dist_CoM2 < max_mesh_dist2) &&
-                      (!gravity_M2L_accept(r_max, r_max, theta_crit2, min_dist_CoM2)))
+                      (!gravity_M2L_accept(r_max, r_max, theta_crit2,
+                                           min_dist_CoM2)))
                     proxy_type |= (int)proxy_cell_type_gravity;
 
                 } else {
 
-                  if (!gravity_M2L_accept(r_max, r_max, theta_crit2, min_dist_CoM2))
+                  if (!gravity_M2L_accept(r_max, r_max, theta_crit2,
+                                          min_dist_CoM2))
                     proxy_type |= (int)proxy_cell_type_gravity;
                 }
               }
@@ -3784,19 +3785,21 @@ void engine_makeproxies(struct engine *e) {
                   proxy_id = e->nr_proxies;
                   e->nr_proxies += 1;
 
-		  /* Check the maximal proxy limit */
-		  if(proxy_id > 8 * sizeof(long long)) 
-		    error("Created more than %zd proxies. cell.mpi.sendto will overflow.",
-			  8 * sizeof(long long));
+                  /* Check the maximal proxy limit */
+                  if (proxy_id > 8 * sizeof(long long))
+                    error(
+                        "Created more than %zd proxies. cell.mpi.sendto will "
+                        "overflow.",
+                        8 * sizeof(long long));
                 }
 
                 /* Add the cell to the proxy */
                 proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
                 proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
 
-                if(proxy_type & (int)proxy_cell_type_gravity)
+                if (proxy_type & (int)proxy_cell_type_gravity)
                   cells[cid].num_grav_proxies++;
-                if(proxy_type & (int)proxy_cell_type_hydro)
+                if (proxy_type & (int)proxy_cell_type_hydro)
                   cells[cid].num_hydro_proxies++;
 
                 /* Store info about where to send the cell */
@@ -3820,20 +3823,22 @@ void engine_makeproxies(struct engine *e) {
                   e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
                   proxy_id = e->nr_proxies;
                   e->nr_proxies += 1;
-		  
-		  /* Check the maximal proxy limit */
-		  if(proxy_id > 8 * sizeof(long long)) 
-		    error("Created more than %zd proxies. cell.mpi.sendto will overflow.",
-			  8 * sizeof(long long));
+
+                  /* Check the maximal proxy limit */
+                  if (proxy_id > 8 * sizeof(long long))
+                    error(
+                        "Created more than %zd proxies. cell.mpi.sendto will "
+                        "overflow.",
+                        8 * sizeof(long long));
                 }
 
                 /* Add the cell to the proxy */
                 proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
                 proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
 
-                if(proxy_type & (int)proxy_cell_type_gravity)
+                if (proxy_type & (int)proxy_cell_type_gravity)
                   cells[cjd].num_grav_proxies++;
-                if(proxy_type & (int)proxy_cell_type_hydro)
+                if (proxy_type & (int)proxy_cell_type_hydro)
                   cells[cjd].num_hydro_proxies++;
 
                 /* Store info about where to send the cell */

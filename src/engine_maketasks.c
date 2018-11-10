@@ -757,7 +757,7 @@ void engine_make_hierarchical_tasks_stars(struct engine *e, struct cell *c) {
 void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
 
-  struct engine *e = (struct engine *) extra_data;
+  struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
@@ -806,7 +806,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID)
       scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
-			NULL);
+                        NULL);
 
     /* Loop over every other cell within (Manhattan) range delta */
     for (int ii = -delta_m; ii <= delta_p; ii++) {
@@ -828,20 +828,21 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
           if (cid >= cjd || cj->grav.count == 0 ||
-	      (ci->nodeID != nodeID && cj->nodeID != nodeID))
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
           /* Recover the multipole information */
-	  const struct gravity_tensors *multi_i = ci->grav.multipole;
+          const struct gravity_tensors *multi_i = ci->grav.multipole;
           const struct gravity_tensors *multi_j = cj->grav.multipole;
 
-	  if(multi_i == NULL && ci->nodeID != nodeID)
-	    error("Multipole of ci was not exchanged properly via the proxies");
-	  if(multi_j == NULL && cj->nodeID != nodeID)
-	    error("Multipole of cj was not exchanged properly via the proxies");
+          if (multi_i == NULL && ci->nodeID != nodeID)
+            error("Multipole of ci was not exchanged properly via the proxies");
+          if (multi_j == NULL && cj->nodeID != nodeID)
+            error("Multipole of cj was not exchanged properly via the proxies");
 
           /* Minimal distance between any pair of particles */
-          const double min_radius2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
+          const double min_radius2 =
+              cell_min_dist2_same_size(ci, cj, periodic, dim);
 
           /* Are we beyond the distance where the truncated forces are 0 ?*/
           if (periodic && min_radius2 > max_distance2) continue;
@@ -854,55 +855,57 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
                               ci, cj);
 
 #ifdef WITH_MPI
-	  
-	    /* Let's cross-check that we had a proxy for that cell */
-	    if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
-	      
-	      /* Find the proxy for this node */
-	      const int proxy_id = e->proxy_ind[cj->nodeID];
-	      if (proxy_id < 0)
-		error("No proxy exists for that foreign node %d!", cj->nodeID);
-	      
-	      const struct proxy *p = &e->proxies[proxy_id];
-	      
-	      /* Check whether the cell exists in the proxy */
-	      int n = 0, err = 1;
-	      for (; n < p->nr_cells_in; n++) 
-		if(p->cells_in[n] == cj) {
-		  err = 0;
-		  break;
-		}
-	      if(err)
-		error("Cell %d not found in the proxy but trying to construct grav task!",
-		      cjd);
-	    }
-	    else if(cj->nodeID == nodeID && ci->nodeID != engine_rank) {
-	      
-	      /* Find the proxy for this node */
-	      const int proxy_id = e->proxy_ind[ci->nodeID];
-	      if (proxy_id < 0)
-		error("No proxy exists for that foreign node %d!", ci->nodeID);
-	      
-	      const struct proxy *p = &e->proxies[proxy_id];
-	      
-	      /* Check whether the cell exists in the proxy */
-	      int n = 0, err = 1;
-	      for (; n < p->nr_cells_in; n++) 
-		if(p->cells_in[n] == ci) {
-		  err = 0;
-		  break;
-		}
-	      if(err)
-		error("Cell %d not found in the proxy but trying to construct grav task!",
-		      cid);	  
-	    }
+
+            /* Let's cross-check that we had a proxy for that cell */
+            if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+              /* Find the proxy for this node */
+              const int proxy_id = e->proxy_ind[cj->nodeID];
+              if (proxy_id < 0)
+                error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+              const struct proxy *p = &e->proxies[proxy_id];
+
+              /* Check whether the cell exists in the proxy */
+              int n = 0, err = 1;
+              for (; n < p->nr_cells_in; n++)
+                if (p->cells_in[n] == cj) {
+                  err = 0;
+                  break;
+                }
+              if (err)
+                error(
+                    "Cell %d not found in the proxy but trying to construct "
+                    "grav task!",
+                    cjd);
+            } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+              /* Find the proxy for this node */
+              const int proxy_id = e->proxy_ind[ci->nodeID];
+              if (proxy_id < 0)
+                error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+              const struct proxy *p = &e->proxies[proxy_id];
+
+              /* Check whether the cell exists in the proxy */
+              int n = 0, err = 1;
+              for (; n < p->nr_cells_in; n++)
+                if (p->cells_in[n] == ci) {
+                  err = 0;
+                  break;
+                }
+              if (err)
+                error(
+                    "Cell %d not found in the proxy but trying to construct "
+                    "grav task!",
+                    cid);
+            }
 #endif
 
-
-	  if(ci->nodeID == nodeID && cj->nodeID != engine_rank)
-	    atomic_inc(&ci->num_foreign_pair_grav);	    
-	  if(cj->nodeID == nodeID && ci->nodeID != engine_rank)
-	    atomic_inc(&cj->num_foreign_pair_grav);
+            if (ci->nodeID == nodeID && cj->nodeID != engine_rank)
+              atomic_inc(&ci->num_foreign_pair_grav);
+            if (cj->nodeID == nodeID && ci->nodeID != engine_rank)
+              atomic_inc(&cj->num_foreign_pair_grav);
           }
         }
       }
@@ -945,7 +948,7 @@ void engine_make_self_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
 
-  for(int i = 0; i<s->nr_cells; ++i) {
+  for (int i = 0; i < s->nr_cells; ++i) {
     s->cells_top[i].num_foreign_pair_grav = 0;
   }
 
@@ -1818,52 +1821,53 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
           scheduler_addtask(sched, task_type_pair, task_subtype_density, sid, 0,
                             ci, cj);
-	  
+
 #ifdef WITH_MPI
-	  
-	  /* Let's cross-check that we had a proxy for that cell */
-	  if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
-	    
-	    /* Find the proxy for this node */
-	    const int proxy_id = e->proxy_ind[cj->nodeID];
-	    if (proxy_id < 0)
-	      error("No proxy exists for that foreign node %d!", cj->nodeID);
-	    
-	    const struct proxy *p = &e->proxies[proxy_id];
-	    
-	    /* Check whether the cell exists in the proxy */
-	    int n = 0;
-	    for (n = 0; n < p->nr_cells_in; n++) 
-	      if(p->cells_in[n] == cj)
-		break;
-	    if(n == p->nr_cells_in)
-	      error("Cell %d not found in the proxy but trying to construct hydro task!",
-		    cjd);
-	  }
-	  else if(cj->nodeID == nodeID && ci->nodeID != engine_rank) {
-	    
-	    /* Find the proxy for this node */
-	    const int proxy_id = e->proxy_ind[ci->nodeID];
-	    if (proxy_id < 0)
-	      error("No proxy exists for that foreign node %d!", ci->nodeID);
-	    
-	    const struct proxy *p = &e->proxies[proxy_id];
-	    
-	    /* Check whether the cell exists in the proxy */
-	    int n = 0;
-	    for (n = 0; n < p->nr_cells_in; n++) 
-	      if(p->cells_in[n] == ci)
-		break;
-	    if(n == p->nr_cells_in)
-	      error("Cell %d not found in the proxy but trying to construct hydro task!",
-		    cid);	  
-	  }
+
+          /* Let's cross-check that we had a proxy for that cell */
+          if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[cj->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == cj) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cjd);
+          } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[ci->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == ci) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cid);
+          }
 #endif
 
-	  if(ci->nodeID == nodeID && cj->nodeID != engine_rank)
-	    atomic_inc(&ci->num_foreign_pair_hydro);	    
-	  if(cj->nodeID == nodeID && ci->nodeID != engine_rank)
-	    atomic_inc(&cj->num_foreign_pair_hydro);
+          if (ci->nodeID == nodeID && cj->nodeID != engine_rank)
+            atomic_inc(&ci->num_foreign_pair_hydro);
+          if (cj->nodeID == nodeID && ci->nodeID != engine_rank)
+            atomic_inc(&cj->num_foreign_pair_hydro);
         }
       }
     }
@@ -1888,7 +1892,7 @@ void engine_maketasks(struct engine *e) {
 
   ticks tic2 = getticks();
 
-  for(int i = 0; i<s->nr_cells; ++i) {
+  for (int i = 0; i < s->nr_cells; ++i) {
     s->cells_top[i].num_foreign_pair_hydro = 0;
   }
 
@@ -2039,11 +2043,15 @@ void engine_maketasks(struct engine *e) {
     message("Linking stars tasks took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  if(e->nodeID == 0)
-    for(int i = 0; i < e->s->nr_cells; ++i) {
-      message("cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d num_foreign_hydro= %d",
-  	      i, e->s->cells_top[i].num_grav_proxies, e->s->cells_top[i].num_hydro_proxies,
-  	      e->s->cells_top[i].num_foreign_pair_grav, e->s->cells_top[i].num_foreign_pair_hydro);
+  if (e->nodeID == 0)
+    for (int i = 0; i < e->s->nr_cells; ++i) {
+      message(
+          "cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d "
+          "num_foreign_hydro= %d",
+          i, e->s->cells_top[i].num_grav_proxies,
+          e->s->cells_top[i].num_hydro_proxies,
+          e->s->cells_top[i].num_foreign_pair_grav,
+          e->s->cells_top[i].num_foreign_pair_hydro);
     }
 
 #ifdef WITH_MPI
@@ -2158,12 +2166,14 @@ void engine_maketasks(struct engine *e) {
     message("took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-  if(e->nodeID == 0)
-    for(int i = 0; i < e->s->nr_cells; ++i) {
-      message("cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d num_foreign_hydro= %d",
-	      i, e->s->cells_top[i].num_grav_proxies, e->s->cells_top[i].num_hydro_proxies,
-	      e->s->cells_top[i].num_foreign_pair_grav, e->s->cells_top[i].num_foreign_pair_hydro);
+  if (e->nodeID == 0)
+    for (int i = 0; i < e->s->nr_cells; ++i) {
+      message(
+          "cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d "
+          "num_foreign_hydro= %d",
+          i, e->s->cells_top[i].num_grav_proxies,
+          e->s->cells_top[i].num_hydro_proxies,
+          e->s->cells_top[i].num_foreign_pair_grav,
+          e->s->cells_top[i].num_foreign_pair_hydro);
     }
-
-	
 }

@@ -1781,7 +1781,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     double dx_r = CoM_rebuild_top[0] - multi_j->CoM_rebuild[0];
     double dy_r = CoM_rebuild_top[1] - multi_j->CoM_rebuild[1];
     double dz_r = CoM_rebuild_top[2] - multi_j->CoM_rebuild[2];
-    
+
     /* Apply BC */
     if (periodic) {
       dx_r = nearest(dx_r, dim[0]);
@@ -1789,7 +1789,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       dz_r = nearest(dz_r, dim[2]);
     }
     const double r2_rebuild = dx_r * dx_r + dy_r * dy_r + dz_r * dz_r;
-    
+
     /* Are we in charge of this cell pair? */
     if (gravity_M2L_accept(multi_top->r_max_rebuild, multi_j->r_max_rebuild,
                            theta_crit2, r2_rebuild)) {

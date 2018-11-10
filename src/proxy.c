@@ -350,20 +350,19 @@ void proxy_cells_wait_and_unpack_mapper(void *unused_map_data, int num_elements,
   }
 }
 
-void proxy_cells_unpack_mapper(void* map_data, int num_elements,
-			       void* extra_data) {
+void proxy_cells_unpack_mapper(void *map_data, int num_elements,
+                               void *extra_data) {
 
-  struct space *s = (struct space*) extra_data;
-  struct proxy *proxies = (struct proxy*) map_data;
+  struct space *s = (struct space *)extra_data;
+  struct proxy *proxies = (struct proxy *)map_data;
 
-  for(int k = 0; k < num_elements; ++k) {
+  for (int k = 0; k < num_elements; ++k) {
 
     int count = 0;
     for (int j = 0; j < proxies[k].nr_cells_in; j++) {
-      count += cell_unpack(&proxies[k].pcells_in[count],
-			   proxies[k].cells_in[j], s, s->gravity);
+      count += cell_unpack(&proxies[k].pcells_in[count], proxies[k].cells_in[j],
+                           s, s->gravity);
     }
-
   }
 }
 
@@ -464,32 +463,31 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     message("MPI_Waitall on recvs took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  int* counters = malloc(s->e->nr_nodes * sizeof(int));
+  int *counters = malloc(s->e->nr_nodes * sizeof(int));
   bzero(counters, s->e->nr_nodes * sizeof(int));
 
   tic2 = getticks();
 
   message("num proxies: %d", num_proxies);
 
-  threadpool_map(&s->e->threadpool, proxy_cells_unpack_mapper,
-		 proxies, num_proxies, sizeof(struct proxy), 0, s);
+  threadpool_map(&s->e->threadpool, proxy_cells_unpack_mapper, proxies,
+                 num_proxies, sizeof(struct proxy), 0, s);
 
   if (s->e->verbose)
     message("Un-packing cells took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  for(int i = 0; i < num_proxies; ++i) {
+  for (int i = 0; i < num_proxies; ++i) {
     counters[i] += proxies[i].nr_cells_in;
   }
 
-
-  for(int i = 0; i < s->e->nr_nodes; ++i) {
-    if( i == s->e->nodeID) {
+  for (int i = 0; i < s->e->nr_nodes; ++i) {
+    if (i == s->e->nodeID) {
       printf("Rank %d: |", i);
       int total = 0;
-      for(int j = 0; j < s->e->nr_nodes; ++j) {
-  	total += counters[j];
-  	printf(" %d", counters[j]);       
+      for (int j = 0; j < s->e->nr_nodes; ++j) {
+        total += counters[j];
+        printf(" %d", counters[j]);
       }
       printf("| %d |\n", total);
     }
@@ -497,7 +495,6 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     MPI_Barrier(MPI_COMM_WORLD);
   }
   free(counters);
-
 
   /* Wait for all the sends to have finished too. */
   if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
