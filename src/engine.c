@@ -1909,6 +1909,9 @@ int engine_estimate_nr_tasks(struct engine *e) {
   if (e->policy & engine_policy_cooling) {
     n1 += 2;
   }
+  if (e->policy & engine_policy_star_formation) {
+    n1 += 1;
+  }
   if (e->policy & engine_policy_sourceterms) {
     n1 += 2;
   }
