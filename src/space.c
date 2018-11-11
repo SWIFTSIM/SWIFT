@@ -70,6 +70,12 @@ int space_subsize_pair_stars = space_subsize_pair_stars_default;
 int space_subsize_self_stars = space_subsize_self_stars_default;
 int space_subdepth_grav = space_subdepth_grav_default;
 int space_maxsize = space_maxsize_default;
+
+/*! Number of extra #spart we allocate memory for per top-level cell */
+int space_extra_sparts = space_extra_sparts_default;
+
+/*! Expected maximal number of strays received at a rebuild */
+int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
 #ifdef SWIFT_DEBUG_CHECKS
 int last_cell_id;
 #endif
@@ -603,48 +609,61 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
 
+  struct cell *cells_top = s->cells_top;
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+
+  /* The current number of particles */
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
+
+  /* The number of particles we allocated memory for */
+  size_t size_parts = s->size_parts;
+  size_t size_gparts = s->size_gparts;
+  size_t size_sparts = s->size_sparts;
+
+  /* Number of inhibited particles found on the node */
   int count_inhibited_parts = 0;
   int count_inhibited_gparts = 0;
   int count_inhibited_sparts = 0;
-  struct cell *restrict cells_top = s->cells_top;
-  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+
+  /* Number of particles we expect to have after strays exchange */
+  const size_t h_index_size = size_parts + space_expected_max_nr_strays;
+  const size_t g_index_size = size_gparts + space_expected_max_nr_strays;
+  const size_t s_index_size = size_sparts + space_expected_max_nr_strays;
 
   /* Run through the particles and get their cell index. Allocates
      an index that is larger than the number of particles to avoid
      re-allocating after shuffling. */
-  const size_t ind_size = s->size_parts + 100;
-  int *ind = (int *)malloc(sizeof(int) * ind_size);
-  if (ind == NULL) error("Failed to allocate temporary particle indices.");
+  int *h_index = (int *)malloc(sizeof(int) * h_index_size);
+  if (h_index == NULL) error("Failed to allocate temporary particle indices.");
   int *cell_part_counts = (int *)calloc(sizeof(int), s->nr_cells);
   if (cell_part_counts == NULL)
     error("Failed to allocate cell part count buffer.");
-  if (s->size_parts > 0)
-    space_parts_get_cell_index(s, ind, cell_part_counts, &count_inhibited_parts,
-                               verbose);
+  if (size_parts > 0)
+    space_parts_get_cell_index(s, h_index, cell_part_counts,
+                               &count_inhibited_parts, verbose);
 
   /* Run through the gravity particles and get their cell index. */
-  const size_t gind_size = s->size_gparts + 100;
-  int *gind = (int *)malloc(sizeof(int) * gind_size);
-  if (gind == NULL) error("Failed to allocate temporary g-particle indices.");
+  int *g_index = (int *)malloc(sizeof(int) * g_index_size);
+  if (g_index == NULL)
+    error("Failed to allocate temporary g-particle indices.");
   int *cell_gpart_counts = (int *)calloc(sizeof(int), s->nr_cells);
   if (cell_gpart_counts == NULL)
     error("Failed to allocate cell gpart count buffer.");
-  if (s->size_gparts > 0)
-    space_gparts_get_cell_index(s, gind, cell_gpart_counts,
+  if (size_gparts > 0)
+    space_gparts_get_cell_index(s, g_index, cell_gpart_counts,
                                 &count_inhibited_gparts, verbose);
 
   /* Run through the star particles and get their cell index. */
-  const size_t sind_size = s->size_sparts + 100;
-  int *sind = (int *)malloc(sizeof(int) * sind_size);
-  if (sind == NULL) error("Failed to allocate temporary s-particle indices.");
+  int *s_index = (int *)malloc(sizeof(int) * s_index_size);
+  if (s_index == NULL)
+    error("Failed to allocate temporary s-particle indices.");
   int *cell_spart_counts = (int *)calloc(sizeof(int), s->nr_cells);
   if (cell_spart_counts == NULL)
     error("Failed to allocate cell gpart count buffer.");
-  if (s->size_sparts > 0)
-    space_sparts_get_cell_index(s, sind, cell_spart_counts,
+  if (size_sparts > 0)
+    space_sparts_get_cell_index(s, s_index, cell_spart_counts,
                                 &count_inhibited_sparts, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -663,7 +682,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     for (size_t k = 0; k < nr_parts; /* void */) {
 
       /* Inhibited particle or foreign particle */
-      if (ind[k] == -1 || cells_top[ind[k]].nodeID != local_nodeID) {
+      if (h_index[k] == -1 || cells_top[h_index[k]].nodeID != local_nodeID) {
 
         /* One fewer particle */
         nr_parts -= 1;
@@ -682,7 +701,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         /* Swap the xpart */
         memswap(&s->xparts[k], &s->xparts[nr_parts], sizeof(struct xpart));
         /* Swap the index */
-        memswap(&ind[k], &ind[nr_parts], sizeof(int));
+        memswap(&h_index[k], &h_index[nr_parts], sizeof(int));
 
       } else {
         /* Increment when not exchanging otherwise we need to retest "k".*/
@@ -695,15 +714,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Check that all parts are in the correct places. */
   int check_count_inhibited_part = 0;
   for (size_t k = 0; k < nr_parts; k++) {
-    if (ind[k] == -1 || cells_top[ind[k]].nodeID != local_nodeID) {
+    if (h_index[k] == -1 || cells_top[h_index[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local parts to send list");
     }
   }
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
-    if (ind[k] != -1 && cells_top[ind[k]].nodeID == local_nodeID) {
+    if (h_index[k] != -1 && cells_top[h_index[k]].nodeID == local_nodeID) {
       error("Failed to remove local parts from send list");
     }
-    if (ind[k] == -1) ++check_count_inhibited_part;
+    if (h_index[k] == -1) ++check_count_inhibited_part;
   }
   if (check_count_inhibited_part != count_inhibited_parts)
     error("Counts of inhibited particles do not match!");
@@ -714,7 +733,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     for (size_t k = 0; k < nr_sparts; /* void */) {
 
       /* Inhibited particle or foreign particle */
-      if (sind[k] == -1 || cells_top[sind[k]].nodeID != local_nodeID) {
+      if (s_index[k] == -1 || cells_top[s_index[k]].nodeID != local_nodeID) {
 
         /* One fewer particle */
         nr_sparts -= 1;
@@ -731,7 +750,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         }
 
         /* Swap the index */
-        memswap(&sind[k], &sind[nr_sparts], sizeof(int));
+        memswap(&s_index[k], &s_index[nr_sparts], sizeof(int));
 
       } else {
         /* Increment when not exchanging otherwise we need to retest "k".*/
@@ -744,15 +763,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Check that all sparts are in the correct place. */
   int check_count_inhibited_spart = 0;
   for (size_t k = 0; k < nr_sparts; k++) {
-    if (sind[k] == -1 || cells_top[sind[k]].nodeID != local_nodeID) {
+    if (s_index[k] == -1 || cells_top[s_index[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local sparts to send list");
     }
   }
   for (size_t k = nr_sparts; k < s->nr_sparts; k++) {
-    if (sind[k] != -1 && cells_top[sind[k]].nodeID == local_nodeID) {
+    if (s_index[k] != -1 && cells_top[s_index[k]].nodeID == local_nodeID) {
       error("Failed to remove local sparts from send list");
     }
-    if (sind[k] == -1) ++check_count_inhibited_spart;
+    if (s_index[k] == -1) ++check_count_inhibited_spart;
   }
   if (check_count_inhibited_spart != count_inhibited_sparts)
     error("Counts of inhibited s-particles do not match!");
@@ -763,7 +782,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     for (size_t k = 0; k < nr_gparts; /* void */) {
 
       /* Inhibited particle or foreign particle */
-      if (gind[k] == -1 || cells_top[gind[k]].nodeID != local_nodeID) {
+      if (g_index[k] == -1 || cells_top[g_index[k]].nodeID != local_nodeID) {
 
         /* One fewer particle */
         nr_gparts -= 1;
@@ -786,7 +805,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         }
 
         /* Swap the index */
-        memswap(&gind[k], &gind[nr_gparts], sizeof(int));
+        memswap(&g_index[k], &g_index[nr_gparts], sizeof(int));
       } else {
         /* Increment when not exchanging otherwise we need to retest "k".*/
         k++;
@@ -798,15 +817,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Check that all gparts are in the correct place. */
   int check_count_inhibited_gpart = 0;
   for (size_t k = 0; k < nr_gparts; k++) {
-    if (gind[k] == -1 || cells_top[gind[k]].nodeID != local_nodeID) {
+    if (g_index[k] == -1 || cells_top[g_index[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local gparts to send list");
     }
   }
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
-    if (gind[k] != -1 && cells_top[gind[k]].nodeID == local_nodeID) {
+    if (g_index[k] != -1 && cells_top[g_index[k]].nodeID == local_nodeID) {
       error("Failed to remove local gparts from send list");
     }
-    if (gind[k] == -1) ++check_count_inhibited_gpart;
+    if (g_index[k] == -1) ++check_count_inhibited_gpart;
   }
   if (check_count_inhibited_gpart != count_inhibited_gparts)
     error("Counts of inhibited g-particles do not match!");
@@ -815,16 +834,17 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef WITH_MPI
 
   /* Exchange the strays, note that this potentially re-allocates
-     the parts arrays. This can be skipped if we just repartitioned aspace
-     there should be no strays */
+     the parts arrays. This can be skipped if we just repartitioned space
+     as there should be no strays in that case */
   if (!repartitioned) {
 
     size_t nr_parts_exchanged = s->nr_parts - nr_parts;
     size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
     size_t nr_sparts_exchanged = s->nr_sparts - nr_sparts;
-    engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged,
-                           nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged,
-                           nr_sparts, &sind[nr_sparts], &nr_sparts_exchanged);
+    engine_exchange_strays(s->e, nr_parts, &h_index[nr_parts],
+                           &nr_parts_exchanged, nr_gparts, &g_index[nr_gparts],
+                           &nr_gparts_exchanged, nr_sparts, &s_index[nr_sparts],
+                           &nr_sparts_exchanged);
 
     /* Set the new particle counts. */
     s->nr_parts = nr_parts + nr_parts_exchanged;
@@ -851,23 +871,23 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 
   /* Re-allocate the index array for the parts if needed.. */
-  if (s->nr_parts + 1 > ind_size) {
+  if (s->nr_parts + 1 > h_index_size) {
     int *ind_new;
     if ((ind_new = (int *)malloc(sizeof(int) * (s->nr_parts + 1))) == NULL)
       error("Failed to allocate temporary particle indices.");
-    memcpy(ind_new, ind, sizeof(int) * nr_parts);
-    free(ind);
-    ind = ind_new;
+    memcpy(ind_new, h_index, sizeof(int) * nr_parts);
+    free(h_index);
+    h_index = ind_new;
   }
 
   /* Re-allocate the index array for the sparts if needed.. */
-  if (s->nr_sparts + 1 > sind_size) {
+  if (s->nr_sparts + 1 > s_index_size) {
     int *sind_new;
     if ((sind_new = (int *)malloc(sizeof(int) * (s->nr_sparts + 1))) == NULL)
       error("Failed to allocate temporary s-particle indices.");
-    memcpy(sind_new, sind, sizeof(int) * nr_sparts);
-    free(sind);
-    sind = sind_new;
+    memcpy(sind_new, s_index, sizeof(int) * nr_sparts);
+    free(s_index);
+    s_index = sind_new;
   }
 
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
@@ -876,13 +896,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received part to its cell. */
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
     const struct part *const p = &s->parts[k];
-    ind[k] =
+    h_index[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-    cell_part_counts[ind[k]]++;
+    cell_part_counts[h_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
-    if (cells_top[ind[k]].nodeID != local_nodeID)
+    if (cells_top[h_index[k]].nodeID != local_nodeID)
       error("Received part that does not belong to me (nodeID=%i).",
-            cells_top[ind[k]].nodeID);
+            cells_top[h_index[k]].nodeID);
 #endif
   }
   nr_parts = s->nr_parts;
@@ -890,13 +910,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received spart to its cell. */
   for (size_t k = nr_sparts; k < s->nr_sparts; k++) {
     const struct spart *const sp = &s->sparts[k];
-    sind[k] =
+    s_index[k] =
         cell_getid(cdim, sp->x[0] * ih[0], sp->x[1] * ih[1], sp->x[2] * ih[2]);
-    cell_spart_counts[sind[k]]++;
+    cell_spart_counts[s_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
-    if (cells_top[sind[k]].nodeID != local_nodeID)
+    if (cells_top[s_index[k]].nodeID != local_nodeID)
       error("Received s-part that does not belong to me (nodeID=%i).",
-            cells_top[sind[k]].nodeID);
+            cells_top[s_index[k]].nodeID);
 #endif
   }
   nr_sparts = s->nr_sparts;
@@ -911,8 +931,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Sort the parts according to their cells. */
   if (nr_parts > 0)
-    space_parts_sort(s->parts, s->xparts, ind, cell_part_counts, s->nr_cells,
-                     0);
+    space_parts_sort(s->parts, s->xparts, h_index, cell_part_counts,
+                     s->nr_cells, 0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
@@ -930,7 +950,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     /* New cell of this part */
     const struct cell *c = &s->cells_top[new_ind];
 
-    if (ind[k] != new_ind)
+    if (h_index[k] != new_ind)
       error("part's new cell index not matching sorted index.");
 
     if (p->x[0] < c->loc[0] || p->x[0] > c->loc[0] + c->width[0] ||
@@ -942,7 +962,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Sort the sparts according to their cells. */
   if (nr_sparts > 0)
-    space_sparts_sort(s->sparts, sind, cell_spart_counts, s->nr_cells, 0);
+    space_sparts_sort(s->sparts, s_index, cell_spart_counts, s->nr_cells, 0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the spart have been sorted correctly. */
@@ -960,7 +980,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     /* New cell of this spart */
     const struct cell *c = &s->cells_top[new_sind];
 
-    if (sind[k] != new_sind)
+    if (s_index[k] != new_sind)
       error("spart's new cell index not matching sorted index.");
 
     if (sp->x[0] < c->loc[0] || sp->x[0] > c->loc[0] + c->width[0] ||
@@ -972,52 +992,52 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Extract the cell counts from the sorted indices. */
   size_t last_index = 0;
-  ind[nr_parts] = s->nr_cells;  // sentinel.
+  h_index[nr_parts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_parts; k++) {
-    if (ind[k] < ind[k + 1]) {
-      cells_top[ind[k]].hydro.count = k - last_index + 1;
+    if (h_index[k] < h_index[k + 1]) {
+      cells_top[h_index[k]].hydro.count = k - last_index + 1;
       last_index = k + 1;
     }
   }
 
   /* Extract the cell counts from the sorted indices. */
   size_t last_sindex = 0;
-  sind[nr_sparts] = s->nr_cells;  // sentinel.
+  s_index[nr_sparts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_sparts; k++) {
-    if (sind[k] < sind[k + 1]) {
-      cells_top[sind[k]].stars.count = k - last_sindex + 1;
+    if (s_index[k] < s_index[k + 1]) {
+      cells_top[s_index[k]].stars.count = k - last_sindex + 1;
       last_sindex = k + 1;
     }
   }
 
   /* We no longer need the indices as of here. */
-  free(ind);
+  free(h_index);
   free(cell_part_counts);
-  free(sind);
+  free(s_index);
   free(cell_spart_counts);
 
 #ifdef WITH_MPI
 
   /* Re-allocate the index array for the gparts if needed.. */
-  if (s->nr_gparts + 1 > gind_size) {
+  if (s->nr_gparts + 1 > g_index_size) {
     int *gind_new;
     if ((gind_new = (int *)malloc(sizeof(int) * (s->nr_gparts + 1))) == NULL)
       error("Failed to allocate temporary g-particle indices.");
-    memcpy(gind_new, gind, sizeof(int) * nr_gparts);
-    free(gind);
-    gind = gind_new;
+    memcpy(gind_new, g_index, sizeof(int) * nr_gparts);
+    free(g_index);
+    g_index = gind_new;
   }
 
   /* Assign each received gpart to its cell. */
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
     const struct gpart *const p = &s->gparts[k];
-    gind[k] =
+    g_index[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-    cell_gpart_counts[gind[k]]++;
+    cell_gpart_counts[g_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
-    if (cells_top[gind[k]].nodeID != s->e->nodeID)
+    if (cells_top[g_index[k]].nodeID != s->e->nodeID)
       error("Received g-part that does not belong to me (nodeID=%i).",
-            cells_top[gind[k]].nodeID);
+            cells_top[g_index[k]].nodeID);
 #endif
   }
   nr_gparts = s->nr_gparts;
@@ -1036,8 +1056,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Sort the gparts according to their cells. */
   if (nr_gparts > 0)
-    space_gparts_sort(s->gparts, s->parts, s->sparts, gind, cell_gpart_counts,
-                      s->nr_cells);
+    space_gparts_sort(s->gparts, s->parts, s->sparts, g_index,
+                      cell_gpart_counts, s->nr_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -1055,7 +1075,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     /* New cell of this gpart */
     const struct cell *c = &s->cells_top[new_gind];
 
-    if (gind[k] != new_gind)
+    if (g_index[k] != new_gind)
       error("gpart's new cell index not matching sorted index.");
 
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
@@ -1067,16 +1087,16 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Extract the cell counts from the sorted indices. */
   size_t last_gindex = 0;
-  gind[nr_gparts] = s->nr_cells;
+  g_index[nr_gparts] = s->nr_cells;
   for (size_t k = 0; k < nr_gparts; k++) {
-    if (gind[k] < gind[k + 1]) {
-      cells_top[gind[k]].grav.count = k - last_gindex + 1;
+    if (g_index[k] < g_index[k + 1]) {
+      cells_top[g_index[k]].grav.count = k - last_gindex + 1;
       last_gindex = k + 1;
     }
   }
 
   /* We no longer need the indices as of here. */
-  free(gind);
+  free(g_index);
   free(cell_gpart_counts);
 
 #ifdef SWIFT_DEBUG_CHECKS

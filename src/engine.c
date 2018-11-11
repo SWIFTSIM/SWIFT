@@ -3871,8 +3871,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-allocate the local parts. */
   if (e->verbose)
     message("Re-allocating parts array from %zu to %zu.", s->size_parts,
-            (size_t)(s->nr_parts * 1.2));
-  s->size_parts = s->nr_parts * 1.2;
+            (size_t)(s->nr_parts * engine_redistribute_alloc_margin));
+  s->size_parts = s->nr_parts * engine_redistribute_alloc_margin;
   struct part *parts_new = NULL;
   struct xpart *xparts_new = NULL;
   if (posix_memalign((void **)&parts_new, part_align,
@@ -3896,8 +3896,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-allocate the local sparts. */
   if (e->verbose)
     message("Re-allocating sparts array from %zu to %zu.", s->size_sparts,
-            (size_t)(s->nr_sparts * 1.2));
-  s->size_sparts = s->nr_sparts * 1.2;
+            (size_t)(s->nr_sparts * engine_redistribute_alloc_margin));
+  s->size_sparts = s->nr_sparts * engine_redistribute_alloc_margin;
   struct spart *sparts_new = NULL;
   if (posix_memalign((void **)&sparts_new, spart_align,
                      sizeof(struct spart) * s->size_sparts) != 0)
@@ -3914,8 +3914,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-allocate the local gparts. */
   if (e->verbose)
     message("Re-allocating gparts array from %zu to %zu.", s->size_gparts,
-            (size_t)(s->nr_gparts * 1.2));
-  s->size_gparts = s->nr_gparts * 1.2;
+            (size_t)(s->nr_gparts * engine_redistribute_alloc_margin));
+  s->size_gparts = s->nr_gparts * engine_redistribute_alloc_margin;
   struct gpart *gparts_new = NULL;
   if (posix_memalign((void **)&gparts_new, gpart_align,
                      sizeof(struct gpart) * s->size_gparts) != 0)
