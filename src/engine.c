@@ -5143,9 +5143,11 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the minimal mass collection worked */
   float min_part_mass_check = FLT_MAX;
-  for (size_t i = 0; i < e->s->nr_parts; ++i)
+  for (size_t i = 0; i < e->s->nr_parts; ++i) {
+    if (e->s->parts[i].time_bin >= num_time_bins) continue;
     min_part_mass_check =
         min(min_part_mass_check, hydro_get_mass(&e->s->parts[i]));
+  }
   if (min_part_mass_check != min_mass[swift_type_gas])
     error("Error collecting minimal mass of gas particles.");
 #endif

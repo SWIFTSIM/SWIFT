@@ -607,8 +607,8 @@ void space_regrid(struct space *s, int verbose) {
  * This rarely actually allocates memory. Most of the time, we convert
  * pre-allocated memory inot extra particles.
  *
- * This function also sets the extra particles' location to their top-level cells.
- * They can then be sorted into their correct memory position later on.
+ * This function also sets the extra particles' location to their top-level
+ * cells. They can then be sorted into their correct memory position later on.
  *
  * @param s The current #space.
  * @param verbose Are we talkative?
@@ -616,6 +616,11 @@ void space_regrid(struct space *s, int verbose) {
 void space_allocate_extras(struct space *s, int verbose) {
 
   const int local_nodeID = s->e->nodeID;
+
+  /* Anything to do here? (Abort if we don't want extras)*/
+  if (space_extra_parts == 0 && space_extra_gparts == 0 &&
+      space_extra_sparts == 0)
+    return;
 
   /* The top-level cells */
   const struct cell *cells = s->cells_top;
@@ -650,7 +655,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   if (verbose) {
     message("Currently have %zd/%zd/%zd real particles.", nr_actual_parts,
             nr_actual_gparts, nr_actual_sparts);
-    message("Currently have %zd/%zd/%zd spaces for future particles.",
+    message("Currently have %zd/%zd/%zd spaces for extra particles.",
             s->nr_extra_parts, s->nr_extra_gparts, s->nr_extra_sparts);
     message("Requesting space for future %zd/%zd/%zd part/gpart/sparts.",
             expected_num_extra_parts, expected_num_extra_gparts,
@@ -707,6 +712,12 @@ void space_allocate_extras(struct space *s, int verbose) {
     int count_in_cell = 0, current_cell = 0;
     size_t count_extra_parts = 0;
     for (size_t i = 0; i < nr_actual_parts + expected_num_extra_parts; ++i) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (current_cell == s->nr_cells)
+        error("Cell counter beyond the maximal nr. cells.");
+#endif
+
       if (s->parts[i].time_bin == time_bin_not_created) {
 
         /* We want the extra particles to be at the centre of their cell */
@@ -736,9 +747,8 @@ void space_allocate_extras(struct space *s, int verbose) {
     s->nr_extra_parts = expected_num_extra_parts;
   }
 
-  /* Did we reduce the number of top-level cells ? */
   if (expected_num_extra_parts < s->nr_extra_parts) {
-    error("Un-handled case!");
+    error("Reduction in top-level cells number not handled.");
   }
 
   if (nr_gparts + expected_num_extra_gparts > size_gparts) {
@@ -1400,9 +1410,35 @@ void space_reorder_extra_parts_mapper(void *map_data, int num_cells,
                                       void *extra_data) {
 
   struct cell *cells_top = (struct cell *)map_data;
+  struct space *s = (struct space *)extra_data;
+
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[ind];
-    cell_reorder_extra_parts(c);
+    cell_reorder_extra_parts(c, c->hydro.parts - s->parts);
+  }
+}
+
+void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
+                                       void *extra_data) {
+
+  struct cell *cells_top = (struct cell *)map_data;
+  struct space *s = (struct space *)extra_data;
+
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[ind];
+    cell_reorder_extra_gparts(c, c->grav.parts - s->gparts);
+  }
+}
+
+void space_reorder_extra_sparts_mapper(void *map_data, int num_cells,
+                                       void *extra_data) {
+
+  struct cell *cells_top = (struct cell *)map_data;
+  struct space *s = (struct space *)extra_data;
+
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[ind];
+    cell_reorder_extra_sparts(c, c->stars.parts - s->sparts);
   }
 }
 
@@ -1426,7 +1462,17 @@ void space_reorder_extras(struct space *s, int verbose) {
   /* Re-order the gas particles */
   if (space_extra_parts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_parts_mapper,
-                   s->cells_top, s->nr_cells, sizeof(struct cell), 0, NULL);
+                   s->cells_top, s->nr_cells, sizeof(struct cell), 0, s);
+
+  /* Re-order the gravity particles */
+  if (space_extra_gparts)
+    threadpool_map(&s->e->threadpool, space_reorder_extra_gparts_mapper,
+                   s->cells_top, s->nr_cells, sizeof(struct cell), 0, s);
+
+  /* Re-order the star particles */
+  if (space_extra_sparts)
+    threadpool_map(&s->e->threadpool, space_reorder_extra_sparts_mapper,
+                   s->cells_top, s->nr_cells, sizeof(struct cell), 0, s);
 }
 
 /**
@@ -1538,13 +1584,13 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
       /* Normal case: list its top-level cell index */
       ind[k] = index;
       cell_counts[index]++;
+
+      /* Compute minimal mass */
+      min_mass = min(min_mass, hydro_get_mass(p));
+
+      /* Compute sum of velocity norm */
+      sum_vel_norm += p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2];
     }
-
-    /* Compute minimal mass */
-    min_mass = min(min_mass, hydro_get_mass(p));
-
-    /* Compute sum of velocity norm */
-    sum_vel_norm += p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2];
 
     /* Update the position */
     p->x[0] = pos_x;
@@ -1645,17 +1691,17 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
       /* List its top-level cell index */
       ind[k] = index;
       cell_counts[index]++;
-    }
 
-    if (gp->type == swift_type_dark_matter) {
+      if (gp->type == swift_type_dark_matter) {
 
-      /* Compute minimal mass */
-      min_mass = min(min_mass, gp->mass);
+        /* Compute minimal mass */
+        min_mass = min(min_mass, gp->mass);
 
-      /* Compute sum of velocity norm */
-      sum_vel_norm += gp->v_full[0] * gp->v_full[0] +
-                      gp->v_full[1] * gp->v_full[1] +
-                      gp->v_full[2] * gp->v_full[2];
+        /* Compute sum of velocity norm */
+        sum_vel_norm += gp->v_full[0] * gp->v_full[0] +
+                        gp->v_full[1] * gp->v_full[1] +
+                        gp->v_full[2] * gp->v_full[2];
+      }
     }
 
     /* Update the position */
@@ -1753,14 +1799,14 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
       /* List its top-level cell index */
       ind[k] = index;
       cell_counts[index]++;
+
+      /* Compute minimal mass */
+      min_mass = min(min_mass, sp->mass);
+
+      /* Compute sum of velocity norm */
+      sum_vel_norm +=
+          sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2];
     }
-
-    /* Compute minimal mass */
-    min_mass = min(min_mass, sp->mass);
-
-    /* Compute sum of velocity norm */
-    sum_vel_norm +=
-        sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2];
 
     /* Update the position */
     sp->x[0] = pos_x;

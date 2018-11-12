@@ -663,9 +663,9 @@ void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                 struct part *p, struct xpart *xp);
 void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
                                  struct spart *sp);
-void cell_reorder_extra_parts(struct cell *c);
-void cell_reorder_extra_gparts(struct cell *c);
-void cell_reorder_extra_sparts(struct cell *c);
+void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset);
+void cell_reorder_extra_gparts(struct cell *c, const ptrdiff_t gparts_offset);
+void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s);
 int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,

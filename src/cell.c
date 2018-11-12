@@ -3794,7 +3794,7 @@ void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
 #endif
 }
 
-void cell_reorder_extra_parts(struct cell *c) {
+void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
 
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
@@ -3816,12 +3816,87 @@ void cell_reorder_extra_parts(struct cell *c) {
         ++first_not_extra;
       }
 
+#ifdef SWIFT_DEBUG_CHECKS
       if (first_not_extra >= count_total)
         error("Looking for extra particles beyond this cell's range!");
+#endif
 
+      /* Swap everything, including g-part pointer */
       memswap(&parts[i], &parts[first_not_extra], sizeof(struct part));
       memswap(&xparts[i], &xparts[first_not_extra], sizeof(struct xpart));
-      if (parts[i].gpart) error("Need to handle gpart pointer!");
+      if (parts[i].gpart)
+        parts[i].gpart->id_or_neg_offset = -(i + parts_offset);
+    }
+  }
+}
+
+void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
+
+  struct spart *sparts = c->stars.parts;
+  const int count_real = c->stars.count;
+  const int count_total = count_real + space_extra_parts;
+
+  if (c->depth != 0)
+    error("This function should only be called on top-level cells!");
+
+  int first_not_extra = count_real;
+
+  /* Find extra particles */
+  for (int i = 0; i < count_real; ++i) {
+    if (sparts[i].time_bin == time_bin_not_created) {
+
+      /* Find the first non-extra particle after the end of the
+         real particles */
+      while (sparts[first_not_extra].time_bin == time_bin_not_created) {
+        ++first_not_extra;
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (first_not_extra >= count_total)
+        error("Looking for extra particles beyond this cell's range!");
+#endif
+
+      /* Swap everything, including g-part pointer */
+      memswap(&sparts[i], &sparts[first_not_extra], sizeof(struct spart));
+      if (sparts[i].gpart)
+        sparts[i].gpart->id_or_neg_offset = -(i + sparts_offset);
+    }
+  }
+}
+
+void cell_reorder_extra_gparts(struct cell *c, const ptrdiff_t sparts_offset) {
+
+  struct gpart *gparts = c->grav.parts;
+  const int count_real = c->grav.count;
+  const int count_total = count_real + space_extra_parts;
+
+  if (c->depth != 0)
+    error("This function should only be called on top-level cells!");
+
+  int first_not_extra = count_real;
+
+  /* Find extra particles */
+  for (int i = 0; i < count_real; ++i) {
+    if (gparts[i].time_bin == time_bin_not_created) {
+
+      /* Find the first non-extra particle after the end of the
+         real particles */
+      while (gparts[first_not_extra].time_bin == time_bin_not_created) {
+        ++first_not_extra;
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (first_not_extra >= count_total)
+        error("Looking for extra particles beyond this cell's range!");
+#endif
+
+      /* Swap everything (including pointers) */
+      memswap(&gparts[i], &gparts[first_not_extra], sizeof(struct spart));
+      if (gparts[i].type == swift_type_gas) {
+        error("Need to handle this.");
+      } else if (gparts[i].type == swift_type_stars) {
+        error("Need to handle this.");
+      }
     }
   }
 }
