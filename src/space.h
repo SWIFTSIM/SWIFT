@@ -45,8 +45,8 @@ struct cosmology;
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
 #define space_extra_parts_default 10
-#define space_extra_gparts_default 10
-#define space_extra_sparts_default 10
+#define space_extra_gparts_default 0
+#define space_extra_sparts_default 0
 #define space_expected_max_nr_strays_default 100
 #define space_subsize_pair_hydro_default 256000000
 #define space_subsize_self_hydro_default 32000
@@ -285,11 +285,14 @@ void space_split(struct space *s, int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);
 void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
-                                int *count_inibibited_parts, int verbose);
+                                size_t *count_inhibited_parts,
+                                size_t *count_extra_parts, int verbose);
 void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
-                                 int *count_inibibited_gparts, int verbose);
+                                 size_t *count_inhibited_gparts,
+                                 size_t *count_extra_gparts, int verbose);
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
-                                 int *count_inibibited_sparts, int verbose);
+                                 size_t *count_inhibited_sparts,
+                                 size_t *count_extra_sparts, int verbose);
 void space_synchronize_particle_positions(struct space *s);
 void space_do_parts_sort(void);
 void space_do_gparts_sort(void);

@@ -116,9 +116,12 @@ struct index_data {
   struct space *s;
   int *ind;
   int *cell_counts;
-  int count_inhibited_part;
-  int count_inhibited_gpart;
-  int count_inhibited_spart;
+  size_t count_inhibited_part;
+  size_t count_inhibited_gpart;
+  size_t count_inhibited_spart;
+  size_t count_extra_part;
+  size_t count_extra_gpart;
+  size_t count_extra_spart;
 };
 
 /**
@@ -602,10 +605,15 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   const int local_nodeID = s->e->nodeID;
 
-  /* The current number of particles */
+  /* The current number of particles (including spare ones) */
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
+
+  /* The current number of actual particles */
+  size_t nr_actual_parts = nr_parts - s->nr_extra_parts;
+  size_t nr_actual_gparts = nr_gparts - s->nr_extra_gparts;
+  size_t nr_actual_sparts = nr_sparts - s->nr_extra_sparts;
 
   /* The number of particles we allocated memory for (MPI overhead) */
   size_t size_parts = s->size_parts;
@@ -616,20 +624,73 @@ void space_allocate_extras(struct space *s, int verbose) {
   for (int i = 0; i < s->nr_cells; ++i)
     if (s->cells_top[i].nodeID == local_nodeID) local_cells++;
 
-  const size_t num_extra_parts = local_cells * space_extra_parts;
-  const size_t num_extra_gparts = local_cells * space_extra_parts;
-  const size_t num_extra_sparts = local_cells * space_extra_parts;
+  /* Number of extra particles we want for each type */
+  const size_t expected_num_extra_parts = local_cells * space_extra_parts;
+  const size_t expected_num_extra_gparts = local_cells * space_extra_parts;
+  const size_t expected_num_extra_sparts = local_cells * space_extra_parts;
 
-  if (verbose)
+  if (verbose) {
+    message("Currently have %zd/%zd/%zd real particles.", nr_actual_parts,
+            nr_actual_gparts, nr_actual_sparts);
+    message("Currently have %zd/%zd/%zd spaces for future particles.",
+            s->nr_extra_parts, s->nr_extra_gparts, s->nr_extra_sparts);
     message("Requesting space for future %zd/%zd/%zd part/gpart/sparts.",
-            num_extra_parts, num_extra_gparts, num_extra_sparts);
+            expected_num_extra_parts, expected_num_extra_gparts,
+            expected_num_extra_sparts);
+  }
 
-  /* Do we need to reallocate? */
-  if (nr_parts + num_extra_parts > size_parts) {
+  /* Do we have enough space for the extras ? */
+  if (expected_num_extra_parts > s->nr_extra_parts) {
+
+    /* Do we need to reallocate? */
+    if (nr_actual_parts + expected_num_extra_parts > size_parts) {
+
+      size_parts = (nr_actual_parts + expected_num_extra_parts) *
+                   engine_redistribute_alloc_margin;
+
+      if (verbose)
+        message("Re-allocating parts array from %zd to %zd", s->size_parts,
+                size_parts);
+
+      /* Create more space for parts */
+      struct part *parts_new = NULL;
+      if (posix_memalign((void **)&parts_new, part_align,
+                         sizeof(struct part) * size_parts) != 0)
+        error("Failed to allocate new part data");
+      memcpy(parts_new, s->parts, sizeof(struct part) * s->size_parts);
+      free(s->parts);
+      s->parts = parts_new;
+
+      /* Same for xparts */
+      struct xpart *xparts_new = NULL;
+      if (posix_memalign((void **)&xparts_new, xpart_align,
+                         sizeof(struct xpart) * size_parts) != 0)
+        error("Failed to allocate new xpart data");
+      memcpy(xparts_new, s->xparts, sizeof(struct xpart) * s->size_parts);
+      free(s->xparts);
+      s->xparts = xparts_new;
+
+      /* Update the counter */
+      s->size_parts = size_parts;
+    }
+
+    /* Do we need to get some of the allocated spares into particles we can use
+     */
+    for (size_t i = nr_parts; i < nr_actual_parts + expected_num_extra_parts;
+         ++i) {
+      bzero(&s->parts[i], sizeof(struct part));
+      bzero(&s->xparts[i], sizeof(struct xpart));
+      s->parts[i].time_bin = time_bin_not_created;
+    }
+
+    /* Update the counters */
+    s->nr_parts = nr_actual_parts + expected_num_extra_parts;
+    s->nr_extra_parts = expected_num_extra_parts;
   }
-  if (nr_gparts + num_extra_gparts > size_gparts) {
+
+  if (nr_gparts + expected_num_extra_gparts > size_gparts) {
   }
-  if (nr_sparts + num_extra_sparts > size_sparts) {
+  if (nr_sparts + expected_num_extra_sparts > size_sparts) {
   }
 }
 
@@ -671,9 +732,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   size_t size_sparts = s->size_sparts;
 
   /* Number of inhibited particles found on the node */
-  int count_inhibited_parts = 0;
-  int count_inhibited_gparts = 0;
-  int count_inhibited_sparts = 0;
+  size_t count_inhibited_parts = 0;
+  size_t count_inhibited_gparts = 0;
+  size_t count_inhibited_sparts = 0;
+
+  /* Number of extra particles found on the node */
+  size_t count_extra_parts = 0;
+  size_t count_extra_gparts = 0;
+  size_t count_extra_sparts = 0;
 
   /* Number of particles we expect to have after strays exchange */
   const size_t h_index_size = size_parts + space_expected_max_nr_strays;
@@ -699,29 +765,46 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Initialise the counters, including buffer space for future particles */
   for (int i = 0; i < s->nr_cells; ++i) {
-    cell_part_counts[i] = space_extra_parts;
-    cell_gpart_counts[i] = space_extra_gparts;
-    cell_spart_counts[i] = space_extra_sparts;
+    cell_part_counts[i] = 0;   // space_extra_parts;
+    cell_gpart_counts[i] = 0;  // space_extra_gparts;
+    cell_spart_counts[i] = 0;  // space_extra_sparts;
   }
 
   /* Run through the particles and get their cell index. */
-  if (size_parts > 0)
+  if (nr_parts > 0)
     space_parts_get_cell_index(s, h_index, cell_part_counts,
-                               &count_inhibited_parts, verbose);
-  if (size_gparts > 0)
+                               &count_inhibited_parts, &count_extra_parts,
+                               verbose);
+  if (nr_gparts > 0)
     space_gparts_get_cell_index(s, g_index, cell_gpart_counts,
-                                &count_inhibited_gparts, verbose);
-  if (size_sparts > 0)
+                                &count_inhibited_gparts, &count_extra_gparts,
+                                verbose);
+  if (nr_sparts > 0)
     space_sparts_get_cell_index(s, s_index, cell_spart_counts,
-                                &count_inhibited_sparts, verbose);
+                                &count_inhibited_sparts, &count_extra_sparts,
+                                verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Some safety checks */
   if (repartitioned && count_inhibited_parts)
     error("We just repartitioned but still found inhibited parts.");
   if (repartitioned && count_inhibited_sparts)
     error("We just repartitioned but still found inhibited sparts.");
   if (repartitioned && count_inhibited_gparts)
     error("We just repartitioned but still found inhibited gparts.");
+
+  if (count_extra_parts != s->nr_extra_parts)
+    error(
+        "Number of extra parts in the part array not matching the space "
+        "counter.");
+  if (count_extra_gparts != s->nr_extra_gparts)
+    error(
+        "Number of extra gparts in the gpart array not matching the space "
+        "counter.");
+  if (count_extra_sparts != s->nr_extra_sparts)
+    error(
+        "Number of extra sparts in the spart array not matching the space "
+        "counter.");
 #endif
 
   /* Move non-local parts and inhibited parts to the end of the list. */
@@ -759,7 +842,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all parts are in the correct places. */
-  int check_count_inhibited_part = 0;
+  size_t check_count_inhibited_part = 0;
   for (size_t k = 0; k < nr_parts; k++) {
     if (h_index[k] == -1 || cells_top[h_index[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local parts to send list");
@@ -808,7 +891,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all sparts are in the correct place. */
-  int check_count_inhibited_spart = 0;
+  size_t check_count_inhibited_spart = 0;
   for (size_t k = 0; k < nr_sparts; k++) {
     if (s_index[k] == -1 || cells_top[s_index[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local sparts to send list");
@@ -862,7 +945,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all gparts are in the correct place. */
-  int check_count_inhibited_gpart = 0;
+  size_t check_count_inhibited_gpart = 0;
   for (size_t k = 0; k < nr_gparts; k++) {
     if (g_index[k] == -1 || cells_top[g_index[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local gparts to send list");
@@ -1310,10 +1393,13 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
+  // message("s->nr_cells=%d", s->nr_cells);
+
   /* Init the local collectors */
   float min_mass = FLT_MAX;
   float sum_vel_norm = 0.f;
-  int count_inhibited_part = 0;
+  size_t count_inhibited_part = 0;
+  size_t count_extra_part = 0;
 
   /* Loop over the parts. */
   for (int k = 0; k < nr_parts; k++) {
@@ -1345,12 +1431,16 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
             pos_z);
 #endif
 
-    /* Is this particle to be removed? */
     if (p->time_bin == time_bin_inhibited) {
+      /* Is this particle to be removed? */
       ind[k] = -1;
       ++count_inhibited_part;
+    } else if (p->time_bin == time_bin_not_created) {
+      /* Is this a place-holder for on-the-fly creation? */
+      ind[k] = -2;
+      ++count_extra_part;
     } else {
-      /* List its top-level cell index */
+      /* Normal case: list its top-level cell index */
       ind[k] = index;
       cell_counts[index]++;
     }
@@ -1372,8 +1462,10 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
 
-  /* Write the count of inhibited parts */
-  atomic_add(&data->count_inhibited_part, count_inhibited_part);
+  /* Write the count of inhibited and extra parts */
+  if (count_inhibited_part)
+    atomic_add(&data->count_inhibited_part, count_inhibited_part);
+  if (count_extra_part) atomic_add(&data->count_extra_part, count_extra_part);
 
   /* Write back the minimal part mass and velocity sum */
   atomic_min_f(&s->min_part_mass, min_mass);
@@ -1413,7 +1505,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   /* Init the local collectors */
   float min_mass = FLT_MAX;
   float sum_vel_norm = 0.f;
-  int count_inhibited_gpart = 0;
+  size_t count_inhibited_gpart = 0;
 
   for (int k = 0; k < nr_gparts; k++) {
 
@@ -1517,7 +1609,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   /* Init the local collectors */
   float min_mass = FLT_MAX;
   float sum_vel_norm = 0.f;
-  int count_inhibited_spart = 0;
+  size_t count_inhibited_spart = 0;
 
   for (int k = 0; k < nr_sparts; k++) {
 
@@ -1593,10 +1685,13 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
  * @param ind The array of indices to fill.
  * @param cell_counts The cell counters to update.
  * @param count_inhibited_parts (return) The number of #part to remove.
+ * @param count_extra_parts (return) The number of #part for on-the-fly
+ * creation.
  * @param verbose Are we talkative ?
  */
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
-                                int *count_inhibited_parts, int verbose) {
+                                size_t *count_inhibited_parts,
+                                size_t *count_extra_parts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1612,11 +1707,15 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
   data.count_inhibited_part = 0;
   data.count_inhibited_gpart = 0;
   data.count_inhibited_spart = 0;
+  data.count_extra_part = 0;
+  data.count_extra_gpart = 0;
+  data.count_extra_spart = 0;
 
   threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
                  s->nr_parts, sizeof(struct part), 0, &data);
 
   *count_inhibited_parts = data.count_inhibited_part;
+  *count_extra_parts = data.count_extra_part;
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1632,10 +1731,13 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
  * @param gind The array of indices to fill.
  * @param cell_counts The cell counters to update.
  * @param count_inhibited_gparts (return) The number of #gpart to remove.
+ * @param count_extra_gparts (return) The number of #gpart for on-the-fly
+ * creation.
  * @param verbose Are we talkative ?
  */
 void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
-                                 int *count_inhibited_gparts, int verbose) {
+                                 size_t *count_inhibited_gparts,
+                                 size_t *count_extra_gparts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1651,11 +1753,15 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
   data.count_inhibited_part = 0;
   data.count_inhibited_gpart = 0;
   data.count_inhibited_spart = 0;
+  data.count_extra_part = 0;
+  data.count_extra_gpart = 0;
+  data.count_extra_spart = 0;
 
   threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
                  s->gparts, s->nr_gparts, sizeof(struct gpart), 0, &data);
 
   *count_inhibited_gparts = data.count_inhibited_gpart;
+  *count_extra_gparts = data.count_extra_gpart;
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1671,10 +1777,13 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
  * @param sind The array of indices to fill.
  * @param cell_counts The cell counters to update.
  * @param count_inhibited_sparts (return) The number of #spart to remove.
+ * @param count_extra_sparts (return) The number of #spart for on-the-fly
+ * creation.
  * @param verbose Are we talkative ?
  */
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
-                                 int *count_inhibited_sparts, int verbose) {
+                                 size_t *count_inhibited_sparts,
+                                 size_t *count_extra_sparts, int verbose) {
 
   const ticks tic = getticks();
 
@@ -1690,11 +1799,15 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
   data.count_inhibited_part = 0;
   data.count_inhibited_gpart = 0;
   data.count_inhibited_spart = 0;
+  data.count_extra_part = 0;
+  data.count_extra_gpart = 0;
+  data.count_extra_spart = 0;
 
   threadpool_map(&s->e->threadpool, space_sparts_get_cell_index_mapper,
                  s->sparts, s->nr_sparts, sizeof(struct spart), 0, &data);
 
   *count_inhibited_sparts = data.count_inhibited_spart;
+  *count_extra_sparts = data.count_extra_spart;
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
