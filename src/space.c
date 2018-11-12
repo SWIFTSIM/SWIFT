@@ -71,8 +71,14 @@ int space_subsize_self_stars = space_subsize_self_stars_default;
 int space_subdepth_grav = space_subdepth_grav_default;
 int space_maxsize = space_maxsize_default;
 
+/*! Number of extra #part we allocate memory for per top-level cell */
+int space_extra_parts = space_extra_parts_default;
+
 /*! Number of extra #spart we allocate memory for per top-level cell */
 int space_extra_sparts = space_extra_sparts_default;
+
+/*! Number of extra #gpart we allocate memory for per top-level cell */
+int space_extra_gparts = space_extra_gparts_default;
 
 /*! Expected maximal number of strays received at a rebuild */
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
@@ -284,6 +290,8 @@ void space_regrid(struct space *s, int verbose) {
   const size_t nr_sparts = s->nr_sparts;
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+
+  message("REGRID!!");
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
@@ -589,6 +597,41 @@ void space_regrid(struct space *s, int verbose) {
             clocks_getunit());
 }
 
+void space_allocate_extras(struct space *s, int verbose) {
+
+  const int local_nodeID = s->e->nodeID;
+
+  /* The current number of particles */
+  size_t nr_parts = s->nr_parts;
+  size_t nr_gparts = s->nr_gparts;
+  size_t nr_sparts = s->nr_sparts;
+
+  /* The number of particles we allocated memory for (MPI overhead) */
+  size_t size_parts = s->size_parts;
+  size_t size_gparts = s->size_gparts;
+  size_t size_sparts = s->size_sparts;
+
+  int local_cells = 0;
+  for (int i = 0; i < s->nr_cells; ++i)
+    if (s->cells_top[i].nodeID == local_nodeID) local_cells++;
+
+  const size_t num_extra_parts = local_cells * space_extra_parts;
+  const size_t num_extra_gparts = local_cells * space_extra_parts;
+  const size_t num_extra_sparts = local_cells * space_extra_parts;
+
+  if (verbose)
+    message("Requesting space for future %zd/%zd/%zd part/gpart/sparts.",
+            num_extra_parts, num_extra_gparts, num_extra_sparts);
+
+  /* Do we need to reallocate? */
+  if (nr_parts + num_extra_parts > size_parts) {
+  }
+  if (nr_gparts + num_extra_gparts > size_gparts) {
+  }
+  if (nr_sparts + num_extra_sparts > size_sparts) {
+  }
+}
+
 /**
  * @brief Re-build the cells as well as the tasks.
  *
@@ -609,8 +652,12 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
 
+  /* Allocate extra space for particles that will be created */
+  space_allocate_extras(s, verbose);
+
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  const int local_nodeID = s->e->nodeID;
 
   /* The current number of particles */
   size_t nr_parts = s->nr_parts;
@@ -632,36 +679,37 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   const size_t g_index_size = size_gparts + space_expected_max_nr_strays;
   const size_t s_index_size = size_sparts + space_expected_max_nr_strays;
 
-  /* Run through the particles and get their cell index. Allocates
-     an index that is larger than the number of particles to avoid
-     re-allocating after shuffling. */
+  /* Allocate arrays to store the indices of the cells where particles
+     belong. We allocate extra space to allow for particles we may
+     receive from other nodes */
   int *h_index = (int *)malloc(sizeof(int) * h_index_size);
-  if (h_index == NULL) error("Failed to allocate temporary particle indices.");
-  int *cell_part_counts = (int *)calloc(sizeof(int), s->nr_cells);
-  if (cell_part_counts == NULL)
-    error("Failed to allocate cell part count buffer.");
+  int *g_index = (int *)malloc(sizeof(int) * g_index_size);
+  int *s_index = (int *)malloc(sizeof(int) * s_index_size);
+  if (h_index == NULL || g_index == NULL || s_index == NULL)
+    error("Failed to allocate temporary particle indices.");
+
+  /* Allocate counters of particles that will land in each cell */
+  int *cell_part_counts = (int *)malloc(sizeof(int) * s->nr_cells);
+  int *cell_gpart_counts = (int *)malloc(sizeof(int) * s->nr_cells);
+  int *cell_spart_counts = (int *)malloc(sizeof(int) * s->nr_cells);
+  if (cell_part_counts == NULL || cell_gpart_counts == NULL ||
+      cell_spart_counts == NULL)
+    error("Failed to allocate cell particle count buffer.");
+
+  /* Initialise the counters, including buffer space for future particles */
+  for (int i = 0; i < s->nr_cells; ++i) {
+    cell_part_counts[i] = space_extra_parts;
+    cell_gpart_counts[i] = space_extra_gparts;
+    cell_spart_counts[i] = space_extra_sparts;
+  }
+
+  /* Run through the particles and get their cell index. */
   if (size_parts > 0)
     space_parts_get_cell_index(s, h_index, cell_part_counts,
                                &count_inhibited_parts, verbose);
-
-  /* Run through the gravity particles and get their cell index. */
-  int *g_index = (int *)malloc(sizeof(int) * g_index_size);
-  if (g_index == NULL)
-    error("Failed to allocate temporary g-particle indices.");
-  int *cell_gpart_counts = (int *)calloc(sizeof(int), s->nr_cells);
-  if (cell_gpart_counts == NULL)
-    error("Failed to allocate cell gpart count buffer.");
   if (size_gparts > 0)
     space_gparts_get_cell_index(s, g_index, cell_gpart_counts,
                                 &count_inhibited_gparts, verbose);
-
-  /* Run through the star particles and get their cell index. */
-  int *s_index = (int *)malloc(sizeof(int) * s_index_size);
-  if (s_index == NULL)
-    error("Failed to allocate temporary s-particle indices.");
-  int *cell_spart_counts = (int *)calloc(sizeof(int), s->nr_cells);
-  if (cell_spart_counts == NULL)
-    error("Failed to allocate cell gpart count buffer.");
   if (size_sparts > 0)
     space_sparts_get_cell_index(s, s_index, cell_spart_counts,
                                 &count_inhibited_sparts, verbose);
@@ -674,8 +722,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   if (repartitioned && count_inhibited_gparts)
     error("We just repartitioned but still found inhibited gparts.");
 #endif
-
-  const int local_nodeID = s->e->nodeID;
 
   /* Move non-local parts and inhibited parts to the end of the list. */
   if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
@@ -850,6 +896,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     s->nr_parts = nr_parts + nr_parts_exchanged;
     s->nr_gparts = nr_gparts + nr_gparts_exchanged;
     s->nr_sparts = nr_sparts + nr_sparts_exchanged;
+
   } else {
 #ifdef SWIFT_DEBUG_CHECKS
     if (s->nr_parts != nr_parts)

@@ -3633,6 +3633,8 @@ void cell_check_timesteps(struct cell *c) {
 #endif
 }
 
+void cell_add_spart(const struct engine *e, struct cell *c) {}
+
 /**
  * @brief "Remove" a gas particle from the calculation.
  *

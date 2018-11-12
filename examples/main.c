@@ -938,7 +938,7 @@ int main(int argc, char *argv[]) {
       engine_policies |= engine_policy_structure_finding;
 
     // MATTHIEU: Temporary star formation law
-    // engine_policies |= engine_policy_star_formation;
+    engine_policies |= engine_policy_star_formation;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);

@@ -460,6 +460,9 @@ struct cell {
     /*! Nr of #spart in this cell. */
     int count;
 
+    /*! Nr of #spart this cell can hold after addition of new #spart. */
+    int count_total;
+
     /*! Values of h_max before the drifts, used for sub-cell tasks. */
     float h_max_old;
 
