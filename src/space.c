@@ -601,6 +601,18 @@ void space_regrid(struct space *s, int verbose) {
             clocks_getunit());
 }
 
+/**
+ * @brief Allocate memory for the extra particles used for on-the-fly creation.
+ *
+ * This rarely actually allocates memory. Most of the time, we convert
+ * pre-allocated memory inot extra particles.
+ *
+ * This function also sets the extra particles' location to their top-level cells.
+ * They can then be sorted into their correct memory position later on.
+ *
+ * @param s The current #space.
+ * @param verbose Are we talkative?
+ */
 void space_allocate_extras(struct space *s, int verbose) {
 
   const int local_nodeID = s->e->nodeID;
@@ -632,8 +644,8 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Number of extra particles we want for each type */
   const size_t expected_num_extra_parts = local_cells * space_extra_parts;
-  const size_t expected_num_extra_gparts = local_cells * space_extra_parts;
-  const size_t expected_num_extra_sparts = local_cells * space_extra_parts;
+  const size_t expected_num_extra_gparts = local_cells * space_extra_gparts;
+  const size_t expected_num_extra_sparts = local_cells * space_extra_sparts;
 
   if (verbose) {
     message("Currently have %zd/%zd/%zd real particles.", nr_actual_parts,
@@ -722,6 +734,11 @@ void space_allocate_extras(struct space *s, int verbose) {
     /* Update the counters */
     s->nr_parts = nr_actual_parts + expected_num_extra_parts;
     s->nr_extra_parts = expected_num_extra_parts;
+  }
+
+  /* Did we reduce the number of top-level cells ? */
+  if (expected_num_extra_parts < s->nr_extra_parts) {
+    error("Un-handled case!");
   }
 
   if (nr_gparts + expected_num_extra_gparts > size_gparts) {
