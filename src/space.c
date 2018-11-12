@@ -767,12 +767,12 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   size_t size_gparts = s->size_gparts;
   size_t size_sparts = s->size_sparts;
 
-  /* Number of inhibited particles found on the node */
+  /* Counter for the number of inhibited particles found on the node */
   size_t count_inhibited_parts = 0;
   size_t count_inhibited_gparts = 0;
   size_t count_inhibited_sparts = 0;
 
-  /* Number of extra particles found on the node */
+  /* Counter for the number of extra particles found on the node */
   size_t count_extra_parts = 0;
   size_t count_extra_gparts = 0;
   size_t count_extra_sparts = 0;
@@ -1157,22 +1157,26 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  /* Extract the cell counts from the sorted indices. */
+  /* Extract the cell counts from the sorted indices. Deduct the extra
+   * particles. */
   size_t last_index = 0;
   h_index[nr_parts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_parts; k++) {
     if (h_index[k] < h_index[k + 1]) {
-      cells_top[h_index[k]].hydro.count = k - last_index + 1;
+      cells_top[h_index[k]].hydro.count =
+          k - last_index + 1 - space_extra_parts;
       last_index = k + 1;
     }
   }
 
-  /* Extract the cell counts from the sorted indices. */
+  /* Extract the cell counts from the sorted indices. Deduct the extra
+   * particles. */
   size_t last_sindex = 0;
   s_index[nr_sparts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_sparts; k++) {
     if (s_index[k] < s_index[k + 1]) {
-      cells_top[s_index[k]].stars.count = k - last_sindex + 1;
+      cells_top[s_index[k]].stars.count =
+          k - last_sindex + 1 - space_extra_sparts;
       last_sindex = k + 1;
     }
   }
@@ -1252,12 +1256,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  /* Extract the cell counts from the sorted indices. */
+  /* Extract the cell counts from the sorted indices. Deduct the extra
+   * particles. */
   size_t last_gindex = 0;
   g_index[nr_gparts] = s->nr_cells;
   for (size_t k = 0; k < nr_gparts; k++) {
     if (g_index[k] < g_index[k + 1]) {
-      cells_top[g_index[k]].grav.count = k - last_gindex + 1;
+      cells_top[g_index[k]].grav.count =
+          k - last_gindex + 1 - space_extra_gparts;
       last_gindex = k + 1;
     }
   }
@@ -1302,10 +1308,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->hydro.xparts = xfinger;
       c->grav.parts = gfinger;
       c->stars.parts = sfinger;
-      finger = &finger[c->hydro.count];
-      xfinger = &xfinger[c->hydro.count];
-      gfinger = &gfinger[c->grav.count];
-      sfinger = &sfinger[c->stars.count];
+      finger = &finger[c->hydro.count + space_extra_parts];
+      xfinger = &xfinger[c->hydro.count + space_extra_parts];
+      gfinger = &gfinger[c->grav.count + space_extra_gparts];
+      sfinger = &sfinger[c->stars.count + space_extra_sparts];
 
       /* Add this cell to the list of local cells */
       s->local_cells_top[s->nr_local_cells] = k;
@@ -1328,8 +1334,12 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
   }
 
-  /* At this point, we have the upper-level cells, old or new. Now make
-     sure that the parts in each cell are ok. */
+  /* Re-order the extra particles such that they are at the end of their cell's
+     memory pool. */
+  space_reorder_extras(s, verbose);
+
+  /* At this point, we have the upper-level cells. Now recursively split each
+     cell to get the full AMR grid. */
   space_split(s, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1367,6 +1377,39 @@ void space_split(struct space *s, int verbose) {
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+void space_reorder_extra_parts_mapper(void *map_data, int num_cells,
+                                      void *extra_data) {
+
+  struct cell *cells_top = (struct cell *)map_data;
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[ind];
+    cell_reorder_extra_parts(c);
+  }
+}
+
+/**
+ * @brief Re-orders the particles in each cell such that the extra particles
+ * for on-the-fly creation are located at the end of their respective cells.
+ *
+ * This assumes that all the particles (real and extra) have already been sorted
+ * in their correct top-level cell.
+ *
+ * @param s The #space to act upon.
+ * @param verbose Are we talkative?
+ */
+void space_reorder_extras(struct space *s, int verbose) {
+
+#ifdef WITH_MPI
+  if (space_extra_parts || space_extra_gparts || space_extra_sparts)
+    error("Need an MPI-proof version of this.");
+#endif
+
+  /* Re-order the gas particles */
+  if (space_extra_parts)
+    threadpool_map(&s->e->threadpool, space_reorder_extra_parts_mapper,
+                   s->cells_top, s->nr_cells, sizeof(struct cell), 0, NULL);
 }
 
 /**
@@ -2250,6 +2293,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
         if (parts[k].time_bin == time_bin_inhibited)
           error("Inhibited particle present in space_split()");
+        if (parts[k].time_bin == time_bin_not_created)
+          error("Extra particle present in space_split()");
 #endif
         buff[k].x[0] = parts[k].x[0];
         buff[k].x[1] = parts[k].x[1];
@@ -2264,6 +2309,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
         if (gparts[k].time_bin == time_bin_inhibited)
           error("Inhibited particle present in space_split()");
+        if (gparts[k].time_bin == time_bin_not_created)
+          error("Extra particle present in space_split()");
 #endif
         gbuff[k].x[0] = gparts[k].x[0];
         gbuff[k].x[1] = gparts[k].x[1];
@@ -2278,6 +2325,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
         if (sparts[k].time_bin == time_bin_inhibited)
           error("Inhibited particle present in space_split()");
+        if (sparts[k].time_bin == time_bin_not_created)
+          error("Extra particle present in space_split()");
 #endif
         sbuff[k].x[0] = sparts[k].x[0];
         sbuff[k].x[1] = sparts[k].x[1];
@@ -3234,8 +3283,11 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
 
+  /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
+   * cretion */
   for (int k = 0; k < count; k++)
-    hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+    if (parts[k].time_bin <= num_time_bins)
+      hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
 }
 
 /**

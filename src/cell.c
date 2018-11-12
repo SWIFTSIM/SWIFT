@@ -3794,6 +3794,35 @@ void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
 #endif
 }
 
+void cell_reorder_extra_parts(struct cell *c) {
+
+  struct part *parts = c->hydro.parts;
+  struct xpart *xparts = c->hydro.xparts;
+  const int count_real = c->hydro.count;
+  const int count_total = count_real + space_extra_parts;
+
+  int first_not_extra = count_real;
+
+  /* Find extra particles */
+  for (int i = 0; i < count_real; ++i) {
+    if (parts[i].time_bin == time_bin_not_created) {
+
+      /* Find the first non-extra particle after the end of the
+         real particles */
+      while (parts[first_not_extra].time_bin == time_bin_not_created) {
+        ++first_not_extra;
+      }
+
+      if (first_not_extra >= count_total)
+        error("Looking for extra particles beyond this cell's range!");
+
+      memswap(&parts[i], &parts[first_not_extra], sizeof(struct part));
+      memswap(&xparts[i], &xparts[first_not_extra], sizeof(struct xpart));
+      if (parts[i].gpart) error("Need to handle gpart pointer!");
+    }
+  }
+}
+
 /**
  * @brief Can we use the MM interactions fo a given pair of cells?
  *
