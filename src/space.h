@@ -180,13 +180,13 @@ struct space {
   /*! Number of inhibted star particles in the space */
   size_t nr_inhibited_sparts;
 
-  /*! Number of extra #part (for on-the-fly creation) we allocated */
+  /*! Number of extra #part we allocated (for on-the-fly creation) */
   size_t nr_extra_parts;
 
-  /*! Number of extra #gpart (for on-the-fly creation) we allocated */
+  /*! Number of extra #gpart we allocated (for on-the-fly creation) */
   size_t nr_extra_gparts;
 
-  /*! Number of extra #spart (for on-the-fly creation) we allocated */
+  /*! Number of extra #spart we allocated (for on-the-fly creation) */
   size_t nr_extra_sparts;
 
   /*! The particle data (cells have pointers to this). */

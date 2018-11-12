@@ -605,6 +605,12 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   const int local_nodeID = s->e->nodeID;
 
+  /* The top-level cells */
+  const struct cell *cells = s->cells_top;
+  const double half_cell_width[3] = {0.5 * cells[0].width[0],
+                                     0.5 * cells[0].width[1],
+                                     0.5 * cells[0].width[2]};
+
   /* The current number of particles (including spare ones) */
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
@@ -639,7 +645,7 @@ void space_allocate_extras(struct space *s, int verbose) {
             expected_num_extra_sparts);
   }
 
-  /* Do we have enough space for the extras ? */
+  /* Do we have enough space for the extras (i.e. we haven't used up any) ? */
   if (expected_num_extra_parts > s->nr_extra_parts) {
 
     /* Do we need to reallocate? */
@@ -674,14 +680,44 @@ void space_allocate_extras(struct space *s, int verbose) {
       s->size_parts = size_parts;
     }
 
-    /* Do we need to get some of the allocated spares into particles we can use
-     */
+    /* Turn some of the allocated spares into particles we can use */
     for (size_t i = nr_parts; i < nr_actual_parts + expected_num_extra_parts;
          ++i) {
       bzero(&s->parts[i], sizeof(struct part));
       bzero(&s->xparts[i], sizeof(struct xpart));
       s->parts[i].time_bin = time_bin_not_created;
     }
+
+      /* Put the spare particles in their correct cell */
+#ifdef WITH_MPI
+    error("Need to do this correctly over MPI for only the local cells.");
+#endif
+    int count_in_cell = 0, current_cell = 0;
+    size_t count_extra_parts = 0;
+    for (size_t i = 0; i < nr_actual_parts + expected_num_extra_parts; ++i) {
+      if (s->parts[i].time_bin == time_bin_not_created) {
+
+        /* We want the extra particles to be at the centre of their cell */
+        s->parts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
+        s->parts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
+        s->parts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        ++count_in_cell;
+        count_extra_parts++;
+      }
+
+      /* Once we have reached the number of extra part per cell, we move to the
+       * next */
+      if (count_in_cell == space_extra_parts) {
+        ++current_cell;
+        count_in_cell = 0;
+      }
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (count_extra_parts != expected_num_extra_parts)
+      error("Constructed the wrong number of extra parts (%zd vs. %zd)",
+            count_extra_parts, expected_num_extra_parts);
+#endif
 
     /* Update the counters */
     s->nr_parts = nr_actual_parts + expected_num_extra_parts;
@@ -1393,8 +1429,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   if (cell_counts == NULL)
     error("Failed to allocate temporary cell count buffer.");
 
-  // message("s->nr_cells=%d", s->nr_cells);
-
   /* Init the local collectors */
   float min_mass = FLT_MAX;
   float sum_vel_norm = 0.f;
@@ -1437,7 +1471,8 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
       ++count_inhibited_part;
     } else if (p->time_bin == time_bin_not_created) {
       /* Is this a place-holder for on-the-fly creation? */
-      ind[k] = -2;
+      ind[k] = index;
+      cell_counts[index]++;
       ++count_extra_part;
     } else {
       /* Normal case: list its top-level cell index */
@@ -1506,6 +1541,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   float min_mass = FLT_MAX;
   float sum_vel_norm = 0.f;
   size_t count_inhibited_gpart = 0;
+  size_t count_extra_gpart = 0;
 
   for (int k = 0; k < nr_gparts; k++) {
 
@@ -1536,10 +1572,15 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
             pos_z);
 #endif
 
-    /* Is this particle to be removed? */
     if (gp->time_bin == time_bin_inhibited) {
+      /* Is this particle to be removed? */
       ind[k] = -1;
       ++count_inhibited_gpart;
+    } else if (gp->time_bin == time_bin_not_created) {
+      /* Is this a place-holder for on-the-fly creation? */
+      ind[k] = index;
+      cell_counts[index]++;
+      ++count_extra_gpart;
     } else {
       /* List its top-level cell index */
       ind[k] = index;
@@ -1568,8 +1609,11 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
 
-  /* Write the count of inhibited gparts */
-  atomic_add(&data->count_inhibited_gpart, count_inhibited_gpart);
+  /* Write the count of inhibited and extra gparts */
+  if (count_inhibited_gpart)
+    atomic_add(&data->count_inhibited_gpart, count_inhibited_gpart);
+  if (count_extra_gpart)
+    atomic_add(&data->count_extra_gpart, count_extra_gpart);
 
   /* Write back the minimal part mass and velocity sum */
   atomic_min_f(&s->min_gpart_mass, min_mass);
@@ -1610,6 +1654,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   float min_mass = FLT_MAX;
   float sum_vel_norm = 0.f;
   size_t count_inhibited_spart = 0;
+  size_t count_extra_spart = 0;
 
   for (int k = 0; k < nr_sparts; k++) {
 
@@ -1668,8 +1713,11 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
   free(cell_counts);
 
-  /* Write the count of inhibited parts */
-  atomic_add(&data->count_inhibited_spart, count_inhibited_spart);
+  /* Write the count of inhibited and extra sparts */
+  if (count_inhibited_spart)
+    atomic_add(&data->count_inhibited_spart, count_inhibited_spart);
+  if (count_extra_spart)
+    atomic_add(&data->count_extra_spart, count_extra_spart);
 
   /* Write back the minimal part mass and velocity sum */
   atomic_min_f(&s->min_spart_mass, min_mass);
