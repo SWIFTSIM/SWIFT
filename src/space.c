@@ -3284,7 +3284,7 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
   struct xpart *restrict xparts = s->xparts + index;
 
   /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
-   * cretion */
+   * creation */
   for (int k = 0; k < count; k++)
     if (parts[k].time_bin <= num_time_bins)
       hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);

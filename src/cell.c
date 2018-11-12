@@ -3801,6 +3801,9 @@ void cell_reorder_extra_parts(struct cell *c) {
   const int count_real = c->hydro.count;
   const int count_total = count_real + space_extra_parts;
 
+  if (c->depth != 0)
+    error("This function should only be called on top-level cells!");
+
   int first_not_extra = count_real;
 
   /* Find extra particles */
