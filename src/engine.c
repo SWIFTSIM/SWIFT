@@ -2773,6 +2773,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     double *prev_x = s->parts[0].x;
     long long *prev_id = &s->parts[0].id;
     for (size_t k = 1; k < s->nr_parts; k++) {
+
+      /* Ignore fake buffer particles for on-the-fly creation */
+      if (s->parts[k].time_bin == time_bin_not_created) continue;
+
       if (prev_x[0] == s->parts[k].x[0] && prev_x[1] == s->parts[k].x[1] &&
           prev_x[2] == s->parts[k].x[2]) {
         if (e->verbose)
@@ -2795,6 +2799,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     int failed = 0;
     double *prev_x = s->gparts[0].x;
     for (size_t k = 1; k < s->nr_gparts; k++) {
+
+      /* Ignore fake buffer particles for on-the-fly creation */
+      if (s->gparts[k].time_bin == time_bin_not_created) continue;
+
       if (prev_x[0] == s->gparts[k].x[0] && prev_x[1] == s->gparts[k].x[1] &&
           prev_x[2] == s->gparts[k].x[2]) {
         if (e->verbose)
