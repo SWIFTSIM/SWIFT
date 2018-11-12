@@ -88,10 +88,10 @@ struct space {
   struct hydro_space hs;
 
   /*! Are we doing hydrodynamics? */
-  int hydro;
+  int with_hydro;
 
   /*! Are we doing gravity? */
-  int gravity;
+  int with_self_gravity;
 
   /*! Width of the top-level cells. */
   double width[3];
@@ -153,14 +153,23 @@ struct space {
   /*! The indices of the top-level cells that have >0 particles (of any kind) */
   int *local_cells_with_particles_top;
 
-  /*! The total number of parts in the space. */
-  size_t nr_parts, size_parts;
+  /*! The total number of #part in the space. */
+  size_t nr_parts;
 
-  /*! The total number of g-parts in the space. */
-  size_t nr_gparts, size_gparts;
+  /*! The total number of #gpart in the space. */
+  size_t nr_gparts;
 
-  /*! The total number of g-parts in the space. */
-  size_t nr_sparts, size_sparts;
+  /*! The total number of #spart in the space. */
+  size_t nr_sparts;
+
+  /*! The total number of #part we allocated memory for */
+  size_t size_parts;
+
+  /*! The total number of #gpart we allocated memory for */
+  size_t size_gparts;
+
+  /*! The total number of #spart we allocated memory for */
+  size_t size_sparts;
 
   /*! Number of inhibted gas particles in the space */
   size_t nr_inhibited_parts;
@@ -170,6 +179,15 @@ struct space {
 
   /*! Number of inhibted star particles in the space */
   size_t nr_inhibited_sparts;
+
+  /*! Number of extra #part (for on-the-fly creation) we allocated */
+  size_t nr_extra_parts;
+
+  /*! Number of extra #gpart (for on-the-fly creation) we allocated */
+  size_t nr_extra_gparts;
+
+  /*! Number of extra #spart (for on-the-fly creation) we allocated */
+  size_t nr_extra_sparts;
 
   /*! The particle data (cells have pointers to this). */
   struct part *parts;

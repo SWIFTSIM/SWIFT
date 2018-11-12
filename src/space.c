@@ -148,13 +148,13 @@ void space_rebuild_recycle_rec(struct space *s, struct cell *c,
         c->progeny[k]->next = *cell_rec_begin;
         *cell_rec_begin = c->progeny[k];
 
-        if (s->gravity) {
+        if (s->with_self_gravity) {
           c->progeny[k]->grav.multipole->next = *multipole_rec_begin;
           *multipole_rec_begin = c->progeny[k]->grav.multipole;
         }
 
         if (*cell_rec_end == NULL) *cell_rec_end = *cell_rec_begin;
-        if (s->gravity && *multipole_rec_end == NULL)
+        if (s->with_self_gravity && *multipole_rec_end == NULL)
           *multipole_rec_end = *multipole_rec_begin;
 
         c->progeny[k]->grav.multipole = NULL;
@@ -238,7 +238,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_DEBUG_CHECKS
     c->cellID = 0;
 #endif
-    if (s->gravity) bzero(c->grav.multipole, sizeof(struct gravity_tensors));
+    if (s->with_self_gravity)
+      bzero(c->grav.multipole, sizeof(struct gravity_tensors));
     for (int i = 0; i < 13; i++)
       if (c->hydro.sort[i] != NULL) {
         free(c->hydro.sort[i]);
@@ -448,7 +449,7 @@ void space_regrid(struct space *s, int verbose) {
     bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
 
     /* Allocate the multipoles for the top-level cells. */
-    if (s->gravity) {
+    if (s->with_self_gravity) {
       if (posix_memalign((void **)&s->multipoles_top, multipole_align,
                          s->nr_cells * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate top-level multipoles.");
@@ -520,7 +521,7 @@ void space_regrid(struct space *s, int verbose) {
 #ifdef WITH_MPI
           c->mpi.tag = -1;
 #endif  // WITH_MPI
-          if (s->gravity) c->grav.multipole = &s->multipoles_top[cid];
+          if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
 #ifdef SWIFT_DEBUG_CHECKS
           c->cellID = -last_cell_id;
           last_cell_id++;
@@ -1214,7 +1215,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the multipole construction went OK */
-  if (s->gravity)
+  if (s->with_self_gravity)
     for (int k = 0; k < s->nr_cells; k++)
       cell_check_multipole(&s->cells_top[k]);
 #endif
@@ -2061,7 +2062,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
-  const int with_gravity = s->gravity;
+  const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
@@ -2136,8 +2137,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   }
 
   /* Split or let it be? */
-  if ((with_gravity && gcount > space_splitsize) ||
-      (!with_gravity &&
+  if ((with_self_gravity && gcount > space_splitsize) ||
+      (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize))) {
 
     /* No longer just a leaf. */
@@ -2232,7 +2233,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Deal with the multipole */
-    if (s->gravity) {
+    if (s->with_self_gravity) {
 
       /* Reset everything */
       gravity_reset(c->grav.multipole);
@@ -2407,7 +2408,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         get_integer_time_begin(ti_current + 1, gravity_time_bin_max);
 
     /* Construct the multipole and the centre of mass*/
-    if (s->gravity) {
+    if (s->with_self_gravity) {
       if (gcount > 0) {
 
         gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count);
@@ -2514,7 +2515,7 @@ void space_recycle(struct space *s, struct cell *c) {
   lock_lock(&s->lock);
 
   /* Hook the multipole back in the buffer */
-  if (s->gravity) {
+  if (s->with_self_gravity) {
     c->grav.multipole->next = s->multipoles_sub;
     s->multipoles_sub = c->grav.multipole;
   }
@@ -2572,7 +2573,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   s->tot_cells -= count;
 
   /* Hook the multipoles into the buffer. */
-  if (s->gravity) {
+  if (s->with_self_gravity) {
     multipole_list_end->next = s->multipoles_sub;
     s->multipoles_sub = multipole_list_begin;
   }
@@ -2616,7 +2617,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
     }
 
     /* Is the multipole buffer empty? */
-    if (s->gravity && s->multipoles_sub == NULL) {
+    if (s->with_self_gravity && s->multipoles_sub == NULL) {
       if (posix_memalign(
               (void **)&s->multipoles_sub, multipole_align,
               space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
@@ -2634,7 +2635,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
     s->tot_cells += 1;
 
     /* Hook the multipole */
-    if (s->gravity) {
+    if (s->with_self_gravity) {
       cells[j]->grav.multipole = s->multipoles_sub;
       s->multipoles_sub = cells[j]->grav.multipole->next;
     }
@@ -3137,16 +3138,22 @@ void space_init(struct space *s, struct swift_params *params,
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
   s->periodic = periodic;
-  s->gravity = self_gravity;
-  s->hydro = hydro;
+  s->with_self_gravity = self_gravity;
+  s->with_hydro = hydro;
   s->nr_parts = Npart;
-  s->size_parts = Npart;
-  s->parts = parts;
   s->nr_gparts = Ngpart;
-  s->size_gparts = Ngpart;
-  s->gparts = gparts;
   s->nr_sparts = Nspart;
+  s->size_parts = Npart;
+  s->size_gparts = Ngpart;
   s->size_sparts = Nspart;
+  s->nr_inhibited_parts = 0;
+  s->nr_inhibited_gparts = 0;
+  s->nr_inhibited_sparts = 0;
+  s->nr_extra_parts = 0;
+  s->nr_extra_gparts = 0;
+  s->nr_extra_sparts = 0;
+  s->parts = parts;
+  s->gparts = gparts;
   s->sparts = sparts;
   s->min_part_mass = FLT_MAX;
   s->min_gpart_mass = FLT_MAX;
@@ -3479,7 +3486,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         int periodic, const double dim[3], int verbose) {
 
   /* Check that this is a sensible ting to do */
-  if (!s->hydro)
+  if (!s->with_hydro)
     error(
         "Cannot generate gas from ICs if we are running without "
         "hydrodynamics. Need to run with -s and the corresponding "
