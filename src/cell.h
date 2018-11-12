@@ -149,6 +149,9 @@ struct pcell {
 
   } stars;
 
+  /*! Maximal depth in that part of the tree */
+  int maxdepth;
+
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
 
@@ -403,6 +406,9 @@ struct cell {
 
     /*! The drift task for gparts */
     struct task *drift;
+
+    /*! Implicit task (going up- and down the tree) for the #gpart drifts */
+    struct task *drift_out;
 
     /*! Linked list of the tasks computing this cell's gravity forces. */
     struct link *grav;
@@ -808,8 +814,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_stars_task(
 __attribute__((always_inline)) INLINE static int
 cell_can_split_pair_gravity_task(const struct cell *c) {
 
-  /* Is the cell split ? */
-  return c->split && c->depth < space_subdepth_grav;
+  /* Is the cell split and still far from the leaves ? */
+  return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
 }
 
 /**
@@ -821,8 +827,8 @@ cell_can_split_pair_gravity_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_split_self_gravity_task(const struct cell *c) {
 
-  /* Is the cell split ? */
-  return c->split && c->depth < space_subdepth_grav;
+  /* Is the cell split and still far from the leaves ? */
+  return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
 }
 
 /**
