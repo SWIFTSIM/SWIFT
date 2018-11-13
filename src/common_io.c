@@ -643,6 +643,30 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_gpart_d_mapper, temp_d, N, copySize, 0,
                      (void*)&props);
 
+    } else if (props.convert_spart_f != NULL) {
+
+      /* Prepare some parameters */
+      float* temp_f = (float*)temp;
+      props.start_temp_f = (float*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_spart_f_mapper, temp_f, N, copySize, 0,
+                     (void*)&props);
+
+    } else if (props.convert_spart_d != NULL) {
+
+      /* Prepare some parameters */
+      double* temp_d = (double*)temp;
+      props.start_temp_d = (double*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_spart_d_mapper, temp_d, N, copySize, 0,
+                     (void*)&props);
+
     } else {
       error("Missing conversion function");
     }
