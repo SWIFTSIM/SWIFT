@@ -66,6 +66,15 @@
 #include "timers.h"
 #include "timestep.h"
 
+#if defined(HAVE_SETAFFINITY) && defined(SWIFT_DEBUG_TASKS) && defined( WITH_PERF )
+#define _GNU_SOURCE
+#include <linux/ioctl.h>
+#include <linux/perf_event.h>
+#include <linux/hw_breakpoint.h>
+#include <unistd.h>
+#undef _GNU_SOURCE
+#endif
+
 #define TASK_LOOP_DENSITY 0
 #define TASK_LOOP_GRADIENT 1
 #define TASK_LOOP_FORCE 2
@@ -2489,7 +2498,6 @@ void *runner_main(void *data) {
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
       t->rid = r->cpuid;
-
       /* And recover the pair direction */
       if (t->type == task_type_pair || t->type == task_type_sub_pair) {
         struct cell *ci_temp = ci;
@@ -2499,6 +2507,19 @@ void *runner_main(void *data) {
       } else {
         t->sid = -1;
       }
+      #if defined( HAVE_SETAFFINITY ) && defined( WITH_PERF )
+      if( r->read_size ){
+        if(ioctl( r->local_DRAM_hits_handle, PERF_EVENT_IOC_RESET, 0 ) == -1 ||
+           ioctl( r->local_DRAM_miss_handle, PERF_EVENT_IOC_RESET, 0 ) == -1 ){
+            error("A thread on core %i failed to reset its performance counters", r->cpuid);
+        }
+        if(ioctl( r->local_DRAM_hits_handle, PERF_EVENT_IOC_ENABLE, 0 ) == -1 ||
+           ioctl( r->local_DRAM_miss_handle, PERF_EVENT_IOC_ENABLE, 0 ) == -1){
+            error("A thread on core %i failed to enable its performance counters", r->cpuid);
+        }
+      }
+
+      #endif
 #endif
 
 /* Check that we haven't scheduled an inactive task */
@@ -2680,6 +2701,21 @@ void *runner_main(void *data) {
         cj->tasks_executed[t->type]++;
         cj->subtasks_executed[t->subtype]++;
       }
+#endif
+
+#if defined(HAVE_SETAFFINITY) && defined(SWIFT_DEBUG_TASKS) && defined( WITH_PERF )
+    if(r->read_size){
+      /* Task is completed, retrieve the performance counters */
+        if(ioctl(r->local_DRAM_hits_handle, PERF_EVENT_IOC_DISABLE,0) == -1 ||
+           ioctl(r->local_DRAM_miss_handle, PERF_EVENT_IOC_DISABLE,0) == -1){
+            error("A thread on core %i failed to disable its performance counters", r->cpuid); 
+        }
+        ssize_t hits_status = read(r->local_DRAM_hits_handle, &t->perf_counts.local_DRAM_hits, r->read_size);
+        ssize_t misses_status = read(r->local_DRAM_miss_handle, &t->perf_counts.local_DRAM_miss, r->read_size);
+        if(hits_status < 0 || misses_status < 0 ){
+            error("Failed to read from performance counter on core %i\n", r->cpuid);
+        }
+    }
 #endif
 
       /* We're done with this task, see if we get a next one. */

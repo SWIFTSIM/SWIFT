@@ -1119,7 +1119,7 @@ int main(int argc, char *argv[]) {
           for (int l = 0; l < e.sched.nr_tasks; l++) {
             if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
               fprintf(file_thread,
-                      " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n",
+                      " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i %lli %lli\n",
                       myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
                       e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
                       e.sched.tasks[l].tic, e.sched.tasks[l].toc,
@@ -1135,7 +1135,9 @@ int main(int argc, char *argv[]) {
                       (e.sched.tasks[l].cj != NULL)
                           ? e.sched.tasks[l].cj->grav.count
                           : 0,
-                      e.sched.tasks[l].flags, e.sched.tasks[l].sid);
+                      e.sched.tasks[l].flags, e.sched.tasks[l].sid,
+                      e.sched.tasks[l].perf_counts.local_DRAM_hits,
+                      e.sched.tasks[l].perf_counts.local_DRAM_miss);//Extended to output performance counters
             }
             fflush(stdout);
             count++;

@@ -206,6 +206,7 @@ AC_ARG_ENABLE([task-debugging],
 )
 if test "$enable_task_debugging" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
+   AC_DEFINE([WITH_PERF],1,[Enable Perf performance counter accesses])
 fi
 
 # Check if threadpool debugging is on.

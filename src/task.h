@@ -125,6 +125,13 @@ extern const char *subtaskID_names[];
 extern MPI_Comm subtaskMPI_comms[task_subtype_count];
 #endif
 
+#ifdef SWIFT_DEBUG_TASKS
+struct task_counters{
+  long long local_DRAM_hits;
+  long long local_DRAM_miss;
+};
+#endif
+
 /**
  * @brief A task to be run by the #scheduler.
  */
@@ -187,6 +194,9 @@ struct task {
 
   /*! Start and end time of this task */
   ticks tic, toc;
+
+  /* Task performance counter structure */
+  struct task_counters perf_counts;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS

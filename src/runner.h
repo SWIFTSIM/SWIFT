@@ -64,6 +64,17 @@ struct runner {
   /*! The particle cache of cell cj. */
   struct cache cj_cache;
 #endif
+
+#if defined(HAVE_SETAFFINITY) && defined(SWIFT_DEBUG_TASKS) && defined( WITH_PERF )
+
+  /* Handle to the counter for this thread's local DRAM Hits. */
+  int local_DRAM_hits_handle;
+
+  /* Handle to the counter for this thread's local DRAM Misses. */
+  int local_DRAM_misses_handle;
+  
+  size_t read_size;
+#endif
 };
 
 /* Function prototypes. */
