@@ -3834,7 +3834,7 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
 
   struct spart *sparts = c->stars.parts;
   const int count_real = c->stars.count;
-  const int count_total = count_real + space_extra_parts;
+  const int count_total = count_real + space_extra_sparts;
 
   if (c->depth != 0)
     error("This function should only be called on top-level cells!");

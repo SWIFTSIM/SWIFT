@@ -662,7 +662,15 @@ void space_allocate_extras(struct space *s, int verbose) {
             expected_num_extra_sparts);
   }
 
-  /* Do we have enough space for the extras (i.e. we haven't used up any) ? */
+  if (expected_num_extra_parts < s->nr_extra_parts)
+    error("Reduction in top-level cells number not handled.");
+  if (expected_num_extra_gparts < s->nr_extra_gparts)
+    error("Reduction in top-level cells number not handled.");
+  if (expected_num_extra_sparts < s->nr_extra_sparts)
+    error("Reduction in top-level cells number not handled.");
+
+  /* Do we have enough space for the extra parts (i.e. we haven't used up any) ?
+   */
   if (expected_num_extra_parts > s->nr_extra_parts) {
 
     /* Do we need to reallocate? */
@@ -747,13 +755,83 @@ void space_allocate_extras(struct space *s, int verbose) {
     s->nr_extra_parts = expected_num_extra_parts;
   }
 
-  if (expected_num_extra_parts < s->nr_extra_parts) {
-    error("Reduction in top-level cells number not handled.");
-  }
-
   if (nr_gparts + expected_num_extra_gparts > size_gparts) {
   }
+
+  /* Do we have enough space for the extra sparts (i.e. we haven't used up any)
+   * ? */
   if (nr_sparts + expected_num_extra_sparts > size_sparts) {
+
+    /* Do we need to reallocate? */
+    if (nr_actual_sparts + expected_num_extra_sparts > size_sparts) {
+
+      size_sparts = (nr_actual_sparts + expected_num_extra_sparts) *
+                    engine_redistribute_alloc_margin;
+
+      if (verbose)
+        message("Re-allocating sparts array from %zd to %zd", s->size_sparts,
+                size_sparts);
+
+      /* Create more space for parts */
+      struct spart *sparts_new = NULL;
+      if (posix_memalign((void **)&sparts_new, spart_align,
+                         sizeof(struct spart) * size_sparts) != 0)
+        error("Failed to allocate new spart data");
+      memcpy(sparts_new, s->sparts, sizeof(struct spart) * s->size_sparts);
+      free(s->sparts);
+      s->sparts = sparts_new;
+
+      /* Update the counter */
+      s->size_sparts = size_sparts;
+    }
+
+    /* Turn some of the allocated spares into particles we can use */
+    for (size_t i = nr_sparts; i < nr_actual_sparts + expected_num_extra_sparts;
+         ++i) {
+      bzero(&s->sparts[i], sizeof(struct spart));
+      s->sparts[i].time_bin = time_bin_not_created;
+    }
+
+      /* Put the spare particles in their correct cell */
+#ifdef WITH_MPI
+    error("Need to do this correctly over MPI for only the local cells.");
+#endif
+    int count_in_cell = 0, current_cell = 0;
+    size_t count_extra_sparts = 0;
+    for (size_t i = 0; i < nr_actual_sparts + expected_num_extra_sparts; ++i) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (current_cell == s->nr_cells)
+        error("Cell counter beyond the maximal nr. cells.");
+#endif
+
+      if (s->sparts[i].time_bin == time_bin_not_created) {
+
+        /* We want the extra particles to be at the centre of their cell */
+        s->sparts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
+        s->sparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
+        s->sparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        ++count_in_cell;
+        count_extra_sparts++;
+      }
+
+      /* Once we have reached the number of extra spart per cell, we move to the
+       * next */
+      if (count_in_cell == space_extra_sparts) {
+        ++current_cell;
+        count_in_cell = 0;
+      }
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (count_extra_sparts != expected_num_extra_sparts)
+      error("Constructed the wrong number of extra sparts (%zd vs. %zd)",
+            count_extra_sparts, expected_num_extra_sparts);
+#endif
+
+    /* Update the counters */
+    s->nr_sparts = nr_actual_sparts + expected_num_extra_sparts;
+    s->nr_extra_sparts = expected_num_extra_sparts;
   }
 }
 
@@ -1590,12 +1668,12 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 
       /* Compute sum of velocity norm */
       sum_vel_norm += p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2];
-    }
 
-    /* Update the position */
-    p->x[0] = pos_x;
-    p->x[1] = pos_y;
-    p->x[2] = pos_z;
+      /* Update the position */
+      p->x[0] = pos_x;
+      p->x[1] = pos_y;
+      p->x[2] = pos_z;
+    }
   }
 
   /* Write the counts back to the global array. */
@@ -1702,12 +1780,12 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
                         gp->v_full[1] * gp->v_full[1] +
                         gp->v_full[2] * gp->v_full[2];
       }
-    }
 
-    /* Update the position */
-    gp->x[0] = pos_x;
-    gp->x[1] = pos_y;
-    gp->x[2] = pos_z;
+      /* Update the position */
+      gp->x[0] = pos_x;
+      gp->x[1] = pos_y;
+      gp->x[2] = pos_z;
+    }
   }
 
   /* Write the counts back to the global array. */
@@ -1795,6 +1873,11 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     if (sp->time_bin == time_bin_inhibited) {
       ind[k] = -1;
       ++count_inhibited_spart;
+    } else if (sp->time_bin == time_bin_not_created) {
+      /* Is this a place-holder for on-the-fly creation? */
+      ind[k] = index;
+      cell_counts[index]++;
+      ++count_extra_spart;
     } else {
       /* List its top-level cell index */
       ind[k] = index;
@@ -1806,12 +1889,12 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
       /* Compute sum of velocity norm */
       sum_vel_norm +=
           sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2];
-    }
 
-    /* Update the position */
-    sp->x[0] = pos_x;
-    sp->x[1] = pos_y;
-    sp->x[2] = pos_z;
+      /* Update the position */
+      sp->x[0] = pos_x;
+      sp->x[1] = pos_y;
+      sp->x[2] = pos_z;
+    }
   }
 
   /* Write the counts back to the global array. */
