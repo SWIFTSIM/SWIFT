@@ -24,7 +24,6 @@
 #include <math.h>
 #include <string.h>
 
-
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
