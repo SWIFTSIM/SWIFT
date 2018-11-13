@@ -21,7 +21,9 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <math.h>
 #include <string.h>
+
 
 /* MPI headers. */
 #ifdef WITH_MPI
