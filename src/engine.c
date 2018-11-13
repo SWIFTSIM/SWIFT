@@ -49,15 +49,6 @@
 #include <gperftools/profiler.h>
 #endif
 
-#ifdef WITH_PERF
-#define _GNU_SOURCE
-#include <linux/perf_event.h>
-#include <linux/hw_breakpoint.h>
-#include <sched.h>
-#include <swift_perf.h>
-#undef _GNU_SOURCE
-#endif
-
 /* This object's header. */
 #include "engine.h"
 
@@ -4836,27 +4827,9 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 #if defined(HAVE_SETAFFINITY) && defined(SWIFT_DEBUG_TASKS) && defined( WITH_PERF )
     if (with_aff &&
         (e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
-      struct perf_event_attr DRAM_hits;
-      struct perf_event_attr DRAM_miss;
-      memset(&DRAM_hits, 0, sizeof(struct perf_event_attr));
-      memset(&DRAM_miss, 0, sizeof(struct perf_event_attr));
-      DRAM_hits.type = PERF_TYPE_HW_CACHE;
-      DRAM_miss.type = PERF_TYPE_HW_CACHE;
-      DRAM_hits.config = ( PERF_COUNT_HW_CACHE_NODE ) | ( PERF_COUNT_HW_CACHE_OP_READ << 8 ) | ( PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16 ); //From Perf manual for Local node, read accesses, accesses (this is either hits or ttotal attempted accesses).
-      DRAM_miss.config = ( PERF_COUNT_HW_CACHE_NODE ) | ( PERF_COUNT_HW_CACHE_OP_READ << 8 ) | ( PERF_COUNT_HW_CACHE_RESULT_MISS << 16 ); //From perf manual for local node, read accesses, misses.
-      DRAM_hits.size = sizeof(struct perf_event_attr);
-      DRAM_miss.size = sizeof(struct perf_event_attr);
-      DRAM_hits.disabled = 1;
-      DRAM_miss.disabled = 1;
-      DRAM_hits.exclude_kernel = 1;
-      DRAM_miss.exclude_kernel = 1;
-      DRAM_hits.exclude_hv = 1;
-      DRAM_miss.exclude_hv = 1;
       e->runners[k].read_size = sizeof(long long);
-      e->runners[k].local_DRAM_hits_handle = swift_perf_event_open(&DRAM_hits,0,e->runners[k].cpuid,-1,0);
-      e->runners[k].local_DRAM_misses_handle = swift_perf_event_open(&DRAM_miss,0,e->runners[k].cpuid,-1,0);
     }else{
-      read_size = 0;
+      e->runners[k].read_size = 0;
     }
 
 #endif

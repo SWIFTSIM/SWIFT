@@ -129,6 +129,7 @@ extern MPI_Comm subtaskMPI_comms[task_subtype_count];
 struct task_counters{
   long long local_DRAM_hits;
   long long local_DRAM_miss;
+  long long instructions_retired;
 };
 #endif
 

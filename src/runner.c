@@ -67,12 +67,23 @@
 #include "timestep.h"
 
 #if defined(HAVE_SETAFFINITY) && defined(SWIFT_DEBUG_TASKS) && defined( WITH_PERF )
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
-#include <linux/ioctl.h>
+#include <sys/ioctl.h>
 #include <linux/perf_event.h>
 #include <linux/hw_breakpoint.h>
 #include <unistd.h>
+#include <sched.h>
+#include <swift_perf.h>
 #undef _GNU_SOURCE
+#else
+#include <sys/ioctl.h>
+#include <linux/perf_event.h>
+#include <linux/hw_breakpoint.h>
+#include <unistd.h>
+#include <sched.h>
+#include <swift_perf.h>
+#endif
 #endif
 
 #define TASK_LOOP_DENSITY 0
@@ -2466,6 +2477,37 @@ void *runner_main(void *data) {
   struct scheduler *sched = &e->sched;
   unsigned int seed = r->id;
   pthread_setspecific(sched->local_seed_pointer, &seed);
+#if defined(HAVE_SETAFFINITY) && defined(SWIFT_DEBUG_TASKS) && defined( WITH_PERF )
+  if(r->read_size){
+      struct perf_event_attr DRAM_hits;
+      struct perf_event_attr DRAM_miss;
+      struct perf_event_attr ins_ret;
+      memset(&DRAM_hits, 0, sizeof(struct perf_event_attr));
+      memset(&DRAM_miss, 0, sizeof(struct perf_event_attr));
+      memset(&ins_ret, 0, sizeof(struct perf_event_attr));
+      DRAM_hits.type = PERF_TYPE_HW_CACHE;
+      DRAM_miss.type = PERF_TYPE_HW_CACHE;
+      ins_ret.type = PERF_TYPE_HARDWARE;
+      DRAM_hits.config = ( PERF_COUNT_HW_CACHE_NODE ) | ( PERF_COUNT_HW_CACHE_OP_READ << 8 ) | ( PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16 ); //From Perf manual for Local node, read accesses, accesses (this is either hits or ttotal attempted accesses).
+      DRAM_miss.config = ( PERF_COUNT_HW_CACHE_NODE ) | ( PERF_COUNT_HW_CACHE_OP_READ << 8 ) | ( PERF_COUNT_HW_CACHE_RESULT_MISS << 16 ); //From perf manual for local node, read accesses, misses.
+      ins_ret.config = PERF_COUNT_HW_INSTRUCTIONS;
+      DRAM_hits.size = sizeof(struct perf_event_attr);
+      DRAM_miss.size = sizeof(struct perf_event_attr);
+      ins_ret.size = sizeof(struct perf_event_attr);
+      DRAM_hits.disabled = 0;
+      DRAM_miss.disabled = 0;
+      ins_ret.disabled = 0;
+      DRAM_hits.exclude_kernel = 1;
+      DRAM_miss.exclude_kernel = 1;
+      ins_ret.exclude_kernel = 1;
+      DRAM_hits.exclude_hv = 1;
+      DRAM_miss.exclude_hv = 1;
+      ins_ret.exclude_hv = 1;
+      r->local_DRAM_hits_handle = swift_perf_event_open(&DRAM_hits,0,r->cpuid,-1,0);
+      r->local_DRAM_miss_handle = swift_perf_event_open(&DRAM_miss,0,r->cpuid,-1,0);
+      r->instructions_retired_handle = swift_perf_event_open(&ins_ret,0,r->cpuid,-1,0);
+  }
+#endif
   /* Main loop. */
   while (1) {
 
@@ -2509,14 +2551,16 @@ void *runner_main(void *data) {
       }
       #if defined( HAVE_SETAFFINITY ) && defined( WITH_PERF )
       if( r->read_size ){
-        if(ioctl( r->local_DRAM_hits_handle, PERF_EVENT_IOC_RESET, 0 ) == -1 ||
-           ioctl( r->local_DRAM_miss_handle, PERF_EVENT_IOC_RESET, 0 ) == -1 ){
-            error("A thread on core %i failed to reset its performance counters", r->cpuid);
-        }
-        if(ioctl( r->local_DRAM_hits_handle, PERF_EVENT_IOC_ENABLE, 0 ) == -1 ||
-           ioctl( r->local_DRAM_miss_handle, PERF_EVENT_IOC_ENABLE, 0 ) == -1){
-            error("A thread on core %i failed to enable its performance counters", r->cpuid);
-        }
+          if(ioctl( r->local_DRAM_hits_handle, PERF_EVENT_IOC_RESET, 0 ) == -1 ||
+             ioctl( r->local_DRAM_miss_handle, PERF_EVENT_IOC_RESET, 0 ) == -1 ||
+             ioctl(r->instructions_retired_handle, PERF_EVENT_IOC_RESET,0) == -1){
+              error("A thread on core %i failed to reset its performance counters", r->cpuid);
+          }
+          if(ioctl( r->local_DRAM_hits_handle, PERF_EVENT_IOC_ENABLE, 0 ) == -1 ||
+             ioctl( r->local_DRAM_miss_handle, PERF_EVENT_IOC_ENABLE, 0 ) == -1 ||
+             ioctl(r->instructions_retired_handle, PERF_EVENT_IOC_ENABLE,0) == -1){
+              error("A thread on core %i failed to enable its performance counters", r->cpuid);
+          }
       }
 
       #endif
@@ -2707,12 +2751,14 @@ void *runner_main(void *data) {
     if(r->read_size){
       /* Task is completed, retrieve the performance counters */
         if(ioctl(r->local_DRAM_hits_handle, PERF_EVENT_IOC_DISABLE,0) == -1 ||
-           ioctl(r->local_DRAM_miss_handle, PERF_EVENT_IOC_DISABLE,0) == -1){
+           ioctl(r->local_DRAM_miss_handle, PERF_EVENT_IOC_DISABLE,0) == -1 ||
+           ioctl(r->instructions_retired_handle, PERF_EVENT_IOC_DISABLE,0) == -1){
             error("A thread on core %i failed to disable its performance counters", r->cpuid); 
         }
         ssize_t hits_status = read(r->local_DRAM_hits_handle, &t->perf_counts.local_DRAM_hits, r->read_size);
         ssize_t misses_status = read(r->local_DRAM_miss_handle, &t->perf_counts.local_DRAM_miss, r->read_size);
-        if(hits_status < 0 || misses_status < 0 ){
+        ssize_t ret_status = read(r->instructions_retired_handle, &t->perf_counts.instructions_retired, r->read_size);
+        if(hits_status < 0 || misses_status < 0 || ret_status < 0){
             error("Failed to read from performance counter on core %i\n", r->cpuid);
         }
     }
