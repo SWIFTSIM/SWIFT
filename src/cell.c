@@ -3794,6 +3794,14 @@ void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
 #endif
 }
 
+/**
+ * @brief Re-arrange the #part in a top-level cell such that all the extra ones
+ * for on-the-fly creation are located at the end of the array.
+ *
+ * @param c The #cell to sort.
+ * @param parts_offset The offset between the first #part in the array and the
+ * first #part in the global array in the space structure (for re-linking).
+ */
 void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
 
   struct part *parts = c->hydro.parts;
@@ -3801,8 +3809,8 @@ void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
   const int count_real = c->hydro.count;
   const int count_total = count_real + space_extra_parts;
 
-  if (c->depth != 0)
-    error("This function should only be called on top-level cells!");
+  if (c->depth != 0 || c->nodeID != engine_rank)
+    error("This function should only be called on local top-level cells!");
 
   int first_not_extra = count_real;
 
@@ -3830,14 +3838,22 @@ void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
   }
 }
 
+/**
+ * @brief Re-arrange the #spart in a top-level cell such that all the extra ones
+ * for on-the-fly creation are located at the end of the array.
+ *
+ * @param c The #cell to sort.
+ * @param sparts_offset The offset between the first #spart in the array and the
+ * first #spart in the global array in the space structure (for re-linking).
+ */
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
 
   struct spart *sparts = c->stars.parts;
   const int count_real = c->stars.count;
   const int count_total = count_real + space_extra_sparts;
 
-  if (c->depth != 0)
-    error("This function should only be called on top-level cells!");
+  if (c->depth != 0 || c->nodeID != engine_rank)
+    error("This function should only be called on local top-level cells!");
 
   int first_not_extra = count_real;
 
@@ -3864,6 +3880,14 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
   }
 }
 
+/**
+ * @brief Re-arrange the #gpart in a top-level cell such that all the extra ones
+ * for on-the-fly creation are located at the end of the array.
+ *
+ * @param c The #cell to sort.
+ * @param parts The global array of #part (for re-linking).
+ * @param sparts The global array of #spart (for re-linking).
+ */
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
                                struct spart *sparts) {
 
@@ -3871,8 +3895,8 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
   const int count_real = c->grav.count;
   const int count_total = count_real + space_extra_gparts;
 
-  if (c->depth != 0)
-    error("This function should only be called on top-level cells!");
+  if (c->depth != 0 || c->nodeID != engine_rank)
+    error("This function should only be called on local top-level cells!");
 
   int first_not_extra = count_real;
 
