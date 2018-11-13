@@ -523,6 +523,46 @@ void io_convert_gpart_d_mapper(void* restrict temp, int N,
 }
 
 /**
+ * @brief Mapper function to copy #spart into a buffer of floats using a
+ * conversion function.
+ */
+void io_convert_spart_f_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct spart* restrict sparts = props.sparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  float* restrict temp_f = (float*)temp;
+  const ptrdiff_t delta = (temp_f - props.start_temp_f) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_spart_f(e, sparts + delta + i, &temp_f[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #spart into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_spart_d_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct spart* restrict sparts = props.sparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  double* restrict temp_d = (double*)temp;
+  const ptrdiff_t delta = (temp_d - props.start_temp_d) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_spart_d(e, sparts + delta + i, &temp_d[i * dim]);
+}
+
+/**
  * @brief Copy the particle data into a temporary buffer ready for i/o.
  *
  * @param temp The buffer to be filled. Must be allocated and aligned properly.
