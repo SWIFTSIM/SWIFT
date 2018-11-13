@@ -3864,11 +3864,12 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
   }
 }
 
-void cell_reorder_extra_gparts(struct cell *c, const ptrdiff_t sparts_offset) {
+void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
+                               struct spart *sparts) {
 
   struct gpart *gparts = c->grav.parts;
   const int count_real = c->grav.count;
-  const int count_total = count_real + space_extra_parts;
+  const int count_total = count_real + space_extra_gparts;
 
   if (c->depth != 0)
     error("This function should only be called on top-level cells!");
@@ -3891,11 +3892,11 @@ void cell_reorder_extra_gparts(struct cell *c, const ptrdiff_t sparts_offset) {
 #endif
 
       /* Swap everything (including pointers) */
-      memswap(&gparts[i], &gparts[first_not_extra], sizeof(struct spart));
+      memswap(&gparts[i], &gparts[first_not_extra], sizeof(struct gpart));
       if (gparts[i].type == swift_type_gas) {
-        error("Need to handle this.");
+        parts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       } else if (gparts[i].type == swift_type_stars) {
-        error("Need to handle this.");
+        sparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       }
     }
   }

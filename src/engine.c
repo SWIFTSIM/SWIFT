@@ -1992,9 +1992,10 @@ void engine_rebuild(struct engine *e, int repartitioned,
   space_rebuild(e->s, repartitioned, e->verbose);
 
   /* Update the global counters of particles */
-  long long num_particles[3] = {(long long)e->s->nr_parts,
-                                (long long)e->s->nr_gparts,
-                                (long long)e->s->nr_sparts};
+  long long num_particles[3] = {
+      (long long)(e->s->nr_parts - e->s->nr_extra_parts),
+      (long long)(e->s->nr_gparts - e->s->nr_extra_gparts),
+      (long long)(e->s->nr_sparts - e->s->nr_extra_sparts)};
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, num_particles, 3, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);

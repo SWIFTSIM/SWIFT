@@ -669,9 +669,102 @@ void space_allocate_extras(struct space *s, int verbose) {
   if (expected_num_extra_sparts < s->nr_extra_sparts)
     error("Reduction in top-level cells number not handled.");
 
+  /* Do we have enough space for the extra gparts (i.e. we haven't used up any)
+   * ? */
+  if (nr_gparts + expected_num_extra_gparts > size_gparts) {
+
+    /* Ok... need to put some more in the game */
+
+    /* Do we need to reallocate? */
+    if (nr_actual_gparts + expected_num_extra_gparts > size_gparts) {
+
+      size_gparts = (nr_actual_gparts + expected_num_extra_gparts) *
+                    engine_redistribute_alloc_margin;
+
+      if (verbose)
+        message("Re-allocating gparts array from %zd to %zd", s->size_gparts,
+                size_gparts);
+
+      /* Create more space for parts */
+      struct gpart *gparts_new = NULL;
+      if (posix_memalign((void **)&gparts_new, gpart_align,
+                         sizeof(struct gpart) * size_gparts) != 0)
+        error("Failed to allocate new gpart data");
+      const ptrdiff_t delta = gparts_new - s->gparts;
+      memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->size_gparts);
+      free(s->gparts);
+      s->gparts = gparts_new;
+
+      /* Update the counter */
+      s->size_gparts = size_gparts;
+
+      /* We now need to reset all the part and spart pointers */
+      for (size_t i = 0; i < nr_parts; ++i) {
+        if (s->parts[i].time_bin != time_bin_not_created)
+          s->parts[i].gpart += delta;
+      }
+      for (size_t i = 0; i < nr_sparts; ++i) {
+        if (s->sparts[i].time_bin != time_bin_not_created)
+          s->sparts[i].gpart += delta;
+      }
+    }
+
+    /* Turn some of the allocated spares into particles we can use */
+    for (size_t i = nr_gparts; i < nr_actual_gparts + expected_num_extra_gparts;
+         ++i) {
+      bzero(&s->gparts[i], sizeof(struct gpart));
+      s->gparts[i].time_bin = time_bin_not_created;
+      s->gparts[i].type = swift_type_dark_matter;
+      s->gparts[i].id_or_neg_offset = -1;
+    }
+
+      /* Put the spare particles in their correct cell */
+#ifdef WITH_MPI
+    error("Need to do this correctly over MPI for only the local cells.");
+#endif
+    int count_in_cell = 0, current_cell = 0;
+    size_t count_extra_gparts = 0;
+    for (size_t i = 0; i < nr_actual_gparts + expected_num_extra_gparts; ++i) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (current_cell == s->nr_cells)
+        error("Cell counter beyond the maximal nr. cells.");
+#endif
+
+      if (s->gparts[i].time_bin == time_bin_not_created) {
+
+        /* We want the extra particles to be at the centre of their cell */
+        s->gparts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
+        s->gparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
+        s->gparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        ++count_in_cell;
+        count_extra_gparts++;
+      }
+
+      /* Once we have reached the number of extra gpart per cell, we move to the
+       * next */
+      if (count_in_cell == space_extra_gparts) {
+        ++current_cell;
+        count_in_cell = 0;
+      }
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (count_extra_gparts != expected_num_extra_gparts)
+      error("Constructed the wrong number of extra gparts (%zd vs. %zd)",
+            count_extra_gparts, expected_num_extra_gparts);
+#endif
+
+    /* Update the counters */
+    s->nr_gparts = nr_actual_gparts + expected_num_extra_gparts;
+    s->nr_extra_gparts = expected_num_extra_gparts;
+  }
+
   /* Do we have enough space for the extra parts (i.e. we haven't used up any) ?
    */
   if (expected_num_extra_parts > s->nr_extra_parts) {
+
+    /* Ok... need to put some more in the game */
 
     /* Do we need to reallocate? */
     if (nr_actual_parts + expected_num_extra_parts > size_parts) {
@@ -711,6 +804,7 @@ void space_allocate_extras(struct space *s, int verbose) {
       bzero(&s->parts[i], sizeof(struct part));
       bzero(&s->xparts[i], sizeof(struct xpart));
       s->parts[i].time_bin = time_bin_not_created;
+      s->parts[i].id = -1;
     }
 
       /* Put the spare particles in their correct cell */
@@ -755,12 +849,11 @@ void space_allocate_extras(struct space *s, int verbose) {
     s->nr_extra_parts = expected_num_extra_parts;
   }
 
-  if (nr_gparts + expected_num_extra_gparts > size_gparts) {
-  }
-
   /* Do we have enough space for the extra sparts (i.e. we haven't used up any)
    * ? */
   if (nr_sparts + expected_num_extra_sparts > size_sparts) {
+
+    /* Ok... need to put some more in the game */
 
     /* Do we need to reallocate? */
     if (nr_actual_sparts + expected_num_extra_sparts > size_sparts) {
@@ -790,6 +883,7 @@ void space_allocate_extras(struct space *s, int verbose) {
          ++i) {
       bzero(&s->sparts[i], sizeof(struct spart));
       s->sparts[i].time_bin = time_bin_not_created;
+      s->sparts[i].id = -1;
     }
 
       /* Put the spare particles in their correct cell */
@@ -833,6 +927,13 @@ void space_allocate_extras(struct space *s, int verbose) {
     s->nr_sparts = nr_actual_sparts + expected_num_extra_sparts;
     s->nr_extra_sparts = expected_num_extra_sparts;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that the links are correct */
+  if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0))
+    part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
+                      nr_sparts, verbose);
+#endif
 }
 
 /**
@@ -1504,7 +1605,7 @@ void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
 
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[ind];
-    cell_reorder_extra_gparts(c, c->grav.parts - s->gparts);
+    cell_reorder_extra_gparts(c, s->parts, s->sparts);
   }
 }
 
