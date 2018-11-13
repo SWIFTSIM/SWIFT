@@ -89,7 +89,33 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts, long long Nsta
 
   /* Read the initial group_links array size. */
   s->fof_data.group_links_size_default = parser_get_opt_param_double(e->parameter_file, "FOF:group_links_size_default", 20000);
-  
+ 
+  /* Allocate and initialise a group index array. */
+  if (posix_memalign((void **)&s->fof_data.group_index, 32, Ngparts * sizeof(size_t)) != 0)
+    error("Failed to allocate list of particle group indices for FOF search.");
+
+  /* Allocate and initialise a group size array. */
+  if (posix_memalign((void **)&s->fof_data.group_size, 32, Ngparts * sizeof(size_t)) != 0)
+    error("Failed to allocate list of group size for FOF search.");
+
+  /* Allocate and initialise a group mass array. */
+  if (posix_memalign((void **)&s->fof_data.group_mass, 32, Ngparts * sizeof(double)) != 0)
+    error("Failed to allocate list of group masses for FOF search.");
+
+  /* Allocate and initialise a group mass array. */
+  if (posix_memalign((void **)&s->fof_data.group_CoM, 32, Ngparts * sizeof(struct fof_CoM)) != 0)
+    error("Failed to allocate list of group CoM for FOF search.");
+
+  /* Set initial group index to particle offset into array and set default group ID. */
+  for (size_t i = 0; i < Ngparts; i++) {
+    s->fof_data.group_index[i] = i;
+    s->gparts[i].group_id = default_id;
+  }
+
+  bzero(s->fof_data.group_size, Ngparts * sizeof(size_t));
+  bzero(s->fof_data.group_mass, Ngparts * sizeof(double));
+  bzero(s->fof_data.group_CoM, Ngparts * sizeof(struct fof_CoM));
+
 #ifdef WITH_MPI
   /* Check size of linking length against the top-level cell dimensions. */
   if(l_x > s->width[0]) error("Linking length greater than the width of a top-level cell. Need to check more than one layer of top-level cells for links.");
@@ -320,7 +346,7 @@ __attribute__((always_inline)) INLINE static int is_local(const size_t group_id,
 
 /* Recurse on a pair of cells and perform a FOF search between cells that are within
  * range. */
-static void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict cj, struct space *s,
+void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict cj, struct space *s,
                            const double dim[3],
                            const double search_r2) {
 
@@ -413,19 +439,10 @@ static void rec_fof_search_pair_foreign(struct cell *ci, struct cell *cj, struct
 
 /* Recurse on a cell and perform a FOF search between cells that are within
  * range. */
-static void rec_fof_search_self(struct cell *c, struct space *s,
+void rec_fof_search_self(struct cell *c, struct space *s,
                            const double dim[3],
                            const double search_r2) {
 
-  const double l_x2 = s->l_x2;
-
-  const double max_dist = c->width[0] * c->width[0] +
-                          c->width[1] * c->width[1] +
-                          c->width[2] * c->width[2];
-  
-  /* Are all particles in the same group? */
-  if(max_dist  < l_x2) {  }
-    
   /* Recurse? */
   if (c->split) {
     
@@ -435,7 +452,7 @@ static void rec_fof_search_self(struct cell *c, struct space *s,
 
         rec_fof_search_self(c->progeny[k], s, dim, search_r2);
 
-	for (int l = k+1; l < 8; l++)
+        for (int l = k+1; l < 8; l++)
           if (c->progeny[l] != NULL)
             rec_fof_search_pair(c->progeny[k], c->progeny[l], s, dim, search_r2);
       }
@@ -1298,7 +1315,7 @@ void fof_search_tree(struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t min_group_size = s->fof_data.min_group_size;
-  const size_t group_id_default = s->fof_data.group_id_default;
+
   const size_t group_id_offset = s->fof_data.group_id_offset;
   const int nr_nodes = s->e->nr_nodes;
   struct gpart *gparts = s->gparts;
@@ -1318,6 +1335,7 @@ void fof_search_tree(struct space *s) {
   node_offset = 0;
   
 #ifdef WITH_MPI
+  const size_t group_id_default = s->fof_data.group_id_default;
   if (nr_nodes > 1) {
   
     int *global_nr_gparts = NULL;
@@ -1348,41 +1366,11 @@ void fof_search_tree(struct space *s) {
   snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, ".dat");
 #endif
 
-  /* Allocate and initialise array of particle group IDs. */
-  if(s->fof_data.group_index != NULL) free(s->fof_data.group_index);
-  if(s->fof_data.group_mass != NULL) free(s->fof_data.group_mass);
-  if(s->fof_data.group_CoM != NULL) free(s->fof_data.group_CoM);
-
-  /* Allocate and initialise a group index array. */
-  if (posix_memalign((void **)&s->fof_data.group_index, 32, nr_gparts * sizeof(size_t)) != 0)
-    error("Failed to allocate list of particle group indices for FOF search.");
-  
-  /* Allocate and initialise a group size array. */
-  if (posix_memalign((void **)&s->fof_data.group_size, 32, nr_gparts * sizeof(size_t)) != 0)
-    error("Failed to allocate list of group size for FOF search.");
- 
-  /* Allocate and initialise a group mass array. */
-  if (posix_memalign((void **)&s->fof_data.group_mass, 32, nr_gparts * sizeof(double)) != 0)
-    error("Failed to allocate list of group masses for FOF search.");
-
-  /* Allocate and initialise a group mass array. */
-  if (posix_memalign((void **)&s->fof_data.group_CoM, 32, nr_gparts * sizeof(struct fof_CoM)) != 0)
-    error("Failed to allocate list of group CoM for FOF search.");
-
-  /* Set initial group index to particle offset into array and set default group ID. */
-  for (size_t i = 0; i < nr_gparts; i++) {
-    s->fof_data.group_index[i] = i;
-    gparts[i].group_id = group_id_default;
-  }
-
   group_index = s->fof_data.group_index;
   group_size = s->fof_data.group_size;
   group_mass = s->fof_data.group_mass;
   group_CoM = s->fof_data.group_CoM;
  
-  bzero(group_size, nr_gparts * sizeof(size_t));
-  bzero(group_mass, nr_gparts * sizeof(double));
-  bzero(group_CoM, nr_gparts * sizeof(struct fof_CoM));
 
   ticks tic = getticks();
 
