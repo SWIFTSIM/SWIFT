@@ -384,6 +384,7 @@ void task_unlock(struct task *t) {
       cell_unlocktree(ci);
       cell_sunlocktree(ci);
       cell_gunlocktree(ci);
+      break;
 
     default:
       break;

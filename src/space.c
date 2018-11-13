@@ -194,12 +194,15 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.dx_max_part = 0.f;
     c->hydro.sorted = 0;
     c->hydro.count = 0;
+    c->hydro.count_total = 0;
     c->hydro.updated = 0;
     c->hydro.inhibited = 0;
     c->grav.count = 0;
+    c->grav.count_total = 0;
     c->grav.updated = 0;
     c->grav.inhibited = 0;
     c->stars.count = 0;
+    c->stars.count_total = 0;
     c->stars.updated = 0;
     c->stars.inhibited = 0;
     c->grav.init = NULL;
@@ -1522,10 +1525,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->hydro.xparts = xfinger;
       c->grav.parts = gfinger;
       c->stars.parts = sfinger;
-      finger = &finger[c->hydro.count + space_extra_parts];
-      xfinger = &xfinger[c->hydro.count + space_extra_parts];
-      gfinger = &gfinger[c->grav.count + space_extra_gparts];
-      sfinger = &sfinger[c->stars.count + space_extra_sparts];
+
+      c->hydro.count_total = c->hydro.count + space_extra_parts;
+      c->grav.count_total = c->grav.count + space_extra_gparts;
+      c->stars.count_total = c->stars.count + space_extra_sparts;
+
+      finger = &finger[c->hydro.count_total];
+      xfinger = &xfinger[c->hydro.count_total];
+      gfinger = &gfinger[c->grav.count_total];
+      sfinger = &sfinger[c->stars.count_total];
 
       /* Add this cell to the list of local cells */
       s->local_cells_top[s->nr_local_cells] = k;
@@ -2616,6 +2624,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->hydro.count = 0;
       cp->grav.count = 0;
       cp->stars.count = 0;
+      cp->hydro.count_total = 0;
+      cp->grav.count_total = 0;
+      cp->stars.count_total = 0;
       cp->hydro.ti_old_part = c->hydro.ti_old_part;
       cp->grav.ti_old_part = c->grav.ti_old_part;
       cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
@@ -2821,6 +2832,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     /* parts: Get dt_min/dt_max and h_max. */
     for (int k = 0; k < count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
+      if (parts[k].time_bin == time_bin_not_created)
+        error("Extra particle present in space_split()");
       if (parts[k].time_bin == time_bin_inhibited)
         error("Inhibited particle present in space_split()");
 #endif
@@ -2839,6 +2852,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     /* gparts: Get dt_min/dt_max. */
     for (int k = 0; k < gcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
+      if (gparts[k].time_bin == time_bin_not_created)
+        error("Extra g-particle present in space_split()");
       if (gparts[k].time_bin == time_bin_inhibited)
         error("Inhibited g-particle present in space_split()");
 #endif
@@ -2849,6 +2864,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     /* sparts: Get dt_min/dt_max */
     for (int k = 0; k < scount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[k].time_bin == time_bin_not_created)
+        error("Extra s-particle present in space_split()");
       if (sparts[k].time_bin == time_bin_inhibited)
         error("Inhibited s-particle present in space_split()");
 #endif

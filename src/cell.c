@@ -967,6 +967,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->hydro.count = bucket_count[k];
+    c->progeny[k]->hydro.count_total = c->progeny[k]->hydro.count;
     c->progeny[k]->hydro.parts = &c->hydro.parts[bucket_offset[k]];
     c->progeny[k]->hydro.xparts = &c->hydro.xparts[bucket_offset[k]];
   }
@@ -1084,6 +1085,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->stars.count = bucket_count[k];
+    c->progeny[k]->stars.count_total = c->progeny[k]->stars.count;
     c->progeny[k]->stars.parts = &c->stars.parts[bucket_offset[k]];
   }
 
@@ -1146,6 +1148,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->grav.count = bucket_count[k];
+    c->progeny[k]->grav.count_total = c->progeny[k]->grav.count;
     c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
   }
 }
@@ -3645,7 +3648,22 @@ void cell_check_timesteps(struct cell *c) {
 #endif
 }
 
-void cell_add_spart(const struct engine *e, struct cell *c) {}
+void cell_add_spart(const struct engine *e, struct cell *c) {
+
+  if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
+
+  /* Get the top-level this leaf cell is in */
+  struct cell *top = c;
+  while (top->parent != NULL) top = top->parent;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (top->depth != 0) error("Cell-linking issue");
+#endif
+
+  /* Are there any extra particles left? */
+  if (top->stars.count == top->stars.count_total)
+    error("We ran out of star particles!");
+}
 
 /**
  * @brief "Remove" a gas particle from the calculation.

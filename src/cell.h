@@ -312,6 +312,9 @@ struct cell {
     /*! Nr of #part in this cell. */
     int count;
 
+    /*! Nr of #part this cell can hold after addition of new #part. */
+    int count_total;
+
     /*! Number of #part updated in this cell. */
     int updated;
 
@@ -339,7 +342,7 @@ struct cell {
     /*! Do any of this cell's sub-cells need to be sorted? */
     char do_sub_sort;
 
- #ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
 
     /*! Last (integer) time the cell's sort arrays were updated. */
     integertime_t ti_sort;
@@ -415,6 +418,9 @@ struct cell {
 
     /*! Nr of #gpart in this cell. */
     int count;
+
+    /*! Nr of #gpart this cell can hold after addition of new #gpart. */
+    int count_total;
 
     /*! Number of #gpart updated in this cell. */
     int updated;
@@ -659,6 +665,7 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 int cell_has_tasks(struct cell *c);
+void cell_add_spart(const struct engine *e, struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
 void cell_remove_gpart(const struct engine *e, struct cell *c,

@@ -525,6 +525,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         if (rho > 1.5e7 && e->step > 2) {
           message("Removing particle id=%lld rho=%e", p->id, rho);
           cell_convert_part_to_gpart(e, c, p, xp);
+          cell_add_spart(e, c);
         }
       }
     }

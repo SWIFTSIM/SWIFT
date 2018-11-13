@@ -44,8 +44,8 @@ struct cosmology;
 #define space_cellallocchunk 1000
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
-#define space_extra_parts_default 10
-#define space_extra_gparts_default 30
+#define space_extra_parts_default 0
+#define space_extra_gparts_default 0
 #define space_extra_sparts_default 20
 #define space_expected_max_nr_strays_default 100
 #define space_subsize_pair_hydro_default 256000000
