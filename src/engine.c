@@ -3615,8 +3615,6 @@ void engine_makeproxies(struct engine *e) {
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
-  message("max_dist = %e", max_mesh_dist2);
-
   /* Distance between centre of the cell and corners */
   const double r_diag2 = cell_width[0] * cell_width[0] +
                          cell_width[1] * cell_width[1] +
@@ -3660,12 +3658,6 @@ void engine_makeproxies(struct engine *e) {
     }
   }
 
-  /* for (int i = 0; i < e->s->nr_cells; ++i) { */
-  /*   cells[i].num_hydro_proxies = 0; */
-  /*   cells[i].num_grav_proxies = 0; */
-  /* } */
-
-  message("delta_m=%d delta_p=%d", delta_m, delta_p);
   /* Let's be verbose about this choice */
   if (e->verbose)
     message(
@@ -3698,7 +3690,7 @@ void engine_makeproxies(struct engine *e) {
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, iii, jjj, kkk);
 
-              /* Early abort (same cell) */
+              /* Early abort  */
               if (cid >= cjd) continue;
 
               /* Early abort (both same node) */
@@ -3786,7 +3778,7 @@ void engine_makeproxies(struct engine *e) {
                   e->nr_proxies += 1;
 
                   /* Check the maximal proxy limit */
-                  if ((size_t) proxy_id > 8 * sizeof(long long))
+                  if ((size_t)proxy_id > 8 * sizeof(long long))
                     error(
                         "Created more than %zd proxies. cell.mpi.sendto will "
                         "overflow.",
@@ -3796,11 +3788,6 @@ void engine_makeproxies(struct engine *e) {
                 /* Add the cell to the proxy */
                 proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
                 proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
-
-                /* if (proxy_type & (int)proxy_cell_type_gravity) */
-                /*   cells[cid].num_grav_proxies++; */
-                /* if (proxy_type & (int)proxy_cell_type_hydro) */
-                /*   cells[cid].num_hydro_proxies++; */
 
                 /* Store info about where to send the cell */
                 cells[cid].mpi.sendto |= (1ULL << proxy_id);
@@ -3825,7 +3812,7 @@ void engine_makeproxies(struct engine *e) {
                   e->nr_proxies += 1;
 
                   /* Check the maximal proxy limit */
-                  if ((size_t) proxy_id > 8 * sizeof(long long))
+                  if ((size_t)proxy_id > 8 * sizeof(long long))
                     error(
                         "Created more than %zd proxies. cell.mpi.sendto will "
                         "overflow.",
@@ -3835,11 +3822,6 @@ void engine_makeproxies(struct engine *e) {
                 /* Add the cell to the proxy */
                 proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
                 proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
-
-                /* if (proxy_type & (int)proxy_cell_type_gravity) */
-                /*   cells[cjd].num_grav_proxies++; */
-                /* if (proxy_type & (int)proxy_cell_type_hydro) */
-                /*   cells[cjd].num_hydro_proxies++; */
 
                 /* Store info about where to send the cell */
                 cells[cjd].mpi.sendto |= (1ULL << proxy_id);

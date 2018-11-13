@@ -854,6 +854,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
                               ci, cj);
 
+#ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 
             /* Let's cross-check that we had a proxy for that cell */
@@ -900,12 +901,8 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
                     "grav task!",
                     cid);
             }
-#endif
-
-            /* if (ci->nodeID == nodeID && cj->nodeID != engine_rank) */
-            /*   atomic_inc(&ci->num_foreign_pair_grav); */
-            /* if (cj->nodeID == nodeID && ci->nodeID != engine_rank) */
-            /*   atomic_inc(&cj->num_foreign_pair_grav); */
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
           }
         }
       }
@@ -947,10 +944,6 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 void engine_make_self_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
-
-  /* for (int i = 0; i < s->nr_cells; ++i) { */
-  /*   s->cells_top[i].num_foreign_pair_grav = 0; */
-  /* } */
 
   /* Create the multipole self and pair tasks. */
   threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
@@ -1822,6 +1815,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addtask(sched, task_type_pair, task_subtype_density, sid, 0,
                             ci, cj);
 
+#ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 
           /* Let's cross-check that we had a proxy for that cell */
@@ -1862,12 +1856,8 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
                   "hydro task!",
                   cid);
           }
-#endif
-
-          /* if (ci->nodeID == nodeID && cj->nodeID != engine_rank) */
-          /*   atomic_inc(&ci->num_foreign_pair_hydro); */
-          /* if (cj->nodeID == nodeID && ci->nodeID != engine_rank) */
-          /*   atomic_inc(&cj->num_foreign_pair_hydro); */
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
         }
       }
     }
@@ -1891,10 +1881,6 @@ void engine_maketasks(struct engine *e) {
   scheduler_reset(sched, engine_estimate_nr_tasks(e));
 
   ticks tic2 = getticks();
-
-  /* for (int i = 0; i < s->nr_cells; ++i) { */
-  /*   s->cells_top[i].num_foreign_pair_hydro = 0; */
-  /* } */
 
   /* Construct the first hydro loop over neighbours */
   if (e->policy & engine_policy_hydro)
@@ -2043,17 +2029,6 @@ void engine_maketasks(struct engine *e) {
     message("Linking stars tasks took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* if (e->nodeID == 0) */
-  /*   for (int i = 0; i < e->s->nr_cells; ++i) { */
-  /*     message( */
-  /*         "cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d " */
-  /*         "num_foreign_hydro= %d", */
-  /*         i, e->s->cells_top[i].num_grav_proxies, */
-  /*         e->s->cells_top[i].num_hydro_proxies, */
-  /*         e->s->cells_top[i].num_foreign_pair_grav, */
-  /*         e->s->cells_top[i].num_foreign_pair_hydro); */
-  /*   } */
-
 #ifdef WITH_MPI
   if (e->policy & engine_policy_feedback)
     error("Cannot run stellar feedback with MPI (yet).");
@@ -2165,15 +2140,4 @@ void engine_maketasks(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  /* if (e->nodeID == 0) */
-  /*   for (int i = 0; i < e->s->nr_cells; ++i) { */
-  /*     message( */
-  /*         "cid= %d num_grav_proxy= %d num_hydro_proxy= %d num_foreign_grav= %d " */
-  /*         "num_foreign_hydro= %d", */
-  /*         i, e->s->cells_top[i].num_grav_proxies, */
-  /*         e->s->cells_top[i].num_hydro_proxies, */
-  /*         e->s->cells_top[i].num_foreign_pair_grav, */
-  /*         e->s->cells_top[i].num_foreign_pair_hydro); */
-  /*   } */
 }
