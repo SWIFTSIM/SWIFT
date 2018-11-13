@@ -380,6 +380,11 @@ void task_unlock(struct task *t) {
       cell_munlocktree(cj);
       break;
 
+    case task_type_star_formation:
+      cell_unlocktree(ci);
+      cell_sunlocktree(ci);
+      cell_gunlocktree(ci);
+
     default:
       break;
   }
@@ -516,6 +521,21 @@ int task_lock(struct task *t) {
       if (cell_mlocktree(ci) != 0) return 0;
       if (cell_mlocktree(cj) != 0) {
         cell_munlocktree(ci);
+        return 0;
+      }
+      break;
+
+    case task_type_star_formation:
+      /* Lock the gas, gravity and star particles */
+      if (ci->hydro.hold || ci->stars.hold || ci->grav.phold) return 0;
+      if (cell_locktree(ci) != 0) return 0;
+      if (cell_slocktree(ci) != 0) {
+        cell_unlocktree(ci);
+        return 0;
+      }
+      if (cell_glocktree(ci) != 0) {
+        cell_unlocktree(ci);
+        cell_sunlocktree(ci);
         return 0;
       }
 
