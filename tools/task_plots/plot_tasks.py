@@ -41,7 +41,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import matplotlib
-
 matplotlib.use("Agg")
 import matplotlib.collections as collections
 import matplotlib.ticker as plticker
@@ -163,6 +162,7 @@ TASKTYPES = [
     "extra_ghost",
     "drift_part",
     "drift_gpart",
+    "drift_gpart_out",
     "end_force",
     "kick1",
     "kick2",

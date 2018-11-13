@@ -54,7 +54,7 @@ struct cosmology;
 #define space_subsize_self_grav_default 32000
 #define space_subsize_pair_stars_default 256000000
 #define space_subsize_self_stars_default 32000
-#define space_subdepth_grav_default 2
+#define space_subdepth_diff_grav_default 4
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
 #define space_maxreldx 0.1f
@@ -71,7 +71,7 @@ extern int space_subsize_pair_grav;
 extern int space_subsize_self_grav;
 extern int space_subsize_pair_stars;
 extern int space_subsize_self_stars;
-extern int space_subdepth_grav;
+extern int space_subdepth_diff_grav;
 extern int space_extra_parts;
 extern int space_extra_gparts;
 extern int space_extra_sparts;
