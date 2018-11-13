@@ -22,6 +22,15 @@
 #include "io_properties.h"
 #include "stars_part.h"
 
+INLINE static void test_time_bin_spart(const struct engine *e,
+                                       const struct spart *sp, float *ret) {
+
+  if (sp->time_bin >= time_bin_inhibited)
+    error("Writing inhibited or extra particle time_bin=%d", sp->time_bin);
+
+  *ret = sp->time_bin;
+}
+
 /**
  * @brief Specifies which s-particle fields to read from a dataset
  *
@@ -60,8 +69,8 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  /* Say how much we want to read */
-  *num_fields = 5;
+  /* Say how much we want to write */
+  *num_fields = 6;
 
   /* List what we want to read */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -74,6 +83,9 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  sparts, id);
   list[4] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
                                  sparts, h);
+
+  list[5] = io_make_output_field_convert_spart(
+      "TimeBin", FLOAT, 1, UNIT_CONV_NO_UNITS, sparts, test_time_bin_spart);
 }
 
 /**
