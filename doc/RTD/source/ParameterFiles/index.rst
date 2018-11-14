@@ -302,6 +302,7 @@ The full section to start a DM+hydro run from Gadget DM-only ICs would
 be:
 
 .. code:: YAML
+
    InitialConditions:
      file_name:  my_ics.hdf5
      periodic:                    1
