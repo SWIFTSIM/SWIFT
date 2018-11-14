@@ -3648,7 +3648,7 @@ void cell_check_timesteps(struct cell *c) {
 #endif
 }
 
-void cell_check_spart_pos_and_time(const struct cell* c) {
+void cell_check_spart_pos(const struct cell* c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -3656,7 +3656,7 @@ void cell_check_spart_pos_and_time(const struct cell* c) {
   if (c->split) {
     for(int k = 0; k < 8; ++k)
       if (c->progeny[k] != NULL)
-	cell_check_spart_pos_and_time(c->progeny[k]);
+	cell_check_spart_pos(c->progeny[k]);
   }
 
   struct spart *sparts = c->stars.parts;
@@ -3683,44 +3683,13 @@ void cell_recursively_shift_sparts(struct cell *c, struct cell *const target_cel
 				   const int depth, struct spart *temp,
 				   const int direct_progeny){
 
-  if( c->stars.parts < start || (c->stars.parts == start &&  c < target_cell)) {
-
-    if(c->stars.parts + c->stars.count > start)
-      c->stars.parts++;
-    
-  /* Abort if we are in a cell before the point where we want to start
-     the memory shift */
-    return;
-  }
-
-  message("cellID=%d", c->cellID);
-  
   if (c->split) {
-
-    int first_progeny = -1;
-    
-    for(int k = 0; k < 8; ++k)
-      if (c->progeny[k] != NULL) {
-	/* if(first_progeny == -1) */
-	/*   first_progeny = k; */
-	
-	cell_recursively_shift_sparts(c->progeny[k], target_cell, start, depth, temp, k == first_progeny);
-      }
-  }
-  else {
-    //if (c->stars.count > 0) {
-      //memswap(temp, &c->stars.parts[0], sizeof(struct spart));
-      memswap(temp, &c->stars.parts[c->stars.count], sizeof(struct spart));
-      //}
-      //else
-      //memswap(temp, &c->stars.parts[0], sizeof(struct spart));
+    for(int k = 0; k < 8; ++k) {
+      if(c->progeny[k] != NULL)
+	cell_recursively_shift_sparts(c->progeny[k], target_cell, start, depth, temp, 0);
+    }
   }
 
-  /* If this is a direct parent, add one element */
-  //if((c->stars.parts < start && c->stars.parts + c->stars.count >= start) || direct_progeny)
-  /* if(direct_progeny) */
-  /*   c->stars.count++; */
-  //else if (c->stars.parts == start)
   if(c->stars.parts >= start)
     c->stars.parts++;
 }
@@ -3728,74 +3697,70 @@ void cell_recursively_shift_sparts(struct cell *c, struct cell *const target_cel
 void cell_add_spart(const struct engine *e, struct cell *const c) {
 
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
-
+  
   /* Get the top-level this leaf cell is in */
   struct cell *top = c;
   while (top->parent != NULL) {
-    message("depth=%d cellID=%d size=%d part=%p", top->depth, top->cellID, top->stars.count, top->stars.parts);
     top = top->parent;
   }
-  message("depth=%d cellID=%d size=%d part=%p", top->depth, top->cellID, top->stars.count, top->stars.parts);
   
 #ifdef SWIFT_DEBUG_CHECKS
   if (top->depth != 0) error("Cell-linking issue");
 #endif
-
+  
   /* Are there any extra particles left? */
   if (top->stars.count == top->stars.count_total)
     error("We ran out of star particles!");
-
-  message("cellID=%d top->size=%d c->size=%d c->depth=%d", c->cellID, top->stars.count, c->stars.count, c->depth);
-
-  message("BEFORE: size=%d ptr=%p", c->parent->progeny[3]->progeny[4]->stars.count, c->parent->progeny[3]->progeny[4]->stars.parts);
   
-  /* Recursively shift all the stars to get a free spot at the start of the current cell*/
-  cell_recursively_shift_sparts(top, c, c->stars.parts, c->depth, &top->stars.parts[top->stars.count], 1);
-  c->stars.count++;
-  c->stars.parts--;
+  /* Copy the particles to get a free space */
+  const int n_copy = &top->stars.parts[top->stars.count] - c->stars.parts;
 
-  top = c;
-  while (top->parent != NULL) {
-    top = top->parent;
-    top->stars.count++;
-    top->stars.parts--;
+  if(n_copy > 0) {
+    struct spart *temp = NULL;
+    if (posix_memalign((void**)&temp, spart_align,
+		       n_copy * sizeof(struct spart)) != 0)
+      error("Impossible to allocate temp buffer");
+    
+    memcpy(temp, c->stars.parts, n_copy * sizeof(struct spart));
+    memcpy(c->stars.parts + 1, temp, n_copy * sizeof(struct spart));
+    free(temp);
+    
+    message("count=%d n_copy=%d", c->stars.count, n_copy);
+  
+    /* Recursively shift all the stars to get a free spot at the start of the current cell*/
+    cell_recursively_shift_sparts(top, c, c->stars.parts, c->depth, &top->stars.parts[top->stars.count], 1);
   }
-  
-  message("AFTER: size=%d ptr=%p", c->parent->progeny[3]->progeny[4]->stars.count, c->parent->progeny[3]->progeny[4]->stars.parts);
-  
-  struct cell *top_new = c;
-  while (top_new->parent != NULL) {
-    message("depth=%d cellID=%d size=%d part=%p loc=[%e %e %e] w=[%e %e %e]",
-	    top_new->depth, top_new->cellID, top_new->stars.count, top_new->stars.parts,
-	    top_new->loc[0], top_new->loc[1], top_new->loc[2],
-	    top_new->width[0], top_new->width[1], top_new->width[2]);
-    top_new = top_new->parent;
+    
+  /* Recursively shift back the pointers of the direct parents */
+  struct cell *up = c;
+  while (up->parent != NULL) {
+    up->stars.parts--;
+    up->stars.count++;
+    up = up->parent;
   }
-  message("depth=%d cellID=%d size=%d part=%p  loc=[%e %e %e] w=[%e %e %e]",
-	  top_new->depth, top_new->cellID, top_new->stars.count, top_new->stars.parts,
-	  top_new->loc[0], top_new->loc[1], top_new->loc[2],
-	  top_new->width[0], top_new->width[1], top_new->width[2]);
+  up->stars.parts--;
+  up->stars.count++;
   
   /* We now have an empty spart as the first particle in that cell */
   struct spart *sp = &c->stars.parts[0];
   //bzero(sp, sizeof(struct spart));
-  message("sp->id=%lld sp->x=[%e %e %e]", sp->id, sp->x[0], sp->x[1], sp->x[2]);
-  message("c->loc=[%e %e %e], c->width=[%e %e %e]", c->loc[0], c->loc[1], c->loc[2],
-	  c->width[0], c->width[1], c->width[2]);
+  //message("sp->id=%lld sp->x=[%e %e %e]", sp->id, sp->x[0], sp->x[1], sp->x[2]);
+  //message("c->loc=[%e %e %e], c->width=[%e %e %e]", c->loc[0], c->loc[1], c->loc[2],
+  //c->width[0], c->width[1], c->width[2]);
   
   /* Give it a decent position */
   sp->x[0] = c->loc[0] + 0.5 * c->width[0];
   sp->x[1] = c->loc[1] + 0.5 * c->width[1];
   sp->x[2] = c->loc[2] + 0.5 * c->width[2];
 
-  message("sp->id=%lld sp->x=[%e %e %e]", sp->id, sp->x[0], sp->x[1], sp->x[2]);
+  //message("sp->id=%lld sp->x=[%e %e %e]", sp->id, sp->x[0], sp->x[1], sp->x[2]);
   
 #ifdef SWIFT_DEBUG_CHECKS
   sp->ti_drift = e->ti_current;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  cell_check_spart_pos_and_time(top);
+  cell_check_spart_pos(top);
 #endif
 }
 
