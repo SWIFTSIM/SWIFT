@@ -3685,8 +3685,8 @@ void cell_recursively_shift_sparts(struct cell *c, struct cell *const target_cel
 
   if( c->stars.parts < start || (c->stars.parts == start &&  c < target_cell)) {
 
-    /* if(c->stars.parts + c->stars.count > start) */
-    /*   c->stars.parts++; */
+    if(c->stars.parts + c->stars.count > start)
+      c->stars.parts++;
     
   /* Abort if we are in a cell before the point where we want to start
      the memory shift */
