@@ -3648,14 +3648,95 @@ void cell_check_timesteps(struct cell *c) {
 #endif
 }
 
-void cell_add_spart(const struct engine *e, struct cell *c) {
+void cell_check_spart_pos_and_time(const struct cell* c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Recurse */
+  if (c->split) {
+    for(int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL)
+	cell_check_spart_pos_and_time(c->progeny[k]);
+  }
+
+  struct spart *sparts = c->stars.parts;
+  const int count = c->stars.count;
+  for (int i = 0; i < count; ++i) {
+
+    const struct spart *sp = &sparts[i];
+    if( (sp->x[0] < c->loc[0]) ||
+	(sp->x[1] < c->loc[1]) ||
+	(sp->x[2] < c->loc[2]) ||
+	(sp->x[0] >= c->loc[0] + c->width[0]) ||
+	(sp->x[1] >= c->loc[1] + c->width[1]) ||
+	(sp->x[2] >= c->loc[2] + c->width[2]))
+      error("spart not in its cell!");
+  }
+    
+#else
+  error("Calling a degugging function outside debugging mode.");
+#endif
+
+}
+
+void cell_recursively_shift_sparts(struct cell *c, struct cell *const target_cell, struct spart const* start,
+				   const int depth, struct spart *temp,
+				   const int direct_progeny){
+
+  if( c->stars.parts < start || (c->stars.parts == start &&  c < target_cell)) {
+
+    if(c->stars.parts + c->stars.count > start)
+      c->stars.parts++;
+    
+  /* Abort if we are in a cell before the point where we want to start
+     the memory shift */
+    return;
+  }
+
+  message("cellID=%d", c->cellID);
+  
+  if (c->split) {
+
+    int first_progeny = -1;
+    
+    for(int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) {
+	/* if(first_progeny == -1) */
+	/*   first_progeny = k; */
+	
+	cell_recursively_shift_sparts(c->progeny[k], target_cell, start, depth, temp, k == first_progeny);
+      }
+  }
+  else {
+    //if (c->stars.count > 0) {
+      //memswap(temp, &c->stars.parts[0], sizeof(struct spart));
+      memswap(temp, &c->stars.parts[c->stars.count], sizeof(struct spart));
+      //}
+      //else
+      //memswap(temp, &c->stars.parts[0], sizeof(struct spart));
+  }
+
+  /* If this is a direct parent, add one element */
+  //if((c->stars.parts < start && c->stars.parts + c->stars.count >= start) || direct_progeny)
+  /* if(direct_progeny) */
+  /*   c->stars.count++; */
+  //else if (c->stars.parts == start)
+  if(c->stars.parts >= start)
+    c->stars.parts++;
+}
+
+void cell_add_spart(const struct engine *e, struct cell *const c) {
 
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
 
   /* Get the top-level this leaf cell is in */
   struct cell *top = c;
-  while (top->parent != NULL) top = top->parent;
-
+  while (top->parent != NULL) {
+    message("depth=%d cellID=%d size=%d part=%p", top->depth, top->cellID, top->stars.count, top->stars.parts);
+    top = top->parent;
+  }
+  message("depth=%d cellID=%d size=%d part=%p", top->depth, top->cellID, top->stars.count, top->stars.parts);
+  
 #ifdef SWIFT_DEBUG_CHECKS
   if (top->depth != 0) error("Cell-linking issue");
 #endif
@@ -3663,6 +3744,59 @@ void cell_add_spart(const struct engine *e, struct cell *c) {
   /* Are there any extra particles left? */
   if (top->stars.count == top->stars.count_total)
     error("We ran out of star particles!");
+
+  message("cellID=%d top->size=%d c->size=%d c->depth=%d", c->cellID, top->stars.count, c->stars.count, c->depth);
+
+  message("BEFORE: size=%d ptr=%p", c->parent->progeny[3]->progeny[4]->stars.count, c->parent->progeny[3]->progeny[4]->stars.parts);
+  
+  /* Recursively shift all the stars to get a free spot at the start of the current cell*/
+  cell_recursively_shift_sparts(top, c, c->stars.parts, c->depth, &top->stars.parts[top->stars.count], 1);
+  c->stars.count++;
+  c->stars.parts--;
+
+  top = c;
+  while (top->parent != NULL) {
+    top = top->parent;
+    top->stars.count++;
+    top->stars.parts--;
+  }
+  
+  message("AFTER: size=%d ptr=%p", c->parent->progeny[3]->progeny[4]->stars.count, c->parent->progeny[3]->progeny[4]->stars.parts);
+  
+  struct cell *top_new = c;
+  while (top_new->parent != NULL) {
+    message("depth=%d cellID=%d size=%d part=%p loc=[%e %e %e] w=[%e %e %e]",
+	    top_new->depth, top_new->cellID, top_new->stars.count, top_new->stars.parts,
+	    top_new->loc[0], top_new->loc[1], top_new->loc[2],
+	    top_new->width[0], top_new->width[1], top_new->width[2]);
+    top_new = top_new->parent;
+  }
+  message("depth=%d cellID=%d size=%d part=%p  loc=[%e %e %e] w=[%e %e %e]",
+	  top_new->depth, top_new->cellID, top_new->stars.count, top_new->stars.parts,
+	  top_new->loc[0], top_new->loc[1], top_new->loc[2],
+	  top_new->width[0], top_new->width[1], top_new->width[2]);
+  
+  /* We now have an empty spart as the first particle in that cell */
+  struct spart *sp = &c->stars.parts[0];
+  //bzero(sp, sizeof(struct spart));
+  message("sp->id=%lld sp->x=[%e %e %e]", sp->id, sp->x[0], sp->x[1], sp->x[2]);
+  message("c->loc=[%e %e %e], c->width=[%e %e %e]", c->loc[0], c->loc[1], c->loc[2],
+	  c->width[0], c->width[1], c->width[2]);
+  
+  /* Give it a decent position */
+  sp->x[0] = c->loc[0] + 0.5 * c->width[0];
+  sp->x[1] = c->loc[1] + 0.5 * c->width[1];
+  sp->x[2] = c->loc[2] + 0.5 * c->width[2];
+
+  message("sp->id=%lld sp->x=[%e %e %e]", sp->id, sp->x[0], sp->x[1], sp->x[2]);
+  
+#ifdef SWIFT_DEBUG_CHECKS
+  sp->ti_drift = e->ti_current;
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  cell_check_spart_pos_and_time(top);
+#endif
 }
 
 /**
@@ -3757,9 +3891,11 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
  * @param c The #cell from which to remove the particle.
  * @param p The #part to remove.
  * @param xp The extended data of the particle to remove.
+ *
+ * @return Pointer to the gpart the part has become.
  */
-void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
-                                struct part *p, struct xpart *xp) {
+struct gpart* cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
+				  struct part *p, struct xpart *xp) {
 
   /* Quick cross-checks */
   if (c->nodeID != e->nodeID)
@@ -3784,6 +3920,8 @@ void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = p->ti_kick;
 #endif
+
+  return gp;
 }
 
 /**
@@ -3795,9 +3933,11 @@ void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
  * @param sp The #spart to remove.
+ *
+ * @return Pointer to the gpart the spart has become.
  */
-void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
-                                 struct spart *sp) {
+struct gpart* cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
+				   struct spart *sp) {
 
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
@@ -3822,6 +3962,8 @@ void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = sp->ti_kick;
 #endif
+
+  return gp;
 }
 
 /**

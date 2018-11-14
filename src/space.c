@@ -894,7 +894,7 @@ void space_allocate_extras(struct space *s, int verbose) {
          ++i) {
       bzero(&s->sparts[i], sizeof(struct spart));
       s->sparts[i].time_bin = time_bin_not_created;
-      s->sparts[i].id = -1;
+      s->sparts[i].id = -42;
     }
 
       /* Put the spare particles in their correct cell */

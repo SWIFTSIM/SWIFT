@@ -672,9 +672,9 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
                        struct gpart *gp);
 void cell_remove_spart(const struct engine *e, struct cell *c,
                        struct spart *sp);
-void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
+struct gpart* cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                 struct part *p, struct xpart *xp);
-void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
+struct gpart* cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
                                  struct spart *sp);
 void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset);
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
