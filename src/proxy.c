@@ -321,6 +321,10 @@ struct wait_and_unpack_mapper_data {
 
 void proxy_cells_wait_and_unpack_mapper(void *unused_map_data, int num_elements,
                                         void *extra_data) {
+
+  // MATTHIEU: This is currently unused. Scalar (non-threadpool) version is
+  // faster but we still need to explore why this happens.
+
   struct wait_and_unpack_mapper_data *data =
       (struct wait_and_unpack_mapper_data *)extra_data;
 
