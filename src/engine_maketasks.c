@@ -804,9 +804,10 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     if (ci->grav.count == 0) continue;
 
     /* If the cell is local build a self-interaction */
-    if (ci->nodeID == nodeID)
+    if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
                         NULL);
+    }
 
     /* Loop over every other cell within (Manhattan) range delta */
     for (int ii = -delta_m; ii <= delta_p; ii++) {
@@ -1763,9 +1764,10 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
     if (ci->hydro.count == 0) continue;
 
     /* If the cell is local build a self-interaction */
-    if (ci->nodeID == nodeID)
+    if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
                         NULL);
+    }
 
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
