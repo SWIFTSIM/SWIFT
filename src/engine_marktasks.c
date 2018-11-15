@@ -261,6 +261,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+      /* Gravity */
       if ((t_subtype == task_subtype_grav) &&
           ((ci_active_gravity && ci_nodeID == nodeID) ||
            (cj_active_gravity && cj_nodeID == nodeID))) {
@@ -474,6 +475,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
              t_type == task_type_grav_long_range ||
              t_type == task_type_init_grav ||
              t_type == task_type_init_grav_out ||
+             t_type == task_type_drift_gpart_out ||
              t_type == task_type_grav_down_in) {
       if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
     }

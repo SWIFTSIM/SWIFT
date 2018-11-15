@@ -1,6 +1,8 @@
 .. Parameter Files
    Matthieu Schaller, 21st October 2018
 
+.. _Parameter_File_label:
+
 Parameter Files
 ===============
 
@@ -140,7 +142,9 @@ background evolution of the Univese need to be specified here. These are:
 * The baryon density parameter :math:`\Omega_b`: ``Omega_b``,
 * The radiation density parameter :math:`\Omega_r`: ``Omega_r``.
 
-The last parameter can be omitted and will default to :math:`\Omega_r = 0`.
+The last parameter can be omitted and will default to :math:`\Omega_r = 0`. Note
+that SWIFT will verify on start-up that the matter content of the initial conditions
+matches the cosmology specified in this section.
 
 This section als specifies the start and end of the simulation expressed in
 terms of scale-factors. The two parameters are:
@@ -240,7 +244,6 @@ simulation:
      r_cut_max:    4.5                  # Default optional value
      r_cut_min:    0.1                  # Default optional value
 
-
       
 SPH
 ---
@@ -248,6 +251,67 @@ SPH
 Time Integration
 ----------------
 
+Initial Conditions
+------------------
+
+This section of the parameter file contains all the options related to
+the initial conditions. The main two parameters are
+
+* The name of the initial conditions file: ``file_name``,
+* Whether the problem uses periodic boundary conditions or not: ``periodic``.
+
+The file path is relative to where the code is being executed. These
+parameters can be complemented by some optional values to drive some
+specific behaviour of the code.
+
+* Whether to generate gas particles from the DM particles: ``generate_gas_in_ics`` (default: ``0``),
+* Whether to activate an additional clean-up of the SPH smoothing lengths: ``cleanup_smoothing_lengths`` (default: ``0``)
+
+The procedure used to generate gas particles from the DM ones is
+outlined in the theory documents and is too long for a full
+description here.  The cleaning of the smoothing lengths is an
+expensive operation but can be necessary in the cases where the
+initial conditions are of poor quality and the values of the smoothing
+lengths are far from the values they should have.
+
+When starting from initial conditions created for Gadget, some
+additional flags can be used to convert the values from h-full to
+h-free and remove the additional :math:`\sqrt{a}` in the velocities:
+
+* Whether to re-scale all the fields to remove powers of h from the quantities: ``cleanup_h_factors`` (default: ``0``),
+* Whether to re-scale the velocities to remove the :math:`\sqrt{a}` assumed by Gadget : ``cleanup_velocity_factors`` (default: ``0``).
+
+The h-factors are self-consistently removed according to their units
+and this is applied to all the quantities irrespective of particle
+types. The correct power of ``h`` is always calculated for each
+quantity.
+
+Finally, SWIFT also offers these options:
+
+* A factor to re-scale all the smoothing-lengths by a fixed amount: ``smoothing_length_scaling`` (default: ``1.``),
+* A shift to apply to all the particles: ``shift`` (default: ``[0.0,0.0,0.0]``),
+* Whether to replicate the box along each axis: ``replicate`` (default: ``1``).
+
+The shift is expressed in internal units. The option to replicate the
+box is especially useful for weak-scaling tests. When set to an
+integer >1, the box size is multiplied by this integer along each axis
+and the particles are duplicated and shifted such as to create exact
+copies of the simulation volume.
+
+The full section to start a DM+hydro run from Gadget DM-only ICs would
+be:
+
+.. code:: YAML
+
+   InitialConditions:
+     file_name:  my_ics.hdf5
+     periodic:                    1
+     cleanup_h_factors:           1
+     cleanup_velocity_factors:    1
+     generate_gas_in_ics:         1  
+     cleanup_smoothing_lengths:   1  
+
+  
 Physical Constants
 ------------------
 
