@@ -1499,6 +1499,77 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 }
 
 /**
+ * @brief Split a FOF task if too large.
+ *
+ * @param t The #task
+ * @param s The #scheduler we are working in.
+ */
+static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
+
+  /* Iterate on this task until we're done with it. */
+  int redo = 1;
+  while (redo) {
+
+    /* Reset the redo flag. */
+    redo = 0;
+
+    /* Non-splittable task? */
+    if ((t->ci == NULL) || (t->type == task_type_fof_pair && t->cj == NULL) ||
+        t->ci->grav.count == 0 || (t->cj != NULL && t->cj->grav.count == 0)) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->cj = NULL;
+      t->skip = 1;
+      break;
+    }
+
+    /* Self-interaction? */
+    if (t->type == task_type_fof_self) {
+
+      /* Get a handle on the cell involved. */
+      struct cell *ci = t->ci;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Is this cell even split and the task does not violate h ? */
+      if (cell_can_split_self_fof_task(ci)) {
+
+        /* Take a step back (we're going to recycle the current task)... */
+        redo = 1;
+
+        /* Add the self tasks. */
+        int first_child = 0;
+        while (ci->progeny[first_child] == NULL) first_child++;
+        t->ci = ci->progeny[first_child];
+        for (int k = first_child + 1; k < 8; k++)
+          if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
+            scheduler_splittask_fof(
+                scheduler_addtask(s, task_type_fof_self, t->subtype, 0, 0,
+                  ci->progeny[k], NULL),
+                s);
+
+        /* Make a task for each pair of progeny */
+        for (int j = 0; j < 8; j++)
+          if (ci->progeny[j] != NULL && ci->progeny[j]->grav.count)
+            for (int k = j + 1; k < 8; k++)
+              if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
+                scheduler_splittask_fof(
+                    scheduler_addtask(s, task_type_fof_pair, t->subtype,
+                      0, 0, ci->progeny[j],
+                      ci->progeny[k]),
+                    s);
+      } /* Cell is split */
+
+    } /* Self interaction */
+
+  } /* iterate over the current task. */
+}
+
+/**
  * @brief Mapper function to split tasks that may be too large.
  *
  * @param map_data the tasks to process
@@ -1526,6 +1597,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       /* For future use */
     } else if (t->subtype == task_subtype_stars_density) {
       scheduler_splittask_stars(t, s);
+    } else if (t->type == task_type_fof_self) {
+      scheduler_splittask_fof(t, s);
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type");
