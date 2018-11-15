@@ -284,7 +284,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                               wj_dr * dvdr * r_inv;
 
   /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr;
+  const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term;
@@ -404,7 +404,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                               wi_dr * dvdr * r_inv;
 
   /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr;
+  const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term;

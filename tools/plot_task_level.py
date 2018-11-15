@@ -19,7 +19,7 @@ filename = sys.argv[-1]
 names = ["type", "subtype", "depth", "count"]
 
 # read file
-data = pd.read_csv(filename, sep=' ', comment="#", names=names)
+data = pd.read_csv(filename, sep=" ", comment="#", names=names)
 
 # generate color map
 cmap = plt.get_cmap("hsv")
@@ -30,9 +30,13 @@ for i in range(data["depth"].max()):
     ind = data["depth"] == i
     label = "depth = %i" % i
     c = cmap(i / N)
-    plt.plot(data["type"][ind] + "_" + data["subtype"][ind],
-             data["count"][ind], ".", label=label,
-             color=c)
+    plt.plot(
+        data["type"][ind] + "_" + data["subtype"][ind],
+        data["count"][ind],
+        ".",
+        label=label,
+        color=c,
+    )
 
 # modify figure parameters and show it
 plt.gca().set_yscale("log")

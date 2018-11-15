@@ -111,7 +111,8 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 /* Set the thermodynamic variable */
 #if defined(GADGET2_SPH)
         part->entropy = 1.f;
-#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH)
+#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) || \
+    defined(HOPKINS_PU_SPH_MONAGHAN)
         part->u = 1.f;
 #elif defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;
@@ -211,7 +212,7 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
 #endif /* PRESSURE-ENTROPY */
-#ifdef HOPKINS_PU_SPH
+#if defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
     p->rho = 1.f;
     p->pressure_bar = 0.6666666;
     p->density.rho_dh = 0.f;

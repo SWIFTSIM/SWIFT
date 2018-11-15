@@ -18,6 +18,9 @@
  ******************************************************************************/
 
 /* Some standard headers. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <stdlib.h>
 
 /* Includes. */

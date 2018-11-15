@@ -1044,6 +1044,8 @@ void engine_repartition_trigger(struct engine *e) {
 
 #ifdef WITH_MPI
 
+  const ticks tic = getticks();
+
   /* Do nothing if there have not been enough steps since the last
    * repartition, don't want to repeat this too often or immediately after
    * a repartition step. Also nothing to do when requested. */
@@ -1112,6 +1114,10 @@ void engine_repartition_trigger(struct engine *e) {
   /* We always reset CPU time for next check, unless it will not be used. */
   if (e->reparttype->type != REPART_NONE)
     e->cputime_last_step = clocks_get_cputime_used();
+
+  if (e->verbose)
+    message("took %.3f %s", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #endif
 }
 
@@ -1591,6 +1597,8 @@ void engine_exchange_top_multipoles(struct engine *e) {
 
 #ifdef WITH_MPI
 
+  ticks tic = getticks();
+
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < e->s->nr_cells; ++i) {
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
@@ -1617,19 +1625,14 @@ void engine_exchange_top_multipoles(struct engine *e) {
   /* Each node (space) has constructed its own top-level multipoles.
    * We now need to make sure every other node has a copy of everything.
    *
-   * WARNING: Adult stuff ahead: don't do this at home!
-   *
-   * Since all nodes have their top-level multi-poles computed
-   * and all foreign ones set to 0 (all bytes), we can gather all the m-poles
-   * by doing a bit-wise OR reduction across all the nodes directly in
-   * place inside the multi-poles_top array.
-   * This only works if the foreign m-poles on every nodes are zeroed and no
-   * multi-pole is present on more than one node (two things guaranteed by the
-   * domain decomposition).
+   * We use our home-made reduction operation that simply performs a XOR
+   * operation on the multipoles. Since only local multipoles are non-zero and
+   * each multipole is only present once, the bit-by-bit XOR will
+   * create the desired result.
    */
-  int err = MPI_Allreduce(MPI_IN_PLACE, e->s->multipoles_top,
-                          e->s->nr_cells * sizeof(struct gravity_tensors),
-                          MPI_BYTE, MPI_BOR, MPI_COMM_WORLD);
+  int err = MPI_Allreduce(MPI_IN_PLACE, e->s->multipoles_top, e->s->nr_cells,
+                          multipole_mpi_type, multipole_mpi_reduce_op,
+                          MPI_COMM_WORLD);
   if (err != MPI_SUCCESS)
     mpi_error(err, "Failed to all-reduce the top-level multipoles.");
 
@@ -1659,6 +1662,9 @@ void engine_exchange_top_multipoles(struct engine *e) {
         counter, e->total_nr_gparts);
 #endif
 
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -1993,9 +1999,12 @@ void engine_rebuild(struct engine *e, int repartitioned,
   /* Re-build the space. */
   space_rebuild(e->s, repartitioned, e->verbose);
 
+  const ticks tic2 = getticks();
+
   /* Update the global counters of particles */
-  long long num_particles[3] = {e->s->nr_parts, e->s->nr_gparts,
-                                e->s->nr_sparts};
+  long long num_particles[3] = {(long long)e->s->nr_parts,
+                                (long long)e->s->nr_gparts,
+                                (long long)e->s->nr_sparts};
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, num_particles, 3, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -2008,6 +2017,10 @@ void engine_rebuild(struct engine *e, int repartitioned,
   e->nr_inhibited_parts = 0;
   e->nr_inhibited_gparts = 0;
   e->nr_inhibited_sparts = 0;
+
+  if (e->verbose)
+    message("updating particle counts took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Re-compute the mesh forces */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
@@ -2683,7 +2696,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
 #ifdef WITH_LOGGER
   /* Mark the first time step in the particle logger file. */
-  logger_log_timestamp(e->logger, e->ti_current, &e->logger->timestamp_offset);
+  logger_log_timestamp(e->logger, e->ti_current, e->time,
+                       &e->logger->timestamp_offset);
   /* Make sure that we have enough space in the particle logger file
    * to store the particles in current time step. */
   logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
@@ -2940,7 +2954,8 @@ void engine_step(struct engine *e) {
 
 #ifdef WITH_LOGGER
   /* Mark the current time step in the particle logger file. */
-  logger_log_timestamp(e->logger, e->ti_current, &e->logger->timestamp_offset);
+  logger_log_timestamp(e->logger, e->ti_current, e->time,
+                       &e->logger->timestamp_offset);
   /* Make sure that we have enough space in the particle logger file
    * to store the particles in current time step. */
   logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
@@ -3397,12 +3412,34 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
                                 void *extra_data) {
 
   const struct engine *e = (const struct engine *)extra_data;
+  const int restarting = e->restarting;
   struct space *s = e->s;
-  struct cell *cells_top = s->cells_top;
-  int *local_cells = (int *)map_data;
+  struct cell *cells_top;
+  int *local_cells_with_tasks_top;
+
+  if (restarting) {
+
+    /* When restarting, we loop over all top-level cells */
+    cells_top = (struct cell *)map_data;
+    local_cells_with_tasks_top = NULL;
+
+  } else {
+
+    /* In any other case, we use th list of local cells with tasks */
+    cells_top = s->cells_top;
+    local_cells_with_tasks_top = (int *)map_data;
+  }
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &cells_top[local_cells[ind]];
+
+    struct cell *c;
+
+    /* When restarting, the list of local cells with tasks does not
+       yet exist. We use the raw list of top-level cells instead */
+    if (restarting)
+      c = &cells_top[ind];
+    else
+      c = &cells_top[local_cells_with_tasks_top[ind]];
 
     if (c->nodeID == e->nodeID) {
 
@@ -3441,9 +3478,19 @@ void engine_drift_all(struct engine *e) {
   }
 #endif
 
-  threadpool_map(&e->threadpool, engine_do_drift_all_mapper,
-                 e->s->local_cells_with_tasks_top,
-                 e->s->nr_local_cells_with_tasks, sizeof(int), 0, e);
+  if (!e->restarting) {
+
+    /* Normal case: We have a list of local cells with tasks to play with */
+    threadpool_map(&e->threadpool, engine_do_drift_all_mapper,
+                   e->s->local_cells_with_tasks_top,
+                   e->s->nr_local_cells_with_tasks, sizeof(int), 0, e);
+  } else {
+
+    /* When restarting, the list of local cells with tasks does not yet
+       exist. We use the raw list of top-level cells instead */
+    threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
+                   e->s->nr_cells, sizeof(struct cell), 0, e);
+  }
 
   /* Synchronize particle positions */
   space_synchronize_particle_positions(e->s);
@@ -3830,6 +3877,8 @@ void engine_makeproxies(struct engine *e) {
 void engine_split(struct engine *e, struct partition *initial_partition) {
 
 #ifdef WITH_MPI
+  const ticks tic = getticks();
+
   struct space *s = e->s;
 
   /* Do the initial partition of the cells. */
@@ -3909,6 +3958,10 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   part_verify_links(s->parts, s->gparts, s->sparts, s->nr_parts, s->nr_gparts,
                     s->nr_sparts, e->verbose);
 #endif
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -4688,6 +4741,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_types();
+  multipole_create_mpi_types();
   stats_create_mpi_type();
   proxy_create_mpi_type();
   task_create_mpi_comms();
@@ -5082,6 +5136,8 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
  */
 void engine_recompute_displacement_constraint(struct engine *e) {
 
+  const ticks tic = getticks();
+
   /* Get the cosmological information */
   const struct cosmology *cosmo = e->cosmology;
   const float Om = cosmo->Omega_m;
@@ -5192,6 +5248,10 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
   if (e->verbose)
     message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**

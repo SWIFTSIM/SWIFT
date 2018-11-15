@@ -68,7 +68,7 @@ int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_subsize_pair_stars = space_subsize_pair_stars_default;
 int space_subsize_self_stars = space_subsize_self_stars_default;
-int space_subdepth_grav = space_subdepth_grav_default;
+int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
 #ifdef SWIFT_DEBUG_CHECKS
 int last_cell_id;
@@ -505,6 +505,14 @@ void space_regrid(struct space *s, int verbose) {
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
+          c->mpi.hydro.recv_xv = NULL;
+          c->mpi.hydro.recv_rho = NULL;
+          c->mpi.hydro.recv_gradient = NULL;
+          c->mpi.hydro.send_xv = NULL;
+          c->mpi.hydro.send_rho = NULL;
+          c->mpi.hydro.send_gradient = NULL;
+          c->mpi.grav.recv = NULL;
+          c->mpi.grav.send = NULL;
 #endif  // WITH_MPI
           if (s->gravity) c->grav.multipole = &s->multipoles_top[cid];
 #ifdef SWIFT_DEBUG_CHECKS
@@ -3159,13 +3167,14 @@ void space_init(struct space *s, struct swift_params *params,
                                space_subsize_self_stars_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
-  space_subdepth_grav = parser_get_opt_param_int(
-      params, "Scheduler:cell_subdepth_grav", space_subdepth_grav_default);
+  space_subdepth_diff_grav =
+      parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
+                               space_subdepth_diff_grav_default);
 
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
             space_splitsize);
-    message("subdepth_grav set to %d", space_subdepth_grav);
+    message("subdepth_grav set to %d", space_subdepth_diff_grav);
     message("sub_size_pair_hydro set to %d, sub_size_self_hydro set to %d",
             space_subsize_pair_hydro, space_subsize_self_hydro);
     message("sub_size_pair_grav set to %d, sub_size_self_grav set to %d",
@@ -3727,6 +3736,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->cells_with_particles_top = NULL;
   s->local_cells_with_particles_top = NULL;
   s->grav_top_level = NULL;
+  s->nr_local_cells_with_tasks = 0;
+  s->nr_cells_with_particles = 0;
 #ifdef WITH_MPI
   s->parts_foreign = NULL;
   s->size_parts_foreign = 0;

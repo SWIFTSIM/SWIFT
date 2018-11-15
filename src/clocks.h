@@ -19,8 +19,13 @@
 #ifndef SWIFT_CLOCKS_H
 #define SWIFT_CLOCKS_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* System includes. */
 #include <sys/times.h>
-#include <time.h>
+
+/* Local includes */
 #include "cycle.h"
 
 /* Struct to record a time for the clocks functions. */
