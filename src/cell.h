@@ -428,9 +428,6 @@ struct cell {
     /*! Task propagating the multipole to the particles */
     struct task *down;
 
-    /*! Tasks for FOF */
-    struct task *fof_self, *fof_pair;
-    
     /*! Number of M-M tasks that are associated with this cell. */
     short int nr_mm_tasks;
 
@@ -826,6 +823,19 @@ cell_can_split_self_gravity_task(const struct cell *c) {
 
   /* Is the cell split ? */
   return c->split && c->depth < space_subdepth_grav;
+}
+
+/**
+ * @brief Can a self FOF task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  return c->split && c->grav.count > 400 && c->depth < 4;
 }
 
 /**
