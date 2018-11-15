@@ -931,24 +931,6 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Constructs the top-level tasks for the short-range gravity
- * interactions (master function).
- *
- * - Create the FFT task and the array of gravity ghosts.
- * - Call the mapper function to create the other tasks.
- *
- * @param e The #engine.
- */
-void engine_make_self_gravity_tasks(struct engine *e) {
-
-  struct space *s = e->s;
-
-  /* Create the multipole self and pair tasks. */
-  threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
-                 s->nr_cells, 1, 0, e);
-}
-
-/**
  * @brief Constructs the top-level tasks for the external gravity.
  *
  * @param e The #engine.
@@ -1897,8 +1879,17 @@ void engine_maketasks(struct engine *e) {
                    s->nr_cells, 1, 0, e);
   }
 
+  if (e->verbose)
+    message("Making stellar feedback tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
   /* Add the self gravity tasks. */
-  if (e->policy & engine_policy_self_gravity) engine_make_self_gravity_tasks(e);
+  if (e->policy & engine_policy_self_gravity) {
+    threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
+                   s->nr_cells, 1, 0, e);
+  }
 
   if (e->verbose)
     message("Making gravity tasks took %.3f %s.",
