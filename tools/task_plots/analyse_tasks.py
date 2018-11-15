@@ -137,7 +137,7 @@ full_step = data[0, :]
 
 #  Do we have an MPI file?
 full_step = data[0, :]
-if full_step.size == 13:
+if full_step.size == 17:
     print("# MPI mode")
     mpimode = True
     nranks = int(max(data[:, 0])) + 1
@@ -151,6 +151,7 @@ if full_step.size == 13:
     updates = int(full_step[7])
     g_updates = int(full_step[8])
     s_updates = int(full_step[9])
+    CPU_CLOCK = float(full_step[12]) / 1000.0
 else:
     print("# non MPI mode")
     nranks = 1
@@ -164,9 +165,9 @@ else:
     updates = int(full_step[6])
     g_updates = int(full_step[7])
     s_updates = int(full_step[8])
+    CPU_CLOCK = float(full_step[10]) / 1000.0
 
 #  Get the CPU clock to convert ticks into milliseconds.
-CPU_CLOCK = float(full_step[-1]) / 1000.0
 if args.verbose:
     print("# CPU frequency:", CPU_CLOCK * 1000.0)
 print("#   updates:", updates)
@@ -233,7 +234,7 @@ for rank in ranks:
         toc = int(data[line, toccol]) / CPU_CLOCK
         tasktype = int(data[line, taskcol])
         subtype = int(data[line, subtaskcol])
-        sid = int(data[line, -1])
+        sid = int(data[line, -5])
 
         tasks[thread].append([tic, toc, tasktype, subtype, sid])
 

@@ -1112,7 +1112,7 @@ int main(int argc, char *argv[]) {
           file_thread = fopen(dumpfile, "a");
 
           fprintf(file_thread,
-                  " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld\n", myrank,
+                  " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld 0 0 0 0\n", myrank,
                   e.tic_step, e.toc_step, e.updates, e.g_updates, e.s_updates,
                   cpufreq);
           int count = 0;
@@ -1138,7 +1138,8 @@ int main(int argc, char *argv[]) {
                       e.sched.tasks[l].flags, e.sched.tasks[l].sid,
                       e.runners[e.sched.tasks[l].rid].cpuid,
                       e.sched.tasks[l].perf_counts.local_DRAM_hits,
-                      e.sched.tasks[l].perf_counts.local_DRAM_miss);//Extended to output performance counters
+                      e.sched.tasks[l].perf_counts.local_DRAM_miss,
+                      e.sched.tasks[l].perf_counts.instructions_retired);//Extended to output performance counters
             }
             fflush(stdout);
             count++;
@@ -1156,7 +1157,7 @@ int main(int argc, char *argv[]) {
       FILE *file_thread;
       file_thread = fopen(dumpfile, "w");
       /* Add some information to help with the plots */
-      fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n",
+      fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld 0 0 0 0\n",
               -2, -1, -1, 1, e.tic_step, e.toc_step, e.updates, e.g_updates,
               e.s_updates, 0, cpufreq);
       for (int l = 0; l < e.sched.nr_tasks; l++) {
