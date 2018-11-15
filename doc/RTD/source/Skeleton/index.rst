@@ -1,4 +1,5 @@
 .. Code Skeleton
+   November 2018
    Mladen Ivkovic
 
 Code Skeleton
@@ -15,6 +16,7 @@ for some of the main routines of SWIFT.
    main
    engine
    interaction
+   particles
    misc
    glossary
    todo

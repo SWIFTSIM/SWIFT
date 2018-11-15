@@ -1,4 +1,5 @@
-.. error.h
+.. How to print messages; error.h
+   November 2018
    Mladen Ivkovic
 
 

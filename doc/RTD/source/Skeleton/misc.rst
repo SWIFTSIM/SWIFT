@@ -1,10 +1,11 @@
-.. Misc stuff that I don't know where else to pu
+.. Misc stuff that I don't know where else to put
+   November 2018
    Mladen Ivkovic
 
 
-.. _misc_glossary:
+.. _misc:
 
-Miscellaneous Stuff and Glossary
---------------------------------------
+Miscellaneous Stuff 
+-----------------------
 
 Here's a list of stuff that I didn't know where else to put, but seem to be important concepts.
