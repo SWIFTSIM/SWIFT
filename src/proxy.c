@@ -441,11 +441,17 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   tic2 = getticks();
 
   /* Wait for each pcell array to come in from the proxies. */
-  struct wait_and_unpack_mapper_data wait_and_unpack_data = {
-      s, num_proxies, reqs_in, proxies, with_gravity, lock_static_initializer};
-  threadpool_map(&s->e->threadpool, proxy_cells_wait_and_unpack_mapper,
-                 /*map_data=*/NULL, num_proxies, /*stride=*/0, /*chunk=*/0,
-                 &wait_and_unpack_data);
+  for (int k = 0; k < num_proxies; k++) {
+    int pid = MPI_UNDEFINED;
+    MPI_Status status;
+    if (MPI_Waitany(num_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
+        pid == MPI_UNDEFINED)
+      error("MPI_Waitany failed.");
+    // message( "cell data from proxy %i has arrived." , pid );
+    for (int count = 0, j = 0; j < proxies[pid].nr_cells_in; j++)
+      count += cell_unpack(&proxies[pid].pcells_in[count],
+                           proxies[pid].cells_in[j], s, with_gravity);
+  }
 
   if (s->e->verbose)
     message("Un-packing cells took %.3f %s.",
