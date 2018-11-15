@@ -868,13 +868,12 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
               const struct proxy *p = &e->proxies[proxy_id];
 
               /* Check whether the cell exists in the proxy */
-              int n = 0, err = 1;
+              int n = 0;
               for (; n < p->nr_cells_in; n++)
                 if (p->cells_in[n] == cj) {
-                  err = 0;
                   break;
                 }
-              if (err)
+              if (n == p->nr_cells_in)
                 error(
                     "Cell %d not found in the proxy but trying to construct "
                     "grav task!",
@@ -889,13 +888,12 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
               const struct proxy *p = &e->proxies[proxy_id];
 
               /* Check whether the cell exists in the proxy */
-              int n = 0, err = 1;
+              int n = 0;
               for (; n < p->nr_cells_in; n++)
                 if (p->cells_in[n] == ci) {
-                  err = 0;
                   break;
                 }
-              if (err)
+              if (n == p->nr_cells_in)
                 error(
                     "Cell %d not found in the proxy but trying to construct "
                     "grav task!",
