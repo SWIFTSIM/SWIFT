@@ -307,22 +307,22 @@ for rank in ranks:
                    instmax)
                  )
         print()
-        print("# All threads : ")
-        for key in sorted(all_tasktimes.keys()):
-            taskmin = min(all_tasktimes[key])
-            taskmax = max(all_tasktimes[key])
-            instmin = min(all_instructions[key])
-            instmax = max(all_instructions[key])
-            pctsum = sum(all_localphits[key])
-            print("{0:19s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.5f} {5:15d} {6:15d}".format(
-                   key,
-                   len(all_tasktimes[key]),
-                   taskmin,
-                   taskmax,
-                   pctsum / len(all_tasktimes[key]),
-                   instmin,
-                   instmax)
-                 )
+    print("# All threads : ")
+    for key in sorted(all_tasktimes.keys()):
+        taskmin = min(all_tasktimes[key])
+        taskmax = max(all_tasktimes[key])
+        instmin = min(all_instructions[key])
+        instmax = max(all_instructions[key])
+        pctsum = sum(all_localphits[key])
+        print("{0:19s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.5f} {5:15d} {6:15d}".format(
+               key,
+               len(all_tasktimes[key]),
+               taskmin,
+               taskmax,
+               pctsum / len(all_tasktimes[key]),
+               instmin,
+               instmax)
+             )
 
 
 
