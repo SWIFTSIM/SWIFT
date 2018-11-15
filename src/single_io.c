@@ -949,7 +949,7 @@ void write_output_single(struct engine* e, const char* baseName,
                                      Nstars_written);
 
           /* Select the fields to write */
-          stars_write_particles(sparts, list, &num_fields);
+          stars_write_particles(sparts_written, list, &num_fields);
         }
       } break;
 

@@ -1353,7 +1353,7 @@ static void runner_do_unskip_gravity(struct cell *c, struct engine *e) {
   if (!cell_is_active_gravity(c, e)) return;
 
   /* Recurse */
-  if (c->split && c->depth < space_subdepth_grav) {
+  if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav)) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];

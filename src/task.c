@@ -47,18 +47,41 @@
 #include "lock.h"
 
 /* Task type names. */
-const char *taskID_names[task_type_count] = {
-    "none",        "sort",           "self",
-    "pair",        "sub_self",       "sub_pair",
-    "init_grav",   "init_grav_out",  "ghost_in",
-    "ghost",       "ghost_out",      "extra_ghost",
-    "drift_part",  "drift_gpart",    "end_force",
-    "kick1",       "kick2",          "timestep",
-    "send",        "recv",           "grav_long_range",
-    "grav_mm",     "grav_down_in",   "grav_down",
-    "grav_mesh",   "cooling",        "star_formation",
-    "sourceterms", "logger",         "stars_ghost_in",
-    "stars_ghost", "stars_ghost_out", "fof_self", "fof_pair"};
+const char *taskID_names[task_type_count] = {"none",
+                                             "sort",
+                                             "self",
+                                             "pair",
+                                             "sub_self",
+                                             "sub_pair",
+                                             "init_grav",
+                                             "init_grav_out",
+                                             "ghost_in",
+                                             "ghost",
+                                             "ghost_out",
+                                             "extra_ghost",
+                                             "drift_part",
+                                             "drift_gpart",
+                                             "drift_gpart_out",
+                                             "end_force",
+                                             "kick1",
+                                             "kick2",
+                                             "timestep",
+                                             "send",
+                                             "recv",
+                                             "grav_long_range",
+                                             "grav_mm",
+                                             "grav_down_in",
+                                             "grav_down",
+                                             "grav_mesh",
+                                             "cooling",
+                                             "star_formation",
+                                             "sourceterms",
+                                             "logger",
+                                             "stars_ghost_in",
+                                             "stars_ghost",
+                                             "stars_ghost_out",
+                                             "fof_self",
+                                             "fof_pair"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
@@ -392,8 +415,10 @@ int task_lock(struct task *t) {
         char buff[MPI_MAX_ERROR_STRING];
         int len;
         MPI_Error_string(err, buff, &len);
-        error("Failed to test request on send/recv task (tag=%lld, %s).",
-              t->flags, buff);
+        error(
+            "Failed to test request on send/recv task (type=%s/%s tag=%lld, "
+            "%s).",
+            taskID_names[t->type], subtaskID_names[t->subtype], t->flags, buff);
       }
       return res;
 #else
