@@ -671,6 +671,68 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
 int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
                                  const struct engine *e, const struct space *s);
 
+/**
+ * @brief Compute the square of the minimal distance between any two points in
+ * two cells of the same size
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param periodic Are we using periodic BCs?
+ * @param dim The dimensions of the simulation volume
+ */
+__attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    const int periodic, const double dim[3]) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
+  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
+  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
+#endif
+
+  const double cix_min = ci->loc[0];
+  const double ciy_min = ci->loc[1];
+  const double ciz_min = ci->loc[2];
+  const double cjx_min = cj->loc[0];
+  const double cjy_min = cj->loc[1];
+  const double cjz_min = cj->loc[2];
+
+  const double cix_max = ci->loc[0] + ci->width[0];
+  const double ciy_max = ci->loc[1] + ci->width[1];
+  const double ciz_max = ci->loc[2] + ci->width[2];
+  const double cjx_max = cj->loc[0] + cj->width[0];
+  const double cjy_max = cj->loc[1] + cj->width[1];
+  const double cjz_max = cj->loc[2] + cj->width[2];
+
+  if (periodic) {
+
+    const double dx = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
+                           fabs(nearest(cix_min - cjx_max, dim[0])),
+                           fabs(nearest(cix_max - cjx_min, dim[0])),
+                           fabs(nearest(cix_max - cjx_max, dim[0])));
+
+    const double dy = min4(fabs(nearest(ciy_min - cjy_min, dim[1])),
+                           fabs(nearest(ciy_min - cjy_max, dim[1])),
+                           fabs(nearest(ciy_max - cjy_min, dim[1])),
+                           fabs(nearest(ciy_max - cjy_max, dim[1])));
+
+    const double dz = min4(fabs(nearest(ciz_min - cjz_min, dim[2])),
+                           fabs(nearest(ciz_min - cjz_max, dim[2])),
+                           fabs(nearest(ciz_max - cjz_min, dim[2])),
+                           fabs(nearest(ciz_max - cjz_max, dim[2])));
+
+    return dx * dx + dy * dy + dz * dz;
+
+  } else {
+
+    const double dx = min(fabs(cix_max - cjx_min), fabs(cix_min - cjx_max));
+    const double dy = min(fabs(ciy_max - cjy_min), fabs(ciy_min - cjy_max));
+    const double dz = min(fabs(ciz_max - cjz_min), fabs(ciz_min - cjz_max));
+
+    return dx * dx + dy * dy + dz * dz;
+  }
+}
+
 /* Inlined functions (for speed). */
 
 /**
