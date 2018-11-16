@@ -30,11 +30,14 @@
  * hydrogen number density and internal energy specified.
  *
  * @param p Particle data structure
+ * @param xp extra particle structure
+ * @param us unit system struct
  * @param cooling Cooling function data structure
  * @param cosmo Cosmology data structure
  * @param phys_const Physical constants data structure
- * @param nh Hydrogen number density (cgs units)
+ * @param nh_cgs Hydrogen number density (cgs units)
  * @param u Internal energy (cgs units)
+ * @param ti_current integertime to set cosmo quantities
  */
 void set_quantities(struct part *restrict p,
 		    struct xpart *restrict xp,

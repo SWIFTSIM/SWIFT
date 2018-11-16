@@ -22,15 +22,20 @@ for z in 0.1; do
         
       # set starting, ending redshift, how often to write to file
       a_begin=$(python -c "print 1.0/(1.0+$z)")
-      a_end=$(python -c "print min(1.0, $a_begin*1.001)")
+      a_end=$(python -c "print min(1.0, $a_begin*1.0001)")
       delta_a=$(python -c "print 1.0 + ($a_end/$a_begin - 1.0)/50.")
   
       # change hydrogen number density
-      nh=$(python -c "print 10.0**$nh_exp/(1.0+$z)**3")
+      if [ $solar == 0 ]; 
+      then
+        rho=$(python -c "print 10.0**$nh_exp/0.7*1.6726e-24")
+      else
+        rho=$(python -c "print 10.0**$nh_exp/0.752*1.6726e-24")
+      fi
       for pressure_index in 8; do
         pressure=$(python -c "print 6.68e-14")
         
-	python makeIC.py # $nh $pressure
+	python makeIC.py $rho $pressure
 	rm coolingBox_*hdf5
   
         # run cooling box

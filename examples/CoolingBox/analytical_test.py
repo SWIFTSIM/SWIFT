@@ -57,8 +57,8 @@ T_init = 1.0e7
 
 # Read the initial state of the gas
 f = h5.File(snap_filename,'r')
-rho = np.mean(f["/PartType0/Density"])
-pressure = np.mean(f["/PartType0/Pressure"])
+#rho = np.mean(f["/PartType0/Density"])
+#pressure = np.mean(f["/PartType0/Pressure"])
 
 # Read the units parameters from the snapshot
 units = f["InternalCodeUnits"]
@@ -79,14 +79,14 @@ u_snapshots_cgs = zeros(nsnap)
 u_part_snapshots_cgs = zeros((nsnap,npart))
 t_snapshots_cgs = zeros(nsnap)
 scale_factor = zeros(nsnap)
+rho = zeros(nsnap)
 for i in range(nsnap):
     snap = h5.File("coolingBox_%0.4d.hdf5"%i,'r')
     u_part_snapshots_cgs[i][:] = snap["/PartType0/InternalEnergy"][:]*(unit_length**2)/(unit_time**2)
     t_snapshots_cgs[i] = snap["/Header"].attrs["Time"] * unit_time
     scale_factor[i] = snap["/Header"].attrs["Scale-factor"]
+    rho[i] = np.mean(snap["/PartType0/Density"])*unit_mass/(unit_length**3)/(scale_factor[i]**3)
 
-print(rho, rho*unit_mass/(unit_length**3)/(scale_factor[0]**3))
-rho = rho*unit_mass/(unit_length**3)/(scale_factor[0]**3)
 
 # calculate analytic solution. Since cooling rate is constant,
 # temperature decrease in linear in time.
@@ -101,8 +101,7 @@ for line in file_in:
 
 tfinal = t_snapshots_cgs[nsnap-1]
 tfirst = t_snapshots_cgs[0]
-#nt = nsnap*10
-nt = 128
+nt = nsnap
 dt = (tfinal-tfirst)/nt
 
 t_sol = np.zeros(int(nt))
@@ -116,11 +115,12 @@ for j in range(int(nt-1)):
 	t_sol[j+1] = t_sol[j] + dt
 	Lambda_net = interpol_lambda(internal_energy,cooling_rate,u_sol[j])
 	if int(sys.argv[4]) == 1:
-		nH = 0.702*rho/m_p
+		nH = 0.702*rho[j]/m_p
 		ratefact = nH*0.702/m_p
 	else:
-		nH = 0.752*rho/m_p
+		nH = 0.752*rho[j]/m_p
 		ratefact = nH*0.752/m_p
+	print(rho[j],nH,ratefact,u,Lambda_net)
 	u_next = u - Lambda_net*ratefact*dt
 	print(u_next, u, ratefact, Lambda_net, dt, nH)
 	u_sol[j+1] = u_next

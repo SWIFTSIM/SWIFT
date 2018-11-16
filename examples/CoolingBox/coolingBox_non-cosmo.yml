@@ -31,6 +31,7 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./coolingBox.hdf5     # The file to read
+  periodic:   1
 
 # Dimensionless pre-factor for the time-step condition
 LambdaCooling:

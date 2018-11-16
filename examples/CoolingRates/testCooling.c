@@ -153,13 +153,11 @@ int main(int argc, char **argv) {
 
   // Calculate contributions from metals to cooling rate
   // open file
-  const char *output_filename = "cooling_output.dat";
-  FILE *output_file = fopen(output_filename, "w");
+  FILE *output_file = fopen("cooling_output.dat", "w");
   if (output_file == NULL) {
     printf("Error opening file!\n");
     exit(1);
   }
-  fprintf(output_file, "%.5e\n", cosmo.z);
 
   // set hydrogen number density
   if (log_10_nh == 100) {
@@ -186,16 +184,12 @@ int main(int argc, char **argv) {
     u = hydro_get_physical_internal_energy(&p, &xp, &cosmo) *
         cooling.internal_energy_scale;
     float cooling_du_dt;
-    double dLambdaNet_du;
 
     // calculate cooling rates
-    cooling_du_dt = eagle_cooling_rate(
-        log(u), &dLambdaNet_du, n_h_i, d_n_h, He_i, d_He, &p, &cooling, &cosmo, &internal_const,
-        abundance_ratio);
     temperature = eagle_convert_u_to_temp(log10(u), &du, n_h_i, He_i, d_n_h, d_He, &cooling, &cosmo);
-    //cooling_du_dt = eagle_print_metal_cooling_rate(
-    //    n_h_i, d_n_h, He_i, d_He, &p, &xp, &cooling, &cosmo, &internal_const,
-    //    abundance_ratio);
+    cooling_du_dt = eagle_print_metal_cooling_rate(
+        n_h_i, d_n_h, He_i, d_He, &p, &xp, &cooling, &cosmo, &internal_const,
+        abundance_ratio);
     fprintf(output_file, "%.5e %.5e\n", exp(M_LN10*temperature), cooling_du_dt);
   }
   fclose(output_file);
