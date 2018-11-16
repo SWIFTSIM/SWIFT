@@ -3648,7 +3648,7 @@ void cell_check_timesteps(struct cell *c) {
 #endif
 }
 
-void cell_check_spart_pos(const struct cell* c) {
+void cell_check_spart_pos(const struct cell* c, const struct spart *global_sparts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -3656,7 +3656,7 @@ void cell_check_spart_pos(const struct cell* c) {
   if (c->split) {
     for(int k = 0; k < 8; ++k)
       if (c->progeny[k] != NULL)
-	cell_check_spart_pos(c->progeny[k]);
+	cell_check_spart_pos(c->progeny[k], global_sparts);
   }
 
   struct spart *sparts = c->stars.parts;
@@ -3671,6 +3671,15 @@ void cell_check_spart_pos(const struct cell* c) {
 	(sp->x[1] >= c->loc[1] + c->width[1]) ||
 	(sp->x[2] >= c->loc[2] + c->width[2]))
       error("spart not in its cell!");
+
+    if(sp->time_bin != time_bin_not_created && sp->time_bin != time_bin_inhibited) {
+    
+      const struct gpart *gp = sp->gpart;
+      if(gp == NULL && sp->time_bin != time_bin_not_created) error("Unlinked spart!");
+      
+      if(&global_sparts[-gp->id_or_neg_offset] != sp)
+	error("Incorrectly linked spart!");
+    }
   }
     
 #else
@@ -3679,18 +3688,34 @@ void cell_check_spart_pos(const struct cell* c) {
 
 }
 
-void cell_recursively_shift_sparts(struct cell *c, struct cell *const target_cell, struct spart const* start,
-				   const int depth, struct spart *temp,
-				   const int direct_progeny){
-
+/**
+ * @brief Recursively update the pointer and counter for #spart after the addition of a new particle.
+ *
+ * @param c The cell we are working on.
+ * @param progeny_list The list of the progeny index at each level for the leaf-cell where the particle was added.
+ * @param main_branch Are we in a cell directly above the leaf where the new particle was added?
+ */
+void cell_recursively_shift_sparts(struct cell *c, const int progeny_list[space_cell_maxdepth],
+				   const int main_branch) {
+  
   if (c->split) {
-    for(int k = 0; k < 8; ++k) {
+
+    /* No need to recurse in progenies located before the insestion point */
+    const int first_progeny = main_branch ? progeny_list[c->depth] : 0;
+    
+    for(int k = first_progeny; k < 8; ++k) {
+
       if(c->progeny[k] != NULL)
-	cell_recursively_shift_sparts(c->progeny[k], target_cell, start, depth, temp, 0);
+	cell_recursively_shift_sparts(c->progeny[k], progeny_list,
+				      main_branch && (k == first_progeny));
     }
   }
 
-  if(c->stars.parts >= start)
+  /* When directly above the leaf with the new particle: increase the particle count */
+  /* When after the leaf with the new particle: shift by one position */
+  if(main_branch)
+    c->stars.count++;
+  else
     c->stars.parts++;
 }
 
@@ -3698,11 +3723,28 @@ void cell_add_spart(const struct engine *e, struct cell *const c) {
 
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
   
-  /* Get the top-level this leaf cell is in */
+  /* Progeny number at each level */
+  int progeny[space_cell_maxdepth] = {0};
+#ifdef SWIFT_DEBUG_CHECKS
+  for(int i = 0; i < space_cell_maxdepth; ++i)
+    progeny[i] = -1;
+#endif
+  
+  /* Get the top-level this leaf cell is in and compute the progeny indices at
+     each level */
   struct cell *top = c;
   while (top->parent != NULL) {
+    for(int k = 0; k < 8; ++k) {
+      if(top->parent->progeny[k] == top) {
+	progeny[(int)top->parent->depth] = k;
+      }
+    }
     top = top->parent;
   }
+  
+  message("top->cellID=%d", top->cellID);
+  message("depth=%d progenies=[%d %d %d %d %d %d %d %d]", c->depth,
+	  progeny[0], progeny[1], progeny[2], progeny[3], progeny[4], progeny[5], progeny[6], progeny[7]);
   
 #ifdef SWIFT_DEBUG_CHECKS
   if (top->depth != 0) error("Cell-linking issue");
@@ -3712,55 +3754,56 @@ void cell_add_spart(const struct engine *e, struct cell *const c) {
   if (top->stars.count == top->stars.count_total)
     error("We ran out of star particles!");
   
-  /* Copy the particles to get a free space */
+  /* Number of particles to shift in order to get a free space. */
   const int n_copy = &top->stars.parts[top->stars.count] - c->stars.parts;
 
+  message("top->count=%d c->count=%d n_copy=%d", top->stars.count, c->stars.count, n_copy);
+  
   if(n_copy > 0) {
+    
     struct spart *temp = NULL;
     if (posix_memalign((void**)&temp, spart_align,
 		       n_copy * sizeof(struct spart)) != 0)
       error("Impossible to allocate temp buffer");
-    
+
+    /* Shift all the spart ahead of the current empty position by 1 */
     memcpy(temp, c->stars.parts, n_copy * sizeof(struct spart));
     memcpy(c->stars.parts + 1, temp, n_copy * sizeof(struct spart));
     free(temp);
-    
-    message("count=%d n_copy=%d", c->stars.count, n_copy);
-  
-    /* Recursively shift all the stars to get a free spot at the start of the current cell*/
-    cell_recursively_shift_sparts(top, c, c->stars.parts, c->depth, &top->stars.parts[top->stars.count], 1);
+
+    /* Update the gpart->spart links (shift by 1) */
+    for(int i = 0; i < n_copy; ++i) {
+      if(c->stars.parts[i+1].gpart != NULL) {
+	c->stars.parts[i+1].gpart->id_or_neg_offset--;
+      } else {
+#ifdef SWIFT_DEBUG_CHECKS
+	// MATTHIEU
+	if(c->stars.parts[i+1].time_bin != time_bin_not_created)
+	  error("Incorrectly linked spart!");
+#endif
+      }
+    }    
   }
+
+  /* Recursively shift all the stars to get a free spot at the start of the current cell*/
+  cell_recursively_shift_sparts(top, progeny, /* main_branch=*/ 1);
     
-  /* Recursively shift back the pointers of the direct parents */
-  struct cell *up = c;
-  while (up->parent != NULL) {
-    up->stars.parts--;
-    up->stars.count++;
-    up = up->parent;
-  }
-  up->stars.parts--;
-  up->stars.count++;
-  
   /* We now have an empty spart as the first particle in that cell */
   struct spart *sp = &c->stars.parts[0];
-  //bzero(sp, sizeof(struct spart));
-  //message("sp->id=%lld sp->x=[%e %e %e]", sp->id, sp->x[0], sp->x[1], sp->x[2]);
-  //message("c->loc=[%e %e %e], c->width=[%e %e %e]", c->loc[0], c->loc[1], c->loc[2],
-  //c->width[0], c->width[1], c->width[2]);
+  bzero(sp, sizeof(struct spart));
   
   /* Give it a decent position */
   sp->x[0] = c->loc[0] + 0.5 * c->width[0];
   sp->x[1] = c->loc[1] + 0.5 * c->width[1];
   sp->x[2] = c->loc[2] + 0.5 * c->width[2];
-
-  //message("sp->id=%lld sp->x=[%e %e %e]", sp->id, sp->x[0], sp->x[1], sp->x[2]);
+  sp->time_bin = time_bin_not_created;
   
 #ifdef SWIFT_DEBUG_CHECKS
   sp->ti_drift = e->ti_current;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  cell_check_spart_pos(top);
+  cell_check_spart_pos(top, e->s->sparts);
 #endif
 }
 
