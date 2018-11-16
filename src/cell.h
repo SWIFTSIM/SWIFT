@@ -672,7 +672,7 @@ int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
                                  const struct engine *e, const struct space *s);
 
 /**
- * @brief Compute the sqaure of the minimal distance between any two points in
+ * @brief Compute the square of the minimal distance between any two points in
  * two cells of the same size
  *
  * @param ci The first #cell.
