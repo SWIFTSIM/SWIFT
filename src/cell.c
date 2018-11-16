@@ -3801,6 +3801,8 @@ struct spart *cell_add_spart(const struct engine *e, struct cell *const c) {
   sp->ti_drift = e->ti_current;
 #endif
 
+  e->s->nr_extra_sparts--;
+
   return sp;
 }
 
