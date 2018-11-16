@@ -3664,12 +3664,12 @@ void cell_check_spart_pos(const struct cell* c, const struct spart *global_spart
   for (int i = 0; i < count; ++i) {
 
     const struct spart *sp = &sparts[i];
-    if( (sp->x[0] < c->loc[0]) ||
-	(sp->x[1] < c->loc[1]) ||
-	(sp->x[2] < c->loc[2]) ||
-	(sp->x[0] >= c->loc[0] + c->width[0]) ||
-	(sp->x[1] >= c->loc[1] + c->width[1]) ||
-	(sp->x[2] >= c->loc[2] + c->width[2]))
+    if( (sp->x[0] < c->loc[0] / space_stretch) ||
+	(sp->x[1] < c->loc[1]/ space_stretch) ||
+	(sp->x[2] < c->loc[2]/ space_stretch) ||
+	(sp->x[0] >= (c->loc[0] + c->width[0])* space_stretch) ||
+	(sp->x[1] >= (c->loc[1] + c->width[1])* space_stretch) ||
+	(sp->x[2] >= (c->loc[2] + c->width[2]) * space_stretch))
       error("spart not in its cell!");
 
     if(sp->time_bin != time_bin_not_created && sp->time_bin != time_bin_inhibited) {
@@ -3697,11 +3697,10 @@ void cell_check_spart_pos(const struct cell* c, const struct spart *global_spart
  */
 void cell_recursively_shift_sparts(struct cell *c, const int progeny_list[space_cell_maxdepth],
 				   const int main_branch) {
-  
   if (c->split) {
 
     /* No need to recurse in progenies located before the insestion point */
-    const int first_progeny = main_branch ? progeny_list[c->depth] : 0;
+    const int first_progeny = main_branch ? progeny_list[(int)c->depth] : 0;
     
     for(int k = first_progeny; k < 8; ++k) {
 
