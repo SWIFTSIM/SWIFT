@@ -304,7 +304,7 @@ if full_step.size == 13:
     print("# MPI mode")
     mpimode = True
     if ranks == None:
-        ranks = list(range(int(max(data[:,0])) + 1))
+        ranks = list(range(int(max(data[:, 0])) + 1))
     print(("# Number of ranks:", len(ranks)))
     rankcol = 0
     threadscol = 1
@@ -328,7 +328,7 @@ CPU_CLOCK = float(full_step[-1]) / 1000.0
 if args.verbose:
     print(("# CPU frequency:", CPU_CLOCK * 1000.0))
 
-nthread = int(max(data[:,threadscol])) + 1
+nthread = int(max(data[:, threadscol])) + 1
 print(("# Number of threads:", nthread))
 
 # Avoid start and end times of zero.
@@ -367,7 +367,7 @@ for rank in ranks:
     tic_step = int(full_step[ticcol])
     toc_step = int(full_step[toccol])
     print(("# Min tic = ", tic_step))
-    data = data[1:,:]
+    data = data[1:, :]
     typesseen = []
     nethread = 0
 
@@ -495,7 +495,7 @@ for rank in ranks:
     if expand == 1:
         ax.set_ylabel("Thread ID")
     else:
-        ax.set_ylabel("Thread ID * " + str(expand) )
+        ax.set_ylabel("Thread ID * " + str(expand))
     ax.set_yticks(pl.array(list(range(nethread))), True)
 
     loc = plticker.MultipleLocator(base=expand)
