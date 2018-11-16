@@ -3725,12 +3725,12 @@ void cell_recursively_shift_sparts(struct cell *c,
     c->stars.parts++;
 }
 
-void cell_add_spart(const struct engine *e, struct cell *const c) {
+struct spart *cell_add_spart(const struct engine *e, struct cell *const c) {
 
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
 
   /* Progeny number at each level */
-  int progeny[space_cell_maxdepth] = {0};
+  int progeny[space_cell_maxdepth];
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < space_cell_maxdepth; ++i) progeny[i] = -1;
 #endif
@@ -3747,15 +3747,6 @@ void cell_add_spart(const struct engine *e, struct cell *const c) {
     top = top->parent;
   }
 
-  message("top->cellID=%d", top->cellID);
-  message("depth=%d progenies=[%d %d %d %d %d %d %d %d]", c->depth, progeny[0],
-          progeny[1], progeny[2], progeny[3], progeny[4], progeny[5],
-          progeny[6], progeny[7]);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (top->depth != 0) error("Cell-linking issue");
-#endif
-
   /* Are there any extra particles left? */
   if (top->stars.count == top->stars.count_total)
     error("We ran out of star particles!");
@@ -3763,10 +3754,10 @@ void cell_add_spart(const struct engine *e, struct cell *const c) {
   /* Number of particles to shift in order to get a free space. */
   const int n_copy = &top->stars.parts[top->stars.count] - c->stars.parts;
 
-  message("top->count=%d c->count=%d n_copy=%d", top->stars.count,
-          c->stars.count, n_copy);
-
   if (n_copy > 0) {
+
+    // MATTHIEU: This can be improved. We don't need to copy everything, just
+    // need to swap a few particles.
 
     struct spart *temp = NULL;
     if (posix_memalign((void **)&temp, spart_align,
@@ -3784,9 +3775,7 @@ void cell_add_spart(const struct engine *e, struct cell *const c) {
         c->stars.parts[i + 1].gpart->id_or_neg_offset--;
       } else {
 #ifdef SWIFT_DEBUG_CHECKS
-        // MATTHIEU
-        if (c->stars.parts[i + 1].time_bin != time_bin_not_created)
-          error("Incorrectly linked spart!");
+        error("Incorrectly linked spart!");
 #endif
       }
     }
@@ -3804,15 +3793,15 @@ void cell_add_spart(const struct engine *e, struct cell *const c) {
   sp->x[0] = c->loc[0] + 0.5 * c->width[0];
   sp->x[1] = c->loc[1] + 0.5 * c->width[1];
   sp->x[2] = c->loc[2] + 0.5 * c->width[2];
-  sp->time_bin = time_bin_not_created;
+
+  /* Set it to the current time-bin */
+  sp->time_bin = e->min_active_bin;
 
 #ifdef SWIFT_DEBUG_CHECKS
   sp->ti_drift = e->ti_current;
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS
-  cell_check_spart_pos(top, e->s->sparts);
-#endif
+  return sp;
 }
 
 /**

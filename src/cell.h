@@ -664,8 +664,10 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
 void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
+void cell_check_spart_pos(const struct cell *c,
+                          const struct spart *global_sparts);
 int cell_has_tasks(struct cell *c);
-void cell_add_spart(const struct engine *e, struct cell *c);
+struct spart *cell_add_spart(const struct engine *e, struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
 void cell_remove_gpart(const struct engine *e, struct cell *c,
