@@ -489,6 +489,12 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       double shift[3];
       const int sid = space_getsid(s->space, &ci, &cj, shift);
 
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sid != t->flags)
+        error("Got pair task with incorrect flags: sid=%d flags=%lld", sid,
+              t->flags);
+#endif
+
       /* Should this task be split-up? */
       if (cell_can_split_pair_hydro_task(ci) &&
           cell_can_split_pair_hydro_task(cj)) {
