@@ -94,7 +94,8 @@ const char* timers_names[timer_count] = {"none",
                                          "dosubpair_stars_density",
                                          "dosub_self_stars_density",
                                          "logger",
-                                         "do_stars_sort"};
+                                         "do_stars_sort",
+};
 
 /* File to store the timers */
 static FILE* timers_file;

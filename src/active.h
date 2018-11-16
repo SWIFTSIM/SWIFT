@@ -85,6 +85,8 @@ __attribute__((always_inline)) INLINE static int cell_are_gpart_drifted(
 __attribute__((always_inline)) INLINE static int cell_are_spart_drifted(
     const struct cell *c, const struct engine *e) {
 
+  /* Currently just use the gpart drift
+   * This function is just for clarity */
   return cell_are_gpart_drifted(c, e);
 }
 
