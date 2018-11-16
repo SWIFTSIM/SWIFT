@@ -2503,6 +2503,7 @@ void *runner_main(void *data) {
       DRAM_hits.exclude_hv = 1;
       DRAM_miss.exclude_hv = 1;
       ins_ret.exclude_hv = 1;
+      printf("%i %i\n", r->id, r->cpuid);
       r->local_DRAM_hits_handle = swift_perf_event_open(&DRAM_hits,0,r->cpuid,-1,0);
       r->local_DRAM_miss_handle = swift_perf_event_open(&DRAM_miss,0,r->cpuid,-1,0);
       r->instructions_retired_handle = swift_perf_event_open(&ins_ret,0,r->cpuid,-1,0);
@@ -2539,7 +2540,7 @@ void *runner_main(void *data) {
 
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
-      t->rid = r->cpuid;
+      t->rid = r->id;
       /* And recover the pair direction */
       if (t->type == task_type_pair || t->type == task_type_sub_pair) {
         struct cell *ci_temp = ci;
