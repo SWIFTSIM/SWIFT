@@ -273,7 +273,7 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
   int result = 0;
 
   for (int i = 0; i < count; i++)
-    result += compare_particles(serial_parts[i], vec_parts[i], threshold);
+    result += compare_particles(&serial_parts[i], &vec_parts[i], threshold);
 
   return result;
 }

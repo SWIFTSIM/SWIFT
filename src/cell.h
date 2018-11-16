@@ -850,20 +850,23 @@ __attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
 }
 
 /**
- * @brief Add a unique tag to a cell mostly for MPI communications.
+ * @brief Add a unique tag to a cell, mostly for MPI communications.
+ *
+ * This function locks the cell so that tags can be added concurrently.
  *
  * @param c The #cell to tag.
  */
-__attribute__((always_inline)) INLINE static void cell_tag(struct cell *c) {
+__attribute__((always_inline)) INLINE static void cell_ensure_tagged(
+    struct cell *c) {
 #ifdef WITH_MPI
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (c->mpi.tag > 0) error("setting tag for already tagged cell");
-#endif
-
+  lock_lock(&c->hydro.lock);
   if (c->mpi.tag < 0 &&
       (c->mpi.tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
     error("Ran out of cell tags.");
+  if (lock_unlock(&c->hydro.lock) != 0) {
+    error("Failed to unlock cell.");
+  }
 #else
   error("SWIFT was not compiled with MPI enabled.");
 #endif  // WITH_MPI

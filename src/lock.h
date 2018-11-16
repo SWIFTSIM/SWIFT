@@ -34,6 +34,7 @@
 #define lock_trylock(l) (pthread_spin_lock(l) != 0)
 #define lock_unlock(l) (pthread_spin_unlock(l) != 0)
 #define lock_unlock_blind(l) pthread_spin_unlock(l)
+#define lock_static_initializer ((pthread_spinlock_t)0)
 
 #elif defined(PTHREAD_LOCK)
 #include <pthread.h>
@@ -44,6 +45,7 @@
 #define lock_trylock(l) (pthread_mutex_trylock(l) != 0)
 #define lock_unlock(l) (pthread_mutex_unlock(l) != 0)
 #define lock_unlock_blind(l) pthread_mutex_unlock(l)
+#define lock_static_initializer PTHREAD_MUTEX_INITIALIZER
 
 #else
 #define swift_lock_type volatile int
@@ -52,12 +54,12 @@
 INLINE static int lock_lock(volatile int *l) {
   while (atomic_cas(l, 0, 1) != 0)
     ;
-  // while( *l );
   return 0;
 }
 #define lock_trylock(l) ((*(l)) ? 1 : atomic_cas(l, 0, 1))
 #define lock_unlock(l) (atomic_cas(l, 1, 0) != 1)
 #define lock_unlock_blind(l) atomic_cas(l, 1, 0)
+#define lock_static_initializer 0
 #endif
 
 #endif /* SWIFT_LOCK_H */

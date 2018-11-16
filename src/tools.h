@@ -54,7 +54,7 @@ void gravity_n2(struct gpart *gparts, const int gcount,
                 const struct gravity_props *gravity_properties, float rlr);
 int compare_values(double a, double b, double threshold, double *absDiff,
                    double *absSum, double *relDiff);
-int compare_particles(struct part a, struct part b, double threshold);
+int compare_particles(struct part *a, struct part *b, double threshold);
 
 long get_maxrss(void);
 

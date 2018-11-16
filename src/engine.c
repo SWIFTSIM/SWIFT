@@ -2116,7 +2116,7 @@ void engine_prepare(struct engine *e) {
   /* Unskip active tasks and check for rebuild */
   if (!e->forcerebuild && !e->forcerepart && !e->restarting) engine_unskip(e);
 
-  const ticks tic2 = getticks();
+  const ticks tic3 = getticks();
 
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, &e->forcerebuild, 1, MPI_INT, MPI_MAX,
@@ -2125,7 +2125,7 @@ void engine_prepare(struct engine *e) {
 
   if (e->verbose)
     message("Communicating rebuild flag took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+            clocks_from_ticks(getticks() - tic3), clocks_getunit());
 
   /* Do we need repartitioning ? */
   if (e->forcerepart) {
