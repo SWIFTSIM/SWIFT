@@ -263,6 +263,12 @@ for rank in ranks:
     all_tasktimes={}
     all_localphits={}
     all_instructions={}
+    numa0_tasktimes={}
+    numa0_localphits={}
+    numa0_instructions={}
+    numa1_tasktimes={}
+    numa1_localphits={}
+    numa1_instructions={}
     for i in threadids:
         tasktimes = {}
         localphits = {}
@@ -289,6 +295,22 @@ for rank in ranks:
             all_tasktimes[key].append(dt)
             all_localphits[key].append(phits)
             all_instructions[key].append(instruct)
+            if task[4] < 16:
+                if not key in numa0_tasktimes:
+                    numa0_tasktimes[key]=[]
+                    numa0_localphits[key]=[]
+                    numa0_instructions[key]=[]
+                numa0_tasktimes[key].append(dt)
+                numa0_localphits[key].append(phits)
+                numa0_instructions[key].append(instruct)
+            else: 
+                if not key in numa1_tasktimes:
+                    numa1_tasktimes[key]=[]
+                    numa1_localphits[key]=[]
+                    numa1_instructions[key]=[]
+                numa1_tasktimes[key].append(dt)
+                numa1_localphits[key].append(phits)
+                numa1_instructions[key].append(instruct)
 
         print("# Thread : ", i, " CPU: ", tasks[i][0][4])
         for key in sorted(tasktimes.keys()):
@@ -307,6 +329,41 @@ for rank in ranks:
                    instmax)
                  )
         print()
+    print("# NUMA node 0 : ")
+    for key in sorted(numa0_tasktimes.keys()):
+        taskmin = min(numa0_tasktimes[key])
+        taskmax = max(numa0_tasktimes[key])
+        instmin = min(numa0_instructions[key])
+        instmax = max(numa0_instructions[key])
+        pctsum = sum(numa0_localphits[key])
+        print("{0:19s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.5f} {5:15d} {6:15d}".format(
+               key,
+               len(numa0_tasktimes[key]),
+               taskmin,
+               taskmax,
+               pctsum / len(numa0_tasktimes[key]),
+               instmin,
+               instmax)
+             )
+    print()
+    print("# NUMA node 1 : ")
+    for key in sorted(numa1_tasktimes.keys()):
+        taskmin = min(numa1_tasktimes[key])
+        taskmax = max(numa1_tasktimes[key])
+        instmin = min(numa1_instructions[key])
+        instmax = max(numa1_instructions[key])
+        pctsum = sum(numa1_localphits[key])
+        print("{0:19s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.5f} {5:15d} {6:15d}".format(
+               key,
+               len(numa1_tasktimes[key]),
+               taskmin,
+               taskmax,
+               pctsum / len(numa1_tasktimes[key]),
+               instmin,
+               instmax)
+             )
+    print()
+
     print("# All threads : ")
     for key in sorted(all_tasktimes.keys()):
         taskmin = min(all_tasktimes[key])

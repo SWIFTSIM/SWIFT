@@ -43,6 +43,12 @@
 /* Local headers. */
 #include "swift.h"
 
+#ifdef HAVE_LIBNUMA
+#include <numa.h>
+#include <numaif.h>
+#endif
+
+
 /* Engine policy flags. */
 #ifndef ENGINE_POLICY
 #define ENGINE_POLICY engine_policy_none
@@ -1183,6 +1189,47 @@ int main(int argc, char *argv[]) {
         }
       }
       fclose(file_thread);
+      if(getpagesize() % sizeof(struct part) == 0){
+      //Search through each cell and DUMP the NUMA nodes that cell is located on. Non-optimised code.
+      snprintf(dumpfile, sizeof(dumpfile), "page_info-step%d.dat", j+1);
+      file_thread = fopen(dumpfile, "w");
+      //TODO This is hacky subfunction, should move this later. Only looks at hydro parts right now.
+      void map_cell_pages( struct cell *ce, void *datas){
+          void** data = (void**)datas;
+          FILE *file_threads = (((FILE**) data)[0]);
+          struct engine *eng = (((struct engine**) data)[1]);
+          /* Find page span of the part structures */
+          const unsigned long long int page_size = getpagesize();
+          const unsigned long long int cell_size = ce->hydro.count*sizeof(struct part);
+          long long int nr_pages = ( cell_size / page_size);
+          if( cell_size % page_size != 0LL ) nr_pages++;
+
+          void **pages = malloc(sizeof(void*) * nr_pages);
+
+          struct part *start_part = &ce->hydro.parts[0];
+          char *start_page = (char*)(((unsigned long long) start_part & ~(page_size-1ULL)));
+          for(long long int z = 0; z < nr_pages; z++){
+              pages[z] = (void*) (start_page+z*page_size);
+          }
+          int status[nr_pages];
+          numa_move_pages(0, (unsigned long)nr_pages, pages, NULL, status, MPOL_MF_MOVE);
+          int nodes[2]; nodes[0] = 0; nodes[1] = 0;
+          for(int i = 0; i < nr_pages; i++){
+              if(status[i] >= 0) nodes[status[i]] = 1;
+              else printf("Failed to get page\n");
+          }
+          fprintf(file_threads,"%li %i %i\n", ce - eng->s->cells_top, nodes[0], nodes[1]);
+          free(pages);
+      }
+      void **temp = malloc(sizeof(void*)*2);
+      temp[0] = (void*)file_thread;
+      temp[1] = (void*)&e;
+      space_map_cells_pre(e.s, 1, &map_cell_pages, (void*)temp);
+      free(temp);
+      fclose(file_thread);
+      }else{
+        printf("Not logging pages as sizeof part structure does not fit into page size cleanly\n");
+      }
 #endif  // WITH_MPI
     }
 #endif  // SWIFT_DEBUG_TASKS
