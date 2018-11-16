@@ -132,6 +132,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
   /* Get internal energy at the end of the next kick step (assuming dt does not increase) */
   double u_0 = (u_start + hydro_du_dt * dt_therm);
+  // for unit test
   u_0 = u_start;
   
   /* Check for minimal energy */
@@ -147,9 +148,9 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   abundance_ratio_to_solar(p, cooling, abundance_ratio);
 
   /* Get the H and He mass fractions */
-  const float XH = p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
-  const float HeFrac = p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_He] /
-    (XH + p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_He]);
+  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+  const float HeFrac = p->chemistry_data.metal_mass_fraction[chemistry_element_He] /
+    (XH + p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
 
   /* convert Hydrogen mass fraction in Hydrogen number density */
   const double n_h = hydro_get_physical_density(p, cosmo) * XH / phys_const->const_proton_mass
@@ -213,13 +214,12 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
         			       abundance_ratio, dt_cgs);
       if (log_u_final_cgs == -100) {
         message("particle %llu failed to converge with bisection method, assuming no cooling.", p->id);
-	log_u_final_cgs = log(u_0_cgs);
+        log_u_final_cgs = log(u_0_cgs);
       }
     }
 
     u_final_cgs = exp(log_u_final_cgs);
   }
-  if (p->id == 1) message("id %llu u_final %.5e u_0 %.5e ratefact %.5e Lambda %.5e dt %.5e rho %.5e nh %.5e rho internal comoving %.5e", p->id, u_final_cgs, u_0_cgs, ratefact, LambdaNet, dt_cgs, hydro_get_physical_density(p, cosmo)*units_cgs_conversion_factor(us,UNIT_CONV_DENSITY), n_h, p->rho);
   
   /* Expected change in energy over the next kick step (assuming no change in dt) */
   const double delta_u_cgs = u_final_cgs - u_start_cgs;
@@ -241,8 +241,9 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
    * that could potentially be for a time-step twice as big. We hence check
    * for 2.5 delta_u but this time against 0 energy not the minimum. 
    * To avoid numerical rounding bringing us below 0., we add a tiny tolerance. */
-  if (u_start + 2.5 * delta_u < 0.) 
+  if (u_start + 2.5 * delta_u < 0.) {
     delta_u = -u_start / (2.5 + rounding_tolerance);
+  }
 
   /* Turn this into a rate of change */
   const float cooling_du_dt = delta_u / dt_therm ;
@@ -264,16 +265,18 @@ __attribute__((always_inline)) INLINE double
 eagle_helium_reionization_extraheat(
     double z, double dz, const struct cooling_function_data *restrict cooling) {
 
-  //double he_reion_erg_pG = cooling->he_reion_ev_pH / cooling->proton_mass_cgs;
-  //double extra_heating = he_reion_erg_pG *
-  //                 (erf((z - dz - cooling->he_reion_z_center) /
-  //                      (M_SQRT2 * cooling->he_reion_z_sigma)) -
-  //                  erf((z - cooling->he_reion_z_center) /
-  //                      (M_SQRT2 * cooling->he_reion_z_sigma))) /
-  //                 2.0;
+  double he_reion_erg_pG = cooling->he_reion_ev_pH / cooling->proton_mass_cgs;
+  double extra_heating = he_reion_erg_pG *
+                   (erf((z - dz - cooling->he_reion_z_center) /
+                        (M_SQRT2 * cooling->he_reion_z_sigma)) -
+                    erf((z - cooling->he_reion_z_center) /
+                        (M_SQRT2 * cooling->he_reion_z_sigma))) /
+                   2.0;
 
-  //return extra_heating;
-  return 0.0;
+  return extra_heating;
+
+  // for unit test 
+  //return 0.0;
 }
 
 /*
@@ -320,7 +323,7 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
   double solar_electron_abundance;  
   
   /* convert Hydrogen mass fraction in Hydrogen number density */
-  const float XH = p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
+  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
   const double n_h = hydro_get_physical_density(p, cosmo) * XH / phys_const->const_proton_mass
                  *cooling->number_density_scale;
 
@@ -677,10 +680,10 @@ __attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
     if (elem == chemistry_element_Fe) {
       /* NOTE: solar abundances have iron last with calcium and sulphur directly
        * before, hence +2 */
-      ratio_solar[elem] = p->chemistry_data.smoothed_metal_mass_fraction[elem] /
+      ratio_solar[elem] = p->chemistry_data.metal_mass_fraction[elem] /
                           cooling->SolarAbundances[elem + 2];
     } else {
-      ratio_solar[elem] = p->chemistry_data.smoothed_metal_mass_fraction[elem] /
+      ratio_solar[elem] = p->chemistry_data.metal_mass_fraction[elem] /
                           cooling->SolarAbundances[elem];
     }
   }
@@ -688,11 +691,11 @@ __attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
   /* assign ratios for Ca and S, note positions of these elements occur before
    * Fe */
   ratio_solar[chemistry_element_count] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_Si] *
+      p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
       cooling->sulphur_over_silicon_ratio /
       cooling->SolarAbundances[chemistry_element_count - 1];
   ratio_solar[chemistry_element_count + 1] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_Si] *
+      p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
       cooling->calcium_over_silicon_ratio /
       cooling->SolarAbundances[chemistry_element_count];
 }
@@ -738,7 +741,7 @@ __attribute__((always_inline)) INLINE float newton_iter(
       (cooling->Therm[0] + 0.05) / M_LOG10E;
   
   /* convert Hydrogen mass fraction in Hydrogen number density */
-  const float XH = p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
+  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
   const double n_h = hydro_get_physical_density(p, cosmo) * XH / phys_const->const_proton_mass
                  *cooling->number_density_scale;
 
@@ -820,15 +823,29 @@ __attribute__((always_inline)) INLINE float bisection_iter(
   int i = 0;
   double u_init = exp(logu_init);
 
+  FILE *output_file = fopen("bisection_output.dat","w");
+  FILE *bracketing = fopen("bracketing_output.dat","w");
+  FILE *bisection_function = fopen("bisection_function.dat","w");
+
   /* convert Hydrogen mass fraction in Hydrogen number density */
-  const float XH = p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
+  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
   const double n_h = hydro_get_physical_density(p, cosmo) * XH / phys_const->const_proton_mass
                  *cooling->number_density_scale;
-
+  
   /* compute ratefact = n_h * n_h / rho; Might lead to round-off error:
    * replaced by equivalent expression  below */
   const double ratefact = n_h * (XH / cooling->proton_mass_cgs);
 
+  // Debugging
+  for(int j = 0; j < cooling->N_Temp; j++) {
+    float u_print = exp(M_LN10*cooling->Therm[j]);
+    LambdaNet = (He_reion_heat / (dt * ratefact)) +
+                eagle_cooling_rate(log(u_print), dLambdaNet_du, n_h_i, d_n_h,
+                                   He_i, d_He, p, cooling, cosmo, phys_const,
+                                   abundance_ratio);
+    fprintf(bisection_function, "%.5e %.5e\n", u_print, u_print - u_ini - LambdaNet * ratefact * dt);
+  }
+  fclose(bisection_function);
   /* Bracketing */
   u_lower = u_init;
   u_upper = u_init;
@@ -842,6 +859,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
     /* we're cooling */
     u_lower /= bracket_factor;
     u_upper *= bracket_factor;
+    
 
     LambdaNet = (He_reion_heat / (dt * ratefact)) +
                 eagle_cooling_rate(log(u_lower), dLambdaNet_du, n_h_i, d_n_h,
@@ -854,6 +872,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
                   eagle_cooling_rate(log(u_lower), dLambdaNet_du, n_h_i, d_n_h,
                                      He_i, d_He, p, cooling, cosmo, phys_const,
                                      abundance_ratio);
+      fprintf(bracketing, "%.5e %.5e %.5e %.5e\n", u_lower, u_upper, LambdaNet, u_lower - u_ini - LambdaNet * ratefact * dt);
       i++;
     }
     if (i >= bisection_max_iterations) {
@@ -876,6 +895,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
                   eagle_cooling_rate(log(u_upper), dLambdaNet_du, n_h_i, d_n_h,
                                      He_i, d_He, p, cooling, cosmo, phys_const,
                                      abundance_ratio);
+      fprintf(bracketing, "%.5e %.5e %.5e %.5e\n", u_lower, u_upper, LambdaNet, u_upper - u_ini - LambdaNet * ratefact * dt);
       i++;
     }
     if (i >= bisection_max_iterations) {
@@ -883,6 +903,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
       return -100;
     }
   }
+  fclose(bracketing);
 
   /* bisection iteration */
   i = 0;
@@ -897,6 +918,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
     } else {
       u_lower = u_next;
     }
+    fprintf(output_file,"%.5e\n", u_next);
 
     i++;
   } while (fabs(u_upper - u_lower) / u_next > bisection_tolerance &&
@@ -906,6 +928,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
     return -100;
     message("Particle id %llu failed to converge", p->id); // WARNING: Do we want this to throw an error? In EAGLE calculation continued.
   }
+  fclose(output_file);
 
   return log(u_upper);
 }
@@ -1032,6 +1055,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
   const double compton_coefficient_cgs =
       compton_coefficient *
       units_general_cgs_conversion_factor(us, dimension_coefficient);
+
 #ifdef SWIFT_DEBUG_CHECKS
   const double expected_compton_coefficient_cgs = 1.0178085e-37;
   if (fabs(compton_coefficient_cgs - expected_compton_coefficient_cgs) / 
@@ -1064,10 +1088,16 @@ void cooling_init_backend(struct swift_params *parameter_file,
 void cooling_restore_tables(struct cooling_function_data* cooling,
                             const struct cosmology* cosmo){
 
+  /* Read redshifts */
   get_cooling_redshifts(cooling);
+
+  /* Read cooling header */
   char fname[eagle_table_path_name_length + 12];
   sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
   read_cooling_header(fname, cooling);
+
+  /* Read relevant cooling tables.
+   * Third variable in cooling_update flag to mark restart*/
   allocate_cooling_tables(cooling);
   cooling_update(cosmo, cooling, 1);
 }
