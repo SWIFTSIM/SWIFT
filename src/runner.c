@@ -933,7 +933,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
       if (c->progeny[k] != NULL && c->progeny[k]->stars.count > 0) {
         /* Only propagate cleanup if the progeny is stale. */
         runner_do_stars_sort(r, c->progeny[k], flags,
-                             cleanup && (c->progeny[k]->stars.dx_max_sort >
+                             cleanup && (c->progeny[k]->stars.dx_max_sort_old >
                                          space_maxreldx * c->progeny[k]->dmin),
                              0);
         dx_max_sort = max(dx_max_sort, c->progeny[k]->stars.dx_max_sort);
