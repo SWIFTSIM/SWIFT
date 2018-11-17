@@ -2131,7 +2131,7 @@ void engine_prepare(struct engine *e) {
   if (e->forcerepart) {
 
     /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e);
+    engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
 
     /* And repartition */
@@ -2143,7 +2143,7 @@ void engine_prepare(struct engine *e) {
   if (e->forcerebuild) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!e->restarting && !drifted_all) engine_drift_all(e);
+    if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
 
     /* And rebuild */
     engine_rebuild(e, repartitioned, 0);
@@ -2924,7 +2924,7 @@ void engine_step(struct engine *e) {
   e->step_props = engine_step_prop_none;
 
   /* When restarting, move everyone to the current time. */
-  if (e->restarting) engine_drift_all(e);
+  if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
 
   /* Get the physical value of the time and time-step size */
   if (e->policy & engine_policy_cosmology) {
@@ -2963,7 +2963,7 @@ void engine_step(struct engine *e) {
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
-    engine_drift_all(e);
+    engine_drift_all(e, /*drift_mpole=*/1);
 
   /* Are we reconstructing the multipoles or drifting them ?*/
   if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild) {
@@ -3107,7 +3107,7 @@ void engine_check_for_dumps(struct engine *e) {
         }
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump everything */
         engine_print_stats(e);
@@ -3131,7 +3131,7 @@ void engine_check_for_dumps(struct engine *e) {
         }
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump stats */
         engine_print_stats(e);
@@ -3143,7 +3143,7 @@ void engine_check_for_dumps(struct engine *e) {
           e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump snapshot */
 #ifdef WITH_LOGGER
@@ -3166,7 +3166,7 @@ void engine_check_for_dumps(struct engine *e) {
         }
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump snapshot */
 #ifdef WITH_LOGGER
@@ -3183,7 +3183,7 @@ void engine_check_for_dumps(struct engine *e) {
           e->time = e->ti_next_stats * e->time_base + e->time_begin;
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump stats */
         engine_print_stats(e);
@@ -3206,7 +3206,7 @@ void engine_check_for_dumps(struct engine *e) {
       }
 
       /* Drift everyone */
-      engine_drift_all(e);
+      engine_drift_all(e, /*drift_mpole=*/0);
 
       /* Dump... */
 #ifdef WITH_LOGGER
@@ -3232,7 +3232,7 @@ void engine_check_for_dumps(struct engine *e) {
       }
 
       /* Drift everyone */
-      engine_drift_all(e);
+      engine_drift_all(e, /*drift_mpole=*/0);
 
       /* Dump */
       engine_print_stats(e);
@@ -3329,7 +3329,7 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       restart_remove_previous(e->restart_file);
 
       /* Drift all particles first (may have just been done). */
-      if (!drifted_all) engine_drift_all(e);
+      if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
       restart_write(e, e->restart_file);
 
       if (e->verbose)
@@ -3504,7 +3504,7 @@ void engine_do_drift_all_gpart_mapper(void *map_data, int num_elements,
  * @param extra_data Pointer to an #engine.
  */
 void engine_do_drift_all_multipole_mapper(void *map_data, int num_elements,
-					  void *extra_data) {
+                                          void *extra_data) {
 
   const struct engine *e = (const struct engine *)extra_data;
   const int restarting = e->restarting;
@@ -3545,8 +3545,9 @@ void engine_do_drift_all_multipole_mapper(void *map_data, int num_elements,
  * forward to the current time.
  *
  * @param e The #engine.
+ * @param drift_mpoles Do we want to drift all the multipoles as well?
  */
-void engine_drift_all(struct engine *e) {
+void engine_drift_all(struct engine *e, const int drift_mpoles) {
 
   const ticks tic = getticks();
 
@@ -3575,7 +3576,7 @@ void engine_drift_all(struct engine *e) {
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
                      /* default chunk */ 0, e);
     }
-    if (e->policy & engine_policy_self_gravity) {
+    if (drift_mpoles && (e->policy & engine_policy_self_gravity)) {
       threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
                      e->s->local_cells_with_tasks_top,
                      e->s->nr_local_cells_with_tasks, sizeof(int),
@@ -3609,8 +3610,9 @@ void engine_drift_all(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time. */
-  space_check_drift_point(e->s, e->ti_current,
-                          e->policy & engine_policy_self_gravity);
+  space_check_drift_point(
+      e->s, e->ti_current,
+      drift_mpoles && (e->policy & engine_policy_self_gravity));
   part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
                     e->s->nr_gparts, e->s->nr_sparts, e->verbose);
 #endif
