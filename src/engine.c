@@ -3401,15 +3401,110 @@ void engine_unskip(struct engine *e) {
 }
 
 /**
- * @brief Mapper function to drift *all* particle types and multipoles forward
- * in time.
+ * @brief Mapper function to drift *all* the #part to the current time.
  *
  * @param map_data An array of #cell%s.
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an #engine.
  */
-void engine_do_drift_all_mapper(void *map_data, int num_elements,
-                                void *extra_data) {
+void engine_do_drift_all_part_mapper(void *map_data, int num_elements,
+                                     void *extra_data) {
+
+  const struct engine *e = (const struct engine *)extra_data;
+  const int restarting = e->restarting;
+  struct space *s = e->s;
+  struct cell *cells_top;
+  int *local_cells_top;
+
+  if (restarting) {
+
+    /* When restarting, we loop over all top-level cells */
+    cells_top = (struct cell *)map_data;
+    local_cells_top = NULL;
+
+  } else {
+
+    /* In any other case, we use the list of local cells with tasks */
+    cells_top = s->cells_top;
+    local_cells_top = (int *)map_data;
+  }
+
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    struct cell *c;
+
+    /* When restarting, the list of local cells does not
+       yet exist. We use the raw list of top-level cells instead */
+    if (restarting)
+      c = &cells_top[ind];
+    else
+      c = &cells_top[local_cells_top[ind]];
+
+    if (c->nodeID == e->nodeID) {
+
+      /* Drift all the particles */
+      cell_drift_part(c, e, /* force the drift=*/1);
+    }
+  }
+}
+
+/**
+ * @brief Mapper function to drift *all* the #gpart to the current time.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+void engine_do_drift_all_gpart_mapper(void *map_data, int num_elements,
+                                      void *extra_data) {
+
+  const struct engine *e = (const struct engine *)extra_data;
+  const int restarting = e->restarting;
+  struct space *s = e->s;
+  struct cell *cells_top;
+  int *local_cells_top;
+
+  if (restarting) {
+
+    /* When restarting, we loop over all top-level cells */
+    cells_top = (struct cell *)map_data;
+    local_cells_top = NULL;
+
+  } else {
+
+    /* In any other case, we use the list of local cells with tasks */
+    cells_top = s->cells_top;
+    local_cells_top = (int *)map_data;
+  }
+
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    struct cell *c;
+
+    /* When restarting, the list of local cells does not
+       yet exist. We use the raw list of top-level cells instead */
+    if (restarting)
+      c = &cells_top[ind];
+    else
+      c = &cells_top[local_cells_top[ind]];
+
+    if (c->nodeID == e->nodeID) {
+
+      /* Drift all the particles */
+      cell_drift_gpart(c, e, /* force the drift=*/1);
+    }
+  }
+}
+
+/**
+ * @brief Mapper function to drift *all* the multipoles to the current time.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+void engine_do_drift_all_multipole_mapper(void *map_data, int num_elements,
+					  void *extra_data) {
 
   const struct engine *e = (const struct engine *)extra_data;
   const int restarting = e->restarting;
@@ -3425,7 +3520,7 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
 
   } else {
 
-    /* In any other case, we use th list of local cells with tasks */
+    /* In any other case, we use the list of local cells with tasks */
     cells_top = s->cells_top;
     local_cells_with_tasks_top = (int *)map_data;
   }
@@ -3434,26 +3529,14 @@ void engine_do_drift_all_mapper(void *map_data, int num_elements,
 
     struct cell *c;
 
-    /* When restarting, the list of local cells with tasks does not
+    /* When restarting, the list of local cells does not
        yet exist. We use the raw list of top-level cells instead */
     if (restarting)
       c = &cells_top[ind];
     else
       c = &cells_top[local_cells_with_tasks_top[ind]];
 
-    if (c->nodeID == e->nodeID) {
-
-      /* Drift all the particles */
-      cell_drift_part(c, e, 1);
-
-      /* Drift all the g-particles */
-      cell_drift_gpart(c, e, 1);
-    }
-
-    /* Drift the multipoles */
-    if (e->policy & engine_policy_self_gravity) {
-      cell_drift_all_multipoles(c, e);
-    }
+    cell_drift_all_multipoles(c, e);
   }
 }
 
@@ -3481,15 +3564,44 @@ void engine_drift_all(struct engine *e) {
   if (!e->restarting) {
 
     /* Normal case: We have a list of local cells with tasks to play with */
-    threadpool_map(&e->threadpool, engine_do_drift_all_mapper,
-                   e->s->local_cells_with_tasks_top,
-                   e->s->nr_local_cells_with_tasks, sizeof(int), 0, e);
+
+    if (e->s->nr_parts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_part_mapper,
+                     e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
+                     /* default chunk */ 0, e);
+    }
+    if (e->s->nr_gparts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
+                     e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
+                     /* default chunk */ 0, e);
+    }
+    if (e->policy & engine_policy_self_gravity) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
+                     e->s->local_cells_with_tasks_top,
+                     e->s->nr_local_cells_with_tasks, sizeof(int),
+                     /* default chunk */ 0, e);
+    }
+
   } else {
 
     /* When restarting, the list of local cells with tasks does not yet
        exist. We use the raw list of top-level cells instead */
-    threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
-                   e->s->nr_cells, sizeof(struct cell), 0, e);
+
+    if (e->s->nr_parts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_part_mapper,
+                     e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
+                     /* default chunk */ 0, e);
+    }
+    if (e->s->nr_gparts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
+                     e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
+                     /* default chunk */ 0, e);
+    }
+    if (e->policy & engine_policy_self_gravity) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
+                     e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
+                     /* default chunk */ 0, e);
+    }
   }
 
   /* Synchronize particle positions */
