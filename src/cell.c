@@ -3774,13 +3774,12 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
     /* Update the gpart->spart links (shift by 1) */
     for (int i = 0; i < n_copy; ++i) {
-      if (c->stars.parts[i + 1].gpart != NULL) {
-        c->stars.parts[i + 1].gpart->id_or_neg_offset--;
-      } else {
 #ifdef SWIFT_DEBUG_CHECKS
+      if (c->stars.parts[i + 1].gpart == NULL) {
         error("Incorrectly linked spart!");
-#endif
       }
+#endif
+      c->stars.parts[i + 1].gpart->id_or_neg_offset--;
     }
   }
 

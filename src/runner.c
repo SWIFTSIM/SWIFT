@@ -529,8 +529,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           /* Create a fresh (empty) spart */
           struct spart *sp = cell_add_spart(e, c);
 
-	  /* Did we run out of free spart slots? */
-	  if (sp == NULL) continue;
+          /* Did we run out of free spart slots? */
+          if (sp == NULL) continue;
 
           /* Destroy the gas particle and get it's gpart friend */
           struct gpart *gp = cell_convert_part_to_gpart(e, c, p, xp);
