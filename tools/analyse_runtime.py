@@ -93,7 +93,7 @@ labels = [
     "engine_split:",
     "space_init",
     "engine_init",
-    "engine_repartition_trigger"
+    "engine_repartition_trigger:"
 ]
 is_rebuild = [
     1,
