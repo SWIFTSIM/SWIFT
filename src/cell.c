@@ -3725,7 +3725,7 @@ void cell_recursively_shift_sparts(struct cell *c,
     c->stars.parts++;
 }
 
-struct spart *cell_add_spart(const struct engine *e, struct cell *const c) {
+struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
 
@@ -3748,8 +3748,11 @@ struct spart *cell_add_spart(const struct engine *e, struct cell *const c) {
   }
 
   /* Are there any extra particles left? */
-  if (top->stars.count == top->stars.count_total)
-    error("We ran out of star particles!");
+  if (top->stars.count == top->stars.count_total) {
+    message("We ran out of star particles!");
+    atomic_inc(&e->forcerebuild);
+    return NULL;
+  }
 
   /* Number of particles to shift in order to get a free space. */
   const int n_copy = &top->stars.parts[top->stars.count] - c->stars.parts;
@@ -3798,10 +3801,12 @@ struct spart *cell_add_spart(const struct engine *e, struct cell *const c) {
   sp->time_bin = e->min_active_bin;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Specify it was drifted to this point */
   sp->ti_drift = e->ti_current;
 #endif
 
-  e->s->nr_extra_sparts--;
+  /* Register that we used one of the free slots. */
+  atomic_dec(&e->s->nr_extra_sparts);
 
   return sp;
 }

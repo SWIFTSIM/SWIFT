@@ -492,7 +492,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
-  const struct engine *e = r->e;
+  struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -526,11 +526,14 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           message("c->cellID=%d Removing particle id=%lld rho=%e", c->cellID,
                   p->id, rho);
 
-          /* Destroy the gas particle and get it's gpart friend */
-          struct gpart *gp = cell_convert_part_to_gpart(e, c, p, xp);
-
           /* Create a fresh (empty) spart */
           struct spart *sp = cell_add_spart(e, c);
+
+	  /* Did we run out of free spart slots? */
+	  if (sp == NULL) continue;
+
+          /* Destroy the gas particle and get it's gpart friend */
+          struct gpart *gp = cell_convert_part_to_gpart(e, c, p, xp);
 
           /* Assign the ID back */
           sp->id = gp->id_or_neg_offset;
@@ -564,13 +567,6 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         }
       }
     }
-  }
-
-  if (c->super == c) {
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Check that everything went OK */
-    cell_check_spart_pos(c, e->s->sparts);
-#endif
   }
 
   if (timer) TIMER_TOC(timer_do_star_formation);
