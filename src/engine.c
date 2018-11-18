@@ -980,8 +980,7 @@ void engine_repartition(struct engine *e) {
   fflush(stdout);
 
   /* Check that all cells have been drifted to the current time */
-  space_check_drift_point(e->s, e->ti_current,
-                          e->policy & engine_policy_self_gravity);
+  space_check_drift_point(e->s, e->ti_current, /*check_multipoles=*/0);
 #endif
 
   /* Clear the repartition flag. */
