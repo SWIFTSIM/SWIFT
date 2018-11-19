@@ -3259,7 +3259,7 @@ void engine_check_for_dumps(struct engine *e) {
         }
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
       }
 
       velociraptor_init(e);
