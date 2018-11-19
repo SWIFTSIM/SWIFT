@@ -82,7 +82,7 @@ enum logger_masks {
   logger_mask_rho = (1 << 5),
   logger_mask_consts = (1 << 6),
   logger_mask_timestamp = (1 << 7), /* Need to be the last */
-};
+} __attribute__((packed));
 
 /* Size of the strings. */
 #define logger_string_length 200
