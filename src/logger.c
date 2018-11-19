@@ -398,15 +398,10 @@ void logger_ensure_size(struct logger *log, size_t total_nr_parts,
 /**
  * @brief Generate a list of the mask size.
  *
- * This function requires a call to free on the pointer.
- *
  * @param log The #logger.
+ * @param output (output) the mask sizes (length = number of masks)
  */
-int *logger_get_list_mask_size(const struct logger *log) {
-  int *output = malloc(sizeof(int) * log->number_masks);
-  if (output == NULL)
-    error("Unable to allocate memory");
-
+void logger_get_list_mask_size(const struct logger *log, int *output) {
   /* Position */
   output[0] = 3 * sizeof(double);
   /* Velocity */
@@ -424,74 +419,58 @@ int *logger_get_list_mask_size(const struct logger *log) {
   /* Time stamp */
   output[7] = sizeof(integertime_t) + sizeof(double);
 
-  return output;
 }
 
 /**
  * @brief Generate a list of the mask names.
  *
- * This function requires a call to free on the pointer.
- *
  * @param log The #logger.
+ * @param output (output) the mask name (length = number of masks * logger_label_size)
  */
-char *logger_get_list_mask_name(const struct logger *log) {
-  size_t block_size = logger_label_size * log->number_masks;
-  char *output = malloc(block_size);
-  if (output == NULL)
-    error("Unable to allocate memory");
-
-  char *cur_name = output;
-
+void logger_get_list_mask_name(const struct logger *log, char *output) {
   /* set the mask names */
   char tmp[logger_label_size];
   strcpy(tmp, "position");
-  memcpy(cur_name, &tmp, logger_label_size);
-  cur_name += logger_label_size;
+  memcpy(output, &tmp, logger_label_size);
+  output += logger_label_size;
 
   strcpy(tmp, "velocity");
-  memcpy(cur_name, &tmp, logger_label_size);
-  cur_name += logger_label_size;
+  memcpy(output, &tmp, logger_label_size);
+  output += logger_label_size;
 
   strcpy(tmp, "acceleration");
-  memcpy(cur_name, &tmp, logger_label_size);
-  cur_name += logger_label_size;
+  memcpy(output, &tmp, logger_label_size);
+  output += logger_label_size;
 
   strcpy(tmp, "entropy");
-  memcpy(cur_name, &tmp, logger_label_size);
-  cur_name += logger_label_size;
+  memcpy(output, &tmp, logger_label_size);
+  output += logger_label_size;
 
   strcpy(tmp, "cutoff radius");
-  memcpy(cur_name, &tmp, logger_label_size);
-  cur_name += logger_label_size;
+  memcpy(output, &tmp, logger_label_size);
+  output += logger_label_size;
 
   strcpy(tmp, "density");
-  memcpy(cur_name, &tmp, logger_label_size);
-  cur_name += logger_label_size;
+  memcpy(output, &tmp, logger_label_size);
+  output += logger_label_size;
 
   strcpy(tmp, "consts");
-  memcpy(cur_name, &tmp, logger_label_size);
-  cur_name += logger_label_size;
+  memcpy(output, &tmp, logger_label_size);
+  output += logger_label_size;
 
   strcpy(tmp, "timestamp");
-  memcpy(cur_name, &tmp, logger_label_size);
-  cur_name += logger_label_size;
-
-  return output;
+  memcpy(output, &tmp, logger_label_size);
+  output += logger_label_size;
 }
 
 
 /**
  * @brief Generate a list of the masks.
  *
- * This function requires a call to free on the pointer.
- *
  * @param log The #logger.
+ * @param output (output) the masks (length = number of masks)
  */
-int *logger_get_list_mask(const struct logger *log) {
-  int *output = malloc(sizeof(int) * log->number_masks);
-  if (output == NULL)
-    error("Unable to allocate memory");
-
+void logger_get_list_mask(const struct logger *log, int *output) {
   /* Position */
   output[0] = logger_mask_x;
   /* Velocity */
@@ -508,8 +487,6 @@ int *logger_get_list_mask(const struct logger *log) {
   output[6] = logger_mask_consts;
   /* Time stamp */
   output[7] = logger_mask_timestamp;
-
-  return output;
 }
 
 /**
@@ -519,7 +496,10 @@ int *logger_get_list_mask(const struct logger *log) {
  */
 int logger_compute_max_chunk_size(const struct logger *log) {
 
-  int *output = logger_get_list_mask_size(log);
+  int *output = malloc(sizeof(int) * log->number_masks);
+  if (output == NULL)
+    error("Unable to allocate memory");
+  logger_get_list_mask_size(log, output);
 
   int max_size = logger_offset_size + logger_mask_size;
   /* Loop over all fields except timestamp */
@@ -616,10 +596,26 @@ void logger_write_file_header(struct logger *log, const struct engine *e) {
   logger_write_data(dump, &file_offset, logger_number_size,
                     &log->number_masks);
 
-  /* Get masks informations */
-  int *mask_sizes = logger_get_list_mask_size(log);
-  int *masks = logger_get_list_mask(log);
-  char *mask_names = logger_get_list_mask_name(log);
+  /* Get masks sizes */
+  int *mask_sizes = malloc(sizeof(int) * log->number_masks);
+  if (mask_sizes == NULL)
+    error("Unable to allocate memory for mask sizes");
+
+  logger_get_list_mask_size(log, mask_sizes);
+
+  /* Get masks */
+  int *masks = malloc(sizeof(int) * log->number_masks);
+  if (masks == NULL)
+    error("Unable to allocate memory for masks");
+  
+  logger_get_list_mask(log, masks);
+
+  /* Get masks names */
+  char *mask_names = malloc(logger_label_size * log->number_masks);
+  if (mask_names == NULL)
+    error("Unable to allocate memory");
+
+  logger_get_list_mask_name(log, mask_names);
   
   /* write masks */
   // loop over all mask type
