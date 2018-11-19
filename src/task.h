@@ -202,6 +202,7 @@ float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);
 void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
+void task_dump_all(struct engine *e, int step);
 #ifdef WITH_MPI
 void task_create_mpi_comms(void);
 #endif
