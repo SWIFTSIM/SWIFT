@@ -980,8 +980,7 @@ void engine_repartition(struct engine *e) {
   fflush(stdout);
 
   /* Check that all cells have been drifted to the current time */
-  space_check_drift_point(e->s, e->ti_current,
-                          e->policy & engine_policy_self_gravity);
+  space_check_drift_point(e->s, e->ti_current, /*check_multipoles=*/0);
 #endif
 
   /* Clear the repartition flag. */
@@ -2131,7 +2130,7 @@ void engine_prepare(struct engine *e) {
   if (e->forcerepart) {
 
     /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e);
+    engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
 
     /* And repartition */
@@ -2143,7 +2142,7 @@ void engine_prepare(struct engine *e) {
   if (e->forcerebuild) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!e->restarting && !drifted_all) engine_drift_all(e);
+    if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
 
     /* And rebuild */
     engine_rebuild(e, repartitioned, 0);
@@ -2924,7 +2923,7 @@ void engine_step(struct engine *e) {
   e->step_props = engine_step_prop_none;
 
   /* When restarting, move everyone to the current time. */
-  if (e->restarting) engine_drift_all(e);
+  if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
 
   /* Get the physical value of the time and time-step size */
   if (e->policy & engine_policy_cosmology) {
@@ -2963,7 +2962,7 @@ void engine_step(struct engine *e) {
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
-    engine_drift_all(e);
+    engine_drift_all(e, /*drift_mpole=*/1);
 
   /* Are we reconstructing the multipoles or drifting them ?*/
   if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild) {
@@ -3107,7 +3106,7 @@ void engine_check_for_dumps(struct engine *e) {
         }
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump everything */
         engine_print_stats(e);
@@ -3131,7 +3130,7 @@ void engine_check_for_dumps(struct engine *e) {
         }
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump stats */
         engine_print_stats(e);
@@ -3143,7 +3142,7 @@ void engine_check_for_dumps(struct engine *e) {
           e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump snapshot */
 #ifdef WITH_LOGGER
@@ -3166,7 +3165,7 @@ void engine_check_for_dumps(struct engine *e) {
         }
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump snapshot */
 #ifdef WITH_LOGGER
@@ -3183,7 +3182,7 @@ void engine_check_for_dumps(struct engine *e) {
           e->time = e->ti_next_stats * e->time_base + e->time_begin;
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump stats */
         engine_print_stats(e);
@@ -3206,7 +3205,7 @@ void engine_check_for_dumps(struct engine *e) {
       }
 
       /* Drift everyone */
-      engine_drift_all(e);
+      engine_drift_all(e, /*drift_mpole=*/0);
 
       /* Dump... */
 #ifdef WITH_LOGGER
@@ -3232,7 +3231,7 @@ void engine_check_for_dumps(struct engine *e) {
       }
 
       /* Drift everyone */
-      engine_drift_all(e);
+      engine_drift_all(e, /*drift_mpole=*/0);
 
       /* Dump */
       engine_print_stats(e);
@@ -3329,7 +3328,7 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       restart_remove_previous(e->restart_file);
 
       /* Drift all particles first (may have just been done). */
-      if (!drifted_all) engine_drift_all(e);
+      if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
       restart_write(e, e->restart_file);
 
       if (e->verbose)
@@ -3394,160 +3393,6 @@ void engine_unskip(struct engine *e) {
 #ifdef WITH_PROFILER
   ProfilerStop();
 #endif  // WITH_PROFILER
-
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-}
-
-/**
- * @brief Mapper function to drift *all* particle types and multipoles forward
- * in time.
- *
- * @param map_data An array of #cell%s.
- * @param num_elements Chunk size.
- * @param extra_data Pointer to an #engine.
- */
-void engine_do_drift_all_mapper(void *map_data, int num_elements,
-                                void *extra_data) {
-
-  const struct engine *e = (const struct engine *)extra_data;
-  const int restarting = e->restarting;
-  struct space *s = e->s;
-  struct cell *cells_top;
-  int *local_cells_with_tasks_top;
-
-  if (restarting) {
-
-    /* When restarting, we loop over all top-level cells */
-    cells_top = (struct cell *)map_data;
-    local_cells_with_tasks_top = NULL;
-
-  } else {
-
-    /* In any other case, we use th list of local cells with tasks */
-    cells_top = s->cells_top;
-    local_cells_with_tasks_top = (int *)map_data;
-  }
-
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    struct cell *c;
-
-    /* When restarting, the list of local cells with tasks does not
-       yet exist. We use the raw list of top-level cells instead */
-    if (restarting)
-      c = &cells_top[ind];
-    else
-      c = &cells_top[local_cells_with_tasks_top[ind]];
-
-    if (c->nodeID == e->nodeID) {
-
-      /* Drift all the particles */
-      cell_drift_part(c, e, 1);
-
-      /* Drift all the g-particles */
-      cell_drift_gpart(c, e, 1);
-    }
-
-    /* Drift the multipoles */
-    if (e->policy & engine_policy_self_gravity) {
-      cell_drift_all_multipoles(c, e);
-    }
-  }
-}
-
-/**
- * @brief Drift *all* particles and multipoles at all levels
- * forward to the current time.
- *
- * @param e The #engine.
- */
-void engine_drift_all(struct engine *e) {
-
-  const ticks tic = getticks();
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (e->nodeID == 0) {
-    if (e->policy & engine_policy_cosmology)
-      message("Drifting all to a=%e",
-              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
-    else
-      message("Drifting all to t=%e",
-              e->ti_current * e->time_base + e->time_begin);
-  }
-#endif
-
-  if (!e->restarting) {
-
-    /* Normal case: We have a list of local cells with tasks to play with */
-    threadpool_map(&e->threadpool, engine_do_drift_all_mapper,
-                   e->s->local_cells_with_tasks_top,
-                   e->s->nr_local_cells_with_tasks, sizeof(int), 0, e);
-  } else {
-
-    /* When restarting, the list of local cells with tasks does not yet
-       exist. We use the raw list of top-level cells instead */
-    threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
-                   e->s->nr_cells, sizeof(struct cell), 0, e);
-  }
-
-  /* Synchronize particle positions */
-  space_synchronize_particle_positions(e->s);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all cells have been drifted to the current time. */
-  space_check_drift_point(e->s, e->ti_current,
-                          e->policy & engine_policy_self_gravity);
-  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
-                    e->s->nr_gparts, e->s->nr_sparts, e->verbose);
-#endif
-
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-}
-
-/**
- * @brief Mapper function to drift *all* top-level multipoles forward in
- * time.
- *
- * @param map_data An array of #cell%s.
- * @param num_elements Chunk size.
- * @param extra_data Pointer to an #engine.
- */
-void engine_do_drift_top_multipoles_mapper(void *map_data, int num_elements,
-                                           void *extra_data) {
-
-  struct engine *e = (struct engine *)extra_data;
-  struct cell *cells = (struct cell *)map_data;
-
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &cells[ind];
-    if (c != NULL) {
-
-      /* Drift the multipole at this level only */
-      if (c->grav.ti_old_multipole != e->ti_current) cell_drift_multipole(c, e);
-    }
-  }
-}
-
-/**
- * @brief Drift *all* top-level multipoles forward to the current time.
- *
- * @param e The #engine.
- */
-void engine_drift_top_multipoles(struct engine *e) {
-
-  const ticks tic = getticks();
-
-  threadpool_map(&e->threadpool, engine_do_drift_top_multipoles_mapper,
-                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 0, e);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all cells have been drifted to the current time. */
-  space_check_top_multipoles_drift_point(e->s, e->ti_current);
-#endif
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
