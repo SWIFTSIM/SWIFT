@@ -460,6 +460,30 @@ struct cell {
     /*! Values of dx_max before the drifts, used for sub-cell tasks. */
     float dx_max_part_old;
 
+    /*! Maximum particle movement in this cell since the last sort. */
+    float dx_max_sort;
+
+    /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
+    float dx_max_sort_old;
+
+    /*! Bit mask of sort directions that will be needed in the next timestep. */
+    unsigned int requires_sorts;
+
+    /*! Pointer for the sorted indices. */
+    struct entry *sort[13];
+
+    /*! Bit-mask indicating the sorted directions */
+    unsigned int sorted;
+
+    /*! Bit mask of sorts that need to be computed for this cell. */
+    unsigned int do_sort;
+
+    /*! Do any of this cell's sub-cells need to be sorted? */
+    char do_sub_sort;
+
+    /*! Maximum end of (integer) time step in this cell for gravity tasks. */
+    integertime_t ti_end_min;
+
     /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
     struct task *ghost_in;
 
@@ -468,6 +492,9 @@ struct cell {
 
     /*! The star ghost task itself */
     struct task *ghost;
+
+    /*! The task computing this cell's sorts. */
+    struct task *sorts;
 
     /*! Linked list of the tasks computing this cell's star density. */
     struct link *density;
@@ -483,6 +510,11 @@ struct cell {
 
     /*! Spin lock for various uses (#spart case). */
     swift_lock_type lock;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /*! Last (integer) time the cell's sort arrays were updated. */
+    integertime_t ti_sort;
+#endif
 
   } stars;
 
@@ -652,7 +684,9 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_drift_part(struct cell *c, struct scheduler *s);
 void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
-void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s);
+void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
+void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
+void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 int cell_has_tasks(struct cell *c);

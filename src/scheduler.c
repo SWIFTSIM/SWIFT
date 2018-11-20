@@ -408,7 +408,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     /* Reset the redo flag. */
     redo = 0;
 
-    /* Non-splittable task? */
+    /* Empty task? */
     if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL) ||
         t->ci->hydro.count == 0 || (t->cj != NULL && t->cj->hydro.count == 0)) {
       t->type = task_type_none;
@@ -889,7 +889,7 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
     /* Reset the redo flag. */
     redo = 0;
 
-    /* Non-splittable task? */
+    /* Empty task? */
     if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL) ||
         t->ci->stars.count == 0 || (t->cj != NULL && t->cj->stars.count == 0)) {
       t->type = task_type_none;
@@ -1841,6 +1841,11 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                (sizeof(int) * 8 - intrinsics_clz(t->ci->hydro.count));
         break;
 
+      case task_type_stars_sort:
+        cost = wscale * intrinsics_popcount(t->flags) * scount_i *
+               (sizeof(int) * 8 - intrinsics_clz(t->ci->stars.count));
+        break;
+
       case task_type_self:
         if (t->subtype == task_subtype_grav)
           cost = 1.f * (wscale * gcount_i) * gcount_i;
@@ -2130,6 +2135,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_kick2:
       case task_type_stars_ghost:
       case task_type_logger:
+      case task_type_stars_sort:
       case task_type_timestep:
         qid = t->ci->super->owner;
         break;

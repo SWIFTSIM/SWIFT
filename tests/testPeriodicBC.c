@@ -505,8 +505,8 @@ int main(int argc, char *argv[]) {
 
         runner_do_drift_part(&runner, cells[i * (dim * dim) + j * dim + k], 0);
 
-        runner_do_sort(&runner, cells[i * (dim * dim) + j * dim + k], 0x1FFF, 0,
-                       0);
+        runner_do_hydro_sort(&runner, cells[i * (dim * dim) + j * dim + k],
+                             0x1FFF, 0, 0);
       }
     }
   }

@@ -98,6 +98,7 @@ enum {
   timer_dosub_subset_pair_stars_density,
   timer_dosub_subset_self_stars_density,
   timer_logger,
+  timer_do_stars_sort,
   timer_count,
 };
 
