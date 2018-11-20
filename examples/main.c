@@ -1202,14 +1202,14 @@ int main(int argc, char *argv[]) {
           struct engine *eng = (((struct engine**) data)[1]);
           /* Find page span of the part structures */
           const uintptr_t page_size = getpagesize();
-          const uintptr_t cell_size = ce->hydro.count*sizeof(struct part);
-          uintptr_t nr_pages = ( cell_size / page_size);
-          if( cell_size % page_size != 0) nr_pages++;
-
+          struct part *start_part = ce->hydro.parts;
+          struct part *end_part = &ce->hydro.parts[ce->hydro.count];
+          uint8_t *start_page = (uint8_t*)(((uintptr_t)start_part) & ~(page_size-1));
+          uint8_t *last_page = (uint8_t*)(((uintptr_t)end_part) & ~(page_size-1));
+          uintptr_t nr_pages = (uintptr_t)(last_page - start_page)/page_size;
+          if(last_page == start_page) nr_pages = 1;
           void **pages = malloc(sizeof(void*) * nr_pages);
 
-          struct part *start_part = &ce->hydro.parts[0];
-          uint8_t *start_page = (uint8_t*)(((uintptr_t) start_part & ~(page_size-1)));
           for(uintptr_t z = 0; z < nr_pages; z++){
               pages[z] = (void*) (start_page+z*page_size);
           }
