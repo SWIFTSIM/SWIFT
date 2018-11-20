@@ -1182,8 +1182,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       struct part *end_part = &c->hydro.parts[c->hydro.count];
       uint8_t *start_page = (uint8_t*)(((uintptr_t)start_part) & ~(page_size-1));
       uint8_t *last_page = (uint8_t*)(((uintptr_t)end_part) & ~(page_size-1));
-      uintptr_t nr_pages = (uintptr_t)(last_page - start_page)/page_size;
-      if(last_page == start_page) nr_pages = 1;
+      uintptr_t nr_pages = (uintptr_t)(last_page - start_page)/page_size  +1;
       void** pages = malloc(sizeof(void*) * nr_pages);
       if(pages == NULL) error("Failed to allocate pages array");
       int *domain = malloc(sizeof(int*) * nr_pages); //NUMA call requries int inputs
