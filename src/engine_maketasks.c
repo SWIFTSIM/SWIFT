@@ -1605,6 +1605,8 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t->cj->super->hydro.drift, t);
       scheduler_addunlock(sched, t->cj->super->hydro.sorts, t);
 
+      if (t->cj->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->cj->super->grav.drift, t);
       scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
 
       if (t->ci->super != t->cj->super) {
@@ -1612,6 +1614,8 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, t->ci->super->hydro.drift, t);
         scheduler_addunlock(sched, t->ci->super->hydro.sorts, t);
 
+        if (t->ci->nodeID == engine_rank)
+          scheduler_addunlock(sched, t->ci->super->grav.drift, t);
         scheduler_addunlock(sched, t->cj->super->stars.sorts, t);
       }
 
@@ -1634,6 +1638,7 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
       /* Make all density tasks depend on the drift and sorts. */
       scheduler_addunlock(sched, t->ci->super->hydro.drift, t);
       scheduler_addunlock(sched, t->ci->super->hydro.sorts, t);
+      scheduler_addunlock(sched, t->ci->super->grav.drift, t);
       scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
 
       /* Now, build all the dependencies for the stars for the cells */
@@ -1653,6 +1658,8 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t->cj->super->hydro.drift, t);
       scheduler_addunlock(sched, t->cj->super->hydro.sorts, t);
 
+      if (t->cj->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->cj->super->grav.drift, t);
       scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
 
       if (t->ci->super != t->cj->super) {
@@ -1660,6 +1667,8 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, t->ci->super->hydro.drift, t);
         scheduler_addunlock(sched, t->ci->super->hydro.sorts, t);
 
+        if (t->ci->nodeID == engine_rank)
+          scheduler_addunlock(sched, t->ci->super->grav.drift, t);
         scheduler_addunlock(sched, t->cj->super->stars.sorts, t);
       }
 
