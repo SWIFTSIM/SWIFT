@@ -34,6 +34,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <stdint.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -942,6 +943,7 @@ int main(int argc, char *argv[]) {
     if (with_feedback) engine_policies |= engine_policy_feedback;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
+    //if (with_aff) engine_policies |= engine_policy_cputight;
 
     // MATTHIEU: Temporary star formation law
     // engine_policies |= engine_policy_star_formation;
@@ -1199,16 +1201,16 @@ int main(int argc, char *argv[]) {
           FILE *file_threads = (((FILE**) data)[0]);
           struct engine *eng = (((struct engine**) data)[1]);
           /* Find page span of the part structures */
-          const unsigned long long int page_size = getpagesize();
-          const unsigned long long int cell_size = ce->hydro.count*sizeof(struct part);
-          long long int nr_pages = ( cell_size / page_size);
-          if( cell_size % page_size != 0LL ) nr_pages++;
+          const uintptr_t page_size = getpagesize();
+          const uintptr_t cell_size = ce->hydro.count*sizeof(struct part);
+          uintptr_t nr_pages = ( cell_size / page_size);
+          if( cell_size % page_size != 0) nr_pages++;
 
           void **pages = malloc(sizeof(void*) * nr_pages);
 
           struct part *start_part = &ce->hydro.parts[0];
-          char *start_page = (char*)(((unsigned long long) start_part & ~(page_size-1ULL)));
-          for(long long int z = 0; z < nr_pages; z++){
+          char *start_page = (char*)(((uintptr_t) start_part & ~(page_size-1)));
+          for(uintptr_t z = 0; z < nr_pages; z++){
               pages[z] = (void*) (start_page+z*page_size);
           }
           int status[nr_pages];
