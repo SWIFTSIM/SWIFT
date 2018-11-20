@@ -183,7 +183,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_gravity = cell_is_active_gravity(ci, e);
       const int cj_active_gravity = cell_is_active_gravity(cj, e);
 
-      // MATTHIEU: This is broken here. In cases with ext-potential this crashes.
+      // MATTHIEU: This is broken here. In cases with ext-potential this
+      // crashes.
       const int ci_active_stars = 0;  // cell_is_active_stars(ci, e);
       const int cj_active_stars = 0;  // cell_is_active_stars(cj, e);
 
