@@ -80,8 +80,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_grav == NULL) {
 
-      /* Create a tag for this cell. */
-      if (ci->mpi.tag < 0) cell_tag(ci);
+      /* Make sure this cell is tagged. */
+      cell_ensure_tagged(ci);
 
       t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
                                  ci->mpi.tag, 0, ci, cj);
@@ -139,8 +139,8 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
 
-      /* Create a tag for this cell. */
-      if (ci->mpi.tag < 0) cell_tag(ci);
+      /* Make sure this cell is tagged. */
+      cell_ensure_tagged(ci);
 
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->mpi.tag,
                                0, ci, cj);
@@ -238,8 +238,8 @@ void engine_addtasks_send_timestep(struct engine *e, struct cell *ci,
     /* Create the tasks and their dependencies? */
     if (t_ti == NULL) {
 
-      /* Create a tag for this cell. */
-      if (ci->mpi.tag < 0) cell_tag(ci);
+      /* Make sure this cell is tagged. */
+      cell_ensure_tagged(ci);
 
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
                                ci->mpi.tag, 0, ci, cj);
@@ -770,7 +770,7 @@ void engine_make_hierarchical_tasks_stars(struct engine *e, struct cell *c) {
 void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
 
-  struct engine *e = ((struct engine **)extra_data)[0];
+  struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
@@ -780,6 +780,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   struct cell *cells = s->cells_top;
   const double theta_crit = e->gravity_properties->theta_crit;
   const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
 
   /* Compute how many cells away we need to walk */
   const double distance = 2.5 * cells[0].width[0] / theta_crit;
@@ -815,91 +816,50 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
 
-    /* Is that cell local ? */
-    if (ci->nodeID != nodeID) continue;
-
-    /* If the cells is local build a self-interaction */
-    scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL);
-
-    /* Recover the multipole information */
-    const struct gravity_tensors *const multi_i = ci->grav.multipole;
-    const double CoM_i[3] = {multi_i->CoM[0], multi_i->CoM[1], multi_i->CoM[2]};
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cell_getid(cdim, i, j, k) != cid)
-      error("Incorrect calculation of indices (i,j,k)=(%d,%d,%d) cid=%d", i, j,
-            k, cid);
-
-    if (multi_i->r_max != multi_i->r_max_rebuild)
-      error(
-          "Multipole size not equal ot it's size after rebuild. But we just "
-          "rebuilt...");
-#endif
+    /* If the cell is local build a self-interaction */
+    if (ci->nodeID == nodeID) {
+      scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
+                        NULL);
+    }
 
     /* Loop over every other cell within (Manhattan) range delta */
-    for (int x = -delta_m; x <= delta_p; x++) {
-      int ii = i + x;
-      if (ii >= cdim[0])
-        ii -= cdim[0];
-      else if (ii < 0)
-        ii += cdim[0];
-      for (int y = -delta_m; y <= delta_p; y++) {
-        int jj = j + y;
-        if (jj >= cdim[1])
-          jj -= cdim[1];
-        else if (jj < 0)
-          jj += cdim[1];
-        for (int z = -delta_m; z <= delta_p; z++) {
-          int kk = k + z;
-          if (kk >= cdim[2])
-            kk -= cdim[2];
-          else if (kk < 0)
-            kk += cdim[2];
+    for (int ii = -delta_m; ii <= delta_p; ii++) {
+      int iii = i + ii;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -delta_m; jj <= delta_p; jj++) {
+        int jjj = j + jj;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -delta_m; kk <= delta_p; kk++) {
+          int kkk = k + kk;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
 
           /* Get the cell */
-          const int cjd = cell_getid(cdim, ii, jj, kk);
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
-#ifdef SWIFT_DEBUG_CHECKS
-          const int iii = cjd / (cdim[1] * cdim[2]);
-          const int jjj = (cjd / cdim[2]) % cdim[1];
-          const int kkk = cjd % cdim[2];
-
-          if (ii != iii || jj != jjj || kk != kkk)
-            error(
-                "Incorrect calculation of indices (iii,jjj,kkk)=(%d,%d,%d) "
-                "cjd=%d",
-                iii, jjj, kkk, cjd);
-#endif
-
-          /* Avoid duplicates of local pairs*/
-          if (cid <= cjd && cj->nodeID == nodeID) continue;
-
-          /* Skip cells without gravity particles */
-          if (cj->grav.count == 0) continue;
+          /* Avoid duplicates, empty cells and completely foreign pairs */
+          if (cid >= cjd || cj->grav.count == 0 ||
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
 
           /* Recover the multipole information */
-          const struct gravity_tensors *const multi_j = cj->grav.multipole;
+          const struct gravity_tensors *multi_i = ci->grav.multipole;
+          const struct gravity_tensors *multi_j = cj->grav.multipole;
 
-          /* Get the distance between the CoMs */
-          double dx = CoM_i[0] - multi_j->CoM[0];
-          double dy = CoM_i[1] - multi_j->CoM[1];
-          double dz = CoM_i[2] - multi_j->CoM[2];
-
-          /* Apply BC */
-          if (periodic) {
-            dx = nearest(dx, dim[0]);
-            dy = nearest(dy, dim[1]);
-            dz = nearest(dz, dim[2]);
-          }
-          const double r2 = dx * dx + dy * dy + dz * dz;
+          if (multi_i == NULL && ci->nodeID != nodeID)
+            error("Multipole of ci was not exchanged properly via the proxies");
+          if (multi_j == NULL && cj->nodeID != nodeID)
+            error("Multipole of cj was not exchanged properly via the proxies");
 
           /* Minimal distance between any pair of particles */
-          const double min_radius =
-              sqrt(r2) - (multi_i->r_max + multi_j->r_max);
+          const double min_radius2 =
+              cell_min_dist2_same_size(ci, cj, periodic, dim);
 
           /* Are we beyond the distance where the truncated forces are 0 ?*/
-          if (periodic && min_radius > max_distance) continue;
+          if (periodic && min_radius2 > max_distance2) continue;
 
           /* Are the cells too close for a MM interaction ? */
           if (!cell_can_use_pair_mm_rebuild(ci, cj, e, s)) {
@@ -907,6 +867,54 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
                               ci, cj);
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+            /* Let's cross-check that we had a proxy for that cell */
+            if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+              /* Find the proxy for this node */
+              const int proxy_id = e->proxy_ind[cj->nodeID];
+              if (proxy_id < 0)
+                error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+              const struct proxy *p = &e->proxies[proxy_id];
+
+              /* Check whether the cell exists in the proxy */
+              int n = 0;
+              for (; n < p->nr_cells_in; n++)
+                if (p->cells_in[n] == cj) {
+                  break;
+                }
+              if (n == p->nr_cells_in)
+                error(
+                    "Cell %d not found in the proxy but trying to construct "
+                    "grav task!",
+                    cjd);
+            } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+              /* Find the proxy for this node */
+              const int proxy_id = e->proxy_ind[ci->nodeID];
+              if (proxy_id < 0)
+                error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+              const struct proxy *p = &e->proxies[proxy_id];
+
+              /* Check whether the cell exists in the proxy */
+              int n = 0;
+              for (; n < p->nr_cells_in; n++)
+                if (p->cells_in[n] == ci) {
+                  break;
+                }
+              if (n == p->nr_cells_in)
+                error(
+                    "Cell %d not found in the proxy but trying to construct "
+                    "grav task!",
+                    cid);
+            }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
           }
         }
       }
@@ -934,26 +942,6 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
       engine_make_hierarchical_tasks_gravity(e, c);
     if (is_with_feedback) engine_make_hierarchical_tasks_stars(e, c);
   }
-}
-
-/**
- * @brief Constructs the top-level tasks for the short-range gravity
- * interactions (master function).
- *
- * - Create the FFT task and the array of gravity ghosts.
- * - Call the mapper function to create the other tasks.
- *
- * @param e The #engine.
- */
-void engine_make_self_gravity_tasks(struct engine *e) {
-
-  struct space *s = e->s;
-  struct task **ghosts = NULL;
-
-  /* Create the multipole self and pair tasks. */
-  void *extra_data[2] = {e, ghosts};
-  threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
-                 s->nr_cells, 1, 0, extra_data);
 }
 
 /**
@@ -1796,6 +1784,8 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
+
+    /* Integer indices of the cell in the top-level grid */
     const int i = cid / (cdim[1] * cdim[2]);
     const int j = (cid / cdim[2]) % cdim[1];
     const int k = cid % cdim[2];
@@ -1806,10 +1796,11 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Skip cells without hydro particles */
     if (ci->hydro.count == 0) continue;
 
-    /* If the cells is local build a self-interaction */
-    if (ci->nodeID == nodeID)
+    /* If the cell is local build a self-interaction */
+    if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
                         NULL);
+    }
 
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
@@ -1838,9 +1829,110 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
           scheduler_addtask(sched, task_type_pair, task_subtype_density, sid, 0,
                             ci, cj);
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+          /* Let's cross-check that we had a proxy for that cell */
+          if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[cj->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == cj) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cjd);
+          } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[ci->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == ci) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cid);
+          }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
         }
       }
     }
+  }
+}
+
+struct cell_type_pair {
+  struct cell *ci, *cj;
+  int type;
+};
+
+void engine_addtasks_send_mapper(void *map_data, int num_elements,
+                                 void *extra_data) {
+  struct engine *e = (struct engine *)extra_data;
+  struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    struct cell *ci = cell_type_pairs[k].ci;
+    struct cell *cj = cell_type_pairs[k].cj;
+    const int type = cell_type_pairs[k].type;
+
+    /* Add the send task for the particle timesteps. */
+    engine_addtasks_send_timestep(e, ci, cj, NULL);
+
+    /* Add the send tasks for the cells in the proxy that have a hydro
+     * connection. */
+    if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
+      engine_addtasks_send_hydro(e, ci, cj, /*t_xv=*/NULL,
+                                 /*t_rho=*/NULL, /*t_gradient=*/NULL);
+
+    /* Add the send tasks for the cells in the proxy that have a gravity
+     * connection. */
+    if ((e->policy & engine_policy_self_gravity) &&
+        (type & proxy_cell_type_gravity))
+      engine_addtasks_send_gravity(e, ci, cj, NULL);
+  }
+}
+
+void engine_addtasks_recv_mapper(void *map_data, int num_elements,
+                                 void *extra_data) {
+  struct engine *e = (struct engine *)extra_data;
+  struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
+
+  for (int k = 0; k < num_elements; k++) {
+    struct cell *ci = cell_type_pairs[k].ci;
+    const int type = cell_type_pairs[k].type;
+
+    /* Add the recv task for the particle timesteps. */
+    engine_addtasks_recv_timestep(e, ci, NULL);
+
+    /* Add the recv tasks for the cells in the proxy that have a hydro
+     * connection. */
+    if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
+      engine_addtasks_recv_hydro(e, ci, NULL, NULL, NULL);
+
+    /* Add the recv tasks for the cells in the proxy that have a gravity
+     * connection. */
+    if ((e->policy & engine_policy_self_gravity) &&
+        (type & proxy_cell_type_gravity))
+      engine_addtasks_recv_gravity(e, ci, NULL);
   }
 }
 
@@ -1880,13 +1972,16 @@ void engine_maketasks(struct engine *e) {
   }
 
   if (e->verbose)
-    message("Making stars tasks took %.3f %s.",
+    message("Making stellar feedback tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
 
   /* Add the self gravity tasks. */
-  if (e->policy & engine_policy_self_gravity) engine_make_self_gravity_tasks(e);
+  if (e->policy & engine_policy_self_gravity) {
+    threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
+                   s->nr_cells, 1, 0, e);
+  }
 
   if (e->verbose)
     message("Making gravity tasks took %.3f %s.",
@@ -2012,7 +2107,7 @@ void engine_maketasks(struct engine *e) {
                    sched->nr_tasks, sizeof(struct task), 0, e);
 
   if (e->verbose)
-    message("Linking stars tasks took %.3f %s (including reweight).",
+    message("Linking stars tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
 #ifdef WITH_MPI
@@ -2026,31 +2121,33 @@ void engine_maketasks(struct engine *e) {
 
     /* Loop over the proxies and add the send tasks, which also generates the
      * cell tags for super-cells. */
+    int max_num_send_cells = 0;
+    for (int pid = 0; pid < e->nr_proxies; pid++)
+      max_num_send_cells += e->proxies[pid].nr_cells_out;
+    struct cell_type_pair *send_cell_type_pairs = NULL;
+    if ((send_cell_type_pairs = (struct cell_type_pair *)malloc(
+             sizeof(struct cell_type_pair) * max_num_send_cells)) == NULL)
+      error("Failed to allocate temporary cell pointer list.");
+    int num_send_cells = 0;
+
     for (int pid = 0; pid < e->nr_proxies; pid++) {
 
       /* Get a handle on the proxy. */
       struct proxy *p = &e->proxies[pid];
 
-      for (int k = 0; k < p->nr_cells_out; k++)
-        engine_addtasks_send_timestep(e, p->cells_out[k], p->cells_in[0], NULL);
-
-      /* Loop through the proxy's outgoing cells and add the
-         send tasks for the cells in the proxy that have a hydro connection. */
-      if (e->policy & engine_policy_hydro)
-        for (int k = 0; k < p->nr_cells_out; k++)
-          if (p->cells_out_type[k] & proxy_cell_type_hydro)
-            engine_addtasks_send_hydro(e, p->cells_out[k], p->cells_in[0], NULL,
-                                       NULL, NULL);
-
-      /* Loop through the proxy's outgoing cells and add the
-         send tasks for the cells in the proxy that have a gravity connection.
-         */
-      if (e->policy & engine_policy_self_gravity)
-        for (int k = 0; k < p->nr_cells_out; k++)
-          if (p->cells_out_type[k] & proxy_cell_type_gravity)
-            engine_addtasks_send_gravity(e, p->cells_out[k], p->cells_in[0],
-                                         NULL);
+      for (int k = 0; k < p->nr_cells_out; k++) {
+        send_cell_type_pairs[num_send_cells].ci = p->cells_out[k];
+        send_cell_type_pairs[num_send_cells].cj = p->cells_in[0];
+        send_cell_type_pairs[num_send_cells++].type = p->cells_out_type[k];
+      }
     }
+
+    threadpool_map(&e->threadpool, engine_addtasks_send_mapper,
+                   send_cell_type_pairs, num_send_cells,
+                   sizeof(struct cell_type_pair),
+                   /*chunk=*/0, e);
+
+    free(send_cell_type_pairs);
 
     if (e->verbose)
       message("Creating send tasks took %.3f %s.",
@@ -2069,29 +2166,28 @@ void engine_maketasks(struct engine *e) {
 
     /* Loop over the proxies and add the recv tasks, which relies on having the
      * cell tags. */
+    int max_num_recv_cells = 0;
+    for (int pid = 0; pid < e->nr_proxies; pid++)
+      max_num_recv_cells += e->proxies[pid].nr_cells_in;
+    struct cell_type_pair *recv_cell_type_pairs = NULL;
+    if ((recv_cell_type_pairs = (struct cell_type_pair *)malloc(
+             sizeof(struct cell_type_pair) * max_num_recv_cells)) == NULL)
+      error("Failed to allocate temporary cell pointer list.");
+    int num_recv_cells = 0;
     for (int pid = 0; pid < e->nr_proxies; pid++) {
 
       /* Get a handle on the proxy. */
       struct proxy *p = &e->proxies[pid];
-
-      for (int k = 0; k < p->nr_cells_in; k++)
-        engine_addtasks_recv_timestep(e, p->cells_in[k], NULL);
-
-      /* Loop through the proxy's incoming cells and add the
-         recv tasks for the cells in the proxy that have a hydro connection. */
-      if (e->policy & engine_policy_hydro)
-        for (int k = 0; k < p->nr_cells_in; k++)
-          if (p->cells_in_type[k] & proxy_cell_type_hydro)
-            engine_addtasks_recv_hydro(e, p->cells_in[k], NULL, NULL, NULL);
-
-      /* Loop through the proxy's incoming cells and add the
-         recv tasks for the cells in the proxy that have a gravity connection.
-         */
-      if (e->policy & engine_policy_self_gravity)
-        for (int k = 0; k < p->nr_cells_in; k++)
-          if (p->cells_in_type[k] & proxy_cell_type_gravity)
-            engine_addtasks_recv_gravity(e, p->cells_in[k], NULL);
+      for (int k = 0; k < p->nr_cells_in; k++) {
+        recv_cell_type_pairs[num_recv_cells].ci = p->cells_in[k];
+        recv_cell_type_pairs[num_recv_cells++].type = p->cells_in_type[k];
+      }
     }
+    threadpool_map(&e->threadpool, engine_addtasks_recv_mapper,
+                   recv_cell_type_pairs, num_recv_cells,
+                   sizeof(struct cell_type_pair),
+                   /*chunk=*/0, e);
+    free(recv_cell_type_pairs);
 
     if (e->verbose)
       message("Creating recv tasks took %.3f %s.",

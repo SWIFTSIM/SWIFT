@@ -337,7 +337,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     free(sid);
   }
 
-  if (timer) TIMER_TOC(timer_do_stars_ghost);
+  if (timer) TIMER_TOC(timer_dostars_ghost);
 }
 
 /**
@@ -611,16 +611,16 @@ void runner_do_sort_ascending(struct entry *sort, int N) {
   }
 }
 
+#ifdef SWIFT_DEBUG_CHECKS
+#define RUNNER_CHECK_SORTS(TYPE)   
 /**
  * @brief Recursively checks that the flags are consistent in a cell hierarchy.
  *
- * Debugging function.
+ * Debugging function. Exists in two flavours: hydro & stars.
  *
  * @param c The #cell to check.
  * @param flags The sorting flags to check.
- */
-#ifdef SWIFT_DEBUG_CHECKS
-#define RUNNER_CHECK_SORTS(TYPE)                                               \
+ */                                            \
   void runner_check_sorts_##TYPE(struct cell *c, int flags) {                  \
                                                                                \
     if (flags & ~c->TYPE.sorted) error("Inconsistent sort flags (downward)!"); \
@@ -709,9 +709,9 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
       if (c->progeny[k] != NULL && c->progeny[k]->hydro.count > 0) {
         /* Only propagate cleanup if the progeny is stale. */
         runner_do_hydro_sort(r, c->progeny[k], flags,
-                             cleanup && (c->progeny[k]->hydro.dx_max_sort >
-                                         space_maxreldx * c->progeny[k]->dmin),
-                             0);
+                       cleanup && (c->progeny[k]->hydro.dx_max_sort_old >
+                                   space_maxreldx * c->progeny[k]->dmin),
+                       0);
         dx_max_sort = max(dx_max_sort, c->progeny[k]->hydro.dx_max_sort);
         dx_max_sort_old =
             max(dx_max_sort_old, c->progeny[k]->hydro.dx_max_sort_old);

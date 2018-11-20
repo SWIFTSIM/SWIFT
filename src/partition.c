@@ -1793,11 +1793,11 @@ static int check_complete(struct space *s, int verbose, int nregions) {
  * @brief Check that the threadpool version of the weights construction is
  *        correct by comparing to the old serial code.
  *
- * @tasks the list of tasks
- * @nr_tasks number of tasks
- * @mydata additional values as passed to threadpool
- * @ref_weights_v vertex weights to check
- * @ref_weights_e edge weights to check
+ * @param tasks the list of tasks
+ * @param nr_tasks number of tasks
+ * @param mydata additional values as passed to threadpool
+ * @param ref_weights_v vertex weights to check
+ * @param ref_weights_e edge weights to check
  */
 static void check_weights(struct task *tasks, int nr_tasks,
                           struct weights_mapper_data *mydata,

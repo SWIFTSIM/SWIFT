@@ -3292,7 +3292,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
     /* All top-level cells get an MPI tag. */
 #ifdef WITH_MPI
-    if (c->mpi.tag < 0 && c->mpi.sendto) cell_tag(c);
+    cell_ensure_tagged(c);
 #endif
 
     /* Super-pointer for hydro */
@@ -3363,6 +3363,21 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_part) error("Attempt to drift to the past");
 #endif
+
+  /* Early abort? */
+  if (c->hydro.count == 0) {
+
+    /* Clear the drift flags. */
+    c->hydro.do_drift = 0;
+    c->hydro.do_sub_drift = 0;
+
+    /* Update the time of the last drift */
+    c->hydro.ti_old_part = ti_current;
+
+    return;
+  }
+
+  /* Ok, we have some particles somewhere in the hierarchy to drift */
 
   /* Are we not in a leaf ? */
   if (c->split && (force || c->hydro.do_sub_drift)) {
@@ -3534,6 +3549,21 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_gpart) error("Attempt to drift to the past");
 #endif
+
+  /* Early abort? */
+  if (c->grav.count == 0) {
+
+    /* Clear the drift flags. */
+    c->grav.do_drift = 0;
+    c->grav.do_sub_drift = 0;
+
+    /* Update the time of the last drift */
+    c->grav.ti_old_part = ti_current;
+
+    return;
+  }
+
+  /* Ok, we have some particles somewhere in the hierarchy to drift */
 
   /* Are we not in a leaf ? */
   if (c->split && (force || c->grav.do_sub_drift)) {
