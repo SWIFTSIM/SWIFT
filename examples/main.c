@@ -1209,7 +1209,7 @@ int main(int argc, char *argv[]) {
           void **pages = malloc(sizeof(void*) * nr_pages);
 
           struct part *start_part = &ce->hydro.parts[0];
-          char *start_page = (char*)(((uintptr_t) start_part & ~(page_size-1)));
+          uint8_t *start_page = (uint8_t*)(((uintptr_t) start_part & ~(page_size-1)));
           for(uintptr_t z = 0; z < nr_pages; z++){
               pages[z] = (void*) (start_page+z*page_size);
           }
