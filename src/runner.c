@@ -2822,6 +2822,8 @@ void *runner_main(void *data) {
           runner_do_stars_sort(
               r, ci, t->flags,
               ci->stars.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
+	  /* Reset the sort flags as our work here is done. */
+          t->flags = 0;
           break;
         case task_type_init_grav:
           runner_do_init_grav(r, ci, 1);
