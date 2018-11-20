@@ -208,8 +208,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
           /* Check the sorts and activate them if needed. */
-          cell_activate_sorts(ci, t->flags, s);
-          cell_activate_sorts(cj, t->flags, s);
+          cell_activate_hydro_sorts(ci, t->flags, s);
+          cell_activate_hydro_sorts(cj, t->flags, s);
 
         }
 
@@ -224,6 +224,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_stars_density &&
           ((ci_active_stars && ci->nodeID == engine_rank) ||
            (cj_active_stars && cj->nodeID == engine_rank))) {
+
+        // MATTHIEU: The logic here can be improved.
+        // If ci is active for stars but not cj, then we can only drift the
+        // stars in ci and parts in cj. (and vice-versa). The same logic can be
+        // applied in cell_unskip_stars().
 
         scheduler_activate(s, t);
 
@@ -244,7 +249,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
           /* Check the sorts and activate them if needed. */
-          cell_activate_sorts(cj, t->flags, s);
+          cell_activate_hydro_sorts(cj, t->flags, s);
 
           cell_activate_stars_sorts(ci, t->flags, s);
 
@@ -262,7 +267,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
 
           /* Check the sorts and activate them if needed. */
-          cell_activate_sorts(ci, t->flags, s);
+          cell_activate_hydro_sorts(ci, t->flags, s);
           cell_activate_stars_sorts(cj, t->flags, s);
         }
 

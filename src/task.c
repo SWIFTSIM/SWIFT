@@ -474,7 +474,6 @@ int task_lock(struct task *t) {
           cell_gunlocktree(ci);
           return 0;
         }
-
       } else if (subtype == task_subtype_stars_density) {
         if (ci->stars.hold) return 0;
         if (cell_slocktree(ci) != 0) return 0;
