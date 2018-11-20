@@ -612,7 +612,6 @@ void runner_do_sort_ascending(struct entry *sort, int N) {
 }
 
 #ifdef SWIFT_DEBUG_CHECKS
-#define RUNNER_CHECK_SORTS(TYPE)
 /**
  * @brief Recursively checks that the flags are consistent in a cell hierarchy.
  *
@@ -621,14 +620,15 @@ void runner_do_sort_ascending(struct entry *sort, int N) {
  * @param c The #cell to check.
  * @param flags The sorting flags to check.
  */
-void runner_check_sorts_##TYPE(struct cell *c, int flags) {
-
-  if (flags & ~c->TYPE.sorted) error("Inconsistent sort flags (downward)!");
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL && c->progeny[k]->TYPE.count > 0)
-        runner_check_sorts_##TYPE(c->progeny[k], c->TYPE.sorted);
-}
+#define RUNNER_CHECK_SORTS(TYPE)                                               \
+  void runner_check_sorts_##TYPE(struct cell *c, int flags) {                  \
+                                                                               \
+    if (flags & ~c->TYPE.sorted) error("Inconsistent sort flags (downward)!"); \
+    if (c->split)                                                              \
+      for (int k = 0; k < 8; k++)                                              \
+        if (c->progeny[k] != NULL && c->progeny[k]->TYPE.count > 0)            \
+          runner_check_sorts_##TYPE(c->progeny[k], c->TYPE.sorted);            \
+  }
 #else
 #define RUNNER_CHECK_SORTS(TYPE)                                       \
   void runner_check_sorts_##TYPE(struct cell *c, int flags) {          \
