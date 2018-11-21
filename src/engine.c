@@ -2500,8 +2500,7 @@ void engine_print_stats(struct engine *e) {
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
    * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_current,
-                          e->policy & engine_policy_self_gravity);
+  space_check_drift_point(e->s, e->ti_current, /*chek_mpoles=*/0);
 
   /* Be verbose about this */
   if (e->nodeID == 0) {
@@ -3831,8 +3830,7 @@ void engine_dump_snapshot(struct engine *e) {
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
    * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_current,
-                          e->policy & engine_policy_self_gravity);
+  space_check_drift_point(e->s, e->ti_current, /* check_mpole=*/0);
 
   /* Be verbose about this */
   if (e->nodeID == 0) {
