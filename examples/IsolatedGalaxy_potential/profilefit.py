@@ -87,7 +87,7 @@ bzerr = np.zeros(len(iterarray))
 eps = 1e-6
 
 
-for i in np.arange(0, Nmax + 1, steps):
+for i in iterarray:
     # Getting the data from the snapshots
     f = h5py.File("output_%04d.hdf5" % i, "r")
 

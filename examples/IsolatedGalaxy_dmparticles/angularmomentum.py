@@ -35,7 +35,7 @@ Ltot = np.zeros(len(iterarray))
 time_array = np.zeros(len(iterarray))
 
 
-for i in np.arange(0, Nmax + 1, steps):
+for i in iterarray:
     f = h5py.File("output_%04d.hdf5" % i, "r")
 
     boxsize = f["Header"].attrs["BoxSize"] / 2.0
