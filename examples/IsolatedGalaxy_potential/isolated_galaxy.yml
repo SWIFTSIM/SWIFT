@@ -11,11 +11,8 @@ Gravity:
   mesh_side_length:       32        # Number of cells along each axis for the periodic gravity mesh.
   eta:          0.025               # Constant dimensionless multiplier for time integration.
   theta:        0.7                 # Opening angle (Multipole acceptance criterion).
-  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
-  max_physical_softening: 0.0007    # Physical softening length (in internal units).
-
-Schedular:
-  max_top_level_cells:       48        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
+  comoving_softening:     0.0300 # Comoving softening length (in internal units).
+  max_physical_softening: 0.0300    # Physical softening length (in internal units).
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
@@ -52,5 +49,5 @@ HernquistPotential:
   MD:              0.0434370991372   # Disk mass fraction
   MB:              0.00705852860979  # Bulge mass fraction
   timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
-  epsilon:         0.1      # Softening size (internal units)
+  epsilon:         0.030      # Softening size (internal units)
  
