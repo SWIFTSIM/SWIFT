@@ -234,7 +234,7 @@ external_gravity_get_potential_energy(
  * @param potential The external potential properties to initialize
  */
 static INLINE void potential_init_backend(
-    const struct swift_params* parameter_file,
+    struct swift_params* parameter_file,
     const struct phys_const* phys_const, const struct unit_system* us,
     const struct space* s, struct external_potential* potential) {
 
