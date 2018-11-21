@@ -1,2 +1,2 @@
 #!/bin/bash
-wget http://www.strw.leidenuniv.nl/~nobels/data/reddeathgalaxywithDM.hdf5
+wget https://home.strw.leidenuniv.nl/~nobels/data/3e11-star-only-DM-halo-galaxy.hdf5 
