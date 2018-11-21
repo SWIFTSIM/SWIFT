@@ -1103,9 +1103,19 @@ void engine_link_gravity_tasks(struct engine *e) {
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
-    struct cell *ci_parent = (ci->parent != NULL) ? ci->parent : ci;
-    struct cell *cj_parent =
-        (cj != NULL && cj->parent != NULL) ? cj->parent : cj;
+    /* Pointers to the parent cells for tasks going up and down the tree
+     * In the case where we are at the super-level we don't
+     * want the parent as no tasks are defined above that level. */
+    struct cell *ci_parent, *cj_parent;
+    if (ci->parent != NULL && ci->grav.super != ci)
+      ci_parent = ci->parent;
+    else
+      ci_parent = ci;
+
+    if (cj != NULL && cj->parent != NULL && cj->grav.super != cj)
+      cj_parent = cj->parent;
+    else
+      cj_parent = cj;
 
 /* Node ID (if running with MPI) */
 #ifdef WITH_MPI
