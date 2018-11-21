@@ -1759,22 +1759,27 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
-    /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
+    /* Can we escape early in the periodic BC case? */
+    if (periodic) {
 
-    /* Are we beyond the distance where the truncated forces are 0 ?*/
-    if (periodic && min_radius2 > max_distance2) {
+      /* Minimal distance between any pair of particles */
+      const double min_radius2 =
+          cell_min_dist2_same_size(top, cj, periodic, dim);
+
+      /* Are we beyond the distance where the truncated forces are 0 ?*/
+      if (min_radius2 > max_distance2) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-      /* Need to account for the interactions we missed */
-      multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
+        /* Need to account for the interactions we missed */
+        multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
 #endif
 
-      /* Record that this multipole received a contribution */
-      multi_i->pot.interacted = 1;
+        /* Record that this multipole received a contribution */
+        multi_i->pot.interacted = 1;
 
-      /* We are done here. */
-      continue;
+        /* We are done here. */
+        continue;
+      }
     }
 
     /* Get the distance between the CoMs at the last rebuild*/
