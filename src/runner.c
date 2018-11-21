@@ -97,8 +97,16 @@
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
 
-/* Import the stars loop functions. */
+/* Import the stars density loop functions. */
+#define FUNCTION density
 #include "runner_doiact_stars.h"
+#undef FUNCTION
+
+/* Import the stars feedback loop functions. */
+#define FUNCTION feedback
+#include "runner_doiact_stars.h"
+#undef FUNCTION
+
 
 /**
  * @brief Perform source terms
