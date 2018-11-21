@@ -20,9 +20,8 @@
 
 /* Before including this file, define FUNCTION, which is the
    name of the interaction function. This creates the interaction functions
-   runner_dopair_FUNCTION, runner_dopair_FUNCTION_naive, runner_doself_FUNCTION,
-   and runner_dosub_FUNCTION calling the pairwise interaction function
-   runner_iact_FUNCTION. */
+   runner_dopair_FUNCTION, runner_doself_FUNCTION and runner_dosub_FUNCTION
+   calling the pairwise interaction function runner_iact_FUNCTION. */
 
 
 #define PASTE(x, y) x##_##y
