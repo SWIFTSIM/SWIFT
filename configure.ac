@@ -196,8 +196,17 @@ if test "x$enable_debug" = "xyes"; then
    fi
 fi
 
-#  We always do this now...
-AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task timing])
+# Check if task debugging is on.
+AC_ARG_ENABLE([task-debugging],
+   [AS_HELP_STRING([--enable-task-debugging],
+     [Store extra information for generating task dump files @<:@yes/no@:>@]
+   )],
+   [enable_task_debugging="$enableval"],
+   [enable_task_debugging="no"]
+)
+if test "$enable_task_debugging" = "yes"; then
+   AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
+fi
 
 # Check if threadpool debugging is on.
 AC_ARG_ENABLE([threadpool-debugging],

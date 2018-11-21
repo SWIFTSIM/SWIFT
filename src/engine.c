@@ -2889,9 +2889,7 @@ void engine_step(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-#ifdef SWIFT_DEBUG_TASKS
   e->tic_step = getticks();
-#endif
 
   if (e->nodeID == 0) {
 
@@ -3048,10 +3046,8 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time2);
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
-#ifdef SWIFT_DEBUG_TASKS
   /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
-#endif
 }
 
 /**
