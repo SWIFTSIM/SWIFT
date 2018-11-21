@@ -46,7 +46,7 @@ The second file that is produced by VELOCIraptor is the ``.catalog_particles``
 file, this file contains mainly all the IDs of the particles and has two
 interesting parameters:
 
-+ The ``Num_of_particles_in_groups`` and ``Num_of_particles_in_groups``
++ The ``Num_of_particles_in_groups`` and ``Total_num_of_particles_in_all_groups``
   parameter: Gives the total number of particles in the file or the total 
   number of particles that are in halos.
 + The ``Particle_IDs``: The list of particles as sorted by halo, in which halo
@@ -136,7 +136,7 @@ the unbound particles.
 Properties file
 ---------------
 
-The Fourth file is the ``.properties`` file, this file contains many physical
+The fourth file is the ``.properties`` file, this file contains many physical
 useful information of the corresponding halos. This can be divided in several
 useful groups of physical parameters, on this page we have divided the several
 variables which are present in the ``.properties`` file. This file has most 
@@ -179,7 +179,7 @@ Bryan and Norman 1998 properties:
 
 + ``Mass_BN98``, The Bryan and Norman (1998) determination of the mass of the
   halo [#BN98]_. 
-+ ``R_BN98``, the Bryan and Norman (1998) corresponding radius[#BN98]_.
++ ``R_BN98``, the Bryan and Norman (1998) corresponding radius [#BN98]_.
 
 Several Mass types:
 """""""""""""""""""

@@ -74,6 +74,22 @@ __attribute__((always_inline)) INLINE static int cell_are_gpart_drifted(
   return (c->grav.ti_old_part == e->ti_current);
 }
 
+/**
+ * @brief Check that the #spart in a #cell have been drifted to the current
+ * time.
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_are_spart_drifted(
+    const struct cell *c, const struct engine *e) {
+
+  /* Currently just use the gpart drift
+   * This function is just for clarity */
+  return cell_are_gpart_drifted(c, e);
+}
+
 /* Are cells / particles active for regular tasks ? */
 
 /**
@@ -185,9 +201,16 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active_gravity(
 __attribute__((always_inline)) INLINE static int cell_is_active_stars(
     const struct cell *c, const struct engine *e) {
 
-  // LOIC: Need star-specific implementation
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->stars.ti_end_min < e->ti_current)
+    error(
+        "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
+        "e->ti_current=%lld (t=%e, a=%e)",
+        c->stars.ti_end_min, c->stars.ti_end_min * e->time_base, e->ti_current,
+        e->ti_current * e->time_base, e->cosmology->a);
+#endif
 
-  return cell_is_active_gravity(c, e);
+  return (c->stars.ti_end_min == e->ti_current);
 }
 
 /**

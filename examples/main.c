@@ -1143,7 +1143,7 @@ int main(int argc, char *argv[]) {
 
   /* Write final output. */
   if (!force_stop) {
-    engine_drift_all(&e);
+    engine_drift_all(&e, /*drift_mpole=*/0);
     engine_print_stats(&e);
 #ifdef WITH_LOGGER
     logger_log_all(e.logger, &e);

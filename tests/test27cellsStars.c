@@ -164,6 +164,7 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   cell->stars.count = scount;
   cell->hydro.dx_max_part = 0.;
   cell->hydro.dx_max_sort = 0.;
+  cell->stars.dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
@@ -174,8 +175,10 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   cell->hydro.ti_old_part = 8;
   cell->hydro.ti_end_min = 8;
   cell->hydro.ti_end_max = 8;
+  cell->grav.ti_old_part = 8;
   cell->grav.ti_end_min = 8;
   cell->grav.ti_end_max = 8;
+  cell->stars.ti_end_min = 8;
   cell->nodeID = NODE_ID;
 
   shuffle_particles(cell->hydro.parts, cell->hydro.count);
@@ -414,7 +417,8 @@ int main(int argc, char *argv[]) {
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 
-        runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
+        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
+        runner_do_stars_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
       }
     }
   }
