@@ -1,3 +1,3 @@
 #!/bin/bash
-wget http://www.strw.leidenuniv.nl/~nobels/data/reddeathgalaxy.hdf5
+wget https://home.strw.leidenuniv.nl/~nobels/data/3e11-star-only-static-potential-galaxy.hdf5 
 
