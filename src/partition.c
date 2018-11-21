@@ -240,33 +240,121 @@ static void graph_init(struct space *s, idx_t *adjncy, idx_t *xadj) {
 #endif
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+struct counts_mapper_data {
+  double *counts;
+  size_t size;
+  struct space *s;
+};
+
+/* Generic function for accumulating sized counts for TYPE parts. Note uses
+ * local memory to reduce contention, the amount of memory required is
+ * precalculated by an additional loop determining the range of cell IDs. */
+#define ACCUMULATE_SIZES_MAPPER(TYPE)                                          \
+  accumulate_sizes_mapper_##TYPE(void *map_data, int num_elements,             \
+                                 void *extra_data) {                           \
+    struct TYPE *parts = (struct TYPE *)map_data;                              \
+    struct counts_mapper_data *mydata =                                        \
+        (struct counts_mapper_data *)extra_data;                               \
+    double size = mydata->size;                                                \
+    int *cdim = mydata->s->cdim;                                               \
+    double iwidth[3] = {mydata->s->iwidth[0], mydata->s->iwidth[1],            \
+                        mydata->s->iwidth[2]};                                 \
+    double dim[3] = {mydata->s->dim[0], mydata->s->dim[1], mydata->s->dim[2]}; \
+    double *lcounts = NULL;                                                    \
+    int lcid = mydata->s->nr_cells;                                            \
+    int ucid = 0;                                                              \
+    for (int k = 0; k < num_elements; k++) {                                   \
+      for (int j = 0; j < 3; j++) {                                            \
+        if (parts[k].x[j] < 0.0)                                               \
+          parts[k].x[j] += dim[j];                                             \
+        else if (parts[k].x[j] >= dim[j])                                      \
+          parts[k].x[j] -= dim[j];                                             \
+      }                                                                        \
+      const int cid =                                                          \
+          cell_getid(cdim, parts[k].x[0] * iwidth[0],                          \
+                     parts[k].x[1] * iwidth[1], parts[k].x[2] * iwidth[2]);    \
+      if (cid > ucid) ucid = cid;                                              \
+      if (cid < lcid) lcid = cid;                                              \
+    }                                                                          \
+    int nused = ucid - lcid + 1;                                               \
+    if ((lcounts = (double *)calloc(sizeof(double), nused)) == NULL)           \
+      error("Failed to allocate counts thread-specific buffer");               \
+    for (int k = 0; k < num_elements; k++) {                                   \
+      const int cid =                                                          \
+          cell_getid(cdim, parts[k].x[0] * iwidth[0],                          \
+                     parts[k].x[1] * iwidth[1], parts[k].x[2] * iwidth[2]);    \
+      lcounts[cid - lcid] += size;                                             \
+    }                                                                          \
+    for (int k = 0; k < nused; k++)                                            \
+      atomic_add_d(&mydata->counts[k + lcid], lcounts[k]);                     \
+    free(lcounts);                                                             \
+  }
+
 /**
- * @brief Accumulate the counts of particles per cell.
+ * @brief Accumulate the sized counts of particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * part version.
+ */
+static void ACCUMULATE_SIZES_MAPPER(part);
+
+/**
+ * @brief Accumulate the sized counts of particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * gpart version.
+ */
+static void ACCUMULATE_SIZES_MAPPER(gpart);
+
+/**
+ * @brief Accumulate the sized counts of particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * spart version.
+ */
+static void ACCUMULATE_SIZES_MAPPER(spart);
+
+/**
+ * @brief Accumulate total memory size in particles per cell.
  *
  * @param s the space containing the cells.
- * @param counts the number of particles per cell. Should be
- *               allocated as size s->nr_parts.
+ * @param counts the number of bytes in particles per cell. Should be
+ *               allocated as size s->nr_cells.
  */
-static void accumulate_counts(struct space *s, double *counts) {
-
-  struct part *parts = s->parts;
-  int *cdim = s->cdim;
-  double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
-  double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+static void accumulate_sizes(struct space *s, double *counts) {
 
   bzero(counts, sizeof(double) * s->nr_cells);
 
-  for (size_t k = 0; k < s->nr_parts; k++) {
-    for (int j = 0; j < 3; j++) {
-      if (parts[k].x[j] < 0.0)
-        parts[k].x[j] += dim[j];
-      else if (parts[k].x[j] >= dim[j])
-        parts[k].x[j] -= dim[j];
-    }
-    const int cid =
-        cell_getid(cdim, parts[k].x[0] * iwidth[0], parts[k].x[1] * iwidth[1],
-                   parts[k].x[2] * iwidth[2]);
-    counts[cid]++;
+  struct counts_mapper_data mapper_data;
+  mapper_data.counts = counts;
+  mapper_data.s = s;
+
+  double hsize = (double)sizeof(struct part);
+  mapper_data.size = hsize;
+  threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_part, s->parts,
+                 s->nr_parts, sizeof(struct part), space_splitsize,
+                 &mapper_data);
+
+  double gsize = (double)sizeof(struct gpart);
+  mapper_data.size = gsize;
+  threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart, s->gparts,
+                 s->nr_gparts, sizeof(struct gpart), space_splitsize,
+                 &mapper_data);
+
+  double ssize = (double)sizeof(struct spart);
+  mapper_data.size = ssize;
+  threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_spart, s->sparts,
+                 s->nr_sparts, sizeof(struct spart), space_splitsize,
+                 &mapper_data);
+
+  /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
+  if ((s->e->total_nr_parts * hsize + s->e->total_nr_gparts * gsize +
+       s->e->total_nr_sparts * ssize) > (double)IDX_MAX) {
+    double vscale =
+        (double)(IDX_MAX - 1000) /
+        (double)(s->e->total_nr_parts * hsize + s->e->total_nr_gparts * gsize +
+                 s->e->total_nr_sparts * ssize);
+    for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
   }
 }
 #endif
@@ -284,7 +372,7 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
   /* To check or visualise the partition dump all the cells. */
-  /* dumpCellRanks("metis_partition", s->cells_top, s->nr_cells);*/
+  /*dumpCellRanks("metis_partition", s->cells_top, s->nr_cells);*/
 }
 #endif
 
@@ -427,6 +515,7 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
 static void pick_parmetis(int nodeID, struct space *s, int nregions,
                           double *vertexw, double *edgew, int refine,
                           int adaptive, float itr, int *celllist) {
+
   int res;
   MPI_Comm comm;
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
@@ -609,14 +698,14 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Dump graphs to disk files for testing. ParMETIS xadj isn't right for
      * a dump, so make a serial-like version. */
     /*{
-      idx_t *tmp_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions +
-    1));
+      idx_t *tmp_xadj =
+          (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1));
       tmp_xadj[0] = 0;
       for (int k = 0; k < ncells; k++) tmp_xadj[k + 1] = tmp_xadj[k] + 26;
-      dumpParMETISGraph("parmetis_graph", ncells, 1, tmp_xadj, full_adjncy,
-                        full_weights_v, NULL, full_weights_e);
+      dumpMETISGraph("parmetis_graph", ncells, 1, tmp_xadj, full_adjncy,
+                     full_weights_v, NULL, full_weights_e);
       free(tmp_xadj);
-    }*/
+      }*/
 
     /* Send ranges to the other ranks and keep our own. */
     for (int rank = 0, j1 = 0, j2 = 0, j3 = 0; rank < nregions; rank++) {
@@ -1024,9 +1113,9 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     idx_t objval;
 
     /* Dump graph in METIS format */
-    /*dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy,
-     *               weights_v, NULL, weights_e);
-     */
+    /*dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
+      NULL, weights_e);*/
+
     if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
                             weights_e, &idx_nregions, NULL, NULL, options,
                             &objval, regionid) != METIS_OK)
@@ -1490,6 +1579,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
  */
 void partition_initial_partition(struct partition *initial_partition,
                                  int nodeID, int nr_nodes, struct space *s) {
+  ticks tic = getticks();
 
   /* Geometric grid partitioning. */
   if (initial_partition->type == INITPART_GRID) {
@@ -1531,16 +1621,15 @@ void partition_initial_partition(struct partition *initial_partition,
      * inhomogeneous dist.
      */
 
-    /* Space for particles per cell counts, which will be used as weights or
-     * not. */
+    /* Space for particles sizes per cell, which will be used as weights. */
     double *weights = NULL;
     if (initial_partition->type == INITPART_METIS_WEIGHT) {
       if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
         error("Failed to allocate weights buffer.");
       bzero(weights, sizeof(double) * s->nr_cells);
 
-      /* Check each particle and accumilate the counts per cell. */
-      accumulate_counts(s, weights);
+      /* Check each particle and accumilate the sizes per cell. */
+      accumulate_sizes(s, weights);
 
       /* Get all the counts from all the nodes. */
       if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE, MPI_SUM,
@@ -1605,6 +1694,10 @@ void partition_initial_partition(struct partition *initial_partition,
     error("SWIFT was not compiled with MPI support");
 #endif
   }
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
