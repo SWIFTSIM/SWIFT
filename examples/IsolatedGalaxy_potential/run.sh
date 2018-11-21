@@ -6,7 +6,7 @@ then
     ./getIC.sh
 fi 
 
-../swift -g -G -S -t 16 isolated_galaxy.yml 2>&1 | tee output.log
+../swifthern -g -G -S -t 16 isolated_galaxy.yml 2>&1 | tee output.log
 
 
 echo "Make plots of conservation of total angular momentum" 

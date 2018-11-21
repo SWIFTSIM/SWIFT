@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ ! -e reddeathgalaxy.hdf5 ]
+if [ ! -e reddeathgalaxywithDM.hdf5 ]
 then
     echo "Fetching initial conditons for the isolated galaxy with an external potential ..."
     ./getIC.sh
