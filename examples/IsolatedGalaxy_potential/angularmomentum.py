@@ -27,6 +27,7 @@ import scipy.optimize as sco
 
 Nmax = 2001
 steps = 10
+angmomcomp = False
 
 iterarray = np.arange(0, Nmax + 1, steps)
 Lxtot = np.zeros(len(iterarray))
@@ -37,7 +38,6 @@ time_array = np.zeros(len(iterarray))
 
 
 for i in np.arange(0, Nmax + 1, steps):
-    print(i)
     f = h5py.File("output_%04d.hdf5" % i, "r")
 
     boxsize = f["Header"].attrs["BoxSize"] / 2.0
@@ -72,9 +72,10 @@ for i in np.arange(0, Nmax + 1, steps):
     Ltot[int(i / steps)] = np.sum(L)
 
 time_array[-1] = 2.0
-plt.plot(time_array, Lxtot / Lxtot[0] - 1, label="Lx total")
-plt.plot(time_array, Lytot / Lytot[0] - 1, label="Ly total")
-plt.plot(time_array, Lztot / Lztot[0] - 1, label="Lz total")
+if angmomcomp:
+    plt.plot(time_array, Lxtot / Lxtot[0] - 1, label="Lx total")
+    plt.plot(time_array, Lytot / Lytot[0] - 1, label="Ly total")
+    plt.plot(time_array, Lztot / Lztot[0] - 1, label="Lz total")
 plt.plot(time_array, Ltot / Ltot[0] - 1, label="L total")
 plt.xlabel("Time")
 plt.ylabel("ratio between current and zero angular momentum")

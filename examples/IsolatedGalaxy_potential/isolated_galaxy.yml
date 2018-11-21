@@ -33,6 +33,9 @@ Statistics:
   delta_time:           1e-2     # Time between statistics output
   time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
 
+Scheduler:
+  max_top_level_cells:   96
+
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  3e11-star-only-static-potential-galaxy.hdf5  # The file to read
