@@ -25,6 +25,7 @@
 
 /* Some standard headers. */
 #include <hdf5.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,10 +45,14 @@
  * Thoses are definitions from the format and therefore should not be changed!
  */
 /* number of bytes for a mask */
+// TODO change this to number of bits
 #define logger_mask_size 1
 
+/* number of bits for chunk header */
+#define logger_header_bytes 8
+
 /* number bytes for an offset */
-#define logger_offset_size 7
+#define logger_offset_size logger_header_bytes - logger_mask_size
 
 /* number of bytes for the version information */
 #define logger_version_size 20
@@ -214,7 +219,7 @@ void logger_log_part(struct logger *log, const struct part *p,
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
-  char *buff = (char *)dump_get(log->dump, size, &offset_new);
+  char *buff = (char *)dump_get(&log->dump, size, &offset_new);
 
   /* Write the header. */
   buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
@@ -296,7 +301,7 @@ void logger_log_gpart(struct logger *log, const struct gpart *p,
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
-  char *buff = (char *)dump_get(log->dump, size, &offset_new);
+  char *buff = (char *)dump_get(&log->dump, size, &offset_new);
 
   /* Write the header. */
   buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
@@ -342,7 +347,7 @@ void logger_log_gpart(struct logger *log, const struct gpart *p,
  */
 void logger_log_timestamp(struct logger *log, integertime_t timestamp,
                           double time, size_t *offset) {
-  struct dump *dump = log->dump;
+  struct dump *dump = &log->dump;
 
   /* Start by computing the size of the message. */
   const int size = logger_compute_chunk_size(logger_mask_timestamp);
@@ -392,7 +397,7 @@ void logger_ensure_size(struct logger *log, size_t total_nr_parts,
   if (total_nr_sparts > 0) error("Not implemented");
 
   /* ensure enough space in dump */
-  dump_ensure(log->dump, limit, log->buffer_scale * limit);
+  dump_ensure(&log->dump, limit, log->buffer_scale * limit);
 }
 
 /**
@@ -414,9 +419,14 @@ void logger_get_list_mask_size(const struct logger *log, int *output) {
   output[4] = sizeof(float);
   /* Density */
   output[5] = sizeof(float);
-  /* Constants */
+  /* Constants
+   * Stores the mass (float) and the ID (long long).
+   */
   output[6] = sizeof(float) + sizeof(long long);
-  /* Time stamp */
+  /* Time stamp
+   * Stores the integer time along with the double time
+   * (time or scale factor).
+   */
   output[7] = sizeof(integertime_t) + sizeof(double);
 
 }
@@ -536,14 +546,11 @@ void logger_init(struct logger *log, struct swift_params *params) {
   strcat(logger_name_file, ".dump");
 
   /* Define some constants */
-  log->number_masks = 8;
+  log->number_masks = log10(logger_mask_timestamp) / log10(2) + 1;
   log->max_chunk_size = logger_compute_max_chunk_size(log);
   
   /* init dump */
-  log->dump = malloc(sizeof(struct dump));
-  struct dump *dump_file = log->dump;
-
-  dump_init(dump_file, logger_name_file, buffer_size);
+  dump_init(&log->dump, logger_name_file, buffer_size);
 }
 
 /**
@@ -552,9 +559,7 @@ void logger_init(struct logger *log, struct swift_params *params) {
  * @param log The #logger
  */
 void logger_clean(struct logger *log) {
-  dump_close(log->dump);
-  free(log->dump);
-  log->dump = NULL;
+  dump_close(&log->dump);
 }
 
 /**
@@ -567,7 +572,7 @@ void logger_clean(struct logger *log) {
 void logger_write_file_header(struct logger *log, const struct engine *e) {
 
   /* get required variables */
-  struct dump *dump = log->dump;
+  struct dump *dump = &log->dump;
 
   size_t file_offset = dump->file_offset;
 

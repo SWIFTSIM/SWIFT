@@ -23,6 +23,7 @@
 
 /* Includes. */
 #include "common_io.h"
+#include "dump.h"
 #include "inline.h"
 #include "timeline.h"
 #include "units.h"
@@ -95,8 +96,8 @@ struct logger {
   /* Logger basename */
   char base_name[logger_string_length];
 
-  /* File name of the dump file */
-  struct dump *dump;
+  /* Dump file */
+  struct dump dump;
 
   /* timestamp offset for logger*/
   size_t timestamp_offset;
