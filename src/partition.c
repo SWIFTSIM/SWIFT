@@ -1105,6 +1105,10 @@ void partition_gather_weights(void *map_data, int num_elements,
   for (int i = 0; i < num_elements; i++) {
     struct task *t = &tasks[i];
 
+    /* Skip un-interesting tasks. */
+    if (t->type == task_type_send || t->type == task_type_recv ||
+        t->type == task_type_logger || t->implicit) continue;
+
     /* Get the task weight based on costs. */
     double w = (double)t->toc - (double)t->tic;
     if (w <= 0.0) continue;
