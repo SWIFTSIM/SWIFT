@@ -27,6 +27,8 @@ Snapshots:
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.001        # Time difference between consecutive outputs (in internal units)
 
+Scheduler:
+  max_top_level_cells:  96
   
 # Parameters governing the conserved quantities statistics
 Statistics:

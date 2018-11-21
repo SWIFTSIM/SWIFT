@@ -198,8 +198,8 @@ HernquistPotential:
   scalelength:     10.0     # (Optional 0) default parameter, Scale length of the potential
                             # If multiple X200 values are given, only one is used, in the order M200 > V200 > R200.
   M200:            3e11     # (Optional 1a) M200 of the galaxy+halo (when used V200 and R200 are not used)
-  V200:            100.     # (Optional 1b) V200 of the galaxy+halo (when used M200 and R200 are not used)
-  R200:            10.      # (Optional 1c) R200 of the galaxy+halo (when used M200 and V200 are not used)
+  V200:            100.     # (Optional 1b) V200 of the galaxy+halo (when used M200 and R200 are not used, if M200 is given M200 is used)
+  R200:            10.      # (Optional 1c) R200 of the galaxy+halo (when used M200 and V200 are not used, if M200 or V200 are given they are used)
   h:               0.704    # (Optional 1) reduced Hubble constant
   concentration:   7.1      # (Optional 1) concentration of the Halo
   MD:              0.0434370991372   # (Optional 1) Disk mass fraction
