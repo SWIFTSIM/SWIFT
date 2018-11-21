@@ -184,6 +184,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->hydro.ti_end_max = c->hydro.ti_end_max;
   pc->grav.ti_end_min = c->grav.ti_end_min;
   pc->grav.ti_end_max = c->grav.ti_end_max;
+  pc->stars.ti_end_min = c->stars.ti_end_min;
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
   pc->grav.ti_old_multipole = c->grav.ti_old_multipole;
@@ -287,6 +288,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->hydro.ti_end_max = pc->hydro.ti_end_max;
   c->grav.ti_end_min = pc->grav.ti_end_min;
   c->grav.ti_end_max = pc->grav.ti_end_max;
+  c->stars.ti_end_min = pc->stars.ti_end_min;
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
   c->grav.ti_old_multipole = pc->grav.ti_old_multipole;
@@ -415,6 +417,7 @@ int cell_pack_end_step(struct cell *restrict c,
   pcells[0].hydro.ti_end_max = c->hydro.ti_end_max;
   pcells[0].grav.ti_end_min = c->grav.ti_end_min;
   pcells[0].grav.ti_end_max = c->grav.ti_end_max;
+  pcells[0].stars.ti_end_min = c->stars.ti_end_min;
   pcells[0].hydro.dx_max_part = c->hydro.dx_max_part;
   pcells[0].stars.dx_max_part = c->stars.dx_max_part;
 
@@ -452,6 +455,7 @@ int cell_unpack_end_step(struct cell *restrict c,
   c->hydro.ti_end_max = pcells[0].hydro.ti_end_max;
   c->grav.ti_end_min = pcells[0].grav.ti_end_min;
   c->grav.ti_end_max = pcells[0].grav.ti_end_max;
+  c->stars.ti_end_min = pcells[0].stars.ti_end_min;
   c->hydro.dx_max_part = pcells[0].hydro.dx_max_part;
   c->stars.dx_max_part = pcells[0].stars.dx_max_part;
 
