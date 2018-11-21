@@ -180,13 +180,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
       const int ci_active_hydro = cell_is_active_hydro(ci, e);
       const int cj_active_hydro = cell_is_active_hydro(cj, e);
+
       const int ci_active_gravity = cell_is_active_gravity(ci, e);
       const int cj_active_gravity = cell_is_active_gravity(cj, e);
 
-      // MATTHIEU: This is broken here. In cases with ext-potential this
-      // crashes.
-      const int ci_active_stars = 0;  // cell_is_active_stars(ci, e);
-      const int cj_active_stars = 0;  // cell_is_active_stars(cj, e);
+      const int ci_active_stars = cell_is_active_stars(ci, e);
+      const int cj_active_stars = cell_is_active_stars(cj, e);
 
       /* Only activate tasks that involve a local active cell. */
       if ((t_subtype == task_subtype_density ||

@@ -147,6 +147,9 @@ struct pcell {
     /*! Maximal smoothing length. */
     double h_max;
 
+    /*! Minimal integer end-of-timestep in this cell for stars tasks */
+    integertime_t ti_end_min;
+
   } stars;
 
   /*! Maximal depth in that part of the tree */
@@ -197,6 +200,9 @@ struct pcell_step {
 
     /*! Maximal distance any #part has travelled since last rebuild */
     float dx_max_part;
+
+    /*! Minimal integer end-of-timestep in this cell (stars) */
+    integertime_t ti_end_min;
 
   } stars;
 };
