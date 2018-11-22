@@ -2690,6 +2690,23 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* No time integration. We just want the density and ghosts */
   engine_skip_force_and_kick(e);
 
+  struct scheduler *sched = &e->sched;
+  struct task *tasks = sched->tasks;
+
+  /* Activate the send and receive tasks for the gparts. */
+  for(int i=0; i<sched->nr_tasks; i++) {
+  
+    struct task *t = &tasks[i];
+
+    t->skip = 1;
+    
+    if(t->type == task_type_fof_self || 
+       t->type == task_type_fof_pair) {
+      t->skip = 0;
+    }
+
+  }
+
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
@@ -3295,15 +3312,15 @@ void engine_check_for_dumps(struct engine *e) {
     }
     
     /* Perform a FOF search. */
-    if(run_fof) {
+    //if(run_fof) {
 
-      // MATTHIEU: Add a drift_all here. And check the order with the order i/o
-      // options.
-      
-      fof_search_tree(e->s);
+    //  // MATTHIEU: Add a drift_all here. And check the order with the order i/o
+    //  // options.
+    //  
+    //  fof_search_tree(e->s);
 
-      run_fof = 0;
-    }
+    //  run_fof = 0;
+    //}
 
     /* We need to see whether whether we are in the pathological case
      * where there can be another dump before the next step. */
