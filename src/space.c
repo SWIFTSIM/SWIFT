@@ -1175,7 +1175,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       nodes[i] = numanode;
 //      swiftnuma_cell_move_hydro_parts(&cells_top[i],numanode,1);
     }
-    threadpool_map(s->e->threadpool, &swiftnuma_cell_move_hydro_parts_threadpool_map, s->cells_top, s->nr_cells,
+    threadpool_map(&s->e->threadpool, &swiftnuma_cell_move_hydro_parts_threadpool_map, s->cells_top, s->nr_cells,
                       sizeof(struct cell), 0, nodes);
     free(nodes);
 #endif
