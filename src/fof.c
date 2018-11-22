@@ -1375,8 +1375,8 @@ void fof_search_tree(struct space *s) {
   ticks tic = getticks();
 
   /* Perform local FOF using the threadpool. */
-  threadpool_map(&s->e->threadpool, fof_search_tree_mapper, s->local_cells_top,
-                 s->nr_local_cells, sizeof(int), 1, s);
+  //threadpool_map(&s->e->threadpool, fof_search_tree_mapper, s->local_cells_top,
+  //               s->nr_local_cells, sizeof(int), 1, s);
 
   message("Local FOF took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
