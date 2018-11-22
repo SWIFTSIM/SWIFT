@@ -3,7 +3,7 @@
 #include "io.h"
 #include "logger_tools.h"
 
-#include <Python.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 

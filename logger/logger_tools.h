@@ -1,9 +1,14 @@
-#ifndef __TOOLS_H__
-#define __TOOLS_H__
+#ifndef __LOGGER_TOOLS_H__
+#define __LOGGER_TOOLS_H__
 
+#include "../config.h"
+
+#ifdef HAVE_PYTHON
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-
 #include <Python.h>
+#endif
+
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -11,6 +16,7 @@
 
 struct header;
 
+#ifdef HAVE_PYTHON
 /* Set the error message for python and return the error code
  * WARNING for python, you need to return NULL and not the error code
  */
@@ -29,6 +35,23 @@ struct header;
             __LINE__, ##__VA_ARGS__, strerror(err));                      \
     PyErr_SetString(PyExc_RuntimeError, error_msg);                       \
   })
+
+#else
+
+#define error(err, s, ...)                  \
+  ({                                        \
+    error_no_return(err, s, ##__VA_ARGS__); \
+    exit(1);				    \
+  })
+
+#define error_no_return(err, s, ...)					\
+  ({									\
+    char error_msg[STRING_SIZE];					\
+    sprintf(error_msg, "%s:%s():%i: " s ": %s\n", __FILE__, __FUNCTION__, \
+            __LINE__, ##__VA_ARGS__, strerror(err));			\
+  })
+
+#endif
 
 #define message(s, ...)                                             \
   ({                                                                \
@@ -100,4 +123,4 @@ int tools_reverse_offset(const struct header *h, void *map, size_t *offset);
  */
 int tools_check_offset(const struct header *h, void *map, size_t *offset);
 
-#endif  //__TOOLS_H__
+#endif  //__LOGGER_TOOLS_H__

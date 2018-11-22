@@ -43,7 +43,11 @@ include_HEADERS = header.h io.h particle.h timeline.h logger_tools.h
 
 # Common source files
 AM_SOURCES = header.c io.c logger_loader.c particle.c \
-	timeline.c logger_tools.c
+	timeline.c
+if HAVEPYTHON
+AM_SOURCES += logger_loader.c
+endif
+
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = 
