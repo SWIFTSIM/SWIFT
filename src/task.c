@@ -579,7 +579,8 @@ void task_create_mpi_comms(void) {
 #endif
 
 /**
- * @brief dump all the tasks of all the known engines into a file for postprocessing.
+ * @brief dump all the tasks of all the known engines into a file for
+ * postprocessing.
  *
  * Dumps the information to a file "thread_info-stepn.dat" where n is the
  * given step value, or "thread_info_MPI-stepn.dat", if we are running
@@ -681,5 +682,129 @@ void task_dump_all(struct engine *e, int step) {
   }
   fclose(file_thread);
 #endif  // WITH_MPI
-#endif // SWIFT_DEBUG_TASKS
+#endif  // SWIFT_DEBUG_TASKS
+}
+
+/**
+ * @brief Generate simple statistics about the times used by the tasks of
+ *        all the engines and write these into two files, a human readable
+ *        version and one intented for inclusion as the fixed costs for
+ *        repartitioning.
+ *
+ * Dumps the human readable information to a file "thread_stats-stepn.dat"
+ * where n is the given step value. When running under MPI all the tasks are
+ * summed into this single file.
+ *
+ * The fixed costs file will be called "thread_stats-stepn.h".
+ *
+ * @param e the #engine
+ * @param step the current step.
+ */
+void task_dump_stats(struct engine *e, int step) {
+
+#ifdef SWIFT_DEBUG_TASKS
+  char dumpfile[40];
+  snprintf(dumpfile, 40, "thread_stats-step%d.dat", step);
+
+  char costsfile[40];
+  snprintf(costsfile, 40, "thread_stats-step%d.h", step);
+
+  /* Need arrays for sum, min and max across all types and subtypes. */
+  double sum[task_type_count][task_subtype_count];
+  double min[task_type_count][task_subtype_count];
+  double max[task_type_count][task_subtype_count];
+  int count[task_type_count][task_subtype_count];
+
+  for (int j = 0; j < task_type_count; j++) {
+    for (int k = 0; k < task_subtype_count; k++) {
+      sum[j][k] = 0.0;
+      count[j][k] = 0;
+      min[j][k] = DBL_MAX;
+      max[j][k] = 0.0;
+    }
+  }
+
+  double total[1] = {0.0};
+  double minmin[1] = {DBL_MAX};
+  for (int l = 0; l < e->sched.nr_tasks; l++) {
+    int type = e->sched.tasks[l].type;
+
+    /* Skip implicit tasks, tasks that didn't run and MPI send/recv as these
+     * are not interesting (or meaningfully measured). */
+    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].toc != 0 &&
+        type != task_type_send && type != task_type_recv) {
+      int subtype = e->sched.tasks[l].subtype;
+
+      double dt = e->sched.tasks[l].toc - e->sched.tasks[l].tic;
+      sum[type][subtype] += dt;
+      count[type][subtype] += 1;
+      if (dt < min[type][subtype]) {
+        min[type][subtype] = dt;
+      }
+      if (dt > max[type][subtype]) {
+        max[type][subtype] = dt;
+      }
+      total[0] += dt;
+      if (dt < minmin[0]) minmin[0] = dt;
+    }
+  }
+
+#ifdef WITH_MPI
+  /* Get these from all ranks for output from rank 0. Could wrap these into a
+   * single operation. */
+  size_t size = task_type_count * task_subtype_count;
+  int res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : sum), sum, size,
+                       MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task sums");
+
+  res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : count), count, size,
+                   MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task counts");
+
+  res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : min), min, size,
+                   MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task minima");
+
+  res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : max), max, size,
+                   MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task maxima");
+
+  res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : total), total, 1,
+                   MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task total time");
+
+  res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : minmin), minmin, 1,
+                   MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task global min");
+
+  if (engine_rank == 0) {
+#endif
+
+    FILE *dfile = fopen(dumpfile, "w");
+    FILE *cfile = fopen(costsfile, "w");
+
+    fprintf(dfile, "# task ntasks min max sum mean percent fixed_cost\n");
+    for (int j = 0; j < task_type_count; j++) {
+      const char *taskID = taskID_names[j];
+      for (int k = 0; k < task_subtype_count; k++) {
+        if (sum[j][k] > 0.0) {
+          double mean = sum[j][k] / (double)count[j][k];
+          double perc = 100.0 * sum[j][k] / total[0];
+          int fixed_cost = (int)mean / minmin[0];
+          fprintf(dfile,
+                  "%15s/%-10s %10d %14.2f %14.2f %14.2f %14.2f %14.2f %10d\n",
+                  taskID, subtaskID_names[k], count[j][k], min[j][k], max[j][k],
+                  sum[j][k], mean, perc, fixed_cost);
+          fprintf(cfile, "repartition_costs[%d][%d] = %10d; /* %s/%s */\n", j,
+                  k, fixed_cost, taskID, subtaskID_names[k]);
+        }
+      }
+    }
+    fclose(dfile);
+    fclose(cfile);
+#ifdef WITH_MPI
+  }
+#endif
+
+#endif  // SWIFT_DEBUG_TASKS
 }

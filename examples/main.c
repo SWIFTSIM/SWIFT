@@ -1089,6 +1089,9 @@ int main(int argc, char *argv[]) {
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
       task_dump_all(&e, j + 1);
+
+      /* Generate the task statistics. */
+      task_dump_stats(&e, j + 1);
     }
 #endif
 

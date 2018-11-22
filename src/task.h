@@ -156,11 +156,6 @@ struct task {
   /*! Weight of the task */
   float weight;
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-  /*! Individual cost estimate for this task. */
-  float cost;
-#endif
-
   /*! Number of tasks unlocked by this one */
   short int nr_unlock_tasks;
 
@@ -204,6 +199,7 @@ int task_lock(struct task *t);
 void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
 void task_dump_all(struct engine *e, int step);
+void task_dump_stats(struct engine *e, int step);
 #ifdef WITH_MPI
 void task_create_mpi_comms(void);
 #endif
