@@ -177,9 +177,12 @@ TASKTYPES = [
     "cooling",
     "star_formation",
     "sourceterms",
+    "logger",
     "stars_ghost_in",
     "stars_ghost",
     "stars_ghost_out",
+    "fof_self",
+    "fof_pair",
     "count",
 ]
 
