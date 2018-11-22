@@ -43,6 +43,21 @@
 #include "cell.h"
 
 
+/**
+ * @brief threadpool mapping function for hydro parts NUMA movement.
+ * 
+ *
+ */
+void swiftnuma_cell_move_hydro_parts_threadpool_map(void *map_data, int num_elements, void *extra_data){
+
+  struct cell *cells = (struct cell *) map_data;
+  int32_t *nodes = (int32_t *)extra_data;
+
+  for(int32_t i = 0; i < num_elements; i++){
+    swiftnuma_cell_move_hydro_parts(&cells[i], nodes[i], 1);
+  }
+
+}
 
 /**
  * @brief Move a cell structure's hydro parts into a single NUMA region.

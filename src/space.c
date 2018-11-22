@@ -1169,10 +1169,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Move pages for each cell's particles to be in a single NUMA region.*/
   //TODO This doesn't make use of NUMA information yet so just assumes we have 2 domains...
     int32_t numanode = 0;
+    int32_t *nodes = malloc(sizeof(int32_t) * s->nr_cells);
     for(int32_t i = 0; i < s->nr_cells; i++){
       if( i > s->nr_cells/2) numanode=1;
-      swiftnuma_cell_move_hydro_parts(&cells_top[i],numanode,1);
+      nodes[i] = numanode;
+//      swiftnuma_cell_move_hydro_parts(&cells_top[i],numanode,1);
     }
+    threadpool_map(s->e->tp, &swiftnuma_cell_move_hydro_parts_threadpool_map, s->c, s->nr_cells,
+                      sizeof(struct cell), 0, nodes);
+    free(nodes);
 #endif
 
   if (verbose)

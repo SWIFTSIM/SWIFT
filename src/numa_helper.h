@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include "cell.h"
 
+void swiftnuma_cell_move_hydro_parts_threadpool_map(void *map_data, int num_elements, void *extra_data);
 void swiftnuma_cell_move_hydro_parts(struct cell *c, int32_t node, int32_t verbose);
 
 #endif
