@@ -31,12 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef HAVE_LIBNUMA
-#include <unistd.h>
-#include <numa.h>
-#include <numaif.h>
-#endif
-
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
@@ -65,6 +59,7 @@
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "numa_helper.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -1173,40 +1168,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef HAVE_LIBNUMA
   /* Move pages for each cell's particles to be in a single NUMA region.*/
   //TODO This doesn't make use of NUMA information yet so just assumes we have 2 domains...
-  if(getpagesize() % sizeof(struct part) == 0){
     int32_t numanode = 0;
-    const uintptr_t page_size = getpagesize();
     for(int32_t i = 0; i < s->nr_cells; i++){
-      struct cell *c = &cells_top[i];
-      struct part *start_part = c->hydro.parts;
-      struct part *end_part = &c->hydro.parts[c->hydro.count];
-      uint8_t *start_page = (uint8_t*)(((uintptr_t)start_part) & ~(page_size-1));
-      uint8_t *last_page = (uint8_t*)(((uintptr_t)end_part) & ~(page_size-1));
-      uintptr_t nr_pages = (uintptr_t)(last_page - start_page)/page_size  +1;
-      void** pages = malloc(sizeof(void*) * nr_pages);
-      if(pages == NULL) error("Failed to allocate pages array");
-      int *domain = malloc(sizeof(int*) * nr_pages); //NUMA call requries int inputs
-      int* status = malloc(sizeof(int*) * nr_pages);
-      if( domain == NULL || status == NULL) error("Failed to allocate array");
-
-
-      for(uintptr_t z = 0; z < nr_pages; z++){
-        pages[z] = (void*) (start_page + z*page_size);
-        domain[z] = numanode;
-      }
-      numa_move_pages(0,(unsigned long)nr_pages, pages, domain, status, MPOL_MF_MOVE);
-      for(int32_t k = 0; k < nr_pages; k++){
-          if(status[k] != domain[k]){
-              printf("Not all pages moved successfully\n");
-              break;
-          }
-      }
-      free(pages);
-      free(domain);
-      free(status); 
-      numanode = 1-numanode;
+      if( i > s->nr_cells/2) numanode=1;
+      swiftnuma_cell_move_hydro_parts(&cells_top[i],numanode,1);
     }
-  }
 #endif
 
   if (verbose)
