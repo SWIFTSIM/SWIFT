@@ -39,11 +39,11 @@ lib_LTLIBRARIES = libswiftlogger.la
 # endif
 
 # List required headers
-include_HEADERS = header.h io.h particle.h timeline.h tools.h
+include_HEADERS = header.h io.h particle.h timeline.h logger_tools.h
 
 # Common source files
 AM_SOURCES = header.c io.c logger_loader.c particle.c \
-	timeline.c tools.c
+	timeline.c logger_tools.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = 

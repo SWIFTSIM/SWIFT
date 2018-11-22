@@ -2,7 +2,7 @@
 #define __SWIFT_LOGGER_IO_H__
 
 #include "header.h"
-#include "tools.h"
+#include "logger_tools.h"
 
 #include <stdio.h>
 #include <stdlib.h>

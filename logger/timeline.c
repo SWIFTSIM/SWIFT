@@ -14,7 +14,6 @@ int time_read(integertime_t *timestamp, double *time, const struct header *h, vo
               size_t *offset) {
   int error_code = 0;
   size_t mask = 0;
-  size_t ind = 0;
   size_t prev_offset = 0;
   *timestamp = 0;
   *time = 0;
@@ -24,6 +23,8 @@ int time_read(integertime_t *timestamp, double *time, const struct header *h, vo
   if (error_code != 0) return error_code;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  size_t ind = 0;
+
   /* check if timestamp is present */
   if (!header_is_present_and_get_index(h, "timestamp", &ind))
     error(EIO, "Header does not contain a timestamp");

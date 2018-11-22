@@ -1,6 +1,6 @@
 #include "io.h"
 #include "header.h"
-#include "tools.h"
+#include "logger_tools.h"
 
 /* file size */
 #include <sys/stat.h>
@@ -24,7 +24,7 @@ int io_open_file(char *filename, int *fd, void **map) {
   if (*fd == -1) error(errno, "Unable to open file %s", filename);
 
   /* get file size */
-  size_t size;
+  size_t size = 0;
   int status = io_get_file_size(*fd, &size);
   if (status != 0) return status;
 
@@ -38,7 +38,7 @@ int io_open_file(char *filename, int *fd, void **map) {
 
 int io_close_file(int *fd, void **map) {
   /* get file size */
-  size_t size;
+  size_t size = 0;
   int status = io_get_file_size(*fd, &size);
   if (status != 0) return status;
 

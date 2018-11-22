@@ -1008,9 +1008,10 @@ AC_ARG_WITH([python],
 )
 if test "x$with_python" != "xno"; then
    AC_CACHE_CHECK(
-   "python version",
-   ac_cv_ver_python,
-   [ac_cv_ver_python=`python -c 'import sys;print(sys.version[[:3]])' 2> /dev/null`])
+      "python version",
+      ac_cv_ver_python,
+      [ac_cv_ver_python=`python -c 'import sys;print(sys.version[[:3]])' 2> /dev/null`]
+      )
    
    if test "x$with_python" != "xyes" -a "x$with_python" != "x"; then
       PYTHON_LIBS=""
@@ -1019,6 +1020,7 @@ if test "x$with_python" != "xno"; then
       PYTHON_LIBS=""
       PYTHON_INCS=""
    fi
+
    have_python="yes"
 
    AC_CHECK_PROGS(
@@ -1033,8 +1035,8 @@ if test "x$with_python" != "xno"; then
       [PyArg_ParseTuple],
       [AC_DEFINE([HAVE_PYTHON],1,[The python library appears to be present.])
       ],
-      [AC_MSG_ERROR(Cannot find python library!)]
-      )
+      [AC_MSG_ERROR(Cannot find python library!)],
+      [$PYTHON_LIBS])
 fi
 AC_SUBST([PYTHON_LIBS])
 AC_SUBST([PYTHON_INCS])

@@ -335,7 +335,7 @@ static PyObject *pyReverseOffset(__attribute__((unused)) PyObject *self,
 
 /* definition of the method table */
 
-static PyMethodDef logger_loaderMethods[] = {
+static PyMethodDef libswiftloggerMethods[] = {
     {"loadFromIndex", loadFromIndex, METH_VARARGS,
      "Load snapshot directly from the offset in an index file."},
     {"reverseOffset", pyReverseOffset, METH_VARARGS,
@@ -344,21 +344,21 @@ static PyMethodDef logger_loaderMethods[] = {
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
-static struct PyModuleDef logger_loadermodule = {
+static struct PyModuleDef libswiftloggermodule = {
     PyModuleDef_HEAD_INIT,
-    "logger_loader",
+    "libswiftlogger",
     "Module reading a SWIFTsim logger snapshot",
     -1,
-    logger_loaderMethods,
+    libswiftloggerMethods,
     NULL, /* m_slots */
     NULL, /* m_traverse */
     NULL, /* m_clear */
     NULL  /* m_free */
 };
 
-PyMODINIT_FUNC PyInit_logger_loader(void) {
+PyMODINIT_FUNC PyInit_libswiftlogger(void) {
   PyObject *m;
-  m = PyModule_Create(&logger_loadermodule);
+  m = PyModule_Create(&libswiftloggermodule);
   if (m == NULL) return NULL;
 
   import_array();

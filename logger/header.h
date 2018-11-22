@@ -1,7 +1,7 @@
 #ifndef __LOGGER_HEADER_H__
 #define __LOGGER_HEADER_H__
 
-#include "tools.h"
+#include "logger_tools.h"
 
 #include <Python.h>
 #include <stdio.h>

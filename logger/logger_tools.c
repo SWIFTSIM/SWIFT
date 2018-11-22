@@ -1,4 +1,4 @@
-#include "tools.h"
+#include "logger_tools.h"
 #include "header.h"
 #include "io.h"
 
@@ -45,7 +45,7 @@ int _tools_get_next_chunk_backward(const struct header *h, void *map,
   while (current_offset < file_size) {
     size_t mask = 0;
     size_t prev_offset;
-    int test = io_read_mask(h, map, &current_offset, &mask, &prev_offset);
+    test = io_read_mask(h, map, &current_offset, &mask, &prev_offset);
     if (test != 0) return test;
 
     prev_offset = current_offset - prev_offset - chunk_header;
