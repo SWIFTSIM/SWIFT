@@ -841,7 +841,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
     const struct cell *c) {
 
   /* Is the cell split ? */
-  return c->split && c->grav.count > 400 && c->depth < 4;
+  //return c->split && c->grav.count > 400 && c->depth < 4;
+  return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
 }
 
 /**
