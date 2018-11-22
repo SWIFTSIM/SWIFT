@@ -49,7 +49,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
     mesh_gravity.h cbrt.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
-    logger_io.h
+    logger_io.h numa_helper.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c \
@@ -62,7 +62,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c 
     part_type.c xmf.c gravity_properties.c gravity.c \
     collectgroup.c hydro_space.c equation_of_state.c \
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
-    outputlist.c velociraptor_dummy.c logger_io.c
+    outputlist.c velociraptor_dummy.c logger_io.c numa_helper.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \

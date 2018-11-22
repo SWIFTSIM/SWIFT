@@ -2503,7 +2503,6 @@ void *runner_main(void *data) {
       DRAM_hits.exclude_hv = 1;
       DRAM_miss.exclude_hv = 1;
       ins_ret.exclude_hv = 1;
-      printf("%i %i\n", r->id, r->cpuid);
       r->local_DRAM_hits_handle = swift_perf_event_open(&DRAM_hits,0,r->cpuid,-1,0);
       r->local_DRAM_miss_handle = swift_perf_event_open(&DRAM_miss,0,r->cpuid,-1,0);
       r->instructions_retired_handle = swift_perf_event_open(&ins_ret,0,r->cpuid,-1,0);

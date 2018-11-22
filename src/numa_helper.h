@@ -22,6 +22,6 @@
 #include <stdint.h>
 #include "cell.h"
 
-int swiftnuma_cell_move_hydro_parts(struct cell *c, int32_t node, int32_t verbose);
+void swiftnuma_cell_move_hydro_parts(struct cell *c, int32_t node, int32_t verbose);
 
 #endif

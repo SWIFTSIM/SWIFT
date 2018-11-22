@@ -54,7 +54,7 @@
  * @param node The numa node to move to.
  * @param verbose Are we talkative/do we check things.
  */
-int swiftnuma_cell_move_hydro_parts(struct cell *c, int32_t node, int32_t verbose){
+void swiftnuma_cell_move_hydro_parts(struct cell *c, int32_t node, int32_t verbose){
 #ifdef HAVE_LIBNUMA
   struct part *start_part = c->hydro.parts;
   struct part *end_part = &c->hydro.parts[c->hydro.count];
@@ -66,7 +66,7 @@ int swiftnuma_cell_move_hydro_parts(struct cell *c, int32_t node, int32_t verbos
     start_page += page_size;
   }
   if( ((uintptr_t)(((uint8_t*)(end_part+1)) - last_page)) <= (page_size/2) ){
-    end_page -= page_size;
+    last_page -= page_size;
   }
   uintptr_t nr_pages = ((uintptr_t)(last_page - start_page)) / page_size;
   if(nr_pages > 0){

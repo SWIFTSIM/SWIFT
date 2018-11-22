@@ -50,6 +50,7 @@
 #include "map.h"
 #include "mesh_gravity.h"
 #include "multipole.h"
+#include "numa_helper.h"
 #include "outputlist.h"
 #include "parallel_io.h"
 #include "parser.h"
