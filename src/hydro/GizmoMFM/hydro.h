@@ -1094,7 +1094,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
 #ifdef GIZMO_TOTAL_ENERGY
   /* add the kinetic energy */
   p->conserved.energy +=
-      0.5f * p->conserved.mass *
+      0.5f *
       (p->conserved.momentum[0] * p->v[0] + p->conserved.momentum[1] * p->v[1] +
        p->conserved.momentum[2] * p->v[2]);
 #endif
@@ -1118,7 +1118,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
 #ifdef GIZMO_TOTAL_ENERGY
   /* add the kinetic energy */
   p->conserved.energy +=
-      0.5f * p->conserved.mass *
+      0.5f *
       (p->conserved.momentum[0] * p->v[0] + p->conserved.momentum[1] * p->v[1] +
        p->conserved.momentum[2] * p->v[2]);
 #endif

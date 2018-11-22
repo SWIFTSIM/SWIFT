@@ -45,7 +45,7 @@
 /* Try to keep cells regular by adding a correction velocity. */
 //#define GIZMO_STEER_MOTION
 /* Use the total energy instead of the thermal energy as conserved variable. */
-//#define GIZMO_TOTAL_ENERGY
+#define GIZMO_TOTAL_ENERGY
 
 /* Options to control handling of unphysical values (GIZMO_SPH only). */
 /* In GIZMO, mass and energy (and hence density and pressure) can in principle
@@ -54,9 +54,9 @@
    If no options are selected below, we assume (and pray) that this will not
    happen, and add no restrictions to how these variables are treated. */
 /* Check for unphysical values and crash if they occur. */
-//#define GIZMO_UNPHYSICAL_ERROR
+#define GIZMO_UNPHYSICAL_ERROR
 /* Check for unphysical values and reset them to safe values. */
-#define GIZMO_UNPHYSICAL_RESCUE
+//#define GIZMO_UNPHYSICAL_RESCUE
 /* Show a warning message if an unphysical value was reset (only works if
    GIZMO_UNPHYSICAL_RESCUE is also selected). */
 #ifdef SWIFT_DEBUG_CHECKS
