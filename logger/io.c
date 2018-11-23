@@ -1,13 +1,11 @@
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 #include "io.h"
 #include "header.h"
 #include "logger_tools.h"
-
-/* file size */
-#include <sys/stat.h>
-/* mapping */
-#include <sys/mman.h>
-/* open */
-#include <fcntl.h>
 
 int io_get_file_size(int fd, size_t *size) {
   struct stat s;

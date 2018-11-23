@@ -42,8 +42,7 @@ lib_LTLIBRARIES = libswiftlogger.la
 include_HEADERS = header.h io.h particle.h timeline.h logger_tools.h
 
 # Common source files
-AM_SOURCES = header.c io.c logger_loader.c particle.c \
-	timeline.c
+AM_SOURCES = header.c io.c particle.c timeline.c
 if HAVEPYTHON
 AM_SOURCES += logger_loader.c
 endif

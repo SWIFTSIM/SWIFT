@@ -5,7 +5,7 @@ double time_convert_to_double(const integertime_t ti, const double timeBase) {
   return ti * timeBase;  // should add timebegin
 }
 
-integertime_t time_convert_to_integer(const double_t ti,
+integertime_t time_convert_to_integer(const double ti,
                                       const double timeBase) {
   return ti / timeBase;  // should add timebegin
 }

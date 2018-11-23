@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 void particle_print(const struct particle *p) {
   printf("ID:            %lu\n", p->id);
