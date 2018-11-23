@@ -523,8 +523,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         // MATTHIEU: Temporary star-formation law
         // Do not use this at home.
         if (rho > 1.7e7 && e->step > 2) {
-          message("c->cellID=%d Removing particle id=%lld rho=%e", c->cellID,
-                  p->id, rho);
+          message("Removing particle id=%lld rho=%e", p->id, rho);
 
           /* Create a fresh (empty) spart */
           struct spart *sp = cell_add_spart(e, c);

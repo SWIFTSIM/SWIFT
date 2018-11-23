@@ -3749,31 +3749,22 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* Are there any extra particles left? */
   if (top->stars.count == top->stars.count_total) {
-    message("We ran out of star particles!");
+    //message("We ran out of star particles!");
     atomic_inc(&e->forcerebuild);
     return NULL;
   }
 
   /* Number of particles to shift in order to get a free space. */
-  const int n_copy = &top->stars.parts[top->stars.count] - c->stars.parts;
+  const size_t n_copy = &top->stars.parts[top->stars.count] - c->stars.parts;
 
   if (n_copy > 0) {
 
     // MATTHIEU: This can be improved. We don't need to copy everything, just
     // need to swap a few particles.
-
-    struct spart *temp = NULL;
-    if (posix_memalign((void **)&temp, spart_align,
-                       n_copy * sizeof(struct spart)) != 0)
-      error("Impossible to allocate temp buffer");
-
-    /* Shift all the spart ahead of the current empty position by 1 */
-    memcpy(temp, c->stars.parts, n_copy * sizeof(struct spart));
-    memcpy(c->stars.parts + 1, temp, n_copy * sizeof(struct spart));
-    free(temp);
+    memmove(&c->stars.parts[1], &c->stars.parts[0], n_copy * sizeof(struct spart));
 
     /* Update the gpart->spart links (shift by 1) */
-    for (int i = 0; i < n_copy; ++i) {
+    for (size_t i = 0; i < n_copy; ++i) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (c->stars.parts[i + 1].gpart == NULL) {
         error("Incorrectly linked spart!");
@@ -3805,7 +3796,8 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 #endif
 
   /* Register that we used one of the free slots. */
-  atomic_dec(&e->s->nr_extra_sparts);
+  const size_t one = 1;
+  atomic_sub(&e->s->nr_extra_sparts, one);
 
   return sp;
 }
@@ -3990,7 +3982,6 @@ void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
   const int count_real = c->hydro.count;
-  const int count_total = count_real + space_extra_parts;
 
   if (c->depth != 0 || c->nodeID != engine_rank)
     error("This function should only be called on local top-level cells!");
@@ -4008,7 +3999,7 @@ void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (first_not_extra >= count_total)
+      if (first_not_extra >= count_real + space_extra_parts)
         error("Looking for extra particles beyond this cell's range!");
 #endif
 
@@ -4033,7 +4024,6 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
 
   struct spart *sparts = c->stars.parts;
   const int count_real = c->stars.count;
-  const int count_total = count_real + space_extra_sparts;
 
   if (c->depth != 0 || c->nodeID != engine_rank)
     error("This function should only be called on local top-level cells!");
@@ -4051,7 +4041,7 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (first_not_extra >= count_total)
+      if (first_not_extra >= count_real + space_extra_sparts)
         error("Looking for extra particles beyond this cell's range!");
 #endif
 
@@ -4076,7 +4066,6 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
 
   struct gpart *gparts = c->grav.parts;
   const int count_real = c->grav.count;
-  const int count_total = count_real + space_extra_gparts;
 
   if (c->depth != 0 || c->nodeID != engine_rank)
     error("This function should only be called on local top-level cells!");
@@ -4094,7 +4083,7 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (first_not_extra >= count_total)
+      if (first_not_extra >= count_real + space_extra_gparts)
         error("Looking for extra particles beyond this cell's range!");
 #endif
 
