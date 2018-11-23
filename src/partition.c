@@ -1205,7 +1205,7 @@ void partition_gather_weights(void *map_data, int num_elements,
 
     /* Skip un-interesting tasks. */
     if (t->type == task_type_send || t->type == task_type_recv ||
-        t->type == task_type_logger || t->implicit) continue;
+        t->type == task_type_logger || t->implicit || t->ci == NULL) continue;
 
     /* Get the task weight based on fixed cost for this task type. */
     double w = repartition_costs[t->type][t->subtype];
