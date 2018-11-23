@@ -3749,7 +3749,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* Are there any extra particles left? */
   if (top->stars.count == top->stars.count_total) {
-    //message("We ran out of star particles!");
+    // message("We ran out of star particles!");
     atomic_inc(&e->forcerebuild);
     return NULL;
   }
@@ -3761,7 +3761,8 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
     // MATTHIEU: This can be improved. We don't need to copy everything, just
     // need to swap a few particles.
-    memmove(&c->stars.parts[1], &c->stars.parts[0], n_copy * sizeof(struct spart));
+    memmove(&c->stars.parts[1], &c->stars.parts[0],
+            n_copy * sizeof(struct spart));
 
     /* Update the gpart->spart links (shift by 1) */
     for (size_t i = 0; i < n_copy; ++i) {
@@ -4049,6 +4050,11 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
       memswap(&sparts[i], &sparts[first_not_extra], sizeof(struct spart));
       if (sparts[i].gpart)
         sparts[i].gpart->id_or_neg_offset = -(i + sparts_offset);
+      sparts[first_not_extra].gpart = NULL;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[first_not_extra].time_bin != time_bin_not_created)
+        error("Incorrect swap occured!");
+#endif
     }
   }
 }
