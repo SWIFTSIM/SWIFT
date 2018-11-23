@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/**
+ * @brief print a header struct
+ */
 void header_print(const struct header *h) {
 #ifdef SWIFT_DEBUG_CHECKS
   printf("Debug checks enabled\n");
@@ -32,6 +35,9 @@ void header_print(const struct header *h) {
 
 };
 
+/**
+ * @brief free allocated memory
+ */
 void header_free(struct header *h) {
   for (size_t i = 0; i < h->nber_mask; i++) {
     free(h->masks_name[i]);
@@ -41,6 +47,12 @@ void header_free(struct header *h) {
   free(h->masks_size);
 };
 
+/**
+ * @brief check if field is present in header
+ *
+ * @param field name of the requested field
+ * @param ind (return value) indice of the requested field
+ */
 int header_is_present_and_get_index(const struct header *h, const char *field,
                                     size_t *ind) {
   for (size_t i = 0; i < h->nber_mask; i++) {
@@ -55,10 +67,23 @@ int header_is_present_and_get_index(const struct header *h, const char *field,
   return 0;
 };
 
+/**
+ * @brief check if field is present in header
+ *
+ * @param field name of the requested field
+ */
 int header_is_present(const struct header *h, const char *field) {
   return header_is_present_and_get_index(h, field, NULL);
 };
 
+/**
+ * @brief Inverse the offset direction
+ *
+ * @param h #header file structure
+ * @param map file mapping
+ *
+ * @return error code
+ */
 int header_change_offset_direction(struct header *h, void *map) {
   h->forward_offset = !h->forward_offset;
   size_t offset = LOGGER_VERSION_SIZE;
@@ -67,6 +92,12 @@ int header_change_offset_direction(struct header *h, void *map) {
                        &offset);
 }
 
+/**
+ * @brief read the logger header
+ *
+ * @param h out: header
+ * @param map file mapping
+ */
 int header_read(struct header *h, void *map) {
   size_t offset = 0;
 
@@ -127,6 +158,14 @@ int header_read(struct header *h, void *map) {
   return 0;
 };
 
+/**
+ * @brief count number of bits in a given mask
+ *
+ * @param h #header file structure
+ * @param mask mask to compute
+ *
+ * @return number of bits in mask
+ */
 size_t header_get_mask_size(const struct header *h, const size_t mask) {
   size_t count = 0;
   for (size_t i = 0; i < h->nber_mask; i++) {

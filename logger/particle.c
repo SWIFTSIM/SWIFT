@@ -8,6 +8,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+/**
+ * @brief print a particle
+ *
+ * @param p #particle particle to print
+ */
 void particle_print(const struct particle *p) {
   printf("ID:            %lu\n", p->id);
   printf("Mass:          %g\n", p->mass);
@@ -20,11 +25,23 @@ void particle_print(const struct particle *p) {
   printf("Density:       %g\n", p->density);
 }
 
+/**
+ * @brief Check if dump data type are compatible with the particle type
+ *
+ * @param h #header structure of the file
+ *
+ * @return error code
+ */
 int particle_check_data_type(__attribute__((unused)) const struct header *h) {
   printf("TODO check_data_type\n");
   return 1;
 }
 
+/**
+ * @brief initialize a particle
+ *
+ * @param part #particle particle to initialize
+ */
 void particle_init(struct particle *part) {
   for (size_t k = 0; k < DIM; k++) {
     part->pos[k] = 0;
@@ -39,6 +56,18 @@ void particle_init(struct particle *part) {
   part->id = SIZE_MAX;
 }
 
+/**
+ * @brief read a single field for a particle
+ *
+ * @param part @particle particle to update
+ * @param map file mapping
+ * @param offset In: read position, Out: input shifted by the required amount of
+ * data
+ * @param field field to read
+ * @param size number of bits to read
+ *
+ * @return error code
+ */
 int particle_read_field(struct particle *part, void *map, size_t *offset,
                         const char *field, const size_t size) {
   void *p = NULL;
@@ -77,6 +106,19 @@ int particle_read_field(struct particle *part, void *map, size_t *offset,
   return error_code;
 }
 
+/**
+ * @brief read a particle in the dump file
+ *
+ * @param part #particle particle to update
+ * @param h #header structure of the file
+ * @param map file mapping
+ * @param offset offset of the chunk to read (update it to the end of the chunk)
+ * @param time time to interpolate (if #reader_type is an interpolating one)
+ * @param reader #reader_type
+ * @param times #time_array times in the dump
+ *
+ * @return error code
+ */
 int particle_read(struct particle *part, const struct header *h, void *map,
                   size_t *offset, const double time, const int reader,
                   struct time_array *times) {
@@ -129,6 +171,16 @@ int particle_read(struct particle *part, const struct header *h, void *map,
   return 0;
 }
 
+/**
+ * @brief interpolate two particles at a given time
+ *
+ * @param part_curr #particle In: current particle (before time), Out:
+ * interpolated particle
+ * @param part_next #particle next particle (after time)
+ * @param time interpolation time
+ *
+ * @return error code
+ */
 int particle_interpolate(struct particle *part_curr,
                          const struct particle *part_next,
                          const double time) {
