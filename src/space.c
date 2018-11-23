@@ -862,7 +862,7 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Do we have enough space for the extra sparts (i.e. we haven't used up any)
    * ? */
-  if (nr_sparts + expected_num_extra_sparts > size_sparts) {
+  if (nr_actual_sparts + expected_num_extra_sparts > nr_sparts) {
 
     /* Ok... need to put some more in the game */
 
