@@ -8,10 +8,19 @@ typedef char timebin_t;
 typedef long long integertime_t;
 
 struct time_array {
+  /* Pointer to next element */
   void *next;
+
+  /* Pointer to prev element */
   void *prev;
+
+  /* Integertime of this timestamp */
   integertime_t timestamp;
+
+  /* Double time of this timestamp */
   double time;
+
+  /* Offset in the file of this timestamp */
   size_t offset;
 };
 
