@@ -113,7 +113,9 @@ GADGET-2 based analysis programs:
   exactly the same as the ``NumPart_Total`` array. As SWIFT only uses ICs
   contained in a single file, this is not necessary for SWIFT-only ICs.
 + ``NumFilesPerSnapshot``, again a historical integer value that tells the code
-  how many files there are per snapshot. You will probably want to set this to 1.
+  how many files there are per snapshot. You will probably want to set
+  this to 1. If this field is present in a SWIFT IC file and has a
+  value different from 1, the code will return an error message.
 + ``Time``, time of the start of the simulation in internal units or expressed
   as a scale-factor for cosmological runs. SWIFT ignores this and reads it from
   the parameter file.

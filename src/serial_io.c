@@ -500,6 +500,23 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
       error("ICs dimensionality (%dD) does not match code dimensionality (%dD)",
             dimension, (int)hydro_dimension);
 
+    /* Check whether the number of files is specified (if the info exists) */
+    const hid_t hid_files = H5Aexists(h_grp, "NumFilesPerSnapshot");
+    int num_files = 0;
+    if (hid_files < 0)
+      error(
+          "Error while testing the existance of 'NumFilesPerSnapshot' "
+          "attribute");
+    if (hid_files > 0)
+      io_read_attribute(h_grp, "NumFilesPerSnapshot", INT, &num_files);
+    if (num_files != 1)
+      error(
+          "ICs are split over multiples files (%d). SWIFT cannot handle this "
+          "case. The script /tools/combine_ics.py is availalbe in the "
+          "repository "
+          "to combine files into a valid input file.",
+          num_files);
+
     /* Read the relevant information and print status */
     int flag_entropy_temp[6];
     io_read_attribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy_temp);
