@@ -11,16 +11,20 @@ conditions format as the popular `GADGET-2
 its type 3 format. Note that we do not support the GADGET-2 types 1 and 2
 formats.
 
+One crucial difference is that whilst GADGET-2 can have initial conditions split
+over many files SWIFT only supports initial conditions in one single file. **ICs
+split over multiple files cannot be read by SWIFT**. See the
+":ref:`multiple_files_ICs`" section below for possible solutions. In GADGET-2
+having multiple files allows multiple ones to be read in parallel and is the
+only way the code can handle more than 2^31 particles. This limitation is not in
+place in SWIFT. A single file can contain any number of particles (well... up to
+2^64...)  and the file is read in parallel by HDF5 when running on more than one
+compute node.
+
 The original GADGET-2 file format only contains 2 types of particles: gas
 particles and 5 sorts of collisionless particles that allow users to run with 5
 separate particle masses and softenings. In SWIFT, we expand on this by using
 two of these types for stars and black holes.
-
-GADGET-2 can have initial conditions split over many files. This allow multiple
-ones to be read in parallel and is the only way the code can handle more than
-2^31 particles. This limitation is not in place in SWIFT. A single file can
-contain any number of particles (well... up to 2^64...) and the file is read in
-parallel by HDF5 when running on more than one compute node.
 
 As the original documentation for the GADGET-2 initial conditions format is
 quite sparse, we lay out here all of the necessary components. If you are
@@ -227,5 +231,28 @@ You should have an HDF5 file with the following structure:
      Velocities=[[vx, vy, vz]]
      ParticleIDs=[...]
      Masses=[...]
+
+.. _multiple_files_ICs:
+     
+ICs split over multiple files
+-----------------------------
+
+A basic script ``tools/combine_ics.py`` is provided to merge basic GADGET-2
+initial conditions split into multiple files into one single valid file. This
+script can handle simple HDF5 files (GADGET-2 type 3 ICs) that follow the format
+described above but split over multiple files.
+
+The script can also convert ICs using a ``MassTable`` and create the
+corresponding particle fields. Note that additional fields present in ICs beyond
+the simple GADGET-2 specification will not be merged.
+
+One additional option is to compress the fields in the files using HDF5's gzip
+compression. This is very effective for the fields such as masses or particle
+IDs which are very similar. A checksum filter is also applied in all cases to
+help with data curation.
+
+**We caution that this script is very basic and should only be used with great
+caution.** 
+
 
 
