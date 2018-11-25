@@ -406,7 +406,7 @@ void read_ic_single(const char* fileName,
 
   /* Check whether the number of files is specified (if the info exists) */
   const hid_t hid_files = H5Aexists(h_grp, "NumFilesPerSnapshot");
-  int num_files = 0;
+  int num_files = 1;
   if (hid_files < 0)
     error(
         "Error while testing the existance of 'NumFilesPerSnapshot' attribute");
