@@ -156,7 +156,6 @@ external_gravity_get_potential_energy(
   return -phys_const->const_newton_G * potential->mass * r_plus_alinv;
 }
 
-
 /**
  * @brief Initialises the external potential properties in the internal system
  * of units.
@@ -173,9 +172,9 @@ static INLINE void potential_init_backend(
 
   /* Define the default value */
   static const int idealized_disk_default = 0;
-  static const double M200_default = 0.0;
-  static const double V200_default = 0.0;
-  static const double R200_default = 0.0;
+  static const double M200_default = 0.;
+  static const double V200_default = 0.;
+  static const double R200_default = 0.;
 
   /* Read in the position of the centre of potential */
   parser_get_param_double_array(parameter_file, "HernquistPotential:position",
@@ -204,6 +203,7 @@ static INLINE void potential_init_backend(
     potential->al = parser_get_param_double(parameter_file,
                                             "HernquistPotential:scalelength");
   } else {
+
     /* Read the parameters in the case of a idealized disk
      * There are 3 different possible input parameters M200, V200 and R200
      * First read in the mandatory parameters in this case */
@@ -221,9 +221,9 @@ static INLINE void potential_init_backend(
     const double h =
         parser_get_param_double(parameter_file, "HernquistPotential:h");
 
+    /* Hubble constant assumed for halo masses conversion */
     const double H0 = h * kmoversoverMpc;
 
-    message("H0 = %g", H0);
     /* There are 3 legit runs possible with use disk,
      * with a known M200, V200 or R200 */
     if (M200 != 0.0) {
@@ -232,18 +232,21 @@ static INLINE void potential_init_backend(
       R200 = V200 / (10 * H0);
 
     } else if (V200 != 0.0) {
+
       /* Calculate M200 and R200 from V200 */
-      M200 = V200*V200*V200 / (10. * G_newton * H0);
+      M200 = V200 * V200 * V200 / (10. * G_newton * H0);
       R200 = V200 / (10 * H0);
     } else if (R200 != 0.0) {
+
       /* Calculate M200 and V200 from R200 */
       V200 = 10. * H0 * R200;
-      M200 = V200*V200*V200 / (10. * G_newton * H0);
+      M200 = V200 * V200 * V200 / (10. * G_newton * H0);
     } else {
       error("Please specify one of the 3 variables M200, V200 or R200");
     }
 
-    message("M200 = %g, R200 = %g, V200 = %g", M200, R200, V200);
+    /* message("M200 = %g, R200 = %g, V200 = %g", M200, R200, V200); */
+    /* message("H0 = %g", H0); */
 
     /* get the concentration from the parameter file */
     const double concentration = parser_get_param_double(
@@ -253,16 +256,16 @@ static INLINE void potential_init_backend(
     const double RS = R200 / concentration;
 
     /* Calculate the Hernquist equivalent scale length */
-    potential->al = RS * sqrt(1 * (log(1 + concentration) -
-                                   concentration / (1 + concentration)));
+    potential->al = RS * sqrt(1. * (log(1. + concentration) -
+                                    concentration / (1. + concentration)));
 
     /* Depending on the disk mass and and the bulge mass the halo
      * gets a different mass, because of this we read the fractions
      * from the parameter file and calculate the absolute mass*/
-    const double diskfraction =
-        parser_get_param_double(parameter_file, "HernquistPotential:diskfraction");
-    const double bulgefraction =
-        parser_get_param_double(parameter_file, "HernquistPotential:bulgefraction");
+    const double diskfraction = parser_get_param_double(
+        parameter_file, "HernquistPotential:diskfraction");
+    const double bulgefraction = parser_get_param_double(
+        parameter_file, "HernquistPotential:bulgefraction");
     /* Calculate the mass of the bulge and disk from the parameters  */
     const double Mdisk = M200 * diskfraction;
     const double Mbulge = M200 * bulgefraction;
@@ -282,7 +285,7 @@ static INLINE void potential_init_backend(
   /* This is the circular orbital time at the softened radius */
   const float sqrtgm = sqrtf(phys_const->const_newton_G * potential->mass);
   potential->mintime = 2.f * sqrtf(epsilon) * potential->al * M_PI *
-                       (1 + epsilon / potential->al) / sqrtgm *
+                       (1. + epsilon / potential->al) / sqrtgm *
                        potential->timestep_mult;
 }
 

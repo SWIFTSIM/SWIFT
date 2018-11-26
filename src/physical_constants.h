@@ -99,7 +99,6 @@ struct phys_const {
 
   /*! Unit factor of the reduced hubble constant */
   double const_reduced_hubble;
-
 };
 
 void phys_const_init(const struct unit_system* us, struct swift_params* params,
