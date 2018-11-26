@@ -24,6 +24,7 @@
 #include "imf.h"
 
 static const float SNII_min_mass_msun = 100; // temporary guess.
+static const float SNII_max_mass_msun = 10000; // temporary guess.
 static const float imf_max_mass_msun = 100; // temporary guess.
 static const float log_min_metallicity = 0.0; // temporary guess.
 
@@ -364,6 +365,8 @@ inline float lifetime_in_Gyr(float mass, float metallicity,
 
 inline void determine_bin_yield(int *iz_low, int *iz_high, float *dz, float log_metallicity, 
 				const struct stars_props *restrict star_properties){
+
+  // Modify to work with SNII yields !!!
   if (log_metallicity > log_min_metallicity) {
     int j;
     for (j = 0; j < star_properties->yield_AGB.N_Z - 1 &&
@@ -398,8 +401,123 @@ inline static void evolve_SNIa(void){
 
 }
 
-inline static void evolve_SNII(void){
+inline static void evolve_SNII(float log_min_mass, float log_max_mass,
+                              float log_metallicity, float *initial_metals,
+			      const struct stars_props *restrict stars,
+			      struct spart *restrict sp){
+  // come up with more descriptive index names
+  int ilow, ihigh, imass, i = 0;
 
+  // start counting SNII. This should probably be passed in as a pointer.
+  float num_SNII = 0.;
+
+  float metallicity = exp(M_LN10 * log_metallicity);
+  message("metallicity %.5e", metallicity); // TEMPORARY to help compiling
+
+  /* determine integration range: make sure all these stars actually become SN
+  * of type II */
+  if (log_min_mass < log10(SNII_min_mass_msun))
+    log_min_mass = log10(SNII_min_mass_msun);
+
+  if (log_max_mass > log10(SNII_max_mass_msun))
+    log_max_mass = log10(SNII_max_mass_msun);
+
+  if (log_min_mass >= log_max_mass) return;
+
+  /* determine which mass bins will contribute */
+  determine_imf_bins(log_min_mass, log_max_mass, &ilow, &ihigh, stars);
+  float *stellar_yield;
+  stellar_yield = (float *)malloc(ihigh-ilow*sizeof(float));
+  if (stellar_yield == NULL) error("could not allocate stellar_yield");
+
+// Decide how to treat this ifdef!!!
+// #ifdef BG_DOUBLE_IMF
+//   if (phys_dens > All.IMF_PhysDensThresh)
+//     *Number_of_SNII = integrate_imf(log_min_mass, log_max_mass, 0.0, 4);
+//   else
+//     *Number_of_SNII = integrate_imf(log_min_mass, log_max_mass, 0.0, 0);
+// #else
+  num_SNII = integrate_imf(log_min_mass, log_max_mass, 0.0, 0, stellar_yield,stars);
+// #endif
+
+  /* determine yield of these bins (not equally spaced bins) */
+  int iz_low, iz_high;
+  float dz;
+  determine_bin_yield(&iz_low, &iz_high, &dz, log_metallicity, stars);
+
+  /* compute stellar_yield as function of mass */
+  float metals[chemistry_element_count], mass;
+  for (i = 0; i < chemistry_element_count; i++) {
+    for (imass = ilow; imass < ihigh + 1; imass++)
+      /* yield_SNII.SPH refers to elements produced, yield_SNII.Ejecta_SPH refers
+       * to elements already in star */
+      stellar_yield[imass] =
+          (1 - dz) * (stars->yield_SNII.SPH[iz_low][i][imass] +
+                      initial_metals[i] * stars->yield_SNII.Ejecta_SPH[iz_low][imass]) +
+          dz * (stars->yield_SNII.SPH[iz_high][i][imass] +
+                initial_metals[i] * stars->yield_SNII.Ejecta_SPH[iz_high][imass]);
+
+// temporarily commented ifdef until sorted out how to treat this.
+// #ifdef BG_DOUBLE_IMF
+//     if (phys_dens > All.IMF_PhysDensThresh)
+//       metals[i] = integrate_imf(log_min_mass, log_max_mass, 0.0, 6, stellar_yield);
+//     else
+//       metals[i] = integrate_imf(log_min_mass, log_max_mass, 0.0, 2, stellar_yield);
+// #else
+    metals[i] = integrate_imf(log_min_mass, log_max_mass, 0.0, 2, stellar_yield,stars);
+// #endif
+  }
+
+  for (imass = ilow; imass < ihigh + 1; imass++)
+    stellar_yield[imass] =
+        (1 - dz) * (stars->yield_SNII.total_metals_SPH[iz_low][imass] +
+                    metallicity * stars->yield_SNII.Ejecta_SPH[iz_low][imass]) +
+        dz * (stars->yield_SNII.total_metals_SPH[iz_high][imass] +
+              metallicity * stars->yield_SNII.Ejecta_SPH[iz_high][imass]);
+
+// temporarily commented ifdef until sorted out how to treat this.
+// #ifdef BG_DOUBLE_IMF
+//   if (phys_dens > All.IMF_PhysDensThresh)
+//     mass = integrate_imf(log_min_mass, log_max_mass, 0.0, 6, stellar_yield);
+//   else
+//     mass = integrate_imf(log_min_mass, log_max_mass, 0.0, 2, stellar_yield);
+// #else
+  mass = integrate_imf(log_min_mass, log_max_mass, 0.0, 2, stellar_yield, stars);
+// #endif
+
+  /* yield normalization */
+  float norm0, norm1;
+
+  /* zero all negative values */
+  for (i = 0; i < chemistry_element_count; i++)
+    if (metals[i] < 0) metals[i] = 0;
+
+  if (mass < 0) mass = 0;
+
+  /* get the total mass ejected from the table */
+  for (imass = ilow; imass < ihigh + 1; imass++)
+    stellar_yield[imass] = (1 - dz) * stars->yield_AGB.Ejecta_SPH[iz_low][imass] +
+                           dz * stars->yield_AGB.Ejecta_SPH[iz_high][imass];
+
+  norm0 = integrate_imf(log_min_mass, log_max_mass, 0.0, 2, stellar_yield, stars);
+
+  /* compute the total mass ejected */
+  norm1 = mass + metals[chemistry_element_H] + metals[chemistry_element_He];
+
+  /* normalize the yields */
+  if (norm1 > 0) {
+    // Is this really the right way around? mass += metals and metals += mass? Maybe rename variables?
+    for (i = 0; i < chemistry_element_count; i++) {
+      sp->metals_released[i] += metals[i] * (norm0 / norm1);
+      sp->mass_from_snii += metals[i] * (norm0 / norm1);
+    }
+    sp->metal_mass_released += mass * (norm0 / norm1);
+    sp->metals_from_snii += mass * (norm0 / norm1);
+  } else {
+    error("wrong normalization!!!! norm1 = %e\n", norm1);
+  }
+
+  free(stellar_yield);
 }
 
 inline static void evolve_AGB(float log_min_mass, float log_max_mass,
@@ -545,7 +663,7 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
 
   evolve_SNIa();
 
-  evolve_SNII(); 
+  evolve_SNII(0,0,0,initial_metals,star_properties,sp); 
 
   evolve_AGB(0,0,0,initial_metals,star_properties,sp);
 
@@ -579,81 +697,5 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     
     // set_particle_metal_content
 }
-
-//-------------------- Star formation work in progress --------------------
-
-//inline static void compute_sfr(struct part* restrict p, 
-//	const struct cosmology* restrict cosmo,
-//	const struct unit_system* us, float dt) {
-//  
-//  const dt_cgs = dt*units_cgs_conversion_factor(us, UNIT_CONV_TIME);
-//  
-//  int N_stars_generated;
-//  double sfr = 0;
-//
-//  // get flags (lines 196-197 in eagle_sfr.c)
-//
-//  // Find out how many stars generated
-//  N_stars_generated = 0; // set to zero for now
-//
-//  // Mass of stars (CHECK what's meant to be happening here...) 
-//  double particle_mass_cgs = hydro_get_mass(p) * units_cgs_conversion_factor(us,UNIT_CONV_MASS);
-//  double generations = 1.0; // copied from parameter files in eagle. find out what it means...
-//  double mass_of_star = particle_mass_cgs/(generations - N_stars_generated);
-//
-//  // get pressure
-//  double pressure_cgs = hydro_get_physical_pressure(p, cosmo) * units_cgs_conversion_factor(us,UNIT_CONV_PRESSURE);
-//
-//  // get density
-//  double density_cgs = hydro_get_physical_density(p,cosmo) * units_cgs_conversion_factor(us,UNIT_CONV_DENSITY);
-//
-//  // set ks parameters. RHS need to be read in (TODO).
-//  //double ks_norm_cgs = KS_norm_cgs;
-//  //double ks_exponent = SF_SchmidtLawExponent;
-//  //if (density_cgs > KSHighDens_thres_cgs) {
-//  //  ks_norm_cgs = KS_norm_HighDens_cgs;
-//  //  ks_exponent = All.SF_SchmidtLawHighDensExponent;
-//  //}
-//
-//  // inverse star formation timescale in seconds
-//  double timescale_sfr_inv_cgs = ks_norm_cgs * pow(pressure_cgs * hydro_gamma / const_newton_G_cgs, 0.5*(ks_exponent - 1)); // CHECK if possible values of ks_exponent can allow for not using pow
-//
-//  // calculate star formation rate, and stellar mass formed
-//  double sm_dt_cgs = particle_mass_cgs * inv_tsfr_cgs;
-//  double sm_cgs = sm_dt_cgs * dt_cgs;
-//
-//  // if density is high enough convert all gas mass to stars right away (CHECK: there is condition in EAGLE to bypass this check)
-//  if (particle_mass_cgs > max_physical_density) {
-//    sm_cgs = particle_mass_cgs/(generations - N_stars_generated);
-//    sm_dt_cgs = sm_cgs/dt_cgs;
-//  }
-//
-//  // EAGLE has a check for if sm_cgs > particle_mass_cgs. do we need this?
-//
-//  // EAGLE adds the stellar mass to a running total. This would be over all the particles, so maybe need to do this higher up. Also, is it necessary?
-//  // total_sm += sm;
-//  
-//  // convert to formation rate to stellar mass per year
-//  sfr = sm_dt_cgs * sfr_conversion_factor;
-//  // add sfr to appropriate time bin?
-//  //TimeBinSfr[P[i].TimeBin] += SphP[i].Sfr;
-//
-//  // calculate probability of turning part into spart
-//  // does this need an extra switch as in EAGLE?
-//  float part_to_spart_prob;
-//  if (density_cgs > max_density) {
-//    part_to_spart_prob = 1;
-//  } else {
-//    part_to_spart_prob = sm / mass_of_star;
-//  }
-//
-//  // Get random number with gsl (see Eagle/system.c:155) 
-//  // random_n = ...
-//  
-//  if (star_formation == 0) random_n = part_to_spart_prob + 1;
-//
-//  if (random_n < part_to_spart_prob) ; // Make star...
-//
-//}
 
 #endif /* SWIFT_EAGLE_STARS_H */
