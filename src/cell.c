@@ -3774,7 +3774,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
     for (size_t i = 0; i < n_copy; ++i) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (c->stars.parts[i + 1].gpart == NULL) {
-        message("Incorrectly linked spart!");
+        error("Incorrectly linked spart!");
       }
 #endif
       c->stars.parts[i + 1].gpart->id_or_neg_offset--;
