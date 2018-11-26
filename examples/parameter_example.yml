@@ -202,8 +202,8 @@ HernquistPotential:
   R200:            10.      # (Optional 1c) R200 of the galaxy+halo (when used M200 and V200 are not used, if M200 or V200 are given they are used)
   h:               0.704    # (Optional 1) reduced Hubble constant
   concentration:   7.1      # (Optional 1) concentration of the Halo
-  MD:              0.0434370991372   # (Optional 1) Disk mass fraction
-  MB:              0.00705852860979  # (Optional 1) Bulge mass fraction
+  diskfraction:              0.0434370991372   # (Optional 1) Disk mass fraction (equal to MD in MakeNewDisk and GalIC)
+  bulgefraction:              0.00705852860979  # (Optional 1) Bulge mass fraction (equal to MB in MakeNewDisk and GalIC)
   timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
   epsilon:         0.1      # Softening size (internal units)
  

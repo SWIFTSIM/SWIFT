@@ -259,13 +259,13 @@ static INLINE void potential_init_backend(
     /* Depending on the disk mass and and the bulge mass the halo
      * gets a different mass, because of this we read the fractions
      * from the parameter file and calculate the absolute mass*/
-    const double MD =
-        parser_get_param_double(parameter_file, "HernquistPotential:MD");
-    const double MB =
-        parser_get_param_double(parameter_file, "HernquistPotential:MB");
-    /* Calculate the mass of the bulge and disk from the parameters */
-    const double Mdisk = M200 * MD;
-    const double Mbulge = M200 * MB;
+    const double diskfraction =
+        parser_get_param_double(parameter_file, "HernquistPotential:diskfraction");
+    const double bulgefraction =
+        parser_get_param_double(parameter_file, "HernquistPotential:bulgefraction");
+    /* Calculate the mass of the bulge and disk from the parameters  */
+    const double Mdisk = M200 * diskfraction;
+    const double Mbulge = M200 * bulgefraction;
 
     /* Store the mass of the DM halo */
     potential->mass = M200 - Mdisk - Mbulge;
