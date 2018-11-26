@@ -156,8 +156,6 @@ external_gravity_get_potential_energy(
   return -phys_const->const_newton_G * potential->mass * r_plus_alinv;
 }
 
-/* Standard values for a few parameters in the Hernquist potential */
-#define Mpc_to_cm 3.08567781E24
 
 /**
  * @brief Initialises the external potential properties in the internal system
@@ -211,7 +209,7 @@ static INLINE void potential_init_backend(
      * First read in the mandatory parameters in this case */
 
     const float G_newton = phys_const->const_newton_G;
-    /* const float kmoversovermpc = phys_const->*/
+    const float kmoversoverMpc = phys_const->const_reduced_hubble;
 
     /* Initialize the variables */
     double M200 = parser_get_opt_param_double(
@@ -223,10 +221,9 @@ static INLINE void potential_init_backend(
     const double h =
         parser_get_param_double(parameter_file, "HernquistPotential:h");
 
-    const double H0 = h * 100 * 1e5 / Mpc_to_cm * us->UnitTime_in_cgs;
+    const double H0 = h * kmoversoverMpc;
 
     message("H0 = %g", H0);
-
     /* There are 3 legit runs possible with use disk,
      * with a known M200, V200 or R200 */
     if (M200 != 0.0) {

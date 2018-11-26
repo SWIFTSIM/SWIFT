@@ -158,6 +158,7 @@ void phys_const_print(const struct phys_const *internal_const) {
           internal_const->const_astronomical_unit);
   message("%25s = %e", "Parsec", internal_const->const_parsec);
   message("%25s = %e", "Solar mass", internal_const->const_solar_mass);
+  message("%25s = %e", "km/s/Mpc", internal_const->const_reduced_hubble);
 }
 
 /**
