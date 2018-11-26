@@ -556,7 +556,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
           sp->ti_kick = gp->ti_kick;
-          gp->ti_drift = sp->drift;
+	  gp->ti_drift = sp->ti_drift;
 #endif
 
           /* Set a smoothing length */

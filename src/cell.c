@@ -3727,7 +3727,9 @@ void cell_recursively_shift_sparts(struct cell *c,
 
 struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
+  /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
+  if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
 
   /* Progeny number at each level */
   int progeny[space_cell_maxdepth];
@@ -3748,14 +3750,19 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   }
 
   /* Are there any extra particles left? */
-  if (top->stars.count == top->stars.count_total) {
-    // message("We ran out of star particles!");
+  if (top->stars.count == top->stars.count_total - 1) {
+    message("We ran out of star particles!");
     atomic_inc(&e->forcerebuild);
     return NULL;
   }
 
   /* Number of particles to shift in order to get a free space. */
   const size_t n_copy = &top->stars.parts[top->stars.count] - c->stars.parts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->stars.parts + n_copy > top->stars.parts + top->stars.count)
+    error("Copying beyond the allowed range");
+#endif
 
   if (n_copy > 0) {
 
@@ -3790,6 +3797,13 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* Set it to the current time-bin */
   sp->time_bin = e->min_active_bin;
+
+  top = c;
+  while (top->parent != NULL) {
+    top->grav.ti_end_min = e->ti_current;
+    top = top->parent;
+  }
+  top->grav.ti_end_min = e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Specify it was drifted to this point */
