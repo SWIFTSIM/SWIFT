@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -108,7 +109,7 @@ struct spart {
 
     /* Abundance Iron */
     float Fe;
-  }
+  };
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -155,6 +156,12 @@ struct stars_props {
 
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
+
+  /*! Fixed mass ratio Ca to Si */
+  float Ca_to_Si;
+  
+  /*! Fixed mass ratio S to Si */
+  float S_to_Si;
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */
