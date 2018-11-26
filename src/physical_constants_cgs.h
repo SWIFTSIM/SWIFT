@@ -98,7 +98,8 @@ const double const_T_CMB_0_cgs = 2.7255;
 /*! Primordial Helium fraction [-] */
 const double const_primordial_He_fraction_cgs = 0.245;
 
-/*! km/s/Mpc to cgs conversion 100 * 1e5 / 3.08567781E24 */
-const double const_reduced_hubble_cgs = 3.240779e-18;
+/*! Reduced Hubble constant units (i.e. H_0 / h == 100 km / s / Mpc in CGS)
+ * [s^-1] */
+const double const_reduced_hubble_cgs = 3.2407792894458e-18;
 
 #endif /* SWIFT_PHYSICAL_CONSTANTS_CGS_H */

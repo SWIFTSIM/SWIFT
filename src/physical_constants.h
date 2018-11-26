@@ -97,7 +97,7 @@ struct phys_const {
   /*! Primordial Helium fraction */
   double const_primordial_He_fraction;
 
-  /*! Unit factor of the reduced hubble constant */
+  /*! Reduced hubble constant units (i.e. H_0 / h) */
   double const_reduced_hubble;
 };
 

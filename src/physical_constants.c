@@ -106,11 +106,6 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
   internal_const->const_earth_mass =
       const_earth_mass_cgs /
       units_general_cgs_conversion_factor(us, dimension_mass);
-  /* Calculate the reduced hubble constant prefactor */
-  const float dimension_hubble[5] = {0, 0, -1, 0, 0}; /* [s^-1] */
-  internal_const->const_reduced_hubble =
-      const_reduced_hubble_cgs /
-      units_general_cgs_conversion_factor(us, dimension_hubble);
 
   const float dimension_time[5] = {0, 0, 1, 0, 0}; /* [s] */
   internal_const->const_year =
@@ -136,6 +131,11 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
   internal_const->const_primordial_He_fraction =
       const_primordial_He_fraction_cgs /
       units_general_cgs_conversion_factor(us, dimension_Yp);
+
+  const float dimension_reduced_hubble[5] = {0, 0, -1, 0, 0}; /* [s^-1] */
+  internal_const->const_reduced_hubble =
+      const_reduced_hubble_cgs /
+      units_general_cgs_conversion_factor(us, dimension_reduced_hubble);
 }
 
 /**
