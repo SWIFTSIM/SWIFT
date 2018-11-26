@@ -211,6 +211,7 @@ static INLINE void potential_init_backend(
      * First read in the mandatory parameters in this case */
 
     const float G_newton = phys_const->const_newton_G;
+    /* const float kmoversovermpc = phys_const->*/
 
     /* Initialize the variables */
     double M200 = parser_get_opt_param_double(

@@ -108,7 +108,8 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
       units_general_cgs_conversion_factor(us, dimension_mass);
   /* Calculate the reduced hubble constant prefactor */
   const float dimension_hubble[5] = {0, 0, -1, 0, 0}; /* [s^-1] */
-  internal_const->const_reduced_hubble = const_reduced_hubble / 
+  internal_const->const_reduced_hubble = 
+      const_reduced_hubble_cgs / 
       units_general_cgs_conversion_factor(us, dimension_hubble);
       
   const float dimension_time[5] = {0, 0, 1, 0, 0}; /* [s] */
