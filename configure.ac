@@ -1040,7 +1040,7 @@ if test "x$with_python" != "xno"; then
 fi
 AC_SUBST([PYTHON_LIBS])
 AC_SUBST([PYTHON_INCS])
-AM_CONDITIONAL([HAVEPYTHON],[test -n "$PYTHON_LIBS"])
+AM_CONDITIONAL([HAVEPYTHON],[test -n "$PYTHON_INCS"])
 
 
 # Check for HDF5. This is required.

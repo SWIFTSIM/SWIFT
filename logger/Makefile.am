@@ -16,16 +16,19 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the non-standard paths to the included library headers
-AM_CFLAGS = $(PYTHON_INCS)
+AM_CFLAGS = $(PYTHON_INCS) -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(GRACKLE_INCS)
+
+
+AM_LDFLAGS = $(HDF5_LDFLAGS)
 
 # Assign a "safe" version number
-AM_LDFLAGS = -version-info 0:0:0
+BIN_LDFLAGS = -version-info 0:0:0
 
 # The git command, if available.
 GIT_CMD = @GIT_CMD@
 
 # Additional dependencies for shared libraries.
-EXTRA_LIBS = $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(PYTHON_LIBS)
+EXTRA_LIBS = $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(PYTHON_LIBS) $(HDF5_LIBS) $(FFTW_LIBS) $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS) $(GSL_LIBS)
 
 # MPI libraries.
 # MPI_LIBS = $(MPI_THREAD_LIBS)
@@ -42,11 +45,10 @@ lib_LTLIBRARIES = libswiftlogger.la
 include_HEADERS = header.h io.h particle.h timeline.h logger_tools.h
 
 # Common source files
-AM_SOURCES = header.c io.c particle.c timeline.c
+AM_SOURCES = header.c io.c particle.c timeline.c logger_tools.c
 if HAVEPYTHON
 AM_SOURCES += logger_loader.c
 endif
-
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = 
@@ -54,7 +56,7 @@ nobase_noinst_HEADERS =
 # Sources and flags for regular library
 libswiftlogger_la_SOURCES = $(AM_SOURCES)
 libswiftlogger_la_CFLAGS = $(AM_CFLAGS)
-libswiftlogger_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS)
+libswiftlogger_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS) $(BIN_LDFLAGS)
 
 # Sources and flags for MPI library
 # libswiftlogger_mpi_la_SOURCES = $(AM_SOURCES)
@@ -62,7 +64,6 @@ libswiftlogger_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS)
 # libswiftlogger_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 # libswiftlogger_mpi_la_SHORTNAME = mpi
 # libswiftlogger_mpi_la_LIBADD =
-
 
 # Versioning. If any sources change then update the version_string.h file with
 # the current git revision and package version.
