@@ -252,7 +252,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 #endif
     if (s->with_self_gravity)
       bzero(c->grav.multipole, sizeof(struct gravity_tensors));
-    for (int i = 0; i < 13; i++)
+    for (int i = 0; i < 13; i++) {
       if (c->hydro.sort[i] != NULL) {
         free(c->hydro.sort[i]);
         c->hydro.sort[i] = NULL;

@@ -348,7 +348,7 @@ struct cell {
     /*! Do any of this cell's sub-cells need to be sorted? */
     char do_sub_sort;
 
-  #ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
 
     /*! Last (integer) time the cell's sort arrays were updated. */
     integertime_t ti_sort;
@@ -469,6 +469,9 @@ struct cell {
     /*! Linked list of the tasks computing this cell's star density. */
     struct link *density;
 
+    /*! The task computing this cell's sorts. */
+    struct task *sorts;
+
     /*! Max smoothing length in this cell. */
     double h_max;
 
@@ -490,6 +493,30 @@ struct cell {
     /*! Values of dx_max before the drifts, used for sub-cell tasks. */
     float dx_max_part_old;
 
+    /*! Maximum particle movement in this cell since the last sort. */
+    float dx_max_sort;
+
+    /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
+    float dx_max_sort_old;
+
+    /*! Bit mask of sort directions that will be needed in the next timestep. */
+    unsigned int requires_sorts;
+
+    /*! Pointer for the sorted indices. */
+    struct entry *sort[13];
+
+    /*! Bit-mask indicating the sorted directions */
+    unsigned int sorted;
+
+    /*! Bit mask of sorts that need to be computed for this cell. */
+    unsigned int do_sort;
+
+    /*! Do any of this cell's sub-cells need to be sorted? */
+    char do_sub_sort;
+
+    /*! Maximum end of (integer) time step in this cell for gravity tasks. */
+    integertime_t ti_end_min;
+
     /*! Number of #spart updated in this cell. */
     int updated;
 
@@ -498,6 +525,11 @@ struct cell {
 
     /*! Is the #spart data of this cell being used in a sub-cell? */
     int hold;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /*! Last (integer) time the cell's sort arrays were updated. */
+    integertime_t ti_sort;
+#endif
 
   } stars;
 
