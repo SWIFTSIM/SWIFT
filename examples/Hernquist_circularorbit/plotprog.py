@@ -49,7 +49,6 @@ for i in range(0, lengthrun):
     zz[:, i] = positions[:, 2] - 500.0
 
 col = ["b", "r", "c", "y", "k"]
-print(np.shape(xx), np.shape(yy), np.shape(zz))
 
 for i in range(0, numbpar):
     plt.plot(xx[i, :], yy[i, :], col[i])
