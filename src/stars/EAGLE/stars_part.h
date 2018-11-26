@@ -83,6 +83,8 @@ struct spart {
   // should these go somewhere else? perhaps their own struct?
   float mass_from_agb;
   float metals_from_agb;
+  float mass_from_snii;
+  float metals_from_snii;
   float metal_mass_released;
   float metals_released[chemistry_element_count];
 
