@@ -1,6 +1,6 @@
 This is a test that produces a plot of the contribution to the cooling rate from each of the elements depending on internal energy, density and redshift based on the EAGLE tables. To do so, the function in src/cooling/EAGLE returning the cooling rate is run for multiple values of the internal energy. The resulting cooling rates are written to files and plotted with a python script (cooling_rates_plot.py). 
 
-The test may be run by using the shell script, test_script.sh, or by running:
+The test may be run by:
 ./testCooling -z X -d Y
 python cooling_rates_plot.py
 

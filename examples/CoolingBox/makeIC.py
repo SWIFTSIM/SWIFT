@@ -27,7 +27,7 @@ from numpy import *
 # Parameters
 periodic= 1           # 1 For periodic box
 boxSize = 3.0857e21   # 1 kiloparsec    
-rho = 1.e-25          # Density in cgs
+rho = 2.36748e-25          # Density in cgs
 P = 6.68e-12          # Pressure in cgs
 gamma = 5./3.         # Gas adiabatic index
 eta = 1.2349          # 48 ngbs with cubic spline kernel

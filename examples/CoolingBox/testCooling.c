@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
   /* Number of subcycles and tolerance used to compare
    * subcycled and implicit solution. Note, high value 
    * of tolerance due to mismatch between explicit and
-   * implicit solutioin for large timesteps */
+   * implicit solution for large timesteps */
   const int n_subcycle = 1000;
   const float integration_tolerance = 0.2;
 

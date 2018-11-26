@@ -105,13 +105,13 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     cpd->smoothed_metal_mass_fraction[i] *= factor;
   }
 
-  // Smooth mass fraction of all metals
+  /* Smooth mass fraction of all metals */
   cpd->smoothed_metal_mass_fraction_total +=
       m * cpd->metal_mass_fraction_total * kernel_root;
   cpd->smoothed_metal_mass_fraction_total *= factor;
   
   
-  // Smooth iron mass fraction from SNIa
+  /* Smooth iron mass fraction from SNIa */
   cpd->smoothed_iron_mass_fraction_from_SNIa +=
       m * cpd->iron_mass_fraction_from_SNIa * kernel_root;
   cpd->smoothed_iron_mass_fraction_from_SNIa *= factor;

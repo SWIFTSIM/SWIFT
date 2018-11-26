@@ -44,23 +44,16 @@ void set_quantities(struct part *restrict p,
                     const struct phys_const *restrict internal_const, float nh,
                     double u) {
 
-  float scale_factor = 1.0 / (1.0 + cosmo->z);
   double hydrogen_number_density =
       nh * pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3);
   p->rho = hydrogen_number_density * internal_const->const_proton_mass /
            p->chemistry_data.metal_mass_fraction[chemistry_element_H];
 
-  float pressure = (u * scale_factor * scale_factor) / cooling->internal_energy_scale *
+  float pressure = (u * cosmo->a * cosmo->a) / cooling->internal_energy_scale *
                    p->rho * (hydro_gamma_minus_one);
   p->entropy = pressure * (pow(p->rho, -hydro_gamma));
   xp->entropy_full = p->entropy;
 
-  // Using hydro_set_init_internal_energy seems to work better for higher z for
-  // setting the internal energy correctly However, with Gadget2 this just sets
-  // the entropy to the internal energy, which needs to be converted somehow
-  if (cosmo->z >= 1)
-    hydro_set_init_internal_energy(
-        p, (u * scale_factor * scale_factor) / cooling->internal_energy_scale);
 }
 
 /*
@@ -79,18 +72,18 @@ int main(int argc, char **argv) {
   struct phys_const internal_const;
   struct cooling_function_data cooling;
   struct cosmology cosmo;
-  char *parametersFileName = "./testCooling.yml";
+  char *parametersFileName = "./cooling_rates.yml";
 
   float nh;              // hydrogen number density
   double u;              // internal energy
   const int npts = 250;  // number of values for the internal energy at which
                          // cooling rate is evaluated
 
+  // Set some default values
+  float redshift = 0.0, log_10_nh = -1;
+
   // Read options
   int param;
-  float redshift = -1.0,
-        log_10_nh =
-            100;  // unreasonable values will be changed if not set in options
   while ((param = getopt(argc, argv, "z:d:t")) != -1) switch (param) {
       case 'z':
         // read redshift
@@ -105,7 +98,7 @@ int main(int argc, char **argv) {
           printf("Option -%c requires an argument.\n", optopt);
         else
           printf("Unknown option character `\\x%x'.\n", optopt);
-        error("invalid option(s) to testCooling");
+        error("invalid option(s) to cooling_rates");
     }
 
   // Read the parameter file
@@ -125,17 +118,16 @@ int main(int argc, char **argv) {
   // Init cosmology
   cosmology_init(params, &us, &internal_const, &cosmo);
   cosmology_print(&cosmo);
-  if (redshift == -1.0) {
-    cosmo.z = 3.0;
-  } else {
-    cosmo.z = redshift;
-  }
+
+  // Set redshift and associated quantities
+  const float scale_factor = 1.0/(1.0+redshift);
+  integertime_t ti_current = log(scale_factor/cosmo.a_begin)/cosmo.time_base;
+  cosmology_update(&cosmo,&internal_const,ti_current);
 
   // Init cooling
   cooling_init(params, &us, &internal_const, &cooling);
   cooling_print(&cooling);
   cooling_update(&cosmo, &cooling, 0);
-  message("redshift %.5e", cosmo.z);
 
   // Calculate abundance ratios
   float *abundance_ratio;
@@ -160,12 +152,8 @@ int main(int argc, char **argv) {
   }
 
   // set hydrogen number density
-  if (log_10_nh == 100) {
-    // hydrogen number density not specified in options
-    nh = 1.0e-1;
-  } else {
-    nh = pow(10.0, log_10_nh);
-  }
+  nh = exp(M_LN10 * log_10_nh);
+  
 
   // set internal energy to dummy value, will get reset when looping over
   // internal energies

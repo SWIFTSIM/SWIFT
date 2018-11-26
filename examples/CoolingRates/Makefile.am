@@ -23,10 +23,10 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(TCMALLOC_LIBS) $(JEMALL
 EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS) $(GSL_LIBS)
 
 # Programs.
-bin_PROGRAMS = testCooling
+bin_PROGRAMS = cooling_rates
 
 # Sources
-testCooling_SOURCES = testCooling.c
-testCooling_CFLAGS = $(MYFLAGS) $(AM_CFLAGS)
-testCooling_LDADD =  ../../src/.libs/libswiftsim.a $(EXTRA_LIBS)
+cooling_rates_SOURCES = cooling_rates.c
+cooling_rates_CFLAGS = $(MYFLAGS) $(AM_CFLAGS)
+cooling_rates_LDADD =  ../../src/.libs/libswiftsim.a $(EXTRA_LIBS)
 
