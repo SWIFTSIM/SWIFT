@@ -42,14 +42,14 @@ struct header;
 #define error(err, s, ...)                  \
   ({                                        \
     error_no_return(err, s, ##__VA_ARGS__); \
-    exit(1);				    \
+    exit(1);                                \
   })
 
-#define error_no_return(err, s, ...)					\
-  ({									\
-    char error_msg[STRING_SIZE];					\
+#define error_no_return(err, s, ...)                                      \
+  ({                                                                      \
+    char error_msg[STRING_SIZE];                                          \
     sprintf(error_msg, "%s:%s():%i: " s ": %s\n", __FILE__, __FUNCTION__, \
-            __LINE__, ##__VA_ARGS__, strerror(err));			\
+            __LINE__, ##__VA_ARGS__, strerror(err));                      \
   })
 
 #endif

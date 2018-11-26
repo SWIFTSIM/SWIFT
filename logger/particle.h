@@ -2,8 +2,8 @@
 #define __PARTICLE_H__
 
 #include "header.h"
-#include "timeline.h"
 #include "logger_tools.h"
+#include "timeline.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,7 +57,6 @@ int particle_read_field(struct particle *part, void *map, size_t *offset,
                         const char *field, const size_t size);
 
 int particle_interpolate(struct particle *part_curr,
-                         const struct particle *part_next,
-                         const double time);
+                         const struct particle *part_next, const double time);
 
 #endif  //__PARTICLE_H__

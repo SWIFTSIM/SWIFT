@@ -21,8 +21,7 @@ double time_convert_to_double(const integertime_t ti, const double timeBase) {
  *
  * @return converted time
  */
-integertime_t time_convert_to_integer(const double ti,
-                                      const double timeBase) {
+integertime_t time_convert_to_integer(const double ti, const double timeBase) {
   return ti / timeBase;  // should add timebegin
 }
 
@@ -35,8 +34,8 @@ integertime_t time_convert_to_integer(const double ti,
  * @param map file mapping
  * @param offset In: position in the file, Out: shifted by the timestamp
  */
-int time_read(integertime_t *timestamp, double *time, const struct header *h, void *map,
-              size_t *offset) {
+int time_read(integertime_t *timestamp, double *time, const struct header *h,
+              void *map, size_t *offset) {
   int error_code = 0;
   size_t mask = 0;
   size_t prev_offset = 0;
@@ -60,7 +59,8 @@ int time_read(integertime_t *timestamp, double *time, const struct header *h, vo
 
   /* read data */
   // TODO
-  error_code = io_read_data(map, sizeof(unsigned long long int), timestamp, offset);
+  error_code =
+      io_read_data(map, sizeof(unsigned long long int), timestamp, offset);
   error_code = io_read_data(map, sizeof(double), time, offset);
 
   return error_code;
@@ -160,7 +160,8 @@ int time_array_init(struct time_array *t, const struct header *h, void *map,
  *
  * @return integer time of the chunk
  */
-integertime_t time_array_get_integertime(struct time_array *t, const size_t offset) {
+integertime_t time_array_get_integertime(struct time_array *t,
+                                         const size_t offset) {
   const struct time_array *tmp = time_array_get_time_array(t, offset);
   return tmp->timestamp;
 }
@@ -235,7 +236,8 @@ void time_array_print(const struct time_array *t) {
   while (t->next) {
     i += 1;
     t = t->next;
-    if (i < threshold || i > up_threshold) printf(", %lli (%g)", t->timestamp, t->time);
+    if (i < threshold || i > up_threshold)
+      printf(", %lli (%g)", t->timestamp, t->time);
 
     if (i == threshold) printf(", ...");
   }

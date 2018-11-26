@@ -1,12 +1,12 @@
 #include "particle.h"
 #include "header.h"
 #include "io.h"
-#include "timeline.h"
 #include "logger_tools.h"
+#include "timeline.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 
 /**
  * @brief print a particle
@@ -156,7 +156,8 @@ int particle_read(struct particle *part, const struct header *h, void *map,
 
   if (h_offset == 0) return 0;
   /* get absolute offset of next particle */
-  h_offset += *offset - header_get_mask_size(h, mask) - LOGGER_MASK_SIZE - LOGGER_OFFSET_SIZE;
+  h_offset += *offset - header_get_mask_size(h, mask) - LOGGER_MASK_SIZE -
+              LOGGER_OFFSET_SIZE;
 
   part_next.time = time_array_get_time(times, h_offset);
 
@@ -182,8 +183,7 @@ int particle_read(struct particle *part, const struct header *h, void *map,
  * @return error code
  */
 int particle_interpolate(struct particle *part_curr,
-                         const struct particle *part_next,
-                         const double time) {
+                         const struct particle *part_next, const double time) {
 
   if (!part_curr) error(EFAULT, "part_curr is NULL");
   if (!part_next) error(EFAULT, "part_next is NULL");

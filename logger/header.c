@@ -3,9 +3,9 @@
 #include "io.h"
 #include "logger_tools.h"
 
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /**
  * @brief print a header struct
@@ -32,7 +32,6 @@ void header_print(const struct header *h) {
   }
 
   /* mask contains... TODO */
-
 };
 
 /**
@@ -88,8 +87,7 @@ int header_change_offset_direction(struct header *h, void *map) {
   h->forward_offset = !h->forward_offset;
   size_t offset = LOGGER_VERSION_SIZE;
 
-  return io_write_data(map, LOGGER_NBER_SIZE, &h->forward_offset,
-                       &offset);
+  return io_write_data(map, LOGGER_NBER_SIZE, &h->forward_offset, &offset);
 }
 
 /**
@@ -109,7 +107,8 @@ int header_read(struct header *h, void *map) {
   io_read_data(map, LOGGER_NBER_SIZE, &h->forward_offset, &offset);
 
   if (h->forward_offset != 0 && h->forward_offset != 1)
-    error(EIO, "Non boolean value for the offset direction (%i)", h->forward_offset);
+    error(EIO, "Non boolean value for the offset direction (%i)",
+          h->forward_offset);
 
   /* read offset to first data */
   h->offset_first = 0;
@@ -152,7 +151,7 @@ int header_read(struct header *h, void *map) {
     header_print(h);
 #endif
     error(EIO, "Wrong header size (in header %li, current %li)",
-	  h->offset_first, offset);
+          h->offset_first, offset);
   }
 
   return 0;

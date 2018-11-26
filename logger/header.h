@@ -20,7 +20,7 @@ struct header {
 
   /* Number of bytes for names */
   size_t name;
-  
+
   /* number of masks */
   size_t nber_mask;
 

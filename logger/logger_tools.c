@@ -127,7 +127,8 @@ int tools_reverse_offset(const struct header *h, void *map, size_t *offset) {
 
   /* modify previous offset */
   size_t abs_prev_offset = cur_offset - prev_offset + LOGGER_MASK_SIZE;
-  error_code = io_write_data(map, LOGGER_OFFSET_SIZE, &prev_offset, &abs_prev_offset);
+  error_code =
+      io_write_data(map, LOGGER_OFFSET_SIZE, &prev_offset, &abs_prev_offset);
   if (error_code != 0) error(errno, "Unable to write offset");
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -192,7 +193,8 @@ int tools_check_offset(const struct header *h, void *map, size_t *offset) {
   if (pointed_mask != mask)
     error(EIO, "Error in the offset (mask %lu != %lu) at %lu and %lu", mask,
           pointed_mask,
-          *offset - header_get_mask_size(h, mask) - LOGGER_MASK_SIZE - LOGGER_OFFSET_SIZE,
+          *offset - header_get_mask_size(h, mask) - LOGGER_MASK_SIZE -
+              LOGGER_OFFSET_SIZE,
           pointed_offset - LOGGER_MASK_SIZE - LOGGER_OFFSET_SIZE);
 
   if (pointed_mask == 128) return 0;

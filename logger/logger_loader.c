@@ -149,7 +149,7 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
 
     /* Reset header */
     header_free(&h);
-    
+
     if (header_read(&h, map) != 0) return NULL;
   }
 
