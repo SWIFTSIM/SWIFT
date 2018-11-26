@@ -233,12 +233,12 @@ static INLINE void potential_init_backend(
 
     } else if (V200 != 0.0) {
       /* Calculate M200 and R200 from V200 */
-      M200 = pow(V200, 3) / (10. * G_newton * H0);
+      M200 = V200*V200*V200 / (10. * G_newton * H0);
       R200 = V200 / (10 * H0);
     } else if (R200 != 0.0) {
       /* Calculate M200 and V200 from R200 */
       V200 = 10. * H0 * R200;
-      M200 = pow(V200, 3) / (10. * G_newton * H0);
+      M200 = V200*V200*V200 / (10. * G_newton * H0);
     } else {
       error("Please specify one of the 3 variables M200, V200 or R200");
     }
