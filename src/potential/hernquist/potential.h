@@ -157,10 +157,6 @@ external_gravity_get_potential_energy(
 }
 
 /* Standard values for a few parameters in the Hernquist potential */
-#define idealized_disk_default 1
-#define M200_default 0.
-#define V200_default 0.
-#define R200_default 0.
 #define Mpc_to_cm 3.08567781E24
 
 /**
@@ -176,6 +172,12 @@ static INLINE void potential_init_backend(
     struct swift_params* parameter_file, const struct phys_const* phys_const,
     const struct unit_system* us, const struct space* s,
     struct external_potential* potential) {
+
+  /* Define the default value */
+  static const int idealized_disk_default = 0;
+  static const double M200_default = 0.0;
+  static const double V200_default = 0.0;
+  static const double R200_default = 0.0;
 
   /* Read in the position of the centre of potential */
   parser_get_param_double_array(parameter_file, "HernquistPotential:position",
