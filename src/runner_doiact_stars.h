@@ -26,41 +26,41 @@
 
 #define PASTE(x, y) x##_##y
 
-#define _DOSELF_STARS(f) PASTE(runner_doself_stars, f)
-#define DOSELF_STARS _DOSELF_STARS(FUNCTION)
+#define _DOSELF1_STARS(f) PASTE(runner_doself_stars, f)
+#define DOSELF1_STARS _DOSELF1_STARS(FUNCTION)
 
-#define _DO_NONSYM_PAIR_STARS(f) PASTE(runner_do_nonsym_pair_stars, f)
-#define DO_NONSYM_PAIR_STARS _DO_NONSYM_PAIR_STARS(FUNCTION)
+#define _DO_NONSYM_PAIR1_STARS(f) PASTE(runner_do_nonsym_pair_stars, f)
+#define DO_NONSYM_PAIR1_STARS _DO_NONSYM_PAIR1_STARS(FUNCTION)
 
-#define _DOPAIR_STARS(f) PASTE(runner_dopair_stars, f)
-#define DOPAIR_STARS _DOPAIR_STARS(FUNCTION)
+#define _DOPAIR1_STARS(f) PASTE(runner_dopair_stars, f)
+#define DOPAIR1_STARS _DOPAIR1_STARS(FUNCTION)
 
-#define _DOPAIR_SUBSET_STARS(f) PASTE(runner_dopair_subset_stars, f)
-#define DOPAIR_SUBSET_STARS _DOPAIR_SUBSET_STARS(FUNCTION)
+#define _DOPAIR1_SUBSET_STARS(f) PASTE(runner_dopair_subset_stars, f)
+#define DOPAIR1_SUBSET_STARS _DOPAIR1_SUBSET_STARS(FUNCTION)
 
-#define _DOSELF_SUBSET_STARS(f) PASTE(runner_doself_subset_stars, f)
-#define DOSELF_SUBSET_STARS _DOSELF_SUBSET_STARS(FUNCTION)
+#define _DOSELF1_SUBSET_STARS(f) PASTE(runner_doself_subset_stars, f)
+#define DOSELF1_SUBSET_STARS _DOSELF1_SUBSET_STARS(FUNCTION)
 
-#define _DOSELF_SUBSET_BRANCH_STARS(f) PASTE(runner_doself_subset_branch_stars, f)
-#define DOSELF_SUBSET_BRANCH_STARS _DOSELF_SUBSET_BRANCH_STARS(FUNCTION)
+#define _DOSELF1_SUBSET_BRANCH_STARS(f) PASTE(runner_doself_subset_branch_stars, f)
+#define DOSELF1_SUBSET_BRANCH_STARS _DOSELF1_SUBSET_BRANCH_STARS(FUNCTION)
 
-#define _DOPAIR_SUBSET_BRANCH_STARS(f) PASTE(runner_dopair_subset_branch_stars, f)
-#define DOPAIR_SUBSET_BRANCH_STARS _DOPAIR_SUBSET_BRANCH_STARS(FUNCTION)
+#define _DOPAIR1_SUBSET_BRANCH_STARS(f) PASTE(runner_dopair_subset_branch_stars, f)
+#define DOPAIR1_SUBSET_BRANCH_STARS _DOPAIR1_SUBSET_BRANCH_STARS(FUNCTION)
 
 #define _DOSUB_SUBSET_STARS(f) PASTE(runner_dosub_subset_stars, f)
 #define DOSUB_SUBSET_STARS _DOSUB_SUBSET_STARS(FUNCTION)
 
-#define _DOSELF_BRANCH_STARS(f) PASTE(runner_doself_branch_stars, f)
-#define DOSELF_BRANCH_STARS _DOSELF_BRANCH_STARS(FUNCTION)
+#define _DOSELF1_BRANCH_STARS(f) PASTE(runner_doself_branch_stars, f)
+#define DOSELF1_BRANCH_STARS _DOSELF1_BRANCH_STARS(FUNCTION)
 
-#define _DOPAIR_BRANCH_STARS(f) PASTE(runner_dopair_branch_stars, f)
-#define DOPAIR_BRANCH_STARS _DOPAIR_BRANCH_STARS(FUNCTION)
+#define _DOPAIR1_BRANCH_STARS(f) PASTE(runner_dopair_branch_stars, f)
+#define DOPAIR1_BRANCH_STARS _DOPAIR1_BRANCH_STARS(FUNCTION)
 
-#define _DOSUB_PAIR_STARS(f) PASTE(runner_dosub_pair_stars, f)
-#define DOSUB_PAIR_STARS _DOSUB_PAIR_STARS(FUNCTION)
+#define _DOSUB_PAIR1_STARS(f) PASTE(runner_dosub_pair_stars, f)
+#define DOSUB_PAIR1_STARS _DOSUB_PAIR1_STARS(FUNCTION)
 
-#define _DOSUB_SELF_STARS(f) PASTE(runner_dosub_self_stars, f)
-#define DOSUB_SELF_STARS _DOSUB_SELF_STARS(FUNCTION)
+#define _DOSUB_SELF1_STARS(f) PASTE(runner_dosub_self_stars, f)
+#define DOSUB_SELF1_STARS _DOSUB_SELF1_STARS(FUNCTION)
 
 #define _IACT_STARS(f) PASTE(runner_iact_nonsym_stars, f)
 #define IACT_STARS _IACT_STARS(FUNCTION)
@@ -73,7 +73,7 @@
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void DOSELF_STARS(struct runner *r, struct cell *c, int timer) {
+void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -136,7 +136,7 @@ void DOSELF_STARS(struct runner *r, struct cell *c, int timer) {
  * @param ci The first #cell
  * @param cj The second #cell
  */
-void DO_NONSYM_PAIR_STARS(
+void DO_NONSYM_PAIR1_STARS(
     struct runner *r, struct cell *restrict ci,
     struct cell *restrict cj) {
 
@@ -202,13 +202,13 @@ void DO_NONSYM_PAIR_STARS(
   }   /* loop over the parts in ci. */
 }
 
-void DOPAIR_STARS(struct runner *r, struct cell *restrict ci,
+void DOPAIR1_STARS(struct runner *r, struct cell *restrict ci,
 	    struct cell *restrict cj, int timer) {
 
   if (ci->stars.count != 0 && cj->hydro.count != 0)
-    DO_NONSYM_PAIR_STARS(r, ci, cj);
+    DO_NONSYM_PAIR1_STARS(r, ci, cj);
   if (cj->stars.count != 0 && ci->hydro.count != 0)
-    DO_NONSYM_PAIR_STARS(r, cj, ci);
+    DO_NONSYM_PAIR1_STARS(r, cj, ci);
 
 }
 
@@ -226,7 +226,7 @@ void DOPAIR_STARS(struct runner *r, struct cell *restrict ci,
  * @param cj The second #cell.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DOPAIR_SUBSET_STARS(
+void DOPAIR1_SUBSET_STARS(
     struct runner *r, struct cell *restrict ci,
     struct spart *restrict sparts_i, int *restrict ind,
     int scount, struct cell *restrict cj,
@@ -295,7 +295,7 @@ void DOPAIR_SUBSET_STARS(
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param scount The number of particles in @c ind.
  */
-void DOSELF_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
+void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 		   struct spart *restrict sparts,
 		   int *restrict ind, int scount) {
 
@@ -355,7 +355,7 @@ void DOSELF_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 }
 
 /**
-* @brief Determine which version of DOSELF_SUBSET_STARS needs to be called
+* @brief Determine which version of DOSELF1_SUBSET_STARS needs to be called
 * depending on the optimisation level.
 *
 * @param r The #runner.
@@ -364,17 +364,17 @@ void DOSELF_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 * @param ind The list of indices of particles in @c ci to interact with.
 * @param scount The number of particles in @c ind.
 */
-void DOSELF_SUBSET_BRANCH_STARS(
+void DOSELF1_SUBSET_BRANCH_STARS(
     struct runner *r, struct cell *restrict ci,
     struct spart *restrict sparts, int *restrict ind, int scount) {
 
-  DOSELF_SUBSET_STARS(r, ci, sparts, ind, scount);
+  DOSELF1_SUBSET_STARS(r, ci, sparts, ind, scount);
 }
 
 /**
- * @brief Determine which version of DOPAIR_SUBSET_STARS needs to be called depending
+ * @brief Determine which version of DOPAIR1_SUBSET_STARS needs to be called depending
  * on the
- * orientation of the cells or whether DOPAIR_SUBSET_STARS needs to be called at all.
+ * orientation of the cells or whether DOPAIR1_SUBSET_STARS needs to be called at all.
  *
  * @param r The #runner.
  * @param ci The first #cell.
@@ -383,7 +383,7 @@ void DOSELF_SUBSET_BRANCH_STARS(
  * @param scount The number of particles in @c ind.
  * @param cj The second #cell.
  */
-void DOPAIR_SUBSET_BRANCH_STARS(
+void DOPAIR1_SUBSET_BRANCH_STARS(
     struct runner *r, struct cell *restrict ci,
     struct spart *restrict sparts_i, int *restrict ind,
     int scount, struct cell *restrict cj) {
@@ -399,7 +399,7 @@ void DOPAIR_SUBSET_BRANCH_STARS(
       shift[k] = -e->s->dim[k];
   }
 
-  DOPAIR_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, shift);
+  DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, shift);
 }
 
 void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci,
@@ -447,7 +447,7 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci,
 
     /* Otherwise, compute self-interaction. */
     else
-      DOSELF_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount);
+      DOSELF1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount);
   } /* self-interaction. */
 
   /* Otherwise, it's a pair interaction. */
@@ -969,7 +969,7 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci,
       /* Do any of the cells need to be drifted first? */
       if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
 
-      DOPAIR_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount, cj);
+      DOPAIR1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount, cj);
     }
 
   } /* otherwise, pair interaction. */
@@ -977,14 +977,14 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci,
 }
 
 /**
- * @brief Determine which version of DOSELF_STARS needs to be called depending
+ * @brief Determine which version of DOSELF1_STARS needs to be called depending
  * on the optimisation level.
  *
  * @param r #runner
  * @param c #cell c
  *
  */
-void DOSELF_BRANCH_STARS(struct runner *r, struct cell *c) {
+void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
 
   const struct engine *restrict e = r->e;
 
@@ -995,7 +995,7 @@ void DOSELF_BRANCH_STARS(struct runner *r, struct cell *c) {
   if (c->stars.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
-  DOSELF_STARS(r, c, 1);
+  DOSELF1_STARS(r, c, 1);
 }
 
 #define RUNNER_CHECK_SORT(TYPE, PART, cj, ci, sid)			\
@@ -1023,15 +1023,15 @@ void DOSELF_BRANCH_STARS(struct runner *r, struct cell *c) {
   })
 
 /**
- * @brief Determine which version of DOPAIR_STARS needs to be called depending on the
- * orientation of the cells or whether DOPAIR_STARS needs to be called at all.
+ * @brief Determine which version of DOPAIR1_STARS needs to be called depending on the
+ * orientation of the cells or whether DOPAIR1_STARS needs to be called at all.
  *
  * @param r #runner
  * @param ci #cell ci
  * @param cj #cell cj
  *
  */
-void DOPAIR_BRANCH_STARS(struct runner *r, struct cell *ci,
+void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci,
 		   struct cell *cj) {
 
   const struct engine *restrict e = r->e;
@@ -1086,7 +1086,7 @@ void DOPAIR_BRANCH_STARS(struct runner *r, struct cell *ci,
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  DOPAIR_STARS(r, ci, cj, 1);
+  DOPAIR1_STARS(r, ci, cj, 1);
 }
 
 /**
@@ -1101,7 +1101,7 @@ void DOPAIR_BRANCH_STARS(struct runner *r, struct cell *ci,
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
-void DOSUB_PAIR_STARS(struct runner *r, struct cell *ci,
+void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci,
 		struct cell *cj, int sid, int gettimer) {
 
   struct space *s = r->e->s;
@@ -1128,268 +1128,268 @@ void DOSUB_PAIR_STARS(struct runner *r, struct cell *ci,
       /* Regular sub-cell interactions of a single cell. */
       case 0: /* (  1 ,  1 ,  1 ) */
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[0], -1,
                                           0);
         break;
 
       case 1: /* (  1 ,  1 ,  0 ) */
         if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[1], -1,
                                           0);
         break;
 
       case 2: /* (  1 ,  1 , -1 ) */
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[1], -1,
                                           0);
         break;
 
       case 3: /* (  1 ,  0 ,  1 ) */
         if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[2], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[2], -1,
                                           0);
         break;
 
       case 4: /* (  1 ,  0 ,  0 ) */
         if (ci->progeny[4] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[4], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[4], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[4], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[4], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[4], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[4], cj->progeny[2], -1,
                                           0);
         if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[4], cj->progeny[3], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[4], cj->progeny[3], -1,
                                           0);
         if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[5] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[2], -1,
                                           0);
         if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[3], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[3], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[2], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[3], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[3], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[2], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[3] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[3], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[3], -1,
                                           0);
         break;
 
       case 5: /* (  1 ,  0 , -1 ) */
         if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[4], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[4], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[4], cj->progeny[3], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[4], cj->progeny[3], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[3], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[3], -1,
                                           0);
         break;
 
       case 6: /* (  1 , -1 ,  1 ) */
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[2], -1,
                                           0);
         break;
 
       case 7: /* (  1 , -1 ,  0 ) */
         if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[4], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[4], cj->progeny[2], -1,
                                           0);
         if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[4], cj->progeny[3], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[4], cj->progeny[3], -1,
                                           0);
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[2], -1,
                                           0);
         if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[3], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[3], -1,
                                           0);
         break;
 
       case 8: /* (  1 , -1 , -1 ) */
         if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[4], cj->progeny[3], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[4], cj->progeny[3], -1,
                                           0);
         break;
 
       case 9: /* (  0 ,  1 ,  1 ) */
         if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[3], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[3], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[3], cj->progeny[4], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[3], cj->progeny[4], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[4], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[4], -1,
                                           0);
         break;
 
       case 10: /* (  0 ,  1 ,  0 ) */
         if (ci->progeny[2] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[2], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[2], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[2], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[2], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[2] != NULL && cj->progeny[4] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[2], cj->progeny[4], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[2], cj->progeny[4], -1,
                                           0);
         if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[2], cj->progeny[5], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[2], cj->progeny[5], -1,
                                           0);
         if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[3], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[3], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[3] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[3], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[3], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[3], cj->progeny[4], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[3], cj->progeny[4], -1,
                                           0);
         if (ci->progeny[3] != NULL && cj->progeny[5] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[3], cj->progeny[5], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[3], cj->progeny[5], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[4] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[4], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[4], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[5], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[5], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[4], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[4], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[5] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[5], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[5], -1,
                                           0);
         break;
 
       case 11: /* (  0 ,  1 , -1 ) */
         if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[2], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[2], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[2], cj->progeny[5], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[2], cj->progeny[5], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[1], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[1], -1,
                                           0);
         if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[6], cj->progeny[5], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[6], cj->progeny[5], -1,
                                           0);
         break;
 
       case 12: /* (  0 ,  0 ,  1 ) */
         if (ci->progeny[1] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[1], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[1], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[1] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[1], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[1], cj->progeny[2], -1,
                                           0);
         if (ci->progeny[1] != NULL && cj->progeny[4] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[1], cj->progeny[4], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[1], cj->progeny[4], -1,
                                           0);
         if (ci->progeny[1] != NULL && cj->progeny[6] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[1], cj->progeny[6], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[1], cj->progeny[6], -1,
                                           0);
         if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[3], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[3], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[3] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[3], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[3], cj->progeny[2], -1,
                                           0);
         if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[3], cj->progeny[4], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[3], cj->progeny[4], -1,
                                           0);
         if (ci->progeny[3] != NULL && cj->progeny[6] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[3], cj->progeny[6], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[3], cj->progeny[6], -1,
                                           0);
         if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[2], -1,
                                           0);
         if (ci->progeny[5] != NULL && cj->progeny[4] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[4], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[4], -1,
                                           0);
         if (ci->progeny[5] != NULL && cj->progeny[6] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[5], cj->progeny[6], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[5], cj->progeny[6], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[0], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[0], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[2], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[2], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[4], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[4], -1,
                                           0);
         if (ci->progeny[7] != NULL && cj->progeny[6] != NULL)
-          DOSUB_PAIR_STARS(r, ci->progeny[7], cj->progeny[6], -1,
+          DOSUB_PAIR1_STARS(r, ci->progeny[7], cj->progeny[6], -1,
                                           0);
         break;
     }
@@ -1442,7 +1442,7 @@ void DOSUB_PAIR_STARS(struct runner *r, struct cell *ci,
         error("Interacting unsorted cell (sparts).");
     }
 
-    if (do_ci || do_cj) DOPAIR_BRANCH_STARS(r, ci, cj);
+    if (do_ci || do_cj) DOPAIR1_BRANCH_STARS(r, ci, cj);
   }
 
 }
@@ -1454,7 +1454,7 @@ void DOSUB_PAIR_STARS(struct runner *r, struct cell *ci,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF_STARS(struct runner *r, struct cell *ci,
+void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci,
 		int gettimer) {
 
   /* Should we even bother? */
@@ -1468,10 +1468,10 @@ void DOSUB_SELF_STARS(struct runner *r, struct cell *ci,
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL) {
-        DOSUB_SELF_STARS(r, ci->progeny[k], 0);
+        DOSUB_SELF1_STARS(r, ci->progeny[k], 0);
         for (int j = k + 1; j < 8; j++)
           if (ci->progeny[j] != NULL)
-            DOSUB_PAIR_STARS(r, ci->progeny[k], ci->progeny[j],
+            DOSUB_PAIR1_STARS(r, ci->progeny[k], ci->progeny[j],
                                             -1, 0);
       }
   }
@@ -1482,7 +1482,7 @@ void DOSUB_SELF_STARS(struct runner *r, struct cell *ci,
     /* Drift the cell to the current timestep if needed. */
     if (!cell_are_spart_drifted(ci, r->e)) error("Interacting undrifted cell.");
 
-    DOSELF_BRANCH_STARS(r, ci);
+    DOSELF1_BRANCH_STARS(r, ci);
   }
 
 }
