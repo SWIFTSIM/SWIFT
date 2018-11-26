@@ -96,6 +96,10 @@ struct phys_const {
 
   /*! Primordial Helium fraction */
   double const_primordial_He_fraction;
+
+  /*! Unit factor of the reduced hubble constant */
+  double const_reduced_hubble;
+
 };
 
 void phys_const_init(const struct unit_system* us, struct swift_params* params,
