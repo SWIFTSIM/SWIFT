@@ -1714,7 +1714,7 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double theta_crit2 = e->gravity_properties->theta_crit2;
-  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
 
   TIMER_TIC;
 
@@ -1759,6 +1759,29 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
+    /* Can we escape early in the periodic BC case? */
+    if (periodic) {
+
+      /* Minimal distance between any pair of particles */
+      const double min_radius2 =
+          cell_min_dist2_same_size(top, cj, periodic, dim);
+
+      /* Are we beyond the distance where the truncated forces are 0 ?*/
+      if (min_radius2 > max_distance2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Need to account for the interactions we missed */
+        multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
+#endif
+
+        /* Record that this multipole received a contribution */
+        multi_i->pot.interacted = 1;
+
+        /* We are done here. */
+        continue;
+      }
+    }
+
     /* Get the distance between the CoMs at the last rebuild*/
     double dx_r = CoM_rebuild_top[0] - multi_j->CoM_rebuild[0];
     double dy_r = CoM_rebuild_top[1] - multi_j->CoM_rebuild[1];
@@ -1771,24 +1794,6 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       dz_r = nearest(dz_r, dim[2]);
     }
     const double r2_rebuild = dx_r * dx_r + dy_r * dy_r + dz_r * dz_r;
-
-    const double max_radius =
-        sqrt(r2_rebuild) - (multi_top->r_max_rebuild + multi_j->r_max_rebuild);
-
-    /* Are we beyond the distance where the truncated forces are 0 ?*/
-    if (periodic && max_radius > max_distance) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Need to account for the interactions we missed */
-      multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
-#endif
-
-      /* Record that this multipole received a contribution */
-      multi_i->pot.interacted = 1;
-
-      /* We are done here. */
-      continue;
-    }
 
     /* Are we in charge of this cell pair? */
     if (gravity_M2L_accept(multi_top->r_max_rebuild, multi_j->r_max_rebuild,

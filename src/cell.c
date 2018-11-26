@@ -184,6 +184,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->hydro.ti_end_max = c->hydro.ti_end_max;
   pc->grav.ti_end_min = c->grav.ti_end_min;
   pc->grav.ti_end_max = c->grav.ti_end_max;
+  pc->stars.ti_end_min = c->stars.ti_end_min;
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
   pc->grav.ti_old_multipole = c->grav.ti_old_multipole;
@@ -287,6 +288,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->hydro.ti_end_max = pc->hydro.ti_end_max;
   c->grav.ti_end_min = pc->grav.ti_end_min;
   c->grav.ti_end_max = pc->grav.ti_end_max;
+  c->stars.ti_end_min = pc->stars.ti_end_min;
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
   c->grav.ti_old_multipole = pc->grav.ti_old_multipole;
@@ -342,6 +344,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->hydro.dx_max_part = 0.f;
       temp->hydro.dx_max_sort = 0.f;
       temp->stars.dx_max_part = 0.f;
+      temp->stars.dx_max_sort = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       c->progeny[k] = temp;
@@ -414,6 +417,7 @@ int cell_pack_end_step(struct cell *restrict c,
   pcells[0].hydro.ti_end_max = c->hydro.ti_end_max;
   pcells[0].grav.ti_end_min = c->grav.ti_end_min;
   pcells[0].grav.ti_end_max = c->grav.ti_end_max;
+  pcells[0].stars.ti_end_min = c->stars.ti_end_min;
   pcells[0].hydro.dx_max_part = c->hydro.dx_max_part;
   pcells[0].stars.dx_max_part = c->stars.dx_max_part;
 
@@ -451,6 +455,7 @@ int cell_unpack_end_step(struct cell *restrict c,
   c->hydro.ti_end_max = pcells[0].hydro.ti_end_max;
   c->grav.ti_end_min = pcells[0].grav.ti_end_min;
   c->grav.ti_end_max = pcells[0].grav.ti_end_max;
+  c->stars.ti_end_min = pcells[0].stars.ti_end_min;
   c->hydro.dx_max_part = pcells[0].hydro.dx_max_part;
   c->stars.dx_max_part = pcells[0].stars.dx_max_part;
 
@@ -1564,10 +1569,18 @@ void cell_check_multipole(struct cell *c) {
  */
 void cell_clean(struct cell *c) {
 
+  /* Hydro */
   for (int i = 0; i < 13; i++)
     if (c->hydro.sort[i] != NULL) {
       free(c->hydro.sort[i]);
       c->hydro.sort[i] = NULL;
+    }
+
+  /* Stars */
+  for (int i = 0; i < 13; i++)
+    if (c->stars.sort[i] != NULL) {
+      free(c->stars.sort[i]);
+      c->stars.sort[i] = NULL;
     }
 
   /* Recurse */
@@ -1668,13 +1681,14 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
  * @brief Activate the #spart drifts on the given cell.
  */
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
+  // MATTHIEU: This will need changing
   cell_activate_drift_gpart(c, s);
 }
 
 /**
  * @brief Activate the sorts up a cell hierarchy.
  */
-void cell_activate_sorts_up(struct cell *c, struct scheduler *s) {
+void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
 
   if (c == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1705,7 +1719,7 @@ void cell_activate_sorts_up(struct cell *c, struct scheduler *s) {
 /**
  * @brief Activate the sorts on a given cell, if needed.
  */
-void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
+void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
 
   /* Do we need to re-sort? */
   if (c->hydro.dx_max_sort > space_maxreldx * c->dmin) {
@@ -1714,7 +1728,7 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
       if (finger->hydro.requires_sorts) {
         atomic_or(&finger->hydro.do_sort, finger->hydro.requires_sorts);
-        cell_activate_sorts_up(finger, s);
+        cell_activate_hydro_sorts_up(finger, s);
       }
       finger->hydro.sorted = 0;
     }
@@ -1723,7 +1737,70 @@ void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s) {
   /* Has this cell been sorted at all for the given sid? */
   if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank) {
     atomic_or(&c->hydro.do_sort, (1 << sid));
-    cell_activate_sorts_up(c, s);
+    cell_activate_hydro_sorts_up(c, s);
+  }
+}
+
+/**
+ * @brief Activate the sorts up a cell hierarchy.
+ */
+void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
+
+  if (c == c->super) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->stars.sorts == NULL)
+      error("Trying to activate un-existing c->stars.sorts");
+#endif
+    scheduler_activate(s, c->stars.sorts);
+    if (c->nodeID == engine_rank) {
+      // MATTHIEU: to do: do we actually need both drifts here?
+      cell_activate_drift_part(c, s);
+      cell_activate_drift_spart(c, s);
+    }
+  } else {
+
+    for (struct cell *parent = c->parent;
+         parent != NULL && !parent->stars.do_sub_sort;
+         parent = parent->parent) {
+      parent->stars.do_sub_sort = 1;
+      if (parent == c->super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->stars.sorts == NULL)
+          error("Trying to activate un-existing parents->stars.sorts");
+#endif
+        scheduler_activate(s, parent->stars.sorts);
+        if (parent->nodeID == engine_rank) {
+          cell_activate_drift_part(parent, s);
+          cell_activate_drift_spart(parent, s);
+        }
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Activate the sorts on a given cell, if needed.
+ */
+void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
+
+  /* Do we need to re-sort? */
+  if (c->stars.dx_max_sort > space_maxreldx * c->dmin) {
+
+    /* Climb up the tree to active the sorts in that direction */
+    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+      if (finger->stars.requires_sorts) {
+        atomic_or(&finger->stars.do_sort, finger->stars.requires_sorts);
+        cell_activate_stars_sorts_up(finger, s);
+      }
+      finger->stars.sorted = 0;
+    }
+  }
+
+  /* Has this cell been sorted at all for the given sid? */
+  if (!(c->stars.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+    atomic_or(&c->stars.do_sort, (1 << sid));
+    cell_activate_stars_sorts_up(c, s);
   }
 }
 
@@ -2077,8 +2154,8 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
       if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
 
       /* Do we need to sort the cells? */
-      cell_activate_sorts(ci, sid, s);
-      cell_activate_sorts(cj, sid, s);
+      cell_activate_hydro_sorts(ci, sid, s);
+      cell_activate_hydro_sorts(cj, sid, s);
     }
   } /* Otherwise, pair interation */
 }
@@ -2108,7 +2185,9 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   if (cj == NULL) {
 
     /* Do anything? */
-    if (ci->stars.count == 0 || !cell_is_active_stars(ci, e)) return;
+    if (!cell_is_active_stars(ci, e) || ci->hydro.count == 0 ||
+        ci->stars.count == 0)
+      return;
 
     /* Recurse? */
     if (cell_can_recurse_in_self_stars_task(ci)) {
@@ -2136,7 +2215,10 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 
     /* Should we even bother? */
     if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
-    if (ci->stars.count == 0 || cj->stars.count == 0) return;
+
+    int should_do = ci->stars.count != 0 && cj->hydro.count != 0;
+    should_do |= cj->stars.count != 0 && ci->hydro.count != 0;
+    if (!should_do) return;
 
     /* Get the orientation of the pair. */
     double shift[3];
@@ -2421,23 +2503,43 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     }
 
     /* Otherwise, activate the sorts and drifts. */
-    else if (cell_is_active_stars(ci, e) || cell_is_active_stars(cj, e)) {
+    else {
 
-      /* We are going to interact this pair, so store some values. */
-      atomic_or(&ci->hydro.requires_sorts, 1 << sid);
-      atomic_or(&cj->hydro.requires_sorts, 1 << sid);
-      ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-      cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+      if (cell_is_active_stars(ci, e) && cj->hydro.count != 0 &&
+          ci->stars.count != 0) {
+        /* We are going to interact this pair, so store some values. */
+        atomic_or(&cj->hydro.requires_sorts, 1 << sid);
+        atomic_or(&ci->stars.requires_sorts, 1 << sid);
 
-      /* Activate the drifts if the cells are local. */
-      if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
-      if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
-      if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
-      if (cj->nodeID == engine_rank) cell_activate_drift_spart(cj, s);
+        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+        ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
 
-      /* Do we need to sort the cells? */
-      cell_activate_sorts(ci, sid, s);
-      cell_activate_sorts(cj, sid, s);
+        /* Activate the drifts if the cells are local. */
+        if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
+        if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+
+        /* Do we need to sort the cells? */
+        cell_activate_hydro_sorts(cj, sid, s);
+        cell_activate_stars_sorts(ci, sid, s);
+      }
+
+      if (cell_is_active_stars(cj, e) && ci->hydro.count != 0 &&
+          cj->stars.count != 0) {
+        /* We are going to interact this pair, so store some values. */
+        atomic_or(&cj->stars.requires_sorts, 1 << sid);
+        atomic_or(&ci->hydro.requires_sorts, 1 << sid);
+
+        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+        cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
+
+        /* Activate the drifts if the cells are local. */
+        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+        if (cj->nodeID == engine_rank) cell_activate_drift_spart(cj, s);
+
+        /* Do we need to sort the cells? */
+        cell_activate_hydro_sorts(ci, sid, s);
+        cell_activate_stars_sorts(cj, sid, s);
+      }
     }
   } /* Otherwise, pair interation */
 }
@@ -2655,8 +2757,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
         /* Check the sorts and activate them if needed. */
-        cell_activate_sorts(ci, t->flags, s);
-        cell_activate_sorts(cj, t->flags, s);
+        cell_activate_hydro_sorts(ci, t->flags, s);
+        cell_activate_hydro_sorts(cj, t->flags, s);
       }
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {
@@ -2949,6 +3051,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
+
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
@@ -2968,25 +3071,48 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
       /* Activate drifts */
       if (t->type == task_type_self) {
-        if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
-        if (ci->nodeID == nodeID) cell_activate_drift_gpart(ci, s);
+        if (ci->nodeID == nodeID) {
+          cell_activate_drift_part(ci, s);
+          cell_activate_drift_spart(ci, s);
+        }
       }
 
       /* Set the correct sorting flags and activate hydro drifts */
       else if (t->type == task_type_pair) {
-        /* Store some values. */
-        atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+        /* Do ci */
+        /* stars for ci */
+        atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
+        ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
+
+        /* hydro for cj */
         atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
         cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
         /* Activate the drift tasks. */
-        if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (ci->nodeID == nodeID) cell_activate_drift_spart(ci, s);
         if (cj->nodeID == nodeID) cell_activate_drift_part(cj, s);
 
         /* Check the sorts and activate them if needed. */
-        cell_activate_sorts(ci, t->flags, s);
-        cell_activate_sorts(cj, t->flags, s);
+        cell_activate_stars_sorts(ci, t->flags, s);
+        cell_activate_hydro_sorts(cj, t->flags, s);
+
+        /* Do cj */
+        /* hydro for ci */
+        atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+
+        /* stars for cj */
+        atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
+        cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
+
+        /* Activate the drift tasks. */
+        if (cj->nodeID == nodeID) cell_activate_drift_spart(cj, s);
+        if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
+
+        /* Check the sorts and activate them if needed. */
+        cell_activate_hydro_sorts(ci, t->flags, s);
+        cell_activate_stars_sorts(cj, t->flags, s);
+
       }
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {
@@ -3176,7 +3302,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
     /* All top-level cells get an MPI tag. */
 #ifdef WITH_MPI
-    if (c->mpi.tag < 0 && c->mpi.sendto) cell_tag(c);
+    cell_ensure_tagged(c);
 #endif
 
     /* Super-pointer for hydro */
@@ -3247,6 +3373,21 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_part) error("Attempt to drift to the past");
 #endif
+
+  /* Early abort? */
+  if (c->hydro.count == 0) {
+
+    /* Clear the drift flags. */
+    c->hydro.do_drift = 0;
+    c->hydro.do_sub_drift = 0;
+
+    /* Update the time of the last drift */
+    c->hydro.ti_old_part = ti_current;
+
+    return;
+  }
+
+  /* Ok, we have some particles somewhere in the hierarchy to drift */
 
   /* Are we not in a leaf ? */
   if (c->split && (force || c->hydro.do_sub_drift)) {
@@ -3405,6 +3546,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   struct spart *const sparts = c->stars.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
+  float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
 
   /* Drift irrespective of cell flags? */
@@ -3417,6 +3559,21 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_gpart) error("Attempt to drift to the past");
 #endif
+
+  /* Early abort? */
+  if (c->grav.count == 0) {
+
+    /* Clear the drift flags. */
+    c->grav.do_drift = 0;
+    c->grav.do_sub_drift = 0;
+
+    /* Update the time of the last drift */
+    c->grav.ti_old_part = ti_current;
+
+    return;
+  }
+
+  /* Ok, we have some particles somewhere in the hierarchy to drift */
 
   /* Are we not in a leaf ? */
   if (c->split && (force || c->grav.do_sub_drift)) {
@@ -3431,6 +3588,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
         /* Update */
         dx_max = max(dx_max, cp->stars.dx_max_part);
+        dx_max_sort = max(dx_max_sort, cp->stars.dx_max_sort);
         cell_h_max = max(cell_h_max, cp->stars.h_max);
       }
     }
@@ -3438,6 +3596,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
     /* Store the values */
     c->stars.h_max = cell_h_max;
     c->stars.dx_max_part = dx_max;
+    c->stars.dx_max_sort = dx_max_sort;
 
     /* Update the time of the last drift */
     c->grav.ti_old_part = ti_current;
@@ -3531,6 +3690,12 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
                         sp->x_diff[2] * sp->x_diff[2];
       dx2_max = max(dx2_max, dx2);
 
+      const float dx2_sort = sp->x_diff_sort[0] * sp->x_diff_sort[0] +
+                             sp->x_diff_sort[1] * sp->x_diff_sort[1] +
+                             sp->x_diff_sort[2] * sp->x_diff_sort[2];
+
+      dx2_max_sort = max(dx2_max_sort, dx2_sort);
+
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, sp->h);
 
@@ -3538,10 +3703,12 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
+    dx_max_sort = sqrtf(dx2_max_sort);
 
     /* Store the values */
     c->stars.h_max = cell_h_max;
     c->stars.dx_max_part = dx_max;
+    c->stars.dx_max_sort = dx_max_sort;
 
     /* Update the time of the last drift */
     c->grav.ti_old_part = ti_current;
@@ -3630,7 +3797,8 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
 void cell_check_timesteps(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 && c->nr_tasks > 0)
+  if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
+      c->stars.ti_end_min == 0 && c->nr_tasks > 0)
     error("Cell without assigned time-step");
 
   if (c->split) {

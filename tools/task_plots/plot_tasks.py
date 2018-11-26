@@ -177,9 +177,11 @@ TASKTYPES = [
     "cooling",
     "star_formation",
     "sourceterms",
+    "logger",
     "stars_ghost_in",
     "stars_ghost",
     "stars_ghost_out",
+    "stars_sort",
     "count",
 ]
 
