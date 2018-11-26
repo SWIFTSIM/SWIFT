@@ -1925,7 +1925,11 @@ int engine_estimate_nr_tasks(struct engine *e) {
   }
   if (e->policy & engine_policy_stars) {
     /* 1 self, 1 sort, 26/2 pairs */
-    n1 += 15;
+    n1 += 37;
+    n2 += 2;
+#ifdef WITH_MPI
+    n1 += 6;
+#endif
   }
 #if defined(WITH_LOGGER)
   n1 += 1;
