@@ -79,6 +79,7 @@ struct star_formation {
  * @brief Calculate if the gas has the potential of becoming
  * a star.
  *
+<<<<<<< HEAD
  * @param starform the star formation law properties to use.
  * @param p the gas particles
  * @param xp the additional properties of the gas particles
@@ -132,11 +133,18 @@ static int starformation_potential_to_become_star(
   } else {
     return 0;
   }
+=======
+ *
+ * */
+static int starformation_potential_to_become_star(
+    ){
+  return 0;
 }
 
 /*
  * @brief Calculate if the gas particle is converted 
  *
+<<<<<<< HEAD
  * @param starform the star formation struct
  * @param p the gas particles with their properties
  * @param xp the additional gas particle properties
