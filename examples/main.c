@@ -328,9 +328,11 @@ int main(int argc, char *argv[]) {
         }
 #ifndef SWIFT_DEBUG_TASKS
         if (dump_tasks) {
-          error(
-              "Task dumping is only possible if SWIFT was configured with the "
-              "--enable-task-debugging option.");
+          if (myrank == 0) {
+            message("WARNING: complete task dumps are only created when "
+                    "configured with --enable-task-debugging. "
+                    "Basic task statistics will be output.");
+          }
         }
 #endif
         break;
@@ -1085,15 +1087,15 @@ int main(int argc, char *argv[]) {
     if (force_stop || (e.restart_onexit && e.step - 1 == nsteps))
       engine_dump_restarts(&e, 0, 1);
 
-#ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
+#ifdef SWIFT_DEBUG_TASKS
       task_dump_all(&e, j + 1);
+#endif
 
       /* Generate the task statistics. */
       task_dump_stats(&e, j + 1);
     }
-#endif
 
 #ifdef SWIFT_DEBUG_THREADPOOL
     /* Dump the task data using the given frequency. */

@@ -702,7 +702,6 @@ void task_dump_all(struct engine *e, int step) {
  */
 void task_dump_stats(struct engine *e, int step) {
 
-#ifdef SWIFT_DEBUG_TASKS
   char dumpfile[40];
   snprintf(dumpfile, 40, "thread_stats-step%d.dat", step);
 
@@ -725,7 +724,6 @@ void task_dump_stats(struct engine *e, int step) {
   }
 
   double total[1] = {0.0};
-  double minmin[1] = {DBL_MAX};
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     int type = e->sched.tasks[l].type;
 
@@ -745,7 +743,6 @@ void task_dump_stats(struct engine *e, int step) {
         max[type][subtype] = dt;
       }
       total[0] += dt;
-      if (dt < minmin[0]) minmin[0] = dt;
     }
   }
 
@@ -773,10 +770,6 @@ void task_dump_stats(struct engine *e, int step) {
                    MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task total time");
 
-  res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : minmin), minmin, 1,
-                   MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
-  if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task global min");
-
   if (engine_rank == 0) {
 #endif
 
@@ -790,7 +783,10 @@ void task_dump_stats(struct engine *e, int step) {
         if (sum[j][k] > 0.0) {
           double mean = sum[j][k] / (double)count[j][k];
           double perc = 100.0 * sum[j][k] / total[0];
-          int fixed_cost = (int)mean / minmin[0];
+
+          /* Fixed cost is in .1ns as we want to compare between runs in
+           * some absolute units. */
+          int fixed_cost = (int)(clocks_from_ticks(mean) * 10000.f);
           fprintf(dfile,
                   "%15s/%-10s %10d %14.2f %14.2f %14.2f %14.2f %14.2f %10d\n",
                   taskID, subtaskID_names[k], count[j][k], min[j][k], max[j][k],
@@ -806,5 +802,4 @@ void task_dump_stats(struct engine *e, int step) {
   }
 #endif
 
-#endif  // SWIFT_DEBUG_TASKS
 }
