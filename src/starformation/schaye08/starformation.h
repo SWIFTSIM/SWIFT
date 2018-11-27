@@ -49,9 +49,28 @@ struct star_formation {
   
 };
 
+/*
+ * @brief Calculate if the gas has the potential of becoming
+ * a star.
+ *
+ *
+ * */
+static int starformation_potential_to_become_star(
+    ){
+  return 0;
+}
+
+/*
+ * @brief Calculate if the gas particle is converted 
+ *
+ * */
+static void starformation_convert_to_gas( 
+    ){
+
+}
 
 /* 
- * Brief initialization of the star formation law 
+ * @brief initialization of the star formation law 
  *
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
