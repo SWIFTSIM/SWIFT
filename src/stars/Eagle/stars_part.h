@@ -50,7 +50,7 @@ struct spart {
 
   /*! Star mass */
   float mass;
-  
+
   /* Initial star mass */
   float mass_init;
 
@@ -73,43 +73,7 @@ struct spart {
   } density;
 
   /* structure with all metallicities */
-  struct metallicity {
-    /* Hydrogen abundance */
-    float X;
-
-    /* Helium abundance */
-    float Y;
-
-    /* Abundance all metals */
-    float Z;
-
-    /* Abundance Carbon */
-    float C;
-
-    /* Abundance Nitrogen */
-    float N;
-
-    /* Abundance Oxygen */
-    float O;
-
-    /* Abundance Neon */
-    float Ne;
-
-    /* Abundance Magnesium */
-    float Mg;
-
-    /* Abundance Silicon */
-    float Si;
-
-    /* Abundance Sulfur */
-    float S;
-
-    /* Abundance Calcium */
-    float Ca;
-
-    /* Abundance Iron */
-    float Fe;
-  };
+  struct chemistry_part_data chemistry_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -159,7 +123,7 @@ struct stars_props {
 
   /*! Fixed mass ratio Ca to Si */
   float Ca_to_Si;
-  
+
   /*! Fixed mass ratio S to Si */
   float S_to_Si;
 };
