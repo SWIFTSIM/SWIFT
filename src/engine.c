@@ -1105,7 +1105,7 @@ void engine_repartition_trigger(struct engine *e) {
                       (maxtime - mintime) / mean, abs_trigger);
             e->forcerepart = 1;
           } else {
-            if (e->verbose) {
+            if (e->verbose)
               message("trigger fraction %.3f =< %.3f will not repartition",
                       (maxtime - mintime) / mean, abs_trigger);
           }
