@@ -1,51 +1,28 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.989e43      # 10^10 M_sun in grams
-  UnitLength_in_cgs:   3.085678e24   # Mpc in centimeters
-  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
-  UnitCurrent_in_cgs:  1             # Amperes
-  UnitTemp_in_cgs:     1             # Kelvin
-
-# Cosmological parameters
-Cosmology:
-  h:              0.6777        # Reduced Hubble constant
-  a_begin:        0.04     # Initial scale-factor of the simulation
-  a_end:          1.0           # Final scale factor of the simulation
-  Omega_m:        0.307         # Matter density parameter
-  Omega_lambda:   0.693         # Dark-energy density parameter
-  Omega_b:        0.0455        # Baryon density parameter
+  UnitMass_in_cgs:     2.0e33     # Solar masses
+  UnitLength_in_cgs:   3.0857e21  # Kiloparsecs
+  UnitVelocity_in_cgs: 1.0e5      # Kilometers per second
+  UnitCurrent_in_cgs:  1          # Amperes
+  UnitTemp_in_cgs:     1          # Kelvin
 
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1e-2  # The end time of the simulation (in internal units).
-  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-6  # The maximal time-step size of the simulation (in internal units).
-  
-Scheduler:
-  max_top_level_cells:    15
-  
+  time_end:   0.25  # The end time of the simulation (in internal units).
+  dt_min:     1e-5  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+
 # Parameters governing the snapshots
 Snapshots:
   basename:            coolingBox # Common part of the name of output files
-  scale_factor_first: 0.142857142857  # Scale-factor of the first snaphot (cosmological run)
-  time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
-  delta_time: 1.00002  # Time difference between consecutive outputs (in internal units)
-  compression:         1
+  time_first:          0.         # Time of the first output (in internal units)
+  delta_time:          1e-2       # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  scale_factor_first: 0.142857142857 # Scale-factor of the first stat dump (cosmological run)
-  time_first:          0.01 # Time of the first stat dump (non-cosmological run) (in internal units)
-  delta_time: 1.00002 # Time between statistics output
+  delta_time:          1e-3 # Time between statistics output
 
-# Parameters for the self-gravity scheme
-Gravity:
-  eta:                    0.025     # Constant dimensionless multiplier for time integration.
-  theta:                  0.85      # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
-  max_physical_softening: 0.0007    # Physical softening length (in internal units).
-  
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
@@ -62,12 +39,6 @@ LambdaCooling:
   lambda_nH2_cgs:              1e-22 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
   cooling_tstep_mult:          1.0        # Dimensionless pre-factor for the time-step condition
 
-# Dimensionless constant cooling (AB 13/02/18)
-ConstCooling:
-  cooling_rate:         10000.0
-  min_energy:           0.0
-  cooling_tstep_mult:   1.0
-
 # Cooling with Grackle 2.0
 GrackleCooling:
   CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
@@ -80,14 +51,13 @@ GrackleCooling:
   OutputMode: 1 # Write in output corresponding primordial chemistry mode
   MaxSteps: 1000
   ConvergenceLimit: 1e-2
-
+  
 EagleCooling:
   filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/
   reionisation_redshift:   8.989
   he_reion_z_center:       3.5
   he_reion_z_sigma:        0.5
   he_reion_ev_pH:          2.0
-  newton_integration:      1
 
 EAGLEChemistry:
   InitMetallicity:         0.014
@@ -105,4 +75,3 @@ EAGLEChemistry:
 
 GearChemistry:
   InitialMetallicity: 0.01295
-

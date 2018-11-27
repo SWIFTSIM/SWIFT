@@ -26,21 +26,17 @@ from numpy import *
 
 # Parameters
 periodic= 1           # 1 For periodic box
-boxSize = 3.0857e21   # 1 kiloparsec    
-rho = 2.36748e-25          # Density in cgs
-P = 6.68e-12          # Pressure in cgs
+boxSize = 1           # 1 kiloparsec    
+rho = 3.2e3           # Density in code units (3.2e6 is 0.1 hydrogen atoms per cm^3)
+P = 4.5e6             # Pressure in code units (at 10^5K)
 gamma = 5./3.         # Gas adiabatic index
 eta = 1.2349          # 48 ngbs with cubic spline kernel
 fileName = "coolingBox.hdf5" 
 
-if len(sys.argv) == 2:
-	rho = float(sys.argv[1])
-	P = float(sys.argv[2])
-
 #---------------------------------------------------
 
 # Read id, position and h from glass
-glass = h5py.File("glassCube_16.hdf5", "r")
+glass = h5py.File("glassCube_32.hdf5", "r")
 ids = glass["/PartType0/ParticleIDs"][:]
 pos = glass["/PartType0/Coordinates"][:,:] * boxSize
 h = glass["/PartType0/SmoothingLength"][:] * boxSize
@@ -70,9 +66,9 @@ grp.attrs["PeriodicBoundariesOn"] = periodic
 
 # Units
 grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.
-grp.attrs["Unit mass in cgs (U_M)"] = 1.
-grp.attrs["Unit time in cgs (U_t)"] = 1.
+grp.attrs["Unit length in cgs (U_L)"] = 3.0857e21 
+grp.attrs["Unit mass in cgs (U_M)"] = 2.0e33 
+grp.attrs["Unit time in cgs (U_t)"] = 3.0857e16 
 grp.attrs["Unit current in cgs (U_I)"] = 1.
 grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 

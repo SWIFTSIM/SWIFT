@@ -1,5 +1,0 @@
-This is a test of cooling on a box of uniform gas. It can be run with a variety of of cooling models, both with and without cosmology. If running without cosmology specify coolingBox_non-cosmo.yml
-
-In the case of EAGLE cooling a script (test_script.sh) is provided to run with a variety of parameters and the solution verified against a subcycled explicit solution calculated by the python script analytical_test.py. The parameters that are tested for are: redshift, metal abundance (solar or primordial), hydrogen number density and initial energy. These parameters may be changed in test_script.sh by modifying the for loops, or specifying the desired metal abundances. Currently the script is designed to work with cosmology only. Please note that in order for the cooling box solution to be verified against the subcycled solution, the cooling rates for the parameters specified in test_script.sh are calculated by ../CoolingRates/testCooling.
-
-Initial conditions are produced from a glass file, specified in run.sh and makeIC.py. 
