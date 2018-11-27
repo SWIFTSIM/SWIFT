@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 sys.path.append("../.libs/")
 
-import libswiftlogger as logger
+import liblogger as logger
 
 # Get filenames
 if len(sys.argv) != 3:

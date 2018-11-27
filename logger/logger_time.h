@@ -1,7 +1,7 @@
 #ifndef __TIMELINE_H__
 #define __TIMELINE_H__
 
-#include "header.h"
+#include "logger_header.h"
 #include "logger_tools.h"
 
 typedef char timebin_t;

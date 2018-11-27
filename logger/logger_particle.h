@@ -1,9 +1,9 @@
 #ifndef __PARTICLE_H__
 #define __PARTICLE_H__
 
-#include "header.h"
+#include "logger_header.h"
 #include "logger_tools.h"
-#include "timeline.h"
+#include "logger_time.h"
 
 #include <stdio.h>
 #include <stdlib.h>

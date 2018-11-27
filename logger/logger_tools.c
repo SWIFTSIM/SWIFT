@@ -1,8 +1,8 @@
 #include "logger_tools.h"
-#include "header.h"
-#include "io.h"
+#include "logger_header.h"
+#include "logger_io.h"
 
-#include "particle.h"
+#include "logger_particle.h"
 
 #include <stdio.h>
 

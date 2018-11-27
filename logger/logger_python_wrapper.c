@@ -1,89 +1,14 @@
-#include "header.h"
-#include "io.h"
-#include "particle.h"
-#include "timeline.h"
+#include "logger_header.h"
+#include "logger_io.h"
+#include "logger_particle.h"
+#include "logger_time.h"
+#include "logger_reader.h"
 
 #include <Python.h>
 #include <errno.h>
 #include <numpy/arrayobject.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-/**
- * @brief Reverse offset in dump file
- *
- * @param filename string filename of the dump file
- */
-int reverseOffset(char *filename) {
-  struct header h;
-
-  /* open file */
-  int fd;
-  void *map;
-  if (io_open_file(filename, &fd, &map) != 0) return 1;
-
-  /* read header */
-  if (header_read(&h, map) != 0) return 1;
-
-  header_print(&h);
-
-  /* check offset direction */
-  if (h.forward_offset) {
-    error_no_return(EIO, "Offset are already reversed");
-    return 1;
-  }
-
-  /* compute file size */
-  size_t sz;
-  int status = io_get_file_size(fd, &sz);
-  if (status != 0) return 1;
-
-  size_t offset;
-  int error_code;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* check offset */
-  printf("Check offsets...\n");
-  offset = h.offset_first;
-  while (offset < sz) {
-    error_code = tools_check_offset(&h, map, &offset);
-    if (error_code != 0) return 1;
-  }
-  printf("Check done\n");
-#endif
-
-  /* reverse header offset */
-  header_change_offset_direction(&h, map);
-
-  offset = h.offset_first;
-
-  /* reverse chunks */
-  printf("Reversing offsets...\n");
-  while (offset < sz) {
-    error_code = tools_reverse_offset(&h, map, &offset);
-    if (error_code != 0) return 1;
-  }
-  printf("Reversing done\n");
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* check offset */
-  printf("Check offsets...\n");
-  offset = h.offset_first;
-  while (offset < sz) {
-    error_code = tools_check_offset(&h, map, &offset);
-
-    if (error_code != 0) return 1;
-  }
-  printf("Check done\n");
-#endif
-
-  /* free internal variables */
-  header_free(&h);
-
-  if (io_close_file(&fd, &map) != 0) return 1;
-
-  return 0;
-}
 
 /**
  * @brief load data from the offset without any interpolation
@@ -143,7 +68,7 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   if (!h.forward_offset) {
     if (io_close_file(&fd, &map) != 0) return NULL;
 
-    if (reverseOffset(filename) != 0) return NULL;
+    if (reverse_offset(filename) != 0) return NULL;
 
     if (io_open_file(filename, &fd, &map) != 0) return NULL;
 
@@ -328,14 +253,14 @@ static PyObject *pyReverseOffset(__attribute__((unused)) PyObject *self,
 
   if (!PyArg_ParseTuple(args, "s", &filename)) return NULL;
 
-  if (reverseOffset(filename) != 0) return NULL;
+  if (reverse_offset(filename) != 0) return NULL;
 
   return Py_BuildValue("");
 }
 
 /* definition of the method table */
 
-static PyMethodDef libswiftloggerMethods[] = {
+static PyMethodDef libloggerMethods[] = {
     {"loadFromIndex", loadFromIndex, METH_VARARGS,
      "Load snapshot directly from the offset in an index file."},
     {"reverseOffset", pyReverseOffset, METH_VARARGS,
@@ -344,21 +269,21 @@ static PyMethodDef libswiftloggerMethods[] = {
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
-static struct PyModuleDef libswiftloggermodule = {
+static struct PyModuleDef libloggermodule = {
     PyModuleDef_HEAD_INIT,
-    "libswiftlogger",
+    "liblogger",
     "Module reading a SWIFTsim logger snapshot",
     -1,
-    libswiftloggerMethods,
+    libloggerMethods,
     NULL, /* m_slots */
     NULL, /* m_traverse */
     NULL, /* m_clear */
     NULL  /* m_free */
 };
 
-PyMODINIT_FUNC PyInit_libswiftlogger(void) {
+PyMODINIT_FUNC PyInit_liblogger(void) {
   PyObject *m;
-  m = PyModule_Create(&libswiftloggermodule);
+  m = PyModule_Create(&libloggermodule);
   if (m == NULL) return NULL;
 
   import_array();

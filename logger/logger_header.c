@@ -1,6 +1,6 @@
-#include "header.h"
+#include "logger_header.h"
 
-#include "io.h"
+#include "logger_io.h"
 #include "logger_tools.h"
 
 #include <stdio.h>

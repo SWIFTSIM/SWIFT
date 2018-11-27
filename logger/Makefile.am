@@ -34,36 +34,36 @@ EXTRA_LIBS = $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS
 # MPI_LIBS = $(MPI_THREAD_LIBS)
 # MPI_FLAGS = -DWITH_MPI
 
-# Build the libswiftsim library
-lib_LTLIBRARIES = libswiftlogger.la
+# Build the liblogger library
+lib_LTLIBRARIES = liblogger.la
 # Build a MPI-enabled version too?
 # if HAVEMPI
-# lib_LTLIBRARIES += libswiftlogger_mpi.la
+# lib_LTLIBRARIES += liblogger_mpi.la
 # endif
 
 # List required headers
-include_HEADERS = header.h io.h particle.h timeline.h logger_tools.h
+include_HEADERS = logger_header.h logger_io.h logger_particle.h logger_time.h logger_tools.h logger_reader.h
 
 # Common source files
-AM_SOURCES = header.c io.c particle.c timeline.c logger_tools.c
+AM_SOURCES = logger_header.c logger_io.c logger_particle.c logger_time.c logger_tools.c logger_reader.c
 if HAVEPYTHON
-AM_SOURCES += logger_loader.c
+AM_SOURCES += logger_python_wrapper.c
 endif
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = 
 
 # Sources and flags for regular library
-libswiftlogger_la_SOURCES = $(AM_SOURCES)
-libswiftlogger_la_CFLAGS = $(AM_CFLAGS)
-libswiftlogger_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS) $(BIN_LDFLAGS)
+liblogger_la_SOURCES = $(AM_SOURCES)
+liblogger_la_CFLAGS = $(AM_CFLAGS)
+liblogger_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS) $(BIN_LDFLAGS)
 
 # Sources and flags for MPI library
-# libswiftlogger_mpi_la_SOURCES = $(AM_SOURCES)
-# libswiftlogger_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS)
-# libswiftlogger_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
-# libswiftlogger_mpi_la_SHORTNAME = mpi
-# libswiftlogger_mpi_la_LIBADD =
+# liblogger_mpi_la_SOURCES = $(AM_SOURCES)
+# liblogger_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS)
+# liblogger_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
+# liblogger_mpi_la_SHORTNAME = mpi
+# liblogger_mpi_la_LIBADD =
 
 # Versioning. If any sources change then update the version_string.h file with
 # the current git revision and package version.

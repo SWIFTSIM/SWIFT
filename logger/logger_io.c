@@ -3,8 +3,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "header.h"
-#include "io.h"
+#include "logger_header.h"
+#include "logger_io.h"
 #include "logger_tools.h"
 
 /**
