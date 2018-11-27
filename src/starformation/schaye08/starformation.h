@@ -277,9 +277,6 @@ static void starformation_init_backend(
   /* !!!DONT FORGET TO DO THE CORRECT UNIT CONVERSION!!!*/
   starform->den_crit_star = starform->den_crit / pow(starform->Z0,
   starform->n_Z0) * conversion_numb_density;
-
-
-  
 }
 
 /* @brief Prints the used parameters of the star formation law 
@@ -287,8 +284,8 @@ static void starformation_init_backend(
  * @param starform the star formation law properties.
  * */
 static void starformation_print_backend(
-    const struct star_formation* starform){ 
-
+    const struct star_formation* starform 
+    ){ 
   message("Star formation law is Schaye and Dalla Vecchia (2008)"
   " with properties, normalization = %e, slope of the Kennicutt"
   "-Schmidt law = %e, gamma = %e, gas fraction = %e, critical "
