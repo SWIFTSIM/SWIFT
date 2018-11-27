@@ -211,6 +211,33 @@ static void starformation_init_backend(
 
   /* Calculate the power law of the star formation */
   starform->nstar = (starform->nks - 1.f)/2.f;
+
+  /* Get the appropriate constant to calculate the 
+   * star formation constant */ 
+  const double G_newton = phys_const->const_newton_G;
+
+  /* Read the critical temperature from the parameter file */
+  starform->T_crit = parser_get_param_double(parameter_file,
+  "SchayeSF:T_crit");
+
+  /* Read the gas fraction from the file */
+  starform->fg = parser_get_param_double(parameter_file,
+  "SchayeSF:fg");
+
+  /* Read the normalization */
+  const double normalization = parser_get_opt_param_double(
+  parameter_file, "SchayeSF:A", normalization_default);
+
+  /* Read the Kennicutt-Schmidt power law exponent */
+  starform->nks = parser_get_opt_param_double(
+  parameter_file, "SchayeSF:nks", KS_power_law_default);
+
+  /* Read the heat capacity ratio gamma */
+  starform->gamma = parser_get_opt_param_double(
+  parameter_file, "SchayeSF:gamma", gamma_default); 
+
+  /* Calculate the power law of the star formation */
+  starform->nstar = (starform->nks - 1.f)/2.f;
   
   /* Calculate inverse of RAND_MAX */
   starform->inv_RAND_MAX = 1.f / RAND_MAX;
@@ -284,8 +311,8 @@ static void starformation_init_backend(
  * @param starform the star formation law properties.
  * */
 static void starformation_print_backend(
-    const struct star_formation* starform 
-    ){ 
+    const struct star_formation* starform){ 
+
   message("Star formation law is Schaye and Dalla Vecchia (2008)"
   " with properties, normalization = %e, slope of the Kennicutt"
   "-Schmidt law = %e, gamma = %e, gas fraction = %e, critical "
