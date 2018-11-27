@@ -285,6 +285,14 @@ EAGLEChemistry:
   CalciumOverSilicon:      0.0941736    # Constant ratio of Calcium over Silicon abundance
   SulphurOverSilicon:      0.6054160    # Constant ratio of Sulphur over Silicon abundance
 
+# Schaye and Dalla Vecchia 2008 star formation
+SchayeSF:
+  Delta_crit:     60      # The critical density contrast to form stars
+  T_crit:         1e5     # The critical temperature to form stars
+  A:              2.5e-4  # (optional) The normalization of the Kennicutt-Schmidt law
+  nks:            1.4     # (optional) The power law of the Kennicutt-Schmidt law
+  gamma:          1.6667  # (optional) The heat capacity ratio (gamma)
+
 # Structure finding options (requires velociraptor)
 StructureFinding:
   config_file_name:     stf_input.cfg # Name of the STF config file.
