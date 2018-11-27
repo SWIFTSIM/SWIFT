@@ -102,4 +102,8 @@ const double const_primordial_He_fraction_cgs = 0.245;
  * [s^-1] */
 const double const_reduced_hubble_cgs = 3.2407792894458e-18;
 
+/*! Kennicutt-Schmidt law normalization units (i.e. Solar Mass / yr / kpc^2 ) */
+const double const_kennicutt_schmidt_units_cgs = 6.62004339e-18;
+
+
 #endif /* SWIFT_PHYSICAL_CONSTANTS_CGS_H */

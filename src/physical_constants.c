@@ -136,6 +136,11 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
   internal_const->const_reduced_hubble =
       const_reduced_hubble_cgs /
       units_general_cgs_conversion_factor(us, dimension_reduced_hubble);
+
+  const float dimension_ks[5] = {1, -2, -1, 0, 0}; /* [g cm^-2 s^-1] */
+  internal_const->const_kennicutt_schmidt_units = 
+      const_kennicutt_schmidt_units_cgs / 
+      units_general_cgs_conversion_factor(us, dimension_ks);
 }
 
 /**
