@@ -45,7 +45,7 @@ particle would have in the absence of cooling:
     hydro} \times \Delta t.
 \end{equation}
 We then proceed to solve the implicit equation
-\begin{equation}
+\begin{equation}\label{implicit-eq}
  u_{\rm final} = u_0 + \lambda(u_{\rm final}) \Delta t,
 \end{equation}
 where $\lambda$ is the cooling rate\footnote{Note this is not the
@@ -151,50 +151,74 @@ ensure that we will not get negative values because of rounding errors.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Solution to the implicit cooling problem}
 
+In this section we describe the integration scheme used to compute the 
+cooling rate. It consists of an explicit solver for cases where the 
+cooling rate is small, a solver based on the Newton-Raphson method, and
+one based on the bisection method. 
+
 \subsection{Explicit solver}
 
-\todo{Explain the explicit solver}
+For many particles the cooling occuring over a timestep will be small 
+(for example, if a particle is at the equilibrium temperature and was not
+heated by other means such as shock heating). In these cases $\lambda(u_0)
+\simeq \lambda(u_{final})$, so an explicit solution to compute $u_{final}$
+may be used as a faster alternative to a more complicated implicit scheme. 
+More specifically, if $\lambda(u_0) dt < \varepsilon u_0$ we set
+\begin{equation}
+u_{final} = u_0 + \lambda(u_0) dt,
+\end{equation}
+where $\varepsilon$ is a small constant, set to $0.05$ to be consistent 
+with the EAGLE simulations. 
+
+In cases where $\lambda(u_0) dt > \varepsilon u_0$ one of two implicit 
+methods are used, either the Newton-Raphson method, which benefits from
+faster convergence, however is not guaranteed to converge, or the 
+bisection method, which is slower but always converges. 
 
 \subsection{Newton-Raphson method}
 
-To prevent the occurance of negative internal energies during the
-calculation we introduce $x = \log u$, so that we need to solve
-\begin{equation}\label{fx-eq}
-f(x) = e^x - u_0 - \lambda(e^x) dt = 0.
+Equation \ref{implicit-eq} may be rearranged so that we are trying to
+find the root of 
+\begin{equation}\label{fu-eq}
+f(u_{final}) = u_{final} - u_0 - \lambda(u_{final}) dt = 0.
 \end{equation}
-Using Newton's method we obtain consecutive approximations of the root
-of $f$ by the formula $x_{n+1} = x_n - f(x_n)/f'(x_n)$. This leads to
+This may be done iteratively using the Newton-Raphson method obtaining
+consecutive approximations to $u_{final}$ by 
+\begin{equation}
+u_{n+1} = u_n - \frac{f(u_n)}{df(u_n)/du}.
+\end{equation}
+In some cases a negative value of $u_{n+1}$ may be calculated. To 
+prevent the occurance of negative internal energies during the
+calculation we introduce $x = \log (u_{final})$, so that we solve
+\begin{equation}\label{fx-eq}
+f(x) = e^x - u_0 - \lambda(e^x) dt = 0
+\end{equation}
+instead of \ref{fu-eq}. Thus we obtain consecutive approximations of 
+the root of $f$ by the formula $x_{n+1} = x_n - f(x_n)/f'(x_n)$. This 
+leads to
 \begin{equation}
 x_{n+1} = x_n - \frac{1 - u_0 e^{-x_n} -\lambda(e^{x_n})e^{-x_n}dt}{1
   - \frac{d\lambda}{du}(e^{x_n}) dt}.
 \end{equation}
-We obtain the gradient by
-\begin{equation}
-  \D \lambda u = \frac{\lambda(u_{high,n})
-    - \lambda(u_{low,n})}{u_{high,n} - u_{low,n}},
-\end{equation}
-where $u_{\rm high,n}$ and $ u_{\rm low,n}$ are values of the internal
-energy grid bracketing the current iteration of the value of the
-internal energy ($u_n = e^{x_n}$) in Newton's method (i.e. $u_{high,n}
-\ge u_n \ge u_{low,n}$).
 
-%\begin{figure} \begin{center} \includegraphics[width =
-%0.7\textwidth]{typical_fx} \caption{Relationship of $\log|f(x)|$ from
-%Equation \ref{fx-eq} to the logarithm of temperature for multiple
-%values $u_0$. Solid lines indicate where the value of $f(x)$ is
-%negative, while for dashed lines $f(x)$ is positive. A hydrogen
-%number density of $10^{-1}$ cm$^{-1}$, solar abundances and redshift
-%0 are used for evaluating the cooling
-%rate.}  \label{fx} \end{center} \end{figure}
+The tables used for EAGLE cooling in fact depend on temperature rather 
+than internal energy and include a separate table to convert from
+internal energy to temperature. Hence, to obtain the gradient we use
+\begin{align*}
+  \D \lambda u &= \D \lambda T \D T u \\
+               &= \frac{\lambda(T_{high,n})
+    - \lambda(T_{low,n})}{T_{high,n} - T_{low,n}}
+                  \frac{T(u_{high,n})
+    - T(u_{low,n})}{u_{high,n} - u_{low,n}},
+\end{align*}
+where $T_{\rm high,n}, u_{\rm high,n}$ and $T_{\rm low,n}, u_{\rm low,n}$ 
+are values of the temperature and internal energy grid bracketing the current 
+temperature and internal energy for the iteration in Newton's method 
+(e.g. $u_{high,n} \ge u_n \ge u_{low,n}$).
 
-The root of $f$ tends to be near the location of maximum gradient, so
-the initial guess for the Newton's method is chosen to be the location
-where $g(x) = e^x - u_0 - \lambda_h(e^x) dt$ has the greatest slope,
-with $\lambda_h$ being the contribution to the cooling from hydrogen
-and helium. Since the cooling rate is dominated by hydrogen and helium
-at lower temperatures, this is a suitable way of approximating the
-equilibrium temperature, and supplying a guess to the Newton iteration
-scheme.
+The initial guess for the Newton-Raphson method is taken to be $x_0 = \log(u_0)$.
+If in the first iteration the sign of the $\lambda$ changes the next
+guess to correspond to the equilibrium temperature (i.e. $10^4$K). 
 
 A particle is considered to have converged if the relative error in
 the internal energy is sufficiently small. This can be formulated as
@@ -208,15 +232,56 @@ x_{n+1} - x_n = \log\frac{u_{n+1}}{u_n} &< -\log\LL 1-C \RR \simeq C.
 Since the grid spacing in the internal energy of the Eagle tables is
 0.045 in $\log_{10}u$ we take $C = 10^{-2}$.
 
-\subsection{Bissection method}
+In cases when the Newton-Raphson method doesn't converge within a specified
+number of iterations we revert to the bisection method. In order to use
+the Newton-Raphson method a parameter (EagleCooling:newton\_integration) in 
+the yaml file needs to be set to 1.
 
-\todo{Explain the bissection method}
+\subsection{Bisection method}
+
+In order to guarantee convergence the bisection method is used to solve 
+equation \ref{fu-eq} The implementation is the same as in the EAGLE 
+simulations, but is described here for convenience. 
+
+First a small interval is used to bracket the solution. The interval bounds
+are defined as $u_{upper} = \kappa u_0$ and $u_{lower} = \kappa^{-1} u_0$, 
+with $\kappa = \sqrt{1.1}$ as specified in EAGLE. If the particle is cooling
+($\lambda(u_0) < 0$) $u_{upper}$ and $u_{lower}$ are iteratively decreased
+by factors of $\kappa$ until $f(u_{lower}) < 0$. Alternatively, if the 
+particle is initially heating ($\lambda(u_0) > 0$) the bounds are iteratively
+increased by factors of $\kappa$ until $f(u_{upper}) > 0$. Once the bounds
+are obtained, the bisection scheme is performed as normal. 
 
 \section{EAGLE cooling tables}
 
-\todo{Summarize the content of the Wiersma tables.}
-\todo{Summarize the high-redshift tables.}
-\todo{Explain the Compton-cooling contribution.}
+We use the same cooling tables as used in EAGLE, specifically those found in 
+\cite{Wiersma2009} and may be found at http://www.strw.leidenuniv.nl/WSS08/. 
+These tables contain pre-computed values of the cooling rate for a given 
+redshift, metallicity, hydrogen number density and temperature produced using 
+the package CLOUDY. When calculating the cooling rate for particles at 
+redshifts higher than the redshift of reionisation the tables used do not 
+depend on redshift, but only on metallicity, hydrogen number density and 
+temperature. These tables are linearly interpolated based on the particle
+based on the particle properties. 
+
+Since these tables specify the cooling rate in terms of temperature, the internal
+energy of a particle needs to be converted to a temperature in a way which takes 
+into account the ionisation state of the gas. This is done by interpolating a 
+pre-computed table of values of temperature depending on redshift, hydrogen number
+density, helium fraction and internal energy (again, for redshifts higher than the 
+redshift of reionisation this table does not depend on redshift). 
+
+Inverse Compton cooling is not accounted for in the high redshift tables, so prior 
+to reionisation it is taken care of by an analytical formula,
+\begin{equation}
+\frac{\Lambda_{compton}}{n_h^2} = -\Lambda_{0,compton} \left( T - T_{CMB}(1+z) 
+\right) (1+z)^4 \frac{n_e}{n_h},
+\end{equation}
+which is added to the cooling rate interpolated from the tables. Here $n_h$ is the
+hydrogen number density, $T$ the temperature of the particle, $T_{CMB} = 2.7255$K 
+the temperature of the CMB, $z$ the redshift, $n_e$ the hydrogen and helium electron
+number density, and $\Lambda_{0,compton} = 1.0178085 \times 10^{-37} g \cdot cm^2 
+\cdot s^{-3} \cdot K^{-5}$. 
 
 \section{Co-moving time integration}
 
@@ -286,4 +351,8 @@ same calculation as in the non-cooling case:
 \begin{equation}
   u'_i(t+\Delta t) = u'_i(t) + Y'_i(t)\big|_{\rm total} \times {\Delta t_{\rm therm}}.
 \end{equation}
+
+\bibliographystyle{mnras}
+\bibliography{./bibliography.bib}
+
 \end{document}
