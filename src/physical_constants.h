@@ -99,6 +99,9 @@ struct phys_const {
 
   /*! Reduced hubble constant units (i.e. H_0 / h) */
   double const_reduced_hubble;
+
+  /*! Const of Kennicutt-Schmidt law */
+  double const_kennicutt_schmidt_units;
 };
 
 void phys_const_init(const struct unit_system* us, struct swift_params* params,
