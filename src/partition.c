@@ -1208,7 +1208,11 @@ void partition_gather_weights(void *map_data, int num_elements,
         t->type == task_type_logger || t->implicit || t->ci == NULL) continue;
 
     /* Get the task weight based on fixed cost for this task type. */
-    double w = repartition_costs[t->type][t->subtype];
+    //double w = repartition_costs[t->type][t->subtype];
+
+    /* Get the task weight based on costs. */
+    double w = (double)t->toc - (double)t->tic;
+    if (w <= 0.0) continue;
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
@@ -1824,13 +1828,13 @@ void partition_init(struct partition *partition,
         " than 1");
 
   /* Fraction of particles that should be updated before a repartition
-   * based on CPU time is considered. */
+   * based on CPU time is considered, needs to be high. */
   repartition->minfrac =
-      parser_get_opt_param_float(params, "DomainDecomposition:minfrac", 0.9f);
-  if (repartition->minfrac <= 0 || repartition->minfrac > 1)
+      parser_get_opt_param_float(params, "DomainDecomposition:minfrac", 0.95f);
+  if (repartition->minfrac <= 0.5 || repartition->minfrac > 1)
     error(
-        "Invalid DomainDecomposition:minfrac, must be greater than 0 and less "
-        "than equal to 1");
+        "Invalid DomainDecomposition:minfrac, must be greater than 0.5 "
+        "and less than equal to 1");
 
   /* Use METIS or ParMETIS when ParMETIS is also available. */
   repartition->usemetis =

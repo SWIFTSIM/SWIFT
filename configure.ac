@@ -199,7 +199,7 @@ fi
 # Check if task debugging is on.
 AC_ARG_ENABLE([task-debugging],
    [AS_HELP_STRING([--enable-task-debugging],
-     [Store task timing information and generate task dump files @<:@yes/no@:>@]
+     [Store extra information for generating task dump files @<:@yes/no@:>@]
    )],
    [enable_task_debugging="$enableval"],
    [enable_task_debugging="no"]
@@ -335,7 +335,7 @@ AC_ARG_ENABLE([vec],
    [enable_vec="yes"]
 )
 
-#  Disable hand written vectorisation. Slightly odd implementation as want 
+#  Disable hand written vectorisation. Slightly odd implementation as want
 # to describe as --disable-hand-vec, but macro is enable (there is no enable action).
 AC_ARG_ENABLE([hand-vec],
    [AS_HELP_STRING([--disable-hand-vec],

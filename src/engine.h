@@ -289,10 +289,8 @@ struct engine {
   struct proxy *proxies;
   int nr_proxies, *proxy_ind;
 
-#ifdef SWIFT_DEBUG_TASKS
   /* Tic/toc at the start/end of a step. */
   ticks tic_step, toc_step;
-#endif
 
 #ifdef WITH_MPI
   /* CPU time of the last step. */

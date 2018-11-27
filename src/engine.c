@@ -1046,65 +1046,56 @@ void engine_repartition_trigger(struct engine *e) {
 
   const ticks tic = getticks();
 
-  /* Do nothing if there have not been enough steps since the last
-   * repartition, don't want to repeat this too often or immediately after
-   * a repartition step. Also nothing to do when requested. */
+  /* Do nothing if there have not been enough steps since the last repartition
+   * as we don't want to repeat this too often or immediately after a
+   * repartition step. Also nothing to do when requested. */
   if (e->step - e->last_repartition >= 2 &&
       e->reparttype->type != REPART_NONE) {
 
-    /* Old style if trigger is >1 or this is the second step (want an early
-     * repartition following the initial repartition). */
-    if (e->reparttype->trigger > 1 || e->step == 2) {
-      if (e->reparttype->trigger > 1) {
-        if ((e->step % (int)e->reparttype->trigger) == 0) e->forcerepart = 1;
-      } else {
-        e->forcerepart = 1;
-      }
+    /* It is only worth checking the CPU loads when we have processed a
+     * significant number of all particles as we require all tasks to have
+     * times. */
+    if ((e->updates > 1 &&
+         e->updates >= e->total_nr_parts * e->reparttype->minfrac) ||
+        (e->g_updates > 1 &&
+         e->g_updates >= e->total_nr_gparts * e->reparttype->minfrac)) {
 
-    } else {
+      /* Get CPU time used since the last call to this function. */
+      double elapsed_cputime = clocks_get_cputime_used() - e->cputime_last_step;
 
-      /* Use cputimes from ranks to estimate the imbalance. */
-      /* First check if we are going to skip this stage anyway, if so do that
-       * now. If is only worth checking the CPU loads when we have processed a
-       * significant number of all particles. */
-      if ((e->updates > 1 &&
-           e->updates >= e->total_nr_parts * e->reparttype->minfrac) ||
-          (e->g_updates > 1 &&
-           e->g_updates >= e->total_nr_gparts * e->reparttype->minfrac)) {
+      /* Gather the elapsed CPU times from all ranks for the last step. */
+      double elapsed_cputimes[e->nr_nodes];
+      MPI_Gather(&elapsed_cputime, 1, MPI_DOUBLE, elapsed_cputimes, 1,
+                 MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      if (e->nodeID == 0) {
 
-        /* Get CPU time used since the last call to this function. */
-        double elapsed_cputime =
-            clocks_get_cputime_used() - e->cputime_last_step;
-
-        /* Gather the elapsed CPU times from all ranks for the last step. */
-        double elapsed_cputimes[e->nr_nodes];
-        MPI_Gather(&elapsed_cputime, 1, MPI_DOUBLE, elapsed_cputimes, 1,
-                   MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        if (e->nodeID == 0) {
-
-          /* Get the range and mean of cputimes. */
-          double mintime = elapsed_cputimes[0];
-          double maxtime = elapsed_cputimes[0];
-          double sum = elapsed_cputimes[0];
-          for (int k = 1; k < e->nr_nodes; k++) {
-            if (elapsed_cputimes[k] > maxtime) maxtime = elapsed_cputimes[k];
-            if (elapsed_cputimes[k] < mintime) mintime = elapsed_cputimes[k];
-            sum += elapsed_cputimes[k];
-          }
-          double mean = sum / (double)e->nr_nodes;
-
-          /* Are we out of balance? */
-          if (((maxtime - mintime) / mean) > e->reparttype->trigger) {
-            if (e->verbose)
-              message("trigger fraction %.3f exceeds %.3f will repartition",
-                      (maxtime - mintime) / mintime, e->reparttype->trigger);
-            e->forcerepart = 1;
-          }
+        /* Get the range and mean of cputimes. */
+        double mintime = elapsed_cputimes[0];
+        double maxtime = elapsed_cputimes[0];
+        double sum = elapsed_cputimes[0];
+        for (int k = 1; k < e->nr_nodes; k++) {
+          if (elapsed_cputimes[k] > maxtime) maxtime = elapsed_cputimes[k];
+          if (elapsed_cputimes[k] < mintime) mintime = elapsed_cputimes[k];
+          sum += elapsed_cputimes[k];
         }
+        double mean = sum / (double)e->nr_nodes;
 
-        /* All nodes do this together. */
-        MPI_Bcast(&e->forcerepart, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        /* Are we out of balance? */
+        double abs_trigger = fabs(e->reparttype->trigger);
+        if (((maxtime - mintime) / mean) > abs_trigger) {
+          // if (e->verbose)
+          message("trigger fraction %.3f > %.3f will repartition",
+                  (maxtime - mintime) / mean, abs_trigger);
+          e->forcerepart = 1;
+        } else {
+          // if (e->verbose) {
+          message("trigger fraction %.3f =< %.3f will not repartition",
+                  (maxtime - mintime) / mean, abs_trigger);
+        }
       }
+
+      /* All nodes do this together. */
+      MPI_Bcast(&e->forcerepart, 1, MPI_INT, 0, MPI_COMM_WORLD);
     }
 
     /* Remember we did this. */
@@ -2897,9 +2888,7 @@ void engine_step(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-#ifdef SWIFT_DEBUG_TASKS
   e->tic_step = getticks();
-#endif
 
   if (e->nodeID == 0) {
 
@@ -3056,10 +3045,8 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time2);
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
-#ifdef SWIFT_DEBUG_TASKS
   /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
-#endif
 }
 
 /**
