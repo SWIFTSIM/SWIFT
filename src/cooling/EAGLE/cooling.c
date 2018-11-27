@@ -858,7 +858,6 @@ __attribute__((always_inline)) INLINE float bisection_iter(
                   eagle_cooling_rate(log(u_lower), dLambdaNet_du, n_h_i, d_n_h,
                                      He_i, d_He, p, cooling, cosmo, phys_const,
                                      abundance_ratio);
-      fprintf(bracketing, "%.5e %.5e %.5e %.5e\n", u_lower, u_upper, LambdaNet, u_lower - u_ini - LambdaNet * ratefact * dt);
       i++;
     }
     if (i >= bisection_max_iterations) {
@@ -881,7 +880,6 @@ __attribute__((always_inline)) INLINE float bisection_iter(
                   eagle_cooling_rate(log(u_upper), dLambdaNet_du, n_h_i, d_n_h,
                                      He_i, d_He, p, cooling, cosmo, phys_const,
                                      abundance_ratio);
-      fprintf(bracketing, "%.5e %.5e %.5e %.5e\n", u_lower, u_upper, LambdaNet, u_upper - u_ini - LambdaNet * ratefact * dt);
       i++;
     }
     if (i >= bisection_max_iterations) {
@@ -903,7 +901,6 @@ __attribute__((always_inline)) INLINE float bisection_iter(
     } else {
       u_lower = u_next;
     }
-    fprintf(output_file,"%.5e\n", u_next);
 
     i++;
   } while (fabs(u_upper - u_lower) / u_next > bisection_tolerance &&
