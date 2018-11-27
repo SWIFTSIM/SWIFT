@@ -54,7 +54,7 @@ struct spart {
   /*! Star mass */
   float mass;
 
-  /*! Initial star mass */
+  /* Initial star mass */
   float mass_init;
 
   /*! Stellar age */
@@ -75,7 +75,7 @@ struct spart {
 
   } density;
 
-  /*! Chemistry structure */
+  /* structure with all metallicities */
   struct chemistry_part_data chemistry_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -126,7 +126,7 @@ struct stars_props {
 
   /*! Fixed mass ratio Ca to Si */
   float Ca_to_Si;
-  
+
   /*! Fixed mass ratio S to Si */
   float S_to_Si;
 };
