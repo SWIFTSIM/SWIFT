@@ -791,9 +791,11 @@ void task_dump_stats(struct engine *e, int step) {
            * some absolute units. */
           int fixed_cost = (int)(clocks_from_ticks(mean) * 10000.f);
           fprintf(dfile,
-                  "%15s/%-10s %10d %14.2f %14.2f %14.2f %14.2f %14.2f %10d\n",
-                  taskID, subtaskID_names[k], count[j][k], min[j][k], max[j][k],
-                  sum[j][k], mean, perc, fixed_cost);
+                  "%15s/%-10s %10d %14.4f %14.4f %14.4f %14.4f %14.4f %10d\n",
+                  taskID, subtaskID_names[k], count[j][k],
+                  clocks_from_ticks(min[j][k]), clocks_from_ticks(max[j][k]),
+                  clocks_from_ticks(sum[j][k]), clocks_from_ticks(mean),
+                  perc, fixed_cost);
           fprintf(cfile, "repartition_costs[%d][%d] = %10d; /* %s/%s */\n", j,
                   k, fixed_cost, taskID, subtaskID_names[k]);
         }
