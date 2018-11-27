@@ -823,10 +823,6 @@ __attribute__((always_inline)) INLINE float bisection_iter(
   int i = 0;
   double u_init = exp(logu_init);
 
-  FILE *output_file = fopen("bisection_output.dat","w");
-  FILE *bracketing = fopen("bracketing_output.dat","w");
-  FILE *bisection_function = fopen("bisection_function.dat","w");
-
   /* convert Hydrogen mass fraction in Hydrogen number density */
   const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
   const double n_h = hydro_get_physical_density(p, cosmo) * XH / phys_const->const_proton_mass
@@ -836,16 +832,6 @@ __attribute__((always_inline)) INLINE float bisection_iter(
    * replaced by equivalent expression  below */
   const double ratefact = n_h * (XH / cooling->proton_mass_cgs);
 
-  // Debugging
-  for(int j = 0; j < cooling->N_Temp; j++) {
-    float u_print = exp(M_LN10*cooling->Therm[j]);
-    LambdaNet = (He_reion_heat / (dt * ratefact)) +
-                eagle_cooling_rate(log(u_print), dLambdaNet_du, n_h_i, d_n_h,
-                                   He_i, d_He, p, cooling, cosmo, phys_const,
-                                   abundance_ratio);
-    fprintf(bisection_function, "%.5e %.5e\n", u_print, u_print - u_ini - LambdaNet * ratefact * dt);
-  }
-  fclose(bisection_function);
   /* Bracketing */
   u_lower = u_init;
   u_upper = u_init;
@@ -903,7 +889,6 @@ __attribute__((always_inline)) INLINE float bisection_iter(
       return -100;
     }
   }
-  fclose(bracketing);
 
   /* bisection iteration */
   i = 0;
@@ -928,7 +913,6 @@ __attribute__((always_inline)) INLINE float bisection_iter(
     return -100;
     message("Particle id %llu failed to converge", p->id); // WARNING: Do we want this to throw an error? In EAGLE calculation continued.
   }
-  fclose(output_file);
 
   return log(u_upper);
 }
