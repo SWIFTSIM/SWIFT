@@ -54,7 +54,7 @@ struct spart {
   /*! Star mass */
   float mass;
 
-  /* Initial star mass */
+  /*! Initial star mass */
   float mass_init;
 
   /*! Stellar age */
@@ -75,7 +75,7 @@ struct spart {
 
   } density;
 
-  /* structure with all metallicities */
+  /*! Chemistry structure */
   struct chemistry_part_data chemistry_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -123,12 +123,6 @@ struct stars_props {
 
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
-
-  /*! Fixed mass ratio Ca to Si */
-  float Ca_to_Si;
-
-  /*! Fixed mass ratio S to Si */
-  float S_to_Si;
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */
