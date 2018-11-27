@@ -59,6 +59,9 @@ struct repartition {
   int usemetis;
   int adaptive;
 
+  int use_fixed_costs;
+  int use_ticks;
+
   /* The partition as a cell-list. */
   int ncelllist;
   int *celllist;

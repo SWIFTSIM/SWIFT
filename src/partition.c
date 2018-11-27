@@ -83,7 +83,7 @@ static int check_complete(struct space *s, int verbose, int nregions);
  * statistics output produced when running with task debugging enabled.
  */
 static double repartition_costs[task_type_count][task_subtype_count];
-static void repart_init_fixed_costs(int policy);
+static int repart_init_fixed_costs(void);
 #endif
 
 /*  Vectorisation support */
@@ -1165,6 +1165,7 @@ struct weights_mapper_data {
   int timebins;
   int vweights;
   int nr_cells;
+  int use_ticks;
   struct cell *cells;
 };
 
@@ -1182,8 +1183,8 @@ static void check_weights(struct task *tasks, int nr_tasks,
  * @param num_elements the number of data elements to process.
  * @param extra_data additional data for the mapper context.
  */
-void partition_gather_weights(void *map_data, int num_elements,
-                              void *extra_data) {
+static void partition_gather_weights(void *map_data, int num_elements,
+                                     void *extra_data) {
 
   struct task *tasks = (struct task *)map_data;
   struct weights_mapper_data *mydata = (struct weights_mapper_data *)extra_data;
@@ -1196,6 +1197,7 @@ void partition_gather_weights(void *map_data, int num_elements,
   int nr_cells = mydata->nr_cells;
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
+  int use_ticks = mydata->use_ticks;
 
   struct cell *cells = mydata->cells;
 
@@ -1207,11 +1209,13 @@ void partition_gather_weights(void *map_data, int num_elements,
     if (t->type == task_type_send || t->type == task_type_recv ||
         t->type == task_type_logger || t->implicit || t->ci == NULL) continue;
 
-    /* Get the task weight based on fixed cost for this task type. */
-    //double w = repartition_costs[t->type][t->subtype];
-
-    /* Get the task weight based on costs. */
-    double w = (double)t->toc - (double)t->tic;
+    /* Get weight for this task. Either based on fixed costs or task timings. */
+    double w = 0.0;
+    if (use_ticks) {
+      w = (double)t->toc - (double)t->tic;
+    } else {
+      w = repartition_costs[t->type][t->subtype];
+    }
     if (w <= 0.0) continue;
 
     /* Get the top-level cells involved. */
@@ -1378,6 +1382,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
   ticks tic = getticks();
 
+  message("using ticks: %d", repartition->use_ticks);
+
   threadpool_map(&s->e->threadpool, partition_gather_weights, tasks, nr_tasks,
                  sizeof(struct task), 0, &weights_data);
   if (s->e->verbose)
@@ -1541,7 +1547,6 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
   ticks tic = getticks();
-  repart_init_fixed_costs(s->e->policy);
 
   if (reparttype->type == REPART_METIS_VERTEX_EDGE_COSTS) {
     repart_edge_metis(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
@@ -1853,27 +1858,45 @@ void partition_init(struct partition *partition,
   repartition->ncelllist = 0;
   repartition->celllist = NULL;
 
+  /* Do we have fixed costs available? These can be used to force
+   * repartitioning at any time. Not required if not repartitioning.*/
+  repartition->use_fixed_costs =
+      parser_get_opt_param_int(params, "DomainDecomposition:use_fixed_costs", 0);
+  if (repartition->type == REPART_NONE) repartition->use_fixed_costs = 0;
+
+  /* Check if this is true or required and initialise them. */
+  if (repartition->use_fixed_costs || repartition->trigger > 1) {
+    if (!repart_init_fixed_costs()) {
+      if (repartition->trigger <= 1) {
+        if (engine_rank == 0)
+          message("WARNING: fixed cost repartitioning was requested but is"
+                  " not available.");
+        repartition->use_fixed_costs = 0;
+      } else {
+        error("Forced fixed cost repartitioning was requested but is"
+              " not available.");
+      }
+    }
+  }
+
 #else
   error("SWIFT was not compiled with MPI support");
 #endif
 }
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#ifdef WITH_MPI
 /**
  * @brief Set the fixed costs for repartition using METIS.
  *
- *  These are determined using a run with task debugging enabled which gives a
- *  statistical analysis condensed into a .h file. Note that some tasks have
- *  different costs depending on the engine policies, for instance the kicks
- *  do work with self gravity and hydro, we attempt to allow for that. Finally
- *  note this is a statistical solution, so requires that there are sufficient
- *  tasks on each rank so that the fixed costs do the right thing on average,
- *  you may like to used task ticks as weights if this isn't working.
+ *  These are determined using a run with the -y flag on which produces
+ *  a statistical analysis that is condensed into a .h file for inclusion.
  *
- *  @param policy the #engine policy.
+ *  If the default include file is used then no fixed costs are set and this
+ *  function will return 0.
  */
-static void repart_init_fixed_costs(int policy) {
+static int repart_init_fixed_costs(void) {
 
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /* Set the default fixed cost. */
   for (int j = 0; j < task_type_count; j++) {
     for (int k = 0; k < task_subtype_count; k++) {
@@ -1881,71 +1904,13 @@ static void repart_init_fixed_costs(int policy) {
     }
   }
 
-  /* TODO: these may be separable, so we could have costs for each policy
-   * addition, if separated need to take care with the relative scaling. */
-  if (policy & (engine_policy_hydro & engine_policy_self_gravity)) {
-
-    /* EAGLE_50 -s -G -S 8 nodes 16 cores */
-    repartition_costs[1][0] = 45842;  /* sort/none */
-    repartition_costs[2][1] = 15609;  /* self/density */
-    repartition_costs[2][3] = 18830;  /* self/force */
-    repartition_costs[2][4] = 202588; /* self/grav */
-    repartition_costs[3][1] = 67;     /* pair/density */
-    repartition_costs[3][3] = 207;    /* pair/force */
-    repartition_costs[3][4] = 1507;   /* pair/grav */
-    repartition_costs[4][1] = 36268;  /* sub_self/density */
-    repartition_costs[4][3] = 52252;  /* sub_self/force */
-    repartition_costs[5][1] = 709;    /* sub_pair/density */
-    repartition_costs[5][3] = 1258;   /* sub_pair/force */
-    repartition_costs[6][0] = 1135;   /* init_grav/none */
-    repartition_costs[9][0] = 160;    /* ghost/none */
-    repartition_costs[12][0] = 7176;  /* drift_part/none */
-    repartition_costs[13][0] = 4502;  /* drift_gpart/none */
-    repartition_costs[15][0] = 8234;  /* end_force/none */
-    repartition_costs[16][0] = 15508; /* kick1/none */
-    repartition_costs[17][0] = 15780; /* kick2/none */
-    repartition_costs[18][0] = 19848; /* timestep/none */
-    repartition_costs[21][0] = 4105;  /* grav_long_range/none */
-    repartition_costs[22][0] = 68;    /* grav_mm/none */
-    repartition_costs[24][0] = 16785; /* grav_down/none */
-    repartition_costs[25][0] = 70632; /* grav_mesh/none */
-
-  } else if (policy & engine_policy_self_gravity) {
-
-    /* EAGLE_50 -G 8 nodes 16 cores, scaled to match self/grav. */
-    repartition_costs[2][4] = 202588; /* self/grav */
-    repartition_costs[3][4] = 1760;   /* pair/grav */
-    repartition_costs[6][0] = 1610;   /* init_grav/none */
-    repartition_costs[13][0] = 999;   /* drift_gpart/none */
-    repartition_costs[15][0] = 3481;  /* end_force/none */
-    repartition_costs[16][0] = 6336;  /* kick1/none */
-    repartition_costs[17][0] = 6343;  /* kick2/none */
-    repartition_costs[18][0] = 13864; /* timestep/none */
-    repartition_costs[21][0] = 1422;  /* grav_long_range/none */
-    repartition_costs[22][0] = 71;    /* grav_mm/none */
-    repartition_costs[24][0] = 16011; /* grav_down/none */
-    repartition_costs[25][0] = 60414; /* grav_mesh/none */
-  } else if (policy & engine_policy_hydro) {
-
-    /* EAGLE_50 -s 8 nodes 16 cores, not scaled, but similar. */
-    repartition_costs[1][0] =      52733; /* sort/none */
-    repartition_costs[2][1] =      15458; /* self/density */
-    repartition_costs[2][3] =      19212; /* self/force */
-    repartition_costs[3][1] =         74; /* pair/density */
-    repartition_costs[3][3] =        242; /* pair/force */
-    repartition_costs[4][1] =      42895; /* sub_self/density */
-    repartition_costs[4][3] =      64254; /* sub_self/force */
-    repartition_costs[5][1] =        818; /* sub_pair/density */
-    repartition_costs[5][3] =       1443; /* sub_pair/force */
-    repartition_costs[9][0] =        159; /* ghost/none */
-    repartition_costs[12][0] =       6708; /* drift_part/none */
-    repartition_costs[15][0] =       6479; /* end_force/none */
-    repartition_costs[16][0] =       6609; /* kick1/none */
-    repartition_costs[17][0] =       6975; /* kick2/none */
-    repartition_costs[18][0] =       5229; /* timestep/none */
-  }
-}
+#include <partition_fixed_costs.h>
+  return HAVE_FIXED_COSTS;
 #endif
+
+  return 0;
+}
+#endif /* WITH_MPI */
 
 /*  General support */
 /*  =============== */

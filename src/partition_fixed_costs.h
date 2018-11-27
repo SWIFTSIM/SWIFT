@@ -1,0 +1,24 @@
+#define HAVE_FIXED_COSTS 1
+repartition_costs[1][0] =       9695; /* sort/none */
+repartition_costs[2][1] =       2279; /* self/density */
+repartition_costs[2][3] =       3489; /* self/force */
+repartition_costs[2][4] =     240418; /* self/grav */
+repartition_costs[3][1] =        179; /* pair/density */
+repartition_costs[3][3] =        329; /* pair/force */
+repartition_costs[3][4] =       4299; /* pair/grav */
+repartition_costs[4][1] =      16814; /* sub_self/density */
+repartition_costs[4][3] =      27911; /* sub_self/force */
+repartition_costs[5][1] =        837; /* sub_pair/density */
+repartition_costs[5][3] =       1454; /* sub_pair/force */
+repartition_costs[6][0] =        144; /* init_grav/none */
+repartition_costs[9][0] =        665; /* ghost/none */
+repartition_costs[12][0] =        126; /* drift_part/none */
+repartition_costs[13][0] =        234; /* drift_gpart/none */
+repartition_costs[15][0] =        763; /* end_force/none */
+repartition_costs[16][0] =       1276; /* kick1/none */
+repartition_costs[17][0] =       1405; /* kick2/none */
+repartition_costs[18][0] =       1969; /* timestep/none */
+repartition_costs[21][0] =        566; /* grav_long_range/none */
+repartition_costs[22][0] =        108; /* grav_mm/none */
+repartition_costs[24][0] =       1366; /* grav_down/none */
+repartition_costs[25][0] =       8664; /* grav_mesh/none */

@@ -774,9 +774,12 @@ void task_dump_stats(struct engine *e, int step) {
 #endif
 
     FILE *dfile = fopen(dumpfile, "w");
-    FILE *cfile = fopen(costsfile, "w");
-
     fprintf(dfile, "# task ntasks min max sum mean percent fixed_cost\n");
+
+    FILE *cfile = fopen(costsfile, "w");
+    fprintf(cfile, "/* use as src/partition_fixed_costs.h */\n");
+    fprintf(cfile, "#define HAVE_FIXED_COSTS 1\n");
+
     for (int j = 0; j < task_type_count; j++) {
       const char *taskID = taskID_names[j];
       for (int k = 0; k < task_subtype_count; k++) {

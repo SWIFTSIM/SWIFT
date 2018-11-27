@@ -330,8 +330,8 @@ int main(int argc, char *argv[]) {
         if (dump_tasks) {
           if (myrank == 0) {
             message("WARNING: complete task dumps are only created when "
-                    "configured with --enable-task-debugging. "
-                    "Basic task statistics will be output.");
+                    "configured with --enable-task-debugging.");
+            message("         Basic task statistics will be output.");
           }
         }
 #endif

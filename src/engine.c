@@ -1049,48 +1049,66 @@ void engine_repartition_trigger(struct engine *e) {
   /* Do nothing if there have not been enough steps since the last repartition
    * as we don't want to repeat this too often or immediately after a
    * repartition step. Also nothing to do when requested. */
-  if (e->step - e->last_repartition >= 2 &&
-      e->reparttype->type != REPART_NONE) {
+  if (e->step - e->last_repartition >= 2 && e->reparttype->type != REPART_NONE) {
 
-    /* It is only worth checking the CPU loads when we have processed a
-     * significant number of all particles as we require all tasks to have
-     * times. */
-    if ((e->updates > 1 &&
-         e->updates >= e->total_nr_parts * e->reparttype->minfrac) ||
-        (e->g_updates > 1 &&
-         e->g_updates >= e->total_nr_gparts * e->reparttype->minfrac)) {
+    /* If we have fixed costs available and this is step 2 or we are forcing
+     * repartitioning then we do a fixed costs one now. */
+    if (e->reparttype->trigger > 1 ||
+        (e->step == 2 && e->reparttype->use_fixed_costs)) {
 
-      /* Get CPU time used since the last call to this function. */
-      double elapsed_cputime = clocks_get_cputime_used() - e->cputime_last_step;
+      if (e->reparttype->trigger > 1) {
+        if ((e->step % (int)e->reparttype->trigger) == 0) e->forcerepart = 1;
+      } else {
+        e->forcerepart = 1;
+      }
+      e->reparttype->use_ticks = 0;
 
-      /* Gather the elapsed CPU times from all ranks for the last step. */
-      double elapsed_cputimes[e->nr_nodes];
-      MPI_Gather(&elapsed_cputime, 1, MPI_DOUBLE, elapsed_cputimes, 1,
-                 MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      if (e->nodeID == 0) {
+    } else {
 
-        /* Get the range and mean of cputimes. */
-        double mintime = elapsed_cputimes[0];
-        double maxtime = elapsed_cputimes[0];
-        double sum = elapsed_cputimes[0];
-        for (int k = 1; k < e->nr_nodes; k++) {
-          if (elapsed_cputimes[k] > maxtime) maxtime = elapsed_cputimes[k];
-          if (elapsed_cputimes[k] < mintime) mintime = elapsed_cputimes[k];
-          sum += elapsed_cputimes[k];
-        }
-        double mean = sum / (double)e->nr_nodes;
 
-        /* Are we out of balance? */
-        double abs_trigger = fabs(e->reparttype->trigger);
-        if (((maxtime - mintime) / mean) > abs_trigger) {
-          // if (e->verbose)
-          message("trigger fraction %.3f > %.3f will repartition",
-                  (maxtime - mintime) / mean, abs_trigger);
-          e->forcerepart = 1;
-        } else {
-          // if (e->verbose) {
-          message("trigger fraction %.3f =< %.3f will not repartition",
-                  (maxtime - mintime) / mean, abs_trigger);
+      /* It is only worth checking the CPU loads when we have processed a
+       * significant number of all particles as we require all tasks to have
+       * timings. */
+      if ((e->updates > 1 &&
+           e->updates >= e->total_nr_parts * e->reparttype->minfrac) ||
+          (e->g_updates > 1 &&
+           e->g_updates >= e->total_nr_gparts * e->reparttype->minfrac)) {
+
+        /* We are using the task timings. */
+        e->reparttype->use_ticks = 1;
+
+        /* Get CPU time used since the last call to this function. */
+        double elapsed_cputime = clocks_get_cputime_used() - e->cputime_last_step;
+
+        /* Gather the elapsed CPU times from all ranks for the last step. */
+        double elapsed_cputimes[e->nr_nodes];
+        MPI_Gather(&elapsed_cputime, 1, MPI_DOUBLE, elapsed_cputimes, 1,
+                   MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        if (e->nodeID == 0) {
+
+          /* Get the range and mean of cputimes. */
+          double mintime = elapsed_cputimes[0];
+          double maxtime = elapsed_cputimes[0];
+          double sum = elapsed_cputimes[0];
+          for (int k = 1; k < e->nr_nodes; k++) {
+            if (elapsed_cputimes[k] > maxtime) maxtime = elapsed_cputimes[k];
+            if (elapsed_cputimes[k] < mintime) mintime = elapsed_cputimes[k];
+            sum += elapsed_cputimes[k];
+          }
+          double mean = sum / (double)e->nr_nodes;
+
+          /* Are we out of balance? */
+          double abs_trigger = fabs(e->reparttype->trigger);
+          if (((maxtime - mintime) / mean) > abs_trigger) {
+            // if (e->verbose)
+            message("trigger fraction %.3f > %.3f will repartition",
+                    (maxtime - mintime) / mean, abs_trigger);
+            e->forcerepart = 1;
+          } else {
+            // if (e->verbose) {
+            message("trigger fraction %.3f =< %.3f will not repartition",
+                    (maxtime - mintime) / mean, abs_trigger);
+          }
         }
       }
 
