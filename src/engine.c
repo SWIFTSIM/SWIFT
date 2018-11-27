@@ -1100,14 +1100,14 @@ void engine_repartition_trigger(struct engine *e) {
           /* Are we out of balance? */
           double abs_trigger = fabs(e->reparttype->trigger);
           if (((maxtime - mintime) / mean) > abs_trigger) {
-            // if (e->verbose)
-            message("trigger fraction %.3f > %.3f will repartition",
-                    (maxtime - mintime) / mean, abs_trigger);
+            if (e->verbose)
+              message("trigger fraction %.3f > %.3f will repartition",
+                      (maxtime - mintime) / mean, abs_trigger);
             e->forcerepart = 1;
           } else {
-            // if (e->verbose) {
-            message("trigger fraction %.3f =< %.3f will not repartition",
-                    (maxtime - mintime) / mean, abs_trigger);
+            if (e->verbose) {
+              message("trigger fraction %.3f =< %.3f will not repartition",
+                      (maxtime - mintime) / mean, abs_trigger);
           }
         }
       }

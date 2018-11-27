@@ -1382,8 +1382,6 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
   ticks tic = getticks();
 
-  message("using ticks: %d", repartition->use_ticks);
-
   threadpool_map(&s->e->threadpool, partition_gather_weights, tasks, nr_tasks,
                  sizeof(struct task), 0, &weights_data);
   if (s->e->verbose)
