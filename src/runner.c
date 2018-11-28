@@ -107,7 +107,6 @@
 #include "runner_doiact_stars.h"
 #undef FUNCTION
 
-
 /**
  * @brief Perform source terms
  *

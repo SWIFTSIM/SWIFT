@@ -1941,7 +1941,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
   }
 #if defined(WITH_LOGGER)
   /* each cell logs its particles */
-  n2 += 1;
+  n1 += 1;
 #endif
 
 #ifdef WITH_MPI
