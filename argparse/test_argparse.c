@@ -13,9 +13,17 @@ static const char *const usages[] = {
 #define PERM_WRITE (1<<1)
 #define PERM_EXEC  (1<<2)
 
+struct stuff {
+    const char *path[10];
+    int npath;
+};
+
 static int callback(struct argparse *self, const struct argparse_option *opt)
 {
     printf("Called back... %s\n", *(char **)opt->value);
+    struct stuff *data = (struct stuff *)opt->data;
+    data->path[data->npath] = *(char **)opt->value;
+    data->npath++;
     return 1;
 }
 
@@ -26,15 +34,21 @@ main(int argc, const char **argv)
     int self_gravity = 0;
     int int_num = 0;
     float flt_num = 0.f;
-    const char *path = NULL;
+    struct stuff data;
+    data.npath = 0;
+    data.path[0] = NULL;
+    const char *buffer;
     int perms = 0;
+    int npath;
+
     struct argparse_option options[] = {
         OPT_HELP(),
         OPT_GROUP("Basic options"),
         OPT_BOOLEAN('f', "force", &force, "force to do", NULL, 0, 0),
         OPT_BOOLEAN(0, "self-gravity", &self_gravity, "use self gravity",
                     NULL, 0, 0),
-        OPT_STRING('P', "path", &path, "path to read", &callback, 0, 0),
+        OPT_STRING('P', "path", &buffer, "path to read", &callback,
+                   (intptr_t)&data , 0),
         OPT_INTEGER('i', "int", &int_num, "selected integer", NULL, 0, 0),
         OPT_FLOAT('s', "float", &flt_num, "selected float", NULL, 0, 0),
         OPT_END(),
@@ -48,8 +62,10 @@ main(int argc, const char **argv)
         printf("force: %d\n", force);
     if (self_gravity != 0)
         printf("self_gravity: %d\n", self_gravity);
-    if (path != NULL)
-        printf("path: %s\n", path);
+    if (data.npath > 0) {
+        for (int i = 0 ; i < data.npath; i++)
+            printf("path: %s\n", data.path[i]);
+    }
     if (int_num != 0)
         printf("int_num: %d\n", int_num);
     if (flt_num != 0)
