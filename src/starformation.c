@@ -38,10 +38,10 @@
  */
 void starformation_init(struct swift_params* parameter_file,
                     const struct phys_const* phys_const,
-                    const struct unit_system* us,
+                    const struct unit_system* us, const struct space* s,
                     struct star_formation* starform) {
 
-  starformation_init_backend(parameter_file, phys_const, us, starform);
+  starformation_init_backend(parameter_file, phys_const, us, s, starform);
 }
 
 /**
