@@ -92,15 +92,6 @@ INLINE static void darkmatter_read_particles(struct gpart* gparts,
                                 UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
 }
 
-INLINE static void test_time_bin_gpart(const struct engine* e,
-                                       const struct gpart* gp, float* ret) {
-
-  if (gp->time_bin >= time_bin_inhibited)
-    error("Writing inhibited or extra particle time_bin=%d", gp->time_bin);
-
-  *ret = gp->time_bin;
-}
-
 /**
  * @brief Specifies which g-particle fields to write to a dataset
  *
@@ -113,7 +104,7 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
                                               int* num_fields) {
 
   /* Say how much we want to write */
-  *num_fields = 5;
+  *num_fields = 4;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_gpart(
@@ -124,8 +115,6 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
       io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, gparts, mass);
   list[3] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
-  list[4] = io_make_output_field_convert_gpart(
-      "TimeBin", FLOAT, 1, UNIT_CONV_NO_UNITS, gparts, test_time_bin_gpart);
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IO_H */
