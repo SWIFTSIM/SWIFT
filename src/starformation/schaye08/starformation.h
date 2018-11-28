@@ -20,6 +20,9 @@
 #ifndef SWIFT_SCHAYE_STARFORMATION_H
 #define SWIFT_SCHAYE_STARFORMATION_H
 
+/* Some standard headers */
+#include <stdlib.h>
+
 /* Local includes */
 #include "cosmology.h"
 #include "physical_constants.h"
@@ -53,6 +56,9 @@ struct star_formation {
 
   /*! star formation normalization of schaye+08 */
   double Astar;
+
+  /*! Inverse of RAND_MAX */
+  double inv_RAND_MAX;
   
 };
 
@@ -88,8 +94,8 @@ static int starformation_potential_to_become_star(
 
   /* Calculate the abudance of Hydrogen and Helium */
   /* Temporary part of the code!! */
-  const double X = ;
-  const double Y = ; 
+  const double X = 0.75;
+  const double Y = 0.25; 
 
   /* Calculate the mean molecular mass using a simple model */
   /* Temporary part of the code!! */
@@ -120,9 +126,14 @@ static int starformation_potential_to_become_star(
  *
  * */
 static void starformation_convert_to_gas( 
-    const struct star_formation* starform
+    const struct star_formation* starform, 
     ){
-  
+  const int globalseed = 42;
+  const double prop = Astar * pressure * dt; 
+  const double randomnumber = rand_r(&globalseed)*inv_RAND_MAX; 
+  if (prop > randomnumber) {
+    message("Create a STAR!!");
+  }
 }
 
 /* 
@@ -172,10 +183,26 @@ static void starformation_init_backend(
 
   /* Calculate the power law of the star formation */
   starform->nstar = (starform->nks - 1.f)/2.f;
+  
+  /* Calculate inverse of RAND_MAX */
+  starform->inv_RAND_MAX = 1.f / RAND_MAX;
 
   /* Get the appropriate constant to calculate the 
    * star formation constant */ 
+  const double KS_const = phys_const->const_kennicutt_schmidt_units;
+
+  /* Get the Gravitational constant */
   const double G_newton = phys_const->const_newton_G;
+
+  /* Get the surface density unit M_\odot / pc^2 */
+  const double M_per_pc2 = phys_const->const_solar_mass_per_parsec2;
+
+  /* Give the Kennicutt-Schmidt law the same units as internal units */
+  starform->A = normalization * KS_const;
+
+  /* Calculate the starformation prefactor with most terms */
+  starform->Astar = starform->A * pow(M_per_pc2, -starform->nks) * 
+  pow( starform->gamma * starform->fg / G_newton, starform->nstar);
 
   
 }
@@ -198,5 +225,3 @@ static void starformation_print_backend(
 
 
 #endif /* SWIFT_SCHAYE_STARFORMATION_H */
-
-
