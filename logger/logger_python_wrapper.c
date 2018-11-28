@@ -93,15 +93,15 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   dim[1] = DIM;
 
   /* init output */
-  if (header_is_present(&h, "position")) {
+  if (header_is_present(&h, "positions")) {
     pos = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_DOUBLE);
   }
 
-  if (header_is_present(&h, "velocity")) {
+  if (header_is_present(&h, "velocities")) {
     vel = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_FLOAT);
   }
 
-  if (header_is_present(&h, "acceleration")) {
+  if (header_is_present(&h, "accelerations")) {
     acc = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_FLOAT);
   }
 
@@ -110,7 +110,7 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
   }
 
-  if (header_is_present(&h, "cutoff radius")) {
+  if (header_is_present(&h, "smoothing length")) {
     h_sph =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
   }
@@ -196,16 +196,16 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
 
   /* construct return */
   PyObject *dict = PyDict_New();
-  PyObject *key = PyUnicode_FromString("position");
+  PyObject *key = PyUnicode_FromString("positions");
   PyDict_SetItem(dict, key, PyArray_Return(pos));
 
   if (vel) {
-    key = PyUnicode_FromString("velocity");
+    key = PyUnicode_FromString("velocities");
     PyDict_SetItem(dict, key, PyArray_Return(vel));
   }
 
   if (acc) {
-    key = PyUnicode_FromString("acceleration");
+    key = PyUnicode_FromString("accelerations");
     PyDict_SetItem(dict, key, PyArray_Return(acc));
   }
 

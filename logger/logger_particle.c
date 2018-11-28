@@ -18,9 +18,9 @@ void particle_print(const struct particle *p) {
   printf("Mass:          %g\n", p->mass);
   printf("Time:          %g\n", p->time);
   printf("Cutoff Radius: %g\n", p->h);
-  printf("Position:      (%g, %g, %g)\n", p->pos[0], p->pos[1], p->pos[2]);
-  printf("Velocity:      (%g, %g, %g)\n", p->vel[0], p->vel[1], p->vel[2]);
-  printf("Acceleration:  (%g, %g, %g)\n", p->acc[0], p->acc[1], p->acc[2]);
+  printf("Positions:     (%g, %g, %g)\n", p->pos[0], p->pos[1], p->pos[2]);
+  printf("Velocities:    (%g, %g, %g)\n", p->vel[0], p->vel[1], p->vel[2]);
+  printf("Accelerations: (%g, %g, %g)\n", p->acc[0], p->acc[1], p->acc[2]);
   printf("Entropy:       %g\n", p->entropy);
   printf("Density:       %g\n", p->density);
 }
@@ -72,15 +72,15 @@ int particle_read_field(struct particle *part, void *map, size_t *offset,
                         const char *field, const size_t size) {
   void *p = NULL;
 
-  if (strcmp("position", field) == 0) {
+  if (strcmp("positions", field) == 0) {
     p = &part->pos;
-  } else if (strcmp("velocity", field) == 0) {
+  } else if (strcmp("velocities", field) == 0) {
     p = &part->vel;
-  } else if (strcmp("acceleration", field) == 0) {
+  } else if (strcmp("accelerations", field) == 0) {
     p = &part->acc;
   } else if (strcmp("entropy", field) == 0) {
     p = &part->entropy;
-  } else if (strcmp("cutoff radius", field) == 0) {
+  } else if (strcmp("smoothing length", field) == 0) {
     p = &part->h;
   } else if (strcmp("density", field) == 0) {
     p = &part->density;
