@@ -97,8 +97,8 @@ static int starformation_potential_to_become_star(
   
   /* Calculate the internal energy using the density and entropy */
   /* Ask Matthieu about p->entropy vs xp->entropy_full */
-  const double internal_energy = gas_internal_energy_from_entropy(
-  p->rho, p->entropy);
+  const double internal_energy = hydro_get_physical_internal_energy(
+  p, xp, cosmo);
 
   /* Calculate the temperature over mu of the gas */
   /* Temporary part of the code!! */
