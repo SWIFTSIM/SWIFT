@@ -74,16 +74,28 @@ struct engine;
  */
 
 /* Some constants. */
-enum logger_masks {
-  logger_mask_x = (1 << 0),
-  logger_mask_v = (1 << 1),
-  logger_mask_a = (1 << 2),
-  logger_mask_u = (1 << 3),
-  logger_mask_h = (1 << 4),
-  logger_mask_rho = (1 << 5),
-  logger_mask_consts = (1 << 6),
-  logger_mask_timestamp = (1 << 7), /* Need to be the last */
+enum logger_masks_number {
+  logger_x = 0,
+  logger_v = 1,
+  logger_a = 2,
+  logger_u = 3,
+  logger_h = 4,
+  logger_rho = 5,
+  logger_consts = 6,
+  logger_timestamp = 7, /* expect it to be before count */
+  logger_count_mask = 8, /* Need to be the last */
 } __attribute__((packed));
+
+struct mask_data {
+  /* Number of bytes for a mask */
+  int size;
+  /* Mask value */
+  unsigned int mask;
+  /* name of the mask */
+  char name[100];
+};
+
+extern const struct mask_data logger_mask_data[logger_count_mask];
 
 /* Size of the strings. */
 #define logger_string_length 200
@@ -107,9 +119,6 @@ struct logger {
 
   /* Size of a chunk if every mask are activated */
   int max_chunk_size;
-
-  /* Number of masks used in the logger */
-  int number_masks;
 
 } SWIFT_STRUCT_ALIGN;
 

@@ -65,6 +65,26 @@
 
 char logger_version[logger_version_size] = "0.1";
 
+
+const struct mask_data logger_mask_data[logger_count_mask] = {
+  /* Particle's position */
+  {3 * sizeof(double), 1 << logger_x, "positions"},
+  /* Particle's velocity */
+  {3 * sizeof(float), 1 << logger_v, "velocities"},
+  /* Particle's acceleration */
+  {3 * sizeof(float), 1 << logger_a, "accelerations"},
+  /* Particle's entropy */
+  {sizeof(float), 1 << logger_u, "entropy"},
+  /* Particle's smoothing length */
+  {sizeof(float), 1 << logger_h, "smoothing length"},
+  /* Particle's density */
+  {sizeof(float), 1 << logger_rho, "density"},
+  /* Particle's constants: mass (float) and ID (long long) */
+  {sizeof(float) + sizeof(long long), 1 << logger_consts, "consts"},
+  /* Simulation time stamp: integertime and double time (e.g. scale factor or time) */
+  {sizeof(integertime_t) + sizeof(double), 1 << logger_timestamp, "timestamp"}
+};
+
 /**
  * @brief Write the header of a chunk (offset + mask).
  *
@@ -124,10 +144,10 @@ int logger_compute_chunk_size(unsigned int mask) {
   int size = logger_mask_size + logger_offset_size;
 
   /* Is this a particle or a timestep? */
-  if (mask & logger_mask_timestamp) {
+  if (mask & logger_mask_data[logger_timestamp].mask) {
 
     /* The timestamp should not contain any other bits. */
-    if (mask != logger_mask_timestamp)
+    if (mask != logger_mask_data[logger_timestamp].mask)
       error("Timestamps should not include any other data.");
 
     /* A timestamp consists of an unsigned long long int. */
@@ -137,25 +157,37 @@ int logger_compute_chunk_size(unsigned int mask) {
   } else {
 
     /* Particle position as three doubles. */
-    if (mask & logger_mask_x) size += 3 * sizeof(double);
+    if (mask & logger_mask_data[logger_x].mask) {
+      size += 3 * sizeof(double);
+    }
 
     /* Particle velocity as three floats. */
-    if (mask & logger_mask_v) size += 3 * sizeof(float);
+    if (mask & logger_mask_data[logger_v].mask) {
+      size += 3 * sizeof(float);
+    }
 
     /* Particle accelleration as three floats. */
-    if (mask & logger_mask_a) size += 3 * sizeof(float);
+    if (mask & logger_mask_data[logger_a].mask) {
+      size += 3 * sizeof(float);
+    }
 
     /* Particle internal energy as a single float. */
-    if (mask & logger_mask_u) size += sizeof(float);
+    if (mask & logger_mask_data[logger_u].mask) {
+      size += sizeof(float);
+    }
 
     /* Particle smoothing length as a single float. */
-    if (mask & logger_mask_h) size += sizeof(float);
+    if (mask & logger_mask_data[logger_h].mask) {
+      size += sizeof(float);
+    }
 
     /* Particle density as a single float. */
-    if (mask & logger_mask_rho) size += sizeof(float);
+    if (mask & logger_mask_data[logger_rho].mask) {
+      size += sizeof(float);
+    }
 
     /* Particle constants, which is a bit more complicated. */
-    if (mask & logger_mask_rho) {
+    if (mask & logger_mask_data[logger_rho].mask) {
       size += sizeof(float) +     // mass
               sizeof(long long);  // id
     }
@@ -180,9 +212,13 @@ void logger_log_all(struct logger *log, const struct engine *e) {
 
   /* some constants */
   const struct space *s = e->s;
-  const unsigned int mask = logger_mask_x | logger_mask_v | logger_mask_a |
-                            logger_mask_u | logger_mask_h | logger_mask_rho |
-                            logger_mask_consts;
+  const unsigned int mask = logger_mask_data[logger_x].mask |
+    logger_mask_data[logger_v].mask |
+    logger_mask_data[logger_a].mask |
+    logger_mask_data[logger_u].mask |
+    logger_mask_data[logger_h].mask |
+    logger_mask_data[logger_rho].mask |
+    logger_mask_data[logger_consts].mask;
 
   /* loop over all parts */
   for (long long i = 0; i < e->total_nr_parts; i++) {
@@ -211,7 +247,7 @@ void logger_log_part(struct logger *log, const struct part *p,
                      unsigned int mask, size_t *offset) {
 
   /* Make sure we're not writing a timestamp. */
-  if (mask & logger_mask_timestamp)
+  if (mask & logger_mask_data[logger_timestamp].mask)
     error("You should not log particles as timestamps.");
 
   /* Start by computing the size of the message. */
@@ -225,19 +261,19 @@ void logger_log_part(struct logger *log, const struct part *p,
   buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
 
   /* Particle position as three doubles. */
-  if (mask & logger_mask_x) {
+  if (mask & logger_mask_data[logger_x].mask) {
     memcpy(buff, p->x, 3 * sizeof(double));
     buff += 3 * sizeof(double);
   }
 
   /* Particle velocity as three floats. */
-  if (mask & logger_mask_v) {
+  if (mask & logger_mask_data[logger_v].mask) {
     memcpy(buff, p->v, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Particle accelleration as three floats. */
-  if (mask & logger_mask_a) {
+  if (mask & logger_mask_data[logger_a].mask) {
     memcpy(buff, p->a_hydro, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
@@ -245,25 +281,25 @@ void logger_log_part(struct logger *log, const struct part *p,
 #if defined(GADGET2_SPH)
 
   /* Particle internal energy as a single float. */
-  if (mask & logger_mask_u) {
+  if (mask & logger_mask_data[logger_u].mask) {
     memcpy(buff, &p->entropy, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Particle smoothing length as a single float. */
-  if (mask & logger_mask_h) {
+  if (mask & logger_mask_data[logger_h].mask) {
     memcpy(buff, &p->h, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Particle density as a single float. */
-  if (mask & logger_mask_rho) {
+  if (mask & logger_mask_data[logger_rho].mask) {
     memcpy(buff, &p->rho, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Particle constants, which is a bit more complicated. */
-  if (mask & logger_mask_consts) {
+  if (mask & logger_mask_data[logger_consts].mask) {
     memcpy(buff, &p->mass, sizeof(float));
     buff += sizeof(float);
     memcpy(buff, &p->id, sizeof(long long));
@@ -289,11 +325,12 @@ void logger_log_gpart(struct logger *log, const struct gpart *p,
                       unsigned int mask, size_t *offset) {
 
   /* Make sure we're not writing a timestamp. */
-  if (mask & logger_mask_timestamp)
+  if (mask & logger_mask_data[logger_timestamp].mask)
     error("You should not log particles as timestamps.");
 
   /* Make sure we're not looging fields not supported by gparts. */
-  if (mask & (logger_mask_u | logger_mask_rho))
+  if (mask & (logger_mask_data[logger_u].mask |
+	      logger_mask_data[logger_rho].mask))
     error("Can't log SPH quantities for gparts.");
 
   /* Start by computing the size of the message. */
@@ -307,25 +344,25 @@ void logger_log_gpart(struct logger *log, const struct gpart *p,
   buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
 
   /* Particle position as three doubles. */
-  if (mask & logger_mask_x) {
+  if (mask & logger_mask_data[logger_x].mask) {
     memcpy(buff, p->x, 3 * sizeof(double));
     buff += 3 * sizeof(double);
   }
 
   /* Particle velocity as three floats. */
-  if (mask & logger_mask_v) {
+  if (mask & logger_mask_data[logger_v].mask) {
     memcpy(buff, p->v_full, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Particle accelleration as three floats. */
-  if (mask & logger_mask_a) {
+  if (mask & logger_mask_data[logger_a].mask) {
     memcpy(buff, p->a_grav, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Particle constants, which is a bit more complicated. */
-  if (mask & logger_mask_consts) {
+  if (mask & logger_mask_data[logger_consts].mask) {
     memcpy(buff, &p->mass, sizeof(float));
     buff += sizeof(float);
     memcpy(buff, &p->id_or_neg_offset, sizeof(long long));
@@ -350,14 +387,14 @@ void logger_log_timestamp(struct logger *log, integertime_t timestamp,
   struct dump *dump = &log->dump;
 
   /* Start by computing the size of the message. */
-  const int size = logger_compute_chunk_size(logger_mask_timestamp);
+  const int size = logger_compute_chunk_size(logger_mask_data[logger_timestamp].mask);
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
   char *buff = (char *)dump_get(dump, size, &offset_new);
 
   /* Write the header. */
-  unsigned int mask = logger_mask_timestamp;
+  unsigned int mask = logger_mask_data[logger_timestamp].mask;
   buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
 
   /* Store the timestamp. */
@@ -401,120 +438,20 @@ void logger_ensure_size(struct logger *log, size_t total_nr_parts,
 }
 
 /**
- * @brief Generate a list of the mask size.
- *
- * @param log The #logger.
- * @param output (output) the mask sizes (length = number of masks)
- */
-void logger_get_list_mask_size(const struct logger *log, int *output) {
-  /* Position */
-  output[0] = 3 * sizeof(double);
-  /* Velocity */
-  output[1] = 3 * sizeof(float);
-  /* Acceleration */
-  output[2] = 3 * sizeof(float);
-  /* Internal Energy */
-  output[3] = sizeof(float);
-  /* Smoothing Length */
-  output[4] = sizeof(float);
-  /* Density */
-  output[5] = sizeof(float);
-  /* Constants
-   * Stores the mass (float) and the ID (long long).
-   */
-  output[6] = sizeof(float) + sizeof(long long);
-  /* Time stamp
-   * Stores the integer time along with the double time
-   * (time or scale factor).
-   */
-  output[7] = sizeof(integertime_t) + sizeof(double);
-
-}
-
-/**
- * @brief Generate a list of the mask names.
- *
- * @param log The #logger.
- * @param output (output) the mask name (length = number of masks * logger_label_size)
- */
-void logger_get_list_mask_name(const struct logger *log, char *output) {
-  /* set the mask names */
-  char tmp[logger_label_size];
-  strcpy(tmp, "position");
-  memcpy(output, &tmp, logger_label_size);
-  output += logger_label_size;
-
-  strcpy(tmp, "velocity");
-  memcpy(output, &tmp, logger_label_size);
-  output += logger_label_size;
-
-  strcpy(tmp, "acceleration");
-  memcpy(output, &tmp, logger_label_size);
-  output += logger_label_size;
-
-  strcpy(tmp, "entropy");
-  memcpy(output, &tmp, logger_label_size);
-  output += logger_label_size;
-
-  strcpy(tmp, "cutoff radius");
-  memcpy(output, &tmp, logger_label_size);
-  output += logger_label_size;
-
-  strcpy(tmp, "density");
-  memcpy(output, &tmp, logger_label_size);
-  output += logger_label_size;
-
-  strcpy(tmp, "consts");
-  memcpy(output, &tmp, logger_label_size);
-  output += logger_label_size;
-
-  strcpy(tmp, "timestamp");
-  memcpy(output, &tmp, logger_label_size);
-  output += logger_label_size;
-}
-
-
-/**
- * @brief Generate a list of the masks.
- *
- * @param log The #logger.
- * @param output (output) the masks (length = number of masks)
- */
-void logger_get_list_mask(const struct logger *log, int *output) {
-  /* Position */
-  output[0] = logger_mask_x;
-  /* Velocity */
-  output[1] = logger_mask_v;
-  /* Acceleration */
-  output[2] = logger_mask_a;
-  /* Internal Energy */
-  output[3] = logger_mask_u;
-  /* Smoothing Length */
-  output[4] = logger_mask_h;
-  /* Density */
-  output[5] = logger_mask_rho;
-  /* Constants */
-  output[6] = logger_mask_consts;
-  /* Time stamp */
-  output[7] = logger_mask_timestamp;
-}
-
-/**
  * @brief Compute the maximal size of a chunk.
  *
  * @param log The #logger.
  */
 int logger_compute_max_chunk_size(const struct logger *log) {
 
-  int *output = malloc(sizeof(int) * log->number_masks);
+  int *output = malloc(sizeof(int) * logger_count_mask);
   if (output == NULL)
     error("Unable to allocate memory");
-  logger_get_list_mask_size(log, output);
 
   int max_size = logger_offset_size + logger_mask_size;
   /* Loop over all fields except timestamp */
-  for (int i = 0; i < log->number_masks - 1; i++) {
-    max_size += output[i];
+  for (int i = 0; i < logger_count_mask - 1; i++) {
+    max_size += logger_mask_data[i].size;
   }
 
   free(output);
@@ -546,7 +483,6 @@ void logger_init(struct logger *log, struct swift_params *params) {
   strcat(logger_name_file, ".dump");
 
   /* Define some constants */
-  log->number_masks = log10(logger_mask_timestamp) / log10(2) + 1;
   log->max_chunk_size = logger_compute_max_chunk_size(log);
   
   /* init dump */
@@ -598,46 +534,21 @@ void logger_write_file_header(struct logger *log, const struct engine *e) {
                     &label_size);
 
   /* write number of masks */
+  int count_mask = logger_count_mask;
   logger_write_data(dump, &file_offset, logger_number_size,
-                    &log->number_masks);
+                    &count_mask);
 
-  /* Get masks sizes */
-  int *mask_sizes = malloc(sizeof(int) * log->number_masks);
-  if (mask_sizes == NULL)
-    error("Unable to allocate memory for mask sizes");
-
-  logger_get_list_mask_size(log, mask_sizes);
-
-  /* Get masks */
-  int *masks = malloc(sizeof(int) * log->number_masks);
-  if (masks == NULL)
-    error("Unable to allocate memory for masks");
-  
-  logger_get_list_mask(log, masks);
-
-  /* Get masks names */
-  char *mask_names = malloc(logger_label_size * log->number_masks);
-  if (mask_names == NULL)
-    error("Unable to allocate memory");
-
-  logger_get_list_mask_name(log, mask_names);
-  
   /* write masks */
   // loop over all mask type
-  for (int i = 0; i < log->number_masks; i++) {
+  for (int i = 0; i < logger_count_mask; i++) {
     // mask name
-    size_t j = i * logger_label_size;
     logger_write_data(dump, &file_offset, logger_label_size,
-                      &mask_names[j]);
+                      &logger_mask_data[i].name);
 
     // mask size
     logger_write_data(dump, &file_offset, logger_number_size,
-                      &mask_sizes[i]);
+                      &logger_mask_data[i].size);
   }
-  /* cleanup memory */
-  free(mask_sizes);
-  free(masks);
-  free(mask_names);
   
   /* last step: write first offset */
   memcpy(skip_header, &file_offset, logger_offset_size);
@@ -686,23 +597,23 @@ int logger_read_part(struct part *p, size_t *offset, const char *buff) {
   buff += logger_read_chunk_header(buff, &mask, offset, cur_offset);
 
   /* We are only interested in particle data. */
-  if (mask & logger_mask_timestamp)
+  if (mask & logger_mask_data[logger_timestamp].mask)
     error("Trying to read timestamp as particle.");
 
   /* Particle position as three doubles. */
-  if (mask & logger_mask_x) {
+  if (mask & logger_mask_data[logger_x].mask) {
     memcpy(p->x, buff, 3 * sizeof(double));
     buff += 3 * sizeof(double);
   }
 
   /* Particle velocity as three floats. */
-  if (mask & logger_mask_v) {
+  if (mask & logger_mask_data[logger_v].mask) {
     memcpy(p->v, buff, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Particle accelleration as three floats. */
-  if (mask & logger_mask_a) {
+  if (mask & logger_mask_data[logger_a].mask) {
     memcpy(p->a_hydro, buff, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
@@ -710,25 +621,25 @@ int logger_read_part(struct part *p, size_t *offset, const char *buff) {
 #if defined(GADGET2_SPH)
 
   /* Particle internal energy as a single float. */
-  if (mask & logger_mask_u) {
+  if (mask & logger_mask_data[logger_u].mask) {
     memcpy(&p->entropy, buff, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Particle smoothing length as a single float. */
-  if (mask & logger_mask_h) {
+  if (mask & logger_mask_data[logger_h].mask) {
     memcpy(&p->h, buff, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Particle density as a single float. */
-  if (mask & logger_mask_rho) {
+  if (mask & logger_mask_data[logger_rho].mask) {
     memcpy(&p->rho, buff, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Particle constants, which is a bit more complicated. */
-  if (mask & logger_mask_rho) {
+  if (mask & logger_mask_data[logger_rho].mask) {
     memcpy(&p->mass, buff, sizeof(float));
     buff += sizeof(float);
     memcpy(&p->id, buff, sizeof(long long));
@@ -762,33 +673,34 @@ int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff) {
   buff += logger_read_chunk_header(buff, &mask, offset, cur_offset);
 
   /* We are only interested in particle data. */
-  if (mask & logger_mask_timestamp)
+  if (mask & logger_mask_data[logger_timestamp].mask)
     error("Trying to read timestamp as particle.");
 
   /* We can't store all part fields in a gpart. */
-  if (mask & (logger_mask_u | logger_mask_rho))
+  if (mask & (logger_mask_data[logger_u].mask |
+	      logger_mask_data[logger_rho].mask))
     error("Trying to read SPH quantities into a gpart.");
 
   /* Particle position as three doubles. */
-  if (mask & logger_mask_x) {
+  if (mask & logger_mask_data[logger_x].mask) {
     memcpy(p->x, buff, 3 * sizeof(double));
     buff += 3 * sizeof(double);
   }
 
   /* Particle velocity as three floats. */
-  if (mask & logger_mask_v) {
+  if (mask & logger_mask_data[logger_v].mask) {
     memcpy(p->v_full, buff, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Particle accelleration as three floats. */
-  if (mask & logger_mask_a) {
+  if (mask & logger_mask_data[logger_a].mask) {
     memcpy(p->a_grav, buff, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Particle constants, which is a bit more complicated. */
-  if (mask & logger_mask_rho) {
+  if (mask & logger_mask_data[logger_rho].mask) {
     memcpy(&p->mass, buff, sizeof(float));
     buff += sizeof(float);
     memcpy(&p->id_or_neg_offset, buff, sizeof(long long));
@@ -821,11 +733,11 @@ int logger_read_timestamp(unsigned long long int *t, double *time,
   buff += logger_read_chunk_header(buff, &mask, offset, cur_offset);
 
   /* We are only interested in timestamps. */
-  if (!(mask & logger_mask_timestamp))
+  if (!(mask & logger_mask_data[logger_timestamp].mask))
     error("Trying to read timestamp from a particle.");
 
   /* Make sure we don't have extra fields. */
-  if (mask != logger_mask_timestamp)
+  if (mask != logger_mask_data[logger_timestamp].mask)
     error("Timestamp message contains extra fields.");
 
   /* Copy the timestamp value from the buffer. */
