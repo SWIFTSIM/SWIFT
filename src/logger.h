@@ -82,7 +82,7 @@ enum logger_masks_number {
   logger_h = 4,
   logger_rho = 5,
   logger_consts = 6,
-  logger_timestamp = 7, /* expect it to be before count */
+  logger_timestamp = 7,  /* expect it to be before count */
   logger_count_mask = 8, /* Need to be the last */
 } __attribute__((packed));
 
@@ -158,7 +158,7 @@ int logger_read_timestamp(unsigned long long int *t, double *time,
  */
 INLINE static void logger_part_data_init(struct logger_part_data *logger) {
   logger->last_offset = 0;
-  logger->steps_since_last_output = SHRT_MAX;
+  logger->steps_since_last_output = INT_MAX;
 }
 
 /**

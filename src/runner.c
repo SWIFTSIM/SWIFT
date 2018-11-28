@@ -2736,12 +2736,12 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
           /* Currently writing everything, should adapt it through time */
           logger_log_part(e->logger, p,
                           logger_mask_data[logger_x].mask |
-			  logger_mask_data[logger_v].mask |
-			  logger_mask_data[logger_a].mask |
-			  logger_mask_data[logger_u].mask |
-			  logger_mask_data[logger_h].mask |
-			  logger_mask_data[logger_rho].mask |
-			  logger_mask_data[logger_consts].mask,
+                              logger_mask_data[logger_v].mask |
+                              logger_mask_data[logger_a].mask |
+                              logger_mask_data[logger_u].mask |
+                              logger_mask_data[logger_h].mask |
+                              logger_mask_data[logger_rho].mask |
+                              logger_mask_data[logger_consts].mask,
                           &xp->logger_data.last_offset);
 
           /* Set counter back to zero */
