@@ -3754,6 +3754,12 @@ void space_init(struct space *s, struct swift_params *params,
   space_subdepth_diff_grav =
       parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                space_subdepth_diff_grav_default);
+  space_extra_parts = parser_get_opt_param_int(
+      params, "Scheduler:cell_extra_parts", space_extra_parts_default);
+  space_extra_sparts = parser_get_opt_param_int(
+      params, "Scheduler:cell_extra_sparts", space_extra_sparts_default);
+  space_extra_gparts = parser_get_opt_param_int(
+      params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
 
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
