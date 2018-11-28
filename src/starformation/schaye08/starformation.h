@@ -20,6 +20,13 @@
 #ifndef SWIFT_SCHAYE_STARFORMATION_H
 #define SWIFT_SCHAYE_STARFORMATION_H
 
+/* Local includes */
+#include "cosmology.h"
+#include "physical_constants.h"
+#include "units.h"
+#include "parser.h"
+#include "equation_of_state.h"
+
 /* Starformation struct */
 struct star_formation {
   
@@ -29,7 +36,7 @@ struct star_formation {
   /*! Slope of the KS law */
   double nks;
 
-  /*! Critical density */
+  /*! Critical overdensity */
   double Delta_crit;
 
   /*! Critical temperature */
@@ -53,11 +60,39 @@ struct star_formation {
  * @brief Calculate if the gas has the potential of becoming
  * a star.
  *
+ * @param starform the star formation law properties to use.
+ * @param p the gas particles
+ * @param xp the additional properties of the gas particles
+ * @param phys_const the physical constants in internal units
+ * @param cosmo the cosmological parameters and properties
  *
  * */
 static int starformation_potential_to_become_star(
-    ){
-  return 0;
+    const struct star_formation* starform, const struct parts* p,
+    const struct xparts* xp, const struct phys_const* const phys_const,
+    const struct cosmology* cosmo){
+
+  /* Read the critical overdensity factor and the critical density of 
+   * the universe to determine the critical density to form stars*/
+  const double rho_crit = cosmo->critical_density*starform->Delta_crit; 
+  
+  /* Calculate the internal energy using the density and entropy */
+  /* Ask Matthieu about p->entropy vs xp->entropy_full */
+  const double internal_energy = gas_internal_energy_from_entropy(
+  p->rho, p->entropy)
+
+  /* Calculate the temperature over mu of the gas */
+  const double T_over_mu = (starform->gamma - 1)*phys_const->const_proton_mass
+  /phys_const->const_boltzmann_k;
+
+
+  
+  /* Deside whether we should form stars or not */
+  if ((p->rho > rho_crit ) && (tempp < starform->T_crit)) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 /*
