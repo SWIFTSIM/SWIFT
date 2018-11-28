@@ -198,7 +198,7 @@ int main(int argc, char *argv[]) {
                   "Pin runners using processor affinity.", NULL, 0, 0),
       OPT_BOOLEAN('d', "dry-run", &dry_run, 
                   "Dry run. Read the parameter file, allocates memory but "
-                  "does not read the particles from ICs.\t\nExits before the "
+                  "does not read the particles from ICs. Exits before the "
                   "start of time integration. Checks the validity of "
                   "parameters and IC files as well as memory limits.",
                   NULL, 0, 0),

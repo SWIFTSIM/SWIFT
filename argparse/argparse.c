@@ -368,7 +368,30 @@ argparse_usage(struct argparse *self)
             fputc('\n', stdout);
             pad = usage_opts_width;
         }
-        fprintf(stdout, "%*s%s\n", pad + 2, "", options->help);
+        if (options->help != NULL && strlen(options->help) > 0) {
+            char *str = strdup(options->help);
+            char *token = strtok(str, " ");
+            fprintf(stdout, "%*s%s ", pad + 2, "", token);
+            int count = strlen(token);
+            int dangling = 1;
+            while ((token = strtok(NULL, " ")) != NULL) {
+                if (count == 0) {
+                    fprintf(stdout, "%*s", (int)pos + pad + 2, "");
+                    dangling = 1;
+                }
+                printf("%s ", token);
+                count += strlen(token);
+                if (count > 30) {
+                    count = 0;
+                    fprintf(stdout, "\n");
+                    dangling = 0;
+                }
+            }
+            if (dangling) fprintf(stdout, "\n"); 
+        } else {
+            fprintf(stdout, "\n");
+        }
+        
     }
 
     // print epilog
