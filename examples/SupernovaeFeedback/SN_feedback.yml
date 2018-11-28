@@ -1,0 +1,44 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1   # Grams
+  UnitLength_in_cgs:   1   # Centimeters
+  UnitVelocity_in_cgs: 1   # Centimeters per second
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Values of some physical constants
+PhysicalConstants:
+  G:            0 # (Optional) Overwrite the value of Newton's constant used internally by the code.
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   5e-2  # The end time of the simulation (in internal units).
+  dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            SN_feedback # Common part of the name of output files
+  time_first:          0.    # Time of the first output (in internal units)
+  delta_time:          1e-2  # Time difference between consecutive outputs (in internal units)
+  compression:         1
+ 
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e-3 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:                    ./SN_feedback.hdf5          
+  smoothing_length_scaling:     1.
+  periodic:                    1    # Are we running with periodic ICs?
+ 
+# Parameters for the stellar models
+Stars:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
