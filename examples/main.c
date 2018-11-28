@@ -513,10 +513,9 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   if (with_mpole_reconstruction && nr_nodes > 1)
     error("Cannot reconstruct m-poles every step over MPI (yet).");
-#endif
-
-#ifdef WITH_MPI
   if (with_feedback) error("Can't run with feedback over MPI (yet).");
+  if (with_star_formation)
+    error("Can't run with star formation over MPI (yet)");
 #endif
 
 #if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
