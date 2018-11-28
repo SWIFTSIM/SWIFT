@@ -68,10 +68,9 @@ static float print_cooling_rate_contribution_flag = 0;
  * given time-step or redshift. Predominantly used to read cooling tables
  * above and below the current redshift, if not already read in.
  *
- * @param phys_const The physical constants in internal units.
- * @param us The internal system of units.
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
+ * @param restart_flag Flag indicating restarted run.
  */
 void cooling_update(const struct cosmology *cosmo,
                     struct cooling_function_data *cooling,
@@ -101,13 +100,14 @@ void cooling_update(const struct cosmology *cosmo,
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- * @param dt The time-step of this particle.
  * @param hydro_properties the hydro_props struct, used for 
  * getting the minimal internal energy allowed in by SWIFT. 
  * Read from yml file into engine struct.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param dt_cool The cooling time-step of this particle.
+ * @param dt_therm The hydro time-step of this particle.
  */
 void cooling_cool_part(const struct phys_const *restrict phys_const,
                        const struct unit_system *restrict us,
@@ -212,10 +212,6 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
       log_u_final_cgs = bisection_iter(log(u_0_cgs), u_0_cgs, n_h_i, d_n_h, He_i, d_He,
         			       LambdaTune, p, cosmo, cooling, phys_const,
         			       abundance_ratio, dt_cgs);
-      if (log_u_final_cgs == -100) {
-        message("particle %llu failed to converge with bisection method, assuming no cooling.", p->id);
-        log_u_final_cgs = log(u_0_cgs);
-      }
     }
 
     u_final_cgs = exp(log_u_final_cgs);
@@ -260,6 +256,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
  *
  * @param z redshift
  * @param dz change in redshift over timestep
+ * @param cooling the #cooling_function_data struct
  */
 __attribute__((always_inline)) INLINE double
 eagle_helium_reionization_extraheat(
@@ -274,9 +271,6 @@ eagle_helium_reionization_extraheat(
                    2.0;
 
   return extra_heating;
-
-  // for unit test 
-  //return 0.0;
 }
 
 /*
@@ -544,16 +538,16 @@ __attribute__((always_inline)) INLINE double eagle_metal_cooling_rate(
  * helium fraction are passed it so as to compute them only once per particle.
  *
  * @param logu Natural log of internal energy
- * @param dlambda_du Pointer to gradient of cooling rate (set in
+ * @param dLambdaNet_du Pointer to gradient of cooling rate (set in
  * eagle_metal_cooling_rate)
  * @param n_h_i Particle hydrogen number density index
  * @param d_n_h Particle hydrogen number density offset
  * @param He_i Particle helium fraction index
  * @param d_He Particle helium fraction offset
  * @param p Particle structure
- * @param cooling Cooling data structure
- * @param cosmo Cosmology structure
- * @param phys_const Physical constants structure
+ * @param cooling #cooling_function_data structure
+ * @param cosmo #cosmology structure
+ * @param phys_const #phys_const structure
  * @param abundance_ratio Ratio of element abundance to solar
  */
 __attribute__((always_inline)) INLINE double eagle_cooling_rate(
@@ -588,9 +582,9 @@ __attribute__((always_inline)) INLINE double eagle_cooling_rate(
  * @param He_i Particle helium fraction index
  * @param d_He Particle helium fraction offset
  * @param p Particle structure
- * @param cooling Cooling data structure
- * @param cosmo Cosmology structure
- * @param phys_const Physical constants structure
+ * @param cooling #cooling_function_data structure
+ * @param cosmo #cosmology structure
+ * @param phys_const #phys_const structure
  * @param abundance_ratio Ratio of element abundance to solar
  */
 double eagle_print_metal_cooling_rate(
@@ -666,8 +660,8 @@ double eagle_print_metal_cooling_rate(
  * Hence Fe, S, Ca need to be treated separately to be put in the
  * correct place in the output array. 
  *
- * @param p Pointer to particle data
- * @param cooling Pointer to cooling data
+ * @param p Pointer to #part struct
+ * @param cooling #cooling_function_data struct
  * @param ratio_solar Pointer to array or ratios
  */
 __attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
@@ -715,10 +709,10 @@ __attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
  * @param d_He Particle helium fraction offset
  * @param He_reion_heat Heating due to helium reionization
  * (only depends on redshift, so passed as parameter)
- * @param p Particle structure
- * @param cosmo Cosmology structure
- * @param cooling Cooling data structure
- * @param phys_const Physical constants structure
+ * @param p #part structure
+ * @param cosmo #cosmology structure
+ * @param cooling #cooling_function_data structure
+ * @param phys_const #phys_const data structure
  * @param abundance_ratio Array of ratios of metal abundance to solar
  * @param dt timestep
  * @param bisection_flag Flag to identify if scheme failed to converge
@@ -804,10 +798,10 @@ __attribute__((always_inline)) INLINE float newton_iter(
  * @param d_n_h Particle hydrogen number density offset
  * @param He_i Particle helium fraction index
  * @param d_He Particle helium fraction offset
- * @param p Particle structure
- * @param cosmo Cosmology structure
- * @param cooling Cooling data structure
- * @param phys_const Physical constants structure
+ * @param p #part structure
+ * @param cosmo #cosmology structure
+ * @param cooling #cooling_function_data structure
+ * @param phys_const #phys_const data structure
  * @param abundance ratio array of ratios of metal abundance to solar
  * @param dt timestep
  */
@@ -861,8 +855,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
       i++;
     }
     if (i >= bisection_max_iterations) {
-      message("particle %llu exceeded max iterations searching for bounds when cooling", p->id);
-      return -100;
+      error("particle %llu exceeded max iterations searching for bounds when cooling", p->id);
     }
   } else {
     /* heating */
@@ -883,8 +876,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
       i++;
     }
     if (i >= bisection_max_iterations) {
-      message("particle %llu exceeded max iterations searching for bounds when heating", p->id);
-      return -100;
+      error("particle %llu exceeded max iterations searching for bounds when heating", p->id);
     }
   }
 
@@ -907,8 +899,7 @@ __attribute__((always_inline)) INLINE float bisection_iter(
            i < bisection_max_iterations);
 
   if (i >= bisection_max_iterations) {
-    return -100;
-    message("Particle id %llu failed to converge", p->id); // WARNING: Do we want this to throw an error? In EAGLE calculation continued.
+    error("Particle id %llu failed to converge", p->id); 
   }
 
   return log(u_upper);
@@ -918,10 +909,10 @@ __attribute__((always_inline)) INLINE float bisection_iter(
  * @brief Computes the cooling time-step.
  *
  * @param cooling The #cooling_function_data used in the run.
- * @param phys_const The physical constants in internal units.
+ * @param phys_const #phys_const data struct.
  * @param us The internal system of units.
- * @param cosmo The current cosmological model.
- * @param p Pointer to the particle data.
+ * @param cosmo #cosmology struct.
+ * @param p #part data.
  */
 __attribute__((always_inline)) INLINE float cooling_timestep(
     const struct cooling_function_data *restrict cooling,
@@ -939,12 +930,12 @@ __attribute__((always_inline)) INLINE float cooling_timestep(
  * @brief Sets the cooling properties of the (x-)particles to a valid start
  * state.
  *
- * @param phys_const The physical constants in internal units.
+ * @param phys_const #phys_const data structure.
  * @param us The internal system of units.
- * @param cosmo The current cosmological model.
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- * @param cooling The properties of the cooling function.
+ * @param cosmo #cosmology data structure.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ * @param cooling #cooling_function_data struct.
  */
 __attribute__((always_inline)) INLINE void cooling_first_init_part(
     const struct phys_const *restrict phys_const,
@@ -959,7 +950,7 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
 /**
  * @brief Returns the total radiated energy by this particle.
  *
- * @param xp The extended particle data
+ * @param xp #xpart data struct
  */
 __attribute__((always_inline)) INLINE float cooling_get_radiated_energy(
     const struct xpart *restrict xp) {
@@ -972,8 +963,8 @@ __attribute__((always_inline)) INLINE float cooling_get_radiated_energy(
  *
  * @param parameter_file The parsed parameter file
  * @param us Internal system of units data structure
- * @param phys_const Physical constants data structure
- * @param cooling Cooling data structure containing properties to initialize
+ * @param phys_const #phys_const data structure
+ * @param cooling #cooling_function_data struct to initialize
  */
 void cooling_init_backend(struct swift_params *parameter_file,
                           const struct unit_system *us,
@@ -1063,8 +1054,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
  * @brief Restore cooling tables (if applicable) after
  * restart
  *
- * @param cooling the cooling_function_data structure
- * @param cosmo cosmology structure
+ * @param cooling the #cooling_function_data structure
+ * @param cosmo #cosmology structure
  */
 void cooling_restore_tables(struct cooling_function_data* cooling,
                             const struct cosmology* cosmo){
@@ -1086,7 +1077,7 @@ void cooling_restore_tables(struct cooling_function_data* cooling,
 /**
  * @brief Prints the properties of the cooling model to stdout.
  *
- * @param cooling The properties of the cooling function.
+ * @param cooling #cooling_function_data struct.
  */
 INLINE void cooling_print_backend(const struct cooling_function_data *cooling) {
 

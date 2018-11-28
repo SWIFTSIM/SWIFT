@@ -43,7 +43,7 @@ static const char *eagle_tables_element_names[9] = {
 /*
  * @brief Reads in EAGLE table of redshift values
  *
- * @param cooling Cooling data structure
+ * @param cooling #cooling_function_data structure
  */
 void get_cooling_redshifts(struct cooling_function_data *cooling) {
   FILE *infile;
@@ -201,7 +201,7 @@ void read_cooling_header(char *fname, struct cooling_function_data *cooling) {
 /**
  * @brief Allocate space for cooling tables. 
  *
- * @param cooling cooling_function_data structure
+ * @param cooling #cooling_function_data structure
  */
 void allocate_cooling_tables(struct cooling_function_data *restrict cooling){
 
@@ -231,7 +231,7 @@ void allocate_cooling_tables(struct cooling_function_data *restrict cooling){
  * is used to index the cooling, electron abundance tables, whereas this one is
  * used to obtain temperature of particle)
  *
- * @param cooling Cooling data structure
+ * @param cooling #cooling_function_data structure
  */
 static void get_redshift_invariant_table(
     struct cooling_function_data *restrict cooling) {
@@ -394,7 +394,7 @@ static void get_redshift_invariant_table(
  * is used to index the cooling, electron abundance tables, whereas this one is
  * used to obtain temperature of particle)
  *
- * @param cooling Cooling data structure
+ * @param cooling #cooling_function_data structure
  */
 
 static void get_cooling_table(
@@ -554,7 +554,7 @@ static void get_cooling_table(
  * @brief Constructs the data structure containting the relevant cooling tables
  * for the redshift index (set in cooling_update)
  *
- * @param cooling Cooling data structure
+ * @param #cooling_function_data structure
  */
 static void eagle_readtable(
     struct cooling_function_data *restrict cooling) {
@@ -573,8 +573,7 @@ static void eagle_readtable(
  * new ones if necessary.
  *
  * @param cooling The #cooling_function_data we play with.
- * @param index_z The index along the redshift axis of the tables of the current
- * z.
+ * @param restart_flag Flag indicating if we are restarting a run
  */
 void eagle_check_cooling_tables(struct cooling_function_data *restrict cooling,
                                 const int restart_flag) {

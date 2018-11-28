@@ -138,7 +138,7 @@ __attribute__((always_inline)) INLINE void get_index_1d(float *table,
  * @param z_index Pointer to the index whose corresponding redshift
  * is the greatest value in the redshift table less than x
  * @param dz Pointer to offset of z within redshift cell
- * @param cooling Pointer to cooling structure containing redshift table
+ * @param cooling #cooling_function_data structure containing redshift table
  */
 __attribute__((always_inline)) INLINE void get_redshift_index(
     float z, int *z_index, float *dz,
@@ -310,8 +310,8 @@ __attribute__((always_inline)) INLINE float interpolate_4d(
  * @param d_z Redshift offset
  * @param d_n_h Hydrogen number density offset
  * @param d_He Helium fraction offset
- * @param cooling Cooling data structure
- * @param cosmo Cosmology data structure
+ * @param cooling #cooling_function_data structure
+ * @param cosmo #cosmology structure
  */
 __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
     double log_10_u, float *dT_du, int n_h_i, int He_i, float d_n_h,
