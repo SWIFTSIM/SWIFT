@@ -211,9 +211,15 @@ static void starformation_init_backend(
 
   /* Calculate the power law of the star formation */
   starform->nstar = (starform->nks - 1.f)/2.f;
+  
+  /* Calculate inverse of RAND_MAX */
+  starform->inv_RAND_MAX = 1.f / RAND_MAX;
 
   /* Get the appropriate constant to calculate the 
    * star formation constant */ 
+  const double KS_const = phys_const->const_kennicutt_schmidt_units;
+
+  /* Get the Gravitational constant */
   const double G_newton = phys_const->const_newton_G;
 
   /* Read the critical temperature from the parameter file */
