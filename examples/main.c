@@ -41,6 +41,7 @@
 #endif
 
 /* Local headers. */
+#include "argparse.h"
 #include "swift.h"
 
 /* Engine policy flags. */
@@ -116,6 +117,15 @@ void print_help_message(void) {
       "\nSee the file parameter_example.yml for an example of "
       "parameter file.\n");
 }
+
+static const char *const usage[] = {
+  "swift [options] [[--] param-file]",
+  "swift [options] param-file",
+  "swift_mpi [options] [[--] param-file]",
+  "swift_mpi [options] param-file",
+  NULL,
+};
+
 
 /**
  * @brief Main routine that loads a few particles and generates some output.
@@ -203,157 +213,76 @@ int main(int argc, char *argv[]) {
   int nr_threads = 1;
   int with_verbose_timers = 0;
   int nparams = 0;
-  char output_parameters_filename[200] = "";
+  char *output_parameters_filename = NULL;
   char *cmdparams[PARSER_MAX_NO_OF_PARAMS];
-  char paramFileName[200] = "";
+  char *param_filename = NULL;
   char restart_file[200] = "";
   unsigned long long cpufreq = 0;
 
-  /* Parse the parameters */
-  int c;
-  while ((c = getopt(argc, argv, "abcCdDef:FgGhMn:o:P:rsSt:Tv:xy:Y:")) != -1)
-    switch (c) {
-      case 'a':
-#if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
-        with_aff = 1;
-#else
-        error("Need NUMA support for thread affinity");
+  /* Parse the command-line parameters. */
+  struct argparse_option options[] = {
+      OPT_HELP(),
+      OPT_GROUP("Simulation options"),
+      OPT_BOOLEAN('b', "feedback", &with_feedback, "", NULL, 0, 0),
+      OPT_BOOLEAN('c', "cosmology", &with_cosmology, "", NULL, 0, 0),
+      OPT_BOOLEAN('C', "cooling", &with_cooling, "", NULL, 0, 0),
+      OPT_BOOLEAN('F', "sourceterms", &with_sourceterms, "", NULL, 0, 0),
+      OPT_BOOLEAN('g', "external-gravity", &with_external_gravity, "", NULL, 0, 0),
+      OPT_BOOLEAN('G', "self-gravity", &with_self_gravity, "", NULL, 0, 0),
+      OPT_BOOLEAN('M', "multipole-reconstructionx", &with_mpole_reconstruction, "", NULL, 0, 0),
+      OPT_BOOLEAN('s', "hydrodynamics", &with_hydro, "", NULL, 0, 0),
+      OPT_BOOLEAN('S', "stars", &with_stars, "", NULL, 0, 0),
+      OPT_BOOLEAN('x', "velociraptor", &with_structure_finding, "", NULL, 0, 0),
+      OPT_GROUP("Control options"),
+      OPT_BOOLEAN('a', "affinity", &with_aff, "", NULL, 0, 0),
+      OPT_BOOLEAN('d', "dry-run", &dry_run, "", NULL, 0, 0),
+      OPT_BOOLEAN('D', "drift-all", &with_drift_all, "", NULL, 0, 0),
+      OPT_BOOLEAN('e', "fpe", &with_fp_exceptions, "", NULL, 0, 0),
+      OPT_INTEGER('f', "cpu-frequency", &cpufreq, "", NULL, 0, 0),
+      OPT_INTEGER('n', "steps", &nsteps, "", NULL, 0, 0),
+      OPT_STRING('o', "output-params", &output_parameters_filename, "", NULL, 0, 0),
+      OPT_STRING('P', "param", &cmdparams, "", NULL, 0, 0), /* Need callback * handler */
+      OPT_BOOLEAN('r', "restart", &restart, "", NULL, 0, 0),
+      OPT_INTEGER('t', "threads", &nr_threads, "", NULL, 0, 0),
+      OPT_INTEGER('T', "timers", &with_verbose_timers, "", NULL, 0, 0),
+      OPT_INTEGER('v', "verbose", &verbose, "", NULL, 0, 0),
+      OPT_INTEGER('y', "task-dumps", &dump_tasks, "", NULL, 0, 0),
+      OPT_INTEGER('Y', "threadpool-dumps", &dump_threadpool, "", NULL, 0, 0),
+  };
+  struct argparse argparse;
+  argparse_init(&argparse, options, usage, 0);
+  argparse_describe(&argparse, "\nSWIFT usage", "");
+  int nargs = argparse_parse(&argparse, argc, (const char **)argv);
+
+  /* Need a parameter file. */
+  if (nargs != 1) {
+    error("No parameter file was supplied"); /* Also usage? */
+  }
+  param_filename = argv[0];
+
+  /* Checks of options. */
+#if ! defined(HAVE_SETAFFINITY) || !defined(HAVE_LIBNUMA)
+  if (with_aff) error("No NUMA support for thread affinity");
 #endif
-        break;
-      case 'b':
-        with_feedback = 1;
-        break;
-      case 'c':
-        with_cosmology = 1;
-        break;
-      case 'C':
-        with_cooling = 1;
-        break;
-      case 'd':
-        dry_run = 1;
-        break;
-      case 'D':
-        with_drift_all = 1;
-        break;
-      case 'e':
-#ifdef HAVE_FE_ENABLE_EXCEPT
-        with_fp_exceptions = 1;
-#else
-        error("Need support for floating point exception on this platform");
+
+#ifndef HAVE_FE_ENABLE_EXCEPT
+  if (with_fp_exceptions) error("No support for floating point exceptions");
 #endif
-        break;
-      case 'f':
-        if (sscanf(optarg, "%llu", &cpufreq) != 1) {
-          if (myrank == 0) printf("Error parsing CPU frequency (-f).\n");
-          if (myrank == 0) print_help_message();
-          return 1;
-        }
-        break;
-      case 'F':
-        with_sourceterms = 1;
-        break;
-      case 'g':
-        with_external_gravity = 1;
-        break;
-      case 'G':
-        with_self_gravity = 1;
-        break;
-      case 'h':
-        if (myrank == 0) print_help_message();
-        return 0;
-      case 'M':
-        with_mpole_reconstruction = 1;
-        break;
-      case 'n':
-        if (sscanf(optarg, "%d", &nsteps) != 1) {
-          if (myrank == 0) printf("Error parsing fixed number of steps.\n");
-          if (myrank == 0) print_help_message();
-          return 1;
-        }
-        break;
-      case 'o':
-        if (sscanf(optarg, "%s", output_parameters_filename) != 1) {
-          if (myrank == 0) {
-            printf("Error parsing output fields filename");
-            print_help_message();
-          }
-          return 1;
-        }
-        break;
-      case 'P':
-        cmdparams[nparams] = optarg;
-        nparams++;
-        break;
-      case 'r':
-        restart = 1;
-        break;
-      case 's':
-        with_hydro = 1;
-        break;
-      case 'S':
-        with_stars = 1;
-        break;
-      case 't':
-        if (sscanf(optarg, "%d", &nr_threads) != 1) {
-          if (myrank == 0)
-            printf("Error parsing the number of threads (-t).\n");
-          if (myrank == 0) print_help_message();
-          return 1;
-        }
-        break;
-      case 'T':
-        with_verbose_timers = 1;
-        break;
-      case 'v':
-        if (sscanf(optarg, "%d", &verbose) != 1) {
-          if (myrank == 0) printf("Error parsing verbosity level (-v).\n");
-          if (myrank == 0) print_help_message();
-          return 1;
-        }
-        break;
-      case 'x':
-#ifdef HAVE_VELOCIRAPTOR
-        with_structure_finding = 1;
-#else
-        error(
-            "Error: (-x) needs to have the code compiled with VELOCIraptor "
-            "linked in.");
+
+#ifndef HAVE_VELOCIRAPTOR
+  if (with_structure_finding) error("VELOCIraptor is not available");
 #endif
-        break;
-      case 'y':
-        if (sscanf(optarg, "%d", &dump_tasks) != 1) {
-          if (myrank == 0) printf("Error parsing dump_tasks (-y). \n");
-          if (myrank == 0) print_help_message();
-          return 1;
-        }
+
 #ifndef SWIFT_DEBUG_TASKS
-        if (dump_tasks) {
-          error(
-              "Task dumping is only possible if SWIFT was configured with the "
-              "--enable-task-debugging option.");
-        }
+  if (dump_tasks) error("Task dumping is only possible if SWIFT was configured"
+                        " with the --enable-task-debugging option.");
 #endif
-        break;
-      case 'Y':
-        if (sscanf(optarg, "%d", &dump_threadpool) != 1) {
-          if (myrank == 0) printf("Error parsing dump_threadpool (-Y). \n");
-          if (myrank == 0) print_help_message();
-          return 1;
-        }
+
 #ifndef SWIFT_DEBUG_THREADPOOL
-        if (dump_threadpool) {
-          error(
-              "Threadpool dumping is only possible if SWIFT was configured "
-              "with the "
-              "--enable-threadpool-debugging option.");
-        }
+  if (dump_threadpool) error("Threadpool dumping is only possible if SWIFT "
+                             "was configured with the "
+                             "--enable-threadpool-debugging option.");
 #endif
-        break;
-      case '?':
-        if (myrank == 0) print_help_message();
-        return 1;
-        break;
-    }
 
   /* Write output parameter file */
   if (myrank == 0 && strcmp(output_parameters_filename, "") != 0) {
@@ -364,7 +293,7 @@ int main(int argc, char *argv[]) {
 
   /* check inputs */
   if (optind == argc - 1) {
-    if (!strcpy(paramFileName, argv[optind++]))
+    if (!strcpy(param_filename, argv[optind++]))
       error("Error reading parameter file name.");
   } else if (optind > argc - 1) {
     if (myrank == 0) printf("Error: A parameter file name must be provided\n");
@@ -485,8 +414,8 @@ int main(int argc, char *argv[]) {
       (struct swift_params *)malloc(sizeof(struct swift_params));
   if (params == NULL) error("Error allocating memory for the parameter file.");
   if (myrank == 0) {
-    message("Reading runtime parameters from file '%s'", paramFileName);
-    parser_read_file(paramFileName, params);
+    message("Reading runtime parameters from file '%s'", param_filename);
+    parser_read_file(param_filename, params);
 
     /* Handle any command-line overrides. */
     if (nparams > 0) {
