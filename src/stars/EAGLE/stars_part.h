@@ -85,17 +85,24 @@ struct spart {
   float metals_from_agb;
   float mass_from_snii;
   float metals_from_snii;
+  float mass_from_snia;
+  float metals_from_snia;
+  float iron_from_snia;
   float metal_mass_released;
   float metals_released[chemistry_element_count];
+
+  float num_snia;
+
+  float age_Gyr;
 
 } SWIFT_STRUCT_ALIGN;
 
 struct yield_table {
   // Names coincide with EAGLE, change to be more descriptive?
   float ***SPH;
-  float **Ejecta_SPH;
+  float **ejecta_SPH;
   float **total_metals_SPH;
-  float *Metallicity;
+  float *metallicity;
   int N_Z;
 };
 
@@ -142,7 +149,9 @@ struct stars_props {
 
   struct yield_table yield_AGB;
   struct yield_table yield_SNII;
-  struct yield_table yield_SNIa;
+
+  float *yield_SNIa_SPH;
+  float yield_SNIa_total_metals_SPH;
   float *stellar_yield;
 
   char IMF_Model[10];
@@ -156,6 +165,14 @@ struct stars_props {
 
   // Table of lifetime values, should these be somewhere else?
   struct lifetime_table lifetimes;
+
+  int SNIa_mode;
+  float SNIa_efficiency;
+  float SNIa_timescale;
+
+  int SNIa_mass_transfer;
+  int SNII_mass_transfer;
+  int AGB_mass_transfer;
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */
