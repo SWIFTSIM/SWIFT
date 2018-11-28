@@ -84,8 +84,8 @@ static int starformation_potential_to_become_star(
   
   /* Calculate the internal energy using the density and entropy */
   /* Ask Matthieu about p->entropy vs xp->entropy_full */
-  const double internal_energy = gas_internal_energy_from_entropy(
-  p->rho, p->entropy);
+  const double internal_energy = hydro_get_physical_internal_energy(
+  p, xp, cosmo);
 
   /* Calculate the temperature over mu of the gas */
   /* Temporary part of the code!! */
@@ -124,13 +124,29 @@ static int starformation_potential_to_become_star(
 /*
  * @brief Calculate if the gas particle is converted 
  *
+ * @param starform the star formation struct
+ * @param p the gas particles with their properties
+ * @param xp the additional gas particle properties
+ * @param cosmo the cosmological properties
+ *
  * */
 static void starformation_convert_to_gas( 
-    const struct star_formation* starform, 
+    const struct star_formation* starform, const struct parts* p,
+    const struct xparts* xp, const struct cosmology* cosmo
     ){
+  /* Set a dummy seed for testing */
   const int globalseed = 42;
-  const double prop = Astar * pressure * dt; 
+
+  /* Get the pressure */
+  const double pressure = hydro_get_physical_pressure(p, xp, cosmo);
+
+  /* Calculate the propability of forming a star */ 
+  const double prop = Astar * pressure * p->time_bin; 
+
+  /* Generate a random number between 0 and 1. */
   const double randomnumber = rand_r(&globalseed)*inv_RAND_MAX; 
+
+  /* Calculate if we form a star */
   if (prop > randomnumber) {
     message("Create a STAR!!");
   }
