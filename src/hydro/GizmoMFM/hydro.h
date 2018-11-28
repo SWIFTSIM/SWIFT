@@ -156,6 +156,10 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
      is to have a way of remembering that we need more neighbours for this
      particle */
   p->geometry.wcorr = 1.0f;
+
+  /* set the entropy to a non-zero initial value (to make sure we
+     don't zero out the density before we reach hydro_convert_quantities) */
+  p->conserved.entropy = 1.0f;
 }
 
 /**
@@ -334,6 +338,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* energy contains the total thermal energy, we want the specific energy.
      this is why we divide by the volume, and not by the density */
   p->P = hydro_gamma_minus_one * energy * volume_inv;
+  p->A = p->conserved.entropy / m;
+  p->P = p->A * pow_gamma(p->rho);
 #endif
 
   /* sanity checks */
@@ -518,6 +524,11 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     const struct hydro_props* hydro_props) {
 
   p->conserved.energy /= cosmo->a_factor_internal_energy;
+
+  /* initialize the entropy */
+  p->conserved.entropy =
+    p->conserved.energy * pow_minus_gamma_minus_one(p->rho) *
+      hydro_gamma_minus_one;
 }
 
 /**
@@ -570,6 +581,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     const float u = (p->conserved.energy + p->flux.energy * dt_drift) * m_inv;
 #endif
     p->P = hydro_gamma_minus_one * u * p->rho;
+    p->P = p->A * pow_gamma(p->rho);
 #endif
   }
 
@@ -635,12 +647,14 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.momentum[0] += p->flux.momentum[0] * dt_therm;
   p->conserved.momentum[1] += p->flux.momentum[1] * dt_therm;
   p->conserved.momentum[2] += p->flux.momentum[2] * dt_therm;
+
 #if defined(EOS_ISOTHERMAL_GAS)
   /* We use the EoS equation in a sneaky way here just to get the constant u */
   p->conserved.energy =
       p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
   p->conserved.energy += p->flux.energy * dt_therm;
+  p->conserved.energy = hydro_one_over_gamma_minus_one * p->conserved.entropy * pow_gamma_minus_one(p->rho);
 #endif
 
 #ifndef HYDRO_GAMMA_5_3

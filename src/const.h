@@ -45,7 +45,7 @@
 /* Try to keep cells regular by adding a correction velocity. */
 //#define GIZMO_STEER_MOTION
 /* Use the total energy instead of the thermal energy as conserved variable. */
-#define GIZMO_TOTAL_ENERGY
+//#define GIZMO_TOTAL_ENERGY
 
 /* Options to control handling of unphysical values (GIZMO_SPH only). */
 /* In GIZMO, mass and energy (and hence density and pressure) can in principle
