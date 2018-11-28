@@ -1891,6 +1891,10 @@ int engine_estimate_nr_tasks(struct engine *e) {
   int n1 = 0;
   int n2 = 0;
   if (e->policy & engine_policy_hydro) {
+    /* 2 self (density, force), 1 sort, 26/2 density pairs
+       26/2 force pairs, 1 drift, 3 ghosts, 2 kicks, 1 time-step,
+       1 end_force, 2 extra space
+     */
     n1 += 37;
     n2 += 2;
 #ifdef WITH_MPI
@@ -1918,13 +1922,17 @@ int engine_estimate_nr_tasks(struct engine *e) {
     n1 += 2;
   }
   if (e->policy & engine_policy_cooling) {
+    /* Cooling task + extra space */
     n1 += 2;
   }
   if (e->policy & engine_policy_sourceterms) {
     n1 += 2;
   }
   if (e->policy & engine_policy_stars) {
-    /* 1 self, 1 sort, 26/2 pairs */
+    /* 2 self (density, feedback), 1 sort, 26/2 density pairs
+       26/2 feedback pairs, 1 drift, 3 ghosts, 2 kicks, 1 time-step,
+       1 end_force, 2 extra space
+     */
     n1 += 37;
     n2 += 2;
 #ifdef WITH_MPI
@@ -1932,7 +1940,8 @@ int engine_estimate_nr_tasks(struct engine *e) {
 #endif
   }
 #if defined(WITH_LOGGER)
-  n1 += 1;
+  /* each cell logs its particles */
+  n2 += 1;
 #endif
 
 #ifdef WITH_MPI
