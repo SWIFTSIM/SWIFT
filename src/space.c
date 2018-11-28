@@ -977,7 +977,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   space_regrid(s, verbose);
 
   /* Allocate extra space for particles that will be created */
-  space_allocate_extras(s, verbose);
+  if (s->with_star_formation) space_allocate_extras(s, verbose);
 
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
@@ -1027,9 +1027,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Initialise the counters, including buffer space for future particles */
   for (int i = 0; i < s->nr_cells; ++i) {
-    cell_part_counts[i] = 0;   // space_extra_parts;
-    cell_gpart_counts[i] = 0;  // space_extra_gparts;
-    cell_spart_counts[i] = 0;  // space_extra_sparts;
+    cell_part_counts[i] = 0;
+    cell_gpart_counts[i] = 0;
+    cell_spart_counts[i] = 0;
   }
 
   /* Run through the particles and get their cell index. */
@@ -1567,7 +1567,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-order the extra particles such that they are at the end of their cell's
      memory pool. */
-  space_reorder_extras(s, verbose);
+  if (s->with_star_formation) space_reorder_extras(s, verbose);
 
   /* At this point, we have the upper-level cells. Now recursively split each
      cell to get the full AMR grid. */
@@ -3630,6 +3630,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param generate_gas_in_ics Are we generating gas particles from the gparts?
  * @param hydro flag whether we are doing hydro or not?
  * @param self_gravity flag whether we are doing gravity or not?
+ * @param star_formation flag whether we are doing star formation or not?
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
  *
@@ -3643,7 +3644,8 @@ void space_init(struct space *s, struct swift_params *params,
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
                 size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
                 int replicate, int generate_gas_in_ics, int hydro,
-                int self_gravity, int verbose, int dry_run) {
+                int self_gravity, int star_formation, int verbose,
+                int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -3655,6 +3657,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->periodic = periodic;
   s->with_self_gravity = self_gravity;
   s->with_hydro = hydro;
+  s->with_star_formation = star_formation;
   s->nr_parts = Npart;
   s->nr_gparts = Ngpart;
   s->nr_sparts = Nspart;
@@ -3856,6 +3859,9 @@ void space_init(struct space *s, struct swift_params *params,
 #ifdef SWIFT_DEBUG_CHECKS
   last_cell_id = 1;
 #endif
+
+  /* Do we want any spare particles for on the fly cration? */
+  if (!star_formation) space_extra_sparts = 0;
 
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);

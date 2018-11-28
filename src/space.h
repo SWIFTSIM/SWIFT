@@ -46,7 +46,7 @@ struct cosmology;
 #define space_maxsize_default 8000000
 #define space_extra_parts_default 0
 #define space_extra_gparts_default 0
-#define space_extra_sparts_default 40
+#define space_extra_sparts_default 100
 #define space_expected_max_nr_strays_default 100
 #define space_subsize_pair_hydro_default 256000000
 #define space_subsize_self_hydro_default 32000
@@ -95,6 +95,9 @@ struct space {
 
   /*! Are we doing gravity? */
   int with_self_gravity;
+
+  /*! Are we doing star formation? */
+  int with_star_formation;
 
   /*! Width of the top-level cells. */
   double width[3];
@@ -266,7 +269,7 @@ void space_init(struct space *s, struct swift_params *params,
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
                 size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
                 int replicate, int generate_gas_in_ics, int hydro, int gravity,
-                int verbose, int dry_run);
+                int star_formation, int verbose, int dry_run);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);

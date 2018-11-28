@@ -140,7 +140,6 @@ int main(int argc, char *argv[]) {
   struct stars_props stars_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
-  struct sourceterms sourceterms;
   struct space s;
   struct spart *sparts = NULL;
   struct unit_system us;
@@ -844,7 +843,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
                Nspart, periodic, replicate, generate_gas_in_ics, with_hydro,
-               with_self_gravity, talking, dry_run);
+               with_self_gravity, with_star_formation, talking, dry_run);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -947,7 +946,7 @@ int main(int argc, char *argv[]) {
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &gravity_properties, &stars_properties,
-                &mesh, &potential, &cooling_func, &chemistry, &sourceterms);
+                &mesh, &potential, &cooling_func, &chemistry);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 
