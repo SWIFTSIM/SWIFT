@@ -110,7 +110,6 @@ const char *engine_policy_names[] = {"none",
                                      "drift everything",
                                      "reconstruct multi-poles",
                                      "cooling",
-                                     "sourceterms",
                                      "stars",
                                      "structure finding",
                                      "star formation",
@@ -1923,9 +1922,6 @@ int engine_estimate_nr_tasks(struct engine *e) {
   if (e->policy & engine_policy_star_formation) {
     n1 += 1;
   }
-  if (e->policy & engine_policy_sourceterms) {
-    n1 += 2;
-  }
   if (e->policy & engine_policy_stars) {
     /* 1 self, 1 sort, 26/2 pairs */
     n1 += 15;
@@ -2579,8 +2575,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_grav || t->type == task_type_end_force ||
         t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
-        t->type == task_type_grav_down || t->type == task_type_cooling ||
-        t->type == task_type_sourceterms)
+        t->type == task_type_grav_down || t->type == task_type_cooling)
       t->skip = 1;
   }
 

@@ -58,7 +58,6 @@
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
 #include "sort_part.h"
-#include "sourceterms.h"
 #include "space.h"
 #include "space_getsid.h"
 #include "stars.h"
@@ -99,42 +98,6 @@
 
 /* Import the stars loop functions. */
 #include "runner_doiact_stars.h"
-
-/**
- * @brief Perform source terms
- *
- * @param r runner task
- * @param c cell
- * @param timer 1 if the time is to be recorded.
- */
-void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
-  const int count = c->hydro.count;
-  const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
-  const double cell_width[3] = {c->width[0], c->width[1], c->width[2]};
-  struct sourceterms *sourceterms = r->e->sourceterms;
-  const int dimen = 3;
-
-  TIMER_TIC;
-
-  /* Recurse? */
-  if (c->split) {
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_sourceterms(r, c->progeny[k], 0);
-  } else {
-
-    if (count > 0) {
-
-      /* do sourceterms in this cell? */
-      const int incell =
-          sourceterms_test_cell(cell_min, cell_width, sourceterms, dimen);
-      if (incell == 1) {
-        sourceterms_apply(r, sourceterms, c);
-      }
-    }
-  }
-
-  if (timer) TIMER_TOC(timer_dosource);
-}
 
 /**
  * @brief Intermediate task after the density to check that the smoothing
@@ -2944,9 +2907,6 @@ void *runner_main(void *data) {
           break;
         case task_type_star_formation:
           runner_do_star_formation(r, t->ci, 1);
-          break;
-        case task_type_sourceterms:
-          runner_do_sourceterms(r, t->ci, 1);
           break;
         default:
           error("Unknown/invalid task type (%d).", t->type);

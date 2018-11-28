@@ -75,7 +75,6 @@ const char *taskID_names[task_type_count] = {"none",
                                              "grav_mesh",
                                              "cooling",
                                              "star_formation",
-                                             "sourceterms",
                                              "logger",
                                              "stars_ghost_in",
                                              "stars_ghost",
@@ -141,7 +140,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_ghost:
     case task_type_extra_ghost:
     case task_type_cooling:
-    case task_type_sourceterms:
       return task_action_part;
       break;
 
