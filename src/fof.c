@@ -48,7 +48,7 @@ size_t node_offset;
 #define UNION_BY_SIZE_OVER_MPI 1
 
 /* Initialises parameters for the FOF search. */
-void fof_init(struct space *s, long long Ngas, long long Ngparts, long long Nstars) {
+void fof_init(struct space *s) {
 
   struct engine *e = s->e;
 
@@ -80,7 +80,7 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts, long long Nsta
 
   /* Calculate the particle linking length based upon the mean inter-particle
    * spacing of the DM particles. */
-  const long long total_nr_dmparts = Ngparts - Ngas - Nstars;
+  const long long total_nr_dmparts = e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
   double l_x = l_x_scale * (s->dim[0] / cbrt(total_nr_dmparts));
 
   l_x = parser_get_opt_param_double(e->parameter_file, "FOF:absolute_linking_length", l_x);
@@ -89,32 +89,34 @@ void fof_init(struct space *s, long long Ngas, long long Ngparts, long long Nsta
 
   /* Read the initial group_links array size. */
   s->fof_data.group_links_size_default = parser_get_opt_param_double(e->parameter_file, "FOF:group_links_size_default", 20000);
- 
+
+  const size_t nr_local_gparts = s->nr_gparts;
+
   /* Allocate and initialise a group index array. */
-  if (posix_memalign((void **)&s->fof_data.group_index, 32, Ngparts * sizeof(size_t)) != 0)
+  if (posix_memalign((void **)&s->fof_data.group_index, 32, nr_local_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle group indices for FOF search.");
 
   /* Allocate and initialise a group size array. */
-  if (posix_memalign((void **)&s->fof_data.group_size, 32, Ngparts * sizeof(size_t)) != 0)
+  if (posix_memalign((void **)&s->fof_data.group_size, 32, nr_local_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of group size for FOF search.");
 
   /* Allocate and initialise a group mass array. */
-  if (posix_memalign((void **)&s->fof_data.group_mass, 32, Ngparts * sizeof(double)) != 0)
+  if (posix_memalign((void **)&s->fof_data.group_mass, 32, nr_local_gparts * sizeof(double)) != 0)
     error("Failed to allocate list of group masses for FOF search.");
 
   /* Allocate and initialise a group mass array. */
-  if (posix_memalign((void **)&s->fof_data.group_CoM, 32, Ngparts * sizeof(struct fof_CoM)) != 0)
+  if (posix_memalign((void **)&s->fof_data.group_CoM, 32, nr_local_gparts * sizeof(struct fof_CoM)) != 0)
     error("Failed to allocate list of group CoM for FOF search.");
 
   /* Set initial group index to particle offset into array and set default group ID. */
-  for (size_t i = 0; i < Ngparts; i++) {
+  for (size_t i = 0; i < nr_local_gparts; i++) {
     s->fof_data.group_index[i] = i;
     s->gparts[i].group_id = default_id;
   }
 
-  bzero(s->fof_data.group_size, Ngparts * sizeof(size_t));
-  bzero(s->fof_data.group_mass, Ngparts * sizeof(double));
-  bzero(s->fof_data.group_CoM, Ngparts * sizeof(struct fof_CoM));
+  bzero(s->fof_data.group_size, nr_local_gparts * sizeof(size_t));
+  bzero(s->fof_data.group_mass, nr_local_gparts * sizeof(double));
+  bzero(s->fof_data.group_CoM, nr_local_gparts * sizeof(struct fof_CoM));
 
 #ifdef WITH_MPI
   /* Check size of linking length against the top-level cell dimensions. */
