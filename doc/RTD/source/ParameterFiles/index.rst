@@ -72,11 +72,11 @@ section. A list of all the possible parameters is kept in the file
 Internal Unit System
 --------------------
 
-This section describes the units used internally by the code. This is
-the system of units in which all the equations are solved. All
-physical constants are converted to this system and if the ICs use a
-different system (see :ref:`ICs_units_label`) the particle quantities
-will be converted when read in.
+The ``InternalUnitSystem`` section describes the units used internally by the
+code. This is the system of units in which all the equations are solved. All
+physical constants are converted to this system and if the ICs use a different
+system (see :ref:`ICs_units_label`) the particle quantities will be converted
+when read in.
 
 The system of units is described using the value of the 5 basic units
 of any system with respect to the CGS system. Instead of using a unit
@@ -132,7 +132,7 @@ exercise for the reader [#f1]_.
 Cosmology
 ---------
 
-When running a cosmological simulation, this section set the values of the
+When running a cosmological simulation, the section ``Cosmology`` sets the values of the
 cosmological model. The epanded :math:`\Lambda\rm{CDM}` parameters governing the
 background evolution of the Univese need to be specified here. These are:
 
@@ -186,7 +186,7 @@ Gravity
 -------
 
 The behaviour of the self-gravity solver can be modifed by the parameters
-provided in this section. The theory document puts these parameters into the
+provided in the ``Gravity`` section. The theory document puts these parameters into the
 context of the equations being solved. We give a brief overview here.
 
 * The Plummer-equivalent co-moving softening length used for all particles :math:`\epsilon_{com}`: ``comoving_softening``,
@@ -251,10 +251,64 @@ SPH
 Time Integration
 ----------------
 
+The ``TimeIntegration`` section is used to set some general parameters related to time
+integration. In all cases, users have to provide a minimal and maximal time-step
+size:
+
+* Maximal time-step size: ``dt_max``
+* Minimal time-step size: ``dt_min``
+
+These quantities are expressed in internal units. All particles will have their
+time-step limited by the maximal value on top of all the other criteria that may
+apply to them (gravity acceleration, Courant condition, etc.). If a particle
+demands a time-step size smaller than the minimum, SWIFT will abort with an
+error message. This is a safe-guard against simulations that would never
+complete due to the number of steps to run being too large.
+
+When running a non-cosmological simulation, the user also has to provide the
+time of the start and the time of the end of the simulation:
+
+* Start time: ``time_begin``
+* End time: ``time_end``
+
+Both are expressed in internal units. The start time is typically set to ``0``
+but SWIFT can handle any value here. For cosmological runs, these values are
+ignored and the start- and end-points of the runs are specified by the start and
+end scale-factors in the cosmology section of the parameter file.
+
+Additionally, when running a cosmological volume, advanced users can specify the
+value of the dimensionless pre-factor entering the time-step condition linked
+with the motion of particles with respect to the background expansion and mesh
+size. See the theory document for the exact equations.
+
+* Dimensionless pre-factor of the maximal allowed displacement:
+  ``max_dt_RMS_factor`` (default: ``0.25``)
+
+This value rarely needs altering.
+
+A full time-step section for a non-cosmological run would be:
+
+.. code:: YAML
+
+  TimeIntegration:
+    time_begin:   0    # Start time in internal units.
+    time_end:     10.  # End time in internal units.
+    dt_max:       1e-2
+    dt_min:       1e-6
+
+Whilst for a cosmological run, one would need:
+
+.. code:: YAML
+
+  TimeIntegration:
+    dt_max:            1e-4
+    dt_min:            1e-10
+    max_dt_RMS_factor: 0.25     # Default optional value
+
 Initial Conditions
 ------------------
 
-This section of the parameter file contains all the options related to
+This ``IntialConditions`` section of the parameter file contains all the options related to
 the initial conditions. The main two parameters are
 
 * The name of the initial conditions file: ``file_name``,
@@ -302,12 +356,13 @@ The full section to start a DM+hydro run from Gadget DM-only ICs would
 be:
 
 .. code:: YAML
+
    InitialConditions:
      file_name:  my_ics.hdf5
      periodic:                    1
-     cleanup_h_factors:           1
-     cleanup_velocity_factors:    1
-     generate_gas_in_ics:         1  
+     cleanup_h_factors:           1     
+     cleanup_velocity_factors:    1     
+     generate_gas_in_ics:         1     
      cleanup_smoothing_lengths:   1  
 
   
@@ -351,7 +406,7 @@ Restarts
 --------
 
 SWIFT can write check-pointing files and restart from them. The behaviour of
-this mechanism is driven by the options int he `Restarts` section of the YAML
+this mechanism is driven by the options in the ``Restarts`` section of the YAML
 parameter file. All the parameters are optional but default to values that
 ensure a reasonable behaviour. 
 

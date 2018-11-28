@@ -197,10 +197,10 @@ int check_results(struct part serial_test_part, struct part *serial_parts,
                   struct part vec_test_part, struct part *vec_parts,
                   int count) {
   int result = 0;
-  result += compare_particles(serial_test_part, vec_test_part, ACC_THRESHOLD);
+  result += compare_particles(&serial_test_part, &vec_test_part, ACC_THRESHOLD);
 
   for (int i = 0; i < count; i++)
-    result += compare_particles(serial_parts[i], vec_parts[i], ACC_THRESHOLD);
+    result += compare_particles(&serial_parts[i], &vec_parts[i], ACC_THRESHOLD);
 
   return result;
 }

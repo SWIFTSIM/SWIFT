@@ -273,7 +273,7 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
   int result = 0;
 
   for (int i = 0; i < count; i++)
-    result += compare_particles(serial_parts[i], vec_parts[i], threshold);
+    result += compare_particles(&serial_parts[i], &vec_parts[i], threshold);
 
   return result;
 }
@@ -505,8 +505,8 @@ int main(int argc, char *argv[]) {
 
         runner_do_drift_part(&runner, cells[i * (dim * dim) + j * dim + k], 0);
 
-        runner_do_sort(&runner, cells[i * (dim * dim) + j * dim + k], 0x1FFF, 0,
-                       0);
+        runner_do_hydro_sort(&runner, cells[i * (dim * dim) + j * dim + k],
+                             0x1FFF, 0, 0);
       }
     }
   }

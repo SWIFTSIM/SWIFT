@@ -77,6 +77,7 @@ TASKTYPES = [
     "extra_ghost",
     "drift_part",
     "drift_gpart",
+    "drift_gpart_out",
     "end_force",
     "kick1",
     "kick2",
@@ -91,9 +92,11 @@ TASKTYPES = [
     "cooling",
     "star_formation",
     "sourceterms",
+    "logger",
     "stars_ghost_in",
     "stars_ghost",
     "stars_ghost_out",
+    "stars_sort",
     "count",
 ]
 

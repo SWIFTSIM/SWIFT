@@ -36,16 +36,16 @@ const_unit_length_in_cgs   =   (1000*PARSEC_IN_CGS)
 const_unit_mass_in_cgs     =   (SOLAR_MASS_IN_CGS)
 const_unit_velocity_in_cgs =   (1e5)
 
-print "UnitMass_in_cgs:     ", const_unit_mass_in_cgs 
-print "UnitLength_in_cgs:   ", const_unit_length_in_cgs
-print "UnitVelocity_in_cgs: ", const_unit_velocity_in_cgs
-print "UnitTime_in_cgs:     ", const_unit_length_in_cgs / const_unit_velocity_in_cgs
+print("UnitMass_in_cgs:     ", const_unit_mass_in_cgs) 
+print("UnitLength_in_cgs:   ", const_unit_length_in_cgs)
+print("UnitVelocity_in_cgs: ", const_unit_velocity_in_cgs)
+print("UnitTime_in_cgs:     ", const_unit_length_in_cgs / const_unit_velocity_in_cgs)
 
 # derived units
 const_unit_time_in_cgs = (const_unit_length_in_cgs / const_unit_velocity_in_cgs)
 const_G                = ((NEWTON_GRAVITY_CGS*const_unit_mass_in_cgs*const_unit_time_in_cgs*const_unit_time_in_cgs/(const_unit_length_in_cgs*const_unit_length_in_cgs*const_unit_length_in_cgs)))
-print '---------------------'
-print 'G in internal units: ', const_G
+print('---------------------')
+print('G in internal units: ', const_G)
 
 
 # Parameters
@@ -53,7 +53,7 @@ periodic   = 1            # 1 For periodic box
 boxSize    = 100.         # 
 max_radius = boxSize / 4. # maximum radius of particles
 Mass       = 1e10         
-print "Mass at the centre:  ", Mass
+print("Mass at the centre:  ", Mass)
 
 numPart = int(sys.argv[1])  # Number of particles
 mass    = 1.
@@ -93,9 +93,9 @@ grp1 = file.create_group("/PartType1")
 
 #generate particle positions
 radius = max_radius * (numpy.random.rand(numPart))**(1./3.)
-print '---------------------'
-print 'Radius: minimum = ',min(radius)
-print 'Radius: maximum = ',max(radius)
+print('---------------------')
+print('Radius: minimum = ',min(radius))
+print('Radius: maximum = ',max(radius))
 radius = numpy.sort(radius)
 r      = numpy.zeros((numPart, 3))
 r[:,0] = radius
@@ -104,9 +104,9 @@ r[:,0] = radius
 speed  = numpy.sqrt(const_G * Mass / radius)
 omega  = speed / radius
 period = 2.*math.pi/omega
-print '---------------------'
-print 'Period: minimum = ',min(period)
-print 'Period: maximum = ',max(period)
+print('---------------------')
+print('Period: minimum = ',min(period))
+print('Period: maximum = ',max(period))
 
 v      = numpy.zeros((numPart, 3))
 v[:,0] = -omega * r[:,1]

@@ -147,7 +147,13 @@ struct pcell {
     /*! Maximal smoothing length. */
     double h_max;
 
+    /*! Minimal integer end-of-timestep in this cell for stars tasks */
+    integertime_t ti_end_min;
+
   } stars;
+
+  /*! Maximal depth in that part of the tree */
+  int maxdepth;
 
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
@@ -194,6 +200,9 @@ struct pcell_step {
 
     /*! Maximal distance any #part has travelled since last rebuild */
     float dx_max_part;
+
+    /*! Minimal integer end-of-timestep in this cell (stars) */
+    integertime_t ti_end_min;
 
   } stars;
 };
@@ -404,6 +413,9 @@ struct cell {
     /*! The drift task for gparts */
     struct task *drift;
 
+    /*! Implicit task (going up- and down the tree) for the #gpart drifts */
+    struct task *drift_out;
+
     /*! Linked list of the tasks computing this cell's gravity forces. */
     struct link *grav;
 
@@ -454,6 +466,30 @@ struct cell {
     /*! Values of dx_max before the drifts, used for sub-cell tasks. */
     float dx_max_part_old;
 
+    /*! Maximum particle movement in this cell since the last sort. */
+    float dx_max_sort;
+
+    /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
+    float dx_max_sort_old;
+
+    /*! Bit mask of sort directions that will be needed in the next timestep. */
+    unsigned int requires_sorts;
+
+    /*! Pointer for the sorted indices. */
+    struct entry *sort[13];
+
+    /*! Bit-mask indicating the sorted directions */
+    unsigned int sorted;
+
+    /*! Bit mask of sorts that need to be computed for this cell. */
+    unsigned int do_sort;
+
+    /*! Do any of this cell's sub-cells need to be sorted? */
+    char do_sub_sort;
+
+    /*! Maximum end of (integer) time step in this cell for gravity tasks. */
+    integertime_t ti_end_min;
+
     /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
     struct task *ghost_in;
 
@@ -462,6 +498,9 @@ struct cell {
 
     /*! The star ghost task itself */
     struct task *ghost;
+
+    /*! The task computing this cell's sorts. */
+    struct task *sorts;
 
     /*! Linked list of the tasks computing this cell's star density. */
     struct link *density;
@@ -477,6 +516,11 @@ struct cell {
 
     /*! Spin lock for various uses (#spart case). */
     swift_lock_type lock;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /*! Last (integer) time the cell's sort arrays were updated. */
+    integertime_t ti_sort;
+#endif
 
   } stars;
 
@@ -646,7 +690,9 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_drift_part(struct cell *c, struct scheduler *s);
 void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
-void cell_activate_sorts(struct cell *c, int sid, struct scheduler *s);
+void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
+void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
+void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 int cell_has_tasks(struct cell *c);
@@ -664,6 +710,68 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s);
 int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
                                  const struct engine *e, const struct space *s);
+
+/**
+ * @brief Compute the square of the minimal distance between any two points in
+ * two cells of the same size
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param periodic Are we using periodic BCs?
+ * @param dim The dimensions of the simulation volume
+ */
+__attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    const int periodic, const double dim[3]) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
+  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
+  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
+#endif
+
+  const double cix_min = ci->loc[0];
+  const double ciy_min = ci->loc[1];
+  const double ciz_min = ci->loc[2];
+  const double cjx_min = cj->loc[0];
+  const double cjy_min = cj->loc[1];
+  const double cjz_min = cj->loc[2];
+
+  const double cix_max = ci->loc[0] + ci->width[0];
+  const double ciy_max = ci->loc[1] + ci->width[1];
+  const double ciz_max = ci->loc[2] + ci->width[2];
+  const double cjx_max = cj->loc[0] + cj->width[0];
+  const double cjy_max = cj->loc[1] + cj->width[1];
+  const double cjz_max = cj->loc[2] + cj->width[2];
+
+  if (periodic) {
+
+    const double dx = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
+                           fabs(nearest(cix_min - cjx_max, dim[0])),
+                           fabs(nearest(cix_max - cjx_min, dim[0])),
+                           fabs(nearest(cix_max - cjx_max, dim[0])));
+
+    const double dy = min4(fabs(nearest(ciy_min - cjy_min, dim[1])),
+                           fabs(nearest(ciy_min - cjy_max, dim[1])),
+                           fabs(nearest(ciy_max - cjy_min, dim[1])),
+                           fabs(nearest(ciy_max - cjy_max, dim[1])));
+
+    const double dz = min4(fabs(nearest(ciz_min - cjz_min, dim[2])),
+                           fabs(nearest(ciz_min - cjz_max, dim[2])),
+                           fabs(nearest(ciz_max - cjz_min, dim[2])),
+                           fabs(nearest(ciz_max - cjz_max, dim[2])));
+
+    return dx * dx + dy * dy + dz * dz;
+
+  } else {
+
+    const double dx = min(fabs(cix_max - cjx_min), fabs(cix_min - cjx_max));
+    const double dy = min(fabs(ciy_max - cjy_min), fabs(ciy_min - cjy_max));
+    const double dz = min(fabs(ciz_max - cjz_min), fabs(ciz_min - cjz_max));
+
+    return dx * dx + dy * dy + dz * dz;
+  }
+}
 
 /* Inlined functions (for speed). */
 
@@ -808,8 +916,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_stars_task(
 __attribute__((always_inline)) INLINE static int
 cell_can_split_pair_gravity_task(const struct cell *c) {
 
-  /* Is the cell split ? */
-  return c->split && c->depth < space_subdepth_grav;
+  /* Is the cell split and still far from the leaves ? */
+  return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
 }
 
 /**
@@ -821,8 +929,8 @@ cell_can_split_pair_gravity_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_split_self_gravity_task(const struct cell *c) {
 
-  /* Is the cell split ? */
-  return c->split && c->depth < space_subdepth_grav;
+  /* Is the cell split and still far from the leaves ? */
+  return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
 }
 
 /**
@@ -844,20 +952,23 @@ __attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
 }
 
 /**
- * @brief Add a unique tag to a cell mostly for MPI communications.
+ * @brief Add a unique tag to a cell, mostly for MPI communications.
+ *
+ * This function locks the cell so that tags can be added concurrently.
  *
  * @param c The #cell to tag.
  */
-__attribute__((always_inline)) INLINE static void cell_tag(struct cell *c) {
+__attribute__((always_inline)) INLINE static void cell_ensure_tagged(
+    struct cell *c) {
 #ifdef WITH_MPI
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (c->mpi.tag > 0) error("setting tag for already tagged cell");
-#endif
-
+  lock_lock(&c->hydro.lock);
   if (c->mpi.tag < 0 &&
       (c->mpi.tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
     error("Ran out of cell tags.");
+  if (lock_unlock(&c->hydro.lock) != 0) {
+    error("Failed to unlock cell.");
+  }
 #else
   error("SWIFT was not compiled with MPI enabled.");
 #endif  // WITH_MPI

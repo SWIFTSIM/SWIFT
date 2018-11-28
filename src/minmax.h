@@ -71,4 +71,36 @@
     max(_temp, _z);                          \
   })
 
+/**
+ * @brief Minimum of four numbers
+ *
+ * This macro evaluates its arguments exactly once.
+ */
+#define min4(x, y, z, w)                      \
+  ({                                          \
+    const __typeof__(x) _x = (x);             \
+    const __typeof__(y) _y = (y);             \
+    const __typeof__(z) _z = (z);             \
+    const __typeof__(w) _w = (w);             \
+    const __typeof__(x) _temp1 = min(_x, _y); \
+    const __typeof__(x) _temp2 = min(_z, _w); \
+    min(_temp1, _temp2);                      \
+  })
+
+/**
+ * @brief Maximum of four numbers
+ *
+ * This macro evaluates its arguments exactly once.
+ */
+#define max4(x, y, z, w)                      \
+  ({                                          \
+    const __typeof__(x) _x = (x);             \
+    const __typeof__(y) _y = (y);             \
+    const __typeof__(z) _z = (z);             \
+    const __typeof__(w) _w = (w);             \
+    const __typeof__(x) _temp1 = max(_x, _y); \
+    const __typeof__(x) _temp2 = max(_z, _w); \
+    max(_temp1, _temp2);                      \
+  })
+
 #endif /* SWIFT_MINMAX_H */

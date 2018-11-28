@@ -128,6 +128,7 @@ struct end_of_step_data {
   size_t inhibited, g_inhibited, s_inhibited;
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
+  integertime_t ti_stars_end_min;
   struct engine *e;
 };
 
@@ -980,8 +981,7 @@ void engine_repartition(struct engine *e) {
   fflush(stdout);
 
   /* Check that all cells have been drifted to the current time */
-  space_check_drift_point(e->s, e->ti_current,
-                          e->policy & engine_policy_self_gravity);
+  space_check_drift_point(e->s, e->ti_current, /*check_multipoles=*/0);
 #endif
 
   /* Clear the repartition flag. */
@@ -1043,6 +1043,8 @@ void engine_repartition(struct engine *e) {
 void engine_repartition_trigger(struct engine *e) {
 
 #ifdef WITH_MPI
+
+  const ticks tic = getticks();
 
   /* Do nothing if there have not been enough steps since the last
    * repartition, don't want to repeat this too often or immediately after
@@ -1112,6 +1114,10 @@ void engine_repartition_trigger(struct engine *e) {
   /* We always reset CPU time for next check, unless it will not be used. */
   if (e->reparttype->type != REPART_NONE)
     e->cputime_last_step = clocks_get_cputime_used();
+
+  if (e->verbose)
+    message("took %.3f %s", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #endif
 }
 
@@ -1591,6 +1597,8 @@ void engine_exchange_top_multipoles(struct engine *e) {
 
 #ifdef WITH_MPI
 
+  ticks tic = getticks();
+
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < e->s->nr_cells; ++i) {
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
@@ -1654,6 +1662,9 @@ void engine_exchange_top_multipoles(struct engine *e) {
         counter, e->total_nr_gparts);
 #endif
 
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -1913,7 +1924,8 @@ int engine_estimate_nr_tasks(struct engine *e) {
     n1 += 2;
   }
   if (e->policy & engine_policy_stars) {
-    n1 += 2;
+    /* 1 self, 1 sort, 26/2 pairs */
+    n1 += 15;
   }
 #if defined(WITH_LOGGER)
   n1 += 1;
@@ -1988,6 +2000,8 @@ void engine_rebuild(struct engine *e, int repartitioned,
   /* Re-build the space. */
   space_rebuild(e->s, repartitioned, e->verbose);
 
+  const ticks tic2 = getticks();
+
   /* Update the global counters of particles */
   long long num_particles[3] = {(long long)e->s->nr_parts,
                                 (long long)e->s->nr_gparts,
@@ -2004,6 +2018,10 @@ void engine_rebuild(struct engine *e, int repartitioned,
   e->nr_inhibited_parts = 0;
   e->nr_inhibited_gparts = 0;
   e->nr_inhibited_sparts = 0;
+
+  if (e->verbose)
+    message("updating particle counts took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Re-compute the mesh forces */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
@@ -2099,7 +2117,7 @@ void engine_prepare(struct engine *e) {
   /* Unskip active tasks and check for rebuild */
   if (!e->forcerebuild && !e->forcerepart && !e->restarting) engine_unskip(e);
 
-  const ticks tic2 = getticks();
+  const ticks tic3 = getticks();
 
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, &e->forcerebuild, 1, MPI_INT, MPI_MAX,
@@ -2108,13 +2126,13 @@ void engine_prepare(struct engine *e) {
 
   if (e->verbose)
     message("Communicating rebuild flag took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+            clocks_from_ticks(getticks() - tic3), clocks_getunit());
 
   /* Do we need repartitioning ? */
   if (e->forcerepart) {
 
     /* Let's start by drifting everybody to the current time */
-    engine_drift_all(e);
+    engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
 
     /* And repartition */
@@ -2126,7 +2144,7 @@ void engine_prepare(struct engine *e) {
   if (e->forcerebuild) {
 
     /* Let's start by drifting everybody to the current time */
-    if (!e->restarting && !drifted_all) engine_drift_all(e);
+    if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
 
     /* And rebuild */
     engine_rebuild(e, repartitioned, 0);
@@ -2197,6 +2215,7 @@ void engine_collect_end_of_step_recurse(struct cell *c,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps;
 
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
@@ -2215,6 +2234,8 @@ void engine_collect_end_of_step_recurse(struct cell *c,
       ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
       ti_gravity_end_max = max(ti_gravity_end_max, cp->grav.ti_end_max);
       ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
+
+      ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
 
       updated += cp->hydro.updated;
       g_updated += cp->grav.updated;
@@ -2238,6 +2259,7 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_end_max = ti_gravity_end_max;
   c->grav.ti_beg_max = ti_gravity_beg_max;
+  c->stars.ti_end_min = ti_stars_end_min;
   c->hydro.updated = updated;
   c->grav.updated = g_updated;
   c->stars.updated = s_updated;
@@ -2272,6 +2294,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
@@ -2291,6 +2314,9 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
         ti_gravity_end_min = min(ti_gravity_end_min, c->grav.ti_end_min);
       ti_gravity_end_max = max(ti_gravity_end_max, c->grav.ti_end_max);
       ti_gravity_beg_max = max(ti_gravity_beg_max, c->grav.ti_beg_max);
+
+      if (c->stars.ti_end_min > e->ti_current)
+        ti_stars_end_min = min(ti_stars_end_min, c->stars.ti_end_min);
 
       updated += c->hydro.updated;
       g_updated += c->grav.updated;
@@ -2330,6 +2356,9 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
         max(ti_gravity_end_max, data->ti_gravity_end_max);
     data->ti_gravity_beg_max =
         max(ti_gravity_beg_max, data->ti_gravity_beg_max);
+
+    if (ti_stars_end_min > e->ti_current)
+      data->ti_stars_end_min = min(ti_stars_end_min, data->ti_stars_end_min);
   }
 
   if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
@@ -2471,8 +2500,7 @@ void engine_print_stats(struct engine *e) {
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
    * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_current,
-                          e->policy & engine_policy_self_gravity);
+  space_check_drift_point(e->s, e->ti_current, /*chek_mpoles=*/0);
 
   /* Be verbose about this */
   if (e->nodeID == 0) {
@@ -2911,7 +2939,7 @@ void engine_step(struct engine *e) {
   e->step_props = engine_step_prop_none;
 
   /* When restarting, move everyone to the current time. */
-  if (e->restarting) engine_drift_all(e);
+  if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
 
   /* Get the physical value of the time and time-step size */
   if (e->policy & engine_policy_cosmology) {
@@ -2954,7 +2982,7 @@ void engine_step(struct engine *e) {
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
-    engine_drift_all(e);
+    engine_drift_all(e, /*drift_mpole=*/1);
 
   /* Are we reconstructing the multipoles or drifting them ?*/
   if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild) {
@@ -3098,7 +3126,7 @@ void engine_check_for_dumps(struct engine *e) {
         }
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump everything */
         engine_print_stats(e);
@@ -3122,7 +3150,7 @@ void engine_check_for_dumps(struct engine *e) {
         }
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump stats */
         engine_print_stats(e);
@@ -3134,7 +3162,7 @@ void engine_check_for_dumps(struct engine *e) {
           e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump snapshot */
 #ifdef WITH_LOGGER
@@ -3157,7 +3185,7 @@ void engine_check_for_dumps(struct engine *e) {
         }
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump snapshot */
 #ifdef WITH_LOGGER
@@ -3174,7 +3202,7 @@ void engine_check_for_dumps(struct engine *e) {
           e->time = e->ti_next_stats * e->time_base + e->time_begin;
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
 
         /* Dump stats */
         engine_print_stats(e);
@@ -3197,7 +3225,7 @@ void engine_check_for_dumps(struct engine *e) {
       }
 
       /* Drift everyone */
-      engine_drift_all(e);
+      engine_drift_all(e, /*drift_mpole=*/0);
 
       /* Dump... */
 #ifdef WITH_LOGGER
@@ -3223,7 +3251,7 @@ void engine_check_for_dumps(struct engine *e) {
       }
 
       /* Drift everyone */
-      engine_drift_all(e);
+      engine_drift_all(e, /*drift_mpole=*/0);
 
       /* Dump */
       engine_print_stats(e);
@@ -3251,7 +3279,7 @@ void engine_check_for_dumps(struct engine *e) {
         }
 
         /* Drift everyone */
-        engine_drift_all(e);
+        engine_drift_all(e, /*drift_mpole=*/0);
       }
 
       velociraptor_init(e);
@@ -3320,7 +3348,7 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       restart_remove_previous(e->restart_file);
 
       /* Drift all particles first (may have just been done). */
-      if (!drifted_all) engine_drift_all(e);
+      if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
       restart_write(e, e->restart_file);
 
       if (e->verbose)
@@ -3385,160 +3413,6 @@ void engine_unskip(struct engine *e) {
 #ifdef WITH_PROFILER
   ProfilerStop();
 #endif  // WITH_PROFILER
-
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-}
-
-/**
- * @brief Mapper function to drift *all* particle types and multipoles forward
- * in time.
- *
- * @param map_data An array of #cell%s.
- * @param num_elements Chunk size.
- * @param extra_data Pointer to an #engine.
- */
-void engine_do_drift_all_mapper(void *map_data, int num_elements,
-                                void *extra_data) {
-
-  const struct engine *e = (const struct engine *)extra_data;
-  const int restarting = e->restarting;
-  struct space *s = e->s;
-  struct cell *cells_top;
-  int *local_cells_with_tasks_top;
-
-  if (restarting) {
-
-    /* When restarting, we loop over all top-level cells */
-    cells_top = (struct cell *)map_data;
-    local_cells_with_tasks_top = NULL;
-
-  } else {
-
-    /* In any other case, we use th list of local cells with tasks */
-    cells_top = s->cells_top;
-    local_cells_with_tasks_top = (int *)map_data;
-  }
-
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    struct cell *c;
-
-    /* When restarting, the list of local cells with tasks does not
-       yet exist. We use the raw list of top-level cells instead */
-    if (restarting)
-      c = &cells_top[ind];
-    else
-      c = &cells_top[local_cells_with_tasks_top[ind]];
-
-    if (c->nodeID == e->nodeID) {
-
-      /* Drift all the particles */
-      cell_drift_part(c, e, 1);
-
-      /* Drift all the g-particles */
-      cell_drift_gpart(c, e, 1);
-    }
-
-    /* Drift the multipoles */
-    if (e->policy & engine_policy_self_gravity) {
-      cell_drift_all_multipoles(c, e);
-    }
-  }
-}
-
-/**
- * @brief Drift *all* particles and multipoles at all levels
- * forward to the current time.
- *
- * @param e The #engine.
- */
-void engine_drift_all(struct engine *e) {
-
-  const ticks tic = getticks();
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (e->nodeID == 0) {
-    if (e->policy & engine_policy_cosmology)
-      message("Drifting all to a=%e",
-              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
-    else
-      message("Drifting all to t=%e",
-              e->ti_current * e->time_base + e->time_begin);
-  }
-#endif
-
-  if (!e->restarting) {
-
-    /* Normal case: We have a list of local cells with tasks to play with */
-    threadpool_map(&e->threadpool, engine_do_drift_all_mapper,
-                   e->s->local_cells_with_tasks_top,
-                   e->s->nr_local_cells_with_tasks, sizeof(int), 0, e);
-  } else {
-
-    /* When restarting, the list of local cells with tasks does not yet
-       exist. We use the raw list of top-level cells instead */
-    threadpool_map(&e->threadpool, engine_do_drift_all_mapper, e->s->cells_top,
-                   e->s->nr_cells, sizeof(struct cell), 0, e);
-  }
-
-  /* Synchronize particle positions */
-  space_synchronize_particle_positions(e->s);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all cells have been drifted to the current time. */
-  space_check_drift_point(e->s, e->ti_current,
-                          e->policy & engine_policy_self_gravity);
-  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
-                    e->s->nr_gparts, e->s->nr_sparts, e->verbose);
-#endif
-
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-}
-
-/**
- * @brief Mapper function to drift *all* top-level multipoles forward in
- * time.
- *
- * @param map_data An array of #cell%s.
- * @param num_elements Chunk size.
- * @param extra_data Pointer to an #engine.
- */
-void engine_do_drift_top_multipoles_mapper(void *map_data, int num_elements,
-                                           void *extra_data) {
-
-  struct engine *e = (struct engine *)extra_data;
-  struct cell *cells = (struct cell *)map_data;
-
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &cells[ind];
-    if (c != NULL) {
-
-      /* Drift the multipole at this level only */
-      if (c->grav.ti_old_multipole != e->ti_current) cell_drift_multipole(c, e);
-    }
-  }
-}
-
-/**
- * @brief Drift *all* top-level multipoles forward to the current time.
- *
- * @param e The #engine.
- */
-void engine_drift_top_multipoles(struct engine *e) {
-
-  const ticks tic = getticks();
-
-  threadpool_map(&e->threadpool, engine_do_drift_top_multipoles_mapper,
-                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 0, e);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all cells have been drifted to the current time. */
-  space_check_top_multipoles_drift_point(e->s, e->ti_current);
-#endif
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3620,13 +3494,20 @@ void engine_makeproxies(struct engine *e) {
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
   const double theta_crit2 = e->gravity_properties->theta_crit2;
-  const double max_distance = e->mesh->r_cut_max;
+  const double max_mesh_dist = e->mesh->r_cut_max;
+  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
-  /* Maximal distance between CoMs and any particle in the cell */
-  const double r_max2 = cell_width[0] * cell_width[0] +
-                        cell_width[1] * cell_width[1] +
-                        cell_width[2] * cell_width[2];
-  const double r_max = sqrt(r_max2);
+  /* Distance between centre of the cell and corners */
+  const double r_diag2 = cell_width[0] * cell_width[0] +
+                         cell_width[1] * cell_width[1] +
+                         cell_width[2] * cell_width[2];
+  const double r_diag = 0.5 * sqrt(r_diag2);
+
+  /* Maximal distance from a shifted CoM to centre of cell */
+  const double delta_CoM = engine_max_proxy_centre_frac * r_diag;
+
+  /* Maximal distance from shifted CoM to any corner */
+  const double r_max = r_diag + 2. * delta_CoM;
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
@@ -3636,20 +3517,20 @@ void engine_makeproxies(struct engine *e) {
   e->nr_proxies = 0;
 
   /* Compute how many cells away we need to walk */
-  int delta = 1; /*hydro case */
+  int delta_cells = 1; /*hydro case */
 
   /* Gravity needs to take the opening angle into account */
   if (with_gravity) {
     const double distance = 2. * r_max * theta_crit_inv;
-    delta = (int)(distance / cells[0].dmin) + 1;
+    delta_cells = (int)(distance / cells[0].dmin) + 1;
   }
 
   /* Turn this into upper and lower bounds for loops */
-  int delta_m = delta;
-  int delta_p = delta;
+  int delta_m = delta_cells;
+  int delta_p = delta_cells;
 
   /* Special case where every cell is in range of every other one */
-  if (delta >= cdim[0] / 2) {
+  if (delta_cells >= cdim[0] / 2) {
     if (cdim[0] % 2 == 0) {
       delta_m = cdim[0] / 2;
       delta_p = cdim[0] / 2 - 1;
@@ -3664,46 +3545,35 @@ void engine_makeproxies(struct engine *e) {
     message(
         "Looking for proxies up to %d top-level cells away (delta_m=%d "
         "delta_p=%d)",
-        delta, delta_m, delta_p);
+        delta_cells, delta_m, delta_p);
 
   /* Loop over each cell in the space. */
-  int ind[3];
-  for (ind[0] = 0; ind[0] < cdim[0]; ind[0]++) {
-    for (ind[1] = 0; ind[1] < cdim[1]; ind[1]++) {
-      for (ind[2] = 0; ind[2] < cdim[2]; ind[2]++) {
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
 
         /* Get the cell ID. */
-        const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
+        const int cid = cell_getid(cdim, i, j, k);
 
-        /* and it's location */
-        const double loc_i[3] = {cells[cid].loc[0], cells[cid].loc[1],
-                                 cells[cid].loc[2]};
-
-        /* Loop over all its neighbours (periodic). */
-        for (int i = -delta_m; i <= delta_p; i++) {
-          int ii = ind[0] + i;
-          if (ii >= cdim[0])
-            ii -= cdim[0];
-          else if (ii < 0)
-            ii += cdim[0];
-          for (int j = -delta_m; j <= delta_p; j++) {
-            int jj = ind[1] + j;
-            if (jj >= cdim[1])
-              jj -= cdim[1];
-            else if (jj < 0)
-              jj += cdim[1];
-            for (int k = -delta_m; k <= delta_p; k++) {
-              int kk = ind[2] + k;
-              if (kk >= cdim[2])
-                kk -= cdim[2];
-              else if (kk < 0)
-                kk += cdim[2];
+        /* Loop over all its neighbours neighbours in range. */
+        for (int ii = -delta_m; ii <= delta_p; ii++) {
+          int iii = i + ii;
+          if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+          iii = (iii + cdim[0]) % cdim[0];
+          for (int jj = -delta_m; jj <= delta_p; jj++) {
+            int jjj = j + jj;
+            if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+            jjj = (jjj + cdim[1]) % cdim[1];
+            for (int kk = -delta_m; kk <= delta_p; kk++) {
+              int kkk = k + kk;
+              if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+              kkk = (kkk + cdim[2]) % cdim[2];
 
               /* Get the cell ID. */
-              const int cjd = cell_getid(cdim, ii, jj, kk);
+              const int cjd = cell_getid(cdim, iii, jjj, kkk);
 
-              /* Early abort (same cell) */
-              if (cid == cjd) continue;
+              /* Early abort  */
+              if (cid >= cjd) continue;
 
               /* Early abort (both same node) */
               if (cells[cid].nodeID == nodeID && cells[cjd].nodeID == nodeID)
@@ -3723,15 +3593,12 @@ void engine_makeproxies(struct engine *e) {
 
                 /* This is super-ugly but checks for direct neighbours */
                 /* with periodic BC */
-                if (((abs(ind[0] - ii) <= 1 ||
-                      abs(ind[0] - ii - cdim[0]) <= 1 ||
-                      abs(ind[0] - ii + cdim[0]) <= 1) &&
-                     (abs(ind[1] - jj) <= 1 ||
-                      abs(ind[1] - jj - cdim[1]) <= 1 ||
-                      abs(ind[1] - jj + cdim[1]) <= 1) &&
-                     (abs(ind[2] - kk) <= 1 ||
-                      abs(ind[2] - kk - cdim[2]) <= 1 ||
-                      abs(ind[2] - kk + cdim[2]) <= 1)))
+                if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
+                      abs(i - iii + cdim[0]) <= 1) &&
+                     (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
+                      abs(j - jjj + cdim[1]) <= 1) &&
+                     (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
+                      abs(k - kkk + cdim[2]) <= 1)))
                   proxy_type |= (int)proxy_cell_type_hydro;
               }
 
@@ -3745,44 +3612,28 @@ void engine_makeproxies(struct engine *e) {
                    for an M2L interaction and hence require a proxy as this pair
                    of cells cannot rely on just an M2L calculation. */
 
-                const double loc_j[3] = {cells[cjd].loc[0], cells[cjd].loc[1],
-                                         cells[cjd].loc[2]};
+                /* Minimal distance between any two points in the cells */
+                const double min_dist_centres2 = cell_min_dist2_same_size(
+                    &cells[cid], &cells[cjd], periodic, dim);
 
-                /* Start with the distance between the cell centres. */
-                double dx = loc_i[0] - loc_j[0];
-                double dy = loc_i[1] - loc_j[1];
-                double dz = loc_i[2] - loc_j[2];
-
-                /* Apply BC */
-                if (periodic) {
-                  dx = nearest(dx, dim[0]);
-                  dy = nearest(dy, dim[1]);
-                  dz = nearest(dz, dim[2]);
-                }
-
-                /* Add to it for the case where the future CoMs are in the
-                 * corners */
-                dx += cell_width[0];
-                dy += cell_width[1];
-                dz += cell_width[2];
-
-                /* This is a crazy upper-bound but the best we can do */
-                const double r2 = dx * dx + dy * dy + dz * dz;
-
-                /* Minimal distance between any pair of particles */
-                const double min_radius = sqrt(r2) - 2. * r_max;
+                /* Let's now assume the CoMs will shift a bit */
+                const double min_dist_CoM =
+                    sqrt(min_dist_centres2) - 2. * delta_CoM;
+                const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
 
                 /* Are we beyond the distance where the truncated forces are 0
                  * but not too far such that M2L can be used? */
                 if (periodic) {
 
-                  if ((min_radius < max_distance) &&
-                      (!gravity_M2L_accept(r_max, r_max, theta_crit2, r2)))
+                  if ((min_dist_CoM2 < max_mesh_dist2) &&
+                      (!gravity_M2L_accept(r_max, r_max, theta_crit2,
+                                           min_dist_CoM2)))
                     proxy_type |= (int)proxy_cell_type_gravity;
 
                 } else {
 
-                  if (!gravity_M2L_accept(r_max, r_max, theta_crit2, r2))
+                  if (!gravity_M2L_accept(r_max, r_max, theta_crit2,
+                                          min_dist_CoM2))
                     proxy_type |= (int)proxy_cell_type_gravity;
                 }
               }
@@ -3794,8 +3645,8 @@ void engine_makeproxies(struct engine *e) {
               if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
 
                 /* Do we already have a relationship with this node? */
-                int pid = e->proxy_ind[cells[cjd].nodeID];
-                if (pid < 0) {
+                int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+                if (proxy_id < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
 
@@ -3805,24 +3656,31 @@ void engine_makeproxies(struct engine *e) {
 
                   /* Store the information */
                   e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
-                  pid = e->nr_proxies;
+                  proxy_id = e->nr_proxies;
                   e->nr_proxies += 1;
+
+                  /* Check the maximal proxy limit */
+                  if ((size_t)proxy_id > 8 * sizeof(long long))
+                    error(
+                        "Created more than %zd proxies. cell.mpi.sendto will "
+                        "overflow.",
+                        8 * sizeof(long long));
                 }
 
                 /* Add the cell to the proxy */
-                proxy_addcell_in(&proxies[pid], &cells[cjd], proxy_type);
-                proxy_addcell_out(&proxies[pid], &cells[cid], proxy_type);
+                proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
+                proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
 
                 /* Store info about where to send the cell */
-                cells[cid].mpi.sendto |= (1ULL << pid);
+                cells[cid].mpi.sendto |= (1ULL << proxy_id);
               }
 
               /* Same for the symmetric case? */
               if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
 
                 /* Do we already have a relationship with this node? */
-                int pid = e->proxy_ind[cells[cid].nodeID];
-                if (pid < 0) {
+                int proxy_id = e->proxy_ind[cells[cid].nodeID];
+                if (proxy_id < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
 
@@ -3832,16 +3690,23 @@ void engine_makeproxies(struct engine *e) {
 
                   /* Store the information */
                   e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
-                  pid = e->nr_proxies;
+                  proxy_id = e->nr_proxies;
                   e->nr_proxies += 1;
+
+                  /* Check the maximal proxy limit */
+                  if ((size_t)proxy_id > 8 * sizeof(long long))
+                    error(
+                        "Created more than %zd proxies. cell.mpi.sendto will "
+                        "overflow.",
+                        8 * sizeof(long long));
                 }
 
                 /* Add the cell to the proxy */
-                proxy_addcell_in(&proxies[pid], &cells[cid], proxy_type);
-                proxy_addcell_out(&proxies[pid], &cells[cjd], proxy_type);
+                proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
+                proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
 
                 /* Store info about where to send the cell */
-                cells[cjd].mpi.sendto |= (1ULL << pid);
+                cells[cjd].mpi.sendto |= (1ULL << proxy_id);
               }
             }
           }
@@ -3868,6 +3733,8 @@ void engine_makeproxies(struct engine *e) {
 void engine_split(struct engine *e, struct partition *initial_partition) {
 
 #ifdef WITH_MPI
+  const ticks tic = getticks();
+
   struct space *s = e->s;
 
   /* Do the initial partition of the cells. */
@@ -3948,6 +3815,10 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
                     s->nr_sparts, e->verbose);
 #endif
 
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -3967,8 +3838,7 @@ void engine_dump_snapshot(struct engine *e) {
   /* Check that all cells have been drifted to the current time.
    * That can include cells that have not
    * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_current,
-                          e->policy & engine_policy_self_gravity);
+  space_check_drift_point(e->s, e->ti_current, /* check_mpole=*/0);
 
   /* Be verbose about this */
   if (e->nodeID == 0) {
@@ -5121,6 +4991,8 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
  */
 void engine_recompute_displacement_constraint(struct engine *e) {
 
+  const ticks tic = getticks();
+
   /* Get the cosmological information */
   const struct cosmology *cosmo = e->cosmology;
   const float Om = cosmo->Omega_m;
@@ -5231,6 +5103,10 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
   if (e->verbose)
     message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
