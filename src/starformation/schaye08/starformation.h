@@ -79,12 +79,32 @@ static int starformation_potential_to_become_star(
   /* Calculate the internal energy using the density and entropy */
   /* Ask Matthieu about p->entropy vs xp->entropy_full */
   const double internal_energy = gas_internal_energy_from_entropy(
-  p->rho, p->entropy)
+  p->rho, p->entropy);
 
   /* Calculate the temperature over mu of the gas */
+  /* Temporary part of the code!! */
   const double T_over_mu = (starform->gamma - 1)*phys_const->const_proton_mass
-  /phys_const->const_boltzmann_k;
+  /phys_const->const_boltzmann_k * internal_energy;
 
+  /* Calculate the abudance of Hydrogen and Helium */
+  /* Temporary part of the code!! */
+  const double X = ;
+  const double Y = ; 
+
+  /* Calculate the mean molecular mass using a simple model */
+  /* Temporary part of the code!! */
+  double mu = 1/(X + Y/4.f + (1.f -X - Y)/16. ) ; 
+
+  /* Check if it goes beyond the Hydrogen Ionization */
+  /* Temporary part of the code!! */
+  double tempp = T_over_mu * mu;
+
+  /* If the temperature is beyond hydrogen ionization */
+  /* Temporary part of the code!! */
+  if (tempp>1e4) {
+    mu = 1.f / (3.f/2.f * X + Y / 4.f + 1.f/2.f);
+    tempp = T_over_mu * mu; 
+  }
 
   
   /* Deside whether we should form stars or not */
@@ -100,8 +120,9 @@ static int starformation_potential_to_become_star(
  *
  * */
 static void starformation_convert_to_gas( 
+    const struct star_formation* starform
     ){
-
+  
 }
 
 /* 
