@@ -98,6 +98,7 @@ void print_help_message(void) {
   printf("  %2s %14s %s\n", "-r", "", "Continue using restart files.");
   printf("  %2s %14s %s\n", "-s", "", "Run with hydrodynamics.");
   printf("  %2s %14s %s\n", "-S", "", "Run with stars.");
+  printf("  %2s %14s %s\n", "-F", "", "Run with star formation.");
   printf("  %2s %14s %s\n", "-b", "", "Run with stars feedback.");
   printf("  %2s %14s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
@@ -189,11 +190,11 @@ int main(int argc, char *argv[]) {
   int restart = 0;
   int with_cosmology = 0;
   int with_external_gravity = 0;
-  int with_sourceterms = 0;
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_stars = 0;
+  int with_star_formation = 0;
   int with_feedback = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
@@ -250,7 +251,7 @@ int main(int argc, char *argv[]) {
         }
         break;
       case 'F':
-        with_sourceterms = 1;
+        with_star_formation = 1;
         break;
       case 'g':
         with_external_gravity = 1;
@@ -394,6 +395,14 @@ int main(int argc, char *argv[]) {
     if (myrank == 0)
       printf(
           "Error: Cannot process feedback without stars, -S must be "
+          "chosen.\n");
+    if (myrank == 0) print_help_message();
+    return 1;
+  }
+  if (!with_stars && with_star_formation) {
+    if (myrank == 0)
+      printf(
+          "Error: Cannot process star formation without stars, -S must be "
           "chosen.\n");
     if (myrank == 0) print_help_message();
     return 1;
@@ -916,10 +925,6 @@ int main(int argc, char *argv[]) {
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
 
-    /* Initialise the feedback properties */
-    if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
-    if (with_sourceterms && myrank == 0) sourceterms_print(&sourceterms);
-
     /* Construct the engine policy */
     int engine_policies = ENGINE_POLICY | engine_policy_steal;
     if (with_drift_all) engine_policies |= engine_policy_drift_all;
@@ -931,14 +936,11 @@ int main(int argc, char *argv[]) {
       engine_policies |= engine_policy_external_gravity;
     if (with_cosmology) engine_policies |= engine_policy_cosmology;
     if (with_cooling) engine_policies |= engine_policy_cooling;
-    if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
     if (with_stars) engine_policies |= engine_policy_stars;
+    if (with_star_formation) engine_policies |= engine_policy_star_formation;
     if (with_feedback) engine_policies |= engine_policy_feedback;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
-
-    // MATTHIEU: Temporary star formation law
-    engine_policies |= engine_policy_star_formation;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
