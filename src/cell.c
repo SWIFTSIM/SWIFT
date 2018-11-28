@@ -3893,11 +3893,26 @@ void cell_recursively_shift_sparts(struct cell *c,
     c->stars.parts++;
 }
 
+/**
+ * @breif "Add" a #spart in a given #cell.
+ *
+ * This function will a a #spart at the start of the current cell's array by
+ * shifting all the #spart in the top-level cell by one position. All the
+ * pointers and cell counts are updated accordingly.
+ *
+ * @param e The #engine.
+ * @param c The leaf-cell in which to add the #spart.
+ *
+ * @return A pointer to the newly added #spart. The spart has a been zeroed and
+ * given a position within the cell as well as set to the minimal active time
+ * bin.
+ */
 struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
   if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
+  if (c->split) error("Addition of spart performed above the leaf level");
 
   /* Progeny number at each level */
   int progeny[space_cell_maxdepth];
@@ -4071,6 +4086,9 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
  * @brief "Remove" a gas particle from the calculation and convert its gpart
  * friend to a dark matter particle.
  *
+ * Note that the #part is not destroyed. The pointer is still valid
+ * after this call and the properties of the #part are not altered
+ * apart from the time-bin and #gpart pointer.
  * The particle is inhibited and will officially be removed at the next rebuild.
  *
  * @param e The #engine running on this node.
@@ -4078,7 +4096,8 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
  * @param p The #part to remove.
  * @param xp The extended data of the particle to remove.
  *
- * @return Pointer to the gpart the part has become.
+ * @return Pointer to the #gpart the #part has become. It carries the
+ * ID of the #part and has a dark matter type.
  */
 struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp) {
@@ -4114,13 +4133,17 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
  * @brief "Remove" a spart particle from the calculation and convert its gpart
  * friend to a dark matter particle.
  *
+ * Note that the #spart is not destroyed. The pointer is still valid
+ * after this call and the properties of the #spart are not altered
+ * apart from the time-bin and #gpart pointer.
  * The particle is inhibited and will officially be removed at the next rebuild.
  *
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
  * @param sp The #spart to remove.
  *
- * @return Pointer to the gpart the spart has become.
+ * @return Pointer to the #gpart the #spart has become. It carries the
+ * ID of the #spart and has a dark matter type.
  */
 struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
                                           struct cell *c, struct spart *sp) {
@@ -4150,6 +4173,74 @@ struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
 #endif
 
   return gp;
+}
+
+/**
+ * @param "Remove" a #part from a #cell and replace it with a #spart
+ * connected to the same #gpart.
+ *
+ * Note that the #part is not destroyed. The pointer is still valid
+ * after this call and the properties of the #part are not altered
+ * apart from the time-bin and #gpart pointer.
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param e The #engine.
+ * @param c The #cell from which to remove the #part.
+ * @param p The #part to remove (must be inside c).
+ * @param xp The extended data of the #part.
+ *
+ * @return A fresh #spart with the same ID, position, velocity and
+ * time-bin as the original #part.
+ */
+struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
+                                         struct part *p, struct xpart *xp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  if (p->gpart == NULL)
+    error("Trying to convert part without gpart friend to star!");
+
+  /* Create a fresh (empty) spart */
+  struct spart *sp = cell_add_spart(e, c);
+
+  /* Did we run out of free spart slots? */
+  if (sp == NULL) return NULL;
+
+  /* Destroy the gas particle and get it's gpart friend */
+  struct gpart *gp = cell_convert_part_to_gpart(e, c, p, xp);
+
+  /* Assign the ID back */
+  sp->id = gp->id_or_neg_offset;
+  gp->type = swift_type_stars;
+
+  /* Re-link things */
+  sp->gpart = gp;
+  gp->id_or_neg_offset = -(sp - e->s->sparts);
+
+  /* Synchronize clocks */
+  gp->time_bin = sp->time_bin;
+
+  /* Synchronize masses, positions and velocities */
+  sp->mass = gp->mass;
+  sp->x[0] = gp->x[0];
+  sp->x[1] = gp->x[1];
+  sp->x[2] = gp->x[2];
+  sp->v[0] = gp->v_full[0];
+  sp->v[1] = gp->v_full[1];
+  sp->v[2] = gp->v_full[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  sp->ti_kick = gp->ti_kick;
+  gp->ti_drift = sp->ti_drift;
+#endif
+
+  /* Set a smoothing length */
+  sp->h = max(c->stars.h_max, c->hydro.h_max);
+
+  /* Here comes the Sun! */
+  return sp;
 }
 
 /**

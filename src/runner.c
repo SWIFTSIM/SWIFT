@@ -488,42 +488,10 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         if (rho > 1.7e7 && e->step > 2) {
           message("Removing particle id=%lld rho=%e", p->id, rho);
 
-          /* Create a fresh (empty) spart */
-          struct spart *sp = cell_add_spart(e, c);
+          struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
 
-          /* Did we run out of free spart slots? */
+          /* Did we run out of fresh particles? */
           if (sp == NULL) continue;
-
-          /* Destroy the gas particle and get it's gpart friend */
-          struct gpart *gp = cell_convert_part_to_gpart(e, c, p, xp);
-
-          /* Assign the ID back */
-          sp->id = gp->id_or_neg_offset;
-          gp->type = swift_type_stars;
-
-          /* Re-link things */
-          sp->gpart = gp;
-          gp->id_or_neg_offset = -(sp - e->s->sparts);
-
-          /* Synchronize clocks */
-          gp->time_bin = sp->time_bin;
-
-          /* Synchronize masses, positions and velocities */
-          sp->mass = gp->mass;
-          sp->x[0] = gp->x[0];
-          sp->x[1] = gp->x[1];
-          sp->x[2] = gp->x[2];
-          sp->v[0] = gp->v_full[0];
-          sp->v[1] = gp->v_full[1];
-          sp->v[2] = gp->v_full[2];
-
-#ifdef SWIFT_DEBUG_CHECKS
-          sp->ti_kick = gp->ti_kick;
-          gp->ti_drift = sp->ti_drift;
-#endif
-
-          /* Set a smoothing length */
-          sp->h = max(c->stars.h_max, c->hydro.h_max);
 
           /* Set everything to a valid state */
           stars_init_spart(sp);
