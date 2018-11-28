@@ -46,7 +46,6 @@
 #include "potential.h"
 #include "runner.h"
 #include "scheduler.h"
-#include "sourceterms_struct.h"
 #include "space.h"
 #include "task.h"
 #include "units.h"
@@ -359,9 +358,6 @@ struct engine {
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
 
-  /* Properties of source terms */
-  struct sourceterms *sourceterms;
-
   /* The (parsed) parameter file */
   struct swift_params *parameter_file;
 
@@ -416,8 +412,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
-                 const struct chemistry_global_data *chemistry,
-                 struct sourceterms *sourceterms);
+                 const struct chemistry_global_data *chemistry);
 void engine_config(int restart, struct engine *e, struct swift_params *params,
                    int nr_nodes, int nodeID, int nr_threads, int with_aff,
                    int verbose, const char *restart_file);

@@ -83,7 +83,6 @@
 #include "serial_io.h"
 #include "single_io.h"
 #include "sort_part.h"
-#include "sourceterms.h"
 #include "stars_io.h"
 #include "statistics.h"
 #include "timers.h"
@@ -4015,8 +4014,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  const struct cooling_function_data *cooling_func,
-                 const struct chemistry_global_data *chemistry,
-                 struct sourceterms *sourceterms) {
+                 const struct chemistry_global_data *chemistry) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -4079,7 +4077,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->external_potential = potential;
   e->cooling_func = cooling_func;
   e->chemistry = chemistry;
-  e->sourceterms = sourceterms;
   e->parameter_file = params;
   e->cell_loc = NULL;
 #ifdef WITH_MPI
@@ -5175,7 +5172,6 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   potential_struct_dump(e->external_potential, stream);
   cooling_struct_dump(e->cooling_func, stream);
   chemistry_struct_dump(e->chemistry, stream);
-  sourceterms_struct_dump(e->sourceterms, stream);
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
@@ -5271,11 +5267,6 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
           sizeof(struct chemistry_global_data));
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
-
-  struct sourceterms *sourceterms =
-      (struct sourceterms *)malloc(sizeof(struct sourceterms));
-  sourceterms_struct_restore(sourceterms, stream);
-  e->sourceterms = sourceterms;
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));
