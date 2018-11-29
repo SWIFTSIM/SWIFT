@@ -20,8 +20,8 @@
 #define SWIFT_STARFORMATION_H
 
 /**
- * @file src/potential.h
- * @brief Branches between the different external gravitational potentials.
+ * @file src/starformation.h
+ * @brief Branches between the different star formation recipies. 
  */
 
 /* Config parameters. */
