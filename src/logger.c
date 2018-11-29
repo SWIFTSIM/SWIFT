@@ -65,27 +65,25 @@
 
 char logger_version[logger_version_size] = "0.1";
 
-const struct mask_data
-    logger_mask_data[logger_count_mask] =
-        {
-            /* Particle's position */
-            {3 * sizeof(double), 1 << logger_x, "positions"},
-            /* Particle's velocity */
-            {3 * sizeof(float), 1 << logger_v, "velocities"},
-            /* Particle's acceleration */
-            {3 * sizeof(float), 1 << logger_a, "accelerations"},
-            /* Particle's entropy */
-            {sizeof(float), 1 << logger_u, "entropy"},
-            /* Particle's smoothing length */
-            {sizeof(float), 1 << logger_h, "smoothing length"},
-            /* Particle's density */
-            {sizeof(float), 1 << logger_rho, "density"},
-            /* Particle's constants: mass (float) and ID (long long) */
-            {sizeof(float) + sizeof(long long), 1 << logger_consts, "consts"},
-            /* Simulation time stamp: integertime and double time (e.g. scale
-               factor or time) */
-            {sizeof(integertime_t) + sizeof(double), 1 << logger_timestamp,
-             "timestamp"}};
+const struct mask_data logger_mask_data[logger_count_mask] = {
+    /* Particle's position */
+    {3 * sizeof(double), 1 << logger_x, "positions"},
+    /* Particle's velocity */
+    {3 * sizeof(float), 1 << logger_v, "velocities"},
+    /* Particle's acceleration */
+    {3 * sizeof(float), 1 << logger_a, "accelerations"},
+    /* Particle's entropy */
+    {sizeof(float), 1 << logger_u, "entropy"},
+    /* Particle's smoothing length */
+    {sizeof(float), 1 << logger_h, "smoothing length"},
+    /* Particle's density */
+    {sizeof(float), 1 << logger_rho, "density"},
+    /* Particle's constants: mass (float) and ID (long long) */
+    {sizeof(float) + sizeof(long long), 1 << logger_consts, "consts"},
+    /* Simulation time stamp: integertime and double time (e.g. scale
+       factor or time) */
+    {sizeof(integertime_t) + sizeof(double), 1 << logger_timestamp,
+     "timestamp"}};
 
 /**
  * @brief Write the header of a chunk (offset + mask).
@@ -157,11 +155,11 @@ int logger_compute_chunk_size(unsigned int mask) {
 
   } else {
 
-    for(int i=0; i < logger_count_mask; i++) {
+    for (int i = 0; i < logger_count_mask; i++) {
       if (mask & logger_mask_data[i].mask) {
-	size += logger_mask_data[i].size;
+        size += logger_mask_data[i].size;
       }
-    }      
+    }
   }
 
   return size;
