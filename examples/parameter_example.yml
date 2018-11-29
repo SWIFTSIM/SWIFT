@@ -282,6 +282,10 @@ SchayeSF:
   A:              2.5e-4  # (optional) The normalization of the Kennicutt-Schmidt law
   nks:            1.4     # (optional) The power law of the Kennicutt-Schmidt law
   gamma:          1.6667  # (optional) The heat capacity ratio (gamma)
+  Schaye2004:     1       # (optional) whether to use the metallicity dependent critical star formation of Schaye (2004) (1) or not (0).
+  norm_ncrit:     .1      # (optional) Critical sf normalization to use (is not a normalization when Schaye2004=0, than it is the value.
+  Z0:             0.002   # (optional) Scale metallicity to use for the equation (not used for Schaye2004=0)
+  n_Z0:           -0.64   # (optional) Scaling of the critical density with the metallicity (not used for Schaye2004=0)
 
 # Structure finding options (requires velociraptor)
 StructureFinding:
