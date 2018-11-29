@@ -268,11 +268,15 @@ static void starformation_init_backend(
     staform->n_Z0 = parser_get_opt_param_double(
     parameter_file, "SchayeSF:n_Z0", powerlawZ_default);
   }
+  /* Conversion of number density from cgs */
+  static const float dimension_numb_den = {0, -3, 0, 0, 0};
+  static const double conversion_numb_density = 1/
+  units_general_cgs_conversion_factor(us, dimension_numb_den);
 
   /* Calculate the prefactor that is always common */
   /* !!!DONT FORGET TO DO THE CORRECT UNIT CONVERSION!!!*/
   starform->den_crit_star = starform->den_crit / pow(starform->Z0,
-  starform->n_Z0);
+  starform->n_Z0) * conversion_numb_density;
 
 
   
