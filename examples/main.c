@@ -54,11 +54,11 @@ struct profiler prof;
 
 //  Usage string.
 static const char *const swift_usage[] = {
-  "swift [options] [[--] param-file]",
-  "swift [options] param-file",
-  "swift_mpi [options] [[--] param-file]",
-  "swift_mpi [options] param-file",
-  NULL,
+    "swift [options] [[--] param-file]",
+    "swift [options] param-file",
+    "swift_mpi [options] [[--] param-file]",
+    "swift_mpi [options] param-file",
+    NULL,
 };
 
 // Function to handle multiple -P arguments.
@@ -179,7 +179,8 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
       OPT_BOOLEAN('c', "cosmology", &with_cosmology,
                   "Run with cosmological time integration.", NULL, 0, 0),
-      OPT_BOOLEAN('C', "cooling", &with_cooling, "Run with cooling", NULL, 0, 0),
+      OPT_BOOLEAN('C', "cooling", &with_cooling, "Run with cooling", NULL, 0,
+                  0),
       OPT_BOOLEAN('F', "sourceterms", &with_sourceterms, "", NULL, 0, 0),
       OPT_BOOLEAN('g', "external-gravity", &with_external_gravity,
                   "Run with an external gravitational potential.", NULL, 0, 0),
@@ -190,48 +191,56 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('s', "hydrodynamics", &with_hydro, "Run with hydrodynamics.",
                   NULL, 0, 0),
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars", NULL, 0, 0),
-      OPT_BOOLEAN('x', "velociraptor", &with_structure_finding, 
+      OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding", NULL, 0, 0),
 
       OPT_GROUP("Control options"),
       OPT_BOOLEAN('a', "affinity", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
-      OPT_BOOLEAN('d', "dry-run", &dry_run, 
-                  "Dry run. Read the parameter file, allocates memory but "
-                  "does not read the particles from ICs. Exits before the "
-                  "start of time integration. Checks the validity of "
-                  "parameters and IC files as well as memory limits.",
+      OPT_BOOLEAN('d', "dry-run", &dry_run,
+                  "Dry run. Read the parameter file, allocates memory but does "
+                  "not read the particles from ICs. Exits before the start of "
+                  "time integration. Checks the validity of parameters and IC "
+                  "files as well as memory limits.",
                   NULL, 0, 0),
-      OPT_BOOLEAN('D', "drift-all", &with_drift_all, "Always drift all "
-                  "particles even the ones far from active particles. "
-                  "This emulates Gadget-[23] and GIZMO's default behaviours.",
+      OPT_BOOLEAN('D', "drift-all", &with_drift_all,
+                  "Always drift all "
+                  "particles even the ones far from active particles. This "
+                  "emulates Gadget-[23] and GIZMO's default behaviours.",
                   NULL, 0, 0),
-      OPT_BOOLEAN('e', "fpe", &with_fp_exceptions, "Enable floating-point"
-                  "exceptions (debugging mode).", NULL, 0, 0),
-      OPT_STRING('f', "cpu-frequency", &cpufreqarg, "Overwrite the CPU "
-                 "frequency (Hz) to be used for time measurements.", NULL, 0, 0),
-      OPT_INTEGER('n', "steps", &nsteps, "Execute a fixed number of time "
+      OPT_BOOLEAN('e', "fpe", &with_fp_exceptions,
+                  "Enable floating-point exceptions (debugging mode).", NULL, 0,
+                  0),
+      OPT_STRING('f', "cpu-frequency", &cpufreqarg,
+                 "Overwrite the CPU "
+                 "frequency (Hz) to be used for time measurements.",
+                 NULL, 0, 0),
+      OPT_INTEGER('n', "steps", &nsteps,
+                  "Execute a fixed number of time "
                   "steps. When unset use the time_end parameter to stop.",
                   NULL, 0, 0),
-      OPT_STRING('o', "output-params", &output_parameters_filename, 
+      OPT_STRING('o', "output-params", &output_parameters_filename,
                  "Generate a default output parameter file.", NULL, 0, 0),
-      OPT_STRING('P', "param", &buffer, "Set parameter value, "
-                 "overwriting a value read from the parameter "
-                 "file. Can be used more than once {sec:par:value}.",
+      OPT_STRING('P', "param", &buffer,
+                 "Set parameter value, "
+                 "overwriting a value read from the parameter file. Can be "
+                 "used more than once {sec:par:value}.",
                  handle_cmdparam, (intptr_t)&cmdps, 0),
       OPT_BOOLEAN('r', "restart", &restart, "Continue using restart files.",
                   NULL, 0, 0),
-      OPT_INTEGER('t', "threads", &nr_threads, "The number of threads to "
+      OPT_INTEGER('t', "threads", &nr_threads,
+                  "The number of threads to "
                   "use on each MPI rank. Defaults to 1 if not specified.",
                   NULL, 0, 0),
       OPT_INTEGER('T', "timers", &with_verbose_timers,
-               "Print timers every time-step.", NULL, 0, 0),
-      OPT_INTEGER('v', "verbose", &verbose, "Run in verbose mode, in MPI "
-                  "mode 2 outputs from all ranks.", NULL, 0, 0),
-      OPT_INTEGER('y', "task-dumps", &dump_tasks, 
-                  "Time-step frequency at which task graphs are dumped.",
+                  "Print timers every time-step.", NULL, 0, 0),
+      OPT_INTEGER('v', "verbose", &verbose,
+                  "Run in verbose mode, in MPI mode 2 outputs from all ranks.",
                   NULL, 0, 0),
-      OPT_INTEGER('Y', "threadpool-dumps", &dump_threadpool, 
+      OPT_INTEGER('y', "task-dumps", &dump_tasks,
+                  "Time-step frequency at which task graphs are dumped.", NULL,
+                  0, 0),
+      OPT_INTEGER('Y', "threadpool-dumps", &dump_threadpool,
                   "Time-step frequency at which threadpool tasks are dumped.",
                   NULL, 0, 0),
   };
@@ -242,55 +251,57 @@ int main(int argc, char *argv[]) {
 
   /* Need a parameter file. */
   if (nargs != 1) {
-      if (myrank == 0) argparse_usage(&argparse);
-      printf("\nError: no parameter file was supplied.\n");
-      return 1;
+    if (myrank == 0) argparse_usage(&argparse);
+    printf("\nError: no parameter file was supplied.\n");
+    return 1;
   }
   param_filename = argv[0];
 
   /* Checks of options. */
-#if ! defined(HAVE_SETAFFINITY) || !defined(HAVE_LIBNUMA)
+#if !defined(HAVE_SETAFFINITY) || !defined(HAVE_LIBNUMA)
   if (with_aff) {
-      printf("Error: no NUMA support for thread affinity\n");
-      return 1;
+    printf("Error: no NUMA support for thread affinity\n");
+    return 1;
   }
 #endif
 
 #ifndef HAVE_FE_ENABLE_EXCEPT
   if (with_fp_exceptions) {
-      printf("Error: no support for floating point exceptions\n");
-      return 1;
+    printf("Error: no support for floating point exceptions\n");
+    return 1;
   }
 #endif
 
 #ifndef HAVE_VELOCIRAPTOR
   if (with_structure_finding) {
-      printf("Error: VELOCIraptor is not available\n");
-      return 1;
+    printf("Error: VELOCIraptor is not available\n");
+    return 1;
   }
 #endif
 
 #ifndef SWIFT_DEBUG_TASKS
   if (dump_tasks) {
-      printf("Error: task dumping is only possible if SWIFT was configured"
-             " with the --enable-task-debugging option.\n");
-      return 1;
+    printf(
+        "Error: task dumping is only possible if SWIFT was configured"
+        " with the --enable-task-debugging option.\n");
+    return 1;
   }
 #endif
 
 #ifndef SWIFT_DEBUG_THREADPOOL
   if (dump_threadpool) {
-      printf("Error: threadpool dumping is only possible if SWIFT was "
-             "configured with the --enable-threadpool-debugging option.\n");
-      return 1;
+    printf(
+        "Error: threadpool dumping is only possible if SWIFT was "
+        "configured with the --enable-threadpool-debugging option.\n");
+    return 1;
   }
 #endif
 
   /* The CPU frequency is a long long, so we need to parse that ourselves. */
   if (cpufreqarg != NULL) {
     if (sscanf(cpufreqarg, "%llu", &cpufreq) != 1) {
-      if (myrank == 0) printf("Error parsing CPU frequency (%s).\n",
-                              cpufreqarg);
+      if (myrank == 0)
+        printf("Error parsing CPU frequency (%s).\n", cpufreqarg);
       return 1;
     }
   }
@@ -303,28 +314,30 @@ int main(int argc, char *argv[]) {
   }
 
   if (!with_self_gravity && !with_hydro && !with_external_gravity) {
-      if (myrank == 0) {
-          argparse_usage(&argparse);
-          printf("\nError: At least one of -s, -g or -G must be chosen.\n");
-      }
-      return 1;
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      printf("\nError: At least one of -s, -g or -G must be chosen.\n");
+    }
+    return 1;
   }
   if (with_stars && !with_external_gravity && !with_self_gravity) {
-      if (myrank == 0) {
-          argparse_usage(&argparse);
-          printf("\nError: Cannot process stars without gravity, -g or -G "
-                 "must be chosen.\n");
-      }
-      return 1;
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      printf(
+          "\nError: Cannot process stars without gravity, -g or -G "
+          "must be chosen.\n");
+    }
+    return 1;
   }
 
   if (!with_stars && with_feedback) {
-      if (myrank == 0) {
-          argparse_usage(&argparse);
-          printf("\nError: Cannot process feedback without stars, -S must be "
-                 "chosen.\n");
-      }
-      return 1;
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      printf(
+          "\nError: Cannot process feedback without stars, -S must be "
+          "chosen.\n");
+    }
+    return 1;
   }
 
 /* Let's pin the main thread, now we know if affinity will be used. */
@@ -421,7 +434,8 @@ int main(int argc, char *argv[]) {
       message(
           "Overwriting values read from the YAML file with command-line "
           "values.");
-      for (int k = 0; k < cmdps.nparam; k++) parser_set_param(params, cmdps.param[k]);
+      for (int k = 0; k < cmdps.nparam; k++)
+        parser_set_param(params, cmdps.param[k]);
     }
   }
 #ifdef WITH_MPI
