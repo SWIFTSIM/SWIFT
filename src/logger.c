@@ -157,40 +157,11 @@ int logger_compute_chunk_size(unsigned int mask) {
 
   } else {
 
-    /* Particle position as three doubles. */
-    if (mask & logger_mask_data[logger_x].mask) {
-      size += logger_mask_data[logger_x].size;
-    }
-
-    /* Particle velocity as three floats. */
-    if (mask & logger_mask_data[logger_v].mask) {
-      size += logger_mask_data[logger_v].size;
-    }
-
-    /* Particle accelleration as three floats. */
-    if (mask & logger_mask_data[logger_a].mask) {
-      size += logger_mask_data[logger_a].size;
-    }
-
-    /* Particle internal energy as a single float. */
-    if (mask & logger_mask_data[logger_u].mask) {
-      size += logger_mask_data[logger_u].size;
-    }
-
-    /* Particle smoothing length as a single float. */
-    if (mask & logger_mask_data[logger_h].mask) {
-      size += logger_mask_data[logger_h].size;
-    }
-
-    /* Particle density as a single float. */
-    if (mask & logger_mask_data[logger_rho].mask) {
-      size += logger_mask_data[logger_rho].size;
-    }
-
-    /* Particle constants, which is a bit more complicated. */
-    if (mask & logger_mask_data[logger_consts].mask) {
-      size += logger_mask_data[logger_consts].size;
-    }
+    for(int i=0; i < logger_count_mask; i++) {
+      if (mask & logger_mask_data[i].mask) {
+	size += logger_mask_data[i].size;
+      }
+    }      
   }
 
   return size;
@@ -440,26 +411,6 @@ void logger_ensure_size(struct logger *log, size_t total_nr_parts,
 }
 
 /**
- * @brief Compute the maximal size of a chunk.
- *
- * @param log The #logger.
- */
-int logger_compute_max_chunk_size(const struct logger *log) {
-
-  int *output = malloc(sizeof(int) * logger_count_mask);
-  if (output == NULL) error("Unable to allocate memory");
-
-  int max_size = logger_offset_size + logger_mask_size;
-  /* Loop over all fields except timestamp */
-  for (int i = 0; i < logger_count_mask - 1; i++) {
-    max_size += logger_mask_data[i].size;
-  }
-
-  free(output);
-  return max_size;
-}
-
-/**
  * @brief intialize the logger structure
  *
  * @param log The #logger
@@ -483,8 +434,14 @@ void logger_init(struct logger *log, struct swift_params *params) {
   strcpy(logger_name_file, log->base_name);
   strcat(logger_name_file, ".dump");
 
-  /* Define some constants */
-  log->max_chunk_size = logger_compute_max_chunk_size(log);
+  /* Compute max size for a particle chunk */
+  int max_size = logger_offset_size + logger_mask_size;
+
+  /* Loop over all fields except timestamp */
+  for (int i = 0; i < logger_count_mask - 1; i++) {
+    max_size += logger_mask_data[i].size;
+  }
+  log->max_chunk_size = max_size;
 
   /* init dump */
   dump_init(&log->dump, logger_name_file, buffer_size);
