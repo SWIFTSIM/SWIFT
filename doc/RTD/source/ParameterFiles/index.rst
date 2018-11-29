@@ -24,7 +24,7 @@ Comments can be inserted anywhere and start with a hash:
 
 .. code:: YAML
 
-   # Descrption of the physics
+   # Description of the physics
    viscosity_alpha:     2.0
    dt_max:              1.5     # seconds
 
@@ -113,7 +113,7 @@ schemes that make use of the unit of electric current. There is also
 no incentive to use anything else than Kelvin but that makes the whole
 system consistent with any possible unit system.
 
-If one is interested in using the more humourous `FFF unit
+If one is interested in using the more humorous `FFF unit
 system <https://en.wikipedia.org/wiki/FFF_system>`_ one would use
 
 .. code:: YAML
@@ -133,8 +133,8 @@ Cosmology
 ---------
 
 When running a cosmological simulation, the section ``Cosmology`` sets the values of the
-cosmological model. The epanded :math:`\Lambda\rm{CDM}` parameters governing the
-background evolution of the Univese need to be specified here. These are:
+cosmological model. The expanded :math:`\Lambda\rm{CDM}` parameters governing the
+background evolution of the Universe need to be specified here. These are:
 
 * The reduced Hubble constant: :math:`h`: ``h``,
 * The matter density parameter :math:`\Omega_m`: ``Omega_m``,
@@ -146,7 +146,7 @@ The last parameter can be omitted and will default to :math:`\Omega_r = 0`. Note
 that SWIFT will verify on start-up that the matter content of the initial conditions
 matches the cosmology specified in this section.
 
-This section als specifies the start and end of the simulation expressed in
+This section also specifies the start and end of the simulation expressed in
 terms of scale-factors. The two parameters are:
 
 * Initial scale-factor: ``a_begin``,
@@ -157,7 +157,7 @@ state of dark energy :math:`w(a)`. We use the evolution law :math:`w(a) =
 w_0 + w_a (1 - a)`. The two parameters in the YAML file are:
 
 * The :math:`z=0` dark energy equation of state parameter :math:`w_0`: ``w_0``
-* The dark energy equation of state evolutio parameter :math:`w_a`: ``w_a``
+* The dark energy equation of state evolution parameter :math:`w_a`: ``w_a``
 
 If unspecified these parameters default to the default
 :math:`\Lambda\rm{CDM}` values of :math:`w_0 = -1` and :math:`w_a = 0`.
@@ -179,13 +179,13 @@ use the following parameters:
      w_0:            -1.0          # (Optional)
      w_a:            0.            # (Optional)
 
-When running a non-cosmological simulation (i.e. without the ``-c`` runtime
+When running a non-cosmological simulation (i.e. without the ``-c`` run time
 flag) this section of the YAML file is entirely ignored.
      
 Gravity
 -------
 
-The behaviour of the self-gravity solver can be modifed by the parameters
+The behaviour of the self-gravity solver can be modified by the parameters
 provided in the ``Gravity`` section. The theory document puts these parameters into the
 context of the equations being solved. We give a brief overview here.
 
@@ -206,7 +206,7 @@ The last tree-related parameter is
 
 * The tree rebuild frequency: ``rebuild_frequency``.
 
-Thqe tree rebuild frequency is an optional parameter defaulting to
+The tree rebuild frequency is an optional parameter defaulting to
 :math:`0.01`. It is used to trigger the re-construction of the tree every time a
 fraction of the particles have been integrated (kicked) forward in time.
 
@@ -219,12 +219,12 @@ Particle-Mesh part of the calculation. The last three are optional:
 * The scale above which the short-range forces are assumed to be 0 (in units of
   the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
   cut,max}`: ``r_cut_max`` (default: ``4.5``),
-* The scale bewlo which the short-range forces are assumed to be exactly Newtonian (in units of
+* The scale below which the short-range forces are assumed to be exactly Newtonian (in units of
   the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
   cut,min}`: ``r_cut_min`` (default: ``0.1``),
   
 For most runs, the default values can be used. Only the number of cells along
-each axis needs to be sepcified. The remaining three values are best described
+each axis needs to be specified. The remaining three values are best described
 in the context of the full set of equations in the theory documents.
   
 As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
@@ -308,7 +308,7 @@ Whilst for a cosmological run, one would need:
 Initial Conditions
 ------------------
 
-This ``IntialConditions`` section of the parameter file contains all the options related to
+This ``InitialConditions`` section of the parameter file contains all the options related to
 the initial conditions. The main two parameters are
 
 * The name of the initial conditions file: ``file_name``,
@@ -410,15 +410,15 @@ this mechanism is driven by the options in the ``Restarts`` section of the YAML
 parameter file. All the parameters are optional but default to values that
 ensure a reasonable behaviour. 
 
-* Wether or not to enable the dump of restart files: ``enable`` (default:
+* Whether or not to enable the dump of restart files: ``enable`` (default:
   ``1``).
 
 This parameter acts a master-switch for the check-pointing capabilities. All the
 other options require the ``enable`` parameter to be set to ``1``.
   
-* Wether or not to save a copy of the previous set of check-pointing files:
+* Whether or not to save a copy of the previous set of check-pointing files:
   ``save`` (default: ``1``),
-* Wether or not to dump a set of restart file on regular exit: ``onexit``
+* Whether or not to dump a set of restart file on regular exit: ``onexit``
   (default: ``0``),
 * The wall-clock time in hours between two sets of restart files:
   ``delta_hours`` (default: ``6.0``).
@@ -433,7 +433,7 @@ smaller value to allow for enough time to safely dump the check-point files.
 
 If the directory does not exist, SWIFT will create it.  When resuming a run,
 SWIFT, will look for files with the name provided in the sub-directory specified
-here. The files themselves are named ``basename_000001.rst`` where the basenme
+here. The files themselves are named ``basename_000001.rst`` where the basename
 is replaced by the user-specified name and the 6-digits number corresponds to
 the MPI-rank. SWIFT writes one file per MPI rank. If the ``save`` option has
 been activated, the previous set of restart files will be named
@@ -490,7 +490,7 @@ Scheduler
 Domain Decomposition
 --------------------
 
-.. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's contant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
+.. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's constant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
 
 
 .. [#f2] which would translate into a constant :math:`G_N=1.5517771\times10^{-9}~cm^{3}\,g^{-1}\,s^{-2}` if expressed in the CGS system.
