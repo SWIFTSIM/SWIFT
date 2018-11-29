@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
   struct argparse_option options[] = {
       OPT_HELP(),
 
-      OPT_GROUP("Simulation options"),
+      OPT_GROUP("  Simulation options:"),
       OPT_BOOLEAN('b', "feedback", &with_feedback, "Run with stars feedback",
                   NULL, 0, 0),
       OPT_BOOLEAN('c', "cosmology", &with_cosmology,
@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding", NULL, 0, 0),
 
-      OPT_GROUP("Control options"),
+      OPT_GROUP("  Control options:"),
       OPT_BOOLEAN('a', "affinity", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
       OPT_BOOLEAN('d', "dry-run", &dry_run,
@@ -246,7 +246,9 @@ int main(int argc, char *argv[]) {
   };
   struct argparse argparse;
   argparse_init(&argparse, options, swift_usage, 0);
-  argparse_describe(&argparse, "\nParameters:", NULL /* no epilog */);
+  argparse_describe(&argparse, "\nParameters:",
+                    "\nSee the file examples/parameter_example.yml for an "
+                    "example of parameter file.");
   int nargs = argparse_parse(&argparse, argc, (const char **)argv);
 
   /* Need a parameter file. */
