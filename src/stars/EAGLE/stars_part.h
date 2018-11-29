@@ -101,12 +101,12 @@ struct yield_table {
   // Names coincide with EAGLE, change to be more descriptive?
   float *mass;
   float *metallicity;
-  float ***SPH;
-  float ***yield;
-  float **ejecta_SPH;
-  float **ejecta;
-  float **total_metals_SPH;
-  float **total_metals;
+  float *SPH;
+  float *yield;
+  float *ejecta_SPH;
+  float *ejecta;
+  float *total_metals_SPH;
+  float *total_metals;
   int N_Z;
 };
 
@@ -157,20 +157,19 @@ struct stars_props {
 
   float *yield_SNIa_SPH;
   float yield_SNIa_total_metals_SPH;
-  float *stellar_yield;
   float *yields_SNIa;
   
   char **SNIa_element_names;
   char **SNII_element_names;
   char **AGB_element_names;
 
-  int yields_SNIa_n_elements;
-  int yields_SNII_n_mass;
-  int yields_SNII_n_elements;
-  int yields_SNII_n_z;
-  int yields_AGB_n_mass;
-  int yields_AGB_n_elements;
-  int yields_AGB_n_z;
+  int SNIa_n_elements;
+  int SNII_n_mass;
+  int SNII_n_elements;
+  int SNII_n_z;
+  int AGB_n_mass;
+  int AGB_n_elements;
+  int AGB_n_z;
 
   char IMF_Model[10];
   float IMF_Exponent;
