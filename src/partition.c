@@ -1379,6 +1379,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   weights_data.vweights = vweights;
   weights_data.weights_e = weights_e;
   weights_data.weights_v = weights_v;
+  weights_data.use_ticks = repartition->use_ticks;
 
   ticks tic = getticks();
 
