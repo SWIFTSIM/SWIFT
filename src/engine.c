@@ -4002,7 +4002,6 @@ void engine_unpin(void) {
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
  * @param chemistry The chemistry information.
- * @param sourceterms The properties of the source terms function.
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,

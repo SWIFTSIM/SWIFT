@@ -3894,7 +3894,7 @@ void cell_recursively_shift_sparts(struct cell *c,
 }
 
 /**
- * @breif "Add" a #spart in a given #cell.
+ * @brief "Add" a #spart in a given #cell.
  *
  * This function will a a #spart at the start of the current cell's array by
  * shifting all the #spart in the top-level cell by one position. All the
@@ -4176,7 +4176,7 @@ struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
 }
 
 /**
- * @param "Remove" a #part from a #cell and replace it with a #spart
+ * @brief "Remove" a #part from a #cell and replace it with a #spart
  * connected to the same #gpart.
  *
  * Note that the #part is not destroyed. The pointer is still valid

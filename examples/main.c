@@ -95,7 +95,7 @@ void print_help_message(void) {
   printf("  %2s %14s %s\n", "-P", "{sec:par:val}",
          "Set parameter value and overwrites values read from the parameters "
          "file. Can be used more than once.");
-  printf("  %2s %14s %s\n", "-r", "", "Continue using restart files.");
+  printf("  %2s %14s %s\n", "-r", "", "Resume a run using restart files.");
   printf("  %2s %14s %s\n", "-s", "", "Run with hydrodynamics.");
   printf("  %2s %14s %s\n", "-S", "", "Run with stars.");
   printf("  %2s %14s %s\n", "-F", "", "Run with star formation.");

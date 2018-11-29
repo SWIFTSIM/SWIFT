@@ -31,13 +31,17 @@ can be found by typing ``./swift -h``.
 + ``-o``: {str} Generate a default output parameter file.
 + ``-P``: {sec:par:val} Set parameter value and overwrites values read from the
   parameters file. Can be used more than once.
++ ``-r``: Resume a run using restart files.
 + ``-s``: Run with hydrodynamics.
 + ``-S``: Run with stars.
++ ``-F``: Run with star formation.
++ ``-b``: Run with stars feedback.
 + ``-t``: {int} The number of threads to use on each MPI rank. Defaults to 1 if
   not specified.
 + ``-T``: Print timers every time-step.
 + ``-v``: [12] Increase the level of verbosity: 1, MPI-rank 0 writes, 2, All
   MPI-ranks write.
++ ``-x``: Run with structure finding.
 + ``-y``: {int} Time-step frequency at which task graphs are dumped.
 + ``-Y``: {int} Time-step frequency at which threadpool tasks are dumped.
 + ``-h``: Print a help message and exit.

@@ -31,7 +31,7 @@ Valid options are:
   -n          {int} Execute a fixed number of time steps. When unset use the time_end parameter to stop.
   -o          {str} Generate a default output parameter file.
   -P  {sec:par:val} Set parameter value and overwrites values read from the parameters file. Can be used more than once.
-  -r                Continue using restart files.
+  -r                Resume a run using restart files.
   -s                Run with hydrodynamics.
   -S                Run with stars.
   -F                Run with star formation.

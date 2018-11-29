@@ -586,9 +586,6 @@ void runner_do_sort_ascending(struct entry *sort, int N) {
  * @brief Recursively checks that the flags are consistent in a cell hierarchy.
  *
  * Debugging function. Exists in two flavours: hydro & stars.
- *
- * @param c The #cell to check.
- * @param flags The sorting flags to check.
  */
 #define RUNNER_CHECK_SORTS(TYPE)                                               \
   void runner_check_sorts_##TYPE(struct cell *c, int flags) {                  \
