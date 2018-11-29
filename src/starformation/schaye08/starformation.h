@@ -59,6 +59,18 @@ struct star_formation {
 
   /*! Inverse of RAND_MAX */
   double inv_RAND_MAX;
+
+  /*! Critical density to form stars */
+  double den_crit;
+
+  /*! Scaling metallicity */
+  double Z0;
+
+  /*! critical density Metallicity power law */
+  double n_Z0;
+
+  /*! Normalization of critical SF density of Schaye (2004) */
+  double den_crit_star;
   
 };
 
@@ -219,6 +231,49 @@ static void starformation_init_backend(
   /* Calculate the starformation prefactor with most terms */
   starform->Astar = starform->A * pow(M_per_pc2, -starform->nks) * 
   pow( starform->gamma * starform->fg / G_newton, starform->nstar);
+
+  /* critical star formation number density parameters */
+  /* standard variables based on the EAGLE values */
+  static const int schaye2004_default = 1;
+  static const double norm_ncrit_default = 0.1;
+  static const double norm_ncrit_no04_default = 10.;
+  static const double Z0_default = 0.002; 
+  static const double powerlawZ_default = -0.64;
+
+  /* Read what kind of critical density we need to use
+   * Schaye (2004) is metallicity dependent critical SF density*/
+  static const int schaye2004 = parser_get_opt_param_double(
+  parameter_file, "SchayeSF:Schaye2004", schaye2004_default);
+
+  if (!schaye2004) {
+    /* In the case that we do not use the Schaye (2004) critical
+     * density to form stars but a constant value */
+    starform->den_crit = parser_get_opt_param_double(
+    parameter_file, "SchayeSF:norm_ncrit", norm_ncrit_no04_default);
+    starform->Z0 = Z0_default;
+    starform->n_Z0 = 0.0;
+  } else {
+    /* Use the Schaye (2004) metallicity dependent critical density
+     * to form stars. */
+    /* Read the normalization of the metallicity dependent critical 
+     * density*/
+    starform->den_crit = parser_get_opt_param_double( 
+    parameter_file, "SchayeSF:norm_ncrit", Z0_default);
+
+    /* Read the scale metallicity Z0 */
+    starform->Z0 = parser_get_opt_param_double(
+    parameter_file, "SchayeSF:Z0", Z0_default);
+
+    /* Read the power law of the critical density scaling */
+    staform->n_Z0 = parser_get_opt_param_double(
+    parameter_file, "SchayeSF:n_Z0", powerlawZ_default);
+  }
+
+  /* Calculate the prefactor that is always common */
+  /* !!!DONT FORGET TO DO THE CORRECT UNIT CONVERSION!!!*/
+  starform->den_crit_star = starform->den_crit / pow(starform->Z0,
+  starform->n_Z0);
+
 
   
 }
