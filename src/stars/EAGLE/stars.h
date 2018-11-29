@@ -22,10 +22,12 @@
 #include <float.h>
 #include "minmax.h"
 #include "imf.h"
+#include "yield_tables.h"
 
 static const float log10_SNII_min_mass_msun = 2; // temporary guess.
 static const float log10_SNII_max_mass_msun = 4; // temporary guess.
-static const float log10_SNIa_max_mass_msun = 4; // temporary guess.
+//static const float log10_SNIa_min_mass_msun = 3; // temporary guess.
+static const float log10_SNIa_max_mass_msun = 8; // temporary guess.
 static const float imf_max_mass_msun = 100; // temporary guess.
 static const float log_min_metallicity = 0.0; // temporary guess.
 
@@ -435,8 +437,9 @@ inline static void evolve_SNIa(float log_min_mass, float log_max_mass,
   sp->num_snia = num_of_SNIa_per_msun;
 
   if (stars->SNIa_mass_transfer == 1) {
-    for (i = 0; i < chemistry_element_count; i++)
+    for (i = 0; i < chemistry_element_count; i++) {
       sp->metals_released[i] += num_of_SNIa_per_msun * stars->yield_SNIa_SPH[i];
+    }
 
     sp->mass_from_snia += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
     sp->metals_from_snia += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
@@ -715,17 +718,17 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
     log_metallicity = log_min_metallicity;
 
 
-  // dummy declaration, needs to be done properly...
+  // dummy declaration, needs to pass in chemistry data somehow...
   float initial_metals[10];
   for(int j = 0; j < 10; j++) initial_metals[j] = 0.0;
 
   // Evolve SNIa, SNII, AGB
 
-  evolve_SNIa(0,0,0,star_properties,sp,dt_Gyr);
+  evolve_SNIa(log10_min_dying_mass,log10_max_dying_mass,log_metallicity,star_properties,sp,dt_Gyr);
 
-  evolve_SNII(0,0,0,initial_metals,star_properties,sp); 
+  evolve_SNII(log10_min_dying_mass,log10_max_dying_mass,log_metallicity,initial_metals,star_properties,sp); 
 
-  evolve_AGB(0,0,0,initial_metals,star_properties,sp);
+  evolve_AGB(log10_min_dying_mass,log10_max_dying_mass,log_metallicity,initial_metals,star_properties,sp);
 
 }
 
@@ -743,14 +746,22 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
     const struct cosmology* cosmo) {
 
-    // Sort out what happens with first_call static
-
+    sp->num_snia = 0;
     // get mass and initial mass of particle to pass to evolution function
     // except we're working in mass fraction so maybe not necessary...
     //float mass = hydro_get_mass(p);
     //float initial_mass = ;
 
     // Set elements released to zero
+    for(int i = 0; i < chemistry_element_count; i++) sp->metals_released[i] = 0;
+    sp->metal_mass_released = 0;
+    sp->mass_from_agb = 0;
+    sp->metals_from_agb = 0;
+    sp->mass_from_snii = 0;
+    sp->metals_from_snii = 0;
+    sp->mass_from_snia = 0;
+    sp->metals_from_snia = 0;
+    sp->iron_from_snia = 0;
 
     // Evolve the star
     compute_stellar_evolution(stars_properties, sp);

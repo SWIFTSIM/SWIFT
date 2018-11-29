@@ -99,10 +99,14 @@ struct spart {
 
 struct yield_table {
   // Names coincide with EAGLE, change to be more descriptive?
-  float ***SPH;
-  float **ejecta_SPH;
-  float **total_metals_SPH;
+  float *mass;
   float *metallicity;
+  float ***SPH;
+  float ***yield;
+  float **ejecta_SPH;
+  float **ejecta;
+  float **total_metals_SPH;
+  float **total_metals;
   int N_Z;
 };
 
@@ -147,12 +151,26 @@ struct stars_props {
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
 
+  // restructure tables to be neater.
   struct yield_table yield_AGB;
   struct yield_table yield_SNII;
 
   float *yield_SNIa_SPH;
   float yield_SNIa_total_metals_SPH;
   float *stellar_yield;
+  float *yields_SNIa;
+  
+  char **SNIa_element_names;
+  char **SNII_element_names;
+  char **AGB_element_names;
+
+  int yields_SNIa_n_elements;
+  int yields_SNII_n_mass;
+  int yields_SNII_n_elements;
+  int yields_SNII_n_z;
+  int yields_AGB_n_mass;
+  int yields_AGB_n_elements;
+  int yields_AGB_n_z;
 
   char IMF_Model[10];
   float IMF_Exponent;
@@ -173,6 +191,8 @@ struct stars_props {
   int SNIa_mass_transfer;
   int SNII_mass_transfer;
   int AGB_mass_transfer;
+
+  char *yield_table_path;
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */
