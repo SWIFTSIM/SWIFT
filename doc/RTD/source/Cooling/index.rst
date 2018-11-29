@@ -66,7 +66,7 @@ TODO
 How to Implement a New Cooling
 ------------------------------
 
-The developper should provide at least one function for:
+The developer should provide at least one function for:
  * writing the cooling name in HDF5
  * cooling a particle
  * the maximal time step possible

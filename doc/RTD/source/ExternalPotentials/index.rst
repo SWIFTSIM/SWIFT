@@ -17,7 +17,7 @@ give a short overview of the potentials that are implemented in the code:
 1. No potential (none)
 2. Point mass potential (point-mass): classical point mass, can be placed at
    a position with a mass.
-3. Plummer potential (point-mass-softened): in the code a softended point mass 
+3. Plummer potential (point-mass-softened): in the code a softened point mass 
    corresponds to a Plummer potential, can be placed at a position with a mass.
 4. Isothermal potential (isothermal): An isothermal potential which corresponds 
    to a density profile which is :math:`\propto r^{-2}` and a potential which is 
@@ -28,7 +28,7 @@ give a short overview of the potentials that are implemented in the code:
    
    :math:`\Phi(r) = - \frac{GM}{r+a}.`
 
-   The free paramters of Hernquist potential are mass, scale length,
+   The free parameters of Hernquist potential are mass, scale length,
    and softening. The potential can be set at any position in the box.
 6. NFW potential (nfw): The most used potential to describe dark matter halos, the  
    potential is given by:
@@ -36,7 +36,7 @@ give a short overview of the potentials that are implemented in the code:
    :math:`\Phi(r) = - \frac{4\pi G \rho_0 R_s^3}{r} \ln \left( 1+ 
    \frac{r}{R_s} \right).`
 
-   This potential has as free paramters the concentration of the DM halo, the
+   This potential has as free parameters the concentration of the DM halo, the
    virial mass (:math:`M_{200}`) and the critical density.
 7. Sine wave (sine-wave)
 8. Point mass ring (point-mass-ring)

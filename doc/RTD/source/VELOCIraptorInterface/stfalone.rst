@@ -45,7 +45,7 @@ version of the code, so change ``SWIFTINTERFACE="on"`` to
 Compiling VELOCIraptor
 ----------------------
 
-Compoling goes completely different as compared to the on the fly halo finder
+Compiling goes completely different as compared to the on the fly halo finder
 configuration with SWIFT. In this case we can compile the code as::
 
   make 

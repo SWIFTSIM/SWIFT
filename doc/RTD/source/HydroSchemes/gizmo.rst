@@ -10,7 +10,7 @@ GIZMO-Like Scheme
    :caption: Contents:
 
 
-There is a meshless finite volume (MFV) GIZMO-like scheme implemented in SWIFT
+There is a mesh-less finite volume (MFV) GIZMO-like scheme implemented in SWIFT
 (see Hopkins 2015 for more information). You will need a Riemann solver to run
 this, and configure as follows:
 
@@ -19,7 +19,7 @@ this, and configure as follows:
    ./configure --with-hydro="gizmo-mfv" --with-riemann-solver="hllc"
 
 
-We also have the meshless finite mass (MFM) GIZMO-like scheme. You can select
+We also have the mesh-less finite mass (MFM) GIZMO-like scheme. You can select
 this at compile-time with the following configuration flags:
 
 .. code-block:: bash
