@@ -181,6 +181,11 @@ int main(int argc, char *argv[]) {
                   "Run with cosmological time integration.", NULL, 0, 0),
       OPT_BOOLEAN('C', "cooling", &with_cooling, "Run with cooling", NULL, 0,
                   0),
+      OPT_BOOLEAN('D', "drift-all", &with_drift_all,
+                  "Always drift all particles even the ones far from active "
+                  "particles. This emulates Gadget-[23] and GIZMO's default "
+                  "behaviours.",
+                  NULL, 0, 0),
       OPT_BOOLEAN('F', "sourceterms", &with_sourceterms, "", NULL, 0, 0),
       OPT_BOOLEAN('g', "external-gravity", &with_external_gravity,
                   "Run with an external gravitational potential.", NULL, 0, 0),
@@ -203,11 +208,6 @@ int main(int argc, char *argv[]) {
                   "time integration. Checks the validity of parameters and IC "
                   "files as well as memory limits.",
                   NULL, 0, 0),
-      OPT_BOOLEAN('D', "drift-all", &with_drift_all,
-                  "Always drift all "
-                  "particles even the ones far from active particles. This "
-                  "emulates Gadget-[23] and GIZMO's default behaviours.",
-                  NULL, 0, 0),
       OPT_BOOLEAN('e', "fpe", &with_fp_exceptions,
                   "Enable floating-point exceptions (debugging mode).", NULL, 0,
                   0),
@@ -216,21 +216,20 @@ int main(int argc, char *argv[]) {
                  "frequency (Hz) to be used for time measurements.",
                  NULL, 0, 0),
       OPT_INTEGER('n', "steps", &nsteps,
-                  "Execute a fixed number of time "
-                  "steps. When unset use the time_end parameter to stop.",
+                  "Execute a fixed number of time steps. When unset use the "
+                  "time_end parameter to stop.",
                   NULL, 0, 0),
       OPT_STRING('o', "output-params", &output_parameters_filename,
                  "Generate a default output parameter file.", NULL, 0, 0),
       OPT_STRING('P', "param", &buffer,
-                 "Set parameter value, "
-                 "overwriting a value read from the parameter file. Can be "
-                 "used more than once {sec:par:value}.",
+                 "Set parameter value, overiding the value read from the "
+                 "parameter file. Can be used more than once {sec:par:value}.",
                  handle_cmdparam, (intptr_t)&cmdps, 0),
       OPT_BOOLEAN('r', "restart", &restart, "Continue using restart files.",
                   NULL, 0, 0),
       OPT_INTEGER('t', "threads", &nr_threads,
-                  "The number of threads to "
-                  "use on each MPI rank. Defaults to 1 if not specified.",
+                  "The number of threads to use on each MPI rank. Defaults to "
+                  "1 if not specified.",
                   NULL, 0, 0),
       OPT_INTEGER('T', "timers", &with_verbose_timers,
                   "Print timers every time-step.", NULL, 0, 0),
