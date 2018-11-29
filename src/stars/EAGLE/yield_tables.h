@@ -19,24 +19,39 @@
 #ifndef SWIFT_EAGLE_STARS_YIELD_TABLES_H
 #define SWIFT_EAGLE_STARS_YIELD_TABLES_H
 
+// Temporary, these two functions need to be somewhere else
+/**
+ * @brief Returns the 1d index of element with 2d indices i,j
+ * from a flattened 2d array in row major order
+ *
+ * @param i, j Indices of element of interest
+ * @param nx, ny Sizes of array dimensions
+ */
+__attribute__((always_inline)) INLINE int row_major_index_2d(int i, int j,
+                                                             int nx, int ny) {
+  return i * ny + j;
+}
+
+/**
+ * @brief Returns the 1d index of element with 3d indices i,j,k
+ * from a flattened 3d array in row major order
+ *
+ * @param i, j, k Indices of element of interest
+ * @param nx, ny, nz Sizes of array dimensions
+ */
+__attribute__((always_inline)) INLINE int row_major_index_3d(int i, int j,
+                                                             int k, int nx,
+                                                             int ny, int nz) {
+  return i * ny * nz + j * nz + k;
+}
+
 inline void read_yield_tables(struct stars_props *restrict stars){
 #ifdef HAVE_HDF5
 
-  int i, j, k;
+  int i, j, k, index;
 
   char fname[256], setname[100];
   
-  // move these definitions somewhere else...
-  stars->yields_SNIa_n_elements = 42;
-  stars->yields_SNII_n_mass = 11;
-  stars->yields_SNII_n_elements = 11;
-  stars->yields_SNII_n_z = 5;
-  stars->yields_AGB_n_mass = 23;
-  stars->yields_AGB_n_elements = 11;
-  stars->yields_AGB_n_z = 3;
-  stars->lifetimes.n_mass = 30;
-  stars->lifetimes.n_z = 6;
-
   hid_t file_id, dataset, datatype;
   herr_t status;
 
@@ -60,7 +75,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   if (status < 0) error("error closing datatype");
 
   // What is this for? Copied from EAGLE
-  //for (i = 0; i < stars->yields_SNIa_n_elements; i++)
+  //for (i = 0; i < stars->SNIa_n_elements; i++)
   //  yieldsSNIa.ElementName[i] = mystrdup(yieldsSNIa.ElementName[i]);
 
   dataset = H5Dopen(file_id, "Yield", H5P_DEFAULT);
@@ -101,7 +116,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   if (status < 0) error("error closing datatype");
 
   // What is this for (again)? copied from EAGLE
-  //for (i = 0; i < stars->yields_SNII_n_elements; i++)
+  //for (i = 0; i < stars->SNII_n_elements; i++)
   //  yieldsSNII.ElementName[i] = mystrdup(yieldsSNII.ElementName[i]);
 
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
@@ -118,11 +133,11 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
-  float tempyield1[stars->yields_SNII_n_elements][stars->yields_SNII_n_mass];
+  float tempyield1[stars->SNII_n_elements][stars->SNII_n_mass];
 
-  float tempej1[stars->yields_SNII_n_mass], tempmet1[stars->yields_SNII_n_mass];
+  float tempej1[stars->SNII_n_mass], tempmet1[stars->SNII_n_mass];
 
-  char *tempname1[stars->yields_SNII_n_z];
+  char *tempname1[stars->SNII_n_z];
 
   datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, H5T_VARIABLE);
@@ -134,7 +149,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
 
-  for (i = 0; i < stars->yields_SNII_n_z; i++) {
+  for (i = 0; i < stars->SNII_n_z; i++) {
     sprintf(setname, "/Yields/%s/Yield", tempname1[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -158,12 +173,14 @@ inline void read_yield_tables(struct stars_props *restrict stars){
     status = H5Dclose(dataset);
     if (status < 0) error("error closing dataset");
 
-    for (k = 0; k < stars->yields_SNII_n_mass; k++) {
-      stars->yield_SNII.ejecta[i][k] = tempej1[k];
-      stars->yield_SNII.total_metals[i][k] = tempmet1[k];
+    for (k = 0; k < stars->SNII_n_mass; k++) {
+      index = row_major_index_2d(i,k,stars->SNII_n_z,stars->SNII_n_mass);
+      stars->yield_SNII.ejecta[index] = tempej1[k];
+      stars->yield_SNII.total_metals[index] = tempmet1[k];
 
-      for (j = 0; j < stars->yields_SNII_n_elements; j++)
-        stars->yield_SNII.yield[i][j][k] = tempyield1[j][k];
+      for (j = 0; j < stars->SNII_n_elements; j++)
+        index = row_major_index_3d(i,j,k,stars->SNII_n_z,stars->SNII_n_elements,stars->SNII_n_mass);
+        stars->yield_SNII.yield[index] = tempyield1[j][k];
     }
   }
 
@@ -191,7 +208,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   if (status < 0) error("error closing datatype");
 
   // What is this for (again)? copied from EAGLE
-  //for (i = 0; i < stars->yields_AGB_n_elements; i++)
+  //for (i = 0; i < stars->AGB_n_elements; i++)
   //  yieldsAGB.ElementName[i] = mystrdup(yieldsAGB.ElementName[i]);
 
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
@@ -208,11 +225,11 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
-  float tempyield2[stars->yields_AGB_n_elements][stars->yields_AGB_n_mass];
+  float tempyield2[stars->AGB_n_elements][stars->AGB_n_mass];
 
-  float tempej2[stars->yields_AGB_n_mass], tempmet2[stars->yields_AGB_n_mass];
+  float tempej2[stars->AGB_n_mass], tempmet2[stars->AGB_n_mass];
 
-  char *tempname2[stars->yields_AGB_n_z];
+  char *tempname2[stars->AGB_n_z];
 
   datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, H5T_VARIABLE);
@@ -224,7 +241,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
 
-  for (i = 0; i < stars->yields_AGB_n_z; i++) {
+  for (i = 0; i < stars->AGB_n_z; i++) {
     sprintf(setname, "/Yields/%s/Yield", tempname2[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -248,12 +265,14 @@ inline void read_yield_tables(struct stars_props *restrict stars){
     status = H5Dclose(dataset);
     if (status < 0) error("error closing dataset");
 
-    for (k = 0; k < stars->yields_AGB_n_mass; k++) {
-      stars->yield_AGB.ejecta[i][k] = tempej2[k];
-      stars->yield_AGB.total_metals[i][k] = tempmet2[k];
+    for (k = 0; k < stars->AGB_n_mass; k++) {
+      index = row_major_index_2d(i,k,stars->AGB_n_z,stars->AGB_n_mass);
+      stars->yield_AGB.ejecta[index] = tempej2[k];
+      stars->yield_AGB.total_metals[index] = tempmet2[k];
 
-      for (j = 0; j < stars->yields_AGB_n_elements; j++)
-        stars->yield_AGB.yield[i][j][k] = tempyield2[j][k];
+      for (j = 0; j < stars->AGB_n_elements; j++)
+        index = row_major_index_3d(i,j,k,stars->AGB_n_z,stars->AGB_n_elements,stars->AGB_n_mass);
+        stars->yield_AGB.yield[index] = tempyield2[j][k];
     }
   }
 
@@ -298,6 +317,95 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
 
 #endif
+}
+
+inline void allocate_yield_tables(struct stars_props *restrict stars){
+  
+  /* Allocate SNIa arrays */
+  if (posix_memalign((void **)&stars->yields_SNIa, SWIFT_STRUCT_ALIGNMENT, stars->SNIa_n_elements * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_SNIa_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNIa_n_elements * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+
+  /* Allocate AGB arrays  */
+  if (posix_memalign((void **)&stars->yield_AGB.mass, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_mass * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_AGB.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_AGB.SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * stars->AGB_n_elements * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_AGB.yield, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * stars->AGB_n_elements * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_AGB.ejecta_SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_AGB.ejecta, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_AGB.total_metals_SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_AGB.total_metals, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+
+  /* Allocate SNII arrays  */
+  if (posix_memalign((void **)&stars->yield_SNII.mass, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_mass * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_SNII.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_SNII.SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * stars->SNII_n_elements * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_SNII.yield, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * stars->SNII_n_elements * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_SNII.ejecta_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_SNII.ejecta, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_SNII.total_metals_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->yield_SNII.total_metals, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+
+  /* Allocate Lifetime arrays  */
+  if (posix_memalign((void **)&stars->lifetimes.mass, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_mass * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->lifetimes.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+  if (posix_memalign((void **)&stars->lifetimes.dyingtime, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * stars->lifetimes.n_mass * sizeof(float)) !=0) {
+    error("Failed to allocate metal_heating array");
+  }
+
+  /* Allocate element name arrays  */
+  int element_name_length = 25;
+  stars->SNIa_element_names = (char **)malloc(stars->SNIa_n_elements * sizeof(char*));
+  for(int i = 0; i < stars->SNIa_n_elements; i++){
+    stars->SNIa_element_names[i] = (char *)malloc(element_name_length * sizeof(char));
+  }
+  stars->SNII_element_names = (char **)malloc(stars->SNII_n_elements * sizeof(char*));
+  for(int i = 0; i < stars->SNII_n_elements; i++){
+    stars->SNII_element_names[i] = (char *)malloc(element_name_length * sizeof(char));
+  }
+  stars->AGB_element_names = (char **)malloc(stars->AGB_n_elements * sizeof(char*));
+  for(int i = 0; i < stars->AGB_n_elements; i++){
+    stars->AGB_element_names[i] = (char *)malloc(element_name_length * sizeof(char));
+  }
 }
 
 #endif
