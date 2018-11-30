@@ -25,9 +25,9 @@
 /* Local headers. */
 #include "swift.h"
 
-#if defined(COOLING_EAGLE) && defined(CHEMISTRY_EAGLE)
+#if defined(COOLING_EAGLE) && defined(CHEMISTRY_EAGLE) && defined(GADGET2_SPH)
 
-/*
+/**
  * @brief Assign particle density and entropy corresponding to the
  * hydrogen number density and internal energy specified.
  *
@@ -56,7 +56,7 @@ void set_quantities(struct part *restrict p, struct xpart *restrict xp,
   xp->entropy_full = p->entropy;
 }
 
-/*
+/**
  * @brief Produces contributions to cooling rates for different
  * hydrogen number densities, from different metals,
  * tests 1d and 4d table interpolations produce
@@ -83,8 +83,6 @@ int main(int argc, char **argv) {
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
 
-  float nh = -1.;        // hydrogen number density
-  double u = -1.;        // internal energy
   const int npts = 250;  // number of values for the internal energy at which
                          // cooling rate is evaluated
 
@@ -140,8 +138,7 @@ int main(int argc, char **argv) {
   cooling_update(&cosmo, &cooling, 0);
 
   // Calculate abundance ratios
-  float *abundance_ratio;
-  abundance_ratio = malloc((chemistry_element_count + 2) * sizeof(float));
+  float abundance_ratio[(chemistry_element_count + 2)];
   abundance_ratio_to_solar(&p, &cooling, abundance_ratio);
 
   // extract mass fractions, calculate table indices and offsets
@@ -157,37 +154,43 @@ int main(int argc, char **argv) {
   // open file
   FILE *output_file = fopen("cooling_output.dat", "w");
   if (output_file == NULL) {
-    printf("Error opening file!\n");
-    exit(1);
+    error("Error opening output file!\n");
   }
 
   // set hydrogen number density
-  nh = exp(M_LN10 * log_10_nh);
+  const float nh = exp(M_LN10 * log_10_nh);
+
+  /* Initial internal energy */
+  double u = 1.0e14;
 
   // set internal energy to dummy value, will get reset when looping over
   // internal energies
-  u = 1.0e14;
   set_quantities(&p, &xp, &us, &cooling, &cosmo, &internal_const, nh, u);
   float inn_h = hydro_get_physical_density(&p, &cosmo) * XH /
                 internal_const.const_proton_mass * cooling.number_density_scale;
   get_index_1d(cooling.nH, cooling.N_nH, log10(inn_h), &n_h_i, &d_n_h);
 
   // Loop over internal energy
-  float du;
-  double temperature;
   for (int j = 0; j < npts; j++) {
+
+    // Update the particle with the new values
     set_quantities(&p, &xp, &us, &cooling, &cosmo, &internal_const, nh,
                    pow(10.0, 10.0 + j * 8.0 / npts));
+
+    // New internal energy
     u = hydro_get_physical_internal_energy(&p, &xp, &cosmo) *
         cooling.internal_energy_scale;
-    float cooling_du_dt;
 
     // calculate cooling rates
-    temperature = eagle_convert_u_to_temp(log10(u), &du, n_h_i, He_i, d_n_h,
-                                          d_He, &cooling, &cosmo);
-    cooling_du_dt = eagle_print_metal_cooling_rate(
+    float du;
+    const double temperature = eagle_convert_u_to_temp(
+        log10(u), &du, n_h_i, He_i, d_n_h, d_He, &cooling, &cosmo);
+
+    const double cooling_du_dt = eagle_print_metal_cooling_rate(
         n_h_i, d_n_h, He_i, d_He, &p, &xp, &cooling, &cosmo, &internal_const,
         abundance_ratio);
+
+    // Dump...
     fprintf(output_file, "%.5e %.5e\n", exp(M_LN10 * temperature),
             cooling_du_dt);
   }
