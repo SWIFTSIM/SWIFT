@@ -193,14 +193,14 @@ int main(int argc, char *argv[]) {
                   "Run with self-gravity.", NULL, 0, 0),
       OPT_BOOLEAN('M', "multipole-reconstruction", &with_mpole_reconstruction,
                   "Reconstruct the multipoles every time-step.", NULL, 0, 0),
-      OPT_BOOLEAN('s', "hydrodynamics", &with_hydro, "Run with hydrodynamics.",
+      OPT_BOOLEAN('s', "hydro", &with_hydro, "Run with hydrodynamics.",
                   NULL, 0, 0),
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars", NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding", NULL, 0, 0),
 
       OPT_GROUP("  Control options:"),
-      OPT_BOOLEAN('a', "affinity", &with_aff,
+      OPT_BOOLEAN('a', "pin", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
       OPT_BOOLEAN('d', "dry-run", &dry_run,
                   "Dry run. Read the parameter file, allocates memory but does "

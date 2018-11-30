@@ -13,7 +13,7 @@ then
 fi
 
 # Run SWIFT
-../swift -g -b -s -S -t 4 SN_feedback.yml 2>&1 | tee output.log
+../swift --external-gravity --feedback --hydro --stars --threads=4 SN_feedback.yml 2>&1 | tee output.log
 
 # Plot the solution
 # TODO

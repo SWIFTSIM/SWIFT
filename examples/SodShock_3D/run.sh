@@ -13,6 +13,6 @@ then
 fi
 
 # Run SWIFT
-../swift -s -t 4 sodShock.yml 2>&1 | tee output.log
+../swift --hydro --threads=4 sodShock.yml 2>&1 | tee output.log
 
 python plotSolution.py 1
