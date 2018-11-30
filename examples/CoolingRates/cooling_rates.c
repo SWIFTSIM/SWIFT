@@ -16,14 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
+/* Some standard headers. */
+#include <fenv.h>
 #include <unistd.h>
-#include "cooling.h"
-#include "cooling_struct.h"
-#include "hydro.h"
-#include "physical_constants.h"
+
+/* Local headers. */
 #include "swift.h"
-#include "units.h"
+
+#if defined(COOLING_EAGLE) && defined(CHEMISTRY_EAGLE)
 
 /*
  * @brief Assign particle density and entropy corresponding to the
@@ -70,10 +72,19 @@ int main(int argc, char **argv) {
   struct phys_const internal_const;
   struct cooling_function_data cooling;
   struct cosmology cosmo;
-  char *parametersFileName = "./cooling_rates.yml";
+  const char *parametersFileName = "./cooling_rates.yml";
 
-  float nh;              // hydrogen number density
-  double u;              // internal energy
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
+
+/* Choke on FP-exceptions */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
+
+  float nh = -1.;        // hydrogen number density
+  double u = -1.;        // internal energy
   const int npts = 250;  // number of values for the internal energy at which
                          // cooling rate is evaluated
 
@@ -82,7 +93,7 @@ int main(int argc, char **argv) {
 
   // Read options
   int param;
-  while ((param = getopt(argc, argv, "z:d:t")) != -1) switch (param) {
+  while ((param = getopt(argc, argv, "z:d:")) != -1) switch (param) {
       case 'z':
         // read redshift
         redshift = atof(optarg);
@@ -115,13 +126,13 @@ int main(int argc, char **argv) {
 
   // Init cosmology
   cosmology_init(params, &us, &internal_const, &cosmo);
-  cosmology_print(&cosmo);
 
   // Set redshift and associated quantities
   const float scale_factor = 1.0 / (1.0 + redshift);
   integertime_t ti_current =
       log(scale_factor / cosmo.a_begin) / cosmo.time_base;
   cosmology_update(&cosmo, &internal_const, ti_current);
+  message("Redshift is %f", cosmo.z);
 
   // Init cooling
   cooling_init(params, &us, &internal_const, &cooling);
@@ -186,3 +197,16 @@ int main(int argc, char **argv) {
   free(params);
   return 0;
 }
+
+#else
+
+int main(int argc, char **argv) {
+
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
+
+  message("This test is only defined for the EAGLE cooling model.");
+  return 0;
+}
+#endif
