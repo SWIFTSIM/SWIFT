@@ -2707,7 +2707,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Update the cooling function */
   if (e->policy & engine_policy_cooling)
-    cooling_update(e->cosmology, e->cooling_func, 0);
+    cooling_update(e->cosmology, e->cooling_func, /*restart_flag=*/0);
 
 #ifdef WITH_LOGGER
   /* Mark the first time step in the particle logger file. */
@@ -2910,7 +2910,7 @@ void engine_step(struct engine *e) {
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
-        "%6d \n",
+        "%6d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->wallclock_time, e->step_props);
@@ -2920,7 +2920,7 @@ void engine_step(struct engine *e) {
       fprintf(
           e->file_timesteps,
           "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
-          "%6d \n",
+          "%6d\n",
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
           e->s_updates, e->wallclock_time, e->step_props);
@@ -2955,7 +2955,7 @@ void engine_step(struct engine *e) {
 
   /* Update the cooling function */
   if (e->policy & engine_policy_cooling)
-    cooling_update(e->cosmology, e->cooling_func, 0);
+    cooling_update(e->cosmology, e->cooling_func, /*restart_flag=*/0);
 
   /*****************************************************/
   /* OK, we now know what the next end of time-step is */

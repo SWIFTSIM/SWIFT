@@ -601,12 +601,14 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->rho *= expf(w2);
 
-  /* Predict the entropy */
+    /* Predict the entropy */
+#ifdef SWIFT_DEBUG_CHECKS
   if (p->entropy + p->entropy_dt * dt_therm <= 0)
     error(
-        "entropy negative particle id %llu old entropy %.5e d_entropy %.5e "
+        "Negative entropy for particle id %llu old entropy %.5e d_entropy %.5e "
         "entropy_dt %.5e dt therm %.5e",
         p->id, p->entropy, p->entropy_dt * dt_therm, p->entropy_dt, dt_therm);
+#endif
   p->entropy += p->entropy_dt * dt_therm;
 
   /* Re-compute the pressure */
@@ -657,6 +659,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
     float dt_grav, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+
   /* Do not decrease the entropy by more than a factor of 2 */
   if (dt_therm > 0. && p->entropy_dt * dt_therm < -0.5f * xp->entropy_full) {
     p->entropy_dt = -0.5f * xp->entropy_full / dt_therm;
