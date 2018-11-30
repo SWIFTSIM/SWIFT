@@ -54,9 +54,8 @@ static const float explicit_tolerance = 0.05;
 static const float newton_tolerance = 1.0e-4;
 static const float bisection_tolerance = 1.0e-6;
 static const float rounding_tolerance = 1.0e-4;
-static const double bracket_factor =
-    1.0488088481701;  // = sqrt(1.1) to match EAGLE
-static const double newton_log_u_guess_cgs = 28.3241683;  // = log(2e12)
+static const double bracket_factor = sqrt(1.1); /* Taken from EAGLE */
+static const double newton_log_u_guess_cgs = log(2.e12);
 
 /* Flag used for printing cooling rate contribution from each
  * element. For testing only. Incremented by 1/(number of elements)

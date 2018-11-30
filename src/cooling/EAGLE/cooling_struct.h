@@ -21,9 +21,8 @@
 
 #define eagle_table_path_name_length 500
 
-/*
+/**
  * @brief struct containing cooling tables
- *
  */
 struct cooling_tables {
   /* array of heating rates due to metals */
