@@ -804,6 +804,15 @@ inline void stars_evolve_init(struct stars_props* restrict stars){
 
   //stars->yield_SNIa_total_metals_SPH = ;
 
+  /* Allocate yield tables  */
+  allocate_yield_tables(stars);
+
+  /* Read the tables  */
+  read_yield_tables(stars);
+
+  /* Further calculation on tables to convert them to log10 and compute yields for each element  */
+  compute_yields(stars);
+
 }
 
 #endif /* SWIFT_EAGLE_STARS_H */

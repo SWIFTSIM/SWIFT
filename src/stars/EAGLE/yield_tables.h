@@ -408,4 +408,8 @@ inline void allocate_yield_tables(struct stars_props *restrict stars){
   }
 }
 
+inline void compute_yields(struct stars_props *restrict stars){
+  
+}
+
 #endif
