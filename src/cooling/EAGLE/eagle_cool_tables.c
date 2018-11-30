@@ -34,43 +34,74 @@
 #include "error.h"
 #include "interpolate.h"
 
-/* Names of the elements in the order they are stored in the files */
+/**
+ * @brief Names of the elements in the order they are stored in the files
+ */
 static const char *eagle_tables_element_names[9] = {
     "Carbon",  "Nitrogen", "Oxygen",  "Neon", "Magnesium",
     "Silicon", "Sulphur",  "Calcium", "Iron"};
 
-/*
+/**
  * @brief Reads in EAGLE table of redshift values
  *
  * @param cooling #cooling_function_data structure
  */
 void get_cooling_redshifts(struct cooling_function_data *cooling) {
-  FILE *infile;
 
-  int i = 0;
+  /* Read the list of table redshifts */
+  char redshift_filename[eagle_table_path_name_length + 16];
+  sprintf(redshift_filename, "%s/redshifts.dat", cooling->cooling_table_path);
+  FILE *infile = fopen(redshift_filename, "r");
 
-  char buffer[500], redfilename[516];
+  if (infile == NULL) {
+    error("Cannot open the list of cooling table redshifts (%s)",
+          redshift_filename);
+  }
 
-  sprintf(redfilename, "%s/redshifts.dat", cooling->cooling_table_path);
-  infile = fopen(redfilename, "r");
-  if (infile == NULL) puts("GetCoolingRedshifts can't open a file");
+  if (!feof(infile)) {
 
-  if (fscanf(infile, "%s", buffer) != EOF) {
-    cooling->N_Redshifts = atoi(buffer);
+    char buffer[50];
+
+    /* Read the number of redshifts (1st line in the file) */
+    if (fgets(buffer, 50, infile) != NULL)
+      cooling->N_Redshifts = atoi(buffer);
+    else
+      error("Impossible to read the number of redshifts");
+
+    /* Be verbose about it */
+    message("Found cooling tables at %d redhsifts", cooling->N_Redshifts);
+
+    /* Allocate the list of redshifts */
     if (posix_memalign((void **)&cooling->Redshifts, SWIFT_STRUCT_ALIGNMENT,
                        cooling->N_Redshifts * sizeof(float)) != 0)
       error("Failed to allocate redshift table");
 
-    while (fscanf(infile, "%s", buffer) != EOF) {
-      cooling->Redshifts[i] = atof(buffer);
-      i += 1;
+    /* Read all the redshift values */
+    int count = 0;
+    while (!feof(infile)) {
+      if (fgets(buffer, 50, infile) != NULL) {
+        cooling->Redshifts[count] = atof(buffer);
+        count++;
+      }
     }
+
+    /* Verify that the file was self-consistent */
+    if (count != cooling->N_Redshifts) {
+      error(
+          "Redshift file (%s) does not contain the correct number of redshifts "
+          "(%d vs. %d)",
+          redshift_filename, count, cooling->N_Redshifts);
+    }
+  } else {
+    error("Redshift file (%s) is empty!", redshift_filename);
   }
+
+  /* We are done with this file */
   fclose(infile);
 
   /* EAGLE cooling assumes cooling->Redshifts table is in increasing order. Test
    * this. */
-  for (i = 0; i < cooling->N_Redshifts - 2; i++)
+  for (int i = 0; i < cooling->N_Redshifts - 2; i++)
     if (cooling->Redshifts[i + 1] < cooling->Redshifts[i]) {
       error("table should be in increasing order\n");
     }
