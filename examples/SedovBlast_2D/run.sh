@@ -13,7 +13,7 @@ then
 fi
 
 # Run SWIFT
-../swift -s -t 1 sedov.yml 2>&1 | tee output.log
+../swift --hydro --threads=1 sedov.yml 2>&1 | tee output.log
 
 # Plot the solution
 python plotSolution.py 5

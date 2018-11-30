@@ -37,7 +37,7 @@ Example of file with redshift::
   5
 
 .. _Output_selection_label:
-  
+
 Output Selection
 ~~~~~~~~~~~~~~~~
 
@@ -59,7 +59,7 @@ waste of disk space. The corresponding section of the ``yaml``
 parameter file would look like this::
 
   SelectOutput:
-    Masses_DM:   0 
+    Masses_DM:   0
 
 You can generate a ``yaml`` file containing all the possible fields
-available for a given configuration of SWIFT by running ``./swift -o output.yml``. 
+available for a given configuration of SWIFT by running ``./swift --output-params output.yml``.

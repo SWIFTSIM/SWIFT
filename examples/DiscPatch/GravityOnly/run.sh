@@ -7,4 +7,4 @@ then
     python makeIC.py 1000
 fi
 
-../../swift -g -t 2 disc-patch.yml
+../../swift --external-gravity --threads=2 disc-patch.yml
