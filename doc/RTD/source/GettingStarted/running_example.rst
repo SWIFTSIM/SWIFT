@@ -14,7 +14,7 @@ as ``wget`` for grabbing the glass).
    cd examples/SodShock_3D
    ./getGlass.sh
    python makeIC.py
-   ../swift -s -t 4 sodShock.yml
+   ../swift --hydro --threads=4 sodShock.yml
    python plotSolution.py 1
 
 

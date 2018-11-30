@@ -19,25 +19,25 @@ can be found by typing ``./swift -h``::
     -b, --feedback                    Run with stars feedback
     -c, --cosmology                   Run with cosmological time integration.
     -C, --cooling                     Run with cooling
+    -D, --drift-all                   Always drift all particles even the ones
+                                      far from active particles. This emulates
+                                      Gadget-[23] and GIZMO's default behaviours.
     -F, --sourceterms
     -g, --external-gravity            Run with an external gravitational potential.
     -G, --self-gravity                Run with self-gravity.
     -M, --multipole-reconstruction    Reconstruct the multipoles every time-step.
-    -s, --hydrodynamics               Run with hydrodynamics.
+    -s, --hydro                       Run with hydrodynamics.
     -S, --stars                       Run with stars
     -x, --velociraptor                Run with structure finding
 
   Control options:
-    -a, --affinity                    Pin runners using processor affinity.
+    -a, --pin                         Pin runners using processor affinity.
     -d, --dry-run                     Dry run. Read the parameter file, allocates
                                       memory but does not read the particles
                                       from ICs. Exits before the start of time
                                       integration. Checks the validity of
                                       parameters and IC files as well as memory
                                       limits.
-    -D, --drift-all                   Always drift all particles even the ones
-                                      far from active particles. This emulates
-                                      Gadget-[23] and GIZMO's default behaviours.
     -e, --fpe                         Enable floating-point exceptions (debugging
                                       mode).
     -f, --cpu-frequency=<str>         Overwrite the CPU frequency (Hz) to be
@@ -47,7 +47,7 @@ can be found by typing ``./swift -h``::
                                       to stop.
     -o, --output-params=<str>         Generate a default output parameter
                                       file.
-    -P, --param=<str>                 Set parameter value, overwriting a value
+    -P, --param=<str>                 Set parameter value, overiding the value
                                       read from the parameter file. Can be used
                                       more than once {sec:par:value}.
     -r, --restart                     Continue using restart files.
@@ -60,4 +60,3 @@ can be found by typing ``./swift -h``::
                                       are dumped.
     -Y, --threadpool-dumps=<int>      Time-step frequency at which threadpool
                                       tasks are dumped.
-
