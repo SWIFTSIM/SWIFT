@@ -22,7 +22,6 @@ doc/latex/
 doc/man/
 doc/Doxyfile
 
-examples/CoolingRates/testCooling
 examples/swift
 examples/swift_mpi
 examples/*/*.xmf
@@ -53,6 +52,9 @@ examples/*/*.mpg
 examples/*/gravity_checks_*.dat
 examples/*/coolingtables.tar.gz
 examples/*/coolingtables
+examples/CoolingRates/cooling_rates
+examples/CoolingRates/cooling_element_*.dat
+examples/CoolingRates/cooling_output.dat
 
 tests/testActivePair
 tests/testActivePair.sh
