@@ -67,7 +67,7 @@ wish to extract. The python snippet below should give you an idea of how to
 go about doing this for the bound particles.
 
 First, we need to extract the offset from the ``.catalog_group`` file, and
-work out how many _bound_ partices are in our halo. We can do this by
+work out how many _bound_ particles are in our halo. We can do this by
 looking at the next offset. Then, we can ID match those with the snapshot
 file, and get the mask for the _positions_ in the file that correspond
 to our bound particles. (Note this requires ``numpy > 1.15.0``).
@@ -97,7 +97,7 @@ to our bound particles. (Note this requires ``numpy > 1.15.0``).
    # Again, we're done with that file.
    particles_file.close()
 
-   # Now, the tricky bit. We need to create the correspondance between the
+   # Now, the tricky bit. We need to create the correspondence between the
    # positions in the snapshot file, and the ids.
 
    # Let's look for the dark matter particles in that halo.
@@ -166,7 +166,7 @@ Mean Density related:
   :math:`\Delta=200` based on the mean density of the Universe 
   (:math:`M_{200}`).
 + ``R_200mean``: The :math:`R_{200}` radius of the halo based on the 
-  mean density ofthe Universe.
+  mean density of the Universe.
 
 Virial properties:
 """"""""""""""""""
@@ -190,7 +190,7 @@ properties.
 + ``M_gas``: The gas mass in the halo.
 + ``Mass_tot``: The total mass of the halo
 + ``M_gas_30kpc``: The gas mass within 30 kpc of the halo centre.
-+ ``M_gas_500c``: The gas mass of the overdensity of 500 times the critical
++ ``M_gas_500c``: The gas mass of the over-density of 500 times the critical
   density
 + ``M_gas_Rvmax``: The gas mass within the maximum rotation velocity.
 
@@ -232,7 +232,7 @@ NFW profile properties:
 + ``VXc_gas``, ``VYc_gas`` and ``VZc_gas`` are the velocities of the gas  in
   the centre of the halo [#check]_.
 
-Intertia Tensor properties:
+Inertia Tensor properties:
 """""""""""""""""""""""""""
 
 + ``eig_ij``: Are the normalized eigenvectors of the inertia tensor.
