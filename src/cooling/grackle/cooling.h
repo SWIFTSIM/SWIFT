@@ -57,9 +57,9 @@
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
  */
-INLINE static void cooling_update(const struct cosmology *cosmo,
-                    		  struct cooling_function_data *cooling,
-		                  const int restart_flag) {
+INLINE static void cooling_update(const struct cosmology* cosmo,
+                                  struct cooling_function_data* cooling,
+                                  const int restart_flag) {
   // Add content if required.
 }
 
@@ -824,9 +824,6 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
  * @param cosmo cosmology structure
  */
 static INLINE void cooling_restore_tables(struct cooling_function_data* cooling,
-                                          const struct cosmology* cosmo){
-
-}
-
+                                          const struct cosmology* cosmo) {}
 
 #endif /* SWIFT_COOLING_GRACKLE_H */

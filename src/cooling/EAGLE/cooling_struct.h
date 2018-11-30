@@ -71,7 +71,7 @@ struct cooling_function_data {
   float *SolarAbundances;
   float *SolarElectronAbundance;
 
-  /* Normalisation constants that are frequently used 
+  /* Normalisation constants that are frequently used
    * Multiply by these values to go from internal to cgs
    * units for relevant quantity */
   double internal_energy_scale;

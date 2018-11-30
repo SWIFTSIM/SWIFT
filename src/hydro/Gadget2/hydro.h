@@ -602,7 +602,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf(w2);
 
   /* Predict the entropy */
-  if (p->entropy + p->entropy_dt * dt_therm <= 0) error("entropy negative particle id %llu old entropy %.5e d_entropy %.5e entropy_dt %.5e dt therm %.5e", p->id, p->entropy, p->entropy_dt*dt_therm, p->entropy_dt, dt_therm);
+  if (p->entropy + p->entropy_dt * dt_therm <= 0)
+    error(
+        "entropy negative particle id %llu old entropy %.5e d_entropy %.5e "
+        "entropy_dt %.5e dt therm %.5e",
+        p->id, p->entropy, p->entropy_dt * dt_therm, p->entropy_dt, dt_therm);
   p->entropy += p->entropy_dt * dt_therm;
 
   /* Re-compute the pressure */

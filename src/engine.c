@@ -2704,7 +2704,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_parts(s, e->verbose);
   space_init_gparts(s, e->verbose);
   space_init_sparts(s, e->verbose);
-  
+
   /* Update the cooling function */
   if (e->policy & engine_policy_cooling)
     cooling_update(e->cosmology, e->cooling_func, 0);

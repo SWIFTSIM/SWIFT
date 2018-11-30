@@ -36,8 +36,7 @@
  * @param nh Hydrogen number density (cgs units)
  * @param u Internal energy (cgs units)
  */
-void set_quantities(struct part *restrict p,
-		    struct xpart *restrict xp,
+void set_quantities(struct part *restrict p, struct xpart *restrict xp,
                     const struct unit_system *restrict us,
                     const struct cooling_function_data *restrict cooling,
                     const struct cosmology *restrict cosmo,
@@ -53,7 +52,6 @@ void set_quantities(struct part *restrict p,
                    p->rho * (hydro_gamma_minus_one);
   p->entropy = pressure * (pow(p->rho, -hydro_gamma));
   xp->entropy_full = p->entropy;
-
 }
 
 /*
@@ -120,9 +118,10 @@ int main(int argc, char **argv) {
   cosmology_print(&cosmo);
 
   // Set redshift and associated quantities
-  const float scale_factor = 1.0/(1.0+redshift);
-  integertime_t ti_current = log(scale_factor/cosmo.a_begin)/cosmo.time_base;
-  cosmology_update(&cosmo,&internal_const,ti_current);
+  const float scale_factor = 1.0 / (1.0 + redshift);
+  integertime_t ti_current =
+      log(scale_factor / cosmo.a_begin) / cosmo.time_base;
+  cosmology_update(&cosmo, &internal_const, ti_current);
 
   // Init cooling
   cooling_init(params, &us, &internal_const, &cooling);
@@ -153,14 +152,13 @@ int main(int argc, char **argv) {
 
   // set hydrogen number density
   nh = exp(M_LN10 * log_10_nh);
-  
 
   // set internal energy to dummy value, will get reset when looping over
   // internal energies
   u = 1.0e14;
   set_quantities(&p, &xp, &us, &cooling, &cosmo, &internal_const, nh, u);
-  float inn_h = hydro_get_physical_density(&p, &cosmo) * XH / internal_const.const_proton_mass
-                 *cooling.number_density_scale;
+  float inn_h = hydro_get_physical_density(&p, &cosmo) * XH /
+                internal_const.const_proton_mass * cooling.number_density_scale;
   get_index_1d(cooling.nH, cooling.N_nH, log10(inn_h), &n_h_i, &d_n_h);
 
   // Loop over internal energy
@@ -174,11 +172,13 @@ int main(int argc, char **argv) {
     float cooling_du_dt;
 
     // calculate cooling rates
-    temperature = eagle_convert_u_to_temp(log10(u), &du, n_h_i, He_i, d_n_h, d_He, &cooling, &cosmo);
+    temperature = eagle_convert_u_to_temp(log10(u), &du, n_h_i, He_i, d_n_h,
+                                          d_He, &cooling, &cosmo);
     cooling_du_dt = eagle_print_metal_cooling_rate(
         n_h_i, d_n_h, He_i, d_He, &p, &xp, &cooling, &cosmo, &internal_const,
         abundance_ratio);
-    fprintf(output_file, "%.5e %.5e\n", exp(M_LN10*temperature), cooling_du_dt);
+    fprintf(output_file, "%.5e %.5e\n", exp(M_LN10 * temperature),
+            cooling_du_dt);
   }
   fclose(output_file);
   message("done cooling rates test");
@@ -186,4 +186,3 @@ int main(int argc, char **argv) {
   free(params);
   return 0;
 }
-

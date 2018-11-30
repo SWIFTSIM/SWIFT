@@ -36,15 +36,17 @@ INLINE static int chemistry_read_particles(struct part* parts,
   list[0] = io_make_input_field(
       "ElementAbundance", FLOAT, chemistry_element_count, OPTIONAL,
       UNIT_CONV_NO_UNITS, parts, chemistry_data.metal_mass_fraction);
-  list[1] = io_make_input_field("Z", FLOAT, 1, OPTIONAL, UNIT_CONV_NO_UNITS,
-                                parts, chemistry_data.metal_mass_fraction_total);
-  list[2] = io_make_input_field("IronFromSNIa", FLOAT, 1, OPTIONAL, UNIT_CONV_NO_UNITS,
-                                parts, chemistry_data.iron_mass_fraction_from_SNIa);
+  list[1] =
+      io_make_input_field("Z", FLOAT, 1, OPTIONAL, UNIT_CONV_NO_UNITS, parts,
+                          chemistry_data.metal_mass_fraction_total);
+  list[2] = io_make_input_field("IronFromSNIa", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_NO_UNITS, parts,
+                                chemistry_data.iron_mass_fraction_from_SNIa);
 
   return 3;
-  
+
   /* Nothing to read */
-  //return 0;
+  // return 0;
 }
 
 /**

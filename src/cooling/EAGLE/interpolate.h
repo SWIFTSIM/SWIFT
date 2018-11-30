@@ -187,15 +187,17 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
  * @param dx,dy Offset within cell
  * @param nx,ny Table dimensions
  */
-__attribute__((always_inline)) INLINE float interpolate_2d(
-    const float *table, int i, int j, float dx, float dy, int nx, int ny) {
+__attribute__((always_inline)) INLINE float interpolate_2d(const float *table,
+                                                           int i, int j,
+                                                           float dx, float dy,
+                                                           int nx, int ny) {
   const float table0 = table[row_major_index_2d(i, j, nx, ny)];
   const float table1 = table[row_major_index_2d(i, j + 1, nx, ny)];
   const float table2 = table[row_major_index_2d(i + 1, j, nx, ny)];
   const float table3 = table[row_major_index_2d(i + 1, j + 1, nx, ny)];
 
   return (1 - dx) * (1 - dy) * table0 + (1 - dx) * dy * table1 +
-           dx * (1 - dy) * table2 + dx * dy * table3;
+         dx * (1 - dy) * table2 + dx * dy * table3;
 }
 
 /*
@@ -209,9 +211,11 @@ __attribute__((always_inline)) INLINE float interpolate_2d(
  * @param dx,dy,dz Offset within cell
  * @param nx,ny,nz Table dimensions
  */
-__attribute__((always_inline)) INLINE float interpolate_3d(
-    const float *table, int i, int j, int k, float dx, float dy, float dz,
-    int nx, int ny, int nz) {
+__attribute__((always_inline)) INLINE float interpolate_3d(const float *table,
+                                                           int i, int j, int k,
+                                                           float dx, float dy,
+                                                           float dz, int nx,
+                                                           int ny, int nz) {
   const float table0 = table[row_major_index_3d(i, j, k, nx, ny, nz)];
   const float table1 = table[row_major_index_3d(i, j, k + 1, nx, ny, nz)];
   const float table2 = table[row_major_index_3d(i, j + 1, k, nx, ny, nz)];
@@ -223,11 +227,10 @@ __attribute__((always_inline)) INLINE float interpolate_3d(
       table[row_major_index_3d(i + 1, j + 1, k + 1, nx, ny, nz)];
 
   return (1 - dx) * (1 - dy) * (1 - dz) * table0 +
-         (1 - dx) * (1 - dy) * dz * table1 +
-         (1 - dx) * dy * (1 - dz) * table2 + (1 - dx) * dy * dz * table3 +
-         dx * (1 - dy) * (1 - dz) * table4 + dx * (1 - dy) * dz * table5 +
-         dx * dy * (1 - dz) * table6 + 
-	 dx * dy * dz * table7;
+         (1 - dx) * (1 - dy) * dz * table1 + (1 - dx) * dy * (1 - dz) * table2 +
+         (1 - dx) * dy * dz * table3 + dx * (1 - dy) * (1 - dz) * table4 +
+         dx * (1 - dy) * dz * table5 + dx * dy * (1 - dz) * table6 +
+         dx * dy * dz * table7;
 }
 
 /*
@@ -292,9 +295,8 @@ __attribute__((always_inline)) INLINE float interpolate_4d(
          dx * (1 - dy) * dz * (1 - dw) * table10 +
          dx * (1 - dy) * dz * dw * table11 +
          dx * dy * (1 - dz) * (1 - dw) * table12 +
-         dx * dy * (1 - dz) * dw * table13 +
-         dx * dy * dz * (1 - dw) * table14 + 
-	 dx * dy * dz * dw * table15;
+         dx * dy * (1 - dz) * dw * table13 + dx * dy * dz * (1 - dw) * table14 +
+         dx * dy * dz * dw * table15;
 }
 
 /*
@@ -303,7 +305,8 @@ __attribute__((always_inline)) INLINE float interpolate_4d(
  * internal energy. Returns log base 10 of temperature.
  *
  * @param log_10_u Log base 10 of internal energy
- * @param dT_du Pointer to rate of change of log_10(temperature) with internal energy
+ * @param dT_du Pointer to rate of change of log_10(temperature) with internal
+ * energy
  * @param z_i Redshift index
  * @param n_h_i Hydrogen number density index
  * @param He_i Helium fraction index
@@ -314,8 +317,8 @@ __attribute__((always_inline)) INLINE float interpolate_4d(
  * @param cosmo #cosmology structure
  */
 __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
-    double log_10_u, float *dT_du, int n_h_i, int He_i, float d_n_h,
-    float d_He, const struct cooling_function_data *restrict cooling,
+    double log_10_u, float *dT_du, int n_h_i, int He_i, float d_n_h, float d_He,
+    const struct cooling_function_data *restrict cooling,
     const struct cosmology *restrict cosmo) {
 
   int u_i;
@@ -323,51 +326,51 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
 
   get_index_1d(cooling->Therm, cooling->N_Temp, log_10_u, &u_i, &d_u);
 
-  /* Interpolate temperature table to return temperature for current 
-   * internal energy (use 3D interpolation for high redshift table, 
-   * otherwise 4D) */ 
+  /* Interpolate temperature table to return temperature for current
+   * internal energy (use 3D interpolation for high redshift table,
+   * otherwise 4D) */
   if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-    log_10_T = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
-                          d_He, d_u, cooling->N_nH, cooling->N_He,
-                          cooling->N_Temp);
+    log_10_T = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i,
+                              d_n_h, d_He, d_u, cooling->N_nH, cooling->N_He,
+                              cooling->N_Temp);
   } else {
     log_10_T = interpolate_4d(cooling->table.temperature, 0, n_h_i, He_i, u_i,
-                          cooling->dz, d_n_h, d_He, d_u, 2, cooling->N_nH,
-                          cooling->N_He, cooling->N_Temp);
+                              cooling->dz, d_n_h, d_He, d_u, 2, cooling->N_nH,
+                              cooling->N_He, cooling->N_Temp);
   }
 
   /* Interpolate temperature table to return temperature for internal energy
    * at grid point above current internal energy for computing dT_du used for
-   * calculation of dlambda_du in cooling.c (use 3D interpolation for high redshift table, 
-   * otherwise 4D) */ 
+   * calculation of dlambda_du in cooling.c (use 3D interpolation for high
+   * redshift table, otherwise 4D) */
   if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-    log_10_T_high = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
-                          d_He, 1.0, cooling->N_nH, cooling->N_He,
-                          cooling->N_Temp);
+    log_10_T_high = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i,
+                                   d_n_h, d_He, 1.0, cooling->N_nH,
+                                   cooling->N_He, cooling->N_Temp);
   } else {
-    log_10_T_high = interpolate_4d(cooling->table.temperature, 0, n_h_i, He_i, u_i,
-                          cooling->dz, d_n_h, d_He, 1.0, 2, cooling->N_nH,
-                          cooling->N_He, cooling->N_Temp);
+    log_10_T_high = interpolate_4d(
+        cooling->table.temperature, 0, n_h_i, He_i, u_i, cooling->dz, d_n_h,
+        d_He, 1.0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
   }
 
   /* Interpolate temperature table to return temperature for internal energy
    * at grid point below current internal energy for computing dT_du used for
-   * calculation of dlambda_du in cooling.c (use 3D interpolation for high redshift table, 
-   * otherwise 4D) */ 
+   * calculation of dlambda_du in cooling.c (use 3D interpolation for high
+   * redshift table, otherwise 4D) */
   if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-    log_10_T_low = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i, d_n_h,
-                          d_He, 0.0, cooling->N_nH, cooling->N_He,
-                          cooling->N_Temp);
+    log_10_T_low = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i,
+                                  d_n_h, d_He, 0.0, cooling->N_nH,
+                                  cooling->N_He, cooling->N_Temp);
   } else {
-    log_10_T_low = interpolate_4d(cooling->table.temperature, 0, n_h_i, He_i, u_i,
-                          cooling->dz, d_n_h, d_He, 0.0, 2, cooling->N_nH,
-                          cooling->N_He, cooling->N_Temp);
+    log_10_T_low = interpolate_4d(
+        cooling->table.temperature, 0, n_h_i, He_i, u_i, cooling->dz, d_n_h,
+        d_He, 0.0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
   }
 
   /* Calculate dT/du */
   float delta_u =
       exp(cooling->Therm[u_i + 1] * M_LN10) - exp(cooling->Therm[u_i] * M_LN10);
-  *dT_du = (exp(M_LN10*log_10_T_high) - exp(M_LN10*log_10_T_low)) / delta_u;
+  *dT_du = (exp(M_LN10 * log_10_T_high) - exp(M_LN10 * log_10_T_low)) / delta_u;
 
   return log_10_T;
 }

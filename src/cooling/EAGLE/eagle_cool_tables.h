@@ -41,6 +41,7 @@ void read_cooling_header(char *, struct cooling_function_data *);
 
 void allocate_cooling_tables(struct cooling_function_data *restrict);
 
-void eagle_check_cooling_tables(struct cooling_function_data *restrict, const int);
+void eagle_check_cooling_tables(struct cooling_function_data *restrict,
+                                const int);
 
 #endif

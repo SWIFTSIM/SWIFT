@@ -61,13 +61,13 @@ chemistry_get_element_name(enum chemistry_element elem) {
  */
 __attribute__((always_inline)) INLINE static void chemistry_init_part(
     struct part* restrict p, const struct chemistry_global_data* cd) {
-  
+
   struct chemistry_part_data* cpd = &p->chemistry_data;
 
   for (int i = 0; i < chemistry_element_count; i++) {
     cpd->smoothed_metal_mass_fraction[i] = 0.f;
-  }  
-  
+  }
+
   cpd->smoothed_metal_mass_fraction_total = 0.f;
   cpd->smoothed_iron_mass_fraction_from_SNIa = 0.f;
 }
@@ -109,8 +109,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   cpd->smoothed_metal_mass_fraction_total +=
       m * cpd->metal_mass_fraction_total * kernel_root;
   cpd->smoothed_metal_mass_fraction_total *= factor;
-  
-  
+
   /* Smooth iron mass fraction from SNIa */
   cpd->smoothed_iron_mass_fraction_from_SNIa +=
       m * cpd->iron_mass_fraction_from_SNIa * kernel_root;
@@ -176,8 +175,8 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
                                           struct chemistry_global_data* data) {
 
   /* Read the total metallicity */
-  data->initial_metal_mass_fraction_total =
-      parser_get_opt_param_float(parameter_file, "EAGLEChemistry:InitMetallicity", -1);
+  data->initial_metal_mass_fraction_total = parser_get_opt_param_float(
+      parameter_file, "EAGLEChemistry:InitMetallicity", -1);
 
   if (data->initial_metal_mass_fraction_total != -1) {
     /* Read the individual mass fractions */
@@ -190,11 +189,11 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
           parser_get_param_float(parameter_file, buffer);
     }
 
-  /* Read the constant ratios */
-  data->calcium_over_silicon_ratio = parser_get_param_float(
-      parameter_file, "EAGLEChemistry:CalciumOverSilicon");
-  data->sulphur_over_silicon_ratio = parser_get_param_float(
-      parameter_file, "EAGLEChemistry:SulphurOverSilicon");
+    /* Read the constant ratios */
+    data->calcium_over_silicon_ratio = parser_get_param_float(
+        parameter_file, "EAGLEChemistry:CalciumOverSilicon");
+    data->sulphur_over_silicon_ratio = parser_get_param_float(
+        parameter_file, "EAGLEChemistry:SulphurOverSilicon");
   }
 }
 

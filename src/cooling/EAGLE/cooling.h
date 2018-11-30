@@ -49,8 +49,7 @@ double eagle_cooling_rate(double, double *, int, float, int, float,
 
 double eagle_print_metal_cooling_rate(
     int, float, int, float, const struct part *restrict,
-    const struct xpart *restrict,
-    const struct cooling_function_data *restrict,
+    const struct xpart *restrict, const struct cooling_function_data *restrict,
     const struct cosmology *restrict, const struct phys_const *, float *);
 
 float bisection_iter(float, double, int, float, int, float, float,
@@ -70,18 +69,17 @@ void abundance_ratio_to_solar(const struct part *restrict,
 void cooling_cool_part(const struct phys_const *restrict,
                        const struct unit_system *restrict,
                        const struct cosmology *restrict,
-		       const struct hydro_props *restrict,
+                       const struct hydro_props *restrict,
                        const struct cooling_function_data *restrict,
-                       struct part *restrict, struct xpart *restrict, 
-		       float, float);
+                       struct part *restrict, struct xpart *restrict, float,
+                       float);
 
 float cooling_timestep(const struct cooling_function_data *restrict,
                        const struct phys_const *restrict,
                        const struct cosmology *restrict,
                        const struct unit_system *restrict,
-		       const struct hydro_props*,
-                       const struct part *restrict,
-		       const struct xpart *restrict);
+                       const struct hydro_props *, const struct part *restrict,
+                       const struct xpart *restrict);
 
 void cooling_first_init_part(const struct phys_const *restrict,
                              const struct unit_system *restrict,
@@ -98,9 +96,11 @@ void cooling_init_backend(struct swift_params *, const struct unit_system *,
 
 void cooling_print_backend(const struct cooling_function_data *);
 
-void cooling_update(const struct cosmology *, struct cooling_function_data *, const int);
+void cooling_update(const struct cosmology *, struct cooling_function_data *,
+                    const int);
 
-void cooling_restore_tables(struct cooling_function_data*, const struct cosmology*);
+void cooling_restore_tables(struct cooling_function_data *,
+                            const struct cosmology *);
 
 void dump_cooling_struct(const struct cooling_function_data *);
 #endif /* SWIFT_COOLING_EAGLE_H */

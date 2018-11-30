@@ -487,7 +487,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
-  if (isnan(balsara_i) || isnan(balsara_j)) message("balsara_i balsara_j %.5e %.5e", balsara_i, balsara_j);
+  if (isnan(balsara_i) || isnan(balsara_j))
+    message("balsara_i balsara_j %.5e %.5e", balsara_i, balsara_j);
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
@@ -610,7 +611,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
-  if (isnan(balsara_i) || isnan(balsara_j)) message("balsara_i balsara_j %.5e %.5e", balsara_i, balsara_j);
+  if (isnan(balsara_i) || isnan(balsara_j))
+    message("balsara_i balsara_j %.5e %.5e", balsara_i, balsara_j);
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
