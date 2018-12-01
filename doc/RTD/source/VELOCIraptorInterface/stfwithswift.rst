@@ -85,10 +85,9 @@ the Small Cosmological Volume DMO example we can run a simulation with halo
 finder as::
 
   cd examples/SmallCosmoVolume_DM 
-  ../swift -c -s -G -x -t 8 small_cosmo_volume_dm.yml
+  ../swift --cosmology --hydro --self-gravity --velociraptor --threads=8 small_cosmo_volume_dm.yml
 
-In which there is an additional ``-x`` option which activates the VELOCIraptor
-interface.
+Which activates the VELOCIraptor interface.
 
 
 .. _GitHub: https://github.com/pelahi/VELOCIraptor-STF

@@ -1,5 +1,5 @@
 .. Parameter File
-   Loic Hausammann, 1 june 2018
+   Loic Hausammann, 1 June 2018
 
 .. _Output_list_label:
 
@@ -37,7 +37,7 @@ Example of file with redshift::
   5
 
 .. _Output_selection_label:
-  
+
 Output Selection
 ~~~~~~~~~~~~~~~~
 
@@ -53,13 +53,13 @@ default all fields are written.
 
 This field is mostly used to remove unnecessary output by listing them
 with 0's. A classic use-case for this feature is a DM-only simulation
-(pure n-body) where all particles have the same mass. Outputing the
+(pure n-body) where all particles have the same mass. Outputting the
 mass field in the snapshots results in extra i/o time and unnecessary
 waste of disk space. The corresponding section of the ``yaml``
 parameter file would look like this::
 
   SelectOutput:
-    Masses_DM:   0 
+    Masses_DM:   0
 
 You can generate a ``yaml`` file containing all the possible fields
-available for a given configuration of SWIFT by running ``./swift -o output.yml``. 
+available for a given configuration of SWIFT by running ``./swift --output-params output.yml``.

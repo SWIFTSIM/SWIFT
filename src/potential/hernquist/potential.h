@@ -170,6 +170,12 @@ static INLINE void potential_init_backend(
     const struct unit_system* us, const struct space* s,
     struct external_potential* potential) {
 
+  /* Define the default value */
+  static const int idealized_disk_default = 0;
+  static const double M200_default = 0.;
+  static const double V200_default = 0.;
+  static const double R200_default = 0.;
+
   /* Read in the position of the centre of potential */
   parser_get_param_double_array(parameter_file, "HernquistPotential:position",
                                 3, potential->x);
@@ -184,11 +190,91 @@ static INLINE void potential_init_backend(
     potential->x[2] += s->dim[2] / 2.;
   }
 
-  /* Read the other parameters of the model */
-  potential->mass =
-      parser_get_param_double(parameter_file, "HernquistPotential:mass");
-  potential->al =
-      parser_get_param_double(parameter_file, "HernquistPotential:scalelength");
+  /* check whether we use the more advanced idealized disk setting */
+  const int usedisk = parser_get_opt_param_int(
+      parameter_file, "HernquistPotential:idealizeddisk",
+      idealized_disk_default);
+
+  if (!usedisk) {
+    /* Read the parameters of the model in the case of the simple
+     * potential form \f$ \Phi = - \frac{GM}{r+a} \f$ */
+    potential->mass =
+        parser_get_param_double(parameter_file, "HernquistPotential:mass");
+    potential->al = parser_get_param_double(parameter_file,
+                                            "HernquistPotential:scalelength");
+  } else {
+
+    /* Read the parameters in the case of a idealized disk
+     * There are 3 different possible input parameters M200, V200 and R200
+     * First read in the mandatory parameters in this case */
+
+    const float G_newton = phys_const->const_newton_G;
+    const float kmoversoverMpc = phys_const->const_reduced_hubble;
+
+    /* Initialize the variables */
+    double M200 = parser_get_opt_param_double(
+        parameter_file, "HernquistPotential:M200", M200_default);
+    double V200 = parser_get_opt_param_double(
+        parameter_file, "HernquistPotential:V200", V200_default);
+    double R200 = parser_get_opt_param_double(
+        parameter_file, "HernquistPotential:R200", R200_default);
+    const double h =
+        parser_get_param_double(parameter_file, "HernquistPotential:h");
+
+    /* Hubble constant assumed for halo masses conversion */
+    const double H0 = h * kmoversoverMpc;
+
+    /* There are 3 legit runs possible with use disk,
+     * with a known M200, V200 or R200 */
+    if (M200 != 0.0) {
+      /* Calculate V200 and R200 from M200 */
+      V200 = cbrt(10. * M200 * G_newton * H0);
+      R200 = V200 / (10 * H0);
+
+    } else if (V200 != 0.0) {
+
+      /* Calculate M200 and R200 from V200 */
+      M200 = V200 * V200 * V200 / (10. * G_newton * H0);
+      R200 = V200 / (10 * H0);
+    } else if (R200 != 0.0) {
+
+      /* Calculate M200 and V200 from R200 */
+      V200 = 10. * H0 * R200;
+      M200 = V200 * V200 * V200 / (10. * G_newton * H0);
+    } else {
+      error("Please specify one of the 3 variables M200, V200 or R200");
+    }
+
+    /* message("M200 = %g, R200 = %g, V200 = %g", M200, R200, V200); */
+    /* message("H0 = %g", H0); */
+
+    /* get the concentration from the parameter file */
+    const double concentration = parser_get_param_double(
+        parameter_file, "HernquistPotential:concentration");
+
+    /* Calculate the Scale radius using the NFW definition */
+    const double RS = R200 / concentration;
+
+    /* Calculate the Hernquist equivalent scale length */
+    potential->al = RS * sqrt(1. * (log(1. + concentration) -
+                                    concentration / (1. + concentration)));
+
+    /* Depending on the disk mass and and the bulge mass the halo
+     * gets a different mass, because of this we read the fractions
+     * from the parameter file and calculate the absolute mass*/
+    const double diskfraction = parser_get_param_double(
+        parameter_file, "HernquistPotential:diskfraction");
+    const double bulgefraction = parser_get_param_double(
+        parameter_file, "HernquistPotential:bulgefraction");
+    /* Calculate the mass of the bulge and disk from the parameters  */
+    const double Mdisk = M200 * diskfraction;
+    const double Mbulge = M200 * bulgefraction;
+
+    /* Store the mass of the DM halo */
+    potential->mass = M200 - Mdisk - Mbulge;
+  }
+
+  /* Retrieve the timestep and softening of the potential */
   potential->timestep_mult = parser_get_param_float(
       parameter_file, "HernquistPotential:timestep_mult");
   const float epsilon =
@@ -199,7 +285,7 @@ static INLINE void potential_init_backend(
   /* This is the circular orbital time at the softened radius */
   const float sqrtgm = sqrtf(phys_const->const_newton_G * potential->mass);
   potential->mintime = 2.f * sqrtf(epsilon) * potential->al * M_PI *
-                       (1 + epsilon / potential->al) / sqrtgm *
+                       (1. + epsilon / potential->al) / sqrtgm *
                        potential->timestep_mult;
 }
 

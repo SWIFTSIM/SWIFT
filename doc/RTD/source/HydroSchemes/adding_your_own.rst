@@ -13,7 +13,7 @@ Adding Hydro Schemes
 SWIFT is engineered to enable you to add your own hydrodynamics schemes easily.
 We enable this through the use of header files to encapsulate each scheme.
 
-Note that it's unlikely you will ever have to consider paralellism or 'loops over
+Note that it's unlikely you will ever have to consider parallelism or 'loops over
 neighbours' for SWIFT; all of this is handled by the tasking system. All we ask
 for is the interaction functions that tell us how to a) compute the density
 and b) compute forces.
@@ -69,7 +69,7 @@ will need to 'fill out' the following:
 + ``hydro_compute_timestep(p, xp, hydro_props, cosmo)`` returns the timestep for 
   the hydrodynamics particles.
 + ``hydro_timestep_extra(p, dt)`` does some extra hydro operations once the
-  physical timestel for the particle is known.
+  physical timestep for the particle is known.
 + ``hydro_init_part(p, hydro_space)`` initialises the particle in preparation for
   the density calculation. This essentially sets properties, such as the density,
   to zero.
