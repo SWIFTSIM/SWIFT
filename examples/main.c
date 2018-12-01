@@ -242,6 +242,7 @@ int main(int argc, char *argv[]) {
       OPT_INTEGER('Y', "threadpool-dumps", &dump_threadpool,
                   "Time-step frequency at which threadpool tasks are dumped.",
                   NULL, 0, 0),
+      OPT_END(),
   };
   struct argparse argparse;
   argparse_init(&argparse, options, swift_usage, 0);
