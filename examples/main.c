@@ -185,7 +185,8 @@ int main(int argc, char *argv[]) {
                   "particles. This emulates Gadget-[23] and GIZMO's default "
                   "behaviours.",
                   NULL, 0, 0),
-      OPT_BOOLEAN('F', "sourceterms", &with_sourceterms, "", NULL, 0, 0),
+      OPT_BOOLEAN('F', "star-formation", &with_star_formation,
+                  "Run with star formation", NULL, 0, 0),
       OPT_BOOLEAN('g', "external-gravity", &with_external_gravity,
                   "Run with an external gravitational potential.", NULL, 0, 0),
       OPT_BOOLEAN('G', "self-gravity", &with_self_gravity,
