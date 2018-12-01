@@ -22,7 +22,7 @@ place in SWIFT. A single file can contain any number of particles (well... up to
 compute node.
 
 The original GADGET-2 file format only contains 2 types of particles: gas
-particles and 5 sorts of collisionless particles that allow users to run with 5
+particles and 5 sorts of collision-less particles that allow users to run with 5
 separate particle masses and softenings. In SWIFT, we expand on this by using
 two of these types for stars and black holes.
 
@@ -39,7 +39,7 @@ You can find out more about the HDF5 format on their `webpages
 Structure of the File
 ---------------------
 
-There are several groups that contain 'auxilliary' information, such as
+There are several groups that contain 'auxiliary' information, such as
 ``Header``.  Particle data is placed in separate groups depending of the type of
 the particles. Some types are currently ignored by SWIFT but are kept in the
 file format for compatibility reasons.
@@ -102,7 +102,7 @@ In the ``/Header/`` group, the following attributes are required:
   ``NumPart_Total`` to be >2^31, the use of ``NumPart_Total_HighWord`` is only
   here for compatibility reasons.
 + ``Flag_Entropy_ICs``, a historical value that tells the code if you have
-  included entropy or internal energy values in your intial conditions files.
+  included entropy or internal energy values in your initial conditions files.
   Acceptable values are 0 or 1. We recommend using internal energies over
   entropy in the ICs and hence have this flag set to 0.
 
@@ -147,7 +147,7 @@ individual particle type (e.g. ``/PartType0/``) that have the following *dataset
 + ``Masses``, an array of length N that gives the masses of the particles.
 
 For ``PartType0`` (i.e. particles that interact through hydro-dynamics), you will
-need the following auxilliary items:
+need the following auxiliary items:
 
 + ``SmoothingLength``, the smoothing lengths of the particles. These will be
   tidied up a bit, but it is best if you provide accurate numbers. In
@@ -169,7 +169,7 @@ h-free quantities. Switching this parameter on will also affect the box size
 read from the ``/Header/`` group (see above).
 
 Similarly, GADGET cosmological ICs have traditionally used velocities expressed
-as peculiar velocities divided by ``sqrt(a)``. This can be undone by swicthing
+as peculiar velocities divided by ``sqrt(a)``. This can be undone by switching
 on the parameter ``InitialConditions:cleanup_velocity_factors`` in the
 :ref:`Parameter_File_label`.
 

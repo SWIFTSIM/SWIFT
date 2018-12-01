@@ -19,7 +19,7 @@
 ACLOCAL_AMFLAGS = -I m4
 
 # Show the way...
-SUBDIRS = src examples doc tests tools
+SUBDIRS = src argparse examples doc tests tools
 if HAVEEAGLECOOLING
 SUBDIRS += examples/CoolingRates
 endif

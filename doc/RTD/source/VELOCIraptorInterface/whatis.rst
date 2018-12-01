@@ -55,7 +55,7 @@ The VELOCIraptor algorithm consists basically of the following steps [#ref]_:
 
 .. 1. The algorithm is mostly sensitive to substructures that are on the tail
    of the Gaussian velocity density function, this means that VELOCIraptor
-   is most sensitive for subhalos which are cold (slow ratating) but have 
+   is most sensitive for subhalos which are cold (slow rotating) but have 
    a large bulk velocity
 
 

@@ -1891,6 +1891,10 @@ int engine_estimate_nr_tasks(struct engine *e) {
   int n1 = 0;
   int n2 = 0;
   if (e->policy & engine_policy_hydro) {
+    /* 2 self (density, force), 1 sort, 26/2 density pairs
+       26/2 force pairs, 1 drift, 3 ghosts, 2 kicks, 1 time-step,
+       1 end_force, 2 extra space
+     */
     n1 += 37;
     n2 += 2;
 #ifdef WITH_MPI
@@ -1918,16 +1922,25 @@ int engine_estimate_nr_tasks(struct engine *e) {
     n1 += 2;
   }
   if (e->policy & engine_policy_cooling) {
+    /* Cooling task + extra space */
     n1 += 2;
   }
   if (e->policy & engine_policy_sourceterms) {
     n1 += 2;
   }
   if (e->policy & engine_policy_stars) {
-    /* 1 self, 1 sort, 26/2 pairs */
-    n1 += 15;
+    /* 2 self (density, feedback), 1 sort, 26/2 density pairs
+       26/2 feedback pairs, 1 drift, 3 ghosts, 2 kicks, 1 time-step,
+       1 end_force, 2 extra space
+     */
+    n1 += 37;
+    n2 += 2;
+#ifdef WITH_MPI
+    n1 += 6;
+#endif
   }
 #if defined(WITH_LOGGER)
+  /* each cell logs its particles */
   n1 += 1;
 #endif
 
@@ -3605,36 +3618,53 @@ void engine_makeproxies(struct engine *e) {
               /* In the gravity case, check distances using the MAC. */
               if (with_gravity) {
 
-                /* We don't have multipoles yet (or there CoMs) so we will have
-                   to cook up something based on cell locations only. We hence
-                   need an upper limit on the distance that the CoMs in those
-                   cells could have. We then can decide whether we are too close
-                   for an M2L interaction and hence require a proxy as this pair
-                   of cells cannot rely on just an M2L calculation. */
+                /* First just add the direct neighbours. Then look for
+                   some further out if the opening angle demands it */
 
-                /* Minimal distance between any two points in the cells */
-                const double min_dist_centres2 = cell_min_dist2_same_size(
-                    &cells[cid], &cells[cjd], periodic, dim);
+                /* This is super-ugly but checks for direct neighbours */
+                /* with periodic BC */
+                if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
+                      abs(i - iii + cdim[0]) <= 1) &&
+                     (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
+                      abs(j - jjj + cdim[1]) <= 1) &&
+                     (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
+                      abs(k - kkk + cdim[2]) <= 1))) {
 
-                /* Let's now assume the CoMs will shift a bit */
-                const double min_dist_CoM =
-                    sqrt(min_dist_centres2) - 2. * delta_CoM;
-                const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
-
-                /* Are we beyond the distance where the truncated forces are 0
-                 * but not too far such that M2L can be used? */
-                if (periodic) {
-
-                  if ((min_dist_CoM2 < max_mesh_dist2) &&
-                      (!gravity_M2L_accept(r_max, r_max, theta_crit2,
-                                           min_dist_CoM2)))
-                    proxy_type |= (int)proxy_cell_type_gravity;
-
+                  proxy_type |= (int)proxy_cell_type_gravity;
                 } else {
 
-                  if (!gravity_M2L_accept(r_max, r_max, theta_crit2,
-                                          min_dist_CoM2))
-                    proxy_type |= (int)proxy_cell_type_gravity;
+                  /* We don't have multipoles yet (or there CoMs) so we will
+                     have to cook up something based on cell locations only. We
+                     hence need an upper limit on the distance that the CoMs in
+                     those cells could have. We then can decide whether we are
+                     too close for an M2L interaction and hence require a proxy
+                     as this pair of cells cannot rely on just an M2L
+                     calculation. */
+
+                  /* Minimal distance between any two points in the cells */
+                  const double min_dist_centres2 = cell_min_dist2_same_size(
+                      &cells[cid], &cells[cjd], periodic, dim);
+
+                  /* Let's now assume the CoMs will shift a bit */
+                  const double min_dist_CoM =
+                      sqrt(min_dist_centres2) - 2. * delta_CoM;
+                  const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
+
+                  /* Are we beyond the distance where the truncated forces are 0
+                   * but not too far such that M2L can be used? */
+                  if (periodic) {
+
+                    if ((min_dist_CoM2 < max_mesh_dist2) &&
+                        (!gravity_M2L_accept(r_max, r_max, theta_crit2,
+                                             min_dist_CoM2)))
+                      proxy_type |= (int)proxy_cell_type_gravity;
+
+                  } else {
+
+                    if (!gravity_M2L_accept(r_max, r_max, theta_crit2,
+                                            min_dist_CoM2))
+                      proxy_type |= (int)proxy_cell_type_gravity;
+                  }
                 }
               }
 

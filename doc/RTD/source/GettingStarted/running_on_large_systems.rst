@@ -38,5 +38,5 @@ each with 2x16 core processors for a total of 512 cores):
    #SBATCH -N 16  # Number of nodes to run on
    #SBATCH --tasks-per-node=2  # This system has 2 chips per node
    
-   mpirun -np 32 swift_mpi -t 16 -a parameter.yml
+   mpirun -np 32 swift_mpi --threads=16 --pin parameter.yml
 

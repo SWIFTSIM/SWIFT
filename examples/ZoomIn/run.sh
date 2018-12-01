@@ -7,5 +7,5 @@ then
     ./getIC.sh
 fi
 
-../swift -b -c -G -s -S -t 8 zoom_in.yml 2>&1 | tee output.log
+../swift --feedback --cosmology --self-gravity --hydro --stars --threads=8 zoom_in.yml 2>&1 | tee output.log
 
