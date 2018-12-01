@@ -71,7 +71,7 @@ git = sim["Code"].attrs["Git Revision"]
 cooling_model = sim["/SubgridScheme"].attrs["Cooling Model"]
 
 if cooling_model == "Constant Lambda":
-    Lambda = sim["/SubgridScheme"].attrs["Lambda/n_H^2 [cgs]"][0]
+    Lambda = sim["/SubgridScheme"].attrs["Lambda/n_H^2 [cgs]"][0]   
     
 # Cosmological parameters
 H_0 = sim["/Cosmology"].attrs["H0 [internal units]"][0]
@@ -108,7 +108,6 @@ def T(u, H_frac=H_mass_fraction, T_trans=H_transition_temp):
         ret[mask_neutral] = T_over_mu[mask_neutral] * mu(0, H_frac, T_trans)
         
     return ret
-
 
 z = np.zeros(n_snapshots)
 a = np.zeros(n_snapshots)
@@ -164,6 +163,8 @@ legend(loc="upper left", frameon=False, handlelength=1.5)
 # Cooling model
 if cooling_model == "Constant Lambda":
     text(1e-2, 6e4, "$\Lambda_{\\rm const}/n_{\\rm H}^2 = %.1f\\times10^{%d}~[\\rm{cgs}]$"%(Lambda/10.**(int(log10(Lambda))), log10(Lambda)), fontsize=7)
+elif cooling_model == "EAGLE":
+    text(1e-2, 6e4, "EAGLE (Wiersma et al. (2009)")
 else:
     text(1e-2, 6e4, "No cooling")
     
