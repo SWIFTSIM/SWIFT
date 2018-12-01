@@ -307,4 +307,11 @@ static INLINE void cooling_print_backend(
             cooling->cooling_tstep_mult);
 }
 
+/**
+ * @brief Clean-up the memory allocated for the cooling routines
+ *
+ * @param cooling the cooling data structure.
+ */
+static INLINE void cooling_clean(struct cooling_function_data* cooling) {}
+
 #endif /* SWIFT_COOLING_CONST_LAMBDA_H */

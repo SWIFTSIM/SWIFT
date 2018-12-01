@@ -825,5 +825,14 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
  */
 static INLINE void cooling_restore_tables(struct cooling_function_data* cooling,
                                           const struct cosmology* cosmo) {}
+/**
+ * @brief Clean-up the memory allocated for the cooling routines
+ *
+ * @param cooling the cooling data structure.
+ */
+static INLINE void cooling_clean(struct cooling_function_data* cooling) {
+
+  // MATTHIEU: To do: free stuff here
+}
 
 #endif /* SWIFT_COOLING_GRACKLE_H */

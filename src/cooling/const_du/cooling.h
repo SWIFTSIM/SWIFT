@@ -227,4 +227,11 @@ static INLINE void cooling_print_backend(
           cooling->cooling_rate, cooling->min_energy);
 }
 
+/**
+ * @brief Clean-up the memory allocated for the cooling routines
+ *
+ * @param cooling the cooling data structure.
+ */
+static INLINE void cooling_clean(struct cooling_function_data* cooling) {}
+
 #endif /* SWIFT_COOLING_CONST_DU_H */

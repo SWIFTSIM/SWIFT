@@ -1081,7 +1081,7 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
   /* Read relevant cooling tables.
    * Third variable in cooling_update flag to mark restart*/
   allocate_cooling_tables(cooling);
-  cooling_update(cosmo, cooling, 1);
+  cooling_update(cosmo, cooling, /*restart=*/1);
 }
 
 /**
@@ -1089,7 +1089,32 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
  *
  * @param cooling #cooling_function_data struct.
  */
-INLINE void cooling_print_backend(const struct cooling_function_data *cooling) {
+void cooling_print_backend(const struct cooling_function_data *cooling) {
 
   message("Cooling function is 'EAGLE'.");
+}
+
+/**
+ * @brief Clean-up the memory allocated for the cooling routines
+ *
+ * We simply free all the arrays.
+ *
+ * @param cooling the cooling data structure.
+ */
+void cooling_clean(struct cooling_function_data *cooling) {
+
+  /* Free the side arrays */
+  free(cooling->Redshifts);
+  free(cooling->nH);
+  free(cooling->Temp);
+  free(cooling->HeFrac);
+  free(cooling->Therm);
+  free(cooling->SolarAbundances);
+
+  /* Free the tables */
+  free(cooling->table.metal_heating);
+  free(cooling->table.electron_abundance);
+  free(cooling->table.temperature);
+  free(cooling->table.H_plus_He_heating);
+  free(cooling->table.H_plus_He_electron_abundance);
 }

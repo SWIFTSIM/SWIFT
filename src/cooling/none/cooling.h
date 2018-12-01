@@ -171,4 +171,11 @@ static INLINE void cooling_print_backend(
   message("Cooling function is 'No cooling'.");
 }
 
+/**
+ * @brief Clean-up the memory allocated for the cooling routines
+ *
+ * @param cooling the cooling data structure.
+ */
+static INLINE void cooling_clean(struct cooling_function_data* cooling) {}
+
 #endif /* SWIFT_COOLING_NONE_H */
