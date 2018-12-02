@@ -28,8 +28,9 @@
  * @param cooling the #cooling_function_data struct
  */
 __attribute__((always_inline)) INLINE double
-eagle_helium_reionization_extraheat(
-    double z, double delta_z, const struct cooling_function_data *restrict cooling) {
+eagle_helium_reionization_extraheat(double z, double delta_z,
+                                    const struct cooling_function_data *restrict
+                                        cooling) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (delta_z > 0.f) error("Invalid value for delta_z. Should be negative.");
@@ -52,6 +53,82 @@ eagle_helium_reionization_extraheat(
   extra_heat *= heat_cgs * 0.5;
 
   return extra_heat;
+}
+
+/*
+ * @brief Interpolates temperature from internal energy based on table and
+ * calculates the size of the internal energy cell for the specified
+ * internal energy. Returns log base 10 of temperature.
+ *
+ * @param log_10_u Log base 10 of internal energy
+ * @param dT_du Pointer to rate of change of log_10(temperature) with internal
+ * energy
+ * @param z_i Redshift index
+ * @param n_h_i Hydrogen number density index
+ * @param He_i Helium fraction index
+ * @param d_z Redshift offset
+ * @param d_n_h Hydrogen number density offset
+ * @param d_He Helium fraction offset
+ * @param cooling #cooling_function_data structure
+ * @param cosmo #cosmology structure
+ */
+__attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
+    double log_10_u, float *dT_du, int n_h_i, int He_i, float d_n_h, float d_He,
+    const struct cooling_function_data *restrict cooling,
+    const struct cosmology *restrict cosmo) {
+
+  int u_i;
+  float d_u, log_10_T, log_10_T_high, log_10_T_low;
+
+  get_index_1d(cooling->Therm, cooling->N_Temp, log_10_u, &u_i, &d_u);
+
+  /* Interpolate temperature table to return temperature for current
+   * internal energy (use 3D interpolation for high redshift table,
+   * otherwise 4D) */
+  if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
+    log_10_T = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i,
+                              d_n_h, d_He, d_u, cooling->N_nH, cooling->N_He,
+                              cooling->N_Temp);
+  } else {
+    log_10_T = interpolate_4d(cooling->table.temperature, 0, n_h_i, He_i, u_i,
+                              cooling->dz, d_n_h, d_He, d_u, 2, cooling->N_nH,
+                              cooling->N_He, cooling->N_Temp);
+  }
+
+  /* Interpolate temperature table to return temperature for internal energy
+   * at grid point above current internal energy for computing dT_du used for
+   * calculation of dlambda_du in cooling.c (use 3D interpolation for high
+   * redshift table, otherwise 4D) */
+  if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
+    log_10_T_high = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i,
+                                   d_n_h, d_He, 1.0, cooling->N_nH,
+                                   cooling->N_He, cooling->N_Temp);
+  } else {
+    log_10_T_high = interpolate_4d(
+        cooling->table.temperature, 0, n_h_i, He_i, u_i, cooling->dz, d_n_h,
+        d_He, 1.0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+  }
+
+  /* Interpolate temperature table to return temperature for internal energy
+   * at grid point below current internal energy for computing dT_du used for
+   * calculation of dlambda_du in cooling.c (use 3D interpolation for high
+   * redshift table, otherwise 4D) */
+  if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
+    log_10_T_low = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i,
+                                  d_n_h, d_He, 0.0, cooling->N_nH,
+                                  cooling->N_He, cooling->N_Temp);
+  } else {
+    log_10_T_low = interpolate_4d(
+        cooling->table.temperature, 0, n_h_i, He_i, u_i, cooling->dz, d_n_h,
+        d_He, 0.0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+  }
+
+  /* Calculate dT/du */
+  float delta_u =
+      exp(cooling->Therm[u_i + 1] * M_LN10) - exp(cooling->Therm[u_i] * M_LN10);
+  *dT_du = (exp(M_LN10 * log_10_T_high) - exp(M_LN10 * log_10_T_low)) / delta_u;
+
+  return log_10_T;
 }
 
 /**

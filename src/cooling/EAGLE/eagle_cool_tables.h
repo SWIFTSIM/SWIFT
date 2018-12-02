@@ -27,13 +27,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-#include <hdf5.h>
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
 #include "cooling_struct.h"
-#include "error.h"
-#include "interpolate.h"
 
 void get_cooling_redshifts(struct cooling_function_data *);
 

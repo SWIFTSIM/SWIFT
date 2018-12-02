@@ -46,88 +46,115 @@
 #include "units.h"
 
 /**
- * @brief Returns the 1d index of element with 2d indices i,j
+ * @brief Returns the 1d index of element with 2d indices x,y
  * from a flattened 2d array in row major order
  *
- * @param i, j Indices of element of interest
- * @param nx, ny Sizes of array dimensions
+ * @param x, y Indices of element of interest
+ * @param Nx, Ny Sizes of array dimensions
  */
-__attribute__((always_inline)) INLINE int row_major_index_2d(int i, int j,
-                                                             int nx, int ny) {
-  return i * ny + j;
+__attribute__((always_inline)) INLINE int row_major_index_2d(int x, int y,
+                                                             int Nx, int Ny) {
+#ifdef SWIFT_DEBUG_CHECKS
+  assert(x < Nx);
+  assert(y < Ny);
+#endif
+  return x * Ny + y;
 }
 
 /**
- * @brief Returns the 1d index of element with 3d indices i,j,k
+ * @brief Returns the 1d index of element with 3d indices x,y,z
  * from a flattened 3d array in row major order
  *
- * @param i, j, k Indices of element of interest
- * @param nx, ny, nz Sizes of array dimensions
+ * @param x, y, z Indices of element of interest
+ * @param Nx, Ny, Nz Sizes of array dimensions
  */
-__attribute__((always_inline)) INLINE int row_major_index_3d(int i, int j,
-                                                             int k, int nx,
-                                                             int ny, int nz) {
-  return i * ny * nz + j * nz + k;
+__attribute__((always_inline)) INLINE int row_major_index_3d(int x, int y,
+                                                             int z, int Nx,
+                                                             int Ny, int Nz) {
+#ifdef SWIFT_DEBUG_CHECKS
+  assert(x < Nx);
+  assert(y < Ny);
+  assert(z < Nz);
+#endif
+  return x * Ny * Nz + y * Nz + z;
 }
 
 /**
- * @brief Returns the 1d index of element with 4d indices i,j,k,l
+ * @brief Returns the 1d index of element with 4d indices x,y,z,w
  * from a flattened 4d array in row major order
  *
- * @param i, j, k, l Indices of element of interest
- * @param nx, ny, nz, nw Sizes of array dimensions
+ * @param x, y, z, w Indices of element of interest
+ * @param Nx, Ny, Nz, Nw Sizes of array dimensions
  */
-__attribute__((always_inline)) INLINE int row_major_index_4d(int i, int j,
-                                                             int k, int l,
-                                                             int nx, int ny,
-                                                             int nz, int nw) {
-  return i * ny * nz * nw + j * nz * nw + k * nw + l;
+__attribute__((always_inline)) INLINE int row_major_index_4d(int x, int y,
+                                                             int z, int w,
+                                                             int Nx, int Ny,
+                                                             int Nz, int Nw) {
+#ifdef SWIFT_DEBUG_CHECKS
+  assert(x < Nx);
+  assert(y < Ny);
+  assert(z < Nz);
+  assert(w < Nw);
+#endif
+  return x * Ny * Nz * Nw + y * Nz * Nw + z * Nw + w;
 }
 
-/*
- * @brief This routine returns the position i of a value x in a 1D table and the
- * displacement dx needed for the interpolation.  The table is assumed to
- * be evenly spaced, and in increasing order.
+/**
+ * @brief Finds the index of a value in a table and compute delta to nearest
+ * element.
  *
- * @param table Pointer to table of values
- * @param ntable Size of the table
- * @param x Value whose position within the array we are interested in
- * @param i Pointer to the index whose corresponding table value
- * is the greatest value in the table less than x
- * @param dx Pointer to offset of x within table cell
+ * This function assumes the table is monotonically increasing with a constant
+ * difference between adjacent values.
+ *
+ * The returned difference is expressed in units of the table separation. This
+ * means dx = (x - table[i]) / (table[i+1] - table[i]). It is always between
+ * 0 and 1.
+ *
+ * @param table The table to search in.
+ * @param size The number of elements in the table.
+ * @param x The value to search for.
+ * @param i (return) The index in the table of the element.
+ * @param *dx (return) The difference between x and table[i]
  */
-__attribute__((always_inline)) INLINE void get_index_1d(float *table,
-                                                        int ntable, double x,
-                                                        int *i, float *dx) {
-  /* Used for deciding whether to use table endpoints when finding index of a
-   * variable */
-  const float table_bound_tolerance = 1.e-4;
+__attribute__((always_inline)) INLINE void get_index_1d(
+    const float *restrict table, const int size, const float x, int *i,
+    float *restrict dx) {
 
-  float dxm1 = (float)(ntable - 1) / (table[ntable - 1] - table[0]);
+  const float delta = (size - 1) / (table[size - 1] - table[0]);
 
-  if ((float)x <= table[0] + table_bound_tolerance) {
-    /* x less than first table element, use first element */
+  /* Indicate that the whole array is aligned on boundaries */
+  swift_align_information(float, table, SWIFT_STRUCT_ALIGNMENT);
+
+  if (x < table[0]) {
+    /* We are below the first element */
     *i = 0;
-    *dx = 0;
-  } else if ((float)x >= table[ntable - 1] - table_bound_tolerance) {
-    /* x greater than last table element, use last element */
-    *i = ntable - 2;
-    *dx = 1;
-  } else {
-    /* x inside table range, interpolate */
-    *i = (int)floor(((float)x - table[0]) * dxm1);
+    *dx = 0.f;
+  } else if (x < table[size - 1]) {
+    /* Normal case */
+    *i = (x - table[0]) * delta;
+
 #ifdef SWIFT_DEBUG_CHECKS
-    if (*i > ntable || *i < 0)
+    if (*i > size || *i < 0) {
       error(
           "trying to get index for value outside table range. Table size: %d, "
           "calculated index: %d, value: %.5e, table[0]: %.5e, grid size: %.5e",
-          ntable, *i, x, table[0], dxm1);
+          size, *i, x, table[0], delta);
+    }
 #endif
-    *dx = ((float)x - table[*i]) * dxm1;
+
+    *dx = (x - table[*i]) * delta;
+  } else {
+    /* We are after the last element */
+    *i = size - 2;
+    *dx = 1.f;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (*dx < -0.001f || *dx > 1.001f) error("Invalid distance found dx=%e", *dx);
+#endif
 }
 
-/*
+/**
  * @brief Returns the position i of a value z in the redshift table
  * and computes the displacement dz needed for the interpolation.
  * Since the redshift table is not evenly spaced, compare z with each
@@ -297,82 +324,6 @@ __attribute__((always_inline)) INLINE float interpolate_4d(
          dx * dy * (1 - dz) * (1 - dw) * table12 +
          dx * dy * (1 - dz) * dw * table13 + dx * dy * dz * (1 - dw) * table14 +
          dx * dy * dz * dw * table15;
-}
-
-/*
- * @brief Interpolates temperature from internal energy based on table and
- * calculates the size of the internal energy cell for the specified
- * internal energy. Returns log base 10 of temperature.
- *
- * @param log_10_u Log base 10 of internal energy
- * @param dT_du Pointer to rate of change of log_10(temperature) with internal
- * energy
- * @param z_i Redshift index
- * @param n_h_i Hydrogen number density index
- * @param He_i Helium fraction index
- * @param d_z Redshift offset
- * @param d_n_h Hydrogen number density offset
- * @param d_He Helium fraction offset
- * @param cooling #cooling_function_data structure
- * @param cosmo #cosmology structure
- */
-__attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
-    double log_10_u, float *dT_du, int n_h_i, int He_i, float d_n_h, float d_He,
-    const struct cooling_function_data *restrict cooling,
-    const struct cosmology *restrict cosmo) {
-
-  int u_i;
-  float d_u, log_10_T, log_10_T_high, log_10_T_low;
-
-  get_index_1d(cooling->Therm, cooling->N_Temp, log_10_u, &u_i, &d_u);
-
-  /* Interpolate temperature table to return temperature for current
-   * internal energy (use 3D interpolation for high redshift table,
-   * otherwise 4D) */
-  if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-    log_10_T = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i,
-                              d_n_h, d_He, d_u, cooling->N_nH, cooling->N_He,
-                              cooling->N_Temp);
-  } else {
-    log_10_T = interpolate_4d(cooling->table.temperature, 0, n_h_i, He_i, u_i,
-                              cooling->dz, d_n_h, d_He, d_u, 2, cooling->N_nH,
-                              cooling->N_He, cooling->N_Temp);
-  }
-
-  /* Interpolate temperature table to return temperature for internal energy
-   * at grid point above current internal energy for computing dT_du used for
-   * calculation of dlambda_du in cooling.c (use 3D interpolation for high
-   * redshift table, otherwise 4D) */
-  if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-    log_10_T_high = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i,
-                                   d_n_h, d_He, 1.0, cooling->N_nH,
-                                   cooling->N_He, cooling->N_Temp);
-  } else {
-    log_10_T_high = interpolate_4d(
-        cooling->table.temperature, 0, n_h_i, He_i, u_i, cooling->dz, d_n_h,
-        d_He, 1.0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
-  }
-
-  /* Interpolate temperature table to return temperature for internal energy
-   * at grid point below current internal energy for computing dT_du used for
-   * calculation of dlambda_du in cooling.c (use 3D interpolation for high
-   * redshift table, otherwise 4D) */
-  if (cosmo->z > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-    log_10_T_low = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i,
-                                  d_n_h, d_He, 0.0, cooling->N_nH,
-                                  cooling->N_He, cooling->N_Temp);
-  } else {
-    log_10_T_low = interpolate_4d(
-        cooling->table.temperature, 0, n_h_i, He_i, u_i, cooling->dz, d_n_h,
-        d_He, 0.0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
-  }
-
-  /* Calculate dT/du */
-  float delta_u =
-      exp(cooling->Therm[u_i + 1] * M_LN10) - exp(cooling->Therm[u_i] * M_LN10);
-  *dT_du = (exp(M_LN10 * log_10_T_high) - exp(M_LN10 * log_10_T_low)) / delta_u;
-
-  return log_10_T;
 }
 
 #endif
