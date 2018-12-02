@@ -381,6 +381,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
 
   /* Start by packing the data of the current cell. */
   pc->hydro.h_max = c->hydro.h_max;
+  pc->stars.h_max = c->stars.h_max;
   pc->hydro.ti_end_min = c->hydro.ti_end_min;
   pc->hydro.ti_end_max = c->hydro.ti_end_max;
   pc->grav.ti_end_min = c->grav.ti_end_min;
@@ -485,6 +486,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
 
   /* Unpack the current pcell. */
   c->hydro.h_max = pc->hydro.h_max;
+  c->stars.h_max = pc->stars.h_max;
   c->hydro.ti_end_min = pc->hydro.ti_end_min;
   c->hydro.ti_end_max = pc->hydro.ti_end_max;
   c->grav.ti_end_min = pc->grav.ti_end_min;
@@ -2038,6 +2040,9 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
  */
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
 
+  // TODO Alexei, remove this
+  if (c->nodeID != engine_rank) return;
+
   /* Do we need to re-sort? */
   if (c->stars.dx_max_sort > space_maxreldx * c->dmin) {
 
@@ -3344,6 +3349,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
     struct cell *cj = t->cj;
     const int ci_active = cell_is_active_stars(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_stars(cj, e) : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#endif
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci->nodeID == nodeID) ||
@@ -3361,38 +3370,42 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
       /* Set the correct sorting flags and activate hydro drifts */
       else if (t->type == task_type_pair) {
         /* Do ci */
-        /* stars for ci */
-        atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
-        ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
+        if (ci_active && cj->hydro.count != 0 && ci->stars.count != 0) {
+          /* stars for ci */
+          atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
+          ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
 
-        /* hydro for cj */
-        atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+          /* hydro for cj */
+          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
-        /* Activate the drift tasks. */
-        if (ci->nodeID == nodeID) cell_activate_drift_spart(ci, s);
-        if (cj->nodeID == nodeID) cell_activate_drift_part(cj, s);
+          /* Activate the drift tasks. */
+          if (ci->nodeID == nodeID) cell_activate_drift_spart(ci, s);
+          if (cj->nodeID == nodeID) cell_activate_drift_part(cj, s);
 
-        /* Check the sorts and activate them if needed. */
-        cell_activate_stars_sorts(ci, t->flags, s);
-        cell_activate_hydro_sorts(cj, t->flags, s);
+          /* Check the sorts and activate them if needed. */
+          cell_activate_stars_sorts(ci, t->flags, s);
+          cell_activate_hydro_sorts(cj, t->flags, s);
+        }
 
         /* Do cj */
-        /* hydro for ci */
-        atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+        if (cj_active && ci->hydro.count != 0 && cj->stars.count != 0) {
+          /* hydro for ci */
+          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
 
-        /* stars for cj */
-        atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
-        cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
+          /* stars for cj */
+          atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
+          cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
 
-        /* Activate the drift tasks. */
-        if (cj->nodeID == nodeID) cell_activate_drift_spart(cj, s);
-        if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
+          /* Activate the drift tasks. */
+          if (cj->nodeID == nodeID) cell_activate_drift_spart(cj, s);
+          if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
 
-        /* Check the sorts and activate them if needed. */
-        cell_activate_hydro_sorts(ci, t->flags, s);
-        cell_activate_stars_sorts(cj, t->flags, s);
+          /* Check the sorts and activate them if needed. */
+          cell_activate_hydro_sorts(ci, t->flags, s);
+          cell_activate_stars_sorts(cj, t->flags, s);
+        }
 
       }
       /* Store current values of dx_max and h_max. */
@@ -3407,85 +3420,81 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
       if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
 
 #ifdef WITH_MPI
-      error("MPI with stars not implemented");
-      /* /\* Activate the send/recv tasks. *\/ */
-      /* if (ci->nodeID != nodeID) { */
+      /* Activate the send/recv tasks. */
+      if (ci_nodeID != nodeID) {
 
-      /*   /\* If the local cell is active, receive data from the foreign cell.
-       * *\/ */
-      /*   if (cj_active) { */
-      /*     scheduler_activate(s, ci->hydro.recv_xv); */
-      /*     if (ci_active) { */
-      /*       scheduler_activate(s, ci->hydro.recv_rho); */
+        // TODO Alexei: In this section, you will find some comments that
+        // are from the hydro code. It should look the same for the feedback.
+        /* If the local cell is active, receive data from the foreign cell. */
+        if (cj_active) {
+          scheduler_activate(s, ci->mpi.hydro.recv_xv);
+          /* if (ci_active) { */
+          /*   scheduler_activate(s, ci->mpi.hydro.recv_rho); */
+          /* } */
+        }
 
-      /*     } */
-      /*   } */
+        /* /\* If the foreign cell is active, we want its ti_end values. *\/ */
+        /* if (ci_active) scheduler_activate(s, ci->mpi.recv_ti); */
 
-      /*   /\* If the foreign cell is active, we want its ti_end values. *\/ */
-      /*   if (ci_active) scheduler_activate(s, ci->mpi.recv_ti); */
+        /* Is the foreign cell active and will need stuff from us? */
+        if (ci_active) {
 
-      /*   /\* Is the foreign cell active and will need stuff from us? *\/ */
-      /*   if (ci_active) { */
+          scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
 
-      /*     scheduler_activate_send(s, cj->hydro.send_xv, ci->nodeID); */
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(cj, s);
 
-      /*     /\* Drift the cell which will be sent; note that not all sent */
-      /*        particles will be drifted, only those that are needed. *\/ */
-      /*     cell_activate_drift_part(cj, s); */
+          /* /\* If the local cell is also active, more stuff will be needed.
+           * *\/ */
+          /* if (cj_active) { */
+          /*   scheduler_activate_send(s, cj->mpi.hydro.send_rho, ci_nodeID); */
 
-      /*     /\* If the local cell is also active, more stuff will be needed.
-       * *\/ */
-      /*     if (cj_active) { */
-      /*       scheduler_activate_send(s, cj->hydro.send_rho, ci->nodeID); */
+          /* } */
+        }
 
-      /*     } */
-      /*   } */
+        /* /\* If the local cell is active, send its ti_end values. *\/ */
+        /* if (cj_active) scheduler_activate_send(s, cj->mpi.send_ti,
+         * ci_nodeID); */
 
-      /*   /\* If the local cell is active, send its ti_end values. *\/ */
-      /*   if (cj_active) scheduler_activate_send(s, cj->mpi.send_ti,
-       * ci->nodeID);
-       */
+      } else if (cj_nodeID != nodeID) {
 
-      /* } else if (cj->nodeID != nodeID) { */
+        /* If the local cell is active, receive data from the foreign cell. */
+        if (ci_active) {
+          scheduler_activate(s, cj->mpi.hydro.recv_xv);
+          /* if (cj_active) { */
+          /*   scheduler_activate(s, cj->mpi.hydro.recv_rho); */
+          /* } */
+        }
 
-      /*   /\* If the local cell is active, receive data from the foreign cell.
-       * *\/ */
-      /*   if (ci_active) { */
-      /*     scheduler_activate(s, cj->hydro.recv_xv); */
-      /*     if (cj_active) { */
-      /*       scheduler_activate(s, cj->hydro.recv_rho); */
+        /* /\* If the foreign cell is active, we want its ti_end values. *\/ */
+        /* if (cj_active) scheduler_activate(s, cj->mpi.recv_ti); */
 
-      /*     } */
-      /*   } */
+        /* Is the foreign cell active and will need stuff from us? */
+        if (cj_active) {
 
-      /*   /\* If the foreign cell is active, we want its ti_end values. *\/ */
-      /*   if (cj_active) scheduler_activate(s, cj->mpi.recv_ti); */
+          scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
 
-      /*   /\* Is the foreign cell active and will need stuff from us? *\/ */
-      /*   if (cj_active) { */
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(ci, s);
 
-      /*     scheduler_activate_send(s, ci->hydro.send_xv, cj->nodeID); */
+          /* /\* If the local cell is also active, more stuff will be needed.
+           * *\/ */
+          /* if (ci_active) { */
 
-      /*     /\* Drift the cell which will be sent; note that not all sent */
-      /*        particles will be drifted, only those that are needed. *\/ */
-      /*     cell_activate_drift_part(ci, s); */
+          /*   scheduler_activate_send(s, ci->mpi.hydro.send_rho, cj_nodeID); */
 
-      /*     /\* If the local cell is also active, more stuff will be needed.
-       * *\/ */
-      /*     if (ci_active) { */
+          /* } */
+        }
 
-      /*       scheduler_activate_send(s, ci->hydro.send_rho, cj->nodeID); */
-
-      /*     } */
-      /*   } */
-
-      /*   /\* If the local cell is active, send its ti_end values. *\/ */
-      /*   if (ci_active) scheduler_activate_send(s, ci->mpi.send_ti,
-       * cj->nodeID);
-       */
-      /* } */
+        /* /\* If the local cell is active, send its ti_end values. *\/ */
+        /* if (ci_active) scheduler_activate_send(s, ci->mpi.send_ti,
+         * cj_nodeID); */
+      }
 #endif
     }
   }

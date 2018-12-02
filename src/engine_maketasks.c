@@ -204,6 +204,86 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 }
 
 /**
+ * @brief Add send tasks for the stars pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param ci The sending #cell.
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_xv The send_xv #task, if it has already been created.
+ * @param t_rho The send_rho #task, if it has already been created.
+ */
+void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
+                                struct cell *cj, struct task *t_xv,
+                                struct task *t_rho) {
+
+#ifdef WITH_MPI
+  struct link *l = NULL;
+  struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
+
+  /* Check if any of the density tasks are for the target node. */
+  for (l = ci->stars.density; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+      break;
+
+  /* If so, attach send tasks. */
+  if (l != NULL) {
+    /* Get the task if created in hydro part */
+    struct link *hydro = NULL;
+    for (hydro = ci->mpi.hydro.send_xv; hydro != NULL; hydro = hydro->next) {
+      if (hydro->t->ci->nodeID == nodeID ||
+          (hydro->t->cj != NULL && hydro->t->cj->nodeID == nodeID)) {
+        break;
+      }
+    }
+
+    // TODO Alexei: I guess that you can assume that if the send_xv exists,
+    // send_rho exists too
+
+    if (t_xv == NULL) {
+
+      /* Already exists, just need to get it */
+      if (hydro != NULL) {
+        // TODO Alexei: set t_feedback
+        t_xv = hydro->t;
+
+        /* This task does not exists, need to create it */
+      } else {
+
+        // TODO Alexei: create task and do correct unlocks
+
+        /* Make sure this cell is tagged. */
+        cell_ensure_tagged(ci);
+
+        /* Create the tasks and their dependencies? */
+        t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv,
+                                 ci->mpi.tag, 0, ci, cj);
+
+        /* Drift before you send */
+        scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
+      }
+    }
+
+    if (hydro == NULL) {
+      engine_addlink(e, &ci->mpi.hydro.send_xv, t_xv);
+      // TODO Alexei: addlink
+      /* engine_addlink(e, &ci->mpi.hydro.send_rho, t_rho); */
+    }
+  }
+
+  /* Recurse? */
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_xv, t_rho);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Add send tasks for the time-step to a hierarchy of cells.
  *
  * @param e The #engine.
@@ -342,6 +422,74 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_hydro(e, c->progeny[k], t_xv, t_rho, t_gradient);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Add recv tasks for stars pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param c The foreign #cell.
+ * @param t_xv The recv_xv #task, if it has already been created.
+ * @param t_rho The recv_rho #task, if it has already been created.
+ */
+void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
+                                struct task *t_xv, struct task *t_rho) {
+
+#ifdef WITH_MPI
+  struct scheduler *s = &e->sched;
+  int new_task = 0;
+
+  /* Have we reached a level where there are any stars (or hydro) tasks ? */
+  if (t_xv == NULL && (c->stars.density != NULL || c->hydro.density != NULL)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
+    /* Create the tasks. */
+    if (c->mpi.hydro.recv_xv == NULL) {
+      new_task = 1;
+      t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag,
+                               0, c, NULL);
+      // TODO Alexei: create t_feedback task
+      /* t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
+       * c->mpi.tag, */
+      /*                           0, c, NULL); */
+    } else {
+      // TODO Alexei: set t_feedback
+      t_xv = c->mpi.hydro.recv_xv;
+    }
+  }
+
+  // TODO Alexei: set pointer
+  c->mpi.hydro.recv_xv = t_xv;
+  /* c->mpi.hydro.recv_rho = t_rho; */
+
+  /* Add dependencies. */
+  if (c->hydro.sorts != NULL && new_task) {
+    scheduler_addunlock(s, t_xv, c->hydro.sorts);
+  }
+
+  // TODO Alexei: You will need to sort the particles after receiving the spart
+
+  for (struct link *l = c->stars.density; l != NULL; l = l->next) {
+    scheduler_addunlock(s, t_xv, l->t);
+    // TODO Alexei: I guess that you will need to unlock the recv here
+    /* scheduler_addunlock(s, l->t, t_rho); */
+  }
+  // TODO Alexei: unlock feedback task
+  /* for (struct link *l = c->hydro.force; l != NULL; l = l->next) */
+  /*   scheduler_addunlock(s, t_rho, l->t); */
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_recv_stars(e, c->progeny[k], t_xv, t_rho);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -784,12 +932,12 @@ void engine_make_hierarchical_tasks_stars(struct engine *e, struct cell *c) {
   /* Are we in a super-cell ? */
   if (c->super == c) {
 
-    /* Add the sort task. */
-    c->stars.sorts = scheduler_addtask(s, task_type_stars_sort,
-                                       task_subtype_none, 0, 0, c, NULL);
-
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
+      // TODO Alexei: do not need to be only on local node with feedback
+      /* Add the sort task. */
+      c->stars.sorts = scheduler_addtask(s, task_type_stars_sort,
+                                         task_subtype_none, 0, 0, c, NULL);
 
       /* Generate the ghost tasks. */
       c->stars.ghost_in =
@@ -1820,6 +1968,9 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
     else if (t->type == task_type_self &&
              t->subtype == task_subtype_stars_density) {
 
+      /* Make the self-density tasks depend on the drifts. */
+      scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
+
       /* Make the self-density tasks depend on the drift and gravity drift. */
       scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
       scheduler_addunlock(sched, t->ci->super->grav.drift, t);
@@ -1846,19 +1997,28 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       /* Make all stars density tasks depend on the hydro drift and sorts,
        * gravity drift and star sorts. */
       if (t->ci->nodeID == engine_rank)
-        scheduler_addunlock(sched, t->ci->super->hydro.drift, t);
-      scheduler_addunlock(sched, t->ci->super->hydro.sorts, t);
-      if (t->cj->nodeID == engine_rank)
-        scheduler_addunlock(sched, t->cj->super->grav.drift, t);
-      scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
+        scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
+      scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t);
+
+      if (t->ci->nodeID == engine_rank) {
+        scheduler_addunlock(sched, t->ci->super->grav.drift, t);
+        // TODO Alexei: the stars in foreign cells need to be sorted before
+        // the feedback loop and after the ghosts
+        scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
+      }
+
+      if (t->ci->hydro.super != t->cj->hydro.super) {
+        if (t->cj->nodeID == engine_rank)
+          scheduler_addunlock(sched, t->cj->hydro.super->hydro.drift, t);
+        scheduler_addunlock(sched, t->cj->hydro.super->hydro.sorts, t);
+      }
 
       if (t->ci->super != t->cj->super) {
-        if (t->cj->nodeID == engine_rank)
-          scheduler_addunlock(sched, t->cj->super->hydro.drift, t);
-        scheduler_addunlock(sched, t->cj->super->hydro.sorts, t);
-        if (t->ci->nodeID == engine_rank)
-          scheduler_addunlock(sched, t->ci->super->grav.drift, t);
-        scheduler_addunlock(sched, t->cj->super->stars.sorts, t);
+        if (t->cj->nodeID == engine_rank) {
+          scheduler_addunlock(sched, t->cj->super->grav.drift, t);
+          // TODO Alexei: same here, sort before feedback
+          scheduler_addunlock(sched, t->cj->super->stars.sorts, t);
+        }
       }
 
       /* Start by constructing the task for the second stars loop */
@@ -1889,8 +2049,8 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Make all stars density tasks depend on the hydro drift and sorts,
        * gravity drift and star sorts. */
-      scheduler_addunlock(sched, t->ci->super->hydro.drift, t);
-      scheduler_addunlock(sched, t->ci->super->hydro.sorts, t);
+      scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
+      scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t);
       scheduler_addunlock(sched, t->ci->super->grav.drift, t);
       scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
 
@@ -1916,19 +2076,27 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       /* Make all stars density tasks depend on the hydro drift and sorts,
        * gravity drift and star sorts. */
       if (t->cj->nodeID == engine_rank)
-        scheduler_addunlock(sched, t->cj->super->hydro.drift, t);
-      scheduler_addunlock(sched, t->cj->super->hydro.sorts, t);
-      if (t->cj->nodeID == engine_rank)
+        scheduler_addunlock(sched, t->cj->hydro.super->hydro.drift, t);
+      scheduler_addunlock(sched, t->cj->hydro.super->hydro.sorts, t);
+
+      if (t->cj->nodeID == engine_rank) {
         scheduler_addunlock(sched, t->cj->super->grav.drift, t);
-      scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
+        // TODO Alexei: Still the same
+        scheduler_addunlock(sched, t->cj->super->stars.sorts, t);
+      }
+
+      if (t->ci->hydro.super != t->cj->hydro.super) {
+        if (t->ci->nodeID == engine_rank)
+          scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
+        scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t);
+      }
 
       if (t->ci->super != t->cj->super) {
-        if (t->ci->nodeID == engine_rank)
-          scheduler_addunlock(sched, t->ci->super->hydro.drift, t);
-        scheduler_addunlock(sched, t->ci->super->hydro.sorts, t);
-        if (t->ci->nodeID == engine_rank)
+        if (t->ci->nodeID == engine_rank) {
           scheduler_addunlock(sched, t->ci->super->grav.drift, t);
-        scheduler_addunlock(sched, t->cj->super->stars.sorts, t);
+          // TODO Alexei: still the same
+          scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
+        }
       }
 
       /* Start by constructing the task for the second stars loop */
@@ -2021,7 +2189,9 @@ void engine_make_starsloop_tasks_mapper(void *map_data, int num_elements,
           struct cell *cj = &cells[cjd];
 
           /* Is that neighbour local and does it have particles ? */
-          if (cid >= cjd || (cj->stars.count == 0 && cj->hydro.count == 0) ||
+          if (cid >= cjd ||
+              ((cj->stars.count == 0 || ci->hydro.count == 0) &&
+               (cj->hydro.count == 0 || ci->stars.count == 0)) ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
@@ -2029,6 +2199,50 @@ void engine_make_starsloop_tasks_mapper(void *map_data, int num_elements,
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
           scheduler_addtask(sched, task_type_pair, task_subtype_stars_density,
                             sid, 0, ci, cj);
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+          /* Let's cross-check that we had a proxy for that cell */
+          if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[cj->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == cj) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "stars task!",
+                  cjd);
+          } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[ci->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == ci) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "stars task!",
+                  cid);
+          }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
         }
       }
     }
@@ -2186,6 +2400,12 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
       engine_addtasks_send_hydro(e, ci, cj, /*t_xv=*/NULL,
                                  /*t_rho=*/NULL, /*t_gradient=*/NULL);
 
+    /* Add the send tasks for the cells in the proxy that have a stars
+     * connection. */
+    if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
+      engine_addtasks_send_stars(e, ci, cj, /*t_xv=*/NULL,
+                                 /*t_rho=*/NULL);
+
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
@@ -2211,6 +2431,11 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
       engine_addtasks_recv_hydro(e, ci, NULL, NULL, NULL);
+
+    /* Add the recv tasks for the cells in the proxy that have a stars
+     * connection. */
+    if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
+      engine_addtasks_recv_stars(e, ci, NULL, NULL);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */
@@ -2381,9 +2606,6 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
 #ifdef WITH_MPI
-  if (e->policy & engine_policy_feedback)
-    error("Cannot run stellar feedback with MPI (yet).");
-
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
 

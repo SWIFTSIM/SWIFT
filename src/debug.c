@@ -181,6 +181,14 @@ int checkSpacehmax(struct space *s) {
     }
   }
 
+  float cell_stars_h_max = 0.0f;
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (s->cells_top[k].nodeID == s->e->nodeID &&
+        s->cells_top[k].stars.h_max > cell_stars_h_max) {
+      cell_stars_h_max = s->cells_top[k].stars.h_max;
+    }
+  }
+
   /* Now all particles. */
   float part_h_max = 0.0f;
   for (size_t k = 0; k < s->nr_parts; k++) {
@@ -189,10 +197,21 @@ int checkSpacehmax(struct space *s) {
     }
   }
 
+  /* Now all the sparticles. */
+  float spart_h_max = 0.0f;
+  for (size_t k = 0; k < s->nr_sparts; k++) {
+    if (s->sparts[k].h > spart_h_max) {
+      spart_h_max = s->sparts[k].h;
+    }
+  }
+
   /*  If within some epsilon we are OK. */
-  if (fabsf(cell_h_max - part_h_max) <= FLT_EPSILON) return 1;
+  if (fabsf(cell_h_max - part_h_max) <= FLT_EPSILON &&
+      fabsf(cell_stars_h_max - spart_h_max) <= FLT_EPSILON)
+    return 1;
 
   /* There is a problem. Hunt it down. */
+  /* part */
   for (int k = 0; k < s->nr_cells; k++) {
     if (s->cells_top[k].nodeID == s->e->nodeID) {
       if (s->cells_top[k].hydro.h_max > part_h_max) {
@@ -206,6 +225,23 @@ int checkSpacehmax(struct space *s) {
     if (s->parts[k].h > cell_h_max) {
       message("part %lld is inconsistent (%f > %f)", s->parts[k].id,
               s->parts[k].h, cell_h_max);
+    }
+  }
+
+  /* spart */
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (s->cells_top[k].nodeID == s->e->nodeID) {
+      if (s->cells_top[k].stars.h_max > spart_h_max) {
+        message("cell %d is inconsistent (%f > %f)", k,
+                s->cells_top[k].stars.h_max, spart_h_max);
+      }
+    }
+  }
+
+  for (size_t k = 0; k < s->nr_sparts; k++) {
+    if (s->sparts[k].h > cell_stars_h_max) {
+      message("spart %lld is inconsistent (%f > %f)", s->sparts[k].id,
+              s->sparts[k].h, cell_stars_h_max);
     }
   }
 
@@ -227,6 +263,8 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
 
   float h_max = 0.0f;
   float dx_max = 0.0f;
+  float stars_h_max = 0.0f;
+  float stars_dx_max = 0.0f;
   int result = 1;
 
   const double loc_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
@@ -262,6 +300,33 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
     dx_max = max(dx_max, sqrt(dx2));
   }
 
+  const size_t nr_sparts = c->stars.count;
+  struct spart *sparts = c->stars.parts;
+  for (size_t k = 0; k < nr_sparts; k++) {
+
+    struct spart *const sp = &sparts[k];
+
+    if (sp->x[0] < loc_min[0] || sp->x[0] >= loc_max[0] ||
+        sp->x[1] < loc_min[1] || sp->x[1] >= loc_max[1] ||
+        sp->x[2] < loc_min[2] || sp->x[2] >= loc_max[2]) {
+
+      message(
+          "Inconsistent part position p->x=[%e %e %e], c->loc=[%e %e %e] "
+          "c->width=[%e %e %e]",
+          sp->x[0], sp->x[1], sp->x[2], c->loc[0], c->loc[1], c->loc[2],
+          c->width[0], c->width[1], c->width[2]);
+
+      result = 0;
+    }
+
+    const float dx2 = sp->x_diff[0] * sp->x_diff[0] +
+                      sp->x_diff[1] * sp->x_diff[1] +
+                      sp->x_diff[2] * sp->x_diff[2];
+
+    stars_h_max = max(stars_h_max, sp->h);
+    stars_dx_max = max(stars_dx_max, sqrt(dx2));
+  }
+
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
@@ -281,6 +346,19 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   if (c->hydro.dx_max_part != dx_max) {
     message("%d Inconsistent dx_max: %f != %f", *depth, c->hydro.dx_max_part,
             dx_max);
+    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    result = 0;
+  }
+
+  if (c->stars.h_max != stars_h_max) {
+    message("%d Inconsistent stars_h_max: cell %f != parts %f", *depth,
+            c->stars.h_max, stars_h_max);
+    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    result = 0;
+  }
+  if (c->stars.dx_max_part != stars_dx_max) {
+    message("%d Inconsistent stars_dx_max: %f != %f", *depth,
+            c->stars.dx_max_part, stars_dx_max);
     message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
   }
