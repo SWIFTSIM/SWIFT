@@ -1014,8 +1014,17 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
     redo = 0;
 
     /* Empty task? */
+    /* Need defines in order to evaluate after check for t->ci == NULL */
+#define pair_no_part                                          \
+  t->type == task_type_pair &&                                \
+      (t->ci->stars.count == 0 || t->cj->hydro.count == 0) && \
+      (t->cj->stars.count == 0 || t->ci->hydro.count == 0)
+#define self_no_part           \
+  t->type == task_type_self && \
+      (t->ci->stars.count == 0 || t->ci->hydro.count == 0)
+
     if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL) ||
-        t->ci->stars.count == 0 || (t->cj != NULL && t->cj->stars.count == 0)) {
+        (self_no_part) || (pair_no_part)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->cj = NULL;
@@ -1063,9 +1072,11 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
 
           /* Make a task for each pair of progeny */
           for (int j = 0; j < 8; j++)
-            if (ci->progeny[j] != NULL && ci->progeny[j]->stars.count)
+            if (ci->progeny[j] != NULL &&
+                (ci->progeny[j]->stars.count || ci->progeny[j]->hydro.count))
               for (int k = j + 1; k < 8; k++)
-                if (ci->progeny[k] != NULL && ci->progeny[k]->stars.count)
+                if (ci->progeny[k] != NULL && (ci->progeny[k]->stars.count ||
+                                               ci->progeny[k]->hydro.count))
                   scheduler_splittask_stars(
                       scheduler_addtask(s, task_type_pair, t->subtype,
                                         sub_sid_flag[j][k], 0, ci->progeny[j],
@@ -1094,14 +1105,25 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
       double shift[3];
       const int sid = space_getsid(s->space, &ci, &cj, shift);
 
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sid != t->flags)
+        error("Got pair task with incorrect flags: sid=%d flags=%lld", sid,
+              t->flags);
+#endif
+
+      /* Compute number of interactions */
+      const int ci_interaction = (ci->stars.count * cj->hydro.count);
+      const int cj_interaction = (cj->stars.count * ci->hydro.count);
+
+      const int number_interactions = (ci_interaction + cj_interaction);
+
       /* Should this task be split-up? */
       if (cell_can_split_pair_stars_task(ci) &&
           cell_can_split_pair_stars_task(cj)) {
 
         /* Replace by a single sub-task? */
-        if (scheduler_dosub && /* Use division to avoid integer overflow. */
-            ci->stars.count * sid_scale[sid] <
-                space_subsize_pair_stars / cj->stars.count &&
+        if (scheduler_dosub &&
+            number_interactions * sid_scale[sid] < space_subsize_pair_stars &&
             !sort_is_corner(sid)) {
 
           /* Make this task a sub task. */
@@ -1450,15 +1472,17 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
 
         /* Otherwise, break it up if it is too large? */
       } else if (scheduler_doforcesplit && ci->split && cj->split &&
-                 (ci->stars.count > space_maxsize / cj->stars.count)) {
+                 (number_interactions > space_maxsize)) {
 
         /* Replace the current task. */
         t->type = task_type_none;
 
         for (int j = 0; j < 8; j++)
-          if (ci->progeny[j] != NULL && ci->progeny[j]->stars.count)
+          if (ci->progeny[j] != NULL &&
+              (ci->progeny[j]->stars.count || ci->progeny[j]->hydro.count))
             for (int k = 0; k < 8; k++)
-              if (cj->progeny[k] != NULL && cj->progeny[k]->stars.count) {
+              if (cj->progeny[k] != NULL && (cj->progeny[k]->stars.count ||
+                                             cj->progeny[k]->hydro.count)) {
                 struct task *tl =
                     scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
                                       ci->progeny[j], cj->progeny[k]);
