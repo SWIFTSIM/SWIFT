@@ -76,9 +76,6 @@ struct spart {
 #endif
 
 #ifdef DEBUG_INTERACTIONS_STARS
-  /*! List of interacting particles in the density SELF and PAIR */
-  long long ids_ngbs_density[MAX_NUM_OF_NEIGHBOURS_STARS];
-
   /*! Number of interactions in the density SELF and PAIR */
   int num_ngb_density;
 #endif

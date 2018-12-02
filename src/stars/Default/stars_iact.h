@@ -33,8 +33,6 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
 
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
-  if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS_STARS)
-    si->ids_ngbs_density[si->num_ngb_density] = pj->id;
   ++si->num_ngb_density;
 #endif
 }
