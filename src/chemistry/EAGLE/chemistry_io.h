@@ -44,9 +44,6 @@ INLINE static int chemistry_read_particles(struct part* parts,
                                 chemistry_data.iron_mass_fraction_from_SNIa);
 
   return 3;
-
-  /* Nothing to read */
-  // return 0;
 }
 
 /**

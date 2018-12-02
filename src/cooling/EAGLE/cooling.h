@@ -32,39 +32,55 @@
 #include "physical_constants.h"
 #include "units.h"
 
-double eagle_helium_reionization_extraheat(
-    double, double, const struct cooling_function_data *restrict);
+/**
+ * @brief Calculate ratio of particle element abundances
+ * to solar abundance. This replaces set_Cooling_SolarAbundances
+ * function in EAGLE.
+ * Multiple if statements are necessary because order of elements
+ * in tables is different from chemistry_element enum.
+ * Tables: H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe
+ * Enum: H, He, C, N, O, Ne, Mg, Si, Fe
+ * The order in ratio_solar is:
+ * H, He, C, N, O, Ne, Mg, Si, Fe, S, Ca
+ * Hence Fe, S, Ca need to be treated separately to be put in the
+ * correct place in the output array.
+ *
+ * @param p Pointer to #part struct
+ * @param cooling #cooling_function_data struct
+ * @param ratio_solar Pointer to array or ratios
+ */
+__attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
+    const struct part *restrict p,
+    const struct cooling_function_data *restrict cooling, float *ratio_solar) {
 
-double eagle_metal_cooling_rate(double, double *, int, float, int, float,
-                                const struct part *restrict,
-                                const struct cooling_function_data *restrict,
-                                const struct cosmology *restrict,
-                                const struct phys_const *, double *, float *);
+  /* compute ratios for all elements */
+  for (enum chemistry_element elem = chemistry_element_H;
+       elem < chemistry_element_count; elem++) {
+    if (elem == chemistry_element_Fe) {
+      /* NOTE: solar abundances have iron last with calcium and sulphur directly
+       * before, hence +2 */
+      ratio_solar[elem] = p->chemistry_data.metal_mass_fraction[elem] /
+                          cooling->SolarAbundances[elem + 2];
+    } else {
+      ratio_solar[elem] = p->chemistry_data.metal_mass_fraction[elem] /
+                          cooling->SolarAbundances[elem];
+    }
+  }
 
-double eagle_cooling_rate(double, double *, int, float, int, float,
-                          const struct part *restrict,
-                          const struct cooling_function_data *restrict,
-                          const struct cosmology *restrict,
-                          const struct phys_const *, float *);
+  /* assign ratios for Ca and S, note positions of these elements occur before
+   * Fe */
+  ratio_solar[chemistry_element_count] =
+      p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
+      cooling->sulphur_over_silicon_ratio /
+      cooling->SolarAbundances[chemistry_element_count - 1];
+  ratio_solar[chemistry_element_count + 1] =
+      p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
+      cooling->calcium_over_silicon_ratio /
+      cooling->SolarAbundances[chemistry_element_count];
+}
 
-double eagle_print_metal_cooling_rate(
-    int, float, int, float, const struct part *restrict,
-    const struct xpart *restrict, const struct cooling_function_data *restrict,
-    const struct cosmology *restrict, const struct phys_const *, float *);
-
-float bisection_iter(float, double, int, float, int, float, float,
-                     struct part *restrict, const struct cosmology *restrict,
-                     const struct cooling_function_data *restrict,
-                     const struct phys_const *restrict, float *, float);
-
-float newton_iter(float, double, int, float, int, float, float,
-                  struct part *restrict, const struct cosmology *restrict,
-                  const struct cooling_function_data *restrict,
-                  const struct phys_const *restrict, float *, float, int *);
-
-void abundance_ratio_to_solar(const struct part *restrict,
-                              const struct cooling_function_data *restrict,
-                              float *);
+void cooling_update(const struct cosmology *, struct cooling_function_data *,
+                    const int);
 
 void cooling_cool_part(const struct phys_const *restrict,
                        const struct unit_system *restrict,
@@ -96,13 +112,9 @@ void cooling_init_backend(struct swift_params *, const struct unit_system *,
 
 void cooling_print_backend(const struct cooling_function_data *);
 
-void cooling_update(const struct cosmology *, struct cooling_function_data *,
-                    const int);
-
 void cooling_restore_tables(struct cooling_function_data *,
                             const struct cosmology *);
 
-void dump_cooling_struct(const struct cooling_function_data *);
-
 void cooling_clean(struct cooling_function_data *data);
+
 #endif /* SWIFT_COOLING_EAGLE_H */

@@ -26,6 +26,90 @@
 #include "swift.h"
 
 #if defined(COOLING_EAGLE) && defined(CHEMISTRY_EAGLE) && defined(GADGET2_SPH)
+#include "cooling/EAGLE/cooling_rates.h"
+
+/* Flag used for printing cooling rate contribution from each
+ * element. For testing only. Incremented by 1/(number of elements)
+ * until reaches 1 after which point append to files instead of
+ * writing new file. */
+static float print_cooling_rate_contribution_flag = 0;
+
+/**
+ * @brief Wrapper function used to calculate cooling rate and dLambda_du.
+ * Writes to file contribution from each element to cooling rate for testing
+ * purposes (this function is not used when running SWIFT). Table indices
+ * and offsets for redshift, hydrogen number density and helium fraction are
+ * passed in so as to compute them only once per particle.
+ *
+ * @param n_h_i Particle hydrogen number density index
+ * @param d_n_h Particle hydrogen number density offset
+ * @param He_i Particle helium fraction index
+ * @param d_He Particle helium fraction offset
+ * @param p Particle structure
+ * @param cooling #cooling_function_data structure
+ * @param cosmo #cosmology structure
+ * @param phys_const #phys_const structure
+ * @param abundance_ratio Ratio of element abundance to solar
+ */
+INLINE static double eagle_print_metal_cooling_rate(
+    int n_h_i, float d_n_h, int He_i, float d_He, const struct part *restrict p,
+    const struct xpart *restrict xp,
+    const struct cooling_function_data *restrict cooling,
+    const struct cosmology *restrict cosmo, const struct phys_const *phys_const,
+    float *abundance_ratio) {
+
+  /* array to store contributions to cooling rates from each of the
+   * elements */
+  double *element_lambda;
+  element_lambda = malloc((cooling->N_Elements + 2) * sizeof(double));
+
+  /* cooling rate, derivative of cooling rate and internal energy */
+  double lambda_net = 0.0, dLambdaNet_du;
+  double u = hydro_get_physical_internal_energy(p, xp, cosmo) *
+             cooling->internal_energy_scale;
+
+  /* Open files for writing contributions to cooling rate. Each element
+   * gets its own file.  */
+  char output_filename[32];
+  FILE **output_file = malloc((cooling->N_Elements + 2) * sizeof(FILE *));
+
+  /* Once this flag reaches 1 we stop overwriting and start appending.  */
+  print_cooling_rate_contribution_flag += 1.0 / (cooling->N_Elements + 2);
+
+  /* Loop over each element */
+  for (int element = 0; element < cooling->N_Elements + 2; element++) {
+    sprintf(output_filename, "%s%d%s", "cooling_element_", element, ".dat");
+    if (print_cooling_rate_contribution_flag < 1) {
+      /* If this is the first time we're running this function, overwrite the
+       * output files */
+      output_file[element] = fopen(output_filename, "w");
+      print_cooling_rate_contribution_flag += 1.0 / (cooling->N_Elements + 2);
+    } else {
+      /* append to existing files */
+      output_file[element] = fopen(output_filename, "a");
+    }
+    if (output_file == NULL) {
+      error("Error opening file!\n");
+    }
+  }
+
+  /* calculate cooling rates */
+  for (int j = 0; j < cooling->N_Elements + 2; j++) element_lambda[j] = 0.0;
+  lambda_net = eagle_metal_cooling_rate(
+      log10(u), &dLambdaNet_du, n_h_i, d_n_h, He_i, d_He, p, cooling, cosmo,
+      phys_const, element_lambda, abundance_ratio);
+
+  /* write cooling rate contributions to their own files. */
+  for (int j = 0; j < cooling->N_Elements + 2; j++) {
+    fprintf(output_file[j], "%.5e\n", element_lambda[j]);
+  }
+
+  for (int i = 0; i < cooling->N_Elements + 2; i++) fclose(output_file[i]);
+  free(output_file);
+  free(element_lambda);
+
+  return lambda_net;
+}
 
 /**
  * @brief Assign particle density and entropy corresponding to the

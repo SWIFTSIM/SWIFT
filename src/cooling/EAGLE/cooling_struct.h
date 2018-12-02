@@ -84,13 +84,10 @@ struct cooling_function_data {
   float calcium_over_silicon_ratio;
   float sulphur_over_silicon_ratio;
 
-  /* Hydrogen reionisation parameters */
-  float h_reion_z_center;
-
   /* Helium reionisation parameters */
-  float he_reion_ev_pH;
-  float he_reion_z_center;
-  float he_reion_z_sigma;
+  float He_reion_ev_pH;
+  float He_reion_z_centre;
+  float He_reion_z_sigma;
 
   /* Proton mass in cgs */
   double proton_mass_cgs;
