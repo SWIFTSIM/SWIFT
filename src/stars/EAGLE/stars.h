@@ -29,7 +29,7 @@ static const float log10_SNII_max_mass_msun = 4; // temporary guess.
 //static const float log10_SNIa_min_mass_msun = 3; // temporary guess.
 static const float log10_SNIa_max_mass_msun = 8; // temporary guess.
 static const float imf_max_mass_msun = 100; // temporary guess.
-static const float log_min_metallicity = 0.0; // temporary guess.
+//static const float log_min_metallicity = 0.0; // temporary guess.
 
 /**
  * @brief Computes the gravity time-step of a given star particle.
@@ -564,8 +564,8 @@ inline static void evolve_SNII(float log_min_mass, float log_max_mass,
   for (imass = ilow; imass < ihigh + 1; imass++) {
     low_index_2d = row_major_index_2d(iz_low,imass,stars->SNII_n_z,stars->SNII_n_mass);
     high_index_2d = row_major_index_2d(iz_high,imass,stars->SNII_n_z,stars->SNII_n_mass);
-    stellar_yield[imass] = (1 - dz) * stars->yield_AGB.ejecta_SPH[low_index_2d] +
-                           dz * stars->yield_AGB.ejecta_SPH[high_index_2d];
+    stellar_yield[imass] = (1 - dz) * stars->yield_SNII.ejecta_SPH[low_index_2d] +
+                           dz * stars->yield_SNII.ejecta_SPH[high_index_2d];
   }
 
   norm0 = integrate_imf(log_min_mass, log_max_mass, 0.0, 2, stellar_yield, stars);
@@ -790,7 +790,7 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     // set_particle_metal_content
 }
 
-inline void stars_evolve_init(struct stars_props* restrict stars){
+inline static void stars_evolve_init(struct stars_props* restrict stars){
   
   stars->SNIa_n_elements = 42;
   stars->SNII_n_mass = 11;
@@ -801,6 +801,9 @@ inline void stars_evolve_init(struct stars_props* restrict stars){
   stars->AGB_n_z = 3;
   stars->lifetimes.n_mass = 30;
   stars->lifetimes.n_z = 6;
+
+  // Find out what these factors should actually be...
+  for (int i = 0; i < chemistry_element_count; i++) stars->typeII_factor[i] = 2;
 
   //stars->yield_SNIa_total_metals_SPH = ;
 

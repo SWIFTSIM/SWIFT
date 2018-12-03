@@ -99,7 +99,7 @@ struct spart {
 
 struct yield_table {
   // Names coincide with EAGLE, change to be more descriptive?
-  float *mass;
+  double *mass;
   float *metallicity;
   float *SPH;
   float *yield;
@@ -190,6 +190,8 @@ struct stars_props {
   int SNIa_mass_transfer;
   int SNII_mass_transfer;
   int AGB_mass_transfer;
+
+  float *typeII_factor;
 
   char *yield_table_path;
 };
