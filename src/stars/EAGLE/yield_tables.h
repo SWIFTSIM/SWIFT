@@ -19,6 +19,14 @@
 #ifndef SWIFT_EAGLE_STARS_YIELD_TABLES_H
 #define SWIFT_EAGLE_STARS_YIELD_TABLES_H
 
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_integration.h>
+#include <gsl/gsl_spline.h>
+#include "chemistry.h"
+
+static const float log_min_metallicity = -20;
+static const int n_mass_bins = 10; // temporary, put in correct value and move elsewhere.
+
 // Temporary, these two functions need to be somewhere else
 /**
  * @brief Returns the 1d index of element with 2d indices i,j
@@ -45,6 +53,14 @@ __attribute__((always_inline)) INLINE int row_major_index_3d(int i, int j,
   return i * ny * nz + j * nz + k;
 }
 
+inline int get_element_index(const char *element_name, char **element_array, int n_elements){
+  int index = 0;
+  
+  // do stuff...
+
+  return index;
+}
+
 inline void read_yield_tables(struct stars_props *restrict stars){
 #ifdef HAVE_HDF5
 
@@ -62,7 +78,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
   if (file_id < 0) error("unable to open file %s\n", fname);
 
-  /* allocate element name array */
+  /* read element name array */
   datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
@@ -103,7 +119,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
   if (file_id < 0) error("unable to open file %s\n", fname);
 
-  /* allocate element name array */
+  /* read element name array */
   datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
@@ -195,7 +211,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
   if (file_id < 0) error("unable to open file %s\n", fname);
 
-  /* allocate element name array */
+  /* read element name array */
   datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
@@ -323,73 +339,78 @@ inline void allocate_yield_tables(struct stars_props *restrict stars){
   
   /* Allocate SNIa arrays */
   if (posix_memalign((void **)&stars->yields_SNIa, SWIFT_STRUCT_ALIGNMENT, stars->SNIa_n_elements * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate SNIa yields array");
   }
   if (posix_memalign((void **)&stars->yield_SNIa_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNIa_n_elements * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate SNIa SPH yields array");
   }
 
   /* Allocate AGB arrays  */
   if (posix_memalign((void **)&stars->yield_AGB.mass, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate AGB mass array");
   }
   if (posix_memalign((void **)&stars->yield_AGB.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate AGB metallicity array");
   }
   if (posix_memalign((void **)&stars->yield_AGB.SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * stars->AGB_n_elements * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate AGB SPH array");
   }
   if (posix_memalign((void **)&stars->yield_AGB.yield, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * stars->AGB_n_elements * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate AGB yield array");
   }
   if (posix_memalign((void **)&stars->yield_AGB.ejecta_SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate AGB ejecta SPH array");
   }
   if (posix_memalign((void **)&stars->yield_AGB.ejecta, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate AGB ejecta array");
   }
   if (posix_memalign((void **)&stars->yield_AGB.total_metals_SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate AGB total metals SPH array");
   }
   if (posix_memalign((void **)&stars->yield_AGB.total_metals, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate AGB total metals array");
   }
 
   /* Allocate SNII arrays  */
   if (posix_memalign((void **)&stars->yield_SNII.mass, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate SNII mass array");
   }
   if (posix_memalign((void **)&stars->yield_SNII.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate SNII metallicity array");
   }
   if (posix_memalign((void **)&stars->yield_SNII.SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * stars->SNII_n_elements * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate SNII SPH array");
   }
   if (posix_memalign((void **)&stars->yield_SNII.yield, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * stars->SNII_n_elements * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate SNII yield array");
   }
   if (posix_memalign((void **)&stars->yield_SNII.ejecta_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate SNII ejecta SPH array");
   }
   if (posix_memalign((void **)&stars->yield_SNII.ejecta, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate SNII ejecta array");
   }
   if (posix_memalign((void **)&stars->yield_SNII.total_metals_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate SNII total metals SPH array");
   }
   if (posix_memalign((void **)&stars->yield_SNII.total_metals, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate SNII total metals array");
   }
 
   /* Allocate Lifetime arrays  */
   if (posix_memalign((void **)&stars->lifetimes.mass, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate lifetime mass array");
   }
   if (posix_memalign((void **)&stars->lifetimes.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate lifetime metallicity array");
   }
   if (posix_memalign((void **)&stars->lifetimes.dyingtime, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * stars->lifetimes.n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate metal_heating array");
+    error("Failed to allocate dyingtime array");
+  }
+
+  /* Allocate SNII factor array  */
+  if (posix_memalign((void **)&stars->typeII_factor, SWIFT_STRUCT_ALIGNMENT, chemistry_element_count * sizeof(float)) !=0) {
+    error("Failed to allocate SNII factor array");
   }
 
   /* Allocate element name arrays  */
@@ -408,8 +429,132 @@ inline void allocate_yield_tables(struct stars_props *restrict stars){
   }
 }
 
-inline void compute_yields(struct stars_props *restrict stars){
-  
+inline static void compute_yields(struct stars_props *restrict stars){
+
+  int index, index_2d;
+  gsl_interp_accel *accel_ptr;
+
+  gsl_spline *spline_ptr;
+
+  // check whether imf is properly normalised? present in EAGLE
+
+  /* convert SNII tables to log10  */
+  for (int i = 0; i < stars->SNII_n_mass; i++) {
+    stars->yield_SNII.mass[i] = log10(stars->yield_SNII.mass[i]);
+  }
+  for (int i = 0; i < stars->SNII_n_z; i++) {
+    if (stars->yield_SNII.metallicity[i] > 0) {
+      stars->yield_SNII.metallicity[i] = log10(stars->yield_SNII.metallicity[i]);
+    } else {
+      stars->yield_SNII.metallicity[i] = log_min_metallicity;
+    }
+  }
+
+  /* convert AGB tables to log10  */
+  for (int i = 0; i < stars->AGB_n_mass; i++) {
+    stars->yield_AGB.mass[i] = log10(stars->yield_AGB.mass[i]);
+  }
+  for (int i = 0; i < stars->AGB_n_z; i++) {
+    if (stars->yield_AGB.metallicity[i] > 0) {
+      stars->yield_AGB.metallicity[i] = log10(stars->yield_AGB.metallicity[i]);
+    } else {
+      stars->yield_AGB.metallicity[i] = log_min_metallicity;
+    }
+  }
+
+  accel_ptr = gsl_interp_accel_alloc();
+  spline_ptr = gsl_spline_alloc(gsl_interp_linear, stars->SNII_n_mass);
+  double SNII_yield[stars->SNII_n_mass];
+  double AGB_yield[stars->AGB_n_mass];
+  float yield_mass_bin[n_mass_bins];
+  float result;
+  // temoporary initialise yield_mass_bin, should be done elsewhere...
+  for (int k = 0; k < n_mass_bins; k++) yield_mass_bin[k] = 0;
+
+
+  /* Loop over elements tracked in EAGLE  */
+  int element_index = 0;
+  for (enum chemistry_element eagle_elem = chemistry_element_H; eagle_elem < chemistry_element_count; eagle_elem++) {
+    /* SNIa  */
+    element_index = get_element_index(chemistry_get_element_name(eagle_elem), stars->SNIa_element_names, stars->SNIa_n_elements);
+    stars->yield_SNIa_SPH[eagle_elem] = stars->yields_SNIa[element_index];
+
+    /* SNII  */
+    element_index = get_element_index(chemistry_get_element_name(eagle_elem), stars->SNII_element_names, stars->SNII_n_elements);
+    for (int i = 0; i < stars->SNII_n_z; i++) {
+      for (int j = 0; j < stars->SNII_n_mass; j++) {
+        index = row_major_index_3d(i, element_index, j, stars->SNII_n_z, stars->SNII_n_elements, stars->SNII_n_mass);
+	SNII_yield[j] = stars->yield_SNII.yield[index] / exp(M_LN10 * stars->yield_SNII.mass[j]);
+      }
+
+      gsl_spline_init(spline_ptr, stars->yield_SNII.mass, SNII_yield, stars->SNII_n_mass);
+
+      for (int k = 0; k < n_mass_bins; k++) {
+        if (yield_mass_bin[k] < stars->yield_SNII.mass[0])
+          result = SNII_yield[0];
+        else if (yield_mass_bin[k] > stars->yield_SNII.mass[stars->SNII_n_mass - 1])
+          result = SNII_yield[stars->SNII_n_mass - 1];
+        else
+          result =
+              gsl_spline_eval(spline_ptr, yield_mass_bin[k], accel_ptr);
+
+        index = row_major_index_3d(i,eagle_elem,k,stars->SNII_n_z,chemistry_element_count,n_mass_bins);
+        stars->yield_SNII.SPH[index] = exp(M_LN10 * yield_mass_bin[k]) * result;
+      }
+    }
+
+    for (int i = 0; i < stars->SNII_n_z; i++) {
+      for (int k = 0; k < n_mass_bins; k++) {
+        index_2d = row_major_index_2d(i,k,stars->SNII_n_z,n_mass_bins);
+        index = row_major_index_3d(i,eagle_elem,k,stars->SNII_n_z,chemistry_element_count,n_mass_bins);
+        if (strcmp(chemistry_get_element_name(eagle_elem), "Hydrogen") != 0 ||
+            strcmp(chemistry_get_element_name(eagle_elem), "Helium") != 0) {
+          stars->yield_SNII.total_metals_SPH[index_2d] +=
+              (stars->typeII_factor[eagle_elem] - 1) * stars->yield_SNII.SPH[index];
+        }
+
+        stars->yield_SNII.SPH[index] *= stars->typeII_factor[eagle_elem];
+      }
+    }
+
+    /* AGB  */
+    element_index = get_element_index(chemistry_get_element_name(eagle_elem), stars->AGB_element_names, stars->AGB_n_elements);
+    if (element_index < 0) {
+      for (int i = 0; i < stars->AGB_n_z; i++) {
+        for (int j = 0; j < n_mass_bins; j++) {
+	  index = row_major_index_3d(i,eagle_elem,j,stars->AGB_n_z,chemistry_element_count,n_mass_bins);
+          stars->yield_AGB.SPH[index] = 0.0;
+	}
+      }
+    } else {
+      for (int i = 0; i < stars->AGB_n_z; i++) {
+        for (int j = 0; j < stars->AGB_n_mass; j++) {
+          index = row_major_index_3d(i, element_index, j, stars->AGB_n_z, stars->AGB_n_elements, stars->AGB_n_mass);
+          AGB_yield[j] = stars->yield_AGB.yield[index] / exp(M_LN10 * stars->yield_AGB.mass[j]);
+        }
+
+        gsl_spline_init(spline_ptr, stars->yield_AGB.mass, AGB_yield, stars->AGB_n_mass);
+
+        for (int j = 0; j < n_mass_bins; j++) {
+          if (yield_mass_bin[j] < stars->yield_AGB.mass[0])
+            result = AGB_yield[0];
+          else if (yield_mass_bin[j] > stars->yield_AGB.mass[stars->AGB_n_mass - 1])
+            result = AGB_yield[stars->AGB_n_mass - 1];
+          else
+            result =
+                gsl_spline_eval(spline_ptr, yield_mass_bin[j], accel_ptr);
+
+          index = row_major_index_3d(i,eagle_elem,j,stars->AGB_n_z,chemistry_element_count,n_mass_bins);
+          stars->yield_AGB.SPH[index] = exp(M_LN10 * yield_mass_bin[j]) * result;
+        }
+      }
+    }
+  }
+  free(SNII_yield);
+  free(AGB_yield);
+  gsl_spline_free(spline_ptr);
+  gsl_interp_accel_free(accel_ptr);
+
 }
 
 #endif
