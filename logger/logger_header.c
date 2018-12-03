@@ -140,9 +140,7 @@ void header_read(struct header *h, void *map) {
   }
 
   if (offset != h->offset_first) {
-#ifdef SWIFT_DEBUG_CHECKS
     header_print(h);
-#endif
     error("Wrong header size (in header %li, current %li)",
           h->offset_first, offset);
   }

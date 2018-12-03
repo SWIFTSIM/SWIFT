@@ -1007,38 +1007,23 @@ AC_ARG_WITH([python],
     [with_python="no"]
 )
 if test "x$with_python" != "xno"; then
-   AC_CACHE_CHECK(
-      "python version",
-      ac_cv_ver_python,
-      [ac_cv_ver_python=`python -c 'import sys;print(sys.version[[:3]])' 2> /dev/null`]
-      )
-   
-   if test "x$with_python" != "xyes" -a "x$with_python" != "x"; then
-      PYTHON_LIBS=""
-      PYTHON_INCS="-I$with_python/include/python$ac_cv_ver_python"
-   else
-      PYTHON_LIBS=""
-      PYTHON_INCS=""
-   fi
-
-   have_python="yes"
-
-   AC_CHECK_PROGS(
-	[PYTHON_BIN],
-	[python$ac_cv_ver_python],
-	[AC_MSG_ERROR(Cannot find python binary!)],
-	[$with_python/bin]
-	)
-
-   AC_CHECK_LIB(
-      [python${ac_cv_ver_python}m],
-      [PyArg_ParseTuple],
-      [AC_DEFINE([HAVE_PYTHON],1,[The python library appears to be present.])
-      ],
-      [AC_MSG_ERROR(Cannot find python library!)],
-      [$PYTHON_LIBS])
+   AM_PATH_PYTHON([3], [], [AC_MSG_ERROR(python not found)])   
+   AC_ARG_VAR([PYTHON_INCS], [Include flags for python, bypassing python-config])
+   AC_ARG_VAR([PYTHON_CONFIG], [Path to python-config])
+   AS_IF([test -z "$PYTHON_INCS"], [
+      AS_IF([test -z "$PYTHON_CONFIG"], [
+      	AC_PATH_PROGS([PYTHON_CONFIG],
+	          [python$PYTHON_VERSION-config python-config],
+                  [no],
+                  [`dirname $PYTHON`])
+    	AS_IF([test "$PYTHON_CONFIG" = no], [AC_MSG_ERROR([cannot find python-config for $PYTHON.])])
+      ])
+      AC_MSG_CHECKING([python include flags])
+      PYTHON_INCS=`$PYTHON_CONFIG --includes`
+      AC_MSG_RESULT([$PYTHON_INCS])
+  ])
+  have_python="yes"
 fi
-AC_SUBST([PYTHON_LIBS])
 AC_SUBST([PYTHON_INCS])
 AM_CONDITIONAL([HAVEPYTHON],[test -n "$PYTHON_INCS"])
 

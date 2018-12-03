@@ -65,7 +65,7 @@ void io_close_file(int *fd, void **map) {
 }
 
 /**
- * @brief read a maks with its offset
+ * @brief read a mask with its offset
  *
  * @param h #header file structure
  * @param map file mapping

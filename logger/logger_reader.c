@@ -5,8 +5,9 @@
  * @brief Reverse offset in dump file
  *
  * @param filename string filename of the dump file
+ * @param verbose Verbose level
  */
-void reverse_offset(char *filename) {
+void reverse_offset(char *filename, int verbose) {
   struct header h;
 
   /* open file */
@@ -17,7 +18,9 @@ void reverse_offset(char *filename) {
   /* read header */
   header_read(&h, map);
 
-  header_print(&h);
+  if (verbose > 0) {
+    header_print(&h);
+  }
 
   /* check offset direction */
   if (h.forward_offset) {
@@ -32,12 +35,16 @@ void reverse_offset(char *filename) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* check offset */
-  printf("Check offsets...\n");
+  if (verbose > 0) {
+    printf("Check offsets...\n");
+  }
   offset = h.offset_first;
   while (offset < sz) {
     tools_check_offset(&h, map, &offset);
   }
-  printf("Check done\n");
+  if (verbose > 0) {
+    printf("Check done\n");
+  }
 #endif
 
   /* reverse header offset */
@@ -46,20 +53,28 @@ void reverse_offset(char *filename) {
   offset = h.offset_first;
 
   /* reverse chunks */
-  printf("Reversing offsets...\n");
+  if (verbose > 0) {
+    printf("Reversing offsets...\n");
+  }
   while (offset < sz) {
     tools_reverse_offset(&h, map, &offset);
   }
-  printf("Reversing done\n");
+  if (verbose > 0) {
+    printf("Reversing done\n");
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* check offset */
-  printf("Check offsets...\n");
+  if (verbose > 0) {
+    printf("Check offsets...\n");
+  }
   offset = h.offset_first;
   while (offset < sz) {
     tools_check_offset(&h, map, &offset);
   }
-  printf("Check done\n");
+  if (verbose > 0) {
+    printf("Check done\n");
+  }
 #endif
 
   /* free internal variables */

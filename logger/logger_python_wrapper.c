@@ -4,6 +4,8 @@
 #include "logger_time.h"
 #include "logger_reader.h"
 
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+
 #include <Python.h>
 #include <errno.h>
 #include <numpy/arrayobject.h>
@@ -15,6 +17,7 @@
  *
  * @param offset PyArrayObject list of offset for each particle
  * @param filename string filename of the dump file
+ * @param verbose Verbose level
  * @return dictionnary containing the data read
  */
 static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
@@ -37,10 +40,12 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   PyArrayObject *id = NULL;
 
   size_t time_offset;
+  int verbose = 0;
 
   /* parse arguments */
 
-  if (!PyArg_ParseTuple(args, "OsL", &offset, &filename, &time_offset))
+  if (!PyArg_ParseTuple(args, "OsL|i", &offset, &filename, &time_offset,
+			&verbose))
     return NULL;
 
   if (!PyArray_Check(offset)) {
@@ -65,7 +70,7 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   if (!h.forward_offset) {
     io_close_file(&fd, &map);
 
-    reverse_offset(filename);
+    reverse_offset(filename, verbose);
 
     io_open_file(filename, &fd, &map);
 
@@ -80,7 +85,10 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
 
   time_array_init(&times, &h, map, fd);
 
-  time_array_print(&times);
+  if (verbose > 0) {
+    time_array_print(&times);
+  }
+
   /* get required time */
   double time = time_array_get_time(&times, time_offset);
 
@@ -231,17 +239,20 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
  * @brief Reverse offset in dump file
  *
  * @param filename string filename of the dump file
+ * @param verbose Verbose level
  */
 static PyObject *pyReverseOffset(__attribute__((unused)) PyObject *self,
                                  PyObject *args) {
   /* input */
   char *filename = NULL;
 
+  int verbose = 0;
+
   /* parse arguments */
 
-  if (!PyArg_ParseTuple(args, "s", &filename)) return NULL;
+  if (!PyArg_ParseTuple(args, "s|i", &filename, &verbose)) return NULL;
 
-  reverse_offset(filename);
+  reverse_offset(filename, verbose);
   
   return Py_BuildValue("");
 }
