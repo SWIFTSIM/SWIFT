@@ -135,8 +135,64 @@ void scheduler_task_dependency_name(int ta_type, int ta_subtype,
   if (ta_subtype == task_subtype_none)
     sprintf(ta_name, "%s", taskID_names[ta_type]);
   else
-    sprintf(ta_name, "\"%s %s\"", taskID_names[ta_type],
+    sprintf(ta_name, "%s_%s", taskID_names[ta_type],
             subtaskID_names[ta_subtype]);
+}
+
+/**
+ * @brief Get the cluster name of a task.
+ *
+ * @param ta The #task
+ * @param cluster (output) The cluster name (should be allocated)
+ */
+void scheduler_get_cluster_name(const struct task *ta, char *cluster) {
+  strcpy(cluster, "None");
+  if (ta->subtype == task_subtype_density)
+    strcpy(cluster, "Density");
+  else if (ta->subtype == task_subtype_gradient)
+    strcpy(cluster, "Gradient");
+  else if (ta->subtype == task_subtype_force)
+    strcpy(cluster, "Force");
+  else if (ta->subtype == task_subtype_grav ||
+	   ta->type == task_type_grav_long_range ||
+	   ta->type == task_type_grav_mm ||
+	   ta->type == task_type_grav_mesh)
+    strcpy(cluster, "Gravity");
+  else if (ta->subtype == task_subtype_stars_density)
+    strcpy(cluster, "Stars");
+}
+
+/**
+ * @brief compute the number of same dependencies
+ *
+ * @param s The #scheduler
+ * @param ta The #task
+ * @param tb The dependent #task
+ *
+ * @return Number of dependencies
+ */
+int scheduler_get_number_relation(const struct scheduler *s,
+    const struct task *ta, const struct task *tb) {
+
+  int count = 0;
+
+  /* loop over all tasks */
+  for (int i = 0; i < s->nr_tasks; i++) {
+    const struct task *ta_tmp = &s->tasks[i];
+
+    /* and their dependencies */
+    for (int j = 0; j < ta->nr_unlock_tasks; j++) {
+      const struct task *tb_tmp = ta->unlock_tasks[j];
+
+      if (ta->type == ta_tmp->type &&
+	  ta->subtype == ta_tmp->subtype &&
+	  tb->type == tb_tmp->type &&
+	  tb->subtype == tb_tmp->subtype) {
+	count += 1;
+      }
+    }
+  }
+  return count;
 }
 
 /**
@@ -167,25 +223,18 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   if (table == NULL)
     error("Error allocating memory for task-dependency graph (table).");
 
-  int *count_rel = (int *)malloc(nber_relation * sizeof(int) / 2);
-  if (count_rel == NULL)
-    error("Error allocating memory for task-dependency graph (count_rel).");
-
   /* Reset everything */
   for (int i = 0; i < nber_relation; i++) table[i] = -1;
-  for (int i = 0; i < nber_relation / 2; i++) count_rel[i] = 0;
 
   /* Create file */
-  char filename[200] = "dependency_graph.dot";
+  char filename[200];
+  sprintf(filename, "dependency_graph_%04i.csv", s->nodeID);
   FILE *f = fopen(filename, "w");
   if (f == NULL) error("Error opening dependency graph file.");
 
   /* Write header */
-  fprintf(f, "digraph task_dep {\n");
-  fprintf(f, "label=\"Task dependencies for SWIFT %s\";\n", git_revision());
-  fprintf(f, "\t compound=true;\n");
-  fprintf(f, "\t ratio=0.66;\n");
-  fprintf(f, "\t node[nodesep=0.15];\n");
+  fprintf(f, "# %s\n", git_revision());
+  fprintf(f, "task_in,task_out,implicit_in,implicit_out,mpi_in,mpi_out,cluster_in,cluster_out,number_link\n");
 
   /* loop over all tasks */
   for (int i = 0; i < s->nr_tasks; i++) {
@@ -227,11 +276,10 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
       if (k == max_nber_dep)
         error("Not enough memory, please increase max_nber_dep");
 
-      /* Increase counter of relation */
-      count_rel[ind / 2 + k] += 1;
-
       /* Not written yet => write it */
       if (!written) {
+
+	int count = scheduler_get_number_relation(s, ta, tb);
 
         /* text to write */
         char ta_name[200];
@@ -241,154 +289,36 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
         scheduler_task_dependency_name(ta->type, ta->subtype, ta_name);
         scheduler_task_dependency_name(tb->type, tb->subtype, tb_name);
 
-        /* Change colour of implicit tasks */
-        if (ta->implicit)
-          fprintf(f, "\t %s [style = filled];\n\t %s [color = lightgrey];\n",
-                  ta_name, ta_name);
-        if (tb->implicit)
-          fprintf(f, "\t %s [style = filled];\n\t %s [color = lightgrey];\n",
-                  tb_name, tb_name);
-
-        /* Change shape of MPI communications */
+	/* Check if MPI */
+	int ta_mpi = 0;
         if (ta->type == task_type_send || ta->type == task_type_recv)
-          fprintf(f, "\t \"%s %s\" [shape = diamond];\n",
-                  taskID_names[ta->type], subtaskID_names[ta->subtype]);
+	  ta_mpi = 1;
+
+	int tb_mpi = 0;
         if (tb->type == task_type_send || tb->type == task_type_recv)
-          fprintf(f, "\t \"%s %s\" [shape = diamond];\n",
-                  taskID_names[tb->type], subtaskID_names[tb->subtype]);
-      }
-    }
-  }
+	  tb_mpi = 1;
 
-  int density_cluster[4] = {0};
-  int gradient_cluster[4] = {0};
-  int force_cluster[4] = {0};
-  int gravity_cluster[5] = {0};
-  int stars_density_cluster[4] = {0};
+	/* Get cluster name */
+	char ta_cluster[20];
+	scheduler_get_cluster_name(ta, ta_cluster);
+	char tb_cluster[20];
+	scheduler_get_cluster_name(tb, tb_cluster);
+	
+	fprintf(f, "%s,%s,%i,%i,%i,%i,%s,%s,%i\n",
+		ta_name, tb_name, ta->implicit, tb->implicit,
+		ta_mpi, tb_mpi, ta_cluster, tb_cluster, count);
 
-  /* Check whether we need to construct a group of tasks */
-  for (int type = 0; type < task_type_count; ++type) {
-
-    for (int subtype = 0; subtype < task_subtype_count; ++subtype) {
-
-      const int ind = 2 * (type * task_subtype_count + subtype) * max_nber_dep;
-
-      /* Does this task/sub-task exist? */
-      if (table[ind] != -1) {
-
-        for (int k = 0; k < 4; ++k) {
-          if (type == task_type_self + k && subtype == task_subtype_density)
-            density_cluster[k] = 1;
-          if (type == task_type_self + k && subtype == task_subtype_gradient)
-            gradient_cluster[k] = 1;
-          if (type == task_type_self + k && subtype == task_subtype_force)
-            force_cluster[k] = 1;
-          if (type == task_type_self + k && subtype == task_subtype_grav)
-            gravity_cluster[k] = 1;
-          if (type == task_type_self + k &&
-              subtype == task_subtype_stars_density)
-            stars_density_cluster[k] = 1;
-        }
-        if (type == task_type_grav_mesh) gravity_cluster[2] = 1;
-        if (type == task_type_grav_long_range) gravity_cluster[3] = 1;
-        if (type == task_type_grav_mm) gravity_cluster[4] = 1;
-      }
-    }
-  }
-
-  /* Make a cluster for the density tasks */
-  fprintf(f, "\t subgraph cluster0{\n");
-  fprintf(f, "\t\t label=\"\";\n");
-  for (int k = 0; k < 4; ++k)
-    if (density_cluster[k])
-      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
-              subtaskID_names[task_subtype_density]);
-  fprintf(f, "\t};\n");
-
-  /* Make a cluster for the force tasks */
-  fprintf(f, "\t subgraph cluster1{\n");
-  fprintf(f, "\t\t label=\"\";\n");
-  for (int k = 0; k < 4; ++k)
-    if (force_cluster[k])
-      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
-              subtaskID_names[task_subtype_force]);
-  fprintf(f, "\t};\n");
-
-  /* Make a cluster for the gradient tasks */
-  fprintf(f, "\t subgraph cluster2{\n");
-  fprintf(f, "\t\t label=\"\";\n");
-  for (int k = 0; k < 4; ++k)
-    if (gradient_cluster[k])
-      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
-              subtaskID_names[task_subtype_gradient]);
-  fprintf(f, "\t};\n");
-
-  /* Make a cluster for the gravity tasks */
-  fprintf(f, "\t subgraph cluster3{\n");
-  fprintf(f, "\t\t label=\"\";\n");
-  for (int k = 0; k < 2; ++k)
-    if (gravity_cluster[k])
-      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
-              subtaskID_names[task_subtype_grav]);
-  if (gravity_cluster[2])
-    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_mesh]);
-  if (gravity_cluster[3])
-    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_long_range]);
-  if (gravity_cluster[4])
-    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_mm]);
-  fprintf(f, "\t};\n");
-
-  /* Make a cluster for the density tasks */
-  fprintf(f, "\t subgraph cluster4{\n");
-  fprintf(f, "\t\t label=\"\";\n");
-  for (int k = 0; k < 4; ++k)
-    if (stars_density_cluster[k])
-      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
-              subtaskID_names[task_subtype_stars_density]);
-  fprintf(f, "\t};\n");
-
-  /* Write down the number of relation */
-  for (int ta_type = 0; ta_type < task_type_count; ta_type++) {
-
-    for (int ta_subtype = 0; ta_subtype < task_subtype_count; ta_subtype++) {
-
-      /* Get task indice */
-      const int ind =
-          (ta_type * task_subtype_count + ta_subtype) * max_nber_dep;
-
-      /* Loop over dependencies */
-      for (int k = 0; k < max_nber_dep; k++) {
-
-        if (count_rel[ind + k] == 0) continue;
-
-        /* Get task type */
-        const int i = 2 * (ind + k);
-        int tb_type = table[i];
-        int tb_subtype = table[i + 1];
-
-        /* Get names */
-        char ta_name[200];
-        char tb_name[200];
-
-        scheduler_task_dependency_name(ta_type, ta_subtype, ta_name);
-        scheduler_task_dependency_name(tb_type, tb_subtype, tb_name);
-
-        /* Write to the fle */
-        fprintf(f, "\t %s->%s[label=%i];\n", ta_name, tb_name,
-                count_rel[ind + k]);
       }
     }
   }
 
   /* Close the file */
-  fprintf(f, "}");
   fclose(f);
 
   /* Be clean */
   free(table);
-  free(count_rel);
 
-  if (verbose)
+  if (verbose && s->nodeID == 0)
     message("Printing task graph took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
