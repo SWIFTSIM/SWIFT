@@ -39,11 +39,10 @@ struct header {
 
 void header_print(const struct header *h);
 void header_free(struct header *h);
-int header_is_present_and_get_index(const struct header *h, const char *field,
-                                    size_t *ind);
-int header_is_present(const struct header *h, const char *field);
-int header_read(struct header *h, void *map);
+int header_field_is_present(const struct header *h, const char *field,
+			    size_t *ind);
+void header_read(struct header *h, void *map);
 size_t header_get_mask_size(const struct header *h, const size_t mask);
-int header_change_offset_direction(struct header *h, void *map);
+void header_change_offset_direction(struct header *h, void *map);
 
 #endif  // __LOGGER_HEADER_H__

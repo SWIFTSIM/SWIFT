@@ -46,17 +46,16 @@ enum reader_type {
 
 void particle_print(const struct particle *p);
 
-int particle_read(struct particle *part, const struct header *h, void *map,
+void particle_read(struct particle *part, const struct header *h, void *map,
                   size_t *offset, const double time, const int reader,
                   struct time_array *times);
 
-int particle_check_data_type(const struct header *h);
 void particle_init(struct particle *part);
 
-int particle_read_field(struct particle *part, void *map, size_t *offset,
+void particle_read_field(struct particle *part, void *map, size_t *offset,
                         const char *field, const size_t size);
 
-int particle_interpolate(struct particle *part_curr,
+void particle_interpolate(struct particle *part_curr,
                          const struct particle *part_next, const double time);
 
 #endif  //__PARTICLE_H__

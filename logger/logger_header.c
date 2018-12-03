@@ -9,6 +9,8 @@
 
 /**
  * @brief print a header struct
+ *
+ * @param h The #header
  */
 void header_print(const struct header *h) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -30,12 +32,12 @@ void header_print(const struct header *h) {
     printf("\tSize:  %lu\n", h->masks_size[i]);
     printf("\n");
   }
-
-  /* mask contains... TODO */
 };
 
 /**
  * @brief free allocated memory
+ *
+ * @param h The #header
  */
 void header_free(struct header *h) {
   for (size_t i = 0; i < h->nber_mask; i++) {
@@ -49,11 +51,12 @@ void header_free(struct header *h) {
 /**
  * @brief check if field is present in header
  *
+ * @param h The #header
  * @param field name of the requested field
  * @param ind (return value) indice of the requested field
  */
-int header_is_present_and_get_index(const struct header *h, const char *field,
-                                    size_t *ind) {
+int header_field_is_present(const struct header *h, const char *field,
+			    size_t *ind) {
   for (size_t i = 0; i < h->nber_mask; i++) {
     if (strcmp(h->masks_name[i], field) == 0) {
       if (ind != NULL) {
@@ -67,27 +70,17 @@ int header_is_present_and_get_index(const struct header *h, const char *field,
 };
 
 /**
- * @brief check if field is present in header
- *
- * @param field name of the requested field
- */
-int header_is_present(const struct header *h, const char *field) {
-  return header_is_present_and_get_index(h, field, NULL);
-};
-
-/**
  * @brief Inverse the offset direction
  *
  * @param h #header file structure
  * @param map file mapping
  *
- * @return error code
  */
-int header_change_offset_direction(struct header *h, void *map) {
+void header_change_offset_direction(struct header *h, void *map) {
   h->forward_offset = !h->forward_offset;
   size_t offset = LOGGER_VERSION_SIZE;
 
-  return io_write_data(map, LOGGER_NBER_SIZE, &h->forward_offset, &offset);
+  io_write_data(map, LOGGER_NBER_SIZE, &h->forward_offset, &offset);
 }
 
 /**
@@ -96,7 +89,7 @@ int header_change_offset_direction(struct header *h, void *map) {
  * @param h out: header
  * @param map file mapping
  */
-int header_read(struct header *h, void *map) {
+void header_read(struct header *h, void *map) {
   size_t offset = 0;
 
   /* read version */
@@ -107,7 +100,7 @@ int header_read(struct header *h, void *map) {
   io_read_data(map, LOGGER_NBER_SIZE, &h->forward_offset, &offset);
 
   if (h->forward_offset != 0 && h->forward_offset != 1)
-    error(EIO, "Non boolean value for the offset direction (%i)",
+    error("Non boolean value for the offset direction (%i)",
           h->forward_offset);
 
   /* read offset to first data */
@@ -120,7 +113,7 @@ int header_read(struct header *h, void *map) {
 
   /* check if value defined in this file is large enough */
   if (STRING_SIZE < h->name) {
-    error(EOVERFLOW, "Name too large in dump file");
+    error("Name too large in dump file");
   }
 
   /* read number of masks */
@@ -150,11 +143,10 @@ int header_read(struct header *h, void *map) {
 #ifdef SWIFT_DEBUG_CHECKS
     header_print(h);
 #endif
-    error(EIO, "Wrong header size (in header %li, current %li)",
+    error("Wrong header size (in header %li, current %li)",
           h->offset_first, offset);
   }
 
-  return 0;
 };
 
 /**

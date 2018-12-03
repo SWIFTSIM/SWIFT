@@ -44,44 +44,41 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
     return NULL;
 
   if (!PyArray_Check(offset)) {
-    error_no_return(ENOTSUP, "Offset is not a numpy array");
-    return NULL;
+    error("Offset is not a numpy array");
   }
   if (PyArray_NDIM(offset) != 1) {
-    error_no_return(ENOTSUP, "Offset is not a 1 dimensional array");
-    return NULL;
+    error("Offset is not a 1 dimensional array");
   }
   if (PyArray_TYPE(offset) != NPY_UINT64) {
-    error_no_return(ENOTSUP, "Offset does not contain unsigned int");
-    return NULL;
+    error("Offset does not contain unsigned int");
   }
 
   /* open file */
   int fd;
   void *map;
-  if (io_open_file(filename, &fd, &map) != 0) return NULL;
+  io_open_file(filename, &fd, &map);
 
   /* read header */
-  if (header_read(&h, map) != 0) return NULL;
+  header_read(&h, map);
 
   /* reverse offset if needed */
   if (!h.forward_offset) {
-    if (io_close_file(&fd, &map) != 0) return NULL;
+    io_close_file(&fd, &map);
 
-    if (reverse_offset(filename) != 0) return NULL;
+    reverse_offset(filename);
 
-    if (io_open_file(filename, &fd, &map) != 0) return NULL;
+    io_open_file(filename, &fd, &map);
 
     /* Reset header */
     header_free(&h);
 
-    if (header_read(&h, map) != 0) return NULL;
+    header_read(&h, map);
   }
 
   /* read timestamps */
   struct time_array times;
 
-  if (time_array_init(&times, &h, map, fd) != 0) return NULL;
+  time_array_init(&times, &h, map, fd);
 
   time_array_print(&times);
   /* get required time */
@@ -93,45 +90,37 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   dim[1] = DIM;
 
   /* init output */
-  if (header_is_present(&h, "positions")) {
+  if (header_field_is_present(&h, "positions", /* ind */ NULL)) {
     pos = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_DOUBLE);
   }
 
-  if (header_is_present(&h, "velocities")) {
+  if (header_field_is_present(&h, "velocities", /* ind */ NULL)) {
     vel = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_FLOAT);
   }
 
-  if (header_is_present(&h, "accelerations")) {
+  if (header_field_is_present(&h, "accelerations", /* ind */ NULL)) {
     acc = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_FLOAT);
   }
 
-  if (header_is_present(&h, "entropy")) {
+  if (header_field_is_present(&h, "entropy", /* ind */ NULL)) {
     entropy =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
   }
 
-  if (header_is_present(&h, "smoothing length")) {
+  if (header_field_is_present(&h, "smoothing length", /* ind */ NULL)) {
     h_sph =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
   }
 
-  if (header_is_present(&h, "density")) {
+  if (header_field_is_present(&h, "density", /* ind */ NULL)) {
     rho =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
   }
 
-  if (header_is_present(&h, "consts")) {
+  if (header_field_is_present(&h, "consts", /* ind */ NULL)) {
     mass =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
     id = (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_ULONG);
-  }
-
-  int error_code = 0;
-
-  /* check data type in particles */
-  if (!particle_check_data_type(&h)) {
-    error_no_return(ENOTSUP, "Particle data type are not compatible");
-    return NULL;
   }
 
   /* loop over all particles */
@@ -140,9 +129,8 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
 
     size_t *offset_particle = (size_t *)PyArray_GETPTR1(offset, i);
 
-    error_code = particle_read(&part, &h, map, offset_particle, time,
-                               reader_lin, &times);
-    if (error_code != 0) return NULL;
+    particle_read(&part, &h, map, offset_particle, time,
+		  reader_lin, &times);
 
     double *dtmp;
     float *ftmp;
@@ -253,8 +241,8 @@ static PyObject *pyReverseOffset(__attribute__((unused)) PyObject *self,
 
   if (!PyArg_ParseTuple(args, "s", &filename)) return NULL;
 
-  if (reverse_offset(filename) != 0) return NULL;
-
+  reverse_offset(filename);
+  
   return Py_BuildValue("");
 }
 

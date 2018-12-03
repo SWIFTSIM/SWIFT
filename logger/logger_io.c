@@ -13,15 +13,12 @@
  * @param fd file id
  * @param size out: file size
  *
- * @return error code
  */
-int io_get_file_size(int fd, size_t *size) {
+void io_get_file_size(int fd, size_t *size) {
   struct stat s;
   int status = fstat(fd, &s);
-  if (status != 0) error(errno, "Unable to get file size");
+  if (status != 0) error("Unable to get file size (%s)", strerror(errno));
   *size = s.st_size;
-
-  return 0;
 }
 
 /**
@@ -31,24 +28,20 @@ int io_get_file_size(int fd, size_t *size) {
  * @param fd out: file id
  * @param map out: file mapping
  *
- * @return error code
  */
-int io_open_file(char *filename, int *fd, void **map) {
+void io_open_file(char *filename, int *fd, void **map) {
   /* open file */
   *fd = open(filename, O_RDWR);
-  if (*fd == -1) error(errno, "Unable to open file %s", filename);
+  if (*fd == -1) error("Unable to open file %s (%s)", filename, strerror(errno));
 
   /* get file size */
   size_t size = 0;
-  int status = io_get_file_size(*fd, &size);
-  if (status != 0) return status;
+  io_get_file_size(*fd, &size);
 
   /* map memory */
   *map = mmap(NULL, size, PROT_WRITE | PROT_READ, MAP_SHARED, *fd, 0);
   if (map == MAP_FAILED)
-    error(errno, "Failed to allocate map of size %zi bytes.", size);
-
-  return 0;
+    error("Failed to allocate map of size %zi bytes. (%s)", size, strerror(errno));
 }
 
 /**
@@ -57,20 +50,18 @@ int io_open_file(char *filename, int *fd, void **map) {
  * @param fd file id
  * @param map file mapping
  *
- * @return error code
  */
-int io_close_file(int *fd, void **map) {
+void io_close_file(int *fd, void **map) {
   /* get file size */
   size_t size = 0;
-  int status = io_get_file_size(*fd, &size);
-  if (status != 0) return status;
+  io_get_file_size(*fd, &size);
 
   /* unmap */
-  if (munmap(*map, size) != 0) error(errno, "Unable to unmap the file");
+  if (munmap(*map, size) != 0) {
+    error("Unable to unmap the file (%s)", strerror(errno));
+  }
 
   close(*fd);
-
-  return 0;
 }
 
 /**
@@ -83,10 +74,9 @@ int io_close_file(int *fd, void **map) {
  * @param mask mask read
  * @param diff_offset offset difference to previous/next corresponding chunk
  *
- * @return error code
  */
-int io_read_mask(const struct header *h, void *map, size_t *offset,
-                 size_t *mask, size_t *diff_offset) {
+void io_read_mask(const struct header *h, void *map, size_t *offset,
+		  size_t *mask, size_t *diff_offset) {
   /* read mask */
   if (mask) {
     *mask = 0;
@@ -100,8 +90,6 @@ int io_read_mask(const struct header *h, void *map, size_t *offset,
     memcpy(diff_offset, map + *offset, LOGGER_OFFSET_SIZE);
   }
   *offset += LOGGER_OFFSET_SIZE;
-
-  return 0;
 }
 
 /**
@@ -111,14 +99,10 @@ int io_read_mask(const struct header *h, void *map, size_t *offset,
  * @param size size of the chunk to read
  * @param p pointer where to store the data
  * @param offset In: position to read, Out: shifted by size
- *
- * @return error code
  */
-int io_read_data(void *map, const size_t size, void *p, size_t *offset) {
+void io_read_data(void *map, const size_t size, void *p, size_t *offset) {
   memcpy(p, map + *offset, size);
   *offset += size;
-
-  return 0;
 };
 
 /**
@@ -129,11 +113,8 @@ int io_read_data(void *map, const size_t size, void *p, size_t *offset) {
  * @param p pointer to the data
  * @param offset In: position to write, Out: shifted by size
  *
- * @return error code
  */
-int io_write_data(void *map, const size_t size, const void *p, size_t *offset) {
+void io_write_data(void *map, const size_t size, const void *p, size_t *offset) {
   memcpy(map + *offset, p, size);
   *offset += size;
-
-  return 0;
 };

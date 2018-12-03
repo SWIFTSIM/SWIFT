@@ -2,30 +2,6 @@
 #include "logger_io.h"
 
 /**
- * @brief convert an integer time to a real time
- *
- * @param ti integer time to convert
- * @param timeBase time base of the integer time
- *
- * @return converted time
- */
-double time_convert_to_double(const integertime_t ti, const double timeBase) {
-  return ti * timeBase;  // should add timebegin
-}
-
-/**
- * @brief convert an integer time to a real time
- *
- * @param ti integer time to convert
- * @param timeBase time base of the integer time
- *
- * @return converted time
- */
-integertime_t time_convert_to_integer(const double ti, const double timeBase) {
-  return ti / timeBase;  // should add timebegin
-}
-
-/**
  * @brief read a time stamp
  *
  * @param timestamp timestamp read
@@ -34,36 +10,32 @@ integertime_t time_convert_to_integer(const double ti, const double timeBase) {
  * @param map file mapping
  * @param offset In: position in the file, Out: shifted by the timestamp
  */
-int time_read(integertime_t *timestamp, double *time, const struct header *h,
+void time_read(integertime_t *timestamp, double *time, const struct header *h,
               void *map, size_t *offset) {
-  int error_code = 0;
   size_t mask = 0;
   size_t prev_offset = 0;
   *timestamp = 0;
   *time = 0;
 
   /* read chunck header */
-  error_code = io_read_mask(h, map, offset, &mask, &prev_offset);
-  if (error_code != 0) return error_code;
+  io_read_mask(h, map, offset, &mask, &prev_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
   size_t ind = 0;
 
   /* check if timestamp is present */
-  if (!header_is_present_and_get_index(h, "timestamp", &ind))
-    error(EIO, "Header does not contain a timestamp");
+  if (!header_field_is_present(h, "timestamp", &ind))
+    error("Header does not contain a timestamp");
 
   /* check if timestamp */
-  if (h->masks[ind] != mask) error(EIO, "Not a timestamp");
+  if (h->masks[ind] != mask) error("Not a timestamp");
 #endif
 
   /* read data */
   // TODO
-  error_code =
-      io_read_data(map, sizeof(unsigned long long int), timestamp, offset);
-  error_code = io_read_data(map, sizeof(double), time, offset);
+  io_read_data(map, sizeof(unsigned long long int), timestamp, offset);
+  io_read_data(map, sizeof(double), time, offset);
 
-  return error_code;
 }
 
 /**
@@ -73,26 +45,22 @@ int time_read(integertime_t *timestamp, double *time, const struct header *h,
  * @param map file mapping
  * @param offset out: offset of first timestamp
  *
- * @return error code
  */
-int time_first_timestamp(const struct header *h, void *map, size_t *offset) {
+void time_first_timestamp(const struct header *h, void *map, size_t *offset) {
   *offset = h->offset_first;
-  int test;
 
   size_t i;
 
-  if (!header_is_present_and_get_index(h, "timestamp", &i))
-    error(EIO, "Time stamp not present in header");
+  if (!header_field_is_present(h, "timestamp", &i))
+    error("Time stamp not present in header");
 
   size_t tmp = *offset;
   size_t mask = 0;
-  test = io_read_mask(h, map, offset, &mask, NULL);
-  if (test != 0) return test;
+  io_read_mask(h, map, offset, &mask, NULL);
 
-  if (mask != h->masks[i]) error(EIO, "Dump should begin by timestep");
+  if (mask != h->masks[i]) error("Dump should begin by timestep");
 
   *offset = tmp;
-  return 0;
 }
 
 /**
@@ -103,7 +71,7 @@ int time_first_timestamp(const struct header *h, void *map, size_t *offset) {
  * @param map file mapping
  * @param fd file id
  */
-int time_array_init(struct time_array *t, const struct header *h, void *map,
+void time_array_init(struct time_array *t, const struct header *h, void *map,
                     int fd) {
 
   t->next = NULL;
@@ -118,7 +86,7 @@ int time_array_init(struct time_array *t, const struct header *h, void *map,
 
   /* get file size */
   size_t file_size;
-  int test = io_get_file_size(fd, &file_size);
+  io_get_file_size(fd, &file_size);
 
   while (offset < file_size) {
 
@@ -130,11 +98,9 @@ int time_array_init(struct time_array *t, const struct header *h, void *map,
     t->time = time;
 
     /* get next chunk */
-    test = tools_get_next_chunk(h, map, &offset, fd);
+    int test = tools_get_next_chunk(h, map, &offset, fd);
     if (test == -1)
       break;
-    else if (test != 0)
-      return test;
 
     /* allocate next time_array */
     struct time_array *tmp = malloc(sizeof(struct time_array));
@@ -148,8 +114,6 @@ int time_array_init(struct time_array *t, const struct header *h, void *map,
   struct time_array *tmp = t->prev;
   tmp->next = NULL;
   free(t);
-
-  return 0;
 }
 
 /**
