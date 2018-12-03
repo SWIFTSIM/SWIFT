@@ -41,7 +41,7 @@ with File(index, "r") as f:
 data = logger.loadFromIndex(offset, dump, time_offset)
 
 # Compute distance from center
-pos = data["position"]
+pos = data["positions"]
 center = pos.mean()
 r2 = np.sum((pos - center)**2, axis=1)
 
