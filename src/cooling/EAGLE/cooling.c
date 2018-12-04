@@ -188,7 +188,6 @@ INLINE static float newton_iter(
  * @brief Bisection integration scheme used when Newton Raphson method fails to
  * converge
  *
- * @param logu_init Initial guess for log(internal energy)
  * @param u_ini Internal energy at beginning of hydro step
  * @param n_h_i Particle hydrogen number density index
  * @param d_n_h Particle hydrogen number density offset
@@ -202,7 +201,7 @@ INLINE static float newton_iter(
  * @param dt timestep
  */
 INLINE static float bisection_iter(
-    float logu_init, double u_ini, int n_h_i, float d_n_h, int He_i, float d_He,
+    double u_ini, int n_h_i, float d_n_h, int He_i, float d_He,
     float He_reion_heat, struct part *restrict p,
     const struct cosmology *restrict cosmo,
     const struct cooling_function_data *restrict cooling,
@@ -211,7 +210,6 @@ INLINE static float bisection_iter(
   double u_upper, u_lower, u_next, LambdaNet;
   double *dLambdaNet_du = NULL;
   int i = 0;
-  double u_init = exp(logu_init);
 
   /* convert Hydrogen mass fraction in Hydrogen number density */
   const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
@@ -224,12 +222,12 @@ INLINE static float bisection_iter(
   const double ratefact = n_h * (XH / cooling->proton_mass_cgs);
 
   /* Bracketing */
-  u_lower = u_init;
-  u_upper = u_init;
+  u_lower = u_ini;
+  u_upper = u_ini;
   LambdaNet =
       (He_reion_heat / (dt * ratefact)) +
-      eagle_cooling_rate(log(u_init), dLambdaNet_du, n_h_i, d_n_h, He_i, d_He,
-                         p, cooling, cosmo, phys_const, abundance_ratio);
+      eagle_cooling_rate(log(u_ini), dLambdaNet_du, n_h_i, d_n_h, He_i, d_He, p,
+                         cooling, cosmo, phys_const, abundance_ratio);
 
   i = 0;
   if (LambdaNet < 0) {
@@ -423,9 +421,9 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
     /* Alright, all else failed, let's bisect */
     if (bisection_flag || !(cooling->newton_flag)) {
-      log_u_final_cgs = bisection_iter(
-          log(u_0_cgs), u_0_cgs, n_h_i, d_n_h, He_i, d_He, LambdaTune, p, cosmo,
-          cooling, phys_const, abundance_ratio, dt_cgs);
+      log_u_final_cgs =
+          bisection_iter(u_0_cgs, n_h_i, d_n_h, He_i, d_He, LambdaTune, p,
+                         cosmo, cooling, phys_const, abundance_ratio, dt_cgs);
     }
 
     u_final_cgs = exp(log_u_final_cgs);
