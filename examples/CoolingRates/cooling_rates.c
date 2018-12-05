@@ -63,8 +63,16 @@ INLINE static double eagle_print_metal_cooling_rate(
   double *element_lambda;
   element_lambda = malloc((cooling->N_Elements + 2) * sizeof(double));
 
+  /* Get the H and He mass fractions */
+  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+
+  /* convert Hydrogen mass fraction in Hydrogen number density */
+  const double n_h = hydro_get_physical_density(p, cosmo) * XH /
+                     phys_const->const_proton_mass *
+                     cooling->number_density_scale;
+
   /* cooling rate, derivative of cooling rate and internal energy */
-  double lambda_net = 0.0, dLambdaNet_du;
+  double lambda_net = 0.0;
   double u = hydro_get_physical_internal_energy(p, xp, cosmo) *
              cooling->internal_energy_scale;
 
@@ -96,8 +104,8 @@ INLINE static double eagle_print_metal_cooling_rate(
   /* calculate cooling rates */
   for (int j = 0; j < cooling->N_Elements + 2; j++) element_lambda[j] = 0.0;
   lambda_net = eagle_metal_cooling_rate(
-      log10(u), &dLambdaNet_du, n_h_i, d_n_h, He_i, d_He, p, cooling, cosmo,
-      phys_const, element_lambda, abundance_ratio);
+      log10(u), cosmo->z, n_h, abundance_ratio, n_h_i, d_n_h, He_i, d_He,
+      cooling, phys_const, /*dLambdaNet_du=*/NULL, element_lambda);
 
   /* write cooling rate contributions to their own files. */
   for (int j = 0; j < cooling->N_Elements + 2; j++) {
@@ -268,7 +276,7 @@ int main(int argc, char **argv) {
     // calculate cooling rates
     float du;
     const double temperature = eagle_convert_u_to_temp(
-        log10(u), &du, n_h_i, He_i, d_n_h, d_He, &cooling, &cosmo);
+        log10(u), cosmo.z, &du, n_h_i, He_i, d_n_h, d_He, &cooling);
 
     const double cooling_du_dt = eagle_print_metal_cooling_rate(
         n_h_i, d_n_h, He_i, d_He, &p, &xp, &cooling, &cosmo, &internal_const,

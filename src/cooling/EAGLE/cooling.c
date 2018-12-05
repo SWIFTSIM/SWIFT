@@ -118,8 +118,9 @@ INLINE static float newton_iter(
     float He_reion_heat, struct part *restrict p,
     const struct cosmology *restrict cosmo,
     const struct cooling_function_data *restrict cooling,
-    const struct phys_const *restrict phys_const, float *abundance_ratio,
-    float dt, int *bisection_flag) {
+    const struct phys_const *restrict phys_const,
+    const float abundance_ratio[chemistry_element_count + 2], float dt,
+    int *bisection_flag) {
 
   double logu, logu_old;
   double dLambdaNet_du = 0.0, LambdaNet;
@@ -149,10 +150,10 @@ INLINE static float newton_iter(
   {
     logu_old = logu;
     LambdaNet_old = LambdaNet;
-    LambdaNet =
-        (He_reion_heat / (dt * ratefact)) +
-        eagle_cooling_rate(logu_old, &dLambdaNet_du, n_h_i, d_n_h, He_i, d_He,
-                           p, cooling, cosmo, phys_const, abundance_ratio);
+    LambdaNet = (He_reion_heat / (dt * ratefact)) +
+                eagle_cooling_rate(logu_old, cosmo->z, n_h, abundance_ratio,
+                                   n_h_i, d_n_h, He_i, d_He, cooling,
+                                   phys_const, &dLambdaNet_du);
 
     /* Newton iteration. For details on how the cooling equation is integrated
      * see documentation in theory/Cooling/ */
@@ -205,11 +206,8 @@ INLINE static float bisection_iter(
     float He_reion_heat, struct part *restrict p,
     const struct cosmology *restrict cosmo,
     const struct cooling_function_data *restrict cooling,
-    const struct phys_const *restrict phys_const, float *abundance_ratio,
-    float dt) {
-  double u_upper, u_lower, u_next, LambdaNet;
-  double *dLambdaNet_du = NULL;
-  int i = 0;
+    const struct phys_const *restrict phys_const,
+    const float abundance_ratio[chemistry_element_count + 2], float dt) {
 
   /* convert Hydrogen mass fraction in Hydrogen number density */
   const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
@@ -222,31 +220,36 @@ INLINE static float bisection_iter(
   const double ratefact = n_h * (XH / cooling->proton_mass_cgs);
 
   /* Bracketing */
-  u_lower = u_ini;
-  u_upper = u_ini;
-  LambdaNet =
+  double u_lower = u_ini;
+  double u_upper = u_ini;
+  double LambdaNet =
       (He_reion_heat / (dt * ratefact)) +
-      eagle_cooling_rate(log(u_ini), dLambdaNet_du, n_h_i, d_n_h, He_i, d_He, p,
-                         cooling, cosmo, phys_const, abundance_ratio);
+      eagle_cooling_rate(log(u_ini), cosmo->z, n_h, abundance_ratio, n_h_i,
+                         d_n_h, He_i, d_He, cooling, phys_const,
+                         /*dLambdaNet_du=*/NULL);
 
-  i = 0;
   if (LambdaNet < 0) {
+
     /* we're cooling */
     u_lower /= bracket_factor;
     u_upper *= bracket_factor;
 
-    LambdaNet = (He_reion_heat / (dt * ratefact)) +
-                eagle_cooling_rate(log(u_lower), dLambdaNet_du, n_h_i, d_n_h,
-                                   He_i, d_He, p, cooling, cosmo, phys_const,
-                                   abundance_ratio);
+    LambdaNet =
+        (He_reion_heat / (dt * ratefact)) +
+        eagle_cooling_rate(log(u_lower), cosmo->z, n_h, abundance_ratio, n_h_i,
+                           d_n_h, He_i, d_He, cooling, phys_const,
+                           /*dLambdaNet_du=*/NULL);
+
+    int i = 0;
     while (u_lower - u_ini - LambdaNet * ratefact * dt > 0 &&
            i < bisection_max_iterations) {
       u_lower /= bracket_factor;
       u_upper /= bracket_factor;
-      LambdaNet = (He_reion_heat / (dt * ratefact)) +
-                  eagle_cooling_rate(log(u_lower), dLambdaNet_du, n_h_i, d_n_h,
-                                     He_i, d_He, p, cooling, cosmo, phys_const,
-                                     abundance_ratio);
+      LambdaNet =
+          (He_reion_heat / (dt * ratefact)) +
+          eagle_cooling_rate(log(u_lower), cosmo->z, n_h, abundance_ratio,
+                             n_h_i, d_n_h, He_i, d_He, cooling, phys_const,
+                             /*dLambdaNet_du=*/NULL);
       i++;
     }
     if (i >= bisection_max_iterations) {
@@ -256,22 +259,26 @@ INLINE static float bisection_iter(
           p->id);
     }
   } else {
+
     /* heating */
     u_lower /= bracket_factor;
     u_upper *= bracket_factor;
 
     LambdaNet = (He_reion_heat / (dt * ratefact)) +
-                eagle_cooling_rate(log(u_upper), dLambdaNet_du, n_h_i, d_n_h,
-                                   He_i, d_He, p, cooling, cosmo, phys_const,
-                                   abundance_ratio);
+                eagle_cooling_rate(log(u_upper), cosmo->z, n_h, abundance_ratio,
+                                   n_h_i, d_n_h, He_i, d_He, cooling,
+                                   phys_const, /*dLambdaNet_du=*/NULL);
+
+    int i = 0;
     while (u_upper - u_ini - LambdaNet * ratefact * dt < 0 &&
            i < bisection_max_iterations) {
       u_lower *= bracket_factor;
       u_upper *= bracket_factor;
-      LambdaNet = (He_reion_heat / (dt * ratefact)) +
-                  eagle_cooling_rate(log(u_upper), dLambdaNet_du, n_h_i, d_n_h,
-                                     He_i, d_He, p, cooling, cosmo, phys_const,
-                                     abundance_ratio);
+      LambdaNet =
+          (He_reion_heat / (dt * ratefact)) +
+          eagle_cooling_rate(log(u_upper), cosmo->z, n_h, abundance_ratio,
+                             n_h_i, d_n_h, He_i, d_He, cooling, phys_const,
+                             /*dLambdaNet_du=*/NULL);
       i++;
     }
     if (i >= bisection_max_iterations) {
@@ -283,13 +290,14 @@ INLINE static float bisection_iter(
   }
 
   /* bisection iteration */
-  i = 0;
+  int i = 0;
+  double u_next;
   do {
     u_next = 0.5 * (u_lower + u_upper);
-    LambdaNet =
-        (He_reion_heat / (dt * ratefact)) +
-        eagle_cooling_rate(log(u_next), dLambdaNet_du, n_h_i, d_n_h, He_i, d_He,
-                           p, cooling, cosmo, phys_const, abundance_ratio);
+    LambdaNet = (He_reion_heat / (dt * ratefact)) +
+                eagle_cooling_rate(log(u_next), cosmo->z, n_h, abundance_ratio,
+                                   n_h_i, d_n_h, He_i, d_He, cooling,
+                                   phys_const, /*dLambdaNet_du=*/NULL);
     if (u_next - u_ini - LambdaNet * ratefact * dt > 0.0) {
       u_upper = u_next;
     } else {
@@ -362,13 +370,13 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
       (XH + p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
 
   /* convert Hydrogen mass fraction in Hydrogen number density */
-  const double n_h = hydro_get_physical_density(p, cosmo) * XH /
-                     phys_const->const_proton_mass *
-                     cooling->number_density_scale;
+  const double n_h_cgs = hydro_get_physical_density(p, cosmo) * XH /
+                         phys_const->const_proton_mass *
+                         cooling->number_density_scale;
 
   /* ratefact = n_h * n_h / rho; Might lead to round-off error: replaced by
    * equivalent expression  below */
-  const double ratefact = n_h * (XH / cooling->proton_mass_cgs);
+  const double ratefact = n_h_cgs * (XH / cooling->proton_mass_cgs);
 
   /* Get helium and hydrogen reheating term */
   const double LambdaTune = eagle_helium_reionization_extraheat(
@@ -379,7 +387,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   int He_i, n_h_i;
   float d_He, d_n_h;
   get_index_1d(cooling->HeFrac, cooling->N_He, HeFrac, &He_i, &d_He);
-  get_index_1d(cooling->nH, cooling->N_nH, log10(n_h), &n_h_i, &d_n_h);
+  get_index_1d(cooling->nH, cooling->N_nH, log10(n_h_cgs), &n_h_i, &d_n_h);
 
   /* Let's compute the internal energy at the end of the step */
   double u_final_cgs;
@@ -387,9 +395,9 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   /* First try an explicit integration (note we ignore the derivative) */
   const double LambdaNet =
       LambdaTune / (dt_cgs * ratefact) +
-      eagle_cooling_rate(log(u_0_cgs), /*dLambdaNet_du=*/NULL, n_h_i, d_n_h,
-                         He_i, d_He, p, cooling, cosmo, phys_const,
-                         abundance_ratio);
+      eagle_cooling_rate(log(u_0_cgs), cosmo->z, n_h_cgs, abundance_ratio,
+                         n_h_i, d_n_h, He_i, d_He, cooling, phys_const,
+                         /*dLambdaNet_du=*/NULL);
 
   /* if cooling rate is small, take the explicit solution */
   if (fabs(ratefact * LambdaNet * dt_cgs) < explicit_tolerance * u_0_cgs) {

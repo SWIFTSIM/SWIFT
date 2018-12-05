@@ -27,9 +27,7 @@
 /* Local includes. */
 #include "cooling_struct.h"
 #include "cosmology.h"
-#include "eagle_cool_tables.h"
 #include "hydro_properties.h"
-#include "interpolate.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
