@@ -175,8 +175,7 @@ static void starformation_convert_to_gas(
  * */
 static void starformation_init_backend(
   struct swift_params* parameter_file, const struct phys_const* phys_const,
-  const struct unit_system* us, const struct space* s,
-  const struct star_formation* starform) {
+  const struct unit_system* us, const struct star_formation* starform) {
   
   /* Default values for the normalization and the power law */
   static const double normalization_default = 2.5e-4;
