@@ -986,16 +986,48 @@ AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[1],
 AM_CONDITIONAL(HAVESETAFFINITY,
     [test "$ac_cv_func_pthread_setaffinity_np" = "yes"])
 
+# If available check for NUMA as well.
 have_numa="no"
-if test "$ac_cv_func_pthread_setaffinity_np" = "yes"; then
-  # Check for libnuma.
-  AC_CHECK_HEADER([numa.h])
-  if test "$ac_cv_header_numa_h" = "yes"; then
-    AC_CHECK_LIB([numa], [numa_available])
-    have_numa="yes"
-  fi
-fi
+AC_ARG_WITH([numa],
+    [AS_HELP_STRING([--with-numa=PATH],
+       [Directory where the NUMA library exists @<:@yes/no@:>@]
+    )],
+    [with_numa="$withval"],
+    [with_numa="yes"]
+)
+if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; then
 
+   if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+      NUMA_LIBS="-L$with_numa/lib -lnuma"
+      NUMA_INCS="-I$with_numa/include"
+   else
+      NUMA_LIBS="-lnuma"
+      NUMA_INCS=""
+   fi
+
+   #  Test for header file.
+   old_CPPFLAGS="$CPPFLAGS"
+   CPPFLAGS="$CPPFLAGS $NUMA_INCS"
+   AC_CHECK_HEADER([numa.h])
+   CPPFLAGS="$old_CPPFLAGS"
+   if test "$ac_cv_header_numa_h" = "yes"; then
+
+      #  If NUMA location is specified check if we have it.
+      if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+         AC_CHECK_LIB([numa],[numa_available],
+            AC_DEFINE([HAVE_LIBNUMA],1,[The NUMA library appears to be present.]),
+            AC_MSG_ERROR(something is wrong with the NUMA library!), $NUMA_LIBS)
+         have_numa="yes"
+      else
+         AC_CHECK_LIB([numa],[numa_available],[have_numa="yes"],[have_numa="no"],$NUMA_LIBS)
+         if test "x$have_numa" != "xno"; then
+            AC_DEFINE([HAVE_LIBNUMA],1,[The NUMA library appears to be present.])
+         fi
+      fi
+   fi
+fi
+AC_SUBST([NUMA_LIBS])
+AC_SUBST([NUMA_INCS])
 
 # Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
