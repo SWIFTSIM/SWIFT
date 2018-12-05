@@ -11,16 +11,20 @@ conditions format as the popular `GADGET-2
 its type 3 format. Note that we do not support the GADGET-2 types 1 and 2
 formats.
 
+One crucial difference is that whilst GADGET-2 can have initial conditions split
+over many files SWIFT only supports initial conditions in one single file. **ICs
+split over multiple files cannot be read by SWIFT**. See the
+":ref:`multiple_files_ICs`" section below for possible solutions. In GADGET-2
+having multiple files allows multiple ones to be read in parallel and is the
+only way the code can handle more than 2^31 particles. This limitation is not in
+place in SWIFT. A single file can contain any number of particles (well... up to
+2^64...)  and the file is read in parallel by HDF5 when running on more than one
+compute node.
+
 The original GADGET-2 file format only contains 2 types of particles: gas
-particles and 5 sorts of collisionless particles that allow users to run with 5
+particles and 5 sorts of collision-less particles that allow users to run with 5
 separate particle masses and softenings. In SWIFT, we expand on this by using
 two of these types for stars and black holes.
-
-GADGET-2 can have initial conditions split over many files. This allow multiple
-ones to be read in parallel and is the only way the code can handle more than
-2^31 particles. This limitation is not in place in SWIFT. A single file can
-contain any number of particles (well... up to 2^64...) and the file is read in
-parallel by HDF5 when running on more than one compute node.
 
 As the original documentation for the GADGET-2 initial conditions format is
 quite sparse, we lay out here all of the necessary components. If you are
@@ -35,7 +39,7 @@ You can find out more about the HDF5 format on their `webpages
 Structure of the File
 ---------------------
 
-There are several groups that contain 'auxilliary' information, such as
+There are several groups that contain 'auxiliary' information, such as
 ``Header``.  Particle data is placed in separate groups depending of the type of
 the particles. Some types are currently ignored by SWIFT but are kept in the
 file format for compatibility reasons.
@@ -98,7 +102,7 @@ In the ``/Header/`` group, the following attributes are required:
   ``NumPart_Total`` to be >2^31, the use of ``NumPart_Total_HighWord`` is only
   here for compatibility reasons.
 + ``Flag_Entropy_ICs``, a historical value that tells the code if you have
-  included entropy or internal energy values in your intial conditions files.
+  included entropy or internal energy values in your initial conditions files.
   Acceptable values are 0 or 1. We recommend using internal energies over
   entropy in the ICs and hence have this flag set to 0.
 
@@ -113,7 +117,9 @@ GADGET-2 based analysis programs:
   exactly the same as the ``NumPart_Total`` array. As SWIFT only uses ICs
   contained in a single file, this is not necessary for SWIFT-only ICs.
 + ``NumFilesPerSnapshot``, again a historical integer value that tells the code
-  how many files there are per snapshot. You will probably want to set this to 1.
+  how many files there are per snapshot. You will probably want to set
+  this to 1. If this field is present in a SWIFT IC file and has a
+  value different from 1, the code will return an error message.
 + ``Time``, time of the start of the simulation in internal units or expressed
   as a scale-factor for cosmological runs. SWIFT ignores this and reads it from
   the parameter file.
@@ -141,7 +147,7 @@ individual particle type (e.g. ``/PartType0/``) that have the following *dataset
 + ``Masses``, an array of length N that gives the masses of the particles.
 
 For ``PartType0`` (i.e. particles that interact through hydro-dynamics), you will
-need the following auxilliary items:
+need the following auxiliary items:
 
 + ``SmoothingLength``, the smoothing lengths of the particles. These will be
   tidied up a bit, but it is best if you provide accurate numbers. In
@@ -163,7 +169,7 @@ h-free quantities. Switching this parameter on will also affect the box size
 read from the ``/Header/`` group (see above).
 
 Similarly, GADGET cosmological ICs have traditionally used velocities expressed
-as peculiar velocities divided by ``sqrt(a)``. This can be undone by swicthing
+as peculiar velocities divided by ``sqrt(a)``. This can be undone by switching
 on the parameter ``InitialConditions:cleanup_velocity_factors`` in the
 :ref:`Parameter_File_label`.
 
@@ -225,5 +231,28 @@ You should have an HDF5 file with the following structure:
      Velocities=[[vx, vy, vz]]
      ParticleIDs=[...]
      Masses=[...]
+
+.. _multiple_files_ICs:
+     
+ICs split over multiple files
+-----------------------------
+
+A basic script ``tools/combine_ics.py`` is provided to merge basic GADGET-2
+initial conditions split into multiple files into one single valid file. This
+script can handle simple HDF5 files (GADGET-2 type 3 ICs) that follow the format
+described above but split over multiple files.
+
+The script can also convert ICs using a ``MassTable`` and create the
+corresponding particle fields. Note that additional fields present in ICs beyond
+the simple GADGET-2 specification will not be merged.
+
+One additional option is to compress the fields in the files using HDF5's gzip
+compression. This is very effective for the fields such as masses or particle
+IDs which are very similar. A checksum filter is also applied in all cases to
+help with data curation.
+
+**We caution that this script is very basic and should only be used with great
+caution.** 
+
 
 
