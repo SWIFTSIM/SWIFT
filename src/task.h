@@ -199,7 +199,7 @@ int task_lock(struct task *t);
 void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
 void task_dump_all(struct engine *e, int step);
-void task_dump_stats(struct engine *e, int step);
+void task_dump_stats(const char *dumpfile, struct engine *e, int header, int allranks);
 #ifdef WITH_MPI
 void task_create_mpi_comms(void);
 #endif

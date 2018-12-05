@@ -283,11 +283,11 @@ int main(int argc, char *argv[]) {
 
 #ifndef SWIFT_DEBUG_TASKS
   if (dump_tasks) {
-      if (myrank == 0) {
-          message("WARNING: complete task dumps are only created when "
-                  "configured with --enable-task-debugging.");
-          message("         Basic task statistics will be output.");
-      }
+    if (myrank == 0) {
+      message("WARNING: complete task dumps are only created when "
+              "configured with --enable-task-debugging.");
+      message("         Basic task statistics will be output.");
+    }
   }
 #endif
 
@@ -1037,7 +1037,9 @@ int main(int argc, char *argv[]) {
 #endif
 
       /* Generate the task statistics. */
-      task_dump_stats(&e, j + 1);
+      char dumpfile[40];
+      snprintf(dumpfile, 40, "thread_stats-step%d.dat", j + 1);
+      task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
     }
 
 #ifdef SWIFT_DEBUG_THREADPOOL

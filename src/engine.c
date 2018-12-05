@@ -991,6 +991,11 @@ void engine_repartition(struct engine *e) {
    * bug that doesn't handle this case well. */
   if (e->nr_nodes == 1) return;
 
+  /* Generate the fixed costs include file. */
+  if (e->step > 3 && e->reparttype->trigger <= 1.f) {
+    task_dump_stats("partition_fixed_costs.h", e, /* header = */ 1, /* allranks = */ 1);
+  }
+
   /* Do the repartitioning. */
   partition_repartition(e->reparttype, e->nodeID, e->nr_nodes, e->s,
                         e->sched.tasks, e->sched.nr_tasks);
