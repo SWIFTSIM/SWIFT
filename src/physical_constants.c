@@ -142,7 +142,7 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
       const_kennicutt_schmidt_units_cgs / 
       units_general_cgs_conversion_factor(us, dimension_ks);
   
-  const float dimension_M_per_pc2 = {1, -2, 0, 0, 0};
+  const float dimension_M_per_pc2[5] = {1, -2, 0, 0, 0};
   internal_const->const_solar_mass_per_parsec2 = 
       const_solar_mass_per_squared_parsec / 
       units_general_cgs_conversion_factor(us, dimension_M_per_pc2);
