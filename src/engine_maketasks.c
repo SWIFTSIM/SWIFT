@@ -1860,6 +1860,7 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
     if (ci->nodeID == nodeID)
       scheduler_addtask(sched, task_type_fof_self, task_subtype_none, 0, 0, ci,
                         NULL);
+    else continue;
 
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
@@ -1881,7 +1882,7 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Is that neighbour local and does it have particles ? */
           if (cid >= cjd || cj->grav.count == 0 ||
-              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+              (ci->nodeID != cj->nodeID))
             continue;
 
           /* Construct the pair task */
