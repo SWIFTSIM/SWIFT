@@ -999,7 +999,7 @@ if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; 
 
    if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
       NUMA_LIBS="-L$with_numa/lib -lnuma"
-      NUMA_INCS="-I$with_numa/include"
+      NUMA_INCS="-isystem$with_numa/include"
    else
       NUMA_LIBS="-lnuma"
       NUMA_INCS=""
