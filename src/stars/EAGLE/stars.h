@@ -145,7 +145,7 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
 // -------------------- Work in progress ------------------------------
 
 // This really needs to be somewhere else
-inline float interpol_1d(float *table, int i, float dx) {
+inline static float interpol_1d(float *table, int i, float dx) {
   float result;
 
   result = (1 - dx) * table[i] + dx * table[i + 1];
@@ -153,7 +153,7 @@ inline float interpol_1d(float *table, int i, float dx) {
   return result;
 }
 
-inline float interpol_2d(float **table, int i, int j, float dx, float dy) {
+inline static float interpol_2d(float **table, int i, int j, float dx, float dy) {
   float result;
 
   result = (1 - dx) * (1 - dy) * table[i][j] + (1 - dx) * dy * table[i][j + 1] +
@@ -164,7 +164,7 @@ inline float interpol_2d(float **table, int i, int j, float dx, float dy) {
 
 
 
-inline float dying_mass_msun(float age_Gyr, float metallicity,
+inline static float dying_mass_msun(float age_Gyr, float metallicity,
 			     const struct stars_props *restrict star_properties) {
 
   // check out units for all these quantities and name them accordingly
@@ -283,7 +283,7 @@ inline float dying_mass_msun(float age_Gyr, float metallicity,
   return mass;
 }
 
-inline float lifetime_in_Gyr(float mass, float metallicity,
+inline static float lifetime_in_Gyr(float mass, float metallicity,
 			     const struct stars_props *restrict star_properties) {
 
   double time = 0, d_mass, d_metal;
@@ -366,7 +366,7 @@ inline float lifetime_in_Gyr(float mass, float metallicity,
   return time;
 }
 
-inline void determine_bin_yield(int *iz_low, int *iz_high, float *dz, float log_metallicity, 
+inline static void determine_bin_yield(int *iz_low, int *iz_high, float *dz, float log_metallicity, 
 				const struct stars_props *restrict star_properties){
 
   // Modify to work with SNII yields !!!
@@ -421,18 +421,25 @@ inline static void evolve_SNIa(float log_min_mass, float log_max_mass,
 
   /* compute the fraction of white dwarfs */
   float num_of_SNIa_per_msun;
-  switch (stars->SNIa_mode) {
-    case 2:
-      /* Efolding (Forster 2006) */
-      num_of_SNIa_per_msun =
-          stars->SNIa_efficiency *
-          (exp(-sp->age_Gyr / stars->SNIa_timescale) -
-           exp(-(sp->age_Gyr + dt_Gyr) / stars->SNIa_timescale));
-      break;
-    default:
-      error("SNIa mode not defined yet %d\n", stars->SNIa_mode);
-      break;
-  }
+  /* Efolding (Forster 2006) */
+  num_of_SNIa_per_msun =
+      stars->SNIa_efficiency *
+      (exp(-sp->age_Gyr / stars->SNIa_timescale) -
+       exp(-(sp->age_Gyr + dt_Gyr) / stars->SNIa_timescale));
+
+  // switch included in EAGLE but there don't seem to be any alternatives.
+  //switch (stars->SNIa_mode) {
+  //  case 2:
+  //    /* Efolding (Forster 2006) */
+  //    num_of_SNIa_per_msun =
+  //        stars->SNIa_efficiency *
+  //        (exp(-sp->age_Gyr / stars->SNIa_timescale) -
+  //         exp(-(sp->age_Gyr + dt_Gyr) / stars->SNIa_timescale));
+  //    break;
+  //  default:
+  //    error("SNIa mode not defined yet %d\n", stars->SNIa_mode);
+  //    break;
+  //}
 
   sp->num_snia = num_of_SNIa_per_msun;
 
@@ -468,7 +475,8 @@ inline static void evolve_SNII(float log_min_mass, float log_max_mass,
   int ilow, ihigh, imass, i = 0;
 
   // start counting SNII. This should probably be passed in as a pointer.
-  float num_SNII = 0.;
+  // GCC complains about not using num_SNII. temporarily commented out.
+  //float num_SNII = 0.;
 
   float metallicity = exp(M_LN10 * log_metallicity);
 
@@ -495,7 +503,8 @@ inline static void evolve_SNII(float log_min_mass, float log_max_mass,
 //   else
 //     *Number_of_SNII = integrate_imf(log_min_mass, log_max_mass, 0.0, 0);
 // #else
-  num_SNII = integrate_imf(log_min_mass, log_max_mass, 0.0, 0, stellar_yield,stars);
+  // GCC complains about not using num_SNII. temporarily commented out.
+  //num_SNII = integrate_imf(log_min_mass, log_max_mass, 0.0, 0, stellar_yield,stars);
 // #endif
 
   /* determine yield of these bins (not equally spaced bins) */
@@ -790,7 +799,7 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     // set_particle_metal_content
 }
 
-inline static void stars_evolve_init(struct stars_props* restrict stars){
+inline static void stars_evolve_init(struct swift_params *params, struct stars_props* restrict stars){
   
   stars->SNIa_n_elements = 42;
   stars->SNII_n_mass = 11;
@@ -801,15 +810,21 @@ inline static void stars_evolve_init(struct stars_props* restrict stars){
   stars->AGB_n_z = 3;
   stars->lifetimes.n_mass = 30;
   stars->lifetimes.n_z = 6;
+  stars->element_name_length = 15;
 
-  // Find out what these factors should actually be...
-  for (int i = 0; i < chemistry_element_count; i++) stars->typeII_factor[i] = 2;
+  /* Yield table filepath  */
+  parser_get_param_string(params, "EagleStellarEvolution:filename", stars->yield_table_path);
+  message("%s",stars->yield_table_path);
 
   //stars->yield_SNIa_total_metals_SPH = ;
 
   /* Allocate yield tables  */
   allocate_yield_tables(stars);
+  
+  // Find out what these factors should actually be...
+  for (int i = 0; i < chemistry_element_count; i++) stars->typeII_factor[i] = 2;
 
+  message("%s",stars->yield_table_path);
   /* Read the tables  */
   read_yield_tables(stars);
 

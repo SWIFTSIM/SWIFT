@@ -162,6 +162,7 @@ struct stars_props {
   char **SNIa_element_names;
   char **SNII_element_names;
   char **AGB_element_names;
+  int element_name_length;
 
   int SNIa_n_elements;
   int SNII_n_mass;
@@ -193,7 +194,7 @@ struct stars_props {
 
   float *typeII_factor;
 
-  char *yield_table_path;
+  char yield_table_path[50];
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */

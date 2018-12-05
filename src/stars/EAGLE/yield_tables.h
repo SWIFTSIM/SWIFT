@@ -27,6 +27,14 @@
 static const float log_min_metallicity = -20;
 static const int n_mass_bins = 10; // temporary, put in correct value and move elsewhere.
 
+inline static char *mystrdup(const char *s) {
+  char *p;
+
+  p = (char *)malloc(strlen(s) + 1);
+  strcpy(p, s);
+  return p;
+}
+
 // Temporary, these two functions need to be somewhere else
 /**
  * @brief Returns the 1d index of element with 2d indices i,j
@@ -53,7 +61,7 @@ __attribute__((always_inline)) INLINE int row_major_index_3d(int i, int j,
   return i * ny * nz + j * nz + k;
 }
 
-inline int get_element_index(const char *element_name, char **element_array, int n_elements){
+inline static int get_element_index(const char *element_name, char **element_array, int n_elements){
   int index = 0;
   
   // do stuff...
@@ -61,7 +69,7 @@ inline int get_element_index(const char *element_name, char **element_array, int
   return index;
 }
 
-inline void read_yield_tables(struct stars_props *restrict stars){
+inline static void read_yield_tables(struct stars_props *restrict stars){
 #ifdef HAVE_HDF5
 
   int i, j, k, index;
@@ -71,6 +79,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   hid_t file_id, dataset, datatype;
   herr_t status;
 
+  message("1 %s", stars->yield_table_path);
   /* Read SNIa tables */
   sprintf(fname, "%s/SNIa.hdf5", stars->yield_table_path);
 
@@ -83,27 +92,30 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
   status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->SNIa_element_names));
+          stars->SNIa_element_names);
   if (status < 0) error("error reading SNIa element names");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
 
+  message("2 %s", stars->yield_table_path);
+
   // What is this for? Copied from EAGLE
-  //for (i = 0; i < stars->SNIa_n_elements; i++)
-  //  yieldsSNIa.ElementName[i] = mystrdup(yieldsSNIa.ElementName[i]);
+  //for (i = 0; i < stars->SNIa_n_elements; i++) {
+  //  stars->SNIa_element_names[i] = mystrdup(stars->SNIa_element_names[i]);
+  //}
 
   dataset = H5Dopen(file_id, "Yield", H5P_DEFAULT);
-  status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->yields_SNIa));
+  status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+          stars->yields_SNIa);
   if (status < 0) error("error reading SNIa yields");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
-
+  
   dataset = H5Dopen(file_id, "Total_Metals", H5P_DEFAULT);
-  status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->yield_SNIa_total_metals_SPH));
+  status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+          &stars->yield_SNIa_total_metals_SPH);
   if (status < 0) error("error reading SNIa total metal");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
@@ -113,6 +125,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
   /* Read SNII tables */
 
+  message("3 %s", stars->yield_table_path);
   sprintf(fname, "%s/SNII.hdf5", stars->yield_table_path);
 
   file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -124,7 +137,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
   status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->SNII_element_names));
+          stars->SNII_element_names);
   if (status < 0) error("error reading SNII element names");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
@@ -136,15 +149,15 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   //  yieldsSNII.ElementName[i] = mystrdup(yieldsSNII.ElementName[i]);
 
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
-  status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->yield_SNII.mass));
+  status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+          stars->yield_SNII.mass);
   if (status < 0) error("error reading SNII masses");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
   dataset = H5Dopen(file_id, "Metallicities", H5P_DEFAULT);
-  status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->yield_SNII.metallicity));
+  status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+          stars->yield_SNII.metallicity);
   if (status < 0) error("error reading SNII metallicities");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
@@ -164,11 +177,12 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   if (status < 0) error("error closing dataset");
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
+  for (int l = 0; l < stars->SNII_n_z; l++) message("%d %s", l, tempname1[l]);
 
   for (i = 0; i < stars->SNII_n_z; i++) {
     sprintf(setname, "/Yields/%s/Yield", tempname1[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
-    status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+    status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
             tempyield1);
     if (status < 0) error("error reading SNII yield");
     status = H5Dclose(dataset);
@@ -176,14 +190,14 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
     sprintf(setname, "/Yields/%s/Ejected_mass", tempname1[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
-    status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, tempej1);
+    status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, tempej1);
     if (status < 0) error("error reading SNII ejected masses");
     status = H5Dclose(dataset);
     if (status < 0) error("error closing dataset");
 
     sprintf(setname, "/Yields/%s/Total_Metals", tempname1[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
-    status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+    status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
             tempmet1);
     if (status < 0) error("error reading SNII total metals");
     status = H5Dclose(dataset);
@@ -194,9 +208,10 @@ inline void read_yield_tables(struct stars_props *restrict stars){
       stars->yield_SNII.ejecta[index] = tempej1[k];
       stars->yield_SNII.total_metals[index] = tempmet1[k];
 
-      for (j = 0; j < stars->SNII_n_elements; j++)
+      for (j = 0; j < stars->SNII_n_elements; j++) {
         index = row_major_index_3d(i,j,k,stars->SNII_n_z,stars->SNII_n_elements,stars->SNII_n_mass);
         stars->yield_SNII.yield[index] = tempyield1[j][k];
+      }
     }
   }
 
@@ -216,7 +231,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
   status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->AGB_element_names));
+          stars->AGB_element_names);
   if (status < 0) error("error reading AGB element names");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
@@ -228,15 +243,15 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   //  yieldsAGB.ElementName[i] = mystrdup(yieldsAGB.ElementName[i]);
 
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
-  status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->yield_AGB.mass));
+  status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+          stars->yield_AGB.mass);
   if (status < 0) error("error reading AGB masses");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
   dataset = H5Dopen(file_id, "Metallicities", H5P_DEFAULT);
-  status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->yield_AGB.metallicity));
+  status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+          stars->yield_AGB.metallicity);
   if (status < 0) error("error reading AGB metallicities");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
@@ -260,7 +275,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   for (i = 0; i < stars->AGB_n_z; i++) {
     sprintf(setname, "/Yields/%s/Yield", tempname2[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
-    status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+    status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
             tempyield2);
     if (status < 0) error("error reading AGB yield");
     status = H5Dclose(dataset);
@@ -268,14 +283,14 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
     sprintf(setname, "/Yields/%s/Ejected_mass", tempname2[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
-    status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, tempej2);
+    status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, tempej2);
     if (status < 0) error("error reading AGB ejected masses");
     status = H5Dclose(dataset);
     if (status < 0) error("error closing dataset");
 
     sprintf(setname, "/Yields/%s/Total_Metals", tempname2[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
-    status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+    status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
             tempmet2);
     if (status < 0) error("error reading AGB total metals");
     status = H5Dclose(dataset);
@@ -286,9 +301,10 @@ inline void read_yield_tables(struct stars_props *restrict stars){
       stars->yield_AGB.ejecta[index] = tempej2[k];
       stars->yield_AGB.total_metals[index] = tempmet2[k];
 
-      for (j = 0; j < stars->AGB_n_elements; j++)
+      for (j = 0; j < stars->AGB_n_elements; j++) {
         index = row_major_index_3d(i,j,k,stars->AGB_n_z,stars->AGB_n_elements,stars->AGB_n_mass);
         stars->yield_AGB.yield[index] = tempyield2[j][k];
+      }
     }
   }
 
@@ -297,22 +313,22 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
   /* Read lifetimes table */
 
-  sprintf(fname, "%s/AGB.hdf5", stars->yield_table_path);
+  sprintf(fname, "%s/Lifetimes.hdf5", stars->yield_table_path);
 
   file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
 
   if (file_id < 0) error("unable to open file %s\n", fname);
 
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
-  status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->lifetimes.mass));
+  status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+          stars->lifetimes.mass);
   if (status < 0) error("error reading lifetime table masses");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
   dataset = H5Dopen(file_id, "Metallicities", H5P_DEFAULT);
-  status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->lifetimes.metallicity));
+  status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+          stars->lifetimes.metallicity);
   if (status < 0) error("error reading AGB metallicities");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
@@ -320,11 +336,13 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   float temptime[stars->lifetimes.n_z][stars->lifetimes.n_mass];
 
   dataset = H5Dopen(file_id, "Lifetimes", H5P_DEFAULT);
-  H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, temptime);
+  H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, temptime);
   H5Dclose(dataset);
 
   for (i = 0; i < stars->lifetimes.n_z; i++) {
     for (j = 0; j < stars->lifetimes.n_mass; j++) {
+      //index = row_major_index_2d(i,j,stars->lifetimes.n_z,stars->lifetimes.n_mass);
+      //stars->lifetimes.dyingtime[index] = log10(temptime[i][j]);
       stars->lifetimes.dyingtime[i][j] = log10(temptime[i][j]);
     }
   }
@@ -335,7 +353,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 #endif
 }
 
-inline void allocate_yield_tables(struct stars_props *restrict stars){
+inline static void allocate_yield_tables(struct stars_props *restrict stars){
   
   /* Allocate SNIa arrays */
   if (posix_memalign((void **)&stars->yields_SNIa, SWIFT_STRUCT_ALIGNMENT, stars->SNIa_n_elements * sizeof(float)) !=0) {
@@ -404,8 +422,12 @@ inline void allocate_yield_tables(struct stars_props *restrict stars){
   if (posix_memalign((void **)&stars->lifetimes.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * sizeof(float)) !=0) {
     error("Failed to allocate lifetime metallicity array");
   }
-  if (posix_memalign((void **)&stars->lifetimes.dyingtime, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * stars->lifetimes.n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate dyingtime array");
+  //if (posix_memalign((void **)&stars->lifetimes.dyingtime, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * stars->lifetimes.n_mass * sizeof(float)) !=0) {
+  //  error("Failed to allocate dyingtime array");
+  //}
+  stars->lifetimes.dyingtime = (float **)malloc(stars->lifetimes.n_z * sizeof(float *));
+  for(int i = 0; i < stars->lifetimes.n_z; i++){
+    stars->lifetimes.dyingtime[i] = (float *)malloc(stars->lifetimes.n_mass * sizeof(float));
   }
 
   /* Allocate SNII factor array  */
@@ -414,18 +436,17 @@ inline void allocate_yield_tables(struct stars_props *restrict stars){
   }
 
   /* Allocate element name arrays  */
-  int element_name_length = 25;
   stars->SNIa_element_names = (char **)malloc(stars->SNIa_n_elements * sizeof(char*));
   for(int i = 0; i < stars->SNIa_n_elements; i++){
-    stars->SNIa_element_names[i] = (char *)malloc(element_name_length * sizeof(char));
+    stars->SNIa_element_names[i] = (char *)malloc(stars->element_name_length * sizeof(char));
   }
   stars->SNII_element_names = (char **)malloc(stars->SNII_n_elements * sizeof(char*));
   for(int i = 0; i < stars->SNII_n_elements; i++){
-    stars->SNII_element_names[i] = (char *)malloc(element_name_length * sizeof(char));
+    stars->SNII_element_names[i] = (char *)malloc(stars->element_name_length * sizeof(char));
   }
   stars->AGB_element_names = (char **)malloc(stars->AGB_n_elements * sizeof(char*));
   for(int i = 0; i < stars->AGB_n_elements; i++){
-    stars->AGB_element_names[i] = (char *)malloc(element_name_length * sizeof(char));
+    stars->AGB_element_names[i] = (char *)malloc(stars->element_name_length * sizeof(char));
   }
 }
 
