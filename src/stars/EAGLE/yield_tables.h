@@ -35,7 +35,7 @@ inline static char *mystrdup(const char *s) {
   return p;
 }
 
-// Temporary, these two functions need to be somewhere else
+// Temporary, these three functions need to be somewhere else
 /**
  * @brief Returns the 1d index of element with 2d indices i,j
  * from a flattened 2d array in row major order
@@ -62,11 +62,14 @@ __attribute__((always_inline)) INLINE int row_major_index_3d(int i, int j,
 }
 
 inline static int get_element_index(const char *element_name, char **element_array, int n_elements){
-  int index = 0;
   
-  // do stuff...
+  /* Compare element name we are trying to index to every name in element array  */
+  for (int i = 0; i < n_elements; i++) {
+    if (strcmp(element_array[i], element_name) == 0) return i;
+  }
 
-  return index;
+  /* If we don't find the index return flag  */
+  return -1;
 }
 
 inline static void read_yield_tables(struct stars_props *restrict stars){
