@@ -986,7 +986,10 @@ AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[1],
 AM_CONDITIONAL(HAVESETAFFINITY,
     [test "$ac_cv_func_pthread_setaffinity_np" = "yes"])
 
-# If available check for NUMA as well.
+# If available check for NUMA as well. There is a problem with the headers of
+# this library, mainly that they do not pass the strict prototypes check when
+# installed outside of the system directories. So we actually do this check
+# in two phases. The basic ones first (before strict-prototypes is added to CFLAGS).
 have_numa="no"
 AC_ARG_WITH([numa],
     [AS_HELP_STRING([--with-numa=PATH],
@@ -999,7 +1002,7 @@ if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; 
 
    if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
       NUMA_LIBS="-L$with_numa/lib -lnuma"
-      NUMA_INCS="-isystem$with_numa/include"
+      NUMA_INCS="-I$with_numa/include"
    else
       NUMA_LIBS="-lnuma"
       NUMA_INCS=""
@@ -1027,7 +1030,6 @@ if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; 
    fi
 fi
 AC_SUBST([NUMA_LIBS])
-AC_SUBST([NUMA_INCS])
 
 # Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
@@ -1113,6 +1115,23 @@ if test "$enable_warn" != "no"; then
     AX_CHECK_COMPILE_FLAG([-Wstrict-prototypes],[CFLAGS="$CFLAGS -Wstrict-prototypes"],
                           [CFLAGS="$CFLAGS"],[$CFLAGS],[AC_LANG_SOURCE([int main(void){return 0;}])])
 fi
+
+# Second part of the NUMA library checks. We now decide if we need to use
+# -isystem to get around the strict-prototypes problem. Assumes isystem
+# is available when strict-prototypes is.
+if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; then
+   if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+      case "$CFLAGS" in
+         *strict-prototypes*)
+            NUMA_INCS="-isystem$with_numa/include"
+         ;;
+         *)
+            NUMA_INCS="-I$with_numa/include"
+         ;;
+      esac
+   fi
+fi
+AC_SUBST([NUMA_INCS])
 
 # Various package configuration options.
 
