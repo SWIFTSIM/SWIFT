@@ -170,7 +170,6 @@ __attribute__((always_inline)) INLINE void get_index_1d(
 __attribute__((always_inline)) INLINE void get_redshift_index(
     float z, int *z_index, float *dz,
     struct cooling_function_data *restrict cooling) {
-  int iz;
 
   /* before the earliest redshift or before hydrogen reionization, flag for
    * collisional cooling */
@@ -189,21 +188,22 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
     *z_index = 0;
     *dz = 0.0;
   } else {
+
     /* start at the previous index and search */
-    for (iz = cooling->previous_z_index; iz >= 0; iz--) {
+    for (int iz = cooling->previous_z_index; iz >= 0; iz--) {
       if (z > cooling->Redshifts[iz]) {
+
+        *z_index = iz;
+        cooling->previous_z_index = iz;
         *dz = (z - cooling->Redshifts[iz]) /
               (cooling->Redshifts[iz + 1] - cooling->Redshifts[iz]);
-
-        cooling->previous_z_index = *z_index = iz;
-
         break;
       }
     }
   }
 }
 
-/*
+/**
  * @brief Performs 2d interpolation of table based on indices
  * and offsets. Also computes values of table directly above and
  * below in second dimension by setting dy = 0,1 (used for
@@ -214,20 +214,23 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
  * @param dx,dy Offset within cell
  * @param nx,ny Table dimensions
  */
-__attribute__((always_inline)) INLINE float interpolate_2d(const float *table,
-                                                           int i, int j,
-                                                           float dx, float dy,
-                                                           int nx, int ny) {
+__attribute__((always_inline)) INLINE float interpolate_2d(
+    const float *table, const int i, const int j, const float dx,
+    const float dy, const int nx, const int ny) {
+
+  /* Indicate that the whole array is aligned on boundaries */
+  swift_align_information(float, table, SWIFT_STRUCT_ALIGNMENT);
+
   const float table0 = table[row_major_index_2d(i, j, nx, ny)];
   const float table1 = table[row_major_index_2d(i, j + 1, nx, ny)];
   const float table2 = table[row_major_index_2d(i + 1, j, nx, ny)];
   const float table3 = table[row_major_index_2d(i + 1, j + 1, nx, ny)];
 
-  return (1 - dx) * (1 - dy) * table0 + (1 - dx) * dy * table1 +
-         dx * (1 - dy) * table2 + dx * dy * table3;
+  return (1.f - dx) * (1.f - dy) * table0 + (1.f - dx) * dy * table1 +
+         dx * (1.f - dy) * table2 + dx * dy * table3;
 }
 
-/*
+/**
  * @brief Performs 3d interpolation of table based on indices
  * and offsets. Also computes values of table directly above and
  * below in third dimension by setting dz = 0,1 (used for
@@ -238,11 +241,13 @@ __attribute__((always_inline)) INLINE float interpolate_2d(const float *table,
  * @param dx,dy,dz Offset within cell
  * @param nx,ny,nz Table dimensions
  */
-__attribute__((always_inline)) INLINE float interpolate_3d(const float *table,
-                                                           int i, int j, int k,
-                                                           float dx, float dy,
-                                                           float dz, int nx,
-                                                           int ny, int nz) {
+__attribute__((always_inline)) INLINE float interpolate_3d(
+    const float *table, const int i, const int j, const int k, const float dx,
+    const float dy, const float dz, const int nx, const int ny, const int nz) {
+
+  /* Indicate that the whole array is aligned on boundaries */
+  swift_align_information(float, table, SWIFT_STRUCT_ALIGNMENT);
+
   const float table0 = table[row_major_index_3d(i, j, k, nx, ny, nz)];
   const float table1 = table[row_major_index_3d(i, j, k + 1, nx, ny, nz)];
   const float table2 = table[row_major_index_3d(i, j + 1, k, nx, ny, nz)];
@@ -253,14 +258,14 @@ __attribute__((always_inline)) INLINE float interpolate_3d(const float *table,
   const float table7 =
       table[row_major_index_3d(i + 1, j + 1, k + 1, nx, ny, nz)];
 
-  return (1 - dx) * (1 - dy) * (1 - dz) * table0 +
-         (1 - dx) * (1 - dy) * dz * table1 + (1 - dx) * dy * (1 - dz) * table2 +
-         (1 - dx) * dy * dz * table3 + dx * (1 - dy) * (1 - dz) * table4 +
-         dx * (1 - dy) * dz * table5 + dx * dy * (1 - dz) * table6 +
-         dx * dy * dz * table7;
+  return (1.f - dx) * (1.f - dy) * (1.f - dz) * table0 +
+         (1.f - dx) * (1.f - dy) * dz * table1 +
+         (1.f - dx) * dy * (1.f - dz) * table2 + (1.f - dx) * dy * dz * table3 +
+         dx * (1.f - dy) * (1.f - dz) * table4 + dx * (1.f - dy) * dz * table5 +
+         dx * dy * (1.f - dz) * table6 + dx * dy * dz * table7;
 }
 
-/*
+/**
  * @brief Performs 4d interpolation of table based on indices
  * and offsets. Also computes values of table directly above and
  * below in third or fourth dimension by setting dz,dw = 0,1 (which
@@ -275,8 +280,13 @@ __attribute__((always_inline)) INLINE float interpolate_3d(const float *table,
  * @param nx,ny,nz,nw Table dimensions
  */
 __attribute__((always_inline)) INLINE float interpolate_4d(
-    const float *table, int i, int j, int k, int l, float dx, float dy,
-    float dz, float dw, int nx, int ny, int nz, int nw) {
+    const float *table, const int i, const int j, const int k, const int l,
+    const float dx, const float dy, const float dz, const float dw,
+    const int nx, const int ny, const int nz, const int nw) {
+
+  /* Indicate that the whole array is aligned on boundaries */
+  swift_align_information(float, table, SWIFT_STRUCT_ALIGNMENT);
+
   const float table0 = table[row_major_index_4d(i, j, k, l, nx, ny, nz, nw)];
   const float table1 =
       table[row_major_index_4d(i, j, k, l + 1, nx, ny, nz, nw)];
@@ -309,21 +319,21 @@ __attribute__((always_inline)) INLINE float interpolate_4d(
   const float table15 =
       table[row_major_index_4d(i + 1, j + 1, k + 1, l + 1, nx, ny, nz, nw)];
 
-  return (1 - dx) * (1 - dy) * (1 - dz) * (1 - dw) * table0 +
-         (1 - dx) * (1 - dy) * (1 - dz) * dw * table1 +
-         (1 - dx) * (1 - dy) * dz * (1 - dw) * table2 +
-         (1 - dx) * (1 - dy) * dz * dw * table3 +
-         (1 - dx) * dy * (1 - dz) * (1 - dw) * table4 +
-         (1 - dx) * dy * (1 - dz) * dw * table5 +
-         (1 - dx) * dy * dz * (1 - dw) * table6 +
-         (1 - dx) * dy * dz * dw * table7 +
-         dx * (1 - dy) * (1 - dz) * (1 - dw) * table8 +
-         dx * (1 - dy) * (1 - dz) * dw * table9 +
-         dx * (1 - dy) * dz * (1 - dw) * table10 +
-         dx * (1 - dy) * dz * dw * table11 +
-         dx * dy * (1 - dz) * (1 - dw) * table12 +
-         dx * dy * (1 - dz) * dw * table13 + dx * dy * dz * (1 - dw) * table14 +
-         dx * dy * dz * dw * table15;
+  return (1.f - dx) * (1.f - dy) * (1.f - dz) * (1.f - dw) * table0 +
+         (1.f - dx) * (1.f - dy) * (1.f - dz) * dw * table1 +
+         (1.f - dx) * (1.f - dy) * dz * (1.f - dw) * table2 +
+         (1.f - dx) * (1.f - dy) * dz * dw * table3 +
+         (1.f - dx) * dy * (1.f - dz) * (1.f - dw) * table4 +
+         (1.f - dx) * dy * (1.f - dz) * dw * table5 +
+         (1.f - dx) * dy * dz * (1.f - dw) * table6 +
+         (1.f - dx) * dy * dz * dw * table7 +
+         dx * (1.f - dy) * (1.f - dz) * (1.f - dw) * table8 +
+         dx * (1.f - dy) * (1.f - dz) * dw * table9 +
+         dx * (1.f - dy) * dz * (1.f - dw) * table10 +
+         dx * (1.f - dy) * dz * dw * table11 +
+         dx * dy * (1.f - dz) * (1.f - dw) * table12 +
+         dx * dy * (1.f - dz) * dw * table13 +
+         dx * dy * dz * (1.f - dw) * table14 + dx * dy * dz * dw * table15;
 }
 
 #endif

@@ -274,9 +274,8 @@ int main(int argc, char **argv) {
         cooling.internal_energy_scale;
 
     // calculate cooling rates
-    float du;
     const double temperature = eagle_convert_u_to_temp(
-        log10(u), cosmo.z, &du, n_h_i, He_i, d_n_h, d_He, &cooling);
+        log10(u), cosmo.z, 0, NULL, n_h_i, He_i, d_n_h, d_He, &cooling);
 
     const double cooling_du_dt = eagle_print_metal_cooling_rate(
         n_h_i, d_n_h, He_i, d_He, &p, &xp, &cooling, &cosmo, &internal_const,

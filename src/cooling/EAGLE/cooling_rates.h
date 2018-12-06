@@ -63,30 +63,30 @@ eagle_helium_reionization_extraheat(double z, double delta_z,
  * calculates the size of the internal energy cell for the specified
  * internal energy. Returns log base 10 of temperature.
  *
- * @param log_10_u Log base 10 of internal energy
- * @param dT_du Pointer to rate of change of log_10(temperature) with internal
- * energy
+ * @param log_10_u Log base 10 of internal energy.
+ * @param redshift Current redshift.
+ * @param compute_dT_du
+ * @param dT_du Pointer to rate of change of Temperature with u.
  * @param z_i Redshift index
  * @param n_h_i Hydrogen number density index
  * @param He_i Helium fraction index
- * @param d_z Redshift offset
- * @param d_n_h Hydrogen number density offset
  * @param d_He Helium fraction offset
  * @param cooling #cooling_function_data structure
  */
 __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
-    double log_10_u, float redshift, float *dT_du, int n_h_i, int He_i,
-    float d_n_h, float d_He,
+    const double log_10_u_cgs, const float redshift, const int compute_dT_du,
+    float *dT_du, int n_h_i, int He_i, float d_n_h, float d_He,
     const struct cooling_function_data *restrict cooling) {
 
+  /* Get index of u along the table axis */
   int u_i;
-  float d_u, log_10_T, log_10_T_high, log_10_T_low;
-
-  get_index_1d(cooling->Therm, cooling->N_Temp, log_10_u, &u_i, &d_u);
+  float d_u;
+  get_index_1d(cooling->Therm, cooling->N_Temp, log_10_u_cgs, &u_i, &d_u);
 
   /* Interpolate temperature table to return temperature for current
    * internal energy (use 3D interpolation for high redshift table,
    * otherwise 4D) */
+  float log_10_T;
   if (redshift > cooling->Redshifts[cooling->N_Redshifts - 1]) {
     log_10_T = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i,
                               d_n_h, d_He, d_u, cooling->N_nH, cooling->N_He,
@@ -97,38 +97,44 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
                               cooling->N_He, cooling->N_Temp);
   }
 
-  /* Interpolate temperature table to return temperature for internal energy
-   * at grid point above current internal energy for computing dT_du used for
-   * calculation of dlambda_du in cooling.c (use 3D interpolation for high
-   * redshift table, otherwise 4D) */
-  if (redshift > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-    log_10_T_high = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i,
-                                   d_n_h, d_He, 1.0, cooling->N_nH,
-                                   cooling->N_He, cooling->N_Temp);
-  } else {
-    log_10_T_high = interpolate_4d(
-        cooling->table.temperature, 0, n_h_i, He_i, u_i, cooling->dz, d_n_h,
-        d_He, 1.0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
-  }
+  if (compute_dT_du) {
 
-  /* Interpolate temperature table to return temperature for internal energy
-   * at grid point below current internal energy for computing dT_du used for
-   * calculation of dlambda_du in cooling.c (use 3D interpolation for high
-   * redshift table, otherwise 4D) */
-  if (redshift > cooling->Redshifts[cooling->N_Redshifts - 1]) {
-    log_10_T_low = interpolate_3d(cooling->table.temperature, n_h_i, He_i, u_i,
-                                  d_n_h, d_He, 0.0, cooling->N_nH,
-                                  cooling->N_He, cooling->N_Temp);
-  } else {
-    log_10_T_low = interpolate_4d(
-        cooling->table.temperature, 0, n_h_i, He_i, u_i, cooling->dz, d_n_h,
-        d_He, 0.0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
-  }
+    float log_10_T_high, log_10_T_low;
 
-  /* Calculate dT/du */
-  float delta_u =
-      exp(cooling->Therm[u_i + 1] * M_LN10) - exp(cooling->Therm[u_i] * M_LN10);
-  *dT_du = (exp(M_LN10 * log_10_T_high) - exp(M_LN10 * log_10_T_low)) / delta_u;
+    /* Interpolate temperature table to return temperature for internal energy
+     * at grid point above current internal energy for computing dT_du used for
+     * calculation of dlambda_du in cooling.c (use 3D interpolation for high
+     * redshift table, otherwise 4D) */
+    if (redshift > cooling->Redshifts[cooling->N_Redshifts - 1]) {
+      log_10_T_high = interpolate_3d(cooling->table.temperature, n_h_i, He_i,
+                                     u_i, d_n_h, d_He, 1.0, cooling->N_nH,
+                                     cooling->N_He, cooling->N_Temp);
+    } else {
+      log_10_T_high = interpolate_4d(
+          cooling->table.temperature, 0, n_h_i, He_i, u_i, cooling->dz, d_n_h,
+          d_He, 1.0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+    }
+
+    /* Interpolate temperature table to return temperature for internal energy
+     * at grid point below current internal energy for computing dT_du used for
+     * calculation of dlambda_du in cooling.c (use 3D interpolation for high
+     * redshift table, otherwise 4D) */
+    if (redshift > cooling->Redshifts[cooling->N_Redshifts - 1]) {
+      log_10_T_low = interpolate_3d(cooling->table.temperature, n_h_i, He_i,
+                                    u_i, d_n_h, d_He, 0.0, cooling->N_nH,
+                                    cooling->N_He, cooling->N_Temp);
+    } else {
+      log_10_T_low = interpolate_4d(
+          cooling->table.temperature, 0, n_h_i, He_i, u_i, cooling->dz, d_n_h,
+          d_He, 0.0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+    }
+
+    /* Calculate dT/du */
+    float delta_u = exp(cooling->Therm[u_i + 1] * M_LN10) -
+                    exp(cooling->Therm[u_i] * M_LN10);
+    *dT_du =
+        (exp(M_LN10 * log_10_T_high) - exp(M_LN10 * log_10_T_low)) / delta_u;
+  }
 
   return log_10_T;
 }
@@ -186,20 +192,22 @@ INLINE static double eagle_metal_cooling_rate(
   double solar_electron_abundance_high = 0;
   double solar_electron_abundance_low = 0;
   double elem_cool_low = 0, elem_cool_high = 0;
-  float dT_du;
 
-  /* counter, temperature index, value, and offset */
-  int i, temp_i;
-  double temp;
+  /* We only need dT_du if dLambda_du is non-NULL */
+  const int compute_dT_du = (dlambda_du != NULL) ? 1 : 0;
+
+  /* Temperature */
+  float dT_du = -1.f;
+  const double temp =
+      eagle_convert_u_to_temp(log10_u_cgs, redshift, compute_dT_du, &dT_du,
+                              n_h_i, He_i, d_n_h, d_He, cooling);
+
+  /* Get index along temperature dimension of the tables */
+  int temp_i;
   float d_temp;
-
-  /* interpolate to get temperature of particles, find where we are in
-   * the temperature table. */
-
-  temp = eagle_convert_u_to_temp(log10_u_cgs, redshift, &dT_du, n_h_i, He_i,
-                                 d_n_h, d_He, cooling);
   get_index_1d(cooling->Temp, cooling->N_Temp, temp, &temp_i, &d_temp);
 
+  /* Difference between entries on the temperature table around u */
   const float delta_T = exp(M_LN10 * cooling->Temp[temp_i + 1]) -
                         exp(M_LN10 * cooling->Temp[temp_i]);
 
@@ -226,18 +234,19 @@ INLINE static double eagle_metal_cooling_rate(
     if (dlambda_du != NULL) {
       temp_lambda_high = interpolate_3d(
           cooling->table.H_plus_He_heating, n_h_i, He_i, temp_i, d_n_h, d_He,
-          1.0, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+          1.f, cooling->N_nH, cooling->N_He, cooling->N_Temp);
       temp_lambda_low = interpolate_3d(
           cooling->table.H_plus_He_heating, n_h_i, He_i, temp_i, d_n_h, d_He,
-          0.0, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+          0.f, cooling->N_nH, cooling->N_He, cooling->N_Temp);
       h_plus_he_electron_abundance_high = interpolate_3d(
           cooling->table.H_plus_He_electron_abundance, n_h_i, He_i, temp_i,
-          d_n_h, d_He, 1.0, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+          d_n_h, d_He, 1.f, cooling->N_nH, cooling->N_He, cooling->N_Temp);
       h_plus_he_electron_abundance_low = interpolate_3d(
           cooling->table.H_plus_He_electron_abundance, n_h_i, He_i, temp_i,
-          d_n_h, d_He, 0.0, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+          d_n_h, d_He, 0.f, cooling->N_nH, cooling->N_He, cooling->N_Temp);
     }
   } else {
+
     /* Using normal tables, have to interpolate in redshift */
     temp_lambda = interpolate_4d(
         cooling->table.H_plus_He_heating, 0, n_h_i, He_i, temp_i, cooling->dz,
@@ -252,26 +261,30 @@ INLINE static double eagle_metal_cooling_rate(
     if (dlambda_du != NULL) {
       temp_lambda_high = interpolate_4d(
           cooling->table.H_plus_He_heating, 0, n_h_i, He_i, temp_i, cooling->dz,
-          d_n_h, d_He, 1.0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+          d_n_h, d_He, 1.f, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
       temp_lambda_low = interpolate_4d(
           cooling->table.H_plus_He_heating, 0, n_h_i, He_i, temp_i, cooling->dz,
-          d_n_h, d_He, 0.0, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
+          d_n_h, d_He, 0.f, 2, cooling->N_nH, cooling->N_He, cooling->N_Temp);
       h_plus_he_electron_abundance_high =
           interpolate_4d(cooling->table.H_plus_He_electron_abundance, 0, n_h_i,
-                         He_i, temp_i, cooling->dz, d_n_h, d_He, 1.0, 2,
+                         He_i, temp_i, cooling->dz, d_n_h, d_He, 1.f, 2,
                          cooling->N_nH, cooling->N_He, cooling->N_Temp);
       h_plus_he_electron_abundance_low =
           interpolate_4d(cooling->table.H_plus_He_electron_abundance, 0, n_h_i,
-                         He_i, temp_i, cooling->dz, d_n_h, d_He, 0.0, 2,
+                         He_i, temp_i, cooling->dz, d_n_h, d_He, 0.f, 2,
                          cooling->N_nH, cooling->N_He, cooling->N_Temp);
     }
   }
   cooling_rate += temp_lambda;
-  if (dlambda_du != NULL)
+
+  if (dlambda_du != NULL) {
     *dlambda_du += (temp_lambda_high - temp_lambda_low) / delta_T * dT_du;
+  }
 
   /* If we're testing cooling rate contributions write to array */
-  if (element_lambda != NULL) element_lambda[0] = temp_lambda;
+  if (element_lambda != NULL) {
+    element_lambda[0] = temp_lambda;
+  }
 
   /* ------------------ */
   /* Compton cooling    */
@@ -291,7 +304,10 @@ INLINE static double eagle_metal_cooling_rate(
                   h_plus_he_electron_abundance / n_H_cgs;
 
     cooling_rate += temp_lambda;
-    if (element_lambda != NULL) element_lambda[1] = temp_lambda;
+
+    if (element_lambda != NULL) {
+      element_lambda[1] = temp_lambda;
+    }
   }
 
   /* ------------- */
@@ -313,15 +329,15 @@ INLINE static double eagle_metal_cooling_rate(
     if (dlambda_du != NULL) {
       solar_electron_abundance_high =
           interpolate_2d(cooling->table.electron_abundance, n_h_i, temp_i,
-                         d_n_h, 1.0, cooling->N_nH, cooling->N_Temp);
+                         d_n_h, 1.f, cooling->N_nH, cooling->N_Temp);
       solar_electron_abundance_low =
           interpolate_2d(cooling->table.electron_abundance, n_h_i, temp_i,
-                         d_n_h, 0.0, cooling->N_nH, cooling->N_Temp);
+                         d_n_h, 0.f, cooling->N_nH, cooling->N_Temp);
     }
 
-    for (i = 0; i < cooling->N_Elements; i++) {
+    for (int i = 0; i < cooling->N_Elements; i++) {
       temp_lambda = interpolate_3d(cooling->table.metal_heating, n_h_i, temp_i,
-                                   i, d_n_h, d_temp, 0.0, cooling->N_nH,
+                                   i, d_n_h, d_temp, 0.f, cooling->N_nH,
                                    cooling->N_Temp, cooling->N_Elements) *
                     (h_plus_he_electron_abundance / solar_electron_abundance) *
                     solar_ratio[i + 2];
@@ -331,10 +347,10 @@ INLINE static double eagle_metal_cooling_rate(
        * temperature for calculation of dlambda_du */
       if (dlambda_du != NULL) {
         elem_cool_high = interpolate_3d(
-            cooling->table.metal_heating, n_h_i, temp_i, i, d_n_h, 1.0, 0.0,
+            cooling->table.metal_heating, n_h_i, temp_i, i, d_n_h, 1.f, 0.f,
             cooling->N_nH, cooling->N_Temp, cooling->N_Elements);
         elem_cool_low = interpolate_3d(
-            cooling->table.metal_heating, n_h_i, temp_i, i, d_n_h, 0.0, 0.0,
+            cooling->table.metal_heating, n_h_i, temp_i, i, d_n_h, 0.f, 0.f,
             cooling->N_nH, cooling->N_Temp, cooling->N_Elements);
         *dlambda_du += (elem_cool_high * h_plus_he_electron_abundance_high /
                             solar_electron_abundance_high -
@@ -342,28 +358,33 @@ INLINE static double eagle_metal_cooling_rate(
                             solar_electron_abundance_low) /
                        delta_T * dT_du * solar_ratio[i + 2];
       }
-      if (element_lambda != NULL) element_lambda[i + 2] = temp_lambda;
+      if (element_lambda != NULL) {
+        element_lambda[i + 2] = temp_lambda;
+      }
     }
+
   } else {
+
     /* Using normal tables, have to interpolate in redshift */
     solar_electron_abundance = interpolate_3d(
         cooling->table.electron_abundance, 0, n_h_i, temp_i, cooling->dz, d_n_h,
         d_temp, 2, cooling->N_nH, cooling->N_Temp);
+
     /* compute values at temperature gridpoints above and below input
      * temperature for calculation of dlambda_du */
     if (dlambda_du != NULL) {
       solar_electron_abundance_high = interpolate_3d(
           cooling->table.electron_abundance, 0, n_h_i, temp_i, cooling->dz,
-          d_n_h, 1.0, 2, cooling->N_nH, cooling->N_Temp);
+          d_n_h, 1.f, 2, cooling->N_nH, cooling->N_Temp);
       solar_electron_abundance_low = interpolate_3d(
           cooling->table.electron_abundance, 0, n_h_i, temp_i, cooling->dz,
-          d_n_h, 0.0, 2, cooling->N_nH, cooling->N_Temp);
+          d_n_h, 0.f, 2, cooling->N_nH, cooling->N_Temp);
     }
 
-    for (i = 0; i < cooling->N_Elements; i++) {
+    for (int i = 0; i < cooling->N_Elements; i++) {
       temp_lambda =
           interpolate_4d(cooling->table.metal_heating, 0, n_h_i, temp_i, i,
-                         cooling->dz, d_n_h, d_temp, 0.0, 2, cooling->N_nH,
+                         cooling->dz, d_n_h, d_temp, 0.f, 2, cooling->N_nH,
                          cooling->N_Temp, cooling->N_Elements) *
           (h_plus_he_electron_abundance / solar_electron_abundance) *
           solar_ratio[i + 2];
@@ -374,11 +395,11 @@ INLINE static double eagle_metal_cooling_rate(
       if (dlambda_du != NULL) {
         elem_cool_high =
             interpolate_4d(cooling->table.metal_heating, 0, n_h_i, temp_i, i,
-                           cooling->dz, d_n_h, 1.0, 0.0, 2, cooling->N_nH,
+                           cooling->dz, d_n_h, 1.f, 0.f, 2, cooling->N_nH,
                            cooling->N_Temp, cooling->N_Elements);
         elem_cool_low =
             interpolate_4d(cooling->table.metal_heating, 0, n_h_i, temp_i, i,
-                           cooling->dz, d_n_h, 0.0, 0.0, 2, cooling->N_nH,
+                           cooling->dz, d_n_h, 0.f, 0.f, 2, cooling->N_nH,
                            cooling->N_Temp, cooling->N_Elements);
         *dlambda_du += (elem_cool_high * h_plus_he_electron_abundance_high /
                             solar_electron_abundance_high -
@@ -386,7 +407,9 @@ INLINE static double eagle_metal_cooling_rate(
                             solar_electron_abundance_low) /
                        delta_T * dT_du * solar_ratio[i + 2];
       }
-      if (element_lambda != NULL) element_lambda[i + 2] = temp_lambda;
+      if (element_lambda != NULL) {
+        element_lambda[i + 2] = temp_lambda;
+      }
     }
   }
 
