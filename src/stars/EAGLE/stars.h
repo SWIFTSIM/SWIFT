@@ -372,16 +372,16 @@ inline void determine_bin_yield(int *iz_low, int *iz_high, float *dz, float log_
   // Modify to work with SNII yields !!!
   if (log_metallicity > log_min_metallicity) {
     int j;
-    for (j = 0; j < star_properties->yield_AGB.N_Z - 1 &&
+    for (j = 0; j < star_properties->AGB_n_z - 1 &&
                          log_metallicity > star_properties->yield_AGB.metallicity[j + 1];
          j++);
     *iz_low = j;
     *iz_high = *iz_low + 1;
 
-    if (*iz_high >= star_properties->yield_AGB.N_Z) *iz_high = star_properties->yield_AGB.N_Z - 1;
+    if (*iz_high >= star_properties->AGB_n_z) *iz_high = star_properties->AGB_n_z - 1;
 
     if (log_metallicity >= star_properties->yield_AGB.metallicity[0] &&
-        log_metallicity <= star_properties->yield_AGB.metallicity[star_properties->yield_AGB.N_Z - 1])
+        log_metallicity <= star_properties->yield_AGB.metallicity[star_properties->AGB_n_z - 1])
       *dz = log_metallicity - star_properties->yield_AGB.metallicity[*iz_low];
     else
       *dz = 0;
@@ -415,24 +415,31 @@ inline static void evolve_SNIa(float log_min_mass, float log_max_mass,
   if (log_max_mass > log10_SNIa_max_mass_msun) {
     log_max_mass = log10_SNIa_max_mass_msun;
     float lifetime_Gyr = lifetime_in_Gyr(exp(M_LN10 * log10_SNIa_max_mass_msun), metallicity, stars);
-    dt_Gyr = sp->age_Gyr + dt_Gyr - lifetime_Gyr;
-    sp->age_Gyr = lifetime_Gyr;
+    dt_Gyr = sp->time_since_enrich_Gyr + dt_Gyr - lifetime_Gyr;
+    sp->time_since_enrich_Gyr = lifetime_Gyr;
   }
 
   /* compute the fraction of white dwarfs */
   float num_of_SNIa_per_msun;
-  switch (stars->SNIa_mode) {
-    case 2:
-      /* Efolding (Forster 2006) */
-      num_of_SNIa_per_msun =
-          stars->SNIa_efficiency *
-          (exp(-sp->age_Gyr / stars->SNIa_timescale) -
-           exp(-(sp->age_Gyr + dt_Gyr) / stars->SNIa_timescale));
-      break;
-    default:
-      error("SNIa mode not defined yet %d\n", stars->SNIa_mode);
-      break;
-  }
+  /* Efolding (Forster 2006) */
+  num_of_SNIa_per_msun =
+      stars->SNIa_efficiency *
+      (exp(-sp->time_since_enrich_Gyr / stars->SNIa_timescale) -
+       exp(-(sp->time_since_enrich_Gyr + dt_Gyr) / stars->SNIa_timescale));
+
+  // switch included in EAGLE but there don't seem to be any alternatives.
+  //switch (stars->SNIa_mode) {
+  //  case 2:
+  //    /* Efolding (Forster 2006) */
+  //    num_of_SNIa_per_msun =
+  //        stars->SNIa_efficiency *
+  //        (exp(-sp->time_since_enrich_Gyr / stars->SNIa_timescale) -
+  //         exp(-(sp->time_since_enrich_Gyr + dt_Gyr) / stars->SNIa_timescale));
+  //    break;
+  //  default:
+  //    error("SNIa mode not defined yet %d\n", stars->SNIa_mode);
+  //    break;
+  //}
 
   sp->num_snia = num_of_SNIa_per_msun;
 
@@ -722,9 +729,9 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
 
   // set max and min mass of dying stars
   float log10_max_dying_mass =
-      log10(dying_mass_msun(sp->age_Gyr, metallicity, star_properties));
+      log10(dying_mass_msun(sp->time_since_enrich_Gyr, metallicity, star_properties));
   float log10_min_dying_mass = log10(
-      dying_mass_msun(sp->age_Gyr + dt_Gyr, metallicity, star_properties));
+      dying_mass_msun(sp->time_since_enrich_Gyr + dt_Gyr, metallicity, star_properties));
 
   if (log10_min_dying_mass > log10_max_dying_mass) error("min dying mass is greater than max dying mass");
 

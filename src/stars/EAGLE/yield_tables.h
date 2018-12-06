@@ -53,12 +53,15 @@ __attribute__((always_inline)) INLINE int row_major_index_3d(int i, int j,
   return i * ny * nz + j * nz + k;
 }
 
-inline int get_element_index(const char *element_name, char **element_array, int n_elements){
-  int index = 0;
+inline static int get_element_index(const char *element_name, char **element_array, int n_elements){
   
-  // do stuff...
+  /* Compare element name we are trying to index to every name in element array  */
+  for (int i = 0; i < n_elements; i++) {
+    if (strcmp(element_array[i], element_name) == 0) return i;
+  }
 
-  return index;
+  /* If we don't find the index return flag  */
+  return -1;
 }
 
 inline void read_yield_tables(struct stars_props *restrict stars){

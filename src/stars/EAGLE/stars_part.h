@@ -22,6 +22,9 @@
 /* Some standard headers. */
 #include <stdlib.h>
 
+/* Read chemistry */
+#include "chemistry_struct.h" 
+
 /**
  * @brief Particle fields for the star particles.
  *
@@ -62,6 +65,9 @@ struct spart {
 
   } density;
 
+  /*! Chemistry structure */
+  struct chemistry_part_data chemistry_data;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */
@@ -80,7 +86,7 @@ struct spart {
   int num_ngb_density;
 #endif
 
-  // should these go somewhere else? perhaps their own struct?
+  /* Variables to track enrichment */
   float mass_from_agb;
   float metals_from_agb;
   float mass_from_snii;
@@ -90,15 +96,18 @@ struct spart {
   float iron_from_snia;
   float metal_mass_released;
   float metals_released[chemistry_element_count];
-
   float num_snia;
 
-  float age_Gyr;
+  /* Time since last enrichment  */
+  float time_since_enrich_Gyr;
 
 } SWIFT_STRUCT_ALIGN;
 
+/**
+ * @brief Stores AGB and SNII yield tables
+ */
 struct yield_table {
-  // Names coincide with EAGLE, change to be more descriptive?
+  // insert comments to differentiate between sph and non-sph fields
   double *mass;
   float *metallicity;
   float *SPH;
@@ -107,20 +116,23 @@ struct yield_table {
   float *ejecta;
   float *total_metals_SPH;
   float *total_metals;
-  int N_Z;
 };
 
+/**
+ * @brief Stores tables to determine stellar lifetimes
+ */
 struct lifetime_table {
   /* number of elements, mass, and initial metallicity bins */
-  int n_mass, n_z; 
+  int n_mass;
+  int n_z; 
 
-  /* mass bins[N_MASS] (check units, give more descriptive name) */
+  /* table of masses */
   float *mass;    
 
-  /* metallicity bins[N_Z] (total metallicity/total mass) */
+  /* table of metallicities */
   float *metallicity; 
 
-  /* size [N_MASS*N_Z] with index_2d(imass,iz) */
+  /* table of lifetimes depending on mass an metallicity */
   float **dyingtime; 
 };
 
@@ -151,18 +163,37 @@ struct stars_props {
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
 
-  // restructure tables to be neater.
+  /* Yield tables for AGB and SNII  */
   struct yield_table yield_AGB;
   struct yield_table yield_SNII;
 
+  /* Array of adjustment factors for SNII  */
+  float *typeII_factor;
+
+  /* Yield tables for SNIa  */
   float *yield_SNIa_SPH;
   float yield_SNIa_total_metals_SPH;
   float *yields_SNIa;
   
+  /* Parameters to SNIa enrichment model  */
+  int SNIa_mode;
+  float SNIa_efficiency;
+  float SNIa_timescale;
+  
+  /* Mass transfer due to enrichment  */
+  int SNIa_mass_transfer;
+  int SNII_mass_transfer;
+  int AGB_mass_transfer;
+
+  /* Arrays for elements being tracked */
   char **SNIa_element_names;
   char **SNII_element_names;
   char **AGB_element_names;
 
+  /* Element name string length */
+  int element_name_length;
+
+  /* Dimensions of arrays in yield tables */
   int SNIa_n_elements;
   int SNII_n_mass;
   int SNII_n_elements;
@@ -171,6 +202,7 @@ struct stars_props {
   int AGB_n_elements;
   int AGB_n_z;
 
+  /* Parameters for IMF  */
   char IMF_Model[10];
   float IMF_Exponent;
   float *imf_by_number;
@@ -178,22 +210,14 @@ struct stars_props {
   float *imf_mass_bin;
   float *imf_mass_bin_log10;
 
-  int stellar_lifetime_flag; // 0 for padovani & matteucci 1993, 1 for maeder & meynet 1989, 2 for portinari et al. 1998. 
-
-  // Table of lifetime values, should these be somewhere else?
+  /* Table of lifetime values */
   struct lifetime_table lifetimes;
 
-  int SNIa_mode;
-  float SNIa_efficiency;
-  float SNIa_timescale;
+  /* Flag defining stellar lifetime model */
+  int stellar_lifetime_flag; // 0 for padovani & matteucci 1993, 1 for maeder & meynet 1989, 2 for portinari et al. 1998. 
 
-  int SNIa_mass_transfer;
-  int SNII_mass_transfer;
-  int AGB_mass_transfer;
-
-  float *typeII_factor;
-
-  char *yield_table_path;
+  /* Location of yield tables */
+  char yield_table_path[50];
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */
