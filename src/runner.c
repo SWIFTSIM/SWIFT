@@ -64,11 +64,7 @@
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
-<<<<<<< HEAD
-#include "tracers.h"
-=======
 #include "starformation.h"
->>>>>>> Remove a few bugs
 
 #define TASK_LOOP_DENSITY 0
 #define TASK_LOOP_GRADIENT 1
