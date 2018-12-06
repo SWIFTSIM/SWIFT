@@ -99,14 +99,14 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
   dataset = H5Dopen(file_id, "Yield", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->yields_SNIa));
+          stars->yields_SNIa);
   if (status < 0) error("error reading SNIa yields");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
   dataset = H5Dopen(file_id, "Total_Metals", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->yield_SNIa_total_metals_SPH));
+          &stars->yield_SNIa_total_metals_SPH);
   if (status < 0) error("error reading SNIa total metal");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
@@ -140,21 +140,21 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->yield_SNII.mass));
+          stars->yield_SNII.mass);
   if (status < 0) error("error reading SNII masses");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
   dataset = H5Dopen(file_id, "Metallicities", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->yield_SNII.metallicity));
+          stars->yield_SNII.metallicity);
   if (status < 0) error("error reading SNII metallicities");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
-  float tempyield1[stars->SNII_n_elements][stars->SNII_n_mass];
+  double tempyield1[stars->SNII_n_elements][stars->SNII_n_mass];
 
-  float tempej1[stars->SNII_n_mass], tempmet1[stars->SNII_n_mass];
+  double tempej1[stars->SNII_n_mass], tempmet1[stars->SNII_n_mass];
 
   char *tempname1[stars->SNII_n_z];
 
@@ -232,21 +232,21 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->yield_AGB.mass));
+          stars->yield_AGB.mass);
   if (status < 0) error("error reading AGB masses");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
   dataset = H5Dopen(file_id, "Metallicities", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->yield_AGB.metallicity));
+          stars->yield_AGB.metallicity);
   if (status < 0) error("error reading AGB metallicities");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
-  float tempyield2[stars->AGB_n_elements][stars->AGB_n_mass];
+  double tempyield2[stars->AGB_n_elements][stars->AGB_n_mass];
 
-  float tempej2[stars->AGB_n_mass], tempmet2[stars->AGB_n_mass];
+  double tempej2[stars->AGB_n_mass], tempmet2[stars->AGB_n_mass];
 
   char *tempname2[stars->AGB_n_z];
 
@@ -308,19 +308,19 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->lifetimes.mass));
+          stars->lifetimes.mass);
   if (status < 0) error("error reading lifetime table masses");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
   dataset = H5Dopen(file_id, "Metallicities", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->lifetimes.metallicity));
+          stars->lifetimes.metallicity);
   if (status < 0) error("error reading AGB metallicities");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
-  float temptime[stars->lifetimes.n_z][stars->lifetimes.n_mass];
+  double temptime[stars->lifetimes.n_z][stars->lifetimes.n_mass];
 
   dataset = H5Dopen(file_id, "Lifetimes", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, temptime);
@@ -341,78 +341,82 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 inline void allocate_yield_tables(struct stars_props *restrict stars){
   
   /* Allocate SNIa arrays */
-  if (posix_memalign((void **)&stars->yields_SNIa, SWIFT_STRUCT_ALIGNMENT, stars->SNIa_n_elements * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yields_SNIa, SWIFT_STRUCT_ALIGNMENT, stars->SNIa_n_elements * sizeof(double)) !=0) {
     error("Failed to allocate SNIa yields array");
   }
-  if (posix_memalign((void **)&stars->yield_SNIa_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNIa_n_elements * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_SNIa_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNIa_n_elements * sizeof(double)) !=0) {
     error("Failed to allocate SNIa SPH yields array");
   }
 
   /* Allocate AGB arrays  */
-  if (posix_memalign((void **)&stars->yield_AGB.mass, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_mass * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_AGB.mass, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_mass * sizeof(double)) !=0) {
     error("Failed to allocate AGB mass array");
   }
-  if (posix_memalign((void **)&stars->yield_AGB.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_AGB.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * sizeof(double)) !=0) {
     error("Failed to allocate AGB metallicity array");
   }
-  if (posix_memalign((void **)&stars->yield_AGB.SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * stars->AGB_n_elements * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_AGB.SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * stars->AGB_n_elements * sizeof(double)) !=0) {
     error("Failed to allocate AGB SPH array");
   }
-  if (posix_memalign((void **)&stars->yield_AGB.yield, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * stars->AGB_n_elements * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_AGB.yield, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * stars->AGB_n_elements * sizeof(double)) !=0) {
     error("Failed to allocate AGB yield array");
   }
-  if (posix_memalign((void **)&stars->yield_AGB.ejecta_SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_AGB.ejecta_SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(double)) !=0) {
     error("Failed to allocate AGB ejecta SPH array");
   }
-  if (posix_memalign((void **)&stars->yield_AGB.ejecta, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_AGB.ejecta, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(double)) !=0) {
     error("Failed to allocate AGB ejecta array");
   }
-  if (posix_memalign((void **)&stars->yield_AGB.total_metals_SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_AGB.total_metals_SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(double)) !=0) {
     error("Failed to allocate AGB total metals SPH array");
   }
-  if (posix_memalign((void **)&stars->yield_AGB.total_metals, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_AGB.total_metals, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(double)) !=0) {
     error("Failed to allocate AGB total metals array");
   }
 
   /* Allocate SNII arrays  */
-  if (posix_memalign((void **)&stars->yield_SNII.mass, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_mass * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_SNII.mass, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_mass * sizeof(double)) !=0) {
     error("Failed to allocate SNII mass array");
   }
-  if (posix_memalign((void **)&stars->yield_SNII.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_SNII.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * sizeof(double)) !=0) {
     error("Failed to allocate SNII metallicity array");
   }
-  if (posix_memalign((void **)&stars->yield_SNII.SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * stars->SNII_n_elements * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_SNII.SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * stars->SNII_n_elements * sizeof(double)) !=0) {
     error("Failed to allocate SNII SPH array");
   }
-  if (posix_memalign((void **)&stars->yield_SNII.yield, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * stars->SNII_n_elements * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_SNII.yield, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * stars->SNII_n_elements * sizeof(double)) !=0) {
     error("Failed to allocate SNII yield array");
   }
-  if (posix_memalign((void **)&stars->yield_SNII.ejecta_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_SNII.ejecta_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(double)) !=0) {
     error("Failed to allocate SNII ejecta SPH array");
   }
-  if (posix_memalign((void **)&stars->yield_SNII.ejecta, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_SNII.ejecta, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(double)) !=0) {
     error("Failed to allocate SNII ejecta array");
   }
-  if (posix_memalign((void **)&stars->yield_SNII.total_metals_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_SNII.total_metals_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(double)) !=0) {
     error("Failed to allocate SNII total metals SPH array");
   }
-  if (posix_memalign((void **)&stars->yield_SNII.total_metals, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->yield_SNII.total_metals, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(double)) !=0) {
     error("Failed to allocate SNII total metals array");
   }
 
   /* Allocate Lifetime arrays  */
-  if (posix_memalign((void **)&stars->lifetimes.mass, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_mass * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->lifetimes.mass, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_mass * sizeof(double)) !=0) {
     error("Failed to allocate lifetime mass array");
   }
-  if (posix_memalign((void **)&stars->lifetimes.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->lifetimes.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * sizeof(double)) !=0) {
     error("Failed to allocate lifetime metallicity array");
   }
-  if (posix_memalign((void **)&stars->lifetimes.dyingtime, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * stars->lifetimes.n_mass * sizeof(float)) !=0) {
-    error("Failed to allocate dyingtime array");
+  //if (posix_memalign((void **)&stars->lifetimes.dyingtime, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * stars->lifetimes.n_mass * sizeof(double)) !=0) {
+  //  error("Failed to allocate dyingtime array");
+  //}
+  stars->lifetimes.dyingtime = (double **)malloc(stars->lifetimes.n_z * sizeof(double *));
+  for(int i = 0; i < stars->lifetimes.n_z; i++){
+    stars->lifetimes.dyingtime[i] = (double *)malloc(stars->lifetimes.n_mass * sizeof(double));
   }
 
   /* Allocate SNII factor array  */
-  if (posix_memalign((void **)&stars->typeII_factor, SWIFT_STRUCT_ALIGNMENT, chemistry_element_count * sizeof(float)) !=0) {
+  if (posix_memalign((void **)&stars->typeII_factor, SWIFT_STRUCT_ALIGNMENT, chemistry_element_count * sizeof(double)) !=0) {
     error("Failed to allocate SNII factor array");
   }
 
@@ -437,7 +441,7 @@ inline static void compute_yields(struct stars_props *restrict stars){
   int index, index_2d;
   gsl_interp_accel *accel_ptr;
 
-  gsl_spline *spline_ptr;
+  gsl_spline *SNII_spline_ptr, *AGB_spline_ptr;
 
   // check whether imf is properly normalised? present in EAGLE
 
@@ -466,7 +470,8 @@ inline static void compute_yields(struct stars_props *restrict stars){
   }
 
   accel_ptr = gsl_interp_accel_alloc();
-  spline_ptr = gsl_spline_alloc(gsl_interp_linear, stars->SNII_n_mass);
+  SNII_spline_ptr = gsl_spline_alloc(gsl_interp_linear, stars->SNII_n_mass);
+  AGB_spline_ptr = gsl_spline_alloc(gsl_interp_linear, stars->AGB_n_mass);
   double SNII_yield[stars->SNII_n_mass];
   double AGB_yield[stars->AGB_n_mass];
   float yield_mass_bin[n_mass_bins];
@@ -490,7 +495,7 @@ inline static void compute_yields(struct stars_props *restrict stars){
 	SNII_yield[j] = stars->yield_SNII.yield[index] / exp(M_LN10 * stars->yield_SNII.mass[j]);
       }
 
-      gsl_spline_init(spline_ptr, stars->yield_SNII.mass, SNII_yield, stars->SNII_n_mass);
+      gsl_spline_init(SNII_spline_ptr, stars->yield_SNII.mass, SNII_yield, stars->SNII_n_mass);
 
       for (int k = 0; k < n_mass_bins; k++) {
         if (yield_mass_bin[k] < stars->yield_SNII.mass[0])
@@ -499,7 +504,7 @@ inline static void compute_yields(struct stars_props *restrict stars){
           result = SNII_yield[stars->SNII_n_mass - 1];
         else
           result =
-              gsl_spline_eval(spline_ptr, yield_mass_bin[k], accel_ptr);
+              gsl_spline_eval(SNII_spline_ptr, yield_mass_bin[k], accel_ptr);
 
         index = row_major_index_3d(i,eagle_elem,k,stars->SNII_n_z,chemistry_element_count,n_mass_bins);
         stars->yield_SNII.SPH[index] = exp(M_LN10 * yield_mass_bin[k]) * result;
@@ -536,7 +541,7 @@ inline static void compute_yields(struct stars_props *restrict stars){
           AGB_yield[j] = stars->yield_AGB.yield[index] / exp(M_LN10 * stars->yield_AGB.mass[j]);
         }
 
-        gsl_spline_init(spline_ptr, stars->yield_AGB.mass, AGB_yield, stars->AGB_n_mass);
+        gsl_spline_init(AGB_spline_ptr, stars->yield_AGB.mass, AGB_yield, stars->AGB_n_mass);
 
         for (int j = 0; j < n_mass_bins; j++) {
           if (yield_mass_bin[j] < stars->yield_AGB.mass[0])
@@ -545,7 +550,7 @@ inline static void compute_yields(struct stars_props *restrict stars){
             result = AGB_yield[stars->AGB_n_mass - 1];
           else
             result =
-                gsl_spline_eval(spline_ptr, yield_mass_bin[j], accel_ptr);
+                gsl_spline_eval(AGB_spline_ptr, yield_mass_bin[j], accel_ptr);
 
           index = row_major_index_3d(i,eagle_elem,j,stars->AGB_n_z,chemistry_element_count,n_mass_bins);
           stars->yield_AGB.SPH[index] = exp(M_LN10 * yield_mass_bin[j]) * result;
@@ -553,9 +558,8 @@ inline static void compute_yields(struct stars_props *restrict stars){
       }
     }
   }
-  free(SNII_yield);
-  free(AGB_yield);
-  gsl_spline_free(spline_ptr);
+  gsl_spline_free(SNII_spline_ptr);
+  gsl_spline_free(AGB_spline_ptr);
   gsl_interp_accel_free(accel_ptr);
 
 }

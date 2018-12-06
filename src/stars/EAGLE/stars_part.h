@@ -50,6 +50,9 @@ struct spart {
   /*! Star mass */
   float mass;
 
+  /*! Initial star mass */
+  float mass_init;
+
   /* Particle cutoff radius. */
   float h;
 
@@ -109,13 +112,13 @@ struct spart {
 struct yield_table {
   // insert comments to differentiate between sph and non-sph fields
   double *mass;
-  float *metallicity;
-  float *SPH;
-  float *yield;
-  float *ejecta_SPH;
-  float *ejecta;
-  float *total_metals_SPH;
-  float *total_metals;
+  double *metallicity;
+  double *SPH;
+  double *yield;
+  double *ejecta_SPH;
+  double *ejecta;
+  double *total_metals_SPH;
+  double *total_metals;
 };
 
 /**
@@ -127,13 +130,13 @@ struct lifetime_table {
   int n_z; 
 
   /* table of masses */
-  float *mass;    
+  double *mass;    
 
   /* table of metallicities */
-  float *metallicity; 
+  double *metallicity; 
 
   /* table of lifetimes depending on mass an metallicity */
-  float **dyingtime; 
+  double **dyingtime; 
 };
 
 
@@ -168,12 +171,12 @@ struct stars_props {
   struct yield_table yield_SNII;
 
   /* Array of adjustment factors for SNII  */
-  float *typeII_factor;
+  double *typeII_factor;
 
   /* Yield tables for SNIa  */
-  float *yield_SNIa_SPH;
-  float yield_SNIa_total_metals_SPH;
-  float *yields_SNIa;
+  double *yield_SNIa_SPH;
+  double yield_SNIa_total_metals_SPH;
+  double *yields_SNIa;
   
   /* Parameters to SNIa enrichment model  */
   int SNIa_mode;

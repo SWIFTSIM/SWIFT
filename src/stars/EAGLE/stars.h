@@ -145,16 +145,16 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
 // -------------------- Work in progress ------------------------------
 
 // This really needs to be somewhere else
-inline float interpol_1d(float *table, int i, float dx) {
-  float result;
+inline static double interpol_1d(double *table, int i, float dx) {
+  double result;
 
   result = (1 - dx) * table[i] + dx * table[i + 1];
 
   return result;
 }
 
-inline float interpol_2d(float **table, int i, int j, float dx, float dy) {
-  float result;
+inline static double interpol_2d(double **table, int i, int j, float dx, float dy) {
+  double result;
 
   result = (1 - dx) * (1 - dy) * table[i][j] + (1 - dx) * dy * table[i][j + 1] +
            dx * (1 - dy) * table[i + 1][j] + dx * dy * table[i + 1][j + 1];
@@ -809,8 +809,8 @@ inline static void stars_evolve_init(struct stars_props* restrict stars){
   stars->lifetimes.n_mass = 30;
   stars->lifetimes.n_z = 6;
 
-  // Find out what these factors should actually be...
-  for (int i = 0; i < chemistry_element_count; i++) stars->typeII_factor[i] = 2;
+  /* Yield table filepath  */
+  parser_get_param_string(params, "EagleStellarEvolution:filename", stars->yield_table_path);
 
   //stars->yield_SNIa_total_metals_SPH = ;
 
