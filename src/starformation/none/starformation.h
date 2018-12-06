@@ -26,9 +26,11 @@
 /* Local includes */
 #include "cosmology.h"
 #include "physical_constants.h"
+#include "part.h"
 #include "units.h"
 #include "parser.h"
 #include "equation_of_state.h"
+#include "error.h" 
 
 /* Starformation struct */
 struct star_formation {};

@@ -23,6 +23,8 @@
 /* This object's header. */
 #include "starformation.h"
 #include "restart.h"
+#include "part.h"
+#include "units.h"
 
 /**
  * @brief  Initialises the star formation law properties in the internal 
@@ -59,7 +61,7 @@ void starformation_print(const struct star_formation* starform) {
  * @param starform the star formation struct
  * @param stream the file stream
  */
-void potential_struct_dump(const struct star_formation* starform,
+void starformation_struct_dump(const struct star_formation* starform,
                            FILE* stream) {
   restart_write_blocks((void*)starform, sizeof(struct star_formation), 1,
                        stream, "starformation", "star formation");
@@ -72,7 +74,7 @@ void potential_struct_dump(const struct star_formation* starform,
  * @param starform the star formation struct
  * @param streeam the file stream
  */
-void potential_struct_restore(const struct star_formation* starform,
+void starformation_struct_restore(const struct star_formation* starform,
                               FILE* stream) {
   restart_read_blocks((void*)starform, sizeof(struct star_formation), 1,
                       stream, NULL, "star formation");

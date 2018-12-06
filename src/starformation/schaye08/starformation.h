@@ -29,6 +29,7 @@
 #include "units.h"
 #include "parser.h"
 #include "equation_of_state.h"
+#include "part.h"
 
 /* Starformation struct */
 struct star_formation {

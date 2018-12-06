@@ -64,6 +64,7 @@
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
+#include "starformation.h"
 
 #define TASK_LOOP_DENSITY 0
 #define TASK_LOOP_GRADIENT 1
@@ -464,6 +465,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const struct star_formation starform = e->star_formation;
+  const struct phys_const *constants = e->physical_constants;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
@@ -490,6 +493,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         const float rho = hydro_get_physical_density(p, cosmo);
 
+        if (starformation_potential_to_become_star(starform, p, xp, constants, cosmo) ) {
+          starformation_convert_to_gas(starform, p, xp, cosmo);
+        }
         // MATTHIEU: Temporary star-formation law
         // Do not use this at home.
         if (rho > 1.7e7 && e->step > 2) {
