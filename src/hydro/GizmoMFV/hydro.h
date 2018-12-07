@@ -184,6 +184,10 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
      is to have a way of remembering that we need more neighbours for this
      particle */
   p->density.wcorr = 1.0f;
+
+  /* set the entropy to a non-zero initial value (to make sure we
+     don't zero out the density before we reach hydro_convert_quantities) */
+  p->conserved.entropy = 1.0f;
 }
 
 /**
@@ -362,6 +366,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* energy contains the total thermal energy, we want the specific energy.
      this is why we divide by the volume, and not by the density */
   p->primitives.P = hydro_gamma_minus_one * energy / volume;
+  p->primitives.A = p->conserved.entropy / m;
+  p->primitives.P = p->primitives.A * pow_gamma(p->primitives.rho);
 #endif
 
   /* sanity checks */
@@ -499,6 +505,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->conserved.flux.momentum[1] = 0.0f;
   p->conserved.flux.momentum[2] = 0.0f;
   p->conserved.flux.energy = 0.0f;
+  p->conserved.flux.entropy = 0.0f;
 }
 
 /**
@@ -560,6 +567,11 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     const struct hydro_props* hydro_props) {
 
   p->conserved.energy /= cosmo->a_factor_internal_energy;
+
+  /* initialize the entropy */
+  p->conserved.entropy = p->conserved.energy *
+                         pow_minus_gamma_minus_one(p->primitives.rho) *
+                         hydro_gamma_minus_one;
 }
 
 /**
@@ -622,6 +634,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
         p->conserved.mass;
 #endif
     p->primitives.P = hydro_gamma_minus_one * u * p->primitives.rho;
+    p->primitives.P = p->primitives.A * pow_gamma(p->primitives.rho);
 #endif
   }
 
@@ -727,6 +740,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       p->conserved.mass * gas_internal_energy_from_entropy(0.f, 0.f);
 #else
   p->conserved.energy += p->conserved.flux.energy * dt_therm;
+  p->conserved.entropy += p->conserved.flux.entropy * dt_therm;
 #endif
 
 #ifndef HYDRO_GAMMA_5_3

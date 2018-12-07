@@ -51,13 +51,16 @@ __attribute__((always_inline)) INLINE static int riemann_is_vacuum(
  * @param aR The right sound speed
  * @param Whalf Empty state vector to store the solution in
  * @param n_unit Normal vector of the interface
+ * @return Side of the solution that was sampled: left (-1), right (1) or
+ * vacuum (0).
  */
-__attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
+__attribute__((always_inline)) INLINE static int riemann_solve_vacuum(
     const float* WL, const float* WR, float vL, float vR, float aL, float aR,
     float* Whalf, const float* n_unit) {
 
   float SL, SR;
   float vhalf;
+  int state;
 
   if (!WR[0] && !WL[0]) {
     /* if both states are vacuum, the solution is also vacuum */
@@ -66,9 +69,10 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
     Whalf[2] = 0.0f;
     Whalf[3] = 0.0f;
     Whalf[4] = 0.0f;
-    return;
+    return 0;
   }
   if (!WR[0]) {
+    state = -1;
     Whalf[1] = WL[1];
     Whalf[2] = WL[2];
     Whalf[3] = WL[3];
@@ -93,7 +97,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
         Whalf[2] = 0.0f;
         Whalf[3] = 0.0f;
         Whalf[4] = 0.0f;
-        return;
+        return 0;
       }
     } else {
       Whalf[0] = WL[0];
@@ -101,6 +105,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
       Whalf[4] = WL[4];
     }
   } else {
+    state = 1;
     if (!WL[0]) {
       Whalf[1] = WR[1];
       Whalf[2] = WR[2];
@@ -114,7 +119,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
           Whalf[2] = 0.0f;
           Whalf[3] = 0.0f;
           Whalf[4] = 0.0f;
-          return;
+          return 0;
         } else {
           Whalf[0] =
               WR[0] * pow_two_over_gamma_minus_one(
@@ -143,9 +148,10 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
         Whalf[2] = 0.0f;
         Whalf[3] = 0.0f;
         Whalf[4] = 0.0f;
-        return;
+        return 0;
       } else {
         if (SL >= 0.0f) {
+          state = -1;
           Whalf[1] = WL[1];
           Whalf[2] = WL[2];
           Whalf[3] = WL[3];
@@ -167,6 +173,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
             Whalf[4] = WL[4];
           }
         } else {
+          state = 1;
           Whalf[1] = WR[1];
           Whalf[2] = WR[2];
           Whalf[3] = WR[3];
@@ -196,6 +203,8 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
   Whalf[1] += vhalf * n_unit[0];
   Whalf[2] += vhalf * n_unit[1];
   Whalf[3] += vhalf * n_unit[2];
+
+  return state;
 }
 
 /**
@@ -210,7 +219,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum_flux(
   float vtot[3];
   float rhoe;
 
-  riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
+  const int state = riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
 
   flux[0][0] = Whalf[0] * Whalf[1];
   flux[0][1] = Whalf[0] * Whalf[2];
@@ -249,6 +258,16 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum_flux(
       flux[3][0] * n_unit[0] + flux[3][1] * n_unit[1] + flux[3][2] * n_unit[2];
   totflux[4] =
       flux[4][0] * n_unit[0] + flux[4][1] * n_unit[1] + flux[4][2] * n_unit[2];
+
+  if (state > 0) {
+    totflux[5] = WR[5] * totflux[0];
+  } else {
+    if (state < 0) {
+      totflux[5] = WL[5] * totflux[0];
+    } else {
+      totflux[5] = 0.0f;
+    }
+  }
 }
 
 #endif /* SWIFT_RIEMANN_VACUUM_H */

@@ -83,6 +83,9 @@ struct part {
     /* Pressure. */
     float P;
 
+    /* Entropic function. */
+    float A;
+
     /* Gradients of the primitive variables. */
     struct {
 
@@ -94,6 +97,9 @@ struct part {
 
       /* Pressure gradients. */
       float P[3];
+
+      /* Entropic function gradients. */
+      float A[3];
 
     } gradients;
 
@@ -108,6 +114,9 @@ struct part {
 
       /* Extreme values of the pressure among the neighbours. */
       float P[2];
+
+      /* Extreme values of the entropic function among the neighbours. */
+      float A[2];
 
       /* Maximal distance to all neighbouring faces. */
       float maxr;
@@ -128,6 +137,9 @@ struct part {
     /* Fluid thermal energy (not per unit mass!). */
     float energy;
 
+    /* Fluid entropy. */
+    float entropy;
+
     /* Fluxes. */
     struct {
 
@@ -139,6 +151,9 @@ struct part {
 
       /* Energy flux. */
       float energy;
+
+      /* Entropy flux. */
+      float entropy;
 
     } flux;
 

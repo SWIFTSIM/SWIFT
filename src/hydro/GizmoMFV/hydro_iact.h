@@ -237,17 +237,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   }
   const float Vi = pi->geometry.volume;
   const float Vj = pj->geometry.volume;
-  float Wi[5], Wj[5];
+  float Wi[6], Wj[6];
   Wi[0] = pi->primitives.rho;
   Wi[1] = pi->primitives.v[0];
   Wi[2] = pi->primitives.v[1];
   Wi[3] = pi->primitives.v[2];
   Wi[4] = pi->primitives.P;
+  Wi[5] = pi->primitives.A;
   Wj[0] = pj->primitives.rho;
   Wj[1] = pj->primitives.v[0];
   Wj[2] = pj->primitives.v[1];
   Wj[3] = pj->primitives.v[2];
   Wj[4] = pj->primitives.P;
+  Wj[5] = pj->primitives.A;
 
   /* calculate the maximal signal velocity */
   float vmax;
@@ -392,7 +394,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* we don't need to rotate, we can use the unit vector in the Riemann problem
    * itself (see GIZMO) */
 
-  float totflux[5];
+  float totflux[6];
   riemann_solve_for_flux(Wi, Wj, n_unit, vij, totflux);
 
   /* Multiply with the interface surface area */
@@ -401,6 +403,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   totflux[2] *= Anorm;
   totflux[3] *= Anorm;
   totflux[4] *= Anorm;
+  totflux[5] *= Anorm;
 
   /* Store mass flux */
   const float mflux_i = totflux[0];
@@ -415,6 +418,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   pi->conserved.flux.momentum[1] -= totflux[2];
   pi->conserved.flux.momentum[2] -= totflux[3];
   pi->conserved.flux.energy -= totflux[4];
+  pi->conserved.flux.entropy -= totflux[5];
 
 #ifndef GIZMO_TOTAL_ENERGY
   const float ekin_i = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
@@ -443,6 +447,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     pj->conserved.flux.momentum[1] += totflux[2];
     pj->conserved.flux.momentum[2] += totflux[3];
     pj->conserved.flux.energy += totflux[4];
+    pj->conserved.flux.entropy += totflux[5];
 
 #ifndef GIZMO_TOTAL_ENERGY
     const float ekin_j = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +

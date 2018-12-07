@@ -112,6 +112,8 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
                                            xij_i_norm, r_inv);
   dWi[4] = hydro_slope_limit_face_quantity(Wi[4], Wj[4], Wi[4] + dWi[4],
                                            xij_i_norm, r_inv);
+  dWi[5] = hydro_slope_limit_face_quantity(Wi[5], Wj[5], Wi[5] + dWi[5],
+                                           xij_i_norm, r_inv);
 
   dWj[0] = hydro_slope_limit_face_quantity(Wj[0], Wi[0], Wj[0] + dWj[0],
                                            xij_j_norm, r_inv);
@@ -122,6 +124,8 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
   dWj[3] = hydro_slope_limit_face_quantity(Wj[3], Wi[3], Wj[3] + dWj[3],
                                            xij_j_norm, r_inv);
   dWj[4] = hydro_slope_limit_face_quantity(Wj[4], Wi[4], Wj[4] + dWj[4],
+                                           xij_j_norm, r_inv);
+  dWj[5] = hydro_slope_limit_face_quantity(Wj[5], Wi[5], Wj[5] + dWj[5],
                                            xij_j_norm, r_inv);
 }
 

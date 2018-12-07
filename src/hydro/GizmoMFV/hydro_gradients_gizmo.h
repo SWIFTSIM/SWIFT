@@ -48,6 +48,10 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_init(
   p->primitives.gradients.P[1] = 0.0f;
   p->primitives.gradients.P[2] = 0.0f;
 
+  p->primitives.gradients.A[0] = 0.0f;
+  p->primitives.gradients.A[1] = 0.0f;
+  p->primitives.gradients.A[2] = 0.0f;
+
   hydro_slope_limit_cell_init(p);
 }
 
@@ -71,7 +75,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   float wi, wj, wi_dx, wj_dx;
   float Bi[3][3];
   float Bj[3][3];
-  float Wi[5], Wj[5];
+  float Wi[6], Wj[6];
 
   /* Initialize local variables */
   for (int k = 0; k < 3; k++) {
@@ -85,11 +89,13 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   Wi[2] = pi->primitives.v[1];
   Wi[3] = pi->primitives.v[2];
   Wi[4] = pi->primitives.P;
+  Wi[5] = pi->primitives.A;
   Wj[0] = pj->primitives.rho;
   Wj[1] = pj->primitives.v[0];
   Wj[2] = pj->primitives.v[1];
   Wj[3] = pj->primitives.v[2];
   Wj[4] = pj->primitives.P;
+  Wj[5] = pj->primitives.A;
 
   /* Compute kernel of pi. */
   const float hi_inv = 1.f / hi;
@@ -148,6 +154,16 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
         (Wi[4] - Wj[4]) * wi *
         (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
 
+    pi->primitives.gradients.A[0] +=
+        (Wi[5] - Wj[5]) * wi *
+        (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
+    pi->primitives.gradients.A[1] +=
+        (Wi[5] - Wj[5]) * wi *
+        (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
+    pi->primitives.gradients.A[2] +=
+        (Wi[5] - Wj[5]) * wi *
+        (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
+
   } else {
     /* The gradient matrix was not well-behaved, switch to SPH gradients */
 
@@ -185,6 +201,13 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
         wi_dx * dx[1] * (pi->primitives.P - pj->primitives.P) * r_inv;
     pi->primitives.gradients.P[2] -=
         wi_dx * dx[2] * (pi->primitives.P - pj->primitives.P) * r_inv;
+
+    pi->primitives.gradients.A[0] -=
+        wi_dx * dx[0] * (pi->primitives.A - pj->primitives.A) * r_inv;
+    pi->primitives.gradients.A[1] -=
+        wi_dx * dx[1] * (pi->primitives.A - pj->primitives.A) * r_inv;
+    pi->primitives.gradients.A[2] -=
+        wi_dx * dx[2] * (pi->primitives.A - pj->primitives.A) * r_inv;
   }
 
   hydro_slope_limit_cell_collect(pi, pj, r);
@@ -247,6 +270,16 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
         (Wi[4] - Wj[4]) * wj *
         (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]);
 
+    pj->primitives.gradients.A[0] +=
+        (Wi[5] - Wj[5]) * wj *
+        (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
+    pj->primitives.gradients.A[1] +=
+        (Wi[5] - Wj[5]) * wj *
+        (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]);
+    pj->primitives.gradients.A[2] +=
+        (Wi[5] - Wj[5]) * wj *
+        (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]);
+
   } else {
     /* SPH gradients */
 
@@ -283,6 +316,13 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
         wj_dx * dx[1] * (pi->primitives.P - pj->primitives.P) * r_inv;
     pj->primitives.gradients.P[2] -=
         wj_dx * dx[2] * (pi->primitives.P - pj->primitives.P) * r_inv;
+
+    pj->primitives.gradients.A[0] -=
+        wj_dx * dx[0] * (pi->primitives.A - pj->primitives.A) * r_inv;
+    pj->primitives.gradients.A[1] -=
+        wj_dx * dx[1] * (pi->primitives.A - pj->primitives.A) * r_inv;
+    pj->primitives.gradients.A[2] -=
+        wj_dx * dx[2] * (pi->primitives.A - pj->primitives.A) * r_inv;
   }
 
   hydro_slope_limit_cell_collect(pj, pi, r);
@@ -307,7 +347,7 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
   const float r = r2 * r_inv;
 
   float Bi[3][3];
-  float Wi[5], Wj[5];
+  float Wi[6], Wj[6];
 
   /* Initialize local variables */
   for (int k = 0; k < 3; k++) {
@@ -320,11 +360,13 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
   Wi[2] = pi->primitives.v[1];
   Wi[3] = pi->primitives.v[2];
   Wi[4] = pi->primitives.P;
+  Wi[5] = pi->primitives.A;
   Wj[0] = pj->primitives.rho;
   Wj[1] = pj->primitives.v[0];
   Wj[2] = pj->primitives.v[1];
   Wj[3] = pj->primitives.v[2];
   Wj[4] = pj->primitives.P;
+  Wj[5] = pj->primitives.A;
 
   /* Compute kernel of pi. */
   float wi, wi_dx;
@@ -384,6 +426,16 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
         (Wi[4] - Wj[4]) * wi *
         (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
 
+    pi->primitives.gradients.A[0] +=
+        (Wi[5] - Wj[5]) * wi *
+        (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
+    pi->primitives.gradients.A[1] +=
+        (Wi[5] - Wj[5]) * wi *
+        (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
+    pi->primitives.gradients.A[2] +=
+        (Wi[5] - Wj[5]) * wi *
+        (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
+
   } else {
     /* Gradient matrix is not well-behaved, switch to SPH gradients */
 
@@ -420,6 +472,13 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
         wi_dx * dx[1] * (pi->primitives.P - pj->primitives.P) * r_inv;
     pi->primitives.gradients.P[2] -=
         wi_dx * dx[2] * (pi->primitives.P - pj->primitives.P) * r_inv;
+
+    pi->primitives.gradients.A[0] -=
+        wi_dx * dx[0] * (pi->primitives.A - pj->primitives.A) * r_inv;
+    pi->primitives.gradients.A[1] -=
+        wi_dx * dx[1] * (pi->primitives.A - pj->primitives.A) * r_inv;
+    pi->primitives.gradients.A[2] -=
+        wi_dx * dx[2] * (pi->primitives.A - pj->primitives.A) * r_inv;
   }
 
   hydro_slope_limit_cell_collect(pi, pj, r);
@@ -459,6 +518,10 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     p->primitives.gradients.P[1] *= ihdim;
     p->primitives.gradients.P[2] *= ihdim;
 
+    p->primitives.gradients.A[0] *= ihdim;
+    p->primitives.gradients.A[1] *= ihdim;
+    p->primitives.gradients.A[2] *= ihdim;
+
   } else {
 
     /* finalize gradients by multiplying with volume */
@@ -480,6 +543,10 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     p->primitives.gradients.P[0] *= ihdimp1 * volume;
     p->primitives.gradients.P[1] *= ihdimp1 * volume;
     p->primitives.gradients.P[2] *= ihdimp1 * volume;
+
+    p->primitives.gradients.A[0] *= ihdimp1 * volume;
+    p->primitives.gradients.A[1] *= ihdimp1 * volume;
+    p->primitives.gradients.A[2] *= ihdimp1 * volume;
   }
 
   hydro_slope_limit_cell(p);
