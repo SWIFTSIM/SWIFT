@@ -55,8 +55,10 @@ static const float explicit_tolerance = 0.05;
 static const float newton_tolerance = 1.0e-4;
 static const float bisection_tolerance = 1.0e-6;
 static const float rounding_tolerance = 1.0e-4;
-static const double bracket_factor = sqrt(1.1); /* Taken from EAGLE */
-static const double newton_log_u_guess_cgs = log(2.e12);
+//static const double bracket_factor = sqrt(1.1); /* Taken from EAGLE */
+//static const double newton_log_u_guess_cgs = log(2.e12);
+static const double bracket_factor = 1.0488088481701515; /* Taken from EAGLE */
+static const double newton_log_u_guess_cgs = 1.414213562e6;
 
 /**
  * @brief Common operations performed on the cooling function at a
