@@ -448,27 +448,27 @@ inline static void evolve_SNIa(float log_min_mass, float log_max_mass,
       sp->metals_released[i] += num_of_SNIa_per_msun * stars->yield_SNIa_SPH[i];
     }
 
-    sp->mass_from_snia += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
-    sp->metals_from_snia += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
+    sp->chemistry_data.mass_from_SNIa += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
+    sp->chemistry_data.metal_mass_fraction_from_SNIa += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
 
     sp->metal_mass_released += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
 
     // Make sure chemistry_element_Fe corresponds to the iron_index used in EAGLE!!!
-    sp->iron_from_snia += num_of_SNIa_per_msun * stars->yield_SNIa_SPH[chemistry_element_Fe];
+    sp->chemistry_data.iron_mass_fraction_from_SNIa += num_of_SNIa_per_msun * stars->yield_SNIa_SPH[chemistry_element_Fe];
 
     /* metal_mass_released is the yield of ALL metals, not just the
        11 tabulated in the code.  SNIa remnants inject no H or He
-       so mass_from_snia == metals_from_snia */
+       so chemistry_data.mass_from_SNIa == chemistry_data.metal_mass_fraction_from_SNIa */
 
   } else {
-    sp->iron_from_snia = 0;
-    sp->metals_from_snia = 0;
-    sp->mass_from_snia = 0;
+    sp->chemistry_data.iron_mass_fraction_from_SNIa = 0;
+    sp->chemistry_data.metal_mass_fraction_from_SNIa = 0;
+    sp->chemistry_data.mass_from_SNIa = 0;
   }
 }
 
 inline static void evolve_SNII(float log_min_mass, float log_max_mass,
-                              float log_metallicity, float *initial_metals,
+                              float log_metallicity,
 			      const struct stars_props *restrict stars,
 			      struct spart *restrict sp){
   // come up with more descriptive index names
@@ -524,9 +524,9 @@ inline static void evolve_SNII(float log_min_mass, float log_max_mass,
        * to elements already in star */
       stellar_yield[imass] =
           (1 - dz) * (stars->yield_SNII.SPH[low_index_3d] +
-                      initial_metals[i] * stars->yield_SNII.ejecta_SPH[low_index_2d]) +
+                      sp->chemistry_data.metal_mass_fraction[i] * stars->yield_SNII.ejecta_SPH[low_index_2d]) +
           dz * (stars->yield_SNII.SPH[high_index_3d] +
-                initial_metals[i] * stars->yield_SNII.ejecta_SPH[high_index_2d]);
+                sp->chemistry_data.metal_mass_fraction[i] * stars->yield_SNII.ejecta_SPH[high_index_2d]);
     }
 
 // temporarily commented ifdef until sorted out how to treat this.
@@ -588,23 +588,23 @@ inline static void evolve_SNII(float log_min_mass, float log_max_mass,
       // Is this really the right way around? mass += metals and metals += mass? Maybe rename variables?
       for (i = 0; i < chemistry_element_count; i++) {
         sp->metals_released[i] += metals[i] * (norm0 / norm1);
-        sp->mass_from_snii += metals[i] * (norm0 / norm1);
+        sp->chemistry_data.mass_from_SNII += metals[i] * (norm0 / norm1);
       }
       sp->metal_mass_released += mass * (norm0 / norm1);
-      sp->metals_from_snii += mass * (norm0 / norm1);
+      sp->chemistry_data.metal_mass_fraction_from_SNII += mass * (norm0 / norm1);
     } else {
       error("wrong normalization!!!! norm1 = %e\n", norm1);
     }
   } else {
-    sp->mass_from_snii = 0;
-    sp->metals_from_snii = 0;
+    sp->chemistry_data.mass_from_SNII = 0;
+    sp->chemistry_data.metal_mass_fraction_from_SNII = 0;
   }
 
   free(stellar_yield);
 }
 
 inline static void evolve_AGB(float log_min_mass, float log_max_mass,
-                              float log_metallicity, float *initial_metals,
+                              float log_metallicity,
 			      const struct stars_props *restrict stars,
 			      struct spart *restrict sp){
   // come up with more descriptive index names
@@ -644,9 +644,9 @@ inline static void evolve_AGB(float log_min_mass, float log_max_mass,
        * to elements already in star */
       stellar_yield[imass] =
           (1 - dz) * (stars->yield_AGB.SPH[low_index_3d] +
-                      initial_metals[i] * stars->yield_AGB.ejecta_SPH[low_index_2d]) +
+                      sp->chemistry_data.metal_mass_fraction[i] * stars->yield_AGB.ejecta_SPH[low_index_2d]) +
           dz * (stars->yield_AGB.SPH[high_index_3d] +
-                initial_metals[i] * stars->yield_AGB.ejecta_SPH[high_index_2d]);
+                sp->chemistry_data.metal_mass_fraction[i] * stars->yield_AGB.ejecta_SPH[high_index_2d]);
     }
 
 // temporarily commented ifdef until sorted out how to treat this.
@@ -710,10 +710,10 @@ inline static void evolve_AGB(float log_min_mass, float log_max_mass,
     // Is this really the right way around? mass += metals and metals += mass? Maybe rename variables?
     for (i = 0; i < chemistry_element_count; i++) {
       sp->metals_released[i] += metals[i];
-      sp->mass_from_agb += metals[i];
+      sp->chemistry_data.mass_from_AGB += metals[i];
     }
     sp->metal_mass_released += mass;
-    sp->metals_from_agb += mass;
+    sp->chemistry_data.metal_mass_fraction_from_AGB += mass;
   } else {
     error("wrong normalization!!!! norm1 = %e\n", norm1);
   }
@@ -742,23 +742,19 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
   if (log10_min_dying_mass == log10_max_dying_mass) return;
 
   float log_metallicity;
-  if (metallicity > 0)
+  if (metallicity > 0) {
     log_metallicity = log10(metallicity);
-  else
+  } else {
     log_metallicity = log_min_metallicity;
-
-
-  // dummy declaration, needs to pass in chemistry data somehow...
-  float initial_metals[10];
-  for(int j = 0; j < 10; j++) initial_metals[j] = 0.0;
+  }
 
   // Evolve SNIa, SNII, AGB
 
   evolve_SNIa(log10_min_dying_mass,log10_max_dying_mass,log_metallicity,star_properties,sp,dt_Gyr);
 
-  evolve_SNII(log10_min_dying_mass,log10_max_dying_mass,log_metallicity,initial_metals,star_properties,sp); 
+  evolve_SNII(log10_min_dying_mass,log10_max_dying_mass,log_metallicity,star_properties,sp); 
 
-  evolve_AGB(log10_min_dying_mass,log10_max_dying_mass,log_metallicity,initial_metals,star_properties,sp);
+  evolve_AGB(log10_min_dying_mass,log10_max_dying_mass,log_metallicity,star_properties,sp);
 
 }
 
@@ -785,13 +781,13 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     // Set elements released to zero
     for(int i = 0; i < chemistry_element_count; i++) sp->metals_released[i] = 0;
     sp->metal_mass_released = 0;
-    sp->mass_from_agb = 0;
-    sp->metals_from_agb = 0;
-    sp->mass_from_snii = 0;
-    sp->metals_from_snii = 0;
-    sp->mass_from_snia = 0;
-    sp->metals_from_snia = 0;
-    sp->iron_from_snia = 0;
+    sp->chemistry_data.mass_from_AGB = 0;
+    sp->chemistry_data.metal_mass_fraction_from_AGB = 0;
+    sp->chemistry_data.mass_from_SNII = 0;
+    sp->chemistry_data.metal_mass_fraction_from_SNII = 0;
+    sp->chemistry_data.mass_from_SNIa = 0;
+    sp->chemistry_data.metal_mass_fraction_from_SNIa = 0;
+    sp->chemistry_data.iron_mass_fraction_from_SNIa = 0;
 
     // Evolve the star
     compute_stellar_evolution(stars_properties, sp);

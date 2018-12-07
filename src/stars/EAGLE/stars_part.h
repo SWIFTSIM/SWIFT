@@ -90,13 +90,6 @@ struct spart {
 #endif
 
   /* Variables to track enrichment */
-  float mass_from_agb;
-  float metals_from_agb;
-  float mass_from_snii;
-  float metals_from_snii;
-  float mass_from_snia;
-  float metals_from_snia;
-  float iron_from_snia;
   float metal_mass_released;
   float metals_released[chemistry_element_count];
   float num_snia;
