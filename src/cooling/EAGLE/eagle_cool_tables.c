@@ -342,14 +342,16 @@ static void get_redshift_invariant_table(
     if (status < 0) error("error closing cooling dataset");
 
     /* Transpose from order tables are stored in (temperature, nH)
-     * to (nH, temperature, metal species) where fastest
+     * to (metal species, nH, temperature) where fastest
      * varying index is on right. Tables contain cooling rates but we
      * want rate of change of internal energy, hence minus sign. */
     for (j = 0; j < cooling->N_Temp; j++) {
       for (k = 0; k < cooling->N_nH; k++) {
         table_index = row_major_index_2d(j, k, cooling->N_Temp, cooling->N_nH);
-        cooling_index = row_major_index_3d(
-            k, j, specs, cooling->N_nH, cooling->N_Temp, cooling->N_Elements);
+
+        cooling_index = row_major_index_3d(specs, k, j, cooling->N_Elements,
+                                           cooling->N_nH, cooling->N_Temp);
+
         cooling->table.metal_heating[cooling_index] =
             -net_cooling_rate[table_index];
       }
@@ -512,7 +514,7 @@ static void get_cooling_table(struct cooling_function_data *restrict cooling) {
       if (status < 0) error("error closing cooling dataset");
 
       /* Transpose from order tables are stored in (temperature, nH)
-       * to (redshift, nH, temperature, metal species) where fastest
+       * to (metal species, redshift, nH, temperature) where fastest
        * varying index is on right. Tables contain cooling rates but we
        * want rate of change of internal energy, hence minus sign. */
       for (i = 0; i < cooling->N_nH; i++) {
@@ -520,8 +522,9 @@ static void get_cooling_table(struct cooling_function_data *restrict cooling) {
           table_index =
               row_major_index_2d(j, i, cooling->N_Temp, cooling->N_nH);
           cooling_index = row_major_index_4d(
-              z_index - cooling->low_z_index, i, j, specs, 2, cooling->N_nH,
-              cooling->N_Temp, cooling->N_Elements);
+              specs, z_index - cooling->low_z_index, i, j, cooling->N_Elements,
+              2, cooling->N_nH, cooling->N_Temp);
+
           cooling->table.metal_heating[cooling_index] =
               -net_cooling_rate[table_index];
         }
