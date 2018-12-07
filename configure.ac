@@ -1016,34 +1016,39 @@ AC_ARG_WITH([numa],
 )
 if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; then
 
-   if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
-      NUMA_LIBS="-L$with_numa/lib -lnuma"
-      NUMA_INCS="-I$with_numa/include"
-   else
-      NUMA_LIBS="-lnuma"
-      NUMA_INCS=""
-   fi
+    if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+        NUMA_LIBS="-L$with_numa/lib -lnuma"
+        NUMA_INCS="-I$with_numa/include"
+    else
+        NUMA_LIBS="-lnuma"
+        NUMA_INCS=""
+    fi
 
-   #  Test for header file.
-   old_CPPFLAGS="$CPPFLAGS"
-   CPPFLAGS="$CPPFLAGS $NUMA_INCS"
-   AC_CHECK_HEADER([numa.h])
-   CPPFLAGS="$old_CPPFLAGS"
-   if test "$ac_cv_header_numa_h" = "yes"; then
+    #  Test for header file.
+    old_CPPFLAGS="$CPPFLAGS"
+    CPPFLAGS="$CPPFLAGS $NUMA_INCS"
+    AC_CHECK_HEADER([numa.h])
+    CPPFLAGS="$old_CPPFLAGS"
+    if test "$ac_cv_header_numa_h" = "yes"; then
 
-      #  If NUMA location is specified check if we have it.
-      if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
-         AC_CHECK_LIB([numa],[numa_available],
-            AC_DEFINE([HAVE_LIBNUMA],1,[The NUMA library appears to be present.]),
-            AC_MSG_ERROR(something is wrong with the NUMA library!), $NUMA_LIBS)
-         have_numa="yes"
-      else
-         AC_CHECK_LIB([numa],[numa_available],[have_numa="yes"],[have_numa="no"],$NUMA_LIBS)
-         if test "x$have_numa" != "xno"; then
-            AC_DEFINE([HAVE_LIBNUMA],1,[The NUMA library appears to be present.])
-         fi
-      fi
-   fi
+        #  If NUMA location is specified check if we have it.
+        if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+            AC_CHECK_LIB([numa],[numa_available],
+                AC_DEFINE([HAVE_LIBNUMA],1,[The NUMA library appears to be present.]),
+                AC_MSG_ERROR(something is wrong with the NUMA library!), $NUMA_LIBS)
+            have_numa="yes"
+        else
+            AC_CHECK_LIB([numa],[numa_available],[have_numa="yes"],[have_numa="no"],$NUMA_LIBS)
+            if test "x$have_numa" != "xno"; then
+                AC_DEFINE([HAVE_LIBNUMA],1,[The NUMA library appears to be present.])
+            fi
+        fi
+    fi
+
+    #  We can live without this.
+    if test "$have_numa" = "no"; then
+       NUMA_LIBS=""
+    fi
 fi
 AC_SUBST([NUMA_LIBS])
 
@@ -1135,16 +1140,16 @@ fi
 # Second part of the NUMA library checks. We now decide if we need to use
 # -isystem to get around the strict-prototypes problem. Assumes isystem
 # is available when strict-prototypes is.
-if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; then
-   if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
-      case "$CFLAGS" in
-         *strict-prototypes*)
-            NUMA_INCS="-isystem$with_numa/include"
-         ;;
-         *)
-            NUMA_INCS="-I$with_numa/include"
-         ;;
-      esac
+if test "$have_numa" != "no"; then
+    if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+        case "$CFLAGS" in
+            *strict-prototypes*)
+                NUMA_INCS="-isystem$with_numa/include"
+            ;;
+            *)
+                NUMA_INCS="-I$with_numa/include"
+            ;;
+        esac
    fi
 fi
 AC_SUBST([NUMA_INCS])
