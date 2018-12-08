@@ -72,6 +72,7 @@ void cooling_struct_dump(const struct cooling_function_data* cooling,
  *
  * @param cooling the struct
  * @param stream the file stream
+ * @param cosmo #cosmology structure
  */
 void cooling_struct_restore(struct cooling_function_data* cooling, FILE* stream,
                             const struct cosmology* cosmo) {

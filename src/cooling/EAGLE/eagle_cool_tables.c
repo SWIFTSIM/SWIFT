@@ -739,7 +739,7 @@ static void get_cooling_table(struct cooling_function_data *restrict cooling) {
  * @brief Constructs the data structure containting the relevant cooling tables
  * for the redshift index (set in cooling_update)
  *
- * @param #cooling_function_data structure
+ * @param cooling #cooling_function_data structure
  */
 static void eagle_readtable(struct cooling_function_data *restrict cooling) {
 

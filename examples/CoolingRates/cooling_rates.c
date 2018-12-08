@@ -106,7 +106,7 @@ INLINE static double eagle_print_metal_cooling_rate(
   for (int j = 0; j < eagle_cooling_N_metal + 2; j++) element_lambda[j] = 0.0;
   lambda_net = eagle_metal_cooling_rate(
       log10(u), cosmo->z, n_h, abundance_ratio, n_h_i, d_n_h, He_i, d_He,
-      cooling, phys_const, /*dLambdaNet_du=*/NULL, element_lambda);
+      cooling, /*dLambdaNet_du=*/NULL, element_lambda);
 
   /* write cooling rate contributions to their own files. */
   for (int j = 0; j < eagle_cooling_N_metal + 2; j++) {

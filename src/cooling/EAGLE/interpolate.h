@@ -177,13 +177,13 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
 
   /* before the earliest redshift or before hydrogen reionization, flag for
    * collisional cooling */
-  if (z > cooling->reionisation_redshift) {
+  if (z > cooling->H_reion_z) {
     *z_index = eagle_cooling_N_redshifts;
     *dz = 0.0;
   }
   /* from reionization use the cooling tables */
   else if (z > cooling->Redshifts[eagle_cooling_N_redshifts - 1] &&
-           z <= cooling->reionisation_redshift) {
+           z <= cooling->H_reion_z) {
     *z_index = eagle_cooling_N_redshifts + 1;
     *dz = 0.0;
   }
@@ -300,7 +300,7 @@ __attribute__((always_inline)) INLINE float interpolation_3d(
 }
 
 /**
- * @brief Interpolate a flattened #D table at a given position but avoid the
+ * @brief Interpolate a flattened 3D table at a given position but avoid the
  * x-dimension.
  *
  * This function uses linear interpolation along each axis.

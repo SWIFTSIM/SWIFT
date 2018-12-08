@@ -26,6 +26,8 @@
 #include "swift.h"
 #include "units.h"
 
+#if 0
+
 /*
  * @brief Assign particle density and entropy corresponding to the
  * hydrogen number density and internal energy specified.
@@ -199,3 +201,9 @@ int main(int argc, char **argv) {
   free(params);
   return 0;
 }
+
+#else
+
+int main(int argc, char **argv) { return 0; }
+
+#endif

@@ -72,7 +72,7 @@ struct cooling_function_data {
   char cooling_table_path[eagle_table_path_name_length];
 
   /*! Redshit of H reionization */
-  float reionisation_redshift;
+  float H_reion_z;
 
   /*! Ca over Si abundance ratio */
   float calcium_over_silicon_ratio;
@@ -86,8 +86,8 @@ struct cooling_function_data {
   /*! Spread of the He reionization */
   float He_reion_z_sigma;
 
-  /*! He reionization energy in eV per Hydrogen atom */
-  float He_reion_ev_pH;
+  /*! He reionization energy in CGS units */
+  float He_reion_heat_cgs;
 
   /*! Internal energy conversion from internal units to CGS (for quick access)
    */
