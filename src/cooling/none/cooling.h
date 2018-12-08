@@ -37,6 +37,21 @@
 #include "units.h"
 
 /**
+ * @brief Common operations performed on the cooling function at a
+ * given time-step or redshift.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ */
+INLINE static void cooling_update(const struct cosmology* cosmo,
+                                  struct cooling_function_data* cooling,
+                                  const int restart_flag) {
+  // Add content if required.
+}
+
+/**
  * @brief Apply the cooling function to a particle.
  *
  * We do nothing.
@@ -134,6 +149,18 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
 }
 
 /**
+ * @brief Restore cooling tables (if applicable) after
+ * restart
+ *
+ * Nothing to do here
+ *
+ * @param cooling the cooling_function_data structure
+ * @param cosmo cosmology structure
+ */
+static INLINE void cooling_restore_tables(struct cooling_function_data* cooling,
+                                          const struct cosmology* cosmo) {}
+
+/**
  * @brief Prints the properties of the cooling model to stdout.
  *
  * @param cooling The properties of the cooling function.
@@ -143,5 +170,12 @@ static INLINE void cooling_print_backend(
 
   message("Cooling function is 'No cooling'.");
 }
+
+/**
+ * @brief Clean-up the memory allocated for the cooling routines
+ *
+ * @param cooling the cooling data structure.
+ */
+static INLINE void cooling_clean(struct cooling_function_data* cooling) {}
 
 #endif /* SWIFT_COOLING_NONE_H */

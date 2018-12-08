@@ -2718,6 +2718,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_gparts(s, e->verbose);
   space_init_sparts(s, e->verbose);
 
+  /* Update the cooling function */
+  if (e->policy & engine_policy_cooling)
+    cooling_update(e->cosmology, e->cooling_func, /*restart_flag=*/0);
+
 #ifdef WITH_LOGGER
   /* Mark the first time step in the particle logger file. */
   logger_log_timestamp(e->logger, e->ti_current, e->time,
@@ -2961,6 +2965,10 @@ void engine_step(struct engine *e) {
     e->time_old = e->ti_old * e->time_base + e->time_begin;
     e->time_step = (e->ti_current - e->ti_old) * e->time_base;
   }
+
+  /* Update the cooling function */
+  if (e->policy & engine_policy_cooling)
+    cooling_update(e->cosmology, e->cooling_func, /*restart_flag=*/0);
 
   /*****************************************************/
   /* OK, we now know what the next end of time-step is */
@@ -4037,7 +4045,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
-                 const struct cooling_function_data *cooling_func,
+                 struct cooling_function_data *cooling_func,
                  const struct chemistry_global_data *chemistry,
                  struct sourceterms *sourceterms) {
 
@@ -5284,7 +5292,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   struct cooling_function_data *cooling_func =
       (struct cooling_function_data *)malloc(
           sizeof(struct cooling_function_data));
-  cooling_struct_restore(cooling_func, stream);
+  cooling_struct_restore(cooling_func, stream, e->cosmology);
   e->cooling_func = cooling_func;
 
   struct chemistry_global_data *chemistry =

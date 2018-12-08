@@ -41,7 +41,7 @@ check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
-		 test27cellsStars_subset
+		 test27cellsStars_subset testCooling
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -127,6 +127,8 @@ testPotentialPair_SOURCES = testPotentialPair.c
 testEOS_SOURCES = testEOS.c
 
 testUtilities_SOURCES = testUtilities.c
+
+testCooling_SOURCES = testCooling.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
