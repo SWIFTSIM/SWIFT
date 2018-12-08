@@ -32,88 +32,44 @@
 #include "physical_constants.h"
 #include "units.h"
 
-/**
- * @brief Calculate ratio of particle element abundances
- * to solar abundance. This replaces set_Cooling_SolarAbundances
- * function in EAGLE.
- * Multiple if statements are necessary because order of elements
- * in tables is different from chemistry_element enum.
- * Tables: H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe
- * Enum: H, He, C, N, O, Ne, Mg, Si, Fe
- * The order in ratio_solar is:
- * H, He, C, N, O, Ne, Mg, Si, Fe, S, Ca
- * Hence Fe, S, Ca need to be treated separately to be put in the
- * correct place in the output array.
- *
- * @param p Pointer to #part struct
- * @param cooling #cooling_function_data struct
- * @param ratio_solar Pointer to array or ratios
- */
-__attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
-    const struct part *restrict p,
-    const struct cooling_function_data *restrict cooling, float *ratio_solar) {
+void cooling_update(const struct cosmology *cosmo,
+                    struct cooling_function_data *cooling,
+                    const int restart_flag);
 
-  /* compute ratios for all elements */
-  for (enum chemistry_element elem = chemistry_element_H;
-       elem < chemistry_element_count; elem++) {
-    if (elem == chemistry_element_Fe) {
-      /* NOTE: solar abundances have iron last with calcium and sulphur directly
-       * before, hence +2 */
-      ratio_solar[elem] = p->chemistry_data.metal_mass_fraction[elem] /
-                          cooling->SolarAbundances[elem + 2];
-    } else {
-      ratio_solar[elem] = p->chemistry_data.metal_mass_fraction[elem] /
-                          cooling->SolarAbundances[elem];
-    }
-  }
+void cooling_cool_part(const struct phys_const *restrict phys_const,
+                       const struct unit_system *restrict us,
+                       const struct cosmology *restrict cosmo,
+                       const struct hydro_props *restrict hydro_properties,
+                       const struct cooling_function_data *restrict cooling,
+                       struct part *restrict p, struct xpart *restrict xp,
+                       const float dt, const float dt_therm);
 
-  /* assign ratios for Ca and S, note positions of these elements occur before
-   * Fe */
-  ratio_solar[chemistry_element_count] =
-      p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
-      cooling->sulphur_over_silicon_ratio /
-      cooling->SolarAbundances[chemistry_element_count - 1];
-  ratio_solar[chemistry_element_count + 1] =
-      p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
-      cooling->calcium_over_silicon_ratio /
-      cooling->SolarAbundances[chemistry_element_count];
-}
+float cooling_timestep(const struct cooling_function_data *restrict cooling,
+                       const struct phys_const *restrict phys_const,
+                       const struct cosmology *restrict cosmo,
+                       const struct unit_system *restrict us,
+                       const struct hydro_props *hydro_props,
+                       const struct part *restrict p,
+                       const struct xpart *restrict xp);
 
-void cooling_update(const struct cosmology *, struct cooling_function_data *,
-                    const int);
+void cooling_first_init_part(
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us,
+    const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct part *restrict p, struct xpart *restrict xp);
 
-void cooling_cool_part(const struct phys_const *restrict,
-                       const struct unit_system *restrict,
-                       const struct cosmology *restrict,
-                       const struct hydro_props *restrict,
-                       const struct cooling_function_data *restrict,
-                       struct part *restrict, struct xpart *restrict, float,
-                       float);
+float cooling_get_radiated_energy(const struct xpart *restrict xp);
 
-float cooling_timestep(const struct cooling_function_data *restrict,
-                       const struct phys_const *restrict,
-                       const struct cosmology *restrict,
-                       const struct unit_system *restrict,
-                       const struct hydro_props *, const struct part *restrict,
-                       const struct xpart *restrict);
+void cooling_init_backend(struct swift_params *parameter_file,
+                          const struct unit_system *us,
+                          const struct phys_const *phys_const,
+                          struct cooling_function_data *cooling);
 
-void cooling_first_init_part(const struct phys_const *restrict,
-                             const struct unit_system *restrict,
-                             const struct cosmology *restrict,
-                             const struct cooling_function_data *restrict,
-                             const struct part *restrict,
-                             struct xpart *restrict);
+void cooling_restore_tables(struct cooling_function_data *cooling,
+                            const struct cosmology *cosmo);
 
-float cooling_get_radiated_energy(const struct xpart *restrict);
-
-void cooling_init_backend(struct swift_params *, const struct unit_system *,
-                          const struct phys_const *,
-                          struct cooling_function_data *);
-
-void cooling_print_backend(const struct cooling_function_data *);
-
-void cooling_restore_tables(struct cooling_function_data *,
-                            const struct cosmology *);
+void cooling_print_backend(const struct cooling_function_data *cooling);
 
 void cooling_clean(struct cooling_function_data *data);
 

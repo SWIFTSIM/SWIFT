@@ -24,6 +24,53 @@
 #include "interpolate.h"
 
 /**
+ * @brief Calculate ratio of particle element abundances
+ * to solar abundance.
+
+ * Multiple if statements are necessary because order of elements
+ * in tables is different from chemistry_element enum.
+ * Tables: H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe
+ * Enum: H, He, C, N, O, Ne, Mg, Si, Fe
+ * The order in ratio_solar is:
+ * H, He, C, N, O, Ne, Mg, Si, Fe, S, Ca
+ * Hence Fe, S, Ca need to be treated separately to be put in the
+ * correct place in the output array.
+ *
+ * @param p Pointer to #part struct
+ * @param cooling #cooling_function_data struct
+ * @param ratio_solar Pointer to array or ratios
+ */
+__attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
+    const struct part *p, const struct cooling_function_data *cooling,
+    float ratio_solar[chemistry_element_count + 2]) {
+
+  /* compute ratios for all elements */
+  for (enum chemistry_element elem = chemistry_element_H;
+       elem < chemistry_element_count; elem++) {
+    if (elem == chemistry_element_Fe) {
+      /* NOTE: solar abundances have iron last with calcium and sulphur directly
+       * before, hence +2 */
+      ratio_solar[elem] = p->chemistry_data.metal_mass_fraction[elem] /
+                          cooling->SolarAbundances[elem + 2];
+    } else {
+      ratio_solar[elem] = p->chemistry_data.metal_mass_fraction[elem] /
+                          cooling->SolarAbundances[elem];
+    }
+  }
+
+  /* assign ratios for Ca and S, note positions of these elements occur before
+   * Fe */
+  ratio_solar[chemistry_element_count] =
+      p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
+      cooling->sulphur_over_silicon_ratio /
+      cooling->SolarAbundances[chemistry_element_count - 1];
+  ratio_solar[chemistry_element_count + 1] =
+      p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
+      cooling->calcium_over_silicon_ratio /
+      cooling->SolarAbundances[chemistry_element_count];
+}
+
+/**
  * @brief Computes the extra heat from Helium reionisation at a given redshift.
  *
  * We follow the implementation of Wiersma et al. 2009, MNRAS, 399, 574-600,
