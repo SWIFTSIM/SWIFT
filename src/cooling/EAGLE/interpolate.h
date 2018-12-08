@@ -27,23 +27,12 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Some standard headers. */
-#include <float.h>
-#include <hdf5.h>
-#include <math.h>
-#include <time.h>
-
 /* Local includes. */
-#include "chemistry.h"
+#include "align.h"
 #include "cooling_struct.h"
 #include "eagle_cool_tables.h"
 #include "error.h"
-#include "hydro.h"
-#include "io_properties.h"
-#include "parser.h"
-#include "part.h"
-#include "physical_constants.h"
-#include "units.h"
+#include "inline.h"
 
 /**
  * @brief Returns the 1d index of element with 2d indices x,y

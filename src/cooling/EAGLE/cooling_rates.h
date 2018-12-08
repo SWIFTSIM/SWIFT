@@ -18,6 +18,9 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#ifndef SWIFT_EAGLE_COOLING_RATES_H
+#define SWIFT_EAGLE_COOLING_RATES_H
+
 #include "../config.h"
 
 /* Local includes. */
@@ -714,3 +717,5 @@ INLINE static double eagle_cooling_rate(
                                   d_He, cooling, dLambdaNet_du,
                                   /*element_lambda=*/NULL);
 }
+
+#endif /* SWIFT_EAGLE_COOLING_RATES_H */

@@ -16,15 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
-#include <unistd.h>
-#include "cooling.h"
-#include "cooling/EAGLE/interpolate.h"
-#include "cooling_struct.h"
-#include "hydro.h"
-#include "physical_constants.h"
+/* Local headers. */
 #include "swift.h"
-#include "units.h"
 
 #if 0
 
