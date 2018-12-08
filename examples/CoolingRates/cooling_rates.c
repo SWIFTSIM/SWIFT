@@ -27,6 +27,7 @@
 
 #if defined(COOLING_EAGLE) && defined(CHEMISTRY_EAGLE) && defined(GADGET2_SPH)
 #include "cooling/EAGLE/cooling_rates.h"
+#include "cooling/EAGLE/eagle_cool_tables.h"
 
 /* Flag used for printing cooling rate contribution from each
  * element. For testing only. Incremented by 1/(number of elements)
@@ -61,7 +62,7 @@ INLINE static double eagle_print_metal_cooling_rate(
   /* array to store contributions to cooling rates from each of the
    * elements */
   double *element_lambda;
-  element_lambda = malloc((cooling->N_Elements + 2) * sizeof(double));
+  element_lambda = malloc((eagle_cooling_N_metal + 2) * sizeof(double));
 
   /* Get the H and He mass fractions */
   const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
@@ -69,29 +70,29 @@ INLINE static double eagle_print_metal_cooling_rate(
   /* convert Hydrogen mass fraction in Hydrogen number density */
   const double n_h = hydro_get_physical_density(p, cosmo) * XH /
                      phys_const->const_proton_mass *
-                     cooling->number_density_scale;
+                     cooling->number_density_to_cgs;
 
   /* cooling rate, derivative of cooling rate and internal energy */
   double lambda_net = 0.0;
   double u = hydro_get_physical_internal_energy(p, xp, cosmo) *
-             cooling->internal_energy_scale;
+             cooling->internal_energy_to_cgs;
 
   /* Open files for writing contributions to cooling rate. Each element
    * gets its own file.  */
   char output_filename[32];
-  FILE **output_file = malloc((cooling->N_Elements + 2) * sizeof(FILE *));
+  FILE **output_file = malloc((eagle_cooling_N_metal + 2) * sizeof(FILE *));
 
   /* Once this flag reaches 1 we stop overwriting and start appending.  */
-  print_cooling_rate_contribution_flag += 1.0 / (cooling->N_Elements + 2);
+  print_cooling_rate_contribution_flag += 1.0 / (eagle_cooling_N_metal + 2);
 
   /* Loop over each element */
-  for (int element = 0; element < cooling->N_Elements + 2; element++) {
+  for (int element = 0; element < eagle_cooling_N_metal + 2; element++) {
     sprintf(output_filename, "%s%d%s", "cooling_element_", element, ".dat");
     if (print_cooling_rate_contribution_flag < 1) {
       /* If this is the first time we're running this function, overwrite the
        * output files */
       output_file[element] = fopen(output_filename, "w");
-      print_cooling_rate_contribution_flag += 1.0 / (cooling->N_Elements + 2);
+      print_cooling_rate_contribution_flag += 1.0 / (eagle_cooling_N_metal + 2);
     } else {
       /* append to existing files */
       output_file[element] = fopen(output_filename, "a");
@@ -102,17 +103,17 @@ INLINE static double eagle_print_metal_cooling_rate(
   }
 
   /* calculate cooling rates */
-  for (int j = 0; j < cooling->N_Elements + 2; j++) element_lambda[j] = 0.0;
+  for (int j = 0; j < eagle_cooling_N_metal + 2; j++) element_lambda[j] = 0.0;
   lambda_net = eagle_metal_cooling_rate(
       log10(u), cosmo->z, n_h, abundance_ratio, n_h_i, d_n_h, He_i, d_He,
       cooling, phys_const, /*dLambdaNet_du=*/NULL, element_lambda);
 
   /* write cooling rate contributions to their own files. */
-  for (int j = 0; j < cooling->N_Elements + 2; j++) {
+  for (int j = 0; j < eagle_cooling_N_metal + 2; j++) {
     fprintf(output_file[j], "%.5e\n", element_lambda[j]);
   }
 
-  for (int i = 0; i < cooling->N_Elements + 2; i++) fclose(output_file[i]);
+  for (int i = 0; i < eagle_cooling_N_metal + 2; i++) fclose(output_file[i]);
   free(output_file);
   free(element_lambda);
 
@@ -142,8 +143,9 @@ void set_quantities(struct part *restrict p, struct xpart *restrict xp,
   p->rho = hydrogen_number_density * internal_const->const_proton_mass /
            p->chemistry_data.metal_mass_fraction[chemistry_element_H];
 
-  float pressure = (u * cosmo->a * cosmo->a) / cooling->internal_energy_scale *
-                   p->rho * (hydro_gamma_minus_one);
+  float pressure = (u * cosmo->a * cosmo->a) *
+                   cooling->internal_energy_from_cgs * p->rho *
+                   (hydro_gamma_minus_one);
   p->entropy = pressure * (pow(p->rho, -hydro_gamma));
   xp->entropy_full = p->entropy;
 }
@@ -240,7 +242,7 @@ int main(int argc, char **argv) {
       (XH + p.chemistry_data.metal_mass_fraction[chemistry_element_He]);
   int He_i, n_h_i;
   float d_He, d_n_h;
-  get_index_1d(cooling.HeFrac, cooling.N_He, HeFrac, &He_i, &d_He);
+  get_index_1d(cooling.HeFrac, eagle_cooling_N_He_frac, HeFrac, &He_i, &d_He);
 
   // Calculate contributions from metals to cooling rate
   // open file
@@ -259,8 +261,10 @@ int main(int argc, char **argv) {
   // internal energies
   set_quantities(&p, &xp, &us, &cooling, &cosmo, &internal_const, nh, u);
   float inn_h = hydro_get_physical_density(&p, &cosmo) * XH /
-                internal_const.const_proton_mass * cooling.number_density_scale;
-  get_index_1d(cooling.nH, cooling.N_nH, log10(inn_h), &n_h_i, &d_n_h);
+                internal_const.const_proton_mass *
+                cooling.number_density_to_cgs;
+  get_index_1d(cooling.nH, eagle_cooling_N_density, log10(inn_h), &n_h_i,
+               &d_n_h);
 
   // Loop over internal energy
   for (int j = 0; j < npts; j++) {
@@ -271,7 +275,7 @@ int main(int argc, char **argv) {
 
     // New internal energy
     u = hydro_get_physical_internal_energy(&p, &xp, &cosmo) *
-        cooling.internal_energy_scale;
+        cooling.internal_energy_to_cgs;
 
     // calculate cooling rates
     const double temperature = eagle_convert_u_to_temp(

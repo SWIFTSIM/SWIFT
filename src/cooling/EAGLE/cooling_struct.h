@@ -25,6 +25,7 @@
  * @brief struct containing cooling tables
  */
 struct cooling_tables {
+
   /* array of heating rates due to metals */
   float *metal_heating;
 
@@ -46,60 +47,84 @@ struct cooling_tables {
  */
 struct cooling_function_data {
 
-  /* Cooling table */
+  /*! Cooling tables */
   struct cooling_tables table;
 
-  /* Size of table dimensions */
-  int N_Redshifts;
-  int N_nH;
-  int N_Temp;
-  int N_He;
-
-  /* Number of metals and solar abundances tracked in EAGLE */
-  int N_Elements;
-  int N_SolarAbundances;
-
-  /* Arrays of grid values in tables */
+  /*! Redshift bins */
   float *Redshifts;
+
+  /*! Hydrogen number density bins */
   float *nH;
+
+  /*! Temperature bins */
   float *Temp;
+
+  /*! Helium fraction bins */
   float *HeFrac;
+
+  /*! Internal energy bins */
   float *Therm;
 
-  /* Array of values of solar metal and electron abundance */
+  /*! Solar mass fractions */
   float *SolarAbundances;
-  float *SolarElectronAbundance;
 
-  /* Normalisation constants that are frequently used
-   * Multiply by these values to go from internal to cgs
-   * units for relevant quantity */
-  double internal_energy_scale;
-  double number_density_scale;
-
-  /* filepath to EAGLE cooling tables */
+  /*! Filepath to the directory containing the HDF5 cooling tables */
   char cooling_table_path[eagle_table_path_name_length];
 
-  /* Some constants read in from yml file relevant to EAGLE cooling */
+  /*! Redshit of H reionization */
   float reionisation_redshift;
+
+  /*! Ca over Si abundance ratio */
   float calcium_over_silicon_ratio;
+
+  /*! S over Si abundance ratio */
   float sulphur_over_silicon_ratio;
 
-  /* Helium reionisation parameters */
-  float He_reion_ev_pH;
+  /*! Redshift of He reionization */
   float He_reion_z_centre;
+
+  /*! Spread of the He reionization */
   float He_reion_z_sigma;
 
-  /* Proton mass in cgs */
-  double proton_mass_cgs;
+  /*! He reionization energy in eV per Hydrogen atom */
+  float He_reion_ev_pH;
+
+  /*! Internal energy conversion from internal units to CGS (for quick access)
+   */
+  double internal_energy_to_cgs;
+
+  /*! Internal energy conversion from CGS to internal units (for quick access)
+   */
+  double internal_energy_from_cgs;
+
+  /*! Number density conversion from internal units to CGS (for quick access) */
+  double number_density_to_cgs;
+
+  /*! Inverse of proton mass in cgs (for quick access) */
+  double inv_proton_mass_cgs;
+
+  /*! Temperatur of the CMB at present day (for quick access) */
   double T_CMB_0;
+
+  /*! Compton rate in cgs units */
   double compton_rate_cgs;
 
-  /* redshift table indices and offset */
-  int z_index, previous_z_index;
-  float dz;
-  int low_z_index, high_z_index;
+  /*! Index of the current redshift along the redshift index of the tables */
+  int z_index;
 
-  /* Flag for using newton integration, read from YAML file */
+  /*! Index of the previous tables along the redshift index of the tables */
+  int previous_z_index;
+
+  /*! Distance between the current redshift and the table[z_index] */
+  float dz;
+
+  /*! Index of the table below current redshift */
+  int low_z_index;
+
+  /*! Index of the table above current redshift */
+  int high_z_index;
+
+  /*! Are we doing Newton-Raphson iterations? */
   int newton_flag;
 };
 
@@ -107,6 +132,8 @@ struct cooling_function_data {
  * @brief Properties of the cooling stored in the extended particle data.
  */
 struct cooling_xpart_data {
+
+  /*! Cumulative energy radiated by the particle */
   float radiated_energy;
 };
 

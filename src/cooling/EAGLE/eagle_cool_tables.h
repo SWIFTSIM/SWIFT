@@ -29,13 +29,34 @@
 
 #include "cooling_struct.h"
 
-void get_cooling_redshifts(struct cooling_function_data *);
+/*! Number of different bins along the redhsift axis of the tables */
+#define eagle_cooling_N_redshifts 49
 
-void read_cooling_header(char *, struct cooling_function_data *);
+/*! Number of redshift bins loaded at any given point int time */
+#define eagle_cooling_N_loaded_redshifts 2
 
-void allocate_cooling_tables(struct cooling_function_data *restrict);
+/*! Number of different bins along the temperature axis of the tables */
+#define eagle_cooling_N_temperature 176
 
-void eagle_check_cooling_tables(struct cooling_function_data *restrict,
-                                const int);
+/*! Number of different bins along the density axis of the tables */
+#define eagle_cooling_N_density 41
 
+/*! Number of different bins along the metal axis of the tables */
+#define eagle_cooling_N_metal 9
+
+/*! Number of different bins along the metal axis of the tables */
+#define eagle_cooling_N_He_frac 7
+
+/*! Number of different bins along the abundances axis of the tables */
+#define eagle_cooling_N_abundances 11
+
+void get_cooling_redshifts(struct cooling_function_data *cooling);
+
+void read_cooling_header(const char *fname,
+                         struct cooling_function_data *cooling);
+
+void allocate_cooling_tables(struct cooling_function_data *restrict cooling);
+
+void eagle_check_cooling_tables(struct cooling_function_data *restrict cooling,
+                                const int restart_flag);
 #endif

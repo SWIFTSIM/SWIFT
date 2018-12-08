@@ -52,8 +52,10 @@
  * @param x, y Indices of element of interest
  * @param Nx, Ny Sizes of array dimensions
  */
-__attribute__((always_inline)) INLINE int row_major_index_2d(int x, int y,
-                                                             int Nx, int Ny) {
+__attribute__((always_inline)) INLINE int row_major_index_2d(const int x,
+                                                             const int y,
+                                                             const int Nx,
+                                                             const int Ny) {
 #ifdef SWIFT_DEBUG_CHECKS
   assert(x < Nx);
   assert(y < Ny);
@@ -68,9 +70,9 @@ __attribute__((always_inline)) INLINE int row_major_index_2d(int x, int y,
  * @param x, y, z Indices of element of interest
  * @param Nx, Ny, Nz Sizes of array dimensions
  */
-__attribute__((always_inline)) INLINE int row_major_index_3d(int x, int y,
-                                                             int z, int Nx,
-                                                             int Ny, int Nz) {
+__attribute__((always_inline)) INLINE int row_major_index_3d(
+    const int x, const int y, const int z, const int Nx, const int Ny,
+    const int Nz) {
 #ifdef SWIFT_DEBUG_CHECKS
   assert(x < Nx);
   assert(y < Ny);
@@ -86,10 +88,9 @@ __attribute__((always_inline)) INLINE int row_major_index_3d(int x, int y,
  * @param x, y, z, w Indices of element of interest
  * @param Nx, Ny, Nz, Nw Sizes of array dimensions
  */
-__attribute__((always_inline)) INLINE int row_major_index_4d(int x, int y,
-                                                             int z, int w,
-                                                             int Nx, int Ny,
-                                                             int Nz, int Nw) {
+__attribute__((always_inline)) INLINE int row_major_index_4d(
+    const int x, const int y, const int z, const int w, const int Nx,
+    const int Ny, const int Nz, const int Nw) {
 #ifdef SWIFT_DEBUG_CHECKS
   assert(x < Nx);
   assert(y < Ny);
@@ -177,13 +178,13 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
   /* before the earliest redshift or before hydrogen reionization, flag for
    * collisional cooling */
   if (z > cooling->reionisation_redshift) {
-    *z_index = cooling->N_Redshifts;
+    *z_index = eagle_cooling_N_redshifts;
     *dz = 0.0;
   }
   /* from reionization use the cooling tables */
-  else if (z > cooling->Redshifts[cooling->N_Redshifts - 1] &&
+  else if (z > cooling->Redshifts[eagle_cooling_N_redshifts - 1] &&
            z <= cooling->reionisation_redshift) {
-    *z_index = cooling->N_Redshifts + 1;
+    *z_index = eagle_cooling_N_redshifts + 1;
     *dz = 0.0;
   }
   /* at the end, just use the last value */
