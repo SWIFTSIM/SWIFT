@@ -114,55 +114,6 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 }
 
 /**
- * @brief generate the dependency name for the tasks
- *
- * @param ta_type The #task type.
- * @param ta_subtype The #task type.
- * @param ta_name (return) The formatted string
- */
-void scheduler_task_dependency_name(int ta_type, int ta_subtype,
-                                    char *ta_name) {
-
-  /* Check input */
-  if ((ta_type < 0) || (ta_type >= task_type_count))
-    error("Unknown task type %i", ta_type);
-
-  if ((ta_subtype < 0) || (ta_subtype >= task_subtype_count))
-    error("Unknown task subtype %i with type %s", ta_subtype,
-          taskID_names[ta_type]);
-
-  /* construct line */
-  if (ta_subtype == task_subtype_none)
-    sprintf(ta_name, "%s", taskID_names[ta_type]);
-  else
-    sprintf(ta_name, "%s_%s", taskID_names[ta_type],
-            subtaskID_names[ta_subtype]);
-}
-
-/**
- * @brief Get the cluster name of a task.
- *
- * @param ta The #task
- * @param cluster (output) The cluster name (should be allocated)
- */
-void scheduler_get_cluster_name(const struct task *ta, char *cluster) {
-  strcpy(cluster, "None");
-  if (ta->subtype == task_subtype_density)
-    strcpy(cluster, "Density");
-  else if (ta->subtype == task_subtype_gradient)
-    strcpy(cluster, "Gradient");
-  else if (ta->subtype == task_subtype_force)
-    strcpy(cluster, "Force");
-  else if (ta->subtype == task_subtype_grav ||
-	   ta->type == task_type_grav_long_range ||
-	   ta->type == task_type_grav_mm ||
-	   ta->type == task_type_grav_mesh)
-    strcpy(cluster, "Gravity");
-  else if (ta->subtype == task_subtype_stars_density)
-    strcpy(cluster, "Stars");
-}
-
-/**
  * @brief compute the number of same dependencies
  *
  * @param s The #scheduler
@@ -172,7 +123,8 @@ void scheduler_get_cluster_name(const struct task *ta, char *cluster) {
  * @return Number of dependencies
  */
 int scheduler_get_number_relation(const struct scheduler *s,
-    const struct task *ta, const struct task *tb) {
+                                  const struct task *ta,
+                                  const struct task *tb) {
 
   int count = 0;
 
@@ -184,11 +136,9 @@ int scheduler_get_number_relation(const struct scheduler *s,
     for (int j = 0; j < ta->nr_unlock_tasks; j++) {
       const struct task *tb_tmp = ta->unlock_tasks[j];
 
-      if (ta->type == ta_tmp->type &&
-	  ta->subtype == ta_tmp->subtype &&
-	  tb->type == tb_tmp->type &&
-	  tb->subtype == tb_tmp->subtype) {
-	count += 1;
+      if (ta->type == ta_tmp->type && ta->subtype == ta_tmp->subtype &&
+          tb->type == tb_tmp->type && tb->subtype == tb_tmp->subtype) {
+        count += 1;
       }
     }
   }
@@ -234,7 +184,9 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
   /* Write header */
   fprintf(f, "# %s\n", git_revision());
-  fprintf(f, "task_in,task_out,implicit_in,implicit_out,mpi_in,mpi_out,cluster_in,cluster_out,number_link\n");
+  fprintf(f,
+          "task_in,task_out,implicit_in,implicit_out,mpi_in,mpi_out,cluster_in,"
+          "cluster_out,number_link\n");
 
   /* loop over all tasks */
   for (int i = 0; i < s->nr_tasks; i++) {
@@ -279,35 +231,34 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
       /* Not written yet => write it */
       if (!written) {
 
-	int count = scheduler_get_number_relation(s, ta, tb);
+        int count = scheduler_get_number_relation(s, ta, tb);
 
         /* text to write */
         char ta_name[200];
         char tb_name[200];
 
         /* construct line */
-        scheduler_task_dependency_name(ta->type, ta->subtype, ta_name);
-        scheduler_task_dependency_name(tb->type, tb->subtype, tb_name);
+        task_get_full_name(ta->type, ta->subtype, ta_name);
+        task_get_full_name(tb->type, tb->subtype, tb_name);
 
-	/* Check if MPI */
-	int ta_mpi = 0;
+        /* Check if MPI */
+        int ta_mpi = 0;
         if (ta->type == task_type_send || ta->type == task_type_recv)
-	  ta_mpi = 1;
+          ta_mpi = 1;
 
-	int tb_mpi = 0;
+        int tb_mpi = 0;
         if (tb->type == task_type_send || tb->type == task_type_recv)
-	  tb_mpi = 1;
+          tb_mpi = 1;
 
-	/* Get cluster name */
-	char ta_cluster[20];
-	scheduler_get_cluster_name(ta, ta_cluster);
-	char tb_cluster[20];
-	scheduler_get_cluster_name(tb, tb_cluster);
-	
-	fprintf(f, "%s,%s,%i,%i,%i,%i,%s,%s,%i\n",
-		ta_name, tb_name, ta->implicit, tb->implicit,
-		ta_mpi, tb_mpi, ta_cluster, tb_cluster, count);
+        /* Get group name */
+        char ta_cluster[20];
+        char tb_cluster[20];
+        task_get_group_name(ta, ta_cluster);
+        task_get_group_name(tb, tb_cluster);
 
+        fprintf(f, "%s,%s,%d,%d,%d,%d,%s,%s,%d\n", ta_name, tb_name,
+                ta->implicit, tb->implicit, ta_mpi, tb_mpi, ta_cluster,
+                tb_cluster, count);
       }
     }
   }
