@@ -242,6 +242,7 @@ int main(int argc, char *argv[]) {
       OPT_INTEGER('Y', "threadpool-dumps", &dump_threadpool,
                   "Time-step frequency at which threadpool tasks are dumped.",
                   NULL, 0, 0),
+      OPT_END(),
   };
   struct argparse argparse;
   argparse_init(&argparse, options, swift_usage, 0);
@@ -1205,6 +1206,7 @@ int main(int argc, char *argv[]) {
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
+  if (with_cooling) cooling_clean(&cooling_func);
   engine_clean(&e);
   free(params);
 

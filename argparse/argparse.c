@@ -361,6 +361,7 @@ void argparse_usage(struct argparse *self) {
         }
       }
       if (dangling) fprintf(stdout, "\n");
+      free(str);
     } else {
       fprintf(stdout, "\n");
     }
