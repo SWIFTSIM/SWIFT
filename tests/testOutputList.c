@@ -36,9 +36,9 @@ const double time_values[Ntest] = {
 
 /* Expected values from file */
 const double a_values[Ntest] = {
-    0.5,
-    0.1,
     0.01,
+    0.1,
+    0.5,
 };
 
 void test_no_cosmo(struct engine *e, char *name, int with_assert) {
@@ -62,7 +62,7 @@ void test_no_cosmo(struct engine *e, char *name, int with_assert) {
   for (int i = 0; i < Ntest; i++) {
     /* Test last value */
     if (with_assert) {
-      assert(abs(output_time - time_values[i]) < tol);
+      assert(fabs(output_time - time_values[i]) < tol);
     }
 
     /* Set current time */
@@ -98,7 +98,7 @@ void test_cosmo(struct engine *e, char *name, int with_assert) {
   for (int i = 0; i < Ntest; i++) {
     /* Test last value */
     if (with_assert) {
-      assert(abs(output_time - a_values[i]) < tol);
+      assert(fabs(output_time - a_values[i]) < tol);
     }
 
     /* Set current time */

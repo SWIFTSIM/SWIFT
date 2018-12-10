@@ -23,7 +23,10 @@ group sizes, the interesting data in the ``.catalog_group`` files are:
 
 + The ``group_size``: gives a list of all the halos and the number of particles
   in the halo, this list is numbered from 0 until the number of groups minus
-  one. It is important that the groups are not ordered in any way [#order]_ 
+  one. It is important that the groups are not ordered in any way [#order]_.
+  It is also important to note that the group size includes both the bound and
+  unbound particles; always use the ``Offset`` and ``Offset_unbound`` data
+  when reading from the ``catalog_particles`` files.
 + The ``Num_of_groups`` or ``Total_num_of_groups``: gives the total number of
   groups in the snapshot.
 + The ``Offset`` list: This list gives the offset off the particles. In the
@@ -43,7 +46,7 @@ The second file that is produced by VELOCIraptor is the ``.catalog_particles``
 file, this file contains mainly all the IDs of the particles and has two
 interesting parameters:
 
-+ The ``Num_of_particles_in_groups`` and ``Num_of_particles_in_groups``
++ The ``Num_of_particles_in_groups`` and ``Total_num_of_particles_in_all_groups``
   parameter: Gives the total number of particles in the file or the total 
   number of particles that are in halos.
 + The ``Particle_IDs``: The list of particles as sorted by halo, in which halo
@@ -54,6 +57,64 @@ Besides the ``.catalog_particles`` file, there is also a
 ``.catalog_particles.unbound`` file, this file contains the same information
 but only for the unbound particles, a particle can only be present in one of
 these two lists. 
+
+Extracting the particles in a given halo
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``.catalog_particles`` file returns particle IDs that need to be matched
+with those in your snapshot to find the particles in the file that you
+wish to extract. The python snippet below should give you an idea of how to
+go about doing this for the bound particles.
+
+First, we need to extract the offset from the ``.catalog_group`` file, and
+work out how many _bound_ particles are in our halo. We can do this by
+looking at the next offset. Then, we can ID match those with the snapshot
+file, and get the mask for the _positions_ in the file that correspond
+to our bound particles. (Note this requires ``numpy > 1.15.0``).
+
+.. code-block:: python
+   :linenos:
+
+   import numpy as np
+   import h5py
+
+   snapshot_file = h5py.File("swift_snapshot.hdf5", "r")
+   group_file = h5py.File("velociraptor_output.catalog_group", "r")
+   particles_file = h5py.File("velociraptor_output.catalog_particles", "r")
+
+   halo = 100
+   # Grab the start position in the particles file to read from
+   halo_start_position = group_file["Offset"][halo]
+   halo_end_position = group_file["Offset"][halo + 1]
+   # We're done with that file now, best to close earlier rather than later
+   group_file.close()
+
+   # Get the relevant particle IDs for that halo; this includes particles
+   # of _all_ types.
+   particle_ids_in_halo = particles_file["Particle_IDs"][
+       halo_start_position:halo_end_position
+   ]
+   # Again, we're done with that file.
+   particles_file.close()
+
+   # Now, the tricky bit. We need to create the correspondence between the
+   # positions in the snapshot file, and the ids.
+
+   # Let's look for the dark matter particles in that halo.
+   particle_ids_from_snapshot = snapshot_file["PartType1/ParticleIDs"][...]
+
+   _, indices_v, indices_p = np.intersect1d(
+       particle_ids_in_halo,
+       particle_ids_from_snapshot,
+       assume_unique=True,
+       return_indices=True,
+   )
+
+   # indices_p gives the positions in the particle file where we will find
+   # the co-ordinates that we're looking for! To get the positions of all of
+   # those particles,
+   particle_positions_in_halo = snapshot_file["PartType1/Coordinates"][indices_p]
+
 
 Catalog_parttypes file
 ----------------------
@@ -75,7 +136,7 @@ the unbound particles.
 Properties file
 ---------------
 
-The Fourth file is the ``.properties`` file, this file contains many physical
+The fourth file is the ``.properties`` file, this file contains many physical
 useful information of the corresponding halos. This can be divided in several
 useful groups of physical parameters, on this page we have divided the several
 variables which are present in the ``.properties`` file. This file has most 
@@ -105,7 +166,7 @@ Mean Density related:
   :math:`\Delta=200` based on the mean density of the Universe 
   (:math:`M_{200}`).
 + ``R_200mean``: The :math:`R_{200}` radius of the halo based on the 
-  mean density ofthe Universe.
+  mean density of the Universe.
 
 Virial properties:
 """"""""""""""""""
@@ -118,7 +179,7 @@ Bryan and Norman 1998 properties:
 
 + ``Mass_BN98``, The Bryan and Norman (1998) determination of the mass of the
   halo [#BN98]_. 
-+ ``R_BN98``, the Bryan and Norman (1998) corresponding radius[#BN98]_.
++ ``R_BN98``, the Bryan and Norman (1998) corresponding radius [#BN98]_.
 
 Several Mass types:
 """""""""""""""""""
@@ -129,7 +190,7 @@ properties.
 + ``M_gas``: The gas mass in the halo.
 + ``Mass_tot``: The total mass of the halo
 + ``M_gas_30kpc``: The gas mass within 30 kpc of the halo centre.
-+ ``M_gas_500c``: The gas mass of the overdensity of 500 times the critical
++ ``M_gas_500c``: The gas mass of the over-density of 500 times the critical
   density
 + ``M_gas_Rvmax``: The gas mass within the maximum rotation velocity.
 
@@ -171,7 +232,7 @@ NFW profile properties:
 + ``VXc_gas``, ``VYc_gas`` and ``VZc_gas`` are the velocities of the gas  in
   the centre of the halo [#check]_.
 
-Intertia Tensor properties:
+Inertia Tensor properties:
 """""""""""""""""""""""""""
 
 + ``eig_ij``: Are the normalized eigenvectors of the inertia tensor.

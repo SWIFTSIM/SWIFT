@@ -7,8 +7,14 @@ then
     ./getIC.sh
 fi
 
+if [ ! -e coolingtables ]
+then
+    echo "Fetching cooling tables for the small cosmological volume example..."
+    ./getCoolingTables.sh
+fi
+
 # Run SWIFT
-../swift -c -s -G -C -t 8 small_cosmo_volume.yml 2>&1 | tee output.log
+../swift --cosmology --hydro --self-gravity --cooling --threads=8 small_cosmo_volume.yml 2>&1 | tee output.log
 
 # Plot the temperature evolution
 python plotTempEvolution.py

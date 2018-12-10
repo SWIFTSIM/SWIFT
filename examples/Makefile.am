@@ -1,4 +1,4 @@
-# tHIS FIle is part of SWIFT.
+# This file is part of SWIFT.
 # Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
 #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
 #
@@ -19,12 +19,15 @@
 MYFLAGS = 
 
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(GRACKLE_INCS)
+AM_CFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/argparse $(HDF5_CPPFLAGS) \
+	$(GSL_INCS) $(FFTW_INCS) $(GRACKLE_INCS)
 
 AM_LDFLAGS = $(HDF5_LDFLAGS)
 
 # Extra libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS) $(GSL_LIBS)
+EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) \
+	$(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) \
+	$(VELOCIRAPTOR_LIBS) $(GSL_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS)
@@ -48,12 +51,12 @@ endif
 # Sources for swift
 swift_SOURCES = main.c
 swift_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-swift_LDADD =  ../src/.libs/libswiftsim.a $(EXTRA_LIBS)
+swift_LDADD =  ../src/.libs/libswiftsim.a ../argparse/.libs/libargparse.a $(EXTRA_LIBS)
 
 # Sources for swift_mpi, do we need an affinity policy for MPI?
 swift_mpi_SOURCES = main.c
 swift_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(MPI_LIBS) $(EXTRA_LIBS)
+swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a ../argparse/.libs/libargparse.a $(MPI_LIBS) $(EXTRA_LIBS)
 
 # Scripts to generate ICs
 EXTRA_DIST = CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/makeIC.py CoolingBox/run.sh \
@@ -105,18 +108,3 @@ EXTRA_DIST = CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/make
 
 # Default parameter file
 EXTRA_DIST += parameter_example.yml
-
-# Scripts to plot task graphs
-EXTRA_DIST += plot_tasks.py analyse_tasks.py process_plot_tasks_MPI process_plot_tasks
-
-# Scripts to plot threadpool 'task' graphs
-EXTRA_DIST += analyse_threadpool_tasks.py \
-              plot_threadpool.py \
-              process_plot_threadpool
-
-# Script for scaling plot
-EXTRA_DIST += plot_scaling_results.py \
-              plot_scaling_results_breakdown.py
-
-# Script for gravity accuracy
-EXTRA_DIST += plot_gravity_checks.py

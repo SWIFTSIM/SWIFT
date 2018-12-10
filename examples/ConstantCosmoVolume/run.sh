@@ -13,7 +13,7 @@ then
 fi
 
 # Run SWIFT
-../swift -s -c -G -t 8 constant_volume.yml 2>&1 | tee output.log
+../swift --hydro --cosmology --self-gravity --threads=8 constant_volume.yml 2>&1 | tee output.log
 
 # Plot the result
 python plotSolution.py $i

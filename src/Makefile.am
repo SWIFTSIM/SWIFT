@@ -51,10 +51,16 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     mesh_gravity.h cbrt.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
     logger_io.h
 
+# source files for EAGLE cooling
+EAGLE_COOLING_SOURCES =
+if HAVEEAGLECOOLING
+EAGLE_COOLING_SOURCES += cooling/EAGLE/cooling.c cooling/EAGLE/cooling_tables.c
+endif
+
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c \
-    engine_marktasks.c serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
-    units.c common_io.c single_io.c multipole.c version.c map.c \
+    engine_marktasks.c engine_drift.c serial_io.c timers.c debug.c scheduler.c \
+    proxy.c parallel_io.c units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potential.c hydro_properties.c \
     threadpool.c cooling.c sourceterms.c \
@@ -62,7 +68,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c 
     part_type.c xmf.c gravity_properties.c gravity.c \
     collectgroup.c hydro_space.c equation_of_state.c \
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
-    outputlist.c velociraptor_dummy.c logger_io.c
+    outputlist.c velociraptor_dummy.c logger_io.c $(EAGLE_COOLING_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
@@ -144,7 +150,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  cooling/grackle/cooling.h cooling/grackle/cooling_struct.h \
                  cooling/grackle/cooling_io.h \
 		 cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h \
-                 cooling/EAGLE/cooling_io.h \
+                 cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h \
                  chemistry/none/chemistry.h \
 		 chemistry/none/chemistry_io.h \
 		 chemistry/none/chemistry_struct.h \

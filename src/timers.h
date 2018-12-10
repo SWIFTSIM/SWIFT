@@ -88,14 +88,9 @@ enum {
   timer_locktree,
   timer_runners,
   timer_step,
-  timer_doself_stars_density,
-  timer_dopair_stars_density,
   timer_dostars_ghost,
-  timer_doself_subset_stars_density,
-  timer_dopair_subset_stars_density,
-  timer_dosubpair_stars_density,
-  timer_dosub_self_stars_density,
   timer_logger,
+  timer_do_stars_sort,
   timer_count,
 };
 

@@ -98,6 +98,7 @@ enum engine_step_properties {
 #define engine_maxproxies 64
 #define engine_tasksreweight 1
 #define engine_parts_size_grow 1.05
+#define engine_max_proxy_centre_frac 0.2
 #define engine_redistribute_alloc_margin 1.2
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
@@ -354,7 +355,7 @@ struct engine {
   const struct external_potential *external_potential;
 
   /* Properties of the cooling scheme */
-  const struct cooling_function_data *cooling_func;
+  struct cooling_function_data *cooling_func;
 
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
@@ -399,7 +400,7 @@ void engine_compute_next_stf_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
-void engine_drift_all(struct engine *e);
+void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_print_stats(struct engine *e);
@@ -415,7 +416,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
-                 const struct cooling_function_data *cooling_func,
+                 struct cooling_function_data *cooling_func,
                  const struct chemistry_global_data *chemistry,
                  struct sourceterms *sourceterms);
 void engine_config(int restart, struct engine *e, struct swift_params *params,

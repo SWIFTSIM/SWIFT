@@ -1,6 +1,8 @@
 .. Parameter Files
    Matthieu Schaller, 21st October 2018
 
+.. _Parameter_File_label:
+
 Parameter Files
 ===============
 
@@ -22,7 +24,7 @@ Comments can be inserted anywhere and start with a hash:
 
 .. code:: YAML
 
-   # Descrption of the physics
+   # Description of the physics
    viscosity_alpha:     2.0
    dt_max:              1.5     # seconds
 
@@ -70,11 +72,11 @@ section. A list of all the possible parameters is kept in the file
 Internal Unit System
 --------------------
 
-This section describes the units used internally by the code. This is
-the system of units in which all the equations are solved. All
-physical constants are converted to this system and if the ICs use a
-different system (see :ref:`ICs_units_label`) the particle quantities
-will be converted when read in.
+The ``InternalUnitSystem`` section describes the units used internally by the
+code. This is the system of units in which all the equations are solved. All
+physical constants are converted to this system and if the ICs use a different
+system (see :ref:`ICs_units_label`) the particle quantities will be converted
+when read in.
 
 The system of units is described using the value of the 5 basic units
 of any system with respect to the CGS system. Instead of using a unit
@@ -111,7 +113,7 @@ schemes that make use of the unit of electric current. There is also
 no incentive to use anything else than Kelvin but that makes the whole
 system consistent with any possible unit system.
 
-If one is interested in using the more humourous `FFF unit
+If one is interested in using the more humorous `FFF unit
 system <https://en.wikipedia.org/wiki/FFF_system>`_ one would use
 
 .. code:: YAML
@@ -130,9 +132,9 @@ exercise for the reader [#f1]_.
 Cosmology
 ---------
 
-When running a cosmological simulation, this section set the values of the
-cosmological model. The epanded :math:`\Lambda\rm{CDM}` parameters governing the
-background evolution of the Univese need to be specified here. These are:
+When running a cosmological simulation, the section ``Cosmology`` sets the values of the
+cosmological model. The expanded :math:`\Lambda\rm{CDM}` parameters governing the
+background evolution of the Universe need to be specified here. These are:
 
 * The reduced Hubble constant: :math:`h`: ``h``,
 * The matter density parameter :math:`\Omega_m`: ``Omega_m``,
@@ -140,9 +142,11 @@ background evolution of the Univese need to be specified here. These are:
 * The baryon density parameter :math:`\Omega_b`: ``Omega_b``,
 * The radiation density parameter :math:`\Omega_r`: ``Omega_r``.
 
-The last parameter can be omitted and will default to :math:`\Omega_r = 0`.
+The last parameter can be omitted and will default to :math:`\Omega_r = 0`. Note
+that SWIFT will verify on start-up that the matter content of the initial conditions
+matches the cosmology specified in this section.
 
-This section als specifies the start and end of the simulation expressed in
+This section also specifies the start and end of the simulation expressed in
 terms of scale-factors. The two parameters are:
 
 * Initial scale-factor: ``a_begin``,
@@ -153,7 +157,7 @@ state of dark energy :math:`w(a)`. We use the evolution law :math:`w(a) =
 w_0 + w_a (1 - a)`. The two parameters in the YAML file are:
 
 * The :math:`z=0` dark energy equation of state parameter :math:`w_0`: ``w_0``
-* The dark energy equation of state evolutio parameter :math:`w_a`: ``w_a``
+* The dark energy equation of state evolution parameter :math:`w_a`: ``w_a``
 
 If unspecified these parameters default to the default
 :math:`\Lambda\rm{CDM}` values of :math:`w_0 = -1` and :math:`w_a = 0`.
@@ -175,14 +179,14 @@ use the following parameters:
      w_0:            -1.0          # (Optional)
      w_a:            0.            # (Optional)
 
-When running a non-cosmological simulation (i.e. without the ``-c`` runtime
+When running a non-cosmological simulation (i.e. without the ``-c`` run-time
 flag) this section of the YAML file is entirely ignored.
      
 Gravity
 -------
 
-The behaviour of the self-gravity solver can be modifed by the parameters
-provided in this section. The theory document puts these parameters into the
+The behaviour of the self-gravity solver can be modified by the parameters
+provided in the ``Gravity`` section. The theory document puts these parameters into the
 context of the equations being solved. We give a brief overview here.
 
 * The Plummer-equivalent co-moving softening length used for all particles :math:`\epsilon_{com}`: ``comoving_softening``,
@@ -202,7 +206,7 @@ The last tree-related parameter is
 
 * The tree rebuild frequency: ``rebuild_frequency``.
 
-Thqe tree rebuild frequency is an optional parameter defaulting to
+The tree rebuild frequency is an optional parameter defaulting to
 :math:`0.01`. It is used to trigger the re-construction of the tree every time a
 fraction of the particles have been integrated (kicked) forward in time.
 
@@ -215,12 +219,12 @@ Particle-Mesh part of the calculation. The last three are optional:
 * The scale above which the short-range forces are assumed to be 0 (in units of
   the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
   cut,max}`: ``r_cut_max`` (default: ``4.5``),
-* The scale bewlo which the short-range forces are assumed to be exactly Newtonian (in units of
+* The scale below which the short-range forces are assumed to be exactly Newtonian (in units of
   the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
   cut,min}`: ``r_cut_min`` (default: ``0.1``),
   
 For most runs, the default values can be used. Only the number of cells along
-each axis needs to be sepcified. The remaining three values are best described
+each axis needs to be specified. The remaining three values are best described
 in the context of the full set of equations in the theory documents.
   
 As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
@@ -240,7 +244,6 @@ simulation:
      r_cut_max:    4.5                  # Default optional value
      r_cut_min:    0.1                  # Default optional value
 
-
       
 SPH
 ---
@@ -248,6 +251,121 @@ SPH
 Time Integration
 ----------------
 
+The ``TimeIntegration`` section is used to set some general parameters related to time
+integration. In all cases, users have to provide a minimal and maximal time-step
+size:
+
+* Maximal time-step size: ``dt_max``
+* Minimal time-step size: ``dt_min``
+
+These quantities are expressed in internal units. All particles will have their
+time-step limited by the maximal value on top of all the other criteria that may
+apply to them (gravity acceleration, Courant condition, etc.). If a particle
+demands a time-step size smaller than the minimum, SWIFT will abort with an
+error message. This is a safe-guard against simulations that would never
+complete due to the number of steps to run being too large.
+
+When running a non-cosmological simulation, the user also has to provide the
+time of the start and the time of the end of the simulation:
+
+* Start time: ``time_begin``
+* End time: ``time_end``
+
+Both are expressed in internal units. The start time is typically set to ``0``
+but SWIFT can handle any value here. For cosmological runs, these values are
+ignored and the start- and end-points of the runs are specified by the start and
+end scale-factors in the cosmology section of the parameter file.
+
+Additionally, when running a cosmological volume, advanced users can specify the
+value of the dimensionless pre-factor entering the time-step condition linked
+with the motion of particles with respect to the background expansion and mesh
+size. See the theory document for the exact equations.
+
+* Dimensionless pre-factor of the maximal allowed displacement:
+  ``max_dt_RMS_factor`` (default: ``0.25``)
+
+This value rarely needs altering.
+
+A full time-step section for a non-cosmological run would be:
+
+.. code:: YAML
+
+  TimeIntegration:
+    time_begin:   0    # Start time in internal units.
+    time_end:     10.  # End time in internal units.
+    dt_max:       1e-2
+    dt_min:       1e-6
+
+Whilst for a cosmological run, one would need:
+
+.. code:: YAML
+
+  TimeIntegration:
+    dt_max:            1e-4
+    dt_min:            1e-10
+    max_dt_RMS_factor: 0.25     # Default optional value
+
+Initial Conditions
+------------------
+
+This ``InitialConditions`` section of the parameter file contains all the options related to
+the initial conditions. The main two parameters are
+
+* The name of the initial conditions file: ``file_name``,
+* Whether the problem uses periodic boundary conditions or not: ``periodic``.
+
+The file path is relative to where the code is being executed. These
+parameters can be complemented by some optional values to drive some
+specific behaviour of the code.
+
+* Whether to generate gas particles from the DM particles: ``generate_gas_in_ics`` (default: ``0``),
+* Whether to activate an additional clean-up of the SPH smoothing lengths: ``cleanup_smoothing_lengths`` (default: ``0``)
+
+The procedure used to generate gas particles from the DM ones is
+outlined in the theory documents and is too long for a full
+description here.  The cleaning of the smoothing lengths is an
+expensive operation but can be necessary in the cases where the
+initial conditions are of poor quality and the values of the smoothing
+lengths are far from the values they should have.
+
+When starting from initial conditions created for Gadget, some
+additional flags can be used to convert the values from h-full to
+h-free and remove the additional :math:`\sqrt{a}` in the velocities:
+
+* Whether to re-scale all the fields to remove powers of h from the quantities: ``cleanup_h_factors`` (default: ``0``),
+* Whether to re-scale the velocities to remove the :math:`\sqrt{a}` assumed by Gadget : ``cleanup_velocity_factors`` (default: ``0``).
+
+The h-factors are self-consistently removed according to their units
+and this is applied to all the quantities irrespective of particle
+types. The correct power of ``h`` is always calculated for each
+quantity.
+
+Finally, SWIFT also offers these options:
+
+* A factor to re-scale all the smoothing-lengths by a fixed amount: ``smoothing_length_scaling`` (default: ``1.``),
+* A shift to apply to all the particles: ``shift`` (default: ``[0.0,0.0,0.0]``),
+* Whether to replicate the box along each axis: ``replicate`` (default: ``1``).
+
+The shift is expressed in internal units. The option to replicate the
+box is especially useful for weak-scaling tests. When set to an
+integer >1, the box size is multiplied by this integer along each axis
+and the particles are duplicated and shifted such as to create exact
+copies of the simulation volume.
+
+The full section to start a DM+hydro run from Gadget DM-only ICs would
+be:
+
+.. code:: YAML
+
+   InitialConditions:
+     file_name:  my_ics.hdf5
+     periodic:                    1
+     cleanup_h_factors:           1     
+     cleanup_velocity_factors:    1     
+     generate_gas_in_ics:         1     
+     cleanup_smoothing_lengths:   1  
+
+  
 Physical Constants
 ------------------
 
@@ -288,19 +406,19 @@ Restarts
 --------
 
 SWIFT can write check-pointing files and restart from them. The behaviour of
-this mechanism is driven by the options int he `Restarts` section of the YAML
+this mechanism is driven by the options in the ``Restarts`` section of the YAML
 parameter file. All the parameters are optional but default to values that
 ensure a reasonable behaviour. 
 
-* Wether or not to enable the dump of restart files: ``enable`` (default:
+* Whether or not to enable the dump of restart files: ``enable`` (default:
   ``1``).
 
 This parameter acts a master-switch for the check-pointing capabilities. All the
 other options require the ``enable`` parameter to be set to ``1``.
   
-* Wether or not to save a copy of the previous set of check-pointing files:
+* Whether or not to save a copy of the previous set of check-pointing files:
   ``save`` (default: ``1``),
-* Wether or not to dump a set of restart file on regular exit: ``onexit``
+* Whether or not to dump a set of restart file on regular exit: ``onexit``
   (default: ``0``),
 * The wall-clock time in hours between two sets of restart files:
   ``delta_hours`` (default: ``6.0``).
@@ -315,7 +433,7 @@ smaller value to allow for enough time to safely dump the check-point files.
 
 If the directory does not exist, SWIFT will create it.  When resuming a run,
 SWIFT, will look for files with the name provided in the sub-directory specified
-here. The files themselves are named ``basename_000001.rst`` where the basenme
+here. The files themselves are named ``basename_000001.rst`` where the basename
 is replaced by the user-specified name and the 6-digits number corresponds to
 the MPI-rank. SWIFT writes one file per MPI rank. If the ``save`` option has
 been activated, the previous set of restart files will be named
@@ -372,7 +490,7 @@ Scheduler
 Domain Decomposition
 --------------------
 
-.. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's contant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
+.. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's constant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
 
 
 .. [#f2] which would translate into a constant :math:`G_N=1.5517771\times10^{-9}~cm^{3}\,g^{-1}\,s^{-2}` if expressed in the CGS system.

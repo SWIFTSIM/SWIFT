@@ -59,10 +59,10 @@ Scheduler:
   cell_sub_size_self_hydro:  32000     # (Optional) Maximal number of interactions per sub-self hydro task  (this is the default value).
   cell_sub_size_pair_grav:   256000000 # (Optional) Maximal number of interactions per sub-pair gravity task  (this is the default value).
   cell_sub_size_self_grav:   32000     # (Optional) Maximal number of interactions per sub-self gravity task  (this is the default value).
-  cell_sub_size_pair_stars:   256000000 # (Optional) Maximal number of interactions per sub-pair stars task  (this is the default value).
-  cell_sub_size_self_stars:   32000     # (Optional) Maximal number of interactions per sub-self stars task  (this is the default value).
+  cell_sub_size_pair_stars:  256000000 # (Optional) Maximal number of interactions per sub-pair stars task  (this is the default value).
+  cell_sub_size_self_stars:  32000     # (Optional) Maximal number of interactions per sub-self stars task  (this is the default value).
   cell_split_size:           400       # (Optional) Maximal number of particles per cell (this is the default value).
-  cell_subdepth_grav:        2         # (Optional) Maximal depth the gravity tasks can be pushed down (this is the default value).
+  cell_subdepth_diff_grav:   4         # (Optional) Maximal depth difference between leaves and a cell that gravity tasks can be pushed down to (this is the default value).
   max_top_level_cells:       12        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
   tasks_per_cell:            0         # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
   mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.
@@ -175,6 +175,7 @@ EoS:
 
 # Point mass external potentials
 PointMassPotential:
+  useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
   position:        [50.,50.0,50.]      # location of external point mass (internal units)
   mass:            1e10                # mass of external point mass (internal units)
   timestep_mult:   0.03                # Dimensionless pre-factor for the time-step condition
@@ -182,10 +183,38 @@ PointMassPotential:
 
 # Isothermal potential parameters
 IsothermalPotential:
+  useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
   position:        [100.,100.,100.]    # Location of centre of isothermal potential with respect to centre of the box (internal units)
   vrot:            200.     # Rotation speed of isothermal potential (internal units)
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
   epsilon:         0.1      # Softening size (internal units)
+  
+# Hernquist potential parameters
+HernquistPotential:
+  useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
+  position:        [100.,100.,100.]    # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+  idealizeddisk:   0        # (Optional) Whether to run with idealizeddisk or without, 0 used the mass and scalelength as mandatory parameters, while 1 uses more advanced disk dependent paramters
+  mass:            1e10     # (Optional 0) default parameter, Mass of the Hernquist potential
+  scalelength:     10.0     # (Optional 0) default parameter, Scale length of the potential
+                            # If multiple X200 values are given, only one is used, in the order M200 > V200 > R200.
+  M200:            3e11     # (Optional 1a) M200 of the galaxy+halo (when used V200 and R200 are not used)
+  V200:            100.     # (Optional 1b) V200 of the galaxy+halo (when used M200 and R200 are not used, if M200 is given M200 is used)
+  R200:            10.      # (Optional 1c) R200 of the galaxy+halo (when used M200 and V200 are not used, if M200 or V200 are given they are used)
+  h:               0.704    # (Optional 1) reduced Hubble constant
+  concentration:   7.1      # (Optional 1) concentration of the Halo
+  diskfraction:              0.0434370991372   # (Optional 1) Disk mass fraction (equal to MD in MakeNewDisk and GalIC)
+  bulgefraction:              0.00705852860979  # (Optional 1) Bulge mass fraction (equal to MB in MakeNewDisk and GalIC)
+  timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+  epsilon:         0.1      # Softening size (internal units)
+ 
+# Isothermal potential parameters
+NFWPotential:
+  useabspos:          0
+  position:           [0.0,0.0,0.0]      # Location of centre of isothermal potential with respect to centre of the box (internal units) if useabspos=0 otherwise with respect to the 0,0,0, coordinates.
+  concentration:      8.       # Concentration of the halo
+  M_200:              2.0e+12  # Mass of the halo (M_200 in internal units)
+  critical_density:   127.4    # Critical density (internal units).
+  timestep_mult:      0.01     # Dimensionless pre-factor for the time-step condition, basically determines fraction of orbital time we need to do an integration step
 
 # Disk-patch potential parameters
 DiscPatchPotential:

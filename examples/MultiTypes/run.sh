@@ -7,4 +7,4 @@ then
     python makeIC.py 9 13 7 1
 fi
 
-../swift -s -g -S -t 1 multiTypes.yml 2>&1 | tee output.log
+../swift --hydro --external-gravity --stars --threads=1 multiTypes.yml 2>&1 | tee output.log

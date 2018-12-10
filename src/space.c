@@ -68,7 +68,7 @@ int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_subsize_pair_stars = space_subsize_pair_stars_default;
 int space_subsize_self_stars = space_subsize_self_stars_default;
-int space_subdepth_grav = space_subdepth_grav_default;
+int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
 #ifdef SWIFT_DEBUG_CHECKS
 int last_cell_id;
@@ -167,6 +167,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
       space_recycle_list(s, cell_rec_begin, cell_rec_end, multipole_rec_begin,
                          multipole_rec_end);
     c->hydro.sorts = NULL;
+    c->stars.sorts = NULL;
     c->nr_tasks = 0;
     c->grav.nr_mm_tasks = 0;
     c->hydro.density = NULL;
@@ -177,7 +178,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.dx_max_part = 0.0f;
     c->hydro.dx_max_sort = 0.0f;
     c->stars.dx_max_part = 0.f;
+    c->stars.dx_max_sort = 0.f;
     c->hydro.sorted = 0;
+    c->stars.sorted = 0;
     c->hydro.count = 0;
     c->hydro.updated = 0;
     c->hydro.inhibited = 0;
@@ -203,6 +206,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->end_force = NULL;
     c->hydro.drift = NULL;
     c->grav.drift = NULL;
+    c->grav.drift_out = NULL;
     c->hydro.cooling = NULL;
     c->sourceterms = NULL;
     c->grav.long_range = NULL;
@@ -217,21 +221,28 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.parts = NULL;
     c->stars.parts = NULL;
     c->hydro.do_sub_sort = 0;
+    c->stars.do_sub_sort = 0;
     c->grav.do_sub_drift = 0;
     c->hydro.do_sub_drift = 0;
     c->hydro.ti_end_min = -1;
     c->hydro.ti_end_max = -1;
     c->grav.ti_end_min = -1;
     c->grav.ti_end_max = -1;
+    c->stars.ti_end_min = -1;
 #ifdef SWIFT_DEBUG_CHECKS
     c->cellID = 0;
 #endif
     if (s->gravity) bzero(c->grav.multipole, sizeof(struct gravity_tensors));
-    for (int i = 0; i < 13; i++)
+    for (int i = 0; i < 13; i++) {
       if (c->hydro.sort[i] != NULL) {
         free(c->hydro.sort[i]);
         c->hydro.sort[i] = NULL;
       }
+      if (c->stars.sort[i] != NULL) {
+        free(c->stars.sort[i]);
+        c->stars.sort[i] = NULL;
+      }
+    }
 #if WITH_MPI
     c->mpi.tag = -1;
 
@@ -505,6 +516,14 @@ void space_regrid(struct space *s, int verbose) {
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
+          c->mpi.hydro.recv_xv = NULL;
+          c->mpi.hydro.recv_rho = NULL;
+          c->mpi.hydro.recv_gradient = NULL;
+          c->mpi.hydro.send_xv = NULL;
+          c->mpi.hydro.send_rho = NULL;
+          c->mpi.hydro.send_gradient = NULL;
+          c->mpi.grav.recv = NULL;
+          c->mpi.grav.send = NULL;
 #endif  // WITH_MPI
           if (s->gravity) c->grav.multipole = &s->multipoles_top[cid];
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1828,11 +1847,16 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
  */
 void space_map_clearsort(struct cell *c, void *data) {
 
-  for (int i = 0; i < 13; i++)
+  for (int i = 0; i < 13; i++) {
     if (c->hydro.sort[i] != NULL) {
       free(c->hydro.sort[i]);
       c->hydro.sort[i] = NULL;
     }
+    if (c->stars.sort[i] != NULL) {
+      free(c->stars.sort[i]);
+      c->stars.sort[i] = NULL;
+    }
+  }
 }
 
 /**
@@ -2003,6 +2027,7 @@ void space_split_recursive(struct space *s, struct cell *c,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps;
   struct part *parts = c->hydro.parts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
@@ -2103,12 +2128,14 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->hydro.dx_max_sort = 0.f;
       cp->stars.h_max = 0.f;
       cp->stars.dx_max_part = 0.f;
+      cp->stars.dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->super = NULL;
       cp->hydro.super = NULL;
       cp->grav.super = NULL;
       cp->hydro.do_sub_sort = 0;
+      cp->stars.do_sub_sort = 0;
       cp->grav.do_sub_drift = 0;
       cp->hydro.do_sub_drift = 0;
 #ifdef WITH_MPI
@@ -2158,6 +2185,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
         ti_gravity_end_max = max(ti_gravity_end_max, cp->grav.ti_end_max);
         ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
+        ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
@@ -2284,6 +2312,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
     timebin_t hydro_time_bin_min = num_time_bins, hydro_time_bin_max = 0;
     timebin_t gravity_time_bin_min = num_time_bins, gravity_time_bin_max = 0;
+    timebin_t stars_time_bin_min = num_time_bins;
 
     /* parts: Get dt_min/dt_max and h_max. */
     for (int k = 0; k < count; k++) {
@@ -2321,6 +2350,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
       gravity_time_bin_min = min(gravity_time_bin_min, sparts[k].time_bin);
       gravity_time_bin_max = max(gravity_time_bin_max, sparts[k].time_bin);
+      stars_time_bin_min = min(stars_time_bin_min, sparts[k].time_bin);
+
       stars_h_max = max(stars_h_max, sparts[k].h);
 
       /* Reset x_diff */
@@ -2338,6 +2369,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     ti_gravity_end_max = get_integer_time_end(ti_current, gravity_time_bin_max);
     ti_gravity_beg_max =
         get_integer_time_begin(ti_current + 1, gravity_time_bin_max);
+    ti_stars_end_min = get_integer_time_end(ti_current, stars_time_bin_min);
 
     /* Construct the multipole and the centre of mass*/
     if (s->gravity) {
@@ -2375,6 +2407,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_end_max = ti_gravity_end_max;
   c->grav.ti_beg_max = ti_gravity_beg_max;
+  c->stars.ti_end_min = ti_stars_end_min;
   c->stars.h_max = stars_h_max;
   c->maxdepth = maxdepth;
 
@@ -2578,8 +2611,10 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
-    for (int k = 0; k < 13; k++)
+    for (int k = 0; k < 13; k++) {
       if (cells[j]->hydro.sort[k] != NULL) free(cells[j]->hydro.sort[k]);
+      if (cells[j]->stars.sort[k] != NULL) free(cells[j]->stars.sort[k]);
+    }
     struct gravity_tensors *temp = cells[j]->grav.multipole;
     bzero(cells[j], sizeof(struct cell));
     cells[j]->grav.multipole = temp;
@@ -2600,11 +2635,16 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 void space_free_buff_sort_indices(struct space *s) {
   for (struct cell *finger = s->cells_sub; finger != NULL;
        finger = finger->next) {
-    for (int k = 0; k < 13; k++)
+    for (int k = 0; k < 13; k++) {
       if (finger->hydro.sort[k] != NULL) {
         free(finger->hydro.sort[k]);
         finger->hydro.sort[k] = NULL;
       }
+      if (finger->stars.sort[k] != NULL) {
+        free(finger->stars.sort[k]);
+        finger->stars.sort[k] = NULL;
+      }
+    }
   }
 }
 
@@ -3159,13 +3199,14 @@ void space_init(struct space *s, struct swift_params *params,
                                space_subsize_self_stars_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
-  space_subdepth_grav = parser_get_opt_param_int(
-      params, "Scheduler:cell_subdepth_grav", space_subdepth_grav_default);
+  space_subdepth_diff_grav =
+      parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
+                               space_subdepth_diff_grav_default);
 
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
             space_splitsize);
-    message("subdepth_grav set to %d", space_subdepth_grav);
+    message("subdepth_grav set to %d", space_subdepth_diff_grav);
     message("sub_size_pair_hydro set to %d, sub_size_self_hydro set to %d",
             space_subsize_pair_hydro, space_subsize_self_hydro);
     message("sub_size_pair_grav set to %d, sub_size_self_grav set to %d",

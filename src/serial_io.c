@@ -149,10 +149,10 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
     /* message("Converting ! factor=%e", factor); */
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = temp;
+      double* temp_d = (double*)temp;
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
-      float* temp_f = temp;
+      float* temp_f = (float*)temp;
 
 #ifdef SWIFT_DEBUG_CHECKS
       float maximum = 0.f;
@@ -220,7 +220,7 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
   }
 
   /* Copy temporary buffer to particle data */
-  char* temp_c = temp;
+  char* temp_c = (char*)temp;
   for (size_t i = 0; i < N; ++i)
     memcpy(props.field + i * props.partSize, &temp_c[i * copySize], copySize);
 
@@ -474,7 +474,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   long long offset[swift_type_count] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
-  struct unit_system* ic_units = malloc(sizeof(struct unit_system));
+  struct unit_system* ic_units =
+      (struct unit_system*)malloc(sizeof(struct unit_system));
 
   /* First read some information about the content */
   if (mpi_rank == 0) {
@@ -498,6 +499,23 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     if (dimension != hydro_dimension)
       error("ICs dimensionality (%dD) does not match code dimensionality (%dD)",
             dimension, (int)hydro_dimension);
+
+    /* Check whether the number of files is specified (if the info exists) */
+    const hid_t hid_files = H5Aexists(h_grp, "NumFilesPerSnapshot");
+    int num_files = 1;
+    if (hid_files < 0)
+      error(
+          "Error while testing the existance of 'NumFilesPerSnapshot' "
+          "attribute");
+    if (hid_files > 0)
+      io_read_attribute(h_grp, "NumFilesPerSnapshot", INT, &num_files);
+    if (num_files != 1)
+      error(
+          "ICs are split over multiples files (%d). SWIFT cannot handle this "
+          "case. The script /tools/combine_ics.py is availalbe in the "
+          "repository "
+          "to combine files into a valid input file.",
+          num_files);
 
     /* Read the relevant information and print status */
     int flag_entropy_temp[6];
@@ -592,8 +610,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[0];
-    if (posix_memalign((void*)parts, part_align, *Ngas * sizeof(struct part)) !=
-        0)
+    if (posix_memalign((void**)parts, part_align,
+                       *Ngas * sizeof(struct part)) != 0)
       error("Error while allocating memory for SPH particles");
     bzero(*parts, *Ngas * sizeof(struct part));
   }
@@ -601,7 +619,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store stars particles */
   if (with_stars) {
     *Nstars = N[swift_type_stars];
-    if (posix_memalign((void*)sparts, spart_align,
+    if (posix_memalign((void**)sparts, spart_align,
                        *Nstars * sizeof(struct spart)) != 0)
       error("Error while allocating memory for stars particles");
     bzero(*sparts, *Nstars * sizeof(struct spart));
@@ -613,7 +631,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
                (with_stars ? N[swift_type_stars] : 0);
-    if (posix_memalign((void*)gparts, gpart_align,
+    if (posix_memalign((void**)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
@@ -1128,7 +1146,7 @@ void write_output_serial(struct engine* e, const char* baseName,
                                          Nstars_written);
 
               /* Select the fields to write */
-              stars_write_particles(sparts, list, &num_fields);
+              stars_write_particles(sparts_written, list, &num_fields);
             }
           } break;
 
