@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /**
- * @file src/cooling/EAGLE/eagle_cool_tables.c
+ * @file src/cooling/EAGLE/cooling_tables.c
  * @brief Functions to read EAGLE tables
  */
 
