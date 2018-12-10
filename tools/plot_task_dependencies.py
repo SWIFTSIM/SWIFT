@@ -111,7 +111,7 @@ def appendData(data):
     """
     N = len(data)
     if N == 1:
-        return data
+        return data[0]
 
     # add number link to data[0]
     for i in range(N-1):
@@ -351,3 +351,5 @@ if __name__ == "__main__":
         writeFooter(f)
 
     call(["dot", "-Tpng", dot_output, "-o", png_output])
+
+    print("You will find the graph in %s" % png_output)

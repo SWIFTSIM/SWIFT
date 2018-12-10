@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -176,9 +177,27 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   /* Reset everything */
   for (int i = 0; i < nber_relation; i++) table[i] = -1;
 
+  /* Master create directory */
+  char dir_name[100] = "task_dependencies";
+  if (s->nodeID == 0) {
+    struct stat st = {0};
+    if (stat(dir_name, &st) == -1) {
+      mkdir(dir_name, 0700);
+    }
+  }
+
+#ifdef WITH_MPI
+  /* wait on master */
+  int result = MPI_Barrier(MPI_COMM_WORLD);
+  if (result != MPI_SUCCESS) {
+    error("Unable to wait on other MPI rank");
+  }
+#endif
+
   /* Create file */
   char filename[200];
-  sprintf(filename, "dependency_graph_%04i.csv", s->nodeID);
+  sprintf(filename, "%s/dependency_graph_%04i.csv",
+	  dir_name, s->nodeID);
   FILE *f = fopen(filename, "w");
   if (f == NULL) error("Error opening dependency graph file.");
 
