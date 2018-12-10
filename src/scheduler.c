@@ -183,8 +183,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
     struct stat st = {0};
     if (stat(dir_name, &st) == -1) {
       int test = mkdir(dir_name, 0700);
-      if (test != 0)
-	error("Failed to create the task dependencies directory");
+      if (test != 0) error("Failed to create the task dependencies directory");
     }
   }
 
@@ -198,8 +197,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
   /* Create file */
   char filename[200];
-  sprintf(filename, "%s/dependency_graph_%04i.csv",
-	  dir_name, s->nodeID);
+  sprintf(filename, "%s/dependency_graph_%04i.csv", dir_name, s->nodeID);
   FILE *f = fopen(filename, "w");
   if (f == NULL) error("Error opening dependency graph file.");
 
