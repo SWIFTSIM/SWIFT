@@ -74,8 +74,8 @@ EAGLEChemistry: 	    # Solar abundances
   SulphurOverSilicon:       0.6054160
 
 EagleCooling:
-  filename:		   /cosma5/data/Eagle/BG_Tables/CoolingTables/
+  filename:                ./coolingtables/
   reionisation_redshift:   11.5
-  he_reion_z_center:       3.5
-  he_reion_z_sigma:        0.5
-  he_reion_ev_pH:          2.0
+  He_reion_z_centre:       3.5
+  He_reion_z_sigma:        0.5
+  He_reion_ev_pH:          2.0
