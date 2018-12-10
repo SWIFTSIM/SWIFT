@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
+  struct star_formation starform;
   struct pm_mesh mesh;
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
@@ -862,6 +863,11 @@ int main(int argc, char *argv[]) {
       cooling_init(params, &us, &prog_const, &cooling_func);
     if (myrank == 0) cooling_print(&cooling_func);
 
+    /* Initialise the star formation law and its properties */
+    if (with_star_formation) 
+    starformation_init(params, &prog_const, &us, &s, &starform);
+    if (myrank ==0) starformation_init(&starform);
+
     /* Initialise the chemistry */
     bzero(&chemistry, sizeof(struct chemistry_global_data));
     chemistry_init(params, &us, &prog_const, &chemistry);
@@ -890,7 +896,7 @@ int main(int argc, char *argv[]) {
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &gravity_properties, &stars_properties,
-                &mesh, &potential, &cooling_func, &chemistry);
+                &mesh, &potential, &cooling_func, &starform, &chemistry);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 

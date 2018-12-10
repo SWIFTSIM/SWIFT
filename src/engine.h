@@ -356,6 +356,9 @@ struct engine {
   /* Properties of the cooling scheme */
   struct cooling_function_data *cooling_func;
 
+  /* Properties of the starformation law */
+  const struct star_formation *star_formation;
+
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
 
