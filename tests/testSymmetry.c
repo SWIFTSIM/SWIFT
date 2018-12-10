@@ -27,7 +27,10 @@
 
 void print_bytes(void *p, size_t len) {
   printf("(");
-  for (size_t i = 0; i < len; ++i) printf("%02x", ((unsigned char *)p)[i]);
+  for (size_t i = 0; i < len; ++i) {
+    printf("%02x", ((unsigned char *)p)[i]);
+    if (i % 4 == 3) printf("|");
+  }
   printf(")\n");
 }
 
@@ -162,8 +165,8 @@ void test(void) {
   if (i_not_ok) {
     printParticle_single(&pi, &xpi);
     printParticle_single(&pi2, &xpi);
-    print_bytes(&pj, sizeof(struct part));
-    print_bytes(&pj2, sizeof(struct part));
+    print_bytes(&pi, sizeof(struct part));
+    print_bytes(&pi2, sizeof(struct part));
     error("Particles 'pi' do not match after density (byte = %d)", i_not_ok);
   }
   if (j_not_ok) {
@@ -220,17 +223,15 @@ void test(void) {
     j_not_ok |= c_is_d;
   }
 #else
-  i_not_ok =
-      strncmp((const char *)&pi, (const char *)&pi2, sizeof(struct part));
-  j_not_ok =
-      strncmp((const char *)&pj, (const char *)&pj2, sizeof(struct part));
+  i_not_ok = memcmp((char *)&pi, (char *)&pi2, sizeof(struct part));
+  j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));
 #endif
 
   if (i_not_ok) {
     printParticle_single(&pi, &xpi);
     printParticle_single(&pi2, &xpi);
-    print_bytes(&pj, sizeof(struct part));
-    print_bytes(&pj2, sizeof(struct part));
+    print_bytes(&pi, sizeof(struct part));
+    print_bytes(&pi2, sizeof(struct part));
     error("Particles 'pi' do not match after force (byte = %d)", i_not_ok);
   }
   if (j_not_ok) {

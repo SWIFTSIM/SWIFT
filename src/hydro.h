@@ -45,6 +45,12 @@
 #include "./hydro/PressureEnergy/hydro.h"
 #include "./hydro/PressureEnergy/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Pressure-Energy SPH (Hopkins 2013)"
+#elif defined(HOPKINS_PU_SPH_MONAGHAN)
+#include "./hydro/PressureEnergyMorrisMonaghanAV/hydro.h"
+#include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_iact.h"
+#define SPH_IMPLEMENTATION                                                \
+  "Pressure-Energy SPH (Hopkins 2013) with a Morris and Monaghan (1997) " \
+  "variable artificial viscosity."
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro.h"
 #include "./hydro/Default/hydro_iact.h"
@@ -62,9 +68,9 @@
 #include "./hydro/Shadowswift/hydro_iact.h"
 #define SPH_IMPLEMENTATION \
   "Shadowfax moving mesh (Vandenbroucke and De Rijcke 2016)"
-#elif defined(MINIMAL_MULTI_MAT_SPH)
-#include "./hydro/MinimalMultiMat/hydro.h"
-#include "./hydro/MinimalMultiMat/hydro_iact.h"
+#elif defined(PLANETARY_SPH)
+#include "./hydro/Planetary/hydro.h"
+#include "./hydro/Planetary/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Minimal version of SPH with multiple materials"
 #else
 #error "Invalid choice of SPH variant"

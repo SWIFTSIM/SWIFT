@@ -35,6 +35,79 @@
 
 #ifdef HAVE_VELOCIRAPTOR
 
+/* Structure for passing cosmological information to VELOCIraptor. */
+struct cosmoinfo {
+
+  /*! Current expansion factor of the Universe. (cosmology.a) */
+  double atime;
+
+  /*! Reduced Hubble constant (H0 / (100km/s/Mpc) (cosmology.h) */
+  double littleh;
+
+  /*! Matter density parameter (cosmology.Omega_m) */
+  double Omega_m;
+
+  /*! Baryon density parameter (cosmology.Omega_b) */
+  double Omega_b;
+
+  /*! Radiation constant density parameter (cosmology.Omega_lambda) */
+  double Omega_Lambda;
+
+  /*! Dark matter density parameter (cosmology.Omega_m - cosmology.Omega_b) */
+  double Omega_cdm;
+
+  /*! Dark-energy equation of state at the current time (cosmology.w)*/
+  double w_de;
+};
+
+/* Structure for passing unit information to VELOCIraptor. */
+struct unitinfo {
+
+  /* Length conversion factor to kpc. */
+  double lengthtokpc;
+
+  /* Velocity conversion factor to km/s. */
+  double velocitytokms;
+
+  /* Mass conversion factor to solar masses. */
+  double masstosolarmass;
+
+  /* Potential conversion factor. */
+  double energyperunitmass;
+
+  /*! Newton's gravitationl constant (phys_const.const_newton_G)*/
+  double gravity;
+
+  /*! Hubble constant at the current redshift (cosmology.H) */
+  double hubbleunit;
+};
+
+/* Structure to hold the location of a top-level cell. */
+struct cell_loc {
+
+  /* Coordinates x,y,z */
+  double loc[3];
+};
+
+/* Structure for passing simulation information to VELOCIraptor. */
+struct siminfo {
+  double period, zoomhigresolutionmass, interparticlespacing, spacedimension[3];
+
+  /* Number of top-cells. */
+  int numcells;
+
+  /*! Locations of top-level cells. */
+  struct cell_loc *cell_loc;
+
+  /*! Top-level cell width. */
+  double cellwidth[3];
+
+  /*! Inverse of the top-level cell width. */
+  double icellwidth[3];
+
+  int icosmologicalsim;
+};
+
 /* VELOCIraptor interface. */
 int InitVelociraptor(char *config_name, char *output_name,
                      struct cosmoinfo cosmo_info, struct unitinfo unit_info,
@@ -185,10 +258,12 @@ void velociraptor_invoke(struct engine *e) {
   struct space *s = e->s;
   struct gpart *gparts = s->gparts;
   struct part *parts = s->parts;
+  struct xpart *xparts = s->xparts;
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_hydro_parts = s->nr_parts;
   const int nr_cells = s->nr_cells;
   int *cell_node_ids = NULL;
+  static int stf_output_count = 0;
 
   /* Allow thread to run on any core for the duration of the call to
    * VELOCIraptor so that
@@ -218,12 +293,12 @@ void velociraptor_invoke(struct engine *e) {
   /* Append base name with either the step number or time depending on what
    * format is specified in the parameter file. */
   char outputFileName[PARSER_MAX_LINE_SIZE + 128];
-  if (e->stf_output_freq_format == STEPS) {
+  if (e->stf_output_freq_format == io_stf_steps) {
     snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
              e->stfBaseName, e->step);
-  } else if (e->stf_output_freq_format == TIME) {
-    snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04e.VELOCIraptor",
-             e->stfBaseName, e->time);
+  } else if (e->stf_output_freq_format == io_stf_time) {
+    snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
+             e->stfBaseName, stf_output_count);
   }
 
   /* Allocate and populate an array of swift_vel_parts to be passed to
@@ -260,7 +335,8 @@ void velociraptor_invoke(struct engine *e) {
       swift_parts[i].id = parts[-gparts[i].id_or_neg_offset].id;
       swift_parts[i].u =
           hydro_get_physical_internal_energy(
-              &parts[-gparts[i].id_or_neg_offset], e->cosmology) *
+              &parts[-gparts[i].id_or_neg_offset],
+              &xparts[-gparts[i].id_or_neg_offset], e->cosmology) *
           energy_scale;
     } else if (gparts[i].type == swift_type_dark_matter) {
       swift_parts[i].id = gparts[i].id_or_neg_offset;
@@ -281,6 +357,8 @@ void velociraptor_invoke(struct engine *e) {
   /* Free cell node ids after VELOCIraptor has copied them. */
   free(cell_node_ids);
   free(swift_parts);
+
+  stf_output_count++;
 
   message("VELOCIraptor took %.3f %s on rank %d.",
           clocks_from_ticks(getticks() - tic), clocks_getunit(), engine_rank);

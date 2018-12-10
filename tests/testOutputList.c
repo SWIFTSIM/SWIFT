@@ -29,12 +29,16 @@
 
 /* Expected values from file */
 const double time_values[Ntest] = {
-  0., 10., 12.,
+    0.,
+    10.,
+    12.,
 };
 
 /* Expected values from file */
 const double a_values[Ntest] = {
-  0.5, 0.1, 0.01,
+    0.01,
+    0.1,
+    0.5,
 };
 
 void test_no_cosmo(struct engine *e, char *name, int with_assert) {
@@ -55,10 +59,10 @@ void test_no_cosmo(struct engine *e, char *name, int with_assert) {
   output_list_init(&list, e, name, &delta_time, &output_time);
   output_list_print(list);
 
-  for(int i = 0; i < Ntest; i++) {
+  for (int i = 0; i < Ntest; i++) {
     /* Test last value */
     if (with_assert) {
-      assert(abs(output_time - time_values[i]) < tol);
+      assert(fabs(output_time - time_values[i]) < tol);
     }
 
     /* Set current time */
@@ -69,12 +73,10 @@ void test_no_cosmo(struct engine *e, char *name, int with_assert) {
     integertime_t ti_next;
     output_list_read_next_time(list, e, name, &ti_next);
 
-    output_time = (double) (ti_next * e->time_base) + e->time_begin;
+    output_time = (double)(ti_next * e->time_base) + e->time_begin;
   }
 
-  
-  output_list_clean(list);
-
+  output_list_clean(&list);
 };
 
 void test_cosmo(struct engine *e, char *name, int with_assert) {
@@ -93,10 +95,10 @@ void test_cosmo(struct engine *e, char *name, int with_assert) {
   output_list_init(&list, e, name, &delta_time, &output_time);
   output_list_print(list);
 
-  for(int i = 0; i < Ntest; i++) {
+  for (int i = 0; i < Ntest; i++) {
     /* Test last value */
     if (with_assert) {
-      assert(abs(output_time - a_values[i]) < tol);
+      assert(fabs(output_time - a_values[i]) < tol);
     }
 
     /* Set current time */
@@ -107,14 +109,11 @@ void test_cosmo(struct engine *e, char *name, int with_assert) {
     integertime_t ti_next;
     output_list_read_next_time(list, e, name, &ti_next);
 
-    output_time = (double) exp(ti_next * e->time_base) * e->cosmology->a_begin;
+    output_time = (double)exp(ti_next * e->time_base) * e->cosmology->a_begin;
   }
 
-  output_list_clean(list);
-
+  output_list_clean(&list);
 };
-
-
 
 int main(int argc, char *argv[]) {
   /* Create a structure to read file into. */
@@ -146,11 +145,13 @@ int main(int argc, char *argv[]) {
   int without_assert = 0;
   /* Test without cosmo */
   test_no_cosmo(&e, "Time", with_assert);
-  
+
   /* Test with cosmo */
   test_cosmo(&e, "Redshift", with_assert);
   test_cosmo(&e, "ScaleFactor", with_assert);
   test_cosmo(&e, "Time", without_assert);
+
+  cosmology_clean(&cosmo);
 
   /* Write message and leave */
   message("Test done");

@@ -69,6 +69,7 @@ scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
 neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
 eta = sim["/HydroScheme"].attrs["Kernel eta"]
+alpha = sim["/HydroScheme"].attrs["Alpha viscosity"]
 git = sim["Code"].attrs["Git Revision"]
 
 # Cosmological parameters
@@ -82,7 +83,12 @@ S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 rho = sim["/PartType0/Density"][:]
 m = sim["/PartType0/Masses"][:]
-phi = sim["/PartType0/Potential"][:]
+try:
+    phi = sim["/PartType0/Potential"][:]
+except KeyError:
+    # We didn't write the potential, try to go on without
+    print("Couldn't find potential in your output file")
+    phi = np.zeros_like(m)
 
 x -= 0.5 * boxSize
 
@@ -96,7 +102,7 @@ if os.path.exists(filename_g):
     rho_g = sim_g["/PartType0/Density"][:]
     phi_g = sim_g["/PartType0/Potential"][:]
     a_g = sim_g["/Header"].attrs["Time"]
-    print "Gadget Scale-factor:", a_g, "redshift:", 1/a_g - 1.
+    print("Gadget Scale-factor:", a_g, "redshift:", 1/a_g - 1.)
     
     x_g -= 0.5 * boxSize
 else:
@@ -138,8 +144,8 @@ if np.size(x_g) > 1:
     plot(x_g, v_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, v, '.', color='r', ms=4.0)
 plot(x_s, v_s, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("${\\rm{Comoving Position}}~x$", labelpad=0)
-ylabel("${\\rm{Peculiar Velocity}}~v_x$", labelpad=0)
+xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
+ylabel("${\\rm{Peculiar~velocity}}~v_x$", labelpad=0)
 
 
 # Density profile --------------------------------
@@ -148,7 +154,7 @@ if np.size(x_g) > 1:
     plot(x_g, rho_g/rho_0, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, rho/rho_0, '.', color='r', ms=4.0)
 plot(x_s, rho_s/rho_0, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("${\\rm{Comoving Position}}~x$", labelpad=0)
+xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
 ylabel("${\\rm{Density}}~\\rho / \\rho_0$", labelpad=0)
 
 # Potential profile --------------------------------
@@ -156,7 +162,7 @@ subplot(233)
 if np.size(x_g) > 1:
     plot(x_g, phi_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, phi, '.', color='r', ms=4.0)
-xlabel("${\\rm{Comoving Position}}~x$", labelpad=0)
+xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
 ylabel("${\\rm{Potential}}~\\phi$", labelpad=0)
 
 # Temperature profile -------------------------
@@ -167,19 +173,19 @@ u /= a**(3 * (gas_gamma - 1.))
 u_g /= a**(3 * (gas_gamma - 1.))
 T = (gas_gamma - 1.) * u * mH_in_kg / k_in_J_K
 T_g = (gas_gamma - 1.) * u_g * mH_in_kg / k_in_J_K
-print "z = {0:.2f}, T_avg = {1:.2f}".format(redshift, T.mean())
+print("z = {0:.2f}, T_avg = {1:.2f}".format(redshift, T.mean()))
 if np.size(x_g) > 1:
     plot(x_g, T_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, T, '.', color='r', ms=4.0)
 plot(x_s, T_s, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("${\\rm{Comoving Position}}~x$", labelpad=0)
+xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
 ylabel("${\\rm{Temperature}}~T$", labelpad=0)
 
 # Information -------------------------------------
 subplot(236, frameon=False)
 
-text(-0.49, 0.9, "Zeldovich pancake with  $\\gamma=%.3f$ in 1D at $t=%.2f$"%(gas_gamma,time), fontsize=10)
-text(-0.49, 0.8, "$z={0:.2f}$".format(redshift))
+text(-0.49, 0.9, "Zeldovich pancake at z=%.2f "%(redshift), fontsize=10)
+text(-0.49, 0.8, "adiabatic index $\\gamma=%.2f$, viscosity $\\alpha=%.2f$"%(gas_gamma, alpha), fontsize=10)
 plot([-0.49, 0.1], [0.62, 0.62], 'k-', lw=1)
 text(-0.49, 0.5, "$\\textsc{Swift}$ %s"%git, fontsize=10)
 text(-0.49, 0.4, scheme, fontsize=10)

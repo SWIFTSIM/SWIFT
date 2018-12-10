@@ -55,6 +55,17 @@ INLINE static void hydro_read_particles(struct part* parts,
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
 }
+INLINE static void convert_S(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
+
+  ret[0] = hydro_get_comoving_entropy(p, xp);
+}
+
+INLINE static void convert_P(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
+
+  ret[0] = hydro_get_comoving_pressure(p);
+}
 
 INLINE static void convert_part_pos(const struct engine* e,
                                     const struct part* p,
@@ -128,7 +139,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 8;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
@@ -146,7 +157,13 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                  UNIT_CONV_NO_UNITS, parts, id);
   list[6] =
       io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
-  list[7] = io_make_output_field_convert_part("Potential", FLOAT, 1,
+  list[7] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
+                                              UNIT_CONV_ENTROPY_PER_UNIT_MASS,
+                                              parts, xparts, convert_S);
+  list[8] = io_make_output_field_convert_part(
+      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, xparts, convert_P);
+
+  list[0] = io_make_output_field_convert_part("Potential", FLOAT, 1,
                                               UNIT_CONV_POTENTIAL, parts,
                                               xparts, convert_part_potential);
 }
@@ -166,13 +183,6 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
       h_grpsph, "Viscosity Model",
       "Morris & Monaghan (1997), Rosswog, Davies, Thielemann & "
       "Piran (2000) with additional Balsara (1995) switch");
-  io_write_attribute_f(h_grpsph, "Viscosity alpha_min",
-                       const_viscosity_alpha_min);
-  io_write_attribute_f(h_grpsph, "Viscosity alpha_max",
-                       const_viscosity_alpha_max);
-  io_write_attribute_f(h_grpsph, "Viscosity beta", 2.f);
-  io_write_attribute_f(h_grpsph, "Viscosity decay length",
-                       const_viscosity_length);
 
   /* Time integration properties */
   io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",

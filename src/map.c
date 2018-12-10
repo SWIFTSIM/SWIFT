@@ -73,9 +73,9 @@ void map_cells_plot(struct cell *c, void *data) {
     printf("%.16e %.16e %.16e\n\n\n", l[0] + h[0], l[1] + h[1], l[2]);
 
     if (!c->split) {
-      for (int k = 0; k < c->count; k++)
-        printf("0 0 0 %.16e %.16e %.16e\n", c->parts[k].x[0], c->parts[k].x[1],
-               c->parts[k].x[2]);
+      for (int k = 0; k < c->hydro.count; k++)
+        printf("0 0 0 %.16e %.16e %.16e\n", c->hydro.parts[k].x[0],
+               c->hydro.parts[k].x[1], c->hydro.parts[k].x[2]);
       printf("\n\n");
     }
     /* else
@@ -102,11 +102,11 @@ void map_check(struct part *p, struct cell *c, void *data) {
 void map_cellcheck(struct cell *c, void *data) {
 
   int *count = (int *)data;
-  atomic_add(count, c->count);
+  atomic_add(count, c->hydro.count);
 
   /* Loop over all parts and check if they are in the cell. */
-  for (int k = 0; k < c->count; k++) {
-    struct part *p = &c->parts[k];
+  for (int k = 0; k < c->hydro.count; k++) {
+    struct part *p = &c->hydro.parts[k];
     if (p->x[0] < c->loc[0] || p->x[1] < c->loc[1] || p->x[2] < c->loc[2] ||
         p->x[0] > c->loc[0] + c->width[0] ||
         p->x[1] > c->loc[1] + c->width[1] ||
@@ -122,8 +122,8 @@ void map_cellcheck(struct cell *c, void *data) {
   }
 
   /* Loop over all gparts and check if they are in the cell. */
-  for (int k = 0; k < c->gcount; k++) {
-    struct gpart *p = &c->gparts[k];
+  for (int k = 0; k < c->grav.count; k++) {
+    struct gpart *p = &c->grav.parts[k];
     if (p->x[0] < c->loc[0] || p->x[1] < c->loc[1] || p->x[2] < c->loc[2] ||
         p->x[0] > c->loc[0] + c->width[0] ||
         p->x[1] > c->loc[1] + c->width[1] ||
@@ -187,6 +187,13 @@ void map_h_min(struct part *p, struct cell *c, void *data) {
 void map_h_max(struct part *p, struct cell *c, void *data) {
 
   struct part **p2 = (struct part **)data;
+
+  if (p->h > (*p2)->h) *p2 = p;
+}
+
+void map_stars_h_max(struct spart *p, struct cell *c, void *data) {
+
+  struct spart **p2 = (struct spart **)data;
 
   if (p->h > (*p2)->h) *p2 = p;
 }

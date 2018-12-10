@@ -81,16 +81,16 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
-  if (posix_memalign((void **)&cell->parts, part_align,
+  if (posix_memalign((void **)&cell->hydro.parts, part_align,
                      count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
-  bzero(cell->parts, count * sizeof(struct part));
+  bzero(cell->hydro.parts, count * sizeof(struct part));
 
   float h_max = 0.f;
 
   /* Construct the parts */
-  struct part *part = cell->parts;
+  struct part *part = cell->hydro.parts;
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
@@ -161,10 +161,10 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   /* Cell properties */
   cell->split = 0;
-  cell->h_max = h_max;
-  cell->count = count;
-  cell->dx_max_part = 0.;
-  cell->dx_max_sort = 0.;
+  cell->hydro.h_max = h_max;
+  cell->hydro.count = count;
+  cell->hydro.dx_max_part = 0.;
+  cell->hydro.dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
@@ -172,23 +172,23 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_old_part = 8;
-  cell->ti_hydro_end_min = 8;
-  cell->ti_hydro_end_max = 8;
+  cell->hydro.ti_old_part = 8;
+  cell->hydro.ti_end_min = 8;
+  cell->hydro.ti_end_max = 8;
   cell->nodeID = NODE_ID;
 
-  shuffle_particles(cell->parts, cell->count);
+  shuffle_particles(cell->hydro.parts, cell->hydro.count);
 
-  cell->sorted = 0;
-  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
+  cell->hydro.sorted = 0;
+  for (int k = 0; k < 13; k++) cell->hydro.sort[k] = NULL;
 
   return cell;
 }
 
 void clean_up(struct cell *ci) {
-  free(ci->parts);
+  free(ci->hydro.parts);
   for (int k = 0; k < 13; k++)
-    if (ci->sort[k] != NULL) free(ci->sort[k]);
+    if (ci->hydro.sort[k] != NULL) free(ci->hydro.sort[k]);
   free(ci);
 }
 
@@ -196,8 +196,8 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields(struct cell *c) {
-  for (int pid = 0; pid < c->count; pid++) {
-    hydro_init_part(&c->parts[pid], NULL);
+  for (int pid = 0; pid < c->hydro.count; pid++) {
+    hydro_init_part(&c->hydro.parts[pid], NULL);
   }
 }
 
@@ -205,8 +205,8 @@ void zero_particle_fields(struct cell *c) {
  * @brief Ends the loop by adding the appropriate coefficients
  */
 void end_calculation(struct cell *c, const struct cosmology *cosmo) {
-  for (int pid = 0; pid < c->count; pid++) {
-    hydro_end_density(&c->parts[pid], cosmo);
+  for (int pid = 0; pid < c->hydro.count; pid++) {
+    hydro_end_density(&c->hydro.parts[pid], cosmo);
   }
 }
 
@@ -228,27 +228,27 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
           i, j, k);
 
   /* Write main cell */
-  for (int pid = 0; pid < main_cell->count; pid++) {
+  for (int pid = 0; pid < main_cell->hydro.count; pid++) {
     fprintf(file,
             "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
             "%13e %13e %13e\n",
-            main_cell->parts[pid].id, main_cell->parts[pid].x[0],
-            main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
-            main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
-            main_cell->parts[pid].v[2],
-            hydro_get_comoving_density(&main_cell->parts[pid]),
+            main_cell->hydro.parts[pid].id, main_cell->hydro.parts[pid].x[0],
+            main_cell->hydro.parts[pid].x[1], main_cell->hydro.parts[pid].x[2],
+            main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
+            main_cell->hydro.parts[pid].v[2],
+            hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
 #if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
-            main_cell->parts[pid].density.rho_dh,
+            main_cell->hydro.parts[pid].density.rho_dh,
 #endif
-            main_cell->parts[pid].density.wcount,
-            main_cell->parts[pid].density.wcount_dh,
+            main_cell->hydro.parts[pid].density.wcount,
+            main_cell->hydro.parts[pid].density.wcount_dh,
 #if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
-            main_cell->parts[pid].density.div_v,
-            main_cell->parts[pid].density.rot_v[0],
-            main_cell->parts[pid].density.rot_v[1],
-            main_cell->parts[pid].density.rot_v[2]
+            main_cell->hydro.parts[pid].density.div_v,
+            main_cell->hydro.parts[pid].density.rot_v[0],
+            main_cell->hydro.parts[pid].density.rot_v[1],
+            main_cell->hydro.parts[pid].density.rot_v[2]
 #else
             0., 0., 0., 0.
 #endif
@@ -273,7 +273,7 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
   int result = 0;
 
   for (int i = 0; i < count; i++)
-    result += compare_particles(serial_parts[i], vec_parts[i], threshold);
+    result += compare_particles(&serial_parts[i], &vec_parts[i], threshold);
 
   return result;
 }
@@ -505,8 +505,8 @@ int main(int argc, char *argv[]) {
 
         runner_do_drift_part(&runner, cells[i * (dim * dim) + j * dim + k], 0);
 
-        runner_do_sort(&runner, cells[i * (dim * dim) + j * dim + k], 0x1FFF, 0,
-                       0);
+        runner_do_hydro_sort(&runner, cells[i * (dim * dim) + j * dim + k],
+                             0x1FFF, 0, 0);
       }
     }
   }

@@ -13,6 +13,6 @@ then
 fi
 
 # Run SWIFT
-../../swift -g -s -t 4 disc-patch-icc.yml 2>&1 | tee output.log
+../../swift --external-gravity --hydro --threads=4 disc-patch-icc.yml 2>&1 | tee output.log
 
 python plotSolution.py

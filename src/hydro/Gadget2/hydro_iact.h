@@ -479,23 +479,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
+                     (pi->v[2] - pj->v[2]) * dx[2];
+
+  /* Add Hubble flow */
+  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = (dvdr < 0.f) ? dvdr : 0.f;
+  const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float v_sig = ci + cj - 3.f * mu_ij;
+  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -523,8 +525,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += mj * visc_term * dvdr;
-  pj->entropy_dt += mi * visc_term * dvdr;
+  pi->entropy_dt += mj * visc_term * dvdr_Hubble;
+  pj->entropy_dt += mi * visc_term * dvdr_Hubble;
 
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
@@ -599,23 +601,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
+                     (pi->v[2] - pj->v[2]) * dx[2];
+
+  /* Add Hubble flow */
+  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = (dvdr < 0.f) ? dvdr : 0.f;
+  const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float v_sig = ci + cj - 3.f * mu_ij;
+  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -637,7 +641,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += mj * visc_term * dvdr;
+  pi->entropy_dt += mj * visc_term * dvdr_Hubble;
 
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
@@ -648,8 +652,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 }
 
 #ifdef WITH_VECTORIZATION
-static const vector const_viscosity_alpha_fac =
-    FILL_VEC(-0.25f * const_viscosity_alpha);
 
 /**
  * @brief Force interaction computed using 1 vector
@@ -671,7 +673,7 @@ runner_iact_nonsym_1_vec_force(
   vector dvx, dvy, dvz;
   vector xi, xj;
   vector hid_inv, hjd_inv;
-  vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
+  vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr, dvdr_Hubble;
   vector piax, piay, piaz;
   vector pih_dt;
   vector v_sig;
@@ -723,25 +725,26 @@ runner_iact_nonsym_1_vec_force(
   dvz.v = vec_sub(viz.v, vjz.v);
 
   /* Compute dv dot r. */
-  dvdr.v =
-      vec_fma(dvx.v, dx->v,
-              vec_fma(dvy.v, dy->v,
-                      vec_fma(dvz.v, dz->v, vec_mul(v_a2_Hubble.v, r2->v))));
+  dvdr.v = vec_fma(dvx.v, dx->v, vec_fma(dvy.v, dy->v, vec_mul(dvz.v, dz->v)));
+
+  /* Add Hubble flow */
+  dvdr_Hubble.v = vec_add(dvdr.v, vec_mul(v_a2_Hubble.v, r2->v));
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
-  omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
+  omega_ij.v = vec_fmin(dvdr_Hubble.v, vec_setzero());
   mu_ij.v = vec_mul(v_fac_mu.v,
                     vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
-  v_sig.v = vec_fnma(vec_set1(3.f), mu_ij.v, vec_add(ci.v, cj.v));
+  v_sig.v =
+      vec_fnma(vec_set1(const_viscosity_beta), mu_ij.v, vec_add(ci.v, cj.v));
 
   /* Now construct the full viscosity term */
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
-  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v,
-                           vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
-                   rho_ij.v);
+  visc.v = vec_div(
+      vec_mul(vec_set1(-0.25f), vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
+      rho_ij.v);
 
   /* Now, convolve with the kernel */
   visc_term.v =
@@ -766,7 +769,7 @@ runner_iact_nonsym_1_vec_force(
       vec_div(vec_mul(mj.v, vec_mul(dvdr.v, vec_mul(ri.v, wi_dr.v))), pjrho.v);
 
   /* Change in entropy */
-  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr.v));
+  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr_Hubble.v));
 
   /* Store the forces back on the particles. */
   a_hydro_xSum->v = vec_mask_sub(a_hydro_xSum->v, piax.v, mask);
@@ -806,7 +809,7 @@ runner_iact_nonsym_2_vec_force(
   vector dvx, dvy, dvz;
   vector ui, uj;
   vector hid_inv, hjd_inv;
-  vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
+  vector wi_dx, wj_dx, wi_dr, wj_dr, dvdr, dvdr_Hubble;
   vector piax, piay, piaz;
   vector pih_dt;
   vector v_sig;
@@ -817,7 +820,7 @@ runner_iact_nonsym_2_vec_force(
   vector dvx_2, dvy_2, dvz_2;
   vector ui_2, uj_2;
   vector hjd_inv_2;
-  vector wi_dx_2, wj_dx_2, wi_dr_2, wj_dr_2, dvdr_2;
+  vector wi_dx_2, wj_dx_2, wi_dr_2, wj_dr_2, dvdr_2, dvdr_Hubble_2;
   vector piax_2, piay_2, piaz_2;
   vector pih_dt_2;
   vector v_sig_2;
@@ -903,36 +906,38 @@ runner_iact_nonsym_2_vec_force(
   dvz_2.v = vec_sub(viz.v, vjz_2.v);
 
   /* Compute dv dot r. */
-  dvdr.v = vec_fma(
-      dvx.v, dx.v,
-      vec_fma(dvy.v, dy.v, vec_fma(dvz.v, dz.v, vec_mul(v_a2_Hubble.v, r2.v))));
-  dvdr_2.v = vec_fma(
-      dvx_2.v, dx_2.v,
-      vec_fma(dvy_2.v, dy_2.v,
-              vec_fma(dvz_2.v, dz_2.v, vec_mul(v_a2_Hubble.v, r2_2.v))));
+  dvdr.v = vec_fma(dvx.v, dx.v, vec_fma(dvy.v, dy.v, vec_mul(dvz.v, dz.v)));
+  dvdr_2.v = vec_fma(dvx_2.v, dx_2.v,
+                     vec_fma(dvy_2.v, dy_2.v, vec_mul(dvz_2.v, dz_2.v)));
+
+  /* Add the Hubble flow */
+  dvdr_Hubble.v = vec_add(dvdr.v, vec_mul(v_a2_Hubble.v, r2.v));
+  dvdr_Hubble_2.v = vec_add(dvdr_2.v, vec_mul(v_a2_Hubble.v, r2_2.v));
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
-  omega_ij.v = vec_fmin(dvdr.v, vec_setzero());
-  omega_ij_2.v = vec_fmin(dvdr_2.v, vec_setzero());
+  omega_ij.v = vec_fmin(dvdr_Hubble.v, vec_setzero());
+  omega_ij_2.v = vec_fmin(dvdr_Hubble_2.v, vec_setzero());
   mu_ij.v = vec_mul(v_fac_mu.v,
                     vec_mul(ri.v, omega_ij.v)); /* This is 0 or negative */
   mu_ij_2.v = vec_mul(
       v_fac_mu.v, vec_mul(ri_2.v, omega_ij_2.v)); /* This is 0 or negative */
 
   /* Compute signal velocity */
-  v_sig.v = vec_fnma(vec_set1(3.f), mu_ij.v, vec_add(ci.v, cj.v));
-  v_sig_2.v = vec_fnma(vec_set1(3.f), mu_ij_2.v, vec_add(ci.v, cj_2.v));
+  v_sig.v =
+      vec_fnma(vec_set1(const_viscosity_beta), mu_ij.v, vec_add(ci.v, cj.v));
+  v_sig_2.v = vec_fnma(vec_set1(const_viscosity_beta), mu_ij_2.v,
+                       vec_add(ci.v, cj_2.v));
 
   /* Now construct the full viscosity term */
   rho_ij.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho.v));
   rho_ij_2.v = vec_mul(vec_set1(0.5f), vec_add(pirho.v, pjrho_2.v));
 
-  visc.v = vec_div(vec_mul(const_viscosity_alpha_fac.v,
-                           vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
-                   rho_ij.v);
+  visc.v = vec_div(
+      vec_mul(vec_set1(-0.25f), vec_mul(v_sig.v, vec_mul(mu_ij.v, balsara.v))),
+      rho_ij.v);
   visc_2.v =
-      vec_div(vec_mul(const_viscosity_alpha_fac.v,
+      vec_div(vec_mul(vec_set1(-0.25f),
                       vec_mul(v_sig_2.v, vec_mul(mu_ij_2.v, balsara_2.v))),
               rho_ij_2.v);
 
@@ -976,8 +981,8 @@ runner_iact_nonsym_2_vec_force(
               pjrho_2.v);
 
   /* Change in entropy */
-  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr.v));
-  entropy_dt_2.v = vec_mul(mj_2.v, vec_mul(visc_term_2.v, dvdr_2.v));
+  entropy_dt.v = vec_mul(mj.v, vec_mul(visc_term.v, dvdr_Hubble.v));
+  entropy_dt_2.v = vec_mul(mj_2.v, vec_mul(visc_term_2.v, dvdr_Hubble_2.v));
 
   /* Store the forces back on the particles. */
   if (mask_cond) {

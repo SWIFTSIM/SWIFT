@@ -19,6 +19,8 @@
 #ifndef SWIFT_VELOCIRAPTOR_PART_H
 #define SWIFT_VELOCIRAPTOR_PART_H
 
+#include "part_type.h"
+
 /* SWIFT/VELOCIraptor particle. */
 struct swift_vel_part {
 

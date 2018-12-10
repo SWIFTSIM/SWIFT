@@ -127,4 +127,36 @@ __attribute__((always_inline)) INLINE static void atomic_add_f(
   } while (test_val.as_int != old_val.as_int);
 }
 
+/**
+ * @brief Atomic add operation on doubles.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * We create a temporary union to cope with the int-only atomic CAS
+ * and the floating-point add that we want.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
+ */
+__attribute__((always_inline)) INLINE static void atomic_add_d(
+    volatile double *const address, const double y) {
+
+  long long *const long_long_ptr = (long long *)address;
+
+  typedef union {
+    double as_double;
+    long long as_long_long;
+  } cast_type;
+
+  cast_type test_val, old_val, new_val;
+  old_val.as_double = *address;
+
+  do {
+    test_val.as_long_long = old_val.as_long_long;
+    new_val.as_double = old_val.as_double + y;
+    old_val.as_long_long =
+        atomic_cas(long_long_ptr, test_val.as_long_long, new_val.as_long_long);
+  } while (test_val.as_long_long != old_val.as_long_long);
+}
+
 #endif /* SWIFT_ATOMIC_H */

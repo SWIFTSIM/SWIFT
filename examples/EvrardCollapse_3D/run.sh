@@ -8,7 +8,7 @@ then
 fi
 
 # Run SWIFT
-../swift -s -G -t 4 evrard.yml 2>&1 | tee output.log
+../swift --hydro --self-gravity --threads=4 evrard.yml 2>&1 | tee output.log
 
 # Get the high resolution 1D reference result if not present.
 if [ ! -e evrardCollapse3D_exact.txt ]

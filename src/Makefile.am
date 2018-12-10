@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the non-standard paths to the included library headers
-AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS)
+AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(GRACKLE_INCS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
@@ -25,11 +25,11 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 GIT_CMD = @GIT_CMD@
 
 # Additional dependencies for shared libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIB) $(GSL_LIBS)
+EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS)
 
 # MPI libraries.
-MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)
-MPI_FLAGS = -DWITH_MPI $(METIS_INCS)
+MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS)
+MPI_FLAGS = -DWITH_MPI $(PARMETIS_INCS) $(METIS_INCS)
 
 # Build the libswiftsim library
 lib_LTLIBRARIES = libswiftsim.la
@@ -48,12 +48,19 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
     gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
-    mesh_gravity.h cbrt.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h
+    mesh_gravity.h cbrt.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
+    logger_io.h
+
+# source files for EAGLE cooling
+EAGLE_COOLING_SOURCES =
+if HAVEEAGLECOOLING
+EAGLE_COOLING_SOURCES += cooling/EAGLE/cooling.c cooling/EAGLE/cooling_tables.c
+endif
 
 # Common source files
-AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
-    serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
-    units.c common_io.c single_io.c multipole.c version.c map.c \
+AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c \
+    engine_marktasks.c engine_drift.c serial_io.c timers.c debug.c scheduler.c \
+    proxy.c parallel_io.c units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potential.c hydro_properties.c \
     threadpool.c cooling.c sourceterms.c \
@@ -61,13 +68,14 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     part_type.c xmf.c gravity_properties.c gravity.c \
     collectgroup.c hydro_space.c equation_of_state.c \
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
-    outputlist.c
+    outputlist.c velociraptor_dummy.c logger_io.c $(EAGLE_COOLING_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 gravity_iact.h kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h  \
-                 runner_doiact_nosort.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
-		 dimension.h part_type.h periodic.h memswap.h dump.h logger.h sign.h \
+                 runner_doiact_nosort.h runner_doiact_stars.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h \
+		 adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h dump.h logger.h sign.h \
+		 logger_io.h \
 		 gravity.h gravity_io.h gravity_cache.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
@@ -126,13 +134,15 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
                  riemann/riemann_checks.h \
 	 	 stars.h stars_io.h \
-		 stars/Default/star.h stars/Default/star_iact.h stars/Default/star_io.h \
-		 stars/Default/star_debug.h stars/Default/star_part.h  \
+		 stars/Default/stars.h stars/Default/stars_iact.h stars/Default/stars_io.h \
+		 stars/Default/stars_debug.h stars/Default/stars_part.h  \
 	         potential/none/potential.h potential/point_mass/potential.h \
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
                  potential/sine_wave/potential.h \
 		 cooling/none/cooling.h cooling/none/cooling_struct.h \
                  cooling/none/cooling_io.h \
+		 cooling/Compton/cooling.h cooling/Compton/cooling_struct.h \
+                 cooling/Compton/cooling_io.h \
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
                  cooling/const_du/cooling_io.h \
                  cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
@@ -140,7 +150,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  cooling/grackle/cooling.h cooling/grackle/cooling_struct.h \
                  cooling/grackle/cooling_io.h \
 		 cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h \
-                 cooling/EAGLE/cooling_io.h \
+                 cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h \
                  chemistry/none/chemistry.h \
 		 chemistry/none/chemistry_io.h \
 		 chemistry/none/chemistry_struct.h \

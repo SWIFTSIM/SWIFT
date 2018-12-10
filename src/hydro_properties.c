@@ -39,7 +39,14 @@
 #define hydro_props_default_h_tolerance 1e-4
 #define hydro_props_default_init_temp 0.f
 #define hydro_props_default_min_temp 0.f
-#define hydro_props_default_H_fraction 0.76
+#define hydro_props_default_H_ionization_temperature 1e4
+#define hydro_props_default_viscosity_alpha 0.8f
+#define hydro_props_default_viscosity_alpha_min \
+  0.1f /* Values taken from (Price,2004), not used in legacy gadget mode */
+#define hydro_props_default_viscosity_alpha_max \
+  2.0f /* Values taken from (Price,2004), not used in legacy gadget mode */
+#define hydro_props_default_viscosity_length \
+  0.1f /* Values taken from (Price,2004), not used in legacy gadget mode */
 
 /**
  * @brief Initialize the global properties of the hydro scheme.
@@ -93,7 +100,7 @@ void hydro_props_init(struct hydro_props *p,
   p->initial_temperature = parser_get_opt_param_float(
       params, "SPH:initial_temperature", hydro_props_default_init_temp);
 
-  /* Initial temperature */
+  /* Minimal temperature */
   p->minimal_temperature = parser_get_opt_param_float(
       params, "SPH:minimal_temperature", hydro_props_default_min_temp);
 
@@ -101,20 +108,41 @@ void hydro_props_init(struct hydro_props *p,
       (p->initial_temperature < p->minimal_temperature))
     error("Initial temperature lower than minimal allowed temperature!");
 
+  /* Neutral to ionized Hydrogen transition temperature */
+  p->hydrogen_ionization_temperature =
+      parser_get_opt_param_double(params, "SPH:H_ionization_temperature",
+                                  hydro_props_default_H_ionization_temperature);
+
   /* Hydrogen mass fraction */
+  const float default_H_fraction =
+      1. - phys_const->const_primordial_He_fraction;
   p->hydrogen_mass_fraction = parser_get_opt_param_double(
-      params, "SPH:H_mass_fraction", hydro_props_default_H_fraction);
+      params, "SPH:H_mass_fraction", default_H_fraction);
+
+  /* Read the artificial viscosity parameters from the file, if they exist */
+  p->viscosity.alpha = parser_get_opt_param_float(
+      params, "SPH:viscosity_alpha", hydro_props_default_viscosity_alpha);
+
+  p->viscosity.alpha_max =
+      parser_get_opt_param_float(params, "SPH:viscosity_alpha_max",
+                                 hydro_props_default_viscosity_alpha_max);
+
+  p->viscosity.alpha_min =
+      parser_get_opt_param_float(params, "SPH:viscosity_alpha_min",
+                                 hydro_props_default_viscosity_alpha_min);
+
+  p->viscosity.length = parser_get_opt_param_float(
+      params, "SPH:viscosity_length", hydro_props_default_viscosity_length);
 
   /* Compute the initial energy (Note the temp. read is in internal units) */
+  /* u_init = k_B T_init / (mu m_p (gamma - 1)) */
   double u_init = phys_const->const_boltzmann_k / phys_const->const_proton_mass;
   u_init *= p->initial_temperature;
   u_init *= hydro_one_over_gamma_minus_one;
 
-  /* Correct for hydrogen mass fraction */
+  /* Correct for hydrogen mass fraction (mu) */
   double mean_molecular_weight;
-  if (p->initial_temperature *
-          units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE) >
-      1e4)
+  if (p->initial_temperature > p->hydrogen_ionization_temperature)
     mean_molecular_weight = 4. / (8. - 5. * (1. - p->hydrogen_mass_fraction));
   else
     mean_molecular_weight = 4. / (1. + 3. * p->hydrogen_mass_fraction);
@@ -122,14 +150,13 @@ void hydro_props_init(struct hydro_props *p,
   p->initial_internal_energy = u_init / mean_molecular_weight;
 
   /* Compute the minimal energy (Note the temp. read is in internal units) */
+  /* u_min = k_B T_min / (mu m_p (gamma - 1)) */
   double u_min = phys_const->const_boltzmann_k / phys_const->const_proton_mass;
   u_min *= p->minimal_temperature;
   u_min *= hydro_one_over_gamma_minus_one;
 
-  /* Correct for hydrogen mass fraction */
-  if (p->minimal_temperature *
-          units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE) >
-      1e4)
+  /* Correct for hydrogen mass fraction (mu) */
+  if (p->minimal_temperature > p->hydrogen_ionization_temperature)
     mean_molecular_weight = 4. / (8. - 5. * (1. - p->hydrogen_mass_fraction));
   else
     mean_molecular_weight = 4. / (1. + 3. * p->hydrogen_mass_fraction);
@@ -160,6 +187,12 @@ void hydro_props_print(const struct hydro_props *p) {
   message("Hydrodynamic integration: CFL parameter: %.4f.", p->CFL_condition);
 
   message(
+      "Artificial viscosity parameters set to alpha: %.3f, max: %.3f, "
+      "min: %.3f, length: %.3f.",
+      p->viscosity.alpha, p->viscosity.alpha_max, p->viscosity.alpha_min,
+      p->viscosity.length);
+
+  message(
       "Hydrodynamic integration: Max change of volume: %.2f "
       "(max|dlog(h)/dt|=%f).",
       pow_dimension(expf(p->log_max_h_change)), p->log_max_h_change);
@@ -176,6 +209,16 @@ void hydro_props_print(const struct hydro_props *p) {
 
   if (p->minimal_temperature != hydro_props_default_min_temp)
     message("Minimal gas temperature set to %f", p->minimal_temperature);
+
+    // Matthieu: Temporary location for this i/o business.
+
+#ifdef PLANETARY_SPH
+#ifdef PLANETARY_SPH_NO_BALSARA
+  message("Planetary SPH: Balsara switch DISABLED");
+#else
+  message("Planetary SPH: Balsara switch ENABLED");
+#endif
+#endif
 }
 
 #if defined(HAVE_HDF5)
@@ -204,8 +247,55 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
                        p->initial_internal_energy);
   io_write_attribute_f(h_grpsph, "Hydrogen mass fraction",
                        p->hydrogen_mass_fraction);
+  io_write_attribute_f(h_grpsph, "Hydrogen ionization transition temperature",
+                       p->hydrogen_ionization_temperature);
+  io_write_attribute_f(h_grpsph, "Alpha viscosity", p->viscosity.alpha);
+  io_write_attribute_f(h_grpsph, "Alpha viscosity (max)",
+                       p->viscosity.alpha_max);
+  io_write_attribute_f(h_grpsph, "Alpha viscosity (min)",
+                       p->viscosity.alpha_min);
+  io_write_attribute_f(h_grpsph, "Viscosity decay length", p->viscosity.length);
+  io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
 }
 #endif
+
+/**
+ * @brief Initialises a hydro_props struct with somewhat useful values for
+ *        the automated test suite. This is not intended for production use,
+ *        but rather to fill for the purposes of mocking.
+ *
+ * @param p the struct
+ */
+void hydro_props_init_no_hydro(struct hydro_props *p) {
+  p->eta_neighbours = 1.2348;
+  p->h_tolerance = hydro_props_default_h_tolerance;
+  p->target_neighbours = pow_dimension(p->eta_neighbours) * kernel_norm;
+  const float delta_eta = p->eta_neighbours * (1.f + p->h_tolerance);
+  p->delta_neighbours =
+      (pow_dimension(delta_eta) - pow_dimension(p->eta_neighbours)) *
+      kernel_norm;
+  p->h_max = hydro_props_default_h_max;
+  p->max_smoothing_iterations = hydro_props_default_max_iterations;
+  p->CFL_condition = 0.1;
+  p->log_max_h_change = logf(powf(1.4, hydro_dimension_inv));
+
+  /* These values are inconsistent and in a production run would probably lead
+     to a crash. Again, this function is intended for mocking use in unit tests
+     and is _not_ to be used otherwise! */
+  p->minimal_temperature = hydro_props_default_min_temp;
+  p->minimal_internal_energy = 0.f;
+  p->initial_temperature = hydro_props_default_init_temp;
+  p->initial_internal_energy = 0.f;
+
+  p->hydrogen_mass_fraction = 0.755;
+  p->hydrogen_ionization_temperature =
+      hydro_props_default_H_ionization_temperature;
+
+  p->viscosity.alpha = hydro_props_default_viscosity_alpha;
+  p->viscosity.alpha_max = hydro_props_default_viscosity_alpha_max;
+  p->viscosity.alpha_min = hydro_props_default_viscosity_alpha_min;
+  p->viscosity.length = hydro_props_default_viscosity_length;
+}
 
 /**
  * @brief Write a hydro_props struct to the given FILE as a stream of bytes.

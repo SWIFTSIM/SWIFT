@@ -48,6 +48,8 @@
 #include "./hydro/PressureEntropy/hydro_debug.h"
 #elif defined(HOPKINS_PU_SPH)
 #include "./hydro/PressureEnergy/hydro_debug.h"
+#elif defined(HOPKINS_PU_SPH_MONAGHAN)
+#include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_debug.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_debug.h"
 #elif defined(GIZMO_MFV_SPH)
@@ -56,8 +58,8 @@
 #include "./hydro/GizmoMFM/hydro_debug.h"
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_debug.h"
-#elif defined(MINIMAL_MULTI_MAT_SPH)
-#include "./hydro/MinimalMultiMat/hydro_debug.h"
+#elif defined(PLANETARY_SPH)
+#include "./hydro/Planetary/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif
@@ -172,8 +174,8 @@ int checkSpacehmax(struct space *s) {
   float cell_h_max = 0.0f;
   for (int k = 0; k < s->nr_cells; k++) {
     if (s->cells_top[k].nodeID == s->e->nodeID &&
-        s->cells_top[k].h_max > cell_h_max) {
-      cell_h_max = s->cells_top[k].h_max;
+        s->cells_top[k].hydro.h_max > cell_h_max) {
+      cell_h_max = s->cells_top[k].hydro.h_max;
     }
   }
 
@@ -191,9 +193,9 @@ int checkSpacehmax(struct space *s) {
   /* There is a problem. Hunt it down. */
   for (int k = 0; k < s->nr_cells; k++) {
     if (s->cells_top[k].nodeID == s->e->nodeID) {
-      if (s->cells_top[k].h_max > part_h_max) {
-        message("cell %d is inconsistent (%f > %f)", k, s->cells_top[k].h_max,
-                part_h_max);
+      if (s->cells_top[k].hydro.h_max > part_h_max) {
+        message("cell %d is inconsistent (%f > %f)", k,
+                s->cells_top[k].hydro.h_max, part_h_max);
       }
     }
   }
@@ -229,9 +231,9 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   const double loc_max[3] = {c->loc[0] + c->width[0], c->loc[1] + c->width[1],
                              c->loc[2] + c->width[2]};
 
-  const size_t nr_parts = c->count;
-  struct part *parts = c->parts;
-  struct xpart *xparts = c->xparts;
+  const size_t nr_parts = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+  struct xpart *xparts = c->hydro.xparts;
   for (size_t k = 0; k < nr_parts; k++) {
 
     struct part *const p = &parts[k];
@@ -268,14 +270,15 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   }
 
   /* Check. */
-  if (c->h_max != h_max) {
-    message("%d Inconsistent h_max: cell %f != parts %f", *depth, c->h_max,
-            h_max);
+  if (c->hydro.h_max != h_max) {
+    message("%d Inconsistent h_max: cell %f != parts %f", *depth,
+            c->hydro.h_max, h_max);
     message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
   }
-  if (c->dx_max_part != dx_max) {
-    message("%d Inconsistent dx_max: %f != %f", *depth, c->dx_max_part, dx_max);
+  if (c->hydro.dx_max_part != dx_max) {
+    message("%d Inconsistent dx_max: %f != %f", *depth, c->hydro.dx_max_part,
+            dx_max);
     message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
   }
@@ -316,13 +319,13 @@ static void dumpCells_map(struct cell *c, void *data) {
 #endif
 
   /* Only cells with particles are dumped. */
-  if (c->count > 0 || c->gcount > 0 || c->scount > 0) {
+  if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0) {
 
     /* In MPI mode we may only output cells with foreign partners.
      * These define the edges of the partitions. */
     int ismpiactive = 0;
 #if WITH_MPI
-    ismpiactive = (c->send_xv != NULL);
+    ismpiactive = (c->mpi.hydro.send_xv != NULL);
     if (mpiactive)
       mpiactive = ismpiactive;
     else
@@ -337,7 +340,8 @@ static void dumpCells_map(struct cell *c, void *data) {
     else
       active = 1;
 
-    /* So output local super cells that are active and have MPI
+    /* So output local super cells or top-level cells that are active and have
+     * MPI
      * tasks as requested. */
     if (c->nodeID == e->nodeID &&
         (!super || ((super && c->super == c) || (c->parent == NULL))) &&
@@ -346,14 +350,14 @@ static void dumpCells_map(struct cell *c, void *data) {
       /* If requested we work out how many particles are active in this cell. */
       int pactcount = 0;
       if (pactive) {
-        const struct part *parts = c->parts;
-        for (int k = 0; k < c->count; k++)
+        const struct part *parts = c->hydro.parts;
+        for (int k = 0; k < c->hydro.count; k++)
           if (part_is_active(&parts[k], e)) pactcount++;
-        struct gpart *gparts = c->gparts;
-        for (int k = 0; k < c->gcount; k++)
+        struct gpart *gparts = c->grav.parts;
+        for (int k = 0; k < c->grav.count; k++)
           if (gpart_is_active(&gparts[k], e)) pactcount++;
-        struct spart *sparts = c->sparts;
-        for (int k = 0; k < c->scount; k++)
+        struct spart *sparts = c->stars.parts;
+        for (int k = 0; k < c->stars.count; k++)
           if (spart_is_active(&sparts[k], e)) pactcount++;
       }
 
@@ -361,9 +365,9 @@ static void dumpCells_map(struct cell *c, void *data) {
               "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d %6d %6d "
               "%6.1f %20lld %6d %6d %6d %6d %6d %6d %6d\n",
               c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
-              c->width[2], e->step, c->count, c->gcount, c->scount, pactcount,
-              c->depth, ntasks, c->ti_hydro_end_min,
-              get_time_bin(c->ti_hydro_end_min), (c->super == c),
+              c->width[2], e->step, c->hydro.count, c->grav.count,
+              c->stars.count, pactcount, c->depth, ntasks, c->hydro.ti_end_min,
+              get_time_bin(c->hydro.ti_end_min), (c->super == c),
               (c->parent == NULL), cell_is_active_hydro(c, e), c->nodeID,
               c->nodeID == e->nodeID, ismpiactive);
     }
@@ -414,13 +418,13 @@ void dumpCells(const char *prefix, int super, int active, int mpiactive,
   fclose(file);
 }
 
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
 /**
- * @brief Dump the METIS graph in standard format, simple format and weights
+ * @brief Dump a graph in METIS standard format, simple format and weights
  * only, to a file.
  *
- * The standard format output can be read into the METIS
+ * The standard format output can be read into the METIS and some ParMETIS
  * command-line tools. The simple format is just the cell connectivity (this
  * should not change between calls).  The weights format is the standard one,
  * minus the cell connectivity.
@@ -552,7 +556,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   }
 }
 
-#endif /* HAVE_METIS */
+#endif /* HAVE_METIS || HAVE_PARMETIS */
 
 #ifdef HAVE_MPI
 /**

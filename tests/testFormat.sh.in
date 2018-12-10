@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -e
+
+cd @srcdir@/..
+./format.sh --test

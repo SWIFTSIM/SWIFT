@@ -54,6 +54,9 @@
 #elif defined(HOPKINS_PU_SPH)
 #include "./hydro/PressureEnergy/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#elif defined(HOPKINS_PU_SPH_MONAGHAN)
+#include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_part.h"
+#define hydro_need_extra_init_loop 0
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_part.h"
 #define hydro_need_extra_init_loop 0
@@ -69,8 +72,8 @@
 #include "./hydro/Shadowswift/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
-#elif defined(MINIMAL_MULTI_MAT_SPH)
-#include "./hydro/MinimalMultiMat/hydro_part.h"
+#elif defined(PLANETARY_SPH)
+#include "./hydro/Planetary/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #else
 #error "Invalid choice of SPH variant"
@@ -86,7 +89,7 @@
 #endif
 
 /* Import the right star particle definition */
-#include "./stars/Default/star_part.h"
+#include "./stars/Default/stars_part.h"
 
 void part_relink_gparts_to_parts(struct part *parts, size_t N,
                                  ptrdiff_t offset);
@@ -108,7 +111,6 @@ extern MPI_Datatype part_mpi_type;
 extern MPI_Datatype xpart_mpi_type;
 extern MPI_Datatype gpart_mpi_type;
 extern MPI_Datatype spart_mpi_type;
-extern MPI_Datatype multipole_mpi_type;
 
 void part_create_mpi_types(void);
 #endif

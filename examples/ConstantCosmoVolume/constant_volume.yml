@@ -1,0 +1,54 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun
+  UnitLength_in_cgs:   3.08567758e24 # 1 Mpc
+  UnitVelocity_in_cgs: 1e5   	     # 1 km/s
+  UnitCurrent_in_cgs:  1   	     # Amperes
+  UnitTemp_in_cgs:     1   	     # Kelvin
+
+Cosmology:
+  Omega_m: 1.
+  Omega_lambda: 0.
+  Omega_b: 1.
+  h: 1.
+  a_begin: 0.00990099	# z_ini = 100.
+  a_end: 1.0		# z_end = 0.
+
+# Parameters governing the time integration
+TimeIntegration:
+  dt_min:     1e-7
+  dt_max:     2e-3
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:	       box
+  delta_time:          1.04
+  scale_factor_first:  0.00991
+  compression:         4
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  scale_factor_first:  0.00991
+  delta_time:          1.1
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # "48 ngb" for the 3D cubic spline
+  CFL_condition:         0.1
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./constantBox.hdf5
+  periodic:   1
+  
+Scheduler:
+  max_top_level_cells: 8
+  cell_split_size:     50
+  
+Gravity:
+  mesh_side_length:   32
+  eta: 0.025
+  theta: 0.3
+  comoving_softening: 0.08	# 80 kpc = 1/25 of mean inter-particle separation
+  max_physical_softening: 0.08  # 80 kpc = 1/25 of mean inter-particle separation
+

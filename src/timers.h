@@ -81,12 +81,16 @@ enum {
   timer_dorecv_gpart,
   timer_dorecv_spart,
   timer_do_cooling,
+  timer_do_star_formation,
   timer_gettask,
   timer_qget,
   timer_qsteal,
   timer_locktree,
   timer_runners,
   timer_step,
+  timer_dostars_ghost,
+  timer_logger,
+  timer_do_stars_sort,
   timer_count,
 };
 

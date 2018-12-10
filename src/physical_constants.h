@@ -93,6 +93,12 @@ struct phys_const {
 
   /*! Temperature of the CMB at present day */
   double const_T_CMB_0;
+
+  /*! Primordial Helium fraction */
+  double const_primordial_He_fraction;
+
+  /*! Reduced hubble constant units (i.e. H_0 / h) */
+  double const_reduced_hubble;
 };
 
 void phys_const_init(const struct unit_system* us, struct swift_params* params,

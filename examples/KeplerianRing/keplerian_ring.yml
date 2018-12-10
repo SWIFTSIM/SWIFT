@@ -32,7 +32,8 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  initial_conditions.hdf5        # The file to read
-
+  periodic:   1
+  
 # External potential parameters
 PointMassPotential:
   position:        [5.,5.,5.]  # location of external point mass in internal units

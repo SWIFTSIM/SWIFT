@@ -1,0 +1,140 @@
+#!/bin/bash
+#
+# Usage:
+#  process_plot_tasks_MPI nprocess time-range-ms
+#
+# Description:
+#  Process all the thread info files in the current directory
+#  creating task graphs for all MPI ranks and all threads.
+#
+#  The input files are created by a run using the "-y interval" flag and
+#  should be named "thread_info_MPI-step<n>.dat" in the current directory.
+#  All located files will be processed using "nprocess" concurrent
+#  processes and all plots will have the given time range. An output
+#  HTML file "index.html" will be created to view all the plots.
+#
+#
+# This file is part of SWIFT:
+#
+#  Copyright (C) 2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+#  All Rights Reserved.
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Lesser General Public License as published
+#  by the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU Lesser General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Handle command-line
+if test "$2" == ""; then
+    echo "Usage: $0 nprocess time-range-ms"
+    exit 1
+fi
+NPROCS=$1
+TIMERANGE=$2
+
+#  Locate script.
+SCRIPTHOME=$(dirname "$0")
+
+#  Find all thread info files. Use version sort to get into correct order.
+files=$(ls -v thread_info_MPI-step*.dat)
+if test $? != 0; then
+    echo "Failed to find any thread info files"
+    exit 1
+fi
+
+#  Construct list of names, the step no and names for the graphics.
+list=""
+for f in $files; do
+    s=$(echo $f| sed 's,thread_info_MPI-step\(.*\).dat,\1,')
+    list="$list $f $s step${s}r"
+done
+
+#  Need number of ranks used.
+basefile=$(echo $list | awk '{print $1}')
+nrank=$(cat $basefile | awk '{print $1}' | uniq | wc -l)
+nrank=$(($nrank-1))
+
+#  And process them,
+echo "Processing thread info files..."
+echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/plot_tasks.py --expand 1 --limit $TIMERANGE \$0 \$2 "
+for i in $(seq 0 $nrank); do
+    echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/analyse_tasks.py -r $i \$0 > \$2${i}.stats"
+done
+
+echo "Writing output index.html file"
+#  Construct document - serial.
+cat <<EOF > index.html
+ <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>SWIFT task graphs</title>
+  </head>
+  <body>
+  <h1>SWIFT task graphs</h1>
+EOF
+
+echo $list | xargs -n 3 | while read f s g; do
+    cat <<EOF >> index.html
+<h2>Step $s</h2>
+<ul style="list-style-type:none">
+<li>
+EOF
+
+    cat <<EOF3 > step${s}r.html
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<body>
+EOF3
+
+    for i in $(seq 0 $nrank); do
+
+        cat <<EOF >> index.html
+<a href="step${s}r.html"><img src="step${s}r${i}.png" width=400px/></a>
+EOF
+        cat <<EOF3 >> step${s}r.html
+<a href="step${s}r${i}.html"><img src="step${s}r${i}.png"/></a>
+EOF3
+
+    cat <<EOF2 > step${s}r${i}.html
+ <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<body>
+<img src="step${s}r${i}.png">
+<pre>
+EOF2
+cat step${s}r${i}.stats >> step${s}r${i}.html
+cat <<EOF2 >> step${s}r${i}.html
+</pre>
+</body>
+</html>
+EOF2
+
+    done
+
+cat <<EOF3 >> step${s}r.html
+</body>
+</html>
+EOF3
+
+cat <<EOF >> index.html
+</li>
+</ul>
+EOF
+done
+
+cat <<EOF >> index.html
+  </body>
+</html>
+EOF
+
+echo "Finished"
+
+exit

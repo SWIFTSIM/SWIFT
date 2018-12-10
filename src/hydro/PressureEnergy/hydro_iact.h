@@ -232,16 +232,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
+                     (pi->v[2] - pj->v[2]) * dx[2];
+
+  /* Includes the hubble flow term; not used for du/dt */
+  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
   /* Are the part*icles moving towards each others ? */
-  const float omega_ij = min(dvdr, 0.f);
+  const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-  const float v_sig = ci + cj - 3.f * mu_ij;
+  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
@@ -249,8 +252,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -282,7 +284,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                               wj_dr * dvdr * r_inv;
 
   /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr;
+  const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term;
@@ -357,16 +359,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
+                     (pi->v[2] - pj->v[2]) * dx[2];
+
+  /* Includes the hubble flow term; not used for du/dt */
+  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
   /* Are the part*icles moving towards each others ? */
-  const float omega_ij = min(dvdr, 0.f);
+  const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-  const float v_sig = ci + cj - 3.f * mu_ij;
+  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
@@ -374,8 +379,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -400,7 +404,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                               wi_dr * dvdr * r_inv;
 
   /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr;
+  const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term;

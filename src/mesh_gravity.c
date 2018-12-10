@@ -110,14 +110,22 @@ __attribute__((always_inline)) INLINE static void CIC_set(
     double dx, double dy, double dz, double value) {
 
   /* Classic CIC interpolation */
-  mesh[row_major_id_periodic(i + 0, j + 0, k + 0, N)] += value * tx * ty * tz;
-  mesh[row_major_id_periodic(i + 0, j + 0, k + 1, N)] += value * tx * ty * dz;
-  mesh[row_major_id_periodic(i + 0, j + 1, k + 0, N)] += value * tx * dy * tz;
-  mesh[row_major_id_periodic(i + 0, j + 1, k + 1, N)] += value * tx * dy * dz;
-  mesh[row_major_id_periodic(i + 1, j + 0, k + 0, N)] += value * dx * ty * tz;
-  mesh[row_major_id_periodic(i + 1, j + 0, k + 1, N)] += value * dx * ty * dz;
-  mesh[row_major_id_periodic(i + 1, j + 1, k + 0, N)] += value * dx * dy * tz;
-  mesh[row_major_id_periodic(i + 1, j + 1, k + 1, N)] += value * dx * dy * dz;
+  atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 0, k + 0, N)],
+               value * tx * ty * tz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 0, k + 1, N)],
+               value * tx * ty * dz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 1, k + 0, N)],
+               value * tx * dy * tz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 1, k + 1, N)],
+               value * tx * dy * dz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 1, j + 0, k + 0, N)],
+               value * dx * ty * tz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 1, j + 0, k + 1, N)],
+               value * dx * ty * dz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 1, j + 1, k + 0, N)],
+               value * dx * dy * tz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 1, j + 1, k + 1, N)],
+               value * dx * dy * dz);
 }
 
 /**
@@ -163,6 +171,74 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho, int N,
 
   /* CIC ! */
   CIC_set(rho, N, i, j, k, tx, ty, tz, dx, dy, dz, mass);
+}
+
+/**
+ * @brief Assigns all the #gpart of a #cell to a density mesh using the CIC
+ * method.
+ *
+ * @param c The #cell.
+ * @param rho The density mesh.
+ * @param N the size of the mesh along one axis.
+ * @param fac The width of a mesh cell.
+ * @param dim The dimensions of the simulation box.
+ */
+void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, int N,
+                            double fac, const double dim[3]) {
+  const int gcount = c->grav.count;
+  const struct gpart* gparts = c->grav.parts;
+
+  /* Assign all the gpart of that cell to the mesh */
+  for (int i = 0; i < gcount; ++i)
+    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim);
+}
+
+/**
+ * @brief Shared information about the mesh to be used by all the threads in the
+ * pool.
+ */
+struct cic_mapper_data {
+  const struct cell* cells;
+  double* rho;
+  int N;
+  double fac;
+  double dim[3];
+};
+
+/**
+ * @brief Threadpool mapper function for the mesh CIC assignment of a cell.
+ *
+ * @param map_data A chunk of the list of local cells.
+ * @param num The number of cells in the chunk.
+ * @param extra The information about the mesh and cells.
+ */
+void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
+
+  /* Unpack the shared information */
+  const struct cic_mapper_data* data = (struct cic_mapper_data*)extra;
+  const struct cell* cells = data->cells;
+  double* rho = data->rho;
+  const int N = data->N;
+  const double fac = data->fac;
+  const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
+
+  /* Pointer to the chunk to be processed */
+  int* local_cells = (int*)map_data;
+
+  // MATTHIEU: This could in principle be improved by creating a local mesh
+  //           with just the extent required for the cell. Assignment can
+  //           then be done without atomics. That local mesh is then added
+  //           atomically to the global one.
+
+  /* Loop over the elements assigned to this thread */
+  for (int i = 0; i < num; ++i) {
+
+    /* Pointer to local cell */
+    const struct cell* c = &cells[local_cells[i]];
+
+    /* Assign this cell's content to the mesh */
+    cell_gpart_to_mesh_CIC(c, rho, N, fac, dim);
+  }
 }
 
 /**
@@ -279,18 +355,24 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
  *
  * @param mesh The #pm_mesh used to store the potential.
  * @param s The #space containing the particles.
+ * @param tp The #threadpool object used for parallelisation.
  * @param verbose Are we talkative?
  */
 void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
-                               int verbose) {
+                               struct threadpool* tp, int verbose) {
 
 #ifdef HAVE_FFTW
 
   const double r_s = mesh->r_s;
   const double box_size = s->dim[0];
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int* local_cells = s->local_cells_top;
+  const int nr_local_cells = s->nr_local_cells;
 
   if (r_s <= 0.) error("Invalid value of a_smooth");
+  if (mesh->dim[0] != dim[0] || mesh->dim[1] != dim[1] ||
+      mesh->dim[2] != dim[2])
+    error("Domain size does not match the value stored in the space.");
 
   /* Some useful constants */
   const int N = mesh->N;
@@ -314,29 +396,60 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   fftw_plan inverse_plan = fftw_plan_dft_c2r_3d(
       N, N, N, frho, rho, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
 
-  const ticks tic = getticks();
+  ticks tic = getticks();
 
   /* Zero everything */
   bzero(rho, N * N * N * sizeof(double));
 
-  /* Do a CIC mesh assignment of the gparts */
-  for (size_t i = 0; i < s->nr_gparts; ++i)
-    gpart_to_mesh_CIC(&s->gparts[i], rho, N, cell_fac, dim);
+  /* Gather the mesh shared information to be used by the threads */
+  struct cic_mapper_data data;
+  data.cells = s->cells_top;
+  data.rho = rho;
+  data.N = N;
+  data.fac = cell_fac;
+  data.dim[0] = dim[0];
+  data.dim[1] = dim[1];
+  data.dim[2] = dim[2];
+
+  /* Do a parallel CIC mesh assignment of the gparts but only using
+     the local top-level cells */
+  threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
+                 nr_local_cells, sizeof(int), 0, (void*)&data);
 
   if (verbose)
-    message("gpart assignment took %.3f %s.",
+    message("Gpart assignment took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+#ifdef WITH_MPI
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  tic = getticks();
+
+  /* Merge everybody's share of the density mesh */
+  MPI_Allreduce(MPI_IN_PLACE, rho, N * N * N, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  if (verbose)
+    message("Mesh comunication took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+#endif
 
   /* message("\n\n\n DENSITY"); */
   /* print_array(rho, N); */
 
-  const ticks tic2 = getticks();
+  tic = getticks();
 
   /* Fourier transform to go to magic-land */
   fftw_execute(forward_plan);
 
+  if (verbose)
+    message("Forward Fourier transform took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   /* frho now contains the Fourier transform of the density field */
   /* frho contains NxNx(N/2+1) complex numbers */
+
+  tic = getticks();
 
   /* Some common factors */
   const double green_fac = -1. / (M_PI * box_size);
@@ -399,17 +512,24 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   frho[0][0] = 0.;
   frho[0][1] = 0.;
 
+  if (verbose)
+    message("Applying Green function took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
   /* Fourier transform to come back from magic-land */
   fftw_execute(inverse_plan);
 
+  if (verbose)
+    message("Backwards Fourier transform took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   /* rho now contains the potential */
   /* This array is now again NxNxN real numbers */
+
   /* Let's store it in the structure */
   mesh->potential = rho;
-
-  if (verbose)
-    message("Fourier-space PM took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* message("\n\n\n POTENTIAL"); */
   /* print_array(potential, N); */
@@ -450,8 +570,20 @@ void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
   for (int i = 0; i < gcount; ++i) {
     struct gpart* gp = &gparts[i];
 
-    if (gpart_is_active(gp, e))
+    if (gpart_is_active(gp, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (gp->ti_drift != e->ti_current)
+        error("gpart not drifted to current time");
+
+      /* Check that the particle was initialised */
+      if (gp->initialised == 0)
+        error("Adding forces to an un-initialised gpart.");
+#endif
+
       mesh_to_gparts_CIC(gp, potential, N, cell_fac, dim);
+    }
   }
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
@@ -464,18 +596,20 @@ void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
  * @param mesh The #pm_mesh to initialise.
  * @param props The propoerties of the gravity scheme.
  * @param dim The (comoving) side-lengths of the simulation volume.
+ * @param nr_threads The number of threads on this MPI rank.
  */
 void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
-                  double dim[3]) {
+                  double dim[3], int nr_threads) {
 
 #ifdef HAVE_FFTW
 
-  if (dim[0] != dim[1] || dim[0] != dim[1])
+  if (dim[0] != dim[1] || dim[0] != dim[2])
     error("Doing mesh-gravity on a non-cubic domain");
 
   const int N = props->mesh_size;
   const double box_size = dim[0];
 
+  mesh->nr_threads = nr_threads;
   mesh->periodic = 1;
   mesh->N = N;
   mesh->dim[0] = dim[0];
@@ -486,6 +620,17 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   mesh->r_s_inv = 1. / mesh->r_s;
   mesh->r_cut_max = mesh->r_s * props->r_cut_max_ratio;
   mesh->r_cut_min = mesh->r_s * props->r_cut_min_ratio;
+
+  if (2. * mesh->r_cut_max > box_size)
+    error("Mesh too small or r_cut_max too big for this box size");
+
+#ifdef HAVE_THREADED_FFTW
+  /* Initialise the thread-parallel FFTW version */
+  if (N >= 64) {
+    fftw_init_threads();
+    fftw_plan_with_nthreads(nr_threads);
+  }
+#endif
 
   /* Allocate the memory for the combined density and potential array */
   mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
@@ -525,6 +670,10 @@ void pm_mesh_init_no_mesh(struct pm_mesh* mesh, double dim[3]) {
  */
 void pm_mesh_clean(struct pm_mesh* mesh) {
 
+#ifdef HAVE_THREADED_FFTW
+  fftw_cleanup_threads();
+#endif
+
   if (mesh->potential) free(mesh->potential);
   mesh->potential = 0;
 }
@@ -551,15 +700,26 @@ void pm_mesh_struct_restore(struct pm_mesh* mesh, FILE* stream) {
 
   restart_read_blocks((void*)mesh, sizeof(struct pm_mesh), 1, stream, NULL,
                       "gravity props");
+
+  if (mesh->periodic) {
+
 #ifdef HAVE_FFTW
-  const int N = mesh->N;
+    const int N = mesh->N;
 
-  /* Allocate the memory for the combined density and potential array */
-  mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
-  if (mesh->potential == NULL)
-    error("Error allocating memory for the long-range gravity mesh.");
-
-#else
-  error("No FFTW library found. Cannot compute periodic long-range forces.");
+#ifdef HAVE_THREADED_FFTW
+    /* Initialise the thread-parallel FFTW version */
+    if (N >= 64) {
+      fftw_init_threads();
+      fftw_plan_with_nthreads(mesh->nr_threads);
+    }
 #endif
+
+    /* Allocate the memory for the combined density and potential array */
+    mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
+    if (mesh->potential == NULL)
+      error("Error allocating memory for the long-range gravity mesh.");
+#else
+    error("No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
+  }
 }

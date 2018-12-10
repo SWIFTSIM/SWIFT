@@ -145,10 +145,10 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   /* Anything to do here? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
-  const int count_i = ci->count;
-  const int count_j = cj->count;
-  struct part *restrict parts_i = ci->parts;
-  struct part *restrict parts_j = cj->parts;
+  const int count_i = ci->hydro.count;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_i = ci->hydro.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -169,6 +169,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[pid];
     const int pi_active = part_is_active(pi, e);
+    const int pi_inhibited = part_is_inhibited(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
@@ -183,6 +184,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
       const int pj_active = part_is_active(pj, e);
+      const int pj_inhibited = part_is_inhibited(pj, e);
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
@@ -193,21 +195,21 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      if (pi->ti_drift != e->ti_current)
+      if (pi->ti_drift != e->ti_current && !pi_inhibited)
         error("Particle pi not drifted to current time");
-      if (pj->ti_drift != e->ti_current)
+      if (pj->ti_drift != e->ti_current && !pj_inhibited)
         error("Particle pj not drifted to current time");
 #endif
 
       /* Hit or miss? */
-      if (r2 < hig2 && pi_active) {
+      if (r2 < hig2 && pi_active && !pj_inhibited) {
 
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
 #endif
       }
-      if (r2 < hjg2 && pj_active) {
+      if (r2 < hjg2 && pj_active && !pi_inhibited) {
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];
@@ -245,10 +247,10 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   /* Anything to do here? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
-  const int count_i = ci->count;
-  const int count_j = cj->count;
-  struct part *restrict parts_i = ci->parts;
-  struct part *restrict parts_j = cj->parts;
+  const int count_i = ci->hydro.count;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_i = ci->hydro.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -269,6 +271,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[pid];
     const int pi_active = part_is_active(pi, e);
+    const int pi_inhibited = part_is_inhibited(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
@@ -281,6 +284,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
       const int pj_active = part_is_active(pj, e);
+      const int pj_inhibited = part_is_inhibited(pj, e);
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
 
@@ -293,28 +297,28 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      if (pi->ti_drift != e->ti_current)
+      if (pi->ti_drift != e->ti_current && !pj_inhibited)
         error("Particle pi not drifted to current time");
-      if (pj->ti_drift != e->ti_current)
+      if (pj->ti_drift != e->ti_current && !pi_inhibited)
         error("Particle pj not drifted to current time");
 #endif
 
       /* Hit or miss? */
       if (r2 < hig2 || r2 < hjg2) {
 
-        if (pi_active && pj_active) {
+        if (pi_active && pj_active && !pi_inhibited && !pj_inhibited) {
 
           IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
 #endif
-        } else if (pi_active) {
+        } else if (pi_active && !pj_inhibited) {
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
 #endif
-        } else if (pj_active) {
+        } else if (pj_active && !pi_inhibited) {
 
           dx[0] = -dx[0];
           dx[1] = -dx[1];
@@ -354,8 +358,8 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  const int count = c->count;
-  struct part *restrict parts = c->parts;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
@@ -363,6 +367,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts[pid];
     const int pi_active = part_is_active(pi, e);
+    const int pi_inhibited = part_is_inhibited(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
@@ -377,6 +382,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
       const int pj_active = part_is_active(pj, e);
+      const int pj_inhibited = part_is_inhibited(pj, e);
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
@@ -385,14 +391,14 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      const int doi = pi_active && (r2 < hig2);
-      const int doj = pj_active && (r2 < hjg2);
+      const int doi = pi_active && (r2 < hig2) && !pj_inhibited;
+      const int doj = pj_active && (r2 < hjg2) && !pi_inhibited;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      if (pi->ti_drift != e->ti_current)
+      if (pi->ti_drift != e->ti_current && !pi_inhibited)
         error("Particle pi not drifted to current time");
-      if (pj->ti_drift != e->ti_current)
+      if (pj->ti_drift != e->ti_current && !pj_inhibited)
         error("Particle pj not drifted to current time");
 #endif
 
@@ -448,8 +454,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  const int count = c->count;
-  struct part *restrict parts = c->parts;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
@@ -457,6 +463,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts[pid];
     const int pi_active = part_is_active(pi, e);
+    const int pi_inhibited = part_is_inhibited(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
@@ -471,6 +478,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
       const int pj_active = part_is_active(pj, e);
+      const int pj_inhibited = part_is_inhibited(pj, e);
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
@@ -479,14 +487,16 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      const int doi = pi_active && ((r2 < hig2) || (r2 < hjg2));
-      const int doj = pj_active && ((r2 < hig2) || (r2 < hjg2));
+      const int doi =
+          pi_active && ((r2 < hig2) || (r2 < hjg2)) && !pj_inhibited;
+      const int doj =
+          pj_active && ((r2 < hig2) || (r2 < hjg2)) && !pi_inhibited;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
-      if (pi->ti_drift != e->ti_current)
+      if (pi->ti_drift != e->ti_current && !pi_inhibited)
         error("Particle pi not drifted to current time");
-      if (pj->ti_drift != e->ti_current)
+      if (pj->ti_drift != e->ti_current && !pj_inhibited)
         error("Particle pj not drifted to current time");
 #endif
 
@@ -544,8 +554,8 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
   TIMER_TIC;
 
-  const int count_j = cj->count;
-  struct part *restrict parts_j = cj->parts;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -571,6 +581,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
+      const int pj_inhibited = part_is_inhibited(pj, e);
 
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
@@ -584,12 +595,12 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
-      if (pj->ti_drift != e->ti_current)
+      if (pj->ti_drift != e->ti_current && !pj_inhibited)
         error("Particle pj not drifted to current time");
 #endif
 
       /* Hit or miss? */
-      if (r2 < hig2) {
+      if (r2 < hig2 && !pj_inhibited) {
 
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -626,16 +637,16 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
   TIMER_TIC;
 
-  const int count_j = cj->count;
-  struct part *restrict parts_j = cj->parts;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_j = cj->sort[sid];
-  const float dxj = cj->dx_max_sort;
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
+  const float dxj = cj->hydro.dx_max_sort;
 
   /* Parts are on the left? */
   if (!flipped) {
@@ -658,6 +669,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        const int pj_inhibited = part_is_inhibited(pj, e);
         const float hj = pj->h;
         const double pjx = pj->x[0];
         const double pjy = pj->x[1];
@@ -672,12 +684,12 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current)
+        if (pj->ti_drift != e->ti_current && !pj_inhibited)
           error("Particle pj not drifted to current time");
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2) {
+        if (r2 < hig2 && !pj_inhibited) {
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -709,6 +721,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        const int pj_inhibited = part_is_inhibited(pj, e);
         const float hj = pj->h;
         const double pjx = pj->x[0];
         const double pjy = pj->x[1];
@@ -723,12 +736,12 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current)
+        if (pj->ti_drift != e->ti_current && !pj_inhibited)
           error("Particle pj not drifted to current time");
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2) {
+        if (r2 < hig2 && !pj_inhibited) {
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -782,8 +795,8 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
   sid = sortlistID[sid];
 
   /* Has the cell cj been sorted? */
-  if (!(cj->sorted & (1 << sid)) ||
-      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
 #endif
 
@@ -822,8 +835,8 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  const int count_i = ci->count;
-  struct part *restrict parts_j = ci->parts;
+  const int count_i = ci->hydro.count;
+  struct part *restrict parts_j = ci->hydro.parts;
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
@@ -845,6 +858,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
+      const int pj_inhibited = part_is_inhibited(pj, e);
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
@@ -858,12 +872,12 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
-      if (pj->ti_drift != e->ti_current)
+      if (pj->ti_drift != e->ti_current && !pj_inhibited)
         error("Particle pj not drifted to current time");
 #endif
 
       /* Hit or miss? */
-      if (r2 > 0.f && r2 < hig2) {
+      if (r2 > 0.f && r2 < hig2 && !pj_inhibited) {
 
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -919,29 +933,32 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->sort[sid];
-  const struct entry *restrict sort_j = cj->sort[sid];
+  const struct entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
   const float shift_threshold_x =
-      2. * ci->width[0] + 2. * max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[0] +
+      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_y =
-      2. * ci->width[1] + 2. * max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[1] +
+      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_z =
-      2. * ci->width[2] + 2. * max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[2] +
+      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
-  const double hi_max = ci->h_max * kernel_gamma - rshift;
-  const double hj_max = cj->h_max * kernel_gamma;
-  const int count_i = ci->count;
-  const int count_j = cj->count;
-  struct part *restrict parts_i = ci->parts;
-  struct part *restrict parts_j = cj->parts;
+  const double hi_max = ci->hydro.h_max * kernel_gamma - rshift;
+  const double hj_max = cj->hydro.h_max * kernel_gamma;
+  const int count_i = ci->hydro.count;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_i = ci->hydro.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
-  const float dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+  const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -975,6 +992,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pj */
         struct part *pj = &parts_j[sort_j[pjd].i];
+        const int pj_inhibited = part_is_inhibited(pj, e);
         const float hj = pj->h;
         const float pjx = pj->x[0] - cj->loc[0];
         const float pjy = pj->x[1] - cj->loc[1];
@@ -1014,12 +1032,12 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current)
+        if (pj->ti_drift != e->ti_current && !pj_inhibited)
           error("Particle pj not drifted to current time");
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2) {
+        if (r2 < hig2 && !pj_inhibited) {
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1058,6 +1076,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
+        const int pi_inhibited = part_is_inhibited(pi, e);
         const float hi = pi->h;
         const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
         const float piy = pi->x[1] - (cj->loc[1] + shift[1]);
@@ -1095,14 +1114,14 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               pjz, ci->width[2]);
 
         /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current)
+        if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
 
         /* Hit or miss? */
-        if (r2 < hjg2) {
+        if (r2 < hjg2 && !pi_inhibited) {
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1141,49 +1160,55 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) ||
-      ci->dx_max_sort_old > space_maxreldx * ci->dmin)
+  if (!(ci->hydro.sorted & (1 << sid)) ||
+      ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
     error("Interacting unsorted cells.");
-  if (!(cj->sorted & (1 << sid)) ||
-      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->sort[sid];
-  const struct entry *restrict sort_j = cj->sort[sid];
+  const struct entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
 
   /* Check that the dx_max_sort values in the cell are indeed an upper
      bound on particle movement. */
-  for (int pid = 0; pid < ci->count; pid++) {
-    const struct part *p = &ci->parts[sort_i[pid].i];
+  for (int pid = 0; pid < ci->hydro.count; pid++) {
+    const struct part *p = &ci->hydro.parts[sort_i[pid].i];
+    if (part_is_inhibited(p, e)) continue;
+
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
-            1.0e-4 * max(fabsf(d), ci->dx_max_sort_old) &&
-        fabsf(d - sort_i[pid].d) - ci->dx_max_sort > ci->width[0] * 1.0e-10)
+    if (fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
+            1.0e-4 * max(fabsf(d), ci->hydro.dx_max_sort_old) &&
+        fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
+            ci->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
-          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
-          "ci->dx_max_sort_old=%e",
-          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->dx_max_sort,
-          ci->dx_max_sort_old);
+          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->hydro.dx_max_sort=%e "
+          "ci->hydro.dx_max_sort_old=%e",
+          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->hydro.dx_max_sort,
+          ci->hydro.dx_max_sort_old);
   }
-  for (int pjd = 0; pjd < cj->count; pjd++) {
-    const struct part *p = &cj->parts[sort_j[pjd].i];
+  for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
+    const struct part *p = &cj->hydro.parts[sort_j[pjd].i];
+    if (part_is_inhibited(p, e)) continue;
+
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
-    if ((fabsf(d - sort_j[pjd].d) - cj->dx_max_sort) >
-            1.0e-4 * max(fabsf(d), cj->dx_max_sort_old) &&
-        (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort) > cj->width[0] * 1.0e-10)
+    if ((fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort) >
+            1.0e-4 * max(fabsf(d), cj->hydro.dx_max_sort_old) &&
+        (fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort) >
+            cj->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
-          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "
-          "cj->dx_max_sort_old=%e",
-          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
-          cj->dx_max_sort_old);
+          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->hydro.dx_max_sort=%e "
+          "cj->hydro.dx_max_sort_old=%e",
+          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->hydro.dx_max_sort,
+          cj->hydro.dx_max_sort_old);
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -1222,33 +1247,36 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  struct entry *restrict sort_i = ci->sort[sid];
-  struct entry *restrict sort_j = cj->sort[sid];
+  struct entry *restrict sort_i = ci->hydro.sort[sid];
+  struct entry *restrict sort_j = cj->hydro.sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
   const float shift_threshold_x =
-      2. * ci->width[0] + 2. * max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[0] +
+      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_y =
-      2. * ci->width[1] + 2. * max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[1] +
+      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_z =
-      2. * ci->width[2] + 2. * max(ci->dx_max_part, cj->dx_max_part);
+      2. * ci->width[2] +
+      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
-  const double hi_max = ci->h_max;
-  const double hj_max = cj->h_max;
-  const int count_i = ci->count;
-  const int count_j = cj->count;
-  struct part *restrict parts_i = ci->parts;
-  struct part *restrict parts_j = cj->parts;
+  const double hi_max = ci->hydro.h_max;
+  const double hj_max = cj->hydro.h_max;
+  const int count_i = ci->hydro.count;
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_i = ci->hydro.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
 
   /* Maximal displacement since last rebuild */
-  const double dx_max = (ci->dx_max_sort + cj->dx_max_sort);
+  const double dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
 
   /* Position on the axis of the particles closest to the interface */
   const double di_max = sort_i[count_i - 1].d;
@@ -1307,6 +1335,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
     /* Get a hold of the ith part in ci. */
     struct part *pi = &parts_i[sort_i[pid].i];
+    const int pi_inhibited = part_is_inhibited(pi, e);
     const float hi = pi->h;
 
     /* Is there anything we need to interact with (for this specific hi) ? */
@@ -1337,7 +1366,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         const float pjz = pj->x[2] - shift_j[2];
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+        const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1368,7 +1397,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               pjz, ci->width[2]);
 
         /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current)
+        if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
@@ -1376,7 +1405,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Hit or miss?
            (note that we will do the other condition in the reverse loop) */
-        if (r2 < hig2) {
+        if (r2 < hig2 && !pi_inhibited) {
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1392,6 +1421,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pj */
         struct part *pj = &parts_j[sort_j[pjd].i];
+        const int pj_inhibited = part_is_inhibited(pj, e);
         const float hj = pj->h;
 
         /* Get the position of pj in the right frame */
@@ -1400,7 +1430,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         const float pjz = pj->x[2] - shift_j[2];
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1431,14 +1461,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               pjz, ci->width[2]);
 
         /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current)
+        if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current)
+        if (pj->ti_drift != e->ti_current && !pj_inhibited)
           error("Particle pj not drifted to current time");
 #endif
         /* Hit or miss?
            (note that we will do the other condition in the reverse loop) */
-        if (r2 < hig2) {
+        if (r2 < hig2 && !pj_inhibited) {
 
           /* Does pj need to be updated too? */
           if (part_is_active(pj, e)) {
@@ -1466,6 +1496,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
     /* Get a hold of the jth part in cj. */
     struct part *pj = &parts_j[sort_j[pjd].i];
+    const int pj_inhibited = part_is_inhibited(pj, e);
     const float hj = pj->h;
 
     /* Is there anything we need to interact with (for this specific hj) ? */
@@ -1497,7 +1528,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         const float piz = pi->x[2] - shift_i[2];
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1530,13 +1561,13 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current)
+        if (pj->ti_drift != e->ti_current && !pj_inhibited)
           error("Particle pj not drifted to current time");
 #endif
 
         /* Hit or miss?
            (note that we must avoid the r2 < hig2 cases we already processed) */
-        if (r2 < hjg2 && r2 >= hig2) {
+        if (r2 < hjg2 && r2 >= hig2 && !pj_inhibited) {
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1553,6 +1584,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
+        const int pi_inhibited = part_is_inhibited(pi, e);
         const float hi = pi->h;
         const float hig2 = hi * hi * kernel_gamma2;
 
@@ -1562,7 +1594,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         const float piz = pi->x[2] - shift_i[2];
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+        const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1593,15 +1625,15 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               pjz, ci->width[2]);
 
         /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current)
+        if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current)
+        if (pj->ti_drift != e->ti_current && !pj_inhibited)
           error("Particle pj not drifted to current time");
 #endif
 
         /* Hit or miss?
            (note that we must avoid the r2 < hig2 cases we already processed) */
-        if (r2 < hjg2 && r2 >= hig2) {
+        if (r2 < hjg2 && r2 >= hig2 && !pi_inhibited) {
 
           /* Does pi need to be updated too? */
           if (part_is_active(pi, e)) {
@@ -1654,49 +1686,55 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
-  if (!(ci->sorted & (1 << sid)) ||
-      ci->dx_max_sort_old > space_maxreldx * ci->dmin)
+  if (!(ci->hydro.sorted & (1 << sid)) ||
+      ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
     error("Interacting unsorted cells.");
-  if (!(cj->sorted & (1 << sid)) ||
-      cj->dx_max_sort_old > space_maxreldx * cj->dmin)
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->sort[sid];
-  const struct entry *restrict sort_j = cj->sort[sid];
+  const struct entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
 
   /* Check that the dx_max_sort values in the cell are indeed an upper
      bound on particle movement. */
-  for (int pid = 0; pid < ci->count; pid++) {
-    const struct part *p = &ci->parts[sort_i[pid].i];
+  for (int pid = 0; pid < ci->hydro.count; pid++) {
+    const struct part *p = &ci->hydro.parts[sort_i[pid].i];
+    if (part_is_inhibited(p, e)) continue;
+
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_i[pid].d) - ci->dx_max_sort >
-            1.0e-4 * max(fabsf(d), ci->dx_max_sort_old) &&
-        fabsf(d - sort_i[pid].d) - ci->dx_max_sort > ci->width[0] * 1.0e-10)
+    if (fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
+            1.0e-4 * max(fabsf(d), ci->hydro.dx_max_sort_old) &&
+        fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
+            ci->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
-          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->dx_max_sort=%e "
-          "ci->dx_max_sort_old=%e",
-          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->dx_max_sort,
-          ci->dx_max_sort_old);
+          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->hydro.dx_max_sort=%e "
+          "ci->hydro.dx_max_sort_old=%e",
+          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->hydro.dx_max_sort,
+          ci->hydro.dx_max_sort_old);
   }
-  for (int pjd = 0; pjd < cj->count; pjd++) {
-    const struct part *p = &cj->parts[sort_j[pjd].i];
+  for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
+    const struct part *p = &cj->hydro.parts[sort_j[pjd].i];
+    if (part_is_inhibited(p, e)) continue;
+
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
                     p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_j[pjd].d) - cj->dx_max_sort >
-            1.0e-4 * max(fabsf(d), cj->dx_max_sort_old) &&
-        fabsf(d - sort_j[pjd].d) - cj->dx_max_sort > cj->width[0] * 1.0e-10)
+    if (fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort >
+            1.0e-4 * max(fabsf(d), cj->hydro.dx_max_sort_old) &&
+        fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort >
+            cj->width[0] * 1.0e-10)
       error(
           "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
-          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->dx_max_sort=%e "
-          "cj->dx_max_sort_old=%e",
-          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->dx_max_sort,
-          cj->dx_max_sort_old);
+          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->hydro.dx_max_sort=%e "
+          "cj->hydro.dx_max_sort_old=%e",
+          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->hydro.dx_max_sort,
+          cj->hydro.dx_max_sort_old);
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -1726,8 +1764,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   TIMER_TIC;
 
-  struct part *restrict parts = c->parts;
-  const int count = c->count;
+  struct part *restrict parts = c->hydro.parts;
+  const int count = c->hydro.count;
 
   /* Set up indt. */
   int *indt = NULL;
@@ -1750,6 +1788,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
+    const int pi_inhibited = part_is_inhibited(pi, e);
 
     /* Get the particle position and radius. */
     double pix[3];
@@ -1769,7 +1808,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current)
+        if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
@@ -1784,7 +1823,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         }
 
         /* Hit or miss? */
-        if (r2 < hj * hj * kernel_gamma2) {
+        if (r2 < hj * hj * kernel_gamma2 && !pi_inhibited) {
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1805,6 +1844,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[pjd];
+        const int pj_inhibited = part_is_inhibited(pj, e);
         const float hj = pj->h;
 
         /* Compute the pairwise distance. */
@@ -1817,29 +1857,34 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         const int doj =
             (part_is_active(pj, e)) && (r2 < hj * hj * kernel_gamma2);
 
+        const int doi = (r2 < hig2);
+
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current)
+        if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current)
+        if (pj->ti_drift != e->ti_current && !pj_inhibited)
           error("Particle pj not drifted to current time");
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2 || doj) {
+        if (doi || doj) {
 
           /* Which parts need to be updated? */
-          if (r2 < hig2 && doj) {
+          if (doi && doj) {
+
             IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
 #endif
-          } else if (!doj) {
+          } else if (doi && !pj_inhibited) {
+
             IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
 #endif
-          } else {
+          } else if (doj && !pi_inhibited) {
+
             dx[0] = -dx[0];
             dx[1] = -dx[1];
             dx[2] = -dx[2];
@@ -1874,7 +1919,7 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->h_max_old * kernel_gamma > c->dmin)
+  if (c->hydro.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   /* Check that cells are drifted. */
@@ -1903,8 +1948,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   TIMER_TIC;
 
-  struct part *restrict parts = c->parts;
-  const int count = c->count;
+  struct part *restrict parts = c->hydro.parts;
+  const int count = c->hydro.count;
 
   /* Set up indt. */
   int *indt = NULL;
@@ -1927,6 +1972,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
+    const int pi_inhibited = part_is_inhibited(pi, e);
 
     /* Get the particle position and radius. */
     double pix[3];
@@ -1954,14 +2000,14 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current)
+        if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
+        if ((r2 < hig2 || r2 < hj * hj * kernel_gamma2) && !pi_inhibited) {
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1982,6 +2028,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[pjd];
+        const int pj_inhibited = part_is_inhibited(pj, e);
         const float hj = pj->h;
 
         /* Compute the pairwise distance. */
@@ -1994,14 +2041,14 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current)
+        if (pi->ti_drift != e->ti_current && !pi_inhibited)
           error("Particle pi not drifted to current time");
-        if (pj->ti_drift != e->ti_current)
+        if (pj->ti_drift != e->ti_current && !pj_inhibited)
           error("Particle pj not drifted to current time");
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
+        if ((r2 < hig2 || r2 < hj * hj * kernel_gamma2) && !pj_inhibited) {
 
           /* Does pj need to be updated too? */
           if (part_is_active(pj, e)) {
@@ -2041,7 +2088,7 @@ void DOSELF2_BRANCH(struct runner *r, struct cell *c) {
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->h_max_old * kernel_gamma > c->dmin)
+  if (c->hydro.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   /* Check that cells are drifted. */
@@ -2079,7 +2126,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Should we even bother? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
-  if (ci->count == 0 || cj->count == 0) return;
+  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Get the type of pair if not specified explicitly. */
   double shift[3];
@@ -2295,12 +2342,18 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
       error("Interacting undrifted cells.");
 
     /* Do any of the cells need to be sorted first? */
-    if (!(ci->sorted & (1 << sid)) ||
-        ci->dx_max_sort_old > ci->dmin * space_maxreldx)
-      error("Interacting unsorted cell.");
-    if (!(cj->sorted & (1 << sid)) ||
-        cj->dx_max_sort_old > cj->dmin * space_maxreldx)
-      error("Interacting unsorted cell.");
+    if (!(ci->hydro.sorted & (1 << sid)) ||
+        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
+      error(
+          "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
+          "ci->sorted=%d sid=%d",
+          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid);
+    if (!(cj->hydro.sorted & (1 << sid)) ||
+        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
+      error(
+          "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
+          "cj->sorted=%d sid=%d",
+          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid);
 
     /* Compute the interactions. */
     DOPAIR1_BRANCH(r, ci, cj);
@@ -2321,7 +2374,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->count == 0 || !cell_is_active_hydro(ci, r->e)) return;
+  if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, r->e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_hydro_task(ci)) {
@@ -2370,7 +2423,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Should we even bother? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
-  if (ci->count == 0 || cj->count == 0) return;
+  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Get the type of pair if not specified explicitly. */
   double shift[3];
@@ -2586,12 +2639,18 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
       error("Interacting undrifted cells.");
 
     /* Do any of the cells need to be sorted first? */
-    if (!(ci->sorted & (1 << sid)) ||
-        ci->dx_max_sort_old > ci->dmin * space_maxreldx)
-      error("Interacting unsorted cells.");
-    if (!(cj->sorted & (1 << sid)) ||
-        cj->dx_max_sort_old > cj->dmin * space_maxreldx)
-      error("Interacting unsorted cells.");
+    if (!(ci->hydro.sorted & (1 << sid)) ||
+        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
+      error(
+          "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
+          "ci->sorted=%d sid=%d",
+          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid);
+    if (!(cj->hydro.sorted & (1 << sid)) ||
+        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
+      error(
+          "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
+          "cj->sorted=%d sid=%d",
+          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid);
 
     /* Compute the interactions. */
     DOPAIR2_BRANCH(r, ci, cj);
@@ -2612,7 +2671,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->count == 0 || !cell_is_active_hydro(ci, r->e)) return;
+  if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, r->e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_hydro_task(ci)) {
@@ -2647,15 +2706,16 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   if (!cell_is_active_hydro(ci, e) &&
       (cj == NULL || !cell_is_active_hydro(cj, e)))
     return;
-  if (ci->count == 0 || (cj != NULL && cj->count == 0)) return;
+  if (ci->hydro.count == 0 || (cj != NULL && cj->hydro.count == 0)) return;
 
   /* Find out in which sub-cell of ci the parts are. */
   struct cell *sub = NULL;
   if (ci->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL) {
-        if (&parts[ind[0]] >= &ci->progeny[k]->parts[0] &&
-            &parts[ind[0]] < &ci->progeny[k]->parts[ci->progeny[k]->count]) {
+        if (&parts[ind[0]] >= &ci->progeny[k]->hydro.parts[0] &&
+            &parts[ind[0]] <
+                &ci->progeny[k]->hydro.parts[ci->progeny[k]->hydro.count]) {
           sub = ci->progeny[k];
           break;
         }

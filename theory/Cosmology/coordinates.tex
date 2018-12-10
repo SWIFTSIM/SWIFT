@@ -88,13 +88,13 @@ gravitational terms. SPH flavours that evolve the internal energy $u$ instead of
 entropy require the additional equation of motion describing the evolution of
 $u'$:
 \begin{equation}
-  \dot{u}_i' = \frac{P_i'}{\rho_i'^2}\left[3H\rho_i' + \frac{1}{a^2}f_i'\sum_jm_j\left(\mathbf{v}_i' -
-    \mathbf{v}_j'\right)\cdot\mathbf{\nabla}_i'W_{ij}'(h_i)\right],
+  \dot{u}_i' = \frac{1}{a^2}\frac{P_i'}{\rho_i'^2} f_i'\sum_jm_j\left(\mathbf{v}_i' -
+    \mathbf{v}_j'\right)\cdot\mathbf{\nabla}_i'W_{ij}'(h_i).
   \label{eq:cosmo_eom_u}
 \end{equation}
-where the first term in the brackets accounts for the change in energy
-due to the expansion of the Universe. The scale-factors appearing in
-the equations are later absorbed in the time-integration operators
+
+In all these cases, the scale-factors appearing in the equations are
+later absorbed in the time-integration operators
 (Sec.~\ref{ssec:operators}) such that the RHS of the equations of
 motions is identical for the primed quantities to the ones obtained in
 the non-cosmological case for the physical quantities.

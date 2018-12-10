@@ -92,11 +92,6 @@ grp.attrs["Unit time in cgs (U_t)"] = const_unit_length_in_cgs / const_unit_velo
 grp.attrs["Unit current in cgs (U_I)"] = 1.
 grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 
-
-# Runtime parameters
-grp = file.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = periodic
-
 # set seed for random number
 np.random.seed(1234)
 

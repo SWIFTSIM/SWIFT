@@ -1,4 +1,4 @@
-.. Equation of State
+.. Adding new schemes
    Loic Hausammann, 7th April 2018
 
 .. _new_option:

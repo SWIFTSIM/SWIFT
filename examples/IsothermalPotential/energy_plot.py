@@ -86,7 +86,7 @@ for i in range(402):
 
     time_snap[i] = f["Header"].attrs["Time"]
     E_kin_snap[i] = np.sum(0.5 * mass * (vel_x[:]**2 + vel_y[:]**2 + vel_z[:]**2))
-    E_pot_snap[i] = np.sum(-mass * Vrot**2 *  log(r))
+    E_pot_snap[i] = np.sum(mass * Vrot**2 *  log(r))
     E_tot_snap[i] = E_kin_snap[i] + E_pot_snap[i]
     Lz_snap[i] = np.sum(Lz)
 

@@ -62,24 +62,30 @@ get_integer_timestep(timebin_t bin) {
  * @brief Returns the time bin corresponding to a given time_step size.
  *
  * Assumes that integertime_t maps to an unsigned long long.
+ * Given our definitions, this is log_2 of the time_step rounded down minus one.
+ *
+ * We use a fast (but exact for any non-zero value) logarithm in base 2
+ * calculation based on the bit representation of the number:
+ * log_2(x) = (number of bits in the type) - (number of leading 0-bits in x) - 1
  */
 __attribute__((const)) static INLINE timebin_t
 get_time_bin(integertime_t time_step) {
 
   /* ((int) log_2(time_step)) - 1 */
-  return (timebin_t)(62 - intrinsics_clzll(time_step));
+  return (timebin_t)((8 * sizeof(integertime_t) - 2) -
+                     intrinsics_clzll((unsigned long long)time_step));
 }
 
 /**
  * @brief Returns the physical time interval corresponding to a time bin.
  *
  * @param bin The time bin of interest.
- * @param timeBase the minimal time-step size of the simulation.
+ * @param time_base the minimal time-step size of the simulation.
  */
 __attribute__((const)) static INLINE double get_timestep(timebin_t bin,
-                                                         double timeBase) {
+                                                         double time_base) {
 
-  return get_integer_timestep(bin) * timeBase;
+  return get_integer_timestep(bin) * time_base;
 }
 
 /**
@@ -142,7 +148,7 @@ __attribute__((const)) static INLINE timebin_t
 get_min_active_bin(integertime_t ti_current, integertime_t ti_old) {
 
   const timebin_t min_bin = get_max_active_bin(ti_current - ti_old);
-  return (ti_old > 0) ? min_bin : (min_bin - 1);
+  return min_bin;
 }
 
 #endif /* SWIFT_TIMELINE_H */

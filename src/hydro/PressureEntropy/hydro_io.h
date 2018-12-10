@@ -71,7 +71,7 @@ INLINE static void hydro_read_particles(struct part* parts,
 INLINE static void convert_u(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
-  ret[0] = hydro_get_comoving_internal_energy(p);
+  ret[0] = hydro_get_comoving_internal_energy(p, xp);
 }
 
 INLINE static void convert_P(const struct engine* e, const struct part* p,
@@ -194,8 +194,6 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
   io_write_attribute_s(
       h_grpsph, "Viscosity Model",
       "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
-  io_write_attribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
-  io_write_attribute_f(h_grpsph, "Viscosity beta", 3.f);
 
   /* Time integration properties */
   io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",

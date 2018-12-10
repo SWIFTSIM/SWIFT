@@ -112,6 +112,9 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
     ind += 1;
   }
 
+  /* Cleanup */
+  free(line);
+
   if (ind != outputlist->size)
     error("Did not read the correct number of output times.");
 
@@ -208,7 +211,8 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
  * time)
  */
 void output_list_init(struct output_list **list, const struct engine *e,
-                      const char *name, double *delta_time, double *time_first) {
+                      const char *name, double *delta_time,
+                      double *time_first) {
   struct swift_params *params = e->parameter_file;
 
   /* get cosmo */
@@ -265,8 +269,12 @@ void output_list_print(const struct output_list *outputlist) {
 /**
  * @brief Clean an #output_list
  */
-void output_list_clean(struct output_list *outputlist) {
-  free(outputlist->times);
+void output_list_clean(struct output_list **outputlist) {
+  if (*outputlist) {
+    free((*outputlist)->times);
+    free(*outputlist);
+    *outputlist = NULL;
+  }
 }
 
 /**

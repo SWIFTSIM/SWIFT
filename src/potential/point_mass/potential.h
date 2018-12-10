@@ -137,7 +137,7 @@ external_gravity_get_potential_energy(
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
-  const float rinv = 1. / sqrtf(dx * dx + dy * dy + dz * dz);
+  const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
   return -phys_const->const_newton_G * potential->mass * rinv;
 }
 
@@ -156,8 +156,21 @@ static INLINE void potential_init_backend(
     const struct unit_system* us, const struct space* s,
     struct external_potential* potential) {
 
+  /* Read in the position of the centre of potential */
   parser_get_param_double_array(parameter_file, "PointMassPotential:position",
                                 3, potential->x);
+
+  /* Is the position absolute or relative to the centre of the box? */
+  const int useabspos =
+      parser_get_param_int(parameter_file, "PointMassPotential:useabspos");
+
+  if (!useabspos) {
+    potential->x[0] += s->dim[0] / 2.;
+    potential->x[1] += s->dim[1] / 2.;
+    potential->x[2] += s->dim[2] / 2.;
+  }
+
+  /* Read the other parameters of the model */
   potential->mass =
       parser_get_param_double(parameter_file, "PointMassPotential:mass");
   potential->timestep_mult = parser_get_param_float(
