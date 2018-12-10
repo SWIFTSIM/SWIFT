@@ -48,7 +48,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
     gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
-    mesh_gravity.h cbrt.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
+    mesh_gravity.h cbrt.h pow10.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
     logger_io.h
 
 # source files for EAGLE cooling
