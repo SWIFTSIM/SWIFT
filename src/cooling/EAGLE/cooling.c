@@ -457,8 +457,11 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   float abundance_ratio[chemistry_element_count + 2];
   abundance_ratio_to_solar(p, cooling, abundance_ratio);
 
-  /* Get the H and He mass fractions */
+  /* Get the Hydrogen mass fraction */
   const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+
+  /* Get the Helium mass fraction. Note that this is He / (H + He), i.e. a
+   * metal-free Helium mass fraction as per the Wiersma+08 definition */
   const float HeFrac =
       p->chemistry_data.metal_mass_fraction[chemistry_element_He] /
       (XH + p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
@@ -472,14 +475,6 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
    * equivalent expression  below */
   const double ratefact_cgs = n_H_cgs * (XH * cooling->inv_proton_mass_cgs);
 
-  /* Get helium and hydrogen reheating term */
-  const double Helium_reion_heat_cgs = eagle_helium_reionization_extraheat(
-      cooling->z_index, -dt * cosmo->H * cosmo->a_inv, cooling);
-
-  /* Convert this into a rate */
-  const double Lambda_He_reion_cgs =
-      Helium_reion_heat_cgs / (dt_cgs * ratefact_cgs);
-
   /* compute hydrogen number density and helium fraction table indices and
    * offsets (These are fixed for of u, so no need to recompute them) */
   int He_i, n_h_i;
@@ -487,6 +482,21 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   get_index_1d(cooling->HeFrac, eagle_cooling_N_He_frac, HeFrac, &He_i, &d_He);
   get_index_1d(cooling->nH, eagle_cooling_N_density, log10(n_H_cgs), &n_h_i,
                &d_n_h);
+
+  /* Start by computing the cooling (heating actually) rate from Helium
+     re-ionization as this needs to be added on no matter what */
+
+  /* Change in redshift over the course of this time-step
+     (See cosmology theory document for the derivation) */
+  const double delta_z = -dt * cosmo->H * cosmo->a_inv;
+
+  /* Get helium and hydrogen reheating term */
+  const double Helium_reion_heat_cgs =
+      eagle_helium_reionization_extraheat(cooling->z_index, delta_z, cooling);
+
+  /* Convert this into a rate */
+  const double Lambda_He_reion_cgs =
+      Helium_reion_heat_cgs / (dt_cgs * ratefact_cgs);
 
   /* Let's compute the internal energy at the end of the step */
   double u_final_cgs;
@@ -618,6 +628,16 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
     const struct part *restrict p, struct xpart *restrict xp) {
 
   xp->cooling_data.radiated_energy = 0.f;
+}
+
+float cooling_get_temperature(
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us,
+    const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct part *restrict p, struct xpart *restrict xp) {
+
+  return 1.f;
 }
 
 /**
