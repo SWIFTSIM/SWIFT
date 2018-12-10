@@ -491,7 +491,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
       if (part_is_active(p, e)) {
 
-        const float rho = hydro_get_physical_density(p, cosmo);
+        //const float rho = hydro_get_physical_density(p, cosmo);
 
         if (starformation_potential_to_become_star(starform, p, xp, constants, cosmo) ) {
           starformation_convert_to_gas(starform, p, xp, cosmo);

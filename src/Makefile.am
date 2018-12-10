@@ -63,7 +63,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c 
     proxy.c parallel_io.c units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potential.c hydro_properties.c \
-    threadpool.c cooling.c sourceterms.c starformation.c \
+    threadpool.c cooling.c starformation.c \
     statistics.c runner_doiact_vec.c profiler.c dump.c logger.c \
     part_type.c xmf.c gravity_properties.c gravity.c \
     collectgroup.c hydro_space.c equation_of_state.c \

@@ -86,7 +86,7 @@ struct star_formation {
  * @param cosmo the cosmological parameters and properties
  *
  * */
-static int starformation_potential_to_become_star(
+int starformation_potential_to_become_star(
     const struct star_formation* starform, const struct parts* p,
     const struct xparts* xp, const struct phys_const* const phys_const,
     const struct cosmology* cosmo){
@@ -143,7 +143,7 @@ static int starformation_potential_to_become_star(
  * @param cosmo the cosmological properties
  *
  * */
-static void starformation_convert_to_gas( 
+void starformation_convert_to_gas( 
     const struct star_formation* starform, const struct parts* p,
     const struct xparts* xp, const struct cosmology* cosmo
     ){
@@ -174,7 +174,7 @@ static void starformation_convert_to_gas(
  * @param starform the star formation law properties to initialize
  *
  * */
-static void starformation_init_backend(
+void starformation_init_backend(
   struct swift_params* parameter_file, const struct phys_const* phys_const,
   const struct unit_system* us, const struct star_formation* starform) {
   
@@ -316,7 +316,7 @@ static void starformation_init_backend(
  *
  * @param starform the star formation law properties.
  * */
-static void starformation_print_backend(
+void starformation_print_backend(
     const struct star_formation* starform){ 
 
   message("Star formation law is Schaye and Dalla Vecchia (2008)"

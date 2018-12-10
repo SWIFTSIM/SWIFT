@@ -4054,6 +4054,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
+                 const struct star_formation *starform,
                  const struct chemistry_global_data *chemistry) {
 
   /* Clean-up everything */
@@ -4116,6 +4117,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
+  e->star_formation = starform;
   e->chemistry = chemistry;
   e->parameter_file = params;
   e->cell_loc = NULL;
@@ -5227,6 +5229,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   pm_mesh_struct_dump(e->mesh, stream);
   potential_struct_dump(e->external_potential, stream);
   cooling_struct_dump(e->cooling_func, stream);
+  starformation_struct_dump(e->star_formation, stream);
   chemistry_struct_dump(e->chemistry, stream);
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
@@ -5317,6 +5320,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
           sizeof(struct cooling_function_data));
   cooling_struct_restore(cooling_func, stream, e->cosmology);
   e->cooling_func = cooling_func;
+
+  struct star_formation *star_formation = (struct star_formation *)malloc(sizeof( 
+  struct star_formation));
+  starformation_struct_restore(star_formation, stream);
+  e->star_formation = star_formation;
 
   struct chemistry_global_data *chemistry =
       (struct chemistry_global_data *)malloc(
