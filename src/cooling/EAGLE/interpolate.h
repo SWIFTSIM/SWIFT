@@ -29,8 +29,6 @@
 
 /* Local includes. */
 #include "align.h"
-#include "cooling_struct.h"
-#include "eagle_cool_tables.h"
 #include "error.h"
 #include "inline.h"
 
@@ -142,58 +140,6 @@ __attribute__((always_inline)) INLINE void get_index_1d(
 #ifdef SWIFT_DEBUG_CHECKS
   if (*dx < -0.001f || *dx > 1.001f) error("Invalid distance found dx=%e", *dx);
 #endif
-}
-
-/**
- * @brief Find the index of the current redshift along the redshift dimension
- * of the cooling tables.
- *
- * Since the redshift table is not evenly spaced, compare z with each
- * table value in decreasing order starting with the previous redshift index
- *
- * The returned difference is expressed in units of the table separation. This
- * means dx = (x - table[i]) / (table[i+1] - table[i]). It is always between
- * 0 and 1.
- *
- * @param z Redshift we are searching for.
- * @param z_index (return) Index of the redshift in the table.
- * @param dz (return) Difference in redshift between z and table[z_index].
- * @param cooling #cooling_function_data structure containing redshift table.
- */
-__attribute__((always_inline)) INLINE void get_redshift_index(
-    float z, int *z_index, float *dz,
-    struct cooling_function_data *restrict cooling) {
-
-  /* before the earliest redshift or before hydrogen reionization, flag for
-   * collisional cooling */
-  if (z > cooling->H_reion_z) {
-    *z_index = eagle_cooling_N_redshifts;
-    *dz = 0.0;
-  }
-  /* from reionization use the cooling tables */
-  else if (z > cooling->Redshifts[eagle_cooling_N_redshifts - 1] &&
-           z <= cooling->H_reion_z) {
-    *z_index = eagle_cooling_N_redshifts + 1;
-    *dz = 0.0;
-  }
-  /* at the end, just use the last value */
-  else if (z <= cooling->Redshifts[0]) {
-    *z_index = 0;
-    *dz = 0.0;
-  } else {
-
-    /* start at the previous index and search */
-    for (int iz = cooling->previous_z_index; iz >= 0; iz--) {
-      if (z > cooling->Redshifts[iz]) {
-
-        *z_index = iz;
-        cooling->previous_z_index = iz;
-        *dz = (z - cooling->Redshifts[iz]) /
-              (cooling->Redshifts[iz + 1] - cooling->Redshifts[iz]);
-        break;
-      }
-    }
-  }
 }
 
 /**

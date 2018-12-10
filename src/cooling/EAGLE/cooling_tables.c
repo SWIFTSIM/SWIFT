@@ -32,7 +32,7 @@
 
 /* Local includes. */
 #include "cooling_struct.h"
-#include "eagle_cool_tables.h"
+#include "cooling_tables.h"
 #include "error.h"
 #include "interpolate.h"
 

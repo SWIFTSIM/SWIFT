@@ -54,8 +54,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
 # source files for EAGLE cooling
 EAGLE_COOLING_SOURCES =
 if HAVEEAGLECOOLING
-EAGLE_COOLING_SOURCES += cooling/EAGLE/cooling.c \
-cooling/EAGLE/eagle_cool_tables.c
+EAGLE_COOLING_SOURCES += cooling/EAGLE/cooling.c cooling/EAGLE/cooling_tables.c
 endif
 
 # Common source files

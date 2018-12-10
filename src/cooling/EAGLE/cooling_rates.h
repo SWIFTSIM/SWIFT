@@ -24,6 +24,7 @@
 #include "../config.h"
 
 /* Local includes. */
+#include "cooling_tables.h"
 #include "interpolate.h"
 
 /**

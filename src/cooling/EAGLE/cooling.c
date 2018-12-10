@@ -35,7 +35,7 @@
 #include "cooling.h"
 #include "cooling_rates.h"
 #include "cooling_struct.h"
-#include "eagle_cool_tables.h"
+#include "cooling_tables.h"
 #include "error.h"
 #include "hydro.h"
 #include "interpolate.h"
@@ -57,6 +57,58 @@ static const float bisection_tolerance = 1.0e-6;
 static const float rounding_tolerance = 1.0e-4;
 static const double bracket_factor = 1.0488088481701515;    /* sqrt(1.1) */
 static const double newton_log_u_guess_cgs = 1.414213562e6; /* log10(2e12) */
+
+/**
+ * @brief Find the index of the current redshift along the redshift dimension
+ * of the cooling tables.
+ *
+ * Since the redshift table is not evenly spaced, compare z with each
+ * table value in decreasing order starting with the previous redshift index
+ *
+ * The returned difference is expressed in units of the table separation. This
+ * means dx = (x - table[i]) / (table[i+1] - table[i]). It is always between
+ * 0 and 1.
+ *
+ * @param z Redshift we are searching for.
+ * @param z_index (return) Index of the redshift in the table.
+ * @param dz (return) Difference in redshift between z and table[z_index].
+ * @param cooling #cooling_function_data structure containing redshift table.
+ */
+__attribute__((always_inline)) INLINE void get_redshift_index(
+    float z, int *z_index, float *dz,
+    struct cooling_function_data *restrict cooling) {
+
+  /* before the earliest redshift or before hydrogen reionization, flag for
+   * collisional cooling */
+  if (z > cooling->H_reion_z) {
+    *z_index = eagle_cooling_N_redshifts;
+    *dz = 0.0;
+  }
+  /* from reionization use the cooling tables */
+  else if (z > cooling->Redshifts[eagle_cooling_N_redshifts - 1] &&
+           z <= cooling->H_reion_z) {
+    *z_index = eagle_cooling_N_redshifts + 1;
+    *dz = 0.0;
+  }
+  /* at the end, just use the last value */
+  else if (z <= cooling->Redshifts[0]) {
+    *z_index = 0;
+    *dz = 0.0;
+  } else {
+
+    /* start at the previous index and search */
+    for (int iz = cooling->previous_z_index; iz >= 0; iz--) {
+      if (z > cooling->Redshifts[iz]) {
+
+        *z_index = iz;
+        cooling->previous_z_index = iz;
+        *dz = (z - cooling->Redshifts[iz]) /
+              (cooling->Redshifts[iz + 1] - cooling->Redshifts[iz]);
+        break;
+      }
+    }
+  }
+}
 
 /**
  * @brief Common operations performed on the cooling function at a
@@ -554,9 +606,9 @@ __attribute__((always_inline)) INLINE float cooling_timestep(
  * @param phys_const #phys_const data structure.
  * @param us The internal system of units.
  * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
  * @param p #part data.
  * @param xp Pointer to the #xpart data.
- * @param cooling #cooling_function_data struct.
  */
 __attribute__((always_inline)) INLINE void cooling_first_init_part(
     const struct phys_const *restrict phys_const,

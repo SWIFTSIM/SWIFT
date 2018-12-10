@@ -27,7 +27,7 @@
 
 #if defined(COOLING_EAGLE) && defined(CHEMISTRY_EAGLE) && defined(GADGET2_SPH)
 #include "cooling/EAGLE/cooling_rates.h"
-#include "cooling/EAGLE/eagle_cool_tables.h"
+#include "cooling/EAGLE/cooling_tables.h"
 
 /* Flag used for printing cooling rate contribution from each
  * element. For testing only. Incremented by 1/(number of elements)
