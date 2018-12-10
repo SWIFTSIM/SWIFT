@@ -1071,8 +1071,8 @@ void write_output_serial(struct engine* e, const char* baseName,
               Nparticles = Ngas;
               hydro_write_particles(parts, xparts, list, &num_fields);
               num_fields += chemistry_write_particles(parts, list + num_fields);
-              num_fields += cooling_write_particles(xparts, list + num_fields,
-                                                    e->cooling_func);
+              num_fields += cooling_write_particles(
+                  parts, xparts, list + num_fields, e->cooling_func);
             } else {
 
               /* Ok, we need to fish out the particles we want */
@@ -1095,8 +1095,9 @@ void write_output_serial(struct engine* e, const char* baseName,
                                     &num_fields);
               num_fields +=
                   chemistry_write_particles(parts_written, list + num_fields);
-              num_fields += cooling_write_particles(
-                  xparts_written, list + num_fields, e->cooling_func);
+              num_fields +=
+                  cooling_write_particles(parts_written, xparts_written,
+                                          list + num_fields, e->cooling_func);
             }
           } break;
 
