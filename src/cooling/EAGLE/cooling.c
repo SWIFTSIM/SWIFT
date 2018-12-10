@@ -37,6 +37,7 @@
 #include "cooling_struct.h"
 #include "cooling_tables.h"
 #include "error.h"
+#include "exp10.h"
 #include "hydro.h"
 #include "interpolate.h"
 #include "io_properties.h"
@@ -631,6 +632,22 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
   xp->cooling_data.radiated_energy = 0.f;
 }
 
+/**
+ * @brief Compute the temperature of a #part based on the cooling function.
+ *
+ * We use the Temperature table of the Wiersma+08 set. This computes the
+ * equilibirum temperature of a gas for a given redshift, Hydrogen density,
+ * internal energy per unit mass and Helium fraction.
+ *
+ * The temperature returned is consistent with the cooling rates.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
 float cooling_get_temperature(
     const struct phys_const *restrict phys_const,
     const struct unit_system *restrict us,
