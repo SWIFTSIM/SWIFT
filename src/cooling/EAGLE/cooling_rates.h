@@ -25,6 +25,7 @@
 
 /* Local includes. */
 #include "cooling_tables.h"
+#include "exp10.h"
 #include "interpolate.h"
 
 /**
@@ -364,14 +365,15 @@ INLINE static double eagle_metal_cooling_rate(
 
   /* Temperature */
   float dT_du = -1.f;
-  const double T =
+  const double log_10_T =
       eagle_convert_u_to_temp(log10_u_cgs, redshift, compute_dT_du, &dT_du,
                               n_H_index, He_index, d_n_h, d_He, cooling);
 
   /* Get index along temperature dimension of the tables */
   int T_index;
   float d_T;
-  get_index_1d(cooling->Temp, eagle_cooling_N_temperature, T, &T_index, &d_T);
+  get_index_1d(cooling->Temp, eagle_cooling_N_temperature, log_10_T, &T_index,
+               &d_T);
 
 #ifdef TO_BE_DONE
   /* Difference between entries on the temperature table around u */
@@ -515,6 +517,8 @@ INLINE static double eagle_metal_cooling_rate(
   /* It is *not* stored in the tables before re-ionisation */
   if ((redshift > cooling->Redshifts[eagle_cooling_N_redshifts - 1]) ||
       (redshift > cooling->H_reion_z)) {
+
+    const double T = exp10(log_10_T);
 
     /* Note the minus sign */
     Lambda_Compton -= eagle_Compton_cooling_rate(cooling, redshift, n_H_cgs, T,
