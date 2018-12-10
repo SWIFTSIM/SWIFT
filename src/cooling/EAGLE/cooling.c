@@ -492,8 +492,8 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
      re-ionization as this needs to be added on no matter what */
 
   /* Get helium and hydrogen reheating term */
-  const double Helium_reion_heat_cgs =
-      eagle_helium_reionization_extraheat(cooling->z_index, delta_redshift, cooling);
+  const double Helium_reion_heat_cgs = eagle_helium_reionization_extraheat(
+      cooling->z_index, delta_redshift, cooling);
 
   /* Convert this into a rate */
   const double Lambda_He_reion_cgs =
@@ -638,7 +638,40 @@ float cooling_get_temperature(
     const struct cooling_function_data *restrict cooling,
     const struct part *restrict p, struct xpart *restrict xp) {
 
-  return 1.f;
+  /* Get physical internal energy */
+  const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
+  const double u_cgs = u * cooling->internal_energy_to_cgs;
+
+  /* Get the Hydrogen mass fraction */
+  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+
+  /* Get the Helium mass fraction. Note that this is He / (H + He), i.e. a
+   * metal-free Helium mass fraction as per the Wiersma+08 definition */
+  const float HeFrac =
+      p->chemistry_data.metal_mass_fraction[chemistry_element_He] /
+      (XH + p->chemistry_data.metal_mass_fraction[chemistry_element_He]);
+
+  /* Convert Hydrogen mass fraction into Hydrogen number density */
+  const float rho = hydro_get_physical_density(p, cosmo);
+  const double n_H = rho * XH / phys_const->const_proton_mass;
+  const double n_H_cgs = n_H * cooling->number_density_to_cgs;
+
+  /* compute hydrogen number density and helium fraction table indices and
+   * offsets */
+  int He_index, n_H_index;
+  float d_He, d_n_H;
+  get_index_1d(cooling->HeFrac, eagle_cooling_N_He_frac, HeFrac, &He_index,
+               &d_He);
+  get_index_1d(cooling->nH, eagle_cooling_N_density, log10(n_H_cgs), &n_H_index,
+               &d_n_H);
+
+  /* Compute the log10 of the temperature by interpolating the table */
+  const double log_10_T = eagle_convert_u_to_temp(
+      log10(u_cgs), cosmo->z, /*compute_dT_du=*/0, /*dT_du=*/NULL, n_H_index,
+      He_index, d_n_H, d_He, cooling);
+
+  /* Undo the log! */
+  return exp10(log_10_T);
 }
 
 /**
