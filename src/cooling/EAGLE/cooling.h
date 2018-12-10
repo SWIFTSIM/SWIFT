@@ -64,7 +64,7 @@ float cooling_get_temperature(
     const struct unit_system *restrict us,
     const struct cosmology *restrict cosmo,
     const struct cooling_function_data *restrict cooling,
-    const struct part *restrict p, struct xpart *restrict xp);
+    const struct part *restrict p, const struct xpart *restrict xp);
 
 float cooling_get_radiated_energy(const struct xpart *restrict xp);
 
