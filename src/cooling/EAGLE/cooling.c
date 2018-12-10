@@ -453,6 +453,10 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   const double u_0_cgs = u_0 * cooling->internal_energy_to_cgs;
   const double dt_cgs = dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
 
+  /* Change in redshift over the course of this time-step
+     (See cosmology theory document for the derivation) */
+  const double delta_redshift = -dt * cosmo->H * cosmo->a_inv;
+
   /* Get this particle's abundance ratios */
   float abundance_ratio[chemistry_element_count + 2];
   abundance_ratio_to_solar(p, cooling, abundance_ratio);
@@ -476,7 +480,8 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   const double ratefact_cgs = n_H_cgs * (XH * cooling->inv_proton_mass_cgs);
 
   /* compute hydrogen number density and helium fraction table indices and
-   * offsets (These are fixed for of u, so no need to recompute them) */
+   * offsets (These are fixed for any value of u, so no need to recompute them)
+   */
   int He_i, n_h_i;
   float d_He, d_n_h;
   get_index_1d(cooling->HeFrac, eagle_cooling_N_He_frac, HeFrac, &He_i, &d_He);
@@ -486,13 +491,9 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   /* Start by computing the cooling (heating actually) rate from Helium
      re-ionization as this needs to be added on no matter what */
 
-  /* Change in redshift over the course of this time-step
-     (See cosmology theory document for the derivation) */
-  const double delta_z = -dt * cosmo->H * cosmo->a_inv;
-
   /* Get helium and hydrogen reheating term */
   const double Helium_reion_heat_cgs =
-      eagle_helium_reionization_extraheat(cooling->z_index, delta_z, cooling);
+      eagle_helium_reionization_extraheat(cooling->z_index, delta_redshift, cooling);
 
   /* Convert this into a rate */
   const double Lambda_He_reion_cgs =
