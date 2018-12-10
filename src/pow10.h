@@ -38,7 +38,7 @@
  *
  * @param x The input value.
  */
-__attribute__((always_inline, const)) INLINE static double pow10(
+__attribute__((always_inline, const)) INLINE static double exp10(
     const double x) {
 
   return exp(x * M_LN10);
@@ -52,7 +52,7 @@ __attribute__((always_inline, const)) INLINE static double pow10(
  *
  * @param x The input value.
  */
-__attribute__((always_inline, const)) INLINE static float pow10f(
+__attribute__((always_inline, const)) INLINE static float exp10f(
     const float x) {
 
   return expf(x * (float)M_LN10);
