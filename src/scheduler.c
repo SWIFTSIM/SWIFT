@@ -182,7 +182,9 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   if (s->nodeID == 0) {
     struct stat st = {0};
     if (stat(dir_name, &st) == -1) {
-      mkdir(dir_name, 0700);
+      int test = mkdir(dir_name, 0700);
+      if (test != 0)
+	error("Failed to create the task dependencies directory");
     }
   }
 
