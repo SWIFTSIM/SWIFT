@@ -304,8 +304,10 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
  * @param WR The right state vector
  * @param Whalf Empty state vector in which the result will be stored
  * @param n_unit Normal vector of the interface
+ * @return Flag that tells us which side of the contact discontinuity was
+ * sampled: left (-1), right (1) or vacuum (0).
  */
-__attribute__((always_inline)) INLINE static void riemann_solver_solve(
+__attribute__((always_inline)) INLINE static int riemann_solver_solve(
     const float* WL, const float* WR, float* Whalf, const float* n_unit) {
 
   /* velocity of the left and right state in a frame aligned with n_unit */
@@ -320,6 +322,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   float SHR, STR;
   float pdpL, SL;
   float SHL, STL;
+  int state;
 
   /* calculate velocities in interface frame */
   vL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
@@ -331,8 +334,8 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
 
   /* check vacuum (generation) condition */
   if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
-    riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
-    return;
+    message("vacuum");
+    return riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
   }
 
   /* values are ok: let's find pstar (riemann_f(pstar) = 0)! */
@@ -381,6 +384,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   /* sample the solution */
   /* This corresponds to the flow chart in Fig. 4.14 in Toro */
   if (u < 0.0f) {
+    state = 1;
     /* advect velocity components */
     Whalf[1] = WR[1];
     Whalf[2] = WR[2];
@@ -429,6 +433,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
       }
     }
   } else {
+    state = -1;
     Whalf[1] = WL[1];
     Whalf[2] = WL[2];
     Whalf[3] = WL[3];
@@ -481,6 +486,8 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   Whalf[1] += vhalf * n_unit[0];
   Whalf[2] += vhalf * n_unit[1];
   Whalf[3] += vhalf * n_unit[2];
+
+  return state;
 }
 
 /**
@@ -577,7 +584,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   float vtot[3];
   float rhoe;
 
-  riemann_solver_solve(Wi, Wj, Whalf, n_unit);
+  const int state = riemann_solver_solve(Wi, Wj, Whalf, n_unit);
 
   flux[0][0] = Whalf[0] * Whalf[1];
   flux[0][1] = Whalf[0] * Whalf[2];
@@ -616,6 +623,16 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
       flux[3][0] * n_unit[0] + flux[3][1] * n_unit[1] + flux[3][2] * n_unit[2];
   totflux[4] =
       flux[4][0] * n_unit[0] + flux[4][1] * n_unit[1] + flux[4][2] * n_unit[2];
+
+  if (state > 0) {
+    totflux[5] = Wj[5] * totflux[0];
+  } else {
+    if (state < 0) {
+      totflux[5] = Wi[5] * totflux[0];
+    } else {
+      totflux[5] = 0.0f;
+    }
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_output(Wi, Wj, n_unit, vij, totflux);
