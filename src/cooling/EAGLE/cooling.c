@@ -644,6 +644,7 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
  * The temperature returned is consistent with the cooling rates.
  *
  * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param cosmo #cosmology data structure.
  * @param cooling #cooling_function_data struct.
@@ -652,6 +653,7 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
  */
 float cooling_get_temperature(
     const struct phys_const *restrict phys_const,
+    const struct hydro_props *restrict hydro_props,
     const struct unit_system *restrict us,
     const struct cosmology *restrict cosmo,
     const struct cooling_function_data *restrict cooling,

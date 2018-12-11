@@ -44,8 +44,9 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 INLINE static void convert_part_T(const struct engine* e, const struct part* p,
                                   const struct xpart* xp, float* ret) {
 
-  ret[0] = cooling_get_temperature(e->physical_constants, e->internal_units,
-                                   e->cosmology, e->cooling_func, p, xp);
+  ret[0] = cooling_get_temperature(e->physical_constants, e->hydro_properties,
+                                   e->internal_units, e->cosmology,
+                                   e->cooling_func, p, xp);
 }
 
 /**
