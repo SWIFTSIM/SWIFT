@@ -15,7 +15,7 @@ TimeIntegration:
 Snapshots:
   basename:            sodShock # Common part of the name of output files
   time_first:          0.       # Time of the first output (in internal units)
-  delta_time:          1.04      # Time difference between consecutive outputs (in internal units)
+  delta_time:          1.06638      # Time difference between consecutive outputs (in internal units)
   scale_factor_first:  0.001
   compression:         1
   
@@ -39,5 +39,5 @@ Cosmology:
   Omega_b: 1.
   h: 1.
   a_begin: 0.001
-  a_end: 0.00104
+  a_end: 0.00106638
 
