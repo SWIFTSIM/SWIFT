@@ -1298,7 +1298,7 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
     /* Update roots accordingly. */
     size_t size_i = global_group_size[root_i];
     size_t size_j = global_group_size[root_j];
-#ifndef UNION_BY_SIZE_OVER_MPI
+#ifdef UNION_BY_SIZE_OVER_MPI
     if (size_i < size_j) {
       global_group_index[root_i] = root_j;
       global_group_size[root_j] += size_i;
