@@ -90,7 +90,7 @@
 #include "units.h"
 #include "velociraptor_interface.h"
 #include "version.h"
-#include "starformation.h" 
+#include "starformation.h"
 
 /* Particle cache size. */
 #define CACHE_SIZE 512

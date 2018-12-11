@@ -76,5 +76,6 @@
 #include "units.h"
 #include "velociraptor_interface.h"
 #include "version.h"
+#include "starformation.h"
 
 #endif /* SWIFT_SWIFT_H */
