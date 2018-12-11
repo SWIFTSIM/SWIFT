@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
   struct unit_system us;
   struct chemistry_global_data chem_data;
   struct part p;
-  //struct spart sp;
+  struct spart sp;
   struct xpart xp;
   struct phys_const phys_const;
   struct cosmology cosmo;
@@ -67,11 +67,25 @@ int main(int argc, char **argv) {
 
   /* Init stars_props  */
   stars_props_init(&stars, &phys_const, &us, params, &hp);
+  // To do: Read in IMF model from yaml file.
+  strcpy(stars.IMF_Model, "Chabrier");
 
   /* Read yield tables  */
   stars_evolve_init(params,&stars);
 
+  /* Create spart */
+  stars_first_init_spart(&sp);
+  stars_init_spart(&sp);
+  // Should these assignments be done in stars_init_part? Check with Matthieu.
+  sp.chemistry_data = p.chemistry_data;
+  sp.age = 0.f;
+
+  /* Evolve spart */
+  stars_evolve_spart(&sp, &stars, &cosmo);
+
   free(params);
+
+  message("done stellar evolution test");
   return 0;
 }
 

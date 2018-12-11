@@ -140,8 +140,9 @@ inline static float integrate_imf(float log_min_mass, float log_max_mass, float 
   if (dm < 0.5) {
     result -= 0.5 * integrand[ihigh];
     result -= (0.5 - dm) * integrand[ihigh - 1];
-  } else
+  } else {
     result -= (1 - dm) * integrand[ihigh];
+  }
 
   result *= dlm * log(10.0); /* log(10) since mass function tabulated as
                                 function of log_10(mass) */
@@ -162,6 +163,8 @@ inline static void init_imf(struct stars_props *restrict star_properties){
   if (posix_memalign((void **)&star_properties->imf_mass_bin_log10, SWIFT_STRUCT_ALIGNMENT, N_imf_mass_bins*sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
   if (posix_memalign((void **)&star_properties->imf_by_number1, SWIFT_STRUCT_ALIGNMENT, N_imf_mass_bins*sizeof(float)) != 0)
+    error("Failed to allocate IMF bins table");
+  if (posix_memalign((void **)&star_properties->stellar_yield, SWIFT_STRUCT_ALIGNMENT, N_imf_mass_bins*sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   float dummy_stellar_fields;
@@ -198,7 +201,7 @@ inline static void init_imf(struct stars_props *restrict star_properties){
         star_properties->imf_by_number[i] = 0.237912 * pow(solar_mass, -2.3);
       else
         star_properties->imf_by_number[i] = 0.852464 *
-                           exp(pow((log10(solar_mass) - log10(0.079)), 2.0) /
+                           exp((log10(solar_mass) - log10(0.079)) * (log10(solar_mass) - log10(0.079)) /
                                (-2.0 * pow(0.69, 2))) /
                            solar_mass;
 

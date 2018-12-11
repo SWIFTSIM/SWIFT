@@ -53,6 +53,9 @@ struct spart {
   /*! Initial star mass */
   float mass_init;
 
+  /*! Stellar age */
+  float age;
+
   /* Particle cutoff radius. */
   float h;
 
@@ -214,6 +217,9 @@ struct stars_props {
 
   /* Location of yield tables */
   char yield_table_path[50];
+
+  /* Array for storing stellar yields for computation in IMF (clarify name, comment) */
+  float *stellar_yield;
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */
