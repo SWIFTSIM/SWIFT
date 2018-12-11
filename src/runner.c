@@ -2774,7 +2774,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
  * @param timer 1 if the time is to be recorded.
  */
 void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
- 
+
   TIMER_TIC;
 
   struct space *s = r->e->s;
@@ -2783,7 +2783,7 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
 
   rec_fof_search_self(c, s, dim, search_r2);
 
-  if(timer) TIMER_TOC(timer_fof_self);
+  if (timer) TIMER_TOC(timer_fof_self);
 }
 
 /**
@@ -2794,8 +2794,9 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
  * @param cj cell j
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj, int timer) {
- 
+void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
+                        int timer) {
+
   TIMER_TIC;
 
   struct space *s = r->e->s;
@@ -2804,5 +2805,5 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj, int 
 
   rec_fof_search_pair(ci, cj, s, dim, search_r2);
 
-  if(timer) TIMER_TOC(timer_fof_pair);
+  if (timer) TIMER_TOC(timer_fof_pair);
 }

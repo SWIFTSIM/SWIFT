@@ -964,7 +964,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the FOF parameters. */
     if (with_fof) fof_init(&s);
-    
+
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -1020,7 +1020,8 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Initialise the particles */
-    engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values, 1);
+    engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values,
+                          1);
 
     /* Write the state of the system before starting time integration. */
 #ifdef WITH_LOGGER
@@ -1029,7 +1030,7 @@ int main(int argc, char *argv[]) {
 #endif
     engine_dump_snapshot(&e);
     engine_print_stats(&e);
-  
+
     /* Perform first FOF search after the first snapshot dump. */
     if (e.policy & engine_policy_fof) fof_search_tree(&s);
 
@@ -1043,10 +1044,9 @@ int main(int argc, char *argv[]) {
     // velociraptor_invoke(&e);
     //}
 #endif
-  
+
     /* Perform first FOF search after the first snapshot dump. */
     if (e.policy & engine_policy_fof) fof_search_tree(&s);
-
   }
 
   /* Legend */

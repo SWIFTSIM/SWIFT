@@ -211,7 +211,7 @@ struct space {
 
   /*! The FOF linking length squared. */
   double l_x2;
-  
+
   /*! The FOF group data. */
   struct fof fof_data;
 

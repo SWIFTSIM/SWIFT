@@ -46,7 +46,7 @@ struct gpart {
 
   /* Particle group ID and size in the FOF. */
   size_t group_id, group_size;
-  
+
   /* Particle group mass in the FOF. */
   double group_mass;
 

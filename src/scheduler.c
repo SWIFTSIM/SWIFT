@@ -1549,7 +1549,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
           if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
             scheduler_splittask_fof(
                 scheduler_addtask(s, task_type_fof_self, t->subtype, 0, 0,
-                  ci->progeny[k], NULL),
+                                  ci->progeny[k], NULL),
                 s);
 
         /* Make a task for each pair of progeny */
@@ -1558,9 +1558,8 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
             for (int k = j + 1; k < 8; k++)
               if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
                 scheduler_splittask_fof(
-                    scheduler_addtask(s, task_type_fof_pair, t->subtype,
-                      0, 0, ci->progeny[j],
-                      ci->progeny[k]),
+                    scheduler_addtask(s, task_type_fof_pair, t->subtype, 0, 0,
+                                      ci->progeny[j], ci->progeny[k]),
                     s);
       } /* Cell is split */
 

@@ -38,8 +38,8 @@
 #include "clocks.h"
 #include "collectgroup.h"
 #include "cooling_struct.h"
-#include "fof.h"
 #include "dump.h"
+#include "fof.h"
 #include "gravity_properties.h"
 #include "mesh_gravity.h"
 #include "parser.h"
@@ -258,7 +258,7 @@ struct engine {
   integertime_t ti_next_stf;
 
   char stfBaseName[PARSER_MAX_LINE_SIZE];
-  
+
   /* FOF information */
   int run_fof;
 

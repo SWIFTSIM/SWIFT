@@ -32,9 +32,9 @@
 
 /* Local headers. */
 #include "align.h"
+#include "fof.h"
 #include "part_type.h"
 #include "timeline.h"
-#include "fof.h"
 
 /* Some constants. */
 #define part_align 128

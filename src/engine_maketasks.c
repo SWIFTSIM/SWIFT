@@ -1830,7 +1830,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
  * @param extra_data The #engine.
  */
 void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
-                                        void *extra_data) {
+                                      void *extra_data) {
 
   /* Extract the engine pointer. */
   struct engine *e = (struct engine *)extra_data;
@@ -1860,7 +1860,8 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
     if (ci->nodeID == nodeID)
       scheduler_addtask(sched, task_type_fof_self, task_subtype_none, 0, 0, ci,
                         NULL);
-    else continue;
+    else
+      continue;
 
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
@@ -1881,8 +1882,7 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
           struct cell *cj = &cells[cjd];
 
           /* Is that neighbour local and does it have particles ? */
-          if (cid >= cjd || cj->grav.count == 0 ||
-              (ci->nodeID != cj->nodeID))
+          if (cid >= cjd || cj->grav.count == 0 || (ci->nodeID != cj->nodeID))
             continue;
 
           /* Construct the pair task */

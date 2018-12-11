@@ -2664,7 +2664,8 @@ void engine_first_init_particles(struct engine *e) {
  * @param flag_entropy_ICs Did the 'Internal Energy' of the particles actually
  * contain entropy ?
  * @param clean_h_values Are we cleaning up the values of h before building
- * @param compute_init_accel Are we computing the initial acceleration of particles?
+ * @param compute_init_accel Are we computing the initial acceleration of
+ *particles?
  */
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values, int compute_init_accel) {
@@ -2694,17 +2695,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   struct task *tasks = sched->tasks;
 
   /* Activate the send and receive tasks for the gparts. */
-  for(int i=0; i<sched->nr_tasks; i++) {
-  
+  for (int i = 0; i < sched->nr_tasks; i++) {
+
     struct task *t = &tasks[i];
 
     t->skip = 1;
-    
-    if(t->type == task_type_fof_self || 
-       t->type == task_type_fof_pair) {
+
+    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
       t->skip = 0;
     }
-
   }
 
   /* Print the number of active tasks ? */
@@ -2745,7 +2744,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   }
 
   /* Exit if only computing the FOF. */
-  if(!compute_init_accel) return;
+  if (!compute_init_accel) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
@@ -3100,8 +3099,7 @@ void engine_check_for_dumps(struct engine *e) {
 
   /* Do we want to perform a FOF search? */
   int run_fof = 0;
-  if ((e->policy & engine_policy_fof) && dump_snapshot)
-    run_fof = 1;
+  if ((e->policy & engine_policy_fof) && dump_snapshot) run_fof = 1;
 
   /* Do we want to perform structure finding? */
   int run_stf = 0;
@@ -3112,8 +3110,7 @@ void engine_check_for_dumps(struct engine *e) {
     if (e->step % e->delta_step_stf == 0) run_stf = 1;
   }
   /* Do we want to perform a FOF search? */
-  if (e->policy & engine_policy_fof)
-    e->run_fof = 1;
+  if (e->policy & engine_policy_fof) e->run_fof = 1;
 
   /* Store information before attempting extra dump-related drifts */
   integertime_t ti_current = e->ti_current;
@@ -3127,9 +3124,9 @@ void engine_check_for_dumps(struct engine *e) {
 
       /* If both, need to figure out which one occurs first */
       if (e->ti_next_stats == e->ti_next_snapshot) {
-        
+
         /* Perform a FOF search. */
-        if(e->run_fof) {
+        if (e->run_fof) {
 
           fof_search_tree(e->s);
           e->run_fof = 0;
@@ -3310,13 +3307,14 @@ void engine_check_for_dumps(struct engine *e) {
         engine_compute_next_stf_time(e);
 #endif
     }
-    
-    /* Perform a FOF search. */
-    //if(run_fof) {
 
-    //  // MATTHIEU: Add a drift_all here. And check the order with the order i/o
+    /* Perform a FOF search. */
+    // if(run_fof) {
+
+    //  // MATTHIEU: Add a drift_all here. And check the order with the order
+    //  i/o
     //  // options.
-    //  
+    //
     //  fof_search_tree(e->s);
 
     //  run_fof = 0;

@@ -74,9 +74,9 @@ __attribute__((always_inline)) INLINE static void atomic_min_f(
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_min(
-    volatile int* address, int y) {
+    volatile int *address, int y) {
 
-  int* int_ptr = (int*)address;
+  int *int_ptr = (int *)address;
 
   int test_val, old_val, new_val;
   old_val = *address;

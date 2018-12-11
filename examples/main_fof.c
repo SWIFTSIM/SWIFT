@@ -996,17 +996,18 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifdef SWIFT_DEBUG_TASKS
-  e.tic_step = getticks();
+    e.tic_step = getticks();
 #endif
 
     /* Initialise the FOF parameters. */
     fof_init(&s);
-   
+
     /* Initialise the particles */
-    engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values, 0);
+    engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values,
+                          0);
 
 #ifdef SWIFT_DEBUG_TASKS
-  e.toc_step = getticks();
+    e.toc_step = getticks();
 #endif
 
     /* Perform first FOF search after the first snapshot dump. */
@@ -1016,31 +1017,27 @@ int main(int argc, char *argv[]) {
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
   }
-  
+
 #ifdef SWIFT_DEBUG_TASKS
   char dumpfile[32];
   snprintf(dumpfile, sizeof(dumpfile), "thread_info-step%d.dat", 1);
   FILE *file_thread;
   file_thread = fopen(dumpfile, "w");
   /* Add some information to help with the plots */
-  fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n",
-      -2, -1, -1, 1, e.tic_step, e.toc_step, e.updates, e.g_updates,
-      e.s_updates, 0, cpufreq);
+  fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n", -2,
+          -1, -1, 1, e.tic_step, e.toc_step, e.updates, e.g_updates,
+          e.s_updates, 0, cpufreq);
   for (int l = 0; l < e.sched.nr_tasks; l++) {
     if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
       fprintf(
           file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
-          e.sched.tasks[l].rid, e.sched.tasks[l].type,
-          e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
-          e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-          (e.sched.tasks[l].ci == NULL) ? 0
-          : e.sched.tasks[l].ci->hydro.count,
-          (e.sched.tasks[l].cj == NULL) ? 0
-          : e.sched.tasks[l].cj->hydro.count,
-          (e.sched.tasks[l].ci == NULL) ? 0
-          : e.sched.tasks[l].ci->grav.count,
-          (e.sched.tasks[l].cj == NULL) ? 0
-          : e.sched.tasks[l].cj->grav.count,
+          e.sched.tasks[l].rid, e.sched.tasks[l].type, e.sched.tasks[l].subtype,
+          (e.sched.tasks[l].cj == NULL), e.sched.tasks[l].tic,
+          e.sched.tasks[l].toc,
+          (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->hydro.count,
+          (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->hydro.count,
+          (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->grav.count,
+          (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->grav.count,
           e.sched.tasks[l].sid);
     }
   }
@@ -1052,7 +1049,8 @@ int main(int argc, char *argv[]) {
   if (dump_threadpool) {
     char threadpool_dumpfile[52];
 #ifdef WITH_MPI
-    snprintf(threadpool_dumpfile, 52, "threadpool_info-rank%d-step%d.dat", engine_rank, 0);
+    snprintf(threadpool_dumpfile, 52, "threadpool_info-rank%d-step%d.dat",
+             engine_rank, 0);
 #else
     snprintf(threadpool_dumpfile, 52, "threadpool_info-step%d.dat", 0);
 #endif  // WITH_MPI
@@ -1066,7 +1064,7 @@ int main(int argc, char *argv[]) {
   parser_write_params_to_file(params, "used_parameters.yml", 1);
   /* unused parameters */
   parser_write_params_to_file(params, "unused_parameters.yml", 0);
-  
+
   /* Write final output. */
   engine_drift_all(&e);
   engine_print_stats(&e);

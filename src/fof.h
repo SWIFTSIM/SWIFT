@@ -38,7 +38,7 @@ struct fof_CoM {
 
 /* MPI message required for FOF. */
 struct fof_mpi {
-  
+
   /* The local particle's root ID.*/
   size_t group_i;
 
@@ -47,10 +47,10 @@ struct fof_mpi {
 
   /* The local group's mass.*/
   double group_i_mass;
-  
+
   /* The local group's CoM.*/
   struct fof_CoM group_i_CoM;
-  
+
   /* The foreign particle's root ID.*/
   size_t group_j;
 
@@ -59,11 +59,11 @@ struct fof_mpi {
 
   /* The local group's mass.*/
   double group_j_mass;
-  
+
   /* The local group's CoM.*/
   struct fof_CoM group_j_CoM;
 
-} SWIFT_STRUCT_ALIGN; 
+} SWIFT_STRUCT_ALIGN;
 
 struct fof {
 
@@ -103,11 +103,18 @@ struct cell_pair_indices {
 void fof_init(struct space *s);
 void fof_search_cell(struct space *s, struct cell *c);
 void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj);
-void fof_search_pair_cells_foreign(struct space *s, struct cell *ci, struct cell *cj, int *link_count, struct fof_mpi **group_links, int *group_links_size);
+void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
+                                   struct cell *cj, int *link_count,
+                                   struct fof_mpi **group_links,
+                                   int *group_links_size);
 void fof_search_tree(struct space *s);
-void fof_dump_group_data(char *out_file, struct space *s, struct group_length *group_sizes);
-void rec_fof_search_self(struct cell *c, struct space *s, const double dim[3], const double search_r2);
-void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict cj, struct space *s, const double dim[3], const double search_r2);
+void fof_dump_group_data(char *out_file, struct space *s,
+                         struct group_length *group_sizes);
+void rec_fof_search_self(struct cell *c, struct space *s, const double dim[3],
+                         const double search_r2);
+void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict cj,
+                         struct space *s, const double dim[3],
+                         const double search_r2);
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
