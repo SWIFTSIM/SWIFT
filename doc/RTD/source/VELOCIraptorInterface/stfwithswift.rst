@@ -43,8 +43,8 @@ VELOCIraptor as follows::
   make -j 4
 
 After the compilation of your code, you will find a static library ``libvelociraptor.a``,
-you will need to rename it in ``libstf.a`` and is required to run SWIFT with
-VELOCIraptor. Note that VELOCIraptor needs a serial version of the
+that is required to run SWIFT with VELOCIraptor.
+Note that VELOCIraptor needs a serial version of the
 HDF5 library, not a parallel build.
 
 Compiling SWIFT
