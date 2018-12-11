@@ -30,6 +30,7 @@
 #include "parser.h"
 #include "equation_of_state.h"
 #include "part.h"
+#include "hydro.h"
 
 /* Starformation struct */
 struct star_formation {
@@ -86,9 +87,9 @@ struct star_formation {
  * @param cosmo the cosmological parameters and properties
  *
  * */
-int starformation_potential_to_become_star(
-    const struct star_formation* starform, const struct parts* p,
-    const struct xparts* xp, const struct phys_const* const phys_const,
+INLINE static int starformation_potential_to_become_star(
+    const struct star_formation* starform, const struct part* restrict p,
+    const struct xpart* restrict xp, const struct phys_const* const phys_const,
     const struct cosmology* cosmo){
 
   /* Read the critical overdensity factor and the critical density of 
@@ -143,21 +144,21 @@ int starformation_potential_to_become_star(
  * @param cosmo the cosmological properties
  *
  * */
-void starformation_convert_to_gas( 
-    const struct star_formation* starform, const struct parts* p,
-    const struct xparts* xp, const struct cosmology* cosmo
+INLINE static void starformation_convert_to_gas( 
+    const struct star_formation* starform, const struct part* restrict p,
+    const struct xpart* restrict xp, const struct cosmology* cosmo
     ){
   /* Set a dummy seed for testing */
-  const int globalseed = 42;
+  unsigned int globalseed = 42;
 
   /* Get the pressure */
-  const double pressure = hydro_get_physical_pressure(p, xp, cosmo);
+  const double pressure = hydro_get_physical_pressure(p, cosmo);
 
   /* Calculate the propability of forming a star */ 
-  const double prop = Astar * pressure * p->time_bin; 
+  const double prop = starform->Astar * pressure * p->time_bin; 
 
   /* Generate a random number between 0 and 1. */
-  const double randomnumber = rand_r(&globalseed)*inv_RAND_MAX; 
+  const double randomnumber = rand_r(&globalseed)*starform->inv_RAND_MAX; 
 
   /* Calculate if we form a star */
   if (prop > randomnumber) {
@@ -174,9 +175,9 @@ void starformation_convert_to_gas(
  * @param starform the star formation law properties to initialize
  *
  * */
-void starformation_init_backend(
+INLINE static void starformation_init_backend(
   struct swift_params* parameter_file, const struct phys_const* phys_const,
-  const struct unit_system* us, const struct star_formation* starform) {
+  const struct unit_system* us, struct star_formation* starform) {
   
   /* Default values for the normalization and the power law */
   static const double normalization_default = 2.5e-4;
@@ -275,7 +276,7 @@ void starformation_init_backend(
 
   /* Read what kind of critical density we need to use
    * Schaye (2004) is metallicity dependent critical SF density*/
-  static const int schaye2004 = parser_get_opt_param_double(
+  const int schaye2004 = parser_get_opt_param_double(
   parameter_file, "SchayeSF:Schaye2004", schaye2004_default);
 
   if (!schaye2004) {
@@ -291,19 +292,19 @@ void starformation_init_backend(
     /* Read the normalization of the metallicity dependent critical 
      * density*/
     starform->den_crit = parser_get_opt_param_double( 
-    parameter_file, "SchayeSF:norm_ncrit", Z0_default);
+    parameter_file, "SchayeSF:norm_ncrit", norm_ncrit_default);
 
     /* Read the scale metallicity Z0 */
     starform->Z0 = parser_get_opt_param_double(
     parameter_file, "SchayeSF:Z0", Z0_default);
 
     /* Read the power law of the critical density scaling */
-    staform->n_Z0 = parser_get_opt_param_double(
+    starform->n_Z0 = parser_get_opt_param_double(
     parameter_file, "SchayeSF:n_Z0", powerlawZ_default);
   }
   /* Conversion of number density from cgs */
-  static const float dimension_numb_den = {0, -3, 0, 0, 0};
-  static const double conversion_numb_density = 1/
+  static const float dimension_numb_den[5] = {0, -3, 0, 0, 0};
+  const double conversion_numb_density = 1.f/
   units_general_cgs_conversion_factor(us, dimension_numb_den);
 
   /* Calculate the prefactor that is always common */
@@ -316,14 +317,14 @@ void starformation_init_backend(
  *
  * @param starform the star formation law properties.
  * */
-void starformation_print_backend(
+INLINE static void starformation_print_backend(
     const struct star_formation* starform){ 
 
   message("Star formation law is Schaye and Dalla Vecchia (2008)"
   " with properties, normalization = %e, slope of the Kennicutt"
   "-Schmidt law = %e, gamma = %e, gas fraction = %e, critical "
   "density = %e and critical temperature = %e", starform->A, 
-  starform->nks, starform->gamma, starform->fg, starform->rho_crit,
+  starform->nks, starform->gamma, starform->fg, starform->den_crit,
   starform->T_crit);
 
 }
