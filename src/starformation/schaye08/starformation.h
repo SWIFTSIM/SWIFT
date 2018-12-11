@@ -188,11 +188,11 @@ INLINE static void starformation_init_backend(
 
   /* Read the critical density contrast from the parameter file*/
   starform->Delta_crit = parser_get_param_double(parameter_file, 
-  "SchayeSF:Delta_crit");
+  "SchayeSF:thresh_MinOverDens");
 
   /* Read the critical temperature from the parameter file */
   starform->T_crit = parser_get_param_double(parameter_file,
-  "SchayeSF:T_crit");
+  "SchayeSF:thresh_temp");
 
   /* Read the gas fraction from the file */
   starform->fg = parser_get_param_double(parameter_file,
@@ -200,11 +200,11 @@ INLINE static void starformation_init_backend(
 
   /* Read the normalization */
   const double normalization = parser_get_opt_param_double(
-  parameter_file, "SchayeSF:A", normalization_default);
+  parameter_file, "SchayeSF:SchmidtLawCoeff_MSUNpYRpKPC2", normalization_default);
 
   /* Read the Kennicutt-Schmidt power law exponent */
   starform->nks = parser_get_opt_param_double(
-  parameter_file, "SchayeSF:nks", KS_power_law_default);
+  parameter_file, "SchayeSF:SchmidtLawExponent", KS_power_law_default);
 
   /* Read the heat capacity ratio gamma */
   starform->gamma = parser_get_opt_param_double(
@@ -250,7 +250,7 @@ INLINE static void starformation_init_backend(
     /* In the case that we do not use the Schaye (2004) critical
      * density to form stars but a constant value */
     starform->den_crit = parser_get_opt_param_double(
-    parameter_file, "SchayeSF:norm_ncrit", norm_ncrit_no04_default);
+    parameter_file, "SchayeSF:thresh_norm_HpCM3", norm_ncrit_no04_default);
     starform->Z0 = Z0_default;
     starform->n_Z0 = 0.0;
   } else {
@@ -259,15 +259,15 @@ INLINE static void starformation_init_backend(
     /* Read the normalization of the metallicity dependent critical 
      * density*/
     starform->den_crit = parser_get_opt_param_double( 
-    parameter_file, "SchayeSF:norm_ncrit", norm_ncrit_default);
+    parameter_file, "SchayeSF:thresh_norm_HpCM3", norm_ncrit_default);
 
     /* Read the scale metallicity Z0 */
     starform->Z0 = parser_get_opt_param_double(
-    parameter_file, "SchayeSF:Z0", Z0_default);
+    parameter_file, "SchayeSF:MetDep_Z0", Z0_default);
 
     /* Read the power law of the critical density scaling */
     starform->n_Z0 = parser_get_opt_param_double(
-    parameter_file, "SchayeSF:n_Z0", powerlawZ_default);
+    parameter_file, "SchayeSF:MetDep_SFthresh_Slope", powerlawZ_default);
   }
   /* Conversion of number density from cgs */
   static const float dimension_numb_den[5] = {0, -3, 0, 0, 0};
