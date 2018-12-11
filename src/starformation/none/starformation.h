@@ -47,8 +47,8 @@ struct star_formation {};
  *
  * */
 int starformation_potential_to_become_star(
-    const struct star_formation* starform, const struct parts* p,
-    const struct xparts* xp, const struct phys_const* const phys_const,
+    const struct star_formation* starform, struct parts* restrict p,
+    const struct xparts* restrict xp, const struct phys_const* const phys_const,
     const struct cosmology* cosmo){
 
   return 0;
@@ -64,8 +64,8 @@ int starformation_potential_to_become_star(
  *
  * */
 void starformation_convert_to_gas( 
-    const struct star_formation* starform, const struct parts* p,
-    const struct xparts* xp, const struct cosmology* cosmo) {}
+    const struct star_formation* starform, const struct parts* restrict p,
+    const struct xparts* restrict xp, const struct cosmology* cosmo) {}
 
 /* 
  * @brief initialization of the star formation law 

@@ -465,7 +465,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const struct star_formation starform = e->star_formation;
+  const struct star_formation *starform = e->star_formation;
   const struct phys_const *constants = e->physical_constants;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
