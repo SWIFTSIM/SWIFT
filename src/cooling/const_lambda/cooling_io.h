@@ -61,8 +61,6 @@ INLINE static void convert_part_T(const struct engine* e, const struct part* p,
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
- * Nothing to write for this scheme.
- *
  * @param parts The particle array.
  * @param xparts The extended particle array.
  * @param list The list of i/o properties to write.
