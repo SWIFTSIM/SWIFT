@@ -37,6 +37,7 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
     si->ids_ngbs_density[si->num_ngb_density] = pj->id;
   ++si->num_ngb_density;
 #endif
+  message("here");
 }
 
 /**
@@ -54,4 +55,6 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
                                   struct spart *restrict si,
-                                  struct part *restrict pj, float a, float H) {}
+                                  struct part *restrict pj, float a, float H) {
+  message("here");
+}

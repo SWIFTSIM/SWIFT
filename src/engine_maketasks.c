@@ -1022,6 +1022,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t->subtype == task_subtype_stars_density) {
         engine_addlink(e, &ci->stars.density, t);
+      } else if (t->subtype == task_subtype_stars_feedback) {
+        engine_addlink(e, &ci->stars.feedback, t);
       }
 
       /* Link pair tasks to cells. */
@@ -1038,6 +1040,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t->subtype == task_subtype_stars_density) {
         engine_addlink(e, &ci->stars.density, t);
         engine_addlink(e, &cj->stars.density, t);
+      } else if (t->subtype == task_subtype_stars_feedback) {
+        engine_addlink(e, &ci->stars.feedback, t);
+        engine_addlink(e, &cj->stars.feedback, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -1057,6 +1062,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t->subtype == task_subtype_stars_density) {
         engine_addlink(e, &ci->stars.density, t);
+      } else if (t->subtype == task_subtype_stars_feedback) {
+        engine_addlink(e, &ci->stars.feedback, t);
       }
 
       /* Link sub-pair tasks to cells. */
@@ -1073,6 +1080,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t->subtype == task_subtype_stars_density) {
         engine_addlink(e, &ci->stars.density, t);
         engine_addlink(e, &cj->stars.density, t);
+      } else if (t->subtype == task_subtype_stars_feedback) {
+        engine_addlink(e, &ci->stars.feedback, t);
+        engine_addlink(e, &cj->stars.feedback, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -1601,9 +1611,16 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
 
       /* Now, build all the dependencies for the stars */
       engine_make_stars_loops_dependencies(sched, t, t->ci);
-      if (t->ci == t->ci->super)
-        scheduler_addunlock(sched, t->ci->super->stars.ghost_out,
-                            t->ci->super->end_force);
+    }
+    if (t->type == task_type_self && t->subtype == task_subtype_stars_feedback) {
+
+      /* Make the self-feedback tasks depend on the stars ghost task. */
+      scheduler_addunlock(sched, t->ci->super->stars.ghost_out, t);
+
+      /* Make end_force depend on feedback */
+      if (t->ci == t->ci->super) {
+        scheduler_addunlock(sched, t, t->ci->super->end_force);
+      }
     }
 
     /* Otherwise, pair interaction? */
@@ -1640,6 +1657,16 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
       }
 
     }
+    else if (t->type == task_type_pair &&
+             t->subtype == task_subtype_stars_feedback) {
+      /* Make feedback task depend on ghost  */
+      scheduler_addunlock(sched, t->ci->super->stars.ghost_out, t);
+      
+      /* Make end_force depend on feedback  */
+      if (t->ci == t->ci->super) {
+        scheduler_addunlock(sched, t, t->ci->super->end_force);
+      }
+    }
 
     /* Otherwise, sub-self interaction? */
     else if (t->type == task_type_sub_self &&
@@ -1657,6 +1684,22 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
         engine_make_stars_loops_dependencies(sched, t, t->ci);
       } else
         error("oo");
+    }
+    else if (t->type == task_type_sub_self &&
+             t->subtype == task_subtype_stars_feedback) {
+
+      /* Make all feedback tasks depend on the drift and sorts. */
+      //scheduler_addunlock(sched, t->ci->super->hydro.drift, t);
+      //scheduler_addunlock(sched, t->ci->super->hydro.sorts, t);
+      //scheduler_addunlock(sched, t->ci->super->grav.drift, t);
+      //scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
+
+      /* Now, build all the dependencies for the stars for the cells */
+      /* that are local and are not descendant of the same super-cells */
+      //if (t->ci->nodeID == nodeID) {
+      //  engine_make_stars_loops_dependencies(sched, t, t->ci);
+      //} else
+      //  error("oo");
     }
 
     /* Otherwise, sub-pair interaction? */
@@ -1691,6 +1734,38 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
         if (t->ci->super != t->cj->super)
           engine_make_stars_loops_dependencies(sched, t, t->cj);
       }
+    }
+    else if (t->type == task_type_sub_pair &&
+             t->subtype == task_subtype_stars_feedback) {
+
+      /* Make all feedback tasks depend on the drift. */
+      //if (t->cj->nodeID == engine_rank)
+      //  scheduler_addunlock(sched, t->cj->super->hydro.drift, t);
+      //scheduler_addunlock(sched, t->cj->super->hydro.sorts, t);
+
+      //if (t->cj->nodeID == engine_rank)
+      //  scheduler_addunlock(sched, t->cj->super->grav.drift, t);
+      //scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
+
+      //if (t->ci->super != t->cj->super) {
+      //  if (t->ci->nodeID == engine_rank)
+      //    scheduler_addunlock(sched, t->ci->super->hydro.drift, t);
+      //  scheduler_addunlock(sched, t->ci->super->hydro.sorts, t);
+
+      //  if (t->ci->nodeID == engine_rank)
+      //    scheduler_addunlock(sched, t->ci->super->grav.drift, t);
+      //  scheduler_addunlock(sched, t->cj->super->stars.sorts, t);
+      //}
+
+      /* Now, build all the dependencies for the stars for the cells */
+      /* that are local and are not descendant of the same super-cells */
+      //if (t->ci->nodeID == nodeID) {
+      //  engine_make_stars_loops_dependencies(sched, t, t->ci);
+      //}
+      //if (t->cj->nodeID == nodeID) {
+      //  if (t->ci->super != t->cj->super)
+      //    engine_make_stars_loops_dependencies(sched, t, t->cj);
+      //}
     }
   }
 }
@@ -1736,9 +1811,12 @@ void engine_make_starsloop_tasks_mapper(void *map_data, int num_elements,
     if (ci->stars.count == 0 && ci->hydro.count == 0) continue;
 
     /* If the cells is local build a self-interaction */
-    if (ci->nodeID == nodeID)
+    if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_self, task_subtype_stars_density, 0, 0,
                         ci, NULL);
+      scheduler_addtask(sched, task_type_self, task_subtype_stars_feedback, 0, 0,
+                        ci, NULL);
+    }
 
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
@@ -1766,6 +1844,8 @@ void engine_make_starsloop_tasks_mapper(void *map_data, int num_elements,
           /* Construct the pair task */
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
           scheduler_addtask(sched, task_type_pair, task_subtype_stars_density,
+                            sid, 0, ci, cj);
+          scheduler_addtask(sched, task_type_pair, task_subtype_stars_feedback,
                             sid, 0, ci, cj);
         }
       }
