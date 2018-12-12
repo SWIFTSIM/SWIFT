@@ -287,16 +287,21 @@ EAGLEChemistry:
 
 # Schaye and Dalla Vecchia 2008 star formation
 SchayeSF:
-  thresh_MinOverDens:             60      # The critical density contrast to form stars
-  thresh_temp:                    1e5     # The critical temperature to form stars
-  fg:                             0.25    # The mass fraction in gas
-  SchmidtLawCoeff_MSUNpYRpKPC2:   2.5e-4  # (optional) The normalization of the Kennicutt-Schmidt law
-  SchmidtLawExponent:             1.4     # (optional) The power law of the Kennicutt-Schmidt law
-  gamma:                          1.6667  # (optional) The heat capacity ratio (gamma)
-  Schaye2004:                     1       # (optional) whether to use the metallicity dependent critical star formation of Schaye (2004) (1) or not (0).
-  thresh_norm_HpCM3:     .1      # (optional) Critical sf normalization to use (is not a normalization when Schaye2004=0, than it is the value.
-  MetDep_Z0:                       0.002   # (optional) Scale metallicity to use for the equation (not used for Schaye2004=0)
-  MetDep_SFthresh_Slope:           -0.64   # (optional) Scaling of the critical density with the metallicity (not used for Schaye2004=0)
+  thresh_MinOverDens:               57.7      # The critical density contrast to form stars
+  thresh_temp:                      1e5     # The critical temperature to form stars
+  fg:                               0.25    # The mass fraction in gas
+  SchmidtLawCoeff_MSUNpYRpKPC2:     2.5e-4  # (optional) The normalization of the Kennicutt-Schmidt law
+  SchmidtLawExponent:               1.4     # (optional) The power law of the Kennicutt-Schmidt law
+  SchmidtLawHighDensExponent:       2.0     # (optional) The high density exponent for the Kennicutt-Schmidt law
+  SchmidtLawHighDens_thresh_HpCM3:  1e3
+  gamma:                            1.6667  # (optional) The heat capacity ratio (gamma)
+  Schaye2004:                       1       # (optional) whether to use the metallicity dependent critical star formation of Schaye (2004) (1) or not (0).
+  thresh_norm_HpCM3:                .1      # (optional) Critical sf normalization to use (is not a normalization when Schaye2004=0, than it is the value.
+  thresh_max_norm_HpCM3:            10.0    # (optional) Maximum norm of the critical sf density
+  MetDep_Z0:                        0.002   # (optional) Scale metallicity to use for the equation (not used for Schaye2004=0)
+  MetDep_SFthresh_Slope:            -0.64   # (optional) Scaling of the critical density with the metallicity (not used for Schaye2004=0)
+  thresh_MaxPhysDensOn:             0       # (optional) Default is 0.
+  thresh_MaxOverDens_HpCM3:         1e5     # (optional) Density at which the SF law changes
 
 # Structure finding options (requires velociraptor)
 StructureFinding:
