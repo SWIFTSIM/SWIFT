@@ -36,10 +36,16 @@
 struct star_formation {
   
   /*! Normalization of the KS star formation law */
-  double A;
+  double KS_normalization;
 
   /*! Slope of the KS law */
-  double nks;
+  double KS_power_law;
+
+  /*! Slope of the high density KS law */
+  double KS_power_law_high_den;
+
+  /*! KS law High density threshold */
+  double KS_high_den_thresh;
 
   /*! Critical overdensity */
   double Delta_crit;
@@ -51,10 +57,10 @@ struct star_formation {
   double gamma;
 
   /*! gas fraction */
-  double fg;
+  double fgas;
 
   /*! Star formation law slope */
-  double nstar;
+  double SF_power_law;
 
   /*! star formation normalization of schaye+08 */
   double Astar;
@@ -182,6 +188,8 @@ INLINE static void starformation_init_backend(
   /* Default values for the normalization and the power law */
   static const double normalization_default = 2.5e-4;
   static const double KS_power_law_default = 1.4;
+  static const double KS_power_law_high_den_default = 2.0;
+  static const double KS_high_den_thresh_default = 1e3;
 
   /* Default value for the heat capacity ratio gamma */
   static const double gamma_default = 5.f/3.f;
@@ -195,7 +203,7 @@ INLINE static void starformation_init_backend(
   "SchayeSF:thresh_temp");
 
   /* Read the gas fraction from the file */
-  starform->fg = parser_get_param_double(parameter_file,
+  starform->fgas = parser_get_param_double(parameter_file,
   "SchayeSF:fg");
 
   /* Read the normalization */
@@ -203,17 +211,30 @@ INLINE static void starformation_init_backend(
   parameter_file, "SchayeSF:SchmidtLawCoeff_MSUNpYRpKPC2", normalization_default);
 
   /* Read the Kennicutt-Schmidt power law exponent */
-  starform->nks = parser_get_opt_param_double(
+  starform->KS_power_law = parser_get_opt_param_double(
   parameter_file, "SchayeSF:SchmidtLawExponent", KS_power_law_default);
+
+  /* Read the high density Kennicutt-Schmidt power law exponent */
+  starform->KS_power_law_high_den = parser_get_opt_param_double(
+  parameter_file, "SchayeSF:SchmidtLawHighDensExponent", 
+  KS_power_law_high_den_default);
+  
+  /* Read the high density criteria for the KS law in number density per cm^3 */
+  const double KS_high_den_thresh_HpCM3 = parser_get_opt_param_double(
+  parameter_file, "SchayeSF:SchmidtLawHighDens_thresh_HpCM3",
+  KS_high_den_thresh_default);
+
+  /* Transform the KS high density criteria to simulation units */
+  starform->KS_high_den_thresh = KS_high_den_thresh_HpCM3 * UNIT_CONV_NUMBER_DENSITY;
 
   /* Read the heat capacity ratio gamma */
   starform->gamma = parser_get_opt_param_double(
   parameter_file, "SchayeSF:gamma", gamma_default); 
 
   /* Calculate the power law of the star formation */
-  starform->nstar = (starform->nks - 1.f)/2.f;
+  starform->SF_power_law = (starform->KS_power_law - 1.f)/2.f;
   
-  /* Calculate inverse of RAND_MAX */
+  /* Calculate inverse of RAND_MAX for the random numbers */
   starform->inv_RAND_MAX = 1.f / RAND_MAX;
 
   /* Get the appropriate constant to calculate the 
@@ -227,15 +248,16 @@ INLINE static void starformation_init_backend(
   const double M_per_pc2 = phys_const->const_solar_mass_per_parsec2;
 
   /* Give the Kennicutt-Schmidt law the same units as internal units */
-  starform->A = normalization * KS_const;
+  starform->KS_normalization = normalization * KS_const;
 
   /* Calculate the starformation prefactor with most terms */
-  starform->Astar = starform->A * pow(M_per_pc2, -starform->nks) * 
-  pow( starform->gamma * starform->fg / G_newton, starform->nstar);
+  starform->Astar = starform->KS_normalization * pow(M_per_pc2, -starform->KS_power_law) * 
+  pow( starform->gamma * starform->fgas / G_newton, starform->SF_power_law);
 
   /* critical star formation number density parameters */
+  /* Standard we will use a constant critical density threshold*/
   /* standard variables based on the EAGLE values */
-  static const int schaye2004_default = 1;
+  static const int schaye2004_default = 0;
   static const double norm_ncrit_default = 0.1;
   static const double norm_ncrit_no04_default = 10.;
   static const double Z0_default = 0.002; 
@@ -293,8 +315,8 @@ INLINE static void starformation_print_backend(
   message("Star formation law is Schaye and Dalla Vecchia (2008)"
   " with properties, normalization = %e, slope of the Kennicutt"
   "-Schmidt law = %e, gamma = %e, gas fraction = %e, critical "
-  "density = %e and critical temperature = %e", starform->A, 
-  starform->nks, starform->gamma, starform->fg, starform->den_crit,
+  "density = %e and critical temperature = %e", starform->KS_normalization, 
+  starform->KS_power_law, starform->gamma, starform->fgas, starform->den_crit,
   starform->T_crit);
 
 }
