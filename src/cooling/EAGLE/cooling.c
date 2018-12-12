@@ -522,27 +522,28 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
     int bisection_flag = 1;
 
-#ifdef TO_BE_DONE
-    if (cooling->newton_flag) {
+    // MATTHIEU: TO DO restore the Newton-Raphson scheme
+    if (0 && cooling->newton_flag) {
+      
       /* Ok, try a Newton-Raphson scheme instead */
-      log_u_final_cgs = newton_iter(
-          log(u_0_cgs), u_0_cgs, n_h_i, d_n_h, He_i, d_He, LambdaTune, p, cosmo,
-          cooling, phys_const, abundance_ratio, dt_cgs, &bisection_flag);
+      double log_u_final_cgs =
+          newton_iter(log(u_0_cgs), u_0_cgs, n_H_index, d_n_H, He_index, d_He,
+                      Lambda_He_reion_cgs, p, cosmo, cooling, phys_const,
+                      abundance_ratio, dt_cgs, &bisection_flag);
 
       /* Check if newton scheme sent us to a higher energy despite being in
-    a
-       * cooling regime If it did try newton scheme with a better guess.
-    (Guess
-       * internal energy near equilibrium solution).  */
-      if (LambdaNet < 0 && log_u_final_cgs > log(u_0_cgs)) {
+         a  cooling regime If it did try newton scheme with a better guess.
+         (Guess internal energy near equilibrium solution).  */
+      if (LambdaNet_cgs < 0 && log_u_final_cgs > log(u_0_cgs)) {
         bisection_flag = 0;
         log_u_final_cgs =
-            newton_iter(newton_log_u_guess_cgs, u_0_cgs, n_h_i, d_n_h, He_i,
-                        d_He, LambdaTune, p, cosmo, cooling, phys_const,
-                        abundance_ratio, dt_cgs, &bisection_flag);
+            newton_iter(newton_log_u_guess_cgs, u_0_cgs, n_H_index, d_n_H,
+                        He_index, d_He, Lambda_He_reion_cgs, p, cosmo, cooling,
+                        phys_const, abundance_ratio, dt_cgs, &bisection_flag);
       }
+
+      u_final_cgs = exp(log_u_final_cgs);
     }
-#endif
 
     /* Alright, all else failed, let's bisect */
     if (bisection_flag || !(cooling->newton_flag)) {
