@@ -505,7 +505,7 @@ struct cell {
     /*! Linked list of the tasks computing this cell's star density. */
     struct link *density;
     
-    // ALEXEI: DOES THIS NEED TO BE HERE?
+    /*! Linked list of the tasks computing this cell's star feedback. */
     struct link *feedback;
 
     /*! Number of #spart updated in this cell. */

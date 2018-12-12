@@ -166,6 +166,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           break;
 
         case task_subtype_stars_density:
+        case task_subtype_stars_feedback:
           return task_action_all;
           break;
 
@@ -356,6 +357,8 @@ void task_unlock(struct task *t) {
         cell_munlocktree(ci);
       } else if (subtype == task_subtype_stars_density) {
         cell_sunlocktree(ci);
+      } else if (subtype == task_subtype_stars_feedback) {
+        cell_sunlocktree(ci);
       } else {
         cell_unlocktree(ci);
       }
@@ -369,6 +372,9 @@ void task_unlock(struct task *t) {
         cell_munlocktree(ci);
         cell_munlocktree(cj);
       } else if (subtype == task_subtype_stars_density) {
+        cell_sunlocktree(ci);
+        cell_sunlocktree(cj);
+      } else if (subtype == task_subtype_stars_feedback) {
         cell_sunlocktree(ci);
         cell_sunlocktree(cj);
       } else {
@@ -477,6 +483,9 @@ int task_lock(struct task *t) {
       } else if (subtype == task_subtype_stars_density) {
         if (ci->stars.hold) return 0;
         if (cell_slocktree(ci) != 0) return 0;
+      } else if (subtype == task_subtype_stars_feedback) {
+        if (ci->stars.hold) return 0;
+        if (cell_slocktree(ci) != 0) return 0;
       } else {
         if (ci->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
@@ -503,6 +512,13 @@ int task_lock(struct task *t) {
           return 0;
         }
       } else if (subtype == task_subtype_stars_density) {
+        if (ci->stars.hold || cj->stars.hold) return 0;
+        if (cell_slocktree(ci) != 0) return 0;
+        if (cell_slocktree(cj) != 0) {
+          cell_sunlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_stars_feedback) {
         if (ci->stars.hold || cj->stars.hold) return 0;
         if (cell_slocktree(ci) != 0) return 0;
         if (cell_slocktree(cj) != 0) {

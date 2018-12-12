@@ -3052,7 +3052,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
-
+  
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -3116,7 +3116,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
         cell_activate_subcell_stars_tasks(t->ci, t->cj, s);
       }
     }
-
+  
     /* Only interested in pair interactions as of here. */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
@@ -3203,6 +3203,27 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
        */
       /* } */
 #endif
+    }
+  }
+  
+  /* Un-skip the feedback tasks involved with this cell. */
+  for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_stars(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_stars(cj, e) : 0;
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active && ci->nodeID == nodeID) ||
+        (cj_active && cj->nodeID == nodeID)) {
+      scheduler_activate(s, t);
+    }
+    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+
+      /* Check whether there was too much particle motion, i.e. the
+         cell neighbour conditions were violated. */
+      if (cell_need_rebuild_for_pair(ci, cj)) rebuild = 1;
     }
   }
 
