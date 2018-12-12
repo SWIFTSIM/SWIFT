@@ -339,7 +339,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
      this is why we divide by the volume, and not by the density */
   p->P = hydro_gamma_minus_one * energy * volume_inv;
   p->A = p->conserved.entropy / m;
-  p->P = p->A * pow_gamma(p->rho);
 #endif
 
   /* sanity checks */
@@ -475,6 +474,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->flux.momentum[1] = 0.0f;
   p->flux.momentum[2] = 0.0f;
   p->flux.energy = 0.0f;
+
+  p->force.Ekinmax = 0.0f;
 }
 
 /**
@@ -654,7 +655,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
   p->conserved.energy += p->flux.energy * dt_therm;
-  p->conserved.energy = hydro_one_over_gamma_minus_one * p->conserved.entropy * pow_gamma_minus_one(p->rho);
 #endif
 
 #ifndef HYDRO_GAMMA_5_3
@@ -704,6 +704,18 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[0] += dt_grav * p->conserved.mass * a_grav[0];
     p->conserved.momentum[1] += dt_grav * p->conserved.mass * a_grav[1];
     p->conserved.momentum[2] += dt_grav * p->conserved.mass * a_grav[2];
+
+    /* apply the entropy switch */
+    const float dEgrav = p->conserved.mass *
+                         sqrtf(a_grav[0] * a_grav[0] + a_grav[1] * a_grav[1] +
+                               a_grav[2] * a_grav[2]) *
+                         p->h;
+    if (p->conserved.energy <
+            0.001 * (p->force.Ekinmax + p->conserved.energy) ||
+        p->conserved.energy < 0.001 * dEgrav) {
+      p->conserved.energy = hydro_one_over_gamma_minus_one *
+                            p->conserved.entropy * pow_gamma_minus_one(p->rho);
+    }
   }
 
   /* Set the velocities: */
