@@ -87,7 +87,11 @@ physical pressure? Is this the effective EOS or the real EOS of the gas?
 Compared to the EAGLE code we can calculate a fraction of the calculations already 
 in the struct which are not depending on time, this may save some calculations. 
 
-
+Besides this we also use the more extended temperature criteria proposed by
+\citet{dallavecchia2012} that uses a temperature floor given by:
+\begin{align}
+ \log_{10} T < \log_{10} T_\text{eos} + 0.5.
+\end{align}
 
 
 
