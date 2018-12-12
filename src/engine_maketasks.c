@@ -1612,7 +1612,8 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
       /* Now, build all the dependencies for the stars */
       engine_make_stars_loops_dependencies(sched, t, t->ci);
     }
-    if (t->type == task_type_self && t->subtype == task_subtype_stars_feedback) {
+    if (t->type == task_type_self &&
+        t->subtype == task_subtype_stars_feedback) {
 
       /* Make the self-feedback tasks depend on the stars ghost task. */
       scheduler_addunlock(sched, t->ci->super->stars.ghost_out, t);
@@ -1656,12 +1657,11 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
           engine_make_stars_loops_dependencies(sched, t, t->cj);
       }
 
-    }
-    else if (t->type == task_type_pair &&
-             t->subtype == task_subtype_stars_feedback) {
+    } else if (t->type == task_type_pair &&
+               t->subtype == task_subtype_stars_feedback) {
       /* Make feedback task depend on ghost  */
       scheduler_addunlock(sched, t->ci->super->stars.ghost_out, t);
-      
+
       /* Make end_force depend on feedback  */
       if (t->ci == t->ci->super) {
         scheduler_addunlock(sched, t, t->ci->super->end_force);
@@ -1684,13 +1684,12 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
         engine_make_stars_loops_dependencies(sched, t, t->ci);
       } else
         error("oo");
-    }
-    else if (t->type == task_type_sub_self &&
-             t->subtype == task_subtype_stars_feedback) {
+    } else if (t->type == task_type_sub_self &&
+               t->subtype == task_subtype_stars_feedback) {
 
       /* Make feedback task depend on ghost  */
       scheduler_addunlock(sched, t->ci->super->stars.ghost_out, t);
-      
+
       /* Make end_force depend on feedback  */
       if (t->ci == t->ci->super) {
         scheduler_addunlock(sched, t, t->ci->super->end_force);
@@ -1729,13 +1728,12 @@ void engine_link_stars_tasks_mapper(void *map_data, int num_elements,
         if (t->ci->super != t->cj->super)
           engine_make_stars_loops_dependencies(sched, t, t->cj);
       }
-    }
-    else if (t->type == task_type_sub_pair &&
-             t->subtype == task_subtype_stars_feedback) {
+    } else if (t->type == task_type_sub_pair &&
+               t->subtype == task_subtype_stars_feedback) {
 
       /* Make feedback task depend on ghost  */
       scheduler_addunlock(sched, t->ci->super->stars.ghost_out, t);
-      
+
       /* Make end_force depend on feedback  */
       if (t->ci == t->ci->super) {
         scheduler_addunlock(sched, t, t->ci->super->end_force);
@@ -1788,8 +1786,8 @@ void engine_make_starsloop_tasks_mapper(void *map_data, int num_elements,
     if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_self, task_subtype_stars_density, 0, 0,
                         ci, NULL);
-      scheduler_addtask(sched, task_type_self, task_subtype_stars_feedback, 0, 0,
-                        ci, NULL);
+      scheduler_addtask(sched, task_type_self, task_subtype_stars_feedback, 0,
+                        0, ci, NULL);
     }
 
     /* Now loop over all the neighbours of this cell */

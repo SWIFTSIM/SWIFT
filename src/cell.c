@@ -3052,7 +3052,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
-  
+
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -3116,7 +3116,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
         cell_activate_subcell_stars_tasks(t->ci, t->cj, s);
       }
     }
-  
+
     /* Only interested in pair interactions as of here. */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
@@ -3205,7 +3205,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 #endif
     }
   }
-  
+
   /* Un-skip the feedback tasks involved with this cell. */
   for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
     struct task *t = l->t;

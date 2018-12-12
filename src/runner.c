@@ -333,7 +333,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             }
           }
           /* Run through this cell's feedback interactions. */
-          for (struct link *l = finger->stars.feedback; l != NULL; l = l->next) {
+          for (struct link *l = finger->stars.feedback; l != NULL;
+               l = l->next) {
 
 #ifdef SWIFT_DEBUG_CHECKS
             if (l->t->ti_run < r->e->ti_current)
@@ -343,7 +344,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Self-interaction? */
             if (l->t->type == task_type_self)
               runner_doself_subset_branch_stars_feedback(r, finger, sparts, sid,
-                                                        scount);
+                                                         scount);
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
@@ -360,7 +361,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
               runner_dosub_subset_stars_feedback(r, finger, sparts, sid, scount,
-                                                NULL, -1, 1);
+                                                 NULL, -1, 1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {
@@ -368,10 +369,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dosub_subset_stars_feedback(r, finger, sparts, sid,
-                                                  scount, l->t->cj, -1, 1);
+                                                   scount, l->t->cj, -1, 1);
               else
                 runner_dosub_subset_stars_feedback(r, finger, sparts, sid,
-                                                  scount, l->t->ci, -1, 1);
+                                                   scount, l->t->ci, -1, 1);
             }
           }
         }
@@ -2805,9 +2806,10 @@ void *runner_main(void *data) {
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
-          else if (t->subtype == task_subtype_stars_density)
+          else if (t->subtype == task_subtype_stars_density) {
+            message("hello");
             runner_doself_stars_density(r, ci, 1);
-          else if (t->subtype == task_subtype_stars_feedback)
+          } else if (t->subtype == task_subtype_stars_feedback)
             runner_doself_stars_feedback(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);

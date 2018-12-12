@@ -126,6 +126,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_stars_density) {
         if (cell_is_active_stars(ci, e)) {
+          message("hello");
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
           cell_activate_drift_spart(ci, s);
@@ -423,16 +424,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->subtype == task_subtype_stars_density) {
 
         /* Too much particle movement? */
-        if (cell_need_rebuild_for_pair(ci, cj)) *rebuild_space = 1;
-
-        // LOIC: Need implementing MPI case
-      }
-      
-      /* Only interested in stars_feedback tasks as of here. */
-      if (t->subtype == task_subtype_stars_feedback) {
-
-        /* Too much particle movement? */
-        if (cell_need_rebuild_for_pair(ci, cj)) *rebuild_space = 1;
+        if (cell_need_rebuild_for_stars_pair(ci, cj)) {
+          message("OOOO");
+          *rebuild_space = 1;
+        }
 
         // LOIC: Need implementing MPI case
       }
