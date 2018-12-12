@@ -33,7 +33,7 @@ temperature of the gas should be atleast $T_\text{crit}<10^5 ~\text{K}$
 Besides this it is required that there is an effective equation of state. 
 Specifically we could take this to be equal to:
 \begin{align}
- P &= P_\text{eos} (\rho) = \left( \frac{\rho_\text{g}}{\rho_\text{g,c}} \right)^{\gamma_\text{eff}}.
+ P &= P_\text{eos} (\rho) = P_\text{tot,c}\left( \frac{\rho_\text{g}}{\rho_\text{g,c}} \right)^{\gamma_\text{eff}}.
 \end{align}
 \noindent In which $\gamma_\text{eff}$ is the polytropic index. But the EAGLE 
 code just uses the EOS of the gas?
@@ -59,6 +59,7 @@ pressure with a corresponding density. This means we have:
 \begin{align}
 A_\text{high} = A \left( 1 ~\text{M}_\odot ~\text{pc}^{-2} \right)^{n_\text{high}-n} \left( \frac{\gamma}{G} f_g P_\text{tot}(\rho_{hd}) \right)^{(n-n_\text{high})/2}. 
 \end{align}
+In which $\rho_{hd}$ is the density at which both laws are equal.
 
 This is differently from the EAGLE code ($f_g=1$) which uses:
 \begin{align}
@@ -77,11 +78,11 @@ $n_Z=-0.64$ and $Z_0 = 0.002$.
 
 For the initial pressure determination the EAGLE code uses (Explanation needed):
 \begin{align}
- P_\text{cgs} &= (\gamma -1) \frac{n_\text{EOS, norm} \cdot m_H}{X} T_{EOS,jeans} \cdot \frac{k_B}{1.22 \cdot (\gamma -1) m_H }.
+ P_\text{cgs} &= (\gamma -1) \frac{n_\text{EOS, norm} \cdot m_H}{X} T_{EOS,jeans} \cdot \frac{k_B}{1.22 \cdot (\gamma -1) m_H } \left( \frac{n_\text{highden}}{n_\text{norm,EOS}} \right)^{\gamma_\text{eff}}.
 \end{align}
 
 To determine the pressure for the star formation law the EAGLE code uses the 
-physical pressure? Is this the effective EOS of the real EOS of the gas?
+physical pressure? Is this the effective EOS or the real EOS of the gas?
 
 Compared to the EAGLE code we can calculate a fraction of the calculations already 
 in the struct which are not depending on time, this may save some calculations. 
