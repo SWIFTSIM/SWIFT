@@ -524,7 +524,7 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
     // MATTHIEU: TO DO restore the Newton-Raphson scheme
     if (0 && cooling->newton_flag) {
-      
+
       /* Ok, try a Newton-Raphson scheme instead */
       double log_u_final_cgs =
           newton_iter(log(u_0_cgs), u_0_cgs, n_H_index, d_n_H, He_index, d_He,
