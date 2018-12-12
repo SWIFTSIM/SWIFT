@@ -22,23 +22,17 @@ VELOCIraptor. This can be done by cloning the repository on GitHub_::
 
   git clone https://github.com/pelahi/VELOCIraptor-STF
 
-Currently the best version that works with SWIFT is the swift-interface branch
+Currently the best version that works with SWIFT is the master
 of VELOCIraptor, to get this branch use::
 
   cd VELOCIraptor-STF 
   git fetch 
-  git checkout swift-interface
 
-To get the default that works with SWIFT simply copy the SWIFT template file in
-the ``Makefile.config``::
+To get VELOCIraptor working with SWIFT simply use::
 
-  cd stf 
-  cp Makefile.config.SWIFT-template Makefile.config
+  cmake . -DVR_USE_SWIFT_INTERFACE=ON -DCMAKE_CXX_FLAGS="-fPIC" -DVR_USE_GAS=ON
 
-Depending on your compiler you want to change the first 20 lines of your
-``Makefile.config`` to work with your compiler and whether you want to use MPI
-or not. 
-
+If you wish to run swift without MPI, you will need to add ``-DVR_MPI=OFF``.
 
 Compiling VELOCIraptor
 ----------------------
@@ -46,13 +40,11 @@ Compiling VELOCIraptor
 After we downloaded the files and made a configuration file we can compile
 VELOCIraptor as follows::
 
-  make lib 
-  make libstf
+  make -j 4
 
-After the compilation of your code, there is an additional folder created in
-the ``VELOCIraptor-stf/stf`` directory called ``lib`` this directory has the
-library of VELOCIraptor and is required to run SWIFT with
-VELOCIraptor. Note that VELOCIraptor needs a serial version of the
+After the compilation of your code, you will find a static library ``libvelociraptor.a``,
+that is required to run SWIFT with VELOCIraptor.
+Note that VELOCIraptor needs a serial version of the
 HDF5 library, not a parallel build.
 
 Compiling SWIFT
@@ -61,7 +53,7 @@ The next part is compiling SWIFT with VELOCIraptor and assumes you already
 downloaded SWIFT from the GitLab_, this can be done by running::
 
   ./autogen.sh 
-  ./configure --with-velociraptor=/path/to/VELOCIraptor-STF/stf/lib 
+  ./configure --with-velociraptor=/path/to/VELOCIraptor-STF/src 
   make 
 
 In which ``./autogen.sh`` only needs to be run once after the code is cloned
