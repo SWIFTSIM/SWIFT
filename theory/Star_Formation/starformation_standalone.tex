@@ -1,0 +1,43 @@
+\documentclass[fleqn, usenatbib, useAMS, a4paper]{mnras}
+\usepackage{graphicx}
+\usepackage{amsmath,paralist,xcolor,xspace,amssymb}
+\usepackage{times}
+\usepackage{comment}
+\usepackage[super]{nth}
+
+\newcommand{\todo}[1]{{\textcolor{red}{#1}}}
+\newcommand{\gadget}{{\sc Gadget}\xspace}
+\newcommand{\swift}{{\sc Swift}\xspace}
+\newcommand{\nbody}{$N$-body\xspace}
+\newcommand{\Lag}{\mathcal{L}}
+
+%opening
+\title{Star formation equations in SWIFT}
+\author{Folkert Nobels}
+\begin{document}
+
+\date{\today}
+
+\pagerange{\pageref{firstpage}--\pageref{lastpage}} \pubyear{2018}
+
+\maketitle
+
+\label{firstpage}
+
+\begin{abstract}
+Making stars all over again.
+\end{abstract}
+
+\begin{keywords}
+\end{keywords}
+
+\input{starformation}
+
+
+
+\bibliographystyle{mnras}
+\bibliography{./bibliography.bib}
+
+\label{lastpage}
+
+\end{document}
