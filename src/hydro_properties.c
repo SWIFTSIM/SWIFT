@@ -119,6 +119,12 @@ void hydro_props_init(struct hydro_props *p,
   p->hydrogen_mass_fraction = parser_get_opt_param_double(
       params, "SPH:H_mass_fraction", default_H_fraction);
 
+  /* Mean molecular mass for neutral gas */
+  p->mu_neutral = 4. / (1. + 3. * p->hydrogen_mass_fraction);
+
+  /* Mean molecular mass for fully ionised gas */
+  p->mu_ionised = 4. / (8. - 5. * (1. - p->hydrogen_mass_fraction));
+
   /* Read the artificial viscosity parameters from the file, if they exist */
   p->viscosity.alpha = parser_get_opt_param_float(
       params, "SPH:viscosity_alpha", hydro_props_default_viscosity_alpha);

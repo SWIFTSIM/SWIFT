@@ -59,6 +59,14 @@ void cooling_first_init_part(
     const struct cooling_function_data *restrict cooling,
     const struct part *restrict p, struct xpart *restrict xp);
 
+float cooling_get_temperature(
+    const struct phys_const *restrict phys_const,
+    const struct hydro_props *restrict hydro_props,
+    const struct unit_system *restrict us,
+    const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct part *restrict p, const struct xpart *restrict xp);
+
 float cooling_get_radiated_energy(const struct xpart *restrict xp);
 
 void cooling_init_backend(struct swift_params *parameter_file,
