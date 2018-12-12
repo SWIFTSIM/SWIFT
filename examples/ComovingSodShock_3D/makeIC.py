@@ -26,7 +26,6 @@ from numpy import *
 unit_l_in_cgs = 3.086e18
 unit_m_in_cgs = 2.94e55
 unit_t_in_cgs = 3.086e18
-unit_v_in_cgs = unit_l_in_cgs / unit_t_in_cgs
 
 # Parameters
 gamma = 5./3.          # Gas adiabatic index
