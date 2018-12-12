@@ -30,9 +30,7 @@ __attribute__((always_inline)) INLINE static int riemann_is_vacuum(
   if (!WL[0] || !WR[0]) return 1;
 
   /* vacuum generation */
-  else if (hydro_two_over_gamma_minus_one * aL +
-               hydro_two_over_gamma_minus_one * aR <=
-           vR - vL)
+  else if (hydro_two_over_gamma_minus_one * (aL + aR) <= vR - vL)
     return 1;
 
   /* no vacuum */
