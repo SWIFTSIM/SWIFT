@@ -1145,6 +1145,18 @@ if test "$have_numa" != "no"; then
         case "$CFLAGS" in
             *strict-prototypes*)
                 NUMA_INCS="-isystem$with_numa/include"
+                # This may still fail if CPATH is used, so we check if the
+                # headers are usable.
+                AS_UNSET(ac_cv_header_numa_h)
+                old_CPPFLAGS="$CPPFLAGS"
+                CPPFLAGS="$CPPFLAGS $NUMA_INCS"
+                numa_failed="no"
+                AC_CHECK_HEADER([numa.h],[numa_failed="no"],
+                                [numa_failed="yes"])
+                if test "$numa_failed" = "yes"; then
+                    AC_MSG_ERROR([Failed to compile the numa.h header file: you may need to set --enable-compiler-warnings to yes or no])
+                fi
+                CPPFLAGS="$old_CPPFLAGS"
             ;;
             *)
                 NUMA_INCS="-I$with_numa/include"
