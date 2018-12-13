@@ -46,8 +46,8 @@ converted to a star particle:
 \end{align}
 
 \noindent In general we use $A=1.515 \cdot 10^{-4}~\text{M}_\odot ~\text{yr}^{-1} ~\text{kpc}^{-2}$ 
-and $n=1.4$. In the case of high densities ($n_\text{H} > 10^3 ~\text{cm}^{-3}$),
-the power law will be steaper and have a value of $n=2$. This will also adjust
+and $n=1.4$. In the case of high densities ($n_\text{H,thresh} > 10^3 ~\text{cm}^{-3}$),
+the power law will be steaper and have a value of $n=2$ \citep{schaye2015}. This will also adjust
 the normalization of the star formation law, both need to be equal at the 
 pressure with a corresponding density. This means we have:
 \begin{align}
@@ -74,7 +74,8 @@ In which $n_\text{H,norm}$ is the normalization of the metallicity dependent
 star formation law, $Z$ the metallicity, $Z_0$ the normalization metallicity,
 and $n_Z$ the power law of the metallicity dependence on density. standard 
 values we take for the EAGLE are $n_\text{H,norm} = 0.1 ~\text{cm}^{-3}$, 
-$n_Z=-0.64$ and $Z_0 = 0.002$.
+$n_Z=-0.64$ and $Z_0 = 0.002$. Also we impose that the density threshold cannot
+exceed the maximum value of $n_\text{H,max,norm}$ \citep{schaye2015}.
 
 For the initial pressure determination the EAGLE code uses (Explanation needed):
 \begin{align}
@@ -93,7 +94,24 @@ Besides this we also use the more extended temperature criteria proposed by
  \log_{10} T < \log_{10} T_\text{eos} + 0.5.
 \end{align}
 
-
+\begin{table}
+\begin{tabular}{l|l|l|l}
+Variable & Parameter file name   & Default value & unit \\ \hline
+$A$    & SchmidtLawCoeff\_MSUNpYRpKPC2   & $1.515\cdot10^{-4}$    & $M_\odot ~yr^{-1} ~kpc^{-2}$ \\
+$n$  & SchmidtLawExponent                & $1.4$         & none  \\
+$\gamma$  & gamma   & $\frac{5}{3}$ & none   \\
+$G$  & No, in constants   & -  & -  \\
+$f_g$ & fg   & $1.$    & none  \\
+$n_{high}$   & SchmidtLawHighDensExponent  & $2.0$  & none  \\
+$n_{H,thresh}$ & SchmidtLawHighDens\_thresh\_HpCM3 & $10^3$ & $cm^{-3}$ \\
+$n_{H,norm}$ & thresh\_norm\_HpCM3 & $.1$ & $cm^{-3}$ \\
+$Z_0$ & MetDep\_Z0 & $0.002$ & none \\
+$n_Z$ & MetDep\_SFthresh\_Slope & $-0.64$ & none \\
+$\Delta$ & thresh\_MinOverDens & $57.7$ & none \\
+$T_{crit}$ & thresh\_temp & $10^5$ & $K$ \\
+$n_{H,max,norm}$ & thresh\_max\_norm\_HpCM3 & 10.0 & $cm^{-3}$ 
+\end{tabular}
+\end{table}
 
 
 
