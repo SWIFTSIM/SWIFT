@@ -295,6 +295,9 @@ SchayeSF:
   MetDep_SFthresh_Slope:            -0.64   # (optional) Scaling of the critical density with the metallicity (not used for Schaye2004=0)
   thresh_MaxPhysDensOn:             0       # (optional) Default is 0.
   thresh_MaxOverDens_HpCM3:         1e5     # (optional) Density at which the SF law changes
+  EOS_Jeans_GammaEffective:         1.33333 # (optional) The polytropic index
+  EOS_Jeans_PressureNorm:           1e3     # (optional) No idea how this works
+  EOS_JEANS_den0:                   .1      # (optional) No idea what the value is.
 
 # Structure finding options (requires velociraptor)
 StructureFinding:

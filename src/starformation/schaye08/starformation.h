@@ -96,6 +96,14 @@ struct star_formation {
   /*! Metallicity dependent critical density from Schaye (2004) */
   int schaye04;
   
+  /*! Polytropic index */
+  double polytropic_index;
+
+  /*! EOS pressure norm */
+  double EOS_pressure_norm;
+
+  /*! EOS density norm */
+  double EOS_den0;
 };
 
 /*
@@ -136,7 +144,7 @@ INLINE static int starformation_potential_to_become_star(
     /* Check if it exceeded the maximum density */
     if (p->rho > starform->den_crit_max) {
       /* double tempp = cooling_get_temperature() */
-      tempp = 1e4;
+      tempp = 5e3;
       /* Check the last criteria, if the temperature is satisfied */
       if (tempp < starform->T_crit) {
         return 1;
@@ -151,7 +159,7 @@ INLINE static int starformation_potential_to_become_star(
       double den_crit_current = starform->den_crit * pow(Z/starform->Z0, starform->n_Z0);
       if (p->rho > den_crit_current) {
         /* double tempp = cooling_get_temperature() */
-        tempp = 1e4;
+        tempp = 5e3;
         /* Check the last criteria, if the temperature is satisfied */
         if (tempp < starform->T_crit) {
           return 1;
@@ -184,7 +192,8 @@ INLINE static void starformation_convert_to_gas(
     ){
 
   /* Get the pressure */
-  const double pressure = hydro_get_physical_pressure(p, cosmo);
+  const double pressure = starform->EOS_pressure_norm 
+  * pow(p->rho/starform->EOS_den0, starform->polytropic_index);
 
   /* Calculate the propability of forming a star */ 
   const double prop = starform->SF_normalization * pow(pressure,
@@ -195,6 +204,7 @@ INLINE static void starformation_convert_to_gas(
 
   /* Calculate if we form a star */
   if (prop > randomnumber) {
+    /* How to implement the convert_part_to_spart */
     message("Create a STAR!!");
   }
 }
@@ -352,6 +362,13 @@ INLINE static void starformation_init_backend(
   starform->den_crit_star = starform->den_crit / pow(starform->Z0,
   starform->n_Z0) * conversion_numb_density;
 
+  /* Load the equation of state for this model */
+  starform->polytropic_index = parser_get_param_double(
+  parameter_file, "SchayeSF:EOS_Jeans_GammaEffective");
+  starform->EOS_pressure_norm = parser_get_param_double(
+  parameter_file, "SchayeSF:EOS_Jeans_PressureNorm");
+  starform->EOS_den0 = parser_get_param_double(
+  parameter_file, "SchayeSF:EOS_JEANS_den0");
 
   
 }
