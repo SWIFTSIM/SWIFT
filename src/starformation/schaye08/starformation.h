@@ -31,6 +31,7 @@
 #include "equation_of_state.h"
 #include "part.h"
 #include "hydro.h"
+#include "cooling.h"
 
 /* Starformation struct */
 struct star_formation {
@@ -117,52 +118,46 @@ INLINE static int starformation_potential_to_become_star(
    * the universe to determine the critical density to form stars*/
   const double rho_crit = cosmo->critical_density*starform->min_over_den; 
   
-  /* Calculate the internal energy using the density and entropy */
-  /* Ask Matthieu about p->entropy vs xp->entropy_full */
-  const double internal_energy = hydro_get_physical_internal_energy(
-  p, xp, cosmo);
-
-  /* Calculate the temperature over mu of the gas */
-  /* Temporary part of the code!! */
-  const double T_over_mu = (starform->gamma - 1)*phys_const->const_proton_mass
-  /phys_const->const_boltzmann_k * internal_energy;
-
-  /* Calculate the abudance of Hydrogen and Helium */
-  /* Temporary part of the code!! */
-  const double X = 0.75;
-  const double Y = 0.25; 
-
-  /* Calculate the mean molecular mass using a simple model */
-  /* Temporary part of the code!! */
-  double mu = 1/(X + Y/4.f + (1.f -X - Y)/16. ) ; 
-
-  /* Check if it goes beyond the Hydrogen Ionization */
-  /* Temporary part of the code!! */
-  double tempp = T_over_mu * mu;
-
-  /* If the temperature is beyond hydrogen ionization */
-  /* Temporary part of the code!! */
-  if (tempp>1e4) {
-    mu = 1.f / (3.f/2.f * X + Y / 4.f + 1.f/2.f);
-    tempp = T_over_mu * mu; 
-  }
+  /* double tempp = cooling_get_temperature() */
+  double tempp;
 
   
-  /* Deside whether we should form stars or not */
-  if ((p->rho > rho_crit ) && (tempp < starform->T_crit)) {
+  /* Deside whether we should form stars or not,
+   * first we deterime if we have the correct over density
+   * if that is true we calculate if either the maximum density
+   * threshold is reached or if the metallicity dependent 
+   * threshold is reached, after this we calculate if the 
+   * temperature is appropriate */
+  if (p->rho > rho_crit ) {
     /* In this case there are actually multiple possibilities
      * because we also need to check if the physical density exceeded
      * the appropriate limit */
 
-    /* Check if it exceeded the maximum */
+    /* Check if it exceeded the maximum density */
     if (p->rho > starform->den_crit_max) {
-      return 1;
+      /* double tempp = cooling_get_temperature() */
+      tempp = 1e4;
+      /* Check the last criteria, if the temperature is satisfied */
+      if (tempp < starform->T_crit) {
+        return 1;
+      } else {
+        return 0;
+      }
+    /* If the maximum density is not exceeded check if the redshift dependent
+     * one is exceeded */
     } else {
       /* NEED TO USE A PROPER WAY OF FINDING Z */
       double Z = 0.002;
       double den_crit_current = starform->den_crit * pow(Z/starform->Z0, starform->n_Z0);
       if (p->rho > den_crit_current) {
-        return 1;
+        /* double tempp = cooling_get_temperature() */
+        tempp = 1e4;
+        /* Check the last criteria, if the temperature is satisfied */
+        if (tempp < starform->T_crit) {
+          return 1;
+        } else {
+          return 0;
+        }
       } else {
         return 0;
       }
