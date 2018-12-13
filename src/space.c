@@ -2774,6 +2774,13 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct cooling_function_data *cool_func = e->cooling_func;
 
+  /* Check that the smoothing lengths are non-zero */
+  for (int k = 0; k < count; k++) {
+    if (p[k].h <= 0.)
+      error("Invalid value of smoothing length for part %lld h=%e", p[k].id,
+            p[k].h);
+  }
+
   /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
     p[k].v[0] *= a_factor_vel;
@@ -2901,12 +2908,15 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
 
   struct spart *restrict sp = (struct spart *)map_data;
   const struct space *restrict s = (struct space *)extra_data;
+  const struct engine *e = s->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = sp - s->sparts;
 #endif
 
-  const struct cosmology *cosmo = s->e->cosmology;
+  const int with_feedback = (e->policy & engine_policy_feedback);
+
+  const struct cosmology *cosmo = e->cosmology;
   const float a_factor_vel = cosmo->a;
 
   /* Convert velocities to internal units */
@@ -2928,6 +2938,13 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
     sp[k].x[1] = sp[k].x[2] = 0.f;
     sp[k].v[1] = sp[k].v[2] = 0.f;
 #endif
+  }
+
+  /* Check that the smoothing lengths are non-zero */
+  for (int k = 0; k < count; k++) {
+    if (with_feedback && sp[k].h <= 0.)
+      error("Invalid value of smoothing length for spart %lld h=%e", sp[k].id,
+            sp[k].h);
   }
 
   /* Initialise the rest */

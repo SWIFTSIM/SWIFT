@@ -1136,6 +1136,8 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
       case swift_type_gas:
         hydro_write_particles(parts, xparts, list, &num_fields);
         num_fields += chemistry_write_particles(parts, list + num_fields);
+        num_fields += cooling_write_particles(parts, xparts, list + num_fields,
+                                              e->cooling_func);
         break;
 
       case swift_type_dark_matter:
