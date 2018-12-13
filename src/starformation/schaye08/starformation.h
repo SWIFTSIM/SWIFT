@@ -80,6 +80,9 @@ struct star_formation {
   /*! Critical density to form stars */
   double den_crit;
 
+  /*! Maximum critical density to form stars */
+  double den_crit_max;
+
   /*! Scaling metallicity */
   double Z0;
 
@@ -164,10 +167,11 @@ INLINE static int starformation_potential_to_become_star(
  * */
 INLINE static void starformation_convert_to_gas( 
     const struct star_formation* starform, const struct part* restrict p,
-    const struct xpart* restrict xp, const struct cosmology* cosmo
+    const struct xpart* restrict xp, const struct cosmology* cosmo,
+    unsigned int seed
     ){
   /* Set a dummy seed for testing */
-  unsigned int globalseed = 42;
+  //unsigned int globalseed = 42;
 
   /* Get the pressure */
   const double pressure = hydro_get_physical_pressure(p, cosmo);
@@ -177,7 +181,7 @@ INLINE static void starformation_convert_to_gas(
   starform->SF_power_law) * p->time_bin; 
 
   /* Generate a random number between 0 and 1. */
-  const double randomnumber = rand_r(&globalseed)*starform->inv_RAND_MAX; 
+  const double randomnumber = rand_r(&seed)*starform->inv_RAND_MAX; 
 
   /* Calculate if we form a star */
   if (prop > randomnumber) {
@@ -358,6 +362,11 @@ INLINE static void starformation_init_backend(
     /* Read the power law of the critical density scaling */
     starform->n_Z0 = parser_get_opt_param_double(
     parameter_file, "SchayeSF:MetDep_SFthresh_Slope", powerlawZ_default);
+
+    /* Read the maximum allowed density for star formation */
+    starform->den_crit_max = parser_get_opt_param_double(
+    parameter_file, "SchayeSF:thresh_max_norm_HpCM3",norm_ncrit_no04_default);
+
   }
   /* Conversion of number density from cgs */
   static const float dimension_numb_den[5] = {0, -3, 0, 0, 0};
