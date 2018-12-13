@@ -38,7 +38,7 @@ METIS is used for domain decomposition and load balancing.
 
 libNUMA
 ~~~~~~~
-libNUMA is used to pin threads.
+libNUMA is used to pin threads (but see INSTALL.swift).
 
 GSL
 ~~~
