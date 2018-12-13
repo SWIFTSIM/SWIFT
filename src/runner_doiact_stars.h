@@ -101,7 +101,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
                           (float)(si->x[1] - c->loc[1]),
                           (float)(si->x[2] - c->loc[2])};
 
-    message("hi=%e, c->width=%e", hi, c->width[0]);
+    //message("hi=%e, c->width=%e", hi, c->width[0]);
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count; pjd++) {

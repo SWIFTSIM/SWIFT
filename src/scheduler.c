@@ -1532,8 +1532,6 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       /* For future use */
     } else if (t->subtype == task_subtype_stars_density) {
       scheduler_splittask_stars(t, s);
-    } else if (t->subtype == task_subtype_stars_feedback) {
-
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type");

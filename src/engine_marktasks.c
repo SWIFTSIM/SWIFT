@@ -126,7 +126,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_stars_density) {
         if (cell_is_active_stars(ci, e)) {
-          message("hello");
+          //message("hello");
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
           cell_activate_drift_spart(ci, s);
@@ -425,7 +425,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Too much particle movement? */
         if (cell_need_rebuild_for_stars_pair(ci, cj)) {
-          message("OOOO");
+          //message("OOOO");
           *rebuild_space = 1;
         }
 
