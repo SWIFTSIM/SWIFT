@@ -2807,7 +2807,6 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density) {
-            //message("hello");
             runner_doself_stars_density(r, ci, 1);
           } else if (t->subtype == task_subtype_stars_feedback)
             runner_doself_stars_feedback(r, ci, 1);
