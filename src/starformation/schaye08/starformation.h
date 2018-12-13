@@ -150,7 +150,23 @@ INLINE static int starformation_potential_to_become_star(
   
   /* Deside whether we should form stars or not */
   if ((p->rho > rho_crit ) && (tempp < starform->T_crit)) {
-    return 1;
+    /* In this case there are actually multiple possibilities
+     * because we also need to check if the physical density exceeded
+     * the appropriate limit */
+
+    /* Check if it exceeded the maximum */
+    if (p->rho > starform->den_crit_max) {
+      return 1;
+    } else {
+      /* NEED TO USE A PROPER WAY OF FINDING Z */
+      double Z = 0.002;
+      double den_crit_current = starform->den_crit * pow(Z/starform->Z0, starform->n_Z0);
+      if (p->rho > den_crit_current) {
+        return 1;
+      } else {
+        return 0;
+      }
+    }
   } else {
     return 0;
   }
@@ -163,6 +179,7 @@ INLINE static int starformation_potential_to_become_star(
  * @param p the gas particles with their properties
  * @param xp the additional gas particle properties
  * @param cosmo the cosmological properties
+ * @param seed the seed for the random number generator
  *
  * */
 INLINE static void starformation_convert_to_gas( 
@@ -170,8 +187,6 @@ INLINE static void starformation_convert_to_gas(
     const struct xpart* restrict xp, const struct cosmology* cosmo,
     unsigned int seed
     ){
-  /* Set a dummy seed for testing */
-  //unsigned int globalseed = 42;
 
   /* Get the pressure */
   const double pressure = hydro_get_physical_pressure(p, cosmo);
