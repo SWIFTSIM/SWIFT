@@ -496,6 +496,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         // THIS IS A VERY WEAK SEED, WE NEED TO IMPROVE THIS
         testseed = p->id + timer;
         if (starformation_potential_to_become_star(starform, p, xp, constants, cosmo) ) {
+          message("Found particle that can form star!");
           starformation_convert_to_gas(starform, p, xp, cosmo, testseed);
         }
         // MATTHIEU: Temporary star-formation law
