@@ -665,7 +665,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < count; i++) {
     /* Check that particles have been drifted to the current time */
-    if (parts[i].ti_drift != e->ti_current)
+    if (parts[i].ti_drift != e->ti_current && !part_is_inhibited(&parts[i], e))
       error("Particle pi not drifted to current time");
   }
 #endif
@@ -1128,7 +1128,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < count; i++) {
     /* Check that particles have been drifted to the current time */
-    if (parts[i].ti_drift != e->ti_current)
+    if (parts[i].ti_drift != e->ti_current && !part_is_inhibited(&parts[i], e))
       error("Particle pi not drifted to current time");
   }
 #endif
@@ -1346,10 +1346,10 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that particles have been drifted to the current time */
   for (int pid = 0; pid < count_i; pid++)
-    if (parts_i[pid].ti_drift != e->ti_current)
+    if (parts_i[pid].ti_drift != e->ti_current && !part_is_inhibited(&parts_i[pid], e))
       error("Particle pi not drifted to current time");
   for (int pjd = 0; pjd < count_j; pjd++)
-    if (parts_j[pjd].ti_drift != e->ti_current)
+    if (parts_j[pjd].ti_drift != e->ti_current && !part_is_inhibited(&parts_j[pjd], e))
       error("Particle pj not drifted to current time");
 #endif
 
@@ -2037,10 +2037,10 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that particles have been drifted to the current time */
   for (int pid = 0; pid < count_i; pid++)
-    if (parts_i[pid].ti_drift != e->ti_current)
+    if (parts_i[pid].ti_drift != e->ti_current && !part_is_inhibited(&parts_i[pid], e))
       error("Particle pi not drifted to current time");
   for (int pjd = 0; pjd < count_j; pjd++)
-    if (parts_j[pjd].ti_drift != e->ti_current)
+    if (parts_j[pjd].ti_drift != e->ti_current && !part_is_inhibited(&parts_j[pjd], e))
       error("Particle pj not drifted to current time");
 #endif
 
