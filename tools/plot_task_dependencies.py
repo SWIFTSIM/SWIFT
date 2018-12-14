@@ -289,6 +289,7 @@ def writeDependencies(f, data):
     f.write("\t # Dependencies\n")
     N = len(data)
     written = []
+    max_rank = data["number_rank"].max()
     for i in range(N):
         # get data
         ta = data["task_in"][i]
@@ -303,8 +304,11 @@ def writeDependencies(f, data):
         written.append(name)
 
         # write relation
-        f.write("\t %s->%s[label=%i]\n" %
-                (ta, tb, number_link))
+        arrow = ""
+        if data["number_rank"][i] != max_rank:
+            arrow = ",style=dashed"
+        f.write("\t %s->%s[label=%i%s]\n" %
+                (ta, tb, number_link, arrow))
 
 
 def writeFooter(f):
