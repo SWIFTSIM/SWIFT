@@ -723,14 +723,12 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
     /* Pad cache if there is a serial remainder. */
     int count_align = real_count;
     const int rem = real_count % (NUM_VEC_PROC * VEC_SIZE);
-    //const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
     if (rem != 0) {
       count_align += (NUM_VEC_PROC * VEC_SIZE) - rem;
 
       /* Set positions to the same as particle pi so when the r2 > 0 mask is
        * applied these extra contributions are masked out.*/
       for (int i = real_count; i < count_align; i++) {
-      //for (int i = count; i < count_align; i++) {
         cell_cache->x[i] = v_pix.f[0];
         cell_cache->y[i] = v_piy.f[0];
         cell_cache->z[i] = v_piz.f[0];
