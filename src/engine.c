@@ -1079,8 +1079,12 @@ void engine_repartition_trigger(struct engine *e) {
           (e->g_updates > 1 &&
            e->g_updates >= e->total_nr_gparts * e->reparttype->minfrac)) {
 
-        /* We are using the task timings. */
-        e->reparttype->use_ticks = 1;
+        /* Should we are use the task timings or fixed costs. */
+        if (e->reparttype->use_fixed_costs > 1) {
+          e->reparttype->use_ticks = 0;
+        } else {
+          e->reparttype->use_ticks = 1;
+        }
 
         /* Get CPU time used since the last call to this function. */
         double elapsed_cputime = clocks_get_cputime_used() - e->cputime_last_step;
