@@ -469,6 +469,9 @@ struct cell {
     /*! Linked list of the tasks computing this cell's star density. */
     struct link *density;
 
+    /*! Linked list of the tasks computing this cell's star feedback. */
+    struct link *feedback;
+
     /*! The task computing this cell's sorts. */
     struct task *sorts;
 
@@ -952,20 +955,40 @@ cell_can_split_self_gravity_task(const struct cell *c) {
 }
 
 /**
- * @brief Have particles in a pair of cells moved too much and require a rebuild
+ * @brief Have gas particles in a pair of cells moved too much and require a
+ * rebuild
  * ?
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-__attribute__((always_inline)) INLINE static int cell_need_rebuild_for_pair(
-    const struct cell *ci, const struct cell *cj) {
+__attribute__((always_inline)) INLINE static int
+cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   return (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
               ci->hydro.dx_max_part + cj->hydro.dx_max_part >
+          cj->dmin);
+}
+
+/**
+ * @brief Have star particles in a pair of cells moved too much and require a
+ * rebuild
+ * ?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
+
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* moved larger than the cell size ? */
+  /* Note ci->dmin == cj->dmin */
+  return (kernel_gamma * max(ci->stars.h_max, cj->stars.h_max) +
+              ci->stars.dx_max_part + cj->stars.dx_max_part >
           cj->dmin);
 }
 

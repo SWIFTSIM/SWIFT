@@ -218,6 +218,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.ghost_out = NULL;
     c->stars.ghost = NULL;
     c->stars.density = NULL;
+    c->stars.feedback = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -2712,7 +2713,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
-        stars_h_max = max(h_max, cp->stars.h_max);
+        stars_h_max = max(stars_h_max, cp->stars.h_max);
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
