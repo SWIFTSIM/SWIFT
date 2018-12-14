@@ -572,19 +572,20 @@ void task_print(const struct task *t) {
  * This is used to group tasks with similar actions in the task dependency
  * graph.
  *
- * @param t The #task.
- * @param group (return) The group name (should be allocated)
+ * @param type The #task type.
+ * @param subtype The #subtask type.
+ * @param cluster (return) The group name (should be allocated)
  */
-void task_get_group_name(const struct task *t, char *cluster) {
+void task_get_group_name(int type, int subtype, char *cluster) {
 
-  if (t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
-      t->type == task_type_grav_mesh) {
+  if (type == task_type_grav_long_range || type == task_type_grav_mm ||
+      type == task_type_grav_mesh) {
 
     strcpy(cluster, "Gravity");
     return;
   }
 
-  switch (t->subtype) {
+  switch (subtype) {
     case task_subtype_density:
       strcpy(cluster, "Density");
       break;
@@ -618,10 +619,10 @@ void task_get_full_name(enum task_types type, enum task_subtypes subtype,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check input */
-  if ((type < 0) || (type >= task_type_count))
+  if (type >= task_type_count)
     error("Unknown task type %i", type);
 
-  if ((subtype < 0) || (subtype >= task_subtype_count))
+  if (subtype >= task_subtype_count)
     error("Unknown task subtype %i with type %s", subtype, taskID_names[type]);
 #endif
 
