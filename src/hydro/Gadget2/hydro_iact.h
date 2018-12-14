@@ -56,9 +56,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   float dv[3], curlvr[3];
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (pi->time_bin == time_bin_inhibited)
+  if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
-  if (pj->time_bin == time_bin_inhibited)
+  if (pj->time_bin >= time_bin_inhibited)
     error("Inhibited pj in interaction function!");
 #endif
 
@@ -153,9 +153,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   float dv[3], curlvr[3];
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (pi->time_bin == time_bin_inhibited)
+  if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
-  if (pj->time_bin == time_bin_inhibited)
+  if (pj->time_bin >= time_bin_inhibited)
     error("Inhibited pj in interaction function!");
 #endif
 
@@ -451,9 +451,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float wi, wj, wi_dx, wj_dx;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (pi->time_bin == time_bin_inhibited)
+  if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
-  if (pj->time_bin == time_bin_inhibited)
+  if (pj->time_bin >= time_bin_inhibited)
     error("Inhibited pj in interaction function!");
 #endif
 
@@ -580,9 +580,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float wi, wj, wi_dx, wj_dx;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (pi->time_bin == time_bin_inhibited)
+  if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
-  if (pj->time_bin == time_bin_inhibited)
+  if (pj->time_bin >= time_bin_inhibited)
     error("Inhibited pj in interaction function!");
 #endif
 

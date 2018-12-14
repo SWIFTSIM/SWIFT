@@ -66,10 +66,9 @@ LambdaCooling:
 EagleCooling:
   filename:                ./coolingtables/
   reionisation_redshift:   8.5
-  he_reion:                1
-  he_reion_z_center:       3.5
-  he_reion_z_sigma:        0.5
-  he_reion_ev_pH:          2.0
+  He_reion_z_centre:       3.5
+  He_reion_z_sigma:        0.5
+  He_reion_ev_pH:          2.0
 
 # Impose primoridal metallicity
 EAGLEChemistry:

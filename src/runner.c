@@ -58,7 +58,6 @@
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
 #include "sort_part.h"
-#include "sourceterms.h"
 #include "space.h"
 #include "space_getsid.h"
 #include "stars.h"
@@ -106,42 +105,6 @@
 #define FUNCTION feedback
 #include "runner_doiact_stars.h"
 #undef FUNCTION
-
-/**
- * @brief Perform source terms
- *
- * @param r runner task
- * @param c cell
- * @param timer 1 if the time is to be recorded.
- */
-void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
-  const int count = c->hydro.count;
-  const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
-  const double cell_width[3] = {c->width[0], c->width[1], c->width[2]};
-  struct sourceterms *sourceterms = r->e->sourceterms;
-  const int dimen = 3;
-
-  TIMER_TIC;
-
-  /* Recurse? */
-  if (c->split) {
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_sourceterms(r, c->progeny[k], 0);
-  } else {
-
-    if (count > 0) {
-
-      /* do sourceterms in this cell? */
-      const int incell =
-          sourceterms_test_cell(cell_min, cell_width, sourceterms, dimen);
-      if (incell == 1) {
-        sourceterms_apply(r, sourceterms, c);
-      }
-    }
-  }
-
-  if (timer) TIMER_TOC(timer_dosource);
-}
 
 /**
  * @brief Intermediate task after the density to check that the smoothing
@@ -499,7 +462,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
-  const struct engine *e = r->e;
+  struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -529,9 +492,16 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         // MATTHIEU: Temporary star-formation law
         // Do not use this at home.
-        if (rho > 1.5e7 && e->step > 2) {
+        if (rho > 1.7e7 && e->step > 2) {
           message("Removing particle id=%lld rho=%e", p->id, rho);
-          cell_convert_part_to_gpart(e, c, p, xp);
+
+          struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
+
+          /* Did we run out of fresh particles? */
+          if (sp == NULL) continue;
+
+          /* Set everything to a valid state */
+          stars_init_spart(sp);
         }
       }
     }
@@ -623,9 +593,6 @@ void runner_do_sort_ascending(struct entry *sort, int N) {
  * @brief Recursively checks that the flags are consistent in a cell hierarchy.
  *
  * Debugging function. Exists in two flavours: hydro & stars.
- *
- * @param c The #cell to check.
- * @param flags The sorting flags to check.
  */
 #define RUNNER_CHECK_SORTS(TYPE)                                               \
   void runner_check_sorts_##TYPE(struct cell *c, int flags) {                  \
@@ -2912,9 +2879,6 @@ void *runner_main(void *data) {
           break;
         case task_type_star_formation:
           runner_do_star_formation(r, t->ci, 1);
-          break;
-        case task_type_sourceterms:
-          runner_do_sourceterms(r, t->ci, 1);
           break;
         default:
           error("Unknown/invalid task type (%d).", t->type);

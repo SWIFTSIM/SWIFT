@@ -84,6 +84,12 @@ struct hydro_props {
   /*! Temperature of the neutral to ionized transition of Hydrogen */
   float hydrogen_ionization_temperature;
 
+  /*! Mean molecular weight below hydrogen ionization temperature */
+  float mu_neutral;
+
+  /*! Mean molecular weight above hydrogen ionization temperature */
+  float mu_ionised;
+
   /*! Artificial viscosity parameters */
   struct {
     /*! For the fixed, simple case. Also used to set the initial AV

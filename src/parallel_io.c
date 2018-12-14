@@ -1136,6 +1136,8 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
       case swift_type_gas:
         hydro_write_particles(parts, xparts, list, &num_fields);
         num_fields += chemistry_write_particles(parts, list + num_fields);
+        num_fields += cooling_write_particles(parts, xparts, list + num_fields,
+                                              e->cooling_func);
         break;
 
       case swift_type_dark_matter:
@@ -1219,9 +1221,12 @@ void write_output_parallel(struct engine* e, const char* baseName,
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
   /* Number of particles that we will write */
-  const size_t Ntot_written = e->s->nr_gparts - e->s->nr_inhibited_sparts;
-  const size_t Ngas_written = e->s->nr_parts - e->s->nr_inhibited_parts;
-  const size_t Nstars_written = e->s->nr_sparts - e->s->nr_inhibited_gparts;
+  const size_t Ntot_written =
+      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
+  const size_t Ngas_written =
+      e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
+  const size_t Nstars_written =
+      e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
   const size_t Nbaryons_written = Ngas_written + Nstars_written;
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
@@ -1394,8 +1399,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
           Nparticles = Ngas;
           hydro_write_particles(parts, xparts, list, &num_fields);
           num_fields += chemistry_write_particles(parts, list + num_fields);
-          num_fields += cooling_write_particles(xparts, list + num_fields,
-                                                e->cooling_func);
+          num_fields += cooling_write_particles(
+              parts, xparts, list + num_fields, e->cooling_func);
         } else {
 
           /* Ok, we need to fish out the particles we want */
@@ -1418,8 +1423,9 @@ void write_output_parallel(struct engine* e, const char* baseName,
                                 &num_fields);
           num_fields +=
               chemistry_write_particles(parts_written, list + num_fields);
-          num_fields += cooling_write_particles(
-              xparts_written, list + num_fields, e->cooling_func);
+          num_fields +=
+              cooling_write_particles(parts_written, xparts_written,
+                                      list + num_fields, e->cooling_func);
         }
       } break;
 
