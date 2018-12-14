@@ -208,7 +208,7 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
   for (int i = 0; i < ci->hydro.count; i++) {
 
     /* Skip inhibited particles. */
-    if(parts[i].time_bin == time_bin_inhibited) continue;
+    if (parts[i].time_bin == time_bin_inhibited) continue;
 
     x[uninhibited_count] = (float)(parts[i].x[0] - loc[0]);
     y[uninhibited_count] = (float)(parts[i].x[1] - loc[1]);
@@ -401,7 +401,7 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
   for (int i = 0; i < ci->hydro.count; i++) {
 
     /* Skip inhibited particles. */
-    if(parts[i].time_bin == time_bin_inhibited) continue;
+    if (parts[i].time_bin == time_bin_inhibited) continue;
 
     x[uninhibited_count] = (float)(parts[i].x[0] - loc[0]);
     y[uninhibited_count] = (float)(parts[i].x[1] - loc[1]);
@@ -499,9 +499,9 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
    * precision can be used instead of double precision.  */
   for (int i = 0; i < ci_cache_count; i++) {
     const int idx = sort_i[i + first_pi_align].i;
-   
+
     /* Put inhibited particles out of range. */
-    if(parts_i[idx].time_bin == time_bin_inhibited) {
+    if (parts_i[idx].time_bin == time_bin_inhibited) {
       x[i] = pos_padded[0];
       y[i] = pos_padded[1];
       z[i] = pos_padded[2];
@@ -514,7 +514,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
       continue;
     }
-    
+
     x[i] = (float)(parts_i[idx].x[0] - total_ci_shift[0]);
     y[i] = (float)(parts_i[idx].x[1] - total_ci_shift[1]);
     z[i] = (float)(parts_i[idx].x[2] - total_ci_shift[2]);
@@ -601,9 +601,9 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
   for (int i = 0; i <= last_pj_align; i++) {
     const int idx = sort_j[i].i;
-    
+
     /* Put inhibited particles out of range. */
-    if(parts_j[idx].time_bin == time_bin_inhibited) {
+    if (parts_j[idx].time_bin == time_bin_inhibited) {
       xj[i] = pos_padded_j[0];
       yj[i] = pos_padded_j[1];
       zj[i] = pos_padded_j[2];
@@ -760,9 +760,9 @@ cache_read_two_partial_cells_sorted_force(
   for (int i = 0; i < ci_cache_count; i++) {
 
     const int idx = sort_i[i + first_pi_align].i;
-    
+
     /* Put inhibited particles out of range. */
-    if(parts_i[idx].time_bin == time_bin_inhibited) {
+    if (parts_i[idx].time_bin == time_bin_inhibited) {
       x[i] = pos_padded[0];
       y[i] = pos_padded[1];
       z[i] = pos_padded[2];
@@ -846,7 +846,7 @@ cache_read_two_partial_cells_sorted_force(
     const int idx = sort_j[i].i;
 
     /* Put inhibited particles out of range. */
-    if(parts_j[idx].time_bin == time_bin_inhibited) {
+    if (parts_j[idx].time_bin == time_bin_inhibited) {
       xj[i] = pos_padded_j[0];
       yj[i] = pos_padded_j[1];
       zj[i] = pos_padded_j[2];
@@ -884,7 +884,7 @@ cache_read_two_partial_cells_sorted_force(
   /* Pad cache with fake particles that exist outside the cell so will not
    * interact. We use values of the same magnitude (but negative!) as the real
    * particles to avoid overflow problems. */
-    for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++) {
+  for (int i = last_pj_align + 1; i < last_pj_align + 1 + VEC_SIZE; i++) {
     xj[i] = pos_padded_j[0];
     yj[i] = pos_padded_j[1];
     zj[i] = pos_padded_j[2];

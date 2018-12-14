@@ -168,10 +168,10 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[pid];
-    
+
     /* Skip inhibited particles. */
-    if(part_is_inhibited(pi, e)) continue;
-    
+    if (part_is_inhibited(pi, e)) continue;
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -184,9 +184,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
-    
+
       /* Skip inhibited particles. */
-      if(part_is_inhibited(pj, e)) continue;
+      if (part_is_inhibited(pj, e)) continue;
 
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -276,10 +276,10 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[pid];
-    
+
     /* Skip inhibited particles. */
-    if(part_is_inhibited(pi, e)) continue;
-    
+    if (part_is_inhibited(pi, e)) continue;
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -292,10 +292,10 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
-      
+
       /* Skip inhibited particles. */
-      if(part_is_inhibited(pj, e)) continue;
-      
+      if (part_is_inhibited(pj, e)) continue;
+
       const int pj_active = part_is_active(pj, e);
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -378,10 +378,10 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts[pid];
-    
+
     /* Skip inhibited particles. */
-    if(part_is_inhibited(pi, e)) continue;
-    
+    if (part_is_inhibited(pi, e)) continue;
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -394,10 +394,10 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts[pjd];
-      
+
       /* Skip inhibited particles. */
-      if(part_is_inhibited(pj, e)) continue;
-      
+      if (part_is_inhibited(pj, e)) continue;
+
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
       const int pj_active = part_is_active(pj, e);
@@ -480,10 +480,10 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts[pid];
-    
+
     /* Skip inhibited particles. */
-    if(part_is_inhibited(pi, e)) continue;
-    
+    if (part_is_inhibited(pi, e)) continue;
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -496,10 +496,10 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts[pjd];
-      
+
       /* Skip inhibited particles. */
-      if(part_is_inhibited(pj, e)) continue;
-      
+      if (part_is_inhibited(pj, e)) continue;
+
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
       const int pj_active = part_is_active(pj, e);
@@ -511,10 +511,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      const int doi =
-          pi_active && ((r2 < hig2) || (r2 < hjg2));
-      const int doj =
-          pj_active && ((r2 < hig2) || (r2 < hjg2));
+      const int doi = pi_active && ((r2 < hig2) || (r2 < hjg2));
+      const int doj = pj_active && ((r2 < hig2) || (r2 < hjg2));
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
@@ -693,10 +691,10 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
-        
+
         /* Skip inhibited particles. */
-        if(part_is_inhibited(pj, e)) continue;
-        
+        if (part_is_inhibited(pj, e)) continue;
+
         const float hj = pj->h;
         const double pjx = pj->x[0];
         const double pjy = pj->x[1];
@@ -748,10 +746,10 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
-        
+
         /* Skip inhibited particles. */
-        if(part_is_inhibited(pj, e)) continue;
-        
+        if (part_is_inhibited(pj, e)) continue;
+
         const float hj = pj->h;
         const double pjx = pj->x[0];
         const double pjy = pj->x[1];
@@ -888,10 +886,10 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
-    
+
       /* Skip inhibited particles. */
-      if(part_is_inhibited(pj, e)) continue;
-      
+      if (part_is_inhibited(pj, e)) continue;
+
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
@@ -1025,10 +1023,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pj */
         struct part *pj = &parts_j[sort_j[pjd].i];
-        
+
         /* Skip inhibited particles. */
-        if(part_is_inhibited(pj, e)) continue;
-        
+        if (part_is_inhibited(pj, e)) continue;
+
         const float hj = pj->h;
         const float pjx = pj->x[0] - cj->loc[0];
         const float pjy = pj->x[1] - cj->loc[1];
@@ -1112,9 +1110,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
-    
+
         /* Skip inhibited particles. */
-        if(part_is_inhibited(pi, e)) continue;
+        if (part_is_inhibited(pi, e)) continue;
 
         const float hi = pi->h;
         const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
@@ -1374,10 +1372,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
     /* Get a hold of the ith part in ci. */
     struct part *pi = &parts_i[sort_i[pid].i];
-    
+
     /* Skip inhibited particles. */
-    if(part_is_inhibited(pi, e)) continue;
-    
+    if (part_is_inhibited(pi, e)) continue;
+
     const float hi = pi->h;
 
     /* Is there anything we need to interact with (for this specific hi) ? */
@@ -1463,10 +1461,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pj */
         struct part *pj = &parts_j[sort_j[pjd].i];
-    
+
         /* Skip inhibited particles. */
-        if(part_is_inhibited(pj, e)) continue;
-        
+        if (part_is_inhibited(pj, e)) continue;
+
         const float hj = pj->h;
 
         /* Get the position of pj in the right frame */
@@ -1541,10 +1539,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
     /* Get a hold of the jth part in cj. */
     struct part *pj = &parts_j[sort_j[pjd].i];
-    
+
     /* Skip inhibited particles. */
-    if(part_is_inhibited(pj, e)) continue;
-    
+    if (part_is_inhibited(pj, e)) continue;
+
     const float hj = pj->h;
 
     /* Is there anything we need to interact with (for this specific hj) ? */
@@ -1632,10 +1630,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
-        
+
         /* Skip inhibited particles. */
-        if(part_is_inhibited(pi, e)) continue;
-        
+        if (part_is_inhibited(pi, e)) continue;
+
         const float hi = pi->h;
         const float hig2 = hi * hi * kernel_gamma2;
 
@@ -1841,7 +1839,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     struct part *restrict pi = &parts[pid];
 
     /* Skip inhibited particles. */
-    if(part_is_inhibited(pi, e)) continue;
+    if (part_is_inhibited(pi, e)) continue;
 
     /* Get the particle position and radius. */
     double pix[3];
@@ -1897,10 +1895,10 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[pjd];
-    
+
         /* Skip inhibited particles. */
-        if(part_is_inhibited(pj, e)) continue;
-        
+        if (part_is_inhibited(pj, e)) continue;
+
         const float hj = pj->h;
 
         /* Compute the pairwise distance. */
@@ -2028,10 +2026,10 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
-    
+
     /* Skip inhibited particles. */
-    if(part_is_inhibited(pi, e)) continue;
-    
+    if (part_is_inhibited(pi, e)) continue;
+
     /* Get the particle position and radius. */
     double pix[3];
     for (int k = 0; k < 3; k++) pix[k] = pi->x[k];
@@ -2086,10 +2084,10 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[pjd];
-        
+
         /* Skip inhibited particles. */
-        if(part_is_inhibited(pj, e)) continue;
-        
+        if (part_is_inhibited(pj, e)) continue;
+
         const float hj = pj->h;
 
         /* Compute the pairwise distance. */
