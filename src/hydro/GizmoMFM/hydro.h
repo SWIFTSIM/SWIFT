@@ -715,6 +715,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
         p->conserved.energy < 0.001 * dEgrav) {
       p->conserved.energy = hydro_one_over_gamma_minus_one *
                             p->conserved.entropy * pow_gamma_minus_one(p->rho);
+    } else {
+      p->conserved.entropy = hydro_gamma_minus_one * p->conserved.energy *
+                             pow_minus_gamma_minus_one(p->rho);
     }
   }
 
