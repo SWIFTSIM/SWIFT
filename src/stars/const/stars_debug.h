@@ -16,20 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STARS_H
-#define SWIFT_STARS_H
+#ifndef SWIFT_CONST_STARS_DEBUG_H
+#define SWIFT_CONST_STARS_DEBUG_H
 
-/* Config parameters. */
-#include "../config.h"
+__attribute__((always_inline)) INLINE static void stars_debug_particle(
+    const struct spart* p) {
+  printf(
+      "x=[%.3e,%.3e,%.3e], "
+      "v_full=[%.3e,%.3e,%.3e] p->mass=%.3e \n t_begin=%d, t_end=%d\n",
+      p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
+      p->mass, p->ti_begin, p->ti_end);
+}
 
-/* So far only one model here */
-/* Straight-forward import */
-#if defined(FEEDBACK_CONST)
-#include "./stars/const/stars.h"
-#include "./stars/const/stars_iact.h"
-#else
-#include "./stars/Default/stars.h"
-#include "./stars/Default/stars_iact.h"
-#endif
-
-#endif
+#endif /* SWIFT_CONST_STARS_DEBUG_H */
