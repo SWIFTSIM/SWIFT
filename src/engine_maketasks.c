@@ -666,7 +666,6 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
 void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
-  const int is_with_sourceterms = (e->policy & engine_policy_sourceterms);
 
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
@@ -696,12 +695,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
       c->hydro.extra_ghost = scheduler_addtask(
           s, task_type_extra_ghost, task_subtype_none, 0, 0, c, NULL);
 #endif
-
-      /* add source terms */
-      if (is_with_sourceterms) {
-        c->sourceterms = scheduler_addtask(s, task_type_sourceterms,
-                                           task_subtype_none, 0, 0, c, NULL);
-      }
     }
 
   } else { /* We are above the super-cell so need to go deeper */

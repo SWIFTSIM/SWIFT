@@ -62,7 +62,6 @@ enum {
   timer_dograv_mesh,
   timer_dograv_top_level,
   timer_dograv_long_range,
-  timer_dosource,
   timer_dosub_self_density,
   timer_dosub_self_gradient,
   timer_dosub_self_force,

@@ -65,7 +65,6 @@
 #include "scheduler.h"
 #include "serial_io.h"
 #include "single_io.h"
-#include "sourceterms.h"
 #include "space.h"
 #include "stars.h"
 #include "stars_io.h"

@@ -875,7 +875,8 @@ void io_collect_parts_to_write(const struct part* restrict parts,
   for (size_t i = 0; i < Nparts; ++i) {
 
     /* And collect the ones that have not been removed */
-    if (parts[i].time_bin != time_bin_inhibited) {
+    if (parts[i].time_bin != time_bin_inhibited &&
+        parts[i].time_bin != time_bin_not_created) {
 
       parts_written[count] = parts[i];
       xparts_written[count] = xparts[i];
@@ -909,7 +910,8 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
   for (size_t i = 0; i < Nsparts; ++i) {
 
     /* And collect the ones that have not been removed */
-    if (sparts[i].time_bin != time_bin_inhibited) {
+    if (sparts[i].time_bin != time_bin_inhibited &&
+        sparts[i].time_bin != time_bin_not_created) {
 
       sparts_written[count] = sparts[i];
       count++;
@@ -943,6 +945,7 @@ void io_collect_gparts_to_write(const struct gpart* restrict gparts,
 
     /* And collect the ones that have not been removed */
     if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
         (gparts[i].type == swift_type_dark_matter)) {
 
       gparts_written[count] = gparts[i];

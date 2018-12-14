@@ -22,7 +22,7 @@ can be found by typing ``./swift -h``::
     -D, --drift-all                   Always drift all particles even the ones
                                       far from active particles. This emulates
                                       Gadget-[23] and GIZMO's default behaviours.
-    -F, --sourceterms
+    -F, --star-formation	      Run with star formation
     -g, --external-gravity            Run with an external gravitational potential.
     -G, --self-gravity                Run with self-gravity.
     -M, --multipole-reconstruction    Reconstruct the multipoles every time-step.

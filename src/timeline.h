@@ -40,6 +40,9 @@ typedef char timebin_t;
 /*! Fictious time-bin to hold inhibited particles */
 #define time_bin_inhibited (num_time_bins + 2)
 
+/*! Fictious time-bin to hold particles not yet created */
+#define time_bin_not_created (num_time_bins + 3)
+
 /*! Fictitious time-bin for particles not awaken */
 #define time_bin_not_awake (0)
 

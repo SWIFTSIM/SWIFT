@@ -44,7 +44,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
     physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling_io.h cooling.h cooling_struct.h \
-    sourceterms.h sourceterms_struct.h statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
+    statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
     gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
@@ -63,7 +63,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c 
     proxy.c parallel_io.c units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potential.c hydro_properties.c \
-    threadpool.c cooling.c sourceterms.c \
+    threadpool.c cooling.c \
     statistics.c runner_doiact_vec.c profiler.c dump.c logger.c \
     part_type.c xmf.c gravity_properties.c gravity.c \
     collectgroup.c hydro_space.c equation_of_state.c \
@@ -81,7 +81,6 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
 		 gravity/Potential/gravity.h gravity/Potential/gravity_iact.h gravity/Potential/gravity_io.h \
 		 gravity/Potential/gravity_debug.h gravity/Potential/gravity_part.h  \
-		 sourceterms.h \
 		 equation_of_state.h \
 		 equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h \
 	 	 hydro.h hydro_io.h \
