@@ -179,8 +179,9 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
  *
  * @param ci The #cell.
  * @param ci_cache The cache.
+ * @return uninhibited_count The no. of uninhibited particles.
  */
-__attribute__((always_inline)) INLINE void cache_read_particles(
+__attribute__((always_inline)) INLINE int cache_read_particles(
     const struct cell *restrict const ci,
     struct cache *restrict const ci_cache) {
 
@@ -200,18 +201,26 @@ __attribute__((always_inline)) INLINE void cache_read_particles(
   const struct part *restrict parts = ci->hydro.parts;
   const double loc[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
 
+  int uninhibited_count = 0;
+
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
   for (int i = 0; i < ci->hydro.count; i++) {
-    x[i] = (float)(parts[i].x[0] - loc[0]);
-    y[i] = (float)(parts[i].x[1] - loc[1]);
-    z[i] = (float)(parts[i].x[2] - loc[2]);
-    h[i] = parts[i].h;
-    m[i] = parts[i].mass;
-    vx[i] = parts[i].v[0];
-    vy[i] = parts[i].v[1];
-    vz[i] = parts[i].v[2];
+
+    /* Skip inhibited particles. */
+    if(parts[i].time_bin == time_bin_inhibited) continue;
+
+    x[uninhibited_count] = (float)(parts[i].x[0] - loc[0]);
+    y[uninhibited_count] = (float)(parts[i].x[1] - loc[1]);
+    z[uninhibited_count] = (float)(parts[i].x[2] - loc[2]);
+    h[uninhibited_count] = parts[i].h;
+    m[uninhibited_count] = parts[i].mass;
+    vx[uninhibited_count] = parts[i].v[0];
+    vy[uninhibited_count] = parts[i].v[1];
+    vz[uninhibited_count++] = parts[i].v[2];
   }
+
+  return uninhibited_count;
 
 #endif
 }
@@ -355,8 +364,9 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
  *
  * @param ci The #cell.
  * @param ci_cache The cache.
+ * @return uninhibited_count The no. of uninhibited particles.
  */
-__attribute__((always_inline)) INLINE void cache_read_force_particles(
+__attribute__((always_inline)) INLINE int cache_read_force_particles(
     const struct cell *restrict const ci,
     struct cache *restrict const ci_cache) {
 
@@ -384,24 +394,31 @@ __attribute__((always_inline)) INLINE void cache_read_force_particles(
 
   const struct part *restrict parts = ci->hydro.parts;
   const double loc[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
+  int uninhibited_count = 0;
 
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
   for (int i = 0; i < ci->hydro.count; i++) {
-    x[i] = (float)(parts[i].x[0] - loc[0]);
-    y[i] = (float)(parts[i].x[1] - loc[1]);
-    z[i] = (float)(parts[i].x[2] - loc[2]);
-    h[i] = parts[i].h;
-    m[i] = parts[i].mass;
-    vx[i] = parts[i].v[0];
-    vy[i] = parts[i].v[1];
-    vz[i] = parts[i].v[2];
-    rho[i] = parts[i].rho;
-    grad_h[i] = parts[i].force.f;
-    pOrho2[i] = parts[i].force.P_over_rho2;
-    balsara[i] = parts[i].force.balsara;
-    soundspeed[i] = parts[i].force.soundspeed;
+
+    /* Skip inhibited particles. */
+    if(parts[i].time_bin == time_bin_inhibited) continue;
+
+    x[uninhibited_count] = (float)(parts[i].x[0] - loc[0]);
+    y[uninhibited_count] = (float)(parts[i].x[1] - loc[1]);
+    z[uninhibited_count] = (float)(parts[i].x[2] - loc[2]);
+    h[uninhibited_count] = parts[i].h;
+    m[uninhibited_count] = parts[i].mass;
+    vx[uninhibited_count] = parts[i].v[0];
+    vy[uninhibited_count] = parts[i].v[1];
+    vz[uninhibited_count] = parts[i].v[2];
+    rho[uninhibited_count] = parts[i].rho;
+    grad_h[uninhibited_count] = parts[i].force.f;
+    pOrho2[uninhibited_count] = parts[i].force.P_over_rho2;
+    balsara[uninhibited_count] = parts[i].force.balsara;
+    soundspeed[uninhibited_count++] = parts[i].force.soundspeed;
   }
+
+  return uninhibited_count;
 
 #endif
 }

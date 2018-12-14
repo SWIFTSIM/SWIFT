@@ -23,9 +23,6 @@
 /* This object's header. */
 #include "runner_doiact_vec.h"
 
-/* Local headers. */
-#include "active.h"
-
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
 static const vector kernel_gamma2_vec = FILL_VEC(kernel_gamma2);
@@ -679,7 +676,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
-  cache_read_particles(c, cell_cache);
+  const int real_count = cache_read_particles(c, cell_cache);
 
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
@@ -690,6 +687,9 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
 
+    /* Skip inhibited particles. */
+    if(part_is_inhibited(pi, e)) continue;
+    
     /* Is the ith particle active? */
     if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
@@ -721,14 +721,16 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
     vector v_curlvzSum = vector_setzero();
 
     /* Pad cache if there is a serial remainder. */
-    int count_align = count;
-    const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
+    int count_align = real_count;
+    const int rem = real_count % (NUM_VEC_PROC * VEC_SIZE);
+    //const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
     if (rem != 0) {
       count_align += (NUM_VEC_PROC * VEC_SIZE) - rem;
 
       /* Set positions to the same as particle pi so when the r2 > 0 mask is
        * applied these extra contributions are masked out.*/
-      for (int i = count; i < count_align; i++) {
+      for (int i = real_count; i < count_align; i++) {
+      //for (int i = count; i < count_align; i++) {
         cell_cache->x[i] = v_pix.f[0];
         cell_cache->y[i] = v_piy.f[0];
         cell_cache->z[i] = v_piz.f[0];
@@ -899,7 +901,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
-  cache_read_particles(c, cell_cache);
+  int real_count = cache_read_particles(c, cell_cache);
 
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
@@ -943,8 +945,8 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
     vector v_curlvzSum = vector_setzero();
 
     /* Pad cache if there is a serial remainder. */
-    int count_align = count;
-    const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
+    int count_align = real_count;
+    const int rem = real_count % (NUM_VEC_PROC * VEC_SIZE);
     if (rem != 0) {
       const int pad = (NUM_VEC_PROC * VEC_SIZE) - rem;
 
@@ -952,7 +954,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
 
       /* Set positions to the same as particle pi so when the r2 > 0 mask is
        * applied these extra contributions are masked out.*/
-      for (int i = count; i < count_align; i++) {
+      for (int i = real_count; i < count_align; i++) {
         cell_cache->x[i] = v_pix.f[0];
         cell_cache->y[i] = v_piy.f[0];
         cell_cache->z[i] = v_piz.f[0];
@@ -1138,7 +1140,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
-  cache_read_force_particles(c, cell_cache);
+  const int real_count = cache_read_force_particles(c, cell_cache);
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -1150,6 +1152,9 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
 
+    /* Skip inhibited particles. */
+    if(part_is_inhibited(pi, e)) continue;
+    
     /* Is the ith particle active? */
     if (!part_is_active_no_debug(pi, max_active_bin)) continue;
 
@@ -1185,8 +1190,8 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     vector v_entropy_dtSum = vector_setzero();
 
     /* Pad cache if there is a serial remainder. */
-    int count_align = count;
-    int rem = count % VEC_SIZE;
+    int count_align = real_count;
+    int rem = real_count % VEC_SIZE;
     if (rem != 0) {
       int pad = VEC_SIZE - rem;
 
@@ -1194,7 +1199,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
 
       /* Set positions to the same as particle pi so when the r2 > 0 mask is
        * applied these extra contributions are masked out.*/
-      for (int i = count; i < count_align; i++) {
+      for (int i = real_count; i < count_align; i++) {
         cell_cache->x[i] = v_pix.f[0];
         cell_cache->y[i] = v_piy.f[0];
         cell_cache->z[i] = v_piz.f[0];
