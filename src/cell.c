@@ -2771,7 +2771,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
@@ -3125,7 +3125,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
 
 #ifdef WITH_MPI
       error("MPI with stars not implemented");
@@ -3211,6 +3211,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_stars(c, e)) {
+
+    /* Un-skip the feedback tasks involved with this cell. */
+    for (struct link *l = c->stars.feedback; l != NULL; l = l->next)
+      scheduler_activate(s, l->t);
 
     if (c->stars.ghost_in != NULL) scheduler_activate(s, c->stars.ghost_in);
     if (c->stars.ghost_out != NULL) scheduler_activate(s, c->stars.ghost_out);

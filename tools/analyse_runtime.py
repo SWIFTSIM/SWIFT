@@ -67,6 +67,7 @@ labels = [
     "Counting and linking tasks",
     "Setting super-pointers",
     "Making extra hydroloop tasks",
+    "Making extra starsloop tasks",
     "Linking gravity tasks",
     "Creating send tasks",
     "Exchanging cell tags",
