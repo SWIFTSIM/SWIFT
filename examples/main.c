@@ -1133,6 +1133,7 @@ int main(int argc, char *argv[]) {
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
+  if (with_cooling) cooling_clean(&cooling_func);
   engine_clean(&e);
   free(params);
 

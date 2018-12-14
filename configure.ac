@@ -19,6 +19,22 @@
 AC_INIT([SWIFT],[0.8.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
+#  We want to stop when given unrecognised options. No subdirs so this is safe.
+enable_option_checking=${enable_option_checking:-fatal}
+if test -n "$ac_unrecognized_opts"; then
+    case $enable_option_checking in
+        no)
+        ;;
+        fatal)
+            { $as_echo "$as_me: error: unrecognized options: $ac_unrecognized_opts" >&2
+              { (exit 1); exit 1; }; }
+        ;;
+        *)
+            $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2
+        ;;
+    esac
+fi
+
 AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
@@ -941,7 +957,7 @@ if test "x$with_velociraptor" != "xno"; then
    AC_PROG_FC
    AC_FC_LIBRARY_LDFLAGS
    if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
-      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lstf -lstdc++ -lhdf5_cpp"
+      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lstdc++ -lhdf5_cpp"
       CFLAGS="$CFLAGS -fopenmp"
    else
       VELOCIRAPTOR_LIBS=""
@@ -950,7 +966,7 @@ if test "x$with_velociraptor" != "xno"; then
    have_velociraptor="yes"
 
    AC_CHECK_LIB(
-      [stf],
+      [velociraptor],
       [InitVelociraptor],
       [AC_DEFINE([HAVE_VELOCIRAPTOR],1,[The VELOCIraptor library appears to be present.])],
       [AC_MSG_ERROR(Cannot find VELOCIraptor library at $with_velociraptor)],
@@ -986,16 +1002,55 @@ AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[1],
 AM_CONDITIONAL(HAVESETAFFINITY,
     [test "$ac_cv_func_pthread_setaffinity_np" = "yes"])
 
+# If available check for NUMA as well. There is a problem with the headers of
+# this library, mainly that they do not pass the strict prototypes check when
+# installed outside of the system directories. So we actually do this check
+# in two phases. The basic ones first (before strict-prototypes is added to CFLAGS).
 have_numa="no"
-if test "$ac_cv_func_pthread_setaffinity_np" = "yes"; then
-  # Check for libnuma.
-  AC_CHECK_HEADER([numa.h])
-  if test "$ac_cv_header_numa_h" = "yes"; then
-    AC_CHECK_LIB([numa], [numa_available])
-    have_numa="yes"
-  fi
-fi
+AC_ARG_WITH([numa],
+    [AS_HELP_STRING([--with-numa=PATH],
+       [Directory where the NUMA library exists @<:@yes/no@:>@]
+    )],
+    [with_numa="$withval"],
+    [with_numa="yes"]
+)
+if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; then
 
+    if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+        NUMA_LIBS="-L$with_numa/lib -lnuma"
+        NUMA_INCS="-I$with_numa/include"
+    else
+        NUMA_LIBS="-lnuma"
+        NUMA_INCS=""
+    fi
+
+    #  Test for header file.
+    old_CPPFLAGS="$CPPFLAGS"
+    CPPFLAGS="$CPPFLAGS $NUMA_INCS"
+    AC_CHECK_HEADER([numa.h])
+    CPPFLAGS="$old_CPPFLAGS"
+    if test "$ac_cv_header_numa_h" = "yes"; then
+
+        #  If NUMA location is specified check if we have it.
+        if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+            AC_CHECK_LIB([numa],[numa_available],
+                AC_DEFINE([HAVE_LIBNUMA],1,[The NUMA library appears to be present.]),
+                AC_MSG_ERROR(something is wrong with the NUMA library!), $NUMA_LIBS)
+            have_numa="yes"
+        else
+            AC_CHECK_LIB([numa],[numa_available],[have_numa="yes"],[have_numa="no"],$NUMA_LIBS)
+            if test "x$have_numa" != "xno"; then
+                AC_DEFINE([HAVE_LIBNUMA],1,[The NUMA library appears to be present.])
+            fi
+        fi
+    fi
+
+    #  We can live without this.
+    if test "$have_numa" = "no"; then
+       NUMA_LIBS=""
+    fi
+fi
+AC_SUBST([NUMA_LIBS])
 
 # Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
@@ -1081,6 +1136,35 @@ if test "$enable_warn" != "no"; then
     AX_CHECK_COMPILE_FLAG([-Wstrict-prototypes],[CFLAGS="$CFLAGS -Wstrict-prototypes"],
                           [CFLAGS="$CFLAGS"],[$CFLAGS],[AC_LANG_SOURCE([int main(void){return 0;}])])
 fi
+
+# Second part of the NUMA library checks. We now decide if we need to use
+# -isystem to get around the strict-prototypes problem. Assumes isystem
+# is available when strict-prototypes is.
+if test "$have_numa" != "no"; then
+    if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+        case "$CFLAGS" in
+            *strict-prototypes*)
+                NUMA_INCS="-isystem$with_numa/include"
+                # This may still fail if CPATH is used, so we check if the
+                # headers are usable.
+                AS_UNSET(ac_cv_header_numa_h)
+                old_CPPFLAGS="$CPPFLAGS"
+                CPPFLAGS="$CPPFLAGS $NUMA_INCS"
+                numa_failed="no"
+                AC_CHECK_HEADER([numa.h],[numa_failed="no"],
+                                [numa_failed="yes"])
+                if test "$numa_failed" = "yes"; then
+                    AC_MSG_ERROR([Failed to compile the numa.h header file: you may need to set --enable-compiler-warnings to yes or no])
+                fi
+                CPPFLAGS="$old_CPPFLAGS"
+            ;;
+            *)
+                NUMA_INCS="-I$with_numa/include"
+            ;;
+        esac
+   fi
+fi
+AC_SUBST([NUMA_INCS])
 
 # Various package configuration options.
 
@@ -1577,8 +1661,11 @@ AC_SUBST([GIT_CMD])
 DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
 AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
+# Check if using EAGLE cooling
+AM_CONDITIONAL([HAVEEAGLECOOLING], [test $with_cooling = "EAGLE"])
+
 # Handle .in files.
-AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
 AC_CONFIG_FILES([argparse/Makefile tools/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
 AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])

@@ -722,10 +722,12 @@ hydro_get_comoving_internal_energy(const struct part* restrict p) {
  * @brief Returns the physical internal energy of a particle
  *
  * @param p The particle of interest.
+ * @param xp The extended data of the particle of interest.
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_physical_internal_energy(const struct part* restrict p,
+                                   const struct xpart* restrict xp,
                                    const struct cosmology* cosmo) {
 
   return cosmo->a_factor_internal_energy *
@@ -778,10 +780,12 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
  * @brief Returns the physical internal energy of a particle
  *
  * @param p The particle of interest.
+ * @param xp The extended data of the particle of interest.
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
-    const struct part* restrict p, const struct cosmology* cosmo) {
+    const struct part* restrict p, const struct xpart* restrict xp,
+    const struct cosmology* cosmo) {
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */

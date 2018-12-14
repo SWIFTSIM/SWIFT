@@ -353,7 +353,7 @@ struct engine {
   const struct external_potential *external_potential;
 
   /* Properties of the cooling scheme */
-  const struct cooling_function_data *cooling_func;
+  struct cooling_function_data *cooling_func;
 
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
@@ -414,7 +414,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
-                 const struct cooling_function_data *cooling_func,
+                 struct cooling_function_data *cooling_func,
                  const struct chemistry_global_data *chemistry,
                  struct sourceterms *sourceterms);
 void engine_config(int restart, struct engine *e, struct swift_params *params,

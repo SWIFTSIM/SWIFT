@@ -1,0 +1,358 @@
+\documentclass[fleqn, usenatbib, useAMS, a4paper]{mnras}
+\usepackage{graphicx}
+\usepackage{amsmath,paralist,xcolor,xspace,amssymb}
+\usepackage{times}
+\usepackage{comment}
+\usepackage[super]{nth}
+
+\newcommand{\todo}[1]{{\textcolor{red}{TODO: #1}\\}}
+\newcommand{\swift}{{\sc Swift}\xspace}
+
+\newcommand{\D}[2]{\frac{d#1}{d#2}}
+\newcommand{\LL}{\left(}
+\newcommand{\RR}{\right)}
+
+\title{Integration scheme for cooling}
+\author{Alexei Borissov, Matthieu Schaller}
+
+\begin{document}
+
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Basic principles}
+
+\subsection{Isochoric cooling}
+
+\todo{MATTHIEU: Discuss the fact that we want to do cooling at constant
+  density.}
+
+\subsection{Time integration}
+
+We want to compute the change in internal energy of a given particle
+due to the interaction of the gas with the background radiation. More
+specifically we want to integrate the following equation:
+\begin{equation}
+  u_{\rm final} \equiv u(t+\Delta t) = u(t) + \left(\frac{\partial u}{\partial t}\bigg|_{\rm
+    hydro} + \frac{\partial u}{\partial t}\bigg|_{\rm cooling}\right)
+  \times \Delta t.
+\end{equation}
+The first derivative is given by the SPH scheme, the second one is
+what we are after here. We start by computing the internal energy the
+particle would have in the absence of cooling:
+\begin{equation}
+  u_0 \equiv u(t) + \frac{\partial u}{\partial t}\bigg|_{\rm
+    hydro} \times \Delta t.
+\end{equation}
+We then proceed to solve the implicit equation
+\begin{equation}\label{implicit-eq}
+ u_{\rm final} = u_0 + \lambda(u_{\rm final}) \Delta t,
+\end{equation}
+where $\lambda$ is the cooling rate\footnote{Note this is not the
+  physical cooling rate $\Lambda/n_{\rm H}^2$ that is commonly
+  used. This is the change in energy over time $\frac{\partial
+    u}{\partial t}\big|_{\rm cool}$ from all the channels
+  including all the multiplicative factors coming in front of the
+  physical $\Lambda$.}, which for a given particle varies
+only with respect to $u$ throughout the duration of the timestep. The
+other dependencies of $\lambda$ (density, metallicity and redshift)
+are kept constant over the course of $\Delta t$. Crucially, we want to
+evaluate $\lambda$ at the end of the time-step. Once a solution to this
+implicit problem has been found, we get the total cooling rate:
+\begin{equation}
+  \frac{\partial u}{\partial t}\bigg|_{\rm total} \equiv \frac{u_{\rm final} -
+    u(t)}{\Delta t},
+\end{equation}
+leading to the following total equation of motion for internal energy:
+\begin{equation}
+  u(t+\Delta t) = u(t) + \frac{\partial u}{\partial t}\bigg|_{\rm
+    total} \times \Delta t.
+\end{equation}
+The time integration is then performed in the regular time integration
+section of the code. Note that, as expected, if $\lambda=0$ the whole
+processes reduces to a normal hydro-dynamics only time integration of
+the internal energy.
+
+Finally, for schemes evolving entropy $A$ instead of internal energy
+$u$ (or for that matter any other thermodynamic quantity), we convert
+the entropy derivative coming from the hydro scheme to an internal
+energy derivative, solve the implicit cooling problem using internal
+energies and convert the total time derivative back to an entropy
+derivative. Since we already assume that cooling is performed at
+constant density, there is no loss in accuracy happening via this
+conversion procedure.
+
+\subsubsection{Energy floor and prediction step}
+
+In most applications, the cooling is not allowed to bring the internal
+energy below a certain value $u_{\rm min}$, usually expressed in the
+form of a minimal temperature. Additionally, and even in the absence
+of such a temperature floor, we must ensure that the energy does not
+become negative.
+
+Since the time-step size is not chosen in a way to fulfil these
+criteria, we have to limit the total rate of change of energy such
+that the limits are not reached. In practice this means modifying
+$\frac{\partial u}{\partial t}\big|_{\rm total}$ such that
+\begin{equation}
+  u(t) + \frac{\partial u}{\partial t}\bigg|_{\rm total} \times \Delta t \geq
+  u_{\rm min}
+\end{equation}
+is true. In the vast majority of cases, there is no need to modify the
+energy derivative but this may be necessary for some rapidly cooling
+particles.
+
+The time integration uses a leapfrog algorithm in its
+``Kick-Drift-Kick'' form. In the cases, where the time-step is
+constant, the condition as written above would be sufficient, however
+with variable $\Delta t$ this needs modifying. If the next time-step
+of a particle decreases in size, then the condition above will remain
+true. However, if the time-step size increases then we may violate the
+condition and integrate the energy to a value below $u_{\rm min}$. The
+time-step size is chosen in-between the application of the two kick
+operators\footnote{Effectively creating the chain
+  ``Kick-Drift-Kick-Timestep'', where the last operation fixes the
+  time-step size for the next kick-drift-kick cycle.}. We hence have
+to ensure that the integration of one half of the current step (the
+second kick) and one half of the next step (the first kick) does not
+lead to a value below the allowed minimum. In \swift, we do not allow
+the time-step to increase by more than a factor of $2$. This implies
+that we will at most integrate the internal energy forward in time for
+$1.5\Delta t$, where $\Delta t$ is the current value of the time-step
+size we used in all the equations thus far. An additional subtlety
+does, however, enter the scheme. The internal energy is not just used
+in the Kick operator. Because of the needs of the SPH scheme, the
+particles have to carry an estimate of the entropy at various points
+in time inside the step of this particle. This is especially important
+for inactive particles that act as sources for neighbouring active
+particles. We must hence not only protect for the next half-kick, we
+must also ensure that the value we estimated will be valid over the
+next drift step as well. This means completing the current half-kick
+and the next full drift, which could in principle double in size; this
+implies checking the limits over the next $2.5\Delta t$. However, for
+that variable, since it is an extrapolation and not the actual
+variable we integrate forward in time, we do not need to enforce the
+$u_{\rm min}$ limit. We must only ensure that the energy remains
+positive. Combining those two conditions, we conclude that we must
+enforce two limits:
+\begin{equation}
+  \left\lbrace
+  \begin{array}{ll}
+  \displaystyle\frac{\partial u}{\partial t}\bigg|_{\rm total}  \geq
+  -\displaystyle\frac{u(t) - u_{\rm min} }{1.5 \Delta t}, \Bigg.  \\
+  \displaystyle\frac{\partial u}{\partial t}\bigg|_{\rm total}  \geq
+  -\displaystyle\frac{u(t) - u_{\rm min} }{(2.5 + \epsilon) \Delta t},  
+  \end{array}
+  \right.
+\end{equation}
+where in the second equation we added a small value $\epsilon$ to
+ensure that we will not get negative values because of rounding errors.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Solution to the implicit cooling problem}
+
+In this section we describe the integration scheme used to compute the 
+cooling rate. It consists of an explicit solver for cases where the 
+cooling rate is small, a solver based on the Newton-Raphson method, and
+one based on the bisection method. 
+
+\subsection{Explicit solver}
+
+For many particles the cooling occuring over a timestep will be small 
+(for example, if a particle is at the equilibrium temperature and was not
+heated by other means such as shock heating). In these cases $\lambda(u_0)
+\simeq \lambda(u_{final})$, so an explicit solution to compute $u_{final}$
+may be used as a faster alternative to a more complicated implicit scheme. 
+More specifically, if $\lambda(u_0) dt < \varepsilon u_0$ we set
+\begin{equation}
+u_{final} = u_0 + \lambda(u_0) dt,
+\end{equation}
+where $\varepsilon$ is a small constant, set to $0.05$ to be consistent 
+with the EAGLE simulations. 
+
+In cases where $\lambda(u_0) dt > \varepsilon u_0$ one of two implicit 
+methods are used, either the Newton-Raphson method, which benefits from
+faster convergence, however is not guaranteed to converge, or the 
+bisection method, which is slower but always converges. 
+
+\subsection{Newton-Raphson method}
+
+Equation \ref{implicit-eq} may be rearranged so that we are trying to
+find the root of 
+\begin{equation}\label{fu-eq}
+f(u_{final}) = u_{final} - u_0 - \lambda(u_{final}) dt = 0.
+\end{equation}
+This may be done iteratively using the Newton-Raphson method obtaining
+consecutive approximations to $u_{final}$ by 
+\begin{equation}
+u_{n+1} = u_n - \frac{f(u_n)}{df(u_n)/du}.
+\end{equation}
+In some cases a negative value of $u_{n+1}$ may be calculated. To 
+prevent the occurance of negative internal energies during the
+calculation we introduce $x = \log (u_{final})$, so that we solve
+\begin{equation}\label{fx-eq}
+f(x) = e^x - u_0 - \lambda(e^x) dt = 0
+\end{equation}
+instead of \ref{fu-eq}. Thus we obtain consecutive approximations of 
+the root of $f$ by the formula $x_{n+1} = x_n - f(x_n)/f'(x_n)$. This 
+leads to
+\begin{equation}
+x_{n+1} = x_n - \frac{1 - u_0 e^{-x_n} -\lambda(e^{x_n})e^{-x_n}dt}{1
+  - \frac{d\lambda}{du}(e^{x_n}) dt}.
+\end{equation}
+
+The tables used for EAGLE cooling in fact depend on temperature rather 
+than internal energy and include a separate table to convert from
+internal energy to temperature. Hence, to obtain the gradient we use
+\begin{align*}
+  \D \lambda u &= \D \lambda T \D T u \\
+               &= \frac{\lambda(T_{high,n})
+    - \lambda(T_{low,n})}{T_{high,n} - T_{low,n}}
+                  \frac{T(u_{high,n})
+    - T(u_{low,n})}{u_{high,n} - u_{low,n}},
+\end{align*}
+where $T_{\rm high,n}, u_{\rm high,n}$ and $T_{\rm low,n}, u_{\rm low,n}$ 
+are values of the temperature and internal energy grid bracketing the current 
+temperature and internal energy for the iteration in Newton's method 
+(e.g. $u_{high,n} \ge u_n \ge u_{low,n}$).
+
+The initial guess for the Newton-Raphson method is taken to be $x_0 = \log(u_0)$.
+If in the first iteration the sign of the $\lambda$ changes the next
+guess to correspond to the equilibrium temperature (i.e. $10^4$K). 
+
+A particle is considered to have converged if the relative error in
+the internal energy is sufficiently small. This can be formulated as
+\begin{align*}
+\frac{u_{n+1} - u_n}{u_{n+1}} &< C \\
+u_{n+1} - u_n &< Cu_{n+1} \\
+\LL 1-C\RR u_{n+1} &< u_n \\
+\frac{u_{n+1}}{u_n} &< \frac{1}{1-C} \\
+x_{n+1} - x_n = \log\frac{u_{n+1}}{u_n} &< -\log\LL 1-C \RR \simeq C.
+\end{align*}
+Since the grid spacing in the internal energy of the Eagle tables is
+0.045 in $\log_{10}u$ we take $C = 10^{-2}$.
+
+In cases when the Newton-Raphson method doesn't converge within a specified
+number of iterations we revert to the bisection method. In order to use
+the Newton-Raphson method a parameter (EagleCooling:newton\_integration) in 
+the yaml file needs to be set to 1.
+
+\subsection{Bisection method}
+
+In order to guarantee convergence the bisection method is used to solve 
+equation \ref{fu-eq} The implementation is the same as in the EAGLE 
+simulations, but is described here for convenience. 
+
+First a small interval is used to bracket the solution. The interval bounds
+are defined as $u_{upper} = \kappa u_0$ and $u_{lower} = \kappa^{-1} u_0$, 
+with $\kappa = \sqrt{1.1}$ as specified in EAGLE. If the particle is cooling
+($\lambda(u_0) < 0$) $u_{upper}$ and $u_{lower}$ are iteratively decreased
+by factors of $\kappa$ until $f(u_{lower}) < 0$. Alternatively, if the 
+particle is initially heating ($\lambda(u_0) > 0$) the bounds are iteratively
+increased by factors of $\kappa$ until $f(u_{upper}) > 0$. Once the bounds
+are obtained, the bisection scheme is performed as normal. 
+
+\section{EAGLE cooling tables}
+
+We use the same cooling tables as used in EAGLE, specifically those found in 
+\cite{Wiersma2009} and may be found at http://www.strw.leidenuniv.nl/WSS08/. 
+These tables contain pre-computed values of the cooling rate for a given 
+redshift, metallicity, hydrogen number density and temperature produced using 
+the package CLOUDY. When calculating the cooling rate for particles at 
+redshifts higher than the redshift of reionisation the tables used do not 
+depend on redshift, but only on metallicity, hydrogen number density and 
+temperature. These tables are linearly interpolated based on the particle
+based on the particle properties. 
+
+Since these tables specify the cooling rate in terms of temperature, the internal
+energy of a particle needs to be converted to a temperature in a way which takes 
+into account the ionisation state of the gas. This is done by interpolating a 
+pre-computed table of values of temperature depending on redshift, hydrogen number
+density, helium fraction and internal energy (again, for redshifts higher than the 
+redshift of reionisation this table does not depend on redshift). 
+
+Inverse Compton cooling is not accounted for in the high redshift tables, so prior 
+to reionisation it is taken care of by an analytical formula,
+\begin{equation}
+\frac{\Lambda_{compton}}{n_h^2} = -\Lambda_{0,compton} \left( T - T_{CMB}(1+z) 
+\right) (1+z)^4 \frac{n_e}{n_h},
+\end{equation}
+which is added to the cooling rate interpolated from the tables. Here $n_h$ is the
+hydrogen number density, $T$ the temperature of the particle, $T_{CMB} = 2.7255$K 
+the temperature of the CMB, $z$ the redshift, $n_e$ the hydrogen and helium electron
+number density, and $\Lambda_{0,compton} = 1.0178085 \times 10^{-37} g \cdot cm^2 
+\cdot s^{-3} \cdot K^{-5}$. 
+
+\section{Co-moving time integration}
+
+In the case of cosmological simulations, the equations need to be
+slightly modified to take into account the expansion of the
+Universe. The code uses the comoving internal energy $u' =
+a(t)^{3(\gamma-1)}u$ or comoving entropy $A'=A$ as thermodynamic
+variable. The equation of motion for the variable are then modified
+and take the following form:
+\begin{equation}
+  \frac{\partial u'_i}{\partial t} = \frac{\partial u'_i}{\partial
+    t}\bigg|_{\rm hydro}  = \frac{1}{a(t)^2} Y'_i(t)\big|_{\rm
+    hydro},
+\end{equation}
+where $Y_i$ is computed from the particle itself and its neighbours
+and corresponds to the change in internal energy due to hydrodynamic
+forces. We then integrate the internal energy forward in time using
+\begin{equation}
+  u'_i(t+\Delta t) = u'_i(t) + Y'_i(t)\big|_{\rm hydro} \times \underbrace{\int_t^{t+\Delta t}
+  \frac{1}{a(t)^2} dt}_{\Delta t_{\rm therm}}.
+\end{equation}
+The exact same equations apply in the case of a hydrodynamics scheme
+evolving entropy (see cosmology document). We note that this is
+different from the choice made in Gadget where there is no $a^{-2}$
+term as it is absorbed in the definition in $Y'_i$ itself. As a
+consequence $\Delta t_{\rm therm}$ is just $\Delta t$.
+
+In order to compute the
+cooling rate of a particle, we convert quantities to physcial
+coordinates. Given the appearence of scale-factors in some of these
+equations, we have to be careful to remain consistent throughout. We
+start by constructing the co-moving internal energy at the end of the
+time-step in the absence of cooling:
+\begin{equation}
+  u'_0 \equiv u'(t) + Y'_i(t)\big|_{\rm hydro} \times \Delta t_{\rm therm},
+\end{equation}
+which we then convert into a physical internal energy alongside the
+thermal energy at the current time:
+\begin{align}
+  u(t) &= a^{3(1-\gamma)}u'(t),\\
+  u_0 &= a^{3(1-\gamma)}u'_0.
+\end{align}
+We can then solve the implicit cooling problem in the same way as in
+the non-comoving case and obtain
+\begin{equation}
+  u_{\rm final} = u_0 + \lambda(u_{\rm final}) \Delta t.
+\end{equation}
+We note that the $\Delta t$ here is the actual time between the start
+and end of the step; unlike $\Delta t_{\rm therm}$ there are no
+scale-factors entering that term. The solution to the implicit problem
+in physical coordinates yields the definition of the total time
+derivative of internal energy:
+\begin{equation}
+  \frac{\partial u}{\partial t}\bigg|_{\rm total} \equiv \frac{u_{\rm final} -
+    u(t)}{\Delta t}.
+\end{equation}
+This allows us to construct the total eveolution of co-moving energy:
+\begin{equation}
+  Y'_i(t)\big|_{\rm total} = a^{3(\gamma-1)} \times \frac{\Delta t}{\Delta
+    t_{\rm therm}} \times
+  \frac{\partial u}{\partial t}\bigg|_{\rm total},
+\end{equation}
+where the first term is is the conversion from physical to co-moving
+internal energy and the second term is required by our definition of
+our time integration opertator. The time integration routine then performs the
+same calculation as in the non-cooling case:
+\begin{equation}
+  u'_i(t+\Delta t) = u'_i(t) + Y'_i(t)\big|_{\rm total} \times {\Delta t_{\rm therm}}.
+\end{equation}
+
+\bibliographystyle{mnras}
+\bibliography{./bibliography.bib}
+
+\end{document}

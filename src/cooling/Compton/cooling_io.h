@@ -23,6 +23,7 @@
 #include "../config.h"
 
 /* Local includes */
+#include "cooling.h"
 #include "io_properties.h"
 
 #ifdef HAVE_HDF5
@@ -41,11 +42,18 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 }
 #endif
 
+INLINE static void convert_part_T(const struct engine* e, const struct part* p,
+                                  const struct xpart* xp, float* ret) {
+
+  ret[0] = cooling_get_temperature(e->physical_constants, e->hydro_properties,
+                                   e->internal_units, e->cosmology,
+                                   e->cooling_func, p, xp);
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
- * Nothing to write for this scheme.
- *
+ * @param parts The particle array.
  * @param xparts The extended particle array.
  * @param list The list of i/o properties to write.
  * @param cooling The #cooling_function_data
@@ -53,10 +61,14 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
-    const struct xpart* xparts, struct io_props* list,
+    const struct part* parts, const struct xpart* xparts, struct io_props* list,
     const struct cooling_function_data* cooling) {
 
-  return 0;
+  list[0] = io_make_output_field_convert_part("Temperature", FLOAT, 1,
+                                              UNIT_CONV_TEMPERATURE, parts,
+                                              xparts, convert_part_T);
+
+  return 1;
 }
 
 #endif /* SWIFT_COOLING_IO_COMPTON_H */

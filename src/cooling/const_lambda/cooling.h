@@ -45,6 +45,20 @@
 #include "units.h"
 
 /**
+ * @brief Common operations performed on the cooling function at a
+ * given time-step or redshift.
+ *
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param restart_flag Are we calling this directly after a restart?
+ */
+INLINE static void cooling_update(const struct cosmology* cosmo,
+                                  struct cooling_function_data* cooling,
+                                  const int restart_flag) {
+  // Add content if required.
+}
+
+/**
  * @brief Calculates du/dt in CGS units for a particle.
  *
  * The cooling rate is \f$\frac{du}{dt} = -\frac{\Lambda}{n_H^2}
@@ -217,6 +231,49 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 }
 
 /**
+ * @brief Compute the temperature of a #part based on the cooling function.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+INLINE static float cooling_get_temperature(
+    const struct phys_const* restrict phys_const,
+    const struct hydro_props* restrict hydro_props,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, const struct xpart* restrict xp) {
+
+  /* Physical constants */
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+
+  /* Gas properties */
+  const double T_transition = hydro_props->hydrogen_ionization_temperature;
+  const double mu_neutral = hydro_props->mu_neutral;
+  const double mu_ionised = hydro_props->mu_ionised;
+
+  /* Particle temperature */
+  const double u = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Temperature over mean molecular weight */
+  const double T_over_mu = hydro_gamma_minus_one * u * m_H / k_B;
+
+  /* Are we above or below the HII -> HI transition? */
+  if (T_over_mu > (T_transition + 1.) / mu_ionised)
+    return T_over_mu * mu_ionised;
+  else if (T_over_mu < (T_transition - 1.) / mu_neutral)
+    return T_over_mu * mu_neutral;
+  else
+    return T_transition;
+}
+
+/**
  * @brief Returns the total radiated energy by this particle.
  *
  * @param xp The extended particle data
@@ -260,6 +317,18 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
 }
 
 /**
+ * @brief Restore cooling tables (if applicable) after
+ * restart
+ *
+ * Nothing to do here
+ *
+ * @param cooling the cooling_function_data structure
+ * @param cosmo cosmology structure
+ */
+static INLINE void cooling_restore_tables(struct cooling_function_data* cooling,
+                                          const struct cosmology* cosmo) {}
+
+/**
  * @brief Prints the properties of the cooling model to stdout.
  *
  * @param cooling The properties of the cooling function.
@@ -279,5 +348,12 @@ static INLINE void cooling_print_backend(
     message("Cooling function time-step size limited to %f of u/(du/dt)",
             cooling->cooling_tstep_mult);
 }
+
+/**
+ * @brief Clean-up the memory allocated for the cooling routines
+ *
+ * @param cooling the cooling data structure.
+ */
+static INLINE void cooling_clean(struct cooling_function_data* cooling) {}
 
 #endif /* SWIFT_COOLING_CONST_LAMBDA_H */
