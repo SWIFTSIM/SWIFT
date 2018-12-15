@@ -671,7 +671,7 @@ float cooling_get_temperature(
   if (cooling->Redshifts == NULL)
     error(
         "Cooling function has not been initialised. Did you forget the "
-        "--cooling runtime flag?");
+        "--temperature runtime flag?");
 #endif
 
   /* Get physical internal energy */

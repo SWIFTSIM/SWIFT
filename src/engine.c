@@ -108,6 +108,7 @@ const char *engine_policy_names[] = {"none",
                                      "cosmological integration",
                                      "drift everything",
                                      "reconstruct multi-poles",
+                                     "temperature",
                                      "cooling",
                                      "stars",
                                      "structure finding",
@@ -2717,7 +2718,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_sparts(s, e->verbose);
 
   /* Update the cooling function */
-  if (e->policy & engine_policy_cooling)
+  if ((e->policy & engine_policy_cooling) ||
+      (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, /*restart_flag=*/0);
 
 #ifdef WITH_LOGGER
@@ -2973,7 +2975,8 @@ void engine_step(struct engine *e) {
   }
 
   /* Update the cooling function */
-  if (e->policy & engine_policy_cooling)
+  if ((e->policy & engine_policy_cooling) ||
+      (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, /*restart_flag=*/0);
 
   /*****************************************************/
