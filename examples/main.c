@@ -847,15 +847,18 @@ int main(int argc, char *argv[]) {
     }
 
     /* Initialise the external potential properties */
+    bzero(&potential, sizeof(struct external_potential));
     if (with_external_gravity)
       potential_init(params, &prog_const, &us, &s, &potential);
     if (myrank == 0) potential_print(&potential);
 
     /* Initialise the cooling function properties */
+    bzero(&cooling_func, sizeof(struct cooling_function_data));
     if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
     if (myrank == 0) cooling_print(&cooling_func);
 
     /* Initialise the chemistry */
+    bzero(&chemistry, sizeof(struct chemistry_global_data));
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
 
