@@ -59,6 +59,7 @@
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "tracers.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -3354,6 +3355,10 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
     /* And the cooling */
     cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);
+
+    /* And the tracers */
+    tracers_first_init_xpart(&p[k], &xp[k], us, phys_const, cosmo, hydro_props,
+                             cool_func);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */

@@ -64,6 +64,7 @@
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
+#include "tracers.h"
 
 #define TASK_LOOP_DENSITY 0
 #define TASK_LOOP_GRADIENT 1
@@ -1989,6 +1990,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -2043,6 +2045,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
+
+        /* Update the tracers properties */
+        tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,
+                               with_cosmology, e->cosmology,
+                               e->hydro_properties, e->cooling_func, e->time);
 
         /* Number of updated particles */
         updated++;

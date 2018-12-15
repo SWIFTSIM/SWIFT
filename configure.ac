@@ -1183,6 +1183,7 @@ AC_ARG_WITH([subgrid],
 # Default values
 with_subgrid_cooling=none
 with_subgrid_chemistry=none
+with_subgrid_tracers=none
 with_subgrid_hydro=none
 with_subgrid_stars=none
 with_subgrid_feedback=none
@@ -1196,6 +1197,7 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle
 	with_subgrid_chemistry=GEAR
+	with_subgrid_tracers=none
 	with_subgrid_hydro=gadget2
 	with_subgrid_stars=GEAR
 	with_subgrid_feedback=thermal
@@ -1203,6 +1205,7 @@ case "$with_subgrid" in
    EAGLE)
 	with_subgrid_cooling=EAGLE
 	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
 	with_subgrid_hydro=gadget2
 	with_subgrid_stars=none
 	with_subgrid_feedback=none
@@ -1546,6 +1549,35 @@ case "$with_chemistry" in
    ;;
 esac
 
+#  Particle tracers
+AC_ARG_WITH([tracers],
+   [AS_HELP_STRING([--with-tracers=<function>],
+      [chemistry function @<:@none, EAGLE default: none@:>@]
+   )],
+   [with_tracers="$withval"],
+   [with_tracers="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_tracers" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-tracers together])
+   else
+      with_tracers="$with_subgrid_tracers"
+   fi
+fi
+
+case "$with_tracers" in
+   none)
+      AC_DEFINE([TRACERS_NONE], [1], [No tracers function])
+   ;;
+   EAGLE)
+      AC_DEFINE([TRACERS_EAGLE], [1], [Tracers taken from the EAGLE model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown tracers choice: $with_tracers])
+   ;;
+esac
+
 # Stellar model.
 AC_ARG_WITH([stars],
    [AS_HELP_STRING([--with-stars=<model>],
@@ -1738,6 +1770,7 @@ AC_MSG_RESULT([
 
    Cooling function   : $with_cooling
    Chemistry          : $with_chemistry
+   Tracers            : $with_tracers
    Stellar model      : $with_stars
    Feedback model     : $with_feedback
 

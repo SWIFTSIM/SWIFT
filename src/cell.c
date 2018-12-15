@@ -64,6 +64,7 @@
 #include "stars.h"
 #include "timers.h"
 #include "tools.h"
+#include "tracers.h"
 
 /* Global variables. */
 int cell_next_tag = 0;
@@ -3357,6 +3358,7 @@ int cell_has_tasks(struct cell *c) {
  */
 void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float hydro_h_max = e->hydro_properties->h_max;
   const integertime_t ti_old_part = c->hydro.ti_old_part;
   const integertime_t ti_current = e->ti_current;
@@ -3423,7 +3425,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
     /* Drift from the last time the cell was drifted to the current time */
     double dt_drift, dt_kick_grav, dt_kick_hydro, dt_therm;
-    if (e->policy & engine_policy_cosmology) {
+    if (with_cosmology) {
       dt_drift =
           cosmology_get_drift_factor(e->cosmology, ti_old_part, ti_current);
       dt_kick_grav =
@@ -3453,6 +3455,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current);
+
+      /* Update the tracers properties */
+      tracers_after_drift(p, xp, e->internal_units, e->physical_constants,
+                          with_cosmology, e->cosmology, e->hydro_properties,
+                          e->cooling_func, e->time);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -3513,6 +3520,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
         chemistry_init_part(p, e->chemistry);
+        tracers_after_init(p, xp, e->internal_units, e->physical_constants,
+                           with_cosmology, e->cosmology, e->hydro_properties,
+                           e->cooling_func, e->time);
       }
     }
 
