@@ -1184,6 +1184,8 @@ AC_ARG_WITH([subgrid],
 with_subgrid_cooling=none
 with_subgrid_chemistry=none
 with_subgrid_hydro=none
+with_subgrid_stars=none
+with_subgrid_feedback=none
 
 case "$with_subgrid" in
    yes)
