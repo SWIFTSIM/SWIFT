@@ -1310,7 +1310,8 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
  * @brief Creates the dependency network for the stars tasks of a given cell.
  *
  * @param sched The #scheduler.
- * @param density The density task to link.
+ * @param density The star density task to link.
+ * @param feedback The star feedback task to link.
  * @param c The cell.
  */
 static inline void engine_make_stars_loops_dependencies(struct scheduler *sched,

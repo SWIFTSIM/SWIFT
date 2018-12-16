@@ -36,7 +36,7 @@
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
- * @param hydro_properties the hydro_props struct
+ * @param hydro_props the hydro_props struct
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
@@ -56,7 +56,7 @@ static INLINE void tracers_after_init(
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
- * @param hydro_properties the hydro_props struct
+ * @param hydro_props the hydro_props struct
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
@@ -77,7 +77,7 @@ static INLINE void tracers_after_drift(
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
- * @param hydro_properties the hydro_props struct
+ * @param hydro_props the hydro_props struct
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
@@ -98,7 +98,7 @@ static INLINE void tracers_after_timestep(
  * @param us The internal system of units.
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
- * @param hydro_properties the hydro_props struct
+ * @param hydro_props the hydro_props struct
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers

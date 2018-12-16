@@ -33,14 +33,16 @@
  *
  * Nothing to do here in the EAGLE model.
  *
- * @param us The internal system of units.
- * @param phys_const The physical constants in internal units.
- * @param cosmo The current cosmological model.
- * @param hydro_properties the hydro_props struct
- * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
  * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param with_cosmology Are we running a cosmological simulation?
+ * @param cosmo The current cosmological model.
+ * @param hydro_props the hydro_props struct
+ * @param cooling The #cooling_function_data used in the run.
+ * @param time The current time.
  */
 static INLINE void tracers_after_init(
     const struct part *p, struct xpart *xp, const struct unit_system *us,
@@ -53,14 +55,16 @@ static INLINE void tracers_after_init(
  *
  * Nothing to do here in the EAGLE model.
  *
- * @param us The internal system of units.
- * @param phys_const The physical constants in internal units.
- * @param cosmo The current cosmological model.
- * @param hydro_properties the hydro_props struct
- * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
  * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param with_cosmology Are we running a cosmological simulation?
+ * @param cosmo The current cosmological model.
+ * @param hydro_props the hydro_props struct
+ * @param cooling The #cooling_function_data used in the run.
+ * @param time The current time.
  */
 static INLINE void tracers_after_drift(
     const struct part *p, struct xpart *xp, const struct unit_system *us,
@@ -74,14 +78,16 @@ static INLINE void tracers_after_drift(
  *
  * In EAGLE we record the highest temperature reached.
  *
- * @param us The internal system of units.
- * @param phys_const The physical constants in internal units.
- * @param cosmo The current cosmological model.
- * @param hydro_properties the hydro_props struct
- * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
  * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param with_cosmology Are we running a cosmological simulation?
+ * @param cosmo The current cosmological model.
+ * @param hydro_props the hydro_props struct
+ * @param cooling The #cooling_function_data used in the run.
+ * @param time The current time.
  */
 static INLINE void tracers_after_timestep(
     const struct part *p, struct xpart *xp, const struct unit_system *us,
@@ -112,14 +118,14 @@ static INLINE void tracers_after_timestep(
  *
  * Set the maximal temperature to a valid initial state
  *
- * @param us The internal system of units.
- * @param phys_const The physical constants in internal units.
- * @param cosmo The current cosmological model.
- * @param hydro_properties the hydro_props struct
- * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
  * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ * @param hydro_props the hydro_props struct
+ * @param cooling The #cooling_function_data used in the run.
  */
 static INLINE void tracers_first_init_xpart(
     const struct part *p, struct xpart *xp, const struct unit_system *us,
