@@ -219,7 +219,7 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
     vy[uninhibited_count] = parts[i].v[1];
     vz[uninhibited_count] = parts[i].v[2];
 
-    inhibited_count++;
+    uninhibited_count++;
   }
 
   return uninhibited_count;
