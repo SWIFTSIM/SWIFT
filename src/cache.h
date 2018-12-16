@@ -208,7 +208,7 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
   for (int i = 0; i < ci->hydro.count; i++) {
 
     /* Skip inhibited particles. */
-    if (parts[i].time_bin == time_bin_inhibited) continue;
+    if (parts[i].time_bin >= time_bin_inhibited) continue;
 
     x[uninhibited_count] = (float)(parts[i].x[0] - loc[0]);
     y[uninhibited_count] = (float)(parts[i].x[1] - loc[1]);
@@ -217,7 +217,9 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
     m[uninhibited_count] = parts[i].mass;
     vx[uninhibited_count] = parts[i].v[0];
     vy[uninhibited_count] = parts[i].v[1];
-    vz[uninhibited_count++] = parts[i].v[2];
+    vz[uninhibited_count] = parts[i].v[2];
+
+    inhibited_count++;
   }
 
   return uninhibited_count;
@@ -401,7 +403,7 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
   for (int i = 0; i < ci->hydro.count; i++) {
 
     /* Skip inhibited particles. */
-    if (parts[i].time_bin == time_bin_inhibited) continue;
+    if (parts[i].time_bin >= time_bin_inhibited) continue;
 
     x[uninhibited_count] = (float)(parts[i].x[0] - loc[0]);
     y[uninhibited_count] = (float)(parts[i].x[1] - loc[1]);
@@ -415,7 +417,9 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
     grad_h[uninhibited_count] = parts[i].force.f;
     pOrho2[uninhibited_count] = parts[i].force.P_over_rho2;
     balsara[uninhibited_count] = parts[i].force.balsara;
-    soundspeed[uninhibited_count++] = parts[i].force.soundspeed;
+    soundspeed[uninhibited_count] = parts[i].force.soundspeed;
+
+    uninhibited_count++;
   }
 
   return uninhibited_count;
@@ -501,7 +505,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     const int idx = sort_i[i + first_pi_align].i;
 
     /* Put inhibited particles out of range. */
-    if (parts_i[idx].time_bin == time_bin_inhibited) {
+    if (parts_i[idx].time_bin >= time_bin_inhibited) {
       x[i] = pos_padded[0];
       y[i] = pos_padded[1];
       z[i] = pos_padded[2];
@@ -603,7 +607,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     const int idx = sort_j[i].i;
 
     /* Put inhibited particles out of range. */
-    if (parts_j[idx].time_bin == time_bin_inhibited) {
+    if (parts_j[idx].time_bin >= time_bin_inhibited) {
       xj[i] = pos_padded_j[0];
       yj[i] = pos_padded_j[1];
       zj[i] = pos_padded_j[2];
@@ -762,7 +766,7 @@ cache_read_two_partial_cells_sorted_force(
     const int idx = sort_i[i + first_pi_align].i;
 
     /* Put inhibited particles out of range. */
-    if (parts_i[idx].time_bin == time_bin_inhibited) {
+    if (parts_i[idx].time_bin >= time_bin_inhibited) {
       x[i] = pos_padded[0];
       y[i] = pos_padded[1];
       z[i] = pos_padded[2];
