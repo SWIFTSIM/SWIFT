@@ -217,12 +217,17 @@ INLINE static int star_formation_convert_to_star(
 INLINE static void star_formation_copy_properties(
     struct engine *e, struct cell *c, struct part* p,
     struct xpart* xp, const struct star_formation* starform, 
-    const struct phys_const* const phys_const, const struct cosmology* cosmo) {
+    const struct phys_const* const phys_const, const struct cosmology* cosmo,
+    int with_cosmology) {
   
   struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
   sp->mass = p->mass;
   sp->mass_init = p->mass;
-  sp->age = cosmo->a;
+  if (with_cosmology) {
+    sp->age = cosmo->a;
+  } else {
+    sp->age = cosmo->a;
+  }
   message("Copy Properties");
 
 }

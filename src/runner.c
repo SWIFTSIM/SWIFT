@@ -470,6 +470,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   TIMER_TIC;
 
@@ -493,7 +494,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         //const float rho = hydro_get_physical_density(p, cosmo);
         if (star_formation_convert_to_star(starform, p, xp, constants, cosmo) ) {
-          star_formation_copy_properties(e, c, p, xp, starform, constants, cosmo);
+          star_formation_copy_properties(e, c, p, xp, starform, constants, cosmo, with_cosmology);
         //struct spart *sp =        cell_conert_part_to_spart(c, p, ...);
 
 //
