@@ -245,6 +245,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.do_sub_sort = 0;
     c->grav.do_sub_drift = 0;
     c->hydro.do_sub_drift = 0;
+    c->hydro.do_sub_limiter = 0;
+    c->hydro.do_limiter = 0;
     c->hydro.ti_end_min = -1;
     c->hydro.ti_end_max = -1;
     c->grav.ti_end_min = -1;
@@ -2677,6 +2679,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.do_sub_sort = 0;
       cp->grav.do_sub_drift = 0;
       cp->hydro.do_sub_drift = 0;
+      cp->hydro.do_sub_limiter = 0;
+      cp->hydro.do_limiter = 0;
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
@@ -4282,7 +4286,9 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
 
   /* Verify that all limited particles have been treated */
   for (int k = 0; k < nr_parts; k++) {
-    if (parts[k].wakeup == time_bin_awake) error("Particle still woken up!");
+    if (parts[k].wakeup == time_bin_awake)
+      error("Particle still woken up! id=%lld", parts[k].id);
+
     if (parts[k].gpart != NULL)
       if (parts[k].time_bin != parts[k].gpart->time_bin)
         error("Gpart not on the same time-bin as part");

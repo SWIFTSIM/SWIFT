@@ -241,10 +241,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
           /* And the limiter */
-          if (ci->nodeID == nodeID && with_limiter)
-            cell_activate_limiter(ci, s);
-          if (cj->nodeID == nodeID && with_limiter)
-            cell_activate_limiter(cj, s);
+          if (ci_nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
+          if (cj_nodeID == nodeID && with_limiter) cell_activate_limiter(cj, s);
 
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);
@@ -578,11 +576,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       t->ci->stars.updated = 0;
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
         scheduler_activate(s, t);
-    }
-
-    /* Time-step limiter? */
-    else if (t->type == task_type_timestep) {
-      if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Subgrid tasks */

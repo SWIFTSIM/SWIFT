@@ -2349,6 +2349,15 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
   /* Limit irrespective of cell flags? */
   force |= c->hydro.do_limiter;
 
+  /* Early abort? */
+  if (c->hydro.count == 0) {
+
+    /* Clear the limiter flags. */
+    c->hydro.do_limiter = 0;
+    c->hydro.do_sub_limiter = 0;
+    return;
+  }
+
   /* Loop over the progeny ? */
   if (c->split && (force || c->hydro.do_sub_limiter)) {
     for (int k = 0; k < 8; k++) {

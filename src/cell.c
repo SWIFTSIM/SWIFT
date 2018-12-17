@@ -1633,7 +1633,10 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
     for (struct cell *parent = c->parent;
          parent != NULL && !parent->hydro.do_sub_drift;
          parent = parent->parent) {
+
+      /* Mark this cell for drifting */
       parent->hydro.do_sub_drift = 1;
+
       if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (parent->hydro.drift == NULL)
@@ -1705,19 +1708,30 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
   /* If this cell is already marked for drift, quit early. */
   if (c->hydro.do_limiter) return;
 
-  /* Mark this cell for drifting. */
+  /* Mark this cell for limiting. */
   c->hydro.do_limiter = 1;
 
   /* Set the do_sub_limiter all the way up and activate the super limiter
      if this has not yet been done. */
   if (c == c->super) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->timestep_limiter == NULL)
+      error("Trying to activate un-existing c->timestep_limiter");
+#endif
     scheduler_activate(s, c->timestep_limiter);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !parent->hydro.do_sub_limiter;
          parent = parent->parent) {
+
+      /* Mark this cell for limiting */
       parent->hydro.do_sub_limiter = 1;
+
       if (parent == c->super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->timestep_limiter == NULL)
+          error("Trying to activate un-existing parent->timestep_limiter");
+#endif
         scheduler_activate(s, parent->timestep_limiter);
         break;
       }
@@ -2791,7 +2805,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       /* Activate hydro drift */
       if (t->type == task_type_self) {
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-        if (ci->nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
+        if (ci_nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
       }
 
       /* Set the correct sorting flags and activate hydro drifts */
@@ -2807,8 +2821,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
         /* Activate the limiter tasks. */
-        if (ci->nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
-        if (cj->nodeID == nodeID && with_limiter) cell_activate_limiter(cj, s);
+        if (ci_nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
+        if (cj_nodeID == nodeID && with_limiter) cell_activate_limiter(cj, s);
 
         /* Check the sorts and activate them if needed. */
         cell_activate_hydro_sorts(ci, t->flags, s);
