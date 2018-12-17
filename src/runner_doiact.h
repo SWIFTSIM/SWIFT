@@ -619,7 +619,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
-      if (pj->ti_drift != e->ti_current && !pj_inhibited)
+      if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
 
