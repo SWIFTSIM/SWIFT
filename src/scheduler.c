@@ -2127,7 +2127,7 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &s->tasks[tid[ind]];
 
-        /* Ignore skipped tasks. */
+    /* Ignore skipped tasks. */
     if (t->skip) continue;
 
     /* Increment the task's own wait counter for the enqueueing. */
