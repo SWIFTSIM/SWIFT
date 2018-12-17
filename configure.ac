@@ -1581,7 +1581,7 @@ esac
 # Stellar model.
 AC_ARG_WITH([stars],
    [AS_HELP_STRING([--with-stars=<model>],
-      [Stellar model to use @<:@none, GEAR, debug default: none@:>@]
+      [Stellar model to use @<:@none, EAGLE, GEAR, debug default: none@:>@]
    )],
    [with_stars="$withval"],
    [with_stars="none"]
@@ -1596,10 +1596,14 @@ if test "$with_subgrid" != "none"; then
 fi
 
 case "$with_stars" in
+   EAGLE)
+      AC_DEFINE([STARS_EAGLE], [1], [EAGLE stellar model])
+   ;;
    GEAR)
       AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
    ;;
    none)
+      AC_DEFINE([STARS_NONE], [1], [None stellar model])
    ;;
 
    *)
