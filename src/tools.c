@@ -343,6 +343,7 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const struct stars_props *stars_properties = e->stars_properties;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -359,6 +360,7 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
     for (int j = 0; j < cj->hydro.count; ++j) {
 
       struct part *pj = &cj->hydro.parts[j];
+      struct xpart *xpj = &cj->hydro.xparts[j];
 
       /* Pairwise distance */
       r2 = 0.0f;
@@ -371,7 +373,7 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
       /* Hit or miss? */
       if (r2 < hig2) {
         /* Interact */
-        runner_iact_nonsym_stars_density(r2, dx, hi, pj->h, spi, pj, a, H);
+        runner_iact_nonsym_stars_density(r2, dx, hi, pj->h, spi, pj, a, H, cosmo, stars_properties, xpj);
       }
     }
   }
@@ -389,6 +391,7 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
     for (int i = 0; i < ci->hydro.count; ++i) {
 
       struct part *pi = &ci->hydro.parts[i];
+      struct xpart *xpi = &ci->hydro.xparts[i];
 
       /* Pairwise distance */
       r2 = 0.0f;
@@ -401,7 +404,7 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
       /* Hit or miss? */
       if (r2 < hjg2) {
         /* Interact */
-        runner_iact_nonsym_stars_density(r2, dx, hj, pi->h, spj, pi, a, H);
+        runner_iact_nonsym_stars_density(r2, dx, hj, pi->h, spj, pi, a, H, cosmo, stars_properties, xpi);
       }
     }
   }
@@ -504,8 +507,10 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, dxi[3];
   struct spart *spi;
   struct part *pj;
+  struct xpart *xpj;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const struct stars_props *stars_properties = e->stars_properties;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -521,6 +526,7 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
     for (int j = 0; j < ci->hydro.count; ++j) {
 
       pj = &ci->hydro.parts[j];
+      xpj = &ci->hydro.xparts[j];
       hj = pj->h;
 
       /* Pairwise distance */
@@ -533,7 +539,7 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
       /* Hit or miss? */
       if (r2 > 0.f && r2 < hig2) {
         /* Interact */
-        runner_iact_nonsym_stars_density(r2, dxi, hi, hj, spi, pj, a, H);
+        runner_iact_nonsym_stars_density(r2, dxi, hi, hj, spi, pj, a, H, cosmo, stars_properties, xpj);
       }
     }
   }

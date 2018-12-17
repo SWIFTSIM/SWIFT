@@ -22,6 +22,9 @@
 /* Some standard headers. */
 #include <stdlib.h>
 
+/* Read chemistry */
+#include "chemistry_struct.h" 
+
 /**
  * @brief Particle fields for the star particles.
  *
@@ -64,6 +67,23 @@ struct spart {
     float wcount_dh;
 
   } density;
+
+  struct {
+    /* Mass of ejecta */
+    float mass;
+
+    /* Mass fractions of ejecta */
+    struct chemistry_part_data chemistry_data;
+  
+    float ejecta_specific_thermal_energy;
+
+    float num_SNIa;
+
+    float ngb_mass;
+
+  } to_distribute;
+
+  float omega_normalisation;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -110,6 +130,13 @@ struct stars_props {
 
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
+
+  int continuous_heating;
+
+  float SNIa_energy_fraction;
+  float deltaT_desired;
+  float temp_to_u_factor;
+
 };
 
 #endif /* SWIFT_DEFAULT_STAR_PART_H */

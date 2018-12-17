@@ -55,4 +55,5 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
                                   struct spart *restrict si,
                                   struct part *restrict pj, float a, float H) {
+  si->to_distribute.mass = 2;
 }

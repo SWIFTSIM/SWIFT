@@ -76,6 +76,7 @@
 void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const struct stars_props *stars_properties = e->stars_properties;
 
   /* Anything to do here? */
   if (!cell_is_active_stars(c, e)) return;
@@ -89,6 +90,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
   struct spart *restrict sparts = c->stars.parts;
   struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
 
   /* Loop over the sparts in ci. */
   for (int sid = 0; sid < scount; sid++) {
@@ -106,6 +108,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts[pjd];
+      struct xpart *restrict xpj = &xparts[pjd];
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
@@ -122,7 +125,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 > 0.f && r2 < hig2) {
-        IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
+        IACT_STARS(r2, dx, hi, hj, si, pj, a, H, cosmo, stars_properties, xpj);
       }
     } /* loop over the parts in ci. */
   }   /* loop over the sparts in ci. */
@@ -140,6 +143,7 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const struct stars_props *stars_properties = e->stars_properties;
 
   /* Anything to do here? */
   if (!cell_is_active_stars(ci, e)) return;
@@ -148,6 +152,7 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
   const int count_j = cj->hydro.count;
   struct spart *restrict sparts_i = ci->stars.parts;
   struct part *restrict parts_j = cj->hydro.parts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -178,6 +183,7 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
+      struct xpart *restrict xpj = &xparts_j[pjd];
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
@@ -193,7 +199,7 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
         error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2) IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
+      if (r2 < hig2) IACT_STARS(r2, dx, hi, hj, si, pj, a, H, cosmo, stars_properties, xpj);
 
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -229,9 +235,11 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const struct stars_props *stars_properties = e->stars_properties;
 
   const int count_j = cj->hydro.count;
   struct part *restrict parts_j = cj->hydro.parts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -257,6 +265,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
+      struct xpart *restrict xpj = &xparts_j[pjd];
 
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
@@ -273,7 +282,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #endif
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
+        IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H, cosmo, stars_properties, xpj);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -295,6 +304,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const struct stars_props *stars_properties = e->stars_properties;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -302,6 +312,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
   const int count_i = ci->hydro.count;
   struct part *restrict parts_j = ci->hydro.parts;
+  struct xpart *restrict xparts_j = ci->hydro.xparts;
 
   /* Loop over the parts in ci. */
   for (int spid = 0; spid < scount; spid++) {
@@ -324,6 +335,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
+      struct xpart *restrict xpj = &xparts_j[pjd];
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
@@ -341,7 +353,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
       /* Hit or miss? */
       if (r2 > 0.f && r2 < hig2) {
-        IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
+        IACT_STARS(r2, dx, hi, hj, spi, pj, a, H, cosmo, stars_properties, xpj);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */

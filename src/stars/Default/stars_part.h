@@ -65,6 +65,12 @@ struct spart {
 
   } density;
 
+  struct {
+    /* Mass of ejecta */
+    float mass;
+
+  } to_distribute;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

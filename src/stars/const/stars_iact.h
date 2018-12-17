@@ -14,7 +14,9 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
                                  struct spart *restrict si,
                                  const struct part *restrict pj, float a,
-                                 float H) {
+                                 float H, const struct cosmology *restrict cosmo,
+				 const struct stars_props *restrict stars_properties,
+				 struct xpart *restrict xp) {
 
   float wi, wi_dx;
 
@@ -40,6 +42,22 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
 }
 
 /**
+ * @brief Increases thermal energy of particle due 
+ * to feedback by specified amount
+ *
+ * @param d_energy Energy change
+ * @param p Particle we're acting on
+ * @param cosmo Cosmology struct
+ */
+static inline void thermal_feedback(float d_energy, struct part * restrict p, 
+				    struct xpart * restrict xp,
+				    const struct cosmology * restrict cosmo) {
+
+  float u = hydro_get_physical_internal_energy(p, xp, cosmo);
+  hydro_set_physical_internal_energy(p, cosmo, u + d_energy);
+}
+
+/**
  * @brief Feedback interaction between two particles (non-symmetric).
  * Used for updating properties of gas particles neighbouring a star particle
  *
@@ -55,7 +73,17 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
                                   const struct spart *restrict si,
-                                  struct part *restrict pj, float a, float H, float omega_normalisation) {
+                                  struct part *restrict pj, float a, float H,
+				  const struct cosmology *restrict cosmo,
+				  const struct stars_props *restrict stars_properties,
+				  struct xpart *restrict xp) {
+  // ALEXEI: GET RID OF a AND H IN SIGNATURE SINCE THESE CAN BE DERIVED FROM COSMO?
+
+  // ALEXEI: THESE CONSTANTS NEED MOVING ELSEWHERE.
+  const float total_energy_SNe = 1; // temporary placeholder. actual value 10^51 erg. need to convert to internal units.
+  const float units_factor1 = 1.f, units_factor2 = 1.f;
+
+
   float wi, wi_dx;
 
   /* Get r and 1/r. */
@@ -70,7 +98,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
 
   /* Compute weighting for distributing various properties (TODO: better comment?) */
   // ALEXEI: come up with better name for omega_frac?
-  float omega_frac = wi/hydro_get_physical_density(pj,cosmo)*omega_normalisation;
+  float omega_frac = wi/hydro_get_physical_density(pj,cosmo)*si->omega_normalisation;
 
   /* Update particle mass */
   float current_mass = hydro_get_mass(pj);
@@ -133,4 +161,47 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   float new_metal_mass_fraction_from_AGB = current_metal_mass_fraction_from_AGB + si->to_distribute.chemistry_data.metal_mass_fraction_from_AGB * 
     			       si->to_distribute.mass * omega_frac;
   pj->chemistry_data.metal_mass_fraction_from_AGB = new_metal_mass_fraction_from_AGB/new_mass;
+
+  /* Update momentum */
+  for (int i = 0; i < 3; i++) {
+    // Do we need to calculate relative velocities here?
+    pj->v[i] += si->to_distribute.mass * omega_frac * si->v[i];
+  }
+
+  /* Energy feedback */
+  float d_energy = si->to_distribute.mass * (si->to_distribute.ejecta_specific_thermal_energy 
+     + 0.5*(si->v[0]*si->v[0] + si->v[1]*si->v[1] + si->v[2]*si->v[2]) * cosmo->a2_inv);
+  if (stars_properties->continuous_heating) {
+    // We're doing ONLY continuous heating
+    d_energy += si->to_distribute.mass * si->to_distribute.num_SNIa * total_energy_SNe;
+  }
+  float d_specific_energy = d_energy * omega_frac / current_mass;
+
+  float heating_probability;
+  if (!stars_properties->continuous_heating) {
+    // We're doing stochastic heating
+    heating_probability = units_factor1 * si->to_distribute.num_SNIa *
+                          stars_properties->SNIa_energy_fraction /
+                          (stars_properties->deltaT_desired * si->to_distribute.ngb_mass);
+    // ALEXEI: CHECK UNITS HERE. Eagle does this update in cgs, we should probably keep it in internal units.
+    d_specific_energy = stars_properties->deltaT_desired * stars_properties->temp_to_u_factor;
+    if (heating_probability >= 1) {
+      d_specific_energy = units_factor2 * si->to_distribute.num_SNIa / si->to_distribute.ngb_mass;
+      heating_probability = 1; 
+    }
+  }
+
+  /* pick random number to see if we do stochastic heating */
+  unsigned int seed = pj->id;
+  if (rand_r(&seed) < heating_probability) {
+    // ALEXEI: As above, check units
+    thermal_feedback(d_specific_energy, pj, xp, cosmo);
+  }
+
+  /* Add in continuous contribution (TEMPORARY COMMENT: from eagle_do_enrich in eagle_enrich.c) */
+  thermal_feedback(d_specific_energy, pj, xp, cosmo);
+
+  // ALEXEI: should we also not decrease the mass and maybe internal energy of the star particle?
+
 }
+

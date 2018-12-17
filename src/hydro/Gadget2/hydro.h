@@ -332,6 +332,23 @@ hydro_set_physical_internal_energy_dt(struct part *restrict p,
 }
 
 /**
+ * @brief Sets the physical internal energy of a particle
+ *
+ * We assume a constant density for the conversion to entropy.
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param u The internal energy.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_internal_energy(struct part *restrict p,
+                                   const struct cosmology *restrict cosmo,
+                                   float u) {
+  p->entropy =
+      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u);
+}
+
+/**
  * @brief Computes the hydro time-step of a given particle
  *
  * @param p Pointer to the particle data
