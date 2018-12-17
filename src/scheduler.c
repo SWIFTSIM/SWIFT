@@ -240,8 +240,8 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
                          MPI_Datatype *type) {
 
   /* change pointer type */
-  struct task_dependency *in = in_p;
-  struct task_dependency *out = out_p;
+  struct task_dependency *in = (struct task_dependency *)in_p;
+  struct task_dependency *out = (struct task_dependency *)out_p;
 
   /* Loop over all the current objects */
   for (int i = 0; i < *len; i++) {
