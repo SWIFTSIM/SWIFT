@@ -538,8 +538,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         /* Make sure it is not run before kick2 */
         scheduler_addunlock(s, c->timestep, c->timestep_limiter);
         scheduler_addunlock(s, c->timestep_limiter, c->kick1);
-      } else {
-        scheduler_addunlock(s, c->kick2, c->timestep);
       }
 
 #if defined(WITH_LOGGER)
