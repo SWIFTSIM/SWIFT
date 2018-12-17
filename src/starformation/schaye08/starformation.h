@@ -34,6 +34,7 @@
 #include "cooling.h"
 #include "adiabatic_index.h"
 #include "cell.h" 
+#include "stars.h"
 
 /* Starformation struct */
 struct star_formation {
@@ -221,6 +222,7 @@ INLINE static void star_formation_copy_properties(
   struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
   sp->mass = p->mass;
   sp->mass_init = p->mass;
+  sp->age = cosmo->a;
   message("Copy Properties");
 
 }
