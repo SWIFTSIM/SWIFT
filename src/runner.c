@@ -470,7 +470,6 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
-  unsigned int testseed;
 
   TIMER_TIC;
 
@@ -493,11 +492,16 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         //const float rho = hydro_get_physical_density(p, cosmo);
-        // THIS IS A VERY WEAK SEED, WE NEED TO IMPROVE THIS
-        testseed = p->id + timer;
-        if (starformation_potential_to_become_star(starform, p, xp, constants, cosmo) ) {
-          message("Found particle that can form star!");
-          starformation_convert_to_gas(starform, p, xp, cosmo, testseed);
+        if (star_formation_convert_to_star(starform, p, xp, constants, cosmo) ) {
+          star_formation_copy_properties(e, c, p, xp, starform, constants, cosmo);
+        //struct spart *sp =        cell_conert_part_to_spart(c, p, ...);
+
+//
+//
+//            
+//
+
+//        star_formation_copy_properties(p, xp, sp);
         }
         // MATTHIEU: Temporary star-formation law
         // Do not use this at home.
