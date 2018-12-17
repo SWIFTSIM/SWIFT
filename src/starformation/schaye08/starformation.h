@@ -32,6 +32,7 @@
 #include "part.h"
 #include "hydro.h"
 #include "cooling.h"
+#include "adiabatic_index.h"
 
 /* Starformation struct */
 struct star_formation {
@@ -56,9 +57,6 @@ struct star_formation {
 
   /*! Critical temperature */
   double T_crit;
-
-  /*! Ratio of the specific heats */
-  double gamma;
 
   /*! gas fraction */
   double fgas;
@@ -86,6 +84,9 @@ struct star_formation {
 
   /*! Scaling metallicity */
   double Z0;
+
+  /*! one over the scaling metallicity */
+  double Z0_inv;
 
   /*! critical density Metallicity power law */
   double n_Z0;
@@ -117,7 +118,7 @@ struct star_formation {
  * @param cosmo the cosmological parameters and properties
  *
  * */
-INLINE static int starformation_potential_to_become_star(
+INLINE static int star_formation_potential_to_become_star(
     const struct star_formation* starform, const struct part* restrict p,
     const struct xpart* restrict xp, const struct phys_const* const phys_const,
     const struct cosmology* cosmo){
@@ -156,7 +157,7 @@ INLINE static int starformation_potential_to_become_star(
     } else {
       /* NEED TO USE A PROPER WAY OF FINDING Z */
       double Z = 0.002;
-      double den_crit_current = starform->den_crit * pow(Z/starform->Z0, starform->n_Z0);
+      double den_crit_current = starform->den_crit * pow(Z*starform->Z0_inv, starform->n_Z0);
       if (p->rho > den_crit_current) {
         /* double tempp = cooling_get_temperature() */
         tempp = 5e3;
@@ -176,38 +177,65 @@ INLINE static int starformation_potential_to_become_star(
 }
 
 /*
- * @brief Calculate if the gas particle is converted 
+ * @brief Calculates if the gas particle gets converted
  *
- * @param starform the star formation struct
- * @param p the gas particles with their properties
- * @param xp the additional gas particle properties
- * @param cosmo the cosmological properties
- * @param seed the seed for the random number generator
- *
- * */
-INLINE static void starformation_convert_to_gas( 
+ */
+INLINE static int star_formation_convert_to_star(
     const struct star_formation* starform, const struct part* restrict p,
-    const struct xpart* restrict xp, const struct cosmology* cosmo,
-    unsigned int seed
-    ){
+    const struct xpart* restrict xp, const struct phys_const* const phys_const,
+    const struct cosmology* cosmo) {
 
-  /* Get the pressure */
-  const double pressure = starform->EOS_pressure_norm 
-  * pow(p->rho/starform->EOS_den0, starform->polytropic_index);
+  if (star_formation_potential_to_become_star(starform, p, xp, phys_const, cosmo)){
+    /* Get the pressure */
+    const double pressure = starform->EOS_pressure_norm 
+    * pow(p->rho/starform->EOS_den0, starform->polytropic_index);
+  
+    /* Calculate the propability of forming a star */ 
+    const double prop = starform->SF_normalization * pow(pressure,
+    starform->SF_power_law) * p->time_bin;
 
-  /* Calculate the propability of forming a star */ 
-  const double prop = starform->SF_normalization * pow(pressure,
-  starform->SF_power_law) * p->time_bin; 
+    /* Calculate the seed */
+    unsigned int seed = p->id;
+    
+    /* Generate a random number between 0 and 1. */
+    const double randomnumber = rand_r(&seed)*starform->inv_RAND_MAX; 
 
-  /* Generate a random number between 0 and 1. */
-  const double randomnumber = rand_r(&seed)*starform->inv_RAND_MAX; 
+    /* Calculate if we form a star */
+    if (prop > randomnumber) {
+      return 1;
+    } else {
+      return 0;
+    }
 
-  /* Calculate if we form a star */
-  if (prop > randomnumber) {
-    /* How to implement the convert_part_to_spart */
-    message("Create a STAR!!");
+  } else {
+    return 0;
   }
 }
+
+INLINE static void star_formation_copy_properties(
+    struct engine *e, struct cell *c, struct part* p,
+    struct xpart* xp, const struct star_formation* starform, 
+    const struct phys_const* const phys_const, const struct cosmology* cosmo) {
+  
+  struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
+  sp->mass = p->mass;
+  sp->mass_init = p->mass;
+  message("Copy Properties");
+
+}
+
+/*
+int banana(...) {
+
+  if(star_formation_potential_to_become_ater(....) {
+
+  //draw ranfom number
+  //  return 1 or 0
+
+  }else
+  return 0;
+  }
+ */
 
 /* 
  * @brief initialization of the star formation law 
@@ -221,19 +249,6 @@ INLINE static void starformation_convert_to_gas(
 INLINE static void starformation_init_backend(
   struct swift_params* parameter_file, const struct phys_const* phys_const,
   const struct unit_system* us, struct star_formation* starform) {
-  
-  /* Default values for the normalization and the power law */
-  static const double normalization_default = 1.515e-4;
-  static const double KS_power_law_default = 1.4;
-  static const double KS_power_law_high_den_default = 2.0;
-  static const double KS_high_den_thresh_default = 1e3;
-
-  /* Default value for the heat capacity ratio gamma */
-  static const double gamma_default = 5.f/3.f;
-
-  /* Read the heat capacity ratio gamma */
-  starform->gamma = parser_get_opt_param_double(
-  parameter_file, "SchayeSF:gamma", gamma_default); 
 
   /* Get the appropriate constant to calculate the 
    * star formation constant */ 
@@ -264,12 +279,12 @@ INLINE static void starformation_init_backend(
   "SchayeSF:fg");
 
   /* Read the normalization of the KS law in KS law units */
-  const double normalization_MSUNpYRpKPC2 = parser_get_opt_param_double(
-  parameter_file, "SchayeSF:SchmidtLawCoeff_MSUNpYRpKPC2", normalization_default);
+  const double normalization_MSUNpYRpKPC2 = parser_get_param_double(
+  parameter_file, "SchayeSF:SchmidtLawCoeff_MSUNpYRpKPC2");
 
   /* Read the Kennicutt-Schmidt power law exponent */
-  starform->KS_power_law = parser_get_opt_param_double(
-  parameter_file, "SchayeSF:SchmidtLawExponent", KS_power_law_default);
+  starform->KS_power_law = parser_get_param_double(
+  parameter_file, "SchayeSF:SchmidtLawExponent");
 
   /* Calculate the power law of the star formation */
   starform->SF_power_law = (starform->KS_power_law - 1.f)/2.f;
@@ -279,17 +294,15 @@ INLINE static void starformation_init_backend(
   
   /* Calculate the starformation prefactor with most terms */
   starform->SF_normalization = starform->KS_normalization * pow(M_per_pc2, -starform->KS_power_law) * 
-  pow( starform->gamma * starform->fgas / G_newton, starform->SF_power_law);
+  pow( hydro_gamma * starform->fgas / G_newton, starform->SF_power_law);
 
   /* Read the high density Kennicutt-Schmidt power law exponent */
-  starform->KS_high_den_power_law = parser_get_opt_param_double(
-  parameter_file, "SchayeSF:SchmidtLawHighDensExponent", 
-  KS_power_law_high_den_default);
+  starform->KS_high_den_power_law = parser_get_param_double(
+  parameter_file, "SchayeSF:SchmidtLawHighDensExponent");
   
   /* Read the high density criteria for the KS law in number density per cm^3 */
-  const double KS_high_den_thresh_HpCM3 = parser_get_opt_param_double(
-  parameter_file, "SchayeSF:SchmidtLawHighDens_thresh_HpCM3",
-  KS_high_den_thresh_default);
+  const double KS_high_den_thresh_HpCM3 = parser_get_param_double(
+  parameter_file, "SchayeSF:SchmidtLawHighDens_thresh_HpCM3");
 
   /* Transform the KS high density criteria to simulation units */
   starform->KS_high_den_thresh = KS_high_den_thresh_HpCM3 * UNIT_CONV_NUMBER_DENSITY;
@@ -299,63 +312,56 @@ INLINE static void starformation_init_backend(
 
   /* Calculate the KS high density normalization */
   starform->KS_high_den_normalization = starform->KS_normalization * pow( M_per_pc2,
-  starform->KS_high_den_power_law - starform->KS_power_law) * pow(starform->gamma * 
+  starform->KS_high_den_power_law - starform->KS_power_law) * pow( hydro_gamma * 
   starform->fgas / G_newton * 1337.f, (starform->KS_power_law 
   - starform->KS_high_den_power_law)/2.f);
 
   /* Calculate the SF high density normalization */
   starform->SF_high_den_normalization = starform->KS_high_den_normalization 
-  * pow(M_per_pc2, -starform->KS_high_den_power_law) * pow( starform->gamma 
+  * pow(M_per_pc2, -starform->KS_high_den_power_law) * pow( hydro_gamma  
   * starform->fgas / G_newton, starform->SF_high_den_power_law);
-
-
-  /* critical star formation number density parameters */
-  /* Standard we will use a constant critical density threshold*/
-  /* standard variables based on the EAGLE values */
-  static const int schaye2004_default = 0;
-  static const double norm_ncrit_default = 0.1;
-  static const double norm_ncrit_no04_default = 10.;
-  static const double Z0_default = 0.002; 
-  static const double powerlawZ_default = -0.64;
 
   /* Read what kind of critical density we need to use
    * Schaye (2004) is metallicity dependent critical SF density*/
-  starform->schaye04 = parser_get_opt_param_double(
-  parameter_file, "SchayeSF:Schaye2004", schaye2004_default);
+  starform->schaye04 = parser_get_param_double(
+  parameter_file, "SchayeSF:Schaye2004");
 
   if (!starform->schaye04) {
     /* In the case that we do not use the Schaye (2004) critical
      * density to form stars but a constant value */
-    starform->den_crit = parser_get_opt_param_double(
-    parameter_file, "SchayeSF:thresh_norm_HpCM3", norm_ncrit_no04_default);
-    starform->Z0 = Z0_default;
+    starform->den_crit = parser_get_param_double(
+    parameter_file, "SchayeSF:thresh_norm_HpCM3");
+    starform->Z0 = 0.002;
     starform->n_Z0 = 0.0;
   } else {
     /* Use the Schaye (2004) metallicity dependent critical density
      * to form stars. */
     /* Read the normalization of the metallicity dependent critical 
      * density*/
-    starform->den_crit = parser_get_opt_param_double( 
-    parameter_file, "SchayeSF:thresh_norm_HpCM3", norm_ncrit_default) *
+    starform->den_crit = parser_get_param_double( 
+    parameter_file, "SchayeSF:thresh_norm_HpCM3") *
     UNIT_CONV_NUMBER_DENSITY;
 
     /* Read the scale metallicity Z0 */
-    starform->Z0 = parser_get_opt_param_double(
-    parameter_file, "SchayeSF:MetDep_Z0", Z0_default);
+    starform->Z0 = parser_get_param_double(
+    parameter_file, "SchayeSF:MetDep_Z0");
 
     /* Read the power law of the critical density scaling */
-    starform->n_Z0 = parser_get_opt_param_double(
-    parameter_file, "SchayeSF:MetDep_SFthresh_Slope", powerlawZ_default);
+    starform->n_Z0 = parser_get_param_double(
+    parameter_file, "SchayeSF:MetDep_SFthresh_Slope");
 
     /* Read the maximum allowed density for star formation */
-    starform->den_crit_max = parser_get_opt_param_double(
-    parameter_file, "SchayeSF:thresh_max_norm_HpCM3",norm_ncrit_no04_default);
+    starform->den_crit_max = parser_get_param_double(
+    parameter_file, "SchayeSF:thresh_max_norm_HpCM3");
 
   }
   /* Conversion of number density from cgs */
   static const float dimension_numb_den[5] = {0, -3, 0, 0, 0};
   const double conversion_numb_density = 1.f/
   units_general_cgs_conversion_factor(us, dimension_numb_den);
+
+  /* Claculate 1 over the metallicity for speed up */
+  starform->Z0_inv = 1/starform->Z0;
 
   /* Calculate the prefactor that is always common */
   /* !!!DONT FORGET TO DO THE CORRECT UNIT CONVERSION!!!*/
@@ -382,9 +388,9 @@ INLINE static void starformation_print_backend(
 
   message("Star formation law is Schaye and Dalla Vecchia (2008)"
   " with properties, normalization = %e, slope of the Kennicutt"
-  "-Schmidt law = %e, gamma = %e, gas fraction = %e, critical "
+  "-Schmidt law = %e, gas fraction = %e, critical "
   "density = %e and critical temperature = %e", starform->KS_normalization, 
-  starform->KS_power_law, starform->gamma, starform->fgas, starform->den_crit,
+  starform->KS_power_law, starform->fgas, starform->den_crit,
   starform->T_crit);
   if (!starform->schaye04) {
     message("Density threshold to form stars is constant and given"
