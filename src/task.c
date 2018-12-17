@@ -619,8 +619,7 @@ void task_get_full_name(enum task_types type, enum task_subtypes subtype,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check input */
-  if (type >= task_type_count)
-    error("Unknown task type %i", type);
+  if (type >= task_type_count) error("Unknown task type %i", type);
 
   if (subtype >= task_subtype_count)
     error("Unknown task subtype %i with type %s", subtype, taskID_names[type]);
