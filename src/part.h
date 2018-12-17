@@ -89,7 +89,15 @@
 #endif
 
 /* Import the right star particle definition */
+#if defined(STARS_NONE)
 #include "./stars/Default/stars_part.h"
+#elif defined(STARS_EAGLE)
+#include "./stars/EAGLE/stars_part.h"
+#elif defined(STARS_GEAR)
+#include "./stars/GEAR/stars_part.h"
+#else 
+#error "Invalid choice of star particle"
+#endif
 
 void part_relink_gparts_to_parts(struct part *parts, size_t N,
                                  ptrdiff_t offset);
