@@ -31,6 +31,7 @@
 #include "parser.h"
 #include "equation_of_state.h"
 #include "error.h" 
+#include "cell.h" 
 
 /* Starformation struct */
 struct star_formation {};
@@ -46,7 +47,7 @@ struct star_formation {};
  * @param cosmo the cosmological parameters and properties
  *
  * */
-INLINE static int starformation_potential_to_become_star(
+INLINE static int star_formation_convert_to_star(
     const struct star_formation* starform, struct part* restrict p,
     const struct xpart* restrict xp, const struct phys_const* const phys_const,
     const struct cosmology* cosmo){
@@ -63,9 +64,10 @@ INLINE static int starformation_potential_to_become_star(
  * @param cosmo the cosmological properties
  *
  * */
-INLINE static void starformation_convert_to_gas( 
-    const struct star_formation* starform, const struct part* restrict p,
-    const struct xpart* restrict xp, const struct cosmology* cosmo) {}
+INLINE static void star_formation_copy_properties(
+     struct engine *e, struct cell *c, struct part* p,
+     struct xpart* xp, const struct star_formation* starform,
+     const struct phys_const* const phys_const, const struct cosmology* cosmo) {}
 
 /* 
  * @brief initialization of the star formation law 

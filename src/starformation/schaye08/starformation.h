@@ -33,6 +33,7 @@
 #include "hydro.h"
 #include "cooling.h"
 #include "adiabatic_index.h"
+#include "cell.h" 
 
 /* Starformation struct */
 struct star_formation {
