@@ -34,6 +34,7 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     struct part *restrict p, struct xpart *restrict xp,
     const struct engine *e) {
 
+  const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const double time_base = e->time_base;
 
@@ -92,7 +93,14 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
 
   /* Now we need to reverse the kick1... (the dt are negative here) */
   if (with_cosmology) {
-    error("aa");
+    dt_kick_hydro = -cosmology_get_hydro_kick_factor(cosmo, old_ti_beg,
+                                                     old_ti_beg + old_dti / 2);
+    dt_kick_grav = -cosmology_get_grav_kick_factor(cosmo, old_ti_beg,
+                                                   old_ti_beg + old_dti / 2);
+    dt_kick_therm = -cosmology_get_therm_kick_factor(cosmo, old_ti_beg,
+                                                     old_ti_beg + old_dti / 2);
+    dt_kick_corr = -cosmology_get_corr_kick_factor(cosmo, old_ti_beg,
+                                                   old_ti_beg + old_dti / 2);
   } else {
     dt_kick_hydro = -(old_dti / 2) * time_base;
     dt_kick_grav = -(old_dti / 2) * time_base;
@@ -105,7 +113,14 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
 
   /* ...and apply the new one (dt is positiive) */
   if (with_cosmology) {
-    error("aa");
+    dt_kick_hydro = cosmology_get_hydro_kick_factor(cosmo, new_ti_beg,
+                                                    new_ti_beg + new_dti / 2);
+    dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, new_ti_beg,
+                                                  new_ti_beg + new_dti / 2);
+    dt_kick_therm = cosmology_get_therm_kick_factor(cosmo, new_ti_beg,
+                                                    new_ti_beg + new_dti / 2);
+    dt_kick_corr = cosmology_get_corr_kick_factor(cosmo, new_ti_beg,
+                                                  new_ti_beg + new_dti / 2);
   } else {
     dt_kick_hydro = (new_dti / 2) * time_base;
     dt_kick_grav = (new_dti / 2) * time_base;
