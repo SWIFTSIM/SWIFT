@@ -1232,8 +1232,11 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.density = NULL;
   c->hydro.gradient = NULL;
   c->hydro.force = NULL;
+  c->hydro.limiter = NULL;
   c->grav.grav = NULL;
   c->grav.mm = NULL;
+  c->stars.density = NULL;
+  c->stars.feedback = NULL;
 }
 
 /**
@@ -1600,6 +1603,14 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Clear the limiter flags on the given cell.
+ */
+void cell_clear_limiter_flags(struct cell *c, void *data) {
+  c->hydro.do_limiter = 0;
+  c->hydro.do_sub_limiter = 0;
+}
+
+/**
  * @brief Activate the #part drifts on the given cell.
  */
 void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
@@ -1684,6 +1695,34 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
   // MATTHIEU: This will need changing
   cell_activate_drift_gpart(c, s);
+}
+
+/**
+ * @brief Activate the drifts on the given cell.
+ */
+void cell_activate_limiter(struct cell *c, struct scheduler *s) {
+
+  /* If this cell is already marked for drift, quit early. */
+  if (c->hydro.do_limiter) return;
+
+  /* Mark this cell for drifting. */
+  c->hydro.do_limiter = 1;
+
+  /* Set the do_sub_limiter all the way up and activate the super limiter
+     if this has not yet been done. */
+  if (c == c->super) {
+    scheduler_activate(s, c->timestep_limiter);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !parent->hydro.do_sub_limiter;
+         parent = parent->parent) {
+      parent->hydro.do_sub_limiter = 1;
+      if (parent == c->super) {
+        scheduler_activate(s, parent->timestep_limiter);
+        break;
+      }
+    }
+  }
 }
 
 /**
@@ -1816,6 +1855,7 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s) {
   const struct engine *e = s->space->e;
+  const int with_limiter = (e->policy & engine_policy_limiter);
 
   /* Store the current dx_max and h_max values. */
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
@@ -1849,6 +1889,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 
       /* We have reached the bottom of the tree: activate drift */
       cell_activate_drift_part(ci, s);
+      if (with_limiter) cell_activate_limiter(ci, s);
     }
   }
 
@@ -2153,6 +2194,12 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
       /* Activate the drifts if the cells are local. */
       if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
       if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+
+      /* Also activate the time-step limiter */
+      if (ci->nodeID == engine_rank && with_limiter)
+        cell_activate_limiter(ci, s);
+      if (cj->nodeID == engine_rank && with_limiter)
+        cell_activate_limiter(cj, s);
 
       /* Do we need to sort the cells? */
       cell_activate_hydro_sorts(ci, sid, s);
@@ -2718,6 +2765,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
+  const int with_limiter = (e->policy & engine_policy_limiter);
   int rebuild = 0;
 
   /* Un-skip the density tasks involved with this cell. */
@@ -2743,6 +2791,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       /* Activate hydro drift */
       if (t->type == task_type_self) {
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (ci->nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
       }
 
       /* Set the correct sorting flags and activate hydro drifts */
@@ -2756,6 +2805,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Activate the drift tasks. */
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
         if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+        /* Activate the limiter tasks. */
+        if (ci->nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
+        if (cj->nodeID == nodeID && with_limiter) cell_activate_limiter(cj, s);
 
         /* Check the sorts and activate them if needed. */
         cell_activate_hydro_sorts(ci, t->flags, s);
@@ -2791,7 +2844,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active) scheduler_activate(s, ci->mpi.recv_ti);
+        if (ci_active || with_limiter) scheduler_activate(s, ci->mpi.recv_ti);
+
+        if (with_limiter) scheduler_activate(s, ci->mpi.limiter.recv);
+        if (with_limiter)
+          scheduler_activate_send(s, cj->mpi.limiter.send, ci->nodeID);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
@@ -2801,6 +2858,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(cj, s);
+          if (with_limiter) cell_activate_limiter(cj, s);
 
           /* If the local cell is also active, more stuff will be needed. */
           if (cj_active) {
@@ -2813,7 +2871,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (cj_active) scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+        if (cj_active || with_limiter)
+          scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
 
       } else if (cj_nodeID != nodeID) {
 
@@ -2830,7 +2889,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active) scheduler_activate(s, cj->mpi.recv_ti);
+        if (cj_active || with_limiter) scheduler_activate(s, cj->mpi.recv_ti);
+
+        if (with_limiter) scheduler_activate(s, cj->mpi.limiter.recv);
+        if (with_limiter)
+          scheduler_activate_send(s, ci->mpi.limiter.send, cj->nodeID);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -2840,6 +2903,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(ci, s);
+          if (with_limiter) cell_activate_limiter(ci, s);
 
           /* If the local cell is also active, more stuff will be needed. */
           if (ci_active) {
@@ -2853,7 +2917,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (ci_active) scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+        if (ci_active || with_limiter)
+          scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
       }
 #endif
     }
@@ -2865,6 +2930,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     for (struct link *l = c->hydro.gradient; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
     for (struct link *l = c->hydro.force; l != NULL; l = l->next)
+      scheduler_activate(s, l->t);
+    for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
 
     if (c->hydro.extra_ghost != NULL)
@@ -2879,7 +2946,6 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->hydro.cooling != NULL) scheduler_activate(s, c->hydro.cooling);
     if (c->hydro.star_formation != NULL)
       scheduler_activate(s, c->hydro.star_formation);
-    if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
     if (c->logger != NULL) scheduler_activate(s, c->logger);
   }
 

@@ -84,6 +84,7 @@ Parameters:
     -s, --hydro                       Run with hydrodynamics.
     -S, --stars                       Run with stars.
     -x, --velociraptor                Run with structure finding.
+    --limiter                         Run with time-step limiter.
 
   Control options:
   
