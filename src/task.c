@@ -671,8 +671,7 @@ void task_get_group_name(int type, int subtype, char *cluster) {
  * @param subtype The #task type.
  * @param name (return) The formatted string
  */
-void task_get_full_name(enum task_types type, enum task_subtypes subtype,
-                        char *name) {
+void task_get_full_name(int type, int subtype, char *name) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check input */

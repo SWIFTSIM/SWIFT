@@ -365,7 +365,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
     const struct task *ta = &s->tasks[i];
 
     /* Current index */
-    int ind = ta->type * task_subtype_count + ta->subtype;
+    const int ind = ta->type * task_subtype_count + ta->subtype;
 
     struct task_dependency *cur = &task_dep[ind];
 
@@ -389,7 +389,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
           cur->implicit_out[k] = tb->implicit;
 
           /* statistics */
-          int count = scheduler_get_number_relation(s, ta, tb);
+          const int count = scheduler_get_number_relation(s, ta, tb);
           cur->number_link[k] = count;
           cur->number_rank[k] = 1;
 
@@ -468,16 +468,16 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
         }
 
         /* Define a few variables */
-        int ta_type = task_dep[i].type_in;
-        int ta_subtype = task_dep[i].subtype_in;
-        int ta_implicit = task_dep[i].implicit_in;
+        const int ta_type = task_dep[i].type_in;
+        const int ta_subtype = task_dep[i].subtype_in;
+        const int ta_implicit = task_dep[i].implicit_in;
 
-        int tb_type = task_dep[i].type_out[j];
-        int tb_subtype = task_dep[i].subtype_out[j];
-        int tb_implicit = task_dep[i].implicit_out[j];
+        const int tb_type = task_dep[i].type_out[j];
+        const int tb_subtype = task_dep[i].subtype_out[j];
+        const int tb_implicit = task_dep[i].implicit_out[j];
 
-        int count = task_dep[i].number_link[j];
-        int number_rank = task_dep[i].number_rank[j];
+        const int count = task_dep[i].number_link[j];
+        const int number_rank = task_dep[i].number_rank[j];
 
         /* text to write */
         char ta_name[200];
