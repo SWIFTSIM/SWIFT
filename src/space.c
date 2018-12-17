@@ -1757,6 +1757,17 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     const double old_pos_y = p->x[1];
     const double old_pos_z = p->x[2];
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!s->periodic) {
+      if (old_pos_x < 0. || old_pos_x > dim_x)
+        error("Particle outside of volume along X.");
+      if (old_pos_y < 0. || old_pos_y > dim_y)
+        error("Particle outside of volume along Y.");
+      if (old_pos_z < 0. || old_pos_z > dim_z)
+        error("Particle outside of volume along Z.");
+    }
+#endif
+
     /* Put it back into the simulation volume */
     const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
     const double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
@@ -1863,6 +1874,17 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     const double old_pos_x = gp->x[0];
     const double old_pos_y = gp->x[1];
     const double old_pos_z = gp->x[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!s->periodic) {
+      if (old_pos_x < 0. || old_pos_x > dim_x)
+        error("Particle outside of volume along X.");
+      if (old_pos_y < 0. || old_pos_y > dim_y)
+        error("Particle outside of volume along Y.");
+      if (old_pos_z < 0. || old_pos_z > dim_z)
+        error("Particle outside of volume along Z.");
+    }
+#endif
 
     /* Put it back into the simulation volume */
     const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
@@ -1976,6 +1998,17 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     const double old_pos_x = sp->x[0];
     const double old_pos_y = sp->x[1];
     const double old_pos_z = sp->x[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!s->periodic) {
+      if (old_pos_x < 0. || old_pos_x > dim_x)
+        error("Particle outside of volume along X.");
+      if (old_pos_y < 0. || old_pos_y > dim_y)
+        error("Particle outside of volume along Y.");
+      if (old_pos_z < 0. || old_pos_z > dim_z)
+        error("Particle outside of volume along Z.");
+    }
+#endif
 
     /* Put it back into the simulation volume */
     const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
