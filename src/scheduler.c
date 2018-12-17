@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -114,30 +115,216 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 }
 
 /**
- * @brief generate the dependency name for the tasks
+ * @brief compute the number of same dependencies
  *
- * @param ta_type The #task type.
- * @param ta_subtype The #task type.
- * @param ta_name (return) The formatted string
+ * @param s The #scheduler
+ * @param ta The #task
+ * @param tb The dependent #task
+ *
+ * @return Number of dependencies
  */
-void scheduler_task_dependency_name(int ta_type, int ta_subtype,
-                                    char *ta_name) {
+int scheduler_get_number_relation(const struct scheduler *s,
+                                  const struct task *ta,
+                                  const struct task *tb) {
 
-  /* Check input */
-  if ((ta_type < 0) || (ta_type >= task_type_count))
-    error("Unknown task type %i", ta_type);
+  int count = 0;
 
-  if ((ta_subtype < 0) || (ta_subtype >= task_subtype_count))
-    error("Unknown task subtype %i with type %s", ta_subtype,
-          taskID_names[ta_type]);
+  /* loop over all tasks */
+  for (int i = 0; i < s->nr_tasks; i++) {
+    const struct task *ta_tmp = &s->tasks[i];
 
-  /* construct line */
-  if (ta_subtype == task_subtype_none)
-    sprintf(ta_name, "%s", taskID_names[ta_type]);
-  else
-    sprintf(ta_name, "\"%s %s\"", taskID_names[ta_type],
-            subtaskID_names[ta_subtype]);
+    /* and their dependencies */
+    for (int j = 0; j < ta->nr_unlock_tasks; j++) {
+      const struct task *tb_tmp = ta->unlock_tasks[j];
+
+      if (ta->type == ta_tmp->type && ta->subtype == ta_tmp->subtype &&
+          tb->type == tb_tmp->type && tb->subtype == tb_tmp->subtype) {
+        count += 1;
+      }
+    }
+  }
+  return count;
 }
+
+/* Conservative number of dependencies per task type */
+#define MAX_NUMBER_DEP 128
+
+/**
+ * @brief Informations about all the task dependencies of
+ *   a single task.
+ */
+struct task_dependency {
+  /* Main task */
+  /* ID of the task */
+  int type_in;
+
+  /* ID of the subtask */
+  int subtype_in;
+
+  /* Is the task implicit */
+  int implicit_in;
+
+  /* Dependent task */
+  /* ID of the dependent task */
+  int type_out[MAX_NUMBER_DEP];
+
+  /* ID of the dependent subtask */
+  int subtype_out[MAX_NUMBER_DEP];
+
+  /* Is the dependent task implicit */
+  int implicit_out[MAX_NUMBER_DEP];
+
+  /* Statistics */
+  /* number of link between the two task type */
+  int number_link[MAX_NUMBER_DEP];
+
+  /* number of ranks having this relation */
+  int number_rank[MAX_NUMBER_DEP];
+};
+
+#ifdef WITH_MPI
+/**
+ * @brief Define the #task_dependency for MPI
+ *
+ * @param tstype The #MPI_Datatype to initialize
+ */
+void task_dependency_define(MPI_Datatype *tstype) {
+
+  /* Define the variables */
+  const int count = 8;
+  int blocklens[count];
+  MPI_Datatype types[count];
+  MPI_Aint disps[count];
+
+  /* all the type are int */
+  for (int i = 0; i < count; i++) {
+    types[i] = MPI_INT;
+  }
+
+  /* Task in */
+  disps[0] = offsetof(struct task_dependency, type_in);
+  blocklens[0] = 1;
+  disps[1] = offsetof(struct task_dependency, subtype_in);
+  blocklens[1] = 1;
+  disps[2] = offsetof(struct task_dependency, implicit_in);
+  blocklens[2] = 1;
+
+  /* Task out */
+  disps[3] = offsetof(struct task_dependency, type_out);
+  blocklens[3] = MAX_NUMBER_DEP;
+  disps[4] = offsetof(struct task_dependency, subtype_out);
+  blocklens[4] = MAX_NUMBER_DEP;
+  disps[5] = offsetof(struct task_dependency, implicit_out);
+  blocklens[5] = MAX_NUMBER_DEP;
+
+  /* statistics */
+  disps[6] = offsetof(struct task_dependency, number_link);
+  blocklens[6] = MAX_NUMBER_DEP;
+  disps[7] = offsetof(struct task_dependency, number_rank);
+  blocklens[7] = MAX_NUMBER_DEP;
+
+  /* define it for MPI */
+  MPI_Type_create_struct(count, blocklens, disps, types, tstype);
+  MPI_Type_commit(tstype);
+}
+
+/**
+ * @brief Sum operator of #task_dependency for MPI
+ *
+ * @param in_p The #task_dependency to add
+ * @param out_p The #task_dependency where in_p is added
+ * @param len The length of the arrays
+ * @param type The MPI datatype
+ */
+void task_dependency_sum(void *in_p, void *out_p, int *len,
+                         MPI_Datatype *type) {
+
+  /* change pointer type */
+  struct task_dependency *in = in_p;
+  struct task_dependency *out = out_p;
+
+  /* Loop over all the current objects */
+  for (int i = 0; i < *len; i++) {
+
+    /* loop over all the object set in invals */
+    for (int j = 0; j < MAX_NUMBER_DEP; j++) {
+
+      /* Have we reached the end of the links? */
+      if (in[i].number_link[j] == -1) {
+        break;
+      }
+
+      /* get a few variables */
+      int tb_type = in[i].type_out[j];
+      int tb_subtype = in[i].subtype_out[j];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check tasks */
+      if (tb_type >= task_type_count) {
+        error("Unknown task type %i", tb_type);
+      }
+
+      if (tb_subtype >= task_subtype_count) {
+        error("Unknown subtask type %i", tb_subtype);
+      }
+#endif
+
+      /* find the corresponding id */
+      int k = 0;
+      while (k < MAX_NUMBER_DEP) {
+        /* have we reached the end of the links? */
+        if (out[i].number_link[k] == -1) {
+          /* reset the counter in order to be safe */
+          out[i].number_link[k] = 0;
+          out[i].number_rank[k] = 0;
+
+          /* set the relation */
+          out[i].type_in = in[i].type_in;
+          out[i].subtype_in = in[i].subtype_in;
+          out[i].implicit_in = in[i].implicit_in;
+
+          out[i].type_out[k] = in[i].type_out[j];
+          out[i].subtype_out[k] = in[i].subtype_out[j];
+          out[i].implicit_out[k] = in[i].implicit_out[j];
+          break;
+        }
+
+        /* do we have the same relation? */
+        if (out[i].type_out[k] == tb_type &&
+            out[i].subtype_out[k] == tb_subtype) {
+          break;
+        }
+
+        k++;
+      }
+
+      /* Check if we are still in the memory */
+      if (k == MAX_NUMBER_DEP) {
+        error("Not enough memory, please increase MAX_NUMBER_DEP");
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check if correct relation */
+      if (out[i].type_in != in[i].type_in ||
+          out[i].subtype_in != in[i].subtype_in ||
+          out[i].implicit_in != in[i].implicit_in ||
+          out[i].type_out[k] != in[i].type_out[j] ||
+          out[i].subtype_out[k] != in[i].subtype_out[j] ||
+          out[i].implicit_out[k] != in[i].implicit_out[j]) {
+        error("Tasks do not correspond");
+      }
+#endif
+
+      /* sum the contributions */
+      out[i].number_link[k] += in[i].number_link[j];
+      out[i].number_rank[k] += in[i].number_rank[j];
+    }
+  }
+
+  return;
+}
+
+#endif  // WITH_MPI
 
 /**
  * @brief Write a dot file with the task dependencies.
@@ -152,243 +339,180 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
   const ticks tic = getticks();
 
-  /* Conservative number of dependencies per task type */
-  const int max_nber_dep = 128;
-
   /* Number of possible relations between tasks */
-  const int nber_relation =
-      2 * task_type_count * task_subtype_count * max_nber_dep;
+  const int nber_tasks = task_type_count * task_subtype_count;
 
-  /* To get the table of max_nber_dep for a task:
-   * ind = (ta * task_subtype_count + sa) * max_nber_dep * 2
+  /* To get the table for a task:
+   * ind = (ta * task_subtype_count + sa)
    * where ta is the value of task_type and sa is the value of
    * task_subtype  */
-  int *table = (int *)malloc(nber_relation * sizeof(int));
-  if (table == NULL)
+  struct task_dependency *task_dep = (struct task_dependency *)malloc(
+      nber_tasks * sizeof(struct task_dependency));
+
+  if (task_dep == NULL)
     error("Error allocating memory for task-dependency graph (table).");
 
-  int *count_rel = (int *)malloc(nber_relation * sizeof(int) / 2);
-  if (count_rel == NULL)
-    error("Error allocating memory for task-dependency graph (count_rel).");
-
-  /* Reset everything */
-  for (int i = 0; i < nber_relation; i++) table[i] = -1;
-  for (int i = 0; i < nber_relation / 2; i++) count_rel[i] = 0;
-
-  /* Create file */
-  char filename[200] = "dependency_graph.dot";
-  FILE *f = fopen(filename, "w");
-  if (f == NULL) error("Error opening dependency graph file.");
-
-  /* Write header */
-  fprintf(f, "digraph task_dep {\n");
-  fprintf(f, "label=\"Task dependencies for SWIFT %s\";\n", git_revision());
-  fprintf(f, "\t compound=true;\n");
-  fprintf(f, "\t ratio=0.66;\n");
-  fprintf(f, "\t node[nodesep=0.15];\n");
+  /* Reset counter */
+  for (int i = 0; i < nber_tasks; i++) {
+    for (int j = 0; j < MAX_NUMBER_DEP; j++) {
+      /* Use number_link as indicator of the existance of a relation */
+      task_dep[i].number_link[j] = -1;
+    }
+  }
 
   /* loop over all tasks */
   for (int i = 0; i < s->nr_tasks; i++) {
     const struct task *ta = &s->tasks[i];
 
+    /* Current index */
+    int ind = ta->type * task_subtype_count + ta->subtype;
+
+    struct task_dependency *cur = &task_dep[ind];
+
+    /* Set ta */
+    cur->type_in = ta->type;
+    cur->subtype_in = ta->subtype;
+    cur->implicit_in = ta->implicit;
+
     /* and their dependencies */
     for (int j = 0; j < ta->nr_unlock_tasks; j++) {
       const struct task *tb = ta->unlock_tasks[j];
 
-      /* check if dependency already written */
-      int written = 0;
-
-      /* Current index */
-      int ind = ta->type * task_subtype_count + ta->subtype;
-      ind *= 2 * max_nber_dep;
-
       int k = 0;
-      int *cur = &table[ind];
-      while (k < max_nber_dep) {
+      while (k < MAX_NUMBER_DEP) {
 
         /* not written yet */
-        if (cur[0] == -1) {
-          cur[0] = tb->type;
-          cur[1] = tb->subtype;
+        if (cur->number_link[k] == -1) {
+          /* set tb */
+          cur->type_out[k] = tb->type;
+          cur->subtype_out[k] = tb->subtype;
+          cur->implicit_out[k] = tb->implicit;
+
+          /* statistics */
+          int count = scheduler_get_number_relation(s, ta, tb);
+          cur->number_link[k] = count;
+          cur->number_rank[k] = 1;
+
           break;
         }
 
         /* already written */
-        if (cur[0] == tb->type && cur[1] == tb->subtype) {
-          written = 1;
+        if (cur->type_out[k] == tb->type &&
+            cur->subtype_out[k] == tb->subtype) {
           break;
         }
 
         k += 1;
-        cur = &cur[2];
       }
 
-      /* max_nber_dep is too small */
-      if (k == max_nber_dep)
-        error("Not enough memory, please increase max_nber_dep");
+      /* MAX_NUMBER_DEP is too small */
+      if (k == MAX_NUMBER_DEP)
+        error("Not enough memory, please increase MAX_NUMBER_DEP");
+    }
+  }
 
-      /* Increase counter of relation */
-      count_rel[ind / 2 + k] += 1;
+#ifdef WITH_MPI
+  /* create MPI operator */
+  MPI_Datatype data_type;
+  task_dependency_define(&data_type);
 
-      /* Not written yet => write it */
-      if (!written) {
+  MPI_Op sum;
+  MPI_Op_create(task_dependency_sum, /* commute */ 1, &sum);
+
+  /* create recv buffer */
+  struct task_dependency *recv = NULL;
+
+  if (s->nodeID == 0) {
+    recv = (struct task_dependency *)malloc(nber_tasks *
+                                            sizeof(struct task_dependency));
+
+    /* reset counter */
+    for (int i = 0; i < nber_tasks; i++) {
+      for (int j = 0; j < MAX_NUMBER_DEP; j++) {
+        /* Use number_link as indicator of the existance of a relation */
+        recv[i].number_link[j] = -1;
+      }
+    }
+  }
+
+  /* Do the reduction */
+  int test =
+      MPI_Reduce(task_dep, recv, nber_tasks, data_type, sum, 0, MPI_COMM_WORLD);
+  if (test != MPI_SUCCESS) error("MPI reduce failed");
+
+  /* free some memory */
+  if (s->nodeID == 0) {
+    free(task_dep);
+    task_dep = recv;
+  }
+#endif
+
+  if (s->nodeID == 0) {
+    /* Create file */
+    char *filename = "dependency_graph.csv";
+    FILE *f = fopen(filename, "w");
+    if (f == NULL) error("Error opening dependency graph file.");
+
+    /* Write header */
+    fprintf(f, "# %s\n", git_revision());
+    fprintf(
+        f,
+        "task_in,task_out,implicit_in,implicit_out,mpi_in,mpi_out,cluster_in,"
+        "cluster_out,number_link,number_rank\n");
+
+    for (int i = 0; i < nber_tasks; i++) {
+      for (int j = 0; j < MAX_NUMBER_DEP; j++) {
+        /* Does this link exists */
+        if (task_dep[i].number_link[j] == -1) {
+          continue;
+        }
+
+        /* Define a few variables */
+        int ta_type = task_dep[i].type_in;
+        int ta_subtype = task_dep[i].subtype_in;
+        int ta_implicit = task_dep[i].implicit_in;
+
+        int tb_type = task_dep[i].type_out[j];
+        int tb_subtype = task_dep[i].subtype_out[j];
+        int tb_implicit = task_dep[i].implicit_out[j];
+
+        int count = task_dep[i].number_link[j];
+        int number_rank = task_dep[i].number_rank[j];
 
         /* text to write */
         char ta_name[200];
         char tb_name[200];
 
         /* construct line */
-        scheduler_task_dependency_name(ta->type, ta->subtype, ta_name);
-        scheduler_task_dependency_name(tb->type, tb->subtype, tb_name);
+        task_get_full_name(ta_type, ta_subtype, ta_name);
+        task_get_full_name(tb_type, tb_subtype, tb_name);
 
-        /* Change colour of implicit tasks */
-        if (ta->implicit)
-          fprintf(f, "\t %s [style = filled];\n\t %s [color = lightgrey];\n",
-                  ta_name, ta_name);
-        if (tb->implicit)
-          fprintf(f, "\t %s [style = filled];\n\t %s [color = lightgrey];\n",
-                  tb_name, tb_name);
+        /* Check if MPI */
+        int ta_mpi = 0;
+        if (ta_type == task_type_send || ta_type == task_type_recv) ta_mpi = 1;
 
-        /* Change shape of MPI communications */
-        if (ta->type == task_type_send || ta->type == task_type_recv)
-          fprintf(f, "\t \"%s %s\" [shape = diamond];\n",
-                  taskID_names[ta->type], subtaskID_names[ta->subtype]);
-        if (tb->type == task_type_send || tb->type == task_type_recv)
-          fprintf(f, "\t \"%s %s\" [shape = diamond];\n",
-                  taskID_names[tb->type], subtaskID_names[tb->subtype]);
+        int tb_mpi = 0;
+        if (tb_type == task_type_send || tb_type == task_type_recv) tb_mpi = 1;
+
+        /* Get group name */
+        char ta_cluster[20];
+        char tb_cluster[20];
+        task_get_group_name(ta_type, ta_subtype, ta_cluster);
+        task_get_group_name(tb_type, tb_subtype, tb_cluster);
+
+        fprintf(f, "%s,%s,%d,%d,%d,%d,%s,%s,%d,%d\n", ta_name, tb_name,
+                ta_implicit, tb_implicit, ta_mpi, tb_mpi, ta_cluster,
+                tb_cluster, count, number_rank);
       }
     }
+    /* Close the file */
+    fclose(f);
   }
-
-  int density_cluster[4] = {0};
-  int gradient_cluster[4] = {0};
-  int force_cluster[4] = {0};
-  int gravity_cluster[5] = {0};
-  int stars_density_cluster[4] = {0};
-
-  /* Check whether we need to construct a group of tasks */
-  for (int type = 0; type < task_type_count; ++type) {
-
-    for (int subtype = 0; subtype < task_subtype_count; ++subtype) {
-
-      const int ind = 2 * (type * task_subtype_count + subtype) * max_nber_dep;
-
-      /* Does this task/sub-task exist? */
-      if (table[ind] != -1) {
-
-        for (int k = 0; k < 4; ++k) {
-          if (type == task_type_self + k && subtype == task_subtype_density)
-            density_cluster[k] = 1;
-          if (type == task_type_self + k && subtype == task_subtype_gradient)
-            gradient_cluster[k] = 1;
-          if (type == task_type_self + k && subtype == task_subtype_force)
-            force_cluster[k] = 1;
-          if (type == task_type_self + k && subtype == task_subtype_grav)
-            gravity_cluster[k] = 1;
-          if (type == task_type_self + k &&
-              subtype == task_subtype_stars_density)
-            stars_density_cluster[k] = 1;
-        }
-        if (type == task_type_grav_mesh) gravity_cluster[2] = 1;
-        if (type == task_type_grav_long_range) gravity_cluster[3] = 1;
-        if (type == task_type_grav_mm) gravity_cluster[4] = 1;
-      }
-    }
-  }
-
-  /* Make a cluster for the density tasks */
-  fprintf(f, "\t subgraph cluster0{\n");
-  fprintf(f, "\t\t label=\"\";\n");
-  for (int k = 0; k < 4; ++k)
-    if (density_cluster[k])
-      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
-              subtaskID_names[task_subtype_density]);
-  fprintf(f, "\t};\n");
-
-  /* Make a cluster for the force tasks */
-  fprintf(f, "\t subgraph cluster1{\n");
-  fprintf(f, "\t\t label=\"\";\n");
-  for (int k = 0; k < 4; ++k)
-    if (force_cluster[k])
-      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
-              subtaskID_names[task_subtype_force]);
-  fprintf(f, "\t};\n");
-
-  /* Make a cluster for the gradient tasks */
-  fprintf(f, "\t subgraph cluster2{\n");
-  fprintf(f, "\t\t label=\"\";\n");
-  for (int k = 0; k < 4; ++k)
-    if (gradient_cluster[k])
-      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
-              subtaskID_names[task_subtype_gradient]);
-  fprintf(f, "\t};\n");
-
-  /* Make a cluster for the gravity tasks */
-  fprintf(f, "\t subgraph cluster3{\n");
-  fprintf(f, "\t\t label=\"\";\n");
-  for (int k = 0; k < 2; ++k)
-    if (gravity_cluster[k])
-      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
-              subtaskID_names[task_subtype_grav]);
-  if (gravity_cluster[2])
-    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_mesh]);
-  if (gravity_cluster[3])
-    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_long_range]);
-  if (gravity_cluster[4])
-    fprintf(f, "\t\t %s;\n", taskID_names[task_type_grav_mm]);
-  fprintf(f, "\t};\n");
-
-  /* Make a cluster for the density tasks */
-  fprintf(f, "\t subgraph cluster4{\n");
-  fprintf(f, "\t\t label=\"\";\n");
-  for (int k = 0; k < 4; ++k)
-    if (stars_density_cluster[k])
-      fprintf(f, "\t\t \"%s %s\";\n", taskID_names[task_type_self + k],
-              subtaskID_names[task_subtype_stars_density]);
-  fprintf(f, "\t};\n");
-
-  /* Write down the number of relation */
-  for (int ta_type = 0; ta_type < task_type_count; ta_type++) {
-
-    for (int ta_subtype = 0; ta_subtype < task_subtype_count; ta_subtype++) {
-
-      /* Get task indice */
-      const int ind =
-          (ta_type * task_subtype_count + ta_subtype) * max_nber_dep;
-
-      /* Loop over dependencies */
-      for (int k = 0; k < max_nber_dep; k++) {
-
-        if (count_rel[ind + k] == 0) continue;
-
-        /* Get task type */
-        const int i = 2 * (ind + k);
-        int tb_type = table[i];
-        int tb_subtype = table[i + 1];
-
-        /* Get names */
-        char ta_name[200];
-        char tb_name[200];
-
-        scheduler_task_dependency_name(ta_type, ta_subtype, ta_name);
-        scheduler_task_dependency_name(tb_type, tb_subtype, tb_name);
-
-        /* Write to the fle */
-        fprintf(f, "\t %s->%s[label=%i];\n", ta_name, tb_name,
-                count_rel[ind + k]);
-      }
-    }
-  }
-
-  /* Close the file */
-  fprintf(f, "}");
-  fclose(f);
 
   /* Be clean */
-  free(table);
-  free(count_rel);
+  free(task_dep);
 
-  if (verbose)
+  if (verbose && s->nodeID == 0)
     message("Printing task graph took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
@@ -2003,7 +2127,7 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &s->tasks[tid[ind]];
 
-    /* Ignore skipped tasks. */
+        /* Ignore skipped tasks. */
     if (t->skip) continue;
 
     /* Increment the task's own wait counter for the enqueueing. */
