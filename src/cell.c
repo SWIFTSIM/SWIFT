@@ -3619,7 +3619,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
     } else {
       dt_drift = (ti_current - ti_old_gpart) * e->time_base;
     }
-      
+
     /* Loop over all the g-particles in the cell */
     const size_t nr_gparts = c->grav.count;
     for (size_t k = 0; k < nr_gparts; k++) {
