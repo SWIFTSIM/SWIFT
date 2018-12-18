@@ -150,7 +150,7 @@ INLINE static int star_formation_potential_to_become_star(
     /* Check if it exceeded the maximum density */
     if (p->rho > starform->den_crit_max) {
       /* double tempp = cooling_get_temperature() */
-      tempp = 5e3;
+      tempp = cooling_get_temperature(phys_const, hydro_props, us, cosmo, cooling, p, xp);
       /* Check the last criteria, if the temperature is satisfied */
       if (tempp < starform->T_crit) {
         return 1;
@@ -165,7 +165,7 @@ INLINE static int star_formation_potential_to_become_star(
       double den_crit_current = starform->den_crit * pow(Z*starform->Z0_inv, starform->n_Z0);
       if (p->rho > den_crit_current) {
         /* double tempp = cooling_get_temperature() */
-        tempp = 5e3;
+        tempp = cooling_get_temperature(phys_const, hydro_props, us, cosmo, cooling, p, xp);
         /* Check the last criteria, if the temperature is satisfied */
         if (tempp < starform->T_crit) {
           return 1;
