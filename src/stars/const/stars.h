@@ -142,9 +142,24 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
  * @param sp The particle to act upon
  * @param cosmo The current cosmological model.
  * @param stars_properties The #stars_props
+ * @param dt Timestep over which the particle evolves.
  */
 __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
-    const struct cosmology* cosmo) {}
+    const struct cosmology* cosmo, double dt) {
+  
+  /* Set all enrichment and feedback quantities to constant values */
+  sp->to_distribute.mass = 1.0e-9;
+  for(int i = 0; i < chemistry_element_count; i++) sp->to_distribute.chemistry_data.metal_mass_fraction[i] = 1.f/chemistry_element_count;
+  sp->to_distribute.chemistry_data.metal_mass_fraction_total = 1.f - 2.f/chemistry_element_count;
+  sp->to_distribute.chemistry_data.mass_from_AGB = 1.0e-2;
+  sp->to_distribute.chemistry_data.metal_mass_fraction_from_AGB = 1.0e-2;
+  sp->to_distribute.chemistry_data.mass_from_SNII = 1.0e-2;
+  sp->to_distribute.chemistry_data.metal_mass_fraction_from_SNII = 1.0e-2;
+  sp->to_distribute.chemistry_data.mass_from_SNIa = 1.0e-2;
+  sp->to_distribute.chemistry_data.metal_mass_fraction_from_SNIa = 1.0e-2;
+  sp->to_distribute.chemistry_data.iron_mass_fraction_from_SNIa = 1.0e-2;
+
+}
 
 #endif /* SWIFT_CONST_STARS_H */
