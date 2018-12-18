@@ -83,7 +83,11 @@ struct spart {
 
   } to_distribute;
 
-  float omega_normalisation;
+  /* kernel normalisation factor (equivalent to metalweight_norm in eagle_enrich.c:811, IMPROVE COMMENT) */
+  float omega_normalisation_inv;
+
+  /* total mass of neighbouring gas particles */
+  float ngb_mass;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

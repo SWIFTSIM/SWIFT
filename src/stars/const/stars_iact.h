@@ -33,6 +33,13 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
   si->density.wcount += wi;
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
+  /* Add mass of pj to neighbour mass of si  */
+  si->ngb_mass += hydro_get_mass(pj);
+
+  /* Add contribution of pj to normalisation of kernel (IMPROVE COMMENT?) */
+  // ALEXEI: ARE WE USING THE CORRECT DENSITY?
+  si->omega_normalisation_inv += wi / hydro_get_physical_density(pj,cosmo);
+
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
   if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS_STARS)
@@ -98,7 +105,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
 
   /* Compute weighting for distributing various properties (TODO: better comment?) */
   // ALEXEI: come up with better name for omega_frac?
-  float omega_frac = wi/hydro_get_physical_density(pj,cosmo)*si->omega_normalisation;
+  float omega_frac = wi/hydro_get_physical_density(pj,cosmo)/si->omega_normalisation_inv;
 
   /* Update particle mass */
   float current_mass = hydro_get_mass(pj);
