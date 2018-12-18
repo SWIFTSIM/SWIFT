@@ -234,6 +234,7 @@ INLINE static void star_formation_copy_properties(
   //sp->birth_density = p->density;
   
 
+  message("Copy Properties");
 
 }
 
@@ -328,17 +329,6 @@ INLINE static void starformation_init_backend(
   starform->KS_high_den_power_law - starform->KS_power_law) * pow( hydro_gamma * 
   starform->fgas / G_newton * 1337.f, (starform->KS_power_law 
   - starform->KS_high_den_power_law)/2.f);
-
-  /* Read the critical temperature from the parameter file */
-  starform->T_crit = parser_get_param_double(parameter_file,
-  "SchayeSF:T_crit");
-
-  /* Read the gas fraction from the file */
-  starform->fgas = parser_get_param_double(parameter_file,
-  "SchayeSF:fg");
-
-  /* Calculate inverse of RAND_MAX */
-  starform->inv_RAND_MAX = 1.f / RAND_MAX;
 
   /* Calculate the SF high density normalization */
   starform->SF_high_den_normalization = starform->KS_high_den_normalization 
