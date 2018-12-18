@@ -25,7 +25,7 @@
 
 /* Read chemistry */
 #include "chemistry_struct.h" 
-//#include "tracers.h"
+#include "tracers_struct.h"
 
 /**
  * @brief Particle fields for the star particles.
@@ -57,15 +57,21 @@ struct spart {
 
   /*! Initial star mass */
   float mass_init;
+  
+  /*! Union for the birth time and birht scale factor */
+  union {
+    /*! Birth time */
+    float birth_time;
 
-  /*! Birth time */
-  float birth_time;
+    /*! Birth scale factor */
+    float birth_scale_factor;
+  };
 
   /*! Birth density */
   float birth_density;
 
   /*! Tracer structure */
-  //struct tracers_xpart_data  tracers_data;
+  struct tracers_xpart_data  tracers_data;
 
   /* Particle cutoff radius. */
   float h;

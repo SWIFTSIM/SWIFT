@@ -181,6 +181,12 @@ INLINE static int star_formation_potential_to_become_star(
 
 /*
  * @brief Calculates if the gas particle gets converted
+ * 
+ * @param starform the star formation law properties to use.
+ * @param p the gas particles
+ * @param xp the additional properties of the gas particles
+ * @param phys_const the physical constants in internal units
+ * @param cosmo the cosmological parameters and properties
  *
  */
 INLINE static int star_formation_convert_to_star(
@@ -225,31 +231,15 @@ INLINE static void star_formation_copy_properties(
   sp->mass = p->mass;
   sp->mass_init = p->mass;
   if (with_cosmology) {
-    sp->birth_time = cosmo->a;
+    sp->birth_scale_factor = cosmo->a;
   } else {
     sp->birth_time = e->time;
   }
   sp->chemistry_data = p->chemistry_data;
-  //sp->tracers_data = p->tracers_data;
-  //sp->birth_density = p->density;
-  
-
-  message("Copy Properties");
+  sp->tracers_data = xp->tracers_data;
+  sp->birth_density = p->rho;
 
 }
-
-/*
-int banana(...) {
-
-  if(star_formation_potential_to_become_ater(....) {
-
-  //draw ranfom number
-  //  return 1 or 0
-
-  }else
-  return 0;
-  }
- */
 
 /* 
  * @brief initialization of the star formation law 
