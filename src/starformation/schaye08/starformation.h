@@ -259,6 +259,8 @@ INLINE static void star_formation_copy_properties(
   /* Store the birth density in the star particle */
   sp->birth_density = p->rho;
 
+  message("A star has been formed!");
+
 }
 
 /* 
@@ -400,7 +402,7 @@ INLINE static void starformation_init_backend(
 
   }
 
-  /* Claculate 1 over the metallicity for speed up */
+  /* Claculate 1 over the metallicity */
   starform->Z0_inv = 1/starform->Z0;
 
   /* Calculate the prefactor that is always common */
