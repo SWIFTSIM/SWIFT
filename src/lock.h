@@ -48,10 +48,10 @@
 #define lock_static_initializer PTHREAD_MUTEX_INITIALIZER
 
 #else
-#define swift_lock_type volatile int
+#define swift_lock_type atomic_int
 #define lock_init(l) (*(l) = 0)
 #define lock_destroy(l) 0
-INLINE static int lock_lock(volatile int *l) {
+INLINE static int lock_lock(atomic_int *l) {
   while (atomic_cas(l, 0, 1) != 0)
     ;
   return 0;

@@ -256,6 +256,7 @@ __attribute__((always_inline)) INLINE static void atomic_add_d(
 
 #else
 //Old GNU99 implementation
+typedef volatile int atomic_int;
 #define atomic_add(v, i) __sync_fetch_and_add(v, i)
 #define atomic_sub(v, i) __sync_fetch_and_sub(v, i)
 #define atomic_or(v, i) __sync_fetch_and_or(v, i)
