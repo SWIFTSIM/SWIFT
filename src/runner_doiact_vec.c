@@ -788,6 +788,21 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
       const int doi_mask2 = vec_is_mask_true(v_doi_mask2) &
                             vec_is_mask_true(v_doi_mask2_self_check);
 
+#ifdef SWIFT_DEBUG_CHECKS
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	if (doi_mask & (1 << bit_index)) {
+	  if (parts[pjd + bit_index].time_bin >= time_bin_inhibited)
+	    error("Inhibited particle in mask");
+	}
+      }
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	if (doi_mask2 & (1 << bit_index)) {
+	  if (parts[pjd + VEC_SIZE + bit_index].time_bin >= time_bin_inhibited)
+	    error("Inhibited particle in mask2");
+	}
+      }
+#endif
+
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
         if (doi_mask & (1 << bit_index)) {
@@ -1241,6 +1256,15 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
 
       /* Combine both masks. */
       vec_combine_masks(v_doi_mask, v_doi_mask_self_check);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+	  if (parts[pjd + bit_index].time_bin >= time_bin_inhibited)
+	    error("Inhibited particle in mask");
+	}
+      }
+#endif
 
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
