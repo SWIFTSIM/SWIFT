@@ -125,7 +125,6 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 > 0.f && r2 < hig2) {
-	//if (pj->rho == 0) error("id %llu rho is zero mass %.5e", pj->id, hydro_get_mass(pj));
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H, cosmo, stars_properties, xpj);
       }
     } /* loop over the parts in ci. */
@@ -200,7 +199,6 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
         error("Particle pj not drifted to current time");
 #endif
 
-      //if (pj->rho == 0) error("id %llu rho is zero", pj->id);
       if (r2 < hig2) IACT_STARS(r2, dx, hi, hj, si, pj, a, H, cosmo, stars_properties, xpj);
 
     } /* loop over the parts in cj. */
@@ -284,7 +282,6 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #endif
       /* Hit or miss? */
       if (r2 < hig2) {
-        //if (pj->rho == 0) error("id %llu rho is zero", pj->id);
         IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H, cosmo, stars_properties, xpj);
       }
     } /* loop over the parts in cj. */
@@ -356,7 +353,6 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
       /* Hit or miss? */
       if (r2 > 0.f && r2 < hig2) {
-        //if (pj->rho == 0) error("id %llu rho is zero", pj->id);
         IACT_STARS(r2, dx, hi, hj, spi, pj, a, H, cosmo, stars_properties, xpj);
       }
     } /* loop over the parts in cj. */
