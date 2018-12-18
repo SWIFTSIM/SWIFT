@@ -755,20 +755,21 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
       vector v_dx_2, v_dy_2, v_dz_2, v_r2_2;
 
       v_dx.v = vec_sub(v_pix.v, v_pjx.v);
-      v_dx_2.v = vec_sub(v_pix.v, v_pjx2.v);
       v_dy.v = vec_sub(v_piy.v, v_pjy.v);
-      v_dy_2.v = vec_sub(v_piy.v, v_pjy2.v);
       v_dz.v = vec_sub(v_piz.v, v_pjz.v);
+      v_dx_2.v = vec_sub(v_pix.v, v_pjx2.v);
+      v_dy_2.v = vec_sub(v_piy.v, v_pjy2.v);
       v_dz_2.v = vec_sub(v_piz.v, v_pjz2.v);
 
       v_r2.v = vec_mul(v_dx.v, v_dx.v);
-      v_r2_2.v = vec_mul(v_dx_2.v, v_dx_2.v);
       v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
-      v_r2_2.v = vec_fma(v_dy_2.v, v_dy_2.v, v_r2_2.v);
       v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
+      v_r2_2.v = vec_mul(v_dx_2.v, v_dx_2.v);
+      v_r2_2.v = vec_fma(v_dy_2.v, v_dy_2.v, v_r2_2.v);
       v_r2_2.v = vec_fma(v_dz_2.v, v_dz_2.v, v_r2_2.v);
 
-      /* Form a mask from r2 < hig2 and r2 > 0.*/
+      /* Form a mask from r2 < hig2 and r2 > 0.
+       * That second one is used to avoid self-interactions */
       mask_t v_doi_mask, v_doi_mask2;
       mask_t v_doi_mask_self_check, v_doi_mask2_self_check;
 
