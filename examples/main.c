@@ -477,8 +477,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Check that we can write the structure finding catalogues by testing if the
-   * output
-   * directory exists and is searchable and writable. */
+   * output directory exists and is searchable and writable. */
   if (with_structure_finding) {
     char stfbasename[PARSER_MAX_LINE_SIZE];
     parser_get_param_string(params, "StructureFinding:basename", stfbasename);

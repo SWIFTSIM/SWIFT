@@ -628,6 +628,71 @@ void task_print(const struct task *t) {
           t->nr_unlock_tasks, t->skip);
 }
 
+/**
+ * @brief Get the group name of a task.
+ *
+ * This is used to group tasks with similar actions in the task dependency
+ * graph.
+ *
+ * @param type The #task type.
+ * @param subtype The #subtask type.
+ * @param cluster (return) The group name (should be allocated)
+ */
+void task_get_group_name(int type, int subtype, char *cluster) {
+
+  if (type == task_type_grav_long_range || type == task_type_grav_mm ||
+      type == task_type_grav_mesh) {
+
+    strcpy(cluster, "Gravity");
+    return;
+  }
+
+  switch (subtype) {
+    case task_subtype_density:
+      strcpy(cluster, "Density");
+      break;
+    case task_subtype_gradient:
+      strcpy(cluster, "Gradient");
+      break;
+    case task_subtype_force:
+      strcpy(cluster, "Force");
+      break;
+    case task_subtype_grav:
+      strcpy(cluster, "Gravity");
+      break;
+    case task_subtype_stars_density:
+      strcpy(cluster, "Stars");
+      break;
+    default:
+      strcpy(cluster, "None");
+      break;
+  }
+}
+
+/**
+ * @brief Generate the full name of a #task.
+ *
+ * @param type The #task type.
+ * @param subtype The #task type.
+ * @param name (return) The formatted string
+ */
+void task_get_full_name(int type, int subtype, char *name) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check input */
+  if (type >= task_type_count) error("Unknown task type %i", type);
+
+  if (subtype >= task_subtype_count)
+    error("Unknown task subtype %i with type %s", subtype, taskID_names[type]);
+#endif
+
+  /* Full task name */
+  if (subtype == task_subtype_none)
+    sprintf(name, "%s", taskID_names[type]);
+  else
+    sprintf(name, "%s_%s", taskID_names[type], subtaskID_names[subtype]);
+}
+
 #ifdef WITH_MPI
 /**
  * @brief Create global communicators for each of the subtasks.
