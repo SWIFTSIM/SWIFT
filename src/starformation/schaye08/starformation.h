@@ -124,7 +124,9 @@ struct star_formation {
 INLINE static int star_formation_potential_to_become_star(
     const struct star_formation* starform, const struct part* restrict p,
     const struct xpart* restrict xp, const struct phys_const* const phys_const,
-    const struct cosmology* cosmo){
+    const struct cosmology* cosmo, const struct hydro_props *restrict hydro_props,
+    const struct unit_system *restrict us, 
+    const struct cooling_function_data *restrict cooling){
 
   /* Read the critical overdensity factor and the critical density of 
    * the universe to determine the critical density to form stars*/
@@ -192,9 +194,11 @@ INLINE static int star_formation_potential_to_become_star(
 INLINE static int star_formation_convert_to_star(
     const struct star_formation* starform, const struct part* restrict p,
     const struct xpart* restrict xp, const struct phys_const* const phys_const,
-    const struct cosmology* cosmo) {
+    const struct cosmology* cosmo, const struct hydro_props *restrict hydro_props,
+    const struct unit_system *restrict us, 
+    const struct cooling_function_data *restrict cooling) {
 
-  if (star_formation_potential_to_become_star(starform, p, xp, phys_const, cosmo)){
+  if (star_formation_potential_to_become_star(starform, p, xp, phys_const, cosmo, hydro_props, us, cooling)){
     /* Get the pressure */
     const double pressure = starform->EOS_pressure_norm 
     * pow(p->rho/starform->EOS_den0, starform->polytropic_index);

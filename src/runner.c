@@ -472,6 +472,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct hydro_props *restrict hydro_props = e->hydro_properties;
+  const struct unit_system *restrict us = e->internal_units;
+  struct cooling_function_data *restrict cooling = e->cooling_func;
 
   TIMER_TIC;
 
@@ -494,7 +497,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         //const float rho = hydro_get_physical_density(p, cosmo);
-        if (star_formation_convert_to_star(starform, p, xp, constants, cosmo) ) {
+        if (star_formation_convert_to_star(starform, p, xp, constants, cosmo, hydro_props, us, cooling) ) {
           star_formation_copy_properties(e, c, p, xp, starform, constants, cosmo, with_cosmology);
         //struct spart *sp =        cell_conert_part_to_spart(c, p, ...);
         }
