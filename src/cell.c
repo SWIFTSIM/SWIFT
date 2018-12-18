@@ -3480,6 +3480,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
             (p->x[1] > dim[1]) || (p->x[1] < 0.) ||  // y
             (p->x[2] > dim[2]) || (p->x[2] < 0.)) {  // z
 
+          /* Print the particle's data */
+          printParticle_single(p, xp);
+
           /* Remove the particle entirely */
           struct gpart *gp = p->gpart;
           cell_remove_part(e, c, p, xp);
