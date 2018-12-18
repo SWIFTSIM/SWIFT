@@ -227,16 +227,29 @@ INLINE static void star_formation_copy_properties(
     const struct phys_const* const phys_const, const struct cosmology* cosmo,
     int with_cosmology) {
   
+  /* Convert your particle to a star */
   struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
+  
+  /* Store the current mass */
   sp->mass = p->mass;
+
+  /* Store the current mass as the initial mass */
   sp->mass_init = p->mass;
+
+  /* Store either the birth_scale_factor or birth_time depending  */
   if (with_cosmology) {
     sp->birth_scale_factor = cosmo->a;
   } else {
     sp->birth_time = e->time;
   }
+
+  /* Store the chemistry struct in the star particle */
   sp->chemistry_data = p->chemistry_data;
+
+  /* Store the tracers data */
   sp->tracers_data = xp->tracers_data;
+
+  /* Store the birth density in the star particle */
   sp->birth_density = p->rho;
 
 }
