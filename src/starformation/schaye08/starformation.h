@@ -164,8 +164,9 @@ INLINE static int star_formation_potential_to_become_star(
       /* If the maximum density is not exceeded check if the redshift dependent
        * one is exceeded */
     } else {
-      /* NEED TO USE A PROPER WAY OF FINDING Z */
-      double Z = 0.002;
+      /* Get the metallicity from the chemistry struct
+       * Do we use SMOOTHED OR NON SMOOTHED IN EAGLE???*/
+      double Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
       double den_crit_current =
           starform->den_crit * pow(Z * starform->Z0_inv, starform->n_Z0);
       if (p->rho > den_crit_current) {
