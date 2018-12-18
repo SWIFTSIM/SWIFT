@@ -106,8 +106,11 @@ struct star_formation {
   /*! EOS pressure norm */
   double EOS_pressure_norm;
 
+  /*! EOS Temperature norm */
+  double EOS_temperature_norm;
+
   /*! EOS density norm */
-  double EOS_den0;
+  double EOS_density_norm;
 };
 
 /*
@@ -201,7 +204,7 @@ INLINE static int star_formation_convert_to_star(
   if (star_formation_potential_to_become_star(starform, p, xp, phys_const, cosmo, hydro_props, us, cooling)){
     /* Get the pressure */
     const double pressure = starform->EOS_pressure_norm 
-    * pow(p->rho/starform->EOS_den0, starform->polytropic_index);
+    * pow(p->rho/starform->EOS_density_norm, starform->polytropic_index);
   
     /* Calculate the propability of forming a star */ 
     const double prop = starform->SF_normalization * pow(pressure,
@@ -284,6 +287,11 @@ INLINE static void starformation_init_backend(
   /* Calculate inverse of RAND_MAX for the random numbers */
   starform->inv_RAND_MAX = 1.f / RAND_MAX;
 
+  /* Conversion of number density from cgs */
+  static const float dimension_numb_den[5] = {0, -3, 0, 0, 0};
+  const double conversion_numb_density = 1.f/
+  units_general_cgs_conversion_factor(us, dimension_numb_den);
+
   /* Quantities that have to do with the Normal Kennicutt-
    * Schmidt law will be read in this part of the code*/
 
@@ -326,15 +334,30 @@ INLINE static void starformation_init_backend(
   parameter_file, "SchayeSF:SchmidtLawHighDens_thresh_HpCM3");
 
   /* Transform the KS high density criteria to simulation units */
-  starform->KS_high_den_thresh = KS_high_den_thresh_HpCM3 * UNIT_CONV_NUMBER_DENSITY;
+  starform->KS_high_den_thresh = KS_high_den_thresh_HpCM3 * conversion_numb_density;
 
   /* Calculate the SF high density power law */
   starform->SF_high_den_power_law = (starform->KS_high_den_power_law - 1.f)/2.f;
 
+  /* Load the equation of state for this model */
+  starform->polytropic_index = parser_get_param_double(
+  parameter_file, "SchayeSF:EOS_Jeans_GammaEffective");
+  starform->EOS_temperature_norm = parser_get_param_double(
+  parameter_file, "SchayeSF:EOS_Jeans_TemperatureNorm_K");
+  starform->EOS_density_norm = parser_get_param_double(
+  parameter_file, "SchayeSF:EOS_JEANS_DensityNorm_HpCM3") * conversion_numb_density;
+
+  /* Calculate the EOS pressure normalization */
+  starform->EOS_pressure_norm = starform->EOS_density_norm * starform->EOS_temperature_norm 
+  * phys_const->const_boltzmann_k; 
+
+  const double EOS_high_den_pressure = starform->EOS_pressure_norm * pow(
+  starform->KS_high_den_thresh / starform->EOS_density_norm, starform->polytropic_index);
+
   /* Calculate the KS high density normalization */
   starform->KS_high_den_normalization = starform->KS_normalization * pow( M_per_pc2,
   starform->KS_high_den_power_law - starform->KS_power_law) * pow( hydro_gamma * 
-  starform->fgas / G_newton * 1337.f, (starform->KS_power_law 
+  starform->fgas / G_newton * EOS_high_den_pressure, (starform->KS_power_law 
   - starform->KS_high_den_power_law)/2.f);
 
   /* Calculate the SF high density normalization */
@@ -361,7 +384,7 @@ INLINE static void starformation_init_backend(
      * density*/
     starform->den_crit = parser_get_param_double( 
     parameter_file, "SchayeSF:thresh_norm_HpCM3") *
-    UNIT_CONV_NUMBER_DENSITY;
+    conversion_numb_density;
 
     /* Read the scale metallicity Z0 */
     starform->Z0 = parser_get_param_double(
@@ -376,10 +399,6 @@ INLINE static void starformation_init_backend(
     parameter_file, "SchayeSF:thresh_max_norm_HpCM3");
 
   }
-  /* Conversion of number density from cgs */
-  static const float dimension_numb_den[5] = {0, -3, 0, 0, 0};
-  const double conversion_numb_density = 1.f/
-  units_general_cgs_conversion_factor(us, dimension_numb_den);
 
   /* Claculate 1 over the metallicity for speed up */
   starform->Z0_inv = 1/starform->Z0;
@@ -389,13 +408,6 @@ INLINE static void starformation_init_backend(
   starform->den_crit_star = starform->den_crit / pow(starform->Z0,
   starform->n_Z0) * conversion_numb_density;
 
-  /* Load the equation of state for this model */
-  starform->polytropic_index = parser_get_param_double(
-  parameter_file, "SchayeSF:EOS_Jeans_GammaEffective");
-  starform->EOS_pressure_norm = parser_get_param_double(
-  parameter_file, "SchayeSF:EOS_Jeans_PressureNorm");
-  starform->EOS_den0 = parser_get_param_double(
-  parameter_file, "SchayeSF:EOS_JEANS_den0");
   
 }
 
