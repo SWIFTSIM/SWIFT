@@ -2403,7 +2403,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
 
       /* Avoid inhibited particles */
       if (part_is_inhibited(p, e)) continue;
-      
+
       /* If the particle will be active no need to wake it up */
       if (part_is_active(p, e) && p->wakeup != time_bin_not_awake)
         p->wakeup = time_bin_not_awake;
