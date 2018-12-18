@@ -83,6 +83,7 @@
 #include "serial_io.h"
 #include "single_io.h"
 #include "sort_part.h"
+#include "starformation.h"
 #include "stars_io.h"
 #include "statistics.h"
 #include "timers.h"
@@ -90,7 +91,6 @@
 #include "units.h"
 #include "velociraptor_interface.h"
 #include "version.h"
-#include "starformation.h"
 
 /* Particle cache size. */
 #define CACHE_SIZE 512
@@ -5322,8 +5322,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   cooling_struct_restore(cooling_func, stream, e->cosmology);
   e->cooling_func = cooling_func;
 
-  struct star_formation *star_formation = (struct star_formation *)malloc(sizeof( 
-  struct star_formation));
+  struct star_formation *star_formation =
+      (struct star_formation *)malloc(sizeof(struct star_formation));
   starformation_struct_restore(star_formation, stream);
   e->star_formation = star_formation;
 

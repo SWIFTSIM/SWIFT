@@ -60,12 +60,12 @@
 #include "sort_part.h"
 #include "space.h"
 #include "space_getsid.h"
+#include "starformation.h"
 #include "stars.h"
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
 #include "tracers.h"
-#include "starformation.h"
 
 #define TASK_LOOP_DENSITY 0
 #define TASK_LOOP_GRADIENT 1
@@ -496,10 +496,12 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
       if (part_is_active(p, e)) {
 
-        //const float rho = hydro_get_physical_density(p, cosmo);
-        if (star_formation_convert_to_star(e, starform, p, xp, constants, cosmo, hydro_props, us, cooling) ) {
-          star_formation_copy_properties(e, c, p, xp, starform, constants, cosmo, with_cosmology);
-        //struct spart *sp =        cell_conert_part_to_spart(c, p, ...);
+        // const float rho = hydro_get_physical_density(p, cosmo);
+        if (star_formation_convert_to_star(e, starform, p, xp, constants, cosmo,
+                                           hydro_props, us, cooling)) {
+          star_formation_copy_properties(e, c, p, xp, starform, constants,
+                                         cosmo, with_cosmology);
+          // struct spart *sp =        cell_conert_part_to_spart(c, p, ...);
         }
       }
     }

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl) 
+ * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,7 +21,7 @@
 
 /**
  * @file src/starformation.h
- * @brief Branches between the different star formation recipies. 
+ * @brief Branches between the different star formation recipies.
  */
 
 /* Config parameters. */
@@ -46,9 +46,9 @@ void starformation_print(const struct star_formation* starform);
 
 /* Dump store */
 void starformation_struct_dump(const struct star_formation* starform,
-                           FILE* stream);
+                               FILE* stream);
 
 void starformation_struct_restore(const struct star_formation* starform,
-                              FILE* stream);
+                                  FILE* stream);
 
 #endif /* SWIFT_STARFORMATION_H */

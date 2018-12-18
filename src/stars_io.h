@@ -19,8 +19,8 @@
 #ifndef SWIFT_STARS_IO_H
 #define SWIFT_STARS_IO_H
 
-#include "./const.h"
 #include "../config.h"
+#include "./const.h"
 
 /* Load the correct star type */
 #if defined(STARS_NONE)
@@ -29,7 +29,7 @@
 #include "./stars/EAGLE/stars_io.h"
 #elif defined(STARS_GEAR)
 #include "./stars/GEAR/stars_io.h"
-#else 
+#else
 #error "Invalid choice of star model"
 #endif
 

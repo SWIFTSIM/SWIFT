@@ -95,7 +95,7 @@
 #include "./stars/EAGLE/stars_part.h"
 #elif defined(STARS_GEAR)
 #include "./stars/GEAR/stars_part.h"
-#else 
+#else
 #error "Invalid choice of star particle"
 #endif
 

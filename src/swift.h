@@ -66,6 +66,7 @@
 #include "serial_io.h"
 #include "single_io.h"
 #include "space.h"
+#include "starformation.h"
 #include "stars.h"
 #include "stars_io.h"
 #include "task.h"
@@ -76,6 +77,5 @@
 #include "units.h"
 #include "velociraptor_interface.h"
 #include "version.h"
-#include "starformation.h"
 
 #endif /* SWIFT_SWIFT_H */

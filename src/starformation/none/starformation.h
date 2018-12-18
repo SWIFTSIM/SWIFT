@@ -24,14 +24,14 @@
 #include <stdlib.h>
 
 /* Local includes */
+#include "cell.h"
 #include "cosmology.h"
-#include "physical_constants.h"
-#include "part.h"
-#include "units.h"
-#include "parser.h"
 #include "equation_of_state.h"
-#include "error.h" 
-#include "cell.h" 
+#include "error.h"
+#include "parser.h"
+#include "part.h"
+#include "physical_constants.h"
+#include "units.h"
 
 /* Starformation struct */
 struct star_formation {};
@@ -50,13 +50,13 @@ struct star_formation {};
 INLINE static int star_formation_convert_to_star(
     const struct star_formation* starform, struct part* restrict p,
     const struct xpart* restrict xp, const struct phys_const* const phys_const,
-    const struct cosmology* cosmo){
+    const struct cosmology* cosmo) {
 
   return 0;
 }
 
 /*
- * @brief Calculate if the gas particle is converted 
+ * @brief Calculate if the gas particle is converted
  *
  * @param starform the star formation struct
  * @param p the gas particles with their properties
@@ -65,12 +65,12 @@ INLINE static int star_formation_convert_to_star(
  *
  * */
 INLINE static void star_formation_copy_properties(
-     struct engine *e, struct cell *c, struct part* p,
-     struct xpart* xp, const struct star_formation* starform,
-     const struct phys_const* const phys_const, const struct cosmology* cosmo) {}
+    struct engine* e, struct cell* c, struct part* p, struct xpart* xp,
+    const struct star_formation* starform,
+    const struct phys_const* const phys_const, const struct cosmology* cosmo) {}
 
-/* 
- * @brief initialization of the star formation law 
+/*
+ * @brief initialization of the star formation law
  *
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
@@ -79,19 +79,17 @@ INLINE static void star_formation_copy_properties(
  *
  * */
 INLINE static void starformation_init_backend(
-  struct swift_params* parameter_file, const struct phys_const* phys_const,
-  const struct unit_system* us, const struct star_formation* starform) {}
+    struct swift_params* parameter_file, const struct phys_const* phys_const,
+    const struct unit_system* us, const struct star_formation* starform) {}
 
-/* @brief Prints the used parameters of the star formation law 
+/* @brief Prints the used parameters of the star formation law
  *
  * @param starform the star formation law properties.
  * */
 INLINE static void starformation_print_backend(
-    const struct star_formation* starform){ 
+    const struct star_formation* starform) {
 
   message("Star formation law is 'No Star Formation'");
-
 }
-
 
 #endif /* SWIFT_NO_STARFORMATION_H */

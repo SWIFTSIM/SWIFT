@@ -24,7 +24,7 @@
 #include <stdlib.h>
 
 /* Read chemistry */
-#include "chemistry_struct.h" 
+#include "chemistry_struct.h"
 #include "tracers_struct.h"
 
 /**
@@ -57,7 +57,7 @@ struct spart {
 
   /*! Initial star mass */
   float mass_init;
-  
+
   /*! Union for the birth time and birht scale factor */
   union {
     /*! Birth time */
@@ -71,10 +71,10 @@ struct spart {
   float birth_density;
 
   /*! New star flag */
-  int new_star_flag; 
+  int new_star_flag;
 
   /*! Tracer structure */
-  struct tracers_xpart_data  tracers_data;
+  struct tracers_xpart_data tracers_data;
 
   /* Particle cutoff radius. */
   float h;
