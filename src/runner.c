@@ -64,6 +64,7 @@
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
+#include "tracers.h"
 #include "starformation.h"
 
 #define TASK_LOOP_DENSITY 0
@@ -496,20 +497,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         if (star_formation_convert_to_star(starform, p, xp, constants, cosmo) ) {
           star_formation_copy_properties(e, c, p, xp, starform, constants, cosmo, with_cosmology);
         //struct spart *sp =        cell_conert_part_to_spart(c, p, ...);
-
-//
-//
-//            
-//
-
-//        star_formation_copy_properties(p, xp, sp);
         }
-        // MATTHIEU: Temporary star-formation law
-        // Do not use this at home.
-        //if (rho > 1.5e7 && e->step > 2) {
-        //  message("Removing particle id=%lld rho=%e", p->id, rho);
-        //  cell_convert_part_to_gpart(e, c, p, xp);
-        //}
       }
     }
   }

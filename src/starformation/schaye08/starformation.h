@@ -27,6 +27,7 @@
 #include "cosmology.h"
 #include "physical_constants.h"
 #include "units.h"
+#include "engine.h"
 #include "parser.h"
 #include "equation_of_state.h"
 #include "part.h"
@@ -224,11 +225,15 @@ INLINE static void star_formation_copy_properties(
   sp->mass = p->mass;
   sp->mass_init = p->mass;
   if (with_cosmology) {
-    sp->age = cosmo->a;
+    sp->birth_time = cosmo->a;
   } else {
-    sp->age = cosmo->a;
+    sp->birth_time = e->time;
   }
-  message("Copy Properties");
+  sp->chemistry_data = p->chemistry_data;
+  //sp->tracers_data = p->tracers_data;
+  //sp->birth_density = p->density;
+  
+
 
 }
 
@@ -329,36 +334,11 @@ INLINE static void starformation_init_backend(
   "SchayeSF:T_crit");
 
   /* Read the gas fraction from the file */
-  starform->fg = parser_get_param_double(parameter_file,
+  starform->fgas = parser_get_param_double(parameter_file,
   "SchayeSF:fg");
 
-  /* Read the normalization */
-  const double normalization = parser_get_opt_param_double(
-  parameter_file, "SchayeSF:A", normalization_default);
-
-  /* Read the Kennicutt-Schmidt power law exponent */
-  starform->nks = parser_get_opt_param_double(
-  parameter_file, "SchayeSF:nks", KS_power_law_default);
-
-  /* Read the heat capacity ratio gamma */
-  starform->gamma = parser_get_opt_param_double(
-  parameter_file, "SchayeSF:gamma", gamma_default); 
-
-  /* Calculate the power law of the star formation */
-  starform->nstar = (starform->nks - 1.f)/2.f;
-  
   /* Calculate inverse of RAND_MAX */
   starform->inv_RAND_MAX = 1.f / RAND_MAX;
-
-  /* Get the appropriate constant to calculate the 
-   * star formation constant */ 
-  const double KS_const = phys_const->const_kennicutt_schmidt_units;
-
-  /* Get the Gravitational constant */
-  const double G_newton = phys_const->const_newton_G;
-
-  /* Get the surface density unit M_\odot / pc^2 */
-  const double M_per_pc2 = phys_const->const_solar_mass_per_parsec2;
 
   /* Calculate the SF high density normalization */
   starform->SF_high_den_normalization = starform->KS_high_den_normalization 
