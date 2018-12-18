@@ -936,7 +936,8 @@ cache_read_two_partial_cells_sorted_force(
   }
 }
 
-/* @brief Clean the memory allocated by a #cache object.
+/**
+ * @brief Clean the memory allocated by a #cache object.
  *
  * @param c The #cache to clean.
  */

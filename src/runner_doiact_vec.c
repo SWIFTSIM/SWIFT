@@ -65,8 +65,6 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
     vector *v_curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy,
     vector v_viz, int *icount_align) {
 
-  mask_t int_mask, int_mask2;
-
   /* Work out the number of remainder interactions and pad secondary cache. */
   *icount_align = icount;
   int rem = icount % (NUM_VEC_PROC * VEC_SIZE);
@@ -75,6 +73,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
     *icount_align += pad;
 
     /* Initialise masks to true. */
+    mask_t int_mask, int_mask2;
     vec_init_mask_true(int_mask);
     vec_init_mask_true(int_mask2);
 
@@ -651,7 +650,6 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
 
   /* Get some local variables */
   const struct engine *e = r->e;
-  const timebin_t max_active_bin = e->max_active_bin;
   struct part *restrict parts = c->hydro.parts;
   const int count = c->hydro.count;
 
@@ -660,6 +658,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) return;
 
+  /* Check that everybody was drifted here */
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -678,6 +677,25 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
   /* Read the particles from the cell and store them locally in the cache. */
   const int real_count = cache_read_particles(c, cell_cache);
 
+  /* Pad cache if there is a serial remainder. */
+  int count_align = real_count;
+  const int rem = real_count % (NUM_VEC_PROC * VEC_SIZE);
+  if (rem != 0) {
+    count_align += (NUM_VEC_PROC * VEC_SIZE) - rem;
+
+    const double max_dx = c->hydro.dx_max_part;
+    const float pos_padded[3] = {-(2. * c->width[0] + max_dx),
+                                 -(2. * c->width[1] + max_dx),
+                                 -(2. * c->width[2] + max_dx)};
+
+    /* Set positions to something outside of the range of any particle */
+    for (int i = real_count; i < count_align; i++) {
+      cell_cache->x[i] = pos_padded[0];
+      cell_cache->y[i] = pos_padded[1];
+      cell_cache->z[i] = pos_padded[2];
+    }
+  }
+
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
 
@@ -687,28 +705,23 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
 
-    /* Skip inhibited particles. */
-    if (part_is_inhibited(pi, e)) continue;
-
-    /* Is the ith particle active? */
-    if (!part_is_active_no_debug(pi, max_active_bin)) continue;
-
-    const float hi = cell_cache->h[pid];
+    /* Is the i^th particle active? */
+    if (!part_is_active(pi, e)) continue;
 
     /* Fill particle pi vectors. */
     const vector v_pix = vector_set1(cell_cache->x[pid]);
     const vector v_piy = vector_set1(cell_cache->y[pid]);
     const vector v_piz = vector_set1(cell_cache->z[pid]);
-    const vector v_hi = vector_set1(hi);
+    const vector v_hi = vector_set1(cell_cache->h[pid]);
     const vector v_vix = vector_set1(cell_cache->vx[pid]);
     const vector v_viy = vector_set1(cell_cache->vy[pid]);
     const vector v_viz = vector_set1(cell_cache->vz[pid]);
 
+    /* Some useful mulitples of h */
+    const float hi = cell_cache->h[pid];
     const float hig2 = hi * hi * kernel_gamma2;
     const vector v_hig2 = vector_set1(hig2);
-
-    /* Get the inverse of hi. */
-    vector v_hi_inv = vec_reciprocal(v_hi);
+    const vector v_hi_inv = vec_reciprocal(v_hi);
 
     /* Reset cumulative sums of update vectors. */
     vector v_rhoSum = vector_setzero();
@@ -719,21 +732,6 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
     vector v_curlvxSum = vector_setzero();
     vector v_curlvySum = vector_setzero();
     vector v_curlvzSum = vector_setzero();
-
-    /* Pad cache if there is a serial remainder. */
-    int count_align = real_count;
-    const int rem = real_count % (NUM_VEC_PROC * VEC_SIZE);
-    if (rem != 0) {
-      count_align += (NUM_VEC_PROC * VEC_SIZE) - rem;
-
-      /* Set positions to the same as particle pi so when the r2 > 0 mask is
-       * applied these extra contributions are masked out.*/
-      for (int i = real_count; i < count_align; i++) {
-        cell_cache->x[i] = v_pix.f[0];
-        cell_cache->y[i] = v_piy.f[0];
-        cell_cache->z[i] = v_piz.f[0];
-      }
-    }
 
     /* The number of interactions for pi and the padded version of it to
      * make it a multiple of VEC_SIZE. */
@@ -771,8 +769,8 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
       v_r2_2.v = vec_fma(v_dz_2.v, v_dz_2.v, v_r2_2.v);
 
       /* Form a mask from r2 < hig2 and r2 > 0.*/
-      mask_t v_doi_mask, v_doi_mask_self_check, v_doi_mask2,
-          v_doi_mask2_self_check;
+      mask_t v_doi_mask, v_doi_mask2;
+      mask_t v_doi_mask_self_check, v_doi_mask2_self_check;
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
       vec_create_mask(v_doi_mask_self_check, vec_cmp_gt(v_r2.v, vec_setzero()));
@@ -837,7 +835,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
     vec_init_mask_true(int_mask);
     vec_init_mask_true(int_mask2);
 
-    /* Perform interaction with 2 vectors. */
+    /* Perform interaction with NUM_VEC_PROC vectors. */
     for (int pjd = 0; pjd < icount_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
       runner_iact_nonsym_2_vec_density(
           &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
@@ -848,8 +846,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
           &v_curlvzSum, int_mask, int_mask2, 0);
     }
 
-    /* Perform horizontal adds on vector sums and store result in particle pi.
-     */
+    /* Perform horizontal adds on vector sums and store result in pi. */
     VEC_HADD(v_rhoSum, pi->rho);
     VEC_HADD(v_rho_dhSum, pi->density.rho_dh);
     VEC_HADD(v_wcountSum, pi->density.wcount);
@@ -899,7 +896,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
-  int real_count = cache_read_particles(c, cell_cache);
+  const int real_count = cache_read_particles(c, cell_cache);
 
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
