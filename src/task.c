@@ -660,6 +660,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     case task_subtype_grav:
       strcpy(cluster, "Gravity");
       break;
+    case task_subtype_limiter:
+      strcpy(cluster, "Timestep_limiter");
+      break;
     case task_subtype_stars_density:
       strcpy(cluster, "Stars");
       break;
