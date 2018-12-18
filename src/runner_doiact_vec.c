@@ -1110,7 +1110,6 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
-  const timebin_t max_active_bin = e->max_active_bin;
   struct part *restrict parts = c->hydro.parts;
   const int count = c->hydro.count;
 
@@ -1138,6 +1137,32 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
   /* Read the particles from the cell and store them locally in the cache. */
   const int real_count = cache_read_force_particles(c, cell_cache);
 
+  /* Pad cache if there is a serial remainder. */
+  int count_align = real_count;
+  const int rem = real_count % VEC_SIZE;
+  if (rem != 0) {
+    count_align += VEC_SIZE - rem;
+
+    const double max_dx = c->hydro.dx_max_part;
+    const float pos_padded[3] = {-(2. * c->width[0] + max_dx),
+                                 -(2. * c->width[1] + max_dx),
+                                 -(2. * c->width[2] + max_dx)};
+
+    /* Set positions to the same as particle pi so when the r2 > 0 mask is
+     * applied these extra contributions are masked out.*/
+    for (int i = real_count; i < count_align; i++) {
+      cell_cache->x[i] = pos_padded[0];
+      cell_cache->y[i] = pos_padded[1];
+      cell_cache->z[i] = pos_padded[2];
+      cell_cache->h[i] = 1.f;
+      cell_cache->rho[i] = 1.f;
+      cell_cache->grad_h[i] = 1.f;
+      cell_cache->pOrho2[i] = 1.f;
+      cell_cache->balsara[i] = 1.f;
+      cell_cache->soundspeed[i] = 1.f;
+    }
+  }
+
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -1148,19 +1173,14 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
 
-    /* Skip inhibited particles. */
-    if (part_is_inhibited(pi, e)) continue;
-
-    /* Is the ith particle active? */
-    if (!part_is_active_no_debug(pi, max_active_bin)) continue;
-
-    const float hi = cell_cache->h[pid];
+    /* Is the i^th particle active? */
+    if (!part_is_active(pi, e)) continue;
 
     /* Fill particle pi vectors. */
     const vector v_pix = vector_set1(cell_cache->x[pid]);
     const vector v_piy = vector_set1(cell_cache->y[pid]);
     const vector v_piz = vector_set1(cell_cache->z[pid]);
-    const vector v_hi = vector_set1(hi);
+    const vector v_hi = vector_set1(cell_cache->h[pid]);
     const vector v_vix = vector_set1(cell_cache->vx[pid]);
     const vector v_viy = vector_set1(cell_cache->vy[pid]);
     const vector v_viz = vector_set1(cell_cache->vz[pid]);
@@ -1171,11 +1191,11 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     const vector v_balsara_i = vector_set1(cell_cache->balsara[pid]);
     const vector v_ci = vector_set1(cell_cache->soundspeed[pid]);
 
+    /* Some useful powers of h */
+    const float hi = cell_cache->h[pid];
     const float hig2 = hi * hi * kernel_gamma2;
     const vector v_hig2 = vector_set1(hig2);
-
-    /* Get the inverse of hi. */
-    vector v_hi_inv = vec_reciprocal(v_hi);
+    const vector v_hi_inv = vec_reciprocal(v_hi);
 
     /* Reset cumulative sums of update vectors. */
     vector v_a_hydro_xSum = vector_setzero();
@@ -1185,39 +1205,18 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     vector v_sigSum = vector_set1(pi->force.v_sig);
     vector v_entropy_dtSum = vector_setzero();
 
-    /* Pad cache if there is a serial remainder. */
-    int count_align = real_count;
-    int rem = real_count % VEC_SIZE;
-    if (rem != 0) {
-      int pad = VEC_SIZE - rem;
-
-      count_align += pad;
-
-      /* Set positions to the same as particle pi so when the r2 > 0 mask is
-       * applied these extra contributions are masked out.*/
-      for (int i = real_count; i < count_align; i++) {
-        cell_cache->x[i] = v_pix.f[0];
-        cell_cache->y[i] = v_piy.f[0];
-        cell_cache->z[i] = v_piz.f[0];
-        cell_cache->h[i] = 1.f;
-        cell_cache->rho[i] = 1.f;
-        cell_cache->grad_h[i] = 1.f;
-        cell_cache->pOrho2[i] = 1.f;
-        cell_cache->balsara[i] = 1.f;
-        cell_cache->soundspeed[i] = 1.f;
-      }
-    }
-
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
     for (int pjd = 0; pjd < count_align; pjd += VEC_SIZE) {
 
       /* Load 1 set of vectors from the particle cache. */
-      vector hjg2;
       const vector v_pjx = vector_load(&cell_cache->x[pjd]);
       const vector v_pjy = vector_load(&cell_cache->y[pjd]);
       const vector v_pjz = vector_load(&cell_cache->z[pjd]);
       const vector hj = vector_load(&cell_cache->h[pjd]);
+
+      /* (hj * gamma)^2 */
+      vector hjg2;
       hjg2.v = vec_mul(vec_mul(hj.v, hj.v), kernel_gamma2_vec.v);
 
       /* Compute the pairwise distance. */
@@ -1230,18 +1229,17 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
       v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
       v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
-      /* Form r2 > 0 mask, r2 < hig2 mask and r2 < hjg2 mask. */
-      mask_t v_doi_mask, v_doi_mask_self_check;
-
-      /* Form r2 > 0 mask.*/
+      /* Form r2 > 0 mask.
+       * This is used to avoid self-interctions */
+      mask_t v_doi_mask_self_check;
       vec_create_mask(v_doi_mask_self_check, vec_cmp_gt(v_r2.v, vec_setzero()));
 
-      /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask. */
-      vector v_h2;
-      v_h2.v = vec_fmax(v_hig2.v, hjg2.v);
-      vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_h2.v));
+      /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask.
+       * This is writen as r2 < max(hig2, hjg2) */
+      mask_t v_doi_mask;
+      vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, vec_fmax(v_hig2.v, hjg2.v)));
 
-      /* Combine all 3 masks. */
+      /* Combine both masks. */
       vec_combine_masks(v_doi_mask, v_doi_mask_self_check);
 
 #ifdef DEBUG_INTERACTIONS_SPH
@@ -1256,11 +1254,9 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
 
       /* If there are any interactions perform them. */
       if (vec_is_mask_true(v_doi_mask)) {
-        vector v_hj_inv = vec_reciprocal(hj);
 
-        /* To stop floating point exceptions for when particle separations are
-         * 0. */
-        v_r2.v = vec_add(v_r2.v, vec_set1(FLT_MIN));
+	/* 1 / hj */
+        const vector v_hj_inv = vec_reciprocal(hj);
 
         runner_iact_nonsym_1_vec_force(
             &v_r2, &v_dx, &v_dy, &v_dz, v_vix, v_viy, v_viz, v_rhoi, v_grad_hi,
@@ -1279,8 +1275,9 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     VEC_HADD(v_a_hydro_ySum, pi->a_hydro[1]);
     VEC_HADD(v_a_hydro_zSum, pi->a_hydro[2]);
     VEC_HADD(v_h_dtSum, pi->force.h_dt);
-    VEC_HMAX(v_sigSum, pi->force.v_sig);
     VEC_HADD(v_entropy_dtSum, pi->entropy_dt);
+
+    VEC_HMAX(v_sigSum, pi->force.v_sig);
 
   } /* loop over all particles. */
 
