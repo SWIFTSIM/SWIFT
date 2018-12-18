@@ -259,6 +259,8 @@ INLINE static void star_formation_copy_properties(
   /* Store the birth density in the star particle */
   sp->birth_density = p->rho;
 
+  sp->new_star_flag = 1;
+
   message("A star has been formed!");
 
 }
@@ -367,40 +369,25 @@ INLINE static void starformation_init_backend(
   * pow(M_per_pc2, -starform->KS_high_den_power_law) * pow( hydro_gamma  
   * starform->fgas / G_newton, starform->SF_high_den_power_law);
 
-  /* Read what kind of critical density we need to use
-   * Schaye (2004) is metallicity dependent critical SF density*/
-  starform->schaye04 = parser_get_param_double(
-  parameter_file, "SchayeSF:Schaye2004");
+  /* Use the Schaye (2004) metallicity dependent critical density
+   * to form stars. */
+  /* Read the normalization of the metallicity dependent critical 
+   * density*/
+  starform->den_crit = parser_get_param_double( 
+  parameter_file, "SchayeSF:thresh_norm_HpCM3") *
+  conversion_numb_density;
 
-  if (!starform->schaye04) {
-    /* In the case that we do not use the Schaye (2004) critical
-     * density to form stars but a constant value */
-    starform->den_crit = parser_get_param_double(
-    parameter_file, "SchayeSF:thresh_norm_HpCM3");
-    starform->Z0 = 0.002;
-    starform->n_Z0 = 0.0;
-  } else {
-    /* Use the Schaye (2004) metallicity dependent critical density
-     * to form stars. */
-    /* Read the normalization of the metallicity dependent critical 
-     * density*/
-    starform->den_crit = parser_get_param_double( 
-    parameter_file, "SchayeSF:thresh_norm_HpCM3") *
-    conversion_numb_density;
+  /* Read the scale metallicity Z0 */
+  starform->Z0 = parser_get_param_double(
+  parameter_file, "SchayeSF:MetDep_Z0");
 
-    /* Read the scale metallicity Z0 */
-    starform->Z0 = parser_get_param_double(
-    parameter_file, "SchayeSF:MetDep_Z0");
+  /* Read the power law of the critical density scaling */
+  starform->n_Z0 = parser_get_param_double(
+  parameter_file, "SchayeSF:MetDep_SFthresh_Slope");
 
-    /* Read the power law of the critical density scaling */
-    starform->n_Z0 = parser_get_param_double(
-    parameter_file, "SchayeSF:MetDep_SFthresh_Slope");
-
-    /* Read the maximum allowed density for star formation */
-    starform->den_crit_max = parser_get_param_double(
-    parameter_file, "SchayeSF:thresh_max_norm_HpCM3");
-
-  }
+  /* Read the maximum allowed density for star formation */
+  starform->den_crit_max = parser_get_param_double(
+  parameter_file, "SchayeSF:thresh_max_norm_HpCM3");
 
   /* Claculate 1 over the metallicity */
   starform->Z0_inv = 1/starform->Z0;
