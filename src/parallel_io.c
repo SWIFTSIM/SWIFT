@@ -52,6 +52,7 @@
 #include "part.h"
 #include "part_type.h"
 #include "stars_io.h"
+#include "tracers_io.h"
 #include "units.h"
 #include "xmf.h"
 
@@ -953,6 +954,8 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   struct swift_params* params = e->parameter_file;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+
   FILE* xmfFile = 0;
   int periodic = e->s->periodic;
   int numFiles = 1;
@@ -1056,6 +1059,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   if (h_grp < 0) error("Error while creating subgrid group");
   cooling_write_flavour(h_grp, e->cooling_func);
   chemistry_write_flavour(h_grp);
+  tracers_write_flavour(h_grp);
   H5Gclose(h_grp);
 
   /* Print the gravity parameters */
@@ -1138,6 +1142,9 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         num_fields += chemistry_write_particles(parts, list + num_fields);
         num_fields += cooling_write_particles(parts, xparts, list + num_fields,
                                               e->cooling_func);
+        num_fields += tracers_write_particles(parts, xparts, list + num_fields,
+                                              with_cosmology);
+
         break;
 
       case swift_type_dark_matter:
@@ -1212,6 +1219,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   struct swift_params* params = e->parameter_file;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Number of particles currently in the arrays */
   const size_t Ntot = e->s->nr_gparts;
@@ -1221,9 +1229,12 @@ void write_output_parallel(struct engine* e, const char* baseName,
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
   /* Number of particles that we will write */
-  const size_t Ntot_written = e->s->nr_gparts - e->s->nr_inhibited_sparts;
-  const size_t Ngas_written = e->s->nr_parts - e->s->nr_inhibited_parts;
-  const size_t Nstars_written = e->s->nr_sparts - e->s->nr_inhibited_gparts;
+  const size_t Ntot_written =
+      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
+  const size_t Ngas_written =
+      e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
+  const size_t Nstars_written =
+      e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
   const size_t Nbaryons_written = Ngas_written + Nstars_written;
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
@@ -1398,6 +1409,9 @@ void write_output_parallel(struct engine* e, const char* baseName,
           num_fields += chemistry_write_particles(parts, list + num_fields);
           num_fields += cooling_write_particles(
               parts, xparts, list + num_fields, e->cooling_func);
+          num_fields += tracers_write_particles(
+              parts, xparts, list + num_fields, with_cosmology);
+
         } else {
 
           /* Ok, we need to fish out the particles we want */
@@ -1423,6 +1437,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
           num_fields +=
               cooling_write_particles(parts_written, xparts_written,
                                       list + num_fields, e->cooling_func);
+          num_fields += tracers_write_particles(
+              parts_written, xparts_written, list + num_fields, with_cosmology);
         }
       } break;
 

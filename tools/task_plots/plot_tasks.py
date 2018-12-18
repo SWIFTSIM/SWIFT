@@ -176,7 +176,6 @@ TASKTYPES = [
     "grav_mesh",
     "cooling",
     "star_formation",
-    "sourceterms",
     "logger",
     "stars_ghost_in",
     "stars_ghost",
@@ -199,6 +198,7 @@ SUBTYPES = [
     "multipole",
     "spart",
     "stars_density",
+    "stars_feedback",
     "count",
 ]
 
@@ -226,6 +226,10 @@ FULLTYPES = [
     "pair/stars_density",
     "sub_self/stars_density",
     "sub_pair/stars_density",
+    "self/stars_feedback",
+    "pair/stars_feedback",
+    "sub_self/stars_feedback",
+    "sub_pair/stars_feedback",
 ]
 
 #  A number of colours for the various types. Recycled when there are

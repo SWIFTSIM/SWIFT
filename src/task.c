@@ -75,7 +75,6 @@ const char *taskID_names[task_type_count] = {"none",
                                              "grav_mesh",
                                              "cooling",
                                              "star_formation",
-                                             "sourceterms",
                                              "logger",
                                              "stars_ghost_in",
                                              "stars_ghost",
@@ -142,7 +141,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_ghost:
     case task_type_extra_ghost:
     case task_type_cooling:
-    case task_type_sourceterms:
       return task_action_part;
       break;
 
@@ -360,6 +358,7 @@ void task_unlock(struct task *t) {
         cell_sunlocktree(ci);
       } else if (subtype == task_subtype_stars_feedback) {
         cell_sunlocktree(ci);
+        cell_unlocktree(ci);
       } else {
         cell_unlocktree(ci);
       }
@@ -378,6 +377,8 @@ void task_unlock(struct task *t) {
       } else if (subtype == task_subtype_stars_feedback) {
         cell_sunlocktree(ci);
         cell_sunlocktree(cj);
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
       } else {
         cell_unlocktree(ci);
         cell_unlocktree(cj);
@@ -396,6 +397,12 @@ void task_unlock(struct task *t) {
     case task_type_grav_mm:
       cell_munlocktree(ci);
       cell_munlocktree(cj);
+      break;
+
+    case task_type_star_formation:
+      cell_unlocktree(ci);
+      cell_sunlocktree(ci);
+      cell_gunlocktree(ci);
       break;
 
     default:
@@ -486,8 +493,13 @@ int task_lock(struct task *t) {
         if (cell_slocktree(ci) != 0) return 0;
       } else if (subtype == task_subtype_stars_feedback) {
         if (ci->stars.hold) return 0;
+        if (ci->hydro.hold) return 0;
         if (cell_slocktree(ci) != 0) return 0;
-      } else {
+        if (cell_locktree(ci) != 0) {
+          cell_sunlocktree(ci);
+          return 0;
+        }
+      } else { /* subtype == hydro */
         if (ci->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
       }
@@ -520,13 +532,26 @@ int task_lock(struct task *t) {
           return 0;
         }
       } else if (subtype == task_subtype_stars_feedback) {
+        /* Lock the stars and the gas particles in both cells */
         if (ci->stars.hold || cj->stars.hold) return 0;
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
         if (cell_slocktree(ci) != 0) return 0;
         if (cell_slocktree(cj) != 0) {
           cell_sunlocktree(ci);
           return 0;
         }
-      } else {
+        if (cell_locktree(ci) != 0) {
+          cell_sunlocktree(ci);
+          cell_sunlocktree(cj);
+          return 0;
+        }
+        if (cell_locktree(cj) != 0) {
+          cell_sunlocktree(ci);
+          cell_sunlocktree(cj);
+          cell_unlocktree(ci);
+          return 0;
+        }
+      } else { /* subtype == hydro */
         /* Lock the parts in both cells */
         if (ci->hydro.hold || cj->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
@@ -562,6 +587,21 @@ int task_lock(struct task *t) {
         cell_munlocktree(ci);
         return 0;
       }
+      break;
+
+    case task_type_star_formation:
+      /* Lock the gas, gravity and star particles */
+      if (ci->hydro.hold || ci->stars.hold || ci->grav.phold) return 0;
+      if (cell_locktree(ci) != 0) return 0;
+      if (cell_slocktree(ci) != 0) {
+        cell_unlocktree(ci);
+        return 0;
+      }
+      if (cell_glocktree(ci) != 0) {
+        cell_unlocktree(ci);
+        cell_sunlocktree(ci);
+        return 0;
+      }
 
     default:
       break;
@@ -581,6 +621,71 @@ void task_print(const struct task *t) {
   message("Type:'%s' sub_type:'%s' wait=%d nr_unlocks=%d skip=%d",
           taskID_names[t->type], subtaskID_names[t->subtype], t->wait,
           t->nr_unlock_tasks, t->skip);
+}
+
+/**
+ * @brief Get the group name of a task.
+ *
+ * This is used to group tasks with similar actions in the task dependency
+ * graph.
+ *
+ * @param type The #task type.
+ * @param subtype The #subtask type.
+ * @param cluster (return) The group name (should be allocated)
+ */
+void task_get_group_name(int type, int subtype, char *cluster) {
+
+  if (type == task_type_grav_long_range || type == task_type_grav_mm ||
+      type == task_type_grav_mesh) {
+
+    strcpy(cluster, "Gravity");
+    return;
+  }
+
+  switch (subtype) {
+    case task_subtype_density:
+      strcpy(cluster, "Density");
+      break;
+    case task_subtype_gradient:
+      strcpy(cluster, "Gradient");
+      break;
+    case task_subtype_force:
+      strcpy(cluster, "Force");
+      break;
+    case task_subtype_grav:
+      strcpy(cluster, "Gravity");
+      break;
+    case task_subtype_stars_density:
+      strcpy(cluster, "Stars");
+      break;
+    default:
+      strcpy(cluster, "None");
+      break;
+  }
+}
+
+/**
+ * @brief Generate the full name of a #task.
+ *
+ * @param type The #task type.
+ * @param subtype The #task type.
+ * @param name (return) The formatted string
+ */
+void task_get_full_name(int type, int subtype, char *name) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check input */
+  if (type >= task_type_count) error("Unknown task type %i", type);
+
+  if (subtype >= task_subtype_count)
+    error("Unknown task subtype %i with type %s", subtype, taskID_names[type]);
+#endif
+
+  /* Full task name */
+  if (subtype == task_subtype_none)
+    sprintf(name, "%s", taskID_names[type]);
+  else
+    sprintf(name, "%s_%s", taskID_names[type], subtaskID_names[subtype]);
 }
 
 #ifdef WITH_MPI

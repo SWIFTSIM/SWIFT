@@ -64,6 +64,7 @@
 #include "stars.h"
 #include "timers.h"
 #include "tools.h"
+#include "tracers.h"
 
 /* Global variables. */
 int cell_next_tag = 0;
@@ -972,6 +973,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->hydro.count = bucket_count[k];
+    c->progeny[k]->hydro.count_total = c->progeny[k]->hydro.count;
     c->progeny[k]->hydro.parts = &c->hydro.parts[bucket_offset[k]];
     c->progeny[k]->hydro.xparts = &c->hydro.xparts[bucket_offset[k]];
   }
@@ -1089,6 +1091,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->stars.count = bucket_count[k];
+    c->progeny[k]->stars.count_total = c->progeny[k]->stars.count;
     c->progeny[k]->stars.parts = &c->stars.parts[bucket_offset[k]];
   }
 
@@ -1151,6 +1154,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->grav.count = bucket_count[k];
+    c->progeny[k]->grav.count_total = c->progeny[k]->grav.count;
     c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
   }
 }
@@ -2768,7 +2772,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
@@ -3122,7 +3126,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
 
 #ifdef WITH_MPI
       error("MPI with stars not implemented");
@@ -3229,6 +3233,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_stars(c, e)) {
+
+    /* Un-skip the feedback tasks involved with this cell. */
+    for (struct link *l = c->stars.feedback; l != NULL; l = l->next)
+      scheduler_activate(s, l->t);
 
     if (c->stars.ghost_in != NULL) scheduler_activate(s, c->stars.ghost_in);
     if (c->stars.ghost_out != NULL) scheduler_activate(s, c->stars.ghost_out);
@@ -3371,6 +3379,7 @@ int cell_has_tasks(struct cell *c) {
  */
 void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float hydro_h_max = e->hydro_properties->h_max;
   const integertime_t ti_old_part = c->hydro.ti_old_part;
   const integertime_t ti_current = e->ti_current;
@@ -3437,7 +3446,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
     /* Drift from the last time the cell was drifted to the current time */
     double dt_drift, dt_kick_grav, dt_kick_hydro, dt_therm;
-    if (e->policy & engine_policy_cosmology) {
+    if (with_cosmology) {
       dt_drift =
           cosmology_get_drift_factor(e->cosmology, ti_old_part, ti_current);
       dt_kick_grav =
@@ -3467,6 +3476,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current);
+
+      /* Update the tracers properties */
+      tracers_after_drift(p, xp, e->internal_units, e->physical_constants,
+                          with_cosmology, e->cosmology, e->hydro_properties,
+                          e->cooling_func, e->time);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -3527,6 +3541,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
         chemistry_init_part(p, e->chemistry);
+        tracers_after_init(p, xp, e->internal_units, e->physical_constants,
+                           with_cosmology, e->cosmology, e->hydro_properties,
+                           e->cooling_func, e->time);
       }
     }
 
@@ -3834,6 +3851,190 @@ void cell_check_timesteps(struct cell *c) {
 #endif
 }
 
+void cell_check_spart_pos(const struct cell *c,
+                          const struct spart *global_sparts) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL)
+        cell_check_spart_pos(c->progeny[k], global_sparts);
+  }
+
+  struct spart *sparts = c->stars.parts;
+  const int count = c->stars.count;
+  for (int i = 0; i < count; ++i) {
+
+    const struct spart *sp = &sparts[i];
+    if ((sp->x[0] < c->loc[0] / space_stretch) ||
+        (sp->x[1] < c->loc[1] / space_stretch) ||
+        (sp->x[2] < c->loc[2] / space_stretch) ||
+        (sp->x[0] >= (c->loc[0] + c->width[0]) * space_stretch) ||
+        (sp->x[1] >= (c->loc[1] + c->width[1]) * space_stretch) ||
+        (sp->x[2] >= (c->loc[2] + c->width[2]) * space_stretch))
+      error("spart not in its cell!");
+
+    if (sp->time_bin != time_bin_not_created &&
+        sp->time_bin != time_bin_inhibited) {
+
+      const struct gpart *gp = sp->gpart;
+      if (gp == NULL && sp->time_bin != time_bin_not_created)
+        error("Unlinked spart!");
+
+      if (&global_sparts[-gp->id_or_neg_offset] != sp)
+        error("Incorrectly linked spart!");
+    }
+  }
+
+#else
+  error("Calling a degugging function outside debugging mode.");
+#endif
+}
+
+/**
+ * @brief Recursively update the pointer and counter for #spart after the
+ * addition of a new particle.
+ *
+ * @param c The cell we are working on.
+ * @param progeny_list The list of the progeny index at each level for the
+ * leaf-cell where the particle was added.
+ * @param main_branch Are we in a cell directly above the leaf where the new
+ * particle was added?
+ */
+void cell_recursively_shift_sparts(struct cell *c,
+                                   const int progeny_list[space_cell_maxdepth],
+                                   const int main_branch) {
+  if (c->split) {
+
+    /* No need to recurse in progenies located before the insestion point */
+    const int first_progeny = main_branch ? progeny_list[(int)c->depth] : 0;
+
+    for (int k = first_progeny; k < 8; ++k) {
+
+      if (c->progeny[k] != NULL)
+        cell_recursively_shift_sparts(c->progeny[k], progeny_list,
+                                      main_branch && (k == first_progeny));
+    }
+  }
+
+  /* When directly above the leaf with the new particle: increase the particle
+   * count */
+  /* When after the leaf with the new particle: shift by one position */
+  if (main_branch)
+    c->stars.count++;
+  else
+    c->stars.parts++;
+}
+
+/**
+ * @brief "Add" a #spart in a given #cell.
+ *
+ * This function will a a #spart at the start of the current cell's array by
+ * shifting all the #spart in the top-level cell by one position. All the
+ * pointers and cell counts are updated accordingly.
+ *
+ * @param e The #engine.
+ * @param c The leaf-cell in which to add the #spart.
+ *
+ * @return A pointer to the newly added #spart. The spart has a been zeroed and
+ * given a position within the cell as well as set to the minimal active time
+ * bin.
+ */
+struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
+
+  /* Perform some basic consitency checks */
+  if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
+  if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
+  if (c->split) error("Addition of spart performed above the leaf level");
+
+  /* Progeny number at each level */
+  int progeny[space_cell_maxdepth];
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < space_cell_maxdepth; ++i) progeny[i] = -1;
+#endif
+
+  /* Get the top-level this leaf cell is in and compute the progeny indices at
+     each level */
+  struct cell *top = c;
+  while (top->parent != NULL) {
+    for (int k = 0; k < 8; ++k) {
+      if (top->parent->progeny[k] == top) {
+        progeny[(int)top->parent->depth] = k;
+      }
+    }
+    top = top->parent;
+  }
+
+  /* Are there any extra particles left? */
+  if (top->stars.count == top->stars.count_total - 1) {
+    message("We ran out of star particles!");
+    atomic_inc(&e->forcerebuild);
+    return NULL;
+  }
+
+  /* Number of particles to shift in order to get a free space. */
+  const size_t n_copy = &top->stars.parts[top->stars.count] - c->stars.parts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->stars.parts + n_copy > top->stars.parts + top->stars.count)
+    error("Copying beyond the allowed range");
+#endif
+
+  if (n_copy > 0) {
+
+    // MATTHIEU: This can be improved. We don't need to copy everything, just
+    // need to swap a few particles.
+    memmove(&c->stars.parts[1], &c->stars.parts[0],
+            n_copy * sizeof(struct spart));
+
+    /* Update the gpart->spart links (shift by 1) */
+    for (size_t i = 0; i < n_copy; ++i) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (c->stars.parts[i + 1].gpart == NULL) {
+        error("Incorrectly linked spart!");
+      }
+#endif
+      c->stars.parts[i + 1].gpart->id_or_neg_offset--;
+    }
+  }
+
+  /* Recursively shift all the stars to get a free spot at the start of the
+   * current cell*/
+  cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1);
+
+  /* We now have an empty spart as the first particle in that cell */
+  struct spart *sp = &c->stars.parts[0];
+  bzero(sp, sizeof(struct spart));
+
+  /* Give it a decent position */
+  sp->x[0] = c->loc[0] + 0.5 * c->width[0];
+  sp->x[1] = c->loc[1] + 0.5 * c->width[1];
+  sp->x[2] = c->loc[2] + 0.5 * c->width[2];
+
+  /* Set it to the current time-bin */
+  sp->time_bin = e->min_active_bin;
+
+  top = c;
+  while (top->parent != NULL) {
+    top->grav.ti_end_min = e->ti_current;
+    top = top->parent;
+  }
+  top->grav.ti_end_min = e->ti_current;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Specify it was drifted to this point */
+  sp->ti_drift = e->ti_current;
+#endif
+
+  /* Register that we used one of the free slots. */
+  const size_t one = 1;
+  atomic_sub(&e->s->nr_extra_sparts, one);
+
+  return sp;
+}
+
 /**
  * @brief "Remove" a gas particle from the calculation.
  *
@@ -3920,15 +4121,21 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
  * @brief "Remove" a gas particle from the calculation and convert its gpart
  * friend to a dark matter particle.
  *
+ * Note that the #part is not destroyed. The pointer is still valid
+ * after this call and the properties of the #part are not altered
+ * apart from the time-bin and #gpart pointer.
  * The particle is inhibited and will officially be removed at the next rebuild.
  *
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
  * @param p The #part to remove.
  * @param xp The extended data of the particle to remove.
+ *
+ * @return Pointer to the #gpart the #part has become. It carries the
+ * ID of the #part and has a dark matter type.
  */
-void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
-                                struct part *p, struct xpart *xp) {
+struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
+                                         struct part *p, struct xpart *xp) {
 
   /* Quick cross-checks */
   if (c->nodeID != e->nodeID)
@@ -3953,20 +4160,28 @@ void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = p->ti_kick;
 #endif
+
+  return gp;
 }
 
 /**
  * @brief "Remove" a spart particle from the calculation and convert its gpart
  * friend to a dark matter particle.
  *
+ * Note that the #spart is not destroyed. The pointer is still valid
+ * after this call and the properties of the #spart are not altered
+ * apart from the time-bin and #gpart pointer.
  * The particle is inhibited and will officially be removed at the next rebuild.
  *
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
  * @param sp The #spart to remove.
+ *
+ * @return Pointer to the #gpart the #spart has become. It carries the
+ * ID of the #spart and has a dark matter type.
  */
-void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
-                                 struct spart *sp) {
+struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
+                                          struct cell *c, struct spart *sp) {
 
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
@@ -3991,6 +4206,210 @@ void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = sp->ti_kick;
 #endif
+
+  return gp;
+}
+
+/**
+ * @brief "Remove" a #part from a #cell and replace it with a #spart
+ * connected to the same #gpart.
+ *
+ * Note that the #part is not destroyed. The pointer is still valid
+ * after this call and the properties of the #part are not altered
+ * apart from the time-bin and #gpart pointer.
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param e The #engine.
+ * @param c The #cell from which to remove the #part.
+ * @param p The #part to remove (must be inside c).
+ * @param xp The extended data of the #part.
+ *
+ * @return A fresh #spart with the same ID, position, velocity and
+ * time-bin as the original #part.
+ */
+struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
+                                         struct part *p, struct xpart *xp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  if (p->gpart == NULL)
+    error("Trying to convert part without gpart friend to star!");
+
+  /* Create a fresh (empty) spart */
+  struct spart *sp = cell_add_spart(e, c);
+
+  /* Did we run out of free spart slots? */
+  if (sp == NULL) return NULL;
+
+  /* Destroy the gas particle and get it's gpart friend */
+  struct gpart *gp = cell_convert_part_to_gpart(e, c, p, xp);
+
+  /* Assign the ID back */
+  sp->id = gp->id_or_neg_offset;
+  gp->type = swift_type_stars;
+
+  /* Re-link things */
+  sp->gpart = gp;
+  gp->id_or_neg_offset = -(sp - e->s->sparts);
+
+  /* Synchronize clocks */
+  gp->time_bin = sp->time_bin;
+
+  /* Synchronize masses, positions and velocities */
+  sp->mass = gp->mass;
+  sp->x[0] = gp->x[0];
+  sp->x[1] = gp->x[1];
+  sp->x[2] = gp->x[2];
+  sp->v[0] = gp->v_full[0];
+  sp->v[1] = gp->v_full[1];
+  sp->v[2] = gp->v_full[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  sp->ti_kick = gp->ti_kick;
+  gp->ti_drift = sp->ti_drift;
+#endif
+
+  /* Set a smoothing length */
+  sp->h = max(c->stars.h_max, c->hydro.h_max);
+
+  /* Here comes the Sun! */
+  return sp;
+}
+
+/**
+ * @brief Re-arrange the #part in a top-level cell such that all the extra ones
+ * for on-the-fly creation are located at the end of the array.
+ *
+ * @param c The #cell to sort.
+ * @param parts_offset The offset between the first #part in the array and the
+ * first #part in the global array in the space structure (for re-linking).
+ */
+void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
+
+  struct part *parts = c->hydro.parts;
+  struct xpart *xparts = c->hydro.xparts;
+  const int count_real = c->hydro.count;
+
+  if (c->depth != 0 || c->nodeID != engine_rank)
+    error("This function should only be called on local top-level cells!");
+
+  int first_not_extra = count_real;
+
+  /* Find extra particles */
+  for (int i = 0; i < count_real; ++i) {
+    if (parts[i].time_bin == time_bin_not_created) {
+
+      /* Find the first non-extra particle after the end of the
+         real particles */
+      while (parts[first_not_extra].time_bin == time_bin_not_created) {
+        ++first_not_extra;
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (first_not_extra >= count_real + space_extra_parts)
+        error("Looking for extra particles beyond this cell's range!");
+#endif
+
+      /* Swap everything, including g-part pointer */
+      memswap(&parts[i], &parts[first_not_extra], sizeof(struct part));
+      memswap(&xparts[i], &xparts[first_not_extra], sizeof(struct xpart));
+      if (parts[i].gpart)
+        parts[i].gpart->id_or_neg_offset = -(i + parts_offset);
+    }
+  }
+}
+
+/**
+ * @brief Re-arrange the #spart in a top-level cell such that all the extra ones
+ * for on-the-fly creation are located at the end of the array.
+ *
+ * @param c The #cell to sort.
+ * @param sparts_offset The offset between the first #spart in the array and the
+ * first #spart in the global array in the space structure (for re-linking).
+ */
+void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
+
+  struct spart *sparts = c->stars.parts;
+  const int count_real = c->stars.count;
+
+  if (c->depth != 0 || c->nodeID != engine_rank)
+    error("This function should only be called on local top-level cells!");
+
+  int first_not_extra = count_real;
+
+  /* Find extra particles */
+  for (int i = 0; i < count_real; ++i) {
+    if (sparts[i].time_bin == time_bin_not_created) {
+
+      /* Find the first non-extra particle after the end of the
+         real particles */
+      while (sparts[first_not_extra].time_bin == time_bin_not_created) {
+        ++first_not_extra;
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (first_not_extra >= count_real + space_extra_sparts)
+        error("Looking for extra particles beyond this cell's range!");
+#endif
+
+      /* Swap everything, including g-part pointer */
+      memswap(&sparts[i], &sparts[first_not_extra], sizeof(struct spart));
+      if (sparts[i].gpart)
+        sparts[i].gpart->id_or_neg_offset = -(i + sparts_offset);
+      sparts[first_not_extra].gpart = NULL;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[first_not_extra].time_bin != time_bin_not_created)
+        error("Incorrect swap occured!");
+#endif
+    }
+  }
+}
+
+/**
+ * @brief Re-arrange the #gpart in a top-level cell such that all the extra ones
+ * for on-the-fly creation are located at the end of the array.
+ *
+ * @param c The #cell to sort.
+ * @param parts The global array of #part (for re-linking).
+ * @param sparts The global array of #spart (for re-linking).
+ */
+void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
+                               struct spart *sparts) {
+
+  struct gpart *gparts = c->grav.parts;
+  const int count_real = c->grav.count;
+
+  if (c->depth != 0 || c->nodeID != engine_rank)
+    error("This function should only be called on local top-level cells!");
+
+  int first_not_extra = count_real;
+
+  /* Find extra particles */
+  for (int i = 0; i < count_real; ++i) {
+    if (gparts[i].time_bin == time_bin_not_created) {
+
+      /* Find the first non-extra particle after the end of the
+         real particles */
+      while (gparts[first_not_extra].time_bin == time_bin_not_created) {
+        ++first_not_extra;
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (first_not_extra >= count_real + space_extra_gparts)
+        error("Looking for extra particles beyond this cell's range!");
+#endif
+
+      /* Swap everything (including pointers) */
+      memswap(&gparts[i], &gparts[first_not_extra], sizeof(struct gpart));
+      if (gparts[i].type == swift_type_gas) {
+        parts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
+      } else if (gparts[i].type == swift_type_stars) {
+        sparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
+      }
+    }
+  }
 }
 
 /**

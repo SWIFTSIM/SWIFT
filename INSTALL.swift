@@ -154,6 +154,12 @@ before you can build it.
         distributing the threads among the different cores on each
         computing node.
 
+        Note that if you have libNUMA outside of the system include
+        directories it may fail to compile as the headers do not pass
+        the -Wstrict-prototype check of GCC. In that case you will need
+        to use --enable-compiler-warnings=yes configure option to stop
+        this being an error.
+
  - tcmalloc / jemalloc / TBBmalloc:
 	a build of the tcmalloc library (part of gperftools), jemalloc
 	or TBBmalloc can be used be used to obtain faster and more

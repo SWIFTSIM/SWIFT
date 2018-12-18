@@ -67,7 +67,6 @@ enum task_types {
   task_type_grav_mesh,
   task_type_cooling,
   task_type_star_formation,
-  task_type_sourceterms,
   task_type_logger,
   task_type_stars_ghost_in,
   task_type_stars_ghost,
@@ -204,6 +203,9 @@ float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);
 void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
+void task_get_full_name(int type, int subtype, char *name);
+void task_get_group_name(int type, int subtype, char *cluster);
+
 #ifdef WITH_MPI
 void task_create_mpi_comms(void);
 #endif

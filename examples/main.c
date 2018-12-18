@@ -52,7 +52,7 @@
 /* Global profiler. */
 struct profiler prof;
 
-//  Usage string.
+/*  Usage string. */
 static const char *const swift_usage[] = {
     "swift [options] [[--] param-file]",
     "swift [options] param-file",
@@ -61,7 +61,7 @@ static const char *const swift_usage[] = {
     NULL,
 };
 
-// Function to handle multiple -P arguments.
+/* Function to handle multiple -P arguments. */
 struct cmdparams {
   const char *param[PARSER_MAX_NO_OF_PARAMS];
   int nparam;
@@ -97,7 +97,6 @@ int main(int argc, char *argv[]) {
   struct stars_props stars_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
-  struct sourceterms sourceterms;
   struct space s;
   struct spart *sparts = NULL;
   struct unit_system us;
@@ -147,11 +146,12 @@ int main(int argc, char *argv[]) {
   int restart = 0;
   int with_cosmology = 0;
   int with_external_gravity = 0;
-  int with_sourceterms = 0;
+  int with_temperature = 0;
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_stars = 0;
+  int with_star_formation = 0;
   int with_feedback = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
@@ -174,19 +174,23 @@ int main(int argc, char *argv[]) {
   struct argparse_option options[] = {
       OPT_HELP(),
 
-      OPT_GROUP("  Simulation options:"),
-      OPT_BOOLEAN('b', "feedback", &with_feedback, "Run with stars feedback",
+      OPT_GROUP("  Simulation options:\n"),
+      OPT_BOOLEAN('b', "feedback", &with_feedback, "Run with stars feedback.",
                   NULL, 0, 0),
       OPT_BOOLEAN('c', "cosmology", &with_cosmology,
                   "Run with cosmological time integration.", NULL, 0, 0),
-      OPT_BOOLEAN('C', "cooling", &with_cooling, "Run with cooling", NULL, 0,
-                  0),
+      OPT_BOOLEAN(0, "temperature", &with_temperature,
+                  "Run with temperature calculation.", NULL, 0, 0),
+      OPT_BOOLEAN('C', "cooling", &with_cooling,
+                  "Run with cooling (also switches on --with-temperature).",
+                  NULL, 0, 0),
       OPT_BOOLEAN('D', "drift-all", &with_drift_all,
                   "Always drift all particles even the ones far from active "
                   "particles. This emulates Gadget-[23] and GIZMO's default "
                   "behaviours.",
                   NULL, 0, 0),
-      OPT_BOOLEAN('F', "sourceterms", &with_sourceterms, "", NULL, 0, 0),
+      OPT_BOOLEAN('F', "star-formation", &with_star_formation,
+                  "Run with star formation.", NULL, 0, 0),
       OPT_BOOLEAN('g', "external-gravity", &with_external_gravity,
                   "Run with an external gravitational potential.", NULL, 0, 0),
       OPT_BOOLEAN('G', "self-gravity", &with_self_gravity,
@@ -195,11 +199,11 @@ int main(int argc, char *argv[]) {
                   "Reconstruct the multipoles every time-step.", NULL, 0, 0),
       OPT_BOOLEAN('s', "hydro", &with_hydro, "Run with hydrodynamics.", NULL, 0,
                   0),
-      OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars", NULL, 0, 0),
+      OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
-                  "Run with structure finding", NULL, 0, 0),
+                  "Run with structure finding.", NULL, 0, 0),
 
-      OPT_GROUP("  Control options:"),
+      OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
       OPT_BOOLEAN('d', "dry-run", &dry_run,
@@ -449,10 +453,9 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   if (with_mpole_reconstruction && nr_nodes > 1)
     error("Cannot reconstruct m-poles every step over MPI (yet).");
-#endif
-
-#ifdef WITH_MPI
   if (with_feedback) error("Can't run with feedback over MPI (yet).");
+  if (with_star_formation)
+    error("Can't run with star formation over MPI (yet)");
 #endif
 
 #if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
@@ -470,8 +473,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Check that we can write the structure finding catalogues by testing if the
-   * output
-   * directory exists and is searchable and writable. */
+   * output directory exists and is searchable and writable. */
   if (with_structure_finding) {
     char stfbasename[PARSER_MAX_LINE_SIZE];
     parser_get_param_string(params, "StructureFinding:basename", stfbasename);
@@ -779,7 +781,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
                Nspart, periodic, replicate, generate_gas_in_ics, with_hydro,
-               with_self_gravity, talking, dry_run);
+               with_self_gravity, with_star_formation, talking, dry_run);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -848,21 +850,21 @@ int main(int argc, char *argv[]) {
     }
 
     /* Initialise the external potential properties */
+    bzero(&potential, sizeof(struct external_potential));
     if (with_external_gravity)
       potential_init(params, &prog_const, &us, &s, &potential);
     if (myrank == 0) potential_print(&potential);
 
     /* Initialise the cooling function properties */
-    if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
+    bzero(&cooling_func, sizeof(struct cooling_function_data));
+    if (with_cooling || with_temperature)
+      cooling_init(params, &us, &prog_const, &cooling_func);
     if (myrank == 0) cooling_print(&cooling_func);
 
     /* Initialise the chemistry */
+    bzero(&chemistry, sizeof(struct chemistry_global_data));
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
-
-    /* Initialise the feedback properties */
-    if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
-    if (with_sourceterms && myrank == 0) sourceterms_print(&sourceterms);
 
     /* Construct the engine policy */
     int engine_policies = ENGINE_POLICY | engine_policy_steal;
@@ -874,22 +876,20 @@ int main(int argc, char *argv[]) {
     if (with_external_gravity)
       engine_policies |= engine_policy_external_gravity;
     if (with_cosmology) engine_policies |= engine_policy_cosmology;
+    if (with_temperature) engine_policies |= engine_policy_temperature;
     if (with_cooling) engine_policies |= engine_policy_cooling;
-    if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
     if (with_stars) engine_policies |= engine_policy_stars;
+    if (with_star_formation) engine_policies |= engine_policy_star_formation;
     if (with_feedback) engine_policies |= engine_policy_feedback;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
-
-    // MATTHIEU: Temporary star formation law
-    // engine_policies |= engine_policy_star_formation;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &gravity_properties, &stars_properties,
-                &mesh, &potential, &cooling_func, &chemistry, &sourceterms);
+                &mesh, &potential, &cooling_func, &chemistry);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 
@@ -1214,7 +1214,7 @@ int main(int argc, char *argv[]) {
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
-  if (with_cooling) cooling_clean(&cooling_func);
+  if (with_cooling || with_temperature) cooling_clean(&cooling_func);
   engine_clean(&e);
   free(params);
 

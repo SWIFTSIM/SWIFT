@@ -46,7 +46,6 @@
 #include "potential.h"
 #include "runner.h"
 #include "scheduler.h"
-#include "sourceterms_struct.h"
 #include "space.h"
 #include "task.h"
 #include "units.h"
@@ -70,8 +69,8 @@ enum engine_policy {
   engine_policy_cosmology = (1 << 10),
   engine_policy_drift_all = (1 << 11),
   engine_policy_reconstruct_mpoles = (1 << 12),
-  engine_policy_cooling = (1 << 13),
-  engine_policy_sourceterms = (1 << 14),
+  engine_policy_temperature = (1 << 13),
+  engine_policy_cooling = (1 << 14),
   engine_policy_stars = (1 << 15),
   engine_policy_structure_finding = (1 << 16),
   engine_policy_star_formation = (1 << 17),
@@ -360,9 +359,6 @@ struct engine {
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
 
-  /* Properties of source terms */
-  struct sourceterms *sourceterms;
-
   /* The (parsed) parameter file */
   struct swift_params *parameter_file;
 
@@ -417,8 +413,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
-                 const struct chemistry_global_data *chemistry,
-                 struct sourceterms *sourceterms);
+                 const struct chemistry_global_data *chemistry);
 void engine_config(int restart, struct engine *e, struct swift_params *params,
                    int nr_nodes, int nodeID, int nr_threads, int with_aff,
                    int verbose, const char *restart_file);

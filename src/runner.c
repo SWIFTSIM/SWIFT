@@ -58,13 +58,13 @@
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
 #include "sort_part.h"
-#include "sourceterms.h"
 #include "space.h"
 #include "space_getsid.h"
 #include "stars.h"
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
+#include "tracers.h"
 
 #define TASK_LOOP_DENSITY 0
 #define TASK_LOOP_GRADIENT 1
@@ -106,42 +106,6 @@
 #define FUNCTION feedback
 #include "runner_doiact_stars.h"
 #undef FUNCTION
-
-/**
- * @brief Perform source terms
- *
- * @param r runner task
- * @param c cell
- * @param timer 1 if the time is to be recorded.
- */
-void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
-  const int count = c->hydro.count;
-  const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
-  const double cell_width[3] = {c->width[0], c->width[1], c->width[2]};
-  struct sourceterms *sourceterms = r->e->sourceterms;
-  const int dimen = 3;
-
-  TIMER_TIC;
-
-  /* Recurse? */
-  if (c->split) {
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_sourceterms(r, c->progeny[k], 0);
-  } else {
-
-    if (count > 0) {
-
-      /* do sourceterms in this cell? */
-      const int incell =
-          sourceterms_test_cell(cell_min, cell_width, sourceterms, dimen);
-      if (incell == 1) {
-        sourceterms_apply(r, sourceterms, c);
-      }
-    }
-  }
-
-  if (timer) TIMER_TOC(timer_dosource);
-}
 
 /**
  * @brief Intermediate task after the density to check that the smoothing
@@ -514,7 +478,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
-  const struct engine *e = r->e;
+  struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -544,9 +508,16 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         // MATTHIEU: Temporary star-formation law
         // Do not use this at home.
-        if (rho > 1.5e7 && e->step > 2) {
+        if (rho > 1.7e7 && e->step > 2) {
           message("Removing particle id=%lld rho=%e", p->id, rho);
-          cell_convert_part_to_gpart(e, c, p, xp);
+
+          struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
+
+          /* Did we run out of fresh particles? */
+          if (sp == NULL) continue;
+
+          /* Set everything to a valid state */
+          stars_init_spart(sp);
         }
       }
     }
@@ -638,9 +609,6 @@ void runner_do_sort_ascending(struct entry *sort, int N) {
  * @brief Recursively checks that the flags are consistent in a cell hierarchy.
  *
  * Debugging function. Exists in two flavours: hydro & stars.
- *
- * @param c The #cell to check.
- * @param flags The sorting flags to check.
  */
 #define RUNNER_CHECK_SORTS(TYPE)                                               \
   void runner_check_sorts_##TYPE(struct cell *c, int flags) {                  \
@@ -2037,6 +2005,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -2091,6 +2060,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
+
+        /* Update the tracers properties */
+        tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,
+                               with_cosmology, e->cosmology,
+                               e->hydro_properties, e->cooling_func, e->time);
 
         /* Number of updated particles */
         updated++;
@@ -2780,7 +2754,7 @@ void *runner_main(void *data) {
             runner_do_grav_external(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density) {
             runner_doself_stars_density(r, ci, 1);
-          } else if (t->subtype == task_subtype_stars_feedback)
+          else if (t->subtype == task_subtype_stars_feedback)
             runner_doself_stars_feedback(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
@@ -2935,9 +2909,6 @@ void *runner_main(void *data) {
           break;
         case task_type_star_formation:
           runner_do_star_formation(r, t->ci, 1);
-          break;
-        case task_type_sourceterms:
-          runner_do_sourceterms(r, t->ci, 1);
           break;
         default:
           error("Unknown/invalid task type (%d).", t->type);
