@@ -1327,6 +1327,7 @@ static inline void engine_make_stars_loops_dependencies(struct scheduler *sched,
   /* density loop --> ghost --> feedback loop*/
   scheduler_addunlock(sched, density, c->super->stars.ghost_in);
   scheduler_addunlock(sched, c->super->stars.ghost_out, feedback);
+  scheduler_addunlock(sched, c->super->hydro.ghost_out, density);
 }
 
 /**

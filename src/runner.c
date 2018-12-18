@@ -347,49 +347,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
                                                   scount, l->t->ci, -1, 1);
             }
           }
-          /* Run through this cell's feedback interactions. */
-          for (struct link *l = finger->stars.feedback; l != NULL;
-               l = l->next) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-            if (l->t->ti_run < r->e->ti_current)
-              error("Density task should have been run.");
-#endif
-
-            /* Self-interaction? */
-            if (l->t->type == task_type_self)
-              runner_doself_subset_branch_stars_feedback(r, finger, sparts, sid,
-                                                         scount);
-
-            /* Otherwise, pair interaction? */
-            else if (l->t->type == task_type_pair) {
-
-              /* Left or right? */
-              if (l->t->ci == finger)
-                runner_dopair_subset_branch_stars_feedback(
-                    r, finger, sparts, sid, scount, l->t->cj);
-              else
-                runner_dopair_subset_branch_stars_feedback(
-                    r, finger, sparts, sid, scount, l->t->ci);
-            }
-
-            /* Otherwise, sub-self interaction? */
-            else if (l->t->type == task_type_sub_self)
-              runner_dosub_subset_stars_feedback(r, finger, sparts, sid, scount,
-                                                 NULL, -1, 1);
-
-            /* Otherwise, sub-pair interaction? */
-            else if (l->t->type == task_type_sub_pair) {
-
-              /* Left or right? */
-              if (l->t->ci == finger)
-                runner_dosub_subset_stars_feedback(r, finger, sparts, sid,
-                                                   scount, l->t->cj, -1, 1);
-              else
-                runner_dosub_subset_stars_feedback(r, finger, sparts, sid,
-                                                   scount, l->t->ci, -1, 1);
-            }
-          }
         }
       }
     }
