@@ -97,9 +97,6 @@ struct star_formation {
   /*! Normalization of critical SF density of Schaye (2004) */
   double den_crit_star;
 
-  /*! Metallicity dependent critical density from Schaye (2004) */
-  int schaye04;
-  
   /*! Polytropic index */
   double polytropic_index;
 
@@ -118,10 +115,13 @@ struct star_formation {
  * a star.
  *
  * @param starform the star formation law properties to use.
- * @param p the gas particles
- * @param xp the additional properties of the gas particles
- * @param phys_const the physical constants in internal units
- * @param cosmo the cosmological parameters and properties
+ * @param p the gas particles.
+ * @param xp the additional properties of the gas particles.
+ * @param phys_const the physical constants in internal units.
+ * @param cosmo the cosmological parameters and properties.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cooling The cooling data struct.
  *
  * */
 INLINE static int star_formation_potential_to_become_star(
@@ -187,15 +187,18 @@ INLINE static int star_formation_potential_to_become_star(
 /*
  * @brief Calculates if the gas particle gets converted
  * 
+ * @param the #engine
  * @param starform the star formation law properties to use.
- * @param p the gas particles
- * @param xp the additional properties of the gas particles
- * @param phys_const the physical constants in internal units
- * @param cosmo the cosmological parameters and properties
- *
+ * @param p the gas particles.
+ * @param xp the additional properties of the gas particles.
+ * @param phys_const the physical constants in internal units.
+ * @param cosmo the cosmological parameters and properties.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cooling The cooling data struct.
  */
 INLINE static int star_formation_convert_to_star(
-    const struct star_formation* starform, const struct part* restrict p,
+    struct engine *e, const struct star_formation* starform, const struct part* restrict p,
     const struct xpart* restrict xp, const struct phys_const* const phys_const,
     const struct cosmology* cosmo, const struct hydro_props *restrict hydro_props,
     const struct unit_system *restrict us, 
@@ -211,7 +214,7 @@ INLINE static int star_formation_convert_to_star(
     starform->SF_power_law) * p->time_bin;
 
     /* Calculate the seed */
-    unsigned int seed = p->id;
+    unsigned int seed = (p->id + e->ti_current) % 8191;
     
     /* Generate a random number between 0 and 1. */
     const double randomnumber = rand_r(&seed)*starform->inv_RAND_MAX; 
@@ -228,6 +231,19 @@ INLINE static int star_formation_convert_to_star(
   }
 }
 
+/*
+ * @brief Copies the properties of the gas particle over to the
+ * star particle
+ *
+ * @param e The #engine
+ * @param c The #cell
+ * @param p the gas particles.
+ * @param xp the additional properties of the gas particles.
+ * @param starform the star formation law properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param cosmo the cosmological parameters and properties.
+ * @param with_cosmology if we run with cosmology.
+ */
 INLINE static void star_formation_copy_properties(
     struct engine *e, struct cell *c, struct part* p,
     struct xpart* xp, const struct star_formation* starform, 
@@ -413,15 +429,10 @@ INLINE static void starformation_print_backend(
   "density = %e and critical temperature = %e", starform->KS_normalization, 
   starform->KS_power_law, starform->fgas, starform->den_crit,
   starform->T_crit);
-  if (!starform->schaye04) {
-    message("Density threshold to form stars is constant and given"
-    "by a density of %e", starform->den_crit_star);
-  } else {
-    message("Density threshold to form stars is given by Schaye "
-    "(2004), the normalization of the star formation law is given by"
-    " %e, with metallicity slope of %e, and metallicity normalization"
-    "of %e", starform->den_crit_star, starform->n_Z0, starform->Z0);
-  }
+  message("Density threshold to form stars is given by Schaye "
+  "(2004), the normalization of the star formation law is given by"
+  " %e, with metallicity slope of %e, and metallicity normalization"
+  "of %e", starform->den_crit_star, starform->n_Z0, starform->Z0);
 
 }
 

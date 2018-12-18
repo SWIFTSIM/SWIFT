@@ -497,7 +497,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         //const float rho = hydro_get_physical_density(p, cosmo);
-        if (star_formation_convert_to_star(starform, p, xp, constants, cosmo, hydro_props, us, cooling) ) {
+        if (star_formation_convert_to_star(e, starform, p, xp, constants, cosmo, hydro_props, us, cooling) ) {
           star_formation_copy_properties(e, c, p, xp, starform, constants, cosmo, with_cosmology);
         //struct spart *sp =        cell_conert_part_to_spart(c, p, ...);
         }
