@@ -3659,6 +3659,11 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
           continue;
         }
       }
+
+      /* Init gravity force fields. */
+      if (gpart_is_active(gp, e)) {
+        gravity_init_gpart(gp);
+      }
     }
 
     /* Loop over all the star particles in the cell */
