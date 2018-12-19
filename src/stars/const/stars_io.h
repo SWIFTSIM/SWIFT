@@ -124,9 +124,12 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
   /* Set stellar evolution parameters */
-  stars_properties->deltaT_desired = 1.0e7;
-  stars_properties->temp_to_u_factor = 1.0e8;
-  stars_properties->SNIa_energy_fraction = 1.0e0;
+  sp->deltaT_desired = 1.0e7;
+  sp->temp_to_u_factor = 1.0e8;
+  sp->SNIa_energy_fraction = 1.0e0;
+  sp->continuous_heating = 1;
+
+  parser_get_param_float(params, "Stars:feedback_timescale", sp->feedback_timescale);
 
 }
 

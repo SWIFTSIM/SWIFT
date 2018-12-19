@@ -148,7 +148,13 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
     const struct cosmology* cosmo, double dt) {
   
+  /* Proportion of quantities to be released each timestep */
+  // ALEXEI: not working for some reason, giving nan. 
+  //float feedback_factor = dt/stars_properties->feedback_timescale;
+
   /* Set all enrichment quantities to constant values */
+  // use this version once feedback_factor is not nan
+  //sp->to_distribute.mass = sp->mass * feedback_factor;
   sp->to_distribute.mass = 1.0e-9;
   for(int i = 0; i < chemistry_element_count; i++) sp->to_distribute.chemistry_data.metal_mass_fraction[i] = 1.f/chemistry_element_count;
   sp->to_distribute.chemistry_data.metal_mass_fraction_total = 1.f - 2.f/chemistry_element_count;

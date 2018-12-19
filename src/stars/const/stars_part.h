@@ -141,6 +141,8 @@ struct stars_props {
   float deltaT_desired;
   float temp_to_u_factor;
 
+  float feedback_timescale;
+
 };
 
 #endif /* SWIFT_DEFAULT_STAR_PART_H */
