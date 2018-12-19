@@ -115,6 +115,9 @@ struct star_formation {
   /*! EOS density norm */
   double EOS_density_norm;
 
+  /*! EOS density norm in user units */
+  float EOS_density_norm_HpCM3;
+
 };
 
 /*
@@ -379,9 +382,10 @@ INLINE static void starformation_init_backend(
       parameter_file, "SchayeSF:EOS_Jeans_GammaEffective");
   starform->EOS_temperature_norm = parser_get_param_double(
       parameter_file, "SchayeSF:EOS_Jeans_TemperatureNorm_K");
-  starform->EOS_density_norm =
+  starform->EOS_density_norm_HpCM3 = 
       parser_get_param_double(parameter_file,
-                              "SchayeSF:EOS_JEANS_DensityNorm_HpCM3") *
+                              "SchayeSF:EOS_JEANS_DensityNorm_HpCM3");
+  starform->EOS_density_norm = starform->EOS_density_norm_HpCM3 *
       conversion_numb_density;
 
   /* Calculate the EOS pressure normalization */
@@ -445,17 +449,22 @@ INLINE static void starformation_print_backend(
 
   message("Star formation law is Schaye and Dalla Vecchia (2008)");
   message("With properties: normalization = %e Msun/kpc^2/yr, slope of the"
-      "Kennicutt-Schmidt law = %e, gas fraction = %e, threshold "
-      "density = %e #/cm^3 and threshold temperature = %e K",
-      starform->KS_normalization_MSUNpYRpKPC2, starform->KS_power_law, starform->fgas,
-      starform->density_threshold_HpCM3, starform->Temperature_threshold);
-  message("Density threshold to form stars is given by Schaye (2004)");
+      "Kennicutt-Schmidt law = %e and gas fraction = %e ",
+      starform->KS_normalization_MSUNpYRpKPC2, starform->KS_power_law, starform->fgas);
+  message("The effective equation of state is given by: polytropic "
+      "index = %e , normalization density = %e #/cm^3 and normalization temperature = "
+      "%e K", starform->polytropic_index, starform->EOS_density_norm_HpCM3,
+      starform->EOS_temperature_norm);
+  message("Density threshold is given by Schaye (2004)");
   message(
-      "the normalization of the star formation law is given by"
+      "the normalization of the density threshold is given by"
       " %e #/cm^3, with metallicity slope of %e, and metallicity normalization"
       "of %e, the maximum density threshold is given by %e #/cm^3",
       starform->density_threshold_HpCM3, starform->n_Z0, starform->Z0, 
       starform->density_threshold_max_HpCM3);
+  message("Temperature threshold is given by Dalla Vecchia and Schaye (2012)");
+  message(
+      "The temperature threshold is given by: %e K", starform->Temperature_threshold);
 }
 
 #endif /* SWIFT_SCHAYE_STARFORMATION_H */
