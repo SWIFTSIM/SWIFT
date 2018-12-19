@@ -38,6 +38,7 @@ struct star_formation {};
 
 /**
  * @brief Calculates if the gas particle gets converted
+ *        The gas will never be converted in none, so always returns 0.
  *
  * @param the #engine
  * @param starform the star formation law properties to use.
