@@ -518,17 +518,15 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the "grad h" term */
   const float rho_inv = 1.f / p->rho;
-  float grad_h_term;
-  const float grad_h_term_inv =
-      1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv;
-  /* Avoid 1/0 from only having one neighbour right at the edge of the kernel */
-  if (grad_h_term_inv != 0.f) {
-    grad_h_term = 1.f / grad_h_term_inv;
-  } else {
-    grad_h_term = 0.f;
+  float rho_dh = p->density.rho_dh;
+  /* Ignore changing-kernel effects when h is h_max */
+  if (p->h == hydro_props->h_max) {
+    rho_dh = 0.f;
   }
+  const float grad_h_term = 
+      1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
 
-    /* Compute the Balsara switch */
+  /* Compute the Balsara switch */
 #ifdef PLANETARY_SPH_NO_BALSARA
   const float balsara = hydro_props->viscosity.alpha;
 #else
