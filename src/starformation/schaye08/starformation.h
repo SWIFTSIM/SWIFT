@@ -152,47 +152,32 @@ INLINE static int star_formation_potential_to_become_star(
    * threshold is reached or if the metallicity dependent
    * threshold is reached, after this we calculate if the
    * temperature is appropriate */
-  if (p->rho > rho_crit_times_min_over_den) {
-    /* In this case there are actually multiple possibilities
-     * because we also need to check if the physical density exceeded
-     * the appropriate limit */
-
-    /* Check if it exceeded the maximum density */
-    if (p->rho > starform->density_threshold_max) {
-      /* double tempp = cooling_get_temperature() */
-      const double temperature = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                      cooling, p, xp);
-      /* Check the last criteria, if the temperature is satisfied */
-      if (temperature < starform->Temperature_threshold) {
-        return 1;
-      } else {
-        return 0;
-      }
-      /* If the maximum density is not exceeded check if the redshift dependent
-       * one is exceeded */
-    } else {
-      /* Get the metallicity from the chemistry struct
-       * Do we use SMOOTHED OR NON SMOOTHED IN EAGLE???*/
-      double Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
-      double density_threshold_current =
-          starform->density_threshold * pow(Z * starform->Z0_inv, starform->n_Z0);
-      if (p->rho > density_threshold_current) {
-        /* double tempp = cooling_get_temperature() */
-        const double temperature = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                        cooling, p, xp);
-        /* Check the last criteria, if the temperature is satisfied */
-        if (temperature < starform->Temperature_threshold) {
-          return 1;
-        } else {
-          return 0;
-        }
-      } else {
-        return 0;
-      }
-    }
-  } else {
+  if (p->rho < rho_crit_times_min_over_den)
     return 0;
-  }
+
+
+  /* In this case there are actually multiple possibilities
+   * because we also need to check if the physical density exceeded
+   * the appropriate limit */
+
+  double Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
+  double density_threshold_metal_dep =
+          starform->density_threshold * pow(Z * starform->Z0_inv, starform->n_Z0);
+
+  double density_threshold_current = min(density_threshold_metal_dep, starform->density_threshold_max);
+  
+  
+  /* Check if it exceeded the maximum density */
+  if (p->rho < density_threshold_current)
+    return 0;
+    
+      
+  /* double tempp = cooling_get_temperature() */
+  const double temperature = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
+						     cooling, p, xp);
+
+  /* Check the last criteria, if the temperature is satisfied */
+  return (temperature < starform->Temperature_threshold); 
 }
 
 /**
@@ -236,9 +221,10 @@ INLINE static int star_formation_convert_to_star(
     /* Calculate if we form a star */
     return (prop > randomnumber);
 
-  } 
-  return 0;
+  }
+
   
+  return 0;
 }
 
 /**
