@@ -40,7 +40,7 @@
 /* Starformation struct */
 struct star_formation {
 
-  /*! Normalization of the KS star formation law */
+  /*! Normalization of the KS star formation law (internal units) */
   double KS_normalization;
 
   /*! Normalization of the KS star formation law in user units */
@@ -52,10 +52,10 @@ struct star_formation {
   /*! Slope of the high density KS law */
   double KS_high_den_power_law;
 
-  /*! KS law High density threshold */
+  /*! KS law High density threshold (internal units) */
   double KS_high_den_thresh;
 
-  /*! KS high density normalization */
+  /*! KS high density normalization (internal units) */
   double KS_high_den_normalization;
 
   /*! Critical overdensity */
@@ -70,25 +70,25 @@ struct star_formation {
   /*! Star formation law slope */
   double SF_power_law;
 
-  /*! star formation normalization of schaye+08 */
+  /*! star formation normalization of schaye+08 (internal units) */
   double SF_normalization;
 
   /*! star formation high density slope */
   double SF_high_den_power_law;
 
-  /*! Star formation high density normalization */
+  /*! Star formation high density normalization (internal units) */
   double SF_high_den_normalization;
 
   /*! Inverse of RAND_MAX */
   double inv_RAND_MAX;
 
-  /*! Density threshold to form stars */
+  /*! Density threshold to form stars (internal units) */
   double density_threshold;
 
   /*! Density threshold to form stars in user units */
   float density_threshold_HpCM3;
 
-  /*! Maximum density threshold to form stars */
+  /*! Maximum density threshold to form stars (internal units) */
   double density_threshold_max;
 
   /*! Maximum density threshold to form stars in user units */
@@ -100,7 +100,7 @@ struct star_formation {
   /*! one over the scaling metallicity */
   double Z0_inv;
 
-  /*! critical density Metallicity power law */
+  /*! critical density Metallicity power law (internal units) */
   double n_Z0;
 
   /*! Polytropic index */
@@ -112,7 +112,7 @@ struct star_formation {
   /*! EOS Temperature norm */
   double EOS_temperature_norm;
 
-  /*! EOS density norm */
+  /*! EOS density norm (internal units) */
   double EOS_density_norm;
 
   /*! EOS density norm in user units */

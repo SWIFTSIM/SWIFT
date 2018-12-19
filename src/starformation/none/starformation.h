@@ -39,6 +39,7 @@ struct star_formation {};
 /**
  * @brief Calculates if the gas particle gets converted
  *        The gas will never be converted in none, so always returns 0.
+ *        So this code does not produce star formation.
  *
  * @param the #engine
  * @param starform the star formation law properties to use.
@@ -62,7 +63,8 @@ INLINE static int star_formation_convert_to_star(
 }
 
 /**
- * @brief Calculate if the gas particle is converted
+ * @brief Calculate if the gas particle is converted, which 
+ * should never happen in this model
  *
  * @param starform the star formation struct
  * @param p the gas particles with their properties
