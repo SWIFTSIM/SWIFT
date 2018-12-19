@@ -253,22 +253,19 @@ INLINE static int star_formation_convert_to_star(
  * star particle
  *
  * @param e The #engine
- * @param c The #cell
  * @param p the gas particles.
  * @param xp the additional properties of the gas particles.
+ * @param sp the new created star particle with its properties.
  * @param starform the star formation law properties to use.
  * @param phys_const the physical constants in internal units.
  * @param cosmo the cosmological parameters and properties.
  * @param with_cosmology if we run with cosmology.
  */
 INLINE static void star_formation_copy_properties(
-    struct engine* e, struct cell* c, struct part* p, struct xpart* xp,
+    struct engine* e, struct part* p, struct xpart* xp, struct spart* sp,
     const struct star_formation* starform,
     const struct phys_const* const phys_const, const struct cosmology* cosmo,
     int with_cosmology) {
-
-  /* Convert your particle to a star */
-  struct spart* sp = cell_convert_part_to_spart(e, c, p, xp);
 
   /* Store the current mass */
   sp->mass = p->mass;

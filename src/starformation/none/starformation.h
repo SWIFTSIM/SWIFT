@@ -37,20 +37,25 @@
 struct star_formation {};
 
 /**
- * @brief Calculate if the gas has the potential of becoming
- * a star.
+ * @brief Calculates if the gas particle gets converted
  *
+ * @param the #engine
  * @param starform the star formation law properties to use.
- * @param p the gas particles
- * @param xp the additional properties of the gas particles
- * @param phys_const the physical constants in internal units
- * @param cosmo the cosmological parameters and properties
- *
+ * @param p the gas particles.
+ * @param xp the additional properties of the gas particles.
+ * @param phys_const the physical constants in internal units.
+ * @param cosmo the cosmological parameters and properties.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cooling The cooling data struct.
  */
 INLINE static int star_formation_convert_to_star(
-    const struct star_formation* starform, struct part* restrict p,
-    const struct xpart* restrict xp, const struct phys_const* const phys_const,
-    const struct cosmology* cosmo) {
+    struct engine* e, const struct star_formation* starform,
+    const struct part* restrict p, const struct xpart* restrict xp,
+    const struct phys_const* const phys_const, const struct cosmology* cosmo,
+    const struct hydro_props* restrict hydro_props,
+    const struct unit_system* restrict us,
+    const struct cooling_function_data* restrict cooling) {
 
   return 0;
 }
@@ -65,9 +70,10 @@ INLINE static int star_formation_convert_to_star(
  *
  */
 INLINE static void star_formation_copy_properties(
-    struct engine* e, struct cell* c, struct part* p, struct xpart* xp,
+    struct engine* e, struct part* p, struct xpart* xp, struct spart* sp,
     const struct star_formation* starform,
-    const struct phys_const* const phys_const, const struct cosmology* cosmo) {}
+    const struct phys_const* const phys_const, const struct cosmology* cosmo,
+    int with_cosmology) {}
 
 /**
  * @brief initialization of the star formation law
