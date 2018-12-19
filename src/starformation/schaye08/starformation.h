@@ -61,11 +61,11 @@ struct star_formation {
   /*! Critical overdensity */
   double min_over_den;
 
-  /*! Critical temperature */
+  /*! Temperature threshold */
   double Temperature_threshold;
 
   /*! gas fraction */
-  double fgas;
+  float fgas;
 
   /*! Star formation law slope */
   double SF_power_law;
@@ -82,10 +82,13 @@ struct star_formation {
   /*! Inverse of RAND_MAX */
   double inv_RAND_MAX;
 
-  /*! Critical density to form stars */
+  /*! Density threshold to form stars */
   double density_threshold;
 
-  /*! Maximum critical density to form stars */
+  /*! Density threshold to form stars in user units */
+  float density_threshold_HpCM3;
+
+  /*! Maximum density threshold to form stars */
   double density_threshold_max;
 
   /*! Scaling metallicity */
@@ -337,10 +340,8 @@ INLINE static void starformation_init_backend(
   starform->fgas = parser_get_param_double(parameter_file, "SchayeSF:fg");
 
   /* Read the normalization of the KS law in KS law units */
-  const double normalization_MSUNpYRpKPC2 = parser_get_param_double(
+  starform->KS_normalization_MSUNpYRpKPC2 = parser_get_param_double(
       parameter_file, "SchayeSF:SchmidtLawCoeff_MSUNpYRpKPC2");
-
-  starform->KS_normalization_MSUNpYRpKPC2 = normalization_MSUNpYRpKPC2;
 
   /* Read the Kennicutt-Schmidt power law exponent */
   starform->KS_power_law =
@@ -350,7 +351,7 @@ INLINE static void starformation_init_backend(
   starform->SF_power_law = (starform->KS_power_law - 1.f) / 2.f;
 
   /* Give the Kennicutt-Schmidt law the same units as internal units */
-  starform->KS_normalization = normalization_MSUNpYRpKPC2 * KS_const;
+  starform->KS_normalization = starform->KS_normalization_MSUNpYRpKPC2 * KS_const;
 
   /* Calculate the starformation prefactor with most terms */
   starform->SF_normalization =
@@ -411,8 +412,10 @@ INLINE static void starformation_init_backend(
    * to form stars. */
   /* Read the normalization of the metallicity dependent critical
    * density*/
-  starform->density_threshold =
-      parser_get_param_double(parameter_file, "SchayeSF:thresh_norm_HpCM3") *
+  starform->density_threshold_HpCM3 = 
+      parser_get_param_double(parameter_file, "SchayeSF:thresh_norm_HpCM3");
+
+  starform->density_threshold = starform->density_threshold_HpCM3 *
       conversion_numb_density;
 
   /* Read the scale metallicity Z0 */
@@ -445,11 +448,11 @@ INLINE static void starformation_print_backend(
 
   message(
       "Star formation law is Schaye and Dalla Vecchia (2008)"
-      " with properties, normalization = %e, slope of the Kennicutt"
+      " with properties, normalization = %e Msun/kpc^2/yr, slope of the Kennicutt"
       "-Schmidt law = %e, gas fraction = %e, critical "
-      "density = %e and critical temperature = %e",
+      "density = %e #/cm^3 and critical temperature = %e",
       starform->KS_normalization_MSUNpYRpKPC2, starform->KS_power_law, starform->fgas,
-      starform->density_threshold, starform->Temperature_threshold);
+      starform->density_threshold_HpCM3, starform->Temperature_threshold);
   message(
       "Density threshold to form stars is given by Schaye "
       "(2004), the normalization of the star formation law is given by"
