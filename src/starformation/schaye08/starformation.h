@@ -237,15 +237,11 @@ INLINE static int star_formation_convert_to_star(
     const double randomnumber = rand_r(&seed) * starform->inv_RAND_MAX;
 
     /* Calculate if we form a star */
-    if (prop > randomnumber) {
-      return 1;
-    } else {
-      return 0;
-    }
+    return (prop > randomnumber);
 
-  } else {
-    return 0;
-  }
+  } 
+  return 0;
+  
 }
 
 /**
