@@ -1790,15 +1790,15 @@ void engine_make_starsloop_tasks_mapper(void *map_data, int num_elements,
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
       int iii = i + ii;
-      if (periodic && (iii < 0 || iii >= cdim[0])) continue;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
       iii = (iii + cdim[0]) % cdim[0];
       for (int jj = -1; jj < 2; jj++) {
         int jjj = j + jj;
-        if (periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
         jjj = (jjj + cdim[1]) % cdim[1];
         for (int kk = -1; kk < 2; kk++) {
           int kkk = k + kk;
-          if (periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
           kkk = (kkk + cdim[2]) % cdim[2];
 
           /* Get the neighbouring cell */
@@ -1872,15 +1872,15 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Now loop over all the neighbours of this cell */
     for (int ii = -1; ii < 2; ii++) {
       int iii = i + ii;
-      if (periodic && (iii < 0 || iii >= cdim[0])) continue;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
       iii = (iii + cdim[0]) % cdim[0];
       for (int jj = -1; jj < 2; jj++) {
         int jjj = j + jj;
-        if (periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
         jjj = (jjj + cdim[1]) % cdim[1];
         for (int kk = -1; kk < 2; kk++) {
           int kkk = k + kk;
-          if (periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
           kkk = (kkk + cdim[2]) % cdim[2];
 
           /* Get the neighbouring cell */
