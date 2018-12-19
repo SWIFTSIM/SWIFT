@@ -302,13 +302,15 @@ INLINE static void starformation_init_backend(
 
   /* Get the appropriate constant to calculate the
    * star formation constant */
-  const double KS_const = phys_const->const_kennicutt_schmidt_units;
+  const double KS_const = phys_const->const_solar_mass / (1e6 *
+  phys_const->const_parsec * phys_const->const_parsec) / phys_const->const_year;
 
   /* Get the Gravitational constant */
   const double G_newton = phys_const->const_newton_G;
 
   /* Get the surface density unit M_\odot / pc^2 */
-  const double M_per_pc2 = phys_const->const_solar_mass_per_parsec2;
+  const double M_per_pc2 = phys_const->const_solar_mass 
+  / (phys_const->const_parsec * phys_const->const_parsec);
 
   /* Calculate inverse of RAND_MAX for the random numbers */
   starform->inv_RAND_MAX = 1.f / RAND_MAX;

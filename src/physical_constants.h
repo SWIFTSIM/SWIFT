@@ -99,12 +99,6 @@ struct phys_const {
 
   /*! Reduced hubble constant units (i.e. H_0 / h) */
   double const_reduced_hubble;
-
-  /*! Const of Kennicutt-Schmidt law */
-  double const_kennicutt_schmidt_units;
-
-  /*! Const Solar Mass per squared parsec */
-  double const_solar_mass_per_parsec2;
 };
 
 void phys_const_init(const struct unit_system* us, struct swift_params* params,
