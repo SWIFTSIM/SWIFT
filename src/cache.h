@@ -282,7 +282,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
      * used instead of double precision. */
     for (int i = 0; i < *last_pi; i++) {
       const int idx = sort_i[i].i;
-      
+
       /* Put inhibited particles out of range. */
       if (parts[idx].time_bin >= time_bin_inhibited) {
         x[i] = pos_padded[0];
