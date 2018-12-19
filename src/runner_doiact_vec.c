@@ -1254,8 +1254,12 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
       /* If there are any interactions perform them. */
       if (vec_is_mask_true(v_doi_mask)) {
 
-	/* 1 / hj */
+        /* 1 / hj */
         const vector v_hj_inv = vec_reciprocal(hj);
+
+        /* To stop floating point exceptions for when particle separations are  
+         * 0. */
+        v_r2.v = vec_add(v_r2.v, vec_set1(FLT_MIN));
 
         runner_iact_nonsym_1_vec_force(
             &v_r2, &v_dx, &v_dy, &v_dz, v_vix, v_viy, v_viz, v_rhoi, v_grad_hi,
