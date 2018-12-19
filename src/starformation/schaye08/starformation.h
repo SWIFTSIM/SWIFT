@@ -43,6 +43,9 @@ struct star_formation {
   /*! Normalization of the KS star formation law */
   double KS_normalization;
 
+  /*! Normalization of the KS star formation law in user units */
+  float KS_normalization_MSUNpYRpKPC2;
+
   /*! Slope of the KS law */
   double KS_power_law;
 
@@ -59,7 +62,7 @@ struct star_formation {
   double min_over_den;
 
   /*! Critical temperature */
-  double T_crit;
+  double Temperature_threshold;
 
   /*! gas fraction */
   double fgas;
@@ -80,10 +83,10 @@ struct star_formation {
   double inv_RAND_MAX;
 
   /*! Critical density to form stars */
-  double den_crit;
+  double density_threshold;
 
   /*! Maximum critical density to form stars */
-  double den_crit_max;
+  double density_threshold_max;
 
   /*! Scaling metallicity */
   double Z0;
@@ -95,7 +98,7 @@ struct star_formation {
   double n_Z0;
 
   /*! Normalization of critical SF density of Schaye (2004) */
-  double den_crit_star;
+  double density_threshold_star;
 
   /*! Polytropic index */
   double polytropic_index;
@@ -108,6 +111,7 @@ struct star_formation {
 
   /*! EOS density norm */
   double EOS_density_norm;
+
 };
 
 /*
@@ -151,12 +155,12 @@ INLINE static int star_formation_potential_to_become_star(
      * the appropriate limit */
 
     /* Check if it exceeded the maximum density */
-    if (p->rho > starform->den_crit_max) {
+    if (p->rho > starform->density_threshold_max) {
       /* double tempp = cooling_get_temperature() */
       tempp = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
                                       cooling, p, xp);
       /* Check the last criteria, if the temperature is satisfied */
-      if (tempp < starform->T_crit) {
+      if (tempp < starform->Temperature_threshold) {
         return 1;
       } else {
         return 0;
@@ -167,14 +171,14 @@ INLINE static int star_formation_potential_to_become_star(
       /* Get the metallicity from the chemistry struct
        * Do we use SMOOTHED OR NON SMOOTHED IN EAGLE???*/
       double Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
-      double den_crit_current =
-          starform->den_crit * pow(Z * starform->Z0_inv, starform->n_Z0);
-      if (p->rho > den_crit_current) {
+      double density_threshold_current =
+          starform->density_threshold * pow(Z * starform->Z0_inv, starform->n_Z0);
+      if (p->rho > density_threshold_current) {
         /* double tempp = cooling_get_temperature() */
         tempp = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
                                         cooling, p, xp);
         /* Check the last criteria, if the temperature is satisfied */
-        if (tempp < starform->T_crit) {
+        if (tempp < starform->Temperature_threshold) {
           return 1;
         } else {
           return 0;
@@ -326,7 +330,7 @@ INLINE static void starformation_init_backend(
       parser_get_param_double(parameter_file, "SchayeSF:thresh_MinOverDens");
 
   /* Read the critical temperature from the parameter file */
-  starform->T_crit =
+  starform->Temperature_threshold =
       parser_get_param_double(parameter_file, "SchayeSF:thresh_temp");
 
   /* Read the gas fraction from the file */
@@ -335,6 +339,8 @@ INLINE static void starformation_init_backend(
   /* Read the normalization of the KS law in KS law units */
   const double normalization_MSUNpYRpKPC2 = parser_get_param_double(
       parameter_file, "SchayeSF:SchmidtLawCoeff_MSUNpYRpKPC2");
+
+  starform->KS_normalization_MSUNpYRpKPC2 = normalization_MSUNpYRpKPC2;
 
   /* Read the Kennicutt-Schmidt power law exponent */
   starform->KS_power_law =
@@ -405,7 +411,7 @@ INLINE static void starformation_init_backend(
    * to form stars. */
   /* Read the normalization of the metallicity dependent critical
    * density*/
-  starform->den_crit =
+  starform->density_threshold =
       parser_get_param_double(parameter_file, "SchayeSF:thresh_norm_HpCM3") *
       conversion_numb_density;
 
@@ -417,7 +423,7 @@ INLINE static void starformation_init_backend(
       parser_get_param_double(parameter_file, "SchayeSF:MetDep_SFthresh_Slope");
 
   /* Read the maximum allowed density for star formation */
-  starform->den_crit_max =
+  starform->density_threshold_max =
       parser_get_param_double(parameter_file, "SchayeSF:thresh_max_norm_HpCM3");
 
   /* Claculate 1 over the metallicity */
@@ -425,7 +431,7 @@ INLINE static void starformation_init_backend(
 
   /* Calculate the prefactor that is always common */
   /* !!!DONT FORGET TO DO THE CORRECT UNIT CONVERSION!!!*/
-  starform->den_crit_star = starform->den_crit /
+  starform->density_threshold_star = starform->density_threshold /
                             pow(starform->Z0, starform->n_Z0) *
                             conversion_numb_density;
 }
@@ -442,14 +448,14 @@ INLINE static void starformation_print_backend(
       " with properties, normalization = %e, slope of the Kennicutt"
       "-Schmidt law = %e, gas fraction = %e, critical "
       "density = %e and critical temperature = %e",
-      starform->KS_normalization, starform->KS_power_law, starform->fgas,
-      starform->den_crit, starform->T_crit);
+      starform->KS_normalization_MSUNpYRpKPC2, starform->KS_power_law, starform->fgas,
+      starform->density_threshold, starform->Temperature_threshold);
   message(
       "Density threshold to form stars is given by Schaye "
       "(2004), the normalization of the star formation law is given by"
       " %e, with metallicity slope of %e, and metallicity normalization"
       "of %e",
-      starform->den_crit_star, starform->n_Z0, starform->Z0);
+      starform->density_threshold_star, starform->n_Z0, starform->Z0);
 }
 
 #endif /* SWIFT_SCHAYE_STARFORMATION_H */
