@@ -67,7 +67,6 @@ enum task_types {
   task_type_grav_mesh,
   task_type_cooling,
   task_type_star_formation,
-  task_type_sourceterms,
   task_type_logger,
   task_type_stars_ghost_in,
   task_type_stars_ghost,
@@ -93,6 +92,7 @@ enum task_subtypes {
   task_subtype_multipole,
   task_subtype_spart,
   task_subtype_stars_density,
+  task_subtype_stars_feedback,
   task_subtype_count
 } __attribute__((packed));
 
@@ -200,6 +200,9 @@ void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
 void task_dump_all(struct engine *e, int step);
 void task_dump_stats(const char *dumpfile, struct engine *e, int header, int allranks);
+void task_get_full_name(int type, int subtype, char *name);
+void task_get_group_name(int type, int subtype, char *cluster);
+
 #ifdef WITH_MPI
 void task_create_mpi_comms(void);
 #endif

@@ -437,6 +437,13 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   /* No cooling happens over zero time */
   if (dt == 0.) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cooling->Redshifts == NULL)
+    error(
+        "Cooling function has not been initialised. Did you forget the "
+        "--cooling runtime flag?");
+#endif
+
   /* Get internal energy at the last kick step */
   const float u_start = hydro_get_physical_internal_energy(p, xp, cosmo);
 
@@ -659,6 +666,13 @@ float cooling_get_temperature(
     const struct cosmology *restrict cosmo,
     const struct cooling_function_data *restrict cooling,
     const struct part *restrict p, const struct xpart *restrict xp) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cooling->Redshifts == NULL)
+    error(
+        "Cooling function has not been initialised. Did you forget the "
+        "--temperature runtime flag?");
+#endif
 
   /* Get physical internal energy */
   const float u = hydro_get_physical_internal_energy(p, xp, cosmo);

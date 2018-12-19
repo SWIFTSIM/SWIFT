@@ -83,7 +83,6 @@
 #include "serial_io.h"
 #include "single_io.h"
 #include "sort_part.h"
-#include "sourceterms.h"
 #include "stars_io.h"
 #include "statistics.h"
 #include "timers.h"
@@ -109,8 +108,8 @@ const char *engine_policy_names[] = {"none",
                                      "cosmological integration",
                                      "drift everything",
                                      "reconstruct multi-poles",
+                                     "temperature",
                                      "cooling",
-                                     "sourceterms",
                                      "stars",
                                      "structure finding",
                                      "star formation",
@@ -1943,8 +1942,8 @@ int engine_estimate_nr_tasks(struct engine *e) {
     /* Cooling task + extra space */
     n1 += 2;
   }
-  if (e->policy & engine_policy_sourceterms) {
-    n1 += 2;
+  if (e->policy & engine_policy_star_formation) {
+    n1 += 1;
   }
   if (e->policy & engine_policy_stars) {
     /* 2 self (density, feedback), 1 sort, 26/2 density pairs
@@ -2034,9 +2033,10 @@ void engine_rebuild(struct engine *e, int repartitioned,
   const ticks tic2 = getticks();
 
   /* Update the global counters of particles */
-  long long num_particles[3] = {(long long)e->s->nr_parts,
-                                (long long)e->s->nr_gparts,
-                                (long long)e->s->nr_sparts};
+  long long num_particles[3] = {
+      (long long)(e->s->nr_parts - e->s->nr_extra_parts),
+      (long long)(e->s->nr_gparts - e->s->nr_extra_gparts),
+      (long long)(e->s->nr_sparts - e->s->nr_extra_sparts)};
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, num_particles, 3, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -2606,8 +2606,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_grav || t->type == task_type_end_force ||
         t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
-        t->type == task_type_grav_down || t->type == task_type_cooling ||
-        t->type == task_type_sourceterms)
+        t->type == task_type_grav_down || t->type == task_type_cooling)
       t->skip = 1;
   }
 
@@ -2737,7 +2736,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_sparts(s, e->verbose);
 
   /* Update the cooling function */
-  if (e->policy & engine_policy_cooling)
+  if ((e->policy & engine_policy_cooling) ||
+      (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, /*restart_flag=*/0);
 
 #ifdef WITH_LOGGER
@@ -2807,7 +2807,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     gravity_exact_force_compute(e->s, e);
 #endif
 
-  if (e->nodeID == 0) scheduler_write_dependencies(&e->sched, e->verbose);
+  scheduler_write_dependencies(&e->sched, e->verbose);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched);
 
   /* Run the 0th time-step */
@@ -2833,6 +2833,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     double *prev_x = s->parts[0].x;
     long long *prev_id = &s->parts[0].id;
     for (size_t k = 1; k < s->nr_parts; k++) {
+
+      /* Ignore fake buffer particles for on-the-fly creation */
+      if (s->parts[k].time_bin == time_bin_not_created) continue;
+
       if (prev_x[0] == s->parts[k].x[0] && prev_x[1] == s->parts[k].x[1] &&
           prev_x[2] == s->parts[k].x[2]) {
         if (e->verbose)
@@ -2855,6 +2859,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     int failed = 0;
     double *prev_x = s->gparts[0].x;
     for (size_t k = 1; k < s->nr_gparts; k++) {
+
+      /* Ignore fake buffer particles for on-the-fly creation */
+      if (s->gparts[k].time_bin == time_bin_not_created) continue;
+
       if (prev_x[0] == s->gparts[k].x[0] && prev_x[1] == s->gparts[k].x[1] &&
           prev_x[2] == s->gparts[k].x[2]) {
         if (e->verbose)
@@ -2983,7 +2991,8 @@ void engine_step(struct engine *e) {
   }
 
   /* Update the cooling function */
-  if (e->policy & engine_policy_cooling)
+  if ((e->policy & engine_policy_cooling) ||
+      (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, /*restart_flag=*/0);
 
   /*****************************************************/
@@ -3790,8 +3799,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-allocate the local parts. */
   if (e->verbose)
     message("Re-allocating parts array from %zu to %zu.", s->size_parts,
-            (size_t)(s->nr_parts * 1.2));
-  s->size_parts = s->nr_parts * 1.2;
+            (size_t)(s->nr_parts * engine_redistribute_alloc_margin));
+  s->size_parts = s->nr_parts * engine_redistribute_alloc_margin;
   struct part *parts_new = NULL;
   struct xpart *xparts_new = NULL;
   if (posix_memalign((void **)&parts_new, part_align,
@@ -3815,8 +3824,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-allocate the local sparts. */
   if (e->verbose)
     message("Re-allocating sparts array from %zu to %zu.", s->size_sparts,
-            (size_t)(s->nr_sparts * 1.2));
-  s->size_sparts = s->nr_sparts * 1.2;
+            (size_t)(s->nr_sparts * engine_redistribute_alloc_margin));
+  s->size_sparts = s->nr_sparts * engine_redistribute_alloc_margin;
   struct spart *sparts_new = NULL;
   if (posix_memalign((void **)&sparts_new, spart_align,
                      sizeof(struct spart) * s->size_sparts) != 0)
@@ -3833,8 +3842,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-allocate the local gparts. */
   if (e->verbose)
     message("Re-allocating gparts array from %zu to %zu.", s->size_gparts,
-            (size_t)(s->nr_gparts * 1.2));
-  s->size_gparts = s->nr_gparts * 1.2;
+            (size_t)(s->nr_gparts * engine_redistribute_alloc_margin));
+  s->size_gparts = s->nr_gparts * engine_redistribute_alloc_margin;
   struct gpart *gparts_new = NULL;
   if (posix_memalign((void **)&gparts_new, gpart_align,
                      sizeof(struct gpart) * s->size_gparts) != 0)
@@ -4048,7 +4057,6 @@ void engine_unpin(void) {
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
  * @param chemistry The chemistry information.
- * @param sourceterms The properties of the source terms function.
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
@@ -4060,8 +4068,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
-                 const struct chemistry_global_data *chemistry,
-                 struct sourceterms *sourceterms) {
+                 const struct chemistry_global_data *chemistry) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -4124,7 +4131,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->external_potential = potential;
   e->cooling_func = cooling_func;
   e->chemistry = chemistry;
-  e->sourceterms = sourceterms;
   e->parameter_file = params;
   e->cell_loc = NULL;
 #ifdef WITH_MPI
@@ -4660,8 +4666,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   /* Expected average for tasks per cell. If set to zero we use a heuristic
    * guess based on the numbers of cells and how many tasks per cell we expect.
    * On restart this number cannot be estimated (no cells yet), so we recover
-   * from the end of the dumped run. Can be changed on restart.
-   */
+   * from the end of the dumped run. Can be changed on restart. */
   e->tasks_per_cell =
       parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 0);
   int maxtasks = 0;
@@ -5072,9 +5077,11 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the minimal mass collection worked */
   float min_part_mass_check = FLT_MAX;
-  for (size_t i = 0; i < e->s->nr_parts; ++i)
+  for (size_t i = 0; i < e->s->nr_parts; ++i) {
+    if (e->s->parts[i].time_bin >= num_time_bins) continue;
     min_part_mass_check =
         min(min_part_mass_check, hydro_get_mass(&e->s->parts[i]));
+  }
   if (min_part_mass_check != min_mass[swift_type_gas])
     error("Error collecting minimal mass of gas particles.");
 #endif
@@ -5116,7 +5123,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
   /* Mesh forces smoothing scale */
   float r_s;
-  if ((e->policy & engine_policy_self_gravity) && e->s->periodic == 1)
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
     r_s = e->mesh->r_s;
   else
     r_s = FLT_MAX;
@@ -5234,7 +5241,6 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   potential_struct_dump(e->external_potential, stream);
   cooling_struct_dump(e->cooling_func, stream);
   chemistry_struct_dump(e->chemistry, stream);
-  sourceterms_struct_dump(e->sourceterms, stream);
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
@@ -5330,11 +5336,6 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
           sizeof(struct chemistry_global_data));
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
-
-  struct sourceterms *sourceterms =
-      (struct sourceterms *)malloc(sizeof(struct sourceterms));
-  sourceterms_struct_restore(sourceterms, stream);
-  e->sourceterms = sourceterms;
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));

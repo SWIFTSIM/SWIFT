@@ -54,9 +54,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   float wi, wj, wi_dx, wj_dx;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (pi->time_bin == time_bin_inhibited)
+  if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
-  if (pj->time_bin == time_bin_inhibited)
+  if (pj->time_bin >= time_bin_inhibited)
     error("Inhibited pj in interaction function!");
 #endif
 
@@ -135,9 +135,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   float wi, wi_dx;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (pi->time_bin == time_bin_inhibited)
+  if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
-  if (pj->time_bin == time_bin_inhibited)
+  if (pj->time_bin >= time_bin_inhibited)
     error("Inhibited pj in interaction function!");
 #endif
 
@@ -196,9 +196,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     struct part *restrict pj, float a, float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (pi->time_bin == time_bin_inhibited)
+  if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
-  if (pj->time_bin == time_bin_inhibited)
+  if (pj->time_bin >= time_bin_inhibited)
     error("Inhibited pj in interaction function!");
 #endif
 
@@ -323,9 +323,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const struct part *restrict pj, float a, float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (pi->time_bin == time_bin_inhibited)
+  if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
-  if (pj->time_bin == time_bin_inhibited)
+  if (pj->time_bin >= time_bin_inhibited)
     error("Inhibited pj in interaction function!");
 #endif
 

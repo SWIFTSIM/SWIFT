@@ -91,7 +91,6 @@ TASKTYPES = [
     "grav_mesh",
     "cooling",
     "star_formation",
-    "sourceterms",
     "logger",
     "stars_ghost_in",
     "stars_ghost",
@@ -114,6 +113,7 @@ SUBTYPES = [
     "multipole",
     "spart",
     "stars_density",
+    "stars_feedback",
     "count",
 ]
 
