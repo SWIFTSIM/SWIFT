@@ -316,7 +316,7 @@ INLINE static void starformation_init_backend(
   /* Conversion of number density from cgs */
   static const float dimension_numb_den[5] = {0, -3, 0, 0, 0};
   const double conversion_numb_density =
-      1.f / units_general_cgs_conversion_factor(us, dimension_numb_den);
+       units_general_cgs_conversion_factor(us, dimension_numb_den);
 
   /* Quantities that have to do with the Normal Kennicutt-
    * Schmidt law will be read in this part of the code*/
