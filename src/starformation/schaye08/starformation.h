@@ -120,7 +120,7 @@ struct star_formation {
 
 };
 
-/*
+/**
  * @brief Calculate if the gas has the potential of becoming
  * a star.
  *
@@ -133,7 +133,7 @@ struct star_formation {
  * @param us The internal system of units.
  * @param cooling The cooling data struct.
  *
- * */
+ */
 INLINE static int star_formation_potential_to_become_star(
     const struct star_formation* starform, const struct part* restrict p,
     const struct xpart* restrict xp, const struct phys_const* const phys_const,
@@ -198,7 +198,7 @@ INLINE static int star_formation_potential_to_become_star(
   }
 }
 
-/*
+/**
  * @brief Calculates if the gas particle gets converted
  *
  * @param the #engine
@@ -248,7 +248,7 @@ INLINE static int star_formation_convert_to_star(
   }
 }
 
-/*
+/**
  * @brief Copies the properties of the gas particle over to the
  * star particle
  *
@@ -297,7 +297,7 @@ INLINE static void star_formation_copy_properties(
   message("A star has been formed!");
 }
 
-/*
+/**
  * @brief initialization of the star formation law
  *
  * @param parameter_file The parsed parameter file
@@ -440,7 +440,8 @@ INLINE static void starformation_init_backend(
 
 }
 
-/* @brief Prints the used parameters of the star formation law
+/**
+ * @brief Prints the used parameters of the star formation law
  *
  * @param starform the star formation law properties.
  * */

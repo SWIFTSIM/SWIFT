@@ -36,7 +36,7 @@
 /* Starformation struct */
 struct star_formation {};
 
-/*
+/**
  * @brief Calculate if the gas has the potential of becoming
  * a star.
  *
@@ -46,7 +46,7 @@ struct star_formation {};
  * @param phys_const the physical constants in internal units
  * @param cosmo the cosmological parameters and properties
  *
- * */
+ */
 INLINE static int star_formation_convert_to_star(
     const struct star_formation* starform, struct part* restrict p,
     const struct xpart* restrict xp, const struct phys_const* const phys_const,
@@ -55,7 +55,7 @@ INLINE static int star_formation_convert_to_star(
   return 0;
 }
 
-/*
+/**
  * @brief Calculate if the gas particle is converted
  *
  * @param starform the star formation struct
@@ -63,13 +63,13 @@ INLINE static int star_formation_convert_to_star(
  * @param xp the additional gas particle properties
  * @param cosmo the cosmological properties
  *
- * */
+ */
 INLINE static void star_formation_copy_properties(
     struct engine* e, struct cell* c, struct part* p, struct xpart* xp,
     const struct star_formation* starform,
     const struct phys_const* const phys_const, const struct cosmology* cosmo) {}
 
-/*
+/**
  * @brief initialization of the star formation law
  *
  * @param parameter_file The parsed parameter file
@@ -77,15 +77,16 @@ INLINE static void star_formation_copy_properties(
  * @param us The current internal system of units
  * @param starform the star formation law properties to initialize
  *
- * */
+ */
 INLINE static void starformation_init_backend(
     struct swift_params* parameter_file, const struct phys_const* phys_const,
     const struct unit_system* us, const struct star_formation* starform) {}
 
-/* @brief Prints the used parameters of the star formation law
+/**
+ * @brief Prints the used parameters of the star formation law
  *
  * @param starform the star formation law properties.
- * */
+ */
 INLINE static void starformation_print_backend(
     const struct star_formation* starform) {
 
