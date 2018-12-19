@@ -1684,7 +1684,7 @@ esac
 #  Star formation
 AC_ARG_WITH([star-formation], 
     [AS_HELP_STRING([--with-star-formation=<sfm>],
-       [star formation @<:@none, schaye08, default: none@:>@] 
+       [star formation @<:@none, EAGLE, default: none@:>@] 
     )],
     [with_star_formation="$withval"],
     [with_star_formation="none"]
@@ -1693,7 +1693,7 @@ case "$with_star_formation" in
    none)
       AC_DEFINE([STAR_FORMATION_NONE], [1], [No star formation])
    ;;
-   schaye08)
+   EAGLE)
       AC_DEFINE([STAR_FORMATION_SCHAYE], [1], [Schaye and Dalla Vecchia (2008) star formation])
    ;;
    *)
@@ -1794,6 +1794,7 @@ AC_MSG_RESULT([
 
    Cooling function     : $with_cooling
    Chemistry            : $with_chemistry
+   Tracers              : $with_tracers
    Stellar model        : $with_stars
    Star formation model : $with_star_formation
    Feedback model       : $with_feedback
