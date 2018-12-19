@@ -146,9 +146,6 @@ INLINE static int star_formation_potential_to_become_star(
    * the universe to determine the critical density to form stars*/
   const double rho_crit_times_min_over_den = cosmo->critical_density * starform->min_over_den;
 
-  /* double tempp = cooling_get_temperature() */
-  double tempp;
-
   /* Deside whether we should form stars or not,
    * first we deterime if we have the correct over density
    * if that is true we calculate if either the maximum density
@@ -163,10 +160,10 @@ INLINE static int star_formation_potential_to_become_star(
     /* Check if it exceeded the maximum density */
     if (p->rho > starform->density_threshold_max) {
       /* double tempp = cooling_get_temperature() */
-      tempp = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
+      const double temperature = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
                                       cooling, p, xp);
       /* Check the last criteria, if the temperature is satisfied */
-      if (tempp < starform->Temperature_threshold) {
+      if (temperature < starform->Temperature_threshold) {
         return 1;
       } else {
         return 0;
@@ -181,10 +178,10 @@ INLINE static int star_formation_potential_to_become_star(
           starform->density_threshold * pow(Z * starform->Z0_inv, starform->n_Z0);
       if (p->rho > density_threshold_current) {
         /* double tempp = cooling_get_temperature() */
-        tempp = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
+        const double temperature = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
                                         cooling, p, xp);
         /* Check the last criteria, if the temperature is satisfied */
-        if (tempp < starform->Temperature_threshold) {
+        if (temperature < starform->Temperature_threshold) {
           return 1;
         } else {
           return 0;
