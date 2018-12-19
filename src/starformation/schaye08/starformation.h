@@ -144,7 +144,7 @@ INLINE static int star_formation_potential_to_become_star(
 
   /* Read the critical overdensity factor and the critical density of
    * the universe to determine the critical density to form stars*/
-  const double rho_crit = cosmo->critical_density * starform->min_over_den;
+  const double rho_crit_times_min_over_den = cosmo->critical_density * starform->min_over_den;
 
   /* double tempp = cooling_get_temperature() */
   double tempp;
@@ -155,7 +155,7 @@ INLINE static int star_formation_potential_to_become_star(
    * threshold is reached or if the metallicity dependent
    * threshold is reached, after this we calculate if the
    * temperature is appropriate */
-  if (p->rho > rho_crit) {
+  if (p->rho > rho_crit_times_min_over_den) {
     /* In this case there are actually multiple possibilities
      * because we also need to check if the physical density exceeded
      * the appropriate limit */
