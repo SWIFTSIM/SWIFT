@@ -148,7 +148,7 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
     const struct cosmology* cosmo, double dt) {
   
-  /* Set all enrichment and feedback quantities to constant values */
+  /* Set all enrichment quantities to constant values */
   sp->to_distribute.mass = 1.0e-9;
   for(int i = 0; i < chemistry_element_count; i++) sp->to_distribute.chemistry_data.metal_mass_fraction[i] = 1.f/chemistry_element_count;
   sp->to_distribute.chemistry_data.metal_mass_fraction_total = 1.f - 2.f/chemistry_element_count;
@@ -160,6 +160,10 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
   sp->to_distribute.chemistry_data.metal_mass_fraction_from_SNIa = 1.0e-2;
   sp->to_distribute.chemistry_data.iron_mass_fraction_from_SNIa = 1.0e-2;
 
+  /* Set feedback to constant values */
+  sp->to_distribute.num_SNIa = 5;
+  sp->to_distribute.ejecta_specific_thermal_energy = 1.0e-3;
+  
 }
 
 #endif /* SWIFT_CONST_STARS_H */

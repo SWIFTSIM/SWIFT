@@ -122,6 +122,12 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->log_max_h_change = p->log_max_h_change;
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
+
+  /* Set stellar evolution parameters */
+  stars_properties->deltaT_desired = 1.0e7;
+  stars_properties->temp_to_u_factor = 1.0e8;
+  stars_properties->SNIa_energy_fraction = 1.0e0;
+
 }
 
 /**
