@@ -198,31 +198,53 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
   swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
 
+  const int count = ci->hydro.count;
   const struct part *restrict parts = ci->hydro.parts;
   const double loc[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
-
-  int uninhibited_count = 0;
+  const double max_dx = ci->hydro.dx_max_part;
+  const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
+                               -(2. * ci->width[1] + max_dx),
+                               -(2. * ci->width[2] + max_dx)};
 
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
-  for (int i = 0; i < ci->hydro.count; i++) {
+  for (int i = 0; i < count; i++) {
 
-    /* Skip inhibited particles. */
-    if (parts[i].time_bin >= time_bin_inhibited) continue;
+    /* Pad inhibited particles. */
+    if (parts[i].time_bin >= time_bin_inhibited) {
+      x[i] = pos_padded[0];
+      y[i] = pos_padded[1];
+      z[i] = pos_padded[2];
 
-    x[uninhibited_count] = (float)(parts[i].x[0] - loc[0]);
-    y[uninhibited_count] = (float)(parts[i].x[1] - loc[1]);
-    z[uninhibited_count] = (float)(parts[i].x[2] - loc[2]);
-    h[uninhibited_count] = parts[i].h;
-    m[uninhibited_count] = parts[i].mass;
-    vx[uninhibited_count] = parts[i].v[0];
-    vy[uninhibited_count] = parts[i].v[1];
-    vz[uninhibited_count] = parts[i].v[2];
+      continue;
+    }
 
-    uninhibited_count++;
+    x[i] = (float)(parts[i].x[0] - loc[0]);
+    y[i] = (float)(parts[i].x[1] - loc[1]);
+    z[i] = (float)(parts[i].x[2] - loc[2]);
+    h[i] = parts[i].h;
+    m[i] = parts[i].mass;
+    vx[i] = parts[i].v[0];
+    vy[i] = parts[i].v[1];
+    vz[i] = parts[i].v[2];
+
   }
 
-  return uninhibited_count;
+  /* Pad cache if the no. of particles is not a multiple of double the vector length. */
+  int count_align = count;
+  const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
+  if (rem != 0) {
+    count_align += (NUM_VEC_PROC * VEC_SIZE) - rem;
+
+    /* Set positions to something outside of the range of any particle */
+    for (int i = count; i < count_align; i++) {
+      x[i] = pos_padded[0];
+      y[i] = pos_padded[1];
+      z[i] = pos_padded[2];
+    }
+  }
+
+  return count_align;
 
 #endif
 }

@@ -675,26 +675,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
-  const int real_count = cache_read_particles(c, cell_cache);
-
-  /* Pad cache if there is a serial remainder. */
-  int count_align = real_count;
-  const int rem = real_count % (NUM_VEC_PROC * VEC_SIZE);
-  if (rem != 0) {
-    count_align += (NUM_VEC_PROC * VEC_SIZE) - rem;
-
-    const double max_dx = c->hydro.dx_max_part;
-    const float pos_padded[3] = {-(2. * c->width[0] + max_dx),
-                                 -(2. * c->width[1] + max_dx),
-                                 -(2. * c->width[2] + max_dx)};
-
-    /* Set positions to something outside of the range of any particle */
-    for (int i = real_count; i < count_align; i++) {
-      cell_cache->x[i] = pos_padded[0];
-      cell_cache->y[i] = pos_padded[1];
-      cell_cache->z[i] = pos_padded[2];
-    }
-  }
+  const int count_align = cache_read_particles(c, cell_cache);
 
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
@@ -896,7 +877,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
-  const int real_count = cache_read_particles(c, cell_cache);
+  const int count_align = cache_read_particles(c, cell_cache);
 
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
@@ -938,23 +919,6 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
     vector v_curlvxSum = vector_setzero();
     vector v_curlvySum = vector_setzero();
     vector v_curlvzSum = vector_setzero();
-
-    /* Pad cache if there is a serial remainder. */
-    int count_align = real_count;
-    const int rem = real_count % (NUM_VEC_PROC * VEC_SIZE);
-    if (rem != 0) {
-      const int pad = (NUM_VEC_PROC * VEC_SIZE) - rem;
-
-      count_align += pad;
-
-      /* Set positions to the same as particle pi so when the r2 > 0 mask is
-       * applied these extra contributions are masked out.*/
-      for (int i = real_count; i < count_align; i++) {
-        cell_cache->x[i] = v_pix.f[0];
-        cell_cache->y[i] = v_piy.f[0];
-        cell_cache->z[i] = v_piz.f[0];
-      }
-    }
 
     /* The number of interactions for pi and the padded version of it to
      * make it a multiple of VEC_SIZE. */
