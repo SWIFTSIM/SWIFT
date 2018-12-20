@@ -19,7 +19,7 @@ difference is the parameter file that will need to be adapted for SWIFT.
    ParameterFiles/index
    InitialConditions/index
    HydroSchemes/index
-   Cooling/index
+   SubgridModels/index
    EquationOfState/index
    ExternalPotentials/index
    NewOption/index
