@@ -29,50 +29,68 @@
 #include "interpolate.h"
 
 /**
- * @brief Calculate ratio of particle element abundances
- * to solar abundance.
-
- * Multiple if statements are necessary because order of elements
- * in tables is different from chemistry_element enum.
- * Tables: H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe
- * Enum: H, He, C, N, O, Ne, Mg, Si, Fe
- * The order in ratio_solar is:
- * H, He, C, N, O, Ne, Mg, Si, Fe, S, Ca
- * Hence Fe, S, Ca need to be treated separately to be put in the
- * correct place in the output array.
+ * @brief Compute ratio of mass fraction to solar mass fraction
+ * for each element carried by a given particle.
  *
- * @param p Pointer to #part struct
- * @param cooling #cooling_function_data struct
- * @param ratio_solar Pointer to array or ratios
+ * The solar abundances are taken from the tables themselves.
+ *
+ * The EAGLE chemistry model does not track S and Ca. We assume
+ * that their abundance with respect to solar is the same as
+ * the ratio for Si.
+ * We optionally apply a correction if the user asked for a different
+ * ratio.
+ *
+ * We also re-order the elements such that they match the order of the
+ * tables. This is [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe].
+ *
+ * The solar abundances table is arranged as
+ * [H, He, C, N, O, Ne, Mg, Si, S, C, Fe].
+ *
+ * @param p Pointer to #part struct.
+ * @param cooling #cooling_function_data struct.
+ * @param ratio_solar (return) Array of ratios to solar abundances.
  */
 __attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
     const struct part *p, const struct cooling_function_data *cooling,
     float ratio_solar[chemistry_element_count + 2]) {
 
-  /* compute ratios for all elements */
-  for (enum chemistry_element elem = chemistry_element_H;
-       elem < chemistry_element_count; elem++) {
-    if (elem == chemistry_element_Fe) {
-      /* NOTE: solar abundances have iron last with calcium and sulphur directly
-       * before, hence +2 */
-      ratio_solar[elem] = p->chemistry_data.metal_mass_fraction[elem] /
-                          cooling->SolarAbundances[elem + 2];
-    } else {
-      ratio_solar[elem] = p->chemistry_data.metal_mass_fraction[elem] /
-                          cooling->SolarAbundances[elem];
-    }
-  }
+  ratio_solar[0] = p->chemistry_data.metal_mass_fraction[chemistry_element_H] *
+                   cooling->SolarAbundances_inv[0];
 
-  /* assign ratios for Ca and S, note positions of these elements occur before
-   * Fe */
-  ratio_solar[chemistry_element_count] =
-      p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
-      cooling->sulphur_over_silicon_ratio /
-      cooling->SolarAbundances[chemistry_element_count - 1];
-  ratio_solar[chemistry_element_count + 1] =
-      p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
-      cooling->calcium_over_silicon_ratio /
-      cooling->SolarAbundances[chemistry_element_count];
+  ratio_solar[1] = p->chemistry_data.metal_mass_fraction[chemistry_element_He] *
+                   cooling->SolarAbundances_inv[1];
+
+  ratio_solar[2] = p->chemistry_data.metal_mass_fraction[chemistry_element_C] *
+                   cooling->SolarAbundances_inv[2];
+
+  ratio_solar[3] = p->chemistry_data.metal_mass_fraction[chemistry_element_N] *
+                   cooling->SolarAbundances_inv[3];
+
+  ratio_solar[4] = p->chemistry_data.metal_mass_fraction[chemistry_element_O] *
+                   cooling->SolarAbundances_inv[4];
+
+  ratio_solar[5] = p->chemistry_data.metal_mass_fraction[chemistry_element_Ne] *
+                   cooling->SolarAbundances_inv[5];
+
+  ratio_solar[6] = p->chemistry_data.metal_mass_fraction[chemistry_element_Mg] *
+                   cooling->SolarAbundances_inv[6];
+
+  ratio_solar[7] = p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
+                   cooling->SolarAbundances_inv[7];
+
+  /* For S, we use the same ratio as Si */
+  ratio_solar[8] = p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
+                   cooling->SolarAbundances_inv[7] *
+                   cooling->S_over_Si_ratio_in_solar;
+
+  /* For Ca, we use the same ratio as Si */
+  ratio_solar[9] = p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
+                   cooling->SolarAbundances_inv[7] *
+                   cooling->Ca_over_Si_ratio_in_solar;
+
+  ratio_solar[10] =
+      p->chemistry_data.metal_mass_fraction[chemistry_element_Fe] *
+      cooling->SolarAbundances_inv[10];
 }
 
 /**
@@ -585,7 +603,7 @@ INLINE static double eagle_metal_cooling_rate(
 #endif
   }
 
-  const double abundance_ratio =
+  const double electron_abundance_ratio =
       H_plus_He_electron_abundance / solar_electron_abundance;
 
   /**********************/
@@ -596,22 +614,28 @@ INLINE static double eagle_metal_cooling_rate(
    * electron abundance to solar electron abundance then by the ratio of the
    * particle metal abundance to solar metal abundance. */
 
-  double lambda_metal[eagle_cooling_N_metal];
+  double lambda_metal[eagle_cooling_N_metal + 2] = {0.};
 
   if (redshift > cooling->Redshifts[eagle_cooling_N_redshifts - 1]) {
 
-    for (int elem = 0; elem < eagle_cooling_N_metal; elem++) {
+    /* Loop over the metals (ignore H and He) */
+    for (int elem = 2; elem < eagle_cooling_N_metal + 2; elem++) {
 
-      lambda_metal[elem] =
-          interpolation_3d_no_x(cooling->table.metal_heating,   /* */
-                                elem, n_H_index, T_index,       /* */
-                                /*delta_elem=*/0.f, d_n_H, d_T, /* */
-                                eagle_cooling_N_metal,          /* */
-                                eagle_cooling_N_density,        /* */
-                                eagle_cooling_N_temperature);   /* */
+      if (solar_ratio[elem] > 0.) {
 
-      lambda_metal[elem] *= abundance_ratio;
-      lambda_metal[elem] *= solar_ratio[elem + 2];
+        /* Note that we do not interpolate along the x-axis
+         * (element dimension) */
+        lambda_metal[elem] =
+            interpolation_3d_no_x(cooling->table.metal_heating,   /* */
+                                  elem - 2, n_H_index, T_index,   /* */
+                                  /*delta_elem=*/0.f, d_n_H, d_T, /* */
+                                  eagle_cooling_N_metal,          /* */
+                                  eagle_cooling_N_density,        /* */
+                                  eagle_cooling_N_temperature);   /* */
+
+        lambda_metal[elem] *= electron_abundance_ratio;
+        lambda_metal[elem] *= solar_ratio[elem];
+      }
 
 #ifdef TO_BE_DONE
       /* compute values at temperature gridpoints above and below input
@@ -636,19 +660,25 @@ INLINE static double eagle_metal_cooling_rate(
 
   } else {
 
-    for (int elem = 0; elem < eagle_cooling_N_metal; elem++) {
+    /* Loop over the metals (ignore H and He) */
+    for (int elem = 2; elem < eagle_cooling_N_metal + 2; elem++) {
 
-      lambda_metal[elem] = interpolation_4d_no_x(
-          cooling->table.metal_heating,                /* */
-          elem, /*z_index=*/0, n_H_index, T_index,     /* */
-          /*delta_elem=*/0.f, cooling->dz, d_n_H, d_T, /* */
-          eagle_cooling_N_metal,                       /* */
-          eagle_cooling_N_loaded_redshifts,            /* */
-          eagle_cooling_N_density,                     /* */
-          eagle_cooling_N_temperature);                /* */
+      if (solar_ratio[elem] > 0.) {
 
-      lambda_metal[elem] *= abundance_ratio;
-      lambda_metal[elem] *= solar_ratio[elem + 2];
+        /* Note that we do not interpolate along the x-axis
+         * (element dimension) */
+        lambda_metal[elem] = interpolation_4d_no_x(
+            cooling->table.metal_heating,                /* */
+            elem - 2, /*z_index=*/0, n_H_index, T_index, /* */
+            /*delta_elem=*/0.f, cooling->dz, d_n_H, d_T, /* */
+            eagle_cooling_N_metal,                       /* */
+            eagle_cooling_N_loaded_redshifts,            /* */
+            eagle_cooling_N_density,                     /* */
+            eagle_cooling_N_temperature);                /* */
+
+        lambda_metal[elem] *= electron_abundance_ratio;
+        lambda_metal[elem] *= solar_ratio[elem];
+      }
 
 #ifdef TO_BE_DONE
       /* compute values at temperature gridpoints above and below input
@@ -675,14 +705,14 @@ INLINE static double eagle_metal_cooling_rate(
   }
 
   if (element_lambda != NULL) {
-    for (int elem = 0; elem < eagle_cooling_N_metal; ++elem) {
-      element_lambda[elem + 2] = lambda_metal[elem];
+    for (int elem = 2; elem < eagle_cooling_N_metal + 2; ++elem) {
+      element_lambda[elem] = lambda_metal[elem];
     }
   }
 
   /* Sum up all the contributions */
   double Lambda_net = Lambda_free + Lambda_Compton;
-  for (int elem = 0; elem < eagle_cooling_N_metal; ++elem) {
+  for (int elem = 2; elem < eagle_cooling_N_metal + 2; ++elem) {
     Lambda_net += lambda_metal[elem];
   }
 

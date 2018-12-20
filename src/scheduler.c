@@ -183,10 +183,11 @@ struct task_dependency {
 };
 
 #ifdef WITH_MPI
+
 /**
  * @brief Define the #task_dependency for MPI
  *
- * @param tstype The #MPI_Datatype to initialize
+ * @param tstype The MPI_Datatype to initialize
  */
 void task_dependency_define(MPI_Datatype *tstype) {
 

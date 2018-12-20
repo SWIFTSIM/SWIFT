@@ -630,7 +630,7 @@ void task_print(const struct task *t) {
  * graph.
  *
  * @param type The #task type.
- * @param subtype The #subtask type.
+ * @param subtype The #task subtype.
  * @param cluster (return) The group name (should be allocated)
  */
 void task_get_group_name(int type, int subtype, char *cluster) {
