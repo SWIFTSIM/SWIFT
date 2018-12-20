@@ -204,14 +204,13 @@ INLINE static int star_formation_convert_to_star(
 
   if (dt_star == 0.f) return 0;
 
-  message("dt = %e", dt_star);
-
   if (star_formation_potential_to_become_star(
           starform, p, xp, phys_const, cosmo, hydro_props, us, cooling)) {
     /* Get the pressure */
     const double pressure =
         starform->EOS_pressure_norm *
-        pow(hydro_get_physical_density(p,cosmo) / starform->EOS_density_norm, starform->polytropic_index);
+        pow(hydro_get_physical_density(p,cosmo)*p->chemistry_data.smoothed_metal_mass_fraction[0]
+        / starform->EOS_density_norm/ phys_const->const_proton_mass, starform->polytropic_index);
 
     /* Calculate the propability of forming a star */
     const double prop = starform->SF_normalization *
@@ -223,7 +222,7 @@ INLINE static int star_formation_convert_to_star(
     /* Generate a random number between 0 and 1. */
     const double randomnumber = rand_r(&seed) * starform->inv_RAND_MAX;
 
-    //message("Passed whole boundary thing! random number = %e, prop = %e time_bin %d dt_star %e", randomnumber, prop, p->time_bin,dt_star);
+    // message("Passed whole boundary thing! random number = %e, prop = %e dt_star %e", randomnumber, prop,dt_star);
 
     /* Calculate if we form a star */
     return (prop > randomnumber);
