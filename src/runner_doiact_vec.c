@@ -1098,33 +1098,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
-  const int real_count = cache_read_force_particles(c, cell_cache);
-
-  /* Pad cache if there is a serial remainder. */
-  int count_align = real_count;
-  const int rem = real_count % VEC_SIZE;
-  if (rem != 0) {
-    count_align += VEC_SIZE - rem;
-
-    const double max_dx = c->hydro.dx_max_part;
-    const float pos_padded[3] = {-(2. * c->width[0] + max_dx),
-                                 -(2. * c->width[1] + max_dx),
-                                 -(2. * c->width[2] + max_dx)};
-
-    /* Set positions to the same as particle pi so when the r2 > 0 mask is
-     * applied these extra contributions are masked out.*/
-    for (int i = real_count; i < count_align; i++) {
-      cell_cache->x[i] = pos_padded[0];
-      cell_cache->y[i] = pos_padded[1];
-      cell_cache->z[i] = pos_padded[2];
-      cell_cache->h[i] = 1.f;
-      cell_cache->rho[i] = 1.f;
-      cell_cache->grad_h[i] = 1.f;
-      cell_cache->pOrho2[i] = 1.f;
-      cell_cache->balsara[i] = 1.f;
-      cell_cache->soundspeed[i] = 1.f;
-    }
-  }
+  const int count_align = cache_read_force_particles(c, cell_cache);
 
   /* Cosmological terms */
   const float a = cosmo->a;
