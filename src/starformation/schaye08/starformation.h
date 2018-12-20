@@ -202,6 +202,10 @@ INLINE static int star_formation_convert_to_star(
     const struct cooling_function_data* restrict cooling,
     const double dt_star) {
 
+  if (dt_star == 0.f) return 0;
+
+  message("dt = %e", dt_star);
+
   if (star_formation_potential_to_become_star(
           starform, p, xp, phys_const, cosmo, hydro_props, us, cooling)) {
     /* Get the pressure */
@@ -219,7 +223,7 @@ INLINE static int star_formation_convert_to_star(
     /* Generate a random number between 0 and 1. */
     const double randomnumber = rand_r(&seed) * starform->inv_RAND_MAX;
 
-    message("Passed whole boundary thing! random number = %e, prop = %e time_bin %d", randomnumber, prop, p->time_bin);
+    //message("Passed whole boundary thing! random number = %e, prop = %e time_bin %d dt_star %e", randomnumber, prop, p->time_bin,dt_star);
 
     /* Calculate if we form a star */
     return (prop > randomnumber);
