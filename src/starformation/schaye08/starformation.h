@@ -145,6 +145,7 @@ INLINE static int star_formation_potential_to_become_star(
   /* Read the critical overdensity factor and the critical density of
    * the universe to determine the critical density to form stars*/
   const double rho_crit_times_min_over_den = cosmo->critical_density * starform->min_over_den;
+  const double particle_density = hydro_get_physical_density(p,cosmo);
 
   /* Deside whether we should form stars or not,
    * first we deterime if we have the correct over density
@@ -152,7 +153,7 @@ INLINE static int star_formation_potential_to_become_star(
    * threshold is reached or if the metallicity dependent
    * threshold is reached, after this we calculate if the
    * temperature is appropriate */
-  if (p->rho < rho_crit_times_min_over_den)
+  if (particle_density < rho_crit_times_min_over_den)
     return 0;
 
 
@@ -168,11 +169,11 @@ INLINE static int star_formation_potential_to_become_star(
   
   
   /* Check if it exceeded the maximum density */
-  if (p->rho < density_threshold_current)
+  if (particle_density < density_threshold_current)
     return 0;
     
       
-  /* double tempp = cooling_get_temperature() */
+  /* Calculate the temperature */
   const double temperature = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
 						     cooling, p, xp);
 
@@ -266,7 +267,7 @@ INLINE static void star_formation_copy_properties(
   sp->tracers_data = xp->tracers_data;
 
   /* Store the birth density in the star particle */
-  sp->birth_density = p->rho;
+  sp->birth_density = hydro_get_physical_density(p, cosmo);
 
   sp->new_star_flag = 1;
 
