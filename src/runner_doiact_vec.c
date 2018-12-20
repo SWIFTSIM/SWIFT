@@ -1174,7 +1174,8 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
       /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask.
        * This is writen as r2 < max(hig2, hjg2) */
       mask_t v_doi_mask;
-      vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, vec_fmax(v_hig2.v, hjg2.v)));
+      vec_create_mask(v_doi_mask,
+                      vec_cmp_lt(v_r2.v, vec_fmax(v_hig2.v, hjg2.v)));
 
       /* Combine both masks. */
       vec_combine_masks(v_doi_mask, v_doi_mask_self_check);
@@ -1195,8 +1196,10 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
         /* 1 / hj */
         const vector v_hj_inv = vec_reciprocal(hj);
 
-        /* To stop floating point exceptions for when particle separations are  
-         * 0. */
+        /* To stop floating point exceptions when particle separations are 0.
+         * Note that the results for r2==0 are masked out but may still raise
+         * an FPE as only the final operaion is masked, not the whole math
+         * operations sequence. */
         v_r2.v = vec_add(v_r2.v, vec_set1(FLT_MIN));
 
         runner_iact_nonsym_1_vec_force(
