@@ -475,6 +475,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   const struct hydro_props *restrict hydro_props = e->hydro_properties;
   const struct unit_system *restrict us = e->internal_units;
   struct cooling_function_data *restrict cooling = e->cooling_func;
+  const double time_base = e->time_base;
+  const integertime_t ti_current = e->ti_current;
 
   TIMER_TIC;
 
@@ -496,12 +498,27 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
       if (part_is_active(p, e)) {
 
+        /* Calculate the time step of the current particle*/
+        double dt_star;
+        if (with_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(p->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current - 1, p->time_bin);
+
+          dt_star =
+              cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+
+        } else {
+          dt_star = get_timestep(p->time_bin, time_base);
+        }
+
         // const float rho = hydro_get_physical_density(p, cosmo);
         if (star_formation_convert_to_star(e, starform, p, xp, constants, cosmo,
-                                           hydro_props, us, cooling)) {
+                                           hydro_props, us, cooling, dt_star)) {
           /* Convert your particle to a star */
           struct spart* sp = cell_convert_part_to_spart(e, c, p, xp);
 
+          /* Copy the properties of the gas particle to the star particle */
           star_formation_copy_properties(e, p, xp, sp, starform, constants,
                                          cosmo, with_cosmology);
           // struct spart *sp =        cell_conert_part_to_spart(c, p, ...);

@@ -156,7 +156,6 @@ INLINE static int star_formation_potential_to_become_star(
   if (particle_density < rho_crit_times_min_over_den)
     return 0;
 
-
   /* In this case there are actually multiple possibilities
    * because we also need to check if the physical density exceeded
    * the appropriate limit */
@@ -165,14 +164,14 @@ INLINE static int star_formation_potential_to_become_star(
   double density_threshold_metal_dep =
           starform->density_threshold * pow(Z * starform->Z0_inv, starform->n_Z0);
 
-  double density_threshold_current = min(density_threshold_metal_dep, starform->density_threshold_max);
+  /* Calculate the maximum between both and convert to mass density instead of number density*/
+  double density_threshold_current = min(density_threshold_metal_dep, starform->density_threshold_max) * phys_const->const_proton_mass;
   
   
   /* Check if it exceeded the maximum density */
-  if (particle_density < density_threshold_current)
+  if (particle_density*p->chemistry_data.smoothed_metal_mass_fraction[0] < density_threshold_current)
     return 0;
     
-      
   /* Calculate the temperature */
   const double temperature = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
 						     cooling, p, xp);
@@ -200,24 +199,27 @@ INLINE static int star_formation_convert_to_star(
     const struct phys_const* const phys_const, const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling) {
+    const struct cooling_function_data* restrict cooling,
+    const double dt_star) {
 
   if (star_formation_potential_to_become_star(
           starform, p, xp, phys_const, cosmo, hydro_props, us, cooling)) {
     /* Get the pressure */
     const double pressure =
         starform->EOS_pressure_norm *
-        pow(p->rho / starform->EOS_density_norm, starform->polytropic_index);
+        pow(hydro_get_physical_density(p,cosmo) / starform->EOS_density_norm, starform->polytropic_index);
 
     /* Calculate the propability of forming a star */
     const double prop = starform->SF_normalization *
-                        pow(pressure, starform->SF_power_law) * p->time_bin;
+                        pow(pressure, starform->SF_power_law) * dt_star;
 
     /* Calculate the seed */
     unsigned int seed = (p->id + e->ti_current) % 8191;
 
     /* Generate a random number between 0 and 1. */
     const double randomnumber = rand_r(&seed) * starform->inv_RAND_MAX;
+
+    message("Passed whole boundary thing! random number = %e, prop = %e time_bin %d", randomnumber, prop, p->time_bin);
 
     /* Calculate if we form a star */
     return (prop > randomnumber);
@@ -304,7 +306,7 @@ INLINE static void starformation_init_backend(
 
   /* Conversion of number density from cgs */
   static const float dimension_numb_den[5] = {0, -3, 0, 0, 0};
-  const double conversion_numb_density =
+  const double conversion_numb_density = 1/
        units_general_cgs_conversion_factor(us, dimension_numb_den);
 
   /* Quantities that have to do with the Normal Kennicutt-
