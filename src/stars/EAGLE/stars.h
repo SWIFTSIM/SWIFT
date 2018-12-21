@@ -46,6 +46,7 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
 
   sp->time_bin = 0;
   sp->new_star_flag = 0;
+  sp->birth_density = 0.f;
 }
 
 /**
