@@ -767,7 +767,25 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
                            vec_is_mask_true(v_doi_mask_self_check);
       const int doi_mask2 = vec_is_mask_true(v_doi_mask2) &
                             vec_is_mask_true(v_doi_mask2_self_check);
-
+      
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that we have no inhibited particles in the interaction cache */
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	if (doi_mask & (1 << bit_index)) {
+	  if(parts[pjd + bit_index].time_bin >= time_bin_inhibited) {
+	    error("Inhibited particle in interaction cache!");
+	  }
+	}
+      }
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	if (doi_mask2 & (1 << bit_index)) {
+	  if(parts[pjd + VEC_SIZE + bit_index].time_bin >= time_bin_inhibited) {
+	    error("Inhibited particle in interaction cache2!");
+	  }
+	}
+      }
+#endif
+      
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
         if (doi_mask & (1 << bit_index)) {
@@ -976,9 +994,33 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
       const int doi_mask2 = vec_is_mask_true(v_doi_mask2) &
                             vec_is_mask_true(v_doi_mask2_self_check);
 
-#ifdef DEBUG_INTERACTIONS_SPH
-      struct part *restrict parts_i = c->hydro.parts;
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that we have no inhibited particles in the interaction cache */
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	struct part *restrict parts_i = c->hydro.parts;
+		
+	if (doi_mask & (1 << bit_index)) {
+	  if(parts_i[pjd + bit_index].time_bin >= time_bin_inhibited) {
+	    error("Inhibited particle in interaction cache!");
+	  }
+	}
+      }
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	struct part *restrict parts_i = c->hydro.parts;
+	
+	if (doi_mask2 & (1 << bit_index)) {
+	  if(parts_i[pjd + VEC_SIZE + bit_index].time_bin >= time_bin_inhibited) {
+	    error("Inhibited particle in interaction cache2!");
+	  }
+	}
+      }
+#endif
+
+      
+#ifdef DEBUG_INTERACTIONS_SPH
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	struct part *restrict parts_i = c->hydro.parts;
+
         if (doi_mask & (1 << bit_index)) {
           if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
             pi->ids_ngbs_density[pi->num_ngb_density] =
@@ -1180,6 +1222,18 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
       /* Combine both masks. */
       vec_combine_masks(v_doi_mask, v_doi_mask_self_check);
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that we have no inhibited particles in the interaction cache */
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+	  if((pjd + bit_index < count) && (parts[pjd + bit_index].time_bin >= time_bin_inhibited)) {
+	    error("Inhibited particle in interaction cache! id=%lld",
+		  parts[pjd + bit_index].id);
+	  }
+	}
+      }
+#endif
+      
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
         if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
@@ -1441,6 +1495,18 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         /* Form r2 < hig2 mask. */
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that we have no inhibited particles in the interaction cache */
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+	  if((pjd + bit_index < count_j) && (parts_j[sort_j[pjd + bit_index].i].time_bin >= time_bin_inhibited)) {
+	    error("Inhibited particle in interaction cache! id=%lld",
+		  parts_j[sort_j[pjd + bit_index].i].id);
+	  }
+	}
+      }
+#endif
+	
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
@@ -1567,6 +1633,19 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         /* Form r2 < hig2 mask. */
         vec_create_mask(v_doj_mask, vec_cmp_lt(v_r2.v, v_hjg2.v));
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that we have no inhibited particles in the interaction cache */
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) {
+	  if((ci_cache_idx + first_pi + bit_index < count_i) &&
+	     (parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].time_bin >= time_bin_inhibited)) {
+	    error("Inhibited particle in interaction cache! id=%lld",
+		  parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id);
+	  }
+	}
+      }
+#endif
+	
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) {
@@ -1749,9 +1828,24 @@ void runner_dopair_subset_density_vec(struct runner *r,
         mask_t v_doi_mask;
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
-#ifdef DEBUG_INTERACTIONS_SPH
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that we have no inhibited particles in the interaction cache */
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
         struct part *restrict parts_j = cj->hydro.parts;
+	
+	if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+	  if((pjd + bit_index < count_j) && (parts_j[sort_j[pjd + bit_index].i].time_bin >= time_bin_inhibited)) {
+	    error("Inhibited particle in interaction cache! id=%lld",
+		  parts_j[sort_j[pjd + bit_index].i].id);
+	  }
+	}
+      }
+#endif
+	
+#ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	  struct part *restrict parts_j = cj->hydro.parts;
+	  
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
               pi->ids_ngbs_density[pi->num_ngb_density] =
@@ -1878,10 +1972,25 @@ void runner_dopair_subset_density_vec(struct runner *r,
         mask_t v_doi_mask;
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
-#ifdef DEBUG_INTERACTIONS_SPH
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that we have no inhibited particles in the interaction cache */
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
         struct part *restrict parts_j = cj->hydro.parts;
+
+	if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+	  if((cj_cache_idx + bit_index < count_j) && (parts_j[sort_j[cj_cache_idx + first_pj + bit_index].i].time_bin >= time_bin_inhibited)) {
+	    error("Inhibited particle in interaction cache! id=%lld",
+		  parts_j[sort_j[cj_cache_idx + first_pj + bit_index].i].id);
+	  }
+	}
+      }
+#endif
+     
+#ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
-          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+	  struct part *restrict parts_j = cj->hydro.parts;
+
+	  if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
               pi->ids_ngbs_density[pi->num_ngb_density] =
                   parts_j[sort_j[cj_cache_idx + first_pj + bit_index].i].id;
@@ -2146,6 +2255,18 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         v_h2.v = vec_fmax(v_hig2.v, v_hjg2.v);
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_h2.v));
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that we have no inhibited particles in the interaction cache */
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+	  if((pjd + bit_index < count_j) && (parts_j[sort_j[pjd + bit_index].i].time_bin >= time_bin_inhibited)) {
+	    error("Inhibited particle in interaction cache! id=%lld",
+		  parts_j[sort_j[pjd + bit_index].i].id);
+	  }
+	}
+      }
+#endif
+	
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
@@ -2282,6 +2403,19 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         v_h2.v = vec_fmax(v_hjg2.v, v_hig2.v);
         vec_create_mask(v_doj_mask, vec_cmp_lt(v_r2.v, v_h2.v));
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that we have no inhibited particles in the interaction cache */
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+	if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) {
+	  if((ci_cache_idx + first_pi + bit_index < count_i) &&
+	     (parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].time_bin >= time_bin_inhibited)) {
+	    error("Inhibited particle in interaction cache! id=%lld",
+		  parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id);
+	  }
+	}
+      }
+#endif
+	
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) {
