@@ -81,6 +81,8 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  sparts, birth_density);
   list[7] = io_make_output_field("Initial_Masses", FLOAT, 1, UNIT_CONV_MASS,
                                  sparts, mass_init);
+  list[7] = io_make_output_field("Birth_time", FLOAT, 1, UNIT_CONV_TIME,
+                                 sparts, birth_time);
 }
 
 /**
