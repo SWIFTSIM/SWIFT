@@ -120,6 +120,7 @@ is_rebuild = [
     1,
     1,
     1,
+    1,
     0,
     0,
     0,
@@ -242,7 +243,7 @@ for i in range(len(labels)):
         important_times[0] += times[i]
         important_ratios[0] += time_ratios[i]
 
-    print(" - '%-40s' (%5d calls): %.4f%%" % (labels[i], counts[i], time_ratios[i] * 100))
+    print(" - '%-40s' (%5d calls, time: %.4fs): %.4f%%" % (labels[i], counts[i], times[i], time_ratios[i] * 100))
 
 # Anything unaccounted for?
 print(

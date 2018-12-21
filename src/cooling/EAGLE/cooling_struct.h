@@ -65,8 +65,11 @@ struct cooling_function_data {
   /*! Internal energy bins */
   float *Therm;
 
-  /*! Solar mass fractions */
+  /*! Mass fractions of elements for solar abundances (from the tables) */
   float *SolarAbundances;
+
+  /*! Inverse of the solar mass fractions */
+  float *SolarAbundances_inv;
 
   /*! Filepath to the directory containing the HDF5 cooling tables */
   char cooling_table_path[eagle_table_path_name_length];
@@ -74,11 +77,11 @@ struct cooling_function_data {
   /*! Redshit of H reionization */
   float H_reion_z;
 
-  /*! Ca over Si abundance ratio */
-  float calcium_over_silicon_ratio;
+  /*! Ca over Si abundance divided by the solar ratio for these elements */
+  float Ca_over_Si_ratio_in_solar;
 
-  /*! S over Si abundance ratio */
-  float sulphur_over_silicon_ratio;
+  /*! S over Si abundance divided by the solar ratio for these elements */
+  float S_over_Si_ratio_in_solar;
 
   /*! Redshift of He reionization */
   float He_reion_z_centre;

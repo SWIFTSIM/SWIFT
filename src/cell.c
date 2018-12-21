@@ -3358,6 +3358,8 @@ int cell_has_tasks(struct cell *c) {
  */
 void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
+  const int periodic = e->s->periodic;
+  const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float hydro_h_max = e->hydro_properties->h_max;
   const integertime_t ti_old_part = c->hydro.ti_old_part;
@@ -3470,35 +3472,27 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       }
 #endif
 
-#ifdef PLANETARY_SPH
-      /* Remove particles that cross the non-periodic box edge */
-      if (!(e->s->periodic)) {
-        for (int i = 0; i < 3; i++) {
-          if ((p->x[i] - xp->v_full[i] * dt_drift > e->s->dim[i]) ||
-              (p->x[i] - xp->v_full[i] * dt_drift < 0.f) ||
-              ((p->mass != 0.f) && ((p->x[i] < 0.01f * e->s->dim[i]) ||
-                                    (p->x[i] > 0.99f * e->s->dim[i])))) {
-            /* (TEMPORARY) Crudely stop the particle manually */
-            message(
-                "Particle %lld hit a box edge. \n"
-                "  pos=%.4e %.4e %.4e  vel=%.2e %.2e %.2e",
-                p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2]);
-            for (int j = 0; j < 3; j++) {
-              p->v[j] = 0.f;
-              p->gpart->v_full[j] = 0.f;
-              xp->v_full[j] = 0.f;
-            }
-            p->h = hydro_h_max;
-            p->time_bin = time_bin_inhibited;
-            p->gpart->time_bin = time_bin_inhibited;
-            hydro_part_has_no_neighbours(p, xp, e->cosmology);
-            p->mass = 0.f;
-            p->gpart->mass = 0.f;
-            break;
-          }
+      /* In non-periodic BC runs, remove particles that crossed the border */
+      if (!periodic) {
+
+        /* Did the particle leave the box?  */
+        if ((p->x[0] > dim[0]) || (p->x[0] < 0.) ||  // x
+            (p->x[1] > dim[1]) || (p->x[1] < 0.) ||  // y
+            (p->x[2] > dim[2]) || (p->x[2] < 0.)) {  // z
+
+          /* One last action before death? */
+          hydro_remove_part(p, xp);
+
+          /* Remove the particle entirely */
+          struct gpart *gp = p->gpart;
+          cell_remove_part(e, c, p, xp);
+
+          /* and it's gravity friend */
+          if (gp != NULL) cell_remove_gpart(e, c, gp);
+
+          continue;
         }
       }
-#endif
 
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
@@ -3553,6 +3547,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
  */
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
+  const int periodic = e->s->periodic;
+  const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float stars_h_max = e->stars_properties->h_max;
   const integertime_t ti_old_gpart = c->grav.ti_old_part;
   const integertime_t ti_current = e->ti_current;
@@ -3619,11 +3616,12 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
     /* Drift from the last time the cell was drifted to the current time */
     double dt_drift;
-    if (e->policy & engine_policy_cosmology)
+    if (with_cosmology) {
       dt_drift =
           cosmology_get_drift_factor(e->cosmology, ti_old_gpart, ti_current);
-    else
+    } else {
       dt_drift = (ti_current - ti_old_gpart) * e->time_base;
+    }
 
     /* Loop over all the g-particles in the cell */
     const size_t nr_gparts = c->grav.count;
@@ -3647,25 +3645,20 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       }
 #endif
 
-#ifdef PLANETARY_SPH
-      /* Remove particles that cross the non-periodic box edge */
-      if (!(e->s->periodic)) {
-        for (int i = 0; i < 3; i++) {
-          if ((gp->x[i] - gp->v_full[i] * dt_drift > e->s->dim[i]) ||
-              (gp->x[i] - gp->v_full[i] * dt_drift < 0.f) ||
-              ((gp->mass != 0.f) && ((gp->x[i] < 0.01f * e->s->dim[i]) ||
-                                     (gp->x[i] > 0.99f * e->s->dim[i])))) {
-            /* (TEMPORARY) Crudely stop the particle manually */
-            for (int j = 0; j < 3; j++) {
-              gp->v_full[j] = 0.f;
-            }
-            gp->time_bin = time_bin_inhibited;
-            gp->mass = 0.f;
-            break;
-          }
+      /* In non-periodic BC runs, remove particles that crossed the border */
+      if (!periodic) {
+
+        /* Did the particle leave the box?  */
+        if ((gp->x[0] > dim[0]) || (gp->x[0] < 0.) ||  // x
+            (gp->x[1] > dim[1]) || (gp->x[1] < 0.) ||  // y
+            (gp->x[2] > dim[2]) || (gp->x[2] < 0.)) {  // z
+
+          /* Remove the particle entirely */
+          if (gp->type == swift_type_dark_matter) cell_remove_gpart(e, c, gp);
+
+          continue;
         }
       }
-#endif
 
       /* Init gravity force fields. */
       if (gpart_is_active(gp, e)) {
@@ -3694,6 +3687,25 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
         error("Particle drifts by more than a box length!");
       }
 #endif
+
+      /* In non-periodic BC runs, remove particles that crossed the border */
+      if (!periodic) {
+
+        /* Did the particle leave the box?  */
+        if ((sp->x[0] > dim[0]) || (sp->x[0] < 0.) ||  // x
+            (sp->x[1] > dim[1]) || (sp->x[1] < 0.) ||  // y
+            (sp->x[2] > dim[2]) || (sp->x[2] < 0.)) {  // z
+
+          /* Remove the particle entirely */
+          struct gpart *gp = sp->gpart;
+          cell_remove_spart(e, c, sp);
+
+          /* and it's gravity friend */
+          cell_remove_gpart(e, c, gp);
+
+          continue;
+        }
+      }
 
       /* Limit h to within the allowed range */
       sp->h = min(sp->h, stars_h_max);

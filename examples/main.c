@@ -464,6 +464,13 @@ int main(int argc, char *argv[]) {
     error("VEOCIraptor not yet enabled over MPI.");
 #endif
 
+    /* Temporary early aborts for modes not supported with hand-vec. */
+#if defined(WITH_VECTORIZATION) && !defined(CHEMISTRY_NONE)
+  error(
+      "Cannot run with chemistry and hand-vectorization (yet). "
+      "Use --disable-hand-vec at configure time.");
+#endif
+
   /* Check that we can write the snapshots by testing if the output
    * directory exists and is searchable and writable. */
   char basename[PARSER_MAX_LINE_SIZE];
@@ -474,8 +481,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Check that we can write the structure finding catalogues by testing if the
-   * output
-   * directory exists and is searchable and writable. */
+   * output directory exists and is searchable and writable. */
   if (with_structure_finding) {
     char stfbasename[PARSER_MAX_LINE_SIZE];
     parser_get_param_string(params, "StructureFinding:basename", stfbasename);

@@ -188,12 +188,6 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       data->initial_metal_mass_fraction[elem] =
           parser_get_param_float(parameter_file, buffer);
     }
-
-    /* Read the constant ratios */
-    data->calcium_over_silicon_ratio = parser_get_param_float(
-        parameter_file, "EAGLEChemistry:CalciumOverSilicon");
-    data->sulphur_over_silicon_ratio = parser_get_param_float(
-        parameter_file, "EAGLEChemistry:SulphurOverSilicon");
   }
 }
 
