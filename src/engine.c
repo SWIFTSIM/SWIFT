@@ -2588,7 +2588,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_grav || t->type == task_type_end_force ||
         t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
-        t->type == task_type_grav_down || t->type == task_type_cooling)
+        t->type == task_type_grav_down || t->type == task_type_cooling ||
+	t->subtype == task_subtype_stars_feedback)
       t->skip = 1;
   }
 
@@ -2740,7 +2741,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (!flag_entropy_ICs) {
 
     if (e->nodeID == 0) message("Converting internal energy variable.");
-
+    
     space_convert_quantities(e->s, e->verbose);
 
     /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */
@@ -2771,7 +2772,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Prepare all the tasks again for a new round */
   engine_marktasks(e);
-
+    
   /* No drift this time */
   engine_skip_drift(e);
 

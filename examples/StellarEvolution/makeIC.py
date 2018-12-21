@@ -102,7 +102,8 @@ for i in range(numPart_gas_1D):
       u[index] = kB_in_SI * T_i / (gamma - 1.) / mH_in_kg
       h[index] = 1.2348 * delta_x
       m[index] = m_i
-      v[index,0] = -H_0 * (1. + z_c) / sqrt(1. + z_i) * sin(k_i * q) / k_i
+      #v[index,0] = -H_0 * (1. + z_c) / sqrt(1. + z_i) * sin(k_i * q) / k_i
+      v[index,0] = 0.
       v[index,1] = 0.
       v[index,2] = 0.
 
@@ -122,7 +123,8 @@ for i in range(numPart_stars_1D):
       star_u[index] = kB_in_SI * T_i / (gamma - 1.) / mH_in_kg
       star_h[index] = 1.2348 * delta_x
       star_m[index] = m_i
-      star_v[index,0] = -H_0 * (1. + z_c) / sqrt(1. + z_i) * sin(k_i * q) / k_i
+      #star_v[index,0] = -H_0 * (1. + z_c) / sqrt(1. + z_i) * sin(k_i * q) / k_i
+      star_v[index,0] = 0.
       star_v[index,1] = 0.
       star_v[index,2] = 0.
 

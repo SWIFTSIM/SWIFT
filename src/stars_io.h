@@ -21,6 +21,10 @@
 
 #include "./const.h"
 
+#if defined(FEEDBACK_CONST)
+#include "./stars/const/stars_io.h"
+#else
 #include "./stars/Default/stars_io.h"
+#endif
 
 #endif /* SWIFT_STARS_IO_H */

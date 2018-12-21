@@ -129,7 +129,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->SNIa_energy_fraction = 1.0e0;
   sp->continuous_heating = 1;
 
-  parser_get_param_float(params, "Stars:feedback_timescale", sp->feedback_timescale);
+  sp->feedback_timescale = parser_get_param_float(params, "Stars:feedback_timescale");
 
 }
 
