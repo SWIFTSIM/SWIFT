@@ -71,7 +71,8 @@ enum task_types {
   task_type_stars_ghost_in,
   task_type_stars_ghost,
   task_type_stars_ghost_out,
-  task_type_stars_sort,
+  task_type_stars_sort_local,
+  task_type_stars_sort_foreign,
   task_type_count
 } __attribute__((packed));
 

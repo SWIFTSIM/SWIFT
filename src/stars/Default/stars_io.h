@@ -60,12 +60,8 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-/* Say how much we want to write */
-#ifdef DEBUG_INTERACTIONS_STARS
-  *num_fields = 6;
-#else
+  /* Say how much we want to write */
   *num_fields = 5;
-#endif
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -80,8 +76,14 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  sparts, h);
 
 #ifdef DEBUG_INTERACTIONS_STARS
-  list[5] = io_make_output_field("NumberNeighbors", INT, 1, UNIT_CONV_NO_UNITS,
+
+  list += *num_fields;
+  *num_fields += 2;
+
+  list[0] = io_make_output_field("Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS,
                                  sparts, num_ngb_density);
+  list[1] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,
+                                 sparts, num_ngb_force);
 #endif
 }
 

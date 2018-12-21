@@ -71,19 +71,15 @@ void engine_activate_stars_mpi(struct engine *e, struct scheduler *s,
   /* Activate the send/recv tasks. */
   if (ci_nodeID != nodeID) {
 
-    // TODO Alexei: here I think you will just need to uncomment the code
-    // and modify it from hydro to stars (this is almost just a copy from the
-    // hydro)
-    /* If the local cell is active, receive data from the foreign cell. */
     if (cj_active_stars) {
       scheduler_activate(s, ci->mpi.hydro.recv_xv);
-      /* if (ci_active_hydro) { */
-      /* 	scheduler_activate(s, ci->mpi.hydro.recv_rho); */
-      /* } */
+      if (ci_active_stars) {
+        scheduler_activate(s, ci->mpi.stars.recv);
+      }
     }
 
     /* If the foreign cell is active, we want its ti_end values. */
-    /* if (ci_active_stars) scheduler_activate(s, ci->mpi.recv_ti); */
+    if (ci_active_stars) scheduler_activate(s, ci->mpi.recv_ti);
 
     /* Is the foreign cell active and will need stuff from us? */
     if (ci_active_stars) {
@@ -97,29 +93,28 @@ void engine_activate_stars_mpi(struct engine *e, struct scheduler *s,
       cell_activate_drift_part(l->t->ci, s);
 
       /* If the local cell is also active, more stuff will be needed. */
-      /* if (cj_active_hydro) { */
-      /* 	scheduler_activate_send(s, cj->mpi.hydro.send_rho, ci_nodeID);
-       */
-
-      /* } */
+      if (cj_active_stars) {
+        scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
+      }
     }
 
     /* If the local cell is active, send its ti_end values. */
-    /* if (cj_active_hydro) */
-    /*   scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID); */
+    if (cj_active_stars) {
+      scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+    }
 
   } else if (cj_nodeID != nodeID) {
     /* If the local cell is active, receive data from the foreign cell. */
     if (ci_active_stars) {
 
       scheduler_activate(s, cj->mpi.hydro.recv_xv);
-      /* if (cj_active_hydro) { */
-      /* 	scheduler_activate(s, cj->mpi.hydro.recv_rho); */
-      /* } */
+      if (cj_active_stars) {
+        scheduler_activate(s, cj->mpi.stars.recv);
+      }
     }
 
     /* If the foreign cell is active, we want its ti_end values. */
-    /* if (cj_active_hydro) scheduler_activate(s, cj->mpi.recv_ti); */
+    if (cj_active_stars) scheduler_activate(s, cj->mpi.recv_ti);
 
     /* Is the foreign cell active and will need stuff from us? */
     if (cj_active_stars) {
@@ -133,17 +128,15 @@ void engine_activate_stars_mpi(struct engine *e, struct scheduler *s,
       cell_activate_drift_part(l->t->ci, s);
 
       /* If the local cell is also active, more stuff will be needed. */
-      /* if (ci_active_hydro) { */
-
-      /* 	scheduler_activate_send(s, ci->mpi.hydro.send_rho, cj_nodeID);
-       */
-
-      /* } */
+      if (ci_active_stars) {
+        scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
+      }
     }
 
     /* If the local cell is active, send its ti_end values. */
-    /* if (ci_active_hydro) */
-    /*   scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID); */
+    if (ci_active_stars) {
+      scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+    }
   }
 }
 #endif

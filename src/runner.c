@@ -199,6 +199,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           /* Skip if h is already h_max and we don't have enough neighbours */
           if ((sp->h >= stars_h_max) && (f < 0.f)) {
 
+            stars_reset_acceleration(sp);
             /* Ok, we are done with this particle */
             continue;
           }
@@ -249,6 +250,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         }
 
         /* We now have a particle whose smoothing length has converged */
+        stars_reset_acceleration(sp);
 
         /* Compute the stellar evolution  */
         stars_evolve_spart(sp, stars_properties, cosmo);
@@ -2834,7 +2836,8 @@ void *runner_main(void *data) {
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;
-        case task_type_stars_sort:
+        case task_type_stars_sort_local:
+        case task_type_stars_sort_foreign:
           /* Cleanup only if any of the indices went stale. */
           runner_do_stars_sort(
               r, ci, t->flags,
@@ -2896,7 +2899,7 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
           } else if (t->subtype == task_subtype_spart) {
-            runner_do_recv_spart(r, ci, 0, 1);
+            runner_do_recv_spart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_multipole) {
             cell_unpack_multipoles(ci, (struct gravity_tensors *)t->buff);
             free(t->buff);
