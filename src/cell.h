@@ -481,8 +481,11 @@ struct cell {
     /*! Linked list of the tasks computing this cell's star feedback. */
     struct link *feedback;
 
-    /*! The task computing this cell's sorts. */
-    struct task *sorts;
+    /*! The task computing this cell's sorts before the density. */
+    struct task *sorts_local;
+
+    /*! The task computing this cell's sorts before the feedback. */
+    struct task *sorts_foreign;
 
     /*! Max smoothing length in this cell. */
     double h_max;
@@ -580,11 +583,18 @@ struct cell {
     } grav;
 
     struct {
-
-      /* Task receiving gpart data. */
+    /* Task receiving spart data. */
       struct task *recv;
 
-      /* Linked list for sending gpart data. */
+      /* Linked list for sending spart data. */
+      struct link *send;
+    } stars;
+
+    struct {
+      /* Task receiving limiter data. */
+      struct task *recv;
+
+      /* Linked list for sending limiter data. */
       struct link *send;
     } limiter;
 
@@ -998,25 +1008,6 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 }
 /**
  * @brief Have particles in a pair of cells moved too much and require a rebuild
- * ?
- *
- * @param ci The first #cell.
- * @param cj The second #cell.
- */
-__attribute__((always_inline)) INLINE static int
-cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
-
-  /* Is the cut-off radius plus the max distance the parts in both cells have */
-  /* moved larger than the cell size ? */
-  /* Note ci->dmin == cj->dmin */
-  return (kernel_gamma * max(ci->stars.h_max, cj->stars.h_max) +
-              ci->stars.dx_max_part + cj->stars.dx_max_part >
-          cj->dmin);
-}
-
-/**
- * @brief Have star particles in a pair of cells moved too much and require a
- * rebuild
  * ?
  *
  * @param ci The first #cell.

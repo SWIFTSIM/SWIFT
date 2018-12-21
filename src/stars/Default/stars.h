@@ -145,4 +145,18 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
     const struct cosmology* cosmo) {}
 
+/**
+ * @brief Reset acceleration fields of a particle
+ *
+ * This is the equivalent of hydro_reset_acceleration.
+ * We do not compute the acceleration on star, therefore no need to use it.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void stars_reset_acceleration(
+    struct spart* restrict p) {
+#ifdef DEBUG_INTERACTIONS_STARS
+  p->num_ngb_force = 0;
+#endif
+}
 #endif /* SWIFT_DEFAULT_STARS_H */

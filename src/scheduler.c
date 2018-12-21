@@ -2000,7 +2000,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                (sizeof(int) * 8 - intrinsics_clz(t->ci->hydro.count));
         break;
 
-      case task_type_stars_sort:
+      case task_type_stars_sort_local:
+      case task_type_stars_sort_foreign:
         cost = wscale * intrinsics_popcount(t->flags) * scount_i *
                (sizeof(int) * 8 - intrinsics_clz(t->ci->stars.count));
         break;
@@ -2284,7 +2285,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_kick2:
       case task_type_stars_ghost:
       case task_type_logger:
-      case task_type_stars_sort:
+      case task_type_stars_sort_local:
+      case task_type_stars_sort_foreign:
       case task_type_timestep:
         qid = t->ci->super->owner;
         break;

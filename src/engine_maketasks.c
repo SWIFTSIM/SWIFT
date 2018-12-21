@@ -210,11 +210,11 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
  * @param t_xv The send_xv #task, if it has already been created.
- * @param t_rho The send_rho #task, if it has already been created.
+ * @param t_feed The send_feed #task, if it has already been created.
  */
 void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_xv,
-                                struct task *t_rho) {
+                                struct task *t_feed) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -238,23 +238,16 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       }
     }
 
-    // TODO Alexei: I guess that you can assume that if the send_xv exists,
-    // send_rho exists too
-
     if (t_xv == NULL) {
+      /* Make sure this cell is tagged. */
+      cell_ensure_tagged(ci);
 
       /* Already exists, just need to get it */
       if (hydro != NULL) {
-        // TODO Alexei: set t_feedback
         t_xv = hydro->t;
 
         /* This task does not exists, need to create it */
       } else {
-
-        // TODO Alexei: create task and do correct unlocks
-
-        /* Make sure this cell is tagged. */
-        cell_ensure_tagged(ci);
 
         /* Create the tasks and their dependencies? */
         t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv,
@@ -263,20 +256,26 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
         /* Drift before you send */
         scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
       }
+
+      /* Create the tasks and their dependencies? */
+      t_feed = scheduler_addtask(s, task_type_send, task_subtype_spart,
+                                 ci->mpi.tag, 0, ci, cj);
+
+      /* Ghost before you send */
+      scheduler_addunlock(s, ci->super->stars.ghost_out, t_feed);
     }
 
     if (hydro == NULL) {
       engine_addlink(e, &ci->mpi.hydro.send_xv, t_xv);
-      // TODO Alexei: addlink
-      /* engine_addlink(e, &ci->mpi.hydro.send_rho, t_rho); */
     }
+    engine_addlink(e, &ci->mpi.stars.send, t_feed);
   }
 
   /* Recurse? */
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_xv, t_rho);
+        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_xv, t_feed);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -312,6 +311,12 @@ void engine_addtasks_send_timestep(struct engine *e, struct cell *ci,
   /* Check whether instead any of the hydro tasks are for the target node. */
   if (l == NULL)
     for (l = ci->hydro.density; l != NULL; l = l->next)
+      if (l->t->ci->nodeID == nodeID ||
+          (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+        break;
+
+  if (l == NULL)
+    for (l = ci->stars.density; l != NULL; l = l->next)
       if (l->t->ci->nodeID == nodeID ||
           (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
         break;
@@ -434,10 +439,10 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The foreign #cell.
  * @param t_xv The recv_xv #task, if it has already been created.
- * @param t_rho The recv_rho #task, if it has already been created.
+ * @param t_feed The recv_feed #task, if it has already been created.
  */
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
-                                struct task *t_xv, struct task *t_rho) {
+                                struct task *t_xv, struct task *t_feed) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -456,40 +461,38 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
       new_task = 1;
       t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag,
                                0, c, NULL);
-      // TODO Alexei: create t_feedback task
-      /* t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
-       * c->mpi.tag, */
-      /*                           0, c, NULL); */
     } else {
-      // TODO Alexei: set t_feedback
       t_xv = c->mpi.hydro.recv_xv;
     }
+    t_feed = scheduler_addtask(s, task_type_recv, task_subtype_spart,
+                               c->mpi.tag, 0, c, NULL);
+
+    /* Need to sort task before feedback loop */
+    scheduler_addunlock(s, t_feed, c->super->stars.sorts_foreign);
   }
 
-  // TODO Alexei: set pointer
   c->mpi.hydro.recv_xv = t_xv;
-  /* c->mpi.hydro.recv_rho = t_rho; */
+  c->mpi.stars.recv = t_feed;
 
   /* Add dependencies. */
   if (c->hydro.sorts != NULL && new_task) {
     scheduler_addunlock(s, t_xv, c->hydro.sorts);
   }
 
-  // TODO Alexei: You will need to sort the particles after receiving the spart
-
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_xv, l->t);
-    // TODO Alexei: I guess that you will need to unlock the recv here
-    /* scheduler_addunlock(s, l->t, t_rho); */
+    scheduler_addunlock(s, l->t, t_feed);
   }
-  // TODO Alexei: unlock feedback task
-  /* for (struct link *l = c->hydro.force; l != NULL; l = l->next) */
-  /*   scheduler_addunlock(s, t_rho, l->t); */
+
+  for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
+    scheduler_addunlock(s, t_feed, l->t);
+  }
+
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_stars(e, c->progeny[k], t_xv, t_rho);
+        engine_addtasks_recv_stars(e, c->progeny[k], t_xv, t_feed);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -593,6 +596,9 @@ void engine_addtasks_recv_timestep(struct engine *e, struct cell *c,
       scheduler_addunlock(s, l->t, t_ti);
     }
   }
+
+  for (struct link *l = c->stars.feedback; l != NULL; l = l->next)
+    scheduler_addunlock(s, l->t, t_ti);
 
   /* Recurse? */
   if (c->split)
@@ -931,13 +937,16 @@ void engine_make_hierarchical_tasks_stars(struct engine *e, struct cell *c) {
 
   /* Are we in a super-cell ? */
   if (c->super == c) {
+    /* Foreign tasks only */
+    if (c->nodeID != e->nodeID) {
+      c->stars.sorts_foreign = scheduler_addtask(
+          s, task_type_stars_sort_foreign, task_subtype_none, 0, 0, c, NULL);
+    }
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
-      // TODO Alexei: do not need to be only on local node with feedback
-      /* Add the sort task. */
-      c->stars.sorts = scheduler_addtask(s, task_type_stars_sort,
-                                         task_subtype_none, 0, 0, c, NULL);
+      c->stars.sorts_local = scheduler_addtask(
+          s, task_type_stars_sort_local, task_subtype_none, 0, 0, c, NULL);
 
       /* Generate the ghost tasks. */
       c->stars.ghost_in =
@@ -1202,11 +1211,19 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     }
 
     /* Link stars sort tasks to all the higher sort task. */
-    if (t_type == task_type_stars_sort) {
+    if (t_type == task_type_stars_sort_local) {
       for (struct cell *finger = t->ci->parent; finger != NULL;
-           finger = finger->parent)
-        if (finger->stars.sorts != NULL)
-          scheduler_addunlock(sched, t, finger->stars.sorts);
+           finger = finger->parent) {
+        if (finger->stars.sorts_local != NULL)
+          scheduler_addunlock(sched, t, finger->stars.sorts_local);
+      }
+    }
+    if (t_type == task_type_stars_sort_foreign) {
+      for (struct cell *finger = t->ci->parent; finger != NULL;
+           finger = finger->parent) {
+        if (finger->stars.sorts_foreign != NULL)
+          scheduler_addunlock(sched, t, finger->stars.sorts_foreign);
+      }
     }
 
     /* Link self tasks to cells. */
@@ -1959,7 +1976,7 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
     struct task *t = &((struct task *)map_data)[ind];
 
     /* Sort tasks depend on the drift and gravity drift of the cell. */
-    if (t->type == task_type_stars_sort && t->ci->nodeID == engine_rank) {
+    if (t->type == task_type_stars_sort_local) {
       scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
       scheduler_addunlock(sched, t->ci->super->grav.drift, t);
     }
@@ -1967,9 +1984,6 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
     /* Self-interaction? */
     else if (t->type == task_type_self &&
              t->subtype == task_subtype_stars_density) {
-
-      /* Make the self-density tasks depend on the drifts. */
-      scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
 
       /* Make the self-density tasks depend on the drift and gravity drift. */
       scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
@@ -2002,9 +2016,7 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
 
       if (t->ci->nodeID == engine_rank) {
         scheduler_addunlock(sched, t->ci->super->grav.drift, t);
-        // TODO Alexei: the stars in foreign cells need to be sorted before
-        // the feedback loop and after the ghosts
-        scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
+        scheduler_addunlock(sched, t->ci->super->stars.sorts_local, t);
       }
 
       if (t->ci->hydro.super != t->cj->hydro.super) {
@@ -2016,8 +2028,7 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       if (t->ci->super != t->cj->super) {
         if (t->cj->nodeID == engine_rank) {
           scheduler_addunlock(sched, t->cj->super->grav.drift, t);
-          // TODO Alexei: same here, sort before feedback
-          scheduler_addunlock(sched, t->cj->super->stars.sorts, t);
+          scheduler_addunlock(sched, t->cj->super->stars.sorts_local, t);
         }
       }
 
@@ -2025,6 +2036,16 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       struct task *t2 =
           scheduler_addtask(sched, task_type_pair, task_subtype_stars_feedback,
                             0, 0, t->ci, t->cj);
+
+      /* Add sort before feedback loop */
+      if (t->ci->nodeID != engine_rank) {
+        scheduler_addunlock(sched, t->ci->super->stars.sorts_foreign, t2);
+      }
+      if (t->ci->super != t->cj->super) {
+        if (t->cj->nodeID != engine_rank) {
+          scheduler_addunlock(sched, t->cj->super->stars.sorts_foreign, t2);
+        }
+      }
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &t->ci->stars.feedback, t2);
@@ -2036,10 +2057,10 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t2, t->ci->super->end_force);
       }
       if (t->cj->nodeID == nodeID) {
-        if (t->ci->super != t->cj->super)
+        if (t->ci->super != t->cj->super) {
           engine_make_stars_loops_dependencies(sched, t, t2, t->cj);
-        if (t->ci->super != t->cj->super)
           scheduler_addunlock(sched, t2, t->cj->super->end_force);
+        }
       }
     }
 
@@ -2052,7 +2073,7 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
       scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t);
       scheduler_addunlock(sched, t->ci->super->grav.drift, t);
-      scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
+      scheduler_addunlock(sched, t->ci->super->stars.sorts_local, t);
 
       /* Start by constructing the task for the second stars loop */
       struct task *t2 = scheduler_addtask(sched, task_type_sub_self,
@@ -2081,8 +2102,7 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
 
       if (t->cj->nodeID == engine_rank) {
         scheduler_addunlock(sched, t->cj->super->grav.drift, t);
-        // TODO Alexei: Still the same
-        scheduler_addunlock(sched, t->cj->super->stars.sorts, t);
+        scheduler_addunlock(sched, t->cj->super->stars.sorts_local, t);
       }
 
       if (t->ci->hydro.super != t->cj->hydro.super) {
@@ -2094,8 +2114,7 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       if (t->ci->super != t->cj->super) {
         if (t->ci->nodeID == engine_rank) {
           scheduler_addunlock(sched, t->ci->super->grav.drift, t);
-          // TODO Alexei: still the same
-          scheduler_addunlock(sched, t->ci->super->stars.sorts, t);
+          scheduler_addunlock(sched, t->ci->super->stars.sorts_local, t);
         }
       }
 
@@ -2103,6 +2122,16 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       struct task *t2 = scheduler_addtask(sched, task_type_sub_pair,
                                           task_subtype_stars_feedback, t->flags,
                                           0, t->ci, t->cj);
+
+      /* Add the sort before feedback */
+      if (t->cj->nodeID != engine_rank) {
+        scheduler_addunlock(sched, t->cj->super->stars.sorts_foreign, t2);
+      }
+      if (t->ci->super != t->cj->super) {
+        if (t->ci->nodeID != engine_rank) {
+          scheduler_addunlock(sched, t->ci->super->stars.sorts_foreign, t2);
+        }
+      }
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &t->ci->stars.feedback, t2);

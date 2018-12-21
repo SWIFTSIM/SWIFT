@@ -1020,6 +1020,8 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
                                                                             \
     for (int pjd = 0; pjd < cj->TYPE.count; pjd++) {                        \
       const struct PART *p = &cj->TYPE.parts[sort_j[pjd].i];                \
+      if (PART##_is_inhibited(p, e)) continue;                              \
+                                                                            \
       const float d = p->x[0] * runner_shift[sid][0] +                      \
                       p->x[1] * runner_shift[sid][1] +                      \
                       p->x[2] * runner_shift[sid][2];                       \
@@ -1032,9 +1034,9 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
             "cj->nodeID=%d "                                                \
             "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->" #TYPE                \
             ".dx_max_sort=%e "                                              \
-            "cj->" #TYPE ".dx_max_sort_old=%e",                             \
+            "cj->" #TYPE ".dx_max_sort_old=%e, %i",                         \
             cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->TYPE.dx_max_sort, \
-            cj->TYPE.dx_max_sort_old);                                      \
+            cj->TYPE.dx_max_sort_old, cj->cellID);                          \
     }                                                                       \
   })
 

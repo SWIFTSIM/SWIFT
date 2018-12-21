@@ -140,10 +140,13 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
 __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_send(struct scheduler *s, struct link *link, int nodeID) {
 
+  if (link == NULL) error("");
   struct link *l = NULL;
   for (l = link; l != NULL && l->t->cj->nodeID != nodeID; l = l->next)
     ;
-  if (l == NULL) error("Missing link to send task.");
+  if (l == NULL) {
+    error("Missing link to send task.");
+  }
   scheduler_activate(s, l->t);
   return l;
 }
