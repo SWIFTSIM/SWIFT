@@ -1003,7 +1003,8 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
           cj->dmin);
 }
 /**
- * @brief Have particles in a pair of cells moved too much and require a rebuild
+ * @brief Have star particles in a pair of cells moved too much and require a
+ * rebuild
  * ?
  *
  * @param ci The first #cell.
