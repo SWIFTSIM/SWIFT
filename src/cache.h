@@ -205,6 +205,7 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
   const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
                                -(2. * ci->width[1] + max_dx),
                                -(2. * ci->width[2] + max_dx)};
+  const float h_padded = ci->hydro.h_max / 4.;
 
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
@@ -215,7 +216,8 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
       x[i] = pos_padded[0];
       y[i] = pos_padded[1];
       z[i] = pos_padded[2];
-
+      h[i] = h_padded;
+      
       continue;
     }
 
@@ -298,7 +300,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
     const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
                                  -(2. * ci->width[1] + max_dx),
                                  -(2. * ci->width[2] + max_dx)};
-    const float h_padded = ci->hydro.parts[0].h;
+    const float h_padded = ci->hydro.h_max / 4.;
 
     /* Shift the particles positions to a local frame so single precision can be
      * used instead of double precision. */
@@ -361,7 +363,7 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
     const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
                                  -(2. * ci->width[1] + max_dx),
                                  -(2. * ci->width[2] + max_dx)};
-    const float h_padded = ci->hydro.parts[0].h;
+    const float h_padded = ci->hydro.h_max / 4.;
 
     /* Shift the particles positions to a local frame so single precision can be
      * used instead of double precision. */
@@ -454,7 +456,8 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
   const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
                                -(2. * ci->width[1] + max_dx),
                                -(2. * ci->width[2] + max_dx)};
-
+  const float h_padded = ci->hydro.h_max / 4.;
+  
   /* Shift the particles positions to a local frame so single precision can be
    * used instead of double precision. */
   for (int i = 0; i < count; i++) {
@@ -464,7 +467,7 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
       x[i] = pos_padded[0];
       y[i] = pos_padded[1];
       z[i] = pos_padded[2];
-      h[i] = 1.f;
+      h[i] = h_padded;
       rho[i] = 1.f;
       grad_h[i] = 1.f;
       pOrho2[i] = 1.f;
@@ -583,10 +586,10 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
   int ci_cache_count = ci->hydro.count - first_pi_align;
   const double max_dx = max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
-  const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
+  const float pos_padded_i[3] = {-(2. * ci->width[0] + max_dx),
                                -(2. * ci->width[1] + max_dx),
                                -(2. * ci->width[2] + max_dx)};
-  const float h_padded = ci->hydro.parts[0].h;
+  const float h_padded_i = ci->hydro.h_max / 4.;
 
   /* Shift the particles positions to a local frame (ci frame) so single
    * precision can be used instead of double precision.  */
@@ -595,10 +598,10 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
 
     /* Put inhibited particles out of range. */
     if (parts_i[idx].time_bin >= time_bin_inhibited) {
-      x[i] = pos_padded[0];
-      y[i] = pos_padded[1];
-      z[i] = pos_padded[2];
-      h[i] = h_padded;
+      x[i] = pos_padded_i[0];
+      y[i] = pos_padded_i[1];
+      z[i] = pos_padded_i[2];
+      h[i] = h_padded_i;
 
       m[i] = 1.f;
       vx[i] = 1.f;
@@ -665,10 +668,10 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
    * particles to avoid overflow problems. */
   for (int i = ci->hydro.count - first_pi_align;
        i < ci->hydro.count - first_pi_align + VEC_SIZE; i++) {
-    x[i] = pos_padded[0];
-    y[i] = pos_padded[1];
-    z[i] = pos_padded[2];
-    h[i] = h_padded;
+    x[i] = pos_padded_i[0];
+    y[i] = pos_padded_i[1];
+    z[i] = pos_padded_i[2];
+    h[i] = h_padded_i;
 
     m[i] = 1.f;
     vx[i] = 1.f;
@@ -690,7 +693,7 @@ __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
   const float pos_padded_j[3] = {-(2. * cj->width[0] + max_dx),
                                  -(2. * cj->width[1] + max_dx),
                                  -(2. * cj->width[2] + max_dx)};
-  const float h_padded_j = cj->hydro.parts[0].h;
+  const float h_padded_j = cj->hydro.h_max / 4.;
 
   for (int i = 0; i <= last_pj_align; i++) {
     const int idx = sort_j[i].i;
@@ -843,10 +846,10 @@ cache_read_two_partial_cells_sorted_force(
 
   int ci_cache_count = ci->hydro.count - first_pi_align;
   const double max_dx = max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
-  const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
-                               -(2. * ci->width[1] + max_dx),
-                               -(2. * ci->width[2] + max_dx)};
-  const float h_padded = ci->hydro.parts[0].h;
+  const float pos_padded_i[3] = {-(2. * ci->width[0] + max_dx),
+				 -(2. * ci->width[1] + max_dx),
+				 -(2. * ci->width[2] + max_dx)};
+  const float h_padded_i = ci->hydro.h_max / 4.;
 
   /* Shift the particles positions to a local frame (ci frame) so single
    * precision can be  used instead of double precision.  */
@@ -856,10 +859,10 @@ cache_read_two_partial_cells_sorted_force(
 
     /* Put inhibited particles out of range. */
     if (parts_i[idx].time_bin >= time_bin_inhibited) {
-      x[i] = pos_padded[0];
-      y[i] = pos_padded[1];
-      z[i] = pos_padded[2];
-      h[i] = h_padded;
+      x[i] = pos_padded_i[0];
+      y[i] = pos_padded_i[1];
+      z[i] = pos_padded_i[2];
+      h[i] = h_padded_i;
       m[i] = 1.f;
       vx[i] = 1.f;
       vy[i] = 1.f;
@@ -895,10 +898,10 @@ cache_read_two_partial_cells_sorted_force(
    * particles to avoid overflow problems. */
   for (int i = ci->hydro.count - first_pi_align;
        i < ci->hydro.count - first_pi_align + VEC_SIZE; i++) {
-    x[i] = pos_padded[0];
-    y[i] = pos_padded[1];
-    z[i] = pos_padded[2];
-    h[i] = h_padded;
+    x[i] = pos_padded_i[0];
+    y[i] = pos_padded_i[1];
+    z[i] = pos_padded_i[2];
+    h[i] = h_padded_i;
     m[i] = 1.f;
     vx[i] = 1.f;
     vy[i] = 1.f;
@@ -933,7 +936,7 @@ cache_read_two_partial_cells_sorted_force(
   const float pos_padded_j[3] = {-(2. * cj->width[0] + max_dx),
                                  -(2. * cj->width[1] + max_dx),
                                  -(2. * cj->width[2] + max_dx)};
-  const float h_padded_j = cj->hydro.parts[0].h;
+  const float h_padded_j = cj->hydro.h_max / 4.;
 
   for (int i = 0; i <= last_pj_align; i++) {
     const int idx = sort_j[i].i;
