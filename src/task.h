@@ -92,6 +92,7 @@ enum task_subtypes {
   task_subtype_multipole,
   task_subtype_spart,
   task_subtype_stars_density,
+  task_subtype_stars_feedback,
   task_subtype_count
 } __attribute__((packed));
 
@@ -202,6 +203,9 @@ float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);
 void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
+void task_get_full_name(int type, int subtype, char *name);
+void task_get_group_name(int type, int subtype, char *cluster);
+
 #ifdef WITH_MPI
 void task_create_mpi_comms(void);
 #endif

@@ -108,6 +108,7 @@ const char *engine_policy_names[] = {"none",
                                      "cosmological integration",
                                      "drift everything",
                                      "reconstruct multi-poles",
+                                     "temperature",
                                      "cooling",
                                      "stars",
                                      "structure finding",
@@ -2717,7 +2718,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_sparts(s, e->verbose);
 
   /* Update the cooling function */
-  if (e->policy & engine_policy_cooling)
+  if ((e->policy & engine_policy_cooling) ||
+      (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, /*restart_flag=*/0);
 
 #ifdef WITH_LOGGER
@@ -2787,7 +2789,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     gravity_exact_force_compute(e->s, e);
 #endif
 
-  if (e->nodeID == 0) scheduler_write_dependencies(&e->sched, e->verbose);
+  scheduler_write_dependencies(&e->sched, e->verbose);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched);
 
   /* Run the 0th time-step */
@@ -2973,7 +2975,8 @@ void engine_step(struct engine *e) {
   }
 
   /* Update the cooling function */
-  if (e->policy & engine_policy_cooling)
+  if ((e->policy & engine_policy_cooling) ||
+      (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, /*restart_flag=*/0);
 
   /*****************************************************/
@@ -4649,8 +4652,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   /* Expected average for tasks per cell. If set to zero we use a heuristic
    * guess based on the numbers of cells and how many tasks per cell we expect.
    * On restart this number cannot be estimated (no cells yet), so we recover
-   * from the end of the dumped run. Can be changed on restart.
-   */
+   * from the end of the dumped run. Can be changed on restart. */
   e->tasks_per_cell =
       parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 0);
   int maxtasks = 0;
@@ -5107,7 +5109,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
   /* Mesh forces smoothing scale */
   float r_s;
-  if ((e->policy & engine_policy_self_gravity) && e->s->periodic == 1)
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
     r_s = e->mesh->r_s;
   else
     r_s = FLT_MAX;

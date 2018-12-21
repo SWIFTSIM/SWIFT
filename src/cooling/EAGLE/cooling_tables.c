@@ -31,6 +31,7 @@
 #include <string.h>
 
 /* Local includes. */
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "cooling_tables.h"
 #include "error.h"
@@ -39,7 +40,7 @@
 /**
  * @brief Names of the elements in the order they are stored in the files
  */
-static const char *eagle_tables_element_names[9] = {
+static const char *eagle_tables_element_names[eagle_cooling_N_metal] = {
     "Carbon",  "Nitrogen", "Oxygen",  "Neon", "Magnesium",
     "Silicon", "Sulphur",  "Calcium", "Iron"};
 
@@ -211,6 +212,10 @@ void read_cooling_header(const char *fname,
   if (N_SolarAbundances != eagle_cooling_N_abundances)
     error("Invalid solar abundances array length.");
 
+  /* Check value */
+  if (N_SolarAbundances != chemistry_element_count + 2)
+    error("Number of abundances not compatible with the chemistry model.");
+
   dataset = H5Dopen(tempfile_id, "/Header/Number_of_metals", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    &N_Elements);
@@ -237,6 +242,10 @@ void read_cooling_header(const char *fname,
   if (posix_memalign((void **)&cooling->SolarAbundances, SWIFT_STRUCT_ALIGNMENT,
                      N_SolarAbundances * sizeof(float)) != 0)
     error("Failed to allocate Solar abundances table");
+  if (posix_memalign((void **)&cooling->SolarAbundances_inv,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     N_SolarAbundances * sizeof(float)) != 0)
+    error("Failed to allocate Solar abundances inverses table");
 
   /* read in values for each of the arrays */
   dataset = H5Dopen(tempfile_id, "/Solar/Temperature_bins", H5P_DEFAULT);
@@ -284,6 +293,10 @@ void read_cooling_header(const char *fname,
   }
   for (int i = 0; i < N_nH; i++) {
     cooling->nH[i] = log10(cooling->nH[i]);
+  }
+  /* Compute inverse of solar mass fractions */
+  for (int i = 0; i < N_SolarAbundances; ++i) {
+    cooling->SolarAbundances_inv[i] = 1.f / cooling->SolarAbundances[i];
   }
 
 #else

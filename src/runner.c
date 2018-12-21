@@ -64,6 +64,7 @@
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
+#include "tracers.h"
 
 #define TASK_LOOP_DENSITY 0
 #define TASK_LOOP_GRADIENT 1
@@ -1989,6 +1990,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -2043,6 +2045,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
+
+        /* Update the tracers properties */
+        tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,
+                               with_cosmology, e->cosmology,
+                               e->hydro_properties, e->cooling_func, e->time);
 
         /* Number of updated particles */
         updated++;
@@ -2732,6 +2739,8 @@ void *runner_main(void *data) {
             runner_do_grav_external(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_doself_stars_density(r, ci, 1);
+          else if (t->subtype == task_subtype_stars_feedback)
+            runner_doself_stars_feedback(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2749,6 +2758,8 @@ void *runner_main(void *data) {
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dopair_stars_density(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_stars_feedback)
+            runner_dopair_stars_feedback(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2764,6 +2775,8 @@ void *runner_main(void *data) {
             runner_dosub_self2_force(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_self_stars_density(r, ci, 1);
+          else if (t->subtype == task_subtype_stars_feedback)
+            runner_dosub_self_stars_feedback(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -2779,6 +2792,8 @@ void *runner_main(void *data) {
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_pair_stars_density(r, ci, cj, t->flags, 1);
+          else if (t->subtype == task_subtype_stars_feedback)
+            runner_dosub_pair_stars_feedback(r, ci, cj, t->flags, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;

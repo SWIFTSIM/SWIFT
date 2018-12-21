@@ -437,6 +437,13 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
   /* No cooling happens over zero time */
   if (dt == 0.) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cooling->Redshifts == NULL)
+    error(
+        "Cooling function has not been initialised. Did you forget the "
+        "--cooling runtime flag?");
+#endif
+
   /* Get internal energy at the last kick step */
   const float u_start = hydro_get_physical_internal_energy(p, xp, cosmo);
 
@@ -459,7 +466,10 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
      (See cosmology theory document for the derivation) */
   const double delta_redshift = -dt * cosmo->H * cosmo->a_inv;
 
-  /* Get this particle's abundance ratios */
+  /* Get this particle's abundance ratios compared to solar
+   * Note that we need to add S and Ca that are in the tables but not tracked
+   * by the particles themselves.
+   * The order is [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe] */
   float abundance_ratio[chemistry_element_count + 2];
   abundance_ratio_to_solar(p, cooling, abundance_ratio);
 
@@ -660,6 +670,13 @@ float cooling_get_temperature(
     const struct cooling_function_data *restrict cooling,
     const struct part *restrict p, const struct xpart *restrict xp) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cooling->Redshifts == NULL)
+    error(
+        "Cooling function has not been initialised. Did you forget the "
+        "--temperature runtime flag?");
+#endif
+
   /* Get physical internal energy */
   const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
   const double u_cgs = u * cooling->internal_energy_to_cgs;
@@ -725,10 +742,10 @@ void cooling_init_backend(struct swift_params *parameter_file,
                           cooling->cooling_table_path);
   cooling->H_reion_z = parser_get_param_float(
       parameter_file, "EagleCooling:reionisation_redshift");
-  cooling->calcium_over_silicon_ratio = parser_get_param_float(
-      parameter_file, "EAGLEChemistry:CalciumOverSilicon");
-  cooling->sulphur_over_silicon_ratio = parser_get_param_float(
-      parameter_file, "EAGLEChemistry:SulphurOverSilicon");
+  cooling->Ca_over_Si_ratio_in_solar = parser_get_opt_param_float(
+      parameter_file, "EAGLECooling:CalciumOverSiliconInSolar", 1.f);
+  cooling->S_over_Si_ratio_in_solar = parser_get_opt_param_float(
+      parameter_file, "EAGLECooling:SulphurOverSiliconInSolar", 1.f);
   cooling->He_reion_z_centre =
       parser_get_param_float(parameter_file, "EagleCooling:He_reion_z_centre");
   cooling->He_reion_z_sigma =
@@ -852,6 +869,7 @@ void cooling_clean(struct cooling_function_data *cooling) {
   free(cooling->HeFrac);
   free(cooling->Therm);
   free(cooling->SolarAbundances);
+  free(cooling->SolarAbundances_inv);
 
   /* Free the tables */
   free(cooling->table.metal_heating);
