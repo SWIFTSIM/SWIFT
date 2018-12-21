@@ -1804,11 +1804,16 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 
   if (c == c->super) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->stars.sorts == NULL)
+    if (c->stars.sorts_local == NULL && c->stars.sorts_foreign == NULL)
       error("Trying to activate un-existing c->stars.sorts");
 #endif
-    scheduler_activate(s, c->stars.sorts);
-    if (c->nodeID == engine_rank) {
+    if (c->stars.sorts_local) {
+      scheduler_activate(s, c->stars.sorts_local);
+    }
+    if (c->stars.sorts_foreign) {
+      scheduler_activate(s, c->stars.sorts_foreign);
+    }
+    if (c->stars.sorts_local) {
       // MATTHIEU: to do: do we actually need both drifts here?
       cell_activate_drift_part(c, s);
       cell_activate_drift_spart(c, s);
@@ -1821,11 +1826,17 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
       parent->stars.do_sub_sort = 1;
       if (parent == c->super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if (parent->stars.sorts == NULL)
+        if (parent->stars.sorts_local == NULL &&
+            parent->stars.sorts_foreign == NULL)
           error("Trying to activate un-existing parents->stars.sorts");
 #endif
-        scheduler_activate(s, parent->stars.sorts);
-        if (parent->nodeID == engine_rank) {
+        if (parent->stars.sorts_local) {
+          scheduler_activate(s, parent->stars.sorts_local);
+        }
+        if (parent->stars.sorts_foreign) {
+          scheduler_activate(s, parent->stars.sorts_foreign);
+        }
+        if (parent->stars.sorts_local) {
           cell_activate_drift_part(parent, s);
           cell_activate_drift_spart(parent, s);
         }
@@ -1839,9 +1850,6 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
  * @brief Activate the sorts on a given cell, if needed.
  */
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
-
-  // TODO Alexei, remove this
-  if (c->nodeID != engine_rank) return;
 
   /* Do we need to re-sort? */
   if (c->stars.dx_max_sort > space_maxreldx * c->dmin) {
@@ -3226,18 +3234,15 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
 
-        // TODO Alexei: In this section, you will find some comments that
-        // are from the hydro code. It should look the same for the feedback.
-        /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
           scheduler_activate(s, ci->mpi.hydro.recv_xv);
-          /* if (ci_active) { */
-          /*   scheduler_activate(s, ci->mpi.hydro.recv_rho); */
-          /* } */
+          if (ci_active) {
+            scheduler_activate(s, ci->mpi.stars.recv);
+          }
         }
 
-        /* /\* If the foreign cell is active, we want its ti_end values. *\/ */
-        /* if (ci_active) scheduler_activate(s, ci->mpi.recv_ti); */
+        /* If the foreign cell is active, we want its ti_end values. */
+        if (ci_active) scheduler_activate(s, ci->mpi.recv_ti);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
@@ -3248,30 +3253,28 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(cj, s);
 
-          /* /\* If the local cell is also active, more stuff will be needed.
-           * *\/ */
-          /* if (cj_active) { */
-          /*   scheduler_activate_send(s, cj->mpi.hydro.send_rho, ci_nodeID); */
-
-          /* } */
+          /* If the local cell is also active, more stuff will be needed.
+           */
+          if (cj_active) {
+            scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
+          }
         }
 
-        /* /\* If the local cell is active, send its ti_end values. *\/ */
-        /* if (cj_active) scheduler_activate_send(s, cj->mpi.send_ti,
-         * ci_nodeID); */
+        /* If the local cell is active, send its ti_end values. */
+        if (cj_active) scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
 
       } else if (cj_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
           scheduler_activate(s, cj->mpi.hydro.recv_xv);
-          /* if (cj_active) { */
-          /*   scheduler_activate(s, cj->mpi.hydro.recv_rho); */
-          /* } */
+          if (cj_active) {
+            scheduler_activate(s, cj->mpi.stars.recv);
+          }
         }
 
-        /* /\* If the foreign cell is active, we want its ti_end values. *\/ */
-        /* if (cj_active) scheduler_activate(s, cj->mpi.recv_ti); */
+        /* If the foreign cell is active, we want its ti_end values. */
+        if (cj_active) scheduler_activate(s, cj->mpi.recv_ti);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -3282,18 +3285,15 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(ci, s);
 
-          /* /\* If the local cell is also active, more stuff will be needed.
-           * *\/ */
-          /* if (ci_active) { */
-
-          /*   scheduler_activate_send(s, ci->mpi.hydro.send_rho, cj_nodeID); */
-
-          /* } */
+          /* If the local cell is also active, more stuff will be needed.
+           */
+          if (ci_active) {
+            scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
+          }
         }
 
-        /* /\* If the local cell is active, send its ti_end values. *\/ */
-        /* if (ci_active) scheduler_activate_send(s, ci->mpi.send_ti,
-         * cj_nodeID); */
+        /* If the local cell is active, send its ti_end values. */
+        if (ci_active) scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
       }
 #endif
     }

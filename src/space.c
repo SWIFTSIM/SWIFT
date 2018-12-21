@@ -183,7 +183,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
       space_recycle_list(s, cell_rec_begin, cell_rec_end, multipole_rec_begin,
                          multipole_rec_end);
     c->hydro.sorts = NULL;
-    c->stars.sorts = NULL;
+    c->stars.sorts_local = NULL;
+    c->stars.sorts_foreign = NULL;
     c->nr_tasks = 0;
     c->grav.nr_mm_tasks = 0;
     c->hydro.density = NULL;
@@ -274,6 +275,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.hydro.recv_rho = NULL;
     c->mpi.hydro.recv_gradient = NULL;
     c->mpi.grav.recv = NULL;
+    c->mpi.stars.recv = NULL;
     c->mpi.recv_ti = NULL;
     c->mpi.limiter.recv = NULL;
 
@@ -281,6 +283,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.hydro.send_rho = NULL;
     c->mpi.hydro.send_gradient = NULL;
     c->mpi.grav.send = NULL;
+    c->mpi.stars.send = NULL;
     c->mpi.send_ti = NULL;
     c->mpi.limiter.send = NULL;
 #endif
@@ -548,6 +551,8 @@ void space_regrid(struct space *s, int verbose) {
           c->mpi.hydro.send_xv = NULL;
           c->mpi.hydro.send_rho = NULL;
           c->mpi.hydro.send_gradient = NULL;
+          c->mpi.stars.send = NULL;
+          c->mpi.stars.recv = NULL;
           c->mpi.grav.recv = NULL;
           c->mpi.grav.send = NULL;
 #endif  // WITH_MPI

@@ -78,6 +78,9 @@ struct spart {
 #ifdef DEBUG_INTERACTIONS_STARS
   /*! Number of interactions in the density SELF and PAIR */
   int num_ngb_density;
+
+  /*! Number of interactions in the force SELF and PAIR */
+  int num_ngb_force;
 #endif
 
 } SWIFT_STRUCT_ALIGN;
