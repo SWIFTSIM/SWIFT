@@ -850,4 +850,14 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
   return cosmo->a3_inv * p->primitives.rho;
 }
 
+/**
+ * @brief Operations performed when a particle gets removed from the
+ * simulation volume.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void hydro_remove_part(
+    const struct part* p, const struct xpart* xp) {}
+
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_H */

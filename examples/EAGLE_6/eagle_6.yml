@@ -81,8 +81,6 @@ EAGLEChemistry: 	    # Solar abundances
   InitAbundance_Magnesium:  5.907064e-4
   InitAbundance_Silicon:    6.825874e-4
   InitAbundance_Iron:       1.1032152e-3
-  CalciumOverSilicon:       0.0941736
-  SulphurOverSilicon:       0.6054160
 
 EagleCooling:
   filename:                ./coolingtables/
