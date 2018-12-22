@@ -84,7 +84,7 @@ struct scheduler {
   /* The task unlocks. */
   struct task **volatile unlocks;
   int *volatile unlock_ind;
-  volatile int nr_unlocks, size_unlocks, completed_unlock_writes;
+  atomic_int nr_unlocks, size_unlocks, completed_unlock_writes;
 
   /* Lock for this scheduler. */
   swift_lock_type lock;

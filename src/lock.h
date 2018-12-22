@@ -57,7 +57,7 @@ INLINE static int lock_lock(atomic_int *l) {
   return 0;
 }
 #define lock_trylock(l) ((atomic_read(l)) ? 1 : atomic_cas(l, 0, 1))
-#define lock_unlock(l) (atomic_cas(l, 1, 0) != 1)
+#define lock_unlock(l) (atomic_cas(l, 1, 0))
 #define lock_unlock_blind(l) atomic_cas(l, 1, 0)
 #define lock_static_initializer 0
 #endif
