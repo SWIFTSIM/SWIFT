@@ -6,7 +6,7 @@ EAGLE model
 ===========
 
 This section of the documentation gives a brief description of the
-different components of the EAGLE subgrid model. We mostly focus on
+different components of the EAGLE sub-grid model. We mostly focus on
 the parameters and values output in the snapshots.
 
 Chemical tracers
@@ -19,7 +19,7 @@ additionally follow the total metal mass fraction (i.e. absolute
 metallicity) `Z`. This is typically larger than the sum of the 7
 metals that are individually traced since this will also contain the
 contribution of all the elements that are not individually followed.
-We note that all of definitions are independent of any defitinio of
+We note that all of definitions are independent of any definition of
 solar the solar metallicity :math:`Z_\odot` or of any solar abundance
 pattern.
 
