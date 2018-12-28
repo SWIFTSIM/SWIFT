@@ -59,7 +59,7 @@ typedef double atomic_double;
 #define atomic_cas(obj,expected,desired) _Generic((desired), \
   int: bool_atomic_compare_and_swap_i, \
   long long: bool_atomic_compare_and_swap_ll, \
-  default: val_atomic_compare_and_swap_ll \
+  default: bool_atomic_compare_and_swap_ll \
   )(obj,expected,desired)
 #endif
 #define atomic_swap(v, n) atomic_exchange(v,n)
