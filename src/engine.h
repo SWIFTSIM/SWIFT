@@ -378,7 +378,7 @@ struct engine {
   int restarting;
 
   /* Force the engine to rebuild? */
-  int forcerebuild;
+  atomic_int forcerebuild;
 
   /* Force the engine to repartition ? */
   int forcerepart;
@@ -392,7 +392,8 @@ struct engine {
 
   /* Linked list for cell-task association. */
   struct link *links;
-  size_t nr_links, size_links;
+  atomic_size_t nr_links;
+  size_t size_links;
 
   /* Average number of tasks per cell. Used to estimate the sizes
    * of the various task arrays. Also the maximum from all ranks. */

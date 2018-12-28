@@ -55,7 +55,7 @@ struct scheduler;
 #define cell_align 128
 
 /* Global variables. */
-extern int cell_next_tag;
+extern atomic_int cell_next_tag;
 
 /* Struct to temporarily buffer the particle locations and bin id. */
 struct cell_buff {
@@ -430,7 +430,7 @@ struct cell {
     int updated;
 
     /*! Is the #part data of this cell being used in a sub-cell? */
-    int hold;
+    atomic_int hold;
 
     /*! Bit mask of sort directions that will be needed in the next timestep. */
     uint16_t requires_sorts;
@@ -528,13 +528,13 @@ struct cell {
     int updated;
 
     /*! Is the #gpart data of this cell being used in a sub-cell? */
-    int phold;
+    atomic_int phold;
 
     /*! Is the #multipole data of this cell being used in a sub-cell? */
-    int mhold;
+    atomic_int mhold;
 
     /*! Number of M-M tasks that are associated with this cell. */
-    short int nr_mm_tasks;
+    atomic_short nr_mm_tasks;
 
   } grav;
 
@@ -628,7 +628,7 @@ struct cell {
     int updated;
 
     /*! Is the #spart data of this cell being used in a sub-cell? */
-    int hold;
+    atomic_int hold;
 
     /*! Star formation history struct */
     struct star_formation_history sfh;
@@ -779,7 +779,7 @@ struct cell {
   int nodeID;
 
   /*! Number of tasks that are associated with this cell. */
-  short int nr_tasks;
+  atomic_short nr_tasks;
 
   /*! The depth of this cell in the tree. */
   char depth;

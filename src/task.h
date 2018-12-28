@@ -198,7 +198,7 @@ struct task {
   short int nr_unlock_tasks;
 
   /*! Number of unsatisfied dependencies */
-  short int wait;
+  atomic_short wait;
 
   /*! Type of the task */
   enum task_types type;

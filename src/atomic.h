@@ -249,6 +249,7 @@ __attribute__((always_inline)) INLINE static void atomic_add_d(
 typedef int volatile atomic_int;
 typedef unsigned int volatile atomic_uint;
 typedef size_t volatile atomic_size_t;
+typedef short atomic_short;
 typedef double atomic_double;
 typedef float atomic_float;
 #define atomic_add(v, i) __sync_fetch_and_add(v, i)

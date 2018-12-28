@@ -84,7 +84,7 @@ struct threadpool {
   int num_threads;
 
   /* Counter for the number of threads that are done. */
-  volatile int num_threads_running;
+  atomic_int num_threads_running;
 
 #ifdef SWIFT_DEBUG_THREADPOOL
   struct mapper_log *logs;
