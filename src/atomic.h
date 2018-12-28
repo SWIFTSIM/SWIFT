@@ -41,7 +41,7 @@
 #define atomic_add(v, i) atomic_fetch_add(v, i)
 #define atomic_sub(v, i) atomic_fetch_sub(v, i)
 #define atomic_or(v, i) atomic_fetch_or(v, i)
-#define atomic_inv(v) atomic_fetch_add(v, 1)
+#define atomic_inc(v) atomic_fetch_add(v, 1)
 #define atomic_dec(v) atomic_fetch_sub(v, 1)
 #define
 #ifdef SWIFT_MODERN_ATOMICS
