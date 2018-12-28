@@ -433,13 +433,14 @@ struct cell {
     atomic_int hold;
 
     /*! Bit mask of sort directions that will be needed in the next timestep. */
-    uint16_t requires_sorts;
+    atomic_uint requires_sorts;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
-    uint16_t do_sort;
+    atomic_uint do_sort;
 
     /*! Bit-mask indicating the sorted directions */
-    uint16_t sorted;
+    atomic_uint sorted;
+
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -602,6 +603,12 @@ struct cell {
     /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
     float dx_max_sort_old;
 
+<<<<<<< HEAD
+=======
+    /*! Bit mask of sort directions that will be needed in the next timestep. */
+    atomic_uint requires_sorts;
+
+>>>>>>> Fix the variables used with atomic_or to be the correct atomic types
     /*! Pointer for the sorted indices. */
     struct sort_entry *sort[13];
 
@@ -609,10 +616,20 @@ struct cell {
     uint16_t requires_sorts;
 
     /*! Bit-mask indicating the sorted directions */
+<<<<<<< HEAD
     uint16_t sorted;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
     uint16_t do_sort;
+=======
+    atomic_uint sorted;
+
+    /*! Bit mask of sorts that need to be computed for this cell. */
+    atomic_uint do_sort;
+
+    /*! Do any of this cell's sub-cells need to be sorted? */
+    char do_sub_sort;
+>>>>>>> Fix the variables used with atomic_or to be the correct atomic types
 
     /*! Maximum end of (integer) time step in this cell for star tasks. */
     integertime_t ti_end_min;
