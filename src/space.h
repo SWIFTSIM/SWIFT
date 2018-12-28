@@ -214,7 +214,7 @@ struct space {
   size_t nr_extra_gparts;
 
   /*! Number of extra #spart we allocated (for on-the-fly creation) */
-  size_t nr_extra_sparts;
+  atomic_size_t nr_extra_sparts;
 
   /*! Number of extra #bpart we allocated (for on-the-fly creation) */
   size_t nr_extra_bparts;
