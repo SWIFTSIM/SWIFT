@@ -247,13 +247,13 @@ struct space {
   float min_bpart_mass;
 
   /*! Sum of the norm of the velocity of all the #part */
-  float sum_part_vel_norm;
+  atomic_float sum_part_vel_norm;
 
   /*! Sum of the norm of the velocity of all the dark-matter #gpart */
-  float sum_gpart_vel_norm;
+  atomic_float sum_gpart_vel_norm;
 
   /*! Sum of the norm of the velocity of all the #spart */
-  float sum_spart_vel_norm;
+  atomic_float sum_spart_vel_norm;
 
   /*! Sum of the norm of the velocity of all the #bpart */
   float sum_bpart_vel_norm;

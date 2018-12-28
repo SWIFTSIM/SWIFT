@@ -106,7 +106,7 @@ __attribute__((always_inline)) INLINE static double CIC_get(
  * @param value The value to interpolate.
  */
 __attribute__((always_inline)) INLINE static void CIC_set(
-    double* mesh, int N, int i, int j, int k, double tx, double ty, double tz,
+    atomic_double* mesh, int N, int i, int j, int k, double tx, double ty, double tz,
     double dx, double dy, double dz, double value) {
 
   /* Classic CIC interpolation */

@@ -37,7 +37,7 @@ struct dump {
   size_t size;
 
   /* The number of bytes that have been dumped. */
-  size_t count;
+  atomic_size_t count;
 
   /* The offset of the data within the current file. */
   size_t file_offset;

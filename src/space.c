@@ -118,14 +118,12 @@ struct index_data {
   struct space *s;
   int *ind;
   int *cell_counts;
-  size_t count_inhibited_part;
-  size_t count_inhibited_gpart;
-  size_t count_inhibited_spart;
-  size_t count_inhibited_bpart;
-  size_t count_extra_part;
-  size_t count_extra_gpart;
-  size_t count_extra_spart;
-  size_t count_extra_bpart;
+  atomic_size_t count_inhibited_part;
+  atomic_size_t count_inhibited_gpart;
+  atomic_size_t count_inhibited_spart;
+  atomic_size_t count_extra_part;
+  atomic_size_t count_extra_gpart;
+  atomic_size_t count_extra_spart;
 };
 
 /**
