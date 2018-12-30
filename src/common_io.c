@@ -489,8 +489,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
                 MPI_COMM_WORLD);
 #endif
 
-  message("offsets=%lld %lld", offset_part[0], offset_part[1]);
-  message("counts=%lld %lld", count_part[0], count_part[1]);
+  /* Only rank 0 actually writes */
+  if (nodeID != 0) return;
 
   /* Write some meta-information first */
   hid_t h_subgrp =

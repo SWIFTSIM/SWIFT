@@ -1282,6 +1282,21 @@ void write_output_parallel(struct engine* e, const char* baseName,
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
              e->snapshot_output_count);
 
+  if (nodeID == 0) {
+    h_file = H5Fopen(fileName, H5F_ACC_RDWR, H5P_DEFAULT);
+    if (h_file < 0)
+      error("Error while opening file '%s' on rank %d.", fileName, mpi_rank);
+  } else {
+    h_file = 0;
+  }
+
+  io_write_cell_offsets(h_file, e->s->cdim, e->s->cells_top, e->s->nr_cells,
+                        e->s->width, e->nodeID, N_total, offset);
+
+  if (nodeID == 0) {
+    H5Fclose(h_file);
+  }
+
   /* Prepare some file-access properties */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
 
