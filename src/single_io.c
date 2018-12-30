@@ -826,6 +826,14 @@ void write_output_single(struct engine* e, const char* baseName,
   /* Print the system of Units used internally */
   io_write_unit_system(h_file, internal_units, "InternalCodeUnits");
 
+  /* Write the location of the particles in the arrays */
+  long long global_offsets[swift_type_count] = {0};
+  h_grp = H5Gcreate(h_file, "/Cells", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating cells group");
+  io_write_cell_offsets(h_grp, e->s->cdim, e->s->cells_top, e->s->nr_cells,
+                        e->s->width, e->nodeID, N_total, global_offsets);
+  H5Gclose(h_grp);
+
   /* Tell the user if a conversion will be needed */
   if (e->verbose) {
     if (units_are_equal(snapshot_units, internal_units)) {
