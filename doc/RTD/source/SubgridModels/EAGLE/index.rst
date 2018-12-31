@@ -143,8 +143,55 @@ Whilst one would use the following values for solar abundances
 
 
      
-Cooling: Wiersma+2008a
-~~~~~~~~~~~~~~~~~~~~~~
+Gas cooling: Wiersma+2009a
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The gas cooling is based on the redshift-dependent tables of `Wiersma et
+al. (2009) <http://adsabs.harvard.edu/abs/2009MNRAS.393...99W>`_ that include
+element-by-element cooling rates for the 11 elements (`H`, `He`, `C`, `N`, `O`,
+`Ne`, `Mg`, `Si`, `S`, `Ca` and `Fe`) that dominate the total rates. The tables
+assume that the gas is in ionization equilibrium with the cosmic microwave
+background (CMB) as well as with the evolving X-ray and UV background from
+galaxies and quasars described by the model of `Haardt & Madau (2001)
+<http://adsabs.harvard.edu/abs/2001cghr.confE..64H>`_. Note that this model
+ignores *local* sources of ionization, self-shielding and non-equilibrium
+cooling/heating. The tables can be obtained from this `link
+<http://virgodb.cosma.dur.ac.uk/swift-webstorage/CoolingTables/EAGLE/coolingtables.tar.gz>`_
+which is a re-packaged version of the `original tables
+<http://www.strw.leidenuniv.nl/WSS08/>`_
+
+The Wiersma tables containing the cooling rates as a function of redshift,
+Hydrogen number density, Helium fraction (:math:`X_{He} / (X_{He} + X_{H})`) and
+element abundance relative to the solar abundance pattern assumed by the tables
+(see equation 4 in the original paper). As the particles do not carry the mass
+fraction of `S` and `Ca`, we compute the contribution to the cooling rate of
+these elements from the abundance of `Si`. More specifically, we assume that
+their abundance relative to the table's solar abundance pattern is the same as
+the relative abundance of `Si`. Users can optionally modify the ratios used for
+`S` and `Ca`.
+
+Above the redshift of Hydrogen re-ionization we use the extra table containing
+net cooling rates for gas exposed to the CMB and a UV + X-ray background at
+redshift nine truncated above 1 Rydberg. At the redshift or re-ionization, we
+additionally inject a fixed user-defined amount of energy per unit mass.
+
+In addition to the tables we inject extra energy from Helium re-ionization using
+a Gaussian model with a user-defined redshift for the centre, width and total
+amount of energy injected per unit mass.
+
+The cooling itself is performed using an implicit scheme (see the theory
+documents) which for small values of the cooling rates is solved explicitly. For
+larger values we use a bisection scheme. Users can alternatively use a
+Newton-Raphson method that in some cases runs faster than the bisection
+method. If the Newton-Raphson method does not converge after a few steps, the
+code reverts to a bisection scheme, that is guaranteed to converge. The cooling
+rate is added to the calculated change in energy over time from the other
+dynamical equations. This is different from other commonly used codes in the
+literature where the cooling is done instantaneously.
+
+We note that the EAGLE cooling model does not impose any restriction on the
+particles' individual time-steps. The cooling takes place over the time span
+given by the other conditions (e.g the Courant condition).
 
 Particle tracers
 ~~~~~~~~~~~~~~~~
@@ -152,11 +199,11 @@ Particle tracers
 Star formation: Schaye+2008
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Stellar enrichment: Wiersma+2008b
+Stellar enrichment: Wiersma+2009b
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Supernova feedback: Schaye+2012
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Supernova feedback: Dalla Vecchia+2012
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Black-hole creation
 ~~~~~~~~~~~~~~~~~~~
