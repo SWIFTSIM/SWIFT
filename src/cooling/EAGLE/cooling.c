@@ -738,20 +738,20 @@ void cooling_init_backend(struct swift_params *parameter_file,
                           struct cooling_function_data *cooling) {
 
   /* read some parameters */
-  parser_get_param_string(parameter_file, "EagleCooling:filename",
+  parser_get_param_string(parameter_file, "EAGLECooling:dirname",
                           cooling->cooling_table_path);
   cooling->H_reion_z = parser_get_param_float(
-      parameter_file, "EagleCooling:reionisation_redshift");
+      parameter_file, "EAGLECooling:reionisation_redshift");
   cooling->Ca_over_Si_ratio_in_solar = parser_get_opt_param_float(
-      parameter_file, "EAGLECooling:CalciumOverSiliconInSolar", 1.f);
+      parameter_file, "EAGLECooling::CalciumOverSiliconInSolar", 1.f);
   cooling->S_over_Si_ratio_in_solar = parser_get_opt_param_float(
-      parameter_file, "EAGLECooling:SulphurOverSiliconInSolar", 1.f);
+      parameter_file, "EAGLECooling::SulphurOverSiliconInSolar", 1.f);
   cooling->He_reion_z_centre =
-      parser_get_param_float(parameter_file, "EagleCooling:He_reion_z_centre");
+      parser_get_param_float(parameter_file, "EAGLECooling:He_reion_z_centre");
   cooling->He_reion_z_sigma =
-      parser_get_param_float(parameter_file, "EagleCooling:He_reion_z_sigma");
+      parser_get_param_float(parameter_file, "EAGLECooling:He_reion_z_sigma");
   cooling->He_reion_heat_cgs =
-      parser_get_param_float(parameter_file, "EagleCooling:He_reion_ev_pH");
+      parser_get_param_float(parameter_file, "EAGLECooling:He_reion_ev_pH");
 
   /* convert to cgs */
   cooling->He_reion_heat_cgs *=
@@ -816,7 +816,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   /* Check if we are running with the newton scheme */
   cooling->newton_flag = parser_get_opt_param_int(
-      parameter_file, "EagleCooling:newton_integration", 0);
+      parameter_file, "EAGLECooling:newton_integration", 0);
 }
 
 /**

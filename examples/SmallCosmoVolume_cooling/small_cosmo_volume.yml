@@ -63,8 +63,8 @@ LambdaCooling:
   lambda_nH2_cgs:              1e-26 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
 
 # EAGLE cooling function
-EagleCooling:
-  filename:                ./coolingtables/
+EAGLECooling:
+  dirname:                 ./coolingtables/
   reionisation_redshift:   8.5
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
