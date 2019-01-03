@@ -104,11 +104,12 @@ an absolute metal mass (say) for a star, the ``InitialMass`` (see
 below) of the star must be used.
 
 The chemistry model only requires a small number of parameters to be
-specified in the YAML file. These are the initial values of the
-metallicity and element mass fractions. These are then applied at the
-start of a simulation to *all* the *gas* particles. All 9 elements have
-to be specified An example section, for primordial abundances (typical
-for a cosmological run), is:
+specified in the `EAGLEChemistry` section of the YAML file. These are
+the initial values of the metallicity and element mass
+fractions. These are then applied at the start of a simulation to
+*all* the *gas* particles. All 9 elements have to be specified An
+example section, for primordial abundances (typical for a cosmological
+run), is:
 
 .. code:: YAML
 
@@ -166,18 +167,23 @@ element abundance relative to the solar abundance pattern assumed by the tables
 (see equation 4 in the original paper). As the particles do not carry the mass
 fraction of `S` and `Ca`, we compute the contribution to the cooling rate of
 these elements from the abundance of `Si`. More specifically, we assume that
-their abundance relative to the table's solar abundance pattern is the same as
-the relative abundance of `Si`. Users can optionally modify the ratios used for
-`S` and `Ca`.
+their abundance by mass relative to the table's solar abundance pattern is the
+same as the relative abundance of `Si` (i.e. :math:`[Ca/Si] = 0` and
+:math:`[S/Si] = 0`). Users can optionally modify the ratios used for `S` and
+`Ca`.
 
 Above the redshift of Hydrogen re-ionization we use the extra table containing
 net cooling rates for gas exposed to the CMB and a UV + X-ray background at
 redshift nine truncated above 1 Rydberg. At the redshift or re-ionization, we
-additionally inject a fixed user-defined amount of energy per unit mass.
+additionally inject a fixed user-defined amount of energy per unit mass to all
+the gas particles.
 
 In addition to the tables we inject extra energy from Helium re-ionization using
 a Gaussian model with a user-defined redshift for the centre, width and total
 amount of energy injected per unit mass.
+
+For non-cosmological run, we use the :math:`z = 0` table and the interpolation
+along the redshift dimension then becomes a trivial operation.
 
 The cooling itself is performed using an implicit scheme (see the theory
 documents) which for small values of the cooling rates is solved explicitly. For
@@ -192,6 +198,32 @@ literature where the cooling is done instantaneously.
 We note that the EAGLE cooling model does not impose any restriction on the
 particles' individual time-steps. The cooling takes place over the time span
 given by the other conditions (e.g the Courant condition).
+
+The cooling model is driven by a small number of parameter files in the
+`EAGLECooling` section of the YAML file. These are the re-ionization parameters,
+the path to the tables and optionally the modified abundances of `Ca` and `S` as
+well as the flag to attempt using the Newton-Raphson scheme to solve the
+implicit problem. A valid section of the YAML file looks like:
+
+.. code:: YAML
+
+   EAGLECooling:
+     dirname:      /path/to/the/Wiersma/tables/directory # Absolute or relative path
+     H_reion_z:            11.5      # Redhift of Hydrogen re-ionization
+     He_reion_z_centre:     3.5      # Centre of the Gaussian used for Helium re-ionization
+     He_reion_z_sigma:      0.5      # Width of the Gaussian used for Helium re-ionization
+     He_reion_ev_pH:        2.0      # Energy injected in eV per Hydrogen atom for Helium re-ionization.
+
+The optional parameters are:
+
+.. code:: YAML
+
+   EAGLECooling:
+     CalciumOverSiliconInSolar: 1.0 # (Optional) Value of the Calcium abundance ratio to solar in units of the Silicon ratio to solar. Default value: 1.
+     SulphurOverSiliconInSolar: 1.0 # (Optional) Value of the Sulphur abundance ratio to solar in units of the Silicon ratio to solar. Default value: 1.
+     newton_integration:        0   # (Optional) Set to 1 to use the Newton-Raphson scheme for the explicit cooling problem.
+
+
 
 Particle tracers
 ~~~~~~~~~~~~~~~~
