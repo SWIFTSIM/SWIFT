@@ -115,17 +115,11 @@ struct cooling_function_data {
   /*! Index of the current redshift along the redshift index of the tables */
   int z_index;
 
-  /*! Index of the previous tables along the redshift index of the tables */
-  int previous_z_index;
-
-  /*! Distance between the current redshift and the table[z_index] */
+  /*! Distance between the current redshift and table[z_index] */
   float dz;
 
-  /*! Index of the table below current redshift */
-  int low_z_index;
-
-  /*! Index of the table above current redshift */
-  int high_z_index;
+  /*! Index of the previous tables along the redshift index of the tables */
+  int previous_z_index;
 
   /*! Are we doing Newton-Raphson iterations? */
   int newton_flag;
