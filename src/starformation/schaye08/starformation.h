@@ -159,13 +159,18 @@ INLINE static int star_formation_potential_to_become_star(
    * because we also need to check if the physical density exceeded
    * the appropriate limit */
 
-  double Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
-  double density_threshold_metal_dep =
-      starform->density_threshold * pow(Z * starform->Z0_inv, starform->n_Z0);
+  const double Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
+  double density_threshold_metal_dep;
+  if (Z > 0) {
+    density_threshold_metal_dep =
+        starform->density_threshold * pow(Z * starform->Z0_inv, starform->n_Z0);
+  } else {
+    density_threshold_metal_dep = starform->density_threshold_max;
+  }
 
   /* Calculate the maximum between both and convert to mass density instead of
    * number density*/
-  double density_threshold_current =
+  const double density_threshold_current =
       min(density_threshold_metal_dep, starform->density_threshold_max) *
       phys_const->const_proton_mass;
 
