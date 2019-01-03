@@ -3182,12 +3182,12 @@ void engine_check_for_dumps(struct engine *e) {
         /* Let's fake that we are at the snapshot dump time */
         e->ti_current = e->ti_next_snapshot;
         e->max_active_bin = 0;
-	if ((e->policy & engine_policy_cosmology)) {
-	  cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
+        if ((e->policy & engine_policy_cosmology)) {
+          cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
           e->time = e->cosmology->time;
-	} else {
+        } else {
           e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
-	}
+        }
 
         /* Drift everyone */
         engine_drift_all(e, /*drift_mpole=*/0);
@@ -3229,9 +3229,9 @@ void engine_check_for_dumps(struct engine *e) {
         if ((e->policy & engine_policy_cosmology)) {
           cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
           e->time = e->cosmology->time;
-	} else {
+        } else {
           e->time = e->ti_next_stats * e->time_base + e->time_begin;
-	}
+        }
 
         /* Drift everyone */
         engine_drift_all(e, /*drift_mpole=*/0);

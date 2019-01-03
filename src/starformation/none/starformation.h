@@ -63,7 +63,7 @@ INLINE static int star_formation_convert_to_star(
 }
 
 /**
- * @brief Calculate if the gas particle is converted, which 
+ * @brief Calculate if the gas particle is converted, which
  * should never happen in this model
  *
  * @param starform the star formation struct

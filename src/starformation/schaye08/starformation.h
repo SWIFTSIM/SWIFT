@@ -117,7 +117,6 @@ struct star_formation {
 
   /*! EOS density norm in user units */
   float EOS_density_norm_HpCM3;
-
 };
 
 /**
@@ -144,8 +143,9 @@ INLINE static int star_formation_potential_to_become_star(
 
   /* Read the critical overdensity factor and the critical density of
    * the universe to determine the critical density to form stars*/
-  const double rho_crit_times_min_over_den = cosmo->critical_density * starform->min_over_den;
-  const double particle_density = hydro_get_physical_density(p,cosmo);
+  const double rho_crit_times_min_over_den =
+      cosmo->critical_density * starform->min_over_den;
+  const double particle_density = hydro_get_physical_density(p, cosmo);
 
   /* Deside whether we should form stars or not,
    * first we deterime if we have the correct over density
@@ -153,8 +153,7 @@ INLINE static int star_formation_potential_to_become_star(
    * threshold is reached or if the metallicity dependent
    * threshold is reached, after this we calculate if the
    * temperature is appropriate */
-  if (particle_density < rho_crit_times_min_over_den)
-    return 0;
+  if (particle_density < rho_crit_times_min_over_den) return 0;
 
   /* In this case there are actually multiple possibilities
    * because we also need to check if the physical density exceeded
@@ -162,22 +161,25 @@ INLINE static int star_formation_potential_to_become_star(
 
   double Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
   double density_threshold_metal_dep =
-          starform->density_threshold * pow(Z * starform->Z0_inv, starform->n_Z0);
+      starform->density_threshold * pow(Z * starform->Z0_inv, starform->n_Z0);
 
-  /* Calculate the maximum between both and convert to mass density instead of number density*/
-  double density_threshold_current = min(density_threshold_metal_dep, starform->density_threshold_max) * phys_const->const_proton_mass;
-  
-  
+  /* Calculate the maximum between both and convert to mass density instead of
+   * number density*/
+  double density_threshold_current =
+      min(density_threshold_metal_dep, starform->density_threshold_max) *
+      phys_const->const_proton_mass;
+
   /* Check if it exceeded the maximum density */
-  if (particle_density*p->chemistry_data.smoothed_metal_mass_fraction[0] < density_threshold_current)
+  if (particle_density * p->chemistry_data.smoothed_metal_mass_fraction[0] <
+      density_threshold_current)
     return 0;
-    
+
   /* Calculate the temperature */
-  const double temperature = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-						     cooling, p, xp);
+  const double temperature = cooling_get_temperature(phys_const, hydro_props,
+                                                     us, cosmo, cooling, p, xp);
 
   /* Check the last criteria, if the temperature is satisfied */
-  return (temperature < starform->Temperature_threshold); 
+  return (temperature < starform->Temperature_threshold);
 }
 
 /**
@@ -209,8 +211,10 @@ INLINE static int star_formation_convert_to_star(
     /* Get the pressure */
     const double pressure =
         starform->EOS_pressure_norm *
-        pow(hydro_get_physical_density(p,cosmo)*p->chemistry_data.smoothed_metal_mass_fraction[0]
-        / starform->EOS_density_norm/ phys_const->const_proton_mass, starform->polytropic_index);
+        pow(hydro_get_physical_density(p, cosmo) *
+                p->chemistry_data.smoothed_metal_mass_fraction[0] /
+                starform->EOS_density_norm / phys_const->const_proton_mass,
+            starform->polytropic_index);
 
     /* Calculate the propability of forming a star */
     const double prop = starform->SF_normalization *
@@ -222,14 +226,13 @@ INLINE static int star_formation_convert_to_star(
     /* Generate a random number between 0 and 1. */
     const double randomnumber = rand_r(&seed) * starform->inv_RAND_MAX;
 
-    // message("Passed whole boundary thing! random number = %e, prop = %e dt_star %e", randomnumber, prop,dt_star);
+    // message("Passed whole boundary thing! random number = %e, prop = %e
+    // dt_star %e", randomnumber, prop,dt_star);
 
     /* Calculate if we form a star */
     return (prop > randomnumber);
-
   }
 
-  
   return 0;
 }
 
@@ -294,23 +297,26 @@ INLINE static void starformation_init_backend(
 
   /* Get the appropriate constant to calculate the
    * star formation constant */
-  const double KS_const = phys_const->const_solar_mass / (1e6 *
-  phys_const->const_parsec * phys_const->const_parsec) / phys_const->const_year;
+  const double KS_const =
+      phys_const->const_solar_mass /
+      (1e6 * phys_const->const_parsec * phys_const->const_parsec) /
+      phys_const->const_year;
 
   /* Get the Gravitational constant */
   const double G_newton = phys_const->const_newton_G;
 
   /* Get the surface density unit M_\odot / pc^2 */
-  const double M_per_pc2 = phys_const->const_solar_mass 
-  / (phys_const->const_parsec * phys_const->const_parsec);
+  const double M_per_pc2 =
+      phys_const->const_solar_mass /
+      (phys_const->const_parsec * phys_const->const_parsec);
 
   /* Calculate inverse of RAND_MAX for the random numbers */
   starform->inv_RAND_MAX = 1.f / RAND_MAX;
 
   /* Conversion of number density from cgs */
   static const float dimension_numb_den[5] = {0, -3, 0, 0, 0};
-  const double conversion_numb_density = 1/
-       units_general_cgs_conversion_factor(us, dimension_numb_den);
+  const double conversion_numb_density =
+      1 / units_general_cgs_conversion_factor(us, dimension_numb_den);
 
   /* Quantities that have to do with the Normal Kennicutt-
    * Schmidt law will be read in this part of the code*/
@@ -338,7 +344,8 @@ INLINE static void starformation_init_backend(
   starform->SF_power_law = (starform->KS_power_law - 1.f) / 2.f;
 
   /* Give the Kennicutt-Schmidt law the same units as internal units */
-  starform->KS_normalization = starform->KS_normalization_MSUNpYRpKPC2 * KS_const;
+  starform->KS_normalization =
+      starform->KS_normalization_MSUNpYRpKPC2 * KS_const;
 
   /* Calculate the starformation prefactor with most terms */
   starform->SF_normalization =
@@ -366,11 +373,10 @@ INLINE static void starformation_init_backend(
       parameter_file, "SchayeSF:EOS_Jeans_GammaEffective");
   starform->EOS_temperature_norm = parser_get_param_double(
       parameter_file, "SchayeSF:EOS_Jeans_TemperatureNorm_K");
-  starform->EOS_density_norm_HpCM3 = 
-      parser_get_param_double(parameter_file,
-                              "SchayeSF:EOS_JEANS_DensityNorm_HpCM3");
-  starform->EOS_density_norm = starform->EOS_density_norm_HpCM3 *
-      conversion_numb_density;
+  starform->EOS_density_norm_HpCM3 = parser_get_param_double(
+      parameter_file, "SchayeSF:EOS_JEANS_DensityNorm_HpCM3");
+  starform->EOS_density_norm =
+      starform->EOS_density_norm_HpCM3 * conversion_numb_density;
 
   /* Calculate the EOS pressure normalization */
   starform->EOS_pressure_norm = starform->EOS_density_norm *
@@ -400,11 +406,11 @@ INLINE static void starformation_init_backend(
    * to form stars. */
   /* Read the normalization of the metallicity dependent critical
    * density*/
-  starform->density_threshold_HpCM3 = 
+  starform->density_threshold_HpCM3 =
       parser_get_param_double(parameter_file, "SchayeSF:thresh_norm_HpCM3");
 
-  starform->density_threshold = starform->density_threshold_HpCM3 *
-      conversion_numb_density;
+  starform->density_threshold =
+      starform->density_threshold_HpCM3 * conversion_numb_density;
 
   /* Read the scale metallicity Z0 */
   starform->Z0 = parser_get_param_double(parameter_file, "SchayeSF:MetDep_Z0");
@@ -417,11 +423,10 @@ INLINE static void starformation_init_backend(
   starform->density_threshold_max_HpCM3 =
       parser_get_param_double(parameter_file, "SchayeSF:thresh_max_norm_HpCM3");
 
-  starform->density_threshold_max = starform->density_threshold_max_HpCM3 
-  * conversion_numb_density;
+  starform->density_threshold_max =
+      starform->density_threshold_max_HpCM3 * conversion_numb_density;
   /* Claculate 1 over the metallicity */
   starform->Z0_inv = 1 / starform->Z0;
-
 }
 
 /**
@@ -433,23 +438,28 @@ INLINE static void starformation_print_backend(
     const struct star_formation* starform) {
 
   message("Star formation law is Schaye and Dalla Vecchia (2008)");
-  message("With properties: normalization = %e Msun/kpc^2/yr, slope of the"
+  message(
+      "With properties: normalization = %e Msun/kpc^2/yr, slope of the"
       "Kennicutt-Schmidt law = %e and gas fraction = %e ",
-      starform->KS_normalization_MSUNpYRpKPC2, starform->KS_power_law, starform->fgas);
-  message("The effective equation of state is given by: polytropic "
-      "index = %e , normalization density = %e #/cm^3 and normalization temperature = "
-      "%e K", starform->polytropic_index, starform->EOS_density_norm_HpCM3,
+      starform->KS_normalization_MSUNpYRpKPC2, starform->KS_power_law,
+      starform->fgas);
+  message(
+      "The effective equation of state is given by: polytropic "
+      "index = %e , normalization density = %e #/cm^3 and normalization "
+      "temperature = "
+      "%e K",
+      starform->polytropic_index, starform->EOS_density_norm_HpCM3,
       starform->EOS_temperature_norm);
   message("Density threshold is given by Schaye (2004)");
   message(
       "the normalization of the density threshold is given by"
       " %e #/cm^3, with metallicity slope of %e, and metallicity normalization"
       "of %e, the maximum density threshold is given by %e #/cm^3",
-      starform->density_threshold_HpCM3, starform->n_Z0, starform->Z0, 
+      starform->density_threshold_HpCM3, starform->n_Z0, starform->Z0,
       starform->density_threshold_max_HpCM3);
   message("Temperature threshold is given by Dalla Vecchia and Schaye (2012)");
-  message(
-      "The temperature threshold is given by: %e K", starform->Temperature_threshold);
+  message("The temperature threshold is given by: %e K",
+          starform->Temperature_threshold);
 }
 
 #endif /* SWIFT_SCHAYE_STARFORMATION_H */

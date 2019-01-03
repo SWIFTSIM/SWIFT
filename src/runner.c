@@ -498,7 +498,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
       if (part_is_active(p, e)) {
 
-        /* Calculate the time step of the current particle for cosmo and no cosmo*/
+        /* Calculate the time step of the current particle for cosmo and no
+         * cosmo*/
         double dt_star;
         if (with_cosmology) {
           const integertime_t ti_step = get_integer_timestep(p->time_bin);
@@ -516,7 +517,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         if (star_formation_convert_to_star(e, starform, p, xp, constants, cosmo,
                                            hydro_props, us, cooling, dt_star)) {
           /* Convert your particle to a star */
-          struct spart* sp = cell_convert_part_to_spart(e, c, p, xp);
+          struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
 
           /* Copy the properties of the gas particle to the star particle */
           star_formation_copy_properties(e, p, xp, sp, starform, constants,
