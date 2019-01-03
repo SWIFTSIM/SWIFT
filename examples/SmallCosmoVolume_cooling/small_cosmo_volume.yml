@@ -65,7 +65,7 @@ LambdaCooling:
 # EAGLE cooling function
 EAGLECooling:
   dirname:                 ./coolingtables/
-  reionisation_redshift:   8.5
+  H_reion_z:               11.5
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
   He_reion_ev_pH:          2.0

@@ -741,7 +741,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
   parser_get_param_string(parameter_file, "EAGLECooling:dirname",
                           cooling->cooling_table_path);
   cooling->H_reion_z = parser_get_param_float(
-      parameter_file, "EAGLECooling:reionisation_redshift");
+      parameter_file, "EAGLECooling:H_reion_z");
   cooling->Ca_over_Si_ratio_in_solar = parser_get_opt_param_float(
       parameter_file, "EAGLECooling::CalciumOverSiliconInSolar", 1.f);
   cooling->S_over_Si_ratio_in_solar = parser_get_opt_param_float(
