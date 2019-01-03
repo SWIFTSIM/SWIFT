@@ -63,22 +63,22 @@ LambdaCooling:
   lambda_nH2_cgs:              1e-26 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
 
 # EAGLE cooling function
-EagleCooling:
-  filename:                ./coolingtables/
-  reionisation_redshift:   8.5
+EAGLECooling:
+  dirname:                 ./coolingtables/
+  H_reion_z:               11.5
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
-  He_reion_ev_pH:          2.0
+  He_reion_eV_p_H:         2.0
 
 # Impose primoridal metallicity
 EAGLEChemistry:
-  InitMetallicity: 0.0
-  InitAbundance_Hydrogen: 0.755
-  InitAbundance_Helium: 0.245
-  InitAbundance_Carbon: 0.
-  InitAbundance_Nitrogen: 0.
-  InitAbundance_Oxygen: 0.
-  InitAbundance_Neon: 0.
-  InitAbundance_Magnesium:  0.
-  InitAbundance_Silicon: 0.
-  InitAbundance_Iron: 0.
+  init_abundance_metal:     0.0
+  init_abundance_Hydrogen:  0.752
+  init_abundance_Helium:    0.248
+  init_abundance_Carbon:    0.0
+  init_abundance_Nitrogen:  0.0
+  init_abundance_Oxygen:    0.0
+  init_abundance_Neon:      0.0
+  init_abundance_Magnesium: 0.0
+  init_abundance_Silicon:   0.0
+  init_abundance_Iron:      0.0

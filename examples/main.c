@@ -843,6 +843,18 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
+    /* Verify that we are not using basic modes incorrectly */
+    if (with_hydro && N_total[0] == 0) {
+      error(
+          "ERROR: Running with hydrodynamics but no gas particles found in the "
+          "ICs!");
+    }
+    if ((with_self_gravity || with_external_gravity) && N_total[1] == 0) {
+      error(
+          "ERROR: Running with gravity but no gravity particles found in "
+          "the ICs!");
+    }
+
     /* Verify that each particle is in it's proper cell. */
     if (talking && !dry_run) {
       int icount = 0;
