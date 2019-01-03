@@ -1186,6 +1186,7 @@ with_subgrid_chemistry=none
 with_subgrid_tracers=none
 with_subgrid_hydro=none
 with_subgrid_stars=none
+with_subgrid_star_formation=none
 with_subgrid_feedback=none
 
 case "$with_subgrid" in
@@ -1200,6 +1201,7 @@ case "$with_subgrid" in
 	with_subgrid_tracers=none
 	with_subgrid_hydro=gadget2
 	with_subgrid_stars=GEAR
+	with_subgrid_star_formation=none
 	with_subgrid_feedback=thermal
    ;;
    EAGLE)
@@ -1207,7 +1209,8 @@ case "$with_subgrid" in
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_hydro=gadget2
-	with_subgrid_stars=none
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=none
    ;;
    *)
@@ -1689,6 +1692,14 @@ AC_ARG_WITH([star-formation],
     [with_star_formation="$withval"],
     [with_star_formation="none"]
 )
+if test "$with_subgrid" != "none"; then
+   if test "$with_star_formation" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-star-formation together])
+   else
+      with_star_formation="$with_subgrid_star_formation"
+   fi
+fi
+
 case "$with_star_formation" in
    none)
       AC_DEFINE([STAR_FORMATION_NONE], [1], [No star formation])
