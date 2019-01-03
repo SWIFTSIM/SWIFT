@@ -740,8 +740,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
   /* read some parameters */
   parser_get_param_string(parameter_file, "EAGLECooling:dir_name",
                           cooling->cooling_table_path);
-  cooling->H_reion_z = parser_get_param_float(
-      parameter_file, "EAGLECooling:H_reion_z");
+  cooling->H_reion_z =
+      parser_get_param_float(parameter_file, "EAGLECooling:H_reion_z");
   cooling->He_reion_z_centre =
       parser_get_param_float(parameter_file, "EAGLECooling:He_reion_z_centre");
   cooling->He_reion_z_sigma =
@@ -754,7 +754,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
       parameter_file, "EAGLECooling:Ca_over_Si_in_solar", 1.f);
   cooling->S_over_Si_ratio_in_solar = parser_get_opt_param_float(
       parameter_file, "EAGLECooling:S_over_Si_in_solar", 1.f);
-  
+
   /* convert to cgs */
   cooling->He_reion_heat_cgs *=
       phys_const->const_electron_volt *

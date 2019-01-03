@@ -72,13 +72,13 @@ EAGLECooling:
 
 # Impose primoridal metallicity
 EAGLEChemistry:
-  InitMetallicity: 0.0
-  InitAbundance_Hydrogen: 0.755
-  InitAbundance_Helium: 0.245
-  InitAbundance_Carbon: 0.
-  InitAbundance_Nitrogen: 0.
-  InitAbundance_Oxygen: 0.
-  InitAbundance_Neon: 0.
-  InitAbundance_Magnesium:  0.
-  InitAbundance_Silicon: 0.
-  InitAbundance_Iron: 0.
+  init_abundance_metal:     0.0
+  init_abundance_Hydrogen:  0.752
+  init_abundance_Helium:    0.248
+  init_abundance_Carbon:    0.0
+  init_abundance_Nitrogen:  0.0
+  init_abundance_Oxygen:    0.0
+  init_abundance_Neon:      0.0
+  init_abundance_Magnesium: 0.0
+  init_abundance_Silicon:   0.0
+  init_abundance_Iron:      0.0

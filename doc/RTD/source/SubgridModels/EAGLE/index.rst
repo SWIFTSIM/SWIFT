@@ -98,32 +98,30 @@ In the snapshots, we output for each gas and star particle:
 |                                  | | smoothed over SPH neighbours      |           |                             |
 +----------------------------------+-------------------------------------+-----------+-----------------------------+
 
-The stars will lose mass over their lifetime (up to ~45%). The
-fractions will remain unchanged but if one is interested in computing
-an absolute metal mass (say) for a star, the ``InitialMass`` (see
-below) of the star must be used.
+The stars will lose mass over their lifetime (up to ~45%). The fractions will
+remain unchanged but if one is interested in computing an absolute metal mass
+(say) for a star, the ``InitialMass`` (see below) of the star must be used.
 
-The chemistry model only requires a small number of parameters to be
-specified in the `EAGLEChemistry` section of the YAML file. These are
-the initial values of the metallicity and element mass
-fractions. These are then applied at the start of a simulation to
-*all* the *gas* particles. All 9 elements have to be specified An
-example section, for primordial abundances (typical for a cosmological
-run), is:
+The chemistry model only requires a small number of parameters to be specified
+in the `EAGLEChemistry` section of the YAML file. These are the initial values
+of the metallicity and element mass fractions. These are then applied at the
+start of a simulation to *all* the *gas* particles. All 9 traced elements have
+to be specified An example section, for primordial abundances (typical for a
+cosmological run), is:
 
 .. code:: YAML
 
    EAGLEChemistry:
-     Metallicity:                0.    # Mass fraction in all metals
-     InitAbundance_Hydrogen:     0.755 # Mass fraction in Hydrogen
-     InitAbundance_Helium:       0.245 # Mass fraction in Helium
-     InitAbundance_Carbon:       0.    # Mass fraction in Carbon
-     InitAbundance_Nitrogen:     0.    # Mass fraction in Nitrogen
-     InitAbundance_Oxygen:       0.    # Mass fraction in Oxygen
-     InitAbundance_Neon:         0.    # Mass fraction in Neon
-     InitAbundance_Magnesium:    0.    # Mass fraction in Magnesium
-     InitAbundance_Silicon:      0.    # Mass fraction in Silicon
-     InitAbundance_Iron:         0.    # Mass fraction in Iron
+     init_abundance_metal:        0.    # Mass fraction in *all* metals
+     init_abundance_Hydrogen:     0.755 # Mass fraction in Hydrogen
+     init_abundance_Helium:       0.245 # Mass fraction in Helium
+     init_abundance_Carbon:       0.    # Mass fraction in Carbon
+     init_abundance_Nitrogen:     0.    # Mass fraction in Nitrogen
+     init_abundance_Oxygen:       0.    # Mass fraction in Oxygen
+     init_abundance_Neon:         0.    # Mass fraction in Neon
+     init_abundance_Magnesium:    0.    # Mass fraction in Magnesium
+     init_abundance_Silicon:      0.    # Mass fraction in Silicon
+     init_abundance_Iron:         0.    # Mass fraction in Iron
 
 Whilst one would use the following values for solar abundances
 (typical for an idealised low-redshift run):
@@ -131,16 +129,16 @@ Whilst one would use the following values for solar abundances
 .. code:: YAML
 
    EAGLEChemistry:
-     Metallicity:                0.014        # Mass fraction in all metals
-     InitAbundance_Hydrogen:     0.70649785   # Mass fraction in Hydrogen
-     InitAbundance_Helium:       0.28055534   # Mass fraction in Helium
-     InitAbundance_Carbon:       2.0665436e-3 # Mass fraction in Carbon
-     InitAbundance_Nitrogen:     8.3562563e-4 # Mass fraction in Nitrogen
-     InitAbundance_Oxygen:       5.4926244e-3 # Mass fraction in Oxygen
-     InitAbundance_Neon:         1.4144605e-3 # Mass fraction in Neon
-     InitAbundance_Magnesium:    5.907064e-4  # Mass fraction in Magnesium
-     InitAbundance_Silicon:      6.825874e-4  # Mass fraction in Silicon
-     InitAbundance_Iron:         1.1032152e-3 # Mass fraction in Iron
+     init_abundance_metal:        0.014        # Mass fraction in *all* metals
+     init_abundance_Hydrogen:     0.70649785   # Mass fraction in Hydrogen
+     init_abundance_Helium:       0.28055534   # Mass fraction in Helium
+     init_abundance_Carbon:       2.0665436e-3 # Mass fraction in Carbon
+     init_abundance_Nitrogen:     8.3562563e-4 # Mass fraction in Nitrogen
+     init_abundance_Oxygen:       5.4926244e-3 # Mass fraction in Oxygen
+     init_abundance_Neon:         1.4144605e-3 # Mass fraction in Neon
+     init_abundance_Magnesium:    5.907064e-4  # Mass fraction in Magnesium
+     init_abundance_Silicon:      6.825874e-4  # Mass fraction in Silicon
+     init_abundance_Iron:         1.1032152e-3 # Mass fraction in Iron
 
 
      
