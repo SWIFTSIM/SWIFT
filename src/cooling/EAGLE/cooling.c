@@ -79,32 +79,38 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
     float z, int *z_index, float *dz,
     struct cooling_function_data *restrict cooling) {
 
-  /* before the earliest redshift or before hydrogen reionization, flag for
+  /* Before the earliest redshift or before hydrogen reionization, flag for
    * collisional cooling */
   if (z > cooling->H_reion_z) {
     *z_index = eagle_cooling_N_redshifts;
     *dz = 0.0;
   }
-  /* from reionization use the cooling tables */
+
+  /* From reionization use the cooling tables */
   else if (z > cooling->Redshifts[eagle_cooling_N_redshifts - 1] &&
            z <= cooling->H_reion_z) {
     *z_index = eagle_cooling_N_redshifts + 1;
     *dz = 0.0;
   }
-  /* at the end, just use the last value */
+
+  /* At the end, just use the last value */
   else if (z <= cooling->Redshifts[0]) {
     *z_index = 0;
     *dz = 0.0;
-  } else {
+  }
+
+  /* Normal case: search... */
+  else {
 
     /* start at the previous index and search */
-    for (int iz = cooling->previous_z_index; iz >= 0; iz--) {
-      if (z > cooling->Redshifts[iz]) {
+    for (int i = cooling->previous_z_index; i >= 0; i--) {
+      if (z > cooling->Redshifts[i]) {
 
-        *z_index = iz;
-        cooling->previous_z_index = iz;
-        *dz = (z - cooling->Redshifts[iz]) /
-              (cooling->Redshifts[iz + 1] - cooling->Redshifts[iz]);
+        *z_index = i;
+        cooling->previous_z_index = i;
+
+        *dz = (z - cooling->Redshifts[i]) /
+              (cooling->Redshifts[i + 1] - cooling->Redshifts[i]);
         break;
       }
     }
@@ -127,20 +133,40 @@ void cooling_update(const struct cosmology *cosmo,
   /* Current redshift */
   const float redshift = cosmo->z;
 
-  /* Get index along the redshift index of the tables */
+  /* What is the current table index along the redshift axis? */
   int z_index = -1;
   float dz = 0.f;
-  if (redshift > cooling->H_reion_z) {
-    z_index = -2;
-  } else if (redshift > cooling->Redshifts[eagle_cooling_N_redshifts - 1]) {
-    z_index = -1;
-  } else {
-    get_redshift_index(redshift, &z_index, &dz, cooling);
-  }
-  cooling->z_index = z_index;
+  get_redshift_index(redshift, &z_index, &dz, cooling);
   cooling->dz = dz;
 
-  eagle_check_cooling_tables(cooling, restart_flag);
+  /* Do we already have the correct tables loaded? */
+  if (cooling->z_index == z_index) return;
+
+  /* Which table should we load ? */
+  if (z_index >= eagle_cooling_N_redshifts) {
+
+    if (z_index == eagle_cooling_N_redshifts + 1) {
+
+      /* Bewtween re-ionization and first table */
+      get_redshift_invariant_table(cooling, /* photodis=*/0);
+
+    } else {
+
+      /* Above re-ionization */
+      get_redshift_invariant_table(cooling, /* photodis=*/1);
+    }
+
+  } else {
+
+    /* Normal case: two tables bracketing the current z */
+    const int low_z_index = z_index;
+    const int high_z_index = z_index + 1;
+
+    get_cooling_table(cooling, low_z_index, high_z_index);
+  }
+
+  /* Store the currently loaded index */
+  cooling->z_index = z_index;
 }
 
 /**
@@ -755,13 +781,15 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->S_over_Si_ratio_in_solar = parser_get_opt_param_float(
       parameter_file, "EAGLECooling:S_over_Si_in_solar", 1.f);
 
-  /* convert to cgs */
+  /* Convert to cgs (units used internally by the cooling routines) */
   cooling->He_reion_heat_cgs *=
       phys_const->const_electron_volt *
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
 
-  /* read in cooling table header */
+  /* Read in the list of redshifts */
   get_cooling_redshifts(cooling);
+
+  /* Read in cooling table header */
   char fname[eagle_table_path_name_length + 12];
   sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
   read_cooling_header(fname, cooling);
@@ -769,7 +797,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
   /* Allocate space for cooling tables */
   allocate_cooling_tables(cooling);
 
-  /* compute conversion factors */
+  /* Compute conversion factors */
   cooling->internal_energy_to_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   cooling->internal_energy_from_cgs = 1. / cooling->internal_energy_to_cgs;
@@ -811,8 +839,10 @@ void cooling_init_backend(struct swift_params *parameter_file,
                               cooling->T_CMB_0 * cooling->T_CMB_0 *
                               cooling->T_CMB_0;
 
-  /* set low_z_index to -10 to indicate we haven't read any tables yet */
-  cooling->low_z_index = -10;
+  /* Set the redshift indices to invalid values */
+  cooling->z_index = -10;
+  cooling->previous_z_index = eagle_cooling_N_redshifts + 2;
+
   /* set previous_z_index and to last value of redshift table*/
   cooling->previous_z_index = eagle_cooling_N_redshifts - 2;
 
@@ -839,10 +869,13 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
   sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
   read_cooling_header(fname, cooling);
 
-  /* Read relevant cooling tables.
-   * Third variable in cooling_update flag to mark restart*/
+  /* Allocate memory for the tables */
   allocate_cooling_tables(cooling);
-  cooling_update(cosmo, cooling, /*restart=*/1);
+
+  /* Force a re-read of the cooling tables */
+  cooling->z_index = -10;
+  cooling->previous_z_index = eagle_cooling_N_redshifts + 2;
+  cooling_update(cosmo, cooling, /*restart_flag=*/1);
 }
 
 /**
