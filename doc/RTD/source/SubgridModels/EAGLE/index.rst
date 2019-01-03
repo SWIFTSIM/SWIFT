@@ -208,19 +208,19 @@ implicit problem. A valid section of the YAML file looks like:
 .. code:: YAML
 
    EAGLECooling:
-     dirname:      /path/to/the/Wiersma/tables/directory # Absolute or relative path
+     dir_name:     /path/to/the/Wiersma/tables/directory # Absolute or relative path
      H_reion_z:            11.5      # Redhift of Hydrogen re-ionization
      He_reion_z_centre:     3.5      # Centre of the Gaussian used for Helium re-ionization
      He_reion_z_sigma:      0.5      # Width of the Gaussian used for Helium re-ionization
-     He_reion_ev_pH:        2.0      # Energy injected in eV per Hydrogen atom for Helium re-ionization.
+     He_reion_eV_p_H:       2.0      # Energy injected in eV per Hydrogen atom for Helium re-ionization.
 
-The optional parameters are:
+And the optional parameters are:
 
 .. code:: YAML
 
    EAGLECooling:
-     CalciumOverSiliconInSolar: 1.0 # (Optional) Value of the Calcium abundance ratio to solar in units of the Silicon ratio to solar. Default value: 1.
-     SulphurOverSiliconInSolar: 1.0 # (Optional) Value of the Sulphur abundance ratio to solar in units of the Silicon ratio to solar. Default value: 1.
+     Ca_over_Si_in_solar:       1.0 # (Optional) Value of the Calcium mass abundance ratio to solar in units of the Silicon ratio to solar. Default value: 1.
+     S_over_Si_in_solar:        1.0 # (Optional) Value of the Sulphur mass abundance ratio to solar in units of the Silicon ratio to solar. Default value: 1.
      newton_integration:        0   # (Optional) Set to 1 to use the Newton-Raphson scheme for the explicit cooling problem.
 
 

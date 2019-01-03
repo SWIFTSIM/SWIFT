@@ -83,8 +83,8 @@ EAGLEChemistry: 	    # Solar abundances
   InitAbundance_Iron:       1.1032152e-3
 
 EAGLECooling:
-  dirname:                 ./coolingtables/
+  dir_name:                ./coolingtables/
   H_reion_z:               11.5 
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
-  He_reion_ev_pH:          2.0
+  He_reion_eV_p_H:         2.0
