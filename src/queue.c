@@ -52,30 +52,30 @@ void queue_get_incoming(struct queue *q) {
 
     /* Is there a next element? */
     const int ind = q->first_incoming % queue_incoming_size;
-    if (q->tid_incoming[ind] < 0) break;
+    if (atomic_read(&q->tid_incoming[ind]) < 0) break;
 
     /* Get the next offset off the DEQ. */
     const int offset = atomic_swap(&q->tid_incoming[ind], -1);
     atomic_inc(&q->first_incoming);
 
     /* Does the queue need to be grown? */
-    if (q->count == q->size) {
+    if (atomic_read(&q->count) == q->size) {
       int *temp;
       q->size *= queue_sizegrow;
       if ((temp = (int *)malloc(sizeof(int) * q->size)) == NULL)
         error("Failed to allocate new indices.");
-      memcpy(temp, tid, sizeof(int) * q->count);
+      memcpy(temp, tid, sizeof(int) * atomic_read(&q->count));
       free(tid);
       q->tid = tid = temp;
     }
 
     /* Drop the task at the end of the queue. */
-    tid[q->count] = offset;
-    q->count += 1;
+    tid[atomic_read(&q->count)] = offset;
+    atomic_inc(&q->count);
     atomic_dec(&q->count_incoming);
 
     /* Shuffle up. */
-    for (int k = q->count - 1; k > 0; k = (k - 1) / 2)
+    for (int k = atomic_read(&q->count) - 1; k > 0; k = (k - 1) / 2)
       if (tasks[tid[k]].weight > tasks[tid[(k - 1) / 2]].weight) {
         int temp = tid[k];
         tid[k] = tid[(k - 1) / 2];
@@ -179,7 +179,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   queue_get_incoming(q);
 
   /* If there are no tasks, leave immediately. */
-  if (q->count == 0) {
+  if (atomic_read(&q->count) == 0) {
     lock_unlock_blind(qlock);
     return NULL;
   }
@@ -187,7 +187,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   /* Set some pointers we will use often. */
   int *qtid = q->tid;
   struct task *qtasks = q->tasks;
-  const int old_qcount = q->count;
+  const int old_qcount = atomic_read(&q->count);
 
   /* Data for the sliding window in which to try the task with the
      best overlap with the previous task. */
@@ -250,7 +250,8 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   if (ind >= 0) {
 
     /* Another one bites the dust. */
-    const int qcount = q->count -= 1;
+    atomic_dec(&q->count);
+    const int qcount = atomic_read(&q->count);  // q->count -= 1;
 
     /* Get a pointer on the task that we want to return. */
     res = &qtasks[tid];

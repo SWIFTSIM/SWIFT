@@ -34,6 +34,82 @@
 #define atomic_dec(v) atomic_sub(v, 1)
 #define atomic_cas(v, o, n) __sync_val_compare_and_swap(v, o, n)
 #define atomic_swap(v, n) __sync_lock_test_and_set(v, n)
+#define atomic_read(v) __sync_val_compare_and_swap(v, 0, 0)
+//#define atomic_write(v, i) __sync_bool_compare_and_swap(v, *v, i)
+
+__attribute__((always_inline, no_sanitize("thread"))) INLINE static void
+atomic_write(volatile int *const address, const int y) {
+
+  const int old_val = atomic_read(address);
+  __sync_bool_compare_and_swap(address, old_val, y);
+}
+
+__attribute__((always_inline, no_sanitize("thread"))) INLINE static void
+atomic_write_u(volatile unsigned int *const address, const unsigned int y) {
+
+  const unsigned int old_val = atomic_read(address);
+  __sync_bool_compare_and_swap(address, old_val, y);
+}
+
+__attribute__((always_inline, no_sanitize("thread"))) INLINE static void
+atomic_write_f(volatile float *const address, const float y) {
+  int *const address_int = (int *const)address;
+
+  typedef union {
+    float as_float;
+    int as_int;
+  } cast_type;
+
+  cast_type yy;
+  yy.as_float = y;
+
+  atomic_write(address_int, yy.as_int);
+}
+
+__attribute__((always_inline, no_sanitize("thread"))) INLINE static void
+atomic_write_c(volatile char *const address, const char y) {
+  int *const address_int = (int *const)address;
+
+  typedef union {
+    char as_char;
+    int as_int;
+  } cast_type;
+
+  cast_type yy;
+  yy.as_char = y;
+
+  atomic_write(address_int, yy.as_int);
+}
+
+__attribute__((always_inline, no_sanitize("thread"))) INLINE static float
+atomic_read_f(volatile float *const address) {
+
+  int *const address_int = (int *const)address;
+
+  typedef union {
+    float as_float;
+    int as_int;
+  } cast_type;
+
+  cast_type ret;
+  ret.as_int = atomic_read(address_int);
+  return ret.as_float;
+}
+
+__attribute__((always_inline, no_sanitize("thread"))) INLINE static unsigned int
+atomic_read_u(volatile unsigned int *const address) {
+
+  int *const address_int = (int *const)address;
+
+  typedef union {
+    unsigned int as_uint;
+    int as_int;
+  } cast_type;
+
+  cast_type ret;
+  ret.as_int = atomic_read(address_int);
+  return ret.as_uint;
+}
 
 /**
  * @brief Atomic min operation on floats.
@@ -46,8 +122,8 @@
  * @param address The address to update.
  * @param y The value to update the address with.
  */
-__attribute__((always_inline)) INLINE static void atomic_min_f(
-    volatile float *const address, const float y) {
+__attribute__((always_inline, no_sanitize("thread"))) INLINE static void
+atomic_min_f(volatile float *const address, const float y) {
 
   int *const int_ptr = (int *)address;
 
@@ -57,7 +133,7 @@ __attribute__((always_inline)) INLINE static void atomic_min_f(
   } cast_type;
 
   cast_type test_val, old_val, new_val;
-  old_val.as_float = *address;
+  old_val.as_float = atomic_read_f(address);
 
   do {
     test_val.as_int = old_val.as_int;
@@ -132,8 +208,8 @@ __attribute__((always_inline)) INLINE static void atomic_min_d(
  * @param address The address to update.
  * @param y The value to update the address with.
  */
-__attribute__((always_inline)) INLINE static void atomic_max_f(
-    volatile float *const address, const float y) {
+__attribute__((always_inline, no_sanitize("thread"))) INLINE static void
+atomic_max_f(volatile float *const address, const float y) {
 
   int *const int_ptr = (int *)address;
 
@@ -143,7 +219,7 @@ __attribute__((always_inline)) INLINE static void atomic_max_f(
   } cast_type;
 
   cast_type test_val, old_val, new_val;
-  old_val.as_float = *address;
+  old_val.as_float = atomic_read_f(address);
 
   do {
     test_val.as_int = old_val.as_int;
@@ -195,8 +271,8 @@ __attribute__((always_inline)) INLINE static void atomic_max_d(
  * @param address The address to update.
  * @param y The value to update the address with.
  */
-__attribute__((always_inline)) INLINE static void atomic_add_f(
-    volatile float *const address, const float y) {
+__attribute__((always_inline, no_sanitize("thread"))) INLINE static void
+atomic_add_f(volatile float *const address, const float y) {
 
   int *const int_ptr = (int *)address;
 
@@ -206,7 +282,7 @@ __attribute__((always_inline)) INLINE static void atomic_add_f(
   } cast_type;
 
   cast_type test_val, old_val, new_val;
-  old_val.as_float = *address;
+  old_val.as_float = atomic_read_f(address);
 
   do {
     test_val.as_int = old_val.as_int;
@@ -226,8 +302,8 @@ __attribute__((always_inline)) INLINE static void atomic_add_f(
  * @param address The address to update.
  * @param y The value to update the address with.
  */
-__attribute__((always_inline)) INLINE static void atomic_add_d(
-    volatile double *const address, const double y) {
+__attribute__((always_inline, no_sanitize("thread"))) INLINE static void
+atomic_add_d(volatile double *const address, const double y) {
 
   long long *const long_long_ptr = (long long *)address;
 

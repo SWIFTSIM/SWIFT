@@ -1693,8 +1693,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_pair:
       case task_type_sub_pair:
         qid = t->ci->super->owner;
-        if (qid < 0 ||
-            s->queues[qid].count > s->queues[t->cj->super->owner].count)
+        if (qid < 0 || atomic_read(&s->queues[qid].count) >
+                           atomic_read(&s->queues[t->cj->super->owner].count))
           qid = t->cj->super->owner;
         break;
       case task_type_recv:
@@ -2046,12 +2046,15 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
   if (qid >= nr_queues || qid < 0) error("Bad queue ID.");
 
   /* Loop as long as there are tasks... */
-  while (s->waiting > 0 && res == NULL) {
+  while (atomic_read(&s->waiting) > 0 && res == NULL) {
+
     /* Try more than once before sleeping. */
-    for (int tries = 0; res == NULL && s->waiting && tries < scheduler_maxtries;
+    for (int tries = 0;
+         res == NULL && atomic_read(&s->waiting) && tries < scheduler_maxtries;
          tries++) {
       /* Try to get a task from the suggested queue. */
-      if (s->queues[qid].count > 0 || s->queues[qid].count_incoming > 0) {
+      if (atomic_read(&s->queues[qid].count) > 0 ||
+          atomic_read(&s->queues[qid].count_incoming) > 0) {
         TIMER_TIC
         res = queue_gettask(&s->queues[qid], prev, 0);
         TIMER_TOC(timer_qget);
@@ -2062,7 +2065,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       if (s->flags & scheduler_flag_steal) {
         int count = 0, qids[nr_queues];
         for (int k = 0; k < nr_queues; k++)
-          if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
+          if (atomic_read(&s->queues[k].count) > 0 ||
+              atomic_read(&s->queues[k].count_incoming) > 0) {
             qids[count++] = k;
           }
         for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
@@ -2088,7 +2092,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
     {
       pthread_mutex_lock(&s->sleep_mutex);
       res = queue_gettask(&s->queues[qid], prev, 1);
-      if (res == NULL && s->waiting > 0) {
+      if (res == NULL && atomic_read(&s->waiting) > 0) {
         pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
       }
       pthread_mutex_unlock(&s->sleep_mutex);

@@ -311,8 +311,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Store some values. */
           atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
           atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+          const float dx_max_sort_i = atomic_read_f(&ci->hydro.dx_max_sort);
+          const float dx_max_sort_j = atomic_read_f(&cj->hydro.dx_max_sort);
+
+          atomic_write_f(&ci->hydro.dx_max_sort_old, dx_max_sort_i);
+          atomic_write_f(&cj->hydro.dx_max_sort_old, dx_max_sort_j);
 
           /* Activate the hydro drift tasks. */
           if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);

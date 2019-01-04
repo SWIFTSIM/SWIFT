@@ -1372,7 +1372,7 @@ __attribute__((always_inline)) INLINE static void cell_clear_flag(
 /** Get the given flag for the given cell. */
 __attribute__((always_inline)) INLINE static int cell_get_flag(
     const struct cell *c, uint32_t flag) {
-  return (c->flags & flag) > 0;
+  return (atomic_read(&c->flags) & flag) > 0;
 }
 
 /**

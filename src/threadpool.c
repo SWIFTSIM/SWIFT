@@ -137,8 +137,8 @@ void threadpool_chomp(struct threadpool *tp, int tid) {
   /* Loop until we can't get a chunk. */
   while (1) {
     /* Desired chunk size. */
-    size_t chunk_size =
-        (tp->map_data_size - tp->map_data_count) / (2 * tp->num_threads);
+    size_t chunk_size = (tp->map_data_size - atomic_read(&tp->map_data_count)) /
+                        (2 * tp->num_threads);
     if (chunk_size > tp->map_data_chunk) chunk_size = tp->map_data_chunk;
     if (chunk_size < 1) chunk_size = 1;
 
