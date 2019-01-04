@@ -577,7 +577,7 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->time = 0.;
   c->universe_age_at_present_day = 0.;
   c->Hubble_time = 0.;
-  c->Lookback_time = 0.;
+  c->lookback_time = 0.;
 
   /* Initialise the interpolation tables */
   c->drift_fac_interp_table = NULL;
