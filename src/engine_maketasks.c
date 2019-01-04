@@ -463,7 +463,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
                                        task_subtype_none, 0, 0, c, NULL);
 
       /* Subgrid tasks */
-      if (is_with_cooling) {
+      if (is_with_cooling && c->hydro.count_total > 0) {
 
         c->hydro.cooling = scheduler_addtask(s, task_type_cooling,
                                              task_subtype_none, 0, 0, c, NULL);
@@ -475,7 +475,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->end_force, c->kick2);
       }
 
-      if (is_with_star_formation) {
+      if (is_with_star_formation && c->hydro.count_total > 0) {
 
         c->hydro.star_formation = scheduler_addtask(
             s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);
@@ -610,8 +610,11 @@ void engine_add_stars_ghosts(struct engine *e, struct cell *c,
                              struct task *stars_ghost_in,
                              struct task *stars_ghost_out) {
 
+  /* Abort as there are no star particles here? */
+  if (c->stars.count_total == 0) return;
+
   /* If we have reached the leaf OR have to few particles to play with*/
-  if (!c->split || c->stars.count < engine_max_sparts_per_ghost) {
+  if (!c->split || c->stars.count_total < engine_max_sparts_per_ghost) {
 
     /* Add the ghost task and its dependencies */
     struct scheduler *s = &e->sched;
@@ -634,8 +637,11 @@ void engine_add_stars_ghosts(struct engine *e, struct cell *c,
 void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
                        struct task *ghost_out) {
 
+  /* Abort as there are no hydro particles here? */
+  if (c->hydro.count_total == 0) return;
+
   /* If we have reached the leaf OR have to few particles to play with*/
-  if (!c->split || c->hydro.count < engine_max_parts_per_ghost) {
+  if (!c->split || c->hydro.count_total < engine_max_parts_per_ghost) {
 
     /* Add the ghost task and its dependencies */
     struct scheduler *s = &e->sched;
@@ -643,6 +649,7 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
         scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0, c, NULL);
     scheduler_addunlock(s, ghost_in, c->hydro.ghost);
     scheduler_addunlock(s, c->hydro.ghost, ghost_out);
+
   } else {
     /* Keep recursing */
     for (int k = 0; k < 8; k++)
