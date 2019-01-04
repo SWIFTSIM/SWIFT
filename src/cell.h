@@ -1037,7 +1037,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  return c->split && (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
+  return c->split && (kernel_gamma * atomic_read_f(&c->hydro.h_max_old) < 0.5f * c->dmin);
 }
 
 /**
