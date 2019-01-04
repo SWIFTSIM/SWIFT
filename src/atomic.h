@@ -39,6 +39,7 @@
 __attribute__((always_inline)) INLINE static void
 atomic_write(volatile int *const address, const int y) {
 
+  /* MATTHIEU: To be improved */
   const int old_val = atomic_read(address);
   __sync_bool_compare_and_swap(address, old_val, y);
 }
@@ -81,7 +82,7 @@ atomic_write_c(volatile char *const address, const char y) {
 }
 
 __attribute__((always_inline)) INLINE static float
-atomic_read_f(volatile float *const address) {
+atomic_read_f(const volatile float *const address) {
 
   int *const address_int = (int *const)address;
 
@@ -96,7 +97,7 @@ atomic_read_f(volatile float *const address) {
 }
 
 __attribute__((always_inline)) INLINE static unsigned int
-atomic_read_u(volatile unsigned int *const address) {
+atomic_read_u(const volatile unsigned int *const address) {
 
   int *const address_int = (int *const)address;
 
