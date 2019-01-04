@@ -2926,12 +2926,14 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
   const struct engine *e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
-  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
-  ci->hydro.h_max_old = ci->hydro.h_max;
+  const float dx_max_part_i = atomic_read_f(&ci->hydro.dx_max_part);
+  atomic_write_f(&ci->hydro.dx_max_part_old, dx_max_part_i);
+  atomic_write_f(&ci->hydro.h_max_old, ci->hydro.h_max);
 
   if (cj != NULL) {
-    cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
-    cj->hydro.h_max_old = cj->hydro.h_max;
+    const float dx_max_part_j = atomic_read_f(&cj->hydro.dx_max_part);
+    atomic_write_f(&cj->hydro.dx_max_part_old, dx_max_part_j);
+    atomic_write_f(&cj->hydro.h_max_old, cj->hydro.h_max);
   }
 
   /* Self interaction? */
@@ -2987,8 +2989,12 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
       /* We are going to interact this pair, so store some values. */
       atomic_or(&ci->hydro.requires_sorts, 1 << sid);
       atomic_or(&cj->hydro.requires_sorts, 1 << sid);
-      ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-      cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+      const float dx_max_sort_i = atomic_read_f(&ci->hydro.dx_max_sort);
+      const float dx_max_sort_j = atomic_read_f(&cj->hydro.dx_max_sort);
+
+      atomic_write_f(&ci->hydro.dx_max_sort_old, dx_max_sort_i);
+      atomic_write_f(&cj->hydro.dx_max_sort_old, dx_max_sort_j);
 
       /* Activate the drifts if the cells are local. */
       if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);

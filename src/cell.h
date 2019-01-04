@@ -1023,8 +1023,8 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
-  return c->split && ((kernel_gamma * c->hydro.h_max_old +
-                       c->hydro.dx_max_part_old) < 0.5f * c->dmin);
+  return c->split && ((kernel_gamma * atomic_read_f(&c->hydro.h_max_old) +
+                       atomic_read_f(&c->hydro.dx_max_part_old)) < 0.5f * c->dmin);
 }
 
 /**
@@ -1207,12 +1207,10 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
-  if (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
-          ci->hydro.dx_max_part + cj->hydro.dx_max_part >
-      cj->dmin) {
-    return 1;
-  }
-  return 0;
+  return (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
+	  atomic_read_f(&ci->hydro.dx_max_part) +
+	  atomic_read_f(&cj->hydro.dx_max_part) >
+          cj->dmin);
 }
 
 /**
