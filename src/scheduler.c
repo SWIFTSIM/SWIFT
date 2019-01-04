@@ -1572,7 +1572,7 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that we don't have more waits that what can be stored. */
-    if (t->wait < 0)
+    if (atomic_read(&t->wait) < 0)
       error("Task (type=%s/%s) unlocked by more than %lld tasks!",
             taskID_names[t->type], subtaskID_names[t->subtype],
             (1LL << (8 * sizeof(t->wait) - 1)) - 1);
