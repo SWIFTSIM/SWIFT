@@ -111,11 +111,15 @@ __attribute__((always_inline)) INLINE void get_index_1d(
     const float *restrict table, const int size, const float x, int *i,
     float *restrict dx) {
 
-  const float delta = (size - 1) / (table[size - 1] - table[0]);
+  /* Small epsilon to avoid rounding issues leading to out-of-bound
+   * access when using the indices later to read data from the tables. */
   const float epsilon = 1e-4f;
 
   /* Indicate that the whole array is aligned on boundaries */
   swift_align_information(float, table, SWIFT_STRUCT_ALIGNMENT);
+
+  /* Distance between elements in the array */
+  const float delta = (size - 1) / (table[size - 1] - table[0]);
 
   if (x < table[0] + epsilon) {
     /* We are below the first element */
