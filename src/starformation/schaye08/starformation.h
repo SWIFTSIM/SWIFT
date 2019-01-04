@@ -16,7 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *******************************************************************************/
-
 #ifndef SWIFT_SCHAYE_STARFORMATION_H
 #define SWIFT_SCHAYE_STARFORMATION_H
 
@@ -25,7 +24,6 @@
 
 /* Local includes */
 #include "adiabatic_index.h"
-#include "cell.h"
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
@@ -201,7 +199,7 @@ INLINE static int star_formation_potential_to_become_star(
  * @param cooling The cooling data struct.
  */
 INLINE static int star_formation_convert_to_star(
-    struct engine* e, const struct star_formation* starform,
+    const struct engine* e, const struct star_formation* starform,
     const struct part* restrict p, const struct xpart* restrict xp,
     const struct phys_const* const phys_const, const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
@@ -255,10 +253,10 @@ INLINE static int star_formation_convert_to_star(
  * @param with_cosmology if we run with cosmology.
  */
 INLINE static void star_formation_copy_properties(
-    struct engine* e, struct part* p, struct xpart* xp, struct spart* sp,
-    const struct star_formation* starform,
+    const struct engine* e, const struct part* p, const struct xpart* xp,
+    struct spart* sp, const struct star_formation* starform,
     const struct phys_const* const phys_const, const struct cosmology* cosmo,
-    int with_cosmology) {
+    const int with_cosmology) {
 
   /* Store the current mass */
   sp->mass = p->mass;

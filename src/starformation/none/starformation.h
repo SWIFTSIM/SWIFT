@@ -16,18 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *******************************************************************************/
-
 #ifndef SWIFT_NO_STARFORMATION_H
 #define SWIFT_NO_STARFORMATION_H
 
-/* Some standard headers */
-#include <stdlib.h>
-
 /* Local includes */
-#include "cell.h"
 #include "cosmology.h"
-#include "equation_of_state.h"
 #include "error.h"
+#include "hydro_properties.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -52,12 +47,13 @@ struct star_formation {};
  * @param cooling The cooling data struct.
  */
 INLINE static int star_formation_convert_to_star(
-    struct engine* e, const struct star_formation* starform,
+    const struct engine* e, const struct star_formation* starform,
     const struct part* restrict p, const struct xpart* restrict xp,
     const struct phys_const* const phys_const, const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling) {
+    const struct cooling_function_data* restrict cooling,
+    const double dt_star) {
 
   return 0;
 }
@@ -73,10 +69,10 @@ INLINE static int star_formation_convert_to_star(
  *
  */
 INLINE static void star_formation_copy_properties(
-    struct engine* e, struct part* p, struct xpart* xp, struct spart* sp,
-    const struct star_formation* starform,
+    const struct engine* e, const struct part* p, const struct xpart* xp,
+    struct spart* sp, const struct star_formation* starform,
     const struct phys_const* const phys_const, const struct cosmology* cosmo,
-    int with_cosmology) {}
+    const int with_cosmology) {}
 
 /**
  * @brief initialization of the star formation law
