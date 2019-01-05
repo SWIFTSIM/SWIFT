@@ -1282,19 +1282,24 @@ void write_output_parallel(struct engine* e, const char* baseName,
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
              e->snapshot_output_count);
 
-  if (nodeID == 0) {
-    h_file = H5Fopen(fileName, H5F_ACC_RDWR, H5P_DEFAULT);
-    if (h_file < 0)
+  hid_t h_file_cells, h_grp_cells;
+  if (e->nodeID == 0) {
+    h_file_cells = H5Fopen(fileName, H5F_ACC_RDWR, H5P_DEFAULT);
+    if (h_file_cells < 0)
       error("Error while opening file '%s' on rank %d.", fileName, mpi_rank);
+    h_grp_cells = H5Gcreate(h_file_cells, "/Cells", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_grp_cells < 0) 
+      error("Error while creating cells group");
   } else {
-    h_file = 0;
+    h_file_cells = 0;
   }
 
-  io_write_cell_offsets(h_file, e->s->cdim, e->s->cells_top, e->s->nr_cells,
-                        e->s->width, e->nodeID, N_total, offset);
+  io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->cells_top, e->s->nr_cells,
+                        e->s->width, mpi_rank, N_total, offset);
 
-  if (nodeID == 0) {
-    H5Fclose(h_file);
+  if (e->nodeID == 0) {
+    H5Gclose(h_grp_cells);
+    H5Fclose(h_file_cells);
   }
 
   /* Prepare some file-access properties */

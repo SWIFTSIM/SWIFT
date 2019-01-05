@@ -401,6 +401,9 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
 
   message("global offsets=%lld", global_offsets[0]);
 
+  int* node = NULL;
+  node = malloc(nr_cells * sizeof(int));
+
   /* Count of particles in each cell */
   long long *count_part = NULL, *count_gpart = NULL, *count_spart = NULL;
   count_part = malloc(nr_cells * sizeof(long long));
@@ -420,6 +423,9 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
 
   /* Collect the cell information of *local* cells */
   int count_local_cells = 0;
+  long long local_offset_part = 0;
+  long long local_offset_gpart = 0;
+  long long local_offset_spart = 0;
   for (int i = 0; i < nr_cells; ++i) {
 
     if (cells_top[i].nodeID == nodeID) {
@@ -440,16 +446,16 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
 
       /* Offsets including the global offset of all particles on this MPI rank
        */
-      if (i > 0) {
-        offset_part[i] = offset_part[i - 1] + count_part[i - 1] +
-                         global_offsets[swift_type_gas];
-        offset_gpart[i] = offset_gpart[i - 1] + count_gpart[i - 1] +
-                          global_offsets[swift_type_dark_matter];
-        offset_spart[i] = offset_spart[i - 1] + count_spart[i - 1] +
-                          global_offsets[swift_type_stars];
-      }
+      offset_part[i] = local_offset_part + global_offsets[swift_type_gas];
+      offset_gpart[i] = local_offset_gpart + global_offsets[swift_type_dark_matter];
+      offset_spart[i] = local_offset_spart + global_offsets[swift_type_stars];
 
       ++count_local_cells;
+
+      local_offset_part += count_part[i];
+      local_offset_gpart += count_gpart[i];
+      local_offset_spart += count_spart[i];
+
     } else {
 
       /* Just zero everything for the foregin cells */
@@ -466,27 +472,66 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       offset_gpart[i] = 0;
       offset_spart[i] = 0;
     }
+
+    node[i] = cells_top[i].nodeID;
   }
 
+#ifdef WITH_MPI
     /* Now, reduce all the arrays. Note that we use a bit-by-bit OR here. This
        is safe as we made sure only local cells have non-zero values. */
-#ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, count_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, count_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-                MPI_COMM_WORLD);
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, count_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+	       0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(count_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+	       0, MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+	       0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(count_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+	       0, MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, count_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+	       0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(count_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+	       0, MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, offset_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+	       0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(offset_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+	       0, MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, offset_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+	       0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(offset_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+	       0, MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, offset_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+	       0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(offset_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+	       0, MPI_COMM_WORLD);
+  }
 
-  MPI_Allreduce(MPI_IN_PLACE, offset_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, offset_gpart, nr_cells, MPI_LONG_LONG_INT,
-                MPI_BOR, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, offset_spart, nr_cells, MPI_LONG_LONG_INT,
-                MPI_BOR, MPI_COMM_WORLD);
 
-  MPI_Allreduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_BOR,
-                MPI_COMM_WORLD);
+  /* For the centres we use a sum as MPI does not like bitwise operations
+     on floating point numbers */
+  if (nodeID == 0) {
+     MPI_Reduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(centres, NULL, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                0, MPI_COMM_WORLD);
+  }
 #endif
 
   /* Only rank 0 actually writes */
@@ -516,6 +561,24 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   H5Dclose(h_data);
   H5Sclose(h_space);
   free(centres);
+
+  /* Write the nodeIDs to the group */
+  shape[0] = nr_cells;
+  shape[1] = 1;
+  h_space = H5Screate(H5S_SIMPLE);
+  if (h_space < 0) error("Error while creating data space for cell centres");
+  h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+  if (h_err < 0) error("Error while changing shape of gas offsets data space.");
+  h_data = H5Dcreate(h_grp, "Nodes", io_hdf5_type(INT), h_space,
+                           H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_data < 0) error("Error while creating dataspace for gas offsets.");
+  h_err = H5Dwrite(h_data, io_hdf5_type(INT), h_space, H5S_ALL, H5P_DEFAULT,
+                   node);
+  if (h_err < 0) error("Error while writing centres.");
+  H5Dclose(h_data);
+  H5Sclose(h_space);
+  free(node);
+
 
   /* Group containing the offsets for each particle type */
   h_subgrp = H5Gcreate(h_grp, "Offsets", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
