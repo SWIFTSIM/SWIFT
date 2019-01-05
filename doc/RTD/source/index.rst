@@ -18,6 +18,7 @@ difference is the parameter file that will need to be adapted for SWIFT.
    CommandLineOptions/index
    ParameterFiles/index
    InitialConditions/index
+   Snapshots/index
    HydroSchemes/index
    SubgridModels/index
    EquationOfState/index
