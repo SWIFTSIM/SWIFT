@@ -1292,14 +1292,14 @@ void write_output_parallel(struct engine* e, const char* baseName,
       error("Error while opening file '%s' on rank %d.", fileName, mpi_rank);
 
     /* Create the group we want in the file */
-    h_grp_cells = H5Gcreate(h_file_cells, "/Cells", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_grp_cells < 0) 
-      error("Error while creating cells group");
+    h_grp_cells = H5Gcreate(h_file_cells, "/Cells", H5P_DEFAULT, H5P_DEFAULT,
+                            H5P_DEFAULT);
+    if (h_grp_cells < 0) error("Error while creating cells group");
   }
 
   /* Write the location of the particles in the arrays */
-  io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->cells_top, e->s->nr_cells,
-                        e->s->width, mpi_rank, N_total, offset);
+  io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->cells_top,
+                        e->s->nr_cells, e->s->width, mpi_rank, N_total, offset);
 
   /* Close everything */
   if (mpi_rank == 0) {

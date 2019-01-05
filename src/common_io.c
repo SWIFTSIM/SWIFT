@@ -439,7 +439,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       /* Offsets including the global offset of all particles on this MPI rank
        */
       offset_part[i] = local_offset_part + global_offsets[swift_type_gas];
-      offset_gpart[i] = local_offset_gpart + global_offsets[swift_type_dark_matter];
+      offset_gpart[i] =
+          local_offset_gpart + global_offsets[swift_type_dark_matter];
       offset_spart[i] = local_offset_spart + global_offsets[swift_type_stars];
 
       local_offset_part += count_part[i];
@@ -465,213 +466,219 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   }
 
 #ifdef WITH_MPI
-    /* Now, reduce all the arrays. Note that we use a bit-wise OR here. This
-       is safe as we made sure only local cells have non-zero values. */
+  /* Now, reduce all the arrays. Note that we use a bit-wise OR here. This
+     is safe as we made sure only local cells have non-zero values. */
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, count_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-	       0, MPI_COMM_WORLD);
+               0, MPI_COMM_WORLD);
   } else {
-    MPI_Reduce(count_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-	       0, MPI_COMM_WORLD);
+    MPI_Reduce(count_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
   }
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-	       0, MPI_COMM_WORLD);
+               0, MPI_COMM_WORLD);
   } else {
-    MPI_Reduce(count_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-	       0, MPI_COMM_WORLD);
+    MPI_Reduce(count_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
   }
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, count_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-	       0, MPI_COMM_WORLD);
+               0, MPI_COMM_WORLD);
   } else {
-    MPI_Reduce(count_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-	       0, MPI_COMM_WORLD);
+    MPI_Reduce(count_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
   }
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, offset_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-	       0, MPI_COMM_WORLD);
+               0, MPI_COMM_WORLD);
   } else {
-    MPI_Reduce(offset_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-	       0, MPI_COMM_WORLD);
+    MPI_Reduce(offset_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
   }
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, offset_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-	       0, MPI_COMM_WORLD);
+               0, MPI_COMM_WORLD);
   } else {
-    MPI_Reduce(offset_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-	       0, MPI_COMM_WORLD);
+    MPI_Reduce(offset_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
   }
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, offset_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-	       0, MPI_COMM_WORLD);
+               0, MPI_COMM_WORLD);
   } else {
-    MPI_Reduce(offset_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-	       0, MPI_COMM_WORLD);
+    MPI_Reduce(offset_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
   }
 
   /* For the centres we use a sum as MPI does not like bit-wise operations
      on floating point numbers */
   if (nodeID == 0) {
-     MPI_Reduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
-                0, MPI_COMM_WORLD);
+    MPI_Reduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM, 0,
+               MPI_COMM_WORLD);
   } else {
-    MPI_Reduce(centres, NULL, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
-                0, MPI_COMM_WORLD);
+    MPI_Reduce(centres, NULL, 3 * nr_cells, MPI_DOUBLE, MPI_SUM, 0,
+               MPI_COMM_WORLD);
   }
 #endif
 
   /* Only rank 0 actually writes */
   if (nodeID == 0) {
 
-  /* Write some meta-information first */
-  hid_t h_subgrp =
-      H5Gcreate(h_grp, "Meta-data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_subgrp < 0) error("Error while creating meta-data sub-group");
-  io_write_attribute(h_subgrp, "nr_cells", INT, &nr_cells, 1);
-  io_write_attribute(h_subgrp, "size", DOUBLE, width, 3);
-  io_write_attribute(h_subgrp, "dimension", INT, cdim, 3);
-  H5Gclose(h_subgrp);
+    /* Write some meta-information first */
+    hid_t h_subgrp =
+        H5Gcreate(h_grp, "Meta-data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_subgrp < 0) error("Error while creating meta-data sub-group");
+    io_write_attribute(h_subgrp, "nr_cells", INT, &nr_cells, 1);
+    io_write_attribute(h_subgrp, "size", DOUBLE, width, 3);
+    io_write_attribute(h_subgrp, "dimension", INT, cdim, 3);
+    H5Gclose(h_subgrp);
 
-  /* Write the centres to the group */
-  hsize_t shape[2] = {nr_cells, 3};
-  hid_t h_space = H5Screate(H5S_SIMPLE);
-  if (h_space < 0) error("Error while creating data space for cell centres");
-  hid_t h_err = H5Sset_extent_simple(h_space, 2, shape, shape);
-  if (h_err < 0) error("Error while changing shape of gas offsets data space.");
-  hid_t h_data = H5Dcreate(h_grp, "Centres", io_hdf5_type(DOUBLE), h_space,
-                           H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_data < 0) error("Error while creating dataspace for gas offsets.");
-  h_err = H5Dwrite(h_data, io_hdf5_type(DOUBLE), h_space, H5S_ALL, H5P_DEFAULT,
-                   centres);
-  if (h_err < 0) error("Error while writing centres.");
-  H5Dclose(h_data);
-  H5Sclose(h_space);
-
-  /* Group containing the offsets for each particle type */
-  h_subgrp = H5Gcreate(h_grp, "Offsets", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_subgrp < 0) error("Error while creating offsets sub-group");
-
-  if (global_counts[swift_type_gas] > 0) {
-
-    shape[0] = nr_cells;
-    shape[1] = 1;
-    h_space = H5Screate(H5S_SIMPLE);
-    if (h_space < 0) error("Error while creating data space for gas offsets");
-    h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+    /* Write the centres to the group */
+    hsize_t shape[2] = {nr_cells, 3};
+    hid_t h_space = H5Screate(H5S_SIMPLE);
+    if (h_space < 0) error("Error while creating data space for cell centres");
+    hid_t h_err = H5Sset_extent_simple(h_space, 2, shape, shape);
     if (h_err < 0)
       error("Error while changing shape of gas offsets data space.");
-    h_data = H5Dcreate(h_subgrp, "PartType0", io_hdf5_type(LONGLONG), h_space,
-                       H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t h_data = H5Dcreate(h_grp, "Centres", io_hdf5_type(DOUBLE), h_space,
+                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_data < 0) error("Error while creating dataspace for gas offsets.");
-    h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
-                     H5P_DEFAULT, offset_part);
-    if (h_err < 0) error("Error while writing gas offsets.");
+    h_err = H5Dwrite(h_data, io_hdf5_type(DOUBLE), h_space, H5S_ALL,
+                     H5P_DEFAULT, centres);
+    if (h_err < 0) error("Error while writing centres.");
     H5Dclose(h_data);
     H5Sclose(h_space);
-  }
 
-  if (global_counts[swift_type_dark_matter] > 0) {
+    /* Group containing the offsets for each particle type */
+    h_subgrp =
+        H5Gcreate(h_grp, "Offsets", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_subgrp < 0) error("Error while creating offsets sub-group");
 
-    shape[0] = nr_cells;
-    shape[1] = 1;
-    h_space = H5Screate(H5S_SIMPLE);
-    if (h_space < 0) error("Error while creating data space for DM offsets");
-    h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
-    if (h_err < 0)
-      error("Error while changing shape of DM offsets data space.");
-    h_data = H5Dcreate(h_subgrp, "PartType1", io_hdf5_type(LONGLONG), h_space,
-                       H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_data < 0) error("Error while creating dataspace for DM offsets.");
-    h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
-                     H5P_DEFAULT, offset_gpart);
-    if (h_err < 0) error("Error while writing DM offsets.");
-    H5Dclose(h_data);
-    H5Sclose(h_space);
-  }
+    if (global_counts[swift_type_gas] > 0) {
 
-  if (global_counts[swift_type_stars] > 0) {
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0) error("Error while creating data space for gas offsets");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of gas offsets data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType0", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0) error("Error while creating dataspace for gas offsets.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, offset_part);
+      if (h_err < 0) error("Error while writing gas offsets.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
 
-    shape[0] = nr_cells;
-    shape[1] = 1;
-    h_space = H5Screate(H5S_SIMPLE);
-    if (h_space < 0) error("Error while creating data space for stars offsets");
-    h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
-    if (h_err < 0)
-      error("Error while changing shape of stars offsets data space.");
-    h_data = H5Dcreate(h_subgrp, "PartType4", io_hdf5_type(LONGLONG), h_space,
-                       H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_data < 0) error("Error while creating dataspace for star offsets.");
-    h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
-                     H5P_DEFAULT, offset_spart);
-    if (h_err < 0) error("Error while writing star offsets.");
-    H5Dclose(h_data);
-    H5Sclose(h_space);
-  }
+    if (global_counts[swift_type_dark_matter] > 0) {
 
-  H5Gclose(h_subgrp);
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0) error("Error while creating data space for DM offsets");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of DM offsets data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType1", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0) error("Error while creating dataspace for DM offsets.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, offset_gpart);
+      if (h_err < 0) error("Error while writing DM offsets.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
 
-  /* Group containing the counts for each particle type */
-  h_subgrp = H5Gcreate(h_grp, "Counts", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_subgrp < 0) error("Error while creating counts sub-group");
+    if (global_counts[swift_type_stars] > 0) {
 
-  if (global_counts[swift_type_gas] > 0) {
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0)
+        error("Error while creating data space for stars offsets");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of stars offsets data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType4", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0) error("Error while creating dataspace for star offsets.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, offset_spart);
+      if (h_err < 0) error("Error while writing star offsets.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
 
-    shape[0] = nr_cells;
-    shape[1] = 1;
-    h_space = H5Screate(H5S_SIMPLE);
-    if (h_space < 0) error("Error while creating data space for gas counts");
-    h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
-    if (h_err < 0)
-      error("Error while changing shape of gas counts data space.");
-    h_data = H5Dcreate(h_subgrp, "PartType0", io_hdf5_type(LONGLONG), h_space,
-                       H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_data < 0) error("Error while creating dataspace for gas counts.");
-    h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
-                     H5P_DEFAULT, count_part);
-    if (h_err < 0) error("Error while writing gas counts.");
-    H5Dclose(h_data);
-    H5Sclose(h_space);
-  }
+    H5Gclose(h_subgrp);
 
-  if (global_counts[swift_type_dark_matter] > 0) {
+    /* Group containing the counts for each particle type */
+    h_subgrp =
+        H5Gcreate(h_grp, "Counts", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_subgrp < 0) error("Error while creating counts sub-group");
 
-    shape[0] = nr_cells;
-    shape[1] = 1;
-    h_space = H5Screate(H5S_SIMPLE);
-    if (h_space < 0) error("Error while creating data space for DM counts");
-    h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
-    if (h_err < 0) error("Error while changing shape of DM counts data space.");
-    h_data = H5Dcreate(h_subgrp, "PartType1", io_hdf5_type(LONGLONG), h_space,
-                       H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_data < 0) error("Error while creating dataspace for DM counts.");
-    h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
-                     H5P_DEFAULT, count_gpart);
-    if (h_err < 0) error("Error while writing DM counts.");
-    H5Dclose(h_data);
-    H5Sclose(h_space);
-  }
+    if (global_counts[swift_type_gas] > 0) {
 
-  if (global_counts[swift_type_stars] > 0) {
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0) error("Error while creating data space for gas counts");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of gas counts data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType0", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0) error("Error while creating dataspace for gas counts.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, count_part);
+      if (h_err < 0) error("Error while writing gas counts.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
 
-    shape[0] = nr_cells;
-    shape[1] = 1;
-    h_space = H5Screate(H5S_SIMPLE);
-    if (h_space < 0) error("Error while creating data space for stars counts");
-    h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
-    if (h_err < 0)
-      error("Error while changing shape of stars counts data space.");
-    h_data = H5Dcreate(h_subgrp, "PartType4", io_hdf5_type(LONGLONG), h_space,
-                       H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_data < 0) error("Error while creating dataspace for star counts.");
-    h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
-                     H5P_DEFAULT, count_spart);
-    if (h_err < 0) error("Error while writing star counts.");
-    H5Dclose(h_data);
-    H5Sclose(h_space);
-  }
+    if (global_counts[swift_type_dark_matter] > 0) {
 
-  H5Gclose(h_subgrp);
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0) error("Error while creating data space for DM counts");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of DM counts data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType1", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0) error("Error while creating dataspace for DM counts.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, count_gpart);
+      if (h_err < 0) error("Error while writing DM counts.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
+    if (global_counts[swift_type_stars] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0)
+        error("Error while creating data space for stars counts");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of stars counts data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType4", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0) error("Error while creating dataspace for star counts.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, count_spart);
+      if (h_err < 0) error("Error while writing star counts.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
+    H5Gclose(h_subgrp);
   }
 
   /* Free everything we allocated */
