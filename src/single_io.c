@@ -699,18 +699,6 @@ void write_output_single(struct engine* e, const char* baseName,
   if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Open header to write simulation properties */
-  /* message("Writing runtime parameters..."); */
-  h_grp =
-      H5Gcreate(h_file, "/RuntimePars", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_grp < 0) error("Error while creating runtime parameters group\n");
-
-  /* Write the relevant information */
-  io_write_attribute(h_grp, "PeriodicBoundariesOn", INT, &periodic, 1);
-
-  /* Close runtime parameters */
-  H5Gclose(h_grp);
-
-  /* Open header to write simulation properties */
   /* message("Writing file header..."); */
   h_grp = H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating file header\n");
