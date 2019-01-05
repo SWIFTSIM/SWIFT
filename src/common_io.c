@@ -395,14 +395,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
 
   /* Temporary memory for the cell-by-cell information */
   double* centres = NULL;
-  if (posix_memalign((void**)&centres, IO_BUFFER_ALIGNMENT,
-                     nr_cells * 3 * sizeof(double)) != 0)
-    error("Error allocating temporary buffer for centres");
-
-  message("global offsets=%lld", global_offsets[0]);
-
-  int* node = NULL;
-  node = malloc(nr_cells * sizeof(int));
+  centres = malloc(3 * nr_cells * sizeof(double));
 
   /* Count of particles in each cell */
   long long *count_part = NULL, *count_gpart = NULL, *count_spart = NULL;
@@ -472,8 +465,6 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       offset_gpart[i] = 0;
       offset_spart[i] = 0;
     }
-
-    node[i] = cells_top[i].nodeID;
   }
 
 #ifdef WITH_MPI
@@ -535,7 +526,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
 #endif
 
   /* Only rank 0 actually writes */
-  if (nodeID != 0) return;
+  if (nodeID == 0) {
 
   /* Write some meta-information first */
   hid_t h_subgrp =
@@ -560,24 +551,6 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   if (h_err < 0) error("Error while writing centres.");
   H5Dclose(h_data);
   H5Sclose(h_space);
-  free(centres);
-
-  /* Write the nodeIDs to the group */
-  shape[0] = nr_cells;
-  shape[1] = 1;
-  h_space = H5Screate(H5S_SIMPLE);
-  if (h_space < 0) error("Error while creating data space for cell centres");
-  h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
-  if (h_err < 0) error("Error while changing shape of gas offsets data space.");
-  h_data = H5Dcreate(h_grp, "Nodes", io_hdf5_type(INT), h_space,
-                           H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_data < 0) error("Error while creating dataspace for gas offsets.");
-  h_err = H5Dwrite(h_data, io_hdf5_type(INT), h_space, H5S_ALL, H5P_DEFAULT,
-                   node);
-  if (h_err < 0) error("Error while writing centres.");
-  H5Dclose(h_data);
-  H5Sclose(h_space);
-  free(node);
 
 
   /* Group containing the offsets for each particle type */
@@ -704,6 +677,16 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   }
 
   H5Gclose(h_subgrp);
+  }
+
+  /* Free everything we allocated */
+  free(centres);
+  free(count_part);
+  free(count_gpart);
+  free(count_spart);
+  free(offset_part);
+  free(offset_gpart);
+  free(offset_spart);
 }
 
 #endif /* HAVE_HDF5 */
