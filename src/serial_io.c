@@ -776,7 +776,6 @@ void write_output_serial(struct engine* e, const char* baseName,
                          int mpi_size, MPI_Comm comm, MPI_Info info) {
 
   hid_t h_file = 0, h_grp = 0;
-  int periodic = e->s->periodic;
   int numFiles = 1;
   const struct part* parts = e->s->parts;
   const struct xpart* xparts = e->s->xparts;
@@ -1033,7 +1032,8 @@ void write_output_serial(struct engine* e, const char* baseName,
 
   /* Write the location of the particles in the arrays */
   io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->cells_top,
-                        e->s->nr_cells, e->s->width, mpi_rank, N_total, offset);
+                        e->s->nr_cells, e->s->width, mpi_rank, N_total, offset,
+                        internal_units, snapshot_units);
 
   /* Close everything */
   if (mpi_rank == 0) {

@@ -82,7 +82,9 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
                            const struct cell* cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
                            const long long global_counts[swift_type_count],
-                           const long long global_offsets[swift_type_count]);
+                           const long long global_offsets[swift_type_count],
+                           const struct unit_system* internal_units,
+                           const struct unit_system* snapshot_units);
 
 void io_read_unit_system(hid_t h_file, struct unit_system* ic_units,
                          const struct unit_system* internal_units,

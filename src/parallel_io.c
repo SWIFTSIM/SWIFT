@@ -957,7 +957,6 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
   FILE* xmfFile = 0;
-  int periodic = e->s->periodic;
   int numFiles = 1;
 
   /* First time, we need to create the XMF file */
@@ -1287,7 +1286,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* Write the location of the particles in the arrays */
   io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->cells_top,
-                        e->s->nr_cells, e->s->width, mpi_rank, N_total, offset);
+                        e->s->nr_cells, e->s->width, mpi_rank, N_total, offset,
+                        internal_units, snapshot_units);
 
   /* Close everything */
   if (mpi_rank == 0) {

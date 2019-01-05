@@ -391,7 +391,11 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
                            const struct cell* cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
                            const long long global_counts[swift_type_count],
-                           const long long global_offsets[swift_type_count]) {
+                           const long long global_offsets[swift_type_count],
+                           const struct unit_system* internal_units,
+                           const struct unit_system* snapshot_units) {
+
+  double cell_width[3] = {width[0], width[1], width[2]};
 
   /* Temporary memory for the cell-by-cell information */
   double* centres = NULL;
@@ -423,9 +427,9 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
     if (cells_top[i].nodeID == nodeID) {
 
       /* Centre of each cell */
-      centres[i * 3 + 0] = cells_top[i].loc[0] + width[0] * 0.5;
-      centres[i * 3 + 1] = cells_top[i].loc[1] + width[1] * 0.5;
-      centres[i * 3 + 2] = cells_top[i].loc[2] + width[2] * 0.5;
+      centres[i * 3 + 0] = cells_top[i].loc[0] + cell_width[0] * 0.5;
+      centres[i * 3 + 1] = cells_top[i].loc[1] + cell_width[1] * 0.5;
+      centres[i * 3 + 2] = cells_top[i].loc[2] + cell_width[2] * 0.5;
 
       /* Count real particles that will be written */
       count_part[i] = cells_top[i].hydro.count - cells_top[i].hydro.inhibited;
@@ -525,12 +529,30 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   /* Only rank 0 actually writes */
   if (nodeID == 0) {
 
+    /* Unit conversion if necessary */
+    const double factor = units_conversion_factor(
+        internal_units, snapshot_units, UNIT_CONV_LENGTH);
+    if (factor != 1.) {
+
+      /* Convert the cell centres */
+      for (int i = 0; i < nr_cells; ++i) {
+        centres[i * 3 + 0] *= factor;
+        centres[i * 3 + 1] *= factor;
+        centres[i * 3 + 2] *= factor;
+      }
+
+      /* Convert the cell widths */
+      cell_width[0] *= factor;
+      cell_width[1] *= factor;
+      cell_width[2] *= factor;
+    }
+
     /* Write some meta-information first */
     hid_t h_subgrp =
         H5Gcreate(h_grp, "Meta-data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_subgrp < 0) error("Error while creating meta-data sub-group");
     io_write_attribute(h_subgrp, "nr_cells", INT, &nr_cells, 1);
-    io_write_attribute(h_subgrp, "size", DOUBLE, width, 3);
+    io_write_attribute(h_subgrp, "size", DOUBLE, cell_width, 3);
     io_write_attribute(h_subgrp, "dimension", INT, cdim, 3);
     H5Gclose(h_subgrp);
 

@@ -639,7 +639,6 @@ void write_output_single(struct engine* e, const char* baseName,
                          const struct unit_system* snapshot_units) {
 
   hid_t h_file = 0, h_grp = 0;
-  int periodic = e->s->periodic;
   int numFiles = 1;
   const struct part* parts = e->s->parts;
   const struct xpart* xparts = e->s->xparts;
@@ -821,7 +820,8 @@ void write_output_single(struct engine* e, const char* baseName,
 
   /* Write the location of the particles in the arrays */
   io_write_cell_offsets(h_grp, e->s->cdim, e->s->cells_top, e->s->nr_cells,
-                        e->s->width, e->nodeID, N_total, global_offsets);
+                        e->s->width, e->nodeID, N_total, global_offsets,
+                        internal_units, snapshot_units);
   H5Gclose(h_grp);
 
   /* Tell the user if a conversion will be needed */
