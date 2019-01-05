@@ -399,19 +399,19 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
 
   /* Temporary memory for the cell-by-cell information */
   double* centres = NULL;
-  centres = malloc(3 * nr_cells * sizeof(double));
+  centres = (double*)malloc(3 * nr_cells * sizeof(double));
 
   /* Count of particles in each cell */
   long long *count_part = NULL, *count_gpart = NULL, *count_spart = NULL;
-  count_part = malloc(nr_cells * sizeof(long long));
-  count_gpart = malloc(nr_cells * sizeof(long long));
-  count_spart = malloc(nr_cells * sizeof(long long));
+  count_part = (long long*)malloc(nr_cells * sizeof(long long));
+  count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  count_spart = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Global offsets of particles in each cell */
   long long *offset_part = NULL, *offset_gpart = NULL, *offset_spart = NULL;
-  offset_part = malloc(nr_cells * sizeof(long long));
-  offset_gpart = malloc(nr_cells * sizeof(long long));
-  offset_spart = malloc(nr_cells * sizeof(long long));
+  offset_part = (long long*)malloc(nr_cells * sizeof(long long));
+  offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Offsets of the 0^th element */
   offset_part[0] = 0;

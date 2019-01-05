@@ -984,7 +984,8 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
 
   /* Open header to write simulation properties */
   /* message("Writing file header..."); */
-  h_grp = H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  hid_t h_grp =
+      H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating file header\n");
 
   /* Convert basic output information to snapshot units */
