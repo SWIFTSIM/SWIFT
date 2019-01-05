@@ -1282,22 +1282,27 @@ void write_output_parallel(struct engine* e, const char* baseName,
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
              e->snapshot_output_count);
 
-  hid_t h_file_cells, h_grp_cells;
-  if (e->nodeID == 0) {
+  /* Now write the top-level cell structure */
+  hid_t h_file_cells = 0, h_grp_cells = 0;
+  if (mpi_rank == 0) {
+
+    /* Open the snapshot on rank 0 */
     h_file_cells = H5Fopen(fileName, H5F_ACC_RDWR, H5P_DEFAULT);
     if (h_file_cells < 0)
       error("Error while opening file '%s' on rank %d.", fileName, mpi_rank);
+
+    /* Create the group we want in the file */
     h_grp_cells = H5Gcreate(h_file_cells, "/Cells", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp_cells < 0) 
       error("Error while creating cells group");
-  } else {
-    h_file_cells = 0;
   }
 
+  /* Write the location of the particles in the arrays */
   io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->cells_top, e->s->nr_cells,
                         e->s->width, mpi_rank, N_total, offset);
 
-  if (e->nodeID == 0) {
+  /* Close everything */
+  if (mpi_rank == 0) {
     H5Gclose(h_grp_cells);
     H5Fclose(h_file_cells);
   }

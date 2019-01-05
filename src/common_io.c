@@ -415,7 +415,6 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   offset_spart[0] = 0;
 
   /* Collect the cell information of *local* cells */
-  int count_local_cells = 0;
   long long local_offset_part = 0;
   long long local_offset_gpart = 0;
   long long local_offset_spart = 0;
@@ -443,8 +442,6 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       offset_gpart[i] = local_offset_gpart + global_offsets[swift_type_dark_matter];
       offset_spart[i] = local_offset_spart + global_offsets[swift_type_stars];
 
-      ++count_local_cells;
-
       local_offset_part += count_part[i];
       local_offset_gpart += count_gpart[i];
       local_offset_spart += count_spart[i];
@@ -468,7 +465,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   }
 
 #ifdef WITH_MPI
-    /* Now, reduce all the arrays. Note that we use a bit-by-bit OR here. This
+    /* Now, reduce all the arrays. Note that we use a bit-wise OR here. This
        is safe as we made sure only local cells have non-zero values. */
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, count_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
@@ -513,8 +510,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
 	       0, MPI_COMM_WORLD);
   }
 
-
-  /* For the centres we use a sum as MPI does not like bitwise operations
+  /* For the centres we use a sum as MPI does not like bit-wise operations
      on floating point numbers */
   if (nodeID == 0) {
      MPI_Reduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
@@ -551,7 +547,6 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   if (h_err < 0) error("Error while writing centres.");
   H5Dclose(h_data);
   H5Sclose(h_space);
-
 
   /* Group containing the offsets for each particle type */
   h_subgrp = H5Gcreate(h_grp, "Offsets", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
