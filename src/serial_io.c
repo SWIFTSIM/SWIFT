@@ -849,11 +849,20 @@ void write_output_serial(struct engine* e, const char* baseName,
     h_grp = H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating file header\n");
 
+    /* Convert basic output information to snapshot units */
+    const double factor_time =
+        units_conversion_factor(internal_units, snapshot_units, UNIT_CONV_TIME);
+    const double factor_length = units_conversion_factor(
+        internal_units, snapshot_units, UNIT_CONV_LENGTH);
+    const double dblTime = e->time * factor_time;
+    const double dim[3] = {e->s->dim[0] * factor_length,
+                           e->s->dim[0] * factor_length,
+                           e->s->dim[0] * factor_length};
+
     /* Print the relevant information and print status */
-    io_write_attribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
-    double dblTime = e->time;
+    io_write_attribute(h_grp, "BoxSize", DOUBLE, dim, 3);
     io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
-    int dimension = (int)hydro_dimension;
+    const int dimension = (int)hydro_dimension;
     io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
     io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
     io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
