@@ -709,8 +709,8 @@ void write_output_single(struct engine* e, const char* baseName,
       units_conversion_factor(internal_units, snapshot_units, UNIT_CONV_LENGTH);
   const double dblTime = e->time * factor_time;
   const double dim[3] = {e->s->dim[0] * factor_length,
-                         e->s->dim[0] * factor_length,
-                         e->s->dim[0] * factor_length};
+                         e->s->dim[1] * factor_length,
+                         e->s->dim[2] * factor_length};
 
   /* Print the relevant information and print status */
   io_write_attribute(h_grp, "BoxSize", DOUBLE, dim, 3);
