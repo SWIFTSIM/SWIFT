@@ -2070,30 +2070,11 @@ void engine_maketasks(struct engine *e) {
 
   /* Free the old list of cell-task links. */
   if (e->links != NULL) free(e->links);
-  e->size_links = 0;
+  e->size_links = e->sched.nr_tasks * e->links_per_tasks;
 
-/* The maximum number of links is the
- * number of cells (s->tot_cells) times the number of neighbours (26) times
- * the number of interaction types, so 26 * 2 (density, force) pairs
- * and 2 (density, force) self.
- */
-#ifdef EXTRA_HYDRO_LOOP
-  const size_t hydro_tasks_per_cell = 27 * 3;
-#else
-  const size_t hydro_tasks_per_cell = 27 * 2;
-#endif
-  const size_t self_grav_tasks_per_cell = 125;
-  const size_t ext_grav_tasks_per_cell = 1;
-  const size_t stars_tasks_per_cell = 27;
-
-  if (e->policy & engine_policy_hydro)
-    e->size_links += s->tot_cells * hydro_tasks_per_cell;
-  if (e->policy & engine_policy_external_gravity)
-    e->size_links += s->tot_cells * ext_grav_tasks_per_cell;
-  if (e->policy & engine_policy_self_gravity)
-    e->size_links += s->tot_cells * self_grav_tasks_per_cell;
-  if (e->policy & engine_policy_stars)
-    e->size_links += s->tot_cells * stars_tasks_per_cell;
+  /* Make sure that we have space for more links than last time. */
+  if (e->size_links < e->nr_links * engine_rebuild_link_alloc_margin)
+    e->size_links = e->nr_links * engine_rebuild_link_alloc_margin;
 
   /* Allocate the new link list */
   if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) ==

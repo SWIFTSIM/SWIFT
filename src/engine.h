@@ -99,6 +99,7 @@ enum engine_step_properties {
 #define engine_parts_size_grow 1.05
 #define engine_max_proxy_centre_frac 0.2
 #define engine_redistribute_alloc_margin 1.2
+#define engine_rebuild_link_alloc_margin 1.2
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost 1000
@@ -328,6 +329,11 @@ struct engine {
   /* Average number of tasks per cell. Used to estimate the sizes
    * of the various task arrays. */
   size_t tasks_per_cell;
+
+  /* Average number of links per tasks. This number is used before
+     the splitting and creation of communications so needs to be large
+     enough. */
+  size_t links_per_tasks;
 
   /* Are we talkative ? */
   int verbose;
