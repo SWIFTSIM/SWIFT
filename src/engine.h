@@ -444,7 +444,7 @@ int engine_is_done(struct engine *e);
 void engine_pin(void);
 void engine_unpin(void);
 void engine_clean(struct engine *e);
-int engine_estimate_nr_tasks(struct engine *e);
+int engine_estimate_nr_tasks(const struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);
