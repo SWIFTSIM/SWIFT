@@ -1880,6 +1880,8 @@ void engine_print_task_counts(const struct engine *e) {
  */
 int engine_estimate_nr_tasks(const struct engine *e) {
 
+  const ticks tic = getticks();
+
   int tasks_per_cell = e->tasks_per_cell;
   if (tasks_per_cell > 0) return e->s->tot_cells * tasks_per_cell;
 
@@ -1989,6 +1991,13 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   if (e->verbose)
     message("tasks per cell estimated as: %d, maximum tasks: %d",
             tasks_per_cell, ncells * tasks_per_cell);
+
+  message("ncells=%d cells_above_diff_limit=%d", ncells,
+          e->s->nr_cells_above_grav_tasks_depth);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 
   return ncells * tasks_per_cell;
 }
