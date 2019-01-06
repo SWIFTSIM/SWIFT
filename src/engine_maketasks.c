@@ -2274,6 +2274,21 @@ void engine_maketasks(struct engine *e) {
   }
 #endif
 
+  /* Report the number of tasks we actually used */
+  if (e->verbose)
+    message(
+        "Nr. of tasks: %d allocated tasks: %d ratio: %f memory use: %zd MB.",
+        e->sched.nr_tasks, e->sched.size,
+        (float)e->sched.nr_tasks / (float)e->sched.size,
+        e->sched.size * sizeof(struct task) / (1024 * 1024));
+
+  /* Report the number of links we actually used */
+  if (e->verbose)
+    message(
+        "Nr. of links: %zd allocated links: %zd ratio: %f memory use: %zd MB.",
+        e->nr_links, e->size_links, (float)e->nr_links / (float)e->size_links,
+        e->size_links * sizeof(struct link) / (1024 * 1024));
+
   tic2 = getticks();
 
   /* Set the unlocks per task. */
