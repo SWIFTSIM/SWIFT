@@ -2068,20 +2068,6 @@ void engine_maketasks(struct engine *e) {
   if (e->sched.nr_tasks == 0 && (s->nr_gparts > 0 || s->nr_parts > 0))
     error("We have particles but no hydro or gravity tasks were created.");
 
-  /* Free the old list of cell-task links. */
-  if (e->links != NULL) free(e->links);
-  e->size_links = e->sched.nr_tasks * e->links_per_tasks;
-
-  /* Make sure that we have space for more links than last time. */
-  if (e->size_links < e->nr_links * engine_rebuild_link_alloc_margin)
-    e->size_links = e->nr_links * engine_rebuild_link_alloc_margin;
-
-  /* Allocate the new link list */
-  if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) ==
-      NULL)
-    error("Failed to allocate cell-task links.");
-  e->nr_links = 0;
-
   tic2 = getticks();
 
   /* Split the tasks. */
@@ -2098,6 +2084,20 @@ void engine_maketasks(struct engine *e) {
     if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
   }
 #endif
+
+  /* Free the old list of cell-task links. */
+  if (e->links != NULL) free(e->links);
+  e->size_links = e->sched.nr_tasks * e->links_per_tasks;
+
+  /* Make sure that we have space for more links than last time. */
+  if (e->size_links < e->nr_links * engine_rebuild_link_alloc_margin)
+    e->size_links = e->nr_links * engine_rebuild_link_alloc_margin;
+
+  /* Allocate the new link list */
+  if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) ==
+      NULL)
+    error("Failed to allocate cell-task links.");
+  e->nr_links = 0;
 
   tic2 = getticks();
 
