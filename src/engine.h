@@ -331,8 +331,7 @@ struct engine {
   size_t tasks_per_cell;
 
   /* Average number of links per tasks. This number is used before
-     the splitting and creation of communications so needs to be large
-     enough. */
+     the creation of communication tasks so needs to be large enough. */
   size_t links_per_tasks;
 
   /* Are we talkative ? */
