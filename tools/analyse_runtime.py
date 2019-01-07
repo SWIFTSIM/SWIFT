@@ -61,7 +61,7 @@ labels = [
     "engine_recompute_displacement_constraint:",
     "engine_exchange_top_multipoles:",
     "updating particle counts",
-    "engine_estimate_nr_tasks:"
+    "engine_estimate_nr_tasks:",
     "Making gravity tasks",
     "Making hydro tasks",
     "Splitting tasks",
