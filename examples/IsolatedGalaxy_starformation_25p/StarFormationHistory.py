@@ -3,7 +3,7 @@ import numpy as np
 import h5py
 import matplotlib.pyplot as plt
 
-snaps = 114 
+snaps = 30 
 
 SFH = np.zeros(snaps)
 
