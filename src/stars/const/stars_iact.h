@@ -28,6 +28,11 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
   const float hi_inv = 1.0f / hi;
   const float ui = r * hi_inv;
   kernel_deval(ui, &wi, &wi_dx);
+  
+  float wj, wj_dx;
+  const float hj_inv = 1.0f / hj;
+  const float uj = r * hj_inv;
+  kernel_deval(uj, &wj, &wj_dx);
 
   /* Compute contribution to the number of neighbours */
   si->density.wcount += wi;
@@ -38,7 +43,7 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
 
   /* Add contribution of pj to normalisation of kernel (IMPROVE COMMENT?) */
   // ALEXEI: ARE WE USING THE CORRECT DENSITY?
-  si->omega_normalisation_inv += wi / hydro_get_physical_density(pj,cosmo);
+  si->omega_normalisation_inv += wj / hydro_get_physical_density(pj,cosmo);
 
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
@@ -90,20 +95,26 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   const float total_energy_SNe = 1; // temporary placeholder. actual value 10^51 erg. need to convert to internal units.
   const float units_factor1 = 1.f, units_factor2 = 1.f;
 
-  float wi;
+  float wj;
 
   /* Get r and 1/r. */
   const float r_inv = 1.0f / sqrtf(r2);
   const float r = r2 * r_inv;
 
   /* Compute the kernel function */
-  const float hi_inv = 1.0f / hi;
-  const float ui = r * hi_inv;
-  kernel_eval(ui, &wi);
+  const float hj_inv = 1.0f / hj;
+  const float uj = r * hj_inv;
+  kernel_eval(uj, &wj);
 
   /* Compute weighting for distributing various properties (TODO: better comment?) */
   // ALEXEI: come up with better name for omega_frac?
-  float omega_frac = wi/hydro_get_physical_density(pj,cosmo)/si->omega_normalisation_inv;
+  float omega_frac = wj/hydro_get_physical_density(pj,cosmo)/si->omega_normalisation_inv;
+  if (si->id == 1) {
+    FILE *omega_frac_output = fopen("omega_frac_output.txt","a");
+    fprintf(omega_frac_output,"%.5e\n", omega_frac);
+    message("pid %llu omega frac %.5e wj %.5e density %.5e norm %.5e", pj->id, omega_frac, wj, hydro_get_physical_density(pj,cosmo),si->omega_normalisation_inv);
+    fclose(omega_frac_output);
+  }
 
   /* Update particle mass */
   float current_mass = hydro_get_mass(pj);
