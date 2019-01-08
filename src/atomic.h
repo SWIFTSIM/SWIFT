@@ -68,17 +68,9 @@ atomic_write_f(volatile float *const address, const float y) {
 
 __attribute__((always_inline)) INLINE static void
 atomic_write_c(volatile char *const address, const char y) {
-  int *const address_int = (int *)address;
 
-  typedef union {
-    char as_char;
-    int as_int;
-  } cast_type;
-
-  cast_type yy;
-  yy.as_char = y;
-
-  atomic_write(address_int, yy.as_int);
+  const char old_val = atomic_read(address);
+  __sync_bool_compare_and_swap(address, old_val, y);
 }
 
 __attribute__((always_inline)) INLINE static float
