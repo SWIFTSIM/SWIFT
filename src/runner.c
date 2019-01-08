@@ -515,7 +515,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         // const float rho = hydro_get_physical_density(p, cosmo);
         if (star_formation_convert_to_star(e, starform, p, xp, constants, cosmo,
-                                           hydro_props, us, cooling, dt_star)) {
+                                           hydro_props, us, cooling, dt_star, with_cosmology)) {
           /* Convert your particle to a star */
           struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
 

@@ -60,6 +60,9 @@ struct xpart {
   /* Additional data used by the tracers */
   struct tracers_xpart_data tracers_data;
 
+  /* SFR label */
+  float SFR;
+
 #ifdef WITH_LOGGER
   /* Additional data for the particle logger */
   struct logger_part_data logger_data;

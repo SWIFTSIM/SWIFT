@@ -200,12 +200,12 @@ INLINE static int star_formation_potential_to_become_star(
  */
 INLINE static int star_formation_convert_to_star(
     const struct engine* e, const struct star_formation* starform,
-    const struct part* restrict p, const struct xpart* restrict xp,
+    const struct part* restrict p, struct xpart* restrict xp,
     const struct phys_const* const phys_const, const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
     const struct cooling_function_data* restrict cooling,
-    const double dt_star) {
+    const double dt_star, const int with_cosmology) {
 
   if (dt_star == 0.f) return 0;
 
@@ -219,9 +219,14 @@ INLINE static int star_formation_convert_to_star(
                 starform->EOS_density_norm / phys_const->const_proton_mass,
             starform->polytropic_index);
 
+    /* Calculate the star formation rate */
+    const double SFRpergasmass = starform->SF_normalization *
+                                 pow(pressure, starform->SF_power_law);
+
+    xp->SFR = SFRpergasmass * p->mass;
+
     /* Calculate the propability of forming a star */
-    const double prop = starform->SF_normalization *
-                        pow(pressure, starform->SF_power_law) * dt_star;
+    const double prop = SFRpergasmass * dt_star;
 
     /* Calculate the seed */
     unsigned int seed = (p->id + e->ti_current) % 8191;
@@ -234,6 +239,15 @@ INLINE static int star_formation_convert_to_star(
 
     /* Calculate if we form a star */
     return (prop > randomnumber);
+  } 
+
+  /* Check if it is the first time steps after star formation */
+  if (xp->SFR>0.f) {
+    if (with_cosmology) {
+      xp->SFR = - cosmo->a;
+    } else {
+      xp->SFR = - e->time; 
+    }
   }
 
   return 0;
