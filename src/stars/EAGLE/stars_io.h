@@ -61,10 +61,10 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  /* Say how much we want to read */
-  *num_fields = 8;
+  /* Say how much we want to write */
+  *num_fields = 9;
 
-  /* List what we want to read */
+  /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
                                  sparts, x);
   list[1] =
@@ -81,7 +81,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  sparts, birth_density);
   list[7] = io_make_output_field("Initial_Masses", FLOAT, 1, UNIT_CONV_MASS,
                                  sparts, mass_init);
-  list[7] = io_make_output_field("Birth_time", FLOAT, 1, UNIT_CONV_TIME, sparts,
+  list[8] = io_make_output_field("Birth_time", FLOAT, 1, UNIT_CONV_TIME, sparts,
                                  birth_time);
 }
 
@@ -123,6 +123,9 @@ INLINE static void stars_props_init(struct stars_props *sp,
   /* Number of iterations to converge h */
   sp->max_smoothing_iterations = parser_get_opt_param_int(
       params, "Stars:max_ghost_iterations", p->max_smoothing_iterations);
+
+  /* Initialize with solar abundance */
+  // sp->chemistry_data.smoothed_metal_mass_fraction_total = 
 
   /* Time integration properties */
   const float max_volume_change =
