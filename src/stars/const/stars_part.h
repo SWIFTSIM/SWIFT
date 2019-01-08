@@ -53,6 +53,9 @@ struct spart {
   /*! Star mass */
   float mass;
 
+  /*! Initial star mass */
+  float mass_init;
+
   /* Particle cutoff radius. */
   float h;
 

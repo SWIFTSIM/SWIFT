@@ -27,7 +27,7 @@ T_i = 100.               # Initial temperature of the gas (in K)
 z_c = 1.                 # Redshift of caustic formation (non-linear collapse)
 z_i = 100.               # Initial redshift
 gamma = 5./3.            # Gas adiabatic index
-numPart_gas_1D = 32      # Number of particles along each dimension
+numPart_gas_1D = 16      # Number of particles along each dimension
 numPart_stars_1D = 1    # Number of particles along each dimension
 fileName = "stellar_evolution.hdf5"
 

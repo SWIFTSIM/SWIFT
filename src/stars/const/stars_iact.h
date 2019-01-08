@@ -42,7 +42,6 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
   si->ngb_mass += hydro_get_mass(pj);
 
   /* Add contribution of pj to normalisation of kernel (IMPROVE COMMENT?) */
-  // ALEXEI: ARE WE USING THE CORRECT DENSITY?
   si->omega_normalisation_inv += wj / hydro_get_physical_density(pj,cosmo);
 
 #ifdef DEBUG_INTERACTIONS_STARS
@@ -84,7 +83,7 @@ static inline void thermal_feedback(float d_energy, struct part * restrict p,
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
-                                  const struct spart *restrict si,
+                                  struct spart *restrict si,
                                   struct part *restrict pj, float a, float H,
 				  const struct cosmology *restrict cosmo,
 				  const struct stars_props *restrict stars_properties,
@@ -109,12 +108,6 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   /* Compute weighting for distributing various properties (TODO: better comment?) */
   // ALEXEI: come up with better name for omega_frac?
   float omega_frac = wj/hydro_get_physical_density(pj,cosmo)/si->omega_normalisation_inv;
-  if (si->id == 1) {
-    FILE *omega_frac_output = fopen("omega_frac_output.txt","a");
-    fprintf(omega_frac_output,"%.5e\n", omega_frac);
-    message("pid %llu omega frac %.5e wj %.5e density %.5e norm %.5e", pj->id, omega_frac, wj, hydro_get_physical_density(pj,cosmo),si->omega_normalisation_inv);
-    fclose(omega_frac_output);
-  }
 
   /* Update particle mass */
   float current_mass = hydro_get_mass(pj);
@@ -142,11 +135,8 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
     			       si->to_distribute.mass * omega_frac;
   pj->chemistry_data.iron_mass_fraction_from_SNIa = new_iron_from_SNIa_mass/new_mass;
 
-  /* Update mass fraction from SNIa (TODO: MAKE SURE IT REALLY IS A FRACTION) */
-  float current_mass_fraction_from_SNIa = pj->chemistry_data.mass_from_SNIa * current_mass;
-  float new_mass_fraction_from_SNIa = current_mass_fraction_from_SNIa + si->to_distribute.chemistry_data.mass_from_SNIa * 
-    			       si->to_distribute.mass * omega_frac;
-  pj->chemistry_data.mass_from_SNIa = new_mass_fraction_from_SNIa/new_mass;
+  /* Update mass from SNIa */
+  pj->chemistry_data.mass_from_SNIa += si->to_distribute.chemistry_data.mass_from_SNIa * omega_frac;
 
   /* Update metal mass fraction from SNIa */
   float current_metal_mass_fraction_from_SNIa = pj->chemistry_data.metal_mass_fraction_from_SNIa * current_mass;
@@ -154,11 +144,8 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
     			       si->to_distribute.mass * omega_frac;
   pj->chemistry_data.metal_mass_fraction_from_SNIa = new_metal_mass_fraction_from_SNIa/new_mass;
 
-  /* Update mass fraction from SNII (TODO: MAKE SURE IT REALLY IS A FRACTION) */
-  float current_mass_fraction_from_SNII = pj->chemistry_data.mass_from_SNII * current_mass;
-  float new_mass_fraction_from_SNII = current_mass_fraction_from_SNII + si->to_distribute.chemistry_data.mass_from_SNII * 
-    			       si->to_distribute.mass * omega_frac;
-  pj->chemistry_data.mass_from_SNII = new_mass_fraction_from_SNII/new_mass;
+  /* Update mass from SNII */
+  pj->chemistry_data.mass_from_SNII += si->to_distribute.chemistry_data.mass_from_SNII * omega_frac;
 
   /* Update metal mass fraction from SNII */
   float current_metal_mass_fraction_from_SNII = pj->chemistry_data.metal_mass_fraction_from_SNII * current_mass;
@@ -166,11 +153,8 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
     			       si->to_distribute.mass * omega_frac;
   pj->chemistry_data.metal_mass_fraction_from_SNII = new_metal_mass_fraction_from_SNII/new_mass;
 
-  /* Update mass fraction from AGB (TODO: MAKE SURE IT REALLY IS A FRACTION) */
-  float current_mass_fraction_from_AGB = pj->chemistry_data.mass_from_AGB * current_mass;
-  float new_mass_fraction_from_AGB = current_mass_fraction_from_AGB + si->to_distribute.chemistry_data.mass_from_AGB * 
-    			       si->to_distribute.mass * omega_frac;
-  pj->chemistry_data.mass_from_AGB = new_mass_fraction_from_AGB/new_mass;
+  /* Update mass from AGB */
+  pj->chemistry_data.mass_from_AGB += si->to_distribute.chemistry_data.mass_from_AGB * omega_frac;
 
   /* Update metal mass fraction from AGB */
   float current_metal_mass_fraction_from_AGB = pj->chemistry_data.metal_mass_fraction_from_AGB * current_mass;
@@ -217,7 +201,8 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   /* Add in continuous contribution (TEMPORARY COMMENT: from eagle_do_enrich in eagle_enrich.c) */
   thermal_feedback(d_specific_energy, pj, xp, cosmo);
 
-  // ALEXEI: should we also not decrease the mass and maybe internal energy of the star particle?
+  /* Decrease the mass of star particle (TO CHECK: WHAT ABOUT INTERNAL ENERGY?); */
+  si->mass -= si->to_distribute.mass;
 
 }
 

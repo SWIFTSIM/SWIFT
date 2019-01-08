@@ -34,7 +34,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                         int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 5;
+  *num_fields = 6;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -43,9 +43,13 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_SPEED, sparts, v);
   list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
                                 sparts, mass);
-  list[3] = io_make_input_field("ParticleIDs", LONGLONG, 1, COMPULSORY,
+  /* Temporary addition, discuss with Folkert what to do about initial mass
+   * when sparts are read from ICs. */
+  list[3] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
+                                sparts, mass_init);
+  list[4] = io_make_input_field("ParticleIDs", LONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, sparts, id);
-  list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
+  list[5] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_LENGTH, sparts, h);
 }
 
