@@ -375,6 +375,11 @@ void units_get_base_unit_exponants_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_LENGTH] = -3.f;
       break;
 
+    case UNIT_CONV_SFR:
+      baseUnitsExp[UNIT_MASS] = 1.f;
+      baseUnitsExp[UNIT_TIME] = -1.f;
+      break;
+
     default:
       error("Invalid choice of pre-defined units");
       break;

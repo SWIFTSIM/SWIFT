@@ -141,7 +141,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 10;
+  *num_fields = 11;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
@@ -168,6 +168,8 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
                                               UNIT_CONV_POTENTIAL, parts,
                                               xparts, convert_part_potential);
+
+  list[10] = io_make_output_field("SFR", FLOAT, 1, UNIT_CONV_SFR, xparts, SFR);
 
 #ifdef DEBUG_INTERACTIONS_SPH
 
