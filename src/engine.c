@@ -113,7 +113,8 @@ const char *engine_policy_names[] = {"none",
                                      "stars",
                                      "structure finding",
                                      "star formation",
-                                     "feedback"};
+                                     "feedback",
+                                     "time-step limiter"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -1908,6 +1909,10 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
 #endif
   }
+  if (e->policy & engine_policy_limiter) {
+    n1 += 18;
+    n2 += 1;
+  }
   if (e->policy & engine_policy_self_gravity) {
     n1 += 125;
     n2 += 8;
@@ -2586,8 +2591,11 @@ void engine_skip_force_and_kick(struct engine *e) {
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_timestep || t->subtype == task_subtype_force ||
-        t->subtype == task_subtype_grav || t->type == task_type_end_force ||
+        t->type == task_type_timestep ||
+        t->type == task_type_timestep_limiter ||
+        t->subtype == task_subtype_force ||
+        t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
+        t->type == task_type_end_force ||
         t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
         t->type == task_type_grav_down || t->type == task_type_cooling)
       t->skip = 1;
@@ -2595,6 +2603,7 @@ void engine_skip_force_and_kick(struct engine *e) {
 
   /* Run through the cells and clear some flags. */
   space_map_cells_pre(e->s, 1, cell_clear_drift_flags, NULL);
+  space_map_cells_pre(e->s, 1, cell_clear_limiter_flags, NULL);
 }
 
 /**
@@ -2802,6 +2811,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
     gravity_exact_force_check(e->s, e, 1e-1);
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure all woken-up particles have been processed */
+  space_check_limiter(e->s);
 #endif
 
   /* Recover the (integer) end of the next time-step */
@@ -3059,6 +3073,11 @@ void engine_step(struct engine *e) {
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
     gravity_exact_force_check(e->s, e, 1e-1);
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure all woken-up particles have been processed */
+  space_check_limiter(e->s);
 #endif
 
   /* Collect information about the next time-step */

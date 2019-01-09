@@ -268,6 +268,8 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
   io_write_attribute_f(h_grpsph, "Viscosity decay length [internal units]",
                        p->viscosity.length);
   io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
+  io_write_attribute_f(h_grpsph, "Max v_sig ratio (limiter)",
+                       const_limiter_max_v_sig_ratio);
 }
 #endif
 

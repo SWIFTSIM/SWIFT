@@ -763,6 +763,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
+  p->wakeup = time_bin_not_awake;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
@@ -802,4 +803,4 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
     const struct part *p, const struct xpart *xp) {}
 
-#endif /* SWIFT_MINIMAL_HYDRO_H */
+#endif /* SWIFT_PRESSURE_ENERGY_HYDRO_H */

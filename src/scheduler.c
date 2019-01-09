@@ -60,11 +60,42 @@
 void scheduler_clear_active(struct scheduler *s) { s->active_count = 0; }
 
 /**
+ * @brief Increase the space available for unlocks. Only call when
+ *        current index == s->size_unlock;
+ */
+static void scheduler_extend_unlocks(struct scheduler *s) {
+
+  /* Allocate the new buffer. */
+  const int size_unlocks_new = s->size_unlocks * 2;
+  struct task **unlocks_new =
+      (struct task **)malloc(sizeof(struct task *) * size_unlocks_new);
+  int *unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new);
+  if (unlocks_new == NULL || unlock_ind_new == NULL)
+    error("Failed to re-allocate unlocks.");
+
+  /* Wait for all writes to the old buffer to complete. */
+  while (s->completed_unlock_writes < s->size_unlocks)
+    ;
+
+  /* Copy the buffers. */
+  memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->size_unlocks);
+  memcpy(unlock_ind_new, s->unlock_ind, sizeof(int) * s->size_unlocks);
+  free(s->unlocks);
+  free(s->unlock_ind);
+  s->unlocks = unlocks_new;
+  s->unlock_ind = unlock_ind_new;
+
+  /* Publish the new buffer size. */
+  s->size_unlocks = size_unlocks_new;
+}
+
+/**
  * @brief Add an unlock_task to the given task.
  *
  * @param s The #scheduler.
  * @param ta The unlocking #task.
  * @param tb The #task that will be unlocked.
+
  */
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
@@ -77,36 +108,20 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   const int ind = atomic_inc(&s->nr_unlocks);
 
   /* Does the buffer need to be grown? */
-  if (ind == s->size_unlocks) {
-    /* Allocate the new buffer. */
-    struct task **unlocks_new;
-    int *unlock_ind_new;
-    const int size_unlocks_new = s->size_unlocks * 2;
-    if ((unlocks_new = (struct task **)malloc(sizeof(struct task *) *
-                                              size_unlocks_new)) == NULL ||
-        (unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new)) ==
-            NULL)
-      error("Failed to re-allocate unlocks.");
+  if (ind == s->size_unlocks) scheduler_extend_unlocks(s);
 
-    /* Wait for all writes to the old buffer to complete. */
-    while (s->completed_unlock_writes < ind)
-      ;
-
-    /* Copy the buffers. */
-    memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * ind);
-    memcpy(unlock_ind_new, s->unlock_ind, sizeof(int) * ind);
-    free(s->unlocks);
-    free(s->unlock_ind);
-    s->unlocks = unlocks_new;
-    s->unlock_ind = unlock_ind_new;
-
-    /* Publish the new buffer size. */
-    s->size_unlocks = size_unlocks_new;
-  }
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ind > s->size_unlocks * 2)
+    message("unlocks guard enabled: %d / %d", ind, s->size_unlocks);
+#endif
 
   /* Wait for there to actually be space at my index. */
   while (ind > s->size_unlocks)
     ;
+
+  /* Guard against case when more than (old) s->size_unlocks unlocks
+   * are now pending. */
+  if (ind == s->size_unlocks) scheduler_extend_unlocks(s);
 
   /* Write the unlock to the scheduler. */
   s->unlocks[ind] = tb;
@@ -115,7 +130,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 }
 
 /**
- * @brief compute the number of same dependencies
+ * @brief compute the number of similar dependencies
  *
  * @param s The #scheduler
  * @param ta The #task
@@ -513,7 +528,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   /* Be clean */
   free(task_dep);
 
-  if (verbose && s->nodeID == 0)
+  if (verbose)
     message("Printing task graph took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 }

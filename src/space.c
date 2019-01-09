@@ -189,6 +189,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.density = NULL;
     c->hydro.gradient = NULL;
     c->hydro.force = NULL;
+    c->hydro.limiter = NULL;
     c->grav.grav = NULL;
     c->grav.mm = NULL;
     c->hydro.dx_max_part = 0.0f;
@@ -223,12 +224,12 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
+    c->timestep_limiter = NULL;
     c->end_force = NULL;
     c->hydro.drift = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
     c->hydro.cooling = NULL;
-    c->sourceterms = NULL;
     c->grav.long_range = NULL;
     c->grav.down_in = NULL;
     c->grav.down = NULL;
@@ -244,6 +245,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.do_sub_sort = 0;
     c->grav.do_sub_drift = 0;
     c->hydro.do_sub_drift = 0;
+    c->hydro.do_sub_limiter = 0;
+    c->hydro.do_limiter = 0;
     c->hydro.ti_end_min = -1;
     c->hydro.ti_end_max = -1;
     c->grav.ti_end_min = -1;
@@ -272,12 +275,14 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.hydro.recv_gradient = NULL;
     c->mpi.grav.recv = NULL;
     c->mpi.recv_ti = NULL;
+    c->mpi.limiter.recv = NULL;
 
     c->mpi.hydro.send_xv = NULL;
     c->mpi.hydro.send_rho = NULL;
     c->mpi.hydro.send_gradient = NULL;
     c->mpi.grav.send = NULL;
     c->mpi.send_ti = NULL;
+    c->mpi.limiter.send = NULL;
 #endif
   }
 }
@@ -2707,6 +2712,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.do_sub_sort = 0;
       cp->grav.do_sub_drift = 0;
       cp->hydro.do_sub_drift = 0;
+      cp->hydro.do_sub_limiter = 0;
+      cp->hydro.do_limiter = 0;
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
@@ -4296,6 +4303,49 @@ void space_check_timesteps(struct space *s) {
   for (int i = 0; i < s->nr_cells; ++i) {
     cell_check_timesteps(&s->cells_top[i]);
   }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief #threadpool mapper function for the limiter debugging check
+ */
+void space_check_limiter_mapper(void *map_data, int nr_parts,
+                                void *extra_data) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Unpack the data */
+  struct part *restrict parts = (struct part *)map_data;
+
+  /* Verify that all limited particles have been treated */
+  for (int k = 0; k < nr_parts; k++) {
+
+    if (parts[k].time_bin == time_bin_inhibited) continue;
+
+    if (parts[k].wakeup == time_bin_awake)
+      error("Particle still woken up! id=%lld", parts[k].id);
+
+    if (parts[k].gpart != NULL)
+      if (parts[k].time_bin != parts[k].gpart->time_bin)
+        error("Gpart not on the same time-bin as part");
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief Checks that all particles have their wakeup flag in a correct state.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param s The #space to check.
+ */
+void space_check_limiter(struct space *s) {
+#ifdef SWIFT_DEBUG_CHECKS
+
+  threadpool_map(&s->e->threadpool, space_check_limiter_mapper, s->parts,
+                 s->nr_parts, sizeof(struct part), 1000, NULL);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
