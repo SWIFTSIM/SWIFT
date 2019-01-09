@@ -30,6 +30,8 @@ gas_gamma = sim["/HydroScheme"].attrs["Adiabatic index"][0]
 unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"]
 unit_mass_in_cgs = sim["/Units"].attrs["Unit mass in cgs (U_M)"]
 unit_time_in_cgs = sim["/Units"].attrs["Unit time in cgs (U_t)"]
+unit_vel_in_cgs = unit_length_in_cgs / unit_time_in_cgs
+unit_energy_in_cgs = unit_mass_in_cgs * unit_vel_in_cgs * unit_vel_in_cgs
 unit_length_in_si = 0.01 * unit_length_in_cgs
 unit_mass_in_si = 0.001 * unit_mass_in_cgs
 unit_time_in_si = unit_time_in_cgs
@@ -50,6 +52,7 @@ metal_mass_frac_from_SNIa = zeros((n_parts,n_snapshots))
 iron_mass_frac_from_SNIa = zeros((n_parts,n_snapshots))
 metallicity = zeros((n_parts,n_snapshots))
 abundances = zeros((n_parts,n_elements,n_snapshots))
+internal_energy = zeros((n_parts,n_snapshots))
 coord_parts = zeros((n_parts,3))
 coord_sparts = zeros(3)
 time = zeros(n_snapshots)
@@ -69,6 +72,7 @@ for i in range(n_snapshots):
 	mass_from_SNIa[:,i] = sim["/PartType0/TotalMassFromSNIa"]
 	metal_mass_frac_from_SNIa[:,i] = sim["/PartType0/MetalMassFracFromSNIa"]
 	iron_mass_frac_from_SNIa[:,i] = sim["/PartType0/IronMassFracFromSNIa"]
+	internal_energy[:,i] = sim["/PartType0/InternalEnergy"]
 	time[i] = sim["/Header"].attrs["Time"][0]
 
 # Define ejecta factor
@@ -76,6 +80,8 @@ ejecta_factor = 1.0e-2
 ejecta_factor_metallicity = 1.0 - 2.0/n_elements
 ejecta_factor_abundances = 1.0/n_elements
 ejected_mass = star_initial_mass
+SNIa_rate = 0.1
+energy_per_SNe = 1.0e51/unit_energy_in_cgs
 
 # Check that the total amount of enrichment is as expected.
 # Define tolerance
@@ -167,3 +173,12 @@ for i in range(n_elements):
 		print("total element mass released consistent with expectation for element "+str(i))
 	else:
 		print("total element mass "+str(total_element_mass[n_snapshots-1])+" expected "+ str(expected_element_mass) + " for element "+ str(i))
+
+# Continuous heating
+total_energy = np.sum(np.multiply(internal_energy,masses),axis = 1)
+total_energy_released = total_energy[n_snapshots-1] - total_energy[0]
+expected_energy_released = SNIa_rate*star_initial_mass*time[n_snapshots-1]*energy_per_SNe
+if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
+	print("total continuous energy release consistent with expectation")
+else:
+	print("total continuous energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released))

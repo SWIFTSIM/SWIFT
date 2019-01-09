@@ -80,8 +80,10 @@ struct spart {
   
     float ejecta_specific_thermal_energy;
 
+    /* Number of type 1a SNe per unit mass */
     float num_SNIa;
 
+    /* total mass of neighbouring gas particles (TODO: CHECK IF THIS IS DIFFERENT THAN ngb_mass DECLARED BELOW) */
     float ngb_mass;
 
   } to_distribute;
@@ -143,6 +145,7 @@ struct stars_props {
   float SNIa_energy_fraction;
   float deltaT_desired;
   float temp_to_u_factor;
+  float total_energy_SNe;
 
   float feedback_timescale;
 
