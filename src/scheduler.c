@@ -130,7 +130,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 }
 
 /**
- * @brief compute the number of same dependencies
+ * @brief compute the number of similar dependencies
  *
  * @param s The #scheduler
  * @param ta The #task
@@ -528,7 +528,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   /* Be clean */
   free(task_dep);
 
-  if (verbose && s->nodeID == 0)
+  if (verbose)
     message("Printing task graph took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 }

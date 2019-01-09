@@ -36,6 +36,7 @@
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "equation_of_state.h"  // For enum material_id
+#include "tracers_struct.h"
 
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
@@ -63,6 +64,9 @@ struct xpart {
 
   /*! Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
+
+  /* Additional data used by the tracers */
+  struct tracers_xpart_data tracers_data;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -172,6 +176,9 @@ struct part {
 
   /*! Time-step length */
   timebin_t time_bin;
+
+  /* Need waking-up ? */
+  char wakeup;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
