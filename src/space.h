@@ -159,9 +159,6 @@ struct space {
   /*! The indices of the top-level cells that have >0 particles (of any kind) */
   int *local_cells_with_particles_top;
 
-  /*! Number of cells above the depth diff. that permits gravity tasks */
-  int nr_cells_above_grav_tasks_depth;
-
   /*! The total number of #part in the space. */
   size_t nr_parts;
 

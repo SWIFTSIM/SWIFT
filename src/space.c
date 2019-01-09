@@ -1573,7 +1573,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* At this point, we have the upper-level cells. Now recursively split each
      cell to get the full AMR grid. */
-  s->nr_cells_above_grav_tasks_depth = 0;
   space_split(s, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2758,7 +2757,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
 
         /* Increase the depth */
-        maxdepth = max(maxdepth, cp->maxdepth);
+        if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
       }
     }
 
@@ -2986,10 +2985,6 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->stars.ti_end_min = ti_stars_end_min;
   c->stars.h_max = stars_h_max;
   c->maxdepth = maxdepth;
-
-  /* Are we above the depth difference where gravity tasks are allowed? */
-  if ((c->maxdepth - c->depth) > space_subdepth_diff_grav)
-    atomic_inc(&s->nr_cells_above_grav_tasks_depth);
 
   /* Set ownership according to the start of the parts array. */
   if (s->nr_parts > 0)
