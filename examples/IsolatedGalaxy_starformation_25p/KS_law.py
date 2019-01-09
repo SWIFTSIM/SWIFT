@@ -4,10 +4,11 @@ import h5py
 import matplotlib.pyplot as plt
 
 # for the moment only use a single snapshot
-i = 110
+i = 29 
 
 # Load the snapshot
-f = h5py.File('output_%04dcopy.hdf5'%i, 'r')
+#f = h5py.File('output_%04dcopy.hdf5'%i, 'r')
+f = h5py.File('output_%04d.hdf5'%i, 'r')
 
 # Load the stars
 starparticle = f['PartType4']
@@ -60,9 +61,10 @@ for i in range(1,len(r_array)):
     Sigmagas[i-1] = massGAS/area_loop
 
 # Put SF law in correct units
-SigmaSFR *= 1e10/1.10e8
+SigmaSFR *= 1e10/0.29e8
 Sigmagas *= 1e10/(1e3**2)
 SigmaSFR[SigmaSFR==0] = 1e-6
+print(Sigmagas)
 
 Sgas_array =np.logspace(-1,3,40) 
 Delta_Sgas = np.log10(Sgas_array[1]) - np.log10(Sgas_array[0])
@@ -90,7 +92,7 @@ print(SigmaSFR_avg)
 print(Sigmagas_avg)
 
 # Put SF law in correct units
-SigmaSFR_avg *= 1e10/1.10e8
+SigmaSFR_avg *= 1e10/0.29e8
 Sigmagas_avg *= 1e10/(1e6)
 SigmaSFR_avg[SigmaSFR_avg==0]=1e-6
 
@@ -106,7 +108,7 @@ ncrit = 10 # M_sun /pc^2
 
 # plot SF law
 plt.loglog(Sigmagas,SigmaSFR,'o',label='Data')
-plt.loglog(Sigmagas_avg,SigmaSFR_avg,'or',label='binned Data')
+#plt.loglog(Sigmagas_avg,SigmaSFR_avg,'o',label='binned Data')
 plt.loglog(Sigmagaslaw, SigmaSFRlaw,'r-.',label='KS law')
 #plt.loglog(np.logspace(-1,3,40),1e-5*np.ones(40),'o')
 plt.axvline(x=10,linestyle='--', color='r',label='$\Sigma_c = 10$')
