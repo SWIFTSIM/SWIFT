@@ -340,6 +340,7 @@ void task_unlock(struct task *t) {
 
     case task_type_drift_part:
     case task_type_sort:
+    case task_type_ghost:
     case task_type_timestep_limiter:
       cell_unlocktree(ci);
       break;
@@ -466,6 +467,7 @@ int task_lock(struct task *t) {
 
     case task_type_drift_part:
     case task_type_sort:
+    case task_type_ghost:
     case task_type_timestep_limiter:
       if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
