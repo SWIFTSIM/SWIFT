@@ -1221,13 +1221,18 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_ghost(r, c->progeny[k], 0);
   } else {
 
-    /* Init the list of active particles that have to be updated. */
+    /* Init the list of active particles that have to be updated and their
+     * current smoothing lengths. */
     int *pid = NULL;
+    float *h_0 = NULL;
     if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
       error("Can't allocate memory for pid.");
+    if ((h_0 = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
+      error("Can't allocate memory for h_0.");
     for (int k = 0; k < c->hydro.count; k++)
       if (part_is_active(&parts[k], e)) {
         pid[count] = k;
+        h_0[count] = parts[k].h;
         ++count;
       }
 
@@ -1251,6 +1256,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
         /* Get some useful values */
+        const float h_init = h_0[i];
         const float h_old = p->h;
         const float h_old_dim = pow_dimension(h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
@@ -1341,6 +1347,15 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Avoid floating point exception from f_prime = 0 */
           h_new = h_old - f / (f_prime + FLT_MIN);
 
+          /* Be verbose about the particles that struggle to converve */
+          if (num_reruns > max_smoothing_iter - 10) {
+
+            message(
+                "iter=%d p->id=%lld h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                "n_sum=%f n_target=%f",
+                num_reruns, p->id, h_old, h_new, f, f_prime, n_sum, n_target);
+          }
+
 #ifdef SWIFT_DEBUG_CHECKS
           if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
             error(
@@ -1353,7 +1368,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Check whether the particle has an inappropriate smoothing length */
-        if (fabsf(h_new - h_old) > eps * h_old) {
+        if (fabsf(h_new - h_old) > eps * h_init) {
 
           /* Ok, correct then */
           p->h = h_new;
@@ -1363,6 +1378,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Flag for another round of fun */
             pid[redo] = pid[i];
+            h_0[redo] = h_0[i];
             redo += 1;
 
             /* Re-initialise everything */
@@ -1494,6 +1510,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
     /* Be clean */
     free(pid);
+    free(h_0);
   }
 
   if (timer) TIMER_TOC(timer_do_ghost);
