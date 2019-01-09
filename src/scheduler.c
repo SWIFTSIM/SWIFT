@@ -67,8 +67,8 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
 
   /* Allocate the new buffer. */
   const int size_unlocks_new = s->size_unlocks * 2;
-  struct task **unlocks_new = (struct task **)malloc(sizeof(struct task *) *
-                                                     size_unlocks_new);
+  struct task **unlocks_new =
+      (struct task **)malloc(sizeof(struct task *) * size_unlocks_new);
   int *unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new);
   if (unlocks_new == NULL || unlock_ind_new == NULL)
     error("Failed to re-allocate unlocks.");
