@@ -119,7 +119,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   while (ind > s->size_unlocks)
     ;
 
-  /* Guard against case when more than s->size_unlocks * 2 unlocks
+  /* Guard against case when more than (old) s->size_unlocks unlocks
    * are now pending. */
   if (ind == s->size_unlocks) scheduler_extend_unlocks(s);
 
