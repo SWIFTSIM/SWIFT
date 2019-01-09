@@ -985,8 +985,7 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 }
 /**
  * @brief Have star particles in a pair of cells moved too much and require a
- * rebuild
- * ?
+ * rebuild?
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
