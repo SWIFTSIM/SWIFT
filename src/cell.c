@@ -1804,19 +1804,18 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 
   if (c == c->super) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->stars.sorts_local == NULL && c->stars.sorts_foreign == NULL)
+    if ((c->nodeID == engine_rank && c->stars.sorts_local == NULL) ||
+        (c->nodeID != engine_rank && c->stars.sorts_foreign == NULL))
       error("Trying to activate un-existing c->stars.sorts");
 #endif
-    if (c->stars.sorts_local) {
+    if (c->nodeID == engine_rank) {
       scheduler_activate(s, c->stars.sorts_local);
-    }
-    if (c->stars.sorts_foreign) {
-      scheduler_activate(s, c->stars.sorts_foreign);
-    }
-    if (c->stars.sorts_local) {
       // MATTHIEU: to do: do we actually need both drifts here?
       cell_activate_drift_part(c, s);
       cell_activate_drift_spart(c, s);
+    }
+    if (c->nodeID != engine_rank) {
+      scheduler_activate(s, c->stars.sorts_foreign);
     }
   } else {
 
@@ -1826,19 +1825,17 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
       parent->stars.do_sub_sort = 1;
       if (parent == c->super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if (parent->stars.sorts_local == NULL &&
-            parent->stars.sorts_foreign == NULL)
+        if ((c->nodeID == engine_rank && parent->stars.sorts_local == NULL) ||
+            (c->nodeID != engine_rank && parent->stars.sorts_foreign == NULL))
           error("Trying to activate un-existing parents->stars.sorts");
 #endif
-        if (parent->stars.sorts_local) {
+        if (c->nodeID == engine_rank) {
           scheduler_activate(s, parent->stars.sorts_local);
-        }
-        if (parent->stars.sorts_foreign) {
-          scheduler_activate(s, parent->stars.sorts_foreign);
-        }
-        if (parent->stars.sorts_local) {
           cell_activate_drift_part(parent, s);
           cell_activate_drift_spart(parent, s);
+        }
+        if (c->nodeID != engine_rank) {
+          scheduler_activate(s, parent->stars.sorts_foreign);
         }
         break;
       }
