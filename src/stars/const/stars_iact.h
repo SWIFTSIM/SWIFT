@@ -169,21 +169,19 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   /* Update momentum */
   for (int i = 0; i < 3; i++) {
     // Do we need to calculate relative velocities here?
-    //pj->v[i] += si->to_distribute.mass * omega_frac * si->v[i];
+    pj->v[i] += si->to_distribute.mass * omega_frac * si->v[i];
   }
 
   /* Energy feedback */
   float heating_probability = -1.f, du = 0.f, d_energy = 0.f;
-  // Temporarily commented out for testing
-  //float d_energy = si->to_distribute.mass * (si->to_distribute.ejecta_specific_thermal_energy 
-  //   + 0.5*(si->v[0]*si->v[0] + si->v[1]*si->v[1] + si->v[2]*si->v[2]) * cosmo->a2_inv);
+  d_energy = si->to_distribute.mass * (si->to_distribute.ejecta_specific_thermal_energy 
+     + 0.5*(si->v[0]*si->v[0] + si->v[1]*si->v[1] + si->v[2]*si->v[2]) * cosmo->a2_inv);
 
   if (stars_properties->continuous_heating) {
     // We're doing ONLY continuous heating 
-    d_energy = si->to_distribute.num_SNIa * stars_properties->total_energy_SNe * omega_frac * si->mass_init;
+    d_energy += si->to_distribute.num_SNIa * stars_properties->total_energy_SNe * omega_frac * si->mass_init;
     du = d_energy/hydro_get_mass(pj);
     thermal_feedback(du,pj,xp,cosmo);
-    hydro_set_physical_internal_energy_dt(pj,cosmo,0);
   } else {
     // We're doing stochastic heating
     heating_probability = units_factor1 * si->to_distribute.num_SNIa *

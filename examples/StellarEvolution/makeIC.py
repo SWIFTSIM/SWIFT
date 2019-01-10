@@ -23,11 +23,9 @@ from numpy import *
 # Generates a swift IC file for the 1D Zeldovich pancake
 
 # Parameters
-T_i = 100.               # Initial temperature of the gas (in K)
-z_c = 1.                 # Redshift of caustic formation (non-linear collapse)
-z_i = 100.               # Initial redshift
+T_i = 1.e4               # Initial temperature of the gas (in K)
 gamma = 5./3.            # Gas adiabatic index
-numPart_gas_1D = 16      # Number of particles along each dimension
+numPart_gas_1D = 24      # Number of particles along each dimension
 numPart_stars_1D = 1    # Number of particles along each dimension
 fileName = "stellar_evolution.hdf5"
 
@@ -43,11 +41,15 @@ kB_in_SI = 1.38064852e-23
 G_in_SI = 6.67408e-11
 
 # Some useful variables in h-full units
-H_0 = 1. / Mpc_in_m * 10**5 # h s^-1
-rho_0 = 3. * H_0**2 / (8* math.pi * G_in_SI) # h^2 kg m^-3
-lambda_i = 64. / H_0 * 10**5 # h^-1 m (= 64 h^-1 Mpc)
-x_min = -0.5 * lambda_i
-x_max = 0.5 * lambda_i
+#H_0 = 1. / Mpc_in_m * 10**5 # h s^-1
+#rho_0 = 3. * H_0**2 / (8* math.pi * G_in_SI) # h^2 kg m^-3
+#lambda_i = 64. / H_0 * 10**5 # h^-1 m (= 64 h^-1 Mpc)
+#x_min = -0.5 * lambda_i
+#x_max = 0.5 * lambda_i
+
+x_min = -0.5 * Mpc_in_m * 3.2e-3
+x_max = 0.5 * Mpc_in_m * 3.2e-3
+rho_0 = mH_in_kg * 1.e6
 
 # SI system of units
 unit_l_in_si = Mpc_in_m
@@ -63,7 +65,7 @@ numPart_stars = numPart_stars_1D**3
 #---------------------------------------------------
 
 # Get the frequency of the initial perturbation
-k_i = 2. * pi / lambda_i
+#k_i = 2. * pi / lambda_i
 
 # Set box size and interparticle distance
 boxSize = x_max - x_min
@@ -71,6 +73,7 @@ delta_x = boxSize / numPart_gas_1D
 
 # Set the particle mass
 m_i = boxSize**3 * rho_0 / (numPart_gas + numPart_stars)
+print(m_i/Msol_in_kg)
 
 # Build the arrays
 coords = zeros((numPart_gas, 3))
@@ -91,7 +94,7 @@ for i in range(numPart_gas_1D):
   for j in range(numPart_gas_1D):
     for k in range(numPart_gas_1D):
       index = i * numPart_gas_1D**2 + j * numPart_gas_1D + k
-      q = x_min + (i + 0.5) * delta_x
+      #q = x_min + (i + 0.5) * delta_x
       coords[index,0] = random.sample()*boxSize + x_min
       coords[index,1] = random.sample()*boxSize + x_min
       coords[index,2] = random.sample()*boxSize + x_min
@@ -106,7 +109,7 @@ for i in range(numPart_stars_1D):
   for j in range(numPart_stars_1D):
     for k in range(numPart_stars_1D):
       index = i * numPart_stars_1D**2 + j * numPart_stars_1D + k
-      q = x_min + (i + 0.5) * delta_x
+      #q = x_min + (i + 0.5) * delta_x
       if numPart_stars_1D > 1:
       	star_coords[index,0] = random.sample()*boxSize + x_min
       	star_coords[index,1] = random.sample()*boxSize + x_min

@@ -54,6 +54,7 @@ metallicity = zeros((n_parts,n_snapshots))
 abundances = zeros((n_parts,n_elements,n_snapshots))
 internal_energy = zeros((n_parts,n_snapshots))
 coord_parts = zeros((n_parts,3))
+velocity_parts = zeros((n_parts,3,n_snapshots))
 coord_sparts = zeros(3)
 time = zeros(n_snapshots)
 
@@ -73,6 +74,7 @@ for i in range(n_snapshots):
 	metal_mass_frac_from_SNIa[:,i] = sim["/PartType0/MetalMassFracFromSNIa"]
 	iron_mass_frac_from_SNIa[:,i] = sim["/PartType0/IronMassFracFromSNIa"]
 	internal_energy[:,i] = sim["/PartType0/InternalEnergy"]
+	velocity_parts[:,:,i] = sim["/PartType0/Velocities"]
 	time[i] = sim["/Header"].attrs["Time"][0]
 
 # Define ejecta factor
@@ -80,7 +82,8 @@ ejecta_factor = 1.0e-2
 ejecta_factor_metallicity = 1.0 - 2.0/n_elements
 ejecta_factor_abundances = 1.0/n_elements
 ejected_mass = star_initial_mass
-SNIa_rate = 0.1
+#SNIa_rate = 0.1
+SNIa_rate = 1.0e11
 energy_per_SNe = 1.0e51/unit_energy_in_cgs
 
 # Check that the total amount of enrichment is as expected.
@@ -175,10 +178,13 @@ for i in range(n_elements):
 		print("total element mass "+str(total_element_mass[n_snapshots-1])+" expected "+ str(expected_element_mass) + " for element "+ str(i))
 
 # Continuous heating
-total_energy = np.sum(np.multiply(internal_energy,masses),axis = 1)
-total_energy_released = total_energy[n_snapshots-1] - total_energy[0]
+vel2 = zeros((n_parts,n_snapshots))
+vel2[:,:] = velocity_parts[:,0,:]*velocity_parts[:,0,:] + velocity_parts[:,1,:]*velocity_parts[:,1,:] + velocity_parts[:,2,:]*velocity_parts[:,2,:]
+total_kinetic_energy = np.sum(np.multiply(vel2,masses)*0.5,axis = 0)
+total_energy = np.sum(np.multiply(internal_energy,masses),axis = 0)
+total_energy_released = total_energy[n_snapshots-1] - total_energy[0] + total_kinetic_energy[n_snapshots-1] - total_kinetic_energy[0]
 expected_energy_released = SNIa_rate*star_initial_mass*time[n_snapshots-1]*energy_per_SNe
 if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
 	print("total continuous energy release consistent with expectation")
 else:
-	print("total continuous energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released))
+	print("total continuous energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))
