@@ -1206,14 +1206,22 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
      * current smoothing lengths. */
     int *pid = NULL;
     float *h_0 = NULL;
+    float *left = NULL;
+    float *right = NULL;
     if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
       error("Can't allocate memory for pid.");
     if ((h_0 = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
       error("Can't allocate memory for h_0.");
+    if ((left = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
+      error("Can't allocate memory for left.");
+    if ((right = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
+      error("Can't allocate memory for right.");
     for (int k = 0; k < c->hydro.count; k++)
       if (part_is_active(&parts[k], e)) {
         pid[count] = k;
         h_0[count] = parts[k].h;
+        left[count] = 0.f;
+        right[count] = hydro_h_max;
         ++count;
       }
 
@@ -1265,6 +1273,16 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           const float f_prime =
               p->density.wcount_dh * h_old_dim +
               hydro_dimension * p->density.wcount * h_old_dim_minus_one;
+
+          /* Improve the bisection bounds */
+          if (n_sum < n_target) left[i] = max(left[i], h_old);
+          if (n_sum > n_target) right[i] = min(right[i], h_old);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Check the validity of the left and right bounds */
+          if (left[i] > right[i])
+            error("Invalid left (%e) and right (%e)", left[i], right[i]);
+#endif
 
           /* Skip if h is already h_max and we don't have enough neighbours */
           if ((p->h >= hydro_h_max) && (f < 0.f)) {
@@ -1328,13 +1346,15 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Avoid floating point exception from f_prime = 0 */
           h_new = h_old - f / (f_prime + FLT_MIN);
 
-          /* Be verbose about the particles that struggle to converve */
+          /* Be verbose about the particles that struggle to converge */
           if (num_reruns > max_smoothing_iter - 10) {
 
             message(
-                "iter=%d p->id=%lld h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
-                "n_sum=%f n_target=%f",
-                num_reruns, p->id, h_old, h_new, f, f_prime, n_sum, n_target);
+                "Smoothing length convergence problem: iter=%d p->id=%lld "
+                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                num_reruns, p->id, h_init, h_old, h_new, f, f_prime, n_sum,
+                n_target, left[i], right[i]);
           }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1346,13 +1366,30 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
           h_new = min(h_new, 2.f * h_old);
           h_new = max(h_new, 0.5f * h_old);
+
+          /* Verify that we are actually progrssing towards the answer */
+          h_new = max(h_new, left[i]);
+          h_new = min(h_new, right[i]);
         }
 
         /* Check whether the particle has an inappropriate smoothing length */
         if (fabsf(h_new - h_old) > eps * h_init) {
 
           /* Ok, correct then */
-          p->h = h_new;
+
+          /* Case where we have been oscillating around the solution */
+          if ((h_new == left[i] && h_old == right[i]) ||
+              (h_old == left[i] && h_new == right[i])) {
+
+            /* Bissect the remaining interval */
+            p->h = pow_inv_dimension(
+                0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
+
+          } else {
+
+            /* Normal case */
+            p->h = h_new;
+          }
 
           /* If below the absolute maximum, try again */
           if (p->h < hydro_h_max) {
@@ -1360,6 +1397,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Flag for another round of fun */
             pid[redo] = pid[i];
             h_0[redo] = h_0[i];
+            left[redo] = left[i];
+            right[redo] = right[i];
             redo += 1;
 
             /* Re-initialise everything */
