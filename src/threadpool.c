@@ -34,7 +34,6 @@
 #include "threadpool.h"
 
 /* Local headers. */
-#include "atomic.h"
 #include "clocks.h"
 #include "error.h"
 #include "minmax.h"

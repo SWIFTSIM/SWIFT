@@ -174,7 +174,6 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   } else {
     if (lock_trylock(qlock) != 0) return NULL;
   }
-
   /* Fill any tasks from the incoming DEQ. */
   queue_get_incoming(q);
 
@@ -291,7 +290,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
           error( "Queue heap is disordered." ); */
 
   /* Release the task lock. */
-  if (lock_unlock(qlock) != 0) error("Unlocking the qlock failed.\n");
+  if (lock_unlock(qlock) != 0) error("Unlocking the qlock failed.");
 
   /* Take the money and run. */
   return res;

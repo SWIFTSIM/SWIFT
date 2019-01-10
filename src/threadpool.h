@@ -28,6 +28,7 @@
 /* Local includes. */
 #include "barrier.h"
 #include "cycle.h"
+#include "atomic.h"
 
 /* Local defines. */
 #define threadpool_log_initial_size 1000

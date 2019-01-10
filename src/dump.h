@@ -21,6 +21,7 @@
 
 /* Config parameters. */
 #include "../config.h"
+#include "atomic.h"
 
 #ifdef HAVE_POSIX_FALLOCATE /* Are we on a sensible platform? */
 

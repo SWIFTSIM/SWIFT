@@ -52,12 +52,22 @@
 #define lock_init(l) (*(l) = 0)
 #define lock_destroy(l) 0
 INLINE static int lock_lock(atomic_int *l) {
-  while (atomic_cas(l, 0, 1) != 0)
+  while (atomic_cas(l, 0, 1))
     ;
   return 0;
 }
-#define lock_trylock(l) ((atomic_read(l)) ? 1 : atomic_cas(l, 0, 1))
-#define lock_unlock(l) (atomic_cas(l, 1, 0))
+INLINE static int lock_trylock(atomic_int *l) {
+  if(atomic_cas(l, 0, 1)){
+    return 0;
+  }
+  return 1;
+}
+INLINE static int lock_unlock(atomic_int *l){
+  if(atomic_cas(l, 1, 0)){
+    return 0;
+  }
+  return 1;
+}
 #define lock_unlock_blind(l) atomic_cas(l, 1, 0)
 #define lock_static_initializer 0
 #endif

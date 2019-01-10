@@ -75,7 +75,7 @@
 extern int engine_star_resort_task_depth;
 
 /* Global variables. */
-int cell_next_tag = 0;
+atomic_int cell_next_tag = 0;
 
 /** List of cell pairs for sub-cell recursion. For any sid, the entries in
  * this array contain the number of sub-cell pairs and the indices and sid

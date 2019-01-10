@@ -26,6 +26,9 @@
   #endif
 #endif
 
+#include <stdlib.h>
+#include <stdint.h>
+
 /* Config parameters. */
 #include "../config.h"
 
@@ -259,6 +262,7 @@ typedef float atomic_float;
 #define atomic_inc(v) atomic_add(v, 1)
 #define atomic_dec(v) atomic_sub(v, 1)
 #define atomic_cas(v, o, n) __sync_bool_compare_and_swap(v, o, n)
+#define atomic_vcas(v, o, n) __sync_val_compare_and_swap(v, o, n)
 #define atomic_swap(v, n) __sync_lock_test_and_set(v, n)
 #define atomic_read(v) __sync_val_compare_and_swap(v, 0, 0)
 
@@ -350,12 +354,16 @@ atomic_min_f(volatile float *const address, const float y) {
     int as_int;
   } cast_type;
 
+<<<<<<< HEAD
   cast_type test_val, old_val, new_val;
   old_val.as_float = atomic_read_f(address);
+=======
+  cast_type test_val/*, old_val*/, new_val;
+>>>>>>> Fix issues with locks not working when not using Pthread locks when using boolean returning CAS. Also fixes the floating point atomic operations for GNU99, but not C11. Still crashes with many threads unsure why
 
   do {
-    test_val.as_int = old_val.as_int;
-    new_val.as_float = min(old_val.as_float, y);
+    test_val.as_int = atomic_load(int_ptr);
+    new_val.as_float = min(test_val.as_float, y);
   } while (!atomic_cas(int_ptr, test_val.as_int, new_val.as_int));
 }
 
@@ -435,12 +443,16 @@ atomic_max_f(volatile float *const address, const float y) {
     int as_int;
   } cast_type;
 
+<<<<<<< HEAD
   cast_type test_val, old_val, new_val;
   old_val.as_float = atomic_read_f(address);
+=======
+  cast_type test_val/*, old_val*/, new_val;
+>>>>>>> Fix issues with locks not working when not using Pthread locks when using boolean returning CAS. Also fixes the floating point atomic operations for GNU99, but not C11. Still crashes with many threads unsure why
 
   do {
-    test_val.as_int = old_val.as_int;
-    new_val.as_float = max(old_val.as_float, y);
+    test_val.as_int = atomic_load(int_ptr);
+    new_val.as_float = max(test_val.as_float, y);
   } while (!atomic_cas(int_ptr, test_val.as_int, new_val.as_int));
 }
 
@@ -497,12 +509,17 @@ atomic_add_f(volatile float *const address, const float y) {
     int as_int;
   } cast_type;
 
+<<<<<<< HEAD
   cast_type test_val, old_val, new_val;
   old_val.as_float = atomic_read_f(address);
+=======
+  cast_type test_val, /*old_val,*/ new_val;
+//  old_val.as_float = *address;
+>>>>>>> Fix issues with locks not working when not using Pthread locks when using boolean returning CAS. Also fixes the floating point atomic operations for GNU99, but not C11. Still crashes with many threads unsure why
 
   do {
-    test_val.as_int = old_val.as_int;
-    new_val.as_float = old_val.as_float + y;
+    test_val.as_int = atomic_load(int_ptr);
+    new_val.as_float = test_val.as_float + y;
   } while ( !atomic_cas(int_ptr, test_val.as_int, new_val.as_int));
 }
 
@@ -527,12 +544,12 @@ atomic_add_d(volatile double *const address, const double y) {
     long long as_long_long;
   } cast_type;
 
-  cast_type test_val, old_val, new_val;
-  old_val.as_double = *address;
+  cast_type test_val/*, old_val*/, new_val;
+//  old_val.as_double = *address;
 
   do {
-    test_val.as_long_long = old_val.as_long_long;
-    new_val.as_double = old_val.as_double + y;
+    test_val.as_long_long = atomic_load(long_long_ptr);
+    new_val.as_double = test_val.as_double + y;
   } while ( !atomic_cas(long_long_ptr, test_val.as_long_long, new_val.as_long_long));
 }
 #endif
