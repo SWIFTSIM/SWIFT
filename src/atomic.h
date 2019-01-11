@@ -46,6 +46,7 @@
 #define atomic_or(v, i) atomic_fetch_or(v, i)
 #define atomic_inc(v) atomic_fetch_add(v, 1)
 #define atomic_dec(v) atomic_fetch_sub(v, 1)
+#define atomic_cas_fast(o, e, d) atomic_compare_exchange_weak(o, e, d)
 #define
 #ifdef SWIFT_MODERN_ATOMICS
 typedef _Atomic(float) atomic_float;
@@ -109,7 +110,7 @@ static void atomic_min_f( atomic_float *obj, float const y){
   do{
     test_val = atomic_load(obj);
     new_val = fmin(test_val, y);
-  }while(!atomic_cas( obj, &test_val, new_val));
+  }while(!atomic_cas_fast( obj, &test_val, new_val));
 
 }
 #else
@@ -152,7 +153,7 @@ static void atomic_max_f( atomic_float *obj, float const y){
   do{
     test_val = atomic_load(obj);
     new_val = fmax(test_val, y);
-  }while(!atomic_cas(obj, &test_val, new_val));
+  }while(!atomic_cas_fast(obj, &test_val, new_val));
 
 }
 #else
