@@ -47,6 +47,9 @@
 #define atomic_inc(v) atomic_fetch_add(v, 1)
 #define atomic_dec(v) atomic_fetch_sub(v, 1)
 #define atomic_cas_fast(o, e, d) atomic_compare_exchange_weak(o, e, d)
+#define atomic_write(o, v) atomic_store(o, v)
+#define atomic_write_u(o, v) atomic_store(o, v)
+#define atomic_write_c(o, v) atomic_store(o, v)
 #define
 #ifdef SWIFT_MODERN_ATOMICS
 typedef _Atomic(float) atomic_float;
@@ -259,21 +262,31 @@ typedef float atomic_float;
 #define atomic_cas(v, o, n) __sync_bool_compare_and_swap(v, o, n)
 #define atomic_vcas(v, o, n) __sync_val_compare_and_swap(v, o, n)
 #define atomic_swap(v, n) __sync_lock_test_and_set(v, n)
-#define atomic_read(v) __sync_val_compare_and_swap(v, 0, 0)
+#define atomic_load(v) __sync_val_compare_and_swap(v, 0, 0)
 
 __attribute__((always_inline)) INLINE static void
 atomic_write(volatile int *const address, const int y) {
 
   /* MATTHIEU: To be improved */
-  const int old_val = atomic_read(address);
+  const int old_val = atomic_load(address);
   __sync_bool_compare_and_swap(address, old_val, y);
+  /* If true atomic write is needed:
+   * while( ! __sync_bool_compare_and_swap(address, old_val, y){
+   *   old_val = atomic_load(address);
+   * }
+   * */
 }
 
 __attribute__((always_inline)) INLINE static void
 atomic_write_u(volatile unsigned int *const address, const unsigned int y) {
 
-  const unsigned int old_val = atomic_read(address);
+  const unsigned int old_val = atomic_load(address);
   __sync_bool_compare_and_swap(address, old_val, y);
+  /* If true atomic write is needed:
+   * while( ! __sync_bool_compare_and_swap(address, old_val, y){
+   *   old_val = atomic_load(address);
+   * }
+   * */
 }
 
 __attribute__((always_inline)) INLINE static void
@@ -294,12 +307,17 @@ atomic_write_f(volatile float *const address, const float y) {
 __attribute__((always_inline)) INLINE static void
 atomic_write_c(volatile char *const address, const char y) {
 
-  const char old_val = atomic_read(address);
+  const char old_val = atomic_load(address);
   __sync_bool_compare_and_swap(address, old_val, y);
+  /* If true atomic write is needed:
+   * while( ! __sync_bool_compare_and_swap(address, old_val, y){
+   *   old_val = atomic_load(address);
+   * }
+   * */
 }
 
 __attribute__((always_inline)) INLINE static float
-atomic_read_f(const volatile float *const address) {
+atomic_load_f(const volatile float *const address) {
 
   int *const address_int = (int *)address;
 
@@ -309,12 +327,12 @@ atomic_read_f(const volatile float *const address) {
   } cast_type;
 
   cast_type ret;
-  ret.as_int = atomic_read(address_int);
+  ret.as_int = atomic_load(address_int);
   return ret.as_float;
 }
 
 __attribute__((always_inline)) INLINE static unsigned int
-atomic_read_u(const volatile unsigned int *const address) {
+atomic_load_u(const volatile unsigned int *const address) {
 
   int *const address_int = (int *)address;
 
@@ -324,7 +342,7 @@ atomic_read_u(const volatile unsigned int *const address) {
   } cast_type;
 
   cast_type ret;
-  ret.as_int = atomic_read(address_int);
+  ret.as_int = atomic_load(address_int);
   return ret.as_uint;
 }
 
@@ -351,7 +369,7 @@ atomic_min_f(volatile float *const address, const float y) {
 
 <<<<<<< HEAD
   cast_type test_val, old_val, new_val;
-  old_val.as_float = atomic_read_f(address);
+  old_val.as_float = atomic_load_f(address);
 =======
   cast_type test_val/*, old_val*/, new_val;
 >>>>>>> Fix issues with locks not working when not using Pthread locks when using boolean returning CAS. Also fixes the floating point atomic operations for GNU99, but not C11. Still crashes with many threads unsure why
@@ -440,7 +458,7 @@ atomic_max_f(volatile float *const address, const float y) {
 
 <<<<<<< HEAD
   cast_type test_val, old_val, new_val;
-  old_val.as_float = atomic_read_f(address);
+  old_val.as_float = atomic_load_f(address);
 =======
   cast_type test_val/*, old_val*/, new_val;
 >>>>>>> Fix issues with locks not working when not using Pthread locks when using boolean returning CAS. Also fixes the floating point atomic operations for GNU99, but not C11. Still crashes with many threads unsure why
@@ -506,7 +524,7 @@ atomic_add_f(volatile float *const address, const float y) {
 
 <<<<<<< HEAD
   cast_type test_val, old_val, new_val;
-  old_val.as_float = atomic_read_f(address);
+  old_val.as_float = atomic_load_f(address);
 =======
   cast_type test_val, /*old_val,*/ new_val;
 //  old_val.as_float = *address;

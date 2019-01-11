@@ -572,7 +572,7 @@ int task_lock(struct task *t) {
     case task_type_kick2:
     case task_type_logger:
     case task_type_timestep:
-      if (atomic_read(&ci->hydro.hold) || ci->grav.phold) return 0;
+      if (atomic_load(&ci->hydro.hold) || ci->grav.phold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       if (cell_glocktree(ci) != 0) {
         cell_unlocktree(ci);
@@ -587,7 +587,7 @@ int task_lock(struct task *t) {
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
     case task_type_timestep_sync:
-      if (atomic_read(&ci->hydro.hold)) return 0;
+      if (atomic_load(&ci->hydro.hold)) return 0;
       if (cell_locktree(ci) != 0) return 0;
       break;
 
@@ -618,7 +618,7 @@ int task_lock(struct task *t) {
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
         if (ci->stars.hold) return 0;
-        if (atomic_read(&ci->hydro.hold)) return 0;
+        if (atomic_load(&ci->hydro.hold)) return 0;
         if (cell_slocktree(ci) != 0) return 0;
         if (cell_locktree(ci) != 0) {
           cell_sunlocktree(ci);
@@ -639,7 +639,7 @@ int task_lock(struct task *t) {
         if (ci->black_holes.hold) return 0;
         if (cell_blocktree(ci) != 0) return 0;
       } else { /* subtype == hydro */
-        if (atomic_read(&ci->hydro.hold)) return 0;
+        if (atomic_load(&ci->hydro.hold)) return 0;
         if (cell_locktree(ci) != 0) return 0;
       }
       break;
@@ -667,7 +667,7 @@ int task_lock(struct task *t) {
                  (subtype == task_subtype_stars_feedback)) {
         /* Lock the stars and the gas particles in both cells */
         if (ci->stars.hold || cj->stars.hold) return 0;
-        if (atomic_read(&ci->hydro.hold) || atomic_read(&cj->hydro.hold)) return 0;
+        if (atomic_load(&ci->hydro.hold) || atomic_load(&cj->hydro.hold)) return 0;
         if (cell_slocktree(ci) != 0) return 0;
         if (cell_slocktree(cj) != 0) {
           cell_sunlocktree(ci);
@@ -716,7 +716,7 @@ int task_lock(struct task *t) {
         }
       } else { /* subtype == hydro */
         /* Lock the parts in both cells */
-        if (atomic_read(&ci->hydro.hold) || atomic_read(&cj->hydro.hold)) return 0;
+        if (atomic_load(&ci->hydro.hold) || atomic_load(&cj->hydro.hold)) return 0;
         if (cell_locktree(ci) != 0) return 0;
         if (cell_locktree(cj) != 0) {
           cell_unlocktree(ci);
@@ -754,7 +754,7 @@ int task_lock(struct task *t) {
 
     case task_type_star_formation:
       /* Lock the gas, gravity and star particles */
-      if (atomic_read(&ci->hydro.hold) || ci->stars.hold || ci->grav.phold) return 0;
+      if (atomic_load(&ci->hydro.hold) || ci->stars.hold || ci->grav.phold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       if (cell_slocktree(ci) != 0) {
         cell_unlocktree(ci);

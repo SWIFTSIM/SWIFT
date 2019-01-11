@@ -3358,7 +3358,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   }
 
   /* Check the depth. */
-  while (depth > (maxdepth = atomic_read(&s->maxdepth))) {
+  while (depth > (maxdepth = atomic_load(&s->maxdepth))) {
     atomic_cas(&s->maxdepth, maxdepth, depth);
   }
 

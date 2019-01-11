@@ -312,8 +312,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
           atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
 
-          const float dx_max_sort_i = atomic_read_f(&ci->hydro.dx_max_sort);
-          const float dx_max_sort_j = atomic_read_f(&cj->hydro.dx_max_sort);
+          const float dx_max_sort_i = atomic_load_f(&ci->hydro.dx_max_sort);
+          const float dx_max_sort_j = atomic_load_f(&cj->hydro.dx_max_sort);
 
           atomic_write_f(&ci->hydro.dx_max_sort_old, dx_max_sort_i);
           atomic_write_f(&cj->hydro.dx_max_sort_old, dx_max_sort_j);
