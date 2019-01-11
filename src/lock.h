@@ -52,7 +52,7 @@
 #define lock_init(l) (*(l) = 0)
 #define lock_destroy(l) 0
 INLINE static int lock_lock(atomic_int *l) {
-  while (atomic_cas(l, 0, 1))
+  while (!atomic_cas(l, 0, 1))
     ;
   return 0;
 }

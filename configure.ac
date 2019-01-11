@@ -105,30 +105,30 @@ AM_CONDITIONAL([HAVELOGGER],[test $with_logger = "yes"])
 if test "$ax_cv_c_compiler_vendor" = "gnu"; then               
 
    # GCC case
-   CFLAGS="$CFLAGS -std=c11"
+   CFLAGS="$CFLAGS -std=gnu99"
    AC_DEFINE([asm],__asm__, [Define asm.])
 
 elif test "$ax_cv_c_compiler_vendor" = "clang"; then		
 
    # clang case
-   CFLAGS="$CFLAGS -std=c11"
+   CFLAGS="$CFLAGS -std=gnu99"
    AC_DEFINE([asm],__asm__, [Define asm.])
 
 elif test "$ax_cv_c_compiler_vendor" = "intel"; then		
 
    # ICC case
-   CFLAGS="$CFLAGS -std=c11"
+   CFLAGS="$CFLAGS -std=gnu99"
    AC_DEFINE([asm],__asm__, [Define asm.])
 
 elif test "$ax_cv_c_compiler_vendor" = "cray"; then		
 
    # Cray compiler case
-   CFLAGS="$CFLAGS -h std=c11"
+   CFLAGS="$CFLAGS -h std=gnu99"
 
 elif test "$ax_cv_c_compiler_vendor" = "portland"; then		
 
    # Cray compiler case
-   CFLAGS="$CFLAGS -c11"
+   CFLAGS="$CFLAGS -gnu99"
 
 fi
 
