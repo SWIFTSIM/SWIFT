@@ -102,7 +102,7 @@ int cell_link_parts(struct cell *c, struct part *parts) {
   if (c->nodeID == engine_rank)
     error("Linking foreign particles in a local cell!");
 
-  if(c->hydro.parts != NULL)
+  if (c->hydro.parts != NULL)
     error("Linking parts into a cell that was already linked");
 #endif
 
@@ -135,7 +135,7 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
   if (c->nodeID == engine_rank)
     error("Linking foreign particles in a local cell!");
 
-  if(c->grav.parts != NULL)
+  if (c->grav.parts != NULL)
     error("Linking gparts into a cell that was already linked");
 #endif
 
@@ -168,7 +168,7 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
   if (c->nodeID == engine_rank)
     error("Linking foreign particles in a local cell!");
 
-  if(c->stars.parts != NULL)
+  if (c->stars.parts != NULL)
     error("Linking sparts into a cell that was already linked");
 #endif
 
@@ -302,7 +302,6 @@ int cell_count_gparts_for_tasks(const struct cell *c) {
     return 0;
   }
 }
-
 
 /**
  * @brief Pack the data of the given cell and all it's sub-cells.
