@@ -101,7 +101,33 @@ int cell_getsize(struct cell *c) {
  *
  * @return The number of particles linked.
  */
-int cell_link_parts(struct cell *c, struct part *parts, int link) {
+int cell_link_parts(struct cell *c, struct part *parts) {
+
+  c->hydro.parts = parts;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_parts(c->progeny[k], &parts[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->hydro.count;
+}
+
+
+/**
+ * @brief Link the cells recursively to the given #part array.
+ *
+ * @param c The #cell.
+ * @param parts The #part array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_parts(struct cell *c, struct part *parts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
@@ -110,37 +136,28 @@ int cell_link_parts(struct cell *c, struct part *parts, int link) {
 
   /* Do we have a hydro task at this level? */
   if (c->hydro.density != NULL) {
-    link = 1;
+
+    /* Recursively attach the parts */
+    const int counts = cell_link_parts(c, parts);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (counts != c->hydro.count)
+      error("Something is wrong with the foreign counts");
+#endif
+    return counts;
   }
 
-  /* Ok, link the particles at this level */
-  if (link) {
-    c->hydro.parts = parts;
-  }
-
-  /* Fill the progeny recursively, depth-first. */
+  /* Go deeper to find the level where the tasks are */
   if (c->split) {
     int count = 0;
-
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        count += cell_link_parts(c->progeny[k], &parts[count], link);
+        count += cell_link_foreign_parts(c->progeny[k], parts);
       }
     }
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (link && (count != c->hydro.count))
-      error("Something is wrong with the foreign part counts.");
-#endif
-
     return count;
-  }
-
-  /* Return the total number of linked particles. */
-  if (link)
-    return c->hydro.count;
-  else
+  } else {
     return 0;
+  }
 }
 
 /**

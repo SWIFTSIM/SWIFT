@@ -1793,20 +1793,24 @@ void engine_allocate_foreign_particles(struct engine *e) {
   }
 
   struct part *parts = s->parts_foreign;
-  size_t count_parts = 0;
+  size_t total_count_parts = 0;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
       if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
 
-        count_parts +=
-            cell_link_parts(e->proxies[k].cells_in[j], parts, /*link=*/0);
-        parts += count_parts;
+        const size_t count_parts = cell_link_foreign_parts(e->proxies[k].cells_in[j], parts);
+        parts = &parts[count_parts];
+	total_count_parts += count_parts;
       }
     }
   }
 
-  message("count_parts: %zd %zd", count_parts_in, count_parts);
+  /* Update the counters */
+  s->nr_parts_foreign = parts - s->parts_foreign;
+
+  
+  message("count_parts: %zd %zd", count_parts_in, total_count_parts);
 
   return;
 
