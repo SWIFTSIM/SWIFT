@@ -106,36 +106,36 @@ for i in range(n_snapshots):
 	#masses[:,i] = sort_by_id(id[:,i], masses_unsorted)
 	#mass_from_AGB_unsorted = sim["/PartType0/TotalMassFromAGB"]
 	#mass_from_AGB[:,i] = sort_by_id(id[:,i], mass_from_AGB_unsorted)
-	#metallicity_unsorted = sim["/PartType0/Metallicity"]
-	#metallicity[:,i] = sort_by_id(id[:,i], metallicity_unsorted)
+	metallicity_unsorted = sim["/PartType0/Metallicity"]
+	metallicity[:,i] = sort_by_id(id[:,i], metallicity_unsorted)
 	internal_energy_unsorted = sim["/PartType0/InternalEnergy"]
 	internal_energy[:,i] = sort_by_id(id[:,i], internal_energy_unsorted)
 	time[i] = sim["/Header"].attrs["Time"]
 	spart_mass[:,i] = sim["/PartType4/Masses"]
 
 # Now we can make some plots
-#figure()
-#subplot(111)
-#
-#for i in range(100):
-#	#if ((distance(coord_parts[i,:],coord_sparts) < smoothing_length) & (metallicity[i,n_snapshots-1] != 0)):
-#	plot(metallicity[i,:],color='k',alpha=0.1, linewidth=0.5)
-#
-#xlabel("snapshot")
-#ylabel("metallicity")
-#savefig("stellar_evolution_metallicity.png", dpi=200)
-#
-#figure()
-#subplot(111)
-#
-#for i in range(100):
-#	#if ((distance(coord_parts[i,:],coord_sparts) < smoothing_length) & (metallicity[i,n_snapshots-1] != 0)):
-#	plot(masses[i,:],color='k',alpha=0.1, linewidth=0.5)
-#
-#xlabel("snapshot")
-#ylabel("mass")
-#savefig("stellar_evolution_mass.png", dpi=200)
-#
+figure()
+subplot(111)
+
+for i in range(n_parts):
+	#if ((distance(coord_parts[i,:],coord_sparts) < smoothing_length) & (metallicity[i,n_snapshots-1] != 0)):
+	plot(metallicity[i,:],color='k',alpha=0.1, linewidth=0.5)
+
+xlabel("snapshot")
+ylabel("metallicity")
+savefig("stellar_evolution_metallicity.png", dpi=200)
+
+figure()
+subplot(111)
+
+for i in range(n_parts):
+	#if ((distance(coord_parts[i,:],coord_sparts) < smoothing_length) & (metallicity[i,n_snapshots-1] != 0)):
+	plot(masses[i,:],color='k',alpha=0.1, linewidth=0.5)
+
+xlabel("snapshot")
+ylabel("mass")
+savefig("stellar_evolution_mass.png", dpi=200)
+
 #figure()
 #subplot(111)
 #
@@ -169,17 +169,17 @@ for i in range(n_snapshots):
 #ylabel("total mass normalised by initial total mass")
 #savefig("stellar_evolution_total_mass.png", dpi=200)
 
-total_part_internal_energy = np.sum(internal_energy,axis = 0)
-
-figure()
-subplot(111)
-
-plot(total_part_internal_energy/total_part_internal_energy[0],color='k', linewidth=0.5)
-
-xlabel("snapshot")
-ylabel("total internal energy normalised by initial total internal energy")
-savefig("stellar_evolution_total_internal_energy.png", dpi=200)
-
-print("duration of simulation " + str(time[n_snapshots-1] * unit_time_in_si))
-print("spart initial mass " + str(spart_mass[0,0] * unit_mass_in_si))
-print("average initial internal energy " + str(total_part_internal_energy[0]/n_parts * unit_vel_in_cgs * unit_vel_in_cgs))
+#total_part_internal_energy = np.sum(internal_energy,axis = 0)
+#
+#figure()
+#subplot(111)
+#
+#plot(total_part_internal_energy/total_part_internal_energy[0],color='k', linewidth=0.5)
+#
+#xlabel("snapshot")
+#ylabel("total internal energy normalised by initial total internal energy")
+#savefig("stellar_evolution_total_internal_energy.png", dpi=200)
+#
+#print("duration of simulation " + str(time[n_snapshots-1] * unit_time_in_si))
+#print("spart initial mass " + str(spart_mass[0,0] * unit_mass_in_si))
+#print("average initial internal energy " + str(total_part_internal_energy[0]/n_parts * unit_vel_in_cgs * unit_vel_in_cgs))

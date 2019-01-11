@@ -20,12 +20,10 @@
 import h5py
 from numpy import *
 
-# Generates a swift IC file for the 1D Zeldovich pancake
-
 # Parameters
-T_i = 1.e4               # Initial temperature of the gas (in K)
+T_i = 1.e3               # Initial temperature of the gas (in K)
 gamma = 5./3.            # Gas adiabatic index
-numPart_gas_1D = 24      # Number of particles along each dimension
+numPart_gas_1D = 16      # Number of particles along each dimension
 numPart_stars_1D = 1    # Number of particles along each dimension
 fileName = "stellar_evolution.hdf5"
 
@@ -40,13 +38,7 @@ mH_in_kg = 1.6737236e-27
 kB_in_SI = 1.38064852e-23
 G_in_SI = 6.67408e-11
 
-# Some useful variables in h-full units
-#H_0 = 1. / Mpc_in_m * 10**5 # h s^-1
-#rho_0 = 3. * H_0**2 / (8* math.pi * G_in_SI) # h^2 kg m^-3
-#lambda_i = 64. / H_0 * 10**5 # h^-1 m (= 64 h^-1 Mpc)
-#x_min = -0.5 * lambda_i
-#x_max = 0.5 * lambda_i
-
+# Box extent and density
 x_min = -0.5 * Mpc_in_m * 3.2e-3
 x_max = 0.5 * Mpc_in_m * 3.2e-3
 rho_0 = mH_in_kg * 1.e6
@@ -63,9 +55,6 @@ numPart_gas = numPart_gas_1D**3
 numPart_stars = numPart_stars_1D**3
 
 #---------------------------------------------------
-
-# Get the frequency of the initial perturbation
-#k_i = 2. * pi / lambda_i
 
 # Set box size and interparticle distance
 boxSize = x_max - x_min

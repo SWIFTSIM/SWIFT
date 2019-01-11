@@ -94,9 +94,6 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
 				  struct xpart *restrict xp) {
   // ALEXEI: GET RID OF a AND H IN SIGNATURE SINCE THESE CAN BE DERIVED FROM COSMO?
 
-  // ALEXEI: THESE CONSTANTS NEED MOVING ELSEWHERE.
-  const float units_factor1 = 1.f, units_factor2 = 1.f;
-
   float wj;
 
   /* Get r and 1/r. */
@@ -184,22 +181,30 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
     thermal_feedback(du,pj,xp,cosmo);
   } else {
     // We're doing stochastic heating
-    heating_probability = units_factor1 * si->to_distribute.num_SNIa *
+    heating_probability = stars_properties->units_factor1 * si->to_distribute.num_SNIa *
                           stars_properties->SNIa_energy_fraction /
-                          (stars_properties->deltaT_desired * si->to_distribute.ngb_mass);
+                          (stars_properties->deltaT_desired * si->ngb_mass);
+    //message("probability %.5e factor1 %.5e num_snia %.5e energy_fraction %.5e deltaT_desired %.5e ngb_mass %.5e",heating_probability, stars_properties->units_factor1, si->to_distribute.num_SNIa,
+    //                      stars_properties->SNIa_energy_fraction, stars_properties->deltaT_desired, si->ngb_mass);
     // ALEXEI: CHECK UNITS HERE. Eagle does this update in cgs, we should probably keep it in internal units.
     du = stars_properties->deltaT_desired * stars_properties->temp_to_u_factor;
     if (heating_probability >= 1) {
-      du = units_factor2 * si->to_distribute.num_SNIa / si->to_distribute.ngb_mass;
+      du = stars_properties->units_factor2 * si->to_distribute.num_SNIa / si->ngb_mass;
       heating_probability = 1; 
     }
   }
 
   /* pick random number to see if we do stochastic heating */
   unsigned int seed = pj->id;
-  if (rand_r(&seed) < heating_probability) {
+  double random_num = rand_r(&seed) * stars_properties->inv_rand_max;
+  if (random_num < heating_probability) {
     // ALEXEI: As above, check units
     thermal_feedback(du, pj, xp, cosmo);
+    // Debugging...
+    //message("we did some heating! id %llu probability %.5e random_num %.5e", pj->id, heating_probability, random_num);
+  } else {
+    // Debugging...
+    //message("we missed heating... id %llu probability %.5e random_num %.5e", pj->id, heating_probability, random_num);
   }
 
   /* Decrease the mass of star particle (TO CHECK: WHAT ABOUT INTERNAL ENERGY?); */

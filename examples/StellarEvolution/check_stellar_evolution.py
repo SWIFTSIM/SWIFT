@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use("Agg")
 from pylab import *
 import h5py
 import os.path
@@ -6,6 +8,29 @@ import numpy as np
 # Number of snapshots and elements
 n_snapshots = 11
 n_elements = 9
+
+# Plot parameters
+params = {'axes.labelsize': 10,
+'axes.titlesize': 10,
+'font.size': 9,
+'legend.fontsize': 9,
+'xtick.labelsize': 10,
+'ytick.labelsize': 10,
+'text.usetex': True,
+ 'figure.figsize' : (3.15,3.15),
+'figure.subplot.left'    : 0.3,
+'figure.subplot.right'   : 0.99,
+'figure.subplot.bottom'  : 0.18,
+'figure.subplot.top'     : 0.92,
+'figure.subplot.wspace'  : 0.21,
+'figure.subplot.hspace'  : 0.19,
+'lines.markersize' : 6,
+'lines.linewidth' : 2.,
+'text.latex.unicode': True
+}
+
+rcParams.update(params)
+rc('font',**{'family':'sans-serif','sans-serif':['Times']})
 
 # Read the simulation data
 sim = h5py.File("stellar_evolution_0000.hdf5", "r")
@@ -82,8 +107,7 @@ ejecta_factor = 1.0e-2
 ejecta_factor_metallicity = 1.0 - 2.0/n_elements
 ejecta_factor_abundances = 1.0/n_elements
 ejected_mass = star_initial_mass
-#SNIa_rate = 0.1
-SNIa_rate = 1.0e11
+SNIa_rate = 1.0e10
 energy_per_SNe = 1.0e51/unit_energy_in_cgs
 
 # Check that the total amount of enrichment is as expected.
@@ -96,6 +120,13 @@ if abs((total_part_mass[n_snapshots-1] - total_part_mass[0])/total_part_mass[0] 
 	print("total mass released consistent with expectation")
 else:
 	print("mass increase "+str(total_part_mass[n_snapshots-1]/total_part_mass[0])+" expected "+ str(1.0+ejected_mass/total_part_mass[0]))
+
+#figure()
+#subplot(111)
+#plot(total_part_mass/total_part_mass[0],color='k', linewidth=0.5)
+#xlabel("snapshot")
+#ylabel("total part mass normalised to initial total")
+#savefig("total_mass.png", dpi=200)
 
 # Check that mass is conserved (i.e. total star mass decreases by same amount as total gas mass increases)
 total_spart_mass = np.sum(star_masses,axis = 0)
@@ -112,6 +143,13 @@ if abs(total_metal_mass_AGB[n_snapshots-1] - expected_metal_mass_AGB)/expected_m
 else:
 	print("total AGB metal mass "+str(total_metal_mass_AGB[n_snapshots-1])+" expected "+ str(expected_metal_mass_AGB))
 
+#figure()
+#subplot(111)
+#plot(total_metal_mass_AGB,color='k', linewidth=0.5)
+#xlabel("snapshot")
+#ylabel("metal mass from AGB")
+#savefig("metal_mass_agb.png", dpi=200)
+
 # Total mass from AGB
 total_AGB_mass = np.sum(mass_from_AGB,axis = 0)
 expected_AGB_mass = ejecta_factor*ejected_mass
@@ -119,6 +157,13 @@ if abs(total_AGB_mass[n_snapshots-1] - expected_AGB_mass)/expected_AGB_mass < ep
 	print("total AGB mass released consistent with expectation")
 else:
 	print("total AGB mass "+str(total_AGB_mass[n_snapshots-1])+" expected "+ str(expected_AGB_mass))
+
+#figure()
+#subplot(111)
+#plot(np.arange(0,n_snapshots,1),total_AGB_mass,color='k', linewidth=0.5)
+#xlabel("snapshot")
+#ylabel("total mass from AGB")
+#savefig("mass_agb.png", dpi=200)
 
 # Total metal mass from SNII
 total_metal_mass_SNII = np.sum(np.multiply(metal_mass_frac_from_SNII,masses),axis = 0)
@@ -168,6 +213,21 @@ if abs(total_metal_mass[n_snapshots-1] - expected_metal_mass)/expected_metal_mas
 else:
 	print("total metal mass "+str(total_metal_mass[n_snapshots-1])+" expected "+ str(expected_metal_mass))
 
+#figure()
+#subplot(111)
+#plot(total_metal_mass,color='k', linewidth=0.5)
+#xlabel("snapshot")
+#ylabel("total metal mass")
+#savefig("metal_mass.png", dpi=200)
+
+#mean_metallicity = np.divide(total_metal_mass,total_part_mass)
+#figure()
+#subplot(111)
+#plot(mean_metallicity,color='k', linewidth=0.5)
+#xlabel("snapshot")
+#ylabel("mean metallicity")
+#savefig("metallicity.png", dpi=200)
+
 # Total mass for each element
 expected_element_mass = ejecta_factor_abundances*ejected_mass
 for i in range(n_elements):
@@ -177,7 +237,7 @@ for i in range(n_elements):
 	else:
 		print("total element mass "+str(total_element_mass[n_snapshots-1])+" expected "+ str(expected_element_mass) + " for element "+ str(i))
 
-# Continuous heating
+# heating
 vel2 = zeros((n_parts,n_snapshots))
 vel2[:,:] = velocity_parts[:,0,:]*velocity_parts[:,0,:] + velocity_parts[:,1,:]*velocity_parts[:,1,:] + velocity_parts[:,2,:]*velocity_parts[:,2,:]
 total_kinetic_energy = np.sum(np.multiply(vel2,masses)*0.5,axis = 0)

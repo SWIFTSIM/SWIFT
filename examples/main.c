@@ -685,7 +685,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the stars properties */
     if (with_stars)
       stars_props_init(&stars_properties, &prog_const, &us, params,
-                       &hydro_properties);
+                       &hydro_properties, &cosmo);
     else
       bzero(&stars_properties, sizeof(struct stars_props));
 

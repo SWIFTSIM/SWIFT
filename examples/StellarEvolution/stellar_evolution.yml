@@ -6,18 +6,17 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
+# Cosmological parameters
 Cosmology:
-  Omega_m: 1.
-  Omega_lambda: 0.
-  Omega_b: 1.
-  h: 1.
-  a_begin: 0.25
-  a_end: 1.0
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.5           # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_m:        0.307         # Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0455        # Baryon density parameter
 
 # Parameters governing the time integration
 TimeIntegration:
-  #dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
-  #dt_max:     4e-3  # The maximal time-step size of the simulation (in internal units).
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   1e-4  # The end time of the simulation (in internal units).
   dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
@@ -29,12 +28,12 @@ Snapshots:
   time_first:          0.       # Time of the first output (in internal units)
   delta_time:          1e-5     # Time difference between consecutive outputs without cosmology (internal units)
   #delta_time:          1.02     # Time difference between consecutive outputs with cosmology (in internal units)
-  scale_factor_first:  0.25
+  scale_factor_first:  0.5
   compression:         4
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  scale_factor_first:  0.25
+  scale_factor_first:  0.5
   delta_time:          1.02 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
@@ -53,6 +52,7 @@ Scheduler:
 
 Stars:
   feedback_timescale: 1e-4
+  continuous_heating: 1         # decide whether using continuous heating in feedback (1) or stochastic (0)
   
 Gravity:
   mesh_side_length:   32

@@ -154,9 +154,10 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
   /* Proportion of quantities to be released each timestep */
   float feedback_factor = dt/stars_properties->feedback_timescale;
 
-  /* Set all enrichment quantities to constant values */
+  /* Amount of mass to distribute in one step */
   sp->to_distribute.mass = sp->mass_init * feedback_factor;
 
+  /* Set all enrichment quantities to constant values */
   for (int i = 0; i < chemistry_element_count; i++) sp->to_distribute.chemistry_data.metal_mass_fraction[i] = 1.f/chemistry_element_count;
   sp->to_distribute.chemistry_data.metal_mass_fraction_total = 1.f - 2.f/chemistry_element_count;
   sp->to_distribute.chemistry_data.mass_from_AGB = 1.0e-2 * sp->to_distribute.mass;
@@ -168,8 +169,7 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
   sp->to_distribute.chemistry_data.iron_mass_fraction_from_SNIa = 1.0e-2;
 
   /* Set feedback to constant values */
-  //sp->to_distribute.num_SNIa = 0.1 * dt;
-  sp->to_distribute.num_SNIa = 1.0e11 * dt;
+  sp->to_distribute.num_SNIa = 1.0e10 * dt;
   sp->to_distribute.ejecta_specific_thermal_energy = 1.0e-3;
   
 }

@@ -147,7 +147,13 @@ struct stars_props {
   float temp_to_u_factor;
   float total_energy_SNe;
 
+  // Conversion factors copied from EAGLE. CHANGE NAME TO BE MORE DESCRIPTIVE
+  float units_factor1, units_factor2;
+
   float feedback_timescale;
+
+  // CHANGE THIS TO BE CONSISTENT WITH RAND MAX USED IN STAR FORMATION
+  double inv_rand_max;
 
 };
 
