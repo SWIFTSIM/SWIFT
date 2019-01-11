@@ -20,8 +20,8 @@
 #define SWIFT_MEMSWAP_H
 
 /* Config parameters. */
-#include "../config.h"
 #include <stdint.h>
+#include "../config.h"
 
 #ifdef HAVE_IMMINTRIN_H
 /* Include the header file with the intrinsics for Intel architecture. */
@@ -61,7 +61,8 @@
  * @param void_b Pointer to the second element.
  * @param bytes Size, in bytes, of the data pointed to by @c a and @c b.
  */
-__attribute__((always_inline)) inline void memswap(void *restrict void_a, void *restrict void_b,
+__attribute__((always_inline)) inline void memswap(void *restrict void_a,
+                                                   void *restrict void_b,
                                                    size_t bytes) {
   int8_t *restrict a = (int8_t *)void_a, *restrict b = (int8_t *)void_b;
 #if defined(__AVX512F__) && defined(__INTEL_COMPILER)
@@ -94,9 +95,8 @@ __attribute__((always_inline)) inline void memswap(void *restrict void_a, void *
  * @param void_b Pointer to the second element.
  * @param bytes Size, in bytes, of the data pointed to by @c a and @c b.
  */
-__attribute__((always_inline)) inline void memswap_unaligned(void *restrict void_a,
-                                                             void *restrict void_b,
-                                                             size_t bytes) {
+__attribute__((always_inline)) inline void memswap_unaligned(
+    void *restrict void_a, void *restrict void_b, size_t bytes) {
   int8_t *restrict a = (int8_t *)void_a, *restrict b = (int8_t *)void_b;
 #ifdef __AVX512F__
   while (bytes >= sizeof(__m512i)) {
