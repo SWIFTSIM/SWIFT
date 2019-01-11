@@ -1750,6 +1750,16 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 #endif
 }
 
+/**
+ * @brief Allocate memory for the foreign particles.
+ *
+ * We look into the proxies for cells that have tasks and count
+ * the number of particles in these cells. We then allocate
+ * memory and link all the cells that have tasks and all cells
+ * deeper in the tree.
+ *
+ * @param e The #engine.
+ */
 void engine_allocate_foreign_particles(struct engine *e) {
 
 #ifdef WITH_MPI
@@ -1787,7 +1797,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   /* Allocate space for the foreign particles we will receive */
   if (count_parts_in > s->size_parts_foreign) {
     if (s->parts_foreign != NULL) free(s->parts_foreign);
-    s->size_parts_foreign = 1.1 * count_parts_in;
+    s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
     if (posix_memalign((void **)&s->parts_foreign, part_align,
                        sizeof(struct part) * s->size_parts_foreign) != 0)
       error("Failed to allocate foreign part data.");
@@ -1795,25 +1805,26 @@ void engine_allocate_foreign_particles(struct engine *e) {
   /* Allocate space for the foreign particles we will receive */
   if (count_gparts_in > s->size_gparts_foreign) {
     if (s->gparts_foreign != NULL) free(s->gparts_foreign);
-    s->size_gparts_foreign = 1.1 * count_gparts_in;
-    if (posix_memalign((void **)&s->gparts_foreign, part_align,
+    s->size_gparts_foreign = engine_foreign_alloc_margin * count_gparts_in;
+    if (posix_memalign((void **)&s->gparts_foreign, gpart_align,
                        sizeof(struct gpart) * s->size_gparts_foreign) != 0)
       error("Failed to allocate foreign gpart data.");
   }
   /* Allocate space for the foreign particles we will receive */
   if (count_sparts_in > s->size_sparts_foreign) {
     if (s->sparts_foreign != NULL) free(s->sparts_foreign);
-    s->size_sparts_foreign = 1.1 * count_sparts_in;
-    if (posix_memalign((void **)&s->sparts_foreign, part_align,
+    s->size_sparts_foreign = engine_foreign_alloc_margin * count_sparts_in;
+    if (posix_memalign((void **)&s->sparts_foreign, spart_align,
                        sizeof(struct spart) * s->size_sparts_foreign) != 0)
       error("Failed to allocate foreign spart data.");
   }
 
   if (e->verbose)
-    message("Allocating memory for foreign particles took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  tic = getticks();
+    message("Allocating %zd/%zd/%zd foreign part/gpart/spart (%zd/%zd/%zd MB)",
+            s->size_parts_foreign, s->size_gparts_foreign,
+            s->size_sparts_foreign, s->size_parts_foreign / (1024 * 1024),
+            s->size_gparts_foreign / (1024 * 1024),
+            s->size_sparts_foreign / (1024 * 1024));
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
@@ -1848,7 +1859,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   s->nr_sparts_foreign = sparts - s->sparts_foreign;
 
   if (e->verbose)
-    message("Recursively linking arrays took %.3f %s.",
+    message("Recursively linking foreign arrays took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #else

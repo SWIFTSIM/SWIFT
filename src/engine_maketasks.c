@@ -2483,9 +2483,11 @@ void engine_maketasks(struct engine *e) {
       message("Creating recv tasks took %.3f %s.",
               clocks_from_ticks(getticks() - tic2), clocks_getunit());
   }
-#endif
 
+  /* Allocate memory for foreign particles */
   engine_allocate_foreign_particles(e);
+
+#endif
 
   tic2 = getticks();
 

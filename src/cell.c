@@ -216,7 +216,7 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
     }
     return count;
   } else {
-    return 0;
+    return c->hydro.count;
   }
 }
 
@@ -274,7 +274,7 @@ int cell_count_parts_for_tasks(const struct cell *c) {
     }
     return count;
   } else {
-    return 0;
+    return c->hydro.count;
   }
 }
 

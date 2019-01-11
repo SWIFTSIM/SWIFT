@@ -100,6 +100,7 @@ enum engine_step_properties {
 #define engine_parts_size_grow 1.05
 #define engine_max_proxy_centre_frac 0.2
 #define engine_redistribute_alloc_margin 1.2
+#define engine_foreign_alloc_margin 1.05
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost 1000
