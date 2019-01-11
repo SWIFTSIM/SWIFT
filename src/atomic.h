@@ -104,12 +104,11 @@ _Bool bool_atomic_compare_and_swap_f( atomic_float *obj, float *expected, float 
 #ifdef SWIFT_MODERN_ATOMICS
 static void atomic_min_f( atomic_float *obj, float const y){
 
-  float test_val, old_val, new_val;
-  old_val = *obj;
+  float test_val, new_val;
 
   do{
-    test_val = old_val;
-    new_val = fmin(old_val, y);
+    test_val = atomic_load(obj);
+    new_val = fmin(test_val, y);
   }while(!atomic_cas( obj, &test_val, new_val));
 
 }
@@ -123,12 +122,11 @@ static void atomic_min_f( volatile float *const address, float const y) {
     int as_int;
   } cast_type;
 
-  cast_type test_val, old_val, new_val;
-  old_val.as_float = *address;
+  cast_type test_val, new_val;
 
   do {
-    test_val.as_int = old_val.as_int;
-    new_val.as_float = fmin(old_val.as_float, y);
+    test_val.as_int = atomic_load(address);
+    new_val.as_float = fmin(test_val.as_float, y);
   } while (!atomic_cas(int_ptr, &test_val.as_int, new_val.as_int));
 
 }
@@ -149,12 +147,11 @@ static void atomic_min_f( volatile float *const address, float const y) {
 #ifdef SWIFT_MODERN_ATOMICS
 static void atomic_max_f( atomic_float *obj, float const y){
 
-  float test_val, old_val, new_val;
-  old_val = *obj;
+  float test_val, new_val;
 
   do{
-    test_val = old_val;
-    new_val = fmax(old_val, y);
+    test_val = atomic_load(obj);
+    new_val = fmax(test_val, y);
   }while(!atomic_cas(obj, &test_val, new_val));
 
 }
@@ -168,12 +165,11 @@ static void atomic_max_f( volatile float *const address, float const y) {
     int as_int;
   } cast_type;
 
-  cast_type test_val, old_val, new_val;
-  old_val.as_float = *address;
+  cast_type test_val, new_val;
 
   do {
-    test_val.as_int = old_val.as_int;
-    new_val.as_float = fmax(old_val.as_float, y);
+    test_val.as_int = atomic_load(int_ptr);
+    new_val.as_float = fmax(test_val.as_float, y);
   } while (!atomic_cas(int_ptr, &test_val.as_int, new_val.as_int));
 
 }
@@ -203,12 +199,11 @@ __attribute__((always_inline)) INLINE static void atomic_add_f(
     int as_int;
   } cast_type;
 
-  cast_type test_val, old_val, new_val;
-  old_val.as_float = *address;
+  cast_type test_val, new_val;
 
   do {
-    test_val.as_int = old_val.as_int;
-    new_val.as_float = old_val.as_float + y;
+    test_val.as_int = atomic_load(address);
+    new_val.as_float = test_val.as_float + y;
   } while (!atomic_cas(int_ptr, &test_val.as_int, new_val.as_int));
 }
 #endif
@@ -237,12 +232,11 @@ __attribute__((always_inline)) INLINE static void atomic_add_d(
     long long as_long_long;
   } cast_type;
 
-  cast_type test_val, old_val, new_val;
-  old_val.as_double = *address;
+  cast_type test_val, new_val;
 
   do {
-    test_val.as_long_long = old_val.as_long_long;
-    new_val.as_double = old_val.as_double + y;
+    test_val.as_long_long = atomic_load(address);
+    new_val.as_double = test_val.as_double + y;
   } while (!atomic_cas(long_long_ptr, &test_val.as_long_long, new_val.as_long_long));
 }
 #endif
