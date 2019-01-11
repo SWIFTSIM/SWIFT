@@ -55,7 +55,6 @@ def gen_data(filename,pixels,case):
     masses = masses[part_mask]
     SFR = SFR[sfr_mask]
    
-    print(np.sum(masses))
     if case ==0:
         coordinates = coordinates[part_mask]
         smoothing_lengths = smoothing_lengths[part_mask]
@@ -105,29 +104,61 @@ def getnewstars(filename):
 
     return coordinates[:,0][part_mask]-box_size/2., coordinates[:,1][part_mask]-box_size/2.
 
-if __name__ == "__main__":
-
-    # Some global variables to define the whole run
-    input_file_name = sys.argv[1]
-    pixels = 1000 
-    num_procs = 4 # No. of processors to use
-    colour_map = "inferno"
+def getdensfrtemp(filename):
     
-    # Find the list of files and sort them in numerical order
-    file_list = sorted(glob.glob(input_file_name + "*.hdf5"), key=lambda x:
-            int(x[len(input_file_name):len(input_file_name)+4]))
-    
-    # get the image data 
-    filename = 'output_0066.hdf5' 
+    # Read the data
+    with h5.File(filename, "r") as f:
+        box_size = f["/Header"].attrs["BoxSize"][0]
+        coordinates= f["/PartType0/Coordinates"][:,:]
+        SFR = f["/PartType0/SFR"][:]
+        density = f["/PartType0/Density"][:]
+        temperature = f["/PartType0/Temperature"][:]
 
+    absmaxz = 2 #kpc
+    absmaxxy = 10 #kpc
+
+    part_mask = ((coordinates[:,0]-box_size/2.) > -absmaxxy) & ((coordinates[:,0]-box_size/2.) < 
+        absmaxxy) & ((coordinates[:,1]-box_size/2.) > -absmaxxy) & ((coordinates[:,1]-box_size/2.) < 
+        absmaxxy) & ((coordinates[:,2]-box_size/2.) > -absmaxz) & ((coordinates[:,2]-box_size/2.) < 
+        absmaxz) 
+    SFR = SFR[part_mask]
+    density = density[part_mask]
+    temperature = temperature[part_mask]
+
+    return density, SFR, temperature
+
+def getbirthdensity(filename):
+    
+    # Read the data
+    with h5.File(filename, "r") as f:
+        box_size = f["/Header"].attrs["BoxSize"][0]
+        coordinates= f["/PartType4/Coordinates"][:,:]
+        birthdensity = f["/PartType4/BirthDensity"][:]
+
+    absmaxz = 2 #kpc
+    absmaxxy = 10 #kpc
+
+    part_mask = ((coordinates[:,0]-box_size/2.) > -absmaxxy) & ((coordinates[:,0]-box_size/2.) < 
+        absmaxxy) & ((coordinates[:,1]-box_size/2.) > -absmaxxy) & ((coordinates[:,1]-box_size/2.) < 
+        absmaxxy) & ((coordinates[:,2]-box_size/2.) > -absmaxz) & ((coordinates[:,2]-box_size/2.) < 
+        absmaxz) & (birthdensity>0)
+
+    birthdensity = birthdensity[part_mask]
+
+    return birthdensity 
+    
+def KS_law(Sigmagas,n=1.4,A=1.515e-4):
+    return A * Sigmagas**n
+
+def makefullplot(filename,binsize=200):
     # Get the Surface density from the snapshot
-    image_data,extent = gen_data(filename,200,case=0)
+    image_data,extent = gen_data(filename,binsize,case=0)
     image_data2 = image_data[:,:]*1e10/(1e2**2)
     minvalue = np.min(image_data2[image_data2!=0])
     image_data2[image_data2==0] = minvalue*.9
     
     # Get the SFR surface density from the snapshot
-    image_data,extent = gen_data(filename,200,case=2)
+    image_data,extent = gen_data(filename,binsize,case=2)
     image_data3 = image_data[:,:] * 1e10/1e9/(.1**2)
     SFR_smoothed = image_data3/image_data2
     plot_SFR_smoothed = np.ones(np.shape(image_data3))*np.min(SFR_smoothed[SFR_smoothed!=0])*.9
@@ -137,9 +168,9 @@ if __name__ == "__main__":
     font = {'color':'white', 'size':12}
 
     # Make the first plot of the Gas density
-    fig = plt.figure(1,figsize=(11,11))
-    plt.subplot(2,2,1)
-    plt.imshow(np.log10(image_data2), extent=extent, cmap='viridis') #,vmin=-3.5, vmax=0.25)
+    fig = plt.figure(1,figsize=(16.5,16.5))
+    plt.subplot(3,3,1)
+    plt.imshow(np.log10(image_data2), extent=np.array([-10,10,-10,10]), cmap='viridis') #,vmin=-3.5, vmax=0.25)
     plt.title('$\log \Sigma_{gas}$ [ $M_\odot \\rm pc^{-2}$]')
     plt.plot([-7.5,-2.5],[-9.0,-9.0],linewidth=3,color='white')
     plt.text(-7.5,-8.5,'5 kpc',fontdict=font)
@@ -156,11 +187,12 @@ if __name__ == "__main__":
         right=False,         # ticks along the top edge are off
         labelleft=False) # labels along the bottom edge are off
     cbar = plt.colorbar() 
+    plt.clim(-1.5,3.0)
     #cbar.set_label('Surface density ($M_\odot pc^{-2}$)', rotation=270)
     
     # Make the second plot of the SFR density
-    plt.subplot(2,2,2)
-    plt.imshow(np.log10(plot_SFR_smoothed), extent=extent, cmap='viridis') #,vmin=-3.5, vmax=0.25)
+    plt.subplot(3,3,2)
+    plt.imshow(np.log10(plot_SFR_smoothed), extent=np.array([-10,10,-10,10]), cmap='viridis') #,vmin=-3.5, vmax=0.25)
     plt.title('$\log \Sigma_{\star}$ [ $M_\odot \\rm yr^{-1} kpc^{-2}$]')
     plt.plot([-7.5,-2.5],[-9.0,-9.0],linewidth=3,color='white')
     plt.text(-7.5,-8.5,'5 kpc',fontdict=font)
@@ -177,13 +209,14 @@ if __name__ == "__main__":
         right=False,         # ticks along the top edge are off
         labelleft=False) # labels along the bottom edge are off
     cbar = plt.colorbar() 
+    plt.clim(-5,-1)
 
     # Make the third plot of the stars that are formed
-    plt.subplot(2,2,3)
+    plt.subplot(3,3,3)
     xnewstar, ynewstar = getnewstars(filename)
-    newstarmatrix = np.histogram2d(xnewstar,ynewstar,bins=200)[0]
+    newstarmatrix = np.histogram2d(xnewstar,ynewstar,bins=binsize)[0]
     newstarmatrix[newstarmatrix==0] = 1e-1
-    plt.imshow(np.log10(newstarmatrix), extent=extent, cmap='viridis') #,vmin=-3.5, vmax=0.25)
+    plt.imshow(np.log10(newstarmatrix), extent=np.array([-10,10,-10,10]), cmap='viridis') #,vmin=-3.5, vmax=0.25)
     plt.title('New stars')
     plt.plot([-7.5,-2.5],[-9.0,-9.0],linewidth=3,color='white')
     plt.text(-7.5,-8.5,'5 kpc',fontdict=font)
@@ -200,41 +233,97 @@ if __name__ == "__main__":
         right=False,       # ticks along the top edge are off
         labelleft=False)   # labels along the bottom edge are off
     cbar = plt.colorbar()
+    plt.clim(-1,3)
     
     # Make the fourth plot of the KS law
-    plt.subplot(2,2,4)
+    plt.subplot(3,3,4)
     sigma_gas = image_data2.flatten()
     sigma_star = SFR_smoothed.flatten()
     sigma_gas=sigma_gas[sigma_star>0]
     sigma_star=sigma_star[sigma_star>0]
 
-    KShistogram = np.histogram2d(np.log10(sigma_gas),np.log10(sigma_star),bins=50,range=[[-1,4],[-5,2]])
-    plt.imshow(np.transpose(KShistogram[0]), extent=np.array([-1,4,-5,2]))
+    #KShistogram = np.histogram2d(np.log10(sigma_gas),np.log10(sigma_star),bins=50,range=[[-1,4],[-5,2]])
+    #plt.imshow(np.transpose(KShistogram[0]), extent=np.array([-1,4,-5,2]))
     plt.title('KS law')
-    cbar = plt.colorbar()
-    cbar.set_ticks([])
-
-    def KS_law(Sigmagas,n=1.4,A=1.515e-4):
-        return A * Sigmagas**n
 
     sigma_gas_range = 10**np.linspace(-1,2,100)
     sigma_star_range = KS_law(sigma_gas_range)
+    sigma_star_one_range = KS_law(sigma_gas_range,n=0.7)
 
     plt.hist2d(np.log10(sigma_gas),np.log10(sigma_star),range=[[-1,2],[-5,-2]],bins=50)
     plt.plot(np.log10(sigma_gas_range), np.log10(sigma_star_range),'k--',label='EAGLE SF')
+    plt.plot(np.log10(sigma_gas_range), np.log10(sigma_star_one_range),'k-.',label='n=.7')
+    plt.plot(np.log10(sigma_gas_range), np.log10(KS_law(sigma_gas_range,n=0.6)),'k:',label='n=.6')
     plt.xlabel('$\log \Sigma_{gas}$ [ $M_\odot \\rm pc^{-2}$]')
     plt.ylabel('$\log \Sigma_{\star}$ [ $M_\odot \\rm yr^{-1} kpc^{-2}$]')
+    cbar = plt.colorbar()
+    plt.clim(0,700)
     plt.legend()
 
-    plt.savefig('./images/'+filename+'_0.1kpc.png')
-    plt.close()
+    # make a plot of the gas density vs SFR
+    plt.subplot(3,3,5)
+    critden = .1*((0.0129)/.002)**(-.64)
+    mu = 1.3
+    density, SFR, temperature = getdensfrtemp(filename)
+    density *= 1e10/(1e3)**3*40.4759/mu
+    SFR *= 1e10/1e9
+    SFR_plot = SFR[:]
+    plt.hist2d(np.log10(density[SFR_plot>0]),np.log10(SFR_plot[SFR_plot>0]), bins=50,range=[[np.log10(critden),5],[-5.4,-3.5]])
+    #plt.loglog(density*1e10/(1e3)**3*40.4759/mu,SFR_plot*1e10/1e9,'.')
+    xx = 10**np.linspace(-1,2,100)
+    plt.plot(np.log10(xx),np.log10(1e-5*xx**(4./15.)),'k--',label='Slope of EAGLE SF')
+    plt.xlabel('$\log$ density [$\\rm cm^{-3}$]')
+    plt.ylabel('$\log$ Star Formation rate (SFR) [$ M_\odot \\rm yr^{-1} $]')
+    plt.xlim(np.log10(critden),5)
+    cbar = plt.colorbar()
+    plt.legend()
+
+    SFR_tracer = np.log10(SFR_plot[SFR_plot>0])
     
-    image_data,extent = gen_data(filename,20,case=0)
-    image_data2 = image_data[:,:]*1e10/(1e3**2)
-    fig = plt.figure(1,figsize=(11,11))
-    plt.imshow(np.log10(image_data2), extent=extent, cmap='viridis') #,vmin=-3.5, vmax=0.25)
-    plt.xlabel('x (kpc)')
-    plt.ylabel('y (kpc)')
-    cbar = plt.colorbar() 
-    cbar.set_label('Surface density ($M_\odot~pc^{-2}$)', rotation=270)
-    plt.savefig('./images/'+filename+'_1kpc.png')
+    plt.subplot(3,3,6)
+    plt.scatter(np.log10(density[SFR_plot>0]),np.log10(temperature[SFR_plot>0]),s=1,c=SFR_tracer,cmap='viridis')
+    plt.axvline(x=np.log10(critden),linestyle='--',color='gray',linewidth=3,label='Threshold density')
+    cbar = plt.colorbar()
+    plt.clim(-5.4,-3.5)
+    plt.scatter(np.log10(density[SFR_plot<=0]),np.log10(temperature[SFR_plot<=0]),s=1,c='gray')
+    plt.xlabel('$\log$ density [$\\rm cm^{-3}$]')
+    plt.ylabel('$\log$ temperature [$\\rm K$]')
+    plt.ylim(2,4)
+    plt.xlim(-3.5,5)
+    plt.legend()
+
+    plt.subplot(3,3,7)
+    birthdensity = getbirthdensity(filename)*404.759
+    plt.hist(np.log10(birthdensity),bins=50,density=True,range=(np.log10(critden),5))
+    plt.axvline(x=np.log10(critden),linestyle='--',color='gray',linewidth=3,label='Threshold density')
+    plt.xlabel('$\log$ density [$\\rm cm^{-3}$]')
+    plt.xlim(np.log10(critden),5)
+    plt.legend()
+
+
+
+    if binsize==200:
+        plt.savefig('./ksplot/'+filename+'_0.1kpc.png')
+    elif binsize==20:
+        plt.savefig('./ksplot_1kpc/'+filename+'_0.1kpc.png')
+    plt.close()
+
+if __name__ == "__main__":
+
+    # Some global variables to define the whole run
+    input_file_name = sys.argv[1]
+    pixels = 1000 
+    num_procs = 4 # No. of processors to use
+    colour_map = "inferno"
+    
+    # Find the list of files and sort them in numerical order
+    file_list = sorted(glob.glob(input_file_name + "*.hdf5"), key=lambda x:
+            int(x[len(input_file_name):len(input_file_name)+4]))
+    
+    # get the image data 
+    for i in [1,5,33,66,90]:
+        if i!=29:
+            print('output_%04d.hdf5'%i)
+            makefullplot('output_%04d.hdf5'%i)
+            makefullplot('output_%04d.hdf5'%i,binsize=20)
+
