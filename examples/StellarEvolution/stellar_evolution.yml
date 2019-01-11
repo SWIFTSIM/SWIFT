@@ -26,7 +26,7 @@ TimeIntegration:
 Snapshots:
   basename:            stellar_evolution # Common part of the name of output files
   time_first:          0.       # Time of the first output (in internal units)
-  delta_time:          1e-5     # Time difference between consecutive outputs without cosmology (internal units)
+  delta_time:          1e-7     # Time difference between consecutive outputs without cosmology (internal units)
   #delta_time:          1.02     # Time difference between consecutive outputs with cosmology (in internal units)
   scale_factor_first:  0.5
   compression:         4
@@ -34,7 +34,8 @@ Snapshots:
 # Parameters governing the conserved quantities statistics
 Statistics:
   scale_factor_first:  0.5
-  delta_time:          1.02 # Time between statistics output
+  #delta_time:          1.02 # Time between statistics output
+  delta_time:          1e-7  # non cosmology time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -52,7 +53,7 @@ Scheduler:
 
 Stars:
   feedback_timescale: 1e-4
-  continuous_heating: 1         # decide whether using continuous heating in feedback (1) or stochastic (0)
+  continuous_heating: 0         # decide whether using continuous heating in feedback (1) or stochastic (0)
   
 Gravity:
   mesh_side_length:   32

@@ -33,7 +33,7 @@ def distance(p,s):
 	return sqrt(dist2)
 
 # Number of snapshots we have
-n_snapshots = 11
+n_snapshots = 54
 
 # Plot parameters
 params = {'axes.labelsize': 10,
@@ -106,36 +106,36 @@ for i in range(n_snapshots):
 	#masses[:,i] = sort_by_id(id[:,i], masses_unsorted)
 	#mass_from_AGB_unsorted = sim["/PartType0/TotalMassFromAGB"]
 	#mass_from_AGB[:,i] = sort_by_id(id[:,i], mass_from_AGB_unsorted)
-	metallicity_unsorted = sim["/PartType0/Metallicity"]
-	metallicity[:,i] = sort_by_id(id[:,i], metallicity_unsorted)
+	#metallicity_unsorted = sim["/PartType0/Metallicity"]
+	#metallicity[:,i] = sort_by_id(id[:,i], metallicity_unsorted)
 	internal_energy_unsorted = sim["/PartType0/InternalEnergy"]
 	internal_energy[:,i] = sort_by_id(id[:,i], internal_energy_unsorted)
 	time[i] = sim["/Header"].attrs["Time"]
 	spart_mass[:,i] = sim["/PartType4/Masses"]
 
 # Now we can make some plots
-figure()
-subplot(111)
-
-for i in range(n_parts):
-	#if ((distance(coord_parts[i,:],coord_sparts) < smoothing_length) & (metallicity[i,n_snapshots-1] != 0)):
-	plot(metallicity[i,:],color='k',alpha=0.1, linewidth=0.5)
-
-xlabel("snapshot")
-ylabel("metallicity")
-savefig("stellar_evolution_metallicity.png", dpi=200)
-
-figure()
-subplot(111)
-
-for i in range(n_parts):
-	#if ((distance(coord_parts[i,:],coord_sparts) < smoothing_length) & (metallicity[i,n_snapshots-1] != 0)):
-	plot(masses[i,:],color='k',alpha=0.1, linewidth=0.5)
-
-xlabel("snapshot")
-ylabel("mass")
-savefig("stellar_evolution_mass.png", dpi=200)
-
+#figure()
+#subplot(111)
+#
+#for i in range(n_parts):
+#	#if ((distance(coord_parts[i,:],coord_sparts) < smoothing_length) & (metallicity[i,n_snapshots-1] != 0)):
+#	plot(metallicity[i,:],color='k',alpha=0.1, linewidth=0.5)
+#
+#xlabel("snapshot")
+#ylabel("metallicity")
+#savefig("stellar_evolution_metallicity.png", dpi=200)
+#
+#figure()
+#subplot(111)
+#
+#for i in range(n_parts):
+#	#if ((distance(coord_parts[i,:],coord_sparts) < smoothing_length) & (metallicity[i,n_snapshots-1] != 0)):
+#	plot(masses[i,:],color='k',alpha=0.1, linewidth=0.5)
+#
+#xlabel("snapshot")
+#ylabel("mass")
+#savefig("stellar_evolution_mass.png", dpi=200)
+#
 #figure()
 #subplot(111)
 #
@@ -147,16 +147,16 @@ savefig("stellar_evolution_mass.png", dpi=200)
 #ylabel("mass from AGB")
 #savefig("stellar_evolution_mass_AGB.png", dpi=200)
 #
-#figure()
-#subplot(111)
-#
-#for i in range(n_parts):
-#	#if ((distance(coord_parts[i,:],coord_sparts) < smoothing_length) & (metallicity[i,n_snapshots-1] != 0)):
-#	plot(internal_energy[i,:],color='k',alpha=0.1, linewidth=0.5)
-#
-#xlabel("snapshot")
-#ylabel("internal energy")
-#savefig("internal_energy.png", dpi=200)
+figure()
+subplot(111)
+
+for i in range(n_parts):
+	if (internal_energy[i,n_snapshots-1] > internal_energy[i,0]):
+		plot(internal_energy[i,:],color='k',alpha=0.1, linewidth=0.5)
+
+xlabel("snapshot")
+ylabel("internal energy")
+savefig("internal_energy.png", dpi=200)
 #
 #total_part_mass = np.sum(masses,axis = 0)
 #

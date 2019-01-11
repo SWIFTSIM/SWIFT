@@ -21,9 +21,9 @@ import h5py
 from numpy import *
 
 # Parameters
-T_i = 1.e3               # Initial temperature of the gas (in K)
+T_i = 1.e4               # Initial temperature of the gas (in K)
 gamma = 5./3.            # Gas adiabatic index
-numPart_gas_1D = 16      # Number of particles along each dimension
+numPart_gas_1D = 24      # Number of particles along each dimension
 numPart_stars_1D = 1    # Number of particles along each dimension
 fileName = "stellar_evolution.hdf5"
 

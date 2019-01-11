@@ -6,7 +6,7 @@ import os.path
 import numpy as np
 
 # Number of snapshots and elements
-n_snapshots = 11
+n_snapshots = 54
 n_elements = 9
 
 # Plot parameters
@@ -107,7 +107,7 @@ ejecta_factor = 1.0e-2
 ejecta_factor_metallicity = 1.0 - 2.0/n_elements
 ejecta_factor_abundances = 1.0/n_elements
 ejected_mass = star_initial_mass
-SNIa_rate = 1.0e10
+SNIa_rate = 1.0e9
 energy_per_SNe = 1.0e51/unit_energy_in_cgs
 
 # Check that the total amount of enrichment is as expected.
@@ -237,14 +237,32 @@ for i in range(n_elements):
 	else:
 		print("total element mass "+str(total_element_mass[n_snapshots-1])+" expected "+ str(expected_element_mass) + " for element "+ str(i))
 
-# heating
+# Continuous heating
+#vel2 = zeros((n_parts,n_snapshots))
+#vel2[:,:] = velocity_parts[:,0,:]*velocity_parts[:,0,:] + velocity_parts[:,1,:]*velocity_parts[:,1,:] + velocity_parts[:,2,:]*velocity_parts[:,2,:]
+#total_kinetic_energy = np.sum(np.multiply(vel2,masses)*0.5,axis = 0)
+#total_energy = np.sum(np.multiply(internal_energy,masses),axis = 0)
+#total_energy_released = total_energy[n_snapshots-1] - total_energy[0] + total_kinetic_energy[n_snapshots-1] - total_kinetic_energy[0]
+#expected_energy_released = SNIa_rate*star_initial_mass*time[n_snapshots-1]*energy_per_SNe
+#if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
+#	print("total continuous energy release consistent with expectation")
+#else:
+#	print("total continuous energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))
+
+# Stochastic heating
 vel2 = zeros((n_parts,n_snapshots))
 vel2[:,:] = velocity_parts[:,0,:]*velocity_parts[:,0,:] + velocity_parts[:,1,:]*velocity_parts[:,1,:] + velocity_parts[:,2,:]*velocity_parts[:,2,:]
 total_kinetic_energy = np.sum(np.multiply(vel2,masses)*0.5,axis = 0)
 total_energy = np.sum(np.multiply(internal_energy,masses),axis = 0)
 total_energy_released = total_energy[n_snapshots-1] - total_energy[0] + total_kinetic_energy[n_snapshots-1] - total_kinetic_energy[0]
-expected_energy_released = SNIa_rate*star_initial_mass*time[n_snapshots-1]*energy_per_SNe
+
+# put in variable names to make this clearer...
+heating_probability = 2.39802e-01 * 9.76562e+01 / (3.16228e+07 * 2e-4)
+du = 3.16228e+07 * 2.0e-2
+print(heating_probability,du)
+
+expected_energy_released = heating_probability * du * np.sum(star_masses,axis=0)[0]
 if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
-	print("total continuous energy release consistent with expectation")
+	print("total stochastic energy release consistent with expectation")
 else:
-	print("total continuous energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))
+	print("total stochastic energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))
