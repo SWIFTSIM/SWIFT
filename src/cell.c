@@ -214,10 +214,9 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
         count += cell_link_foreign_parts(c->progeny[k], &parts[count]);
       }
     }
-    return count;
-  } else {
-    return c->hydro.count;
   }
+
+  return c->hydro.count;
 }
 
 int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
@@ -247,10 +246,9 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
         count += cell_link_foreign_gparts(c->progeny[k], &gparts[count]);
       }
     }
-    return count;
-  } else {
-    return 0;
   }
+
+  return c->grav.count;
 }
 
 int cell_count_parts_for_tasks(const struct cell *c) {
@@ -272,10 +270,9 @@ int cell_count_parts_for_tasks(const struct cell *c) {
         count += cell_count_parts_for_tasks(c->progeny[k]);
       }
     }
-    return count;
-  } else {
-    return c->hydro.count;
   }
+
+  return c->hydro.count;
 }
 
 int cell_count_gparts_for_tasks(const struct cell *c) {
@@ -297,10 +294,9 @@ int cell_count_gparts_for_tasks(const struct cell *c) {
         count += cell_count_gparts_for_tasks(c->progeny[k]);
       }
     }
-    return count;
-  } else {
-    return 0;
   }
+
+  return c->grav.count;
 }
 
 /**
