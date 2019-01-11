@@ -2485,6 +2485,8 @@ void engine_maketasks(struct engine *e) {
   }
 #endif
 
+  engine_allocate_foreign_particles(e);
+
   tic2 = getticks();
 
   /* Set the unlocks per task. */

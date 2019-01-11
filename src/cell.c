@@ -69,6 +69,11 @@
 /* Global variables. */
 int cell_next_tag = 0;
 
+int depth_0_counter = 0;
+int depth_1_counter = 0;
+int depth_2_counter = 0;
+int depth_3_counter = 0;
+
 /**
  * @brief Get the size of the cell subtree.
  *
@@ -96,21 +101,46 @@ int cell_getsize(struct cell *c) {
  *
  * @return The number of particles linked.
  */
-int cell_link_parts(struct cell *c, struct part *parts) {
+int cell_link_parts(struct cell *c, struct part *parts, int link) {
 
-  c->hydro.parts = parts;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->hydro.density != NULL) {
+    link = 1;
+  }
+
+  /* Ok, link the particles at this level */
+  if (link) {
+    c->hydro.parts = parts;
+  }
 
   /* Fill the progeny recursively, depth-first. */
   if (c->split) {
-    int offset = 0;
+    int count = 0;
+
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL)
-        offset += cell_link_parts(c->progeny[k], &parts[offset]);
+      if (c->progeny[k] != NULL) {
+        count += cell_link_parts(c->progeny[k], &parts[count], link);
+      }
     }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (link && (count != c->hydro.count))
+      error("Something is wrong with the foreign part counts.");
+#endif
+
+    return count;
   }
 
   /* Return the total number of linked particles. */
-  return c->hydro.count;
+  if (link)
+    return c->hydro.count;
+  else
+    return 0;
 }
 
 /**
@@ -161,6 +191,35 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
 
   /* Return the total number of linked particles. */
   return c->stars.count;
+}
+
+int cell_count_parts_for_tasks(const struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Counting foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->hydro.density != NULL) {
+    if (c->depth == 0) ++depth_0_counter;
+    if (c->depth == 1) ++depth_1_counter;
+    if (c->depth == 2) ++depth_2_counter;
+    if (c->depth == 3) ++depth_3_counter;
+    return c->hydro.count;
+  }
+
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        count += cell_count_parts_for_tasks(c->progeny[k]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
 }
 
 /**

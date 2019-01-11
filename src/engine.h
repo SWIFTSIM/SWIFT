@@ -400,6 +400,7 @@ void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
+void engine_allocate_foreign_particles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_check_for_dumps(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
