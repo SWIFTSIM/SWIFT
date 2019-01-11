@@ -69,12 +69,6 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_DENSITY, parts, rho);
 }
 
-INLINE static void convert_u(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
-
-  ret[0] = hydro_get_comoving_internal_energy(p);
-}
-
 INLINE static void convert_S(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
@@ -170,9 +164,8 @@ INLINE static void hydro_write_particles(const struct part* parts,
       io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts, mass);
   list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
                                  parts, h);
-  list[4] = io_make_output_field_convert_part("InternalEnergy", FLOAT, 1,
-                                              UNIT_CONV_ENERGY_PER_UNIT_MASS,
-                                              parts, xparts, convert_u);
+  list[4] = io_make_output_field("InternalEnergy", FLOAT, 1,
+                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts, u);
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, id);
   list[6] =

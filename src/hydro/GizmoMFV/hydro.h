@@ -121,6 +121,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   const float mass = p->conserved.mass;
 
+  p->time_bin = 0;
+  p->wakeup = time_bin_not_awake;
+
   p->primitives.v[0] = p->v[0];
   p->primitives.v[1] = p->v[1];
   p->primitives.v[2] = p->v[2];
@@ -1081,5 +1084,15 @@ hydro_set_init_internal_energy(struct part* p, float u_init) {
 #endif
   p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u_init;
 }
+
+/**
+ * @brief Operations performed when a particle gets removed from the
+ * simulation volume.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void hydro_remove_part(
+    const struct part* p, const struct xpart* xp) {}
 
 #endif /* SWIFT_GIZMO_MFV_HYDRO_H */

@@ -50,22 +50,26 @@
 #include <float.h>
 
 /**
- * @brief Returns the comoving internal energy of a particle
+ * @brief Returns the comoving internal energy of a particle at the last
+ * time the particle was kicked.
  *
  * For implementations where the main thermodynamic variable
  * is not internal energy, this function computes the internal
  * energy from the thermodynamic variable.
  *
  * @param p The particle of interest
+ * @param xp The extended data of the particle of interest.
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_comoving_internal_energy(const struct part *restrict p) {
+hydro_get_comoving_internal_energy(const struct part *restrict p,
+                                   const struct xpart *restrict xp) {
 
-  return p->u;
+  return xp->u_full;
 }
 
 /**
- * @brief Returns the physical internal energy of a particle
+ * @brief Returns the physical internal energy of a particle at the last
+ * time the particle was kicked.
  *
  * For implementations where the main thermodynamic variable
  * is not internal energy, this function computes the internal
@@ -73,13 +77,15 @@ hydro_get_comoving_internal_energy(const struct part *restrict p) {
  * physical coordinates.
  *
  * @param p The particle of interest.
+ * @param xp The extended data of the particle of interest.
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_physical_internal_energy(const struct part *restrict p,
+                                   const struct xpart *restrict xp,
                                    const struct cosmology *cosmo) {
 
-  return p->u * cosmo->a_factor_internal_energy;
+  return xp->u_full * cosmo->a_factor_internal_energy;
 }
 
 /**
@@ -734,6 +740,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
+  p->wakeup = time_bin_not_awake;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
@@ -762,5 +769,15 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
 
   p->u = u_init;
 }
+
+/**
+ * @brief Operations performed when a particle gets removed from the
+ * simulation volume.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void hydro_remove_part(
+    const struct part *p, const struct xpart *xp) {}
 
 #endif /* SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_H */

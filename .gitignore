@@ -29,7 +29,7 @@ examples/*/*.h5
 examples/*/*.png
 examples/*/*.mp4
 examples/*/*.txt
-examples/*/dependency_graph_*.csv
+examples/*/dependency_graph.csv
 examples/*/restart/*
 examples/*/used_parameters.yml
 examples/*/unused_parameters.yml
@@ -37,7 +37,6 @@ examples/*/*/*.xmf
 examples/*/*/*.png
 examples/*/*/*.mp4
 examples/*/*/*.txt
-examples/*/*/*.dot
 examples/*/*/*.rst
 examples/*/*/*.hdf5
 examples/*/snapshots*

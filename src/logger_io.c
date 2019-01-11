@@ -78,7 +78,7 @@ void write_index_single(struct engine* e, const char* baseName,
   const size_t Ngas = e->s->nr_parts;
   const size_t Nstars = e->s->nr_sparts;
   const size_t Ntot = e->s->nr_gparts;
-  int periodic = e->s->periodic;
+  const int periodic = e->s->periodic;
   int numFiles = 1;
   struct part* parts = e->s->parts;
   struct xpart* xparts = e->s->xparts;

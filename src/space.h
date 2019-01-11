@@ -317,6 +317,7 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
 void space_check_top_multipoles_drift_point(struct space *s,
                                             integertime_t ti_drift);
 void space_check_timesteps(struct space *s);
+void space_check_limiter(struct space *s);
 void space_replicate(struct space *s, int replicate, int verbose);
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         int periodic, const double dim[3], int verbose);

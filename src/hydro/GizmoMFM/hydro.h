@@ -137,6 +137,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
                                  p->conserved.momentum[2] * p->v[2]);
 #endif
 
+  p->time_bin = 0;
+  p->wakeup = time_bin_not_awake;
+
   /* initialize the particle velocity based on the primitive fluid velocity */
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
@@ -1007,5 +1010,15 @@ hydro_set_init_internal_energy(struct part* p, float u_init) {
 #endif
   p->P = hydro_gamma_minus_one * p->rho * u_init;
 }
+
+/**
+ * @brief Operations performed when a particle gets removed from the
+ * simulation volume.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void hydro_remove_part(
+    const struct part* p, const struct xpart* xp) {}
 
 #endif /* SWIFT_GIZMO_MFM_HYDRO_H */
