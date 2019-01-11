@@ -1750,11 +1750,6 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 #endif
 }
 
-extern int depth_0_counter;
-extern int depth_1_counter;
-extern int depth_2_counter;
-extern int depth_3_counter;
-
 void engine_allocate_foreign_particles(struct engine *e) {
 
 #ifdef WITH_MPI
@@ -1765,23 +1760,26 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
-  size_t count_parts_in_old = 0;
-  size_t count_parts_in = 0;
+  size_t count_parts_in_old = 0, count_gparts_in_old = 0;
+  size_t count_parts_in = 0, count_gparts_in = 0;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
       if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
         count_parts_in_old += e->proxies[k].cells_in[j]->hydro.count;
-
         count_parts_in += cell_count_parts_for_tasks(e->proxies[k].cells_in[j]);
       }
+
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
+        count_gparts_in_old += e->proxies[k].cells_in[j]->grav.count;
+        count_gparts_in += cell_count_gparts_for_tasks(e->proxies[k].cells_in[j]);
+      }
+
     }
   }
 
-  message("New count: %zd old count: %zd", count_parts_in, count_parts_in_old);
-
-  message("counters: %d %d %d %d", depth_0_counter, depth_1_counter,
-          depth_2_counter, depth_3_counter);
+  message("New parts count: %zd old parts count: %zd", count_parts_in, count_parts_in_old);
+  message("New gparts count: %zd old gparts count: %zd", count_gparts_in, count_gparts_in_old);
 
   /* Allocate space for the foreign particles we will receive */
   if (count_parts_in > s->size_parts_foreign) {
@@ -1791,9 +1789,19 @@ void engine_allocate_foreign_particles(struct engine *e) {
                        sizeof(struct part) * s->size_parts_foreign) != 0)
       error("Failed to allocate foreign part data.");
   }
+  /* Allocate space for the foreign particles we will receive */
+  if (count_gparts_in > s->size_gparts_foreign) {
+    if (s->gparts_foreign != NULL) free(s->gparts_foreign);
+    s->size_gparts_foreign = 1.1 * count_gparts_in;
+    if (posix_memalign((void **)&s->gparts_foreign, part_align,
+                       sizeof(struct gpart) * s->size_gparts_foreign) != 0)
+      error("Failed to allocate foreign gpart data.");
+  }
 
   struct part *parts = s->parts_foreign;
+  struct gpart *gparts = s->gparts_foreign;
   size_t total_count_parts = 0;
+  size_t total_count_gparts = 0;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -1803,11 +1811,19 @@ void engine_allocate_foreign_particles(struct engine *e) {
         parts = &parts[count_parts];
 	total_count_parts += count_parts;
       }
+
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
+
+        const size_t count_gparts = cell_link_foreign_gparts(e->proxies[k].cells_in[j], gparts);
+        gparts = &gparts[count_gparts];
+	total_count_gparts += count_gparts;
+      }
     }
   }
 
   /* Update the counters */
   s->nr_parts_foreign = parts - s->parts_foreign;
+  s->nr_gparts_foreign = gparts - s->gparts_foreign;
 
   
   message("count_parts: %zd %zd", count_parts_in, total_count_parts);

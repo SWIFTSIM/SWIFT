@@ -69,11 +69,6 @@
 /* Global variables. */
 int cell_next_tag = 0;
 
-int depth_0_counter = 0;
-int depth_1_counter = 0;
-int depth_2_counter = 0;
-int depth_3_counter = 0;
-
 /**
  * @brief Get the size of the cell subtree.
  *
@@ -104,6 +99,9 @@ int cell_getsize(struct cell *c) {
 int cell_link_parts(struct cell *c, struct part *parts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
   if(c->hydro.parts != NULL)
     error("Linking parts into a cell that was already linked");
 #endif
@@ -123,15 +121,72 @@ int cell_link_parts(struct cell *c, struct part *parts) {
   return c->hydro.count;
 }
 
-
 /**
- * @brief Link the cells recursively to the given #part array.
+ * @brief Link the cells recursively to the given #gpart array.
  *
  * @param c The #cell.
- * @param parts The #part array.
+ * @param gparts The #gpart array.
  *
  * @return The number of particles linked.
  */
+int cell_link_gparts(struct cell *c, struct gpart *gparts) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if(c->grav.parts != NULL)
+    error("Linking gparts into a cell that was already linked");
+#endif
+
+  c->grav.parts = gparts;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_gparts(c->progeny[k], &gparts[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->grav.count;
+}
+
+/**
+ * @brief Link the cells recursively to the given #spart array.
+ *
+ * @param c The #cell.
+ * @param sparts The #spart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_sparts(struct cell *c, struct spart *sparts) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if(c->stars.parts != NULL)
+    error("Linking sparts into a cell that was already linked");
+#endif
+
+  c->stars.parts = sparts;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_sparts(c->progeny[k], &sparts[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->stars.count;
+}
+
 int cell_link_foreign_parts(struct cell *c, struct part *parts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -165,54 +220,37 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
   }
 }
 
-/**
- * @brief Link the cells recursively to the given #gpart array.
- *
- * @param c The #cell.
- * @param gparts The #gpart array.
- *
- * @return The number of particles linked.
- */
-int cell_link_gparts(struct cell *c, struct gpart *gparts) {
+int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
 
-  c->grav.parts = gparts;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+#endif
 
-  /* Fill the progeny recursively, depth-first. */
-  if (c->split) {
-    int offset = 0;
-    for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL)
-        offset += cell_link_gparts(c->progeny[k], &gparts[offset]);
-    }
+  /* Do we have a hydro task at this level? */
+  if (c->grav.grav != NULL) {
+
+    /* Recursively attach the parts */
+    const int counts = cell_link_gparts(c, gparts);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (counts != c->grav.count)
+      error("Something is wrong with the foreign counts");
+#endif
+    return counts;
   }
 
-  /* Return the total number of linked particles. */
-  return c->grav.count;
-}
-
-/**
- * @brief Link the cells recursively to the given #spart array.
- *
- * @param c The #cell.
- * @param sparts The #spart array.
- *
- * @return The number of particles linked.
- */
-int cell_link_sparts(struct cell *c, struct spart *sparts) {
-
-  c->stars.parts = sparts;
-
-  /* Fill the progeny recursively, depth-first. */
+  /* Go deeper to find the level where the tasks are */
   if (c->split) {
-    int offset = 0;
+    int count = 0;
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL)
-        offset += cell_link_sparts(c->progeny[k], &sparts[offset]);
+      if (c->progeny[k] != NULL) {
+        count += cell_link_foreign_gparts(c->progeny[k], &gparts[count]);
+      }
     }
+    return count;
+  } else {
+    return 0;
   }
-
-  /* Return the total number of linked particles. */
-  return c->stars.count;
 }
 
 int cell_count_parts_for_tasks(const struct cell *c) {
@@ -224,10 +262,6 @@ int cell_count_parts_for_tasks(const struct cell *c) {
 
   /* Do we have a hydro task at this level? */
   if (c->hydro.density != NULL) {
-    if (c->depth == 0) ++depth_0_counter;
-    if (c->depth == 1) ++depth_1_counter;
-    if (c->depth == 2) ++depth_2_counter;
-    if (c->depth == 3) ++depth_3_counter;
     return c->hydro.count;
   }
 
@@ -243,6 +277,32 @@ int cell_count_parts_for_tasks(const struct cell *c) {
     return 0;
   }
 }
+
+int cell_count_gparts_for_tasks(const struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Counting foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->grav.grav != NULL) {
+    return c->grav.count;
+  }
+
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        count += cell_count_gparts_for_tasks(c->progeny[k]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+}
+
 
 /**
  * @brief Pack the data of the given cell and all it's sub-cells.
