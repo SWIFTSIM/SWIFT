@@ -103,6 +103,11 @@ int cell_getsize(struct cell *c) {
  */
 int cell_link_parts(struct cell *c, struct part *parts) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if(c->hydro.parts != NULL)
+    error("Linking parts into a cell that was already linked");
+#endif
+
   c->hydro.parts = parts;
 
   /* Fill the progeny recursively, depth-first. */
@@ -151,7 +156,7 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
     int count = 0;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        count += cell_link_foreign_parts(c->progeny[k], parts);
+        count += cell_link_foreign_parts(c->progeny[k], &parts[count]);
       }
     }
     return count;
