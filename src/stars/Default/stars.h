@@ -145,6 +145,6 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
-    const struct cosmology* cosmo) {}
+    const struct cosmology* cosmo, float dt) {}
 
 #endif /* SWIFT_DEFAULT_STARS_H */
