@@ -255,7 +255,25 @@ Particle tracers
 Over the course of the simulation, the gas particles record some information
 about their evolution. These are updated for a given particle every time it is
 active. The EAGLE tracers module is located in the directory
-``src/tracers/EAGLE``. 
+``src/tracers/EAGLE/``. 
+
+In the EAGLE model, we trace the maximal tempearature a particle has reached and
+the time at which this happened. When a star is formed (see the section
+:ref:`EAGLE_star_formation` below), it inherits all the tracer values of its parent
+gas particle.  There are no parameters to the model but two values are added to
+the snapshots for each gas and star particle:
+
++----------------------------------------+---------------------------------------+-----------+-----------------------------+
+| Name                                   | Description                           | Units     | Comments                    |
++========================================+=======================================+===========+=============================+
+| | ``Maximal Temperature``              | | Mximal temperature reached by       | | [U_T]   |                             |
+|                                        | | this particle.                      |           |                             |
++----------------------------------------+---------------------------------------+-----------+-----------------------------+
+| | ``Maximal Temperature scale-factor`` | | Scale-factor (cosmological runs)    | | [-]     |                             |
+| | OR                                   | | or time (non-cosmological runs) at  | | OR      |                             |
+| | ``Maximal Temperature time``         | | which the maximum value was reached.| | [U_t]   |                             |
++----------------------------------------+---------------------------------------+-----------+-----------------------------+
+
 
 .. _EAGLE_star_formation:
 
