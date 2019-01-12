@@ -72,6 +72,8 @@ labels = [
     "Creating send tasks",
     "Exchanging cell tags",
     "Creating recv tasks",
+    "Counting number of foreign particles",
+    "Recursively linking foreign arrays",
     "Setting unlocks",
     "Ranking the tasks",
     "scheduler_reweight:",
@@ -97,6 +99,8 @@ labels = [
     "engine_repartition_trigger:"
 ]
 is_rebuild = [
+    1,
+    1,
     1,
     1,
     1,
