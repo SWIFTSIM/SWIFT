@@ -187,6 +187,16 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
   return c->stars.count;
 }
 
+/**
+ * @brief Recurse down foreign cells until reaching one with hydro
+ * tasks; then trigger the linking of the #part array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param parts The #part array.
+ *
+ * @return The number of particles linked.
+ */
 int cell_link_foreign_parts(struct cell *c, struct part *parts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -219,6 +229,16 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
   return c->hydro.count;
 }
 
+/**
+ * @brief Recurse down foreign cells until reaching one with gravity
+ * tasks; then trigger the linking of the #gpart array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param gparts The #gpart array.
+ *
+ * @return The number of particles linked.
+ */
 int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -251,6 +271,14 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
   return c->grav.count;
 }
 
+/**
+ * @brief Recursively count the number of #part in foreign cells that
+ * are in cells with hydro-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
 int cell_count_parts_for_tasks(const struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -275,6 +303,14 @@ int cell_count_parts_for_tasks(const struct cell *c) {
   return c->hydro.count;
 }
 
+/**
+ * @brief Recursively count the number of #gpart in foreign cells that
+ * are in cells with gravity-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
 int cell_count_gparts_for_tasks(const struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
