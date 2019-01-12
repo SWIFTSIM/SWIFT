@@ -38,7 +38,7 @@ We finally also compute the smoothed versions of the individual
 element mass fractions, of the total metal mass fractions, and of the
 iron gas fraction from SNIa.
 
-The chemistry module in ``src/chemistry/EAGLE`` includes all the arrays
+The chemistry module in ``src/chemistry/EAGLE/`` includes all the arrays
 that are added to the particles and the functions used to compute the
 smoothed elements.
 
@@ -157,7 +157,8 @@ ignores *local* sources of ionization, self-shielding and non-equilibrium
 cooling/heating. The tables can be obtained from this `link
 <http://virgodb.cosma.dur.ac.uk/swift-webstorage/CoolingTables/EAGLE/coolingtables.tar.gz>`_
 which is a re-packaged version of the `original tables
-<http://www.strw.leidenuniv.nl/WSS08/>`_
+<http://www.strw.leidenuniv.nl/WSS08/>`_. The code reading and interpolating the
+table is located in the directory ``src/cooling/EAGLE/``.
 
 The Wiersma tables containing the cooling rates as a function of redshift,
 Hydrogen number density, Helium fraction (:math:`X_{He} / (X_{He} + X_{H})`) and
@@ -197,6 +198,27 @@ We note that the EAGLE cooling model does not impose any restriction on the
 particles' individual time-steps. The cooling takes place over the time span
 given by the other conditions (e.g the Courant condition).
 
+Finelly, the cooling module also provides a function to compute the temperature
+of a given gas particle based on its density, internal energy, abundances and
+the current redshift. This temperature is the one used to compute the cooling
+rate from the tables and similarly to the cooling rates, they assume that the
+gas is in collisional equilibrium with the background radiation. The
+temperatures are, in particular, computed every time a snapshot is written and
+they are listed for every gas particle:
+
++---------------------+-------------------------------------+-----------+-------------------------------------+
+| Name                | Description                         | Units     | Comments                            |
++=====================+=====================================+===========+=====================================+
+| ``Temperature``     | | Temperature of the gas as         | [U_T]     | | The calculation is performed      |
+|                     | | computed from the tables.         |           | | using quantities at the last      |
+|                     |                                     |           | | time-step the particle was active |
++---------------------+-------------------------------------+-----------+-------------------------------------+
+
+Note that if one is running without cooling switched on at runtime, the
+temperatures can be computed by passing the ``--temparature`` runtime flag (see
+:ref:`cmdline-options`). Note that the tables then have to be available as in
+the case with cooling switched on.
+
 The cooling model is driven by a small number of parameter files in the
 `EAGLECooling` section of the YAML file. These are the re-ionization parameters,
 the path to the tables and optionally the modified abundances of `Ca` and `S` as
@@ -221,10 +243,13 @@ And the optional parameters are:
      S_over_Si_in_solar:        1.0 # (Optional) Value of the Sulphur mass abundance ratio to solar in units of the Silicon ratio to solar. Default value: 1.
      newton_integration:        0   # (Optional) Set to 1 to use the Newton-Raphson scheme for the explicit cooling problem.
 
-
-
 Particle tracers
 ~~~~~~~~~~~~~~~~
+
+Over the course of the simulation, the gas particles record some information
+about their evolution. These are updated for a given particle every time it is
+active. The EAGLE tracers module is located in the directory
+``src/tracers/EAGLE``. 
 
 Star formation: Schaye+2008
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
