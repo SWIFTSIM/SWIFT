@@ -783,6 +783,9 @@ void write_output_serial(struct engine* e, const char* baseName,
   const struct spart* sparts = e->s->sparts;
   struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int with_cooling = e->policy & engine_policy_cooling;
+  const int with_temperature = e->policy & engine_policy_temperature;
+
   FILE* xmfFile = 0;
 
   /* Number of particles currently in the arrays */
@@ -1099,8 +1102,10 @@ void write_output_serial(struct engine* e, const char* baseName,
               Nparticles = Ngas;
               hydro_write_particles(parts, xparts, list, &num_fields);
               num_fields += chemistry_write_particles(parts, list + num_fields);
-              num_fields += cooling_write_particles(
-                  parts, xparts, list + num_fields, e->cooling_func);
+              if (with_cooling || with_temperature) {
+                num_fields += cooling_write_particles(
+                    parts, xparts, list + num_fields, e->cooling_func);
+              }
               num_fields += tracers_write_particles(
                   parts, xparts, list + num_fields, with_cosmology);
 
@@ -1126,9 +1131,12 @@ void write_output_serial(struct engine* e, const char* baseName,
                                     &num_fields);
               num_fields +=
                   chemistry_write_particles(parts_written, list + num_fields);
-              num_fields +=
-                  cooling_write_particles(parts_written, xparts_written,
-                                          list + num_fields, e->cooling_func);
+              if (with_cooling || with_temperature) {
+                num_fields +=
+                    cooling_write_particles(parts_written, xparts_written,
+                                            list + num_fields, e->cooling_func);
+              }
+
               num_fields +=
                   tracers_write_particles(parts_written, xparts_written,
                                           list + num_fields, with_cosmology);
