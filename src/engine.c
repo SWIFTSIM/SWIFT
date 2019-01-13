@@ -1822,9 +1822,10 @@ void engine_allocate_foreign_particles(struct engine *e) {
   if (e->verbose)
     message("Allocating %zd/%zd/%zd foreign part/gpart/spart (%zd/%zd/%zd MB)",
             s->size_parts_foreign, s->size_gparts_foreign,
-            s->size_sparts_foreign, s->size_parts_foreign / (1024 * 1024),
-            s->size_gparts_foreign / (1024 * 1024),
-            s->size_sparts_foreign / (1024 * 1024));
+            s->size_sparts_foreign,
+            s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
+            s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
+            s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024));
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
