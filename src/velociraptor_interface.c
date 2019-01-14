@@ -134,6 +134,8 @@ void velociraptor_init(struct engine *e) {
   struct unitinfo unit_info;
   struct siminfo sim_info;
 
+  const ticks tic = getticks();
+
   /* Set cosmological constants. */
   cosmo_info.atime = e->cosmology->a;
   cosmo_info.littleh = e->cosmology->h;
@@ -220,7 +222,7 @@ void velociraptor_init(struct engine *e) {
   parser_get_param_string(e->parameter_file,
                           "StructureFinding:config_file_name", configfilename);
   snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s.VELOCIraptor",
-           e->stfBaseName);
+           e->stf_base_name);
 
   message("Config file name: %s", configfilename);
   message("Period: %e", sim_info.period);
@@ -241,6 +243,10 @@ void velociraptor_init(struct engine *e) {
   if (!InitVelociraptor(configfilename, outputFileName, cosmo_info, unit_info,
                         sim_info))
     error("Exiting. VELOCIraptor initialisation failed.");
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("SWIFT not configure to run with VELOCIraptor.");
 #endif /* HAVE_VELOCIRAPTOR */
@@ -250,9 +256,9 @@ void velociraptor_init(struct engine *e) {
  * @brief Run VELOCIraptor with current particle data.
  *
  * @param e The #engine.
- *
+ * @param linked_with_snap Are we running at the same time as a snapshot dump?
  */
-void velociraptor_invoke(struct engine *e) {
+void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
 #ifdef HAVE_VELOCIRAPTOR
   struct space *s = e->s;
@@ -263,7 +269,8 @@ void velociraptor_invoke(struct engine *e) {
   const size_t nr_hydro_parts = s->nr_parts;
   const int nr_cells = s->nr_cells;
   int *cell_node_ids = NULL;
-  static int stf_output_count = 0;
+
+  const ticks tic = getticks();
 
   /* Allow thread to run on any core for the duration of the call to
    * VELOCIraptor so that
@@ -279,23 +286,22 @@ void velociraptor_invoke(struct engine *e) {
 
   pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
 
-  ticks tic = getticks();
-
   /* Allocate and populate array of cell node IDs. */
   if (posix_memalign((void **)&cell_node_ids, 32, nr_cells * sizeof(int)) != 0)
     error("Failed to allocate list of cells node IDs for VELOCIraptor.");
 
   for (int i = 0; i < nr_cells; i++) cell_node_ids[i] = s->cells_top[i].nodeID;
 
-  message("MPI rank %d sending %zu gparts to VELOCIraptor.", engine_rank,
-          nr_gparts);
+  if (e->verbose)
+    message("MPI rank %d sending %zu gparts to VELOCIraptor.", engine_rank,
+            nr_gparts);
 
   /* Append base name with either the step number or time depending on what
    * format is specified in the parameter file. */
   char outputFileName[PARSER_MAX_LINE_SIZE + 128];
 
   snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
-           e->stfBaseName, stf_output_count);
+           e->stf_base_name, e->stf_output_count);
 
   /* Allocate and populate an array of swift_vel_parts to be passed to
    * VELOCIraptor. */
@@ -310,8 +316,8 @@ void velociraptor_invoke(struct engine *e) {
   const float energy_scale = 1.0;
   const float a = e->cosmology->a;
 
-  message("Energy scaling factor: %f", energy_scale);
-  message("a: %f", a);
+  /* message("Energy scaling factor: %f", energy_scale); */
+  /* message("a: %f", a); */
 
   /* Convert particle properties into VELOCIraptor units */
   for (size_t i = 0; i < nr_gparts; i++) {
@@ -343,7 +349,7 @@ void velociraptor_invoke(struct engine *e) {
   }
 
   /* Call VELOCIraptor. */
-  if (!InvokeVelociraptor(nr_gparts, nr_hydro_parts, stf_output_count,
+  if (!InvokeVelociraptor(nr_gparts, nr_hydro_parts, e->stf_output_count,
                           swift_parts, cell_node_ids, outputFileName))
     error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
 
@@ -354,10 +360,11 @@ void velociraptor_invoke(struct engine *e) {
   free(cell_node_ids);
   free(swift_parts);
 
-  stf_output_count++;
+  e->stf_output_count++;
 
-  message("VELOCIraptor took %.3f %s on rank %d.",
-          clocks_from_ticks(getticks() - tic), clocks_getunit(), engine_rank);
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("SWIFT not configure to run with VELOCIraptor.");
 #endif /* HAVE_VELOCIRAPTOR */

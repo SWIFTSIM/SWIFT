@@ -240,11 +240,11 @@ struct engine {
   char snapshot_base_name[PARSER_MAX_LINE_SIZE];
   int snapshot_compression;
   int snapshot_int_time_label_on;
+  int snapshot_invoke_stf;
   struct unit_system *snapshot_units;
   int snapshot_output_count;
 
   /* Structure finding information */
-  int delta_step_stf;
   double a_first_stf_output;
   double time_first_stf_output;
   double delta_time_stf;
@@ -255,7 +255,8 @@ struct engine {
   /* Integer time of the next stf output */
   integertime_t ti_next_stf;
 
-  char stfBaseName[PARSER_MAX_LINE_SIZE];
+  char stf_base_name[PARSER_MAX_LINE_SIZE];
+  int stf_output_count;
 
   /* Statistics information */
   double a_first_statistics;

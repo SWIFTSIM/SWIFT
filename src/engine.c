@@ -3111,13 +3111,6 @@ void engine_step(struct engine *e) {
 #endif
 }
 
-enum output_type {
-  output_none,
-  output_snapshot,
-  output_statistics,
-  output_stf
-};
-
 /**
  * @brief Check whether any kind of i/o has to be performed during this
  * step.
@@ -3132,7 +3125,17 @@ void engine_check_for_dumps(struct engine *e) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_stf = (e->policy & engine_policy_structure_finding);
 
-  /* What kind of output do we want? And at which time ? */
+  /* What kind of output are we getting? */
+  enum output_type {
+    output_none,
+    output_snapshot,
+    output_statistics,
+    output_stf
+  };
+
+  /* What kind of output do we want? And at which time ?
+   * Find the earliest output (amongst all kinds) that takes place
+   * before the next time-step */
   enum output_type type = output_none;
   integertime_t ti_output = max_nr_timesteps;
 
@@ -3186,7 +3189,22 @@ void engine_check_for_dumps(struct engine *e) {
     switch (type) {
       case output_snapshot:
 
-        /* Dump... */
+        /* Do we want a corresponding VELOCIraptor output? */
+        if (e->snapshot_invoke_stf) {
+
+#ifdef HAVE_VELOCIRAPTOR
+
+          /* Unleash the raptor! */
+          velociraptor_init(e);
+          velociraptor_invoke(e, /*linked_with_snap=*/1);
+#else
+          error(
+              "Asking for a VELOCIraptor output but SWIFT was compiled without "
+              "the interface!");
+#endif
+        }
+
+          /* Dump... */
 #ifdef WITH_LOGGER
         /* Write a file containing the offsets in the particle logger. */
         engine_dump_index(e);
@@ -3212,17 +3230,16 @@ void engine_check_for_dumps(struct engine *e) {
 
 #ifdef HAVE_VELOCIRAPTOR
 
-	/* Unleash the raptor! */
+        /* Unleash the raptor! */
         velociraptor_init(e);
-        velociraptor_invoke(e);
+        velociraptor_invoke(e, /*linked_with_snap=*/1);
 
         /* ... and find the next output time */
         engine_compute_next_stf_time(e);
 #else
         error(
             "Asking for a VELOCIraptor output but SWIFT was compiled without "
-            "the "
-            "interface!");
+            "the interface!");
 #endif
         break;
 
@@ -3261,7 +3278,8 @@ void engine_check_for_dumps(struct engine *e) {
         }
       }
     }
-  }
+
+  } /* While loop over output types */
 
   /* Restore the information we stored */
   e->ti_current = ti_current;
@@ -4021,9 +4039,12 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
   e->snapshot_int_time_label_on =
       parser_get_opt_param_int(params, "Snapshots:int_time_label_on", 0);
+  e->snapshot_invoke_stf =
+      parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->snapshot_output_count = 0;
+  e->stf_output_count = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->dt_max_RMS_displacement = FLT_MAX;
@@ -4089,13 +4110,13 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   /* Initialise VELOCIraptor output. */
   if (e->policy & engine_policy_structure_finding) {
     parser_get_param_string(params, "StructureFinding:basename",
-                            e->stfBaseName);
+                            e->stf_base_name);
     e->time_first_stf_output =
         parser_get_opt_param_double(params, "StructureFinding:time_first", 0.);
     e->a_first_stf_output = parser_get_opt_param_double(
         params, "StructureFinding:scale_factor_first", 0.1);
     e->delta_time_stf =
-        parser_get_param_double(params, "StructureFinding:delta_time");
+        parser_get_opt_param_double(params, "StructureFinding:delta_time", -1.);
   }
 
   engine_init_output_lists(e, params);
@@ -4437,14 +4458,16 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
     if (e->policy & engine_policy_structure_finding) {
 
-      if (e->delta_time_stf <= 1.)
+      if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
+        error("A value for `StructureFinding:delta_time` must be specified");
+
+      if (e->delta_time_stf <= 1. && e->delta_time_stf != -1.)
         error("Time between STF (%e) must be > 1.", e->delta_time_stf);
 
       if (e->a_first_stf_output < e->cosmology->a_begin)
         error(
             "Scale-factor of first stf output (%e) must be after the "
-            "simulation "
-            "start a=%e.",
+            "simulation start a=%e.",
             e->a_first_stf_output, e->cosmology->a_begin);
     }
   } else {
@@ -4472,7 +4495,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
     if (e->policy & engine_policy_structure_finding) {
 
-      if (e->delta_time_stf <= 0.)
+      if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
+        error("A value for `StructureFinding:delta_time` must be specified");
+
+      if (e->delta_time_stf <= 0. && e->delta_time_stf != -1.)
         error("Time between STF (%e) must be positive.", e->delta_time_stf);
 
       if (e->time_first_stf_output < e->time_begin)
@@ -4508,6 +4534,14 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   /* Find the time of the first stf output */
   if (e->policy & engine_policy_structure_finding) {
     engine_compute_next_stf_time(e);
+  }
+
+  /* Check that we are invoking VELOCIraptor only if we have it */
+  if (e->snapshot_invoke_stf &&
+      !(e->policy & engine_policy_structure_finding)) {
+    error(
+        "Invoking VELOCIraptor after snapshots but structure finding wasn't "
+        "activated at runtime (Use --velociraptor).");
   }
 
   /* Whether restarts are enabled. Yes by default. Can be changed on restart. */

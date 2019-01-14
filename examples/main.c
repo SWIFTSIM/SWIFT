@@ -1201,14 +1201,6 @@ int main(int argc, char *argv[]) {
 #endif
     // write a final snapshot with logger, in order to facilitate a restart
     engine_dump_snapshot(&e);
-
-#ifdef HAVE_VELOCIRAPTOR
-    /* Call VELOCIraptor at the end of the run to find groups. */
-    if (e.policy & engine_policy_structure_finding) {
-      velociraptor_init(&e);
-      velociraptor_invoke(&e);
-    }
-#endif
   }
 
 #ifdef WITH_MPI
