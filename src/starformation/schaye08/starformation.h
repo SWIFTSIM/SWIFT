@@ -42,7 +42,7 @@ struct star_formation {
   double KS_normalization;
 
   /*! Normalization of the KS star formation law in user units */
-  float KS_normalization_MSUNpYRpKPC2;
+  double KS_normalization_MSUNpYRpKPC2;
 
   /*! Slope of the KS law */
   double KS_power_law;
@@ -55,6 +55,9 @@ struct star_formation {
 
   /*! KS high density normalization (internal units) */
   double KS_high_den_normalization;
+
+  /*! KS high density normalization (HpCM3)  */
+  double KS_high_den_thresh_HpCM3;
 
   /*! Critical overdensity */
   double min_over_den;
@@ -325,7 +328,6 @@ INLINE static void starformation_init_backend(
       (1e6 * phys_const->const_parsec * phys_const->const_parsec) /
       phys_const->const_year;
 
-  message("KS_const = %e",KS_const);
   /* Get the Gravitational constant */
   const double G_newton = phys_const->const_newton_G;
 
@@ -381,12 +383,12 @@ INLINE static void starformation_init_backend(
       parameter_file, "SchayeSF:SchmidtLawHighDensExponent");
 
   /* Read the high density criteria for the KS law in number density per cm^3 */
-  const double KS_high_den_thresh_HpCM3 = parser_get_param_double(
+  starform->KS_high_den_thresh_HpCM3 = parser_get_param_double(
       parameter_file, "SchayeSF:SchmidtLawHighDens_thresh_HpCM3");
 
   /* Transform the KS high density criteria to simulation units */
   starform->KS_high_den_thresh =
-      KS_high_den_thresh_HpCM3 * conversion_numb_density;
+      starform->KS_high_den_thresh_HpCM3 * conversion_numb_density;
 
   /* Calculate the SF high density power law */
   starform->SF_high_den_power_law =
@@ -467,6 +469,8 @@ INLINE static void starformation_print_backend(
       "Kennicutt-Schmidt law = %e and gas fraction = %e ",
       starform->KS_normalization_MSUNpYRpKPC2, starform->KS_power_law,
       starform->fgas);
+  message("At densities of %e H/cm^3 the slope changes to %e.",
+      starform->KS_high_den_thresh_HpCM3,starform->KS_high_den_power_law);
   message(
       "The effective equation of state is given by: polytropic "
       "index = %e , normalization density = %e #/cm^3 and normalization "
@@ -478,7 +482,7 @@ INLINE static void starformation_print_backend(
   message(
       "the normalization of the density threshold is given by"
       " %e #/cm^3, with metallicity slope of %e, and metallicity normalization"
-      "of %e, the maximum density threshold is given by %e #/cm^3",
+      " of %e, the maximum density threshold is given by %e #/cm^3",
       starform->density_threshold_HpCM3, starform->n_Z0, starform->Z0,
       starform->density_threshold_max_HpCM3);
   message("Temperature threshold is given by Dalla Vecchia and Schaye (2012)");
@@ -511,6 +515,7 @@ INLINE static void starformation_print_backend(
   //message("EOS_temperature_norm = %e", starform->EOS_temperature_norm);
   message("EOS_density_norm = %e", starform->EOS_density_norm);
   //message("EOS_density_norm_HpCM3 = %e", starform->EOS_density_norm_HpCM3);
+  message("SFR normalization = %e",pow(starform->EOS_pressure_norm,starform->polytropic_index/5.f)*starform->SF_normalization );
 }
 
 #endif /* SWIFT_SCHAYE_STARFORMATION_H */
