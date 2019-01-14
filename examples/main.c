@@ -462,11 +462,6 @@ int main(int argc, char *argv[]) {
   if (with_limiter) error("Can't run with time-step limiter over MPI (yet)");
 #endif
 
-#if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
-  if (with_structure_finding && nr_nodes > 1)
-    error("VEOCIraptor not yet enabled over MPI.");
-#endif
-
     /* Temporary early aborts for modes not supported with hand-vec. */
 #if defined(WITH_VECTORIZATION) && !defined(CHEMISTRY_NONE)
   error(
