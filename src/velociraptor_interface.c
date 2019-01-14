@@ -264,7 +264,6 @@ void velociraptor_invoke(struct engine *e) {
   const int nr_cells = s->nr_cells;
   int *cell_node_ids = NULL;
   static int stf_output_count = 0;
-  int active_stf_output_count;
 
   /* Allow thread to run on any core for the duration of the call to
    * VELOCIraptor so that
@@ -294,15 +293,9 @@ void velociraptor_invoke(struct engine *e) {
   /* Append base name with either the step number or time depending on what
    * format is specified in the parameter file. */
   char outputFileName[PARSER_MAX_LINE_SIZE + 128];
-  if (e->stf_output_freq_format == io_stf_steps)
-    active_stf_output_count = e->step;
-  else if (e->stf_output_freq_format == io_stf_time)
-    active_stf_output_count = stf_output_count;
-  else
-    active_stf_output_count = 0;
 
   snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
-           e->stfBaseName, active_stf_output_count);
+           e->stfBaseName, stf_output_count);
 
   /* Allocate and populate an array of swift_vel_parts to be passed to
    * VELOCIraptor. */
@@ -350,7 +343,7 @@ void velociraptor_invoke(struct engine *e) {
   }
 
   /* Call VELOCIraptor. */
-  if (!InvokeVelociraptor(nr_gparts, nr_hydro_parts, active_stf_output_count,
+  if (!InvokeVelociraptor(nr_gparts, nr_hydro_parts, stf_output_count,
                           swift_parts, cell_node_ids, outputFileName))
     error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
 
