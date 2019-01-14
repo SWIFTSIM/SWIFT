@@ -255,6 +255,7 @@ struct engine {
   /* Integer time of the next stf output */
   integertime_t ti_next_stf;
 
+  char stf_config_file_name[PARSER_MAX_LINE_SIZE];
   char stf_base_name[PARSER_MAX_LINE_SIZE];
   int stf_output_count;
 

@@ -20,9 +20,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Some standard headers. */
-#include <stddef.h>
-
 /* Local includes. */
 #include "error.h"
 #include "swift_velociraptor_part.h"
@@ -43,6 +40,7 @@ int InitVelociraptor(char *config_name, char *output_name,
   error("This is only a dummy. Call the real one!");
   return 0;
 }
+
 int InvokeVelociraptor(const size_t num_gravity_parts,
                        const size_t num_hydro_parts, const int snapnum,
                        struct swift_vel_part *swift_parts,
@@ -51,4 +49,5 @@ int InvokeVelociraptor(const size_t num_gravity_parts,
   error("This is only a dummy. Call the real one!");
   return 0;
 }
+
 #endif /* HAVE_DUMMY_VELOCIRAPTOR */

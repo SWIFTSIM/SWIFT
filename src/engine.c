@@ -4111,6 +4111,9 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   if (e->policy & engine_policy_structure_finding) {
     parser_get_param_string(params, "StructureFinding:basename",
                             e->stf_base_name);
+    parser_get_param_string(params, "StructureFinding:config",
+                            e->stf_config_file_name);
+
     e->time_first_stf_output =
         parser_get_opt_param_double(params, "StructureFinding:time_first", 0.);
     e->a_first_stf_output = parser_get_opt_param_double(
