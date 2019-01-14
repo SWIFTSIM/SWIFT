@@ -45,6 +45,7 @@ int InitVelociraptor(char *config_name, char *output_name,
 }
 int InvokeVelociraptor(const size_t num_gravity_parts,
                        const size_t num_hydro_parts,
+                       const int snapnum, 
                        struct swift_vel_part *swift_parts,
                        const int *cell_node_ids, char *output_name) {
 
