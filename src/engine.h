@@ -244,7 +244,6 @@ struct engine {
   int snapshot_output_count;
 
   /* Structure finding information */
-  enum io_stf_output_format stf_output_freq_format;
   int delta_step_stf;
   double a_first_stf_output;
   double time_first_stf_output;
