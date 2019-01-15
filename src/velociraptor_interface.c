@@ -111,12 +111,12 @@ struct siminfo {
 /* VELOCIraptor interface. */
 int InitVelociraptor(char *config_name, char *output_name,
                      struct cosmoinfo cosmo_info, struct unitinfo unit_info,
-                     struct siminfo sim_info);
+                     struct siminfo sim_info, const int numthreads);
 int InvokeVelociraptor(const size_t num_gravity_parts,
                        const size_t num_hydro_parts,
                        const int snapnum, 
                        struct swift_vel_part *swift_parts,
-                       const int *cell_node_ids, char *output_name);
+                       const int *cell_node_ids, char *output_name, const int numthreads);
 
 #endif /* HAVE_VELOCIRAPTOR */
 
@@ -240,7 +240,7 @@ void velociraptor_init(struct engine *e) {
 
   /* Initialise VELOCIraptor. */
   if (!InitVelociraptor(configfilename, outputFileName, cosmo_info, unit_info,
-                        sim_info))
+                        sim_info, e->nr_threads))
     error("Exiting. VELOCIraptor initialisation failed.");
 #else
   error("SWIFT not configure to run with VELOCIraptor.");
@@ -349,7 +349,7 @@ void velociraptor_invoke(struct engine *e) {
 
   /* Call VELOCIraptor. */
   if (!InvokeVelociraptor(nr_gparts, nr_hydro_parts, active_stf_output_count, swift_parts, cell_node_ids,
-                          outputFileName))
+                          outputFileName, e->nr_threads))
     error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
 
   /* Reset the pthread affinity mask after VELOCIraptor returns. */

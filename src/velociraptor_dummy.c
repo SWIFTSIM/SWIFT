@@ -38,7 +38,7 @@ struct siminfo {};
 
 int InitVelociraptor(char *config_name, char *output_name,
                      struct cosmoinfo cosmo_info, struct unitinfo unit_info,
-                     struct siminfo sim_info) {
+                     struct siminfo sim_info, const int numthreads) {
 
   error("This is only a dummy. Call the real one!");
   return 0;
@@ -47,7 +47,8 @@ int InvokeVelociraptor(const size_t num_gravity_parts,
                        const size_t num_hydro_parts,
                        const int snapnum, 
                        struct swift_vel_part *swift_parts,
-                       const int *cell_node_ids, char *output_name) {
+                       const int *cell_node_ids, char *output_name,
+                       const int numthreads) {
 
   error("This is only a dummy. Call the real one!");
   return 0;
