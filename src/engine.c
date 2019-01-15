@@ -3195,7 +3195,7 @@ void engine_check_for_dumps(struct engine *e) {
 #ifdef HAVE_VELOCIRAPTOR
 
           /* Unleash the raptor! */
-          velociraptor_init(e);
+          velociraptor_init(e, /*linked_with_snap=*/1);
           velociraptor_invoke(e, /*linked_with_snap=*/1);
 #else
           error(
@@ -3231,8 +3231,8 @@ void engine_check_for_dumps(struct engine *e) {
 #ifdef HAVE_VELOCIRAPTOR
 
         /* Unleash the raptor! */
-        velociraptor_init(e);
-        velociraptor_invoke(e, /*linked_with_snap=*/1);
+        velociraptor_init(e, /*linked_with_snap=*/0);
+        velociraptor_invoke(e, /*linked_with_snap=*/0);
 
         /* ... and find the next output time */
         engine_compute_next_stf_time(e);
@@ -3251,7 +3251,7 @@ void engine_check_for_dumps(struct engine *e) {
      * where there can be another dump before the next step. */
 
     type = output_none;
-    ti_output = e->ti_current;
+    ti_output = max_nr_timesteps;
 
     /* Save some statistics ? */
     if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) {
@@ -4111,7 +4111,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   if (e->policy & engine_policy_structure_finding) {
     parser_get_param_string(params, "StructureFinding:basename",
                             e->stf_base_name);
-    parser_get_param_string(params, "StructureFinding:config",
+    parser_get_param_string(params, "StructureFinding:config_file_name",
                             e->stf_config_file_name);
 
     e->time_first_stf_output =
