@@ -231,6 +231,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           /* Avoid floating point exception from f_prime = 0 */
           h_new = h_old - f / (f_prime + FLT_MIN);
 #ifdef SWIFT_DEBUG_CHECKS
+	  message("f %.5e h_old %.5e h_new %.5e wcount %.5e wcount_dh %.5e n_sum %.5e n_target %.5e", f, h_old, h_new, sp->density.wcount, sp->density.wcount_dh, n_sum, n_target);
           if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
             error(
                 "Smoothing length correction not going in the right direction");

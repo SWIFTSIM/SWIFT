@@ -137,6 +137,21 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
 }
 
 /**
+ * @brief Reset acceleration fields of a particle
+ *
+ * This is the equivalent of hydro_reset_acceleration.
+ * We do not compute the acceleration on star, therefore no need to use it.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void stars_reset_acceleration(
+    struct spart* restrict p) {
+#ifdef DEBUG_INTERACTIONS_STARS
+  p->num_ngb_force = 0;
+#endif
+}
+
+/**
  * @brief Evolve the stellar properties of a #spart.
  *
  * This function allows for example to compute the SN rate before sending

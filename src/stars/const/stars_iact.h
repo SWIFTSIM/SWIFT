@@ -41,7 +41,7 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
   /* Add mass of pj to neighbour mass of si  */
   si->ngb_mass += hydro_get_mass(pj);
 
-  /* Add contribution of pj to normalisation of kernel (IMPROVE COMMENT?) */
+  /* Add contribution of pj to normalisation of kernel (TODO: IMPROVE COMMENT?) */
   si->omega_normalisation_inv += wj / hydro_get_physical_density(pj,cosmo);
 
 #ifdef DEBUG_INTERACTIONS_STARS
