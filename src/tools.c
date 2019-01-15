@@ -217,7 +217,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       }
 
       /* Hit or miss? */
-      if (r2 < hig2) {
+      if (r2 < hig2 && !part_is_inhibited(pj, e)) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj, a, H);
@@ -249,7 +249,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       }
 
       /* Hit or miss? */
-      if (r2 < hjg2) {
+      if (r2 < hjg2 && !part_is_inhibited(pi, e)) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi, a, H);
@@ -438,7 +438,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
       }
 
       /* Hit or miss? */
-      if (r2 < hig2 && part_is_active(pi, e)) {
+      if (r2 < hig2 && part_is_active(pi, e) && !part_is_inhibited(pj, e)) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj, a, H);
@@ -446,7 +446,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
       }
 
       /* Hit or miss? */
-      if (r2 < hjg2 && part_is_active(pj, e)) {
+      if (r2 < hjg2 && part_is_active(pj, e) && !part_is_inhibited(pi, e)) {
 
         dxi[0] = -dxi[0];
         dxi[1] = -dxi[1];
