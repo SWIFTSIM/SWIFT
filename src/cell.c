@@ -199,13 +199,15 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
  */
 int cell_link_foreign_parts(struct cell *c, struct part *parts) {
 
+#ifdef WITH_MPI
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
     error("Linking foreign particles in a local cell!");
 #endif
 
   /* Do we have a hydro task at this level? */
-  if (c->hydro.density != NULL) {
+  if (c->mpi.hydro.recv_xv != NULL) {
 
     /* Recursively attach the parts */
     const int counts = cell_link_parts(c, parts);
@@ -228,6 +230,10 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
   } else {
     return 0;
   }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
 }
 
 /**
@@ -242,13 +248,15 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
  */
 int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
 
+#ifdef WITH_MPI
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
     error("Linking foreign particles in a local cell!");
 #endif
 
   /* Do we have a hydro task at this level? */
-  if (c->grav.grav != NULL) {
+  if (c->mpi.grav.recv != NULL) {
 
     /* Recursively attach the gparts */
     const int counts = cell_link_gparts(c, gparts);
@@ -271,6 +279,10 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
   } else {
     return 0;
   }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
 }
 
 /**
@@ -283,13 +295,15 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
  */
 int cell_count_parts_for_tasks(const struct cell *c) {
 
+#ifdef WITH_MPI
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
     error("Counting foreign particles in a local cell!");
 #endif
 
   /* Do we have a hydro task at this level? */
-  if (c->hydro.density != NULL) {
+  if (c->mpi.hydro.recv_xv != NULL) {
     return c->hydro.count;
   }
 
@@ -304,6 +318,10 @@ int cell_count_parts_for_tasks(const struct cell *c) {
   } else {
     return 0;
   }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
 }
 
 /**
@@ -316,13 +334,15 @@ int cell_count_parts_for_tasks(const struct cell *c) {
  */
 int cell_count_gparts_for_tasks(const struct cell *c) {
 
+#ifdef WITH_MPI
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank)
     error("Counting foreign particles in a local cell!");
 #endif
 
   /* Do we have a hydro task at this level? */
-  if (c->grav.grav != NULL) {
+  if (c->mpi.grav.recv != NULL) {
     return c->grav.count;
   }
 
@@ -337,6 +357,10 @@ int cell_count_gparts_for_tasks(const struct cell *c) {
   } else {
     return 0;
   }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
 }
 
 /**
