@@ -31,6 +31,7 @@
 #include <string.h>
 
 /* Local includes. */
+#include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "cooling_tables.h"
 #include "error.h"
@@ -39,7 +40,7 @@
 /**
  * @brief Names of the elements in the order they are stored in the files
  */
-static const char *eagle_tables_element_names[9] = {
+static const char *eagle_tables_element_names[eagle_cooling_N_metal] = {
     "Carbon",  "Nitrogen", "Oxygen",  "Neon", "Magnesium",
     "Silicon", "Sulphur",  "Calcium", "Iron"};
 
@@ -211,6 +212,10 @@ void read_cooling_header(const char *fname,
   if (N_SolarAbundances != eagle_cooling_N_abundances)
     error("Invalid solar abundances array length.");
 
+  /* Check value */
+  if (N_SolarAbundances != chemistry_element_count + 2)
+    error("Number of abundances not compatible with the chemistry model.");
+
   dataset = H5Dopen(tempfile_id, "/Header/Number_of_metals", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    &N_Elements);
@@ -237,6 +242,10 @@ void read_cooling_header(const char *fname,
   if (posix_memalign((void **)&cooling->SolarAbundances, SWIFT_STRUCT_ALIGNMENT,
                      N_SolarAbundances * sizeof(float)) != 0)
     error("Failed to allocate Solar abundances table");
+  if (posix_memalign((void **)&cooling->SolarAbundances_inv,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     N_SolarAbundances * sizeof(float)) != 0)
+    error("Failed to allocate Solar abundances inverses table");
 
   /* read in values for each of the arrays */
   dataset = H5Dopen(tempfile_id, "/Solar/Temperature_bins", H5P_DEFAULT);
@@ -284,6 +293,10 @@ void read_cooling_header(const char *fname,
   }
   for (int i = 0; i < N_nH; i++) {
     cooling->nH[i] = log10(cooling->nH[i]);
+  }
+  /* Compute inverse of solar mass fractions */
+  for (int i = 0; i < N_SolarAbundances; ++i) {
+    cooling->SolarAbundances_inv[i] = 1.f / cooling->SolarAbundances[i];
   }
 
 #else
@@ -346,9 +359,10 @@ void allocate_cooling_tables(struct cooling_function_data *restrict cooling) {
  * used to obtain temperature of particle)
  *
  * @param cooling #cooling_function_data structure
+ * @param photodis Are we loading the photo-dissociation table?
  */
-static void get_redshift_invariant_table(
-    struct cooling_function_data *restrict cooling) {
+void get_redshift_invariant_table(
+    struct cooling_function_data *restrict cooling, const int photodis) {
 #ifdef HAVE_HDF5
 
   /* Temporary tables */
@@ -377,10 +391,12 @@ static void get_redshift_invariant_table(
 
   /* Decide which high redshift table to read. Indices set in cooling_update */
   char filename[eagle_table_path_name_length + 21];
-  if (cooling->low_z_index == -1) {
-    sprintf(filename, "%sz_8.989nocompton.hdf5", cooling->cooling_table_path);
-  } else if (cooling->low_z_index == -2) {
+  if (photodis) {
     sprintf(filename, "%sz_photodis.hdf5", cooling->cooling_table_path);
+    message("Reading cooling table 'z_photodis.hdf5'");
+  } else {
+    sprintf(filename, "%sz_8.989nocompton.hdf5", cooling->cooling_table_path);
+    message("Reading cooling table 'z_8.989nocompton.hdf5'");
   }
 
   hid_t file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -541,8 +557,11 @@ static void get_redshift_invariant_table(
  * used to obtain temperature of particle)
  *
  * @param cooling #cooling_function_data structure
+ * @param low_z_index Index of the lowest redshift table to load.
+ * @param high_z_index Index of the highest redshift table to load.
  */
-static void get_cooling_table(struct cooling_function_data *restrict cooling) {
+void get_cooling_table(struct cooling_function_data *restrict cooling,
+                       const int low_z_index, const int high_z_index) {
 
 #ifdef HAVE_HDF5
 
@@ -572,11 +591,10 @@ static void get_cooling_table(struct cooling_function_data *restrict cooling) {
 
   /* Read in tables, transpose so that values for indices which vary most are
    * adjacent. Repeat for redshift above and redshift below current value.  */
-  for (int z_index = cooling->low_z_index; z_index <= cooling->high_z_index;
-       z_index++) {
+  for (int z_index = low_z_index; z_index <= high_z_index; z_index++) {
 
     /* Index along redhsift dimension for the subset of tables we read */
-    const int local_z_index = z_index - cooling->low_z_index;
+    const int local_z_index = z_index - low_z_index;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (local_z_index >= eagle_cooling_N_loaded_redshifts)
@@ -584,9 +602,12 @@ static void get_cooling_table(struct cooling_function_data *restrict cooling) {
 #endif
 
     /* Open table for this redshift index */
-    char fname[eagle_table_path_name_length + 32];
+    char fname[eagle_table_path_name_length + 12];
     sprintf(fname, "%sz_%1.3f.hdf5", cooling->cooling_table_path,
             cooling->Redshifts[z_index]);
+    message("Reading cooling table 'z_%1.3f.hdf5'",
+            cooling->Redshifts[z_index]);
+
     hid_t file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
     if (file_id < 0) error("unable to open file %s", fname);
 
@@ -727,48 +748,10 @@ static void get_cooling_table(struct cooling_function_data *restrict cooling) {
   free(he_electron_abundance);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  message("done reading in general cooling table");
+  message("Done reading in general cooling table");
 #endif
 
 #else
   error("Need HDF5 to read cooling tables");
 #endif
-}
-
-/**
- * @brief Constructs the data structure containting the relevant cooling tables
- * for the redshift index (set in cooling_update)
- *
- * @param cooling #cooling_function_data structure
- */
-static void eagle_readtable(struct cooling_function_data *restrict cooling) {
-
-  if (cooling->z_index < 0) {
-    /* z_index is set to < 0 in cooling_update if need
-     * to read any of the high redshift tables */
-    get_redshift_invariant_table(cooling);
-  } else {
-    get_cooling_table(cooling);
-  }
-}
-
-/**
- * @brief Checks the tables that are currently loaded in memory and read
- * new ones if necessary.
- *
- * @param cooling The #cooling_function_data we play with.
- * @param restart_flag Flag indicating if we are restarting a run
- */
-void eagle_check_cooling_tables(struct cooling_function_data *restrict cooling,
-                                const int restart_flag) {
-
-  /* Do we already have the right table in memory? */
-  if (cooling->low_z_index == cooling->z_index && restart_flag != 0) return;
-
-  /* Record the table indices */
-  cooling->low_z_index = cooling->z_index;
-  cooling->high_z_index = cooling->z_index + 1;
-
-  /* Load the damn thing */
-  eagle_readtable(cooling);
 }

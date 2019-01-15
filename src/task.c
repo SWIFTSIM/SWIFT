@@ -66,6 +66,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "kick1",
                                              "kick2",
                                              "timestep",
+                                             "timestep_limiter",
                                              "send",
                                              "recv",
                                              "grav_long_range",
@@ -84,10 +85,10 @@ const char *taskID_names[task_type_count] = {"none",
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
-    "none",          "density",       "gradient",  "force",
-    "grav",          "external_grav", "tend",      "xv",
-    "rho",           "gpart",         "multipole", "spart",
-    "stars_density", "stars_feedback"};
+    "none",    "density",       "gradient",      "force",
+    "limiter", "grav",          "external_grav", "tend",
+    "xv",      "rho",           "gpart",         "multipole",
+    "spart",   "stars_density", "stars_feedback"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -141,6 +142,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_sort:
     case task_type_ghost:
     case task_type_extra_ghost:
+    case task_type_timestep_limiter:
     case task_type_cooling:
       return task_action_part;
       break;
@@ -163,6 +165,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         case task_subtype_density:
         case task_subtype_gradient:
         case task_subtype_force:
+        case task_subtype_limiter:
           return task_action_part;
           break;
 
@@ -339,6 +342,8 @@ void task_unlock(struct task *t) {
 
     case task_type_drift_part:
     case task_type_sort:
+    case task_type_ghost:
+    case task_type_timestep_limiter:
       cell_unlocktree(ci);
       break;
 
@@ -465,6 +470,8 @@ int task_lock(struct task *t) {
 
     case task_type_drift_part:
     case task_type_sort:
+    case task_type_ghost:
+    case task_type_timestep_limiter:
       if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       break;
@@ -634,7 +641,7 @@ void task_print(const struct task *t) {
  * graph.
  *
  * @param type The #task type.
- * @param subtype The #subtask type.
+ * @param subtype The #task subtype.
  * @param cluster (return) The group name (should be allocated)
  */
 void task_get_group_name(int type, int subtype, char *cluster) {
@@ -658,6 +665,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_grav:
       strcpy(cluster, "Gravity");
+      break;
+    case task_subtype_limiter:
+      strcpy(cluster, "Timestep_limiter");
       break;
     case task_subtype_stars_density:
       strcpy(cluster, "StarsDensity");

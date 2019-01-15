@@ -75,7 +75,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 gravity_iact.h kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h  \
                  runner_doiact_nosort.h runner_doiact_stars.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h \
 		 adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h dump.h logger.h sign.h \
-		 logger_io.h \
+		 logger_io.h timestep_limiter.h \
 		 gravity.h gravity_io.h gravity_cache.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
@@ -135,6 +135,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 	 	 stars.h stars_io.h \
 		 stars/Default/stars.h stars/Default/stars_iact.h stars/Default/stars_io.h \
 		 stars/Default/stars_debug.h stars/Default/stars_part.h  \
+		 stars/const/stars.h stars/const/stars_iact.h stars/const/stars_io.h \
+		 stars/const/stars_debug.h stars/const/stars_part.h  \
 	         potential/none/potential.h potential/point_mass/potential.h \
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
                  potential/sine_wave/potential.h \

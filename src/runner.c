@@ -64,6 +64,7 @@
 #include "task.h"
 #include "timers.h"
 #include "timestep.h"
+#include "timestep_limiter.h"
 #include "tracers.h"
 
 #define TASK_LOOP_DENSITY 0
@@ -90,6 +91,13 @@
 /* Import the force loop functions. */
 #define FUNCTION force
 #define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
+#include "runner_doiact.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
+/* Import the limiter loop functions. */
+#define FUNCTION limiter
+#define FUNCTION_TASK_LOOP TASK_LOOP_LIMITER
 #include "runner_doiact.h"
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP
@@ -122,11 +130,14 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   struct spart *restrict sparts = c->stars.parts;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct stars_props *stars_properties = e->stars_properties;
   const float stars_h_max = stars_properties->h_max;
   const float eps = stars_properties->h_tolerance;
   const float stars_eta_dim = pow_dimension(stars_properties->eta_neighbours);
   const int max_smoothing_iter = stars_properties->max_smoothing_iterations;
+  const integertime_t ti_current = e->ti_current;
+  const double time_base = e->time_base;
   int redo = 0, scount = 0;
 
   TIMER_TIC;
@@ -153,7 +164,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     /* While there are particles that need to be updated... */
     for (int num_reruns = 0; scount > 0 && num_reruns < max_smoothing_iter;
          num_reruns++) {
-
+        
       /* Reset the redo-count. */
       redo = 0;
 
@@ -162,6 +173,18 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Get a direct pointer on the part. */
         struct spart *sp = &sparts[sid[i]];
+
+	/* get particle timestep */
+        double dt;
+        if (with_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current - 1, sp->time_bin);
+          dt = cosmology_get_therm_kick_factor(e->cosmology, ti_begin,
+                                                     ti_begin + ti_step);
+        } else {
+          dt = get_timestep(sp->time_bin, time_base);
+        }
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
@@ -253,7 +276,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         stars_reset_acceleration(sp);
 
         /* Compute the stellar evolution  */
-        stars_evolve_spart(sp, stars_properties, cosmo);
+        stars_evolve_spart(sp, stars_properties, cosmo, dt);
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -1689,19 +1712,26 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       /* If particle needs to be kicked */
       if (part_is_starting(p, e)) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+        if (p->wakeup == time_bin_awake)
+          error("Woken-up particle that has not been processed in kick1");
+#endif
+
+        /* Skip particles that have been woken up and treated by the limiter. */
+        if (p->wakeup != time_bin_not_awake) continue;
+
         const integertime_t ti_step = get_integer_timestep(p->time_bin);
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current + 1, p->time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current + 1, p->time_bin);
+        const integertime_t ti_end = ti_begin + ti_step;
 
         if (ti_begin != ti_current)
           error(
               "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
-              "ti_step=%lld time_bin=%d ti_current=%lld",
-              ti_end, ti_begin, ti_step, p->time_bin, ti_current);
+              "ti_step=%lld time_bin=%d wakeup=%d ti_current=%lld",
+              ti_end, ti_begin, ti_step, p->time_bin, p->wakeup, ti_current);
 #endif
 
         /* Time interval for this half-kick */
@@ -1863,39 +1893,60 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       /* If particle needs to be kicked */
       if (part_is_active(p, e)) {
 
-        const integertime_t ti_step = get_integer_timestep(p->time_bin);
-        const integertime_t ti_begin =
-            get_integer_time_begin(ti_current, p->time_bin);
+        integertime_t ti_begin, ti_end, ti_step;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (p->wakeup == time_bin_awake)
+          error("Woken-up particle that has not been processed in kick1");
+#endif
+
+        if (p->wakeup == time_bin_not_awake) {
+
+          /* Time-step from a regular kick */
+          ti_step = get_integer_timestep(p->time_bin);
+          ti_begin = get_integer_time_begin(ti_current, p->time_bin);
+          ti_end = ti_begin + ti_step;
+
+        } else {
+
+          /* Time-step that follows a wake-up call */
+          ti_begin = get_integer_time_begin(ti_current, p->wakeup);
+          ti_end = get_integer_time_end(ti_current, p->time_bin);
+          ti_step = ti_end - ti_begin;
+
+          /* Reset the flag. Everything is back to normal from now on. */
+          p->wakeup = time_bin_awake;
+        }
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (ti_begin + ti_step != ti_current)
           error(
               "Particle in wrong time-bin, ti_begin=%lld, ti_step=%lld "
-              "time_bin=%d ti_current=%lld",
-              ti_begin, ti_step, p->time_bin, ti_current);
+              "time_bin=%d wakeup=%d ti_current=%lld",
+              ti_begin, ti_step, p->time_bin, p->wakeup, ti_current);
 #endif
         /* Time interval for this half-kick */
         double dt_kick_grav, dt_kick_hydro, dt_kick_therm, dt_kick_corr;
         if (with_cosmology) {
           dt_kick_hydro = cosmology_get_hydro_kick_factor(
-              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+              cosmo, ti_begin + ti_step / 2, ti_end);
           dt_kick_grav = cosmology_get_grav_kick_factor(
-              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+              cosmo, ti_begin + ti_step / 2, ti_end);
           dt_kick_therm = cosmology_get_therm_kick_factor(
-              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+              cosmo, ti_begin + ti_step / 2, ti_end);
           dt_kick_corr = cosmology_get_corr_kick_factor(
-              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+              cosmo, ti_begin + ti_step / 2, ti_end);
         } else {
-          dt_kick_hydro = (ti_step / 2) * time_base;
-          dt_kick_grav = (ti_step / 2) * time_base;
-          dt_kick_therm = (ti_step / 2) * time_base;
-          dt_kick_corr = (ti_step / 2) * time_base;
+          dt_kick_hydro = (ti_end - (ti_begin + ti_step / 2)) * time_base;
+          dt_kick_grav = (ti_end - (ti_begin + ti_step / 2)) * time_base;
+          dt_kick_therm = (ti_end - (ti_begin + ti_step / 2)) * time_base;
+          dt_kick_corr = (ti_end - (ti_begin + ti_step / 2)) * time_base;
         }
 
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
                   dt_kick_corr, cosmo, hydro_props, ti_begin + ti_step / 2,
-                  ti_begin + ti_step);
+                  ti_end);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
@@ -2295,6 +2346,144 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 #endif
 
   if (timer) TIMER_TOC(timer_timestep);
+}
+
+/**
+ * @brief Apply the time-step limiter to all awaken particles in a cell
+ * hierarchy.
+ *
+ * @param r The task #runner.
+ * @param c The #cell.
+ * @param force Limit the particles irrespective of the #cell flags.
+ * @param timer Are we timing this ?
+ */
+void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
+
+  const struct engine *e = r->e;
+  const integertime_t ti_current = e->ti_current;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
+
+  TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we only limit local cells. */
+  if (c->nodeID != engine_rank) error("Limiting dt of a foreign cell is nope.");
+#endif
+
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
+                ti_hydro_beg_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
+                ti_gravity_beg_max = 0;
+
+  /* Limit irrespective of cell flags? */
+  force |= c->hydro.do_limiter;
+
+  /* Early abort? */
+  if (c->hydro.count == 0) {
+
+    /* Clear the limiter flags. */
+    c->hydro.do_limiter = 0;
+    c->hydro.do_sub_limiter = 0;
+    return;
+  }
+
+  /* Loop over the progeny ? */
+  if (c->split && (force || c->hydro.do_sub_limiter)) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Recurse */
+        runner_do_limiter(r, cp, force, 0);
+
+        /* And aggregate */
+        ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
+        ti_hydro_end_max = max(cp->hydro.ti_end_max, ti_hydro_end_max);
+        ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
+        ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
+        ti_gravity_end_max = max(cp->grav.ti_end_max, ti_gravity_end_max);
+        ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
+      }
+    }
+
+    /* Store the updated values */
+    c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
+    c->hydro.ti_end_max = max(c->hydro.ti_end_max, ti_hydro_end_max);
+    c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
+    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+    c->grav.ti_end_max = max(c->grav.ti_end_max, ti_gravity_end_max);
+    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+
+  } else if (!c->split && force) {
+
+    ti_hydro_end_min = c->hydro.ti_end_min;
+    ti_hydro_end_max = c->hydro.ti_end_max;
+    ti_hydro_beg_max = c->hydro.ti_beg_max;
+    ti_gravity_end_min = c->grav.ti_end_min;
+    ti_gravity_end_max = c->grav.ti_end_max;
+    ti_gravity_beg_max = c->grav.ti_beg_max;
+
+    /* Loop over the gas particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+
+      /* Avoid inhibited particles */
+      if (part_is_inhibited(p, e)) continue;
+
+      /* If the particle will be active no need to wake it up */
+      if (part_is_active(p, e) && p->wakeup != time_bin_not_awake)
+        p->wakeup = time_bin_not_awake;
+
+      /* Bip, bip, bip... wake-up time */
+      if (p->wakeup == time_bin_awake) {
+
+        /* Apply the limiter and get the new time-step size */
+        const integertime_t ti_new_step = timestep_limit_part(p, xp, e);
+
+        /* What is the next sync-point ? */
+        ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);
+        ti_hydro_end_max = max(ti_current + ti_new_step, ti_hydro_end_max);
+
+        /* What is the next starting point for this cell ? */
+        ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
+
+        /* Also limit the gpart counter-part */
+        if (p->gpart != NULL) {
+
+          /* Register the time-bin */
+          p->gpart->time_bin = p->time_bin;
+
+          /* What is the next sync-point ? */
+          ti_gravity_end_min =
+              min(ti_current + ti_new_step, ti_gravity_end_min);
+          ti_gravity_end_max =
+              max(ti_current + ti_new_step, ti_gravity_end_max);
+
+          /* What is the next starting point for this cell ? */
+          ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+        }
+      }
+    }
+
+    /* Store the updated values */
+    c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
+    c->hydro.ti_end_max = max(c->hydro.ti_end_max, ti_hydro_end_max);
+    c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
+    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+    c->grav.ti_end_max = max(c->grav.ti_end_max, ti_gravity_end_max);
+    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+  }
+
+  /* Clear the limiter flags. */
+  c->hydro.do_limiter = 0;
+  c->hydro.do_sub_limiter = 0;
+
+  if (timer) TIMER_TOC(timer_do_limiter);
 }
 
 /**
@@ -2766,11 +2955,13 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_doself2_branch_force(r, ci);
+          else if (t->subtype == task_subtype_limiter)
+            runner_doself2_branch_limiter(r, ci);
           else if (t->subtype == task_subtype_grav)
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
-          else if (t->subtype == task_subtype_stars_density)
+          else if (t->subtype == task_subtype_stars_density) 
             runner_doself_stars_density(r, ci, 1);
           else if (t->subtype == task_subtype_stars_feedback)
             runner_doself_stars_feedback(r, ci, 1);
@@ -2787,6 +2978,8 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dopair2_branch_force(r, ci, cj);
+          else if (t->subtype == task_subtype_limiter)
+            runner_dopair2_branch_limiter(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -2806,6 +2999,8 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
+          else if (t->subtype == task_subtype_limiter)
+            runner_dosub_self2_limiter(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_self_stars_density(r, ci, 1);
           else if (t->subtype == task_subtype_stars_feedback)
@@ -2823,6 +3018,8 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
+          else if (t->subtype == task_subtype_limiter)
+            runner_dosub_pair2_limiter(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_pair_stars_density(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_stars_feedback)
@@ -2883,6 +3080,9 @@ void *runner_main(void *data) {
         case task_type_timestep:
           runner_do_timestep(r, ci, 1);
           break;
+        case task_type_timestep_limiter:
+          runner_do_limiter(r, ci, 0, 1);
+          break;
 #ifdef WITH_MPI
         case task_type_send:
           if (t->subtype == task_subtype_tend) {
@@ -2898,6 +3098,8 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_rho) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gradient) {
+            runner_do_recv_part(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_limiter) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);

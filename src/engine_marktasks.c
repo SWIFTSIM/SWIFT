@@ -157,6 +157,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
   struct engine *e = (struct engine *)((size_t *)extra_data)[0];
   const int nodeID = e->nodeID;
+  const int with_limiter = e->policy & engine_policy_limiter;
 
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -178,6 +179,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_is_active_hydro(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
+          if (with_limiter) cell_activate_limiter(ci, s);
         }
       }
 
@@ -187,6 +189,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_is_active_hydro(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_subcell_hydro_tasks(ci, NULL, s);
+          if (with_limiter) cell_activate_limiter(ci, s);
         }
       }
 
@@ -196,6 +199,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_force) {
+        if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
+      }
+
+      else if (t->type == task_type_self &&
+               t->subtype == task_subtype_limiter) {
+        if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
+      }
+
+      else if (t->type == task_type_sub_self &&
+               t->subtype == task_subtype_limiter) {
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
@@ -295,6 +308,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Only activate tasks that involve a local active cell. */
       if ((t_subtype == task_subtype_density ||
            t_subtype == task_subtype_gradient ||
+           t_subtype == task_subtype_limiter ||
            t_subtype == task_subtype_force) &&
           ((ci_active_hydro && ci_nodeID == nodeID) ||
            (cj_active_hydro && cj_nodeID == nodeID))) {
@@ -313,6 +327,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Activate the hydro drift tasks. */
           if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
           if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+          /* And the limiter */
+          if (ci_nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
+          if (cj_nodeID == nodeID && with_limiter) cell_activate_limiter(cj, s);
 
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);

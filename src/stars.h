@@ -24,7 +24,13 @@
 
 /* So far only one model here */
 /* Straight-forward import */
+#if defined(FEEDBACK_CONST)
+#include "./stars/const/stars.h"
+#include "./stars/const/stars_part.h"
+#include "./stars/const/stars_iact.h"
+#else
 #include "./stars/Default/stars.h"
 #include "./stars/Default/stars_iact.h"
+#endif
 
 #endif

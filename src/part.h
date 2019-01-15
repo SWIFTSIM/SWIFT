@@ -89,7 +89,11 @@
 #endif
 
 /* Import the right star particle definition */
+#if defined(FEEDBACK_CONST)
+#include "./stars/const/stars_part.h"
+#else
 #include "./stars/Default/stars_part.h"
+#endif
 
 void part_relink_gparts_to_parts(struct part *parts, size_t N,
                                  ptrdiff_t offset);

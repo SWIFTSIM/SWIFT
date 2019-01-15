@@ -14,7 +14,9 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
                                  struct spart *restrict si,
                                  const struct part *restrict pj, float a,
-                                 float H) {
+                                 float H, const struct cosmology *restrict cosmo,
+                                 const struct stars_props *restrict stars_properties,
+                                 struct xpart *restrict xp) {
 
   float wi, wi_dx;
 
@@ -52,7 +54,11 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
                                   struct spart *restrict si,
-                                  struct part *restrict pj, float a, float H) {
+                                  struct part *restrict pj, float a, float H,
+                                  const struct cosmology *restrict cosmo,
+                                  const struct stars_props *restrict stars_properties,
+                                  struct xpart *restrict xp) {
+  si->to_distribute.mass = 2;
 
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */

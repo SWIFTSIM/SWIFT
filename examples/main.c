@@ -153,6 +153,7 @@ int main(int argc, char *argv[]) {
   int with_stars = 0;
   int with_star_formation = 0;
   int with_feedback = 0;
+  int with_limiter = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
@@ -202,6 +203,8 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "limiter", &with_limiter, "Run with time-step limiter.",
+                  NULL, 0, 0),
 
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
@@ -455,6 +458,7 @@ int main(int argc, char *argv[]) {
     error("Cannot reconstruct m-poles every step over MPI (yet).");
   if (with_star_formation)
     error("Can't run with star formation over MPI (yet)");
+  if (with_limiter) error("Can't run with time-step limiter over MPI (yet)");
 #endif
 
 #if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
@@ -691,7 +695,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the stars properties */
     if (with_stars)
       stars_props_init(&stars_properties, &prog_const, &us, params,
-                       &hydro_properties);
+                       &hydro_properties, &cosmo);
     else
       bzero(&stars_properties, sizeof(struct stars_props));
 
@@ -841,6 +845,18 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
+    /* Verify that we are not using basic modes incorrectly */
+    if (with_hydro && N_total[0] == 0) {
+      error(
+          "ERROR: Running with hydrodynamics but no gas particles found in the "
+          "ICs!");
+    }
+    if ((with_self_gravity || with_external_gravity) && N_total[1] == 0) {
+      error(
+          "ERROR: Running with gravity but no gravity particles found in "
+          "the ICs!");
+    }
+
     /* Verify that each particle is in it's proper cell. */
     if (talking && !dry_run) {
       int icount = 0;
@@ -883,6 +899,7 @@ int main(int argc, char *argv[]) {
       engine_policies |= engine_policy_external_gravity;
     if (with_cosmology) engine_policies |= engine_policy_cosmology;
     if (with_temperature) engine_policies |= engine_policy_temperature;
+    if (with_limiter) engine_policies |= engine_policy_limiter;
     if (with_cooling) engine_policies |= engine_policy_cooling;
     if (with_stars) engine_policies |= engine_policy_stars;
     if (with_star_formation) engine_policies |= engine_policy_star_formation;
