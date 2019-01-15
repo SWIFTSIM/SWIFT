@@ -113,10 +113,10 @@ int InitVelociraptor(char *config_name, char *output_name,
                      struct cosmoinfo cosmo_info, struct unitinfo unit_info,
                      struct siminfo sim_info, const int numthreads);
 int InvokeVelociraptor(const size_t num_gravity_parts,
-                       const size_t num_hydro_parts,
-                       const int snapnum, 
+                       const size_t num_hydro_parts, const int snapnum,
                        struct swift_vel_part *swift_parts,
-                       const int *cell_node_ids, char *output_name, const int numthreads);
+                       const int *cell_node_ids, char *output_name,
+                       const int numthreads);
 
 #endif /* HAVE_VELOCIRAPTOR */
 
@@ -265,7 +265,7 @@ void velociraptor_invoke(struct engine *e) {
   const int nr_cells = s->nr_cells;
   int *cell_node_ids = NULL;
   static int stf_output_count = 0;
-  int active_stf_output_count; 
+  int active_stf_output_count;
 
   /* Allow thread to run on any core for the duration of the call to
    * VELOCIraptor so that
@@ -295,12 +295,15 @@ void velociraptor_invoke(struct engine *e) {
   /* Append base name with either the step number or time depending on what
    * format is specified in the parameter file. */
   char outputFileName[PARSER_MAX_LINE_SIZE + 128];
-  if (e->stf_output_freq_format == io_stf_steps) active_stf_output_count = e->step;
-  else if (e->stf_output_freq_format == io_stf_time) active_stf_output_count = stf_output_count;
-  else active_stf_output_count = 0;
-  
+  if (e->stf_output_freq_format == io_stf_steps)
+    active_stf_output_count = e->step;
+  else if (e->stf_output_freq_format == io_stf_time)
+    active_stf_output_count = stf_output_count;
+  else
+    active_stf_output_count = 0;
+
   snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
-             e->stfBaseName, active_stf_output_count);
+           e->stfBaseName, active_stf_output_count);
 
   /* Allocate and populate an array of swift_vel_parts to be passed to
    * VELOCIraptor. */
@@ -348,8 +351,9 @@ void velociraptor_invoke(struct engine *e) {
   }
 
   /* Call VELOCIraptor. */
-  if (!InvokeVelociraptor(nr_gparts, nr_hydro_parts, active_stf_output_count, swift_parts, cell_node_ids,
-                          outputFileName, e->nr_threads))
+  if (!InvokeVelociraptor(nr_gparts, nr_hydro_parts, active_stf_output_count,
+                          swift_parts, cell_node_ids, outputFileName,
+                          e->nr_threads))
     error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
 
   /* Reset the pthread affinity mask after VELOCIraptor returns. */
