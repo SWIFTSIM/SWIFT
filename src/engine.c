@@ -3190,7 +3190,7 @@ void engine_check_for_dumps(struct engine *e) {
       case output_snapshot:
 
         /* Do we want a corresponding VELOCIraptor output? */
-        if (e->snapshot_invoke_stf) {
+        if (with_stf && e->snapshot_invoke_stf) {
 
 #ifdef HAVE_VELOCIRAPTOR
 
