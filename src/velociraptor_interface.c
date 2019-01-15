@@ -252,10 +252,9 @@ void velociraptor_init(struct engine *e, const int linked_with_snap) {
           sim_info.cell_loc[sim_info.numcells - 1].loc[2]);
 
   /* Initialise VELOCIraptor. */
-  if (!InitVelociraptor(e->stf_config_file_name, outputFileName, cosmo_info, unit_info,
-                        sim_info, e->nr_threads))
+  if (!InitVelociraptor(e->stf_config_file_name, outputFileName, cosmo_info,
+                        unit_info, sim_info, e->nr_threads))
     error("Exiting. VELOCIraptor initialisation failed.");
-  }
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
