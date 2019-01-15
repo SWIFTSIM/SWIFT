@@ -383,7 +383,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   free(swift_parts);
 
   /* Increase output counter (if not linked with snapshots) */
-  if (!e->snapshot_invoke_stf) e->stf_output_count++;
+  if (!linked_with_snap) e->stf_output_count++;
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
