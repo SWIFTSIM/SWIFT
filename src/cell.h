@@ -589,6 +589,14 @@ struct cell {
       /* Linked list for sending spart data. */
       struct link *send;
     } stars;
+    
+    struct {
+      /* Task receiving spart data. */
+      struct task *recv;
+
+      /* Linked list for sending spart data. */
+      struct link *send;
+    } limiter;
 
     /* Task receiving data (time-step). */
     struct task *recv_ti;
