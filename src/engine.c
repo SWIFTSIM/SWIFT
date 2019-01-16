@@ -3196,7 +3196,7 @@ void engine_check_for_dumps(struct engine *e) {
 
           /* Unleash the raptor! */
           ///\todo need to move velociraptor_init to initialization after
-          ///reading  the input
+          /// reading  the input
           velociraptor_init(e, /*linked_with_snap=*/1);
 
           velociraptor_invoke(e, /*linked_with_snap=*/1);
