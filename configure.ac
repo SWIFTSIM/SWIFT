@@ -1188,6 +1188,7 @@ with_subgrid_hydro=none
 with_subgrid_stars=none
 with_subgrid_star_formation=none
 with_subgrid_feedback=none
+with_subgrid_sftracers=none
 
 case "$with_subgrid" in
    yes)
@@ -1203,6 +1204,7 @@ case "$with_subgrid" in
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=none
 	with_subgrid_feedback=thermal
+  with_subgrid_sftracers=none
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -1212,6 +1214,7 @@ case "$with_subgrid" in
 	with_subgrid_stars=EAGLE
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=none
+  with_subgrid_sftracers=none
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -1555,7 +1558,7 @@ esac
 #  Particle tracers
 AC_ARG_WITH([tracers],
    [AS_HELP_STRING([--with-tracers=<function>],
-      [chemistry function @<:@none, EAGLE default: none@:>@]
+      [tracer function @<:@none, EAGLE default: none@:>@]
    )],
    [with_tracers="$withval"],
    [with_tracers="none"]
@@ -1578,6 +1581,35 @@ case "$with_tracers" in
    ;;
    *)
       AC_MSG_ERROR([Unknown tracers choice: $with_tracers])
+   ;;
+esac
+
+#  Particle Star formation tracers
+AC_ARG_WITH([sftracers],
+   [AS_HELP_STRING([--with-sftracers=<function>],
+      [star formation tracer function @<:@none, EAGLE default: none@:>@]
+   )],
+   [with_sftracers="$withval"],
+   [with_sftracers="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_sftracers" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-sftracers together])
+   else
+      with_sftracers="$with_subgrid_sftracers"
+   fi
+fi
+
+case "$with_sftracers" in
+   none)
+      AC_DEFINE([TRACERS_NONE], [1], [No star formation tracers function])
+   ;;
+   EAGLE)
+      AC_DEFINE([TRACERS_EAGLE], [1], [Star Formation tracers taken from the EAGLE model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown star formation tracers choice: $with_tracers])
    ;;
 esac
 
@@ -1803,12 +1835,13 @@ AC_MSG_RESULT([
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
 
-   Cooling function     : $with_cooling
-   Chemistry            : $with_chemistry
-   Tracers              : $with_tracers
-   Stellar model        : $with_stars
-   Star formation model : $with_star_formation
-   Feedback model       : $with_feedback
+   Cooling function       : $with_cooling
+   Chemistry              : $with_chemistry
+   Tracers                : $with_tracers
+   Star Formation Tracers : $with_sftracers
+   Stellar model          : $with_stars
+   Star formation model   : $with_star_formation
+   Feedback model         : $with_feedback
 
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging
