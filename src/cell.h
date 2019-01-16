@@ -583,19 +583,13 @@ struct cell {
     } grav;
 
     struct {
-<<<<<<< HEAD
-      /* Task receiving spart data. */
-=======
     /* Task receiving spart data. */
->>>>>>> e64b67bc37ff4669b8f96ad0ce94112e400e6464
       struct task *recv;
 
       /* Linked list for sending spart data. */
       struct link *send;
     } stars;
 
-<<<<<<< HEAD
-=======
     struct {
       /* Task receiving limiter data. */
       struct task *recv;
@@ -604,7 +598,6 @@ struct cell {
       struct link *send;
     } limiter;
 
->>>>>>> e64b67bc37ff4669b8f96ad0ce94112e400e6464
     /* Task receiving data (time-step). */
     struct task *recv_ti;
 
