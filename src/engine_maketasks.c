@@ -222,10 +222,18 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   const int nodeID = cj->nodeID;
 
   /* Check if any of the density tasks are for the target node. */
-  for (l = ci->stars.density; l != NULL; l = l->next)
+  for (l = ci->hydro.density; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID ||
         (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
+
+  /* Check for stars now */
+  if (l == NULL) {  
+    for (l = ci->stars.density; l != NULL; l = l->next)
+      if (l->t->ci->nodeID == nodeID ||
+	  (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+	break;
+  }
 
   /* If so, attach send tasks. */
   if (l != NULL) {
