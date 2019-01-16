@@ -146,7 +146,9 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
   /* Get the next free link. */
   const size_t ind = atomic_inc(&e->nr_links);
   if (ind >= e->size_links) {
-    error("Link table overflow.");
+    error(
+        "Link table overflow. Increase the value of "
+        "`Scheduler:links_per_tasks`.");
   }
   struct link *res = &e->links[ind];
 
@@ -1827,10 +1829,10 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_print_task_counts(struct engine *e) {
+void engine_print_task_counts(const struct engine *e) {
 
   const ticks tic = getticks();
-  struct scheduler *const sched = &e->sched;
+  const struct scheduler *sched = &e->sched;
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
 
@@ -1877,7 +1879,7 @@ void engine_print_task_counts(struct engine *e) {
  *
  * @return the estimated total number of tasks
  */
-int engine_estimate_nr_tasks(struct engine *e) {
+int engine_estimate_nr_tasks(const struct engine *e) {
 
   int tasks_per_cell = e->tasks_per_cell;
   if (tasks_per_cell > 0) return e->s->tot_cells * tasks_per_cell;
@@ -1886,8 +1888,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
    * basically use a formula <n1>*ntopcells + <n2>*(totcells - ntopcells).
    * Where <n1> is the expected maximum tasks per top-level/super cell, and
    * <n2> the expected maximum tasks for all other cells. These should give
-   * a safe upper limit.
-   */
+   * a safe upper limit. */
   int n1 = 0;
   int n2 = 0;
   if (e->policy & engine_policy_hydro) {
@@ -4680,6 +4681,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     maxtasks = e->restart_max_tasks;
   else
     maxtasks = engine_estimate_nr_tasks(e);
+
+  /* Estimated number of links per tasks */
+  e->links_per_tasks =
+      parser_get_opt_param_int(params, "Scheduler:links_per_tasks", 10);
 
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, maxtasks, nr_queues,

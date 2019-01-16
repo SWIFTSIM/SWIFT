@@ -583,18 +583,18 @@ struct cell {
     } grav;
 
     struct {
-      /* Task receiving spart data. */
+    /* Task receiving spart data. */
       struct task *recv;
 
       /* Linked list for sending spart data. */
       struct link *send;
     } stars;
-    
+
     struct {
-      /* Task receiving spart data. */
+      /* Task receiving limiter data. */
       struct task *recv;
 
-      /* Linked list for sending spart data. */
+      /* Linked list for sending limiter data. */
       struct link *send;
     } limiter;
 

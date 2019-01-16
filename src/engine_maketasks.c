@@ -222,10 +222,18 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   const int nodeID = cj->nodeID;
 
   /* Check if any of the density tasks are for the target node. */
-  for (l = ci->stars.density; l != NULL; l = l->next)
+  for (l = ci->hydro.density; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID ||
         (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
+
+  /* Check for stars now */
+  if (l == NULL) {  
+    for (l = ci->stars.density; l != NULL; l = l->next)
+      if (l->t->ci->nodeID == nodeID ||
+	  (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+	break;
+  }
 
   /* If so, attach send tasks. */
   if (l != NULL) {
@@ -596,6 +604,9 @@ void engine_addtasks_recv_timestep(struct engine *e, struct cell *c,
       scheduler_addunlock(s, l->t, t_ti);
     }
   }
+
+  for (struct link *l = c->stars.feedback; l != NULL; l = l->next)
+    scheduler_addunlock(s, l->t, t_ti);
 
   for (struct link *l = c->stars.feedback; l != NULL; l = l->next)
     scheduler_addunlock(s, l->t, t_ti);
@@ -2531,42 +2542,6 @@ void engine_maketasks(struct engine *e) {
   if (e->sched.nr_tasks == 0 && (s->nr_gparts > 0 || s->nr_parts > 0))
     error("We have particles but no hydro or gravity tasks were created.");
 
-  /* Free the old list of cell-task links. */
-  if (e->links != NULL) free(e->links);
-  e->size_links = 0;
-
-/* The maximum number of links is the
- * number of cells (s->tot_cells) times the number of neighbours (26) times
- * the number of interaction types, so 26 * 2 (density, force) pairs
- * and 2 (density, force) self.
- */
-#ifdef EXTRA_HYDRO_LOOP
-  const size_t hydro_tasks_per_cell = 27 * 3;
-#else
-  const size_t hydro_tasks_per_cell = 27 * 2;
-#endif
-  const size_t self_grav_tasks_per_cell = 125;
-  const size_t ext_grav_tasks_per_cell = 1;
-  const size_t stars_tasks_per_cell = 27;
-  const size_t limiter_tasks_per_cell = 27;
-
-  if (e->policy & engine_policy_hydro)
-    e->size_links += s->tot_cells * hydro_tasks_per_cell;
-  if (e->policy & engine_policy_external_gravity)
-    e->size_links += s->tot_cells * ext_grav_tasks_per_cell;
-  if (e->policy & engine_policy_self_gravity)
-    e->size_links += s->tot_cells * self_grav_tasks_per_cell;
-  if (e->policy & engine_policy_stars)
-    e->size_links += s->tot_cells * stars_tasks_per_cell;
-  if (e->policy & engine_policy_limiter)
-    e->size_links += s->tot_cells * limiter_tasks_per_cell;
-
-  /* Allocate the new link list */
-  if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) ==
-      NULL)
-    error("Failed to allocate cell-task links.");
-  e->nr_links = 0;
-
   tic2 = getticks();
 
   /* Split the tasks. */
@@ -2583,6 +2558,20 @@ void engine_maketasks(struct engine *e) {
     if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
   }
 #endif
+
+  /* Free the old list of cell-task links. */
+  if (e->links != NULL) free(e->links);
+  e->size_links = e->sched.nr_tasks * e->links_per_tasks;
+
+  /* Make sure that we have space for more links than last time. */
+  if (e->size_links < e->nr_links * engine_rebuild_link_alloc_margin)
+    e->size_links = e->nr_links * engine_rebuild_link_alloc_margin;
+
+  /* Allocate the new link list */
+  if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) ==
+      NULL)
+    error("Failed to allocate cell-task links.");
+  e->nr_links = 0;
 
   tic2 = getticks();
 
@@ -2736,6 +2725,21 @@ void engine_maketasks(struct engine *e) {
               clocks_from_ticks(getticks() - tic2), clocks_getunit());
   }
 #endif
+
+  /* Report the number of tasks we actually used */
+  if (e->verbose)
+    message(
+        "Nr. of tasks: %d allocated tasks: %d ratio: %f memory use: %zd MB.",
+        e->sched.nr_tasks, e->sched.size,
+        (float)e->sched.nr_tasks / (float)e->sched.size,
+        e->sched.size * sizeof(struct task) / (1024 * 1024));
+
+  /* Report the number of links we actually used */
+  if (e->verbose)
+    message(
+        "Nr. of links: %zd allocated links: %zd ratio: %f memory use: %zd MB.",
+        e->nr_links, e->size_links, (float)e->nr_links / (float)e->size_links,
+        e->size_links * sizeof(struct link) / (1024 * 1024));
 
   tic2 = getticks();
 
