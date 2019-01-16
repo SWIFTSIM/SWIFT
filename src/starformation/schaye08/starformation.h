@@ -241,8 +241,6 @@ INLINE static int star_formation_convert_to_star(
     }
 
     /* Store the SFR */
-    xp->SFR = SFRpergasmass * p->mass;
-    xp->SFRrate = SFRpergasmass;
     xp->sftracers_data.SFR = SFRpergasmass * p->mass;
     xp->sftracers_data.sSFR = SFRpergasmass;
     /* Calculate the propability of forming a star */
@@ -262,16 +260,12 @@ INLINE static int star_formation_convert_to_star(
   }
 
   /* Check if it is the first time steps after star formation */
-  if (xp->SFR > 0.f) {
+  if (xp->sftracers_data.SFR > 0.f) {
     if (with_cosmology) {
-      xp->SFR = - cosmo->a;
-      xp->SFRrate = 0.f;
       xp->sftracers_data.SFR = - cosmo->a;
       xp->sftracers_data.sSFR = 0.f;
     } else {
-      xp->SFR = - e->time; 
       xp->sftracers_data.SFR = - e->time;
-      xp->SFRrate = 0.f;
       xp->sftracers_data.sSFR = 0.f;
     }
   }
