@@ -260,9 +260,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Update the simulation information */
   struct siminfo sim_info;
 
-  // period
+  /* period of the box */
   if (e->s->periodic) {
-    // Physical size of box in VELOCIraptor units (kpc).
     sim_info.period = unit_info.lengthtokpc * s->dim[0];
   } else {
     sim_info.period = 0.0;
@@ -433,7 +432,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Free the array returned by VELOCIraptor */
   free(group_info);
 
-  /* Free cell node ids after VELOCIraptor has copied them. */
+  /* Free everything we allocated */
   free(cell_node_ids);
   free(swift_parts);
   free(sim_info.cell_loc);
