@@ -59,6 +59,7 @@
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "tracers.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -218,6 +219,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.ghost_out = NULL;
     c->stars.ghost = NULL;
     c->stars.density = NULL;
+    c->stars.feedback = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -1755,6 +1757,17 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     const double old_pos_y = p->x[1];
     const double old_pos_z = p->x[2];
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!s->periodic) {
+      if (old_pos_x < 0. || old_pos_x > dim_x)
+        error("Particle outside of volume along X.");
+      if (old_pos_y < 0. || old_pos_y > dim_y)
+        error("Particle outside of volume along Y.");
+      if (old_pos_z < 0. || old_pos_z > dim_z)
+        error("Particle outside of volume along Z.");
+    }
+#endif
+
     /* Put it back into the simulation volume */
     const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
     const double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
@@ -1861,6 +1874,17 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     const double old_pos_x = gp->x[0];
     const double old_pos_y = gp->x[1];
     const double old_pos_z = gp->x[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!s->periodic) {
+      if (old_pos_x < 0. || old_pos_x > dim_x)
+        error("Particle outside of volume along X.");
+      if (old_pos_y < 0. || old_pos_y > dim_y)
+        error("Particle outside of volume along Y.");
+      if (old_pos_z < 0. || old_pos_z > dim_z)
+        error("Particle outside of volume along Z.");
+    }
+#endif
 
     /* Put it back into the simulation volume */
     const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
@@ -1974,6 +1998,17 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     const double old_pos_x = sp->x[0];
     const double old_pos_y = sp->x[1];
     const double old_pos_z = sp->x[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!s->periodic) {
+      if (old_pos_x < 0. || old_pos_x > dim_x)
+        error("Particle outside of volume along X.");
+      if (old_pos_y < 0. || old_pos_y > dim_y)
+        error("Particle outside of volume along Y.");
+      if (old_pos_z < 0. || old_pos_z > dim_z)
+        error("Particle outside of volume along Z.");
+    }
+#endif
 
     /* Put it back into the simulation volume */
     const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
@@ -2712,7 +2747,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
-        stars_h_max = max(h_max, cp->stars.h_max);
+        stars_h_max = max(stars_h_max, cp->stars.h_max);
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -3353,6 +3388,10 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
     /* And the cooling */
     cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);
+
+    /* And the tracers */
+    tracers_first_init_xpart(&p[k], &xp[k], us, phys_const, cosmo, hydro_props,
+                             cool_func);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */

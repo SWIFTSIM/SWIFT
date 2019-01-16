@@ -141,6 +141,23 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+      /* Activate the star feedback */
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_stars_feedback) {
+        if (cell_is_active_stars(ci, e)) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      /* Store current values of dx_max and h_max. */
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_stars_feedback) {
+        if (cell_is_active_stars(ci, e)) {
+          scheduler_activate(s, t);
+          cell_activate_subcell_stars_tasks(ci, NULL, s);
+        }
+      }
+
       /* Activate the gravity drift */
       else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
         if (cell_is_active_gravity(ci, e)) {
@@ -222,7 +239,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      /* Stars */
+      /* Stars density */
       if (t_subtype == task_subtype_stars_density &&
           ((ci_active_stars && ci->nodeID == engine_rank) ||
            (cj_active_stars && cj->nodeID == engine_rank))) {
@@ -279,6 +296,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+      /* Stars feedback */
+      if (t_subtype == task_subtype_stars_feedback &&
+          ((ci_active_stars && ci->nodeID == engine_rank) ||
+           (cj_active_stars && cj->nodeID == engine_rank))) {
+
+        scheduler_activate(s, t);
+      }
+
       /* Gravity */
       if ((t_subtype == task_subtype_grav) &&
           ((ci_active_gravity && ci_nodeID == nodeID) ||
@@ -303,7 +328,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
 
         /* Too much particle movement? */
-        if (cell_need_rebuild_for_pair(ci, cj)) *rebuild_space = 1;
+        if (cell_need_rebuild_for_hydro_pair(ci, cj)) *rebuild_space = 1;
 
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
@@ -399,7 +424,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->subtype == task_subtype_stars_density) {
 
         /* Too much particle movement? */
-        if (cell_need_rebuild_for_pair(ci, cj)) *rebuild_space = 1;
+        if (cell_need_rebuild_for_stars_pair(ci, cj)) *rebuild_space = 1;
 
         // LOIC: Need implementing MPI case
       }

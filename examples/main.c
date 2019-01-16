@@ -146,6 +146,7 @@ int main(int argc, char *argv[]) {
   int restart = 0;
   int with_cosmology = 0;
   int with_external_gravity = 0;
+  int with_temperature = 0;
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
@@ -173,20 +174,23 @@ int main(int argc, char *argv[]) {
   struct argparse_option options[] = {
       OPT_HELP(),
 
-      OPT_GROUP("  Simulation options:"),
-      OPT_BOOLEAN('b', "feedback", &with_feedback, "Run with stars feedback",
+      OPT_GROUP("  Simulation options:\n"),
+      OPT_BOOLEAN('b', "feedback", &with_feedback, "Run with stars feedback.",
                   NULL, 0, 0),
       OPT_BOOLEAN('c', "cosmology", &with_cosmology,
                   "Run with cosmological time integration.", NULL, 0, 0),
-      OPT_BOOLEAN('C', "cooling", &with_cooling, "Run with cooling", NULL, 0,
-                  0),
+      OPT_BOOLEAN(0, "temperature", &with_temperature,
+                  "Run with temperature calculation.", NULL, 0, 0),
+      OPT_BOOLEAN('C', "cooling", &with_cooling,
+                  "Run with cooling (also switches on --with-temperature).",
+                  NULL, 0, 0),
       OPT_BOOLEAN('D', "drift-all", &with_drift_all,
                   "Always drift all particles even the ones far from active "
                   "particles. This emulates Gadget-[23] and GIZMO's default "
                   "behaviours.",
                   NULL, 0, 0),
       OPT_BOOLEAN('F', "star-formation", &with_star_formation,
-                  "Run with star formation", NULL, 0, 0),
+                  "Run with star formation.", NULL, 0, 0),
       OPT_BOOLEAN('g', "external-gravity", &with_external_gravity,
                   "Run with an external gravitational potential.", NULL, 0, 0),
       OPT_BOOLEAN('G', "self-gravity", &with_self_gravity,
@@ -195,11 +199,11 @@ int main(int argc, char *argv[]) {
                   "Reconstruct the multipoles every time-step.", NULL, 0, 0),
       OPT_BOOLEAN('s', "hydro", &with_hydro, "Run with hydrodynamics.", NULL, 0,
                   0),
-      OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars", NULL, 0, 0),
+      OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
-                  "Run with structure finding", NULL, 0, 0),
+                  "Run with structure finding.", NULL, 0, 0),
 
-      OPT_GROUP("  Control options:"),
+      OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
       OPT_BOOLEAN('d', "dry-run", &dry_run,
@@ -459,6 +463,13 @@ int main(int argc, char *argv[]) {
     error("VEOCIraptor not yet enabled over MPI.");
 #endif
 
+    /* Temporary early aborts for modes not supported with hand-vec. */
+#if defined(WITH_VECTORIZATION) && !defined(CHEMISTRY_NONE)
+  error(
+      "Cannot run with chemistry and hand-vectorization (yet). "
+      "Use --disable-hand-vec at configure time.");
+#endif
+
   /* Check that we can write the snapshots by testing if the output
    * directory exists and is searchable and writable. */
   char basename[PARSER_MAX_LINE_SIZE];
@@ -469,8 +480,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Check that we can write the structure finding catalogues by testing if the
-   * output
-   * directory exists and is searchable and writable. */
+   * output directory exists and is searchable and writable. */
   if (with_structure_finding) {
     char stfbasename[PARSER_MAX_LINE_SIZE];
     parser_get_param_string(params, "StructureFinding:basename", stfbasename);
@@ -847,15 +857,19 @@ int main(int argc, char *argv[]) {
     }
 
     /* Initialise the external potential properties */
+    bzero(&potential, sizeof(struct external_potential));
     if (with_external_gravity)
       potential_init(params, &prog_const, &us, &s, &potential);
     if (myrank == 0) potential_print(&potential);
 
     /* Initialise the cooling function properties */
-    if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
+    bzero(&cooling_func, sizeof(struct cooling_function_data));
+    if (with_cooling || with_temperature)
+      cooling_init(params, &us, &prog_const, &cooling_func);
     if (myrank == 0) cooling_print(&cooling_func);
 
     /* Initialise the chemistry */
+    bzero(&chemistry, sizeof(struct chemistry_global_data));
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
 
@@ -869,6 +883,7 @@ int main(int argc, char *argv[]) {
     if (with_external_gravity)
       engine_policies |= engine_policy_external_gravity;
     if (with_cosmology) engine_policies |= engine_policy_cosmology;
+    if (with_temperature) engine_policies |= engine_policy_temperature;
     if (with_cooling) engine_policies |= engine_policy_cooling;
     if (with_stars) engine_policies |= engine_policy_stars;
     if (with_star_formation) engine_policies |= engine_policy_star_formation;
@@ -1206,7 +1221,7 @@ int main(int argc, char *argv[]) {
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
-  if (with_cooling) cooling_clean(&cooling_func);
+  if (with_cooling || with_temperature) cooling_clean(&cooling_func);
   engine_clean(&e);
   free(params);
 

@@ -70,8 +70,6 @@ EAGLEChemistry:
   InitAbundance_Magnesium: 0.0
   InitAbundance_Silicon:   0.0
   InitAbundance_Iron:      0.0
-  CalciumOverSilicon:      0.0
-  SulphurOverSilicon:      0.0
 
 EagleCooling:
   filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/

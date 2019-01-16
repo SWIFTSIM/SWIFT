@@ -69,13 +69,14 @@ enum engine_policy {
   engine_policy_cosmology = (1 << 10),
   engine_policy_drift_all = (1 << 11),
   engine_policy_reconstruct_mpoles = (1 << 12),
-  engine_policy_cooling = (1 << 13),
-  engine_policy_stars = (1 << 14),
-  engine_policy_structure_finding = (1 << 15),
-  engine_policy_star_formation = (1 << 16),
-  engine_policy_feedback = (1 << 17)
+  engine_policy_temperature = (1 << 13),
+  engine_policy_cooling = (1 << 14),
+  engine_policy_stars = (1 << 15),
+  engine_policy_structure_finding = (1 << 16),
+  engine_policy_star_formation = (1 << 17),
+  engine_policy_feedback = (1 << 18)
 };
-#define engine_maxpolicy 18
+#define engine_maxpolicy 19
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**

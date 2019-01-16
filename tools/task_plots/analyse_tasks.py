@@ -113,6 +113,7 @@ SUBTYPES = [
     "multipole",
     "spart",
     "stars_density",
+    "stars_feedback",
     "count",
 ]
 
