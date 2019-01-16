@@ -44,6 +44,8 @@ struct swift_vel_part {
 
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
+  /*! Store the mpi task of swift, and the index in the array */
+  int task, index;
 };
 
 #endif /* SWIFT_VELOCIRAPTOR_PART_H */
