@@ -109,9 +109,9 @@
 
 /* Import the stars density loop functions. */
 #define FUNCTION density
-#define ONLY_LOCAL 1
+#define UPDATE_STARS 1
 #include "runner_doiact_stars.h"
-#undef ONLY_LOCAL
+#undef UPDATE_STARS
 #undef FUNCTION
 
 /* Import the stars feedback loop functions. */
