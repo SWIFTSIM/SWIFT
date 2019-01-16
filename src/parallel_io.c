@@ -1144,6 +1144,8 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
                                               e->cooling_func);
         num_fields += tracers_write_particles(parts, xparts, list + num_fields,
                                               with_cosmology);
+        num_fields += sftracers_write_particles(parts, xparts, list + num_fields,
+                                              with_cosmology);
 
         break;
 
@@ -1414,6 +1416,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
               parts, xparts, list + num_fields, e->cooling_func);
           num_fields += tracers_write_particles(
               parts, xparts, list + num_fields, with_cosmology);
+          num_fields += sftracers_write_particles(
+              parts, xparts, list + num_fields, with_cosmology);
 
         } else {
 
@@ -1441,6 +1445,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
               cooling_write_particles(parts_written, xparts_written,
                                       list + num_fields, e->cooling_func);
           num_fields += tracers_write_particles(
+              parts_written, xparts_written, list + num_fields, with_cosmology);
+          num_fields += sftracers_write_particles(
               parts_written, xparts_written, list + num_fields, with_cosmology);
         }
       } break;
