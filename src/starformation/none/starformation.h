@@ -53,7 +53,7 @@ INLINE static int star_formation_convert_to_star(
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
     const struct cooling_function_data* restrict cooling,
-    const double dt_star) {
+    const double dt_star, const int with_cosmology) {
 
   return 0;
 }
