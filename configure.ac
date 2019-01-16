@@ -1603,10 +1603,10 @@ fi
 
 case "$with_sftracers" in
    none)
-      AC_DEFINE([TRACERS_NONE], [1], [No star formation tracers function])
+      AC_DEFINE([SFTRACERS_NONE], [1], [No star formation tracers function])
    ;;
    EAGLE)
-      AC_DEFINE([TRACERS_EAGLE], [1], [Star Formation tracers taken from the EAGLE model])
+      AC_DEFINE([SFTRACERS_EAGLE], [1], [Star Formation tracers taken from the EAGLE model])
    ;;
    *)
       AC_MSG_ERROR([Unknown star formation tracers choice: $with_tracers])

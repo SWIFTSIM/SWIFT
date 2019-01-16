@@ -49,7 +49,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
-    logger_io.h tracers_io.h tracers.h tracers_struct.h
+    logger_io.h tracers_io.h tracers.h tracers_struct.h sftracers_io.h sftracers.h \ 
+		sftracers_struct.h
 
 # source files for EAGLE cooling
 EAGLE_COOLING_SOURCES =
@@ -168,7 +169,9 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 tracers/none/tracers.h tracers/none/tracers_struct.h \
                  tracers/none/tracers_io.h \
 		 tracers/EAGLE/tracers.h tracers/EAGLE/tracers_struct.h \
-                 tracers/EAGLE/tracers_io.h 
+                 tracers/EAGLE/tracers_io.h \  
+		 sftracers/none/sftracers.h sftracers/none/sftracers_struct.h \
+                 sftracers/none/sftracers_io.h 
 
 
 # Sources and flags for regular library
