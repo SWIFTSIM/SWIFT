@@ -106,8 +106,8 @@ float entropy_floor(const struct part *p, const struct cosmology *cosmo,
   float pressure = 0.;
 
   /* Are we in the regime of the Jeans equation of state? */
-  if ((rho > rho_crit * props->Jeans_over_density_threshold) &&
-      (rho > props->Jeans_density_threshold)) {
+  if ((rho >= rho_crit * props->Jeans_over_density_threshold) &&
+      (rho >= props->Jeans_density_threshold)) {
 
     const float pressure_Jeans = props->Jeans_pressure_norm *
                                  powf(rho * props->Jeans_density_threshold_inv,
@@ -117,8 +117,8 @@ float entropy_floor(const struct part *p, const struct cosmology *cosmo,
   }
 
   /* Are we in the regime of the Cool equation of state? */
-  if ((rho > rho_crit * props->Cool_over_density_threshold) &&
-      (rho > props->Cool_density_threshold)) {
+  if ((rho >= rho_crit * props->Cool_over_density_threshold) &&
+      (rho >= props->Cool_density_threshold)) {
 
     const float pressure_Cool = props->Cool_pressure_norm *
                                 powf(rho * props->Cool_density_threshold_inv,
