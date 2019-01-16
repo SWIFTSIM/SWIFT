@@ -6,19 +6,98 @@
 Snapshots
 =========
 
-The snapshots are stored using the HDF5 format and are fully compatible with
-Gadget-2. They do, however, contain a large set of extensions including units,
-meta-data about the code and runs as well as facilities to quickly access the
-particles in a specific region of the simulation volume.
+The snapshots are stored using the HDF5 format and are almost compatible with
+Gadget-2 (fully compatible outside of cosmological runs). They do, however,
+contain a large set of extensions including units, meta-data about the code and
+runs as well as facilities to quickly access the particles in a specific region
+of the simulation volume.
+
+Header
+------
 
 Meta-data about the code and run
 --------------------------------
 
-Unit system
------------
+Several groups at the root of the files only contain attributes and are used to
+store some meta-data about the simulation and the code itself.
+
+Code
+~~~~
+
+The group ``/Code`` contains basic information about the version of the code
+that was used to run the simulation that dumped this snapshot. Versions of the
+libraries used to compile the code as well as information about the compiler and
+the flags used are stored. The most important element here are the git SHA and
+configuration parameters of the code. Alongside the compiler flags, policies and
+used parameters, these allow to reproduce exactly an older run.
+
+Cosmology
+~~~~~~~~~
+
+The group ``/Cosmology`` contains information about the cosmological model used
+for this simulation. The first important field is the attribute ``Cosmological
+run`` which is set to ``1`` for cosmological runs and to ``0`` otherwise. This
+allows users to quickly distinguish between these two main modes. Most values in
+this section only make sense for cosmological runs.
+
+All quantities are expressed in the internal system of units (note that this may
+differ from the units used in the particle arrays). Values like the look-back
+time are given for the redshift (or scale-factor) of this snapshot.
+
+Policy
+~~~~~~
+
+The group ``/Policy`` list the engine policies (defined in ``src/engine.h``)
+that were activated in the run that dumped this snapshot. The policies roughly
+translate to the main run-time parameters of SWIFT.
+
+GravityScheme
+~~~~~~~~~~~~~
+
+HydroScheme
+~~~~~~~~~~~
+
+StarsScheme
+~~~~~~~~~~~
+
+SubgridScheme
+~~~~~~~~~~~~~
+
+Unit systems
+------------
+
+The snapshots contain *two* groups at the root containing information about the
+unit systems used in the snapshots.
+
+The main one ``Units`` contains the units used in the snapshot. In a similar
+fashion to what is done for the parameter files (see :ref:`Parameters_units`),
+SWIFT specifies only the basic units. These are the units of mass (``U_M``),
+length (``U_L``), time (``U_t``), electric current (``U_I``) and temperature
+(``U_T``). These are specified in units of their CGS equivalents (gram,
+centimeter, second, Ampere, Kelvin). All the quantities present in the particle
+arrays are expressed in this system of units. For each quantity, SWIFT gives the
+conversion factor in terms of these units. For instance, the internal energy per
+unit mass would be expressed as ``U_L^2 U_t^-2``, which in the CGS unit system
+translates to :math:`cm/s^2 = erg/g`.
+
+The second group ``InternalCodeUnits`` contains the unit system that was used
+internally by the code when running the simulation. This is in most cases the
+same system as given in ``Units`` but since users can specify a different
+system for the snapshots, there might be cases where they differ. As this system
+only relates to what was used inside the code and not in the snapshots
+themselves, this group is mostly here to report on the code's run-time behaviour
+and is used to express all the quantities in the meta-data (e.g. in the
+cosmology group or the softening lengths in the gravity group).
 
 Used and unused run-time parameters
 -----------------------------------
+
+The groups ``/Parameters`` and ``UnusedParameters`` located at the root of the file
+contain the list of all the run-time parameters used by the run with their
+values and the list of parameters that were in the YAML but were not read. The
+content of these two groups is identical to the ``used_parameters.yml`` and
+``unused_parameters.yml`` files produced by SWIFT when starting a run (See
+the :ref:`Parameters_basics` section of the documentation).
 
 Structure of the particle arrays
 --------------------------------

@@ -36,6 +36,10 @@ Example of file with redshift::
   10
   5
 
+If an output list is specified, the basic values for the first
+snapshot (``time_first``, ``scale_factor_first``) and difference
+(``delta_time``) are ignored.
+  
 .. _Output_selection_label:
 
 Output Selection
