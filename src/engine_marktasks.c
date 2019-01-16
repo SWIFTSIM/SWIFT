@@ -344,18 +344,25 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      /* Stars density */
-      if (t_subtype == task_subtype_stars_density &&
-          ((ci_active_stars && ci->nodeID == engine_rank) ||
-           (cj_active_stars && cj->nodeID == engine_rank))) {
+      /* Stars density and feedback */
+      const int stars_density = t_subtype == task_subtype_stars_density &&
+	((ci_active_stars && ci->nodeID == engine_rank) ||
+	 (cj_active_stars && cj->nodeID == engine_rank));
+      const int stars_feedback = t_subtype == task_subtype_stars_feedback &&
+	((ci_active_stars && cj->nodeID == engine_rank) ||
+	 (cj_active_stars && ci->nodeID == engine_rank));
+
+      if (stars_density || stars_feedback) {
 
         scheduler_activate(s, t);
 
+	const int should_do = t_subtype == task_subtype_stars_density ||
+	  cj->nodeID != ci->nodeID;
         /* Set the correct sorting flags */
         if (t_type == task_type_pair) {
 
           /* Do ci */
-          if (ci_active_stars) {
+          if (ci_active_stars && should_do) {
             /* Store some values. */
             atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
             atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
@@ -375,7 +382,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           /* Do cj */
-          if (cj_active_stars) {
+          if (cj_active_stars && should_do) {
             /* Store some values. */
             atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
             atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
@@ -395,17 +402,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 
         /* Store current values of dx_max and h_max. */
-        else if (t_type == task_type_sub_pair) {
+        else if (t_type == task_type_sub_pair && should_do) {
           cell_activate_subcell_stars_tasks(t->ci, t->cj, s);
         }
-      }
-
-      /* Stars feedback */
-      if (t_subtype == task_subtype_stars_feedback &&
-          ((ci_active_stars && ci->nodeID == engine_rank) ||
-           (cj_active_stars && cj->nodeID == engine_rank))) {
-
-        scheduler_activate(s, t);
       }
 
       /* Gravity */
