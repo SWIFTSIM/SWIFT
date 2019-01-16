@@ -341,6 +341,9 @@ struct engine {
   /* Properties of the hydro scheme */
   const struct hydro_props *hydro_properties;
 
+  /* Properties of the entropy floor */
+  const struct entropy_floor_properties *entropy_floor;
+
   /* Properties of the star model */
   const struct stars_props *stars_properties;
 
@@ -412,6 +415,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
+                 const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,

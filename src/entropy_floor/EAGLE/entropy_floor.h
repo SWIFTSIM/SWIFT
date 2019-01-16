@@ -93,8 +93,9 @@ struct entropy_floor_properties {
  * @param cosmo The cosmological model.
  * @param props The properties of the entropy floor.
  */
-float entropy_floor(const struct part *p, const struct cosmology *cosmo,
-                    const struct entropy_floor_properties *props) {
+static INLINE float entropy_floor(
+    const struct part *p, const struct cosmology *cosmo,
+    const struct entropy_floor_properties *props) {
 
   /* Physical density in internal units */
   const float rho = hydro_get_physical_density(p, cosmo);
@@ -141,11 +142,11 @@ float entropy_floor(const struct part *p, const struct cosmology *cosmo,
  * @param phys_cont The physical constants.
  * @param props The entropy floor properties to fill.
  */
-void entropy_floor_init(struct swift_params *params,
-                        const struct unit_system *us,
-                        const struct phys_const *phys_const,
-                        const struct hydro_props *hydro_props,
-                        struct entropy_floor_properties *props) {
+static INLINE void entropy_floor_init(struct entropy_floor_properties *props,
+                                      const struct phys_const *phys_const,
+                                      const struct unit_system *us,
+                                      const struct hydro_props *hydro_props,
+                                      struct swift_params *params) {
 
   /* Read the parameters in the units they are set */
   props->Jeans_density_threshold_H_p_cm3 = parser_get_param_float(
@@ -167,23 +168,23 @@ void entropy_floor_init(struct swift_params *params,
       parser_get_param_float(params, "EAGLEEntropyFloor:Cool_gamma_effective");
 
   /* Initial Hydrogen abundance (mass fraction) */
-  const float X_H = hydro_props->hydrogen_mass_fraction;
+  const double X_H = hydro_props->hydrogen_mass_fraction;
 
   /* Now convert to internal units */
   props->Jeans_temperature_norm =
       props->Jeans_temperature_norm_K /
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
   props->Jeans_density_threshold =
-      props->Jeans_density_threshold /
-      units_cgs_conversion_factor(us, UNIT_CONV_VOLUME) *
+      props->Jeans_density_threshold_H_p_cm3 /
+      units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY) *
       phys_const->const_proton_mass / X_H;
 
   props->Cool_temperature_norm =
       props->Cool_temperature_norm_K /
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
   props->Cool_density_threshold =
-      props->Cool_density_threshold /
-      units_cgs_conversion_factor(us, UNIT_CONV_VOLUME) *
+      props->Cool_density_threshold_H_p_cm3 /
+      units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY) *
       phys_const->const_proton_mass / X_H;
 
   /* We assume neutral gas */
@@ -205,14 +206,27 @@ void entropy_floor_init(struct swift_params *params,
       props->Cool_density_threshold;
 }
 
+static INLINE void entropy_floor_print(
+    const struct entropy_floor_properties *props) {
+
+  message("Entropy floor is EAGLE with:");
+  message("Jeans limiter with slope n=%.3f at rho=%e (%e H/cm^3) and T=%.1f K",
+          props->Jeans_gamma_effective, props->Jeans_density_threshold,
+          props->Jeans_density_threshold_H_p_cm3,
+          props->Jeans_temperature_norm);
+  message(" Cool limiter with slope n=%.3f at rho=%e (%e H/cm^3) and T=%.1f K",
+          props->Cool_gamma_effective, props->Cool_density_threshold,
+          props->Cool_density_threshold_H_p_cm3, props->Cool_temperature_norm);
+}
+
 /**
  * @brief Write an entropy floor struct to the given FILE as a stream of bytes.
  *
  * @param props the struct
  * @param stream the file stream
  */
-void entropy_floor_struct_dump(const struct entropy_floor_properties *props,
-                               FILE *stream) {
+static INLINE void entropy_floor_struct_dump(
+    const struct entropy_floor_properties *props, FILE *stream) {
 
   restart_write_blocks((void *)props, sizeof(struct entropy_floor_properties),
                        1, stream, "entropy floor", "entropy floor properties");
@@ -225,8 +239,8 @@ void entropy_floor_struct_dump(const struct entropy_floor_properties *props,
  * @param props the struct
  * @param stream the file stream
  */
-void entropy_floor_struct_restore(struct entropy_floor_properties *props,
-                                  FILE *stream) {
+static INLINE void entropy_floor_struct_restore(
+    struct entropy_floor_properties *props, FILE *stream) {
 
   restart_read_blocks((void *)props, sizeof(struct entropy_floor_properties), 1,
                       stream, NULL, "entropy floor properties");

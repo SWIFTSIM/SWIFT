@@ -38,6 +38,7 @@
 #include "debug.h"
 #include "dump.h"
 #include "engine.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "gravity.h"
 #include "gravity_derivatives.h"
