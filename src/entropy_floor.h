@@ -35,4 +35,3 @@
 #endif
 
 #endif /* SWIFT_ENTROPY_FLOOR_H */
-

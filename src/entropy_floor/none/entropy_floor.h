@@ -25,5 +25,4 @@
  * floors.
  */
 
-
 #endif /* SWIFT_ENTROPY_FLOOR_NONE_H */

@@ -48,6 +48,7 @@
 #include "debug.h"
 #include "drift.h"
 #include "engine.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
