@@ -26,7 +26,7 @@
 struct engine;
 
 /* VELOCIraptor wrapper functions. */
-void velociraptor_init(struct engine *e, const int linked_with_snap);
+void velociraptor_init(struct engine *e);
 void velociraptor_invoke(struct engine *e, const int linked_with_snap);
 
 #endif /* SWIFT_VELOCIRAPTOR_INTERFACE_H */

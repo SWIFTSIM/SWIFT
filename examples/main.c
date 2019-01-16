@@ -919,6 +919,10 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
+#ifdef HAVE_VELOCIRAPTOR
+    if (with_structure_finding) velociraptor_init(&e);
+#endif
+
     /* Get some info to the user. */
     if (myrank == 0) {
       long long N_DM = N_total[1] - N_total[2] - N_total[0];

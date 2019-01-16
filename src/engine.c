@@ -3193,12 +3193,6 @@ void engine_check_for_dumps(struct engine *e) {
         if (with_stf && e->snapshot_invoke_stf) {
 
 #ifdef HAVE_VELOCIRAPTOR
-
-          /* Unleash the raptor! */
-          ///\todo need to move velociraptor_init to initialization after
-          /// reading  the input
-          velociraptor_init(e, /*linked_with_snap=*/1);
-
           velociraptor_invoke(e, /*linked_with_snap=*/1);
 #else
           error(
@@ -3232,9 +3226,7 @@ void engine_check_for_dumps(struct engine *e) {
       case output_stf:
 
 #ifdef HAVE_VELOCIRAPTOR
-
         /* Unleash the raptor! */
-        velociraptor_init(e, /*linked_with_snap=*/0);
         velociraptor_invoke(e, /*linked_with_snap=*/0);
 
         /* ... and find the next output time */
