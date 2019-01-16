@@ -3142,7 +3142,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
-
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
@@ -3175,7 +3174,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
       /* Set the correct sorting flags and activate hydro drifts */
       else if (t->type == task_type_pair) {
         /* Do ci */
-        if (ci_active && cj->hydro.count != 0 && ci->stars.count != 0) {
+        if (ci_active) {
           /* stars for ci */
           atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
           ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
@@ -3194,7 +3193,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* Do cj */
-        if (cj_active && ci->hydro.count != 0 && cj->stars.count != 0) {
+        if (cj_active) {
           /* hydro for ci */
           atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
           ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
@@ -3233,10 +3232,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
         if (cj_active) {
           scheduler_activate(s, ci->mpi.hydro.recv_xv);
-          if (ci_active) {
-            scheduler_activate(s, ci->mpi.stars.recv);
-          }
         }
+	if (ci_active) {
+	  scheduler_activate(s, ci->mpi.stars.recv);
+	}
 
         /* If the foreign cell is active, we want its ti_end values. */
         if (ci_active) scheduler_activate(s, ci->mpi.recv_ti);
@@ -3250,12 +3249,12 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(cj, s);
 
-          /* If the local cell is also active, more stuff will be needed.
-           */
-          if (cj_active) {
-            scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
-          }
         }
+          /* If the local cell is active, more stuff will be needed.
+           */
+	if (cj_active) {
+	  scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
+	}
 
         /* If the local cell is active, send its ti_end values. */
         if (cj_active) scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
@@ -3265,10 +3264,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
           scheduler_activate(s, cj->mpi.hydro.recv_xv);
-          if (cj_active) {
-            scheduler_activate(s, cj->mpi.stars.recv);
-          }
         }
+	if (cj_active) {
+	  scheduler_activate(s, cj->mpi.stars.recv);
+	}
 
         /* If the foreign cell is active, we want its ti_end values. */
         if (cj_active) scheduler_activate(s, cj->mpi.recv_ti);
@@ -3282,12 +3281,12 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(ci, s);
 
-          /* If the local cell is also active, more stuff will be needed.
-           */
-          if (ci_active) {
-            scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
-          }
         }
+	/* If the local cell is active, more stuff will be needed.
+	 */
+	if (ci_active) {
+	  scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
+	}
 
         /* If the local cell is active, send its ti_end values. */
         if (ci_active) scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
