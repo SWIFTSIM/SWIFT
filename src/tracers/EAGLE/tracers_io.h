@@ -73,4 +73,26 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
   return 2;
 }
 
+__attribute__((always_inline)) INLINE static int tracers_write_sparticles(
+    const struct spart* sparts, struct io_props* list,
+    const int with_cosmology) {
+
+  list[0] = io_make_output_field("Maximal Temperature", FLOAT, 1,
+                                 UNIT_CONV_TEMPERATURE, sparts,
+                                 tracers_data.maximum_temperature);
+
+  if (with_cosmology) {
+    list[1] = io_make_output_field(
+        "Maximal Temperature scale-factor", FLOAT, 1, UNIT_CONV_NO_UNITS,
+        sparts, tracers_data.maximum_temperature_scale_factor);
+
+  } else {
+
+    list[1] = io_make_output_field("MaxTemperature time", FLOAT, 1,
+                                   UNIT_CONV_NO_UNITS, sparts,
+                                   tracers_data.maximum_temperature_time);
+  }
+
+  return 2;
+}
 #endif /* SWIFT_TRACERS_EAGLE_IO_H */

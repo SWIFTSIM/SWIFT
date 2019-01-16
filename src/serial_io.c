@@ -1145,6 +1145,8 @@ void write_output_serial(struct engine* e, const char* baseName,
               Nparticles = Nstars;
               stars_write_particles(sparts, list, &num_fields);
               num_fields += chemistry_write_sparticles(sparts, list + num_fields);
+              num_fields += tracers_write_sparticles(sparts, list + num_fields,
+                  with_cosmology);
             } else {
 
               /* Ok, we need to fish out the particles we want */
@@ -1162,6 +1164,8 @@ void write_output_serial(struct engine* e, const char* baseName,
               /* Select the fields to write */
               stars_write_particles(sparts_written, list, &num_fields);
               num_fields += chemistry_write_sparticles(sparts, list + num_fields);
+              num_fields += tracers_write_sparticles(sparts, list + num_fields,
+                  with_cosmology);
             }
           } break;
 

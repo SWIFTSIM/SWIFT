@@ -57,4 +57,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
   return 0;
 }
 
+__attribute__((always_inline)) INLINE static int tracers_write_sparticles(
+    const struct spart* sparts, struct io_props* list,
+    const int with_cosmology) {
+
+  return 0;
+}
 #endif /* SWIFT_TRACERS_NONE_IO_H */
