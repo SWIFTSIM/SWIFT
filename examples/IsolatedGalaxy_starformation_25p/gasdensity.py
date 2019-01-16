@@ -154,13 +154,22 @@ def makefullplot(filename,binsize=200):
     # Get the Surface density from the snapshot
     image_data,extent = gen_data(filename,binsize,case=0)
     image_data2 = image_data[:,:]*1e10/(1e2**2)
+    surface_density = image_data[:,:]*1e10/(1e2**2)
+    if binsize==20:
+        image_data2 /= 1e2
+        surface_density /= 1e2
     minvalue = np.min(image_data2[image_data2!=0])
     image_data2[image_data2==0] = minvalue*.9
     
     # Get the SFR surface density from the snapshot
     image_data,extent = gen_data(filename,binsize,case=2)
-    image_data3 = image_data[:,:] * 1e10/1e9/(.1**2)
+    image_data3 = image_data[:,:] * 1e10/1e9/(.1**2) 
     SFR_smoothed = image_data3/image_data2
+    SFR_surface_density = image_data[:,:] * 1e10/1e9/(.1**2)/surface_density
+    if binsize==20:
+        image_data3 /= 1e2
+        SFR_surface_density /= 1e2
+        SFR_smoothed /= 1e2
     plot_SFR_smoothed = np.ones(np.shape(image_data3))*np.min(SFR_smoothed[SFR_smoothed!=0])*.9
     plot_SFR_smoothed[image_data3!=0] = SFR_smoothed[image_data3!=0]
     
@@ -241,6 +250,8 @@ def makefullplot(filename,binsize=200):
     sigma_star = SFR_smoothed.flatten()
     sigma_gas=sigma_gas[sigma_star>0]
     sigma_star=sigma_star[sigma_star>0]
+    sigma_gas2 = surface_density.flatten()
+    sigma_star2 = SFR_surface_density.flatten()
 
     #KShistogram = np.histogram2d(np.log10(sigma_gas),np.log10(sigma_star),bins=50,range=[[-1,4],[-5,2]])
     #plt.imshow(np.transpose(KShistogram[0]), extent=np.array([-1,4,-5,2]))
@@ -250,14 +261,22 @@ def makefullplot(filename,binsize=200):
     sigma_star_range = KS_law(sigma_gas_range)
     sigma_star_one_range = KS_law(sigma_gas_range,n=0.7)
 
-    plt.hist2d(np.log10(sigma_gas),np.log10(sigma_star),range=[[-1,2],[-5,-2]],bins=50)
+    if binsize==200:
+        plt.hist2d(np.log10(sigma_gas),np.log10(sigma_star),range=[[-1,2],[-5,-2]],bins=50)
+    else:
+        plt.hist2d(np.log10(sigma_gas),np.log10(sigma_star),range=[[-1,2],[-5,-2]],bins=25)
+    #plt.hist2d(np.log10(sigma_gas2),np.log10(sigma_star2),range=[[-1,2],[-5,-2]],bins=50)
     plt.plot(np.log10(sigma_gas_range), np.log10(sigma_star_range),'k--',label='EAGLE SF')
     plt.plot(np.log10(sigma_gas_range), np.log10(sigma_star_one_range),'k-.',label='n=.7')
     plt.plot(np.log10(sigma_gas_range), np.log10(KS_law(sigma_gas_range,n=0.6)),'k:',label='n=.6')
     plt.xlabel('$\log \Sigma_{gas}$ [ $M_\odot \\rm pc^{-2}$]')
     plt.ylabel('$\log \Sigma_{\star}$ [ $M_\odot \\rm yr^{-1} kpc^{-2}$]')
     cbar = plt.colorbar()
-    plt.clim(0,700)
+    if binsize==200:
+        plt.clim(0,700)
+    elif binsize==20:
+        plt.clim(0,40)
+    #plt.scatter(np.log10(sigma_gas),np.log10(sigma_star))
     plt.legend()
 
     # make a plot of the gas density vs SFR
@@ -271,7 +290,10 @@ def makefullplot(filename,binsize=200):
     plt.hist2d(np.log10(density[SFR_plot>0]),np.log10(SFR_plot[SFR_plot>0]), bins=50,range=[[np.log10(critden),5],[-5.4,-3.5]])
     #plt.loglog(density*1e10/(1e3)**3*40.4759/mu,SFR_plot*1e10/1e9,'.')
     xx = 10**np.linspace(-1,2,100)
+    def sfr_model(density,critden=.1,gammaeff=4./3.,mgas=1.4995e4):
+        return 6.9e-11 * mgas * (density/critden)**(gammaeff/5.)
     plt.plot(np.log10(xx),np.log10(1e-5*xx**(4./15.)),'k--',label='Slope of EAGLE SF')
+    plt.plot(np.log10(xx),np.log10(sfr_model(xx)),'r--',label='Slope of EAGLE SF')
     plt.xlabel('$\log$ density [$\\rm cm^{-3}$]')
     plt.ylabel('$\log$ Star Formation rate (SFR) [$ M_\odot \\rm yr^{-1} $]')
     plt.xlim(np.log10(critden),5)
@@ -300,13 +322,47 @@ def makefullplot(filename,binsize=200):
     plt.xlim(np.log10(critden),5)
     plt.legend()
 
-
+    plt.subplot(3,3,8)
+    plt.hist(np.log10(sigma_gas))
+    plt.xlabel('Surface density')
+    
+    plt.subplot(3,3,9)
+    plt.hist(np.log10(sigma_star))
+    plt.xlabel('SFR Surface density')
 
     if binsize==200:
         plt.savefig('./ksplot/'+filename+'_0.1kpc.png')
     elif binsize==20:
         plt.savefig('./ksplot_1kpc/'+filename+'_0.1kpc.png')
     plt.close()
+
+
+def getmassandsfr(filename):
+    
+    # Read the data
+    with h5.File(filename, "r") as f:
+        box_size = f["/Header"].attrs["BoxSize"][0]
+        coordinates= f["/PartType0/Coordinates"][:,:]
+        SFR = f["/PartType0/SFR"][:]
+        coordinates_star = f["/PartType4/Coordinates"][:,:]
+        masses_star = f["/PartType4/Masses"][:]
+        
+
+    absmaxz = 2 #kpc
+    absmaxxy = 10 #kpc
+
+    part_mask = ((coordinates[:,0]-box_size/2.) > -absmaxxy) & ((coordinates[:,0]-box_size/2.) < 
+        absmaxxy) & ((coordinates[:,1]-box_size/2.) > -absmaxxy) & ((coordinates[:,1]-box_size/2.) < 
+        absmaxxy) & ((coordinates[:,2]-box_size/2.) > -absmaxz) & ((coordinates[:,2]-box_size/2.) < 
+        absmaxz) & (SFR>0) 
+    mask = ((coordinates_star[:,0]-box_size/2.) > -absmaxxy) & ((coordinates_star[:,0]-box_size/2.) < 
+        absmaxxy) & ((coordinates_star[:,1]-box_size/2.) > -absmaxxy) & ((coordinates_star[:,1]-box_size/2.) < 
+        absmaxxy) & ((coordinates_star[:,2]-box_size/2.) > -absmaxz) & ((coordinates_star[:,2]-box_size/2.) < 
+        absmaxz)  
+
+    SFR_snap = np.sum(SFR[part_mask])
+    mass_star = np.sum(masses_star[mask])
+    return SFR_snap, mass_star
 
 if __name__ == "__main__":
 
@@ -321,9 +377,37 @@ if __name__ == "__main__":
             int(x[len(input_file_name):len(input_file_name)+4]))
     
     # get the image data 
-    for i in [1,5,33,66,90]:
-        if i!=29:
+    #for i in [1,5,10,33,66,90]:
+    #    print('output_%04d.hdf5'%i)
+    #    makefullplot('output_%04d.hdf5'%i)
+    #    makefullplot('output_%04d.hdf5'%i,binsize=20)
+
+    '''
+    snapshots = 52 
+    mass = np.zeros(snapshots)
+    sfr = np.zeros(snapshots)
+    for i in range(1,snapshots):
+        if i!=6:
+            print(i)
+            sfr[i], mass[i] = getmassandsfr('output_%04d.hdf5'%i)
+        
+    plt.plot(np.log10(mass*1e10))
+    plt.xlabel('Snapshot number (Myr)')
+    plt.ylabel('Mass')
+    plt.savefig('Mass increase')
+    plt.close()
+
+    plt.plot(np.log10(sfr*10))
+    plt.xlabel('Snapshot number (Myr)')
+    plt.ylabel('SFR ($M_\odot / \\rm yr$)')
+    plt.savefig('SFR')
+    plt.close()
+    '''
+
+    for i in [1,5,10,33,66,90]:
+        if i!=6:
             print('output_%04d.hdf5'%i)
             makefullplot('output_%04d.hdf5'%i)
             makefullplot('output_%04d.hdf5'%i,binsize=20)
+
 

@@ -63,6 +63,9 @@ struct xpart {
   /* SFR label */
   float SFR;
 
+  /* star rate */
+  float SFRrate;
+
 #ifdef WITH_LOGGER
   /* Additional data for the particle logger */
   struct logger_part_data logger_data;
