@@ -9,19 +9,21 @@ This section of the documentation gives a brief description of the
 different components of the EAGLE sub-grid model. We mostly focus on
 the parameters and values output in the snapshots.
 
+.. _EAGLE_chemical_tracers:
+
 Chemical tracers
 ~~~~~~~~~~~~~~~~
 
-The gas particles in the EAGLE model carry metal abundance information
-in the form of metal mass fractions. We follow the following 9
-elements: `H`, `He`, `C`, `N`, `O`, `Ne`, `Mg`, `Si` and `Fe`. We
-additionally follow the total metal mass fraction (i.e. absolute
-metallicity) `Z`. This is typically larger than the sum of the 7
+The gas particles in the EAGLE model carry metal abundance information in the
+form of metal mass fractions. We follow explicitly 9 of the 11 elements that
+`Wiersma et al. (2009)b <http://adsabs.harvard.edu/abs/2009MNRAS.399..574W>`_
+traced in their chemical enrichment model. These are: `H`, `He`, `C`, `N`, `O`,
+`Ne`, `Mg`, `Si` and `Fe` [#f1]_. We additionally follow the total metal mass fraction
+(i.e. absolute metallicity) `Z`. This is typically larger than the sum of the 7
 metals that are individually traced since this will also contain the
-contribution of all the elements that are not individually followed.
-We note that all of definitions are independent of any definition of
-solar the solar metallicity :math:`Z_\odot` or of any solar abundance
-pattern.
+contribution of all the elements that are not individually followed.  We note
+that all of definitions are independent of any definition of solar the solar
+metallicity :math:`Z_\odot` or of any solar abundance pattern.
 
 As part of the diagnostics, we additionally trace the elements coming
 from the different stellar evolution channels. We store for each
@@ -38,12 +40,12 @@ We finally also compute the smoothed versions of the individual
 element mass fractions, of the total metal mass fractions, and of the
 iron gas fraction from SNIa.
 
-The chemistry module in ``src/chemistry/EAGLE`` includes all the arrays
+The chemistry module in ``src/chemistry/EAGLE/`` includes all the arrays
 that are added to the particles and the functions used to compute the
 smoothed elements.
 
-When a star is formed (see below), it inherits all the chemical
-tracers of its parent gas particle.
+When a star is formed (see the section :ref:`EAGLE_star_formation` below), it
+inherits all the chemical tracers of its parent gas particle.
 
 In the snapshots, we output for each gas and star particle:
 
@@ -100,7 +102,8 @@ In the snapshots, we output for each gas and star particle:
 
 The stars will lose mass over their lifetime (up to ~45%). The fractions will
 remain unchanged but if one is interested in computing an absolute metal mass
-(say) for a star, the ``InitialMass`` (see below) of the star must be used.
+(say) for a star, the ``InitialMass`` (see the section
+:ref:`EAGLE_star_formation` below) of the star must be used.
 
 The chemistry model only requires a small number of parameters to be specified
 in the `EAGLEChemistry` section of the YAML file. These are the initial values
@@ -141,12 +144,13 @@ Whilst one would use the following values for solar abundances
      init_abundance_Iron:         1.1032152e-3 # Mass fraction in Iron
 
 
+.. _EAGLE_cooling:
      
 Gas cooling: Wiersma+2009a
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The gas cooling is based on the redshift-dependent tables of `Wiersma et
-al. (2009) <http://adsabs.harvard.edu/abs/2009MNRAS.393...99W>`_ that include
+al. (2009)a <http://adsabs.harvard.edu/abs/2009MNRAS.393...99W>`_ that include
 element-by-element cooling rates for the 11 elements (`H`, `He`, `C`, `N`, `O`,
 `Ne`, `Mg`, `Si`, `S`, `Ca` and `Fe`) that dominate the total rates. The tables
 assume that the gas is in ionization equilibrium with the cosmic microwave
@@ -157,7 +161,8 @@ ignores *local* sources of ionization, self-shielding and non-equilibrium
 cooling/heating. The tables can be obtained from this `link
 <http://virgodb.cosma.dur.ac.uk/swift-webstorage/CoolingTables/EAGLE/coolingtables.tar.gz>`_
 which is a re-packaged version of the `original tables
-<http://www.strw.leidenuniv.nl/WSS08/>`_
+<http://www.strw.leidenuniv.nl/WSS08/>`_. The code reading and interpolating the
+table is located in the directory ``src/cooling/EAGLE/``.
 
 The Wiersma tables containing the cooling rates as a function of redshift,
 Hydrogen number density, Helium fraction (:math:`X_{He} / (X_{He} + X_{H})`) and
@@ -197,6 +202,27 @@ We note that the EAGLE cooling model does not impose any restriction on the
 particles' individual time-steps. The cooling takes place over the time span
 given by the other conditions (e.g the Courant condition).
 
+Finelly, the cooling module also provides a function to compute the temperature
+of a given gas particle based on its density, internal energy, abundances and
+the current redshift. This temperature is the one used to compute the cooling
+rate from the tables and similarly to the cooling rates, they assume that the
+gas is in collisional equilibrium with the background radiation. The
+temperatures are, in particular, computed every time a snapshot is written and
+they are listed for every gas particle:
+
++---------------------+-------------------------------------+-----------+-------------------------------------+
+| Name                | Description                         | Units     | Comments                            |
++=====================+=====================================+===========+=====================================+
+| ``Temperature``     | | Temperature of the gas as         | [U_T]     | | The calculation is performed      |
+|                     | | computed from the tables.         |           | | using quantities at the last      |
+|                     |                                     |           | | time-step the particle was active |
++---------------------+-------------------------------------+-----------+-------------------------------------+
+
+Note that if one is running without cooling switched on at runtime, the
+temperatures can be computed by passing the ``--temparature`` runtime flag (see
+:ref:`cmdline-options`). Note that the tables then have to be available as in
+the case with cooling switched on.
+
 The cooling model is driven by a small number of parameter files in the
 `EAGLECooling` section of the YAML file. These are the re-ionization parameters,
 the path to the tables and optionally the modified abundances of `Ca` and `S` as
@@ -221,25 +247,67 @@ And the optional parameters are:
      S_over_Si_in_solar:        1.0 # (Optional) Value of the Sulphur mass abundance ratio to solar in units of the Silicon ratio to solar. Default value: 1.
      newton_integration:        0   # (Optional) Set to 1 to use the Newton-Raphson scheme for the explicit cooling problem.
 
-
-
+.. _EAGLE_tracers:
+     
 Particle tracers
 ~~~~~~~~~~~~~~~~
+
+Over the course of the simulation, the gas particles record some information
+about their evolution. These are updated for a given particle every time it is
+active. The EAGLE tracers module is located in the directory
+``src/tracers/EAGLE/``. 
+
+In the EAGLE model, we trace the maximal tempearature a particle has reached and
+the time at which this happened. When a star is formed (see the section
+:ref:`EAGLE_star_formation` below), it inherits all the tracer values of its parent
+gas particle.  There are no parameters to the model but two values are added to
+the snapshots for each gas and star particle:
+
++----------------------------------------+---------------------------------------+-----------+-----------------------------+
+| Name                                   | Description                           | Units     | Comments                    |
++========================================+=======================================+===========+=============================+
+| | ``Maximal Temperature``              | | Mximal temperature reached by       | | [U_T]   |                             |
+|                                        | | this particle.                      |           |                             |
++----------------------------------------+---------------------------------------+-----------+-----------------------------+
+| | ``Maximal Temperature scale-factor`` | | Scale-factor (cosmological runs)    | | [-]     |                             |
+| | OR                                   | | or time (non-cosmological runs) at  | | OR      |                             |
+| | ``Maximal Temperature time``         | | which the maximum value was reached.| | [U_t]   |                             |
++----------------------------------------+---------------------------------------+-----------+-----------------------------+
+
+
+.. _EAGLE_star_formation:
 
 Star formation: Schaye+2008
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. _EAGLE_enrichment:
+
 Stellar enrichment: Wiersma+2009b
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. _EAGLE_feedback:
 
 Supernova feedback: Dalla Vecchia+2012
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. _EAGLE_black_hole_seeding:
+
 Black-hole creation
 ~~~~~~~~~~~~~~~~~~~
+
+.. _EAGLE_black_hole_accretion:
 
 Black-hole accretion
 ~~~~~~~~~~~~~~~~~~~~
 
+.. _EAGLE_black_hole_feedback:
+
 AGN feedback
 ~~~~~~~~~~~~
+
+.. [#f1] `Wiersma et al. (2009)b
+	 <http://adsabs.harvard.edu/abs/2009MNRAS.399..574W>`_ originally also
+	 followed explicitly `Ca` and and `S`. They are omitted in the EAGLE
+	 model but, when needed, their abundance with respect to solar is
+	 assumed to be the same as the abundance of `Si` with respect to solar
+	 (See the section :ref:`EAGLE_cooling`)
