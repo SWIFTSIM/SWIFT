@@ -127,18 +127,13 @@ int InvokeVelociraptor(const size_t num_gravity_parts,
 int InitVelociraptor(char *config_name, struct unitinfo unit_info,
                      struct siminfo sim_info, const int numthreads);
 
-int InvokeVelociraptor(const int snapnum,
-                       char *output_name,
-                       struct cosmoinfo cosmo_info,
-                       struct siminfo sim_info,
-                       const size_t num_gravity_parts,
-                       const size_t num_hydro_parts,
-                       struct swift_vel_part *swift_parts,
-                       const int *cell_node_ids,
-                       const int numthreads);
+struct groupinfo *InvokeVelociraptor(
+    const int snapnum, char *output_name, struct cosmoinfo cosmo_info,
+    struct siminfo sim_info, const size_t num_gravity_parts,
+    const size_t num_hydro_parts, struct swift_vel_part *swift_parts,
+    const int *cell_node_ids, const int numthreads, int *num_in_groups);
 
 #endif /* HAVE_VELOCIRAPTOR */
-
 
 /**
  * @brief Initialise VELOCIraptor with configuration, units,
@@ -150,7 +145,6 @@ int InvokeVelociraptor(const int snapnum,
 void velociraptor_init(struct engine *e, const int linked_with_snap) {
 
 #ifdef HAVE_VELOCIRAPTOR
-  struct space *s = e->s;
   struct unitinfo unit_info;
   struct siminfo sim_info;
   const ticks tic = getticks();
@@ -180,8 +174,8 @@ void velociraptor_init(struct engine *e, const int linked_with_snap) {
   message("Cosmological Simulation: %d", sim_info.icosmologicalsim);
 
   /* Initialise VELOCIraptor. */
-  if (InitVelociraptor(e->stf_config_file_name,
-                        unit_info, sim_info, e->nr_threads) != 1)
+  if (InitVelociraptor(e->stf_config_file_name, unit_info, sim_info,
+                       e->nr_threads) != 1)
     error("Exiting. VELOCIraptor initialisation failed.");
 
   if (e->verbose)
@@ -202,7 +196,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
 #ifdef HAVE_VELOCIRAPTOR
 
-  const struct space *s = e->s;
+  struct space *s = e->s;
   struct cosmoinfo cosmo_info;
   struct unitinfo unit_info;
   struct siminfo sim_info;
@@ -230,7 +224,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
 
-  //set simulation info
+  // set simulation info
   // Set unit conversions.
   unit_info.lengthtokpc = 1.0;
   unit_info.velocitytokms = 1.0;
@@ -238,7 +232,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   unit_info.energyperunitmass = 1.0;
   unit_info.gravity = e->physical_constants->const_newton_G;
   unit_info.hubbleunit = e->cosmology->H0 / e->cosmology->h;
-  //Set cosmological constants.
+  // Set cosmological constants.
   cosmo_info.atime = e->cosmology->a;
   cosmo_info.littleh = e->cosmology->h;
   cosmo_info.Omega_m = e->cosmology->Omega_m;
@@ -255,12 +249,11 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   message("Omega_cdm: %e", cosmo_info.Omega_cdm);
   message("w_de: %e", cosmo_info.w_de);
 
-  //period
+  // period
   if (e->s->periodic) {
     // Physical size of box in VELOCIraptor units (kpc).
     sim_info.period = unit_info.lengthtokpc * s->dim[0];
-  }
-  else {
+  } else {
     sim_info.period = 0.0;
   }
   ///\todo how to query for zoom simulation
@@ -269,29 +262,29 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   // Are we running with cosmology? */
   if (e->policy & engine_policy_cosmology) {
     sim_info.icosmologicalsim = 1;
-    //calculate the interparticle spacing
+    // calculate the interparticle spacing
     int total_nr_dmparts = e->total_nr_gparts - e->total_nr_parts;
-    sim_info.interparticlespacing = sim_info.period /  cbrt(total_nr_dmparts);
-  }
-  else {
+    sim_info.interparticlespacing = sim_info.period / cbrt(total_nr_dmparts);
+  } else {
     sim_info.icosmologicalsim = 0;
-    ///\todo place holder need to decide how to determine interpartcile spacing or scaling to be used for linking lengths
+    ///\todo place holder need to decide how to determine interpartcile spacing
+    ///or scaling to be used for linking lengths
     sim_info.interparticlespacing = -1;
   }
 
-  //set the spatial extent of the mpi domain
+  // set the spatial extent of the mpi domain
   sim_info.spacedimension[0] = unit_info.lengthtokpc * s->dim[0];
   sim_info.spacedimension[1] = unit_info.lengthtokpc * s->dim[1];
   sim_info.spacedimension[2] = unit_info.lengthtokpc * s->dim[2];
 
-  //store number of mpi cells
+  // store number of mpi cells
   sim_info.numcells = s->nr_cells;
-  //get cell widths
+  // get cell widths
   for (int i = 0; i < 3; i++) {
     sim_info.cellwidth[i] = unit_info.lengthtokpc * s->cells_top[0].width[i];
     sim_info.icellwidth[i] = s->iwidth[i] / unit_info.lengthtokpc;
   }
-  //Allocate cell location array
+  // Allocate cell location array
   if (e->cell_loc == NULL) {
     // Allocate and populate top-level cell locations.
     if (posix_memalign((void **)&(e->cell_loc), 32,
@@ -315,7 +308,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
           sim_info.cell_loc[sim_info.numcells - 1].loc[1],
           sim_info.cell_loc[sim_info.numcells - 1].loc[2]);
 
-  //Allocate and populate array of cell node IDs.
+  // Allocate and populate array of cell node IDs.
   int *cell_node_ids = NULL;
   if (posix_memalign((void **)&cell_node_ids, 32, nr_cells * sizeof(int)) != 0)
     error("Failed to allocate list of cells node IDs for VELOCIraptor.");
@@ -323,7 +316,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Mention the number of particles being sent */
   if (e->verbose)
-    message("MPI rank %d sending %zu gparts to VELOCIraptor.", engine_rank, nr_gparts);
+    message("MPI rank %d sending %zu gparts to VELOCIraptor.", engine_rank,
+            nr_gparts);
 
   /* Append base name with the current output number */
   char outputFileName[PARSER_MAX_LINE_SIZE + 128];
@@ -333,11 +327,11 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128,
              "stf_%s_%04i.VELOCIraptor", e->snapshot_base_name,
              e->snapshot_output_count);
-    snapnum=e->snapshot_output_count;
+    snapnum = e->snapshot_output_count;
   } else {
     snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
              e->stf_base_name, e->stf_output_count);
-    snapnum=e->stf_output_count;
+    snapnum = e->stf_output_count;
   }
 
   /* Allocate and populate an array of swift_vel_parts to be passed to
@@ -370,7 +364,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
     swift_parts[i].index = i;
 #ifdef WITH_MPI
-    swift_parts[i].task = myrank;
+    swift_parts[i].task = e->nodeID;
 #else
     swift_parts[i].task = 0;
 #endif
@@ -398,19 +392,16 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   }
 
   /* Call VELOCIraptor. */
-  group_info = InvokeVelociraptor(snapnum, outputFileName,
-                          cosmo_info, sim_info,
-                          nr_gparts, nr_hydro_parts,
-                          swift_parts, cell_node_ids,
-                          e->nr_threads, &numingroups);
+  group_info = (struct groupinfo *)InvokeVelociraptor(
+      snapnum, outputFileName, cosmo_info, sim_info, nr_gparts, nr_hydro_parts,
+      swift_parts, cell_node_ids, e->nr_threads, &numingroups);
   if (group_info == NULL) {
     error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
-  }
-  else {
-      for (int i=0;i<numingroups; i++) {
-          ///\todo need to update particle structure to include a group id
-        //gparts[group_info[i].index].groupid=group_info[i].index;
-      }
+  } else {
+    for (int i = 0; i < numingroups; i++) {
+      ///\todo need to update particle structure to include a group id
+      // gparts[group_info[i].index].groupid=group_info[i].index;
+    }
   }
 
   /* Reset the pthread affinity mask after VELOCIraptor returns. */
@@ -421,7 +412,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   free(swift_parts);
   /* free cell locations */
   free(e->cell_loc);
-  e->cell_loc=NULL;
+  e->cell_loc = NULL;
 
   /* Increase output counter (if not linked with snapshots) */
   if (!linked_with_snap) e->stf_output_count++;
