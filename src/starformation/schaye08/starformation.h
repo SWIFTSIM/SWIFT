@@ -207,8 +207,8 @@ INLINE static int star_formation_convert_to_star(
     const struct phys_const* const phys_const, const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling,
-    const double dt_star, const int with_cosmology) {
+    const struct cooling_function_data* restrict cooling, const double dt_star,
+    const int with_cosmology) {
 
   if (dt_star == 0.f) return 0;
 
@@ -223,13 +223,14 @@ INLINE static int star_formation_convert_to_star(
             starform->polytropic_index);
 
     double SFRpergasmass;
-    if (hydro_get_physical_density(p, cosmo)<starform->KS_high_den_thresh*phys_const->const_proton_mass){
+    if (hydro_get_physical_density(p, cosmo) <
+        starform->KS_high_den_thresh * phys_const->const_proton_mass) {
       /* Calculate the star formation rate */
-      SFRpergasmass = starform->SF_normalization *
-                                   pow(pressure, starform->SF_power_law);
+      SFRpergasmass =
+          starform->SF_normalization * pow(pressure, starform->SF_power_law);
     } else {
       SFRpergasmass = starform->SF_high_den_normalization *
-                                   pow(pressure, starform->SF_high_den_power_law);
+                      pow(pressure, starform->SF_high_den_power_law);
     }
 
     /* Store the SFR */
@@ -248,14 +249,14 @@ INLINE static int star_formation_convert_to_star(
 
     /* Calculate if we form a star */
     return (prop > randomnumber);
-  } 
+  }
 
   /* Check if it is the first time steps after star formation */
-  if (xp->SFR>0.f) {
+  if (xp->SFR > 0.f) {
     if (with_cosmology) {
-      xp->SFR = - cosmo->a;
+      xp->SFR = -cosmo->a;
     } else {
-      xp->SFR = - e->time; 
+      xp->SFR = -e->time;
     }
   }
 
@@ -470,7 +471,7 @@ INLINE static void starformation_print_backend(
       starform->KS_normalization_MSUNpYRpKPC2, starform->KS_power_law,
       starform->fgas);
   message("At densities of %e H/cm^3 the slope changes to %e.",
-      starform->KS_high_den_thresh_HpCM3,starform->KS_high_den_power_law);
+          starform->KS_high_den_thresh_HpCM3, starform->KS_high_den_power_law);
   message(
       "The effective equation of state is given by: polytropic "
       "index = %e , normalization density = %e #/cm^3 and normalization "
@@ -490,32 +491,37 @@ INLINE static void starformation_print_backend(
           starform->Temperature_threshold);
   message("DEBUG: PRINT COMPLETE STRUCT");
   message("KS_normalization = %e", starform->KS_normalization);
-  //message("KS_normalization_MSUNpYRpKPC2 = %e", starform->KS_normalization_MSUNpYRpKPC2);
-  //message("KS_power_law = %e", starform->KS_power_law);
-  //message("KS_high_den_power_law = %e", starform->KS_high_den_power_law);
+  // message("KS_normalization_MSUNpYRpKPC2 = %e",
+  // starform->KS_normalization_MSUNpYRpKPC2);  message("KS_power_law = %e",
+  // starform->KS_power_law);  message("KS_high_den_power_law = %e",
+  // starform->KS_high_den_power_law);
   message("KS_high_den_thresh = %e", starform->KS_high_den_thresh);
-  message("KS_high_den_normalization = %e", starform->KS_high_den_normalization);
-  //message("min_over_den = %e", starform->min_over_den);
-  //message("Temperature_threshold = %e", starform->Temperature_threshold);
-  //message("fgas = %e", starform->fgas);
-  //message("SF_power_law = %e", starform->SF_power_law);
+  message("KS_high_den_normalization = %e",
+          starform->KS_high_den_normalization);
+  // message("min_over_den = %e", starform->min_over_den);
+  // message("Temperature_threshold = %e", starform->Temperature_threshold);
+  // message("fgas = %e", starform->fgas);
+  // message("SF_power_law = %e", starform->SF_power_law);
   message("SF_normalization = %e", starform->SF_normalization);
-  //message("SF_high_den_power_law = %e", starform->SF_high_den_power_law);
-  message("SF_high_den_normalization = %e", starform->SF_high_den_normalization);
-  //message("inv_RAND_MAX = %e", starform->inv_RAND_MAX);
+  // message("SF_high_den_power_law = %e", starform->SF_high_den_power_law);
+  message("SF_high_den_normalization = %e",
+          starform->SF_high_den_normalization);
+  // message("inv_RAND_MAX = %e", starform->inv_RAND_MAX);
   message("density_threshold = %e", starform->density_threshold);
-  //message("density_threshold_HpCM3 = %e", starform->density_threshold_HpCM3);
+  // message("density_threshold_HpCM3 = %e", starform->density_threshold_HpCM3);
   message("density_threshold_max = %e", starform->density_threshold_max);
-  //message("density_threshold_max_HpCM3 = %e", starform->density_threshold_max_HpCM3);
-  //message("Z0 = %e", starform->Z0);
-  //message("Z0_inv = %e", starform->Z0_inv);
-  //message("n_Z0 = %e", starform->n_Z0);
-  //message("polytropic_index = %e", starform->polytropic_index);
+  // message("density_threshold_max_HpCM3 = %e",
+  // starform->density_threshold_max_HpCM3);  message("Z0 = %e", starform->Z0);
+  // message("Z0_inv = %e", starform->Z0_inv);
+  // message("n_Z0 = %e", starform->n_Z0);
+  // message("polytropic_index = %e", starform->polytropic_index);
   message("EOS_pressure_norm = %e", starform->EOS_pressure_norm);
-  //message("EOS_temperature_norm = %e", starform->EOS_temperature_norm);
+  // message("EOS_temperature_norm = %e", starform->EOS_temperature_norm);
   message("EOS_density_norm = %e", starform->EOS_density_norm);
-  //message("EOS_density_norm_HpCM3 = %e", starform->EOS_density_norm_HpCM3);
-  message("SFR normalization = %e",pow(starform->EOS_pressure_norm,starform->polytropic_index/5.f)*starform->SF_normalization );
+  // message("EOS_density_norm_HpCM3 = %e", starform->EOS_density_norm_HpCM3);
+  message("SFR normalization = %e",
+          pow(starform->EOS_pressure_norm, starform->polytropic_index / 5.f) *
+              starform->SF_normalization);
 }
 
 #endif /* SWIFT_SCHAYE_STARFORMATION_H */

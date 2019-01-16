@@ -125,7 +125,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
       params, "Stars:max_ghost_iterations", p->max_smoothing_iterations);
 
   /* Initialize with solar abundance */
-  // sp->chemistry_data.smoothed_metal_mass_fraction_total = 
+  // sp->chemistry_data.smoothed_metal_mass_fraction_total =
 
   /* Time integration properties */
   const float max_volume_change =
