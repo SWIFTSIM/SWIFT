@@ -244,6 +244,7 @@ void units_get_base_unit_exponants_array(float baseUnitsExp[5],
       break;
 
     case UNIT_CONV_FREQUENCY:
+    case UNIT_CONV_SSFR:
       baseUnitsExp[UNIT_TIME] = -1.f;
       break;
 
