@@ -263,6 +263,9 @@ struct cell {
     /*! Linked list of the tasks computing this cell's hydro forces. */
     struct link *force;
 
+    /*! Linked list of the tasks computing this cell's limiter. */
+    struct link *limiter;
+
     /*! Dependency implicit task for the ghost  (in->ghost->out)*/
     struct task *ghost_in;
 
@@ -347,6 +350,12 @@ struct cell {
 
     /*! Do any of this cell's sub-cells need to be sorted? */
     char do_sub_sort;
+
+    /*! Does this cell need to be limited? */
+    char do_limiter;
+
+    /*! Do any of this cell's sub-cells need to be limited? */
+    char do_sub_limiter;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -574,13 +583,28 @@ struct cell {
     } grav;
 
     struct {
+<<<<<<< HEAD
       /* Task receiving spart data. */
+=======
+    /* Task receiving spart data. */
+>>>>>>> e64b67bc37ff4669b8f96ad0ce94112e400e6464
       struct task *recv;
 
       /* Linked list for sending spart data. */
       struct link *send;
     } stars;
 
+<<<<<<< HEAD
+=======
+    struct {
+      /* Task receiving limiter data. */
+      struct task *recv;
+
+      /* Linked list for sending limiter data. */
+      struct link *send;
+    } limiter;
+
+>>>>>>> e64b67bc37ff4669b8f96ad0ce94112e400e6464
     /* Task receiving data (time-step). */
     struct task *recv_ti;
 
@@ -614,8 +638,8 @@ struct cell {
   /*! The task to compute time-steps */
   struct task *timestep;
 
-  /*! Task for source terms */
-  struct task *sourceterms;
+  /*! The task to limit the time-step of inactive particles */
+  struct task *timestep_limiter;
 
   /*! The logger task */
   struct task *logger;
@@ -716,7 +740,9 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
+void cell_activate_limiter(struct cell *c, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
+void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);

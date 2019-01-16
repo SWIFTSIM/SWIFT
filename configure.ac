@@ -957,7 +957,7 @@ if test "x$with_velociraptor" != "xno"; then
    AC_PROG_FC
    AC_FC_LIBRARY_LDFLAGS
    if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
-      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lstdc++ -lhdf5_cpp"
+      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lmpi -lstdc++ -lhdf5_cpp"
       CFLAGS="$CFLAGS -fopenmp"
    else
       VELOCIRAPTOR_LIBS=""

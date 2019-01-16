@@ -144,8 +144,10 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
                            struct cell *restrict cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-#ifdef ONLY_LOCAL
+#ifdef UPDATE_STARS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
+#else
+  if (cj->nodeID != engine_rank) error("Should be run on a different node");
 #endif
 #endif
 
@@ -213,12 +215,13 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 void DOPAIR1_STARS(struct runner *r, struct cell *restrict ci,
                    struct cell *restrict cj, int timer) {
 
-#ifdef ONLY_LOCAL
+#ifdef UPDATE_STARS
   const int ci_local = ci->nodeID == engine_rank;
   const int cj_local = cj->nodeID == engine_rank;
 #else
-  const int ci_local = 1;
-  const int cj_local = 1;
+  /* here we are updating the hydro -> switch ci, cj */
+  const int ci_local = cj->nodeID == engine_rank;
+  const int cj_local = ci->nodeID == engine_rank;
 #endif
   if (ci_local && ci->stars.count != 0 && cj->hydro.count != 0)
     DO_NONSYM_PAIR1_STARS(r, ci, cj);
@@ -1055,12 +1058,13 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
   const struct engine *restrict e = r->e;
   const int ci_active = cell_is_active_stars(ci, e);
   const int cj_active = cell_is_active_stars(cj, e);
-#ifdef ONLY_LOCAL
+#ifdef UPDATE_STARS
   const int ci_local = ci->nodeID == engine_rank;
   const int cj_local = cj->nodeID == engine_rank;
 #else
-  const int ci_local = 1;
-  const int cj_local = 1;
+  /* here we are updating the hydro -> switch ci, cj */
+  const int ci_local = cj->nodeID == engine_rank;
+  const int cj_local = ci->nodeID == engine_rank;
 #endif
   const int do_ci =
       (ci->stars.count != 0 && cj->hydro.count != 0 && ci_active && ci_local);
@@ -1350,12 +1354,13 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   /* Otherwise, compute the pair directly. */
   else {
 
-#ifdef ONLY_LOCAL
+#ifdef UPDATE_STARS
     const int ci_local = ci->nodeID == engine_rank;
     const int cj_local = cj->nodeID == engine_rank;
 #else
-    const int ci_local = 1;
-    const int cj_local = 1;
+  /* here we are updating the hydro -> switch ci, cj */
+    const int ci_local = cj->nodeID == engine_rank;
+    const int cj_local = ci->nodeID == engine_rank;
 #endif
     const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
                       cell_is_active_stars(ci, e) && ci_local;

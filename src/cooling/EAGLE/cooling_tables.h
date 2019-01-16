@@ -57,6 +57,9 @@ void read_cooling_header(const char *fname,
 
 void allocate_cooling_tables(struct cooling_function_data *restrict cooling);
 
-void eagle_check_cooling_tables(struct cooling_function_data *restrict cooling,
-                                const int restart_flag);
+void get_redshift_invariant_table(
+    struct cooling_function_data *restrict cooling, const int photodis);
+void get_cooling_table(struct cooling_function_data *restrict cooling,
+                       const int low_z_index, const int high_z_index);
+
 #endif

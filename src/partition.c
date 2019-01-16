@@ -330,22 +330,28 @@ static void accumulate_sizes(struct space *s, double *counts) {
   mapper_data.s = s;
 
   double hsize = (double)sizeof(struct part);
-  mapper_data.size = hsize;
-  threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_part, s->parts,
-                 s->nr_parts, sizeof(struct part), space_splitsize,
-                 &mapper_data);
+  if (s->nr_parts > 0) {
+    mapper_data.size = hsize;
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_part, s->parts,
+                   s->nr_parts, sizeof(struct part), space_splitsize,
+                   &mapper_data);
+  }
 
   double gsize = (double)sizeof(struct gpart);
-  mapper_data.size = gsize;
-  threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart, s->gparts,
-                 s->nr_gparts, sizeof(struct gpart), space_splitsize,
-                 &mapper_data);
+  if (s->nr_gparts > 0) {
+    mapper_data.size = gsize;
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart, s->gparts,
+                   s->nr_gparts, sizeof(struct gpart), space_splitsize,
+                   &mapper_data);
+  }
 
   double ssize = (double)sizeof(struct spart);
-  mapper_data.size = ssize;
-  threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_spart, s->sparts,
-                 s->nr_sparts, sizeof(struct spart), space_splitsize,
-                 &mapper_data);
+  if (s->nr_sparts > 0) {
+    mapper_data.size = ssize;
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_spart, s->sparts,
+                   s->nr_sparts, sizeof(struct spart), space_splitsize,
+                   &mapper_data);
+  }
 
   /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
   if ((s->e->total_nr_parts * hsize + s->e->total_nr_gparts * gsize +

@@ -74,9 +74,10 @@ enum engine_policy {
   engine_policy_stars = (1 << 15),
   engine_policy_structure_finding = (1 << 16),
   engine_policy_star_formation = (1 << 17),
-  engine_policy_feedback = (1 << 18)
+  engine_policy_feedback = (1 << 18),
+  engine_policy_limiter = (1 << 19)
 };
-#define engine_maxpolicy 19
+#define engine_maxpolicy 20
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -99,6 +100,7 @@ enum engine_step_properties {
 #define engine_parts_size_grow 1.05
 #define engine_max_proxy_centre_frac 0.2
 #define engine_redistribute_alloc_margin 1.2
+#define engine_rebuild_link_alloc_margin 1.2
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost 1000
@@ -329,6 +331,10 @@ struct engine {
    * of the various task arrays. */
   size_t tasks_per_cell;
 
+  /* Average number of links per tasks. This number is used before
+     the creation of communication tasks so needs to be large enough. */
+  size_t links_per_tasks;
+
   /* Are we talkative ? */
   int verbose;
 
@@ -439,7 +445,7 @@ int engine_is_done(struct engine *e);
 void engine_pin(void);
 void engine_unpin(void);
 void engine_clean(struct engine *e);
-int engine_estimate_nr_tasks(struct engine *e);
+int engine_estimate_nr_tasks(const struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);

@@ -113,7 +113,8 @@ const char *engine_policy_names[] = {"none",
                                      "stars",
                                      "structure finding",
                                      "star formation",
-                                     "feedback"};
+                                     "feedback",
+                                     "time-step limiter"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -145,7 +146,9 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
   /* Get the next free link. */
   const size_t ind = atomic_inc(&e->nr_links);
   if (ind >= e->size_links) {
-    error("Link table overflow.");
+    error(
+        "Link table overflow. Increase the value of "
+        "`Scheduler:links_per_tasks`.");
   }
   struct link *res = &e->links[ind];
 
@@ -1826,10 +1829,10 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_print_task_counts(struct engine *e) {
+void engine_print_task_counts(const struct engine *e) {
 
   const ticks tic = getticks();
-  struct scheduler *const sched = &e->sched;
+  const struct scheduler *sched = &e->sched;
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
 
@@ -1876,7 +1879,7 @@ void engine_print_task_counts(struct engine *e) {
  *
  * @return the estimated total number of tasks
  */
-int engine_estimate_nr_tasks(struct engine *e) {
+int engine_estimate_nr_tasks(const struct engine *e) {
 
   int tasks_per_cell = e->tasks_per_cell;
   if (tasks_per_cell > 0) return e->s->tot_cells * tasks_per_cell;
@@ -1885,8 +1888,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
    * basically use a formula <n1>*ntopcells + <n2>*(totcells - ntopcells).
    * Where <n1> is the expected maximum tasks per top-level/super cell, and
    * <n2> the expected maximum tasks for all other cells. These should give
-   * a safe upper limit.
-   */
+   * a safe upper limit. */
   int n1 = 0;
   int n2 = 0;
   if (e->policy & engine_policy_hydro) {
@@ -1906,6 +1908,10 @@ int engine_estimate_nr_tasks(struct engine *e) {
     n1 += 2;
 #endif
 #endif
+  }
+  if (e->policy & engine_policy_limiter) {
+    n1 += 18;
+    n2 += 1;
   }
   if (e->policy & engine_policy_self_gravity) {
     n1 += 125;
@@ -2585,8 +2591,11 @@ void engine_skip_force_and_kick(struct engine *e) {
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_timestep || t->subtype == task_subtype_force ||
-        t->subtype == task_subtype_grav || t->type == task_type_end_force ||
+        t->type == task_type_timestep ||
+        t->type == task_type_timestep_limiter ||
+        t->subtype == task_subtype_force ||
+        t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
+        t->type == task_type_end_force ||
         t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
         t->type == task_type_grav_down || t->type == task_type_cooling)
       t->skip = 1;
@@ -2594,6 +2603,7 @@ void engine_skip_force_and_kick(struct engine *e) {
 
   /* Run through the cells and clear some flags. */
   space_map_cells_pre(e->s, 1, cell_clear_drift_flags, NULL);
+  space_map_cells_pre(e->s, 1, cell_clear_limiter_flags, NULL);
 }
 
 /**
@@ -2801,6 +2811,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
     gravity_exact_force_check(e->s, e, 1e-1);
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure all woken-up particles have been processed */
+  space_check_limiter(e->s);
 #endif
 
   /* Recover the (integer) end of the next time-step */
@@ -3058,6 +3073,11 @@ void engine_step(struct engine *e) {
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
     gravity_exact_force_check(e->s, e, 1e-1);
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure all woken-up particles have been processed */
+  space_check_limiter(e->s);
 #endif
 
   /* Collect information about the next time-step */
@@ -4660,6 +4680,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     maxtasks = e->restart_max_tasks;
   else
     maxtasks = engine_estimate_nr_tasks(e);
+
+  /* Estimated number of links per tasks */
+  e->links_per_tasks =
+      parser_get_opt_param_int(params, "Scheduler:links_per_tasks", 10);
 
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
