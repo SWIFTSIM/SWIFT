@@ -154,6 +154,10 @@ struct stars_props {
 
   // CHANGE THIS TO BE CONSISTENT WITH RAND MAX USED IN STAR FORMATION
   double inv_rand_max;
+  
+  // ALEXEI: FOR DEBUGGING
+  float const_solar_mass;
+
 
 };
 

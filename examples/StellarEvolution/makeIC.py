@@ -26,8 +26,6 @@ from numpy import *
 gamma = 5./3.      # Gas adiabatic index
 rho0 = 1.          # Background density
 P0 = 1.e-6         # Background pressure
-E0= 1.             # Energy of the explosion
-N_inject = 15      # Number of particles in which to inject energy
 fileName = "stellar_evolution.hdf5" 
 
 #---------------------------------------------------
@@ -63,9 +61,26 @@ star_v = zeros((1, 3))
 star_v[:,:] = 0.
 
 # increase mass to keep it at center
-star_m = 1e3 * array([rho0 * vol / numPart])
+star_m = 1e0 * array([rho0 * vol / numPart])
 star_ids = array([numPart + 1])
 star_h = array([h.max()])
+
+#--------------------------------------------------
+
+# Units
+unit_l_cgs = 3.085678e24
+unit_m_cgs = 1.988480e43
+unit_t_cgs = 3.085678e19
+unit_A_cgs = 1.
+unit_T_cgs = 1.
+
+solar_mass_cgs = 1.988480e33 
+kpc_in_cm = 3.085678e21
+mp_cgs = 1.67e-24
+print("part mass/msun " + str(m[0]*unit_m_cgs/solar_mass_cgs) + " stellar mass/msun " + str(star_m*unit_m_cgs/solar_mass_cgs))
+print("boxsize kpc " + str(Boxsize*unit_l_cgs/kpc_in_cm))
+print("density cm^-3 " + str(rho0*unit_m_cgs/(unit_l_cgs*unit_l_cgs*unit_l_cgs*mp_cgs)))
+print("initial internal energy " + str(u[0]))
 
 #--------------------------------------------------
 
@@ -90,11 +105,11 @@ grp.attrs["PeriodicBoundariesOn"] = 0
 
 #Units
 grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.
-grp.attrs["Unit mass in cgs (U_M)"] = 1.
-grp.attrs["Unit time in cgs (U_t)"] = 1.
-grp.attrs["Unit current in cgs (U_I)"] = 1.
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.
+grp.attrs["Unit length in cgs (U_L)"] = unit_l_cgs
+grp.attrs["Unit mass in cgs (U_M)"] = unit_m_cgs
+grp.attrs["Unit time in cgs (U_t)"] = unit_t_cgs
+grp.attrs["Unit current in cgs (U_I)"] = unit_A_cgs
+grp.attrs["Unit temperature in cgs (U_T)"] = unit_T_cgs
 
 #Particle group
 grp = file.create_group("/PartType0")

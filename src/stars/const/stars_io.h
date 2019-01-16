@@ -129,8 +129,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
   /* Set stellar evolution parameters */
-  sp->deltaT_desired = 3.16228e7;
-  // BE CAREFUL OF UNITS HERE...
+  sp->deltaT_desired = 3.16228e7 / units_cgs_conversion_factor(us,UNIT_CONV_TEMPERATURE);
   sp->temp_to_u_factor = phys_const->const_boltzmann_k / (p->mu_ionised * (hydro_gamma_minus_one) * phys_const->const_proton_mass);
   // Why is this one here? copied from EAGLE...
   sp->SNIa_energy_fraction = 1.0e0;
@@ -147,6 +146,8 @@ INLINE static void stars_props_init(struct stars_props *sp,
 
   // CHANGE THIS TO BE CONSISTENT WITH RAND MAX USED IN STAR FORMATION
   sp->inv_rand_max = 1.0/RAND_MAX;
+
+  sp->const_solar_mass = phys_const->const_solar_mass;
 
 }
 
