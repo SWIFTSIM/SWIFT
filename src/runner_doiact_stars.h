@@ -102,6 +102,9 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts[sid];
+    if (!spart_is_active(si, e) || spart_is_inhibited(si, e))
+      continue;
+
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
@@ -185,6 +188,8 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts_i[sid];
+    if (!spart_is_active(si, e) || spart_is_inhibited(si, e))
+      continue;
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
