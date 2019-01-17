@@ -199,7 +199,7 @@ def getSFH(filename):
     birth_time = birth_time[part_mask]
     mass = mass[part_mask]
     
-    histogram = np.histogram(birth_time,bins=50,weights=mass*5e3,range=[0,.1])
+    histogram = np.histogram(birth_time,bins=200,weights=mass*2e4,range=[0,.1])
     values = histogram[0]
     xvalues =( histogram[1][:-1] +histogram[1][1:])/2.
     return xvalues, values
@@ -451,6 +451,58 @@ def getmassandsfr(filename):
     mass_star = np.sum(masses_star[mask])
     return SFR_snap, mass_star
 
+def getsfrsnapwide():
+    
+    time = np.arange(1,101,1)
+    SFR_sparticles = np.zeros(100)
+    SFR_gparticles = np.zeros(100)
+    new_sparticles = np.zeros(100)
+    previous_mass = 0
+    previous_numb = 0
+    for i in range(1,43):
+        print(i)
+        # Read the data
+        filename= 'output_%04d.hdf5'%i
+        with h5.File(filename, "r") as f:
+            box_size = f["/Header"].attrs["BoxSize"][0]
+            coordinates= f["/PartType0/Coordinates"][:,:]
+            SFR = f["/PartType0/SFR"][:]
+            coordinates_star = f["/PartType4/Coordinates"][:,:]
+            masses_star = f["/PartType4/Masses"][:]
+            newstar = f["/PartType4/NewStarFlag"][:]
+
+        absmaxz = 2 #kpc
+        absmaxxy = 10 #kpc
+
+        part_mask = ((coordinates[:,0]-box_size/2.) > -absmaxxy) & ((coordinates[:,0]-box_size/2.) < 
+            absmaxxy) & ((coordinates[:,1]-box_size/2.) > -absmaxxy) & ((coordinates[:,1]-box_size/2.) < 
+            absmaxxy) & ((coordinates[:,2]-box_size/2.) > -absmaxz) & ((coordinates[:,2]-box_size/2.) < 
+            absmaxz) & (SFR>0) 
+        mask = ((coordinates_star[:,0]-box_size/2.) > -absmaxxy) & ((coordinates_star[:,0]-box_size/2.) < 
+            absmaxxy) & ((coordinates_star[:,1]-box_size/2.) > -absmaxxy) & ((coordinates_star[:,1]-box_size/2.) < 
+            absmaxxy) & ((coordinates_star[:,2]-box_size/2.) > -absmaxz) & ((coordinates_star[:,2]-box_size/2.) < 
+            absmaxz) & (newstar==1) 
+
+        SFR = SFR[part_mask]
+        masses_star = masses_star[mask]*1e4
+        newstar = newstar[mask]
+
+        total_SFR = np.sum(SFR)
+        total_mass = np.sum(masses_star)
+        new_spart = np.sum(newstar)
+        new_sparticles[i] = new_spart - previous_numb
+        SFR_sparticles[i] = total_mass - previous_mass 
+        SFR_gparticles[i] = total_SFR*10
+        previous_numb = new_spart
+        previous_mass = total_mass
+
+    factor = masses_star[0]
+    print(new_sparticles)
+    print(len(time),len(SFR_sparticles),len(SFR_gparticles))
+    return time[:-1], SFR_sparticles[1:], SFR_gparticles[1:], np.sqrt(new_sparticles[1:])*factor
+
+
+
 if __name__ == "__main__":
 
     # Some global variables to define the whole run
@@ -469,6 +521,17 @@ if __name__ == "__main__":
     #    makefullplot('output_%04d.hdf5'%i)
     #    makefullplot('output_%04d.hdf5'%i,binsize=20)
 
+    time, SFR1, SFR2, SFR_error = getsfrsnapwide()
+    time2, SFR3 = getSFH('output_%04d.hdf5'%42)
+    plt.plot(time,SFR1,label='Using created star particles')
+    print(SFR_error)
+    plt.fill_between(time, SFR1+SFR_error,SFR1-SFR_error,label='Uncertainty',alpha=.3)
+    plt.plot(time,SFR2,label='Using SFR of gas particles')
+    plt.plot(time2*1e3,SFR3,label='Using birth_time of star particles')
+    plt.xlabel('Time (Myr)')
+    plt.ylabel('SFH ($\\rm M_\odot \\rm yr^{-1}$)')
+    plt.legend()
+    plt.show()
     '''
     snapshots = 52 
     mass = np.zeros(snapshots)
