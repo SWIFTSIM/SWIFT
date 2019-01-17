@@ -71,18 +71,20 @@ const char *initial_partition_name[] = {
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
     "none", "edge and vertex task cost weights", "task cost edge weights",
-    "task cost vertex weights",
+    "particle memory weights",
     "vertex task costs and edge delta timebin weights"};
 
 /* Local functions, if needed. */
 static int check_complete(struct space *s, int verbose, int nregions);
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /*
  * Repartition fixed costs per type/subtype. These are determined from the
  * statistics output produced when running with task debugging enabled.
  */
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 static double repartition_costs[task_type_count][task_subtype_count];
+#endif
+#if defined(WITH_MPI)
 static int repart_init_fixed_costs(void);
 #endif
 
@@ -1530,7 +1532,106 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   if (vweights) free(weights_v);
   if (eweights) free(weights_e);
 }
+
+/**
+ * @brief Repartition the cells amongst the nodes using weights based on
+ *        the memory use of particles in the cells.
+ *
+ * @param repartition the partition struct of the local engine.
+ * @param nodeID our nodeID.
+ * @param nr_nodes the number of nodes.
+ * @param s the space of cells holding our local particles.
+ */
+static void repart_memory_metis(struct repartition *repartition, int nodeID,
+                                int nr_nodes, struct space *s) {
+
+    /* Space for counts of particle memory use per cell. */
+    double *weights = NULL;
+    if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+        error("Failed to allocate cell weights buffer.");
+    bzero(weights, sizeof(double) * s->nr_cells);
+
+    /* Check each particle and accumulate the sizes per cell. */
+    accumulate_sizes(s, weights);
+
+    /* Get all the counts from all the nodes. */
+    if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+        error("Failed to allreduce particle cell weights.");
+
+    /* Allocate cell list for the partition. If not already done. */
+#ifdef HAVE_PARMETIS
+    int refine = 1;
 #endif
+    if (repartition->ncelllist != s->nr_cells) {
+#ifdef HAVE_PARMETIS
+        refine = 0;
+#endif
+        free(repartition->celllist);
+        repartition->ncelllist = 0;
+        if ((repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+            error("Failed to allocate celllist");
+        repartition->ncelllist = s->nr_cells;
+    }
+
+    /* We need to rescale the sum of the weights so that the sum is
+     * less than IDX_MAX, that is the range of idx_t. */
+    double sum = 0.0;
+    for (int k = 0; k < s->nr_cells; k++) sum += weights[k];
+    if (sum > (double)IDX_MAX) {
+        double scale = (double)(IDX_MAX - 1000) / sum;
+        for (int k = 0; k < s->nr_cells; k++) weights[k] *= scale;
+    }
+
+    /* And repartition. */
+#ifdef HAVE_PARMETIS
+    if (repartition_partition->usemetis) {
+        pick_metis(nodeID, s, nr_nodes, weights, NULL, reparition->celllist);
+    } else {
+        pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
+                      repartition->adaptive, repartition->itr,
+                      repartition->celllist);
+    }
+#else
+    pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+#endif
+
+    /* Check that all cells have good values. All nodes have same copy, so just
+     * check on one. */
+    if (nodeID == 0) {
+        for (int k = 0; k < s->nr_cells; k++)
+            if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
+                error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
+    }
+
+
+    /* Check that the partition is complete and all nodes have some cells. */
+    int present[nr_nodes];
+    int failed = 0;
+    for (int i = 0; i < nr_nodes; i++) present[i] = 0;
+    for (int i = 0; i < s->nr_cells; i++) present[repartition->celllist[i]]++;
+    for (int i = 0; i < nr_nodes; i++) {
+        if (!present[i]) {
+            failed = 1;
+            if (nodeID == 0) message("Node %d is not present after repartition", i);
+        }
+    }
+
+    /* If partition failed continue with the current one, but make this clear. */
+    if (failed) {
+        if (nodeID == 0)
+            message(
+                    "WARNING: repartition has failed, continuing with the current"
+                    " partition, load balance will not be optimal");
+        for (int k = 0; k < s->nr_cells; k++)
+            repartition->celllist[k] = s->cells_top[k].nodeID;
+    }
+
+    /* And apply to our cells */
+    split_metis(s, nr_nodes, repartition->celllist);
+
+}
+#endif /* WITH_MPI && (HAVE_METIS || HAVE_PARMETIS) */
 
 /**
  * @brief Repartition the space using the given repartition type.
@@ -1561,13 +1662,12 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
     repart_edge_metis(0, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
                       nr_tasks);
 
-  } else if (reparttype->type == REPART_METIS_VERTEX_COSTS) {
-    repart_edge_metis(1, 0, 0, reparttype, nodeID, nr_nodes, s, tasks,
-                      nr_tasks);
-
   } else if (reparttype->type == REPART_METIS_VERTEX_COSTS_TIMEBINS) {
     repart_edge_metis(1, 1, 1, reparttype, nodeID, nr_nodes, s, tasks,
                       nr_tasks);
+
+  } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS) {
+      repart_memory_metis(reparttype, nodeID, nr_nodes, s);
 
   } else if (reparttype->type == REPART_NONE) {
     /* Doing nothing. */
@@ -1806,8 +1906,8 @@ void partition_init(struct partition *partition,
   } else if (strcmp("none/costs", part_type) == 0) {
     repartition->type = REPART_METIS_EDGE_COSTS;
 
-  } else if (strcmp("costs/none", part_type) == 0) {
-    repartition->type = REPART_METIS_VERTEX_COSTS;
+  } else if (strcmp("memory", part_type) == 0) {
+    repartition->type = REPART_METIS_VERTEX_COUNTS;
 
   } else if (strcmp("costs/time", part_type) == 0) {
     repartition->type = REPART_METIS_VERTEX_COSTS_TIMEBINS;
