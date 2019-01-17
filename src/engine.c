@@ -4064,7 +4064,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->cooling_func = cooling_func;
   e->chemistry = chemistry;
   e->parameter_file = params;
-  e->cell_loc = NULL;
 #ifdef WITH_MPI
   e->cputime_last_step = 0;
   e->last_repartition = 0;
@@ -5127,7 +5126,6 @@ void engine_clean(struct engine *e) {
   output_list_clean(&e->output_list_stf);
 
   free(e->links);
-  free(e->cell_loc);
 #if defined(WITH_LOGGER)
   logger_clean(e->logger);
   free(e->logger);

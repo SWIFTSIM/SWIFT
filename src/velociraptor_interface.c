@@ -45,6 +45,15 @@ struct cosmoinfo {
   /*! Matter density parameter (cosmology.Omega_m) */
   double Omega_m;
 
+  /*! Radiation density parameter (cosmology.Omega_r) */
+  double Omega_r;
+
+  /*! Neutrino density parameter (0 in SWIFT) */
+  double Omega_nu;
+
+  /*! Neutrino density parameter (cosmology.Omega_k) */
+  double Omega_k;
+
   /*! Baryon density parameter (cosmology.Omega_b) */
   double Omega_b;
 
@@ -112,18 +121,6 @@ struct groupinfo {
   long long groupid;
 };
 
-/* VELOCIraptor interface. */
-/*
-int InitVelociraptor(char *config_name, char *output_name,
-                     struct cosmoinfo cosmo_info, struct unitinfo unit_info,
-                     struct siminfo sim_info, const int numthreads);
-
-int InvokeVelociraptor(const size_t num_gravity_parts,
-                       const size_t num_hydro_parts, const int snapnum,
-                       struct swift_vel_part *swift_parts,
-                       const int *cell_node_ids, char *output_name,
-                       const int numthreads);
-*/
 int InitVelociraptor(char *config_name, struct unitinfo unit_info,
                      struct siminfo sim_info, const int numthreads);
 
@@ -131,7 +128,8 @@ struct groupinfo *InvokeVelociraptor(
     const int snapnum, char *output_name, struct cosmoinfo cosmo_info,
     struct siminfo sim_info, const size_t num_gravity_parts,
     const size_t num_hydro_parts, struct swift_vel_part *swift_parts,
-    const int *cell_node_ids, const int numthreads, int *num_in_groups);
+    const int *cell_node_ids, const int numthreads,
+    const int return_group_flags, int *num_in_groups);
 
 #endif /* HAVE_VELOCIRAPTOR */
 
@@ -140,19 +138,35 @@ struct groupinfo *InvokeVelociraptor(
  * simulation info needed to run.
  *
  * @param e The #engine.
- * @param linked_with_snap Are we running at the same time as a snapshot dump?
  */
 void velociraptor_init(struct engine *e) {
 
 #ifdef HAVE_VELOCIRAPTOR
   const ticks tic = getticks();
 
+  /* Internal SWIFT units and physical constants */
+  // const struct phys_const *swift_pc = e->physical_constants;
+  const struct unit_system *swift_us = e->internal_units;
+
+  /* CGS units and physical constants */
+  struct unit_system cgs_us;
+  units_init_cgs(&cgs_us);
+  struct phys_const cgs_pc;
+  phys_const_init(&cgs_us, /*params=*/NULL, &cgs_pc);
+
   /* Set unit conversions. */
   struct unitinfo unit_info;
-  unit_info.lengthtokpc = 1.0;
-  unit_info.velocitytokms = 1.0;
-  unit_info.masstosolarmass = 1.0;
-  unit_info.energyperunitmass = 1.0;
+  unit_info.lengthtokpc =
+      units_cgs_conversion_factor(swift_us, UNIT_CONV_LENGTH) /
+      (1000. * cgs_pc.const_parsec);
+  unit_info.velocitytokms =
+      units_cgs_conversion_factor(swift_us, UNIT_CONV_VELOCITY) / 1.0e5;
+  unit_info.masstosolarmass =
+      units_cgs_conversion_factor(swift_us, UNIT_CONV_MASS) /
+      cgs_pc.const_solar_mass;
+  unit_info.energyperunitmass =
+      units_cgs_conversion_factor(swift_us, UNIT_CONV_ENERGY_PER_UNIT_MASS) /
+      (1.0e10);
   unit_info.gravity = e->physical_constants->const_newton_G;
   unit_info.hubbleunit = e->cosmology->H0 / e->cosmology->h;
 
@@ -174,7 +188,7 @@ void velociraptor_init(struct engine *e) {
             unit_info.velocitytokms);
     message("VELOCIraptor conf: Mass conversion factor: %e",
             unit_info.masstosolarmass);
-    message("VELOCIraptor conf: Potential conversion factor: %e",
+    message("VELOCIraptor conf: Internal energy conversion factor: %e",
             unit_info.energyperunitmass);
     message("VELOCIraptor conf: G: %e", unit_info.gravity);
     message("VELOCIraptor conf: H0/h: %e", unit_info.hubbleunit);
@@ -227,21 +241,15 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   for (int j = 0; j < nr_cores; j++) CPU_SET(j, &cpuset);
   pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
 
-  /* Set unit conversions. */
-  struct unitinfo unit_info;
-  unit_info.lengthtokpc = 1.0;
-  unit_info.velocitytokms = 1.0;
-  unit_info.masstosolarmass = 1.0;
-  unit_info.energyperunitmass = 1.0;
-  unit_info.gravity = e->physical_constants->const_newton_G;
-  unit_info.hubbleunit = e->cosmology->H0 / e->cosmology->h;
-
   /* Set cosmology information for this point in time */
   struct cosmoinfo cosmo_info;
   cosmo_info.atime = e->cosmology->a;
   cosmo_info.littleh = e->cosmology->h;
   cosmo_info.Omega_m = e->cosmology->Omega_m;
   cosmo_info.Omega_b = e->cosmology->Omega_b;
+  cosmo_info.Omega_r = e->cosmology->Omega_r;
+  cosmo_info.Omega_k = e->cosmology->Omega_k;
+  cosmo_info.Omega_nu = 0.;
   cosmo_info.Omega_Lambda = e->cosmology->Omega_lambda;
   cosmo_info.Omega_cdm = e->cosmology->Omega_m - e->cosmology->Omega_b;
   cosmo_info.w_de = e->cosmology->w;
@@ -260,12 +268,14 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Update the simulation information */
   struct siminfo sim_info;
 
-  /* period of the box */
+  /* Period of the box (Note we assume a cubic box!) */
   if (e->s->periodic) {
-    sim_info.period = unit_info.lengthtokpc * s->dim[0];
+    sim_info.period = s->dim[0];
   } else {
     sim_info.period = 0.0;
   }
+
+  /* Tell VELOCIraptor this is not a zoom-in simulation */
   sim_info.zoomhigresolutionmass = -1.0;
 
   /* Are we running with cosmology? */
@@ -279,32 +289,29 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   }
 
   /* Set the spatial extent of the simulation volume */
-  sim_info.spacedimension[0] = unit_info.lengthtokpc * s->dim[0];
-  sim_info.spacedimension[1] = unit_info.lengthtokpc * s->dim[1];
-  sim_info.spacedimension[2] = unit_info.lengthtokpc * s->dim[2];
+  sim_info.spacedimension[0] = s->dim[0];
+  sim_info.spacedimension[1] = s->dim[1];
+  sim_info.spacedimension[2] = s->dim[2];
 
   /* Store number of top-level cells */
   sim_info.numcells = s->nr_cells;
 
   /* Size and inverse size of the top-level cells in VELOCIraptor units */
-  sim_info.cellwidth[0] = unit_info.lengthtokpc * s->cells_top[0].width[0];
-  sim_info.cellwidth[1] = unit_info.lengthtokpc * s->cells_top[0].width[1];
-  sim_info.cellwidth[2] = unit_info.lengthtokpc * s->cells_top[0].width[2];
-  sim_info.icellwidth[0] = s->iwidth[0] / unit_info.lengthtokpc;
-  sim_info.icellwidth[1] = s->iwidth[1] / unit_info.lengthtokpc;
-  sim_info.icellwidth[2] = s->iwidth[2] / unit_info.lengthtokpc;
+  sim_info.cellwidth[0] = s->cells_top[0].width[0];
+  sim_info.cellwidth[1] = s->cells_top[0].width[1];
+  sim_info.cellwidth[2] = s->cells_top[0].width[2];
+  sim_info.icellwidth[0] = s->iwidth[0];
+  sim_info.icellwidth[1] = s->iwidth[1];
+  sim_info.icellwidth[2] = s->iwidth[2];
 
   /* Copy the poisiton of the top-level cells */
   if (posix_memalign((void **)&sim_info.cell_loc, 32,
                      s->nr_cells * sizeof(struct cell_loc)) != 0)
     error("Failed to allocate top-level cell locations for VELOCIraptor.");
   for (int i = 0; i < s->nr_cells; i++) {
-    sim_info.cell_loc[i].loc[0] =
-        unit_info.lengthtokpc * s->cells_top[i].loc[0];
-    sim_info.cell_loc[i].loc[1] =
-        unit_info.lengthtokpc * s->cells_top[i].loc[1];
-    sim_info.cell_loc[i].loc[2] =
-        unit_info.lengthtokpc * s->cells_top[i].loc[2];
+    sim_info.cell_loc[i].loc[0] = s->cells_top[i].loc[0];
+    sim_info.cell_loc[i].loc[1] = s->cells_top[i].loc[1];
+    sim_info.cell_loc[i].loc[2] = s->cells_top[i].loc[2];
   }
 
   if (e->verbose) {
@@ -416,21 +423,28 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Call VELOCIraptor. */
   group_info = (struct groupinfo *)InvokeVelociraptor(
       snapnum, outputFileName, cosmo_info, sim_info, nr_gparts, nr_hydro_parts,
-      swift_parts, cell_node_ids, e->nr_threads, &num_gparts_in_groups);
+      swift_parts, cell_node_ids, e->nr_threads, linked_with_snap,
+      &num_gparts_in_groups);
 
   /* Check that the ouput is valid */
-  if (group_info == NULL) {
+  if (linked_with_snap && group_info == NULL) {
     error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
+  }
+  if (!linked_with_snap && group_info != NULL) {
+    error("VELOCIraptor returned an array whilst it should not have.");
   }
 
   /* Assign the group IDs back to the gparts */
-  for (int i = 0; i < num_gparts_in_groups; i++) {
-    ///\todo need to update particle structure to include a group id
-    // gparts[group_info[i].index].groupid=group_info[i].index;
-  }
+  if (linked_with_snap) {
 
-  /* Free the array returned by VELOCIraptor */
-  free(group_info);
+    for (int i = 0; i < num_gparts_in_groups; i++) {
+      ///\todo need to update particle structure to include a group id
+      // gparts[group_info[i].index].groupid=group_info[i].index;
+    }
+
+    /* Free the array returned by VELOCIraptor */
+    free(group_info);
+  }
 
   /* Free everything we allocated */
   free(cell_node_ids);
