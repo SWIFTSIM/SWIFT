@@ -504,8 +504,10 @@ int main(int argc, char *argv[]) {
       message("Using METIS serial partitioning:");
     else
       message("Using ParMETIS partitioning:");
-#else
+#elif defined(HAVE_METIS)
     message("Using METIS serial partitioning:");
+#else
+    message("Non-METIS partitioning:");
 #endif
     message("  initial partitioning: %s",
             initial_partition_name[initial_partition.type]);
