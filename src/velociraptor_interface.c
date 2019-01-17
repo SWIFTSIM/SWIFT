@@ -33,7 +33,9 @@
 
 #ifdef HAVE_VELOCIRAPTOR
 
-/* Structure for passing cosmological information to VELOCIraptor. */
+/**
+ * @brief Structure for passing cosmological information to VELOCIraptor.
+ */
 struct cosmoinfo {
 
   /*! Current expansion factor of the Universe. (cosmology.a) */
@@ -67,19 +69,21 @@ struct cosmoinfo {
   double w_de;
 };
 
-/* Structure for passing unit information to VELOCIraptor. */
+/**
+ * @brief Structure for passing unit information to VELOCIraptor.
+ */
 struct unitinfo {
 
-  /* Length conversion factor to kpc. */
+  /*! Length conversion factor to kpc. */
   double lengthtokpc;
 
-  /* Velocity conversion factor to km/s. */
+  /*! Velocity conversion factor to km/s. */
   double velocitytokms;
 
-  /* Mass conversion factor to solar masses. */
+  /*! Mass conversion factor to solar masses. */
   double masstosolarmass;
 
-  /* Potential conversion factor. */
+  /*! Potential conversion factor to (km/s)^2. */
   double energyperunitmass;
 
   /*! Newton's gravitationl constant (phys_const.const_newton_G)*/
@@ -89,18 +93,34 @@ struct unitinfo {
   double hubbleunit;
 };
 
-/* Structure to hold the location of a top-level cell. */
+/**
+ * @brief Structure to hold the location of a top-level cell.
+ */
 struct cell_loc {
 
-  /* Coordinates x,y,z */
+  /*! Coordinates x,y,z */
   double loc[3];
 };
 
-/* Structure for passing simulation information to VELOCIraptor. */
+/**
+ * @brief Structure for passing simulation information to VELOCIraptor for a
+ * given call.
+ */
 struct siminfo {
-  double period, zoomhigresolutionmass, interparticlespacing, spacedimension[3];
 
-  /* Number of top-cells. */
+  /*! Size of periodic replications */
+  double period;
+
+  /*! Mass of the high-resolution DM particles in a zoom-in run. */
+  double zoomhigresolutionmass;
+
+  /*! Mean inter-particle separation of the DM particles */
+  double interparticlespacing;
+
+  /*! Spacial extent of the simulation volume */
+  double spacedimension[3];
+
+  /*! Number of top-level cells. */
   int numcells;
 
   /*! Locations of top-level cells. */
@@ -115,17 +135,37 @@ struct siminfo {
   /*! Holds the node ID of each top-level cell. */
   int *cellnodeids;
 
-  /// whether run is cosmological simulation
+  /*! Is this a cosmological simulation? */
   int icosmologicalsim;
-  /// running a zoom simulation
+
+  /*! Is this a zoom-in simulation? */
   int izoomsim;
-  /// flags indicating what types of particles are present
-  int idarkmatter, igas, istar, ibh, iother;
+
+  /*! Do we have DM particles? */
+  int idarkmatter;
+
+  /*! Do we have gas particles? */
+  int igas;
+
+  /*! Do we have star particles? */
+  int istar;
+
+  /*! Do we have BH particles? */
+  int ibh;
+
+  /*! Do we have other particles? */
+  int iother;
 };
 
-/* Structure for group information back to swift */
+/**
+ * @brief Structure for group information back to swift
+ */
 struct groupinfo {
+
+  /*! Index of a #gpart in the global array on this MPI rank */
   int index;
+
+  /*! Group number of the #gpart. */
   long long groupid;
 };
 
@@ -187,12 +227,14 @@ void velociraptor_init(struct engine *e) {
   } else {
     sim_info.icosmologicalsim = 0;
   }
+  sim_info.izoomsim = 0;
 
   /* Tell VELOCIraptor what we have in the simulation */
   sim_info.idarkmatter = (e->total_nr_gparts - e->total_nr_parts > 0);
   sim_info.igas = (e->policy & engine_policy_hydro);
   sim_info.istar = (e->policy & engine_policy_stars);
   sim_info.ibh = 0;  // sim_info.ibh = (e->policy&engine_policy_bh);
+  sim_info.iother = 0;
 
   /* Be nice, talk! */
   if (e->verbose) {
@@ -297,11 +339,13 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Are we running with cosmology? */
   if (e->policy & engine_policy_cosmology) {
     sim_info.icosmologicalsim = 1;
+    sim_info.izoomsim = 0;
     const size_t total_nr_baryons = e->total_nr_parts + e->total_nr_sparts;
     const size_t total_nr_dmparts = e->total_nr_gparts - total_nr_baryons;
     sim_info.interparticlespacing = sim_info.period / cbrt(total_nr_dmparts);
   } else {
     sim_info.icosmologicalsim = 0;
+    sim_info.izoomsim = 0;
     sim_info.interparticlespacing = -1;
   }
 
