@@ -33,6 +33,10 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
 
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
+  if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS_STARS)
+    si->ids_ngbs_density[si->num_ngb_density] = pj->id;
+
+  /* Update ngb counters */
   ++si->num_ngb_density;
 #endif
 }
@@ -55,6 +59,10 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
                                   struct part *restrict pj, float a, float H) {
 
 #ifdef DEBUG_INTERACTIONS_STARS
+  /* Update ngb counters */
+  if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_STARS)
+    si->ids_ngbs_force[si->num_ngb_force] = pj->id;
+
   /* Update ngb counters */
   ++si->num_ngb_force;
 #endif
