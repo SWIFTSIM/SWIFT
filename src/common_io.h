@@ -24,6 +24,7 @@
 #include "../config.h"
 
 /* Local includes. */
+#include "part_type.h"
 #include "units.h"
 
 #define FIELD_BUFFER_SIZE 200
@@ -32,6 +33,7 @@
 #define IO_BUFFER_ALIGNMENT 1024
 
 /* Avoid cyclic inclusion problems */
+struct cell;
 struct part;
 struct gpart;
 struct spart;
@@ -65,7 +67,7 @@ void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                        void* data);
 
 void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
-                        void* data, int num);
+                        const void* data, int num);
 
 void io_write_attribute_d(hid_t grp, const char* name, double data);
 void io_write_attribute_f(hid_t grp, const char* name, float data);
@@ -75,6 +77,14 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 
 void io_write_code_description(hid_t h_file);
 void io_write_engine_policy(hid_t h_file, const struct engine* e);
+
+void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
+                           const struct cell* cells_top, const int nr_cells,
+                           const double width[3], const int nodeID,
+                           const long long global_counts[swift_type_count],
+                           const long long global_offsets[swift_type_count],
+                           const struct unit_system* internal_units,
+                           const struct unit_system* snapshot_units);
 
 void io_read_unit_system(hid_t h_file, struct unit_system* ic_units,
                          const struct unit_system* internal_units,

@@ -61,6 +61,7 @@ labels = [
     "engine_recompute_displacement_constraint:",
     "engine_exchange_top_multipoles:",
     "updating particle counts",
+    "engine_estimate_nr_tasks:",
     "Making gravity tasks",
     "Making hydro tasks",
     "Splitting tasks",
@@ -72,6 +73,8 @@ labels = [
     "Creating send tasks",
     "Exchanging cell tags",
     "Creating recv tasks",
+    "Counting number of foreign particles",
+    "Recursively linking foreign arrays",
     "Setting unlocks",
     "Ranking the tasks",
     "scheduler_reweight:",
@@ -97,6 +100,9 @@ labels = [
     "engine_repartition_trigger:"
 ]
 is_rebuild = [
+    1,
+    1,
+    1,
     1,
     1,
     1,
@@ -243,7 +249,7 @@ for i in range(len(labels)):
         important_times[0] += times[i]
         important_ratios[0] += time_ratios[i]
 
-    print(" - '%-40s' (%5d calls): %.4f%%" % (labels[i], counts[i], time_ratios[i] * 100))
+    print(" - '%-40s' (%5d calls, time: %.4fs): %.4f%%" % (labels[i], counts[i], times[i], time_ratios[i] * 100))
 
 # Anything unaccounted for?
 print(

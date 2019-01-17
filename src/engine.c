@@ -113,7 +113,8 @@ const char *engine_policy_names[] = {"none",
                                      "stars",
                                      "structure finding",
                                      "star formation",
-                                     "feedback"};
+                                     "feedback",
+                                     "time-step limiter"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -145,7 +146,9 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
   /* Get the next free link. */
   const size_t ind = atomic_inc(&e->nr_links);
   if (ind >= e->size_links) {
-    error("Link table overflow.");
+    error(
+        "Link table overflow. Increase the value of "
+        "`Scheduler:links_per_tasks`.");
   }
   struct link *res = &e->links[ind];
 
@@ -1147,83 +1150,11 @@ void engine_exchange_cells(struct engine *e) {
 
 #ifdef WITH_MPI
 
-  struct space *s = e->s;
-  const int nr_proxies = e->nr_proxies;
   const int with_gravity = e->policy & engine_policy_self_gravity;
   const ticks tic = getticks();
 
   /* Exchange the cell structure with neighbouring ranks. */
   proxy_cells_exchange(e->proxies, e->nr_proxies, e->s, with_gravity);
-
-  ticks tic2 = getticks();
-
-  /* Count the number of particles we need to import and re-allocate
-     the buffer if needed. */
-  size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0;
-  for (int k = 0; k < nr_proxies; k++)
-    for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro)
-        count_parts_in += e->proxies[k].cells_in[j]->hydro.count;
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity)
-        count_gparts_in += e->proxies[k].cells_in[j]->grav.count;
-      count_sparts_in += e->proxies[k].cells_in[j]->stars.count;
-    }
-  if (count_parts_in > s->size_parts_foreign) {
-    if (s->parts_foreign != NULL) free(s->parts_foreign);
-    s->size_parts_foreign = 1.1 * count_parts_in;
-    if (posix_memalign((void **)&s->parts_foreign, part_align,
-                       sizeof(struct part) * s->size_parts_foreign) != 0)
-      error("Failed to allocate foreign part data.");
-  }
-  if (count_gparts_in > s->size_gparts_foreign) {
-    if (s->gparts_foreign != NULL) free(s->gparts_foreign);
-    s->size_gparts_foreign = 1.1 * count_gparts_in;
-    if (posix_memalign((void **)&s->gparts_foreign, gpart_align,
-                       sizeof(struct gpart) * s->size_gparts_foreign) != 0)
-      error("Failed to allocate foreign gpart data.");
-  }
-  if (count_sparts_in > s->size_sparts_foreign) {
-    if (s->sparts_foreign != NULL) free(s->sparts_foreign);
-    s->size_sparts_foreign = 1.1 * count_sparts_in;
-    if (posix_memalign((void **)&s->sparts_foreign, spart_align,
-                       sizeof(struct spart) * s->size_sparts_foreign) != 0)
-      error("Failed to allocate foreign spart data.");
-  }
-
-  if (e->verbose)
-    message("Counting and allocating arrays took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
-
-  /* Unpack the cells and link to the particle data. */
-  struct part *parts = s->parts_foreign;
-  struct gpart *gparts = s->gparts_foreign;
-  struct spart *sparts = s->sparts_foreign;
-  for (int k = 0; k < nr_proxies; k++) {
-    for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
-
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
-        cell_link_parts(e->proxies[k].cells_in[j], parts);
-        parts = &parts[e->proxies[k].cells_in[j]->hydro.count];
-      }
-
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
-        cell_link_gparts(e->proxies[k].cells_in[j], gparts);
-        gparts = &gparts[e->proxies[k].cells_in[j]->grav.count];
-      }
-
-      cell_link_sparts(e->proxies[k].cells_in[j], sparts);
-      sparts = &sparts[e->proxies[k].cells_in[j]->stars.count];
-    }
-  }
-  s->nr_parts_foreign = parts - s->parts_foreign;
-  s->nr_gparts_foreign = gparts - s->gparts_foreign;
-  s->nr_sparts_foreign = sparts - s->sparts_foreign;
-
-  if (e->verbose)
-    message("Recursively linking arrays took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1840,14 +1771,132 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 }
 
 /**
+ * @brief Allocate memory for the foreign particles.
+ *
+ * We look into the proxies for cells that have tasks and count
+ * the number of particles in these cells. We then allocate
+ * memory and link all the cells that have tasks and all cells
+ * deeper in the tree.
+ *
+ * @param e The #engine.
+ */
+void engine_allocate_foreign_particles(struct engine *e) {
+
+#ifdef WITH_MPI
+
+  const int nr_proxies = e->nr_proxies;
+  struct space *s = e->s;
+  ticks tic = getticks();
+
+  /* Count the number of particles we need to import and re-allocate
+     the buffer if needed. */
+  size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0;
+  for (int k = 0; k < nr_proxies; k++) {
+    for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
+
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
+        count_parts_in += cell_count_parts_for_tasks(e->proxies[k].cells_in[j]);
+      }
+
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
+        count_gparts_in +=
+            cell_count_gparts_for_tasks(e->proxies[k].cells_in[j]);
+      }
+
+      /* For stars, we just use the numbers in the top-level cells */
+      count_sparts_in += e->proxies[k].cells_in[j]->stars.count;
+    }
+  }
+
+  if (e->verbose)
+    message("Counting number of foreign particles took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Allocate space for the foreign particles we will receive */
+  if (count_parts_in > s->size_parts_foreign) {
+    if (s->parts_foreign != NULL) free(s->parts_foreign);
+    s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
+    if (posix_memalign((void **)&s->parts_foreign, part_align,
+                       sizeof(struct part) * s->size_parts_foreign) != 0)
+      error("Failed to allocate foreign part data.");
+  }
+  /* Allocate space for the foreign particles we will receive */
+  if (count_gparts_in > s->size_gparts_foreign) {
+    if (s->gparts_foreign != NULL) free(s->gparts_foreign);
+    s->size_gparts_foreign = engine_foreign_alloc_margin * count_gparts_in;
+    if (posix_memalign((void **)&s->gparts_foreign, gpart_align,
+                       sizeof(struct gpart) * s->size_gparts_foreign) != 0)
+      error("Failed to allocate foreign gpart data.");
+  }
+  /* Allocate space for the foreign particles we will receive */
+  if (count_sparts_in > s->size_sparts_foreign) {
+    if (s->sparts_foreign != NULL) free(s->sparts_foreign);
+    s->size_sparts_foreign = engine_foreign_alloc_margin * count_sparts_in;
+    if (posix_memalign((void **)&s->sparts_foreign, spart_align,
+                       sizeof(struct spart) * s->size_sparts_foreign) != 0)
+      error("Failed to allocate foreign spart data.");
+  }
+
+  if (e->verbose)
+    message("Allocating %zd/%zd/%zd foreign part/gpart/spart (%zd/%zd/%zd MB)",
+            s->size_parts_foreign, s->size_gparts_foreign,
+            s->size_sparts_foreign,
+            s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
+            s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
+            s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024));
+
+  /* Unpack the cells and link to the particle data. */
+  struct part *parts = s->parts_foreign;
+  struct gpart *gparts = s->gparts_foreign;
+  struct spart *sparts = s->sparts_foreign;
+  for (int k = 0; k < nr_proxies; k++) {
+    for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
+
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
+
+        const size_t count_parts =
+            cell_link_foreign_parts(e->proxies[k].cells_in[j], parts);
+        parts = &parts[count_parts];
+      }
+
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
+
+        const size_t count_gparts =
+            cell_link_foreign_gparts(e->proxies[k].cells_in[j], gparts);
+        gparts = &gparts[count_gparts];
+      }
+
+      /* For stars, we just use the numbers in the top-level cells */
+      cell_link_sparts(e->proxies[k].cells_in[j], sparts);
+      sparts = &sparts[e->proxies[k].cells_in[j]->stars.count];
+    }
+  }
+
+  /* Update the counters */
+  s->nr_parts_foreign = parts - s->parts_foreign;
+  s->nr_gparts_foreign = gparts - s->gparts_foreign;
+  s->nr_sparts_foreign = sparts - s->sparts_foreign;
+
+  if (e->verbose)
+    message("Recursively linking foreign arrays took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Prints the number of tasks in the engine
  *
  * @param e The #engine.
  */
-void engine_print_task_counts(struct engine *e) {
+void engine_print_task_counts(const struct engine *e) {
 
   const ticks tic = getticks();
-  struct scheduler *const sched = &e->sched;
+  const struct scheduler *sched = &e->sched;
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
 
@@ -1894,7 +1943,7 @@ void engine_print_task_counts(struct engine *e) {
  *
  * @return the estimated total number of tasks
  */
-int engine_estimate_nr_tasks(struct engine *e) {
+int engine_estimate_nr_tasks(const struct engine *e) {
 
   int tasks_per_cell = e->tasks_per_cell;
   if (tasks_per_cell > 0) return e->s->tot_cells * tasks_per_cell;
@@ -1903,8 +1952,7 @@ int engine_estimate_nr_tasks(struct engine *e) {
    * basically use a formula <n1>*ntopcells + <n2>*(totcells - ntopcells).
    * Where <n1> is the expected maximum tasks per top-level/super cell, and
    * <n2> the expected maximum tasks for all other cells. These should give
-   * a safe upper limit.
-   */
+   * a safe upper limit. */
   int n1 = 0;
   int n2 = 0;
   if (e->policy & engine_policy_hydro) {
@@ -1924,6 +1972,10 @@ int engine_estimate_nr_tasks(struct engine *e) {
     n1 += 2;
 #endif
 #endif
+  }
+  if (e->policy & engine_policy_limiter) {
+    n1 += 18;
+    n2 += 1;
   }
   if (e->policy & engine_policy_self_gravity) {
     n1 += 125;
@@ -2603,8 +2655,11 @@ void engine_skip_force_and_kick(struct engine *e) {
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_timestep || t->subtype == task_subtype_force ||
-        t->subtype == task_subtype_grav || t->type == task_type_end_force ||
+        t->type == task_type_timestep ||
+        t->type == task_type_timestep_limiter ||
+        t->subtype == task_subtype_force ||
+        t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
+        t->type == task_type_end_force ||
         t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
         t->type == task_type_grav_down || t->type == task_type_cooling)
       t->skip = 1;
@@ -2612,6 +2667,7 @@ void engine_skip_force_and_kick(struct engine *e) {
 
   /* Run through the cells and clear some flags. */
   space_map_cells_pre(e->s, 1, cell_clear_drift_flags, NULL);
+  space_map_cells_pre(e->s, 1, cell_clear_limiter_flags, NULL);
 }
 
 /**
@@ -2819,6 +2875,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
     gravity_exact_force_check(e->s, e, 1e-1);
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure all woken-up particles have been processed */
+  space_check_limiter(e->s);
 #endif
 
   /* Recover the (integer) end of the next time-step */
@@ -3074,6 +3135,11 @@ void engine_step(struct engine *e) {
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
     gravity_exact_force_check(e->s, e, 1e-1);
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure all woken-up particles have been processed */
+  space_check_limiter(e->s);
 #endif
 
   /* Collect information about the next time-step */
@@ -4674,6 +4740,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     maxtasks = e->restart_max_tasks;
   else
     maxtasks = engine_estimate_nr_tasks(e);
+
+  /* Estimated number of links per tasks */
+  e->links_per_tasks =
+      parser_get_opt_param_int(params, "Scheduler:links_per_tasks", 10);
 
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, maxtasks, nr_queues,

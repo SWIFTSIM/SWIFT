@@ -32,7 +32,6 @@
  * @brief Writes the current model of tracers to the file.
  *
  * @param h_grp The HDF5 group in which to write
- * @param tracers The #tracers_function_data
  */
 __attribute__((always_inline)) INLINE static void tracers_write_flavour(
     hid_t h_grp) {
@@ -47,6 +46,7 @@ __attribute__((always_inline)) INLINE static void tracers_write_flavour(
  * @param parts The particle array.
  * @param xparts The extended data particle array.
  * @param list The list of i/o properties to write.
+ * @param with_cosmology Are we running with cosmology switched on?
  *
  * @return Returns the number of fields to write.
  */
@@ -65,7 +65,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
 
   } else {
 
-    list[1] = io_make_output_field("MaxTemperature time", FLOAT, 1,
+    list[1] = io_make_output_field("Maximal Temperature time", FLOAT, 1,
                                    UNIT_CONV_NO_UNITS, xparts,
                                    tracers_data.maximum_temperature_time);
   }

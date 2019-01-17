@@ -523,7 +523,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   if (p->h == hydro_props->h_max) {
     rho_dh = 0.f;
   }
-  const float grad_h_term = 
+  const float grad_h_term =
       1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
 
   /* Compute the Balsara switch */
@@ -735,6 +735,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
+  p->wakeup = time_bin_not_awake;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
