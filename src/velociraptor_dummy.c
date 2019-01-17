@@ -62,9 +62,10 @@ int InitVelociraptor(char *config_name, struct unitinfo unit_info,
 struct groupinfo *InvokeVelociraptor(
     const int snapnum, char *output_name, struct cosmoinfo cosmo_info,
     struct siminfo sim_info, const size_t num_gravity_parts,
-    const size_t num_hydro_parts, struct swift_vel_part *swift_parts,
-    const int *cell_node_ids, const int numthreads,
-    const int return_group_flags, int *num_in_groups) {
+    const size_t num_hydro_parts, const size_t num_star_parts,
+    struct swift_vel_part *swift_parts, const int *cell_node_ids,
+    const int numthreads, const int return_group_flags,
+    int *const num_in_groups) {
   error("This is only a dummy. Call the real one!");
   return 0;
 }

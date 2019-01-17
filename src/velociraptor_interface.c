@@ -135,9 +135,10 @@ int InitVelociraptor(char *config_name, struct unitinfo unit_info,
 struct groupinfo *InvokeVelociraptor(
     const int snapnum, char *output_name, struct cosmoinfo cosmo_info,
     struct siminfo sim_info, const size_t num_gravity_parts,
-    const size_t num_hydro_parts, struct swift_vel_part *swift_parts,
-    const int *cell_node_ids, const int numthreads,
-    const int return_group_flags, int *num_in_groups);
+    const size_t num_hydro_parts, const size_t num_star_parts,
+    struct swift_vel_part *swift_parts, const int *cell_node_ids,
+    const int numthreads, const int return_group_flags,
+    int *const num_in_groups);
 
 #endif /* HAVE_VELOCIRAPTOR */
 
@@ -191,7 +192,7 @@ void velociraptor_init(struct engine *e) {
   sim_info.idarkmatter = (e->total_nr_gparts - e->total_nr_parts > 0);
   sim_info.igas = (e->policy & engine_policy_hydro);
   sim_info.istar = (e->policy & engine_policy_stars);
-  sim_info.ibh = 0; // sim_info.ibh = (e->policy&engine_policy_bh);
+  sim_info.ibh = 0;  // sim_info.ibh = (e->policy&engine_policy_bh);
 
   /* Be nice, talk! */
   if (e->verbose) {
@@ -233,11 +234,13 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
 #ifdef HAVE_VELOCIRAPTOR
 
-  struct space *s = e->s;
-  struct gpart *gparts = s->gparts;
-  struct part *parts = s->parts;
+  const struct space *s = e->s;
+  const struct gpart *gparts = s->gparts;
+  const struct part *parts = s->parts;
+  const struct spart *sparts = s->sparts;
   const size_t nr_gparts = s->nr_gparts;
-  const size_t nr_hydro_parts = s->nr_parts;
+  const size_t nr_parts = s->nr_parts;
+  const size_t nr_sparts = s->nr_sparts;
   const int nr_cells = s->nr_cells;
 
   const ticks tic = getticks();
@@ -294,7 +297,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Are we running with cosmology? */
   if (e->policy & engine_policy_cosmology) {
     sim_info.icosmologicalsim = 1;
-    const size_t total_nr_dmparts = e->total_nr_gparts - e->total_nr_parts;
+    const size_t total_nr_baryons = e->total_nr_parts + e->total_nr_sparts;
+    const size_t total_nr_dmparts = e->total_nr_gparts - total_nr_baryons;
     sim_info.interparticlespacing = sim_info.period / cbrt(total_nr_dmparts);
   } else {
     sim_info.icosmologicalsim = 0;
@@ -418,6 +422,12 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
             &parts[-gparts[i].id_or_neg_offset], e->cosmology);
         break;
 
+      case swift_type_stars:
+
+        swift_parts[i].id = sparts[-gparts[i].id_or_neg_offset].id;
+        swift_parts[i].u = 0.f;
+        break;
+
       case swift_type_dark_matter:
 
         swift_parts[i].id = gparts[i].id_or_neg_offset;
@@ -435,8 +445,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Call VELOCIraptor. */
   group_info = (struct groupinfo *)InvokeVelociraptor(
-      snapnum, outputFileName, cosmo_info, sim_info, nr_gparts, nr_hydro_parts,
-      swift_parts, cell_node_ids, e->nr_threads, linked_with_snap,
+      snapnum, outputFileName, cosmo_info, sim_info, nr_gparts, nr_parts,
+      nr_sparts, swift_parts, cell_node_ids, e->nr_threads, linked_with_snap,
       &num_gparts_in_groups);
 
   /* Check that the ouput is valid */
