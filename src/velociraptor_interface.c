@@ -133,10 +133,9 @@ int InitVelociraptor(char *config_name, struct unitinfo unit_info,
                      struct siminfo sim_info, const int numthreads);
 
 struct groupinfo *InvokeVelociraptor(
-    const int snapnum, char *output_name, 
-    struct cosmoinfo cosmo_info, struct siminfo sim_info, 
-    const size_t num_gravity_parts, const size_t num_hydro_parts, 
-    struct swift_vel_part *swift_parts,
+    const int snapnum, char *output_name, struct cosmoinfo cosmo_info,
+    struct siminfo sim_info, const size_t num_gravity_parts,
+    const size_t num_hydro_parts, struct swift_vel_part *swift_parts,
     const int *cell_node_ids, const int numthreads,
     const int return_group_flags, int *num_in_groups);
 
@@ -187,13 +186,12 @@ void velociraptor_init(struct engine *e) {
   } else {
     sim_info.icosmologicalsim = 0;
   }
-  
-  sim_info.idarkmatter = (e->total_nr_gparts > 0);
-  sim_info.igas = (e->total_nr_parts > 0);
-  sim_info.istar = (e->policy&engine_policy_stars);
-  ///\todo for black holes
-  //sim_info.ibh = (e->policy&engine_policy_bh);
-  sim_info.ibh = 0;
+
+  /* Tell VELOCIraptor what we have in the simulation */
+  sim_info.idarkmatter = (e->total_nr_gparts - e->total_nr_parts > 0);
+  sim_info.igas = (e->policy & engine_policy_hydro);
+  sim_info.istar = (e->policy & engine_policy_stars);
+  sim_info.ibh = 0; // sim_info.ibh = (e->policy&engine_policy_bh);
 
   /* Be nice, talk! */
   if (e->verbose) {
@@ -437,15 +435,12 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Call VELOCIraptor. */
   group_info = (struct groupinfo *)InvokeVelociraptor(
-      snapnum, outputFileName, 
-      cosmo_info, sim_info, 
-      nr_gparts, nr_hydro_parts,
-      swift_parts, cell_node_ids, 
-      e->nr_threads, linked_with_snap,
+      snapnum, outputFileName, cosmo_info, sim_info, nr_gparts, nr_hydro_parts,
+      swift_parts, cell_node_ids, e->nr_threads, linked_with_snap,
       &num_gparts_in_groups);
 
   /* Check that the ouput is valid */
-  if (linked_with_snap && group_info == NULL && num_gparts_in_groups<0) {
+  if (linked_with_snap && group_info == NULL && num_gparts_in_groups < 0) {
     error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
   }
   if (!linked_with_snap && group_info != NULL) {
@@ -463,12 +458,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     /* Free the array returned by VELOCIraptor */
     free(group_info);
   }
-
-  /* Free everything we allocated */
-  ///\todo move to vr side
-  free(cell_node_ids);
-  //free(swift_parts);
-  free(sim_info.cell_loc);
 
   /* Reset the pthread affinity mask after VELOCIraptor returns. */
   pthread_setaffinity_np(thread, sizeof(cpu_set_t), engine_entry_affinity());
