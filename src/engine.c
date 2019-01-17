@@ -1132,83 +1132,11 @@ void engine_exchange_cells(struct engine *e) {
 
 #ifdef WITH_MPI
 
-  struct space *s = e->s;
-  const int nr_proxies = e->nr_proxies;
   const int with_gravity = e->policy & engine_policy_self_gravity;
   const ticks tic = getticks();
 
   /* Exchange the cell structure with neighbouring ranks. */
   proxy_cells_exchange(e->proxies, e->nr_proxies, e->s, with_gravity);
-
-  ticks tic2 = getticks();
-
-  /* Count the number of particles we need to import and re-allocate
-     the buffer if needed. */
-  size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0;
-  for (int k = 0; k < nr_proxies; k++)
-    for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro)
-        count_parts_in += e->proxies[k].cells_in[j]->hydro.count;
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity)
-        count_gparts_in += e->proxies[k].cells_in[j]->grav.count;
-      count_sparts_in += e->proxies[k].cells_in[j]->stars.count;
-    }
-  if (count_parts_in > s->size_parts_foreign) {
-    if (s->parts_foreign != NULL) free(s->parts_foreign);
-    s->size_parts_foreign = 1.1 * count_parts_in;
-    if (posix_memalign((void **)&s->parts_foreign, part_align,
-                       sizeof(struct part) * s->size_parts_foreign) != 0)
-      error("Failed to allocate foreign part data.");
-  }
-  if (count_gparts_in > s->size_gparts_foreign) {
-    if (s->gparts_foreign != NULL) free(s->gparts_foreign);
-    s->size_gparts_foreign = 1.1 * count_gparts_in;
-    if (posix_memalign((void **)&s->gparts_foreign, gpart_align,
-                       sizeof(struct gpart) * s->size_gparts_foreign) != 0)
-      error("Failed to allocate foreign gpart data.");
-  }
-  if (count_sparts_in > s->size_sparts_foreign) {
-    if (s->sparts_foreign != NULL) free(s->sparts_foreign);
-    s->size_sparts_foreign = 1.1 * count_sparts_in;
-    if (posix_memalign((void **)&s->sparts_foreign, spart_align,
-                       sizeof(struct spart) * s->size_sparts_foreign) != 0)
-      error("Failed to allocate foreign spart data.");
-  }
-
-  if (e->verbose)
-    message("Counting and allocating arrays took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
-
-  /* Unpack the cells and link to the particle data. */
-  struct part *parts = s->parts_foreign;
-  struct gpart *gparts = s->gparts_foreign;
-  struct spart *sparts = s->sparts_foreign;
-  for (int k = 0; k < nr_proxies; k++) {
-    for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
-
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
-        cell_link_parts(e->proxies[k].cells_in[j], parts);
-        parts = &parts[e->proxies[k].cells_in[j]->hydro.count];
-      }
-
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
-        cell_link_gparts(e->proxies[k].cells_in[j], gparts);
-        gparts = &gparts[e->proxies[k].cells_in[j]->grav.count];
-      }
-
-      cell_link_sparts(e->proxies[k].cells_in[j], sparts);
-      sparts = &sparts[e->proxies[k].cells_in[j]->stars.count];
-    }
-  }
-  s->nr_parts_foreign = parts - s->parts_foreign;
-  s->nr_gparts_foreign = gparts - s->gparts_foreign;
-  s->nr_sparts_foreign = sparts - s->sparts_foreign;
-
-  if (e->verbose)
-    message("Recursively linking arrays took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1819,6 +1747,124 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Allocate memory for the foreign particles.
+ *
+ * We look into the proxies for cells that have tasks and count
+ * the number of particles in these cells. We then allocate
+ * memory and link all the cells that have tasks and all cells
+ * deeper in the tree.
+ *
+ * @param e The #engine.
+ */
+void engine_allocate_foreign_particles(struct engine *e) {
+
+#ifdef WITH_MPI
+
+  const int nr_proxies = e->nr_proxies;
+  struct space *s = e->s;
+  ticks tic = getticks();
+
+  /* Count the number of particles we need to import and re-allocate
+     the buffer if needed. */
+  size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0;
+  for (int k = 0; k < nr_proxies; k++) {
+    for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
+
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
+        count_parts_in += cell_count_parts_for_tasks(e->proxies[k].cells_in[j]);
+      }
+
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
+        count_gparts_in +=
+            cell_count_gparts_for_tasks(e->proxies[k].cells_in[j]);
+      }
+
+      /* For stars, we just use the numbers in the top-level cells */
+      count_sparts_in += e->proxies[k].cells_in[j]->stars.count;
+    }
+  }
+
+  if (e->verbose)
+    message("Counting number of foreign particles took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Allocate space for the foreign particles we will receive */
+  if (count_parts_in > s->size_parts_foreign) {
+    if (s->parts_foreign != NULL) free(s->parts_foreign);
+    s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
+    if (posix_memalign((void **)&s->parts_foreign, part_align,
+                       sizeof(struct part) * s->size_parts_foreign) != 0)
+      error("Failed to allocate foreign part data.");
+  }
+  /* Allocate space for the foreign particles we will receive */
+  if (count_gparts_in > s->size_gparts_foreign) {
+    if (s->gparts_foreign != NULL) free(s->gparts_foreign);
+    s->size_gparts_foreign = engine_foreign_alloc_margin * count_gparts_in;
+    if (posix_memalign((void **)&s->gparts_foreign, gpart_align,
+                       sizeof(struct gpart) * s->size_gparts_foreign) != 0)
+      error("Failed to allocate foreign gpart data.");
+  }
+  /* Allocate space for the foreign particles we will receive */
+  if (count_sparts_in > s->size_sparts_foreign) {
+    if (s->sparts_foreign != NULL) free(s->sparts_foreign);
+    s->size_sparts_foreign = engine_foreign_alloc_margin * count_sparts_in;
+    if (posix_memalign((void **)&s->sparts_foreign, spart_align,
+                       sizeof(struct spart) * s->size_sparts_foreign) != 0)
+      error("Failed to allocate foreign spart data.");
+  }
+
+  if (e->verbose)
+    message("Allocating %zd/%zd/%zd foreign part/gpart/spart (%zd/%zd/%zd MB)",
+            s->size_parts_foreign, s->size_gparts_foreign,
+            s->size_sparts_foreign,
+            s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
+            s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
+            s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024));
+
+  /* Unpack the cells and link to the particle data. */
+  struct part *parts = s->parts_foreign;
+  struct gpart *gparts = s->gparts_foreign;
+  struct spart *sparts = s->sparts_foreign;
+  for (int k = 0; k < nr_proxies; k++) {
+    for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
+
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
+
+        const size_t count_parts =
+            cell_link_foreign_parts(e->proxies[k].cells_in[j], parts);
+        parts = &parts[count_parts];
+      }
+
+      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
+
+        const size_t count_gparts =
+            cell_link_foreign_gparts(e->proxies[k].cells_in[j], gparts);
+        gparts = &gparts[count_gparts];
+      }
+
+      /* For stars, we just use the numbers in the top-level cells */
+      cell_link_sparts(e->proxies[k].cells_in[j], sparts);
+      sparts = &sparts[e->proxies[k].cells_in[j]->stars.count];
+    }
+  }
+
+  /* Update the counters */
+  s->nr_parts_foreign = parts - s->parts_foreign;
+  s->nr_gparts_foreign = gparts - s->gparts_foreign;
+  s->nr_sparts_foreign = sparts - s->sparts_foreign;
+
+  if (e->verbose)
+    message("Recursively linking foreign arrays took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif

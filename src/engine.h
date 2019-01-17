@@ -101,6 +101,7 @@ enum engine_step_properties {
 #define engine_max_proxy_centre_frac 0.2
 #define engine_redistribute_alloc_margin 1.2
 #define engine_rebuild_link_alloc_margin 1.2
+#define engine_foreign_alloc_margin 1.05
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost 1000
@@ -405,6 +406,7 @@ void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
+void engine_allocate_foreign_particles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_check_for_dumps(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
