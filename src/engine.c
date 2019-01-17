@@ -995,7 +995,8 @@ void engine_repartition(struct engine *e) {
 
   /* Generate the fixed costs include file. */
   if (e->step > 3 && e->reparttype->trigger <= 1.f) {
-    task_dump_stats("partition_fixed_costs.h", e, /* header = */ 1, /* allranks = */ 1);
+    task_dump_stats("partition_fixed_costs.h", e, /* header = */ 1,
+                    /* allranks = */ 1);
   }
 
   /* Do the repartitioning. */
@@ -1056,7 +1057,8 @@ void engine_repartition_trigger(struct engine *e) {
   /* Do nothing if there have not been enough steps since the last repartition
    * as we don't want to repeat this too often or immediately after a
    * repartition step. Also nothing to do when requested. */
-  if (e->step - e->last_repartition >= 2 && e->reparttype->type != REPART_NONE) {
+  if (e->step - e->last_repartition >= 2 &&
+      e->reparttype->type != REPART_NONE) {
 
     /* If we have fixed costs available and this is step 2 or we are forcing
      * repartitioning then we do a fixed costs one now. */
@@ -1071,7 +1073,6 @@ void engine_repartition_trigger(struct engine *e) {
       e->reparttype->use_ticks = 0;
 
     } else {
-
 
       /* It is only worth checking the CPU loads when we have processed a
        * significant number of all particles as we require all tasks to have
@@ -1089,7 +1090,8 @@ void engine_repartition_trigger(struct engine *e) {
         }
 
         /* Get CPU time used since the last call to this function. */
-        double elapsed_cputime = clocks_get_cputime_used() - e->cputime_last_step;
+        double elapsed_cputime =
+            clocks_get_cputime_used() - e->cputime_last_step;
 
         /* Gather the elapsed CPU times from all ranks for the last step. */
         double elapsed_cputimes[e->nr_nodes];

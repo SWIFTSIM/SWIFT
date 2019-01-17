@@ -291,8 +291,9 @@ int main(int argc, char *argv[]) {
 #ifndef SWIFT_DEBUG_TASKS
   if (dump_tasks) {
     if (myrank == 0) {
-      message("WARNING: complete task dumps are only created when "
-              "configured with --enable-task-debugging.");
+      message(
+          "WARNING: complete task dumps are only created when "
+          "configured with --enable-task-debugging.");
       message("         Basic task statistics will be output.");
     }
   }

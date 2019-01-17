@@ -838,7 +838,8 @@ void task_dump_all(struct engine *e, int step) {
  * @param allranks do the statistics over all ranks, if not just the current
  *                 one, only used if header is false.
  */
-void task_dump_stats(const char *dumpfile, struct engine *e, int header, int allranks) {
+void task_dump_stats(const char *dumpfile, struct engine *e, int header,
+                     int allranks) {
 
   /* Need arrays for sum, min and max across all types and subtypes. */
   double sum[task_type_count][task_subtype_count];
@@ -877,7 +878,6 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header, int all
       total[0] += dt;
     }
   }
-
 
 #ifdef WITH_MPI
   if (allranks || header) {
@@ -934,8 +934,8 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header, int all
                     "%15s/%-10s %10d %14.4f %14.4f %14.4f %14.4f %14.4f %10d\n",
                     taskID, subtaskID_names[k], count[j][k],
                     clocks_from_ticks(min[j][k]), clocks_from_ticks(max[j][k]),
-                    clocks_from_ticks(sum[j][k]), clocks_from_ticks(mean),
-                    perc, fixed_cost);
+                    clocks_from_ticks(sum[j][k]), clocks_from_ticks(mean), perc,
+                    fixed_cost);
           }
         }
       }
@@ -944,5 +944,4 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header, int all
 #ifdef WITH_MPI
   }
 #endif
-
 }

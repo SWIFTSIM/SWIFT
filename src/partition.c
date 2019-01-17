@@ -1215,7 +1215,8 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
     /* Skip un-interesting tasks. */
     if (t->type == task_type_send || t->type == task_type_recv ||
-        t->type == task_type_logger || t->implicit || t->ci == NULL) continue;
+        t->type == task_type_logger || t->implicit || t->ci == NULL)
+      continue;
 
     /* Get weight for this task. Either based on fixed costs or task timings. */
     double w = 0.0;
@@ -1545,91 +1546,90 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 static void repart_memory_metis(struct repartition *repartition, int nodeID,
                                 int nr_nodes, struct space *s) {
 
-    /* Space for counts of particle memory use per cell. */
-    double *weights = NULL;
-    if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
-        error("Failed to allocate cell weights buffer.");
-    bzero(weights, sizeof(double) * s->nr_cells);
+  /* Space for counts of particle memory use per cell. */
+  double *weights = NULL;
+  if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+    error("Failed to allocate cell weights buffer.");
+  bzero(weights, sizeof(double) * s->nr_cells);
 
-    /* Check each particle and accumulate the sizes per cell. */
-    accumulate_sizes(s, weights);
+  /* Check each particle and accumulate the sizes per cell. */
+  accumulate_sizes(s, weights);
 
-    /* Get all the counts from all the nodes. */
-    if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE, MPI_SUM,
-                      MPI_COMM_WORLD) != MPI_SUCCESS)
-        error("Failed to allreduce particle cell weights.");
+  /* Get all the counts from all the nodes. */
+  if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                    MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to allreduce particle cell weights.");
 
     /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
-    int refine = 1;
+  int refine = 1;
 #endif
-    if (repartition->ncelllist != s->nr_cells) {
+  if (repartition->ncelllist != s->nr_cells) {
 #ifdef HAVE_PARMETIS
-        refine = 0;
+    refine = 0;
 #endif
-        free(repartition->celllist);
-        repartition->ncelllist = 0;
-        if ((repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
-            error("Failed to allocate celllist");
-        repartition->ncelllist = s->nr_cells;
-    }
+    free(repartition->celllist);
+    repartition->ncelllist = 0;
+    if ((repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) ==
+        NULL)
+      error("Failed to allocate celllist");
+    repartition->ncelllist = s->nr_cells;
+  }
 
-    /* We need to rescale the sum of the weights so that the sum is
-     * less than IDX_MAX, that is the range of idx_t. */
-    double sum = 0.0;
-    for (int k = 0; k < s->nr_cells; k++) sum += weights[k];
-    if (sum > (double)IDX_MAX) {
-        double scale = (double)(IDX_MAX - 1000) / sum;
-        for (int k = 0; k < s->nr_cells; k++) weights[k] *= scale;
-    }
+  /* We need to rescale the sum of the weights so that the sum is
+   * less than IDX_MAX, that is the range of idx_t. */
+  double sum = 0.0;
+  for (int k = 0; k < s->nr_cells; k++) sum += weights[k];
+  if (sum > (double)IDX_MAX) {
+    double scale = (double)(IDX_MAX - 1000) / sum;
+    for (int k = 0; k < s->nr_cells; k++) weights[k] *= scale;
+  }
 
     /* And repartition. */
 #ifdef HAVE_PARMETIS
-    if (repartition_partition->usemetis) {
-        pick_metis(nodeID, s, nr_nodes, weights, NULL, reparition->celllist);
-    } else {
-        pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
-                      repartition->adaptive, repartition->itr,
-                      repartition->celllist);
-    }
+  if (repartition_partition->usemetis) {
+    pick_metis(nodeID, s, nr_nodes, weights, NULL, reparition->celllist);
+  } else {
+    pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
+                  repartition->adaptive, repartition->itr,
+                  repartition->celllist);
+  }
 #else
-    pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+  pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
 #endif
 
-    /* Check that all cells have good values. All nodes have same copy, so just
-     * check on one. */
-    if (nodeID == 0) {
-        for (int k = 0; k < s->nr_cells; k++)
-            if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
-                error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
+  /* Check that all cells have good values. All nodes have same copy, so just
+   * check on one. */
+  if (nodeID == 0) {
+    for (int k = 0; k < s->nr_cells; k++)
+      if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
+        error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
+  }
+
+  /* Check that the partition is complete and all nodes have some cells. */
+  int present[nr_nodes];
+  int failed = 0;
+  for (int i = 0; i < nr_nodes; i++) present[i] = 0;
+  for (int i = 0; i < s->nr_cells; i++) present[repartition->celllist[i]]++;
+  for (int i = 0; i < nr_nodes; i++) {
+    if (!present[i]) {
+      failed = 1;
+      if (nodeID == 0) message("Node %d is not present after repartition", i);
     }
+  }
 
+  /* If partition failed continue with the current one, but make this clear. */
+  if (failed) {
+    if (nodeID == 0)
+      message(
+          "WARNING: repartition has failed, continuing with the current"
+          " partition, load balance will not be optimal");
+    for (int k = 0; k < s->nr_cells; k++)
+      repartition->celllist[k] = s->cells_top[k].nodeID;
+  }
 
-    /* Check that the partition is complete and all nodes have some cells. */
-    int present[nr_nodes];
-    int failed = 0;
-    for (int i = 0; i < nr_nodes; i++) present[i] = 0;
-    for (int i = 0; i < s->nr_cells; i++) present[repartition->celllist[i]]++;
-    for (int i = 0; i < nr_nodes; i++) {
-        if (!present[i]) {
-            failed = 1;
-            if (nodeID == 0) message("Node %d is not present after repartition", i);
-        }
-    }
-
-    /* If partition failed continue with the current one, but make this clear. */
-    if (failed) {
-        if (nodeID == 0)
-            message(
-                    "WARNING: repartition has failed, continuing with the current"
-                    " partition, load balance will not be optimal");
-        for (int k = 0; k < s->nr_cells; k++)
-            repartition->celllist[k] = s->cells_top[k].nodeID;
-    }
-
-    /* And apply to our cells */
-    split_metis(s, nr_nodes, repartition->celllist);
-
+  /* And apply to our cells */
+  split_metis(s, nr_nodes, repartition->celllist);
 }
 #endif /* WITH_MPI && (HAVE_METIS || HAVE_PARMETIS) */
 
@@ -1667,7 +1667,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
                       nr_tasks);
 
   } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS) {
-      repart_memory_metis(reparttype, nodeID, nr_nodes, s);
+    repart_memory_metis(reparttype, nodeID, nr_nodes, s);
 
   } else if (reparttype->type == REPART_NONE) {
     /* Doing nothing. */
@@ -1965,8 +1965,8 @@ void partition_init(struct partition *partition,
 
   /* Do we have fixed costs available? These can be used to force
    * repartitioning at any time. Not required if not repartitioning.*/
-  repartition->use_fixed_costs =
-      parser_get_opt_param_int(params, "DomainDecomposition:use_fixed_costs", 0);
+  repartition->use_fixed_costs = parser_get_opt_param_int(
+      params, "DomainDecomposition:use_fixed_costs", 0);
   if (repartition->type == REPART_NONE) repartition->use_fixed_costs = 0;
 
   /* Check if this is true or required and initialise them. */
@@ -1974,12 +1974,14 @@ void partition_init(struct partition *partition,
     if (!repart_init_fixed_costs()) {
       if (repartition->trigger <= 1) {
         if (engine_rank == 0)
-          message("WARNING: fixed cost repartitioning was requested but is"
-                  " not available.");
+          message(
+              "WARNING: fixed cost repartitioning was requested but is"
+              " not available.");
         repartition->use_fixed_costs = 0;
       } else {
-        error("Forced fixed cost repartitioning was requested but is"
-              " not available.");
+        error(
+            "Forced fixed cost repartitioning was requested but is"
+            " not available.");
       }
     }
   }
