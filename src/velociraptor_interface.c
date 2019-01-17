@@ -144,11 +144,10 @@ void velociraptor_init(struct engine *e) {
 #ifdef HAVE_VELOCIRAPTOR
   const ticks tic = getticks();
 
-  /* Internal SWIFT units and physical constants */
-  // const struct phys_const *swift_pc = e->physical_constants;
+  /* Internal SWIFT units */
   const struct unit_system *swift_us = e->internal_units;
 
-  /* CGS units and physical constants */
+  /* CGS units and physical constants in CGS */
   struct unit_system cgs_us;
   units_init_cgs(&cgs_us);
   struct phys_const cgs_pc;
