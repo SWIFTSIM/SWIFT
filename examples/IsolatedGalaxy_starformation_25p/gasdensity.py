@@ -20,6 +20,7 @@ from pylab import sys
 from sphviewer.tools import QuickView
 from matplotlib.animation import FuncAnimation
 from matplotlib.colors import LogNorm
+from scipy.optimize import curve_fit
 
 def gen_data(filename,pixels,case):
     """
@@ -147,9 +148,74 @@ def getbirthdensity(filename):
 
     return birthdensity 
     
+def getdensityrate(filename):
+    
+    # Read the data
+    with h5.File(filename, "r") as f:
+        box_size = f["/Header"].attrs["BoxSize"][0]
+        coordinates= f["/PartType0/Coordinates"][:,:]
+        sfrrate = f["/PartType0/sSFR"][:]
+        density = f["/PartType0/Density"][:]
+
+    absmaxz = 2 #kpc
+    absmaxxy = 10 #kpc
+
+    part_mask = ((coordinates[:,0]-box_size/2.) > -absmaxxy) & ((coordinates[:,0]-box_size/2.) < 
+        absmaxxy) & ((coordinates[:,1]-box_size/2.) > -absmaxxy) & ((coordinates[:,1]-box_size/2.) < 
+        absmaxxy) & ((coordinates[:,2]-box_size/2.) > -absmaxz) & ((coordinates[:,2]-box_size/2.) < 
+        absmaxz) & (sfrrate>0)
+
+    sfrrate = sfrrate[part_mask]
+    density = density[part_mask]
+
+    return sfrrate, density 
+
+def getgasmass(filename):
+    
+    # Read the data
+    with h5.File(filename, "r") as f:
+        mass = f["/PartType0/Masses"][:][0]
+
+    return mass*1e10
+
+def getSFH(filename):
+    
+    # Read the data
+    with h5.File(filename, "r") as f:
+        box_size = f["/Header"].attrs["BoxSize"][0]
+        coordinates= f["/PartType4/Coordinates"][:,:]
+        mass = f["/PartType4/Masses"][:]
+        flag = f["/PartType4/NewStarFlag"][:]
+        birth_time = f["/PartType4/Birth_time"][:]
+
+    absmaxz = 2 #kpc
+    absmaxxy = 10 #kpc
+
+    part_mask = ((coordinates[:,0]-box_size/2.) > -absmaxxy) & ((coordinates[:,0]-box_size/2.) < 
+        absmaxxy) & ((coordinates[:,1]-box_size/2.) > -absmaxxy) & ((coordinates[:,1]-box_size/2.) < 
+        absmaxxy) & ((coordinates[:,2]-box_size/2.) > -absmaxz) & ((coordinates[:,2]-box_size/2.) < 
+        absmaxz) & (flag==1)
+
+    birth_time = birth_time[part_mask]
+    mass = mass[part_mask]
+    
+    histogram = np.histogram(birth_time,bins=50,weights=mass*5e3,range=[0,.1])
+    values = histogram[0]
+    xvalues =( histogram[1][:-1] +histogram[1][1:])/2.
+    return xvalues, values
+
 def KS_law(Sigmagas,n=1.4,A=1.515e-4):
     return A * Sigmagas**n
 
+def specificSFR(rho,fg=.25,gamma_eos=4/3):
+    return .363 * (10 * fg * (rho/0.1)**gamma_eos )**.2 
+
+def specificSFRhighden(rho,gamma_eos=4/3):
+    return specificSFR(1e3)* (( rho/1e3 )**gamma_eos)**.5
+
+def linearfunc(x,a,b):
+    return a*x + b
+    
 def makefullplot(filename,binsize=200):
     # Get the Surface density from the snapshot
     image_data,extent = gen_data(filename,binsize,case=0)
@@ -257,6 +323,9 @@ def makefullplot(filename,binsize=200):
     #plt.imshow(np.transpose(KShistogram[0]), extent=np.array([-1,4,-5,2]))
     plt.title('KS law')
 
+    fitresult = curve_fit(linearfunc,np.log10(sigma_gas),np.log10(sigma_star),p0=(1.4,np.log10(1.515e-4)),bounds=((0,-6),(3,-2))) 
+    #print(fitresult[0], fitresult[1])
+    
     sigma_gas_range = 10**np.linspace(-1,2,100)
     sigma_star_range = KS_law(sigma_gas_range)
     sigma_star_one_range = KS_law(sigma_gas_range,n=0.7)
@@ -269,6 +338,7 @@ def makefullplot(filename,binsize=200):
     plt.plot(np.log10(sigma_gas_range), np.log10(sigma_star_range),'k--',label='EAGLE SF')
     plt.plot(np.log10(sigma_gas_range), np.log10(sigma_star_one_range),'k-.',label='n=.7')
     plt.plot(np.log10(sigma_gas_range), np.log10(KS_law(sigma_gas_range,n=0.6)),'k:',label='n=.6')
+    #plt.plot(np.log10(sigma_gas_range), linearfunc(np.log10(sigma_gas_range), *fitresult[0]),'r--',label='fit')
     plt.xlabel('$\log \Sigma_{gas}$ [ $M_\odot \\rm pc^{-2}$]')
     plt.ylabel('$\log \Sigma_{\star}$ [ $M_\odot \\rm yr^{-1} kpc^{-2}$]')
     cbar = plt.colorbar()
@@ -287,13 +357,17 @@ def makefullplot(filename,binsize=200):
     density *= 1e10/(1e3)**3*40.4759/mu
     SFR *= 1e10/1e9
     SFR_plot = SFR[:]
-    plt.hist2d(np.log10(density[SFR_plot>0]),np.log10(SFR_plot[SFR_plot>0]), bins=50,range=[[np.log10(critden),5],[-5.4,-3.5]])
+    plt.hist2d(np.log10(density[SFR_plot>0]),np.log10(SFR_plot[SFR_plot>0]), bins=50,range=[[np.log10(critden),5],[-4.4,-2.5]])
     #plt.loglog(density*1e10/(1e3)**3*40.4759/mu,SFR_plot*1e10/1e9,'.')
     xx = 10**np.linspace(-1,2,100)
     def sfr_model(density,critden=.1,gammaeff=4./3.,mgas=1.4995e4):
         return 6.9e-11 * mgas * (density/critden)**(gammaeff/5.)
-    plt.plot(np.log10(xx),np.log10(1e-5*xx**(4./15.)),'k--',label='Slope of EAGLE SF')
-    plt.plot(np.log10(xx),np.log10(sfr_model(xx)),'r--',label='Slope of EAGLE SF')
+    rhos = 10**np.linspace(-1,4,100)
+    rhoshigh = 10**np.linspace(2,5,100)
+    massparticle =getgasmass(filename) 
+    #plt.plot(np.log10(xx),np.log10(1e-4*xx**(4./15.)),'k--',label='Slope of EAGLE SF')
+    #plt.plot(np.log10(xx),np.log10(sfr_model(xx)),'r--',label='Slope of EAGLE SF')
+    plt.plot(np.log10(rhos),np.log10(specificSFR(rhos)*massparticle/1e9),'k--',label='SFR low density EAGLE')
     plt.xlabel('$\log$ density [$\\rm cm^{-3}$]')
     plt.ylabel('$\log$ Star Formation rate (SFR) [$ M_\odot \\rm yr^{-1} $]')
     plt.xlim(np.log10(critden),5)
@@ -305,8 +379,9 @@ def makefullplot(filename,binsize=200):
     plt.subplot(3,3,6)
     plt.scatter(np.log10(density[SFR_plot>0]),np.log10(temperature[SFR_plot>0]),s=1,c=SFR_tracer,cmap='viridis')
     plt.axvline(x=np.log10(critden),linestyle='--',color='gray',linewidth=3,label='Threshold density')
+    plt.axvline(x=0,linestyle='--',color='k',linewidth=3,label='End of Wiersma Tables')
     cbar = plt.colorbar()
-    plt.clim(-5.4,-3.5)
+    plt.clim(-4.4,-2.5)
     plt.scatter(np.log10(density[SFR_plot<=0]),np.log10(temperature[SFR_plot<=0]),s=1,c='gray')
     plt.xlabel('$\log$ density [$\\rm cm^{-3}$]')
     plt.ylabel('$\log$ temperature [$\\rm K$]')
@@ -323,12 +398,24 @@ def makefullplot(filename,binsize=200):
     plt.legend()
 
     plt.subplot(3,3,8)
-    plt.hist(np.log10(sigma_gas))
-    plt.xlabel('Surface density')
+    sfrrate, gasdensity = getdensityrate(filename)
+    gasdensity *= 1e10/(1e3)**3*40.4759/mu
+    plt.hist2d(np.log10(gasdensity),np.log10(sfrrate), bins=50,range=[[-1.5,5],[-.5,2.5]])
+    cbar = plt.colorbar()
+    rhos = 10**np.linspace(-1,4,100)
+    rhoshigh = 10**np.linspace(2,5,100)
+    plt.plot(np.log10(rhos),np.log10(specificSFR(rhos)),'k--',label='sSFR low density EAGLE')
+    plt.plot(np.log10(rhoshigh),np.log10(specificSFRhighden(rhoshigh)),'k--',label='sSFR high density EAGLE')
+    plt.xlabel('density [\\rm cm^{-3}]')
+    plt.ylabel('sSFR ($\\rm Gyr^{-1}$)')
+    plt.legend()
     
     plt.subplot(3,3,9)
-    plt.hist(np.log10(sigma_star))
-    plt.xlabel('SFR Surface density')
+    timearray, SFH = getSFH(filename)
+    plt.plot(timearray*1e3,SFH, label='spart birth_time')
+    plt.xlabel('Time (Myr)')
+    plt.ylabel('SFH ($\\rm M_\odot \\rm yr^{-1}$)')
+    plt.legend()
 
     if binsize==200:
         plt.savefig('./ksplot/'+filename+'_0.1kpc.png')
