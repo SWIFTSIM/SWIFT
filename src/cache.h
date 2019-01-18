@@ -504,7 +504,7 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
       x[i] = pos_padded[0];
       y[i] = pos_padded[1];
       z[i] = pos_padded[2];
-      h[i] = 1.f;
+      h[i] = h_padded;
       rho[i] = 1.f;
       grad_h[i] = 1.f;
       pOrho2[i] = 1.f;
