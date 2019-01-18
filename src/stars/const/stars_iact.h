@@ -198,11 +198,10 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   unsigned int seed = pj->id;
   double random_num = rand_r(&seed) * stars_properties->inv_rand_max;
   if (random_num < heating_probability) {
+    // Debugging...
+    message("we did some heating! id %llu probability %.5e random_num %.5e du %.5e du/ini %.5e", pj->id, heating_probability, random_num, du, du/hydro_get_physical_internal_energy(pj,xp,cosmo));
     // ALEXEI: As above, check units
     thermal_feedback(du, pj, xp, cosmo);
-    // Debugging...
-    //message("we did some heating! id %llu probability %.5e random_num %.5e old energy %.5e energy change %.5e", pj->id, heating_probability, random_num, hydro_get_physical_internal_energy(pj,xp,cosmo)*hydro_get_mass(pj), du*hydro_get_mass(pj));
-    message("we did some heating! id %llu probability %.5e random_num %.5e", pj->id, heating_probability, random_num);
   } else {
     // Debugging...
     //message("we missed heating... id %llu probability %.5e random_num %.5e du %.5e", pj->id, heating_probability, random_num, du);

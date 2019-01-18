@@ -134,6 +134,8 @@ INLINE static void stars_props_init(struct stars_props *sp,
   // Why is this one here? copied from EAGLE...
   sp->SNIa_energy_fraction = 1.0e0;
   sp->total_energy_SNe = 1.0e51/units_cgs_conversion_factor(us,UNIT_CONV_ENERGY);
+
+  message("du %.5e in cgs %.5e", sp->deltaT_desired * sp->temp_to_u_factor, sp->deltaT_desired * sp->temp_to_u_factor * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY)/units_cgs_conversion_factor(us,UNIT_CONV_MASS));
   
   /* Set to 1 if using continuous heating, 0 for stochastic  */
   sp->continuous_heating = parser_get_opt_param_int(params, "Stars:continuous_heating", 0);

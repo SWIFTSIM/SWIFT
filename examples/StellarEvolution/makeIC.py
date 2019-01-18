@@ -20,52 +20,17 @@
 import h5py
 from numpy import *
 
-# Generates a swift IC file for the Sedov blast test in a periodic cubic box
+# Some constants
+solar_mass_cgs = 1.988480e33 
+kpc_in_cm = 3.085678e21
+mp_cgs = 1.67e-24
+boltzmann_k_cgs = 1.38e-16
 
 # Parameters
-gamma = 5./3.      # Gas adiabatic index
-rho0 = 1.          # Background density
-P0 = 1.e-6         # Background pressure
+gamma = 5./3.      			# Gas adiabatic index
+rho_cgs = mp_cgs        		# Background density
+P_cgs = boltzmann_k_cgs*1.0e4          	# Background pressure
 fileName = "stellar_evolution.hdf5" 
-
-#---------------------------------------------------
-glass = h5py.File("glassCube_64.hdf5", "r")
-
-# Read particle positions and h from the glass
-pos = glass["/PartType0/Coordinates"][:,:]
-eps = 1e-6
-pos = (pos - pos.min()) / (pos.max() - pos.min() + eps)
-h = glass["/PartType0/SmoothingLength"][:] * 0.3 * 3.3
-
-numPart = size(h)
-vol = 1.
-Boxsize = 1.
-
-# Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = zeros(numPart)
-u = zeros(numPart)
-r = zeros(numPart)
-
-r = sqrt((pos[:,0] - 0.5)**2 + (pos[:,1] - 0.5)**2 + (pos[:,2] - 0.5)**2)
-m[:] = rho0 * vol / numPart    
-u[:] = P0 / (rho0 * (gamma - 1))
-
-#--------------------------------------------------
-
-star_pos = zeros((1, 3))
-star_pos[:,:] = 0.5 * Boxsize
-
-star_v = zeros((1, 3))
-star_v[:,:] = 0.
-
-# increase mass to keep it at center
-star_m = 1e0 * array([rho0 * vol / numPart])
-star_ids = array([numPart + 1])
-star_h = array([h.max()])
-
-#--------------------------------------------------
 
 # Units
 unit_l_cgs = 3.085678e24
@@ -73,14 +38,59 @@ unit_m_cgs = 1.988480e43
 unit_t_cgs = 3.085678e19
 unit_A_cgs = 1.
 unit_T_cgs = 1.
+unit_v_cgs = unit_l_cgs/unit_t_cgs
 
-solar_mass_cgs = 1.988480e33 
-kpc_in_cm = 3.085678e21
-mp_cgs = 1.67e-24
-print("part mass/msun " + str(m[0]*unit_m_cgs/solar_mass_cgs) + " stellar mass/msun " + str(star_m*unit_m_cgs/solar_mass_cgs))
-print("boxsize kpc " + str(Boxsize*unit_l_cgs/kpc_in_cm))
-print("density cm^-3 " + str(rho0*unit_m_cgs/(unit_l_cgs*unit_l_cgs*unit_l_cgs*mp_cgs)))
-print("initial internal energy " + str(u[0]))
+boxsize_cgs = kpc_in_cm
+vol_cgs = boxsize_cgs**3
+
+#---------------------------------------------------
+glass = h5py.File("glassCube_32.hdf5", "r")
+
+# Read particle positions and h from the glass
+pos = glass["/PartType0/Coordinates"][:,:]
+eps = 1e-6
+pos = (pos - pos.min()) / (pos.max() - pos.min() + eps) * boxsize_cgs / unit_l_cgs
+h = glass["/PartType0/SmoothingLength"][:] * boxsize_cgs / unit_l_cgs
+
+numPart = size(h)
+
+# Generate extra arrays
+v = zeros((numPart, 3))
+ids = linspace(1, numPart, numPart)
+m_cgs = zeros(numPart)
+u_cgs = zeros(numPart)
+m = zeros(numPart)
+u = zeros(numPart)
+
+m_cgs[:] = rho_cgs * vol_cgs / numPart    
+u_cgs[:] = P_cgs / (rho_cgs * (gamma - 1))
+
+# Stars
+star_pos = zeros((1, 3))
+star_pos[:,:] = 0.5 * boxsize_cgs / unit_l_cgs
+
+star_v = zeros((1, 3))
+star_v[:,:] = 0.
+
+# increase mass to keep it at center
+star_m_cgs = 1e0 * array([rho_cgs * vol_cgs / numPart])
+star_ids = array([numPart + 1])
+star_h = array([h.max()])
+
+#--------------------------------------------------
+
+# Check quantities are correct for debugging
+print("part mass/msun " + str(m_cgs[0]/solar_mass_cgs) + " stellar mass/msun " + str(star_m_cgs/solar_mass_cgs))
+print("boxsize kpc " + str(boxsize_cgs/kpc_in_cm))
+print("density cm^-3 " + str(rho_cgs/mp_cgs))
+print("initial temperature K " + str(u_cgs[0] / boltzmann_k_cgs*((gamma - 1)*mp_cgs)))
+
+# Convert to internal units
+star_m = star_m_cgs/unit_m_cgs
+m[:] = m_cgs/unit_m_cgs
+u[:] = u_cgs*unit_v_cgs**-2
+boxsize = boxsize_cgs/unit_l_cgs
+
 
 #--------------------------------------------------
 
@@ -89,7 +99,7 @@ file = h5py.File(fileName, 'w')
 
 # Header
 grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [Boxsize]*3
+grp.attrs["BoxSize"] = [boxsize]*3
 grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 1, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 1, 0]
@@ -127,6 +137,5 @@ grp.create_dataset('Velocities', data=star_v, dtype='f')
 grp.create_dataset('Masses', data=star_m, dtype='f')
 grp.create_dataset('SmoothingLength', data=star_h, dtype='f')
 grp.create_dataset('ParticleIDs', data=star_ids, dtype='L')
-
 
 file.close()
