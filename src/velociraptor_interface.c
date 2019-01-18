@@ -27,6 +27,7 @@
 #include "velociraptor_interface.h"
 
 /* Local includes. */
+#include "cooling.h"
 #include "engine.h"
 #include "hydro.h"
 #include "swift_velociraptor_part.h"
@@ -276,9 +277,17 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
 #ifdef HAVE_VELOCIRAPTOR
 
+  const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct unit_system *us = e->internal_units;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct cooling_function_data *cool_func = e->cooling_func;
+
+  /* Handle on the particles */
   const struct space *s = e->s;
-  const struct gpart *gparts = s->gparts;
   const struct part *parts = s->parts;
+  const struct xpart *xparts = s->xparts;
+  const struct gpart *gparts = s->gparts;
   const struct spart *sparts = s->sparts;
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_parts = s->nr_parts;
@@ -432,7 +441,14 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   const float a_inv = e->cosmology->a_inv;
 
-  /* Convert particle properties into VELOCIraptor units */
+  /* Convert particle properties into VELOCIraptor units.
+   * VELOCIraptor wants:
+   * - Co-moving positions,
+   * - Peculiar velocities,
+   * - Co-moving potential,
+   * - Physical internal energy (for the gas),
+   * - Temperatures (for the gas).
+   */
   for (size_t i = 0; i < nr_gparts; i++) {
 
     swift_parts[i].x[0] = gparts[i].x[0];
@@ -459,23 +475,28 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
      * energies. */
     switch (gparts[i].type) {
 
-      case swift_type_gas:
+      case swift_type_gas: {
+        const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+        const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
 
         swift_parts[i].id = parts[-gparts[i].id_or_neg_offset].id;
-        swift_parts[i].u = hydro_get_drifted_physical_internal_energy(
-            &parts[-gparts[i].id_or_neg_offset], e->cosmology);
-        break;
+        swift_parts[i].u = hydro_get_drifted_physical_internal_energy(p, cosmo);
+        swift_parts[i].T = cooling_get_temperature(phys_const, hydro_props, us,
+                                                   cosmo, cool_func, p, xp);
+      } break;
 
       case swift_type_stars:
 
         swift_parts[i].id = sparts[-gparts[i].id_or_neg_offset].id;
         swift_parts[i].u = 0.f;
+        swift_parts[i].T = 0.f;
         break;
 
       case swift_type_dark_matter:
 
         swift_parts[i].id = gparts[i].id_or_neg_offset;
         swift_parts[i].u = 0.f;
+        swift_parts[i].T = 0.f;
         break;
 
       default:

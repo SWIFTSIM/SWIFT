@@ -42,6 +42,9 @@ struct swift_vel_part {
   /*! Internal energy of gas particle */
   float u;
 
+  /*! Temperature of a gas particle */
+  float T;
+
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
 
