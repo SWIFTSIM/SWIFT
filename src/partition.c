@@ -71,7 +71,7 @@ const char *initial_partition_name[] = {
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
     "none", "edge and vertex task cost weights", "task cost edge weights",
-    "particle memory weights",
+    "memory balanced, using particle vertex weights",
     "vertex task costs and edge delta timebin weights"};
 
 /* Local functions, if needed. */
@@ -1587,7 +1587,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
 
     /* And repartition. */
 #ifdef HAVE_PARMETIS
-  if (repartition_partition->usemetis) {
+  if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,

@@ -60,7 +60,7 @@ can be found by typing ``./swift -h``::
     -T, --timers=<int>                Print timers every time-step.
     -v, --verbose=<int>               Run in verbose mode, in MPI mode 2 outputs
                                       from all ranks.
-    -y, --task-dumps=<int>            Time-step frequency at which task graphs
-                                      are dumped.
+    -y, --task-dumps=<int>            Time-step frequency at which task analysis
+                                      files and/or tasks are dumped.
     -Y, --threadpool-dumps=<int>      Time-step frequency at which threadpool
                                       tasks are dumped.
