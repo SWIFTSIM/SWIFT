@@ -1081,6 +1081,8 @@ void write_output_serial(struct engine* e, const char* baseName,
                   parts, xparts, list + num_fields, e->cooling_func);
               num_fields += tracers_write_particles(
                   parts, xparts, list + num_fields, with_cosmology);
+              num_fields += sftracers_write_particles(
+                  parts, xparts, list + num_fields, with_cosmology);
 
             } else {
 
@@ -1109,6 +1111,9 @@ void write_output_serial(struct engine* e, const char* baseName,
                                           list + num_fields, e->cooling_func);
               num_fields +=
                   tracers_write_particles(parts_written, xparts_written,
+                                          list + num_fields, with_cosmology);
+              num_fields +=
+                  sftracers_write_particles(parts_written, xparts_written,
                                           list + num_fields, with_cosmology);
             }
           } break;
@@ -1144,6 +1149,9 @@ void write_output_serial(struct engine* e, const char* baseName,
               /* No inhibted particles: easy case */
               Nparticles = Nstars;
               stars_write_particles(sparts, list, &num_fields);
+              num_fields += chemistry_write_sparticles(sparts, list + num_fields);
+              num_fields += tracers_write_sparticles(sparts, list + num_fields,
+                  with_cosmology);
             } else {
 
               /* Ok, we need to fish out the particles we want */
@@ -1160,6 +1168,9 @@ void write_output_serial(struct engine* e, const char* baseName,
 
               /* Select the fields to write */
               stars_write_particles(sparts_written, list, &num_fields);
+              num_fields += chemistry_write_sparticles(sparts, list + num_fields);
+              num_fields += tracers_write_sparticles(sparts, list + num_fields,
+                  with_cosmology);
             }
           } break;
 

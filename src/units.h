@@ -95,7 +95,8 @@ enum unit_conversion_factor {
   UNIT_CONV_TEMPERATURE,
   UNIT_CONV_VOLUME,
   UNIT_CONV_INV_VOLUME,
-  UNIT_CONV_SFR
+  UNIT_CONV_SFR,
+  UNIT_CONV_SSFR
 };
 
 void units_init_cgs(struct unit_system*);

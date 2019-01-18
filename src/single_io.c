@@ -52,6 +52,7 @@
 #include "part_type.h"
 #include "stars_io.h"
 #include "tracers_io.h"
+#include "sftracers_io.h"
 #include "units.h"
 #include "xmf.h"
 
@@ -775,6 +776,7 @@ void write_output_single(struct engine* e, const char* baseName,
   cooling_write_flavour(h_grp, e->cooling_func);
   chemistry_write_flavour(h_grp);
   tracers_write_flavour(h_grp);
+  sftracers_write_flavour(h_grp);
   H5Gclose(h_grp);
 
   /* Print the gravity parameters */
@@ -900,6 +902,8 @@ void write_output_single(struct engine* e, const char* baseName,
               parts, xparts, list + num_fields, e->cooling_func);
           num_fields += tracers_write_particles(
               parts, xparts, list + num_fields, with_cosmology);
+          num_fields += sftracers_write_particles(
+              parts, xparts, list + num_fields, with_cosmology);
 
         } else {
 
@@ -927,6 +931,8 @@ void write_output_single(struct engine* e, const char* baseName,
               cooling_write_particles(parts_written, xparts_written,
                                       list + num_fields, e->cooling_func);
           num_fields += tracers_write_particles(
+              parts_written, xparts_written, list + num_fields, with_cosmology);
+          num_fields += sftracers_write_particles(
               parts_written, xparts_written, list + num_fields, with_cosmology);
         }
       } break;
@@ -961,6 +967,9 @@ void write_output_single(struct engine* e, const char* baseName,
           /* No inhibted particles: easy case */
           N = Nstars;
           stars_write_particles(sparts, list, &num_fields);
+          num_fields += chemistry_write_sparticles(sparts, list + num_fields);
+          num_fields += tracers_write_sparticles(
+              sparts, list + num_fields, with_cosmology);
         } else {
 
           /* Ok, we need to fish out the particles we want */
@@ -977,6 +986,9 @@ void write_output_single(struct engine* e, const char* baseName,
 
           /* Select the fields to write */
           stars_write_particles(sparts_written, list, &num_fields);
+          num_fields += chemistry_write_sparticles(sparts_written, list + num_fields);
+          num_fields += tracers_write_sparticles(
+              sparts_written, list + num_fields, with_cosmology);
         }
       } break;
 

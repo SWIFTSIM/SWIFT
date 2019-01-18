@@ -35,6 +35,7 @@
 #include "cooling_struct.h"
 #include "logger.h"
 #include "tracers_struct.h"
+#include "sftracers_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
@@ -60,8 +61,8 @@ struct xpart {
   /* Additional data used by the tracers */
   struct tracers_xpart_data tracers_data;
 
-  /* SFR label */
-  float SFR;
+  /* Additional data used by the tracers */
+  struct sftracers_xpart_data sftracers_data;
 
 #ifdef WITH_LOGGER
   /* Additional data for the particle logger */

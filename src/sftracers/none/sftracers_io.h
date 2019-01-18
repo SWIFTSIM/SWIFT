@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_TRACERS_NONE_IO_H
-#define SWIFT_TRACERS_NONE_IO_H
+#ifndef SWIFT_SFTRACERS_NONE_IO_H
+#define SWIFT_SFTRACERS_NONE_IO_H
 
 /* Config parameters. */
 #include "../config.h"
@@ -34,10 +34,10 @@
  * @param h_grp The HDF5 group in which to write
  * @param tracers The #tracers_function_data
  */
-__attribute__((always_inline)) INLINE static void tracers_write_flavour(
+__attribute__((always_inline)) INLINE static void sftracers_write_flavour(
     hid_t h_grp) {
 
-  io_write_attribute_s(h_grp, "Tracers", "none");
+  io_write_attribute_s(h_grp, "Star formation tracers", "none");
 }
 #endif
 
@@ -50,17 +50,11 @@ __attribute__((always_inline)) INLINE static void tracers_write_flavour(
  *
  * @return Returns the number of fields to write.
  */
-__attribute__((always_inline)) INLINE static int tracers_write_particles(
+__attribute__((always_inline)) INLINE static int sftracers_write_particles(
     const struct part* parts, const struct xpart* xparts, struct io_props* list,
     const int with_cosmology) {
 
   return 0;
 }
 
-__attribute__((always_inline)) INLINE static int tracers_write_sparticles(
-    const struct spart* sparts, struct io_props* list,
-    const int with_cosmology) {
-
-  return 0;
-}
-#endif /* SWIFT_TRACERS_NONE_IO_H */
+#endif /* SWIFT_SFTRACERS_NONE_IO_H */
