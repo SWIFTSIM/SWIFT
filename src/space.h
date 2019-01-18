@@ -35,6 +35,7 @@
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
+#include "velociraptor_struct.h"
 
 /* Avoid cyclic inclusions */
 struct cell;
@@ -236,6 +237,9 @@ struct space {
 
   /*! The associated engine. */
   struct engine *e;
+
+  /*! The group information returned by VELOCIraptor for each #gpart. */
+  struct velociraptor_gpart_data *gpart_group_data;
 
 #ifdef WITH_MPI
 

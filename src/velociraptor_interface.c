@@ -31,6 +31,7 @@
 #include "engine.h"
 #include "hydro.h"
 #include "swift_velociraptor_part.h"
+#include "velociraptor_struct.h"
 
 #ifdef HAVE_VELOCIRAPTOR
 
@@ -167,7 +168,7 @@ struct groupinfo {
   int index;
 
   /*! Group number of the #gpart. */
-  long long groupid;
+  long long groupID;
 };
 
 int InitVelociraptor(char *config_name, struct unitinfo unit_info,
@@ -525,9 +526,18 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Assign the group IDs back to the gparts */
   if (linked_with_snap) {
 
+    if (posix_memalign((void **)&s->gpart_group_data, part_align,
+                       nr_gparts * sizeof(struct velociraptor_gpart_data)) != 0)
+      error("Failed to allocate array of gpart data for VELOCIraptor i/o.");
+
+    struct velociraptor_gpart_data *data = s->gpart_group_data;
+
+    /* Zero the array (#gpart not in groups have an ID of 0) */
+    bzero(data, nr_gparts * sizeof(struct velociraptor_gpart_data));
+
+    /* Copy the data at the right place */
     for (int i = 0; i < num_gparts_in_groups; i++) {
-      ///\todo need to update particle structure to include a group id
-      // gparts[group_info[i].index].groupid=group_info[i].index;
+      data[group_info[i].index].groupID = group_info[i].groupID;
     }
 
     /* Free the array returned by VELOCIraptor */

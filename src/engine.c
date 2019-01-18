@@ -3209,6 +3209,13 @@ void engine_check_for_dumps(struct engine *e) {
         engine_dump_snapshot(e);
 #endif
 
+        /* Free the memory allocated for VELOCIraptor i/o. */
+        if (with_stf && e->snapshot_invoke_stf) {
+#ifdef HAVE_VELOCIRAPTOR
+          free(e->s->gpart_group_data);
+#endif
+        }
+
         /* ... and find the next output time */
         engine_compute_next_snapshot_time(e);
         break;
