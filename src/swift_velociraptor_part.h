@@ -21,7 +21,13 @@
 
 #include "part_type.h"
 
-/* SWIFT/VELOCIraptor particle. */
+/**
+ * @brief SWIFT/VELOCIraptor particle.
+ *
+ * This should match the structure Swift::swift_vel_part
+ * defined in the file NBodylib/src/NBody/SwiftParticle.h
+ * of the VELOCIraptor code.
+ */
 struct swift_vel_part {
 
   /*! Particle ID. */

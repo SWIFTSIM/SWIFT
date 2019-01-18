@@ -532,7 +532,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
     struct velociraptor_gpart_data *data = s->gpart_group_data;
 
-    /* Zero the array (#gpart not in groups have an ID of 0) */
+    /* Zero the array (gparts not in groups have an ID of 0) */
     bzero(data, nr_gparts * sizeof(struct velociraptor_gpart_data));
 
     /* Copy the data at the right place */
