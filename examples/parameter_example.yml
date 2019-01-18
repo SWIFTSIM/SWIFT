@@ -139,28 +139,24 @@ Restarts:
 
 # Parameters governing domain decomposition
 DomainDecomposition:
-  initial_type:     memory  # (Optional) The initial decomposition strategy: "grid",
-                            #            "region", "memory", or "vectorized".
-  initial_grid: [10,10,10]  # (Optional) Grid sizes if the "grid" strategy is chosen.
+  initial_type:     memory    # (Optional) The initial decomposition strategy: "grid",
+                              #            "region", "memory", or "vectorized".
+  initial_grid: [10,10,10]    # (Optional) Grid sizes if the "grid" strategy is chosen.
 
-  repartition_type: costs/costs # (Optional) The re-decomposition strategy, one of:
-                            # "none/none", "costs/costs", "none/costs", "memory" or "costs/time".
-                            # These are vertex/edge weights with "costs" as task timing
-                            # and "time" as the expected time of the next
-                            # updates, "memory" uses the particle memory use
-                            # as vertex weights.
-
-  trigger:          0.05    # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
-                            # new decomposition, or number of steps (>1) between decompositions
-  minfrac:          0.9     # (Optional) Fractional of all particles that should be updated in previous step when
-                            # using CPU time trigger
-  usemetis:         0       # Use serial METIS when ParMETIS is also available.
-  adaptive:         1       # Use adaptive repartition when ParMETIS is available, otherwise simple refinement.
-  itr:              100     # When adaptive defines the ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0.
-                            # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
-  use_fixed_costs:  1       # If 1 then use any compiled in fixed costs for
-                            # task weights in first repartition, if 0 only use task timings, if > 1 only use
-                            # fixed costs, unless none are available.
+  repartition_type: fullcosts # (Optional) The re-decomposition strategy, one of:
+                              # "none", "fullcosts", "edgecosts", "memory" or
+                              # "timecosts".
+  trigger:          0.05      # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
+                              # new decomposition, or number of steps (>1) between decompositions
+  minfrac:          0.9       # (Optional) Fractional of all particles that should be updated in previous step when
+                              # using CPU time trigger
+  usemetis:         0         # Use serial METIS when ParMETIS is also available.
+  adaptive:         1         # Use adaptive repartition when ParMETIS is available, otherwise simple refinement.
+  itr:              100       # When adaptive defines the ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0.
+                              # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
+  use_fixed_costs:  1         # If 1 then use any compiled in fixed costs for
+                              # task weights in first repartition, if 0 only use task timings, if > 1 only use
+                              # fixed costs, unless none are available.
 
 # Parameters related to the equation of state ------------------------------------------
 

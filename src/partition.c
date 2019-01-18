@@ -1840,10 +1840,10 @@ void partition_init(struct partition *partition,
 
 /* Defaults make use of METIS if available */
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
-  const char *default_repart = "costs/costs";
+  const char *default_repart = "fullcosts";
   const char *default_part = "memory";
 #else
-  const char *default_repart = "none/none";
+  const char *default_repart = "none";
   const char *default_part = "grid";
 #endif
 
@@ -1896,32 +1896,32 @@ void partition_init(struct partition *partition,
   parser_get_opt_param_string(params, "DomainDecomposition:repartition_type",
                               part_type, default_repart);
 
-  if (strcmp("none/none", part_type) == 0) {
+  if (strcmp("none", part_type) == 0) {
     repartition->type = REPART_NONE;
 
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
-  } else if (strcmp("costs/costs", part_type) == 0) {
+  } else if (strcmp("fullcosts", part_type) == 0) {
     repartition->type = REPART_METIS_VERTEX_EDGE_COSTS;
 
-  } else if (strcmp("none/costs", part_type) == 0) {
+  } else if (strcmp("edgecosts", part_type) == 0) {
     repartition->type = REPART_METIS_EDGE_COSTS;
 
   } else if (strcmp("memory", part_type) == 0) {
     repartition->type = REPART_METIS_VERTEX_COUNTS;
 
-  } else if (strcmp("costs/time", part_type) == 0) {
+  } else if (strcmp("timecosts", part_type) == 0) {
     repartition->type = REPART_METIS_VERTEX_COSTS_TIMEBINS;
 
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
     error(
-        "Permitted values are: 'none/none', 'costs/costs', 'none/costs' "
-        "'costs/none' or 'costs/time'");
+        "Permitted values are: 'none', 'fullcosts', 'edgecosts' "
+        "'memory' or 'timecosts'");
 #else
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
     error(
-        "Permitted values are: 'none/none' when compiled without "
+        "Permitted values are: 'none' when compiled without "
         "METIS or ParMETIS.");
 #endif
   }
