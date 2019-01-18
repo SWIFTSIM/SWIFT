@@ -53,6 +53,7 @@
 #include "part_type.h"
 #include "stars_io.h"
 #include "tracers_io.h"
+#include "sftracers_io.h"
 #include "units.h"
 #include "xmf.h"
 
