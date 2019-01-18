@@ -595,8 +595,101 @@ Scheduler
 
 .. _Parameters_domain_decomposition:
 
-Domain Decomposition
+DomainDecomposition:
 --------------------
+
+This section determines how the top level cells are distributed between the
+ranks of an MPI run. Ideally this should give each rank a similar amount of
+work to do, so that all the ranks complete at the same time. Achieving a good
+balance requires that SWIFT is compiled with either the ParMETIS or METIS
+libraries. ParMETIS is an MPI version of METIS, so is preferred.
+
+When SWIFT first starts it does an initial distribution of the cells. At this
+time the only information available is the cell structure and the particles
+each cell contains. The type of partitioning attempted is controlled by the::
+
+
+  DomainDecomposition:
+    initial_type:
+
+parameter. Which has the possible values:
+
+    * memory
+
+    This is the default if METIS or ParMETIS is available. It performs a 
+    distribution based on the size of all the particles in each cell, so we
+    attempt to assign equal memory use to each rank. How successful this is
+    depends on the distribution of cells and particles and the number of
+    ranks, clearly if most of the particles are in one cell, or region of the
+    volume, balance is impossible or difficult. For this reason it is
+    suggested that the number of top-level cells used is adapted as necessary
+    as the finer granularity can help in these conditions.
+
+    * region
+
+    One other METIS/ParMETIS option is "region". This attempts to assign equal
+    numbers of cells to each rank, with the surface area of the regions minimised
+    (so we get blobs, rather than rectangular volumes of cells).
+
+If ParMETIS and METIS are not available two other options are possible, but
+may give a poor partition:
+
+    * grid
+
+    Split the cells into a number of axis aligned regions. The number of
+    splits per axis is controlled by the::
+
+    initial_grid:
+
+    parameter. It takes an array of three values. The product of these values
+    must equal the number of MPI ranks. If not set a suitable default will be used.
+
+    * vectorized
+
+    Allocate the cells on the basis of a picked set of seed positions. The
+    seed positions are picked every nranks along a vectorized cell list (1D
+    representation). This is guaranteed to give an initial partition for all
+    cases when the number of cells is greater equal to the number of MPI
+    ranks, so can be used if the others fail. Don't use this.
+    
+If ParMETIS and METIS are not available then only an initial partition will be
+performed. So the balance will be compromised by the quality of the initial
+partition and the fact that the volume will evolve during the run.
+
+When ParMETIS or METIS is available we can consider adjusting the balance
+during the run, so we can improve from the initial partition and track
+changes that require a different balance. The initial partition is usually
+not optimal as although it may have balanced the distribution of particles
+it has not taken account of the fact that different particles and types
+require differing amounts of processing and we have not considered that
+we need to do work `between` cells. This latter point is important as we are
+running an MPI job, so inter-cell communication may be very expensive.
+
+none, fullcosts, edgecosts, memory, timecosts
+
+
+
+  repartition_type: costs/costs # (Optional) The re-decomposition strategy, one of:
+                            # "none/none", "costs/costs", "none/costs", "memory" or "costs/time".
+                            # These are vertex/edge weights with "costs" as task timing
+                            # and "time" as the expected time of the next
+                            # updates, "memory" uses the particle memory use
+                            # as vertex weights.
+
+  trigger:          0.05    # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
+                            # new decomposition, or number of steps (>1) between decompositions
+  minfrac:          0.9     # (Optional) Fractional of all particles that should be updated in previous step when
+                            # using CPU time trigger
+  usemetis:         0       # Use serial METIS when ParMETIS is also available.
+  adaptive:         1       # Use adaptive repartition when ParMETIS is available, otherwise simple refinement.
+  itr:              100     # When adaptive defines the ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0.
+                            # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
+  use_fixed_costs:  1       # If 1 then use any compiled in fixed costs for
+                            # task weights in first repartition, if 0 only use task timings, if > 1 only use
+                            # fixed costs, unless none are available.
+
+
+
 
 .. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's constant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
 
