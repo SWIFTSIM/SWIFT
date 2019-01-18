@@ -54,6 +54,7 @@
 #include "stars_io.h"
 #include "tracers_io.h"
 #include "units.h"
+#include "velociraptor_io.h"
 #include "xmf.h"
 
 /* The current limit of ROMIO (the underlying MPI-IO layer) is 2GB */
@@ -1150,6 +1151,11 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
 
       case swift_type_dark_matter:
         darkmatter_write_particles(gparts, list, &num_fields);
+        if (with_stf) {
+#ifdef HAVE_VELOCIRAPTOR
+          num_fields += velociraptor_write_gparts(gparts, list + num_fields);
+#endif
+        }
         break;
 
       case swift_type_stars:
@@ -1221,6 +1227,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const struct spart* sparts = e->s->sparts;
   struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int with_stf = (e->policy & engine_policy_structure_finding) &&
+                       (e->s->gpart_group_data != NULL);
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
 
@@ -1481,6 +1489,11 @@ void write_output_parallel(struct engine* e, const char* baseName,
           /* This is a DM-only run without inhibited particles */
           Nparticles = Ntot;
           darkmatter_write_particles(gparts, list, &num_fields);
+          if (with_stf) {
+#ifdef HAVE_VELOCIRAPTOR
+            num_fields += velociraptor_write_gparts(gparts, list + num_fields);
+#endif
+          }
         } else {
 
           /* Ok, we need to fish out the particles we want */
@@ -1496,6 +1509,12 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
           /* Write DM particles */
           darkmatter_write_particles(gparts_written, list, &num_fields);
+          if (with_stf) {
+#ifdef HAVE_VELOCIRAPTOR
+            num_fields +=
+                velociraptor_write_gparts(gparts_written, list + num_fields);
+#endif
+          }
         }
       } break;
 
