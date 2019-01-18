@@ -358,6 +358,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
 	const int should_do = t_subtype == task_subtype_stars_density ||
 	  cj->nodeID != ci->nodeID;
+
         /* Set the correct sorting flags */
         if (t_type == task_type_pair) {
 

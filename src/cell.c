@@ -4010,6 +4010,10 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, sp->h);
 
+      /* Get ready for a density calculation */
+      if (spart_is_active(sp, e)) {
+        stars_init_spart(sp);
+      }
     } /* Note: no need to compute dx_max as all spart have a gpart */
 
     /* Now, get the maximal particle motion from its square */
