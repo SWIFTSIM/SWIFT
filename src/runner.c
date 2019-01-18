@@ -2841,7 +2841,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
 
 #ifdef WITH_MPI
 
-  const struct spart *restrict sparts = c->stars.parts;
+  struct spart *restrict sparts = c->stars.parts;
   const size_t nr_sparts = c->stars.count;
   const integertime_t ti_current = r->e->ti_current;
 
@@ -2866,6 +2866,9 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_sparts; k++) {
+#ifdef DEBUG_INTERACTIONS_STARS
+      sparts[k].num_ngb_force = 0;
+#endif
       if (sparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, sparts[k].time_bin);
       time_bin_max = max(time_bin_max, sparts[k].time_bin);
