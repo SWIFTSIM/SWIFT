@@ -90,6 +90,9 @@ void hydro_props_init(struct hydro_props *p,
   p->max_smoothing_iterations = parser_get_opt_param_int(
       params, "SPH:max_ghost_iterations", hydro_props_default_max_iterations);
 
+  if (p->max_smoothing_iterations <= 10)
+    error("The number of smoothing length iterations should be > 10");
+
   /* Time integration properties */
   p->CFL_condition = parser_get_param_float(params, "SPH:CFL_condition");
   const float max_volume_change = parser_get_opt_param_float(

@@ -98,6 +98,14 @@ int cell_getsize(struct cell *c) {
  */
 int cell_link_parts(struct cell *c, struct part *parts) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->hydro.parts != NULL)
+    error("Linking parts into a cell that was already linked");
+#endif
+
   c->hydro.parts = parts;
 
   /* Fill the progeny recursively, depth-first. */
@@ -122,6 +130,14 @@ int cell_link_parts(struct cell *c, struct part *parts) {
  * @return The number of particles linked.
  */
 int cell_link_gparts(struct cell *c, struct gpart *gparts) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->grav.parts != NULL)
+    error("Linking gparts into a cell that was already linked");
+#endif
 
   c->grav.parts = gparts;
 
@@ -148,6 +164,14 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
  */
 int cell_link_sparts(struct cell *c, struct spart *sparts) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->stars.parts != NULL)
+    error("Linking sparts into a cell that was already linked");
+#endif
+
   c->stars.parts = sparts;
 
   /* Fill the progeny recursively, depth-first. */
@@ -161,6 +185,182 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
 
   /* Return the total number of linked particles. */
   return c->stars.count;
+}
+
+/**
+ * @brief Recurse down foreign cells until reaching one with hydro
+ * tasks; then trigger the linking of the #part array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param parts The #part array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_parts(struct cell *c, struct part *parts) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.hydro.recv_xv != NULL) {
+
+    /* Recursively attach the parts */
+    const int counts = cell_link_parts(c, parts);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (counts != c->hydro.count)
+      error("Something is wrong with the foreign counts");
+#endif
+    return counts;
+  }
+
+  /* Go deeper to find the level where the tasks are */
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        count += cell_link_foreign_parts(c->progeny[k], &parts[count]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recurse down foreign cells until reaching one with gravity
+ * tasks; then trigger the linking of the #gpart array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param gparts The #gpart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.grav.recv != NULL) {
+
+    /* Recursively attach the gparts */
+    const int counts = cell_link_gparts(c, gparts);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (counts != c->grav.count)
+      error("Something is wrong with the foreign counts");
+#endif
+    return counts;
+  }
+
+  /* Go deeper to find the level where the tasks are */
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        count += cell_link_foreign_gparts(c->progeny[k], &gparts[count]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recursively count the number of #part in foreign cells that
+ * are in cells with hydro-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
+int cell_count_parts_for_tasks(const struct cell *c) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Counting foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.hydro.recv_xv != NULL) {
+    return c->hydro.count;
+  }
+
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        count += cell_count_parts_for_tasks(c->progeny[k]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recursively count the number of #gpart in foreign cells that
+ * are in cells with gravity-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
+int cell_count_gparts_for_tasks(const struct cell *c) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Counting foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.grav.recv != NULL) {
+    return c->grav.count;
+  }
+
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        count += cell_count_gparts_for_tasks(c->progeny[k]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
 }
 
 /**
