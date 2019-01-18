@@ -956,6 +956,8 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   const struct spart* sparts = e->s->sparts;
   struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int with_stf = (e->policy & engine_policy_structure_finding) &&
+                       (e->s->gpart_group_data != NULL);
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
 
