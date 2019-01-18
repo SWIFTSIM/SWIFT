@@ -1588,7 +1588,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
     /* And repartition. */
 #ifdef HAVE_PARMETIS
   if (repartition_partition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, weights, NULL, reparition->celllist);
+    pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
                   repartition->adaptive, repartition->itr,
