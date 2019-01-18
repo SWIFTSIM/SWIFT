@@ -94,7 +94,8 @@ labels = [
     "engine_split:",
     "space_init",
     "engine_init",
-    "engine_repartition_trigger:"
+    "engine_repartition_trigger:",
+    "velociraptor_invoke:"
 ]
 is_rebuild = [
     1,
@@ -131,6 +132,7 @@ is_rebuild = [
     0,
     0,
     1,
+    0,
     0,
     0,
     0,
