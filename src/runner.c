@@ -1537,6 +1537,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     }
 
     /* Be clean */
+    free(left);
+    free(right);
     free(pid);
     free(h_0);
   }
