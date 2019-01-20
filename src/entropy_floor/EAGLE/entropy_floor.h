@@ -206,10 +206,15 @@ static INLINE void entropy_floor_init(struct entropy_floor_properties *props,
       props->Cool_density_threshold;
 }
 
+/**
+ * @brief Print the properties of the entropy floor to stdout.
+ *
+ * @param props The entropy floor properties.
+ */
 static INLINE void entropy_floor_print(
     const struct entropy_floor_properties *props) {
 
-  message("Entropy floor is EAGLE with:");
+  message("Entropy floor is 'EAGLE' with:");
   message("Jeans limiter with slope n=%.3f at rho=%e (%e H/cm^3) and T=%.1f K",
           props->Jeans_gamma_effective, props->Jeans_density_threshold,
           props->Jeans_density_threshold_H_p_cm3,
