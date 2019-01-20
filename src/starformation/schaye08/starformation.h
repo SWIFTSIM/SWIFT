@@ -218,26 +218,27 @@ INLINE static int star_formation_convert_to_star(
   if (star_formation_potential_to_become_star(
           starform, p, xp, phys_const, cosmo, hydro_props, us, cooling)) {
     /* Get the pressure */
-    
+
     const double pressure =
         starform->EOS_pressure_norm *
         pow(hydro_get_physical_density(p, cosmo) *
                 p->chemistry_data.smoothed_metal_mass_fraction[0] /
                 starform->EOS_density_norm / phys_const->const_proton_mass,
             starform->polytropic_index);
-    
 
     double SFRpergasmass;
     if (hydro_get_physical_density(p, cosmo) <
         starform->KS_high_den_thresh * phys_const->const_proton_mass) {
       /* Calculate the star formation rate */
-      SFRpergasmass = starform->SF_normalization *
-                                   pow(pressure, starform->SF_power_law);
-      //SFRpergasmass = starform->KS_normalization * pow(starform->Msunpsquaredpc,-starform->KS_power_law)*
-      //    pow(hydro_gamma * starform->fgas / phys_const->const_newton_G * pressure, (starform->KS_power_law-1.f)/2.f );
+      SFRpergasmass =
+          starform->SF_normalization * pow(pressure, starform->SF_power_law);
+      // SFRpergasmass = starform->KS_normalization *
+      // pow(starform->Msunpsquaredpc,-starform->KS_power_law)*
+      //    pow(hydro_gamma * starform->fgas / phys_const->const_newton_G *
+      //    pressure, (starform->KS_power_law-1.f)/2.f );
     } else {
       SFRpergasmass = starform->SF_high_den_normalization *
-                                   pow(pressure, starform->SF_high_den_power_law);
+                      pow(pressure, starform->SF_high_den_power_law);
     }
 
     /* Store the SFR */
@@ -262,10 +263,10 @@ INLINE static int star_formation_convert_to_star(
   /* Check if it is the first time steps after star formation */
   if (xp->sftracers_data.SFR > 0.f) {
     if (with_cosmology) {
-      xp->sftracers_data.SFR = - cosmo->a;
+      xp->sftracers_data.SFR = -cosmo->a;
       xp->sftracers_data.sSFR = 0.f;
     } else {
-      xp->sftracers_data.SFR = - e->time;
+      xp->sftracers_data.SFR = -e->time;
       xp->sftracers_data.sSFR = 0.f;
     }
   }
