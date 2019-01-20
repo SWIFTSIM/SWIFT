@@ -5312,7 +5312,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->hydro_properties = hydro_properties;
 
   struct entropy_floor_properties *entropy_floor =
-      (struct entropy_floor_properties *)malloc(sizeof(struct entropy_floor_properties));
+      (struct entropy_floor_properties *)malloc(
+          sizeof(struct entropy_floor_properties));
   entropy_floor_struct_restore(entropy_floor, stream);
   e->entropy_floor = entropy_floor;
 
