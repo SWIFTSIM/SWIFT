@@ -224,6 +224,18 @@ static INLINE void entropy_floor_print(
           props->Cool_density_threshold_H_p_cm3, props->Cool_temperature_norm);
 }
 
+#ifdef HAVE_HDF5
+
+/**
+ * @brief Writes the current model of entropy floor to the file
+ * @param h_grp The HDF5 group in which to write
+ */
+INLINE static void entropy_floor_write_flavour(hid_t h_grp) {
+
+  io_write_attribute_s(h_grp, "Entropy floor", "EAGLE");
+}
+#endif
+
 /**
  * @brief Write an entropy floor struct to the given FILE as a stream of bytes.
  *

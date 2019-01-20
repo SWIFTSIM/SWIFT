@@ -76,6 +76,18 @@ static INLINE void entropy_floor_print(
   message("Entropy floor is 'no entropy floor'.");
 }
 
+#ifdef HAVE_HDF5
+
+/**
+ * @brief Writes the current model of entropy floor to the file
+ * @param h_grp The HDF5 group in which to write
+ */
+INLINE static void entropy_floor_write_flavour(hid_t h_grp) {
+
+  io_write_attribute_s(h_grp, "Entropy floor", "None");
+}
+#endif
+
 /**
  * @brief Write an entropy floor struct to the given FILE as a stream of bytes.
  *
