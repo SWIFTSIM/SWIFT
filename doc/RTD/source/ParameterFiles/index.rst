@@ -6,6 +6,8 @@
 Parameter Files
 ===============
 
+.. _Parameters_basics:
+
 File format and basic information
 ---------------------------------
 
@@ -55,19 +57,20 @@ when not provided, SWIFT will run with the default value. However, if
 a compulsory parameter is missing an error will be raised at
 start-up.
 
-Finally, SWIFT outputs two YAML files at the start of a run. The first
-one ``used_parameters.yml`` contains all the parameters that were used
-for this run, **including all the optional parameters with their
-default values**. This file can be used to start an exact copy of the
-run. The second file, ``unused_parameters.yml`` contains all the
-values that were not read from the parameter file. This can be used to
-simplify the parameter file or check that nothing important was
-ignored (for instance because the code is not configured to use some
-options).
+Finally, SWIFT outputs two YAML files at the start of a run. The first one
+``used_parameters.yml`` contains all the parameters that were used for this run,
+**including all the optional parameters left unspecified with their default
+values**. This file can be used to start an exact copy of the run. The second
+file, ``unused_parameters.yml`` contains all the values that were not read from
+the parameter file. This can be used to simplify the parameter file or check
+that nothing important was ignored (for instance because the code is not
+configured to use some options).
 
 The rest of this page describes all the SWIFT parameters, split by
 section. A list of all the possible parameters is kept in the file
 ``examples/parameter_examples.yml``.
+
+.. _Parameters_units:
 
 Internal Unit System
 --------------------
@@ -75,8 +78,8 @@ Internal Unit System
 The ``InternalUnitSystem`` section describes the units used internally by the
 code. This is the system of units in which all the equations are solved. All
 physical constants are converted to this system and if the ICs use a different
-system (see :ref:`ICs_units_label`) the particle quantities will be converted
-when read in.
+system (see the snapshots' ref:`ICs_units_label` section of the documentation)
+the particle quantities will be converted when read in.
 
 The system of units is described using the value of the 5 basic units
 of any system with respect to the CGS system. Instead of using a unit
@@ -128,6 +131,8 @@ system <https://en.wikipedia.org/wiki/FFF_system>`_ one would use
 
 The value of the physical constants in this system is left as an
 exercise for the reader [#f1]_.
+
+.. _Parameters_cosmology:
 
 Cosmology
 ---------
@@ -181,7 +186,9 @@ use the following parameters:
 
 When running a non-cosmological simulation (i.e. without the ``-c`` run-time
 flag) this section of the YAML file is entirely ignored.
-     
+
+.. _Parameters_gravity:
+
 Gravity
 -------
 
@@ -244,9 +251,13 @@ simulation:
      r_cut_max:    4.5                  # Default optional value
      r_cut_min:    0.1                  # Default optional value
 
-      
+
+.. _Parameters_SPH:
+     
 SPH
 ---
+
+.. _Parameters_time_integration:
 
 Time Integration
 ----------------
@@ -305,10 +316,12 @@ Whilst for a cosmological run, one would need:
     dt_min:            1e-10
     max_dt_RMS_factor: 0.25     # Default optional value
 
+.. _Parameters_ICs:
+    
 Initial Conditions
 ------------------
 
-This ``InitialConditions`` section of the parameter file contains all the options related to
+The ``InitialConditions`` section of the parameter file contains all the options related to
 the initial conditions. The main two parameters are
 
 * The name of the initial conditions file: ``file_name``,
@@ -365,7 +378,9 @@ be:
      generate_gas_in_ics:         1     
      cleanup_smoothing_lengths:   1  
 
-  
+
+.. _Parameters_constants:
+     
 Physical Constants
 ------------------
 
@@ -388,20 +403,111 @@ This option is only used for specific tests and debugging. This entire
 section of the YAML file can typically be left out. More constants may
 be handled in the same way in future versions.
 
+.. _Parameters_snapshots:
+
 Snapshots
 ---------
+
+The ``Snapshots`` section of the parameter file contains all the options related to
+the dump of simulation outputs in the form of HDF5 :ref:`snapshots`. The main
+parameter is the base name that will be used for all the outputs in the run:
+
+* The base name of the HDF5 snapshots: ``basename``.
+
+This name will then be appended by an under-score and 6 digits followed by
+``.hdf5`` (e.g. ``base_name_001234.hdf5``). The 6 digits are used to label the
+different outputs, starting at ``000000``. In the default setup the digits
+simply increase by one for each snapshot. However, if the optional parameter
+``int_time_label_on`` is switched on, then the 6-digits will the physical time
+of the simulation rounded to the nearest integer [#f3]_. 
+
+The time of the first snapshot is controlled by the two following options:
+
+* Time of the first snapshot (non-cosmological runs): ``time_first``,
+* Scale-factor of the first snapshot (cosmological runs): ``scale_factor_first``.
+
+One of those two parameters has to be provided depending on the type of run. In
+the case of non-cosmological runs, the time of the first snapshot is expressed
+in the internal units of time. Users also have to provide the difference in time
+(or scale-factor) between consecutive outputs:
+
+* Time difference between consecutive outputs: ``delta_time``.
+
+In non-cosmological runs this is also expressed in internal units. For
+cosmological runs, this value is *multiplied* to obtain the scale-factor of the
+next snapshot. This implies that the outputs are equally space in
+:math:`\log(a)` (See :ref:`Output_list_label` to have snapshots not regularly spaced in time).
+
+Users can optionally specify the level of compression used by the HDF5 libary
+using the parameter:
+
+* GZIP compression level of the HDF5 arrays: ``compression`` (default: ``0``).
+
+The default level of ``0`` implies no compression and values have to be in the
+range :math:`[0-9]`. This integer is passed to the i/o library and used for the
+lossless GZIP compression algorithm. Higher values imply higher compression but
+also more time spent deflating and inflating the data. Note that up until HDF5
+1.10.x this option is not available when using the MPI-parallel version of the
+i/o routines.
+
+Finally, it is possible to specify a different system of units for the snapshots
+than the one that was used internally by SWIFT. The format is identical to the
+one described above (See the :ref:`Parameters_units` section) and read:
+
+* a unit of length: ``UnitLength_in_cgs`` (default: ``InternalUnitSystem:UnitLength_in_cgs``),
+* a unit of mass: ``UnitMass_in_cgs`` (default: ``InternalUnitSystem:UnitMass_in_cgs``),
+* a unit of velocity ``UnitVelocity_in_cgs`` (default: ``InternalUnitSystem:UnitVelocity_in_cgs``),
+* a unit of electric current ``UnitCurrent_in_cgs`` (default: ``InternalUnitSystem:UnitCurrent_in_cgs``),
+* a unit of temperature ``UnitTemp_in_cgs`` (default: ``InternalUnitSystem:UnitTemp_in_cgs``).
+
+When un-specified, these all take the same value as assumed by the internal
+system of units. These are rarely used but can offer a practical alternative to
+converting data in the post-processing of the simulations. 
+
+For a standard cosmological run, the full section would be:
+
+.. code:: YAML
+
+   Snapshots:
+     basename:            output
+     scale_factor_first:  0.02    # z = 49
+     delta_time:          1.02    
+	    
+Showing all the parameters for a basic hydro test-case, one would have:
+
+.. code:: YAML
+
+   Snapshots:
+     basename:            sedov
+     time_first:          0.01
+     delta_time:          0.005
+     int_time_label_on:   0
+     compression:         3
+     UnitLength_in_cgs:   1.  # Use cm in outputs
+     UnitMass_in_cgs:     1.  # Use grams in outpus
+     UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
+     UnitCurrent_in_cgs:  1.  # Use Ampere in outputs
+     UnitTemp_in_cgs:     1.  # Use Kelvin in outputs
 
 Some additional specific options for the snapshot outputs are described in the
 following pages:
 
-.. toctree::
-   :maxdepth: 1
+* :ref:`Output_list_label` (to have snapshots not evenly spaced in time),
+* :ref:`Output_selection_label` (to select what particle fields to write).
 
-   output_selection
 
+.. _Parameters_statistics:
+  
 Statistics
 ----------
 
+Some additional specific options for the statistics outputs are described in the
+following page:
+
+* :ref:`Output_list_label` (to have statistics outputs not evenly spaced in time).
+
+.. _Parameters_restarts:
+  
 Restarts
 --------
 
@@ -482,10 +588,12 @@ hours after which a shell command will be run, one would use:
     resubmit_on_exit:   1          
     resubmit_command:   ./resub.sh 
 
-
+.. _Parameters_scheduler:
 
 Scheduler
 ---------
+
+.. _Parameters_domain_decomposition:
 
 Domain Decomposition
 --------------------
@@ -494,3 +602,11 @@ Domain Decomposition
 
 
 .. [#f2] which would translate into a constant :math:`G_N=1.5517771\times10^{-9}~cm^{3}\,g^{-1}\,s^{-2}` if expressed in the CGS system.
+
+.. [#f3] This feature only makes sense for non-cosmological runs for which the
+         internal time unit is such that when rounded to the nearest integer a
+	 sensible number is obtained. A use-case for this feature would be to
+	 compare runs over the same physical time but with different numbers of
+	 snapshots. Snapshots at a given time would always have the same set of
+	 digits irrespective of the number of snapshots produced before.
+	       

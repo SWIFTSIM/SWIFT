@@ -98,6 +98,9 @@ __attribute__((always_inline)) INLINE int row_major_index_4d(
  * means dx = (x - table[i]) / (table[i+1] - table[i]). It is always between
  * 0 and 1.
  *
+ * We use a small epsilon of 1e-4 to avoid out-of-range accesses due to
+ * rounding errors.
+ *
  * @param table The table to search in.
  * @param size The number of elements in the table.
  * @param x The value to search for.
@@ -108,16 +111,21 @@ __attribute__((always_inline)) INLINE void get_index_1d(
     const float *restrict table, const int size, const float x, int *i,
     float *restrict dx) {
 
-  const float delta = (size - 1) / (table[size - 1] - table[0]);
+  /* Small epsilon to avoid rounding issues leading to out-of-bound
+   * access when using the indices later to read data from the tables. */
+  const float epsilon = 1e-4f;
 
   /* Indicate that the whole array is aligned on boundaries */
   swift_align_information(float, table, SWIFT_STRUCT_ALIGNMENT);
 
-  if (x < table[0]) {
+  /* Distance between elements in the array */
+  const float delta = (size - 1) / (table[size - 1] - table[0]);
+
+  if (x < table[0] + epsilon) {
     /* We are below the first element */
     *i = 0;
     *dx = 0.f;
-  } else if (x < table[size - 1]) {
+  } else if (x < table[size - 1] - epsilon) {
     /* Normal case */
     *i = (x - table[0]) * delta;
 

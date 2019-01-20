@@ -154,6 +154,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   if (data->initial_metal_mass_fraction_total != -1) {
     p->chemistry_data.metal_mass_fraction_total =
         data->initial_metal_mass_fraction_total;
+
     for (int elem = 0; elem < chemistry_element_count; ++elem)
       p->chemistry_data.metal_mass_fraction[elem] =
           data->initial_metal_mass_fraction[elem];
@@ -176,13 +177,13 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 
   /* Read the total metallicity */
   data->initial_metal_mass_fraction_total = parser_get_opt_param_float(
-      parameter_file, "EAGLEChemistry:InitMetallicity", -1);
+      parameter_file, "EAGLEChemistry:init_abundance_metal", -1);
 
   if (data->initial_metal_mass_fraction_total != -1) {
     /* Read the individual mass fractions */
     for (int elem = 0; elem < chemistry_element_count; ++elem) {
       char buffer[50];
-      sprintf(buffer, "EAGLEChemistry:InitAbundance_%s",
+      sprintf(buffer, "EAGLEChemistry:init_abundance_%s",
               chemistry_get_element_name((enum chemistry_element)elem));
 
       data->initial_metal_mass_fraction[elem] =

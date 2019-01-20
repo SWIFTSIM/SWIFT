@@ -61,6 +61,7 @@ labels = [
     "engine_recompute_displacement_constraint:",
     "engine_exchange_top_multipoles:",
     "updating particle counts",
+    "engine_estimate_nr_tasks:",
     "Making gravity tasks",
     "Making hydro tasks",
     "Splitting tasks",
@@ -72,6 +73,8 @@ labels = [
     "Creating send tasks",
     "Exchanging cell tags",
     "Creating recv tasks",
+    "Counting number of foreign particles",
+    "Recursively linking foreign arrays",
     "Setting unlocks",
     "Ranking the tasks",
     "scheduler_reweight:",
@@ -97,6 +100,9 @@ labels = [
     "engine_repartition_trigger:"
 ]
 is_rebuild = [
+    1,
+    1,
+    1,
     1,
     1,
     1,

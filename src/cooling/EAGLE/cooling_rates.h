@@ -43,8 +43,8 @@
  * We also re-order the elements such that they match the order of the
  * tables. This is [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe].
  *
- * The solar abundances table is arranged as
- * [H, He, C, N, O, Ne, Mg, Si, S, C, Fe].
+ * The solar abundances table (from the cooling struct) is arranged as
+ * [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe].
  *
  * @param p Pointer to #part struct.
  * @param cooling #cooling_function_data struct.
@@ -55,42 +55,42 @@ __attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
     float ratio_solar[chemistry_element_count + 2]) {
 
   ratio_solar[0] = p->chemistry_data.metal_mass_fraction[chemistry_element_H] *
-                   cooling->SolarAbundances_inv[0];
+                   cooling->SolarAbundances_inv[0 /* H */];
 
   ratio_solar[1] = p->chemistry_data.metal_mass_fraction[chemistry_element_He] *
-                   cooling->SolarAbundances_inv[1];
+                   cooling->SolarAbundances_inv[1 /* He */];
 
   ratio_solar[2] = p->chemistry_data.metal_mass_fraction[chemistry_element_C] *
-                   cooling->SolarAbundances_inv[2];
+                   cooling->SolarAbundances_inv[2 /* C */];
 
   ratio_solar[3] = p->chemistry_data.metal_mass_fraction[chemistry_element_N] *
-                   cooling->SolarAbundances_inv[3];
+                   cooling->SolarAbundances_inv[3 /* N */];
 
   ratio_solar[4] = p->chemistry_data.metal_mass_fraction[chemistry_element_O] *
-                   cooling->SolarAbundances_inv[4];
+                   cooling->SolarAbundances_inv[4 /* O */];
 
   ratio_solar[5] = p->chemistry_data.metal_mass_fraction[chemistry_element_Ne] *
-                   cooling->SolarAbundances_inv[5];
+                   cooling->SolarAbundances_inv[5 /* Ne */];
 
   ratio_solar[6] = p->chemistry_data.metal_mass_fraction[chemistry_element_Mg] *
-                   cooling->SolarAbundances_inv[6];
+                   cooling->SolarAbundances_inv[6 /* Mg */];
 
   ratio_solar[7] = p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
-                   cooling->SolarAbundances_inv[7];
+                   cooling->SolarAbundances_inv[7 /* Si */];
 
   /* For S, we use the same ratio as Si */
   ratio_solar[8] = p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
-                   cooling->SolarAbundances_inv[7] *
+                   cooling->SolarAbundances_inv[7 /* Si */] *
                    cooling->S_over_Si_ratio_in_solar;
 
   /* For Ca, we use the same ratio as Si */
   ratio_solar[9] = p->chemistry_data.metal_mass_fraction[chemistry_element_Si] *
-                   cooling->SolarAbundances_inv[7] *
+                   cooling->SolarAbundances_inv[7 /* Si */] *
                    cooling->Ca_over_Si_ratio_in_solar;
 
   ratio_solar[10] =
       p->chemistry_data.metal_mass_fraction[chemistry_element_Fe] *
-      cooling->SolarAbundances_inv[10];
+      cooling->SolarAbundances_inv[10 /* Fe */];
 }
 
 /**
