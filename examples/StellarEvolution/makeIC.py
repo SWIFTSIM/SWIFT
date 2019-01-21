@@ -27,9 +27,9 @@ mp_cgs = 1.67e-24
 boltzmann_k_cgs = 1.38e-16
 
 # Parameters
-gamma = 5./3.      			# Gas adiabatic index
-rho_cgs = mp_cgs        		# Background density
-P_cgs = boltzmann_k_cgs*1.0e4          	# Background pressure
+gamma = 5./3.      				# Gas adiabatic index
+rho_cgs = mp_cgs        			# Background density
+P_cgs = rho_cgs*1.2e12*(gamma - 1.)          	# Background pressure
 fileName = "stellar_evolution.hdf5" 
 
 # Units
@@ -40,7 +40,7 @@ unit_A_cgs = 1.
 unit_T_cgs = 1.
 unit_v_cgs = unit_l_cgs/unit_t_cgs
 
-boxsize_cgs = kpc_in_cm
+boxsize_cgs = 5.0e0*kpc_in_cm
 vol_cgs = boxsize_cgs**3
 
 #---------------------------------------------------
@@ -83,7 +83,7 @@ star_h = array([h.max()])
 print("part mass/msun " + str(m_cgs[0]/solar_mass_cgs) + " stellar mass/msun " + str(star_m_cgs/solar_mass_cgs))
 print("boxsize kpc " + str(boxsize_cgs/kpc_in_cm))
 print("density cm^-3 " + str(rho_cgs/mp_cgs))
-print("initial temperature K " + str(u_cgs[0] / boltzmann_k_cgs*((gamma - 1)*mp_cgs)))
+print("initial temperature K " + str(u_cgs[0] / boltzmann_k_cgs*((gamma - 1)*rho_cgs)))
 
 # Convert to internal units
 star_m = star_m_cgs/unit_m_cgs

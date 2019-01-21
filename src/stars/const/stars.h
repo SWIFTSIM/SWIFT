@@ -78,13 +78,13 @@ __attribute__((always_inline)) INLINE static void stars_reset_predicted_values(
     struct spart* restrict sp) {}
 
 /**
- * @brief Finishes the calculation of (non-gravity) forces acting on stars
+ * @brief Finishes the calculation of feedback acting on stars
  *
  * Multiplies the forces and accelerations by the appropiate constants
  *
  * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void stars_end_force(
+__attribute__((always_inline)) INLINE static void stars_end_feedback(
     struct spart* sp) {}
 
 /**

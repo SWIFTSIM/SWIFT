@@ -2101,8 +2101,9 @@ void engine_rebuild(struct engine *e, int repartitioned,
 #endif
 
   /* Run through the tasks and mark as skip or not. */
-  if (engine_marktasks(e))
-    error("engine_marktasks failed after space_rebuild.");
+  int err = engine_marktasks(e);
+  if (err)
+    error("engine_marktasks failed after space_rebuild with code %d.", err);
 
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
