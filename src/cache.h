@@ -248,6 +248,9 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
 
   return count_align;
 
+#else
+  error("Can't call the cache reading function with this flavour of SPH!");
+  return 0;
 #endif
 }
 
@@ -515,6 +518,9 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
 
   return count_align;
 
+#else
+  error("Can't call the cache reading function with this flavour of SPH!");
+  return 0;
 #endif
 }
 
