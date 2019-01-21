@@ -1185,6 +1185,7 @@ with_subgrid_cooling=none
 with_subgrid_chemistry=none
 with_subgrid_tracers=none
 with_subgrid_hydro=none
+with_subgrid_entropy_floor=none
 with_subgrid_stars=none
 with_subgrid_star_formation=none
 with_subgrid_feedback=none
@@ -1201,6 +1202,7 @@ case "$with_subgrid" in
 	with_subgrid_chemistry=GEAR
 	with_subgrid_tracers=none
 	with_subgrid_hydro=gadget2
+	with_subgrid_entropy_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=none
 	with_subgrid_feedback=thermal
@@ -1211,6 +1213,7 @@ case "$with_subgrid" in
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_hydro=gadget2
+	with_subgrid_entropy_floor=EAGLE
 	with_subgrid_stars=EAGLE
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=none
@@ -1558,7 +1561,7 @@ esac
 #  Particle tracers
 AC_ARG_WITH([tracers],
    [AS_HELP_STRING([--with-tracers=<function>],
-      [tracer function @<:@none, EAGLE default: none@:>@]
+      [chemistry function @<:@none, EAGLE default: none@:>@]
    )],
    [with_tracers="$withval"],
    [with_tracers="none"]
@@ -1716,6 +1719,34 @@ case "$with_potential" in
    ;;
 esac
 
+#  Entropy floor
+AC_ARG_WITH([entropy-floor], 
+    [AS_HELP_STRING([--with-entropy-floor=<floor>],
+       [entropy floor @<:@none, EAGLE, default: none@:>@] 
+    )],
+    [with_entropy_floor="$withval"],
+    [with_entropy_floor="none"]
+)
+if test "$with_subgrid" != "none"; then
+   if test "$with_entropy_floor" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-entropy-floor together])
+   else
+      with_entropy_floor="$with_subgrid_entropy_floor"
+   fi
+fi
+
+case "$with_entropy_floor" in
+   none)
+      AC_DEFINE([ENTROPY_FLOOR_NONE], [1], [No entropy floor])
+   ;;
+   EAGLE)
+      AC_DEFINE([ENTROPY_FLOOR_EAGLE], [1], [EAGLE entropy floor])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown entropy floor model])
+   ;;
+esac 
+
 #  Star formation
 AC_ARG_WITH([star-formation], 
     [AS_HELP_STRING([--with-star-formation=<sfm>],
@@ -1835,6 +1866,7 @@ AC_MSG_RESULT([
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
 
+   Entropy floor          : $with_entropy_floor
    Cooling function       : $with_cooling
    Chemistry              : $with_chemistry
    Tracers                : $with_tracers

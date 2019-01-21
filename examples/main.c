@@ -96,6 +96,7 @@ int main(int argc, char *argv[]) {
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
+  struct entropy_floor_properties entropy_floor;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct space s;
@@ -690,6 +691,13 @@ int main(int argc, char *argv[]) {
     else
       bzero(&eos, sizeof(struct eos_parameters));
 
+    /* Initialise the entropy floor */
+    if (with_hydro)
+      entropy_floor_init(&entropy_floor, &prog_const, &us, &hydro_properties,
+                         params);
+    else
+      bzero(&entropy_floor, sizeof(struct entropy_floor_properties));
+
     /* Initialise the stars properties */
     if (with_stars)
       stars_props_init(&stars_properties, &prog_const, &us, params,
@@ -913,8 +921,9 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
-                &hydro_properties, &gravity_properties, &stars_properties,
-                &mesh, &potential, &cooling_func, &starform, &chemistry);
+                &hydro_properties, &entropy_floor, &gravity_properties,
+                &stars_properties, &mesh, &potential, &cooling_func, &starform,
+                &chemistry);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 

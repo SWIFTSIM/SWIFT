@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ * Copyright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,18 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SFTRACERS_STRUCT_EAGLE_H
-#define SWIFT_SFTRACERS_STRUCT_EAGLE_H
+#ifndef SWIFT_ENTROPY_FLOOR_H
+#define SWIFT_ENTROPY_FLOOR_H
 
 /**
- * @brief Properties of the tracers stored in the extended particle data.
+ * @file src/entropy_floor.h
+ * @brief Branches between the different entropy floor models
  */
-struct sftracers_xpart_data {
-  /*! Star formation rate */
-  float SFR;
 
-  /*! Specific star formation rate */
-  float sSFR;
-};
+/* Config parameters. */
+#include "../config.h"
 
-#endif /* SWIFT_SFTRACERS_STRUCT_EAGLE_H */
+/* Import the right entropy floor definition */
+#if defined(ENTROPY_FLOOR_NONE)
+#include "./entropy_floor/none/entropy_floor.h"
+#elif defined(ENTROPY_FLOOR_EAGLE)
+#include "./entropy_floor/EAGLE/entropy_floor.h"
+#endif
+
+#endif /* SWIFT_ENTROPY_FLOOR_H */

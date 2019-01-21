@@ -54,14 +54,11 @@ __attribute__((always_inline)) INLINE static int sftracers_write_particles(
     const struct part* parts, const struct xpart* xparts, struct io_props* list,
     const int with_cosmology) {
 
-  list[0] = io_make_output_field("SFR", FLOAT, 1, 
-                                  UNIT_CONV_SFR, xparts,
-                                  sftracers_data.SFR);
+  list[0] = io_make_output_field("SFR", FLOAT, 1, UNIT_CONV_SFR, xparts,
+                                 sftracers_data.SFR);
 
-  list[1] = io_make_output_field("sSFR", FLOAT, 1, 
-                                  UNIT_CONV_SSFR, xparts,
-                                  sftracers_data.sSFR);
-
+  list[1] = io_make_output_field("sSFR", FLOAT, 1, UNIT_CONV_SSFR, xparts,
+                                 sftracers_data.sSFR);
 
   return 2;
 }

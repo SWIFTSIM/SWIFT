@@ -64,7 +64,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
  * @return Returns the number of fields to write.
  */
 INLINE static int chemistry_write_sparticles(const struct spart* sparts,
-                                            struct io_props* list) {
+                                             struct io_props* list) {
 
   /* update list according to hydro_io */
 
@@ -75,7 +75,7 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
 #ifdef HAVE_HDF5
 
 /**
- * @brief Writes the current model of SPH to the file
+ * @brief Writes the current model of chemistry to the file
  * @param h_grp The HDF5 group in which to write
  */
 INLINE static void chemistry_write_flavour(hid_t h_grp) {

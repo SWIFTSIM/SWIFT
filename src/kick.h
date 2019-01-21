@@ -79,6 +79,7 @@ __attribute__((always_inline)) INLINE static void kick_part(
     struct part *restrict p, struct xpart *restrict xp, double dt_kick_hydro,
     double dt_kick_grav, double dt_kick_therm, double dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *entropy_floor_props,
     integertime_t ti_start, integertime_t ti_end) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -114,6 +115,13 @@ __attribute__((always_inline)) INLINE static void kick_part(
   hydro_kick_extra(p, xp, dt_kick_therm, dt_kick_grav, dt_kick_hydro,
                    dt_kick_corr, cosmo, hydro_props);
   if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt_kick_grav);
+
+  /* Verify that the particle is not below the entropy floor */
+  const float floor = entropy_floor(p, cosmo, entropy_floor_props);
+  if (hydro_get_physical_entropy(p, xp, cosmo) < floor) {
+    hydro_set_physical_entropy(p, xp, cosmo, floor);
+    hydro_set_physical_internal_energy_dt(p, cosmo, 0.f);
+  }
 }
 
 /**

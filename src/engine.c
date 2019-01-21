@@ -62,6 +62,7 @@
 #include "cosmology.h"
 #include "cycle.h"
 #include "debug.h"
+#include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "error.h"
 #include "gravity.h"
@@ -4060,6 +4061,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
+                 const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
@@ -4122,6 +4124,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->physical_constants = physical_constants;
   e->cosmology = cosmo;
   e->hydro_properties = hydro;
+  e->entropy_floor = entropy_floor;
   e->gravity_properties = gravity;
   e->stars_properties = stars;
   e->mesh = mesh;
@@ -4456,8 +4459,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   engine_print_policy(e);
 
   /* Print information about the hydro scheme */
-  if (e->policy & engine_policy_hydro)
+  if (e->policy & engine_policy_hydro) {
     if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
+    if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
+  }
 
   /* Print information about the gravity scheme */
   if (e->policy & engine_policy_self_gravity)
@@ -5233,6 +5238,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
 
   phys_const_struct_dump(e->physical_constants, stream);
   hydro_props_struct_dump(e->hydro_properties, stream);
+  entropy_floor_struct_dump(e->entropy_floor, stream);
   gravity_props_struct_dump(e->gravity_properties, stream);
   stars_props_struct_dump(e->stars_properties, stream);
   pm_mesh_struct_dump(e->mesh, stream);
@@ -5304,6 +5310,12 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct hydro_props *)malloc(sizeof(struct hydro_props));
   hydro_props_struct_restore(hydro_properties, stream);
   e->hydro_properties = hydro_properties;
+
+  struct entropy_floor_properties *entropy_floor =
+      (struct entropy_floor_properties *)malloc(
+          sizeof(struct entropy_floor_properties));
+  entropy_floor_struct_restore(entropy_floor, stream);
+  e->entropy_floor = entropy_floor;
 
   struct gravity_props *gravity_properties =
       (struct gravity_props *)malloc(sizeof(struct gravity_props));

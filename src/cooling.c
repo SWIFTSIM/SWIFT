@@ -67,7 +67,7 @@ void cooling_struct_dump(const struct cooling_function_data* cooling,
 }
 
 /**
- * @brief Restore a hydro_props struct from the given FILE as a stream of
+ * @brief Restore a cooling_function struct from the given FILE as a stream of
  * bytes.
  *
  * @param cooling the struct
