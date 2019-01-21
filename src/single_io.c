@@ -1010,8 +1010,7 @@ void write_output_single(struct engine* e, const char* baseName,
           N = Nstars;
           stars_write_particles(sparts, list, &num_fields);
           if (with_stf) {
-            num_fields +=
-	      velociraptor_write_sparts(sparts, list + num_fields);
+            num_fields += velociraptor_write_sparts(sparts, list + num_fields);
           }
         } else {
 
@@ -1030,10 +1029,9 @@ void write_output_single(struct engine* e, const char* baseName,
           /* Select the fields to write */
           stars_write_particles(sparts_written, list, &num_fields);
           if (with_stf) {
-            num_fields += velociraptor_write_sparts(
-                sparts_written, list + num_fields);
+            num_fields +=
+                velociraptor_write_sparts(sparts_written, list + num_fields);
           }
-
         }
       } break;
 
