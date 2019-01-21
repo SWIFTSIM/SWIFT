@@ -536,4 +536,22 @@ INLINE static void starformation_print_backend(
               starform->SF_normalization);
 }
 
+/* Starformation history struct */
+struct star_formation_history {
+  /*! Numb of stars */
+  unsigned long int N_stars;
+
+  /*! Total new stellar mass */
+  float new_stellar_mass;
+
+  /*! Time union */
+  union {
+    /*! Time */
+    float time;
+
+    /*! Scale factor */
+    float scale_factor;
+  };
+};
+
 #endif /* SWIFT_SCHAYE_STARFORMATION_H */
