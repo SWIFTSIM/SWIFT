@@ -1357,10 +1357,12 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
  * @param Ngparts The total number of #part.
  * @param Ngparts_written The total number of #part to write.
  */
-void io_collect_gparts_to_write(const struct gpart* restrict gparts,
-                                struct gpart* restrict gparts_written,
-                                const size_t Ngparts,
-                                const size_t Ngparts_written) {
+void io_collect_gparts_to_write(
+    const struct gpart* restrict gparts,
+    const struct velociraptor_gpart_data* restrict vr_data,
+    struct gpart* restrict gparts_written,
+    struct velociraptor_gpart_data* restrict vr_data_written,
+    const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
 
   size_t count = 0;
 
@@ -1372,6 +1374,8 @@ void io_collect_gparts_to_write(const struct gpart* restrict gparts,
         (gparts[i].time_bin != time_bin_not_created) &&
         (gparts[i].type == swift_type_dark_matter)) {
 
+      if (with_stf) vr_data_written[count] = vr_data[i];
+
       gparts_written[count] = gparts[i];
       count++;
     }
@@ -1379,7 +1383,7 @@ void io_collect_gparts_to_write(const struct gpart* restrict gparts,
 
   /* Check that everything is fine */
   if (count != Ngparts_written)
-    error("Collected the wrong number of s-particles (%zu vs. %zu expected)",
+    error("Collected the wrong number of g-particles (%zu vs. %zu expected)",
           count, Ngparts_written);
 }
 
