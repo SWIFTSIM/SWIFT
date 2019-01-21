@@ -228,11 +228,11 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       break;
 
   /* Check for stars now */
-  if (l == NULL) {  
+  if (l == NULL) {
     for (l = ci->stars.density; l != NULL; l = l->next)
       if (l->t->ci->nodeID == nodeID ||
-	  (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
-	break;
+          (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+        break;
   }
 
   /* If so, attach send tasks. */

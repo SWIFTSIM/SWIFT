@@ -3884,6 +3884,75 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 #endif
 }
 
+#ifdef DEBUG_INTERACTIONS_STARS
+/**
+ * @brief Exchange the feedback counters between stars
+ * @param e The #engine.
+ */
+void engine_collect_stars_counter(struct engine *e) {
+
+#ifdef WITH_MPI
+  if (e->total_nr_sparts > 1e5) {
+    message("WARNING: too many sparts, skipping exchange of counters");
+    return;
+  }
+
+  /* Get number of sparticles for each rank */
+  size_t *n_sparts = (size_t *)malloc(e->nr_nodes * sizeof(size_t));
+
+#define MPI_size MPI_UNSIGNED_LONG
+  int err = MPI_Allgather(&e->s->nr_sparts_foreign, 1, MPI_size, n_sparts, 1,
+                          MPI_size, MPI_COMM_WORLD);
+  if (err != MPI_SUCCESS) error("Communication failed");
+
+  /* Compute derivated quantities */
+  int total = 0;
+  int *n_sparts_int = (int *)malloc(e->nr_nodes * sizeof(int));
+  int *displs = (int *)malloc(e->nr_nodes * sizeof(int));
+  for (int i = 0; i < e->nr_nodes; i++) {
+    displs[i] = total;
+    total += n_sparts[i];
+    n_sparts_int[i] = n_sparts[i];
+  }
+
+  /* Get all sparticles */
+  struct spart *sparts = (struct spart *)malloc(total * sizeof(struct spart));
+  err = MPI_Allgatherv(e->s->sparts_foreign, e->s->nr_sparts_foreign,
+                       spart_mpi_type, sparts, n_sparts_int, displs,
+                       spart_mpi_type, MPI_COMM_WORLD);
+  if (err != MPI_SUCCESS) error("Communication failed");
+
+  /* Reset counters */
+  for (size_t i = 0; i < e->s->nr_sparts_foreign; i++) {
+    e->s->sparts_foreign[i].num_ngb_force = 0;
+  }
+
+  /* Update counters */
+  struct spart *local_sparts = e->s->sparts;
+  for (size_t i = 0; i < e->s->nr_sparts; i++) {
+    const long long id_i = local_sparts[i].id;
+
+    for (int j = 0; j < total; j++) {
+      const long long id_j = sparts[j].id;
+
+      if (id_j == id_i) {
+        if (j >= displs[engine_rank] &&
+            j < displs[engine_rank] + n_sparts_int[engine_rank]) {
+          error(
+              "Found a local spart in foreign cell ID=%lli: j=%i, displs=%i, "
+              "n_sparts=%i",
+              id_j, j, displs[engine_rank], n_sparts_int[engine_rank]);
+        }
+
+        local_sparts[i].num_ngb_force += sparts[j].num_ngb_force;
+      }
+    }
+  }
+#endif
+}
+
+#endif
+
 /**
  * @brief Writes a snapshot with the current state of the engine
  *
@@ -3918,6 +3987,10 @@ void engine_dump_snapshot(struct engine *e) {
       message("Dumping snapshot at t=%e",
               e->ti_current * e->time_base + e->time_begin);
   }
+#endif
+
+#ifdef DEBUG_INTERACTIONS_STARS
+  engine_collect_stars_counter(e);
 #endif
 
 /* Dump... */

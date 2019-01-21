@@ -102,8 +102,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts[sid];
-    if (!spart_is_active(si, e) || spart_is_inhibited(si, e))
-      continue;
+    if (!spart_is_active(si, e) || spart_is_inhibited(si, e)) continue;
 
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -188,8 +187,7 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts_i[sid];
-    if (!spart_is_active(si, e) || spart_is_inhibited(si, e))
-      continue;
+    if (!spart_is_active(si, e) || spart_is_inhibited(si, e)) continue;
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
@@ -1375,7 +1373,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     const int ci_local = ci->nodeID == engine_rank;
     const int cj_local = cj->nodeID == engine_rank;
 #else
-  /* here we are updating the hydro -> switch ci, cj */
+    /* here we are updating the hydro -> switch ci, cj */
     const int ci_local = cj->nodeID == engine_rank;
     const int cj_local = ci->nodeID == engine_rank;
 #endif

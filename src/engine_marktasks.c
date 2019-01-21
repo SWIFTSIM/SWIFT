@@ -91,7 +91,6 @@ void engine_activate_stars_mpi(struct engine *e, struct scheduler *s,
          sent, i.e. drift the cell specified in the send task (l->t)
          itself. */
       cell_activate_drift_part(l->t->ci, s);
-
     }
     /* If the local cell is active, more stuff will be needed. */
     if (cj_active_stars) {
@@ -125,7 +124,6 @@ void engine_activate_stars_mpi(struct engine *e, struct scheduler *s,
          sent, i.e. drift the cell specified in the send task (l->t)
          itself. */
       cell_activate_drift_part(l->t->ci, s);
-
     }
     /* If the local cell is active, more stuff will be needed. */
     if (ci_active_stars) {
@@ -345,19 +343,22 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Stars density and feedback */
-      const int stars_density = t_subtype == task_subtype_stars_density &&
-	((ci_active_stars && ci->nodeID == engine_rank) ||
-	 (cj_active_stars && cj->nodeID == engine_rank));
-      const int stars_feedback = t_subtype == task_subtype_stars_feedback &&
-	((ci_active_stars && cj->nodeID == engine_rank) ||
-	 (cj_active_stars && ci->nodeID == engine_rank));
+      const int stars_density =
+          t_subtype == task_subtype_stars_density &&
+          ((ci_active_stars && ci->nodeID == engine_rank) ||
+           (cj_active_stars && cj->nodeID == engine_rank));
+      const int stars_feedback =
+          t_subtype == task_subtype_stars_feedback &&
+          ((ci_active_stars && cj->nodeID == engine_rank) ||
+           (cj_active_stars && ci->nodeID == engine_rank));
 
       if (stars_density || stars_feedback) {
 
         scheduler_activate(s, t);
 
-	const int should_do = t_subtype == task_subtype_stars_density ||
-	  cj->nodeID != ci->nodeID;
+        const int should_do =
+            t_subtype == task_subtype_stars_density || cj->nodeID != ci->nodeID;
+
         /* Set the correct sorting flags */
         if (t_type == task_type_pair) {
 
