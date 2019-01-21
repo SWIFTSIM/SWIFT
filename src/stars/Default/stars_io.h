@@ -84,12 +84,12 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  sparts, num_ngb_density);
   list[1] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,
                                  sparts, num_ngb_force);
-  list[2] =
-      io_make_output_field("Ids_ngb_density", LONGLONG, MAX_NUM_OF_NEIGHBOURS_STARS,
-                           UNIT_CONV_NO_UNITS, sparts, ids_ngbs_density);
-  list[3] =
-      io_make_output_field("Ids_ngb_force", LONGLONG, MAX_NUM_OF_NEIGHBOURS_STARS,
-                           UNIT_CONV_NO_UNITS, sparts, ids_ngbs_force);
+  list[2] = io_make_output_field("Ids_ngb_density", LONGLONG,
+                                 MAX_NUM_OF_NEIGHBOURS_STARS,
+                                 UNIT_CONV_NO_UNITS, sparts, ids_ngbs_density);
+  list[3] = io_make_output_field("Ids_ngb_force", LONGLONG,
+                                 MAX_NUM_OF_NEIGHBOURS_STARS,
+                                 UNIT_CONV_NO_UNITS, sparts, ids_ngbs_force);
 #endif
 }
 
