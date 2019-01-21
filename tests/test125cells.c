@@ -459,11 +459,10 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 /* Just a forward declaration... */
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
-void runner_doself1_density(struct runner *r, struct cell *ci);
+void runner_doself1_branch_density(struct runner *r, struct cell *ci);
 void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
                                  struct cell *cj);
-void runner_doself2_force(struct runner *r, struct cell *ci);
-void runner_doself2_force_vec(struct runner *r, struct cell *ci);
+void runner_doself2_branch_force(struct runner *r, struct cell *ci);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -707,7 +706,7 @@ int main(int argc, char *argv[]) {
 
     /* And now the self-interaction for the central cells*/
     for (int j = 0; j < 27; ++j)
-      runner_doself1_density(&runner, inner_cells[j]);
+      runner_doself1_branch_density(&runner, inner_cells[j]);
 
     /* Ghost to finish everything on the central cells */
     for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
@@ -745,7 +744,7 @@ int main(int argc, char *argv[]) {
     ticks self_tic = getticks();
 
     /* And now the self-interaction for the main cell */
-    runner_doself2_force(&runner, main_cell);
+    runner_doself2_branch_force(&runner, main_cell);
 
     timings[26] += getticks() - self_tic;
 
