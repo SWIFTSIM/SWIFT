@@ -524,7 +524,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   }
 
   /* Assign the group IDs back to the gparts */
-  if (linked_with_snap && num_gparts_in_groups > 0) {
+  if (linked_with_snap) {
 
     if (posix_memalign((void **)&s->gpart_group_data, part_align,
                        nr_gparts * sizeof(struct velociraptor_gpart_data)) != 0)
