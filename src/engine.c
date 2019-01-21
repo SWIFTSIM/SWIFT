@@ -3260,6 +3260,7 @@ void engine_check_for_dumps(struct engine *e) {
         if (with_stf && e->snapshot_invoke_stf) {
 #ifdef HAVE_VELOCIRAPTOR
           free(e->s->gpart_group_data);
+          e->s->gpart_group_data = NULL;
 #endif
         }
 
