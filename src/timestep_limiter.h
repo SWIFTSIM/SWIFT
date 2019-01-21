@@ -107,6 +107,9 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     dt_kick_therm = -(old_dti / 2) * time_base;
     dt_kick_corr = -(old_dti / 2) * time_base;
   }
+
+  // Uncomment following line to prevent crash from mismatch between ti_kick and ti_start 
+  //p->ti_kick = old_ti_beg + old_dti / 2;
   kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
             e->cosmology, e->hydro_properties, old_ti_beg + old_dti / 2,
             old_ti_beg);
@@ -127,6 +130,9 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     dt_kick_therm = (new_dti / 2) * time_base;
     dt_kick_corr = (new_dti / 2) * time_base;
   }
+  
+  // Uncomment following line to prevent crash from mismatch between ti_kick and ti_start 
+  //p->ti_kick = new_ti_beg;
   kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
             e->cosmology, e->hydro_properties, new_ti_beg,
             new_ti_beg + new_dti / 2);

@@ -1000,12 +1000,6 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
-  int err = (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
-              ci->hydro.dx_max_part + cj->hydro.dx_max_part >
-          2.f*cj->dmin);
-  if (err) message("gamma %.5e ci cj h_max %.5e %.5e ci cj dx_max %.5e %.5e dmin %.5e", kernel_gamma, ci->hydro.h_max, cj->hydro.h_max,
-              ci->hydro.dx_max_part, cj->hydro.dx_max_part, 2.f*cj->dmin);
-	
   return (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
               ci->hydro.dx_max_part + cj->hydro.dx_max_part >
           2.f*cj->dmin);
