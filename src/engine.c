@@ -3913,59 +3913,61 @@ void engine_collect_stars_counter(struct engine *e) {
     return;
   }
 
-  /* Get number of particles for each rank */
-  size_t *n_parts = (size_t *)malloc(e->nr_nodes * sizeof(size_t));
+  /* Get number of sparticles for each rank */
+  size_t *n_sparts = (size_t *)malloc(e->nr_nodes * sizeof(size_t));
 
 #define MPI_size MPI_UNSIGNED_LONG
-  int err = MPI_Allgather(&e->s->nr_sparts_foreign, 1, MPI_size, n_parts, 1, MPI_size, MPI_COMM_WORLD);
-  if (err != MPI_SUCCESS)
-    error("Communication failed");
+  int err = MPI_Allgather(&e->s->nr_sparts_foreign, 1, MPI_size, n_sparts, 1,
+                          MPI_size, MPI_COMM_WORLD);
+  if (err != MPI_SUCCESS) error("Communication failed");
 
   /* Compute derivated quantities */
   int total = 0;
-  int *n_parts_int = (int *) malloc(e->nr_nodes * sizeof(int));
-  int *displs = (int *) malloc(e->nr_nodes * sizeof(int));
-  for(int i = 0; i < e->nr_nodes; i++) {
+  int *n_sparts_int = (int *)malloc(e->nr_nodes * sizeof(int));
+  int *displs = (int *)malloc(e->nr_nodes * sizeof(int));
+  for (int i = 0; i < e->nr_nodes; i++) {
     displs[i] = total;
-    total += n_parts[i];
-    n_parts_int[i] = n_parts[i];
+    total += n_sparts[i];
+    n_sparts_int[i] = n_sparts[i];
   }
 
-  /* Get all particles */
-  struct spart *parts = (struct spart *) malloc(total * sizeof(struct spart));
-  err = MPI_Allgatherv(e->s->sparts_foreign, e->s->nr_sparts_foreign, spart_mpi_type,
-		       parts, n_parts_int, displs, spart_mpi_type, MPI_COMM_WORLD);
-  if (err != MPI_SUCCESS)
-    error("Communication failed");
+  /* Get all sparticles */
+  struct spart *sparts = (struct spart *)malloc(total * sizeof(struct spart));
+  err = MPI_Allgatherv(e->s->sparts_foreign, e->s->nr_sparts_foreign,
+                       spart_mpi_type, sparts, n_sparts_int, displs,
+                       spart_mpi_type, MPI_COMM_WORLD);
+  if (err != MPI_SUCCESS) error("Communication failed");
 
   /* Reset counters */
-  for(size_t i = 0; i < e->s->nr_sparts_foreign; i++) {
+  for (size_t i = 0; i < e->s->nr_sparts_foreign; i++) {
     e->s->sparts_foreign[i].num_ngb_force = 0;
   }
 
   /* Update counters */
-  struct spart *local_parts = e->s->sparts;
-  for(int i = 0; i < total; i++) {
-    /* Avoids counting twice local interactions */
-    if (i >= displs[engine_rank] &&
-	i < displs[engine_rank] + n_parts_int[engine_rank])
-      continue;
+  struct spart *local_sparts = e->s->sparts;
+  for (size_t i = 0; i < e->s->nr_sparts; i++) {
+    const long long id_i = local_sparts[i].id;
 
-    const long long id_i = parts[i].id;
+    for (int j = 0; j < total; j++) {
+      const long long id_j = sparts[j].id;
 
-    for(size_t j = 0; j < e->s->nr_sparts; j++) {
-      const long long id_j = local_parts[j].id;
-      if (id_j == id_i && parts[i].num_ngb_force != 0) {
-	local_parts[j].num_ngb_force += parts[i].num_ngb_force;
-	break;
+      if (id_j == id_i) {
+        if (j >= displs[engine_rank] &&
+            j < displs[engine_rank] + n_sparts_int[engine_rank]) {
+          error(
+              "Found a local spart in foreign cell ID=%lli: j=%i, displs=%i, "
+              "n_sparts=%i",
+              id_j, j, displs[engine_rank], n_sparts_int[engine_rank]);
+        }
+
+        local_sparts[i].num_ngb_force += sparts[j].num_ngb_force;
       }
     }
   }
-#endif  
+#endif
 }
 
 #endif
-
 
 /**
  * @brief Writes a snapshot with the current state of the engine
@@ -4006,7 +4008,7 @@ void engine_dump_snapshot(struct engine *e) {
 #ifdef DEBUG_INTERACTIONS_STARS
   engine_collect_stars_counter(e);
 #endif
-  
+
 /* Dump... */
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)

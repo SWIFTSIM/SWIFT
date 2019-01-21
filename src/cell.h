@@ -583,7 +583,7 @@ struct cell {
     } grav;
 
     struct {
-    /* Task receiving spart data. */
+      /* Task receiving spart data. */
       struct task *recv;
 
       /* Linked list for sending spart data. */

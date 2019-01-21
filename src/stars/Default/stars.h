@@ -56,7 +56,8 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
     struct spart* sp) {
 
 #ifdef DEBUG_INTERACTIONS_STARS
-  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i) sp->ids_ngbs_density[i] = -1;
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
+    sp->ids_ngbs_density[i] = -1;
   sp->num_ngb_density = 0;
 #endif
 
@@ -108,7 +109,6 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   sp->density.wcount *= h_inv_dim;
   sp->density.wcount_dh *= h_inv_dim_plus_one;
-
 }
 
 /**
@@ -156,7 +156,8 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
 __attribute__((always_inline)) INLINE static void stars_reset_acceleration(
     struct spart* restrict p) {
 #ifdef DEBUG_INTERACTIONS_STARS
-  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i) p->ids_ngbs_force[i] = -1;
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
+    p->ids_ngbs_force[i] = -1;
   p->num_ngb_force = 0;
 #endif
 }
