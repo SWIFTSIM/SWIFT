@@ -3241,6 +3241,7 @@ void engine_check_for_dumps(struct engine *e) {
 
 #ifdef HAVE_VELOCIRAPTOR
           velociraptor_invoke(e, /*linked_with_snap=*/1);
+          e->step_props |= engine_step_prop_stf;
 #else
           error(
               "Asking for a VELOCIraptor output but SWIFT was compiled without "
@@ -3283,6 +3284,7 @@ void engine_check_for_dumps(struct engine *e) {
 #ifdef HAVE_VELOCIRAPTOR
         /* Unleash the raptor! */
         velociraptor_invoke(e, /*linked_with_snap=*/0);
+        e->step_props |= engine_step_prop_stf;
 
         /* ... and find the next output time */
         engine_compute_next_stf_time(e);
@@ -4414,10 +4416,11 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
       fprintf(e->file_timesteps,
               "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-              "Statistics=%d, Snapshot=%d, Restarts=%d\n",
+              "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, logger=%d\n",
               engine_step_prop_rebuild, engine_step_prop_redistribute,
               engine_step_prop_repartition, engine_step_prop_statistics,
-              engine_step_prop_snapshot, engine_step_prop_restarts);
+              engine_step_prop_snapshot, engine_step_prop_restarts,
+              engine_step_prop_stf, engine_step_prop_logger_index);
 
       fprintf(e->file_timesteps,
               "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
