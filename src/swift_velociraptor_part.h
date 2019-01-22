@@ -21,7 +21,13 @@
 
 #include "part_type.h"
 
-/* SWIFT/VELOCIraptor particle. */
+/**
+ * @brief SWIFT/VELOCIraptor particle.
+ *
+ * This should match the structure Swift::swift_vel_part
+ * defined in the file NBodylib/src/NBody/SwiftParticle.h
+ * of the VELOCIraptor code.
+ */
 struct swift_vel_part {
 
   /*! Particle ID. */
@@ -42,8 +48,18 @@ struct swift_vel_part {
   /*! Internal energy of gas particle */
   float u;
 
+  /*! Temperature of a gas particle */
+  float T;
+
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
+
+  /*! MPI rank on which this #gpart lives on the SWIFT side. */
+  int task;
+
+  /*! Index of this #gpart in the global array of this rank on the SWIFT
+    side. */
+  int index;
 };
 
 #endif /* SWIFT_VELOCIRAPTOR_PART_H */

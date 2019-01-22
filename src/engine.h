@@ -91,7 +91,8 @@ enum engine_step_properties {
   engine_step_prop_statistics = (1 << 3),
   engine_step_prop_snapshot = (1 << 4),
   engine_step_prop_restarts = (1 << 5),
-  engine_step_prop_logger_index = (1 << 6)
+  engine_step_prop_stf = (1 << 6),
+  engine_step_prop_logger_index = (1 << 7)
 };
 
 /* Some constants */
@@ -225,9 +226,6 @@ struct engine {
   /* The internal system of units */
   const struct unit_system *internal_units;
 
-  /* Top-level cell locations for VELOCIraptor. */
-  struct cell_loc *cell_loc;
-
   /* Snapshot information */
   double a_first_snapshot;
   double time_first_snapshot;
@@ -242,12 +240,11 @@ struct engine {
   char snapshot_base_name[PARSER_MAX_LINE_SIZE];
   int snapshot_compression;
   int snapshot_int_time_label_on;
+  int snapshot_invoke_stf;
   struct unit_system *snapshot_units;
   int snapshot_output_count;
 
   /* Structure finding information */
-  enum io_stf_output_format stf_output_freq_format;
-  int delta_step_stf;
   double a_first_stf_output;
   double time_first_stf_output;
   double delta_time_stf;
@@ -258,7 +255,9 @@ struct engine {
   /* Integer time of the next stf output */
   integertime_t ti_next_stf;
 
-  char stfBaseName[PARSER_MAX_LINE_SIZE];
+  char stf_config_file_name[PARSER_MAX_LINE_SIZE];
+  char stf_base_name[PARSER_MAX_LINE_SIZE];
+  int stf_output_count;
 
   /* Statistics information */
   double a_first_statistics;

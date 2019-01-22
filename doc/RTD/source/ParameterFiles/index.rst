@@ -414,12 +414,13 @@ parameter is the base name that will be used for all the outputs in the run:
 
 * The base name of the HDF5 snapshots: ``basename``.
 
-This name will then be appended by an under-score and 6 digits followed by
-``.hdf5`` (e.g. ``base_name_001234.hdf5``). The 6 digits are used to label the
-different outputs, starting at ``000000``. In the default setup the digits
-simply increase by one for each snapshot. However, if the optional parameter
-``int_time_label_on`` is switched on, then the 6-digits will the physical time
-of the simulation rounded to the nearest integer [#f3]_. 
+This name will then be appended by an under-score and 4 digits followed by
+``.hdf5`` (e.g. ``base_name_1234.hdf5``). The 4 digits are used to label the
+different outputs, starting at ``0000``. In the default setup the digits simply
+increase by one for each snapshot. However, if the optional parameter
+``int_time_label_on`` is switched on, then we use 6 digits and these will the
+physical time of the simulation rounded to the nearest integer
+(e.g. ``base_name_001234.hdf5``) [#f3]_.
 
 The time of the first snapshot is controlled by the two following options:
 
@@ -434,11 +435,28 @@ in the internal units of time. Users also have to provide the difference in time
 * Time difference between consecutive outputs: ``delta_time``.
 
 In non-cosmological runs this is also expressed in internal units. For
-cosmological runs, this value is *multiplied* to obtain the scale-factor of the
-next snapshot. This implies that the outputs are equally space in
-:math:`\log(a)` (See :ref:`Output_list_label` to have snapshots not regularly spaced in time).
+cosmological runs, this value is *multiplied* to obtain the
+scale-factor of the next snapshot. This implies that the outputs are
+equally space in :math:`\log(a)` (See :ref:`Output_list_label` to have
+snapshots not regularly spaced in time).
 
-Users can optionally specify the level of compression used by the HDF5 libary
+When running the code with structure finding activated, it is often
+useful to have a structure catalog written at the same simulation time
+as the snapshots. To activate this, the following parameter can be
+switched on:
+
+* Run VELOCIraptor every time a snapshot is dumped: ``invoke_stf``
+  (default: ``0``).
+
+This produces catalogs using the options specified for the stand-alone
+VELOCIraptor outputs (see the section :ref:`Parameters_structure_finding`) but
+with a base name and output number that matches the snapshot name
+(e.g. ``stf_base_name_1234.hdf5``) irrespective of the name specified in the
+section dedicated to VELOCIraptor. Note that the invocation of VELOCIraptor at
+every dump is done additionally to the stand-alone dumps that can be specified
+in the corresponding section of the YAML parameter file.
+
+Users can optionally specify the level of compression used by the HDF5 library
 using the parameter:
 
 * GZIP compression level of the HDF5 arrays: ``compression`` (default: ``0``).
@@ -464,14 +482,16 @@ When un-specified, these all take the same value as assumed by the internal
 system of units. These are rarely used but can offer a practical alternative to
 converting data in the post-processing of the simulations. 
 
-For a standard cosmological run, the full section would be:
+For a standard cosmological run with structure finding activated, the
+full section would be:
 
 .. code:: YAML
 
    Snapshots:
      basename:            output
      scale_factor_first:  0.02    # z = 49
-     delta_time:          1.02    
+     delta_time:          1.02
+     invoke_stf:          1
 	    
 Showing all the parameters for a basic hydro test-case, one would have:
 
@@ -481,6 +501,7 @@ Showing all the parameters for a basic hydro test-case, one would have:
      basename:            sedov
      time_first:          0.01
      delta_time:          0.005
+     invoke_stf:          0
      int_time_label_on:   0
      compression:         3
      UnitLength_in_cgs:   1.  # Use cm in outputs
@@ -597,6 +618,12 @@ Scheduler
 
 Domain Decomposition
 --------------------
+
+.. _Parameters_structure_finding:
+
+Structure finding (VELOCIraptor)
+--------------------------------
+
 
 .. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's constant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
 
