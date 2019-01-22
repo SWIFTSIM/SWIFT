@@ -1352,10 +1352,14 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
  * @brief Copy every non-inhibited DM #gpart into the gparts_written array.
  *
  * @param gparts The array of #gpart containing all particles.
+ * @param vr_data The array of gpart-related VELOCIraptor output.
  * @param gparts_written The array of #gpart to fill with particles we want to
  * write.
+ * @param vr_data_written The array of gpart-related VELOCIraptor with particles
+ * we want to write.
  * @param Ngparts The total number of #part.
  * @param Ngparts_written The total number of #part to write.
+ * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
  */
 void io_collect_gparts_to_write(
     const struct gpart* restrict gparts,
