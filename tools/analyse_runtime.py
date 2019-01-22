@@ -192,14 +192,14 @@ for i in range(num_files):
                     re.findall(r"[+-]?((\d+\.?\d*)|(\.\d+))", line)[-1][0]
                 )
 
-        # Find the last line with meaningful output (avoid crash report, batch system stuf....)
+        # Find the last line with meaningful output (avoid crash report, batch system stuff....)
         if re.findall(r"\[[0-9]{4}\][ ]\[*", line) or re.findall(
             r"^\[[0-9]*[.][0-9]+\][ ]", line
         ):
             lastline = line
 
     # Total run time
-    total_time += float(re.findall(r"[+-]?([0-9]*[.])?[0-9]+", lastline)[1])
+    total_time += float(re.findall(r"[+-]?(\[[0-9]\])?(\[[0-9]*[.][0-9]*\])+", lastline)[0][1][1:-1])
 
 # Conver to seconds
 times /= 1000.0
