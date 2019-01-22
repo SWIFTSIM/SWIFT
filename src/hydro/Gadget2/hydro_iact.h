@@ -1071,13 +1071,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
   /* Wake up the neighbour? */
   if (pi->force.v_sig > const_limiter_max_v_sig_ratio * pj->force.v_sig) {
 
-    pj->wakeup = time_bin_awake;
+    // ALEXEI seems to crash with this option when running with debug checks 
+    // on comparing ti_kick to ti_start in kick_part. Use code below instead
+    // (commented MATTHIEU)
+    //pj->wakeup = time_bin_awake;
 
     // MATTHIEU
-    // if (pj->wakeup == time_bin_not_awake)
-    // pj->wakeup = time_bin_awake;
-    // else if (pj->wakeup > 0)
-    // pj->wakeup = -pj->wakeup;
+     if (pj->wakeup == time_bin_not_awake)
+     pj->wakeup = time_bin_awake;
+     else if (pj->wakeup > 0)
+     pj->wakeup = -pj->wakeup;
   }
 }
 

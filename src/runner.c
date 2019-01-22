@@ -2496,7 +2496,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
         p->wakeup = time_bin_not_awake;
 
       /* Bip, bip, bip... wake-up time */
-      if (p->wakeup == time_bin_awake) {
+      if (p->wakeup <= time_bin_awake) {
 
         /* Apply the limiter and get the new time-step size */
         const integertime_t ti_new_step = timestep_limit_part(p, xp, e);
