@@ -54,6 +54,7 @@
 #include "stars_io.h"
 #include "tracers_io.h"
 #include "units.h"
+#include "velociraptor_io.h"
 #include "xmf.h"
 
 /**
@@ -785,6 +786,12 @@ void write_output_serial(struct engine* e, const char* baseName,
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
+#ifdef HAVE_VELOCIRAPTOR
+  const int with_stf = (e->policy & engine_policy_structure_finding) &&
+                       (e->s->gpart_group_data != NULL);
+#else
+  const int with_stf = 0;
+#endif
 
   FILE* xmfFile = 0;
 
@@ -1090,6 +1097,7 @@ void write_output_serial(struct engine* e, const char* baseName,
         struct part* parts_written = NULL;
         struct xpart* xparts_written = NULL;
         struct gpart* gparts_written = NULL;
+        struct velociraptor_gpart_data* gpart_group_data_written = NULL;
         struct spart* sparts_written = NULL;
 
         /* Write particle fields from the particle structure */
@@ -1105,6 +1113,10 @@ void write_output_serial(struct engine* e, const char* baseName,
               if (with_cooling || with_temperature) {
                 num_fields += cooling_write_particles(
                     parts, xparts, list + num_fields, e->cooling_func);
+              }
+              if (with_stf) {
+                num_fields +=
+                    velociraptor_write_parts(parts, xparts, list + num_fields);
               }
               num_fields += tracers_write_particles(
                   parts, xparts, list + num_fields, with_cosmology);
@@ -1136,7 +1148,10 @@ void write_output_serial(struct engine* e, const char* baseName,
                     cooling_write_particles(parts_written, xparts_written,
                                             list + num_fields, e->cooling_func);
               }
-
+              if (with_stf) {
+                num_fields += velociraptor_write_parts(
+                    parts_written, xparts_written, list + num_fields);
+              }
               num_fields +=
                   tracers_write_particles(parts_written, xparts_written,
                                           list + num_fields, with_cosmology);
@@ -1149,6 +1164,10 @@ void write_output_serial(struct engine* e, const char* baseName,
               /* This is a DM-only run without inhibited particles */
               Nparticles = Ntot;
               darkmatter_write_particles(gparts, list, &num_fields);
+              if (with_stf) {
+                num_fields += velociraptor_write_gparts(e->s->gpart_group_data,
+                                                        list + num_fields);
+              }
             } else {
 
               /* Ok, we need to fish out the particles we want */
@@ -1159,12 +1178,27 @@ void write_output_serial(struct engine* e, const char* baseName,
                                  Ndm_written * sizeof(struct gpart)) != 0)
                 error("Error while allocating temporart memory for gparts");
 
-              /* Collect the non-inhibited DM particles from gpart */
-              io_collect_gparts_to_write(gparts, gparts_written, Ntot,
-                                         Ndm_written);
+              if (with_stf) {
+                if (posix_memalign(
+                        (void**)&gpart_group_data_written, gpart_align,
+                        Ndm_written * sizeof(struct velociraptor_gpart_data)) !=
+                    0)
+                  error(
+                      "Error while allocating temporart memory for gparts STF "
+                      "data");
+              }
 
-              /* Write DM particles */
+              /* Collect the non-inhibited DM particles from gpart */
+              io_collect_gparts_to_write(
+                  gparts, e->s->gpart_group_data, gparts_written,
+                  gpart_group_data_written, Ntot, Ndm_written, with_stf);
+
+              /* Select the fields to write */
               darkmatter_write_particles(gparts_written, list, &num_fields);
+              if (with_stf) {
+                num_fields += velociraptor_write_gparts(
+                    gpart_group_data_written, list + num_fields);
+              }
             }
           } break;
 
@@ -1174,6 +1208,10 @@ void write_output_serial(struct engine* e, const char* baseName,
               /* No inhibted particles: easy case */
               Nparticles = Nstars;
               stars_write_particles(sparts, list, &num_fields);
+              if (with_stf) {
+                num_fields +=
+                    velociraptor_write_sparts(sparts, list + num_fields);
+              }
             } else {
 
               /* Ok, we need to fish out the particles we want */
@@ -1190,6 +1228,10 @@ void write_output_serial(struct engine* e, const char* baseName,
 
               /* Select the fields to write */
               stars_write_particles(sparts_written, list, &num_fields);
+              if (with_stf) {
+                num_fields += velociraptor_write_sparts(sparts_written,
+                                                        list + num_fields);
+              }
             }
           } break;
 
@@ -1216,6 +1258,7 @@ void write_output_serial(struct engine* e, const char* baseName,
         if (parts_written) free(parts_written);
         if (xparts_written) free(xparts_written);
         if (gparts_written) free(gparts_written);
+        if (gpart_group_data_written) free(gpart_group_data_written);
         if (sparts_written) free(sparts_written);
 
         /* Close particle group */

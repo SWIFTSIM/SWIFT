@@ -3185,235 +3185,169 @@ void engine_step(struct engine *e) {
  */
 void engine_check_for_dumps(struct engine *e) {
 
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_stf = (e->policy & engine_policy_structure_finding);
-  const int stf_time_output = (e->stf_output_freq_format == io_stf_time);
+
+  /* What kind of output are we getting? */
+  enum output_type {
+    output_none,
+    output_snapshot,
+    output_statistics,
+    output_stf
+  };
+
+  /* What kind of output do we want? And at which time ?
+   * Find the earliest output (amongst all kinds) that takes place
+   * before the next time-step */
+  enum output_type type = output_none;
+  integertime_t ti_output = max_nr_timesteps;
 
   /* Save some statistics ? */
-  int save_stats = 0;
-  if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) save_stats = 1;
+  if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) {
+    if (e->ti_next_stats < ti_output) {
+      ti_output = e->ti_next_stats;
+      type = output_statistics;
+    }
+  }
 
   /* Do we want a snapshot? */
-  int dump_snapshot = 0;
-  if (e->ti_end_min > e->ti_next_snapshot && e->ti_next_snapshot > 0)
-    dump_snapshot = 1;
+  if (e->ti_end_min > e->ti_next_snapshot && e->ti_next_snapshot > 0) {
+    if (e->ti_next_snapshot < ti_output) {
+      ti_output = e->ti_next_snapshot;
+      type = output_snapshot;
+    }
+  }
 
   /* Do we want to perform structure finding? */
-  int run_stf = 0;
-  if (with_stf && stf_time_output) {
-    if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) run_stf = 1;
-  }
-  if (with_stf && !stf_time_output) {
-    if (e->step % e->delta_step_stf == 0) run_stf = 1;
+  if (with_stf) {
+    if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) {
+      if (e->ti_next_stf < ti_output) {
+        ti_output = e->ti_next_stf;
+        type = output_stf;
+      }
+    }
   }
 
   /* Store information before attempting extra dump-related drifts */
-  integertime_t ti_current = e->ti_current;
-  timebin_t max_active_bin = e->max_active_bin;
-  double time = e->time;
+  const integertime_t ti_current = e->ti_current;
+  const timebin_t max_active_bin = e->max_active_bin;
+  const double time = e->time;
 
-  while (save_stats || dump_snapshot || run_stf) {
+  while (type != output_none) {
 
-    /* Write some form of output */
-    if (dump_snapshot && save_stats) {
-
-      /* If both, need to figure out which one occurs first */
-      if (e->ti_next_stats == e->ti_next_snapshot) {
-
-        /* Let's fake that we are at the common dump time */
-        e->ti_current = e->ti_next_snapshot;
-        e->max_active_bin = 0;
-        if ((e->policy & engine_policy_cosmology)) {
-          cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
-          e->time = e->cosmology->time;
-        } else {
-          e->time = e->ti_next_stats * e->time_base + e->time_begin;
-        }
-
-        /* Drift everyone */
-        engine_drift_all(e, /*drift_mpole=*/0);
-
-        /* Dump everything */
-        engine_print_stats(e);
-#ifdef WITH_LOGGER
-        /* Write a file containing the offsets in the particle logger. */
-        engine_dump_index(e);
-#else
-        engine_dump_snapshot(e);
-#endif
-
-      } else if (e->ti_next_stats < e->ti_next_snapshot) {
-
-        /* Let's fake that we are at the stats dump time */
-        e->ti_current = e->ti_next_stats;
-        e->max_active_bin = 0;
-        if ((e->policy & engine_policy_cosmology)) {
-          cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
-          e->time = e->cosmology->time;
-        } else {
-          e->time = e->ti_next_stats * e->time_base + e->time_begin;
-        }
-
-        /* Drift everyone */
-        engine_drift_all(e, /*drift_mpole=*/0);
-
-        /* Dump stats */
-        engine_print_stats(e);
-
-        /* Let's fake that we are at the snapshot dump time */
-        e->ti_current = e->ti_next_snapshot;
-        e->max_active_bin = 0;
-        if (!(e->policy & engine_policy_cosmology))
-          e->time = e->ti_next_snapshot * e->time_base + e->time_begin;
-
-        /* Drift everyone */
-        engine_drift_all(e, /*drift_mpole=*/0);
-
-        /* Dump snapshot */
-#ifdef WITH_LOGGER
-        /* Write a file containing the offsets in the particle logger. */
-        engine_dump_index(e);
-#else
-        engine_dump_snapshot(e);
-#endif
-
-      } else if (e->ti_next_stats > e->ti_next_snapshot) {
-
-        /* Let's fake that we are at the snapshot dump time */
-        e->ti_current = e->ti_next_snapshot;
-        e->max_active_bin = 0;
-        if ((e->policy & engine_policy_cosmology)) {
-          cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
-          e->time = e->cosmology->time;
-        } else {
-          e->time = e->ti_next_stats * e->time_base + e->time_begin;
-        }
-
-        /* Drift everyone */
-        engine_drift_all(e, /*drift_mpole=*/0);
-
-        /* Dump snapshot */
-#ifdef WITH_LOGGER
-        /* Write a file containing the offsets in the particle logger. */
-        engine_dump_index(e);
-#else
-        engine_dump_snapshot(e);
-#endif
-
-        /* Let's fake that we are at the stats dump time */
-        e->ti_current = e->ti_next_stats;
-        e->max_active_bin = 0;
-        if (!(e->policy & engine_policy_cosmology))
-          e->time = e->ti_next_stats * e->time_base + e->time_begin;
-
-        /* Drift everyone */
-        engine_drift_all(e, /*drift_mpole=*/0);
-
-        /* Dump stats */
-        engine_print_stats(e);
-      }
-
-      /* Let's compute the time of the next outputs */
-      engine_compute_next_snapshot_time(e);
-      engine_compute_next_statistics_time(e);
-
-    } else if (dump_snapshot) {
-
-      /* Let's fake that we are at the snapshot dump time */
-      e->ti_current = e->ti_next_snapshot;
-      e->max_active_bin = 0;
-      if ((e->policy & engine_policy_cosmology)) {
-        cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
-        e->time = e->cosmology->time;
-      } else {
-        e->time = e->ti_next_stats * e->time_base + e->time_begin;
-      }
-
-      /* Drift everyone */
-      engine_drift_all(e, /*drift_mpole=*/0);
-
-      /* Dump... */
-#ifdef WITH_LOGGER
-      /* Write a file containing the offsets in the particle logger. */
-      engine_dump_index(e);
-#else
-      engine_dump_snapshot(e);
-#endif
-
-      /* ... and find the next output time */
-      engine_compute_next_snapshot_time(e);
-
-    } else if (save_stats) {
-
-      /* Let's fake that we are at the stats dump time */
-      e->ti_current = e->ti_next_stats;
-      e->max_active_bin = 0;
-      if ((e->policy & engine_policy_cosmology)) {
-        cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
-        e->time = e->cosmology->time;
-      } else {
-        e->time = e->ti_next_stats * e->time_base + e->time_begin;
-      }
-
-      /* Drift everyone */
-      engine_drift_all(e, /*drift_mpole=*/0);
-
-      /* Dump */
-      engine_print_stats(e);
-
-      /* and move on */
-      engine_compute_next_statistics_time(e);
+    /* Let's fake that we are at the dump time */
+    e->ti_current = ti_output;
+    e->max_active_bin = 0;
+    if (with_cosmology) {
+      cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
+      e->time = e->cosmology->time;
+    } else {
+      e->time = ti_output * e->time_base + e->time_begin;
     }
 
-    /* Perform structure finding? */
-    if (run_stf) {
+    /* Drift everyone */
+    engine_drift_all(e, /*drift_mpole=*/0);
+
+    /* Write some form of output */
+    switch (type) {
+      case output_snapshot:
+
+        /* Do we want a corresponding VELOCIraptor output? */
+        if (with_stf && e->snapshot_invoke_stf) {
 
 #ifdef HAVE_VELOCIRAPTOR
-
-      // MATTHIEU: Check the order with the other i/o options.
-      if (!dump_snapshot && !save_stats) {
-
-        /* Let's fake that we are at the stats dump time */
-        e->ti_current = e->ti_next_stf;
-        e->max_active_bin = 0;
-        if ((e->policy & engine_policy_cosmology)) {
-          cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
-          e->time = e->cosmology->time;
-        } else {
-          e->time = e->ti_next_stats * e->time_base + e->time_begin;
+          velociraptor_invoke(e, /*linked_with_snap=*/1);
+          e->step_props |= engine_step_prop_stf;
+#else
+          error(
+              "Asking for a VELOCIraptor output but SWIFT was compiled without "
+              "the interface!");
+#endif
         }
 
-        /* Drift everyone */
-        engine_drift_all(e, /*drift_mpole=*/0);
-      }
-
-      velociraptor_init(e);
-      velociraptor_invoke(e);
-
-      /* ... and find the next output time */
-      if (e->stf_output_freq_format == io_stf_time)
-        engine_compute_next_stf_time(e);
+          /* Dump... */
+#ifdef WITH_LOGGER
+        /* Write a file containing the offsets in the particle logger. */
+        engine_dump_index(e);
+#else
+        engine_dump_snapshot(e);
 #endif
+
+        /* Free the memory allocated for VELOCIraptor i/o. */
+        if (with_stf && e->snapshot_invoke_stf) {
+#ifdef HAVE_VELOCIRAPTOR
+          free(e->s->gpart_group_data);
+          e->s->gpart_group_data = NULL;
+#endif
+        }
+
+        /* ... and find the next output time */
+        engine_compute_next_snapshot_time(e);
+        break;
+
+      case output_statistics:
+
+        /* Dump */
+        engine_print_stats(e);
+
+        /* and move on */
+        engine_compute_next_statistics_time(e);
+
+        break;
+
+      case output_stf:
+
+#ifdef HAVE_VELOCIRAPTOR
+        /* Unleash the raptor! */
+        velociraptor_invoke(e, /*linked_with_snap=*/0);
+        e->step_props |= engine_step_prop_stf;
+
+        /* ... and find the next output time */
+        engine_compute_next_stf_time(e);
+#else
+        error(
+            "Asking for a VELOCIraptor output but SWIFT was compiled without "
+            "the interface!");
+#endif
+        break;
+
+      default:
+        error("Invalid dump type");
     }
 
     /* We need to see whether whether we are in the pathological case
      * where there can be another dump before the next step. */
 
+    type = output_none;
+    ti_output = max_nr_timesteps;
+
     /* Save some statistics ? */
-    save_stats = 0;
-    if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0)
-      save_stats = 1;
+    if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) {
+      if (e->ti_next_stats < ti_output) {
+        ti_output = e->ti_next_stats;
+        type = output_statistics;
+      }
+    }
 
     /* Do we want a snapshot? */
-    dump_snapshot = 0;
-    if (e->ti_end_min > e->ti_next_snapshot && e->ti_next_snapshot > 0)
-      dump_snapshot = 1;
+    if (e->ti_end_min > e->ti_next_snapshot && e->ti_next_snapshot > 0) {
+      if (e->ti_next_snapshot < ti_output) {
+        ti_output = e->ti_next_snapshot;
+        type = output_snapshot;
+      }
+    }
 
     /* Do we want to perform structure finding? */
-    run_stf = 0;
-    if (with_stf && stf_time_output) {
-      if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) run_stf = 1;
+    if (with_stf) {
+      if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) {
+        if (e->ti_next_stf < ti_output) {
+          ti_output = e->ti_next_stf;
+          type = output_stf;
+        }
+      }
     }
-  }
+
+  } /* While loop over output types */
 
   /* Restore the information we stored */
   e->ti_current = ti_current;
@@ -4173,9 +4107,12 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
   e->snapshot_int_time_label_on =
       parser_get_opt_param_int(params, "Snapshots:int_time_label_on", 0);
+  e->snapshot_invoke_stf =
+      parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->snapshot_output_count = 0;
+  e->stf_output_count = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->dt_max_RMS_displacement = FLT_MAX;
@@ -4200,7 +4137,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->cooling_func = cooling_func;
   e->chemistry = chemistry;
   e->parameter_file = params;
-  e->cell_loc = NULL;
 #ifdef WITH_MPI
   e->cputime_last_step = 0;
   e->last_repartition = 0;
@@ -4241,28 +4177,16 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   /* Initialise VELOCIraptor output. */
   if (e->policy & engine_policy_structure_finding) {
     parser_get_param_string(params, "StructureFinding:basename",
-                            e->stfBaseName);
+                            e->stf_base_name);
+    parser_get_param_string(params, "StructureFinding:config_file_name",
+                            e->stf_config_file_name);
+
     e->time_first_stf_output =
         parser_get_opt_param_double(params, "StructureFinding:time_first", 0.);
     e->a_first_stf_output = parser_get_opt_param_double(
         params, "StructureFinding:scale_factor_first", 0.1);
-    e->stf_output_freq_format = (enum io_stf_output_format)parser_get_param_int(
-        params, "StructureFinding:output_time_format");
-
-    if (e->stf_output_freq_format == io_stf_steps) {
-      e->delta_step_stf =
-          parser_get_param_int(params, "StructureFinding:delta_step");
-    } else if (e->stf_output_freq_format == io_stf_time) {
-      e->delta_time_stf =
-          parser_get_param_double(params, "StructureFinding:delta_time");
-    } else {
-      error(
-          "Invalid flag (%d) set for output time format of structure finding.",
-          e->stf_output_freq_format);
-    }
-
-    /* overwrite input if outputlist */
-    if (e->output_list_stf) e->stf_output_freq_format = io_stf_time;
+    e->delta_time_stf =
+        parser_get_opt_param_double(params, "StructureFinding:delta_time", -1.);
   }
 
   engine_init_output_lists(e, params);
@@ -4508,10 +4432,11 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
       fprintf(e->file_timesteps,
               "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-              "Statistics=%d, Snapshot=%d, Restarts=%d\n",
+              "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, logger=%d\n",
               engine_step_prop_rebuild, engine_step_prop_redistribute,
               engine_step_prop_repartition, engine_step_prop_statistics,
-              engine_step_prop_snapshot, engine_step_prop_restarts);
+              engine_step_prop_snapshot, engine_step_prop_restarts,
+              engine_step_prop_stf, engine_step_prop_logger_index);
 
       fprintf(e->file_timesteps,
               "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
@@ -4602,17 +4527,18 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           "simulation start a=%e.",
           e->a_first_statistics, e->cosmology->a_begin);
 
-    if ((e->policy & engine_policy_structure_finding) &&
-        (e->stf_output_freq_format == io_stf_time)) {
+    if (e->policy & engine_policy_structure_finding) {
 
-      if (e->delta_time_stf <= 1.)
+      if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
+        error("A value for `StructureFinding:delta_time` must be specified");
+
+      if (e->delta_time_stf <= 1. && e->delta_time_stf != -1.)
         error("Time between STF (%e) must be > 1.", e->delta_time_stf);
 
       if (e->a_first_stf_output < e->cosmology->a_begin)
         error(
             "Scale-factor of first stf output (%e) must be after the "
-            "simulation "
-            "start a=%e.",
+            "simulation start a=%e.",
             e->a_first_stf_output, e->cosmology->a_begin);
     }
   } else {
@@ -4638,22 +4564,18 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           "t=%e.",
           e->time_first_statistics, e->time_begin);
 
-    if ((e->policy & engine_policy_structure_finding) &&
-        (e->stf_output_freq_format == io_stf_time)) {
+    if (e->policy & engine_policy_structure_finding) {
 
-      if (e->delta_time_stf <= 0.)
+      if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
+        error("A value for `StructureFinding:delta_time` must be specified");
+
+      if (e->delta_time_stf <= 0. && e->delta_time_stf != -1.)
         error("Time between STF (%e) must be positive.", e->delta_time_stf);
 
       if (e->time_first_stf_output < e->time_begin)
         error("Time of first STF (%e) must be after the simulation start t=%e.",
               e->time_first_stf_output, e->time_begin);
     }
-  }
-
-  if (e->policy & engine_policy_structure_finding) {
-    /* Find the time of the first stf output */
-    if (e->stf_output_freq_format == io_stf_time)
-      engine_compute_next_stf_time(e);
   }
 
   /* Get the total mass */
@@ -4679,6 +4601,19 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
   /* Find the time of the first statistics output */
   engine_compute_next_statistics_time(e);
+
+  /* Find the time of the first stf output */
+  if (e->policy & engine_policy_structure_finding) {
+    engine_compute_next_stf_time(e);
+  }
+
+  /* Check that we are invoking VELOCIraptor only if we have it */
+  if (e->snapshot_invoke_stf &&
+      !(e->policy & engine_policy_structure_finding)) {
+    error(
+        "Invoking VELOCIraptor after snapshots but structure finding wasn't "
+        "activated at runtime (Use --velociraptor).");
+  }
 
   /* Whether restarts are enabled. Yes by default. Can be changed on restart. */
   e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
@@ -5269,7 +5204,6 @@ void engine_clean(struct engine *e) {
   output_list_clean(&e->output_list_stf);
 
   free(e->links);
-  free(e->cell_loc);
 #if defined(WITH_LOGGER)
   logger_clean(e->logger);
   free(e->logger);

@@ -50,8 +50,10 @@ HDF5 library, not a parallel build.
 Compiling SWIFT
 ---------------
 The next part is compiling SWIFT with VELOCIraptor and assumes you already
-downloaded SWIFT from the GitLab_, this can be done by running::
+downloaded SWIFT from the GitLab_, this can be done by running
 
+.. code:: bash
+  
   ./autogen.sh 
   ./configure --with-velociraptor=/path/to/VELOCIraptor-STF/src 
   make 
@@ -60,16 +62,16 @@ In which ``./autogen.sh`` only needs to be run once after the code is cloned
 from the GitLab_, and ``/path/to/`` is the path to the ``VELOCIraptor-STF``
 directory on your machine. In general ``./configure`` can be run with other
 options as desired. After this we can run SWIFT with VELOCIraptor, but for this
-we first need to add several lines to the yaml file of our simulation::
+we first need to add several lines to the yaml file of our simulation
 
     
-  #structure finding options
-  StructureFinding:
-  config_file_name:     stf_input_6dfof_dmonly_sub.cfg
-  basename:             ./stf
-  output_time_format:   1
-  scale_factor_first:   0.02
-  delta_time:           1.02
+.. code:: YAML
+
+   StructureFinding:      
+     config_file_name:     stf_input_6dfof_dmonly_sub.cfg
+     basename:             ./stf
+     scale_factor_first:   0.02
+     delta_time:           1.02
 
 In which we specify the ``.cfg`` file that is used by VELOCIraptor and the 
 other parameters which SWIFT needs to use. In the case of 

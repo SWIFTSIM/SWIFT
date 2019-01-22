@@ -7,8 +7,8 @@ General information for adding new schemes
 ==========================================
 
 The following steps are required for any new options (such as new
-:ref:`hydro`, :ref:`chemistry`, :ref:`cooling`,
-:ref:`equation_of_state`, :ref:`stars` or :ref:`gravity`)
+:ref:`hydro`, chemistry, cooling,
+:ref:`equation_of_state`, stars, or gravity)
    
 In order to add a new scheme, you will need to:
 
