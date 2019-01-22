@@ -18,7 +18,7 @@ name followed by a column and the value of the parameter:
 
 .. code:: YAML
 
-   ICs:        santa_barbara.hdf5	  
+   ICs:        santa_barbara.hdf5
    dt_max:     1.5
    shift:      [2., 4., 5.]
 
@@ -51,7 +51,7 @@ will be raised. The code can also read an array of values:
 .. code:: YAML
 
    shift:  [2., 4., 5.]
-	  
+
 Some options in the parameter file are optional and
 when not provided, SWIFT will run with the default value. However, if
 a compulsory parameter is missing an error will be raised at
@@ -109,8 +109,8 @@ speed, we would use:
      UnitLength_in_cgs:   3.08567758e24 # 1 Mpc in centimeters
      UnitVelocity_in_cgs: 1e5           # 1 km/s in centimeters per second
      UnitCurrent_in_cgs:  1             # 1 Ampere
-     UnitTemp_in_cgs:     1             # 1 Kelvin   
-	  
+     UnitTemp_in_cgs:     1             # 1 Kelvin
+
 Note that there are currently no variables in any of the SWIFT physics
 schemes that make use of the unit of electric current. There is also
 no incentive to use anything else than Kelvin but that makes the whole
@@ -127,7 +127,7 @@ system <https://en.wikipedia.org/wiki/FFF_system>`_ one would use
      UnitLength_in_cgs:   20116.8     # 1 Furlong (fur) in cm
      UnitVelocity_in_cgs: 0.01663095  # 1 Furlong (fur) per Fortnight (ftn) in cm/s
      UnitCurrent_in_cgs:  1           # 1 Ampere
-     UnitTemp_in_cgs:     1           # 1 Kelvin   
+     UnitTemp_in_cgs:     1           # 1 Kelvin
 
 The value of the physical constants in this system is left as an
 exercise for the reader [#f1]_.
@@ -176,10 +176,10 @@ use the following parameters:
    Cosmology:
      a_begin:        0.0078125     # z = 127
      a_end:          1.0           # z = 0
-     h:              0.6777        
-     Omega_m:        0.307         
-     Omega_lambda:   0.693         
-     Omega_b:        0.0455        
+     h:              0.6777
+     Omega_m:        0.307
+     Omega_lambda:   0.693
+     Omega_b:        0.0455
      Omega_r:        0.            # (Optional)
      w_0:            -1.0          # (Optional)
      w_a:            0.            # (Optional)
@@ -197,7 +197,7 @@ provided in the ``Gravity`` section. The theory document puts these parameters i
 context of the equations being solved. We give a brief overview here.
 
 * The Plummer-equivalent co-moving softening length used for all particles :math:`\epsilon_{com}`: ``comoving_softening``,
-* The Plummer-equivalent maximal physical softening length used for all particles :math:`\epsilon_{max}`: ``comoving_softening``, 
+* The Plummer-equivalent maximal physical softening length used for all particles :math:`\epsilon_{max}`: ``comoving_softening``,
 
 At any redshift :math:`z`, the Plummer-equivalent softening length used by the
 code will be :math:`\epsilon=\min(\epsilon_{max},
@@ -205,7 +205,7 @@ code will be :math:`\epsilon=\min(\epsilon_{max},
 
 * The opening angle (multipole acceptance criterion) used in the FMM :math:`\theta`: ``theta``,
 * The time-step size pre-factor :math:`\eta`: ``eta``,
-  
+
 The time-step of a given particle is given by :math:`\Delta t =
 \eta\sqrt{\frac{\epsilon}{|\overrightarrow{a}|}}`, where
 :math:`\overrightarrow{a}` is the particle's acceleration. Power et al. (2003) recommend using :math:`\eta=0.025`.
@@ -229,31 +229,31 @@ Particle-Mesh part of the calculation. The last three are optional:
 * The scale below which the short-range forces are assumed to be exactly Newtonian (in units of
   the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
   cut,min}`: ``r_cut_min`` (default: ``0.1``),
-  
+
 For most runs, the default values can be used. Only the number of cells along
 each axis needs to be specified. The remaining three values are best described
 in the context of the full set of equations in the theory documents.
-  
+
 As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
 simulation:
 
 .. code:: YAML
-	  
+
    # Parameters for the self-gravity scheme for the EAGLE-100 box
    Gravity:
-     eta:          0.025              
-     theta:        0.7                
+     eta:          0.025
+     theta:        0.7
      comoving_softening:     0.0026994  # 0.7 proper kpc at z=2.8.
      max_physical_softening: 0.0007     # 0.7 proper kpc
      rebuild_frequency:      0.01       # Default optional value
-     mesh_side_length:       512       
+     mesh_side_length:       512
      a_smooth:     1.25                 # Default optional value
      r_cut_max:    4.5                  # Default optional value
      r_cut_min:    0.1                  # Default optional value
 
 
 .. _Parameters_SPH:
-     
+
 SPH
 ---
 
@@ -317,7 +317,7 @@ Whilst for a cosmological run, one would need:
     max_dt_RMS_factor: 0.25     # Default optional value
 
 .. _Parameters_ICs:
-    
+
 Initial Conditions
 ------------------
 
@@ -373,21 +373,21 @@ be:
    InitialConditions:
      file_name:  my_ics.hdf5
      periodic:                    1
-     cleanup_h_factors:           1     
-     cleanup_velocity_factors:    1     
-     generate_gas_in_ics:         1     
-     cleanup_smoothing_lengths:   1  
+     cleanup_h_factors:           1
+     cleanup_velocity_factors:    1
+     generate_gas_in_ics:         1
+     cleanup_smoothing_lengths:   1
 
 
 .. _Parameters_constants:
-     
+
 Physical Constants
 ------------------
 
 For some idealised test it can be useful to overwrite the value of
 some physical constants; in particular the value of the gravitational
 constant. SWIFT offers an optional parameter to overwrite the value of
-:math:`G_N`. 
+:math:`G_N`.
 
 .. code:: YAML
 
@@ -419,7 +419,7 @@ This name will then be appended by an under-score and 6 digits followed by
 different outputs, starting at ``000000``. In the default setup the digits
 simply increase by one for each snapshot. However, if the optional parameter
 ``int_time_label_on`` is switched on, then the 6-digits will the physical time
-of the simulation rounded to the nearest integer [#f3]_. 
+of the simulation rounded to the nearest integer [#f3]_.
 
 The time of the first snapshot is controlled by the two following options:
 
@@ -462,7 +462,7 @@ one described above (See the :ref:`Parameters_units` section) and read:
 
 When un-specified, these all take the same value as assumed by the internal
 system of units. These are rarely used but can offer a practical alternative to
-converting data in the post-processing of the simulations. 
+converting data in the post-processing of the simulations.
 
 For a standard cosmological run, the full section would be:
 
@@ -471,8 +471,8 @@ For a standard cosmological run, the full section would be:
    Snapshots:
      basename:            output
      scale_factor_first:  0.02    # z = 49
-     delta_time:          1.02    
-	    
+     delta_time:          1.02
+
 Showing all the parameters for a basic hydro test-case, one would have:
 
 .. code:: YAML
@@ -497,7 +497,7 @@ following pages:
 
 
 .. _Parameters_statistics:
-  
+
 Statistics
 ----------
 
@@ -507,28 +507,28 @@ following page:
 * :ref:`Output_list_label` (to have statistics outputs not evenly spaced in time).
 
 .. _Parameters_restarts:
-  
+
 Restarts
 --------
 
 SWIFT can write check-pointing files and restart from them. The behaviour of
 this mechanism is driven by the options in the ``Restarts`` section of the YAML
 parameter file. All the parameters are optional but default to values that
-ensure a reasonable behaviour. 
+ensure a reasonable behaviour.
 
 * Whether or not to enable the dump of restart files: ``enable`` (default:
   ``1``).
 
 This parameter acts a master-switch for the check-pointing capabilities. All the
 other options require the ``enable`` parameter to be set to ``1``.
-  
+
 * Whether or not to save a copy of the previous set of check-pointing files:
   ``save`` (default: ``1``),
 * Whether or not to dump a set of restart file on regular exit: ``onexit``
   (default: ``0``),
 * The wall-clock time in hours between two sets of restart files:
   ``delta_hours`` (default: ``6.0``).
-  
+
 Note that there is no buffer time added to the ``delta_hours`` value. If the
 system's batch queue run time limit is set to 6 hours, the user must specify a
 smaller value to allow for enough time to safely dump the check-point files.
@@ -575,18 +575,18 @@ To run SWIFT, dumping check-pointing files every 6 hours and running for 24
 hours after which a shell command will be run, one would use:
 
 .. code:: YAML
-	  
+
   Restarts:
-    enable:             1          
+    enable:             1
     save:               1          # Keep copies
-    onexit:             0          
+    onexit:             0
     subdir:             restart    # Sub-directory of the directory where SWIFT is run
-    basename:           swift      
-    delta_hours:        6.0        
-    stop_steps:         100        
-    max_run_time:       24.0       # In hours 
-    resubmit_on_exit:   1          
-    resubmit_command:   ./resub.sh 
+    basename:           swift
+    delta_hours:        6.0
+    stop_steps:         100
+    max_run_time:       24.0       # In hours
+    resubmit_on_exit:   1
+    resubmit_command:   ./resub.sh
 
 .. _Parameters_scheduler:
 
@@ -595,99 +595,212 @@ Scheduler
 
 .. _Parameters_domain_decomposition:
 
-DomainDecomposition:
---------------------
+Domain Decomposition:
+---------------------
 
-This section determines how the top level cells are distributed between the
-ranks of an MPI run. Ideally this should give each rank a similar amount of
-work to do, so that all the ranks complete at the same time. Achieving a good
-balance requires that SWIFT is compiled with either the ParMETIS or METIS
-libraries. ParMETIS is an MPI version of METIS, so is preferred.
+This section determines how the top-level cells are distributed between the
+ranks of an MPI run. An ideal decomposition should result in each rank having
+a similar amount of work to do, so that all the ranks complete at the same
+time. Achieving a good balance requires that SWIFT is compiled with either the
+ParMETIS or METIS libraries. ParMETIS is an MPI version of METIS, so is
+preferred for performance reasons.
 
-When SWIFT first starts it does an initial distribution of the cells. At this
-time the only information available is the cell structure and the particles
-each cell contains. The type of partitioning attempted is controlled by the::
+When we use ParMETIS/METIS the top-level cells of the volume are considered as
+a graph, with a cell at each vertex and edges that connect the vertices to all
+the neighbouring cells (so we have 26 edges connected to each vertex).
+Decomposing such a graph into domains is known as partitioning, so in SWIFT we
+refer to domain decomposition as partitioning.
 
+This graph of cells can have weights associated with the vertices and the
+edges. These weights are then used to guide the partitioning, seeking to
+balance the total weight of the vertices and minimize the weights of the edges
+that are cut by the domain boundaries (known as the edgecut). We can consider
+the edge weights as a proxy for the exchange of data between cells, so
+minimizing this reduces communication.
+
+The Initial Partition:
+^^^^^^^^^^^^^^^^^^^^^^
+
+When SWIFT first starts it reads the initial conditions and then does an
+initial distribution of the top-level cells. At this time the only information
+available is the cell structure and, by geometry, the particles each cell
+should contain. The type of partitioning attempted is controlled by the::
 
   DomainDecomposition:
     initial_type:
 
-parameter. Which has the possible values:
+parameter. Which can have the values *memory*, *region*, *grid* or
+*vectorized*:
 
-    * memory
 
-    This is the default if METIS or ParMETIS is available. It performs a 
-    distribution based on the size of all the particles in each cell, so we
-    attempt to assign equal memory use to each rank. How successful this is
-    depends on the distribution of cells and particles and the number of
-    ranks, clearly if most of the particles are in one cell, or region of the
-    volume, balance is impossible or difficult. For this reason it is
-    suggested that the number of top-level cells used is adapted as necessary
-    as the finer granularity can help in these conditions.
+    * *memory*
 
-    * region
+    This is the default if METIS or ParMETIS is available. It performs a
+    partition based on the memory use of all the particles in each cell,
+    attempting to equalize the memory used by all the ranks.
+    How successful this attempt is depends on the granularity of cells and particles
+    and the number of ranks, clearly if most of the particles are in one cell,
+    or a small region of the volume, balance is impossible or
+    difficult. Having more top-level cells makes it easier to calculate a
+    good distribution (but this comes at the cost of greater overheads).
 
-    One other METIS/ParMETIS option is "region". This attempts to assign equal
+    * *region*
+
+    The one other METIS/ParMETIS option is "region". This attempts to assign equal
     numbers of cells to each rank, with the surface area of the regions minimised
     (so we get blobs, rather than rectangular volumes of cells).
 
 If ParMETIS and METIS are not available two other options are possible, but
-may give a poor partition:
+will give a poorer partition:
 
-    * grid
+    * *grid*
 
     Split the cells into a number of axis aligned regions. The number of
     splits per axis is controlled by the::
 
-    initial_grid:
+       initial_grid
 
     parameter. It takes an array of three values. The product of these values
     must equal the number of MPI ranks. If not set a suitable default will be used.
 
-    * vectorized
+    * *vectorized*
 
-    Allocate the cells on the basis of a picked set of seed positions. The
-    seed positions are picked every nranks along a vectorized cell list (1D
-    representation). This is guaranteed to give an initial partition for all
-    cases when the number of cells is greater equal to the number of MPI
-    ranks, so can be used if the others fail. Don't use this.
-    
+    Allocate the cells on the basis of proximity to a set of seed
+    positions. The seed positions are picked every nranks along a vectorized
+    cell list (1D representation). This is guaranteed to give an initial
+    partition for all cases when the number of cells is greater equal to the
+    number of MPI ranks, so can be used if the others fail. Don't use this.
+
 If ParMETIS and METIS are not available then only an initial partition will be
 performed. So the balance will be compromised by the quality of the initial
-partition and the fact that the volume will evolve during the run.
+partition.
+
+Repartitioning:
+^^^^^^^^^^^^^^^
 
 When ParMETIS or METIS is available we can consider adjusting the balance
-during the run, so we can improve from the initial partition and track
-changes that require a different balance. The initial partition is usually
-not optimal as although it may have balanced the distribution of particles
-it has not taken account of the fact that different particles and types
-require differing amounts of processing and we have not considered that
-we need to do work `between` cells. This latter point is important as we are
-running an MPI job, so inter-cell communication may be very expensive.
+during the run, so we can improve from the initial partition and also track
+changes in the run that require a different balance. The initial partition is
+usually not optimal as although it may have balanced the distribution of
+particles it has not taken account of the fact that different particles types
+require differing amounts of processing and we have not considered that we
+also need to do work requiring communication between cells. This latter point
+is important as we are running an MPI job, as inter-cell communication may be
+very expensive.
 
-none, fullcosts, edgecosts, memory, timecosts
+There are a number of possible repartition strategies which are defined using
+the::
 
+  DomainDecomposition:
+    repartition_type:
 
+parameter. The possible values for this are *none*, *fullcosts*, *edgecosts*,
+*memory*, *timecosts*.
 
-  repartition_type: costs/costs # (Optional) The re-decomposition strategy, one of:
-                            # "none/none", "costs/costs", "none/costs", "memory" or "costs/time".
-                            # These are vertex/edge weights with "costs" as task timing
-                            # and "time" as the expected time of the next
-                            # updates, "memory" uses the particle memory use
-                            # as vertex weights.
+    * *none*
 
-  trigger:          0.05    # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
-                            # new decomposition, or number of steps (>1) between decompositions
-  minfrac:          0.9     # (Optional) Fractional of all particles that should be updated in previous step when
-                            # using CPU time trigger
-  usemetis:         0       # Use serial METIS when ParMETIS is also available.
-  adaptive:         1       # Use adaptive repartition when ParMETIS is available, otherwise simple refinement.
-  itr:              100     # When adaptive defines the ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0.
-                            # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
-  use_fixed_costs:  1       # If 1 then use any compiled in fixed costs for
-                            # task weights in first repartition, if 0 only use task timings, if > 1 only use
-                            # fixed costs, unless none are available.
+    Rather obviously, don't repartition. You are happy to run with the
+    initial partition.
 
+    * *fullcosts*
+
+    Use computation weights derived from the running tasks for the vertex and
+    edge weights. This is the default.
+
+    * *edgecosts*
+
+    Only use computation weights derived from the running tasks for the egde
+    weights.
+
+    * *memory*
+
+    Repeat the initial partition with the current particle positions
+    rebalancing the memory use.
+
+    * *timecosts*
+
+    Only use computation weights derived from the running tasks for the vertex
+    weights and the expected time the particles will interact in the cells as
+    the edge weights. Using time as the edge weight has the effect of keeping
+    very active cells on single MPI ranks, so can reduce MPI communication.
+
+The computation weights are actually the measured times, in CPU ticks, that
+tasks associated with a cell take. So these automatically reflect the relative
+cost of the different task types (SPH, self-gravity etc.), and other factors
+like how well they run on the current hardware and are optimized by the
+compiler used, but this means that we have a constraint on how often we can
+consider repartitioning, namely when all (or nearly all) the tasks of the
+system have been invoked in a step. To control this we have the::
+
+    minfrac:     0.9
+
+parameter. Which defines the minimum fraction of all the particles in the
+simulation that must have been actively updated in the last step, before
+repartitioning is considered.
+
+That then leaves the question of when a run is considered to be out of balance
+and should benefit from a repartition. That is controlled by the::
+
+    trigger:          0.05
+
+parameter. This value is the CPU time difference between MPI ranks, as a
+fraction, if less than this value a repartition will not be
+done. Repartitioning can be expensive not just in CPU time, but also because
+large numbers of particles can be exchanged between MPI ranks, so is best
+avoided.
+
+If you are using ParMETIS there additional ways that you can tune the
+repartition process. 
+
+METIS only offers the ability to create a partition from a graph, which means
+that each solution is independent of those that have already been made, that
+can make the exchange of particles very large (although SWIFT attempts to
+minimize this), however, using ParMETIS we can use the existing partition to
+inform the new partition, this has two algorithms that are controlled using::
+
+    adaptive:         1       
+
+which means use adaptive repartition, otherwise simple refinement. The
+adaptive algorithm is further controlled by the::
+
+    itr:              100     
+
+parameter, which defines the ratio of inter node communication time to data
+redistribution time, in the range 0.00001 to 10000000.0. Lower values give
+less data movement during redistributions. The best choice foer these can only
+be determined by experimentation (the gains are usually small, so not really
+recommended).
+
+Finally we have the parameter::
+
+    usemetis:         0
+
+Forces the use of the METIS API, probably only useful for developers.
+
+**Fixed cost repartitioning:**
+
+So far we have assumed that repartitioning will only happen after a step that
+meets the `minfrac:` and `trigger:` criteria, but we may want to repartition
+at some arbitrary steps, and indeed do better than the initial partition
+earlier in the run. This can be done using *fixed cost* repartitioning.
+
+Fixed costs are output during each repartition step into the file
+`partition_fixed_costs.h`, this should be created by a test run of your your
+full simulation (with possibly with a smaller volume, but all the physics
+enabled). This file can then be used to replace the same file found in the
+`src/` directory and SWIFT should then be recompiled. Once you have that, you
+can use the parameter::
+
+    use_fixed_costs:  1       
+
+to control whether they are used or not. If enabled these will be used to
+repartition after the second step, which will generally give as good a
+repartition immediately as you get at the first unforced repartition.
+
+Also once these have been enabled you can change the `trigger:` value to
+numbers greater than 2, and repartitioning will be forced every `trigger`
+steps. This latter option is probably only useful for developers, but tuning
+the second step to use fixed costs can give some improvements.
 
 
 
@@ -702,4 +815,4 @@ none, fullcosts, edgecosts, memory, timecosts
 	 compare runs over the same physical time but with different numbers of
 	 snapshots. Snapshots at a given time would always have the same set of
 	 digits irrespective of the number of snapshots produced before.
-	       
+
