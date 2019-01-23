@@ -990,7 +990,14 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
     else if (cell_is_active_stars(ci, e) || cell_is_active_stars(cj, e)) {
 
       /* Do any of the cells need to be drifted first? */
-      if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
+      if (cell_is_active_stars(ci, e)) {
+	if (!cell_are_spart_drifted(ci, e)) error("Cell should be drifted!");
+	if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
+      }
+      if (cell_is_active_stars(cj, e)) {
+	if (!cell_are_part_drifted(ci, e)) error("Cell should be drifted!");
+	if (!cell_are_spart_drifted(cj, e)) error("Cell should be drifted! %i %i %lli %lli %lli", cj->cellID, cj->nodeID, e->ti_current, cj->grav.ti_old_part, cj->super->grav.ti_old_part);
+      }
 
       DOPAIR1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount, cj);
     }
@@ -1142,11 +1149,11 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *e = r->e;
 
   /* Should we even bother? */
-  int should_do = ci->stars.count != 0 && cj->hydro.count != 0 &&
+  const int should_do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
                   cell_is_active_stars(ci, e);
-  should_do |= cj->stars.count != 0 && ci->hydro.count != 0 &&
+  const int should_do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
                cell_is_active_stars(cj, e);
-  if (!should_do) return;
+  if (!should_do_ci && !should_do_cj) return;
 
   /* Get the type of pair if not specified explicitly. */
   double shift[3];
@@ -1420,7 +1427,6 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
  * @param gettimer Do we have a timer ?
  */
 void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
-
   /* Should we even bother? */
   if (ci->hydro.count == 0 || ci->stars.count == 0 ||
       !cell_is_active_stars(ci, r->e))
