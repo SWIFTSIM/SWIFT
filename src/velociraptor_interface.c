@@ -294,6 +294,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
   const int nr_cells = s->nr_cells;
+  const struct cell *cells_top = s->cells_top;
 
   /* Allow thread to run on any core for the duration of the call to
    * VELOCIraptor so that  when OpenMP threads are spawned
@@ -375,14 +376,21 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   ticks tic = getticks();
 
-  /* Copy the poisiton of the top-level cells */
-  if (posix_memalign((void **)&sim_info.cell_loc, 32,
+  /* Allocate and populate array of cell node IDs and positions. */
+  int *cell_node_ids = NULL;
+  if (posix_memalign((void **)&sim_info.cell_loc, SWIFT_STRUCT_ALIGNMENT,
                      s->nr_cells * sizeof(struct cell_loc)) != 0)
     error("Failed to allocate top-level cell locations for VELOCIraptor.");
+  if (posix_memalign((void **)&cell_node_ids, SWIFT_STRUCT_ALIGNMENT,
+                     nr_cells * sizeof(int)) != 0)
+    error("Failed to allocate list of cells node IDs for VELOCIraptor.");
+
   for (int i = 0; i < s->nr_cells; i++) {
-    sim_info.cell_loc[i].loc[0] = s->cells_top[i].loc[0];
-    sim_info.cell_loc[i].loc[1] = s->cells_top[i].loc[1];
-    sim_info.cell_loc[i].loc[2] = s->cells_top[i].loc[2];
+    cell_node_ids[i] = cells_top[i].nodeID;
+
+    sim_info.cell_loc[i].loc[0] = cells_top[i].loc[0];
+    sim_info.cell_loc[i].loc[1] = cells_top[i].loc[1];
+    sim_info.cell_loc[i].loc[2] = cells_top[i].loc[2];
   }
 
   if (e->verbose) {
@@ -399,12 +407,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
         sim_info.cell_loc[sim_info.numcells - 1].loc[1],
         sim_info.cell_loc[sim_info.numcells - 1].loc[2]);
   }
-
-  /* Allocate and populate array of cell node IDs. */
-  int *cell_node_ids = NULL;
-  if (posix_memalign((void **)&cell_node_ids, 32, nr_cells * sizeof(int)) != 0)
-    error("Failed to allocate list of cells node IDs for VELOCIraptor.");
-  for (int i = 0; i < nr_cells; i++) cell_node_ids[i] = s->cells_top[i].nodeID;
 
   /* Report timing */
   if (e->verbose)
