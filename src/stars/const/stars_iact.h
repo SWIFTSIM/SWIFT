@@ -16,7 +16,7 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
                                  const struct part *restrict pj, float a,
                                  float H, const struct cosmology *restrict cosmo,
 				 const struct stars_props *restrict stars_properties,
-				 struct xpart *restrict xp) {
+				 struct xpart *restrict xp, integertime_t ti_current) {
 
   float wi, wi_dx;
 
@@ -91,7 +91,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
                                   struct part *restrict pj, float a, float H,
 				  const struct cosmology *restrict cosmo,
 				  const struct stars_props *restrict stars_properties,
-				  struct xpart *restrict xp) {
+				  struct xpart *restrict xp, integertime_t ti_current) {
   // ALEXEI: GET RID OF a AND H IN SIGNATURE SINCE THESE CAN BE DERIVED FROM COSMO?
 
   float wj;
@@ -184,8 +184,6 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
     heating_probability = stars_properties->units_factor1 * si->to_distribute.num_SNIa *
                           stars_properties->SNIa_energy_fraction /
                           (stars_properties->deltaT_desired * si->ngb_mass);
-    //message("probability %.5e factor1 %.5e num_snia %.5e energy_fraction %.5e deltaT_desired %.5e ngb_mass %.5e temp_to_u_factor %.5e initial u %.5e",heating_probability, stars_properties->units_factor1, si->to_distribute.num_SNIa,
-    //                      stars_properties->SNIa_energy_fraction, stars_properties->deltaT_desired, si->ngb_mass, stars_properties->temp_to_u_factor, hydro_get_physical_internal_energy(pj,xp,cosmo));
     du = stars_properties->deltaT_desired * stars_properties->temp_to_u_factor;
     if (heating_probability >= 1) {
       du = stars_properties->units_factor2 * si->to_distribute.num_SNIa / si->ngb_mass;
@@ -194,12 +192,12 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   }
 
   /* pick random number to see if we do stochastic heating */
-  unsigned int seed = pj->id;
+  unsigned int seed = (pj->id + ti_current) % 8191;
   double random_num = rand_r(&seed) * stars_properties->inv_rand_max;
   if (random_num < heating_probability) {
     message("we did some heating! id %llu probability %.5e random_num %.5e du %.5e du/ini %.5e", pj->id, heating_probability, random_num, du, du/hydro_get_physical_internal_energy(pj,xp,cosmo));
     thermal_feedback(du, pj, xp, cosmo);
-  } 
+  }
 
   /* Decrease the mass of star particle (TO CHECK: WHAT ABOUT INTERNAL ENERGY?); */
   si->mass -= si->to_distribute.mass;
