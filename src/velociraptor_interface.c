@@ -295,8 +295,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   const size_t nr_sparts = s->nr_sparts;
   const int nr_cells = s->nr_cells;
 
-  const ticks tic = getticks();
-
   /* Allow thread to run on any core for the duration of the call to
    * VELOCIraptor so that  when OpenMP threads are spawned
    * they can run on any core on the processor. */
@@ -375,6 +373,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   sim_info.icellwidth[1] = s->iwidth[1];
   sim_info.icellwidth[2] = s->iwidth[2];
 
+  ticks tic = getticks();
+
   /* Copy the poisiton of the top-level cells */
   if (posix_memalign((void **)&sim_info.cell_loc, 32,
                      s->nr_cells * sizeof(struct cell_loc)) != 0)
@@ -406,6 +406,11 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     error("Failed to allocate list of cells node IDs for VELOCIraptor.");
   for (int i = 0; i < nr_cells; i++) cell_node_ids[i] = s->cells_top[i].nodeID;
 
+  /* Report timing */
+  if (e->verbose)
+    message("VR Collecting top-level cell info took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   /* Mention the number of particles being sent */
   if (e->verbose)
     message(
@@ -432,6 +437,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   } else {
     snapnum = e->stf_output_count;
   }
+
+  tic = getticks();
 
   /* Allocate and populate an array of swift_vel_parts to be passed to
    * VELOCIraptor. */
@@ -505,6 +512,13 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     }
   }
 
+  /* Report timing */
+  if (e->verbose)
+    message("VR Collecting particle info took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
   /* Values returned by VELOCIRaptor */
   int num_gparts_in_groups = -1;
   struct groupinfo *group_info = NULL;
@@ -523,6 +537,13 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     error("VELOCIraptor returned an array whilst it should not have.");
   }
 
+  /* Report timing */
+  if (e->verbose)
+    message("VR Invokation of velociraptor took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
   /* Assign the group IDs back to the gparts */
   if (linked_with_snap) {
 
@@ -540,6 +561,11 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
       data[group_info[i].index].groupID = group_info[i].groupID;
     }
 
+    /* Report timing */
+    if (e->verbose)
+      message("VR Copying group information back took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
     /* Free the array returned by VELOCIraptor */
     free(group_info);
   }
@@ -550,9 +576,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Increase output counter (if not linked with snapshots) */
   if (!linked_with_snap) e->stf_output_count++;
 
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
 #else
   error("SWIFT not configure to run with VELOCIraptor.");
 #endif /* HAVE_VELOCIRAPTOR */
