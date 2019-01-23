@@ -4746,7 +4746,12 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   logger_write_file_header(e->logger, e);
 #endif
 
-  /* Free the affinity stuff */
+  /* Initialise the structure finder */
+#ifdef HAVE_VELOCIRAPTOR
+  if (e->policy & engine_policy_structure_finding) velociraptor_init(e);
+#endif
+
+    /* Free the affinity stuff */
 #if defined(HAVE_SETAFFINITY)
   if (with_aff) {
     free(cpuid);

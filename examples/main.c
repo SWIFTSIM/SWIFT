@@ -919,10 +919,6 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
-#ifdef HAVE_VELOCIRAPTOR
-    if (with_structure_finding) velociraptor_init(&e);
-#endif
-
     /* Get some info to the user. */
     if (myrank == 0) {
       long long N_DM = N_total[1] - N_total[2] - N_total[0];
@@ -983,14 +979,6 @@ int main(int argc, char *argv[]) {
 
     /* Is there a dump before the end of the first time-step? */
     engine_check_for_dumps(&e);
-
-#ifdef HAVE_VELOCIRAPTOR
-    /* Call VELOCIraptor for the first time after the first snapshot dump. */
-    // if (e.policy & engine_policy_structure_finding) {
-    // velociraptor_init(&e);
-    // velociraptor_invoke(&e);
-    //}
-#endif
   }
 
   /* Legend */
@@ -1203,8 +1191,19 @@ int main(int argc, char *argv[]) {
     logger_log_all(e.logger, &e);
     engine_dump_index(&e);
 #endif
-    // write a final snapshot with logger, in order to facilitate a restart
+
+#ifdef HAVE_VELOCIRAPTOR
+    if (with_structure_finding && e.snapshot_invoke_stf)
+      velociraptor_invoke(&e, /*linked_with_snap=*/1);
+#endif
+
+    /* write a final snapshot */
     engine_dump_snapshot(&e);
+
+#ifdef HAVE_VELOCIRAPTOR
+    if (with_structure_finding && e.snapshot_invoke_stf)
+      free(e.s->gpart_group_data);
+#endif
   }
 
 #ifdef WITH_MPI
