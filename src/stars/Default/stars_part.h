@@ -65,6 +65,12 @@ struct spart {
 
   } density;
 
+  struct {
+    /* Change in smoothing length over time. */
+    float h_dt;
+
+  } feedback;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */
