@@ -70,7 +70,8 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
  * @param dt_kick_therm The kick time-step for changes in thermal state.
  * @param dt_kick_corr The kick time-step for the gizmo-mfv gravity correction.
  * @param cosmo The cosmological model.
- * @param hydro_props The constants used in the scheme
+ * @param hydro_props The constants used in the scheme.
+ * @param entropy_floor_props Properties of the entropy floor.
  * @param ti_start The starting (integer) time of the kick (for debugging
  * checks).
  * @param ti_end The ending (integer) time of the kick (for debugging checks).

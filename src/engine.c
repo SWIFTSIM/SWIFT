@@ -3276,6 +3276,7 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Dump */
         engine_print_stats(e);
+
         /* and move on */
         engine_compute_next_statistics_time(e);
 
@@ -3309,8 +3310,10 @@ void engine_check_for_dumps(struct engine *e) {
 
     /* Save some statistics ? */
     if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) {
-      ti_output = e->ti_next_stats;
-      type = output_statistics;
+      if (e->ti_next_stats < ti_output) {
+	ti_output = e->ti_next_stats;
+	type = output_statistics;
+      }
     }
 
     /* Do we want a snapshot? */
