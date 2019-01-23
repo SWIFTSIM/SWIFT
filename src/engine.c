@@ -3276,8 +3276,6 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Dump */
         engine_print_stats(e);
-      }
-
         /* and move on */
         engine_compute_next_statistics_time(e);
 
@@ -3311,27 +3309,9 @@ void engine_check_for_dumps(struct engine *e) {
 
     /* Save some statistics ? */
     if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) {
-      if (e->ti_next_stats < ti_output) {
-        ti_output = e->ti_next_stats;
-        type = output_statistics;
-      }
-
-      velociraptor_init(e);
-      velociraptor_invoke(e);
-
-      /* ... and find the next output time */
-      if (e->stf_output_freq_format == io_stf_time)
-        engine_compute_next_stf_time(e);
-#endif
+      ti_output = e->ti_next_stats;
+      type = output_statistics;
     }
-
-    /* We need to see whether whether we are in the pathological case
-     * where there can be another dump before the next step. */
-
-    /* Save some statistics ? */
-    save_stats = 0;
-    if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0)
-      save_stats = 1;
 
     /* Do we want a snapshot? */
     if (e->ti_end_min > e->ti_next_snapshot && e->ti_next_snapshot > 0) {

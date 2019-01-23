@@ -931,6 +931,7 @@ void write_output_serial(struct engine* e, const char* baseName,
     cooling_write_flavour(h_grp, e->cooling_func);
     chemistry_write_flavour(h_grp);
     tracers_write_flavour(h_grp);
+    sftracers_write_flavour(h_grp);
     H5Gclose(h_grp);
 
     /* Print the gravity parameters */
