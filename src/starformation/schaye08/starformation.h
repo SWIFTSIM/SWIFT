@@ -409,11 +409,11 @@ INLINE static void starformation_init_backend(
 
   /* Load the equation of state for this model */
   starform->polytropic_index = parser_get_param_double(
-      parameter_file, "SchayeSF:EOS_Jeans_GammaEffective");
+      parameter_file, "EAGLEEntropyFloor:Jeans_gamma_effective");
   starform->EOS_temperature_norm = parser_get_param_double(
-      parameter_file, "SchayeSF:EOS_Jeans_TemperatureNorm_K");
+      parameter_file, "EAGLEEntropyFloor:Jeans_temperature_norm_K");
   starform->EOS_density_norm_HpCM3 = parser_get_param_double(
-      parameter_file, "SchayeSF:EOS_JEANS_DensityNorm_HpCM3");
+      parameter_file, "EAGLEEntropyFloor:Jeans_density_threshold_H_p_cm3");
   starform->EOS_density_norm =
       starform->EOS_density_norm_HpCM3 * conversion_numb_density;
 
