@@ -2705,7 +2705,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (spart_is_active(sp, e)) {
 
         /* Finish the force loop */
-        stars_end_force(sp);
+        stars_end_feedback(sp);
       }
     }
   }
