@@ -418,10 +418,16 @@ INLINE static void starformation_init_backend(
   starform->EOS_density_norm =
       starform->EOS_density_norm_HpCM3 * conversion_numb_density;
 
+  /* Initial Hydrogen abundance (mass fraction) */
+  const double X_H = hydro_props->hydrogen_mass_fraction;
+
+  /* We assume neutral gas */
+  const float mean_molecular_weight = hydro_props->mu_neutral;
+
   /* Calculate the EOS pressure normalization */
   starform->EOS_pressure_norm = starform->EOS_density_norm *
                                 starform->EOS_temperature_norm *
-                                phys_const->const_boltzmann_k;
+                                phys_const->const_boltzmann_k / mean_molecular_weight / X_H;
 
   const double EOS_high_den_pressure =
       starform->EOS_pressure_norm *
