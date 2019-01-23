@@ -85,7 +85,8 @@ INLINE static void star_formation_copy_properties(
  */
 INLINE static void starformation_init_backend(
     struct swift_params* parameter_file, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct star_formation* starform) {}
+    const struct unit_system* us, const struct hydro_props* hydro_props,
+    const struct star_formation* starform) {}
 
 /**
  * @brief Prints the used parameters of the star formation law

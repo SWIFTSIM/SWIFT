@@ -40,6 +40,7 @@
 void starformation_init(struct swift_params* parameter_file,
                         const struct phys_const* phys_const,
                         const struct unit_system* us,
+                        const struct hydro_props* hydro_props,
                         struct star_formation* starform);
 
 void starformation_print(const struct star_formation* starform);

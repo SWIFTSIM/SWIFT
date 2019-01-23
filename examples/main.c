@@ -890,7 +890,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the star formation law and its properties */
     if (with_star_formation)
-      starformation_init(params, &prog_const, &us, &starform);
+      starformation_init(params, &prog_const, &us, &hydro_properties, &starform);
     if (myrank == 0) starformation_print(&starform);
 
     /* Initialise the chemistry */

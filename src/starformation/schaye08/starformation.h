@@ -331,7 +331,8 @@ INLINE static void star_formation_copy_properties(
  * */
 INLINE static void starformation_init_backend(
     struct swift_params* parameter_file, const struct phys_const* phys_const,
-    const struct unit_system* us, struct star_formation* starform) {
+    const struct unit_system* us, const struct hydro_props* hydro_props,
+    struct star_formation* starform) {
 
   /* Get the appropriate constant to calculate the
    * star formation constant */
