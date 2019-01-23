@@ -9,6 +9,8 @@
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param xp Extra particle data
+ * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
@@ -84,6 +86,8 @@ static inline void thermal_feedback(float du, struct part * restrict p,
  * @param pj Second (gas) particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param xp Extra particle data
+ * @param ti_current Current integer time used value for seeding random number generator
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
@@ -111,6 +115,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
 
   /* Update particle mass */
   float current_mass = hydro_get_mass(pj);
+  // Commented for purposes of testing energy feedback. 
   //float new_mass = current_mass + si->to_distribute.mass*omega_frac;
   float new_mass = current_mass;
   hydro_set_mass(pj,new_mass);
@@ -192,6 +197,8 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   }
 
   /* pick random number to see if we do stochastic heating */
+  // Temporary assignment of random seed. Discuss with Matthieu for better 
+  // way of generating random numbers
   unsigned int seed = (pj->id + ti_current) % 8191;
   double random_num = rand_r(&seed) * stars_properties->inv_rand_max;
   if (random_num < heating_probability) {
@@ -199,6 +206,6 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
     thermal_feedback(du, pj, xp, cosmo);
   }
 
-  /* Decrease the mass of star particle (TO CHECK: WHAT ABOUT INTERNAL ENERGY?); */
+  /* Decrease the mass of star particle */
   si->mass -= si->to_distribute.mass;
 }

@@ -83,12 +83,9 @@ struct spart {
     /* Number of type 1a SNe per unit mass */
     float num_SNIa;
 
-    /* total mass of neighbouring gas particles (TODO: CHECK IF THIS IS DIFFERENT THAN ngb_mass DECLARED BELOW) */
-    float ngb_mass;
-
   } to_distribute;
 
-  /* kernel normalisation factor (equivalent to metalweight_norm in eagle_enrich.c:811, IMPROVE COMMENT) */
+  /* kernel normalisation factor (equivalent to metalweight_norm in eagle_enrich.c:811, TODO: IMPROVE COMMENT) */
   float omega_normalisation_inv;
 
   /* total mass of neighbouring gas particles */

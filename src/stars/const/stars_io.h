@@ -90,6 +90,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
  * @param us The internal unit system.
  * @param params The parsed parameters.
  * @param p The already read-in properties of the hydro scheme.
+ * @param cosmo The already read-in cosmology properties.
  */
 INLINE static void stars_props_init(struct stars_props *sp,
                                     const struct phys_const *phys_const,
@@ -135,8 +136,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->SNIa_energy_fraction = 1.0e0;
   sp->total_energy_SNe = 1.0e51/units_cgs_conversion_factor(us,UNIT_CONV_ENERGY);
 
-  message("du %.5e in cgs %.5e", sp->deltaT_desired * sp->temp_to_u_factor, sp->deltaT_desired * sp->temp_to_u_factor * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY)/units_cgs_conversion_factor(us,UNIT_CONV_MASS));
-  
   /* Set to 1 if using continuous heating, 0 for stochastic  */
   sp->continuous_heating = parser_get_opt_param_int(params, "Stars:continuous_heating", 0);
 
