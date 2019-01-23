@@ -185,6 +185,110 @@ struct groupinfo *InvokeVelociraptor(
 #endif /* HAVE_VELOCIRAPTOR */
 
 /**
+ * @brief Temporary structure used for the data copy mapper.
+ */
+struct velociraptor_copy_data {
+  const struct engine *e;
+  struct swift_vel_part *swift_parts;
+};
+
+/**
+ * @brief Mapper function to conver the #gpart into VELOCIraptor Particles.
+ *
+ * @param map_data The array of #gpart.
+ * @param nr_gparts The number of #gpart.
+ * @param extra_data Pointer to the #engine and to the array to fill.
+ */
+void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
+                                           void *extra_data) {
+
+  /* Unpack the data */
+  struct gpart *restrict gparts = (struct gpart *)map_data;
+  struct velociraptor_copy_data *data =
+      (struct velociraptor_copy_data *)extra_data;
+  struct swift_vel_part *swift_parts = data->swift_parts;
+  const struct engine *e = data->e;
+  const struct space *s = e->s;
+
+  /* Handle on the other particle types */
+  const struct part *parts = s->parts;
+  const struct xpart *xparts = s->xparts;
+  const struct spart *sparts = s->sparts;
+
+  /* Handle on the physics modules */
+  const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct unit_system *us = e->internal_units;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct cooling_function_data *cool_func = e->cooling_func;
+
+  const float a_inv = e->cosmology->a_inv;
+
+  /* Convert particle properties into VELOCIraptor units.
+   * VELOCIraptor wants:
+   * - Co-moving positions,
+   * - Peculiar velocities,
+   * - Co-moving potential,
+   * - Physical internal energy (for the gas),
+   * - Temperatures (for the gas).
+   */
+  for (int i = 0; i < nr_gparts; i++) {
+
+    swift_parts[i].x[0] = gparts[i].x[0];
+    swift_parts[i].x[1] = gparts[i].x[1];
+    swift_parts[i].x[2] = gparts[i].x[2];
+
+    swift_parts[i].v[0] = gparts[i].v_full[0] * a_inv;
+    swift_parts[i].v[1] = gparts[i].v_full[1] * a_inv;
+    swift_parts[i].v[2] = gparts[i].v_full[2] * a_inv;
+
+    swift_parts[i].mass = gravity_get_mass(&gparts[i]);
+    swift_parts[i].potential = gravity_get_comoving_potential(&gparts[i]);
+
+    swift_parts[i].type = gparts[i].type;
+
+    swift_parts[i].index = i;
+#ifdef WITH_MPI
+    swift_parts[i].task = e->nodeID;
+#else
+    swift_parts[i].task = 0;
+#endif
+
+    /* Set gas particle IDs from their hydro counterparts and set internal
+     * energies. */
+    switch (gparts[i].type) {
+
+      case swift_type_gas: {
+        const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+        const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
+
+        swift_parts[i].id = parts[-gparts[i].id_or_neg_offset].id;
+        swift_parts[i].u = hydro_get_drifted_physical_internal_energy(p, cosmo);
+        swift_parts[i].T = cooling_get_temperature(phys_const, hydro_props, us,
+                                                   cosmo, cool_func, p, xp);
+      } break;
+
+      case swift_type_stars:
+
+        swift_parts[i].id = sparts[-gparts[i].id_or_neg_offset].id;
+        swift_parts[i].u = 0.f;
+        swift_parts[i].T = 0.f;
+        break;
+
+      case swift_type_dark_matter:
+
+        swift_parts[i].id = gparts[i].id_or_neg_offset;
+        swift_parts[i].u = 0.f;
+        swift_parts[i].T = 0.f;
+        break;
+
+      default:
+        error("Particle type not handled by VELOCIraptor.");
+    }
+  }
+}
+
+/**
  * @brief Initialise VELOCIraptor with configuration, units,
  * simulation info needed to run.
  *
@@ -278,18 +382,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
 #ifdef HAVE_VELOCIRAPTOR
 
-  const struct cosmology *cosmo = e->cosmology;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct unit_system *us = e->internal_units;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct cooling_function_data *cool_func = e->cooling_func;
-
   /* Handle on the particles */
   const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
-  const struct gpart *gparts = s->gparts;
-  const struct spart *sparts = s->sparts;
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
@@ -449,70 +543,9 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
                      nr_gparts * sizeof(struct swift_vel_part)) != 0)
     error("Failed to allocate array of particles for VELOCIraptor.");
 
-  const float a_inv = e->cosmology->a_inv;
-
-  /* Convert particle properties into VELOCIraptor units.
-   * VELOCIraptor wants:
-   * - Co-moving positions,
-   * - Peculiar velocities,
-   * - Co-moving potential,
-   * - Physical internal energy (for the gas),
-   * - Temperatures (for the gas).
-   */
-  for (size_t i = 0; i < nr_gparts; i++) {
-
-    swift_parts[i].x[0] = gparts[i].x[0];
-    swift_parts[i].x[1] = gparts[i].x[1];
-    swift_parts[i].x[2] = gparts[i].x[2];
-
-    swift_parts[i].v[0] = gparts[i].v_full[0] * a_inv;
-    swift_parts[i].v[1] = gparts[i].v_full[1] * a_inv;
-    swift_parts[i].v[2] = gparts[i].v_full[2] * a_inv;
-
-    swift_parts[i].mass = gravity_get_mass(&gparts[i]);
-    swift_parts[i].potential = gravity_get_comoving_potential(&gparts[i]);
-
-    swift_parts[i].type = gparts[i].type;
-
-    swift_parts[i].index = i;
-#ifdef WITH_MPI
-    swift_parts[i].task = e->nodeID;
-#else
-    swift_parts[i].task = 0;
-#endif
-
-    /* Set gas particle IDs from their hydro counterparts and set internal
-     * energies. */
-    switch (gparts[i].type) {
-
-      case swift_type_gas: {
-        const struct part *p = &parts[-gparts[i].id_or_neg_offset];
-        const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
-
-        swift_parts[i].id = parts[-gparts[i].id_or_neg_offset].id;
-        swift_parts[i].u = hydro_get_drifted_physical_internal_energy(p, cosmo);
-        swift_parts[i].T = cooling_get_temperature(phys_const, hydro_props, us,
-                                                   cosmo, cool_func, p, xp);
-      } break;
-
-      case swift_type_stars:
-
-        swift_parts[i].id = sparts[-gparts[i].id_or_neg_offset].id;
-        swift_parts[i].u = 0.f;
-        swift_parts[i].T = 0.f;
-        break;
-
-      case swift_type_dark_matter:
-
-        swift_parts[i].id = gparts[i].id_or_neg_offset;
-        swift_parts[i].u = 0.f;
-        swift_parts[i].T = 0.f;
-        break;
-
-      default:
-        error("Particle type not handled by VELOCIraptor.");
-    }
-  }
+  struct velociraptor_copy_data copy_data = {e, swift_parts};
+  threadpool_map(&e->threadpool, velociraptor_convert_particles_mapper,
+                 s->gparts, nr_gparts, sizeof(struct gpart), 0, &copy_data);
 
   /* Report timing */
   if (e->verbose)
