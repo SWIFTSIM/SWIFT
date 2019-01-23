@@ -206,9 +206,10 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
   struct gpart *restrict gparts = (struct gpart *)map_data;
   struct velociraptor_copy_data *data =
       (struct velociraptor_copy_data *)extra_data;
-  struct swift_vel_part *swift_parts = data->swift_parts;
   const struct engine *e = data->e;
   const struct space *s = e->s;
+  struct swift_vel_part *swift_parts =
+      data->swift_parts + (ptrdiff_t)(gparts - s->gparts);
 
   /* Handle on the other particle types */
   const struct part *parts = s->parts;
