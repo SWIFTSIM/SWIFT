@@ -874,7 +874,9 @@ cell_can_recurse_in_pair_stars_task(const struct cell *c) {
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
   return c->split && ((kernel_gamma * c->stars.h_max_old +
-                       c->stars.dx_max_part_old) < 0.5f * c->dmin);
+                       c->stars.dx_max_part_old) < 0.5f * c->dmin) &&
+    ((kernel_gamma * c->hydro.h_max_old +
+      c->hydro.dx_max_part_old) < 0.5f * c->dmin);
 }
 
 /**
@@ -887,7 +889,8 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_stars_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin);
+  return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin) &&
+    (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
 }
 
 /**

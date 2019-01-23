@@ -965,10 +965,11 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL && c->progeny[k]->stars.count > 0) {
         /* Only propagate cleanup if the progeny is stale. */
+	const int cleanup_prog = cleanup &&
+	  (c->progeny[k]->stars.dx_max_sort_old >
+	   space_maxreldx * c->progeny[k]->dmin);
         runner_do_stars_sort(r, c->progeny[k], flags,
-                             cleanup && (c->progeny[k]->stars.dx_max_sort_old >
-                                         space_maxreldx * c->progeny[k]->dmin),
-                             0);
+                             cleanup_prog, 0);
         dx_max_sort = max(dx_max_sort, c->progeny[k]->stars.dx_max_sort);
         dx_max_sort_old =
             max(dx_max_sort_old, c->progeny[k]->stars.dx_max_sort_old);
@@ -2704,7 +2705,7 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
       if (spart_is_active(sp, e)) {
 
         /* Finish the force loop */
-        stars_end_feedback(sp);
+        stars_end_force(sp);
       }
     }
   }
@@ -2955,6 +2956,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   /* ... and store. */
   // c->grav.ti_end_min = ti_gravity_end_min;
   // c->grav.ti_end_max = ti_gravity_end_max;
+  c->hydro.ti_old_part = ti_current;
   c->grav.ti_old_part = ti_current;
   c->stars.h_max = h_max;
 
@@ -3121,9 +3123,8 @@ void *runner_main(void *data) {
         case task_type_stars_sort_local:
         case task_type_stars_sort_foreign:
           /* Cleanup only if any of the indices went stale. */
-          runner_do_stars_sort(
-              r, ci, t->flags,
-              ci->stars.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
+          runner_do_stars_sort(r, ci, t->flags,
+			       ci->stars.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;

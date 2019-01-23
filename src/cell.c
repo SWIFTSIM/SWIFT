@@ -2486,11 +2486,12 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   else {
 
     /* Should we even bother? */
-    if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
+    const int should_do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
+      cell_is_active_stars(ci, e);
+    const int should_do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
+      cell_is_active_stars(cj, e);
 
-    int should_do = ci->stars.count != 0 && cj->hydro.count != 0;
-    should_do |= cj->stars.count != 0 && ci->hydro.count != 0;
-    if (!should_do) return;
+    if (!should_do_ci && !should_do_cj) return;
 
     /* Get the orientation of the pair. */
     double shift[3];
@@ -2776,8 +2777,12 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 
     /* Otherwise, activate the sorts and drifts. */
     else {
+      const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
+	cell_is_active_stars(ci, e);
+      const int do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
+	cell_is_active_stars(cj, e);
 
-      if (cell_is_active_stars(ci, e)) {
+      if (do_ci) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->hydro.requires_sorts, 1 << sid);
         atomic_or(&ci->stars.requires_sorts, 1 << sid);
@@ -2794,7 +2799,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         cell_activate_stars_sorts(ci, sid, s);
       }
 
-      if (cell_is_active_stars(cj, e)) {
+      if (do_cj) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->stars.requires_sorts, 1 << sid);
         atomic_or(&ci->hydro.requires_sorts, 1 << sid);
@@ -3354,23 +3359,20 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
 
-    /* Only activate tasks that involve a local active cell. */
-    if ((ci_active && ci->nodeID == nodeID) ||
-        (cj_active && cj->nodeID == nodeID)) {
-      scheduler_activate(s, t);
+    if (t->type == task_type_self &&
+	ci_active && ci->nodeID == nodeID) {
 
-      /* Activate drifts */
-      if (t->type == task_type_self) {
-        if (ci->nodeID == nodeID) {
-          cell_activate_drift_part(ci, s);
-          cell_activate_drift_spart(ci, s);
-        }
-      }
+	cell_activate_drift_part(ci, s);
+	cell_activate_drift_spart(ci, s);
     }
 
     /* Activate cells that contains either a density or a feedback task */
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+
+      /* Only activate tasks that involve a local active cell. */
+      scheduler_activate(s, t);
+
       /* Set the correct sorting flags and activate hydro drifts */
       if (t->type == task_type_pair) {
         /* Do ci */
