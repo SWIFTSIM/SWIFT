@@ -293,7 +293,7 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz,
                                  vector *wcountSum, vector *wcount_dhSum,
                                  vector *div_vSum, vector *curlvxSum,
                                  vector *curlvySum, vector *curlvzSum,
-                                 mask_t mask, mask_t mask2, short mask_cond) {
+                                 mask_t mask, mask_t mask2, int mask_cond) {
 
   vector r, ri, ui, wi, wi_dx;
   vector dvx, dvy, dvz;
@@ -1050,5 +1050,35 @@ runner_iact_nonsym_2_vec_force(
 }
 
 #endif
+
+/**
+ * @brief Timestep limiter loop
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_limiter(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  /* Nothing to do here if both particles are active */
+}
+
+/**
+ * @brief Timestep limiter loop (non-symmetric version)
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  /* Wake up the neighbour? */
+  if (pi->force.v_sig > const_limiter_max_v_sig_ratio * pj->force.v_sig) {
+
+    pj->wakeup = time_bin_awake;
+
+    // MATTHIEU
+    // if (pj->wakeup == time_bin_not_awake)
+    // pj->wakeup = time_bin_awake;
+    // else if (pj->wakeup > 0)
+    // pj->wakeup = -pj->wakeup;
+  }
+}
 
 #endif /* SWIFT_GADGET2_HYDRO_IACT_H */

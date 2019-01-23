@@ -24,6 +24,7 @@
 #include "../config.h"
 
 /* Local includes. */
+#include "part_type.h"
 #include "units.h"
 
 #define FIELD_BUFFER_SIZE 200
@@ -32,8 +33,10 @@
 #define IO_BUFFER_ALIGNMENT 1024
 
 /* Avoid cyclic inclusion problems */
+struct cell;
 struct part;
 struct gpart;
+struct velociraptor_gpart_data;
 struct spart;
 struct xpart;
 struct io_props;
@@ -65,7 +68,7 @@ void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                        void* data);
 
 void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
-                        void* data, int num);
+                        const void* data, int num);
 
 void io_write_attribute_d(hid_t grp, const char* name, double data);
 void io_write_attribute_f(hid_t grp, const char* name, float data);
@@ -75,6 +78,14 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 
 void io_write_code_description(hid_t h_file);
 void io_write_engine_policy(hid_t h_file, const struct engine* e);
+
+void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
+                           const struct cell* cells_top, const int nr_cells,
+                           const double width[3], const int nodeID,
+                           const long long global_counts[swift_type_count],
+                           const long long global_offsets[swift_type_count],
+                           const struct unit_system* internal_units,
+                           const struct unit_system* snapshot_units);
 
 void io_read_unit_system(hid_t h_file, struct unit_system* ic_units,
                          const struct unit_system* internal_units,
@@ -103,9 +114,11 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
                                 const size_t Nsparts,
                                 const size_t Nsparts_written);
 void io_collect_gparts_to_write(const struct gpart* restrict gparts,
+                                const struct velociraptor_gpart_data* vr_data,
                                 struct gpart* restrict gparts_written,
+                                struct velociraptor_gpart_data* vr_data_written,
                                 const size_t Ngparts,
-                                const size_t Ngparts_written);
+                                const size_t Ngparts_written, int with_stf);
 void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
                           size_t Ndm);
 void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,

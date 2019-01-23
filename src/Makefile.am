@@ -50,7 +50,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
     logger_io.h tracers_io.h tracers.h tracers_struct.h sftracers_io.h sftracers.h \
-    sftracers_struct.h
+    sftracers_struct.h velociraptor_struct.h velociraptor_io.h
 
 # source files for EAGLE cooling
 EAGLE_COOLING_SOURCES =
@@ -76,7 +76,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 gravity_iact.h kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h  \
                  runner_doiact_nosort.h runner_doiact_stars.h units.h intrinsics.h minmax.h kick.h timestep.h drift.h \
 		 adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h dump.h logger.h sign.h \
-		 logger_io.h \
+		 logger_io.h timestep_limiter.h \
 		 gravity.h gravity_io.h gravity_cache.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \

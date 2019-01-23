@@ -56,6 +56,7 @@
 #include "stars_io.h"
 #include "tracers_io.h"
 #include "units.h"
+#include "velociraptor_io.h"
 #include "xmf.h"
 
 /* The current limit of ROMIO (the underlying MPI-IO layer) is 2GB */
@@ -957,9 +958,16 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   const struct spart* sparts = e->s->sparts;
   struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int with_cooling = e->policy & engine_policy_cooling;
+  const int with_temperature = e->policy & engine_policy_temperature;
+#ifdef HAVE_VELOCIRAPTOR
+  const int with_stf = (e->policy & engine_policy_structure_finding) &&
+                       (e->s->gpart_group_data != NULL);
+#else
+  const int with_stf = 0;
+#endif
 
   FILE* xmfFile = 0;
-  int periodic = e->s->periodic;
   int numFiles = 1;
 
   /* First time, we need to create the XMF file */
@@ -986,27 +994,25 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   xmf_write_outputheader(xmfFile, fileName, e->time);
 
   /* Open header to write simulation properties */
-  /* message("Writing runtime parameters..."); */
-  hid_t h_grp =
-      H5Gcreate(h_file, "/RuntimePars", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_grp < 0) error("Error while creating runtime parameters group\n");
-
-  /* Write the relevant information */
-  io_write_attribute(h_grp, "PeriodicBoundariesOn", INT, &periodic, 1);
-
-  /* Close runtime parameters */
-  H5Gclose(h_grp);
-
-  /* Open header to write simulation properties */
   /* message("Writing file header..."); */
-  h_grp = H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  hid_t h_grp =
+      H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating file header\n");
 
+  /* Convert basic output information to snapshot units */
+  const double factor_time =
+      units_conversion_factor(internal_units, snapshot_units, UNIT_CONV_TIME);
+  const double factor_length =
+      units_conversion_factor(internal_units, snapshot_units, UNIT_CONV_LENGTH);
+  const double dblTime = e->time * factor_time;
+  const double dim[3] = {e->s->dim[0] * factor_length,
+                         e->s->dim[1] * factor_length,
+                         e->s->dim[2] * factor_length};
+
   /* Print the relevant information and print status */
-  io_write_attribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
-  double dblTime = e->time;
+  io_write_attribute(h_grp, "BoxSize", DOUBLE, dim, 3);
   io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
-  int dimension = (int)hydro_dimension;
+  const int dimension = (int)hydro_dimension;
   io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
   io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
   io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
@@ -1143,17 +1149,26 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
       case swift_type_gas:
         hydro_write_particles(parts, xparts, list, &num_fields);
         num_fields += chemistry_write_particles(parts, list + num_fields);
-        num_fields += cooling_write_particles(parts, xparts, list + num_fields,
-                                              e->cooling_func);
+        if (with_cooling || with_temperature) {
+          num_fields += cooling_write_particles(
+              parts, xparts, list + num_fields, e->cooling_func);
+        }
         num_fields += tracers_write_particles(parts, xparts, list + num_fields,
                                               with_cosmology);
-        num_fields += sftracers_write_particles(
+      num_fields += sftracers_write_particles(
             parts, xparts, list + num_fields, with_cosmology);
-
+        if (with_stf) {
+          num_fields +=
+              velociraptor_write_parts(parts, xparts, list + num_fields);
+        }
         break;
 
       case swift_type_dark_matter:
         darkmatter_write_particles(gparts, list, &num_fields);
+        if (with_stf) {
+          num_fields += velociraptor_write_gparts(e->s->gpart_group_data,
+                                                  list + num_fields);
+        }
         break;
 
       case swift_type_stars:
@@ -1161,6 +1176,9 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         num_fields += chemistry_write_sparticles(sparts, list + num_fields);
         num_fields +=
             tracers_write_sparticles(sparts, list + num_fields, with_cosmology);
+        if (with_stf) {
+          num_fields += velociraptor_write_sparts(sparts, list + num_fields);
+        }
         break;
 
       default:
@@ -1228,6 +1246,14 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const struct spart* sparts = e->s->sparts;
   struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int with_cooling = e->policy & engine_policy_cooling;
+  const int with_temperature = e->policy & engine_policy_temperature;
+#ifdef HAVE_VELOCIRAPTOR
+  const int with_stf = (e->policy & engine_policy_structure_finding) &&
+                       (e->s->gpart_group_data != NULL);
+#else
+  const int with_stf = 0;
+#endif
 
   /* Number of particles currently in the arrays */
   const size_t Ntot = e->s->nr_gparts;
@@ -1289,6 +1315,32 @@ void write_output_parallel(struct engine* e, const char* baseName,
   else
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
              e->snapshot_output_count);
+
+  /* Now write the top-level cell structure */
+  hid_t h_file_cells = 0, h_grp_cells = 0;
+  if (mpi_rank == 0) {
+
+    /* Open the snapshot on rank 0 */
+    h_file_cells = H5Fopen(fileName, H5F_ACC_RDWR, H5P_DEFAULT);
+    if (h_file_cells < 0)
+      error("Error while opening file '%s' on rank %d.", fileName, mpi_rank);
+
+    /* Create the group we want in the file */
+    h_grp_cells = H5Gcreate(h_file_cells, "/Cells", H5P_DEFAULT, H5P_DEFAULT,
+                            H5P_DEFAULT);
+    if (h_grp_cells < 0) error("Error while creating cells group");
+  }
+
+  /* Write the location of the particles in the arrays */
+  io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->cells_top,
+                        e->s->nr_cells, e->s->width, mpi_rank, N_total, offset,
+                        internal_units, snapshot_units);
+
+  /* Close everything */
+  if (mpi_rank == 0) {
+    H5Gclose(h_grp_cells);
+    H5Fclose(h_file_cells);
+  }
 
   /* Prepare some file-access properties */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
@@ -1403,6 +1455,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
     struct part* parts_written = NULL;
     struct xpart* xparts_written = NULL;
     struct gpart* gparts_written = NULL;
+    struct velociraptor_gpart_data* gpart_group_data_written = NULL;
     struct spart* sparts_written = NULL;
 
     /* Write particle fields from the particle structure */
@@ -1415,8 +1468,14 @@ void write_output_parallel(struct engine* e, const char* baseName,
           Nparticles = Ngas;
           hydro_write_particles(parts, xparts, list, &num_fields);
           num_fields += chemistry_write_particles(parts, list + num_fields);
-          num_fields += cooling_write_particles(
-              parts, xparts, list + num_fields, e->cooling_func);
+          if (with_cooling || with_temperature) {
+            num_fields += cooling_write_particles(
+                parts, xparts, list + num_fields, e->cooling_func);
+          }
+          if (with_stf) {
+            num_fields +=
+                velociraptor_write_parts(parts, xparts, list + num_fields);
+          }
           num_fields += tracers_write_particles(
               parts, xparts, list + num_fields, with_cosmology);
           num_fields += sftracers_write_particles(
@@ -1444,9 +1503,15 @@ void write_output_parallel(struct engine* e, const char* baseName,
                                 &num_fields);
           num_fields +=
               chemistry_write_particles(parts_written, list + num_fields);
-          num_fields +=
-              cooling_write_particles(parts_written, xparts_written,
-                                      list + num_fields, e->cooling_func);
+          if (with_cooling || with_temperature) {
+            num_fields +=
+                cooling_write_particles(parts_written, xparts_written,
+                                        list + num_fields, e->cooling_func);
+          }
+          if (with_stf) {
+            num_fields += velociraptor_write_parts(
+                parts_written, xparts_written, list + num_fields);
+          }
           num_fields += tracers_write_particles(
               parts_written, xparts_written, list + num_fields, with_cosmology);
           num_fields += sftracers_write_particles(
@@ -1460,6 +1525,10 @@ void write_output_parallel(struct engine* e, const char* baseName,
           /* This is a DM-only run without inhibited particles */
           Nparticles = Ntot;
           darkmatter_write_particles(gparts, list, &num_fields);
+          if (with_stf) {
+            num_fields += velociraptor_write_gparts(e->s->gpart_group_data,
+                                                    list + num_fields);
+          }
         } else {
 
           /* Ok, we need to fish out the particles we want */
@@ -1470,11 +1539,28 @@ void write_output_parallel(struct engine* e, const char* baseName,
                              Ndm_written * sizeof(struct gpart)) != 0)
             error("Error while allocating temporart memory for gparts");
 
-          /* Collect the non-inhibited DM particles from gpart */
-          io_collect_gparts_to_write(gparts, gparts_written, Ntot, Ndm_written);
+          if (with_stf) {
+            if (posix_memalign(
+                    (void**)&gpart_group_data_written, gpart_align,
+                    Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
+              error(
+                  "Error while allocating temporart memory for gparts STF "
+                  "data");
+          }
 
-          /* Write DM particles */
+          /* Collect the non-inhibited DM particles from gpart */
+          io_collect_gparts_to_write(gparts, e->s->gpart_group_data,
+                                     gparts_written, gpart_group_data_written,
+                                     Ntot, Ndm_written, with_stf);
+
+          /* Select the fields to write */
           darkmatter_write_particles(gparts_written, list, &num_fields);
+          if (with_stf) {
+#ifdef HAVE_VELOCIRAPTOR
+            num_fields += velociraptor_write_gparts(gpart_group_data_written,
+                                                    list + num_fields);
+#endif
+          }
         }
       } break;
 
@@ -1487,6 +1573,9 @@ void write_output_parallel(struct engine* e, const char* baseName,
           num_fields += chemistry_write_sparticles(sparts, list + num_fields);
           num_fields += tracers_write_sparticles(sparts, list + num_fields,
                                                  with_cosmology);
+          if (with_stf) {
+            num_fields += velociraptor_write_sparts(sparts, list + num_fields);
+          }
         } else {
 
           /* Ok, we need to fish out the particles we want */
@@ -1503,9 +1592,13 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
           /* Select the fields to write */
           stars_write_particles(sparts_written, list, &num_fields);
-          num_fields += chemistry_write_sparticles(sparts, list + num_fields);
+	  num_fields += chemistry_write_sparticles(sparts, list + num_fields);
           num_fields += tracers_write_sparticles(sparts, list + num_fields,
                                                  with_cosmology);
+          if (with_stf) {
+            num_fields +=
+                velociraptor_write_sparts(sparts_written, list + num_fields);
+          }
         }
       } break;
 
@@ -1532,6 +1625,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
     if (parts_written) free(parts_written);
     if (xparts_written) free(xparts_written);
     if (gparts_written) free(gparts_written);
+    if (gpart_group_data_written) free(gpart_group_data_written);
     if (sparts_written) free(sparts_written);
 
 #ifdef IO_SPEED_MEASUREMENT

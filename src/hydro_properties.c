@@ -90,6 +90,9 @@ void hydro_props_init(struct hydro_props *p,
   p->max_smoothing_iterations = parser_get_opt_param_int(
       params, "SPH:max_ghost_iterations", hydro_props_default_max_iterations);
 
+  if (p->max_smoothing_iterations <= 10)
+    error("The number of smoothing length iterations should be > 10");
+
   /* Time integration properties */
   p->CFL_condition = parser_get_param_float(params, "SPH:CFL_condition");
   const float max_volume_change = parser_get_opt_param_float(
@@ -239,7 +242,8 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
   io_write_attribute_f(h_grpsph, "Kernel delta N_ngb", p->delta_neighbours);
   io_write_attribute_f(h_grpsph, "Kernel eta", p->eta_neighbours);
   io_write_attribute_f(h_grpsph, "Smoothing length tolerance", p->h_tolerance);
-  io_write_attribute_f(h_grpsph, "Maximal smoothing length", p->h_max);
+  io_write_attribute_f(h_grpsph, "Maximal smoothing length [internal units]",
+                       p->h_max);
   io_write_attribute_f(h_grpsph, "CFL parameter", p->CFL_condition);
   io_write_attribute_f(h_grpsph, "Volume log(max(delta h))",
                        p->log_max_h_change);
@@ -248,8 +252,12 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
   io_write_attribute_i(h_grpsph, "Max ghost iterations",
                        p->max_smoothing_iterations);
   io_write_attribute_f(h_grpsph, "Minimal temperature", p->minimal_temperature);
+  io_write_attribute_f(h_grpsph,
+                       "Minimal energy per unit mass [internal units]",
+                       p->minimal_internal_energy);
   io_write_attribute_f(h_grpsph, "Initial temperature", p->initial_temperature);
-  io_write_attribute_f(h_grpsph, "Initial energy per unit mass",
+  io_write_attribute_f(h_grpsph,
+                       "Initial energy per unit mass [internal units]",
                        p->initial_internal_energy);
   io_write_attribute_f(h_grpsph, "Hydrogen mass fraction",
                        p->hydrogen_mass_fraction);
@@ -260,8 +268,11 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
                        p->viscosity.alpha_max);
   io_write_attribute_f(h_grpsph, "Alpha viscosity (min)",
                        p->viscosity.alpha_min);
-  io_write_attribute_f(h_grpsph, "Viscosity decay length", p->viscosity.length);
+  io_write_attribute_f(h_grpsph, "Viscosity decay length [internal units]",
+                       p->viscosity.length);
   io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
+  io_write_attribute_f(h_grpsph, "Max v_sig ratio (limiter)",
+                       const_limiter_max_v_sig_ratio);
 }
 #endif
 

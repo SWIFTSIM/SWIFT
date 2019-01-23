@@ -98,6 +98,14 @@ int cell_getsize(struct cell *c) {
  */
 int cell_link_parts(struct cell *c, struct part *parts) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->hydro.parts != NULL)
+    error("Linking parts into a cell that was already linked");
+#endif
+
   c->hydro.parts = parts;
 
   /* Fill the progeny recursively, depth-first. */
@@ -122,6 +130,14 @@ int cell_link_parts(struct cell *c, struct part *parts) {
  * @return The number of particles linked.
  */
 int cell_link_gparts(struct cell *c, struct gpart *gparts) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->grav.parts != NULL)
+    error("Linking gparts into a cell that was already linked");
+#endif
 
   c->grav.parts = gparts;
 
@@ -148,6 +164,14 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
  */
 int cell_link_sparts(struct cell *c, struct spart *sparts) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->stars.parts != NULL)
+    error("Linking sparts into a cell that was already linked");
+#endif
+
   c->stars.parts = sparts;
 
   /* Fill the progeny recursively, depth-first. */
@@ -161,6 +185,182 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
 
   /* Return the total number of linked particles. */
   return c->stars.count;
+}
+
+/**
+ * @brief Recurse down foreign cells until reaching one with hydro
+ * tasks; then trigger the linking of the #part array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param parts The #part array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_parts(struct cell *c, struct part *parts) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.hydro.recv_xv != NULL) {
+
+    /* Recursively attach the parts */
+    const int counts = cell_link_parts(c, parts);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (counts != c->hydro.count)
+      error("Something is wrong with the foreign counts");
+#endif
+    return counts;
+  }
+
+  /* Go deeper to find the level where the tasks are */
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        count += cell_link_foreign_parts(c->progeny[k], &parts[count]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recurse down foreign cells until reaching one with gravity
+ * tasks; then trigger the linking of the #gpart array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param gparts The #gpart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.grav.recv != NULL) {
+
+    /* Recursively attach the gparts */
+    const int counts = cell_link_gparts(c, gparts);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (counts != c->grav.count)
+      error("Something is wrong with the foreign counts");
+#endif
+    return counts;
+  }
+
+  /* Go deeper to find the level where the tasks are */
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        count += cell_link_foreign_gparts(c->progeny[k], &gparts[count]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recursively count the number of #part in foreign cells that
+ * are in cells with hydro-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
+int cell_count_parts_for_tasks(const struct cell *c) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Counting foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.hydro.recv_xv != NULL) {
+    return c->hydro.count;
+  }
+
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        count += cell_count_parts_for_tasks(c->progeny[k]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recursively count the number of #gpart in foreign cells that
+ * are in cells with gravity-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
+int cell_count_gparts_for_tasks(const struct cell *c) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Counting foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.grav.recv != NULL) {
+    return c->grav.count;
+  }
+
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        count += cell_count_gparts_for_tasks(c->progeny[k]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
 }
 
 /**
@@ -1232,8 +1432,11 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.density = NULL;
   c->hydro.gradient = NULL;
   c->hydro.force = NULL;
+  c->hydro.limiter = NULL;
   c->grav.grav = NULL;
   c->grav.mm = NULL;
+  c->stars.density = NULL;
+  c->stars.feedback = NULL;
 }
 
 /**
@@ -1600,6 +1803,14 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Clear the limiter flags on the given cell.
+ */
+void cell_clear_limiter_flags(struct cell *c, void *data) {
+  c->hydro.do_limiter = 0;
+  c->hydro.do_sub_limiter = 0;
+}
+
+/**
  * @brief Activate the #part drifts on the given cell.
  */
 void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
@@ -1622,7 +1833,10 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
     for (struct cell *parent = c->parent;
          parent != NULL && !parent->hydro.do_sub_drift;
          parent = parent->parent) {
+
+      /* Mark this cell for drifting */
       parent->hydro.do_sub_drift = 1;
+
       if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (parent->hydro.drift == NULL)
@@ -1684,6 +1898,45 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
   // MATTHIEU: This will need changing
   cell_activate_drift_gpart(c, s);
+}
+
+/**
+ * @brief Activate the drifts on the given cell.
+ */
+void cell_activate_limiter(struct cell *c, struct scheduler *s) {
+
+  /* If this cell is already marked for drift, quit early. */
+  if (c->hydro.do_limiter) return;
+
+  /* Mark this cell for limiting. */
+  c->hydro.do_limiter = 1;
+
+  /* Set the do_sub_limiter all the way up and activate the super limiter
+     if this has not yet been done. */
+  if (c == c->super) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->timestep_limiter == NULL)
+      error("Trying to activate un-existing c->timestep_limiter");
+#endif
+    scheduler_activate(s, c->timestep_limiter);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !parent->hydro.do_sub_limiter;
+         parent = parent->parent) {
+
+      /* Mark this cell for limiting */
+      parent->hydro.do_sub_limiter = 1;
+
+      if (parent == c->super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->timestep_limiter == NULL)
+          error("Trying to activate un-existing parent->timestep_limiter");
+#endif
+        scheduler_activate(s, parent->timestep_limiter);
+        break;
+      }
+    }
+  }
 }
 
 /**
@@ -1816,6 +2069,7 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s) {
   const struct engine *e = s->space->e;
+  const int with_limiter = (e->policy & engine_policy_limiter);
 
   /* Store the current dx_max and h_max values. */
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
@@ -1849,6 +2103,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 
       /* We have reached the bottom of the tree: activate drift */
       cell_activate_drift_part(ci, s);
+      if (with_limiter) cell_activate_limiter(ci, s);
     }
   }
 
@@ -2153,6 +2408,12 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
       /* Activate the drifts if the cells are local. */
       if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
       if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+
+      /* Also activate the time-step limiter */
+      if (ci->nodeID == engine_rank && with_limiter)
+        cell_activate_limiter(ci, s);
+      if (cj->nodeID == engine_rank && with_limiter)
+        cell_activate_limiter(cj, s);
 
       /* Do we need to sort the cells? */
       cell_activate_hydro_sorts(ci, sid, s);
@@ -2718,6 +2979,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
+  const int with_limiter = (e->policy & engine_policy_limiter);
   int rebuild = 0;
 
   /* Un-skip the density tasks involved with this cell. */
@@ -2743,6 +3005,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       /* Activate hydro drift */
       if (t->type == task_type_self) {
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (ci_nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
       }
 
       /* Set the correct sorting flags and activate hydro drifts */
@@ -2756,6 +3019,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Activate the drift tasks. */
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
         if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+        /* Activate the limiter tasks. */
+        if (ci_nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
+        if (cj_nodeID == nodeID && with_limiter) cell_activate_limiter(cj, s);
 
         /* Check the sorts and activate them if needed. */
         cell_activate_hydro_sorts(ci, t->flags, s);
@@ -2791,7 +3058,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active) scheduler_activate(s, ci->mpi.recv_ti);
+        if (ci_active || with_limiter) scheduler_activate(s, ci->mpi.recv_ti);
+
+        if (with_limiter) scheduler_activate(s, ci->mpi.limiter.recv);
+        if (with_limiter)
+          scheduler_activate_send(s, cj->mpi.limiter.send, ci->nodeID);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
@@ -2801,6 +3072,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(cj, s);
+          if (with_limiter) cell_activate_limiter(cj, s);
 
           /* If the local cell is also active, more stuff will be needed. */
           if (cj_active) {
@@ -2813,7 +3085,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (cj_active) scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+        if (cj_active || with_limiter)
+          scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
 
       } else if (cj_nodeID != nodeID) {
 
@@ -2830,7 +3103,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active) scheduler_activate(s, cj->mpi.recv_ti);
+        if (cj_active || with_limiter) scheduler_activate(s, cj->mpi.recv_ti);
+
+        if (with_limiter) scheduler_activate(s, cj->mpi.limiter.recv);
+        if (with_limiter)
+          scheduler_activate_send(s, ci->mpi.limiter.send, cj->nodeID);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -2840,6 +3117,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(ci, s);
+          if (with_limiter) cell_activate_limiter(ci, s);
 
           /* If the local cell is also active, more stuff will be needed. */
           if (ci_active) {
@@ -2853,7 +3131,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (ci_active) scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+        if (ci_active || with_limiter)
+          scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
       }
 #endif
     }
@@ -2865,6 +3144,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     for (struct link *l = c->hydro.gradient; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
     for (struct link *l = c->hydro.force; l != NULL; l = l->next)
+      scheduler_activate(s, l->t);
+    for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
 
     if (c->hydro.extra_ghost != NULL)
@@ -2879,7 +3160,6 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->hydro.cooling != NULL) scheduler_activate(s, c->hydro.cooling);
     if (c->hydro.star_formation != NULL)
       scheduler_activate(s, c->hydro.star_formation);
-    if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
     if (c->logger != NULL) scheduler_activate(s, c->logger);
   }
 

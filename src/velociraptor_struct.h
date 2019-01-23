@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 James Willis (james.s.willis@durham.ac.uk)
+ * Copyright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,17 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_VELOCIRAPTOR_INTERFACE_H
-#define SWIFT_VELOCIRAPTOR_INTERFACE_H
+#ifndef SWIFT_VELOCIRAPTOR_STRUCT_H
+#define SWIFT_VELOCIRAPTOR_STRUCT_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Forward declaration */
-struct engine;
+/**
+ * @brief Data returned by VELOCIraptor for each #gpart.
+ */
+struct velociraptor_gpart_data {
 
-/* VELOCIraptor wrapper functions. */
-void velociraptor_init(struct engine *e);
-void velociraptor_invoke(struct engine *e, const int linked_with_snap);
+  /*! Group ID of that #gpart. */
+  long long groupID;
+};
 
-#endif /* SWIFT_VELOCIRAPTOR_INTERFACE_H */
+#endif /* SWIFT_VELOCIRAPTOR_STRUCT_H */
