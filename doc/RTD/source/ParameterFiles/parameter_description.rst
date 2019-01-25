@@ -458,7 +458,7 @@ using the parameter:
 
 The default level of ``0`` implies no compression and values have to be in the
 range :math:`[0-9]`. This integer is passed to the i/o library and used for the
-lossless GZIP compression algorithm. Higher values imply higher compression but
+loss-less GZIP compression algorithm. Higher values imply higher compression but
 also more time spent deflating and inflating the data. Note that up until HDF5
 1.10.x this option is not available when using the MPI-parallel version of the
 i/o routines.
@@ -500,7 +500,7 @@ Showing all the parameters for a basic hydro test-case, one would have:
      int_time_label_on:   0
      compression:         3
      UnitLength_in_cgs:   1.  # Use cm in outputs
-     UnitMass_in_cgs:     1.  # Use grams in outpus
+     UnitMass_in_cgs:     1.  # Use grams in outputs
      UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
      UnitCurrent_in_cgs:  1.  # Use Ampere in outputs
      UnitTemp_in_cgs:     1.  # Use Kelvin in outputs
@@ -725,13 +725,13 @@ parameter. The possible values for this are *none*, *fullcosts*, *edgecosts*,
 
     * *edgecosts*
 
-    Only use computation weights derived from the running tasks for the egde
+    Only use computation weights derived from the running tasks for the edge
     weights.
 
     * *memory*
 
     Repeat the initial partition with the current particle positions
-    rebalancing the memory use.
+    re-balancing the memory use.
 
     * *timecosts*
 
@@ -783,7 +783,7 @@ adaptive algorithm is further controlled by the::
 
 parameter, which defines the ratio of inter node communication time to data
 redistribution time, in the range 0.00001 to 10000000.0. Lower values give
-less data movement during redistributions. The best choice foer these can only
+less data movement during redistributions. The best choice for these can only
 be determined by experimentation (the gains are usually small, so not really
 recommended).
 
