@@ -8,5 +8,5 @@ then
 fi
 
 # Run SWIFT
-../swift --limiter --feedback --stars --hydro --external-gravity --threads=8 stellar_evolution.yml 2>&1 | tee output.log
+../swift --limiter --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml 2>&1 | tee output.log
 

@@ -60,6 +60,7 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
  *
  * @param du change in internal energy
  * @param p Particle we're acting on
+ * @param xp Extra particle data
  * @param cosmo Cosmology struct
  */
 static inline void thermal_feedback(float du, struct part * restrict p, 

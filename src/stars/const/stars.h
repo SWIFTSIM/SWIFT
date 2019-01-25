@@ -184,8 +184,8 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
   sp->to_distribute.chemistry_data.iron_mass_fraction_from_SNIa = 1.0e-2;
 
   /* Set feedback to constant values */
-  const float sn_per_msun = 0.01;
-  const float total_sn = sp->mass_init / stars_properties->const_solar_mass * sn_per_msun * 100;
+  const float sn_per_msun = 0.1;
+  const float total_sn = sp->mass_init / stars_properties->const_solar_mass * sn_per_msun;
   sp->to_distribute.num_SNIa = total_sn * feedback_factor;
   sp->to_distribute.ejecta_specific_thermal_energy = 1.0e-3;
 

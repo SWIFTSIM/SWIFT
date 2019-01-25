@@ -5,8 +5,15 @@ import h5py
 import os.path
 import numpy as np
 
+# Function to determine distance between part and spart
+# p: part coordinates
+# s: spart coordinates
+def distance(p,s):
+        dist2 = (p[0] - s[0]) * (p[0] - s[0]) + (p[1] - s[1]) * (p[1] - s[1]) +(p[2] - s[2]) * (p[2] - s[2])
+        return sqrt(dist2)
+
 # Number of snapshots and elements
-n_snapshots = 11
+n_snapshots = 6
 n_elements = 9
 
 # Plot parameters
@@ -78,9 +85,13 @@ iron_mass_frac_from_SNIa = zeros((n_parts,n_snapshots))
 metallicity = zeros((n_parts,n_snapshots))
 abundances = zeros((n_parts,n_elements,n_snapshots))
 internal_energy = zeros((n_parts,n_snapshots))
-coord_parts = zeros((n_parts,3))
+coord_parts = zeros((n_parts,3,n_snapshots))
 velocity_parts = zeros((n_parts,3,n_snapshots))
-coord_sparts = zeros(3)
+speed_parts = zeros((n_parts,n_snapshots))
+coord_sparts = zeros((3,n_snapshots))
+smoothing_length_parts = zeros((n_parts,n_snapshots))
+distances = zeros((n_parts,n_snapshots))
+smoothing_length_sparts = zeros(n_snapshots)
 time = zeros(n_snapshots)
 
 # Read fields we are checking from snapshots
@@ -100,6 +111,10 @@ for i in range(n_snapshots):
 	iron_mass_frac_from_SNIa[:,i] = sim["/PartType0/IronMassFracFromSNIa"]
 	internal_energy[:,i] = sim["/PartType0/InternalEnergy"]
 	velocity_parts[:,:,i] = sim["/PartType0/Velocities"]
+	coord_parts[:,:,i] = sim["/PartType0/Coordinates"]
+	coord_sparts[:,i] = sim["/PartType4/Coordinates"]
+	smoothing_length_parts[:,i] = sim["/PartType0/SmoothingLength"]
+	smoothing_length_sparts[i] = sim["/PartType4/SmoothingLength"][0]
 	time[i] = sim["/Header"].attrs["Time"][0]
 
 # Define ejecta factor
@@ -115,11 +130,19 @@ energy_per_SNe = 1.0e51/unit_energy_in_cgs
 eps = 0.01
 
 # print mean, max internal energy of particles
-for i in range(n_snapshots):
-	mean_u_cgs = np.mean(internal_energy[:,i]*unit_vel_in_cgs*unit_vel_in_cgs)
-	max_u_cgs = np.max(internal_energy[:,i]*unit_vel_in_cgs*unit_vel_in_cgs)
-	print("snapshot "+ str(i) + " mean max u cgs " + str(mean_u_cgs) + " " + str(max_u_cgs))
+#for i in range(n_snapshots):
+#	mean_u_cgs = np.mean(internal_energy[:,i]*unit_vel_in_cgs*unit_vel_in_cgs)
+#	max_u_cgs = np.max(internal_energy[:,i]*unit_vel_in_cgs*unit_vel_in_cgs)
+#	print("snapshot "+ str(i) + " mean max u cgs " + str(mean_u_cgs) + " " + str(max_u_cgs))
 
+#print smoothing length maximums 
+#for i in range(n_snapshots):
+#	max_smoothing_length_parts = np.max(smoothing_length_parts[:,i]*unit_length_in_cgs)
+#	max_smoothing_length_sparts = np.max(smoothing_length_sparts[i]*unit_length_in_cgs)
+#	for j in range(n_parts):
+#		distances[j,i] = distance(coord_parts[j,:,i],coord_sparts[:,i])
+#	min_distance_to_spart = np.min(distances[:,i])
+#	print("snapshot "+ str(i) + " max smoothing length parts cgs " + str(max_smoothing_length_parts) + " max smoothing length sparts cgs " + str(max_smoothing_length_sparts) + " boxsize " + str(boxSize * unit_length_in_cgs) + " min distance to spart " + str(min_distance_to_spart))
 
 # Continuous heating
 #vel2 = zeros((n_parts,n_snapshots))
@@ -134,19 +157,19 @@ for i in range(n_snapshots):
 #	print("total continuous energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))
 
 # Stochastic heating
-#vel2 = zeros((n_parts,n_snapshots))
-#vel2[:,:] = velocity_parts[:,0,:]*velocity_parts[:,0,:] + velocity_parts[:,1,:]*velocity_parts[:,1,:] + velocity_parts[:,2,:]*velocity_parts[:,2,:]
-#total_kinetic_energy = np.sum(np.multiply(vel2,masses)*0.5,axis = 0)
-#total_energy = np.sum(np.multiply(internal_energy,masses),axis = 0)
-#total_energy_released = total_energy[n_snapshots-1] - total_energy[0] + total_kinetic_energy[n_snapshots-1] - total_kinetic_energy[0]
-#
-## put in variable names to make this clearer...
-#heating_probability = 2.39802e-01 * 9.76562e+01 / (3.16228e+07 * 2e-4)
-#du = 3.16228e+07 * 2.0e-2
-#print(heating_probability,du)
-#
-#expected_energy_released = heating_probability * du * np.sum(star_masses,axis=0)[0]
-#if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
-#	print("total stochastic energy release consistent with expectation")
-#else:
-#	print("total stochastic energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))
+vel2 = zeros((n_parts,n_snapshots))
+vel2[:,:] = velocity_parts[:,0,:]*velocity_parts[:,0,:] + velocity_parts[:,1,:]*velocity_parts[:,1,:] + velocity_parts[:,2,:]*velocity_parts[:,2,:]
+total_kinetic_energy = np.sum(np.multiply(vel2,masses)*0.5,axis = 0)
+total_energy = np.sum(np.multiply(internal_energy,masses),axis = 0)
+total_energy_released = total_energy[n_snapshots-1] - total_energy[0] + total_kinetic_energy[n_snapshots-1] - total_kinetic_energy[0]
+
+sn_rate = 10.
+energy_per_sn = 1.0e51 / unit_energy_in_cgs
+#total_sn = sn_rate * np.sum(star_masses[:,0]) * time[n_snapshots-1]
+total_sn = 9.41255e3 * time[n_snapshots-1]/1e-3
+print(total_sn, time[n_snapshots-1]/1e-3)
+expected_energy_released = total_sn * energy_per_sn
+if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
+	print("total stochastic energy release consistent with expectation")
+else:
+	print("total stochastic energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))
