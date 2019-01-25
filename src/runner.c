@@ -2956,7 +2956,6 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   /* ... and store. */
   // c->grav.ti_end_min = ti_gravity_end_min;
   // c->grav.ti_end_max = ti_gravity_end_max;
-  c->hydro.ti_old_part = ti_current;
   c->grav.ti_old_part = ti_current;
   c->stars.h_max = h_max;
 
