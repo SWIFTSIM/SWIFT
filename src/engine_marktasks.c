@@ -63,10 +63,8 @@ void engine_activate_stars_mpi(struct engine *e, struct scheduler *s,
   const int nodeID = e->nodeID;
   const int ci_nodeID = ci->nodeID;
   const int cj_nodeID = cj->nodeID;
-  const int ci_active_stars = cell_is_active_stars(ci, e) &&
-                              ci->stars.count != 0 && cj->hydro.count != 0;
-  const int cj_active_stars = cell_is_active_stars(cj, e) &&
-                              cj->stars.count != 0 && ci->hydro.count != 0;
+  const int ci_active_stars = cell_is_active_stars(ci, e);
+  const int cj_active_stars = cell_is_active_stars(cj, e);
 
   /* Activate the send/recv tasks. */
   if (ci_nodeID != nodeID) {

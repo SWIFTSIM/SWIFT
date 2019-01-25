@@ -2447,10 +2447,14 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   /* Store the current dx_max and h_max values. */
   ci->stars.dx_max_part_old = ci->stars.dx_max_part;
   ci->stars.h_max_old = ci->stars.h_max;
+  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
+  ci->hydro.h_max_old = ci->hydro.h_max;
 
   if (cj != NULL) {
     cj->stars.dx_max_part_old = cj->stars.dx_max_part;
     cj->stars.h_max_old = cj->stars.h_max;
+    cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
+    cj->hydro.h_max_old = cj->hydro.h_max;
   }
 
   /* Self interaction? */
@@ -2486,12 +2490,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   else {
 
     /* Should we even bother? */
-    const int should_do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
-      cell_is_active_stars(ci, e);
-    const int should_do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
-      cell_is_active_stars(cj, e);
-
-    if (!should_do_ci && !should_do_cj) return;
+    if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
 
     /* Get the orientation of the pair. */
     double shift[3];

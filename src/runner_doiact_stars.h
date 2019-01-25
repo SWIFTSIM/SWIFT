@@ -1406,9 +1406,12 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
       /* Do any of the cells need to be sorted first? */
       if (!(ci->hydro.sorted & (1 << sid)) ||
-          ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
-        error("Interacting unsorted cell (parts). %i %i %p %i %i %i %i", ci->nodeID, cj->nodeID, ci->super->hydro.sorts, ci->hydro.count, ci->stars.count, cj->hydro.count,
-	      cj->stars.count);
+          ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+	message("%i %i: %g %g %g", ci->hydro.sorted, 1 << sid, ci->hydro.dx_max_sort_old, ci->dmin, space_maxreldx);
+	message("%p %p", ci->super, cj->super);
+        error("Interacting unsorted cell (parts). %i %i sorts=%i %i %i %i %i %p", ci->nodeID, cj->nodeID, ci->super->hydro.sorts->skip, ci->hydro.count, ci->stars.count, cj->hydro.count,
+	      cj->stars.count, ci->super->stars.density);
+      }
 
       if (!(cj->stars.sorted & (1 << sid)) ||
           cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx)
