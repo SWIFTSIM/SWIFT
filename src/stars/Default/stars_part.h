@@ -66,10 +66,10 @@ struct spart {
   } density;
 
   struct {
-    /* Mass of ejecta */
-    float mass;
+    /* Change in smoothing length over time. */
+    float h_dt;
 
-  } to_distribute;
+  } feedback;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

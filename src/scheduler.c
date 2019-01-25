@@ -1134,8 +1134,8 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
       const int number_interactions = (ci_interaction + cj_interaction);
 
       /* Should this task be split-up? */
-      if (cell_can_split_pair_stars_task(ci) &&
-          cell_can_split_pair_stars_task(cj)) {
+      if (cell_can_split_pair_stars_task(ci, cj) &&
+          cell_can_split_pair_stars_task(ci, cj)) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
@@ -1147,7 +1147,6 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
 
           /* Otherwise, split it. */
         } else {
-
           /* Take a step back (we're going to recycle the current task)... */
           redo = 1;
 
@@ -1710,7 +1709,6 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  * @param s The #scheduler.
  */
 void scheduler_splittasks(struct scheduler *s) {
-
   /* Call the mapper on each current task. */
   threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
                  s->nr_tasks, sizeof(struct task), 0, s);

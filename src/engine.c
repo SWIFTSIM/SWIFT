@@ -2101,9 +2101,8 @@ void engine_rebuild(struct engine *e, int repartitioned,
 #endif
 
   /* Run through the tasks and mark as skip or not. */
-  int err = engine_marktasks(e);
-  if (err)
-    error("engine_marktasks failed after space_rebuild with code %d.", err);
+  if (engine_marktasks(e))
+    error("engine_marktasks failed after space_rebuild.");
 
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
@@ -3451,6 +3450,7 @@ void engine_unskip(struct engine *e) {
   }
 
   /* Activate all the regular tasks */
+  message("unskip");
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, local_cells,
                  num_active_cells, sizeof(int), 1, e);
 

@@ -860,17 +860,20 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
  * @brief Can a sub-pair star task recurse to a lower level based
  * on the status of the particles in the cell.
  *
- * @param c The #cell.
+ * @param ci The #cell with stars.
+ * @param cj The #cell with hydro parts.
  */
 __attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_pair_stars_task(const struct cell *c) {
+cell_can_recurse_in_pair_stars_task(const struct cell *ci, const struct cell *cj) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
-  return c->split && ((kernel_gamma * c->stars.h_max_old +
-                       c->stars.dx_max_part_old) < 0.5f * c->dmin);
+  return ci->split && cj->split && ((kernel_gamma * ci->stars.h_max_old +
+                       ci->stars.dx_max_part_old) < 0.5f * ci->dmin) &&
+    ((kernel_gamma * cj->hydro.h_max_old +
+      cj->hydro.dx_max_part_old) < 0.5f * cj->dmin);
 }
 
 /**
@@ -883,7 +886,8 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_stars_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin);
+  return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin) &&
+    (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
 }
 
 /**
@@ -926,19 +930,20 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
  * @brief Can a pair stars task associated with a cell be split into smaller
  * sub-tasks.
  *
- * @param c The #cell.
+ * @param ci The #cell with stars.
+ * @param cj The #cell with hydro part.
  */
 __attribute__((always_inline)) INLINE static int cell_can_split_pair_stars_task(
-    const struct cell *c) {
+    const struct cell *ci, const struct cell *cj) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius with some leeway smaller than */
   /* the sub-cell sizes ? */
   /* Note that since tasks are create after a rebuild no need to take */
   /* into account any part motion (i.e. dx_max == 0 here) */
-  return c->split &&
-    (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
-    (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin);
+  return ci->split && cj->split &&
+    (space_stretch * kernel_gamma * ci->stars.h_max < 0.5f * ci->dmin) &&
+    (space_stretch * kernel_gamma * cj->hydro.h_max < 0.5f * cj->dmin);
 }
 
 /**
@@ -1017,8 +1022,8 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
-  return (kernel_gamma * max(ci->stars.h_max, cj->stars.h_max) +
-              ci->stars.dx_max_part + cj->stars.dx_max_part >
+  return (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) +
+              ci->stars.dx_max_part + cj->hydro.dx_max_part >
           cj->dmin);
 }
 

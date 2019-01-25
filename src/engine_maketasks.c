@@ -269,6 +269,9 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       t_feed = scheduler_addtask(s, task_type_send, task_subtype_spart,
                                  ci->mpi.tag, 0, ci, cj);
 
+      /* The send_stars task should unlock the super_cell's kick task. */
+      scheduler_addunlock(s, t_feed, ci->super->end_force);
+
       /* Ghost before you send */
       scheduler_addunlock(s, ci->super->stars.ghost_out, t_feed);
     }
@@ -492,9 +495,18 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     scheduler_addunlock(s, l->t, t_feed);
   }
 
+  struct task *recv_rho = NULL;
+  if (c->mpi.hydro.recv_rho != NULL)
+    recv_rho = c->mpi.hydro.recv_rho;
+
   for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_feed, l->t);
+
+    /* Need gas density before feedback */
+    if (recv_rho != NULL)
+      scheduler_addunlock(s, c->mpi.hydro.recv_rho, l->t);
   }
+
 
   /* Recurse? */
   if (c->split)
@@ -967,6 +979,16 @@ void engine_make_hierarchical_tasks_stars(struct engine *e, struct cell *c) {
           scheduler_addtask(s, task_type_stars_ghost_out, task_subtype_none, 0,
                             /* implicit = */ 1, c, NULL);
       engine_add_stars_ghosts(e, c, c->stars.ghost_in, c->stars.ghost_out);
+
+      /* Need to compute the gas density before moving to the feedback */
+      struct task *hydro_ghost = NULL;
+      if (c->hydro.super)
+	hydro_ghost = c->hydro.super->hydro.ghost_out;
+
+      if (hydro_ghost) {
+	scheduler_addunlock(s, hydro_ghost,
+			    c->super->stars.ghost_out);
+      }
     }
   } else { /* We are above the super-cell so need to go deeper */
 
@@ -2229,8 +2251,7 @@ void engine_make_starsloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Is that neighbour local and does it have particles ? */
           if (cid >= cjd ||
-              ((cj->stars.count == 0 || ci->hydro.count == 0) &&
-               (cj->hydro.count == 0 || ci->stars.count == 0)) ||
+              (cj->stars.count == 0 && cj->hydro.count == 0) ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
