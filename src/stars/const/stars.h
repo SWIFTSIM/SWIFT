@@ -69,6 +69,26 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 }
 
 /**
+ * @brief Predict additional particle fields forward in time when drifting
+ *
+ * @param p The particle
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void stars_predict_extra(
+    struct spart *restrict sp, float dt_drift) {
+
+  const float h_inv = 1.f / sp->h;
+
+  /* Predict smoothing length */
+  const float w1 = sp->feedback.h_dt * h_inv * dt_drift;
+  if (fabsf(w1) < 0.2f)
+    sp->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
+  else
+    sp->h *= expf(w1);
+
+}
+
+/**
  * @brief Sets the values to be predicted in the drifts to their values at a
  * kick time
  *
@@ -184,8 +204,12 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
   sp->to_distribute.chemistry_data.iron_mass_fraction_from_SNIa = 1.0e-2;
 
   /* Set feedback to constant values */
-  const float sn_per_msun = 0.1;
-  const float total_sn = sp->mass_init / stars_properties->const_solar_mass * sn_per_msun;
+  const float total_sn = sp->mass_init / stars_properties->const_solar_mass * stars_properties->sn_per_msun * 0.01;
+  if (dt == 0) {
+    FILE *feedback_output = fopen("feedback_properties.dat","w");
+    fprintf(feedback_output,"%.5e \n %.5e \n", total_sn, stars_properties->feedback_timescale);
+    fclose(feedback_output);
+  }
   sp->to_distribute.num_SNIa = total_sn * feedback_factor;
   sp->to_distribute.ejecta_specific_thermal_energy = 1.0e-3;
 

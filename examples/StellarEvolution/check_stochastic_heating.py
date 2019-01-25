@@ -13,7 +13,7 @@ def distance(p,s):
         return sqrt(dist2)
 
 # Number of snapshots and elements
-n_snapshots = 6
+n_snapshots = 28
 n_elements = 9
 
 # Plot parameters
@@ -163,12 +163,19 @@ total_kinetic_energy = np.sum(np.multiply(vel2,masses)*0.5,axis = 0)
 total_energy = np.sum(np.multiply(internal_energy,masses),axis = 0)
 total_energy_released = total_energy[n_snapshots-1] - total_energy[0] + total_kinetic_energy[n_snapshots-1] - total_kinetic_energy[0]
 
-sn_rate = 10.
+# Find out how many total sn should go off in simulation time
+feedback_data = "feedback_properties.dat"
+with open(feedback_data) as f:
+	num_sn = float(f.readline().strip())
+	total_time = float(f.readline().strip())
+print(num_sn,total_time)
+total_sn = num_sn * time[n_snapshots-1]/total_time
+
+# Calculate energy released
 energy_per_sn = 1.0e51 / unit_energy_in_cgs
-#total_sn = sn_rate * np.sum(star_masses[:,0]) * time[n_snapshots-1]
-total_sn = 9.41255e3 * time[n_snapshots-1]/1e-3
-print(total_sn, time[n_snapshots-1]/1e-3)
 expected_energy_released = total_sn * energy_per_sn
+
+# Did we get it right?
 if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
 	print("total stochastic energy release consistent with expectation")
 else:

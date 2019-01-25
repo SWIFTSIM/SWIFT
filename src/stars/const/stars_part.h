@@ -72,6 +72,12 @@ struct spart {
   } density;
 
   struct {
+    /* Change in smoothing length over time. */
+    float h_dt;
+
+  } feedback;
+
+  struct {
     /* Mass of ejecta */
     float mass;
 
@@ -143,6 +149,7 @@ struct stars_props {
   float deltaT_desired;
   float temp_to_u_factor;
   float total_energy_SNe;
+  float sn_per_msun;
 
   // Conversion factors copied from EAGLE. CHANGE NAME TO BE MORE DESCRIPTIVE
   float units_factor1, units_factor2;

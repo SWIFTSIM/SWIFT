@@ -144,6 +144,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->units_factor1 = sp->units_factor2 / sp->temp_to_u_factor;
 
   sp->feedback_timescale = parser_get_param_float(params, "Stars:feedback_timescale");
+  sp->sn_per_msun = sp->feedback_timescale * units_cgs_conversion_factor(us, UNIT_CONV_TIME) * 1.0e-15; // timescale convert to cgs per 40 Myr (~10^15s). 
 
   // CHANGE THIS TO BE CONSISTENT WITH RAND MAX USED IN STAR FORMATION
   sp->inv_rand_max = 1.0/RAND_MAX;

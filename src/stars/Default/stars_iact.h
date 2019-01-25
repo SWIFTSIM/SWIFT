@@ -62,8 +62,6 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
                                   const struct cosmology *restrict cosmo,
                                   const struct stars_props *restrict stars_properties,
                                   struct xpart *restrict xp) {
-  si->to_distribute.mass = 2;
-
   const float mj = pj->mass;
   const float rhoj = pj->rho;
   const float r = sqrtf(r2);
