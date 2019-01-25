@@ -3466,6 +3466,7 @@ void engine_unskip(struct engine *e) {
   }
 
   /* Activate all the regular tasks */
+  message("unskip");
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, local_cells,
                  num_active_cells, sizeof(int), 1, e);
 

@@ -1134,8 +1134,8 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
       const int number_interactions = (ci_interaction + cj_interaction);
 
       /* Should this task be split-up? */
-      if (cell_can_split_pair_stars_task(ci) &&
-          cell_can_split_pair_stars_task(cj)) {
+      if (cell_can_split_pair_stars_task(ci, cj) &&
+          cell_can_split_pair_stars_task(ci, cj)) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&

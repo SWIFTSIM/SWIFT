@@ -2498,8 +2498,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     int sid = space_getsid(s->space, &ci, &cj, shift);
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_stars_task(ci) &&
-        cell_can_recurse_in_pair_stars_task(cj)) {
+    if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
+        cell_can_recurse_in_pair_stars_task(cj, ci)) {
 
       /* Different types of flags. */
       switch (sid) {
@@ -2777,10 +2777,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 
     /* Otherwise, activate the sorts and drifts. */
     else {
-      const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
-	cell_is_active_stars(ci, e);
-      const int do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
-	cell_is_active_stars(cj, e);
+      const int do_ci = cell_is_active_stars(ci, e);
+      const int do_cj = cell_is_active_stars(cj, e);
 
       if (do_ci) {
         /* We are going to interact this pair, so store some values. */
@@ -3426,7 +3424,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
       if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
-      if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
@@ -3434,62 +3432,57 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
         if (cj_active) {
           scheduler_activate(s, ci->mpi.hydro.recv_xv);
-        }
+
+	  /* If the local cell is active, more stuff will be needed.
+	   */
+          scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
+
+	  /* If the local cell is active, send its ti_end values. */
+	  scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+	}
+
         if (ci_active) {
           scheduler_activate(s, ci->mpi.stars.recv);
-        }
 
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active) scheduler_activate(s, ci->mpi.recv_ti);
+	  /* If the foreign cell is active, we want its ti_end values. */
+	  scheduler_activate(s, ci->mpi.recv_ti);
 
-        /* Is the foreign cell active and will need stuff from us? */
-        if (ci_active) {
-
+	  /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(cj, s);
         }
-        /* If the local cell is active, more stuff will be needed.
-         */
-        if (cj_active) {
-          scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
-        }
-
-        /* If the local cell is active, send its ti_end values. */
-        if (cj_active) scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
 
       } else if (cj_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
           scheduler_activate(s, cj->mpi.hydro.recv_xv);
+
+	  /* If the local cell is active, more stuff will be needed.
+	   */
+          scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
+
+	  /* If the local cell is active, send its ti_end values. */
+	  scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
         }
+
         if (cj_active) {
           scheduler_activate(s, cj->mpi.stars.recv);
-        }
 
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active) scheduler_activate(s, cj->mpi.recv_ti);
+	  /* If the foreign cell is active, we want its ti_end values. */
+	  scheduler_activate(s, cj->mpi.recv_ti);
 
         /* Is the foreign cell active and will need stuff from us? */
-        if (cj_active) {
-
           scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(ci, s);
         }
-        /* If the local cell is active, more stuff will be needed.
-         */
-        if (ci_active) {
-          scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
-        }
 
-        /* If the local cell is active, send its ti_end values. */
-        if (ci_active) scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
       }
 #endif
     }
