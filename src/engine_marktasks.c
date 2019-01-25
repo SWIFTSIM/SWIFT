@@ -525,7 +525,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Too much particle movement? */
         if (cell_need_rebuild_for_stars_pair(ci, cj)) *rebuild_space = 1;
-        if (cell_need_rebuild_for_hydro_pair(ci, cj)) *rebuild_space = 1;
+        if (cell_need_rebuild_for_stars_pair(cj, ci)) *rebuild_space = 1;
 
 #ifdef WITH_MPI
         engine_activate_stars_mpi(e, s, ci, cj);
@@ -681,6 +681,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
  */
 int engine_marktasks(struct engine *e) {
 
+  message("marktask");
   struct scheduler *s = &e->sched;
   const ticks tic = getticks();
   int rebuild_space = 0;

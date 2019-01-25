@@ -477,8 +477,8 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
   else {
 
     /* Recurse? */
-    if (cell_can_recurse_in_pair_stars_task(ci) &&
-        cell_can_recurse_in_pair_stars_task(cj)) {
+    if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
+        cell_can_recurse_in_pair_stars_task(cj, ci)) {
 
       /* Get the type of pair if not specified explicitly. */
       double shift[3] = {0.0, 0.0, 0.0};
@@ -987,16 +987,12 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
     }
 
     /* Otherwise, compute the pair directly. */
-    else if (cell_is_active_stars(ci, e) || cell_is_active_stars(cj, e)) {
+    else if (cell_is_active_stars(ci, e)) {
 
       /* Do any of the cells need to be drifted first? */
       if (cell_is_active_stars(ci, e)) {
 	if (!cell_are_spart_drifted(ci, e)) error("Cell should be drifted!");
 	if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
-      }
-      if (cell_is_active_stars(cj, e)) {
-	if (!cell_are_part_drifted(ci, e)) error("Cell should be drifted!");
-	if (!cell_are_spart_drifted(cj, e)) error("Cell should be drifted! %i %i %lli %lli %lli", cj->cellID, cj->nodeID, e->ti_current, cj->grav.ti_old_part, cj->super->grav.ti_old_part);
       }
 
       DOPAIR1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount, cj);
@@ -1160,8 +1156,8 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   sid = space_getsid(s, &ci, &cj, shift);
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_stars_task(ci) &&
-      cell_can_recurse_in_pair_stars_task(cj)) {
+  if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
+      cell_can_recurse_in_pair_stars_task(cj, ci)) {
 
     /* Different types of flags. */
     switch (sid) {
@@ -1388,12 +1384,15 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
       /* Do any of the cells need to be sorted first? */
       if (!(ci->stars.sorted & (1 << sid)) ||
-          ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx)
-        error("Interacting unsorted cell (sparts).");
+          ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx) {
+	cell_activate_stars_sorts(ci, sid, &r->e->sched);
+        error("Interacting unsorted cell (sparts). %p %p %i %i %i %i %i %i %i %i %i %i", ci->stars.density, cj->stars.density, ci->stars.sorted, 1 << sid, cj->nodeID, ci->nodeID, ci->super->stars.sorts_foreign->skip,
+	      ci->stars.count, ci->hydro.count, cj->stars.count, cj->hydro.count, ci->stars.do_sort);
+      }
 
       if (!(cj->hydro.sorted & (1 << sid)) ||
           cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
-        error("Interacting unsorted cell (parts).");
+        error("Interacting unsorted cell (parts). %i", cj->nodeID);
     }
 
     if (do_cj) {
@@ -1408,11 +1407,13 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       /* Do any of the cells need to be sorted first? */
       if (!(ci->hydro.sorted & (1 << sid)) ||
           ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
-        error("Interacting unsorted cell (parts).");
+        error("Interacting unsorted cell (parts). %i %i %p %i %i %i %i", ci->nodeID, cj->nodeID, ci->super->hydro.sorts, ci->hydro.count, ci->stars.count, cj->hydro.count,
+	      cj->stars.count);
 
       if (!(cj->stars.sorted & (1 << sid)) ||
           cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx)
-        error("Interacting unsorted cell (sparts).");
+        error("Interacting unsorted cell (sparts). %i %i %i %i %i %i %i", cj->nodeID, ci->nodeID, ci->stars.sorts_foreign->skip,
+	      ci->stars.count, ci->hydro.count, cj->stars.count, cj->hydro.count);
     }
 
     if (do_ci || do_cj) DOPAIR1_BRANCH_STARS(r, ci, cj);
@@ -1427,6 +1428,11 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
  * @param gettimer Do we have a timer ?
  */
 void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != engine_rank)
+    error("This function should not be called on local cells");
+#endif
   /* Should we even bother? */
   if (ci->hydro.count == 0 || ci->stars.count == 0 ||
       !cell_is_active_stars(ci, r->e))

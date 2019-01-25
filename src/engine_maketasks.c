@@ -2247,8 +2247,7 @@ void engine_make_starsloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Is that neighbour local and does it have particles ? */
           if (cid >= cjd ||
-              ((cj->stars.count == 0 || ci->hydro.count == 0) &&
-               (cj->hydro.count == 0 || ci->stars.count == 0)) ||
+              (cj->stars.count == 0 && cj->hydro.count == 0) ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
