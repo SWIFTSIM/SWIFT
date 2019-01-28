@@ -204,13 +204,19 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
   sp->to_distribute.chemistry_data.iron_mass_fraction_from_SNIa = 1.0e-2;
 
   /* Set feedback to constant values */
-  const float total_sn = sp->mass_init / stars_properties->const_solar_mass * stars_properties->sn_per_msun * 0.01;
+  const float total_sn = sp->mass_init / stars_properties->const_solar_mass * stars_properties->sn_per_msun * stars_properties->total_sn_factor;
+
+  /* Print total_sn and timescale to be read by test script for checking stochastic energy injection */
   if (dt == 0) {
     FILE *feedback_output = fopen("feedback_properties.dat","w");
     fprintf(feedback_output,"%.5e \n %.5e \n", total_sn, stars_properties->feedback_timescale);
     fclose(feedback_output);
   }
+
+  /* Set number of supernovae to distribute */
   sp->to_distribute.num_SNIa = total_sn * feedback_factor;
+
+  /* Set ejected thermal energy */
   sp->to_distribute.ejecta_specific_thermal_energy = 1.0e-3;
 
 }

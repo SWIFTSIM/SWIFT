@@ -124,26 +124,22 @@ energy_per_SNe = 1.0e51/unit_energy_in_cgs
 # Define tolerance
 eps = 0.01
 
-# Stochastic heating
+# Find out how many total sn should go off in simulation time
+feedback_data = "feedback_properties.dat"
+with open(feedback_data) as f:
+        num_sn = float(f.readline().strip())
+        total_time = float(f.readline().strip())
+total_sn = num_sn * time[n_snapshots-1]/total_time
+
+# Continuous heating
 vel2 = zeros((n_parts,n_snapshots))
 vel2[:,:] = velocity_parts[:,0,:]*velocity_parts[:,0,:] + velocity_parts[:,1,:]*velocity_parts[:,1,:] + velocity_parts[:,2,:]*velocity_parts[:,2,:]
 total_kinetic_energy = np.sum(np.multiply(vel2,masses)*0.5,axis = 0)
 total_energy = np.sum(np.multiply(internal_energy,masses),axis = 0)
 total_energy_released = total_energy[n_snapshots-1] - total_energy[0] + total_kinetic_energy[n_snapshots-1] - total_kinetic_energy[0]
 
-# Find out how many total sn should go off in simulation time
-feedback_data = "feedback_properties.dat"
-with open(feedback_data) as f:
-	num_sn = float(f.readline().strip())
-	total_time = float(f.readline().strip())
-total_sn = num_sn * time[n_snapshots-1]/total_time
-
-# Calculate energy released
-energy_per_sn = 1.0e51 / unit_energy_in_cgs
-expected_energy_released = total_sn * energy_per_sn
-
-# Did we get it right?
+expected_energy_released = total_sn * star_initial_mass * energy_per_SNe
 if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
-	print("total stochastic energy release consistent with expectation")
+	print("total continuous energy release consistent with expectation")
 else:
-	print("total stochastic energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))
+	print("total continuous energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))

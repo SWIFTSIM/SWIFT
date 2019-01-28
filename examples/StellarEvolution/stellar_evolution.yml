@@ -18,20 +18,20 @@ Cosmology:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   4e-4  # The end time of the simulation (in internal units).
+  time_end:   1e-3  # The end time of the simulation (in internal units).
   dt_min:     1e-12 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-5  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
   basename:            stellar_evolution # Common part of the name of output files
   time_first:          0.       # Time of the first output (in internal units)
-  delta_time:          4.e-6     # Time difference between consecutive outputs without cosmology (internal units)
+  delta_time:          1.e-4     # Time difference between consecutive outputs without cosmology (internal units)
   compression:         4
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          4.e-6  # non cosmology time between statistics output
+  delta_time:          1.e-4  # non cosmology time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -48,8 +48,10 @@ Scheduler:
   cell_split_size:     50
 
 Stars:
-  feedback_timescale: 4e-5
+  feedback_timescale: 1e-3
   continuous_heating: 0         # decide whether using continuous heating in feedback (1) or stochastic (0)
+  energy_testing:     1         # Are we testing energy injection? (1: yes, 0: no)
+  sn_rate_factor:     0.1       # Factor for testing multiple sn rates in constant feedback model
   
 Gravity:
   mesh_side_length:   32

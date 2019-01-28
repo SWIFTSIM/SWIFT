@@ -4,9 +4,11 @@ from pylab import *
 import h5py
 import os.path
 import numpy as np
+import glob
 
 # Number of snapshots and elements
-n_snapshots = 54
+newest_snap_name = max(glob.glob('stellar_evolution_*.hdf5'), key=os.path.getctime)
+n_snapshots = int(newest_snap_name.replace('stellar_evolution_','').replace('.hdf5','')) + 1
 n_elements = 9
 
 # Plot parameters
@@ -107,7 +109,6 @@ ejecta_factor = 1.0e-2
 ejecta_factor_metallicity = 1.0 - 2.0/n_elements
 ejecta_factor_abundances = 1.0/n_elements
 ejected_mass = star_initial_mass
-SNIa_rate = 1.0e9
 energy_per_SNe = 1.0e51/unit_energy_in_cgs
 
 # Check that the total amount of enrichment is as expected.
@@ -121,19 +122,12 @@ if abs((total_part_mass[n_snapshots-1] - total_part_mass[0])/total_part_mass[0] 
 else:
 	print("mass increase "+str(total_part_mass[n_snapshots-1]/total_part_mass[0])+" expected "+ str(1.0+ejected_mass/total_part_mass[0]))
 
-#figure()
-#subplot(111)
-#plot(total_part_mass/total_part_mass[0],color='k', linewidth=0.5)
-#xlabel("snapshot")
-#ylabel("total part mass normalised to initial total")
-#savefig("total_mass.png", dpi=200)
-
 # Check that mass is conserved (i.e. total star mass decreases by same amount as total gas mass increases)
 total_spart_mass = np.sum(star_masses,axis = 0)
-if total_part_mass[n_snapshots-1] + total_spart_mass[n_snapshots-1] != total_part_mass[0] + total_spart_mass[0]:
+if abs((total_part_mass[n_snapshots-1] + total_spart_mass[n_snapshots-1]) / (total_part_mass[0] + total_spart_mass[0]) - 1.0) < eps**3:
 	print("total mass conserved")
 else:
-	print("initial mass " + str(total_part_mass[0] + total_spart_mass[0]) + " final mass " + str(total_part_mass[n_snapshots-1] + total_spart_mass[n_snapshots-1]))
+	print("initial part, spart mass " + str(total_part_mass[0]) + " " + str(total_spart_mass[0]) + " final mass " + str(total_part_mass[n_snapshots-1]) + " " + str(total_spart_mass[n_snapshots-1]))
 
 # Total metal mass from AGB
 total_metal_mass_AGB = np.sum(np.multiply(metal_mass_frac_from_AGB,masses),axis = 0)
@@ -143,13 +137,6 @@ if abs(total_metal_mass_AGB[n_snapshots-1] - expected_metal_mass_AGB)/expected_m
 else:
 	print("total AGB metal mass "+str(total_metal_mass_AGB[n_snapshots-1])+" expected "+ str(expected_metal_mass_AGB))
 
-#figure()
-#subplot(111)
-#plot(total_metal_mass_AGB,color='k', linewidth=0.5)
-#xlabel("snapshot")
-#ylabel("metal mass from AGB")
-#savefig("metal_mass_agb.png", dpi=200)
-
 # Total mass from AGB
 total_AGB_mass = np.sum(mass_from_AGB,axis = 0)
 expected_AGB_mass = ejecta_factor*ejected_mass
@@ -157,13 +144,6 @@ if abs(total_AGB_mass[n_snapshots-1] - expected_AGB_mass)/expected_AGB_mass < ep
 	print("total AGB mass released consistent with expectation")
 else:
 	print("total AGB mass "+str(total_AGB_mass[n_snapshots-1])+" expected "+ str(expected_AGB_mass))
-
-#figure()
-#subplot(111)
-#plot(np.arange(0,n_snapshots,1),total_AGB_mass,color='k', linewidth=0.5)
-#xlabel("snapshot")
-#ylabel("total mass from AGB")
-#savefig("mass_agb.png", dpi=200)
 
 # Total metal mass from SNII
 total_metal_mass_SNII = np.sum(np.multiply(metal_mass_frac_from_SNII,masses),axis = 0)
@@ -213,21 +193,6 @@ if abs(total_metal_mass[n_snapshots-1] - expected_metal_mass)/expected_metal_mas
 else:
 	print("total metal mass "+str(total_metal_mass[n_snapshots-1])+" expected "+ str(expected_metal_mass))
 
-#figure()
-#subplot(111)
-#plot(total_metal_mass,color='k', linewidth=0.5)
-#xlabel("snapshot")
-#ylabel("total metal mass")
-#savefig("metal_mass.png", dpi=200)
-
-#mean_metallicity = np.divide(total_metal_mass,total_part_mass)
-#figure()
-#subplot(111)
-#plot(mean_metallicity,color='k', linewidth=0.5)
-#xlabel("snapshot")
-#ylabel("mean metallicity")
-#savefig("metallicity.png", dpi=200)
-
 # Total mass for each element
 expected_element_mass = ejecta_factor_abundances*ejected_mass
 for i in range(n_elements):
@@ -236,33 +201,3 @@ for i in range(n_elements):
 		print("total element mass released consistent with expectation for element "+str(i))
 	else:
 		print("total element mass "+str(total_element_mass[n_snapshots-1])+" expected "+ str(expected_element_mass) + " for element "+ str(i))
-
-# Continuous heating
-#vel2 = zeros((n_parts,n_snapshots))
-#vel2[:,:] = velocity_parts[:,0,:]*velocity_parts[:,0,:] + velocity_parts[:,1,:]*velocity_parts[:,1,:] + velocity_parts[:,2,:]*velocity_parts[:,2,:]
-#total_kinetic_energy = np.sum(np.multiply(vel2,masses)*0.5,axis = 0)
-#total_energy = np.sum(np.multiply(internal_energy,masses),axis = 0)
-#total_energy_released = total_energy[n_snapshots-1] - total_energy[0] + total_kinetic_energy[n_snapshots-1] - total_kinetic_energy[0]
-#expected_energy_released = SNIa_rate*star_initial_mass*time[n_snapshots-1]*energy_per_SNe
-#if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
-#	print("total continuous energy release consistent with expectation")
-#else:
-#	print("total continuous energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))
-
-# Stochastic heating
-vel2 = zeros((n_parts,n_snapshots))
-vel2[:,:] = velocity_parts[:,0,:]*velocity_parts[:,0,:] + velocity_parts[:,1,:]*velocity_parts[:,1,:] + velocity_parts[:,2,:]*velocity_parts[:,2,:]
-total_kinetic_energy = np.sum(np.multiply(vel2,masses)*0.5,axis = 0)
-total_energy = np.sum(np.multiply(internal_energy,masses),axis = 0)
-total_energy_released = total_energy[n_snapshots-1] - total_energy[0] + total_kinetic_energy[n_snapshots-1] - total_kinetic_energy[0]
-
-# put in variable names to make this clearer...
-heating_probability = 2.39802e-01 * 9.76562e+01 / (3.16228e+07 * 2e-4)
-du = 3.16228e+07 * 2.0e-2
-print(heating_probability,du)
-
-expected_energy_released = heating_probability * du * np.sum(star_masses,axis=0)[0]
-if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
-	print("total stochastic energy release consistent with expectation")
-else:
-	print("total stochastic energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))

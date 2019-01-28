@@ -143,26 +143,42 @@ struct stars_props {
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
 
+  /* Flag to switch between continuous and stochastic heating */
   int continuous_heating;
 
+  /* Fraction of energy in SNIa (Note: always set to 1 in EAGLE, so may be not necessary) */
   float SNIa_energy_fraction;
-  float deltaT_desired;
+
+  /* Desired temperature increase due to supernovae */
+  float SNe_deltaT_desired;
+
+  /* Conversion factor from temperature to internal energy */
   float temp_to_u_factor;
+
+  /* Energy released by one supernova */
   float total_energy_SNe;
+
+  /* Temperature and energy times h due to SNe (corresponding to units_factor1, units_factor2 in EAGLE) */
+  float SNe_temperature_h;
+  float SNe_energy_h;
+
+  /* Timescale for feedback (used only for testing in const feedback model) */
+  float feedback_timescale;
+
+  /* Number of supernovae per solar mass (used only for testing in const feedback model) */
   float sn_per_msun;
 
-  // Conversion factors copied from EAGLE. CHANGE NAME TO BE MORE DESCRIPTIVE
-  float units_factor1, units_factor2;
+  /* Solar mass (used only for testing in const feedback model) */
+  float const_solar_mass;
 
-  float feedback_timescale;
+  /* Flag for testing energy injection */
+  int const_feedback_energy_testing;
+
+  /* Input factor to modify sn rate (for testing with const feedback model) */
+  float total_sn_factor;
 
   // CHANGE THIS TO BE CONSISTENT WITH RAND MAX USED IN STAR FORMATION
   double inv_rand_max;
-  
-  // ALEXEI: FOR DEBUGGING
-  float const_solar_mass;
-
-
 };
 
 #endif /* SWIFT_DEFAULT_STAR_PART_H */
