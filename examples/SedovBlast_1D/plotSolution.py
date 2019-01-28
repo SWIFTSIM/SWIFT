@@ -83,6 +83,12 @@ S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 rho = sim["/PartType0/Density"][:]
 
+try:
+    alpha = sim["/PartType0/Viscosity"][:]
+    plot_alpha = True 
+except:
+    plot_alpha = False
+
 
 # Now, work our the solution....
 
@@ -246,14 +252,23 @@ ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
 xlim(0, 1.3 * r_shock)
 ylim(-2, 22)
 
-# Entropy profile ---------------------------------
+# Entropy/alpha profile ---------------------------------
 subplot(235)
-plot(r, S, '.', color='r', ms=2.)
-plot(r_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
+
+if plot_alpha:
+    plot(r, alpha, '.', color='r', ms=2.0)
+    plot([r_shock, r_shock], [-1, 2], "--", color="k", alpha=0.8, lw=1.2)
+    ylabel(r"${\rm{Viscosity}}~\alpha$", labelpad=0)
+    # Show location of shock
+    ylim(0, 2)
+else:
+    plot(r, S, '.', color='r', ms=2.0)
+    plot(r_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
+    ylabel("${\\rm{Entropy}}~S$", labelpad=0)
+    ylim(-5, 50)
+
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Entropy}}~S$", labelpad=0)
 xlim(0, 1.3 * r_shock)
-ylim(-5, 50)
 
 # Information -------------------------------------
 subplot(236, frameon=False)
