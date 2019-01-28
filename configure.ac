@@ -215,7 +215,7 @@ fi
 # Check if task debugging is on.
 AC_ARG_ENABLE([task-debugging],
    [AS_HELP_STRING([--enable-task-debugging],
-     [Store task timing information and generate task dump files @<:@yes/no@:>@]
+     [Store extra information for generating task dump files @<:@yes/no@:>@]
    )],
    [enable_task_debugging="$enableval"],
    [enable_task_debugging="no"]

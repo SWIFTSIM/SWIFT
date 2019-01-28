@@ -290,10 +290,12 @@ int main(int argc, char *argv[]) {
 
 #ifndef SWIFT_DEBUG_TASKS
   if (dump_tasks) {
-    printf(
-        "Error: task dumping is only possible if SWIFT was configured"
-        " with the --enable-task-debugging option.\n");
-    return 1;
+    if (myrank == 0) {
+      message(
+          "WARNING: complete task dumps are only created when "
+          "configured with --enable-task-debugging.");
+      message("         Basic task statistics will be output.");
+    }
   }
 #endif
 
@@ -503,8 +505,10 @@ int main(int argc, char *argv[]) {
       message("Using METIS serial partitioning:");
     else
       message("Using ParMETIS partitioning:");
-#else
+#elif defined(HAVE_METIS)
     message("Using METIS serial partitioning:");
+#else
+    message("Non-METIS partitioning:");
 #endif
     message("  initial partitioning: %s",
             initial_partition_name[initial_partition.type]);
@@ -1040,99 +1044,17 @@ int main(int argc, char *argv[]) {
     if (force_stop || (e.restart_onexit && e.step - 1 == nsteps))
       engine_dump_restarts(&e, 0, 1);
 
-#ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
-#ifdef WITH_MPI
+#ifdef SWIFT_DEBUG_TASKS
+      task_dump_all(&e, j + 1);
+#endif
 
-      /* Make sure output file is empty, only on one rank. */
-      char dumpfile[35];
-      snprintf(dumpfile, sizeof(dumpfile), "thread_info_MPI-step%d.dat", j + 1);
-      FILE *file_thread;
-      if (myrank == 0) {
-        file_thread = fopen(dumpfile, "w");
-        fclose(file_thread);
-      }
-      MPI_Barrier(MPI_COMM_WORLD);
-
-      for (int i = 0; i < nr_nodes; i++) {
-
-        /* Rank 0 decides the index of writing node, this happens one-by-one. */
-        int kk = i;
-        MPI_Bcast(&kk, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-        if (i == myrank) {
-
-          /* Open file and position at end. */
-          file_thread = fopen(dumpfile, "a");
-
-          fprintf(file_thread,
-                  " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld\n", myrank,
-                  e.tic_step, e.toc_step, e.updates, e.g_updates, e.s_updates,
-                  cpufreq);
-          int count = 0;
-          for (int l = 0; l < e.sched.nr_tasks; l++) {
-            if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
-              fprintf(file_thread,
-                      " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n",
-                      myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
-                      e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
-                      e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-                      (e.sched.tasks[l].ci != NULL)
-                          ? e.sched.tasks[l].ci->hydro.count
-                          : 0,
-                      (e.sched.tasks[l].cj != NULL)
-                          ? e.sched.tasks[l].cj->hydro.count
-                          : 0,
-                      (e.sched.tasks[l].ci != NULL)
-                          ? e.sched.tasks[l].ci->grav.count
-                          : 0,
-                      (e.sched.tasks[l].cj != NULL)
-                          ? e.sched.tasks[l].cj->grav.count
-                          : 0,
-                      e.sched.tasks[l].flags, e.sched.tasks[l].sid);
-            }
-            fflush(stdout);
-            count++;
-          }
-          fclose(file_thread);
-        }
-
-        /* And we wait for all to synchronize. */
-        MPI_Barrier(MPI_COMM_WORLD);
-      }
-
-#else
-      char dumpfile[32];
-      snprintf(dumpfile, sizeof(dumpfile), "thread_info-step%d.dat", j + 1);
-      FILE *file_thread;
-      file_thread = fopen(dumpfile, "w");
-      /* Add some information to help with the plots */
-      fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n",
-              -2, -1, -1, 1, e.tic_step, e.toc_step, e.updates, e.g_updates,
-              e.s_updates, 0, cpufreq);
-      for (int l = 0; l < e.sched.nr_tasks; l++) {
-        if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
-          fprintf(
-              file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
-              e.sched.tasks[l].rid, e.sched.tasks[l].type,
-              e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
-              e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-              (e.sched.tasks[l].ci == NULL) ? 0
-                                            : e.sched.tasks[l].ci->hydro.count,
-              (e.sched.tasks[l].cj == NULL) ? 0
-                                            : e.sched.tasks[l].cj->hydro.count,
-              (e.sched.tasks[l].ci == NULL) ? 0
-                                            : e.sched.tasks[l].ci->grav.count,
-              (e.sched.tasks[l].cj == NULL) ? 0
-                                            : e.sched.tasks[l].cj->grav.count,
-              e.sched.tasks[l].sid);
-        }
-      }
-      fclose(file_thread);
-#endif  // WITH_MPI
+      /* Generate the task statistics. */
+      char dumpfile[40];
+      snprintf(dumpfile, 40, "thread_stats-step%d.dat", j + 1);
+      task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
     }
-#endif  // SWIFT_DEBUG_TASKS
 
 #ifdef SWIFT_DEBUG_THREADPOOL
     /* Dump the task data using the given frequency. */

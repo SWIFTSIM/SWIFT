@@ -993,6 +993,12 @@ void engine_repartition(struct engine *e) {
    * bug that doesn't handle this case well. */
   if (e->nr_nodes == 1) return;
 
+  /* Generate the fixed costs include file. */
+  if (e->step > 3 && e->reparttype->trigger <= 1.f) {
+    task_dump_stats("partition_fixed_costs.h", e, /* header = */ 1,
+                    /* allranks = */ 1);
+  }
+
   /* Do the repartitioning. */
   partition_repartition(e->reparttype, e->nodeID, e->nr_nodes, e->s,
                         e->sched.tasks, e->sched.nr_tasks);
@@ -1048,31 +1054,40 @@ void engine_repartition_trigger(struct engine *e) {
 
   const ticks tic = getticks();
 
-  /* Do nothing if there have not been enough steps since the last
-   * repartition, don't want to repeat this too often or immediately after
-   * a repartition step. Also nothing to do when requested. */
+  /* Do nothing if there have not been enough steps since the last repartition
+   * as we don't want to repeat this too often or immediately after a
+   * repartition step. Also nothing to do when requested. */
   if (e->step - e->last_repartition >= 2 &&
       e->reparttype->type != REPART_NONE) {
 
-    /* Old style if trigger is >1 or this is the second step (want an early
-     * repartition following the initial repartition). */
-    if (e->reparttype->trigger > 1 || e->step == 2) {
+    /* If we have fixed costs available and this is step 2 or we are forcing
+     * repartitioning then we do a fixed costs one now. */
+    if (e->reparttype->trigger > 1 ||
+        (e->step == 2 && e->reparttype->use_fixed_costs)) {
+
       if (e->reparttype->trigger > 1) {
         if ((e->step % (int)e->reparttype->trigger) == 0) e->forcerepart = 1;
       } else {
         e->forcerepart = 1;
       }
+      e->reparttype->use_ticks = 0;
 
     } else {
 
-      /* Use cputimes from ranks to estimate the imbalance. */
-      /* First check if we are going to skip this stage anyway, if so do that
-       * now. If is only worth checking the CPU loads when we have processed a
-       * significant number of all particles. */
+      /* It is only worth checking the CPU loads when we have processed a
+       * significant number of all particles as we require all tasks to have
+       * timings. */
       if ((e->updates > 1 &&
            e->updates >= e->total_nr_parts * e->reparttype->minfrac) ||
           (e->g_updates > 1 &&
            e->g_updates >= e->total_nr_gparts * e->reparttype->minfrac)) {
+
+        /* Should we are use the task timings or fixed costs. */
+        if (e->reparttype->use_fixed_costs > 1) {
+          e->reparttype->use_ticks = 0;
+        } else {
+          e->reparttype->use_ticks = 1;
+        }
 
         /* Get CPU time used since the last call to this function. */
         double elapsed_cputime =
@@ -1096,17 +1111,22 @@ void engine_repartition_trigger(struct engine *e) {
           double mean = sum / (double)e->nr_nodes;
 
           /* Are we out of balance? */
-          if (((maxtime - mintime) / mean) > e->reparttype->trigger) {
+          double abs_trigger = fabs(e->reparttype->trigger);
+          if (((maxtime - mintime) / mean) > abs_trigger) {
             if (e->verbose)
-              message("trigger fraction %.3f exceeds %.3f will repartition",
-                      (maxtime - mintime) / mintime, e->reparttype->trigger);
+              message("trigger fraction %.3f > %.3f will repartition",
+                      (maxtime - mintime) / mean, abs_trigger);
             e->forcerepart = 1;
+          } else {
+            if (e->verbose)
+              message("trigger fraction %.3f =< %.3f will not repartition",
+                      (maxtime - mintime) / mean, abs_trigger);
           }
         }
-
-        /* All nodes do this together. */
-        MPI_Bcast(&e->forcerepart, 1, MPI_INT, 0, MPI_COMM_WORLD);
       }
+
+      /* All nodes do this together. */
+      MPI_Bcast(&e->forcerepart, 1, MPI_INT, 0, MPI_COMM_WORLD);
     }
 
     /* Remember we did this. */
@@ -2984,9 +3004,7 @@ void engine_step(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-#ifdef SWIFT_DEBUG_TASKS
   e->tic_step = getticks();
-#endif
 
   if (e->nodeID == 0) {
 
@@ -3153,10 +3171,8 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time2);
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
-#ifdef SWIFT_DEBUG_TASKS
   /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
-#endif
 }
 
 /**

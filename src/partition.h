@@ -46,7 +46,7 @@ enum repartition_type {
   REPART_NONE = 0,
   REPART_METIS_VERTEX_EDGE_COSTS,
   REPART_METIS_EDGE_COSTS,
-  REPART_METIS_VERTEX_COSTS,
+  REPART_METIS_VERTEX_COUNTS,
   REPART_METIS_VERTEX_COSTS_TIMEBINS
 };
 
@@ -58,6 +58,9 @@ struct repartition {
   float itr;
   int usemetis;
   int adaptive;
+
+  int use_fixed_costs;
+  int use_ticks;
 
   /* The partition as a cell-list. */
   int ncelllist;
