@@ -2094,6 +2094,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
   int nr_cells = mydata->nr_cells;
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
+  int use_ticks = mydata->use_ticks;
 
   struct cell *cells = mydata->cells;
 
@@ -2118,10 +2119,18 @@ static void check_weights(struct task *tasks, int nr_tasks,
     struct task *t = &tasks[j];
 
     /* Skip un-interesting tasks. */
-    if (t->cost == 0.f) continue;
+    if (t->type == task_type_send || t->type == task_type_recv ||
+        t->type == task_type_logger || t->implicit || t->ci == NULL)
+      continue;
 
-    /* Get the task weight based on costs. */
-    double w = (double)t->cost;
+    /* Get weight for this task. Either based on fixed costs or task timings. */
+    double w = 0.0;
+    if (use_ticks) {
+      w = (double)t->toc - (double)t->tic;
+    } else {
+      w = repartition_costs[t->type][t->subtype];
+    }
+    if (w <= 0.0) continue;
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
