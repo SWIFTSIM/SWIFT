@@ -498,7 +498,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
 
-  const float fac_mu = cosmo->a_factor_mu;
+  const float fac_B = cosmo->a_factor_Balsara_eps;
 
   const float h_inv = 1.f / p->h;
 
@@ -515,7 +515,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the Balsara switch */
   const float balsara =
-      abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed * fac_mu * h_inv);
+      abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed * fac_B * h_inv);
 
   /* Compute the "grad h" term */
   const float common_factor = p->h / (hydro_dimension * p->density.wcount);

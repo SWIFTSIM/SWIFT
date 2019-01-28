@@ -112,7 +112,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 #if defined(GADGET2_SPH)
         part->entropy = 1.f;
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) || \
-    defined(HOPKINS_PU_SPH_MONAGHAN)
+    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH)
         part->u = 1.f;
 #elif defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;
@@ -212,7 +212,8 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
 #endif /* PRESSURE-ENTROPY */
-#if defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
+#if defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
+    defined(ANARCHY_PU_SPH)
     p->rho = 1.f;
     p->pressure_bar = 0.6666666;
     p->density.rho_dh = 0.f;
@@ -220,6 +221,13 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
 #endif /* PRESSURE-ENERGY */
+#if defined(ANARCHY_PU_SPH)
+    /* Initialise viscosity variables */
+    p->viscosity.alpha = 0.8;
+    p->viscosity.div_v = 0.f;
+    p->viscosity.div_v_previous_step = 0.f;
+    p->viscosity.v_sig = hydro_get_comoving_soundspeed(p);
+#endif /* ANARCHY_PU_SPH viscosity variables */
 
     /* And prepare for a round of force tasks. */
     hydro_prepare_force(p, xp, cosmo, hydro_props, 0.);

@@ -41,12 +41,30 @@
 #define hydro_props_default_min_temp 0.f
 #define hydro_props_default_H_ionization_temperature 1e4
 #define hydro_props_default_viscosity_alpha 0.8f
+
+#ifdef ANARCHY_PU_SPH
+/* This nasty #ifdef is only temporary until we separate the viscosity
+ * and hydro components. If it is not removed by July 2019, shout at JB. */
 #define hydro_props_default_viscosity_alpha_min \
-  0.1f /* Values taken from (Price,2004), not used in legacy gadget mode */
+  0.01f /* values taken from Schaller+ 2015 */
 #define hydro_props_default_viscosity_alpha_max \
-  2.0f /* Values taken from (Price,2004), not used in legacy gadget mode */
+  2.0f /* values taken from Schaller+ 2015 */
+#define hydro_props_default_viscosity_length \
+  0.01f /* values taken from Schaller+ 2015 */
+#else
+#define hydro_props_default_viscosity_alpha_min \
+  0.1f /* values taken from (price,2004), not used in legacy gadget mode */
+#define hydro_props_default_viscosity_alpha_max \
+  2.0f /* values taken from (price,2004), not used in legacy gadget mode */
 #define hydro_props_default_viscosity_length \
   0.1f /* Values taken from (Price,2004), not used in legacy gadget mode */
+#endif /* ANARCHY_PU_SPH */
+
+/* Following values taken directly from the ANARCHY paper (Schaller+ 2015) */
+#define hydro_props_default_diffusion_alpha 0.0f
+#define hydro_props_default_diffusion_beta 0.01f
+#define hydro_props_default_diffusion_alpha_max 1.0f
+#define hydro_props_default_diffusion_alpha_min 0.0f
 
 /**
  * @brief Initialize the global properties of the hydro scheme.
@@ -142,6 +160,21 @@ void hydro_props_init(struct hydro_props *p,
 
   p->viscosity.length = parser_get_opt_param_float(
       params, "SPH:viscosity_length", hydro_props_default_viscosity_length);
+
+  /* Same for the thermal diffusion parameters */
+  p->diffusion.alpha = parser_get_opt_param_float(
+      params, "SPH:diffusion_alpha", hydro_props_default_diffusion_alpha);
+
+  p->diffusion.beta = parser_get_opt_param_float(
+      params, "SPH:diffusion_beta", hydro_props_default_diffusion_beta);
+
+  p->diffusion.alpha_max =
+      parser_get_opt_param_float(params, "SPH:diffusion_alpha_max",
+                                 hydro_props_default_diffusion_alpha_max);
+
+  p->diffusion.alpha_min =
+      parser_get_opt_param_float(params, "SPH:diffusion_alpha_min",
+                                 hydro_props_default_diffusion_alpha_min);
 
   /* Compute the initial energy (Note the temp. read is in internal units) */
   /* u_init = k_B T_init / (mu m_p (gamma - 1)) */
@@ -312,6 +345,11 @@ void hydro_props_init_no_hydro(struct hydro_props *p) {
   p->viscosity.alpha_max = hydro_props_default_viscosity_alpha_max;
   p->viscosity.alpha_min = hydro_props_default_viscosity_alpha_min;
   p->viscosity.length = hydro_props_default_viscosity_length;
+
+  p->diffusion.alpha = hydro_props_default_diffusion_alpha;
+  p->diffusion.beta = hydro_props_default_diffusion_beta;
+  p->diffusion.alpha_max = hydro_props_default_diffusion_alpha_max;
+  p->diffusion.alpha_min = hydro_props_default_diffusion_alpha_min;
 }
 
 /**
