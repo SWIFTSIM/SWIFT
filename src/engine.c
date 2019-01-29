@@ -4057,11 +4057,13 @@ void engine_unpin(void) {
  * @param physical_constants The #phys_const used for this run.
  * @param cosmo The #cosmology used for this run.
  * @param hydro The #hydro_props used for this run.
+ * @param entropy_floor The #entropy_floor_properties for this run.
  * @param gravity The #gravity_props used for this run.
  * @param stars The #stars_props used for this run.
  * @param mesh The #pm_mesh used for the long-range periodic forces.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
+ * @param starform The #star_formation model of this run.
  * @param chemistry The chemistry information.
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,

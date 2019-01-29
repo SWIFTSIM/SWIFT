@@ -35,7 +35,14 @@
 #include "stars.h"
 #include "units.h"
 
-/* Starformation struct */
+/**
+ * @file src/starformation/schaye08/starformation.h
+ * @brief Entropy floor used in the EAGLE model
+ */
+
+/**
+ * @brief Properties of the EAGLE star formation model.
+ */
 struct star_formation {
 
   /*! Normalization of the KS star formation law (internal units) */
@@ -194,7 +201,7 @@ INLINE static int star_formation_potential_to_become_star(
 /**
  * @brief Calculates if the gas particle gets converted
  *
- * @param the #engine
+ * @param e the #engine
  * @param starform the star formation law properties to use.
  * @param p the gas particles.
  * @param xp the additional properties of the gas particles.
@@ -203,6 +210,8 @@ INLINE static int star_formation_potential_to_become_star(
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param cooling The cooling data struct.
+ * @param dt_star The time-step of this particle.
+ * @param with_cosmology Are we running with cosmology on?
  */
 INLINE static int star_formation_convert_to_star(
     const struct engine* e, const struct star_formation* starform,
@@ -325,10 +334,10 @@ INLINE static void star_formation_copy_properties(
  *
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
- * @param us The current internal system of units
+ * @param us The current internal system of units.
+ * @param hydro_props The propertis of the hydro model.
  * @param starform the star formation law properties to initialize
- *
- * */
+ */
 INLINE static void starformation_init_backend(
     struct swift_params* parameter_file, const struct phys_const* phys_const,
     const struct unit_system* us, const struct hydro_props* hydro_props,
@@ -425,9 +434,9 @@ INLINE static void starformation_init_backend(
   const float mean_molecular_weight = hydro_props->mu_neutral;
 
   /* Calculate the EOS pressure normalization */
-  starform->EOS_pressure_norm = starform->EOS_density_norm *
-                                starform->EOS_temperature_norm *
-                                phys_const->const_boltzmann_k / mean_molecular_weight / X_H;
+  starform->EOS_pressure_norm =
+      starform->EOS_density_norm * starform->EOS_temperature_norm *
+      phys_const->const_boltzmann_k / mean_molecular_weight / X_H;
 
   const double EOS_high_den_pressure =
       starform->EOS_pressure_norm *

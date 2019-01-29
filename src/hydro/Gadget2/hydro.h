@@ -335,8 +335,9 @@ hydro_set_physical_internal_energy_dt(struct part *restrict p,
  * @brief Sets the physical entropy of a particle
  *
  * @param p The particle of interest.
+ * @param xp The extended particle data.
  * @param cosmo Cosmology data structure
- * @param s The physical entropy
+ * @param entropy The physical entropy
  */
 __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,

@@ -33,16 +33,17 @@
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
  * @param us the current internal system of units
- * @param s the #space we run in.
+ * @param hydro_props The propoerties of the hydro scheme.
  * @param starform the properties of the star formation law
  */
 void starformation_init(struct swift_params* parameter_file,
                         const struct phys_const* phys_const,
                         const struct unit_system* us,
-                        const struct hydro_props *hydro_props,
+                        const struct hydro_props* hydro_props,
                         struct star_formation* starform) {
 
-  starformation_init_backend(parameter_file, phys_const, us, hydro_props, starform);
+  starformation_init_backend(parameter_file, phys_const, us, hydro_props,
+                             starform);
 }
 
 /**
@@ -73,7 +74,7 @@ void starformation_struct_dump(const struct star_formation* starform,
  * bytes.
  *
  * @param starform the star formation struct
- * @param streeam the file stream
+ * @param stream the file stream
  */
 void starformation_struct_restore(const struct star_formation* starform,
                                   FILE* stream) {

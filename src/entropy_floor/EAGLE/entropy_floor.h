@@ -139,7 +139,8 @@ static INLINE float entropy_floor(
  *
  * @param params The YAML parameter file.
  * @param us The system of units used internally.
- * @param phys_cont The physical constants.
+ * @param phys_const The physical constants.
+ * @param hydro_props The propoerties of the hydro scheme.
  * @param props The entropy floor properties to fill.
  */
 static INLINE void entropy_floor_init(struct entropy_floor_properties *props,
