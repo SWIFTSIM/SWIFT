@@ -53,8 +53,7 @@
  * @param restart_flag Are we calling this directly after a restart?
  */
 INLINE static void cooling_update(const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling,
-                                  const int restart_flag) {
+                                  struct cooling_function_data* cooling) {
   // Add content if required.
 }
 
