@@ -76,7 +76,7 @@ static const double newton_log_u_guess_cgs = 1.414213562e6; /* log10(2e12) */
  * @param cooling #cooling_function_data structure containing redshift table.
  */
 __attribute__((always_inline)) INLINE void get_redshift_index(
-    float z, int *z_index, float *dz,
+    const float z, int *z_index, float *dz,
     struct cooling_function_data *restrict cooling) {
 
   /* Before the earliest redshift or before hydrogen reionization, flag for
@@ -124,11 +124,9 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
  *
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
- * @param restart_flag Flag indicating restarted run.
  */
 void cooling_update(const struct cosmology *cosmo,
-                    struct cooling_function_data *cooling,
-                    const int restart_flag) {
+                    struct cooling_function_data *cooling) {
 
   /* Current redshift */
   const float redshift = cosmo->z;
@@ -839,7 +837,6 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   /* Set the redshift indices to invalid values */
   cooling->z_index = -10;
-  cooling->previous_z_index = eagle_cooling_N_redshifts + 2;
 
   /* set previous_z_index and to last value of redshift table*/
   cooling->previous_z_index = eagle_cooling_N_redshifts - 2;
@@ -872,8 +869,8 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
 
   /* Force a re-read of the cooling tables */
   cooling->z_index = -10;
-  cooling->previous_z_index = eagle_cooling_N_redshifts + 2;
-  cooling_update(cosmo, cooling, /*restart_flag=*/1);
+  cooling->previous_z_index = eagle_cooling_N_redshifts - 2;
+  cooling_update(cosmo, cooling);
 }
 
 /**
@@ -910,4 +907,53 @@ void cooling_clean(struct cooling_function_data *cooling) {
   free(cooling->table.temperature);
   free(cooling->table.H_plus_He_heating);
   free(cooling->table.H_plus_He_electron_abundance);
+}
+
+/**
+ * @brief Write a cooling struct to the given FILE as a stream of bytes.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ */
+void cooling_struct_dump(const struct cooling_function_data *cooling,
+                         FILE *stream) {
+
+  /* To make sure everything is restored correctly, we zero all the pointers to
+     tables. If they are not restored correctly, we would crash after restart on
+     the first call to the cooling routines. Helps debugging. */
+  struct cooling_function_data cooling_copy = *cooling;
+  cooling_copy.Redshifts = NULL;
+  cooling_copy.nH = NULL;
+  cooling_copy.Temp = NULL;
+  cooling_copy.Therm = NULL;
+  cooling_copy.SolarAbundances = NULL;
+  cooling_copy.SolarAbundances_inv = NULL;
+  cooling_copy.table.metal_heating = NULL;
+  cooling_copy.table.H_plus_He_heating = NULL;
+  cooling_copy.table.H_plus_He_electron_abundance = NULL;
+  cooling_copy.table.temperature = NULL;
+  cooling_copy.table.electron_abundance = NULL;
+
+  restart_write_blocks((void *)&cooling_copy,
+                       sizeof(struct cooling_function_data), 1, stream,
+                       "cooling", "cooling function");
+}
+
+/**
+ * @brief Restore a hydro_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * Read the structure from the stream and restore the cooling tables by
+ * re-reading them.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ * @param cosmo #cosmology structure
+ */
+void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
+                            const struct cosmology *cosmo) {
+  restart_read_blocks((void *)cooling, sizeof(struct cooling_function_data), 1,
+                      stream, NULL, "cooling function");
+
+  cooling_restore_tables(cooling, cosmo);
 }

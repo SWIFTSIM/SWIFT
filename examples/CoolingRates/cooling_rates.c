@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
   // Init cooling
   cooling_init(params, &us, &internal_const, &cooling);
   cooling_print(&cooling);
-  cooling_update(&cosmo, &cooling, /*restart=*/0);
+  cooling_update(&cosmo, &cooling);
 
   // Calculate abundance ratios
   float abundance_ratio[(chemistry_element_count + 2)];
