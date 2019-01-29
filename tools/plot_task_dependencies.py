@@ -121,6 +121,70 @@ def appendData(data):
     return data[0]
 
 
+def taskIsStars(name):
+    """
+    Does the task concern stars?
+
+    Parameters
+    ----------
+
+    name: str
+        Task name
+    """
+    if "stars" in name or "spart" in name:
+        return True
+    return False
+
+
+def taskIsHydro(name):
+    """
+    Does the task concern the hydro?
+
+    Parameters
+    ----------
+
+    name: str
+        Task name
+    """
+    if "_part" in name:
+        return True
+    if "density" in name and "stars" not in name:
+        return True
+    if "rho" in name:
+        return True
+    if "force" in name:
+        return True
+    if "xv" in name:
+        return True
+
+    task_name = [
+        "sort",
+        "ghost_in",
+        "ghost",
+        "ghost_out",
+    ]
+    if name in task_name:
+        return True
+    return False
+
+
+def taskIsGravity(name):
+    """
+    Does the task concern the gravity?
+
+    Parameters
+    ----------
+
+    name: str
+        Task name
+    """
+    if "gpart" in name:
+        return True
+    if "grav" in name:
+        return True
+    return False
+
+
 def writeTask(f, name, implicit, mpi):
     """
     Write the special task (e.g. implicit and mpi)
@@ -140,18 +204,26 @@ def writeTask(f, name, implicit, mpi):
     mpi: int
         Is the task MPI related
     """
-    # do we need to do something?
-    if not implicit and not mpi:
-        return
-
     # generate text
     txt = "\t " + name + "["
+
     if implicit:
-        txt += "style=filled, color=lightgrey"
-        if mpi:
-            txt += ","
+        txt += "style=filled,fillcolor=lightgrey,"
     if mpi:
-        txt += "shape=diamond"
+        txt += "shape=diamond,"
+
+    if taskIsStars(name):
+        txt += "color=darkorange1,"
+
+    if taskIsHydro(name):
+        txt += "color=blue3,"
+
+    if taskIsGravity(name):
+        txt += "color=red3,"
+
+    # remove extra ','
+    if txt[-1] == ",":
+        txt = txt[:-1]
     txt += "];\n"
 
     # write it
