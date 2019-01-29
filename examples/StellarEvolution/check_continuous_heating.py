@@ -112,12 +112,7 @@ for i in [0,n_snapshots-1]:
 	smoothing_length_sparts[i] = sim["/PartType4/SmoothingLength"][0]
 	time[i] = sim["/Header"].attrs["Time"][0]
 
-# Define ejecta factor
-ejecta_factor = 1.0e-2
-ejecta_factor_metallicity = 1.0 - 2.0/n_elements
-ejecta_factor_abundances = 1.0/n_elements
-ejected_mass = star_initial_mass
-SNIa_rate = 1.0e9
+# Energy emmitted per SN
 energy_per_SNe = 1.0e51/unit_energy_in_cgs
 
 # Check that the total amount of enrichment is as expected.
