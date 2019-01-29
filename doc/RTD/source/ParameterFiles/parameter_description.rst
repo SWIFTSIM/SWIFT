@@ -203,7 +203,7 @@ code will be :math:`\epsilon=\min(\epsilon_{max},
   
 The time-step of a given particle is given by :math:`\Delta t =
 \eta\sqrt{\frac{\epsilon}{|\overrightarrow{a}|}}`, where
-:math:`\overrightarrow{a}` is the particle's acceleration. Power et al. (2003) recommend using :math:`\eta=0.025`.
+:math:`\overrightarrow{a}` is the particle's acceleration. `Power et al. (2003) <http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using :math:`\eta=0.025`.
 The last tree-related parameter is
 
 * The tree rebuild frequency: ``rebuild_frequency``.
