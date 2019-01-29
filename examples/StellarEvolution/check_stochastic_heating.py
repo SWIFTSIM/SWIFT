@@ -90,7 +90,8 @@ smoothing_length_sparts = zeros(n_snapshots)
 time = zeros(n_snapshots)
 
 # Read fields we are checking from snapshots
-for i in [0,n_snapshots-1]:
+#for i in [0,n_snapshots-1]:
+for i in range(n_snapshots):
 	sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
 	print('reading snapshot '+str(i))
 	abundances[:,:,i] = sim["/PartType0/ElementAbundance"]
@@ -111,14 +112,6 @@ for i in [0,n_snapshots-1]:
 	smoothing_length_parts[:,i] = sim["/PartType0/SmoothingLength"]
 	smoothing_length_sparts[i] = sim["/PartType4/SmoothingLength"][0]
 	time[i] = sim["/Header"].attrs["Time"][0]
-
-# Define ejecta factor
-ejecta_factor = 1.0e-2
-ejecta_factor_metallicity = 1.0 - 2.0/n_elements
-ejecta_factor_abundances = 1.0/n_elements
-ejected_mass = star_initial_mass
-SNIa_rate = 1.0e9
-energy_per_SNe = 1.0e51/unit_energy_in_cgs
 
 # Check that the total amount of enrichment is as expected.
 # Define tolerance
@@ -144,6 +137,15 @@ expected_energy_released = total_sn * energy_per_sn
 
 # Did we get it right?
 if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
-	print("total stochastic energy release consistent with expectation")
+	print("total stochastic energy release consistent with expectation. total stochastic energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]))
 else:
 	print("total stochastic energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))
+
+# Plot the energy evolution
+figure()
+subplot(111)
+plot(total_energy + total_kinetic_energy,color='k')
+xlabel("snapshot")
+ylabel("total energy")
+savefig("stellar_evolution_total_energy.png", dpi=200)
+

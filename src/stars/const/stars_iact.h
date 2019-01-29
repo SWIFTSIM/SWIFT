@@ -202,7 +202,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   /* pick random number to see if we do stochastic heating */
   // Temporary assignment of random seed. Discuss with Matthieu for better 
   // way of generating random numbers
-  unsigned int seed = (pj->id + ti_current) % 8191;
+  unsigned int seed = 3*(pj->id + ti_current) % 8191;
   double random_num = rand_r(&seed) * stars_properties->inv_rand_max;
   if (random_num < heating_probability) {
     message("we did some heating! id %llu probability %.5e random_num %.5e du %.5e du/ini %.5e", pj->id, heating_probability, random_num, du, du/hydro_get_physical_internal_energy(pj,xp,cosmo));

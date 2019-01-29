@@ -174,9 +174,6 @@ struct stars_props {
   /* Flag for testing energy injection */
   int const_feedback_energy_testing;
 
-  /* Input factor to modify sn rate (for testing with const feedback model) */
-  float total_sn_factor;
-
   // CHANGE THIS TO BE CONSISTENT WITH RAND MAX USED IN STAR FORMATION
   double inv_rand_max;
 };

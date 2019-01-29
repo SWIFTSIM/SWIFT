@@ -135,9 +135,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
   /* Are we testing the energy injection in the constant feedback model? */
   sp->const_feedback_energy_testing = parser_get_opt_param_int(params, "Stars:energy_testing", 0);
 
-  /* Are we testing the energy injection in the constant feedback model? */
-  sp->total_sn_factor = parser_get_opt_param_float(params, "Stars:sn_rate_factor", 1.0);
-
   /* Set temperature increase due to supernovae */
   sp->SNe_deltaT_desired = 3.16228e7 / units_cgs_conversion_factor(us,UNIT_CONV_TEMPERATURE);
 
@@ -159,7 +156,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->feedback_timescale = parser_get_opt_param_float(params, "Stars:feedback_timescale", 4e-5);
   
   /* Calculate number of supernovae per solar mass (used only for testing in const feedback model) */
-  sp->sn_per_msun = sp->feedback_timescale * units_cgs_conversion_factor(us, UNIT_CONV_TIME) * 1.0e-15; // timescale convert to cgs per 40 Myr (~10^15s). 
+  sp->sn_per_msun = sp->feedback_timescale * units_cgs_conversion_factor(us, UNIT_CONV_TIME) * 1.0e-15 * 0.01; // timescale convert to cgs per 40 Myr (~10^15s). 0.01 solar masses per supernova.
 
   /* Copy over solar mass (used only for testing in const feedback model) */
   sp->const_solar_mass = phys_const->const_solar_mass;
