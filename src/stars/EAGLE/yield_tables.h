@@ -27,7 +27,15 @@
 static const float log_min_metallicity = -20;
 static const int n_mass_bins = 10; // temporary, put in correct value and move elsewhere.
 
-// Temporary, these two functions need to be somewhere else
+// Temporary, these functions need to be somewhere else
+inline static char *mystrdup(const char *s) {
+  char *p;
+
+  p = (char *)malloc(strlen(s) + 1);
+  strcpy(p, s);
+  return p;
+}
+
 /**
  * @brief Returns the 1d index of element with 2d indices i,j
  * from a flattened 2d array in row major order
@@ -64,7 +72,7 @@ inline static int get_element_index(const char *element_name, char **element_arr
   return -1;
 }
 
-inline void read_yield_tables(struct stars_props *restrict stars){
+inline static void read_yield_tables(struct stars_props *restrict stars){
 #ifdef HAVE_HDF5
 
   int i, j, k, index;
@@ -86,7 +94,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
   status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->SNIa_element_names));
+          stars->SNIa_element_names);
   if (status < 0) error("error reading SNIa element names");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
@@ -94,8 +102,9 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   if (status < 0) error("error closing datatype");
 
   // What is this for? Copied from EAGLE
-  //for (i = 0; i < stars->SNIa_n_elements; i++)
-  //  yieldsSNIa.ElementName[i] = mystrdup(yieldsSNIa.ElementName[i]);
+  //for (i = 0; i < stars->SNIa_n_elements; i++) {
+  //  stars->SNIa_element_names[i] = mystrdup(stars->SNIa_element_names[i]);
+  //}
 
   dataset = H5Dopen(file_id, "Yield", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -103,7 +112,6 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   if (status < 0) error("error reading SNIa yields");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
-
   dataset = H5Dopen(file_id, "Total_Metals", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
           &stars->yield_SNIa_total_metals_SPH);
@@ -127,7 +135,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
   status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->SNII_element_names));
+          stars->SNII_element_names);
   if (status < 0) error("error reading SNII element names");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
@@ -197,9 +205,10 @@ inline void read_yield_tables(struct stars_props *restrict stars){
       stars->yield_SNII.ejecta[index] = tempej1[k];
       stars->yield_SNII.total_metals[index] = tempmet1[k];
 
-      for (j = 0; j < stars->SNII_n_elements; j++)
+      for (j = 0; j < stars->SNII_n_elements; j++) {
         index = row_major_index_3d(i,j,k,stars->SNII_n_z,stars->SNII_n_elements,stars->SNII_n_mass);
         stars->yield_SNII.yield[index] = tempyield1[j][k];
+      }
     }
   }
 
@@ -219,7 +228,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
   status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-          &(stars->AGB_element_names));
+          stars->AGB_element_names);
   if (status < 0) error("error reading AGB element names");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
@@ -289,9 +298,10 @@ inline void read_yield_tables(struct stars_props *restrict stars){
       stars->yield_AGB.ejecta[index] = tempej2[k];
       stars->yield_AGB.total_metals[index] = tempmet2[k];
 
-      for (j = 0; j < stars->AGB_n_elements; j++)
+      for (j = 0; j < stars->AGB_n_elements; j++) {
         index = row_major_index_3d(i,j,k,stars->AGB_n_z,stars->AGB_n_elements,stars->AGB_n_mass);
         stars->yield_AGB.yield[index] = tempyield2[j][k];
+      }
     }
   }
 
@@ -300,7 +310,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
   /* Read lifetimes table */
 
-  sprintf(fname, "%s/AGB.hdf5", stars->yield_table_path);
+  sprintf(fname, "%s/Lifetimes.hdf5", stars->yield_table_path);
 
   file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
 
@@ -328,6 +338,8 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 
   for (i = 0; i < stars->lifetimes.n_z; i++) {
     for (j = 0; j < stars->lifetimes.n_mass; j++) {
+      //index = row_major_index_2d(i,j,stars->lifetimes.n_z,stars->lifetimes.n_mass);
+      //stars->lifetimes.dyingtime[index] = log10(temptime[i][j]);
       stars->lifetimes.dyingtime[i][j] = log10(temptime[i][j]);
     }
   }
@@ -338,7 +350,7 @@ inline void read_yield_tables(struct stars_props *restrict stars){
 #endif
 }
 
-inline void allocate_yield_tables(struct stars_props *restrict stars){
+inline static void allocate_yield_tables(struct stars_props *restrict stars){
   
   /* Allocate SNIa arrays */
   if (posix_memalign((void **)&stars->yields_SNIa, SWIFT_STRUCT_ALIGNMENT, stars->SNIa_n_elements * sizeof(double)) !=0) {
@@ -421,18 +433,17 @@ inline void allocate_yield_tables(struct stars_props *restrict stars){
   }
 
   /* Allocate element name arrays  */
-  int element_name_length = 25;
   stars->SNIa_element_names = (char **)malloc(stars->SNIa_n_elements * sizeof(char*));
   for(int i = 0; i < stars->SNIa_n_elements; i++){
-    stars->SNIa_element_names[i] = (char *)malloc(element_name_length * sizeof(char));
+    stars->SNIa_element_names[i] = (char *)malloc(stars->element_name_length * sizeof(char));
   }
   stars->SNII_element_names = (char **)malloc(stars->SNII_n_elements * sizeof(char*));
   for(int i = 0; i < stars->SNII_n_elements; i++){
-    stars->SNII_element_names[i] = (char *)malloc(element_name_length * sizeof(char));
+    stars->SNII_element_names[i] = (char *)malloc(stars->element_name_length * sizeof(char));
   }
   stars->AGB_element_names = (char **)malloc(stars->AGB_n_elements * sizeof(char*));
   for(int i = 0; i < stars->AGB_n_elements; i++){
-    stars->AGB_element_names[i] = (char *)malloc(element_name_length * sizeof(char));
+    stars->AGB_element_names[i] = (char *)malloc(stars->element_name_length * sizeof(char));
   }
 }
 

@@ -27,7 +27,7 @@ static const int N_imf_mass_bins = 200;
 static const int gamma_SNIa = 2;
 
 // do we need doubles in signature?
-inline void determine_imf_bins(double log_min_dying_mass, double log_max_dying_mass,
+inline static void determine_imf_bins(double log_min_dying_mass, double log_max_dying_mass,
                         int *ilow, int *ihigh, 
 			const struct stars_props *restrict star_properties) {
   int i1, i2;
@@ -55,7 +55,7 @@ inline void determine_imf_bins(double log_min_dying_mass, double log_max_dying_m
   *ihigh = i2;
 }
 
-inline float integrate_imf(float log_min_mass, float log_max_mass, float m2, int mode, float *stellar_yields,
+inline static float integrate_imf(float log_min_mass, float log_max_mass, float m2, int mode, float *stellar_yields,
                            const struct stars_props *restrict star_properties){
 
   double result, u, f;
@@ -151,7 +151,7 @@ inline float integrate_imf(float log_min_mass, float log_max_mass, float m2, int
 
 }
 
-inline void init_imf(struct stars_props *restrict star_properties){
+inline static void init_imf(struct stars_props *restrict star_properties){
 
   float norm = 0, solar_mass, log_solar_mass;
   const float dlm = (log_imf_max_solar_mass - log_imf_min_solar_mass) / (double)(N_imf_mass_bins - 1);

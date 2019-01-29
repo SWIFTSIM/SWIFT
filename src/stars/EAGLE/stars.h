@@ -163,7 +163,7 @@ inline static double interpol_2d(double **table, int i, int j, float dx, float d
 
 
 
-inline float dying_mass_msun(float age_Gyr, float metallicity,
+inline static float dying_mass_msun(float age_Gyr, float metallicity,
 			     const struct stars_props *restrict star_properties) {
 
   // check out units for all these quantities and name them accordingly
@@ -282,7 +282,7 @@ inline float dying_mass_msun(float age_Gyr, float metallicity,
   return mass;
 }
 
-inline float lifetime_in_Gyr(float mass, float metallicity,
+inline static float lifetime_in_Gyr(float mass, float metallicity,
 			     const struct stars_props *restrict star_properties) {
 
   double time = 0, d_mass, d_metal;
@@ -365,7 +365,7 @@ inline float lifetime_in_Gyr(float mass, float metallicity,
   return time;
 }
 
-inline void determine_bin_yield(int *iz_low, int *iz_high, float *dz, float log_metallicity, 
+inline static void determine_bin_yield(int *iz_low, int *iz_high, float *dz, float log_metallicity, 
 				const struct stars_props *restrict star_properties){
 
   // Modify to work with SNII yields !!!
@@ -470,7 +470,8 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   int ilow, ihigh, imass, i = 0;
 
   // start counting SNII. This should probably be passed in as a pointer.
-  float num_SNII = 0.;
+  // GCC complains about not using num_SNII. temporarily commented out.
+  //float num_SNII = 0.;
 
   /* determine integration range: make sure all these stars actually become SN
   * of type II */
@@ -766,7 +767,7 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     // set_particle_metal_content
 }
 
-inline static void stars_evolve_init(struct stars_props* restrict stars){
+inline static void stars_evolve_init(struct swift_params *params, struct stars_props* restrict stars){
   
   stars->SNIa_n_elements = 42;
   stars->SNII_n_mass = 11;
@@ -777,6 +778,7 @@ inline static void stars_evolve_init(struct stars_props* restrict stars){
   stars->AGB_n_z = 3;
   stars->lifetimes.n_mass = 30;
   stars->lifetimes.n_z = 6;
+  stars->element_name_length = 15;
 
   /* Turn on AGB and SNII mass transfer (Do we really need this? 
    * Should these maybe always be on? If not on they effectively 
@@ -794,6 +796,9 @@ inline static void stars_evolve_init(struct stars_props* restrict stars){
 
   /* Allocate yield tables  */
   allocate_yield_tables(stars);
+  
+  // Find out what these factors should actually be...
+  for (int i = 0; i < chemistry_element_count; i++) stars->typeII_factor[i] = 2;
 
   /* Read the tables  */
   read_yield_tables(stars);
