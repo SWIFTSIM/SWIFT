@@ -143,6 +143,37 @@ Whilst one would use the following values for solar abundances
      init_abundance_Silicon:      6.825874e-4  # Mass fraction in Silicon
      init_abundance_Iron:         1.1032152e-3 # Mass fraction in Iron
 
+Individual element abundances for each particle can also be read
+directly from the ICs. By default these are overwritten in the code by
+the values read from the YAML file. However, users can set the
+parameter ``init_abundance_metal`` to ``-1`` to make SWIFT ignore the
+values provided in the parameter file:
+
+.. code:: YAML
+
+   EAGLEChemistry:
+     init_abundance_metal:       -1     # Read the particles' metal mass fractions from the ICs.
+
+
+The ICs must then contain values for these three fields (same as what
+is written to the snapshots):
+
++----------------------------------+-------------------------------------+-----------+-----------------------------+
+| Name                             | Description                         | Units     | Comments                    |
++==================================+=====================================+===========+=============================+
+| ``ElementAbundance``             | | Fraction of the gas/star mass     | [-]       | | Array of length           |
+|                                  | | in the different elements         |           | | 9 for each particle       |
++----------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``Metallicity``                  | | Fraction of the gas/star mass     | [-]       |                             |
+|                                  | | in *all* metals                   |           |                             |
++----------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``IronMassFracFromSNIa``         | | Fraction of the *total* gas/star  | [-]       |                             |
+|                                  | | mass in *iron* produced produced  |           |                             |
+|                                  | | by enrichment from SNIa stars     |           |                             |
++----------------------------------+-------------------------------------+-----------+-----------------------------+
+
+If these fields are absent, then a value of ``0`` will be used for all
+of them, likely leading to issues in the way the code will run.
 
 .. _EAGLE_cooling:
      
@@ -236,7 +267,7 @@ implicit problem. A valid section of the YAML file looks like:
      H_reion_z:            11.5      # Redhift of Hydrogen re-ionization
      He_reion_z_centre:     3.5      # Centre of the Gaussian used for Helium re-ionization
      He_reion_z_sigma:      0.5      # Width of the Gaussian used for Helium re-ionization
-     He_reion_eV_p_H:       2.0      # Energy injected in eV per Hydrogen atom for Helium re-ionization.
+     He_reion_ev_p_H:       2.0      # Energy injected in eV per Hydrogen atom for Helium re-ionization.
 
 And the optional parameters are:
 

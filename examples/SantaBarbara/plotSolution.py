@@ -106,13 +106,18 @@ def get_halo_data(catalogue_filename: str) -> HaloData:
     that is given by VELOCIraptor.
     """
 
+
     with h5py.File(catalogue_filename, "r") as file:
-        x = file["Xc"][0]
-        y = file["Yc"][0]
-        z = file["Zc"][0]
-        Mvir = file["Mass_200crit"][0]
-        Rvir = file["R_200crit"][0]
-        c = file["cNFW"][0]
+        largest_halo = np.where(
+            file["Mass_200crit"][...] == file["Mass_200crit"][...].max()
+        )
+
+        x = float(np.take(file["Xc"], largest_halo))
+        y = float(np.take(file["Yc"], largest_halo))
+        z = float(np.take(file["Zc"], largest_halo))
+        Mvir = float(np.take(file["Mass_200crit"], largest_halo))
+        Rvir = float(np.take(file["R_200crit"], largest_halo))
+        c = float(np.take(file["cNFW"], largest_halo))
 
     return HaloData(c=c, Rvir=Rvir, Mvir=Mvir, center=np.array([x, y, z]))
 

@@ -36,6 +36,7 @@
 struct cell;
 struct part;
 struct gpart;
+struct velociraptor_gpart_data;
 struct spart;
 struct xpart;
 struct io_props;
@@ -113,9 +114,11 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
                                 const size_t Nsparts,
                                 const size_t Nsparts_written);
 void io_collect_gparts_to_write(const struct gpart* restrict gparts,
+                                const struct velociraptor_gpart_data* vr_data,
                                 struct gpart* restrict gparts_written,
+                                struct velociraptor_gpart_data* vr_data_written,
                                 const size_t Ngparts,
-                                const size_t Ngparts_written);
+                                const size_t Ngparts_written, int with_stf);
 void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
                           size_t Ndm);
 void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,

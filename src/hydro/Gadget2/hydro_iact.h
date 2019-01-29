@@ -293,7 +293,7 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz,
                                  vector *wcountSum, vector *wcount_dhSum,
                                  vector *div_vSum, vector *curlvxSum,
                                  vector *curlvySum, vector *curlvzSum,
-                                 mask_t mask, mask_t mask2, short mask_cond) {
+                                 mask_t mask, mask_t mask2, int mask_cond) {
 
   vector r, ri, ui, wi, wi_dx;
   vector dvx, dvy, dvz;

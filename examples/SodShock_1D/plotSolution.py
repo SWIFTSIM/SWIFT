@@ -87,6 +87,11 @@ try:
     plot_alpha = True 
 except:
     plot_alpha = False
+try:
+    alpha_diff = sim["PartType0/Diffusion"][:]
+    plot_alpha_diff = True
+except:
+    plot_alpha_diff = False
 
 N = 1000  # Number of points
 x_min = -1.
@@ -239,12 +244,20 @@ ylim(-0.1, 0.95)
 
 # Density profile --------------------------------
 subplot(232)
-plot(x, rho, '.', color='r', ms=4.0)
-plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
+if plot_alpha_diff:
+    plot(x, alpha_diff, '.', color='r', ms=4.0)
+    ylabel(r"${\rm{Diffusion}}~\alpha$", labelpad=0)
+    # Show location of contact discontinuity
+    plot([x_34, x_34], [-100, 100], color="k", alpha=0.5, ls="dashed", lw=1.2)
+    ylim(0, 1)
+else:
+    plot(x, rho, '.', color='r', ms=4.0)
+    plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
+    ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
+    ylim(0.05, 1.1)
+
 xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
 xlim(-0.5, 0.5)
-ylim(0.05, 1.1)
 
 # Pressure profile --------------------------------
 subplot(233)
@@ -257,7 +270,7 @@ ylim(0.01, 1.1)
 
 # Internal energy profile -------------------------
 subplot(234)
-plot(x, u, '.', color='r', ms=4.0)
+scatter(x, u, marker='.', c=alpha_diff, s=4.0)
 plot(x_s, u_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)

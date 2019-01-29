@@ -357,7 +357,7 @@ hydro_set_physical_internal_energy_dt(struct part *restrict p,
                                       const struct cosmology *cosmo,
                                       float du_dt) {
 
-  p->u_dt = du_dt * cosmo->a_factor_internal_energy;
+  p->u_dt = du_dt / cosmo->a_factor_internal_energy;
 }
 
 /**

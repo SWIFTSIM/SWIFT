@@ -33,8 +33,7 @@
 #include "units.h"
 
 void cooling_update(const struct cosmology *cosmo,
-                    struct cooling_function_data *cooling,
-                    const int restart_flag);
+                    struct cooling_function_data *cooling);
 
 void cooling_cool_part(const struct phys_const *restrict phys_const,
                        const struct unit_system *restrict us,
