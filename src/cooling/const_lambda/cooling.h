@@ -355,4 +355,36 @@ static INLINE void cooling_print_backend(
  */
 static INLINE void cooling_clean(struct cooling_function_data* cooling) {}
 
+/**
+ * @brief Write a cooling struct to the given FILE as a stream of bytes.
+ *
+ * Nothing to do beyond writing the structure from the stream.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ */
+static INLINE void cooling_struct_dump(
+    const struct cooling_function_data* cooling, FILE* stream) {
+  restart_write_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
+                       stream, "cooling", "cooling function");
+}
+
+/**
+ * @brief Restore a hydro_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * Nothing to do beyond reading the structure from the stream.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ * @param cosmo #cosmology structure
+ */
+static INLINE void cooling_struct_restore(struct cooling_function_data* cooling,
+                                          FILE* stream,
+                                          const struct cosmology* cosmo) {
+  restart_read_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
+                      stream, NULL, "cooling function");
+}
+
+
 #endif /* SWIFT_COOLING_CONST_LAMBDA_H */
