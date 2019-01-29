@@ -98,7 +98,10 @@ labels = [
     ["space_init", 0],
     ["engine_init", 0],
     ["engine_repartition_trigger:", 0],
-    ["velociraptor_invoke:", 0]
+    ["VR Collecting top-level cell info", 0],
+    ["VR Collecting particle info", 0],
+    ["VR Invokation of velociraptor", 0],
+    ["VR Copying group information back", 0]
 ]
 times = np.zeros(len(labels))
 counts = np.zeros(len(labels))

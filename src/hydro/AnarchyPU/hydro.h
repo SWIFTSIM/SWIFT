@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk) &
+ *                    Josh Borrow (joshua.borrow@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,21 +17,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_MINIMAL_HYDRO_H
-#define SWIFT_MINIMAL_HYDRO_H
+#ifndef SWIFT_ANARCHY_PU_HYDRO_H
+#define SWIFT_ANARCHY_PU_HYDRO_H
 
 /**
- * @file Minimal/hydro.h
- * @brief Minimal conservative implementation of SPH (Non-neighbour loop
+ * @file PressureEnergy/hydro.h
+ * @brief P-U conservative implementation of SPH (Non-neighbour loop
  * equations)
  *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
- * term is implemented.
+ * The thermal variable is the internal energy (u). A simple constant
+ * viscosity term with a Balsara switch is implemented.
  *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
+ * No thermal conduction term is implemented.
+ *
+ * This implementation corresponds to the one presented in the SWIFT
+ * documentation and in Hopkins, "A general class of Lagrangian smoothed
+ * particle hydrodynamics methods and implications for fluid mixing problems",
+ * MNRAS, 2013.
  */
 
 #include "adiabatic_index.h"
@@ -43,9 +46,15 @@
 #include "kernel_hydro.h"
 #include "minmax.h"
 
+#include <float.h>
+
 /**
  * @brief Returns the comoving internal energy of a particle at the last
  * time the particle was kicked.
+ *
+ * For implementations where the main thermodynamic variable
+ * is not internal energy, this function computes the internal
+ * energy from the thermodynamic variable.
  *
  * @param p The particle of interest
  * @param xp The extended data of the particle of interest.
@@ -60,6 +69,11 @@ hydro_get_comoving_internal_energy(const struct part *restrict p,
 /**
  * @brief Returns the physical internal energy of a particle at the last
  * time the particle was kicked.
+ *
+ * For implementations where the main thermodynamic variable
+ * is not internal energy, this function computes the internal
+ * energy from the thermodynamic variable and converts it to
+ * physical coordinates.
  *
  * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
@@ -109,7 +123,7 @@ hydro_get_drifted_physical_internal_energy(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
     const struct part *restrict p) {
 
-  return gas_pressure_from_internal_energy(p->rho, p->u);
+  return p->pressure_bar;
 }
 
 /**
@@ -124,15 +138,18 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
     const struct part *restrict p, const struct cosmology *cosmo) {
 
-  return cosmo->a_factor_pressure *
-         gas_pressure_from_internal_energy(p->rho, p->u);
+  return cosmo->a_factor_pressure * p->pressure_bar;
 }
 
 /**
  * @brief Returns the comoving entropy of a particle at the last
  * time the particle was kicked.
  *
- * @param p The particle of interest.
+ * For implementations where the main thermodynamic variable
+ * is not entropy, this function computes the entropy from
+ * the thermodynamic variable.
+ *
+ * @param p The particle of interest
  * @param xp The extended data of the particle of interest.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
@@ -144,6 +161,11 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
 /**
  * @brief Returns the physical entropy of a particle at the last
  * time the particle was kicked.
+ *
+ * For implementations where the main thermodynamic variable
+ * is not entropy, this function computes the entropy from
+ * the thermodynamic variable and converts it to
+ * physical coordinates.
  *
  * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
@@ -194,7 +216,11 @@ hydro_get_drifted_physical_entropy(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_soundspeed(const struct part *restrict p) {
 
-  return p->force.soundspeed;
+  /* Compute the sound speed -- see theory section for justification */
+  /* IDEAL GAS ONLY -- P-U does not work with generic EoS. */
+  const float square_rooted = sqrtf(hydro_gamma * p->pressure_bar / p->rho);
+
+  return square_rooted;
 }
 
 /**
@@ -278,7 +304,7 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 }
 
 /**
- * @brief Returns the time derivative of co-moving internal energy of a particle
+ * @brief Returns the time derivative of internal energy of a particle
  *
  * We assume a constant density.
  *
@@ -306,10 +332,9 @@ hydro_get_physical_internal_energy_dt(const struct part *restrict p,
 }
 
 /**
- * @brief Sets the time derivative of the co-moving internal energy of a
- * particle
+ * @brief Sets the time derivative of internal energy of a particle
  *
- * We assume a constant density for the conversion to entropy.
+ * We assume a constant density.
  *
  * @param p The particle of interest.
  * @param du_dt The new time derivative of the internal energy.
@@ -357,9 +382,12 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 
   /* CFL condition */
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
-                       (cosmo->a_factor_sound_speed * p->force.v_sig);
+                       (cosmo->a_factor_sound_speed * p->viscosity.v_sig);
 
-  return dt_cfl;
+  const float dt_u_change =
+      (p->u_dt != 0.0f) ? fabsf(const_max_u_change * p->u / p->u_dt) : FLT_MAX;
+
+  return fminf(dt_cfl, dt_u_change);
 }
 
 /**
@@ -371,6 +399,16 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  */
 __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
     struct part *p, float dt) {}
+
+/**
+ * @brief Operations performed when a particle gets removed from the
+ * simulation volume.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void hydro_remove_part(
+    const struct part *p, const struct xpart *xp) {}
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -389,10 +427,15 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
-  p->density.div_v = 0.f;
+  p->pressure_bar = 0.f;
+  p->density.pressure_bar_dh = 0.f;
+
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
+
+  p->viscosity.div_v = 0.f;
+  p->diffusion.laplace_u = 0.f;
 }
 
 /**
@@ -420,25 +463,115 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
   p->density.rho_dh -= hydro_dimension * p->mass * kernel_root;
+  p->pressure_bar += p->mass * p->u * kernel_root;
+  p->density.pressure_bar_dh -= hydro_dimension * p->mass * p->u * kernel_root;
   p->density.wcount += kernel_root;
   p->density.wcount_dh -= hydro_dimension * kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= h_inv_dim;
   p->density.rho_dh *= h_inv_dim_plus_one;
+  p->pressure_bar *= (h_inv_dim * hydro_gamma_minus_one);
+  p->density.pressure_bar_dh *= (h_inv_dim_plus_one * hydro_gamma_minus_one);
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
 
   const float rho_inv = 1.f / p->rho;
   const float a_inv2 = cosmo->a2_inv;
 
-  /* Finish calculation of the (physical) velocity curl components */
+  /* Finish calculation of the velocity curl components */
   p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
   p->density.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
   p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 
-  /* Finish calculation of the (physical) velocity divergence */
-  p->density.div_v *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  /* Finish calculation of the velocity divergence */
+  p->viscosity.div_v *=
+      h_inv_dim_plus_one * rho_inv * a_inv2 + cosmo->H * hydro_dimension;
+}
+
+/**
+ * @brief Prepare a particle for the gradient calculation.
+ *
+ * This function is called after the density loop and before the gradient loop.
+ *
+ * We use it to set the physical timestep for the particle and to copy the
+ * actual velocities, which we need to boost our interfaces during the flux
+ * calculation. We also initialize the variables used for the time step
+ * calculation.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
+
+  const float fac_B = cosmo->a_factor_Balsara_eps;
+
+  /* Compute the norm of the curl */
+  const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
+                             p->density.rot_v[1] * p->density.rot_v[1] +
+                             p->density.rot_v[2] * p->density.rot_v[2]);
+
+  /* Compute the norm of div v */
+  const float abs_div_v = fabsf(p->viscosity.div_v);
+
+  /* Compute the sound speed -- see theory section for justification */
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
+
+  /* Compute the Balsara switch */
+  const float balsara =
+      abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed * fac_B / p->h);
+
+  /* Compute the "grad h" term */
+  const float common_factor = p->h / (hydro_dimension * p->density.wcount);
+  const float grad_h_term = (p->density.pressure_bar_dh * common_factor *
+                             hydro_one_over_gamma_minus_one) /
+                            (1.f + common_factor * p->density.wcount_dh);
+
+  /* Update variables. */
+  p->force.f = grad_h_term;
+  p->force.soundspeed = soundspeed;
+  p->force.balsara = balsara;
+}
+
+/**
+ * @brief Resets the variables that are required for a gradient calculation.
+ *
+ * This function is called after hydro_prepare_gradient.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void hydro_reset_gradient(
+    struct part *restrict p) {
+  p->viscosity.v_sig = 2.f * p->force.soundspeed;
+}
+
+/**
+ * @brief Finishes the gradient calculation.
+ *
+ * Just a wrapper around hydro_gradients_finalize, which can be an empty method,
+ * in which case no gradients are used.
+ *
+ * This method also initializes the force loop variables.
+ *
+ * @param p The particle to act upon.
+ */
+__attribute__((always_inline)) INLINE static void hydro_end_gradient(
+    struct part *p) {
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+
+  /* Include the extra factors in the del^2 u */
+
+  p->diffusion.laplace_u *= 2 * h_inv_dim_plus_one;
 }
 
 /**
@@ -463,13 +596,21 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   /* Re-set problematic values */
   p->rho = p->mass * kernel_root * h_inv_dim;
+  p->viscosity.v_sig = 0.f;
+  p->pressure_bar =
+      p->mass * p->u * hydro_gamma_minus_one * kernel_root * h_inv_dim;
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
-  p->density.div_v = 0.f;
+  p->density.pressure_bar_dh = 0.f;
+
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
+
+  /* Probably not shocking, so this is safe to do */
+  p->viscosity.div_v = 0.f;
+  p->diffusion.laplace_u = 0.f;
 }
 
 /**
@@ -494,43 +635,59 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
 
-  const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
+  /* Here we need to update the artificial viscosity */
 
-  /* Inverse of the smoothing length */
-  const float h_inv = 1.f / p->h;
+  /* Timescale for decay */
+  const float tau =
+      p->h / (2.f * p->viscosity.v_sig * hydro_props->viscosity.length);
+  /* Construct time differential of div.v implicitly */
+  const float div_v_dt =
+      dt_alpha == 0.f
+          ? 0.f
+          : (p->viscosity.div_v - p->viscosity.div_v_previous_step) / dt_alpha;
+  /* Construct the source term for the AV; if shock detected this is _positive_
+   * as div_v_dt should be _negative_ before the shock hits */
+  const float S = p->h * p->h * max(0.f, -1.f * div_v_dt);
+  const float v_sig_square = p->viscosity.v_sig * p->viscosity.v_sig;
+  /* Calculate the current appropriate value of the AV based on the above */
+  const float alpha_loc =
+      hydro_props->viscosity.alpha_max * S / (v_sig_square + S);
 
-  /* Compute the norm of the curl */
-  const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
-                             p->density.rot_v[1] * p->density.rot_v[1] +
-                             p->density.rot_v[2] * p->density.rot_v[2]);
+  if (alpha_loc > p->viscosity.alpha) {
+    /* Reset the value of alpha to the appropriate value */
+    p->viscosity.alpha = alpha_loc;
+  } else {
+    /* Integrate the alpha forward in time to decay back to alpha = 0 */
+    const float alpha_dt = (alpha_loc - p->viscosity.alpha) / tau;
 
-  /* Compute the norm of div v including the Hubble flow term */
-  const float div_physical_v = p->density.div_v + 3.f * cosmo->H;
-  const float abs_div_physical_v = fabsf(div_physical_v);
+    /* Finally, we can update the actual value of the alpha */
+    p->viscosity.alpha += alpha_dt * dt_alpha;
+  }
 
-  /* Compute the pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  if (p->viscosity.alpha < hydro_props->viscosity.alpha_min) {
+    p->viscosity.alpha = hydro_props->viscosity.alpha_min;
+  }
 
-  /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  /* Set our old div_v to the one for the next loop */
+  p->viscosity.div_v_previous_step = p->viscosity.div_v;
 
-  /* Compute the "grad h" term */
-  const float rho_inv = 1.f / p->rho;
-  const float grad_h_term =
-      1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
+  /* Now for the diffusive alpha */
 
-  /* Compute the Balsara switch */
-  /* Pre-multiply in the AV factor; hydro_props are not passed to the iact
-   * functions */
-  const float balsara = hydro_props->viscosity.alpha * abs_div_physical_v /
-                        (abs_div_physical_v + curl_v +
-                         0.0001f * fac_Balsara_eps * soundspeed * h_inv);
+  const float sqrt_u = sqrtf(p->u);
+  /* Calculate initial value of alpha dt before bounding */
+  /* alpha_diff_dt is cosmology-less */
+  float alpha_diff_dt =
+      hydro_props->diffusion.beta * p->h * p->diffusion.laplace_u / sqrt_u;
 
-  /* Update variables. */
-  p->force.f = grad_h_term;
-  p->force.pressure = pressure;
-  p->force.soundspeed = soundspeed;
-  p->force.balsara = balsara;
+  float new_diffusion_alpha = p->diffusion.alpha + alpha_diff_dt * dt_alpha;
+
+  if (new_diffusion_alpha > hydro_props->diffusion.alpha_max) {
+    new_diffusion_alpha = hydro_props->diffusion.alpha_max;
+  } else if (new_diffusion_alpha < hydro_props->diffusion.alpha_min) {
+    new_diffusion_alpha = hydro_props->diffusion.alpha_min;
+  }
+
+  p->diffusion.alpha = new_diffusion_alpha;
 }
 
 /**
@@ -552,7 +709,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
-  p->force.v_sig = p->force.soundspeed;
 }
 
 /**
@@ -601,23 +757,25 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->h *= expf(w1);
 
-  /* Predict density */
+  /* Predict density and weighted pressure */
   const float w2 = -hydro_dimension * w1;
-  if (fabsf(w2) < 0.2f)
-    p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-  else
-    p->rho *= expf(w2);
+  if (fabsf(w2) < 0.2f) {
+    const float expf_approx =
+        approx_expf(w2); /* 4th order expansion of exp(w) */
+    p->rho *= expf_approx;
+    p->pressure_bar *= expf_approx;
+  } else {
+    const float expf_exact = expf(w2);
+    p->rho *= expf_exact;
+    p->pressure_bar *= expf_exact;
+  }
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
 
-  /* Compute the new pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
-
   /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
 
-  p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 }
 
@@ -666,21 +824,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   xp->u_full += p->u_dt * dt_therm;
 
   /* Apply the minimal energy limit */
-  const float min_comoving_energy =
+  const float min_energy =
       hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-  if (xp->u_full < min_comoving_energy) {
-    xp->u_full = min_comoving_energy;
+  if (xp->u_full < min_energy) {
+    xp->u_full = min_energy;
     p->u_dt = 0.f;
   }
 
-  /* Compute the pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, xp->u_full);
-
   /* Compute the sound speed */
-  const float soundspeed =
-      gas_soundspeed_from_internal_energy(p->rho, xp->u_full);
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
 
-  p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 }
 
@@ -708,22 +861,26 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   xp->u_full = p->u;
 
   /* Apply the minimal energy limit */
-  const float min_comoving_energy =
+  const float min_energy =
       hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-  if (xp->u_full < min_comoving_energy) {
-    xp->u_full = min_comoving_energy;
-    p->u = min_comoving_energy;
+  if (xp->u_full < min_energy) {
+    xp->u_full = min_energy;
+    p->u = min_energy;
     p->u_dt = 0.f;
   }
 
-  /* Compute the pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  /* Note that unlike Minimal the pressure and sound speed cannot be calculated
+   * here because they are smoothed properties in this scheme. */
 
-  /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_internal_energy(p->rho, p->u);
+  /* Set the initial value of the artificial viscosity based on the non-variable
+     schemes for safety */
 
-  p->force.pressure = pressure;
-  p->force.soundspeed = soundspeed;
+  p->viscosity.alpha = hydro_props->viscosity.alpha;
+  /* Initialise this here to keep all the AV variables together */
+  p->viscosity.div_v_previous_step = 0.f;
+
+  /* Set the initial values for the thermal diffusion */
+  p->diffusion.alpha = hydro_props->diffusion.alpha;
 }
 
 /**
@@ -770,14 +927,4 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
   p->u = u_init;
 }
 
-/**
- * @brief Operations performed when a particle gets removed from the
- * simulation volume.
- *
- * @param p The particle.
- * @param xp The extended particle data.
- */
-__attribute__((always_inline)) INLINE static void hydro_remove_part(
-    const struct part *p, const struct xpart *xp) {}
-
-#endif /* SWIFT_MINIMAL_HYDRO_H */
+#endif /* SWIFT_ANARCHY_PU_HYDRO_H */

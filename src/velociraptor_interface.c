@@ -185,6 +185,111 @@ struct groupinfo *InvokeVelociraptor(
 #endif /* HAVE_VELOCIRAPTOR */
 
 /**
+ * @brief Temporary structure used for the data copy mapper.
+ */
+struct velociraptor_copy_data {
+  const struct engine *e;
+  struct swift_vel_part *swift_parts;
+};
+
+/**
+ * @brief Mapper function to conver the #gpart into VELOCIraptor Particles.
+ *
+ * @param map_data The array of #gpart.
+ * @param nr_gparts The number of #gpart.
+ * @param extra_data Pointer to the #engine and to the array to fill.
+ */
+void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
+                                           void *extra_data) {
+
+  /* Unpack the data */
+  struct gpart *restrict gparts = (struct gpart *)map_data;
+  struct velociraptor_copy_data *data =
+      (struct velociraptor_copy_data *)extra_data;
+  const struct engine *e = data->e;
+  const struct space *s = e->s;
+  struct swift_vel_part *swift_parts =
+      data->swift_parts + (ptrdiff_t)(gparts - s->gparts);
+
+  /* Handle on the other particle types */
+  const struct part *parts = s->parts;
+  const struct xpart *xparts = s->xparts;
+  const struct spart *sparts = s->sparts;
+
+  /* Handle on the physics modules */
+  const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct unit_system *us = e->internal_units;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct cooling_function_data *cool_func = e->cooling_func;
+
+  const float a_inv = e->cosmology->a_inv;
+
+  /* Convert particle properties into VELOCIraptor units.
+   * VELOCIraptor wants:
+   * - Co-moving positions,
+   * - Peculiar velocities,
+   * - Co-moving potential,
+   * - Physical internal energy (for the gas),
+   * - Temperatures (for the gas).
+   */
+  for (int i = 0; i < nr_gparts; i++) {
+
+    swift_parts[i].x[0] = gparts[i].x[0];
+    swift_parts[i].x[1] = gparts[i].x[1];
+    swift_parts[i].x[2] = gparts[i].x[2];
+
+    swift_parts[i].v[0] = gparts[i].v_full[0] * a_inv;
+    swift_parts[i].v[1] = gparts[i].v_full[1] * a_inv;
+    swift_parts[i].v[2] = gparts[i].v_full[2] * a_inv;
+
+    swift_parts[i].mass = gravity_get_mass(&gparts[i]);
+    swift_parts[i].potential = gravity_get_comoving_potential(&gparts[i]);
+
+    swift_parts[i].type = gparts[i].type;
+
+    swift_parts[i].index = i;
+#ifdef WITH_MPI
+    swift_parts[i].task = e->nodeID;
+#else
+    swift_parts[i].task = 0;
+#endif
+
+    /* Set gas particle IDs from their hydro counterparts and set internal
+     * energies. */
+    switch (gparts[i].type) {
+
+      case swift_type_gas: {
+        const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+        const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
+
+        swift_parts[i].id = parts[-gparts[i].id_or_neg_offset].id;
+        swift_parts[i].u = hydro_get_drifted_physical_internal_energy(p, cosmo);
+        swift_parts[i].T = cooling_get_temperature(phys_const, hydro_props, us,
+                                                   cosmo, cool_func, p, xp);
+      } break;
+
+      case swift_type_stars:
+
+        swift_parts[i].id = sparts[-gparts[i].id_or_neg_offset].id;
+        swift_parts[i].u = 0.f;
+        swift_parts[i].T = 0.f;
+        break;
+
+      case swift_type_dark_matter:
+
+        swift_parts[i].id = gparts[i].id_or_neg_offset;
+        swift_parts[i].u = 0.f;
+        swift_parts[i].T = 0.f;
+        break;
+
+      default:
+        error("Particle type not handled by VELOCIraptor.");
+    }
+  }
+}
+
+/**
  * @brief Initialise VELOCIraptor with configuration, units,
  * simulation info needed to run.
  *
@@ -278,24 +383,13 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
 #ifdef HAVE_VELOCIRAPTOR
 
-  const struct cosmology *cosmo = e->cosmology;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct unit_system *us = e->internal_units;
-  const struct phys_const *phys_const = e->physical_constants;
-  const struct cooling_function_data *cool_func = e->cooling_func;
-
   /* Handle on the particles */
   const struct space *s = e->s;
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
-  const struct gpart *gparts = s->gparts;
-  const struct spart *sparts = s->sparts;
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
   const int nr_cells = s->nr_cells;
-
-  const ticks tic = getticks();
+  const struct cell *cells_top = s->cells_top;
 
   /* Allow thread to run on any core for the duration of the call to
    * VELOCIraptor so that  when OpenMP threads are spawned
@@ -375,14 +469,23 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   sim_info.icellwidth[1] = s->iwidth[1];
   sim_info.icellwidth[2] = s->iwidth[2];
 
-  /* Copy the poisiton of the top-level cells */
-  if (posix_memalign((void **)&sim_info.cell_loc, 32,
+  ticks tic = getticks();
+
+  /* Allocate and populate array of cell node IDs and positions. */
+  int *cell_node_ids = NULL;
+  if (posix_memalign((void **)&sim_info.cell_loc, SWIFT_STRUCT_ALIGNMENT,
                      s->nr_cells * sizeof(struct cell_loc)) != 0)
     error("Failed to allocate top-level cell locations for VELOCIraptor.");
+  if (posix_memalign((void **)&cell_node_ids, SWIFT_STRUCT_ALIGNMENT,
+                     nr_cells * sizeof(int)) != 0)
+    error("Failed to allocate list of cells node IDs for VELOCIraptor.");
+
   for (int i = 0; i < s->nr_cells; i++) {
-    sim_info.cell_loc[i].loc[0] = s->cells_top[i].loc[0];
-    sim_info.cell_loc[i].loc[1] = s->cells_top[i].loc[1];
-    sim_info.cell_loc[i].loc[2] = s->cells_top[i].loc[2];
+    cell_node_ids[i] = cells_top[i].nodeID;
+
+    sim_info.cell_loc[i].loc[0] = cells_top[i].loc[0];
+    sim_info.cell_loc[i].loc[1] = cells_top[i].loc[1];
+    sim_info.cell_loc[i].loc[2] = cells_top[i].loc[2];
   }
 
   if (e->verbose) {
@@ -400,11 +503,10 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
         sim_info.cell_loc[sim_info.numcells - 1].loc[2]);
   }
 
-  /* Allocate and populate array of cell node IDs. */
-  int *cell_node_ids = NULL;
-  if (posix_memalign((void **)&cell_node_ids, 32, nr_cells * sizeof(int)) != 0)
-    error("Failed to allocate list of cells node IDs for VELOCIraptor.");
-  for (int i = 0; i < nr_cells; i++) cell_node_ids[i] = s->cells_top[i].nodeID;
+  /* Report timing */
+  if (e->verbose)
+    message("VR Collecting top-level cell info took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Mention the number of particles being sent */
   if (e->verbose)
@@ -433,6 +535,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     snapnum = e->stf_output_count;
   }
 
+  tic = getticks();
+
   /* Allocate and populate an array of swift_vel_parts to be passed to
    * VELOCIraptor. */
   struct swift_vel_part *swift_parts = NULL;
@@ -440,70 +544,16 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
                      nr_gparts * sizeof(struct swift_vel_part)) != 0)
     error("Failed to allocate array of particles for VELOCIraptor.");
 
-  const float a_inv = e->cosmology->a_inv;
+  struct velociraptor_copy_data copy_data = {e, swift_parts};
+  threadpool_map(&e->threadpool, velociraptor_convert_particles_mapper,
+                 s->gparts, nr_gparts, sizeof(struct gpart), 0, &copy_data);
 
-  /* Convert particle properties into VELOCIraptor units.
-   * VELOCIraptor wants:
-   * - Co-moving positions,
-   * - Peculiar velocities,
-   * - Co-moving potential,
-   * - Physical internal energy (for the gas),
-   * - Temperatures (for the gas).
-   */
-  for (size_t i = 0; i < nr_gparts; i++) {
+  /* Report timing */
+  if (e->verbose)
+    message("VR Collecting particle info took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-    swift_parts[i].x[0] = gparts[i].x[0];
-    swift_parts[i].x[1] = gparts[i].x[1];
-    swift_parts[i].x[2] = gparts[i].x[2];
-
-    swift_parts[i].v[0] = gparts[i].v_full[0] * a_inv;
-    swift_parts[i].v[1] = gparts[i].v_full[1] * a_inv;
-    swift_parts[i].v[2] = gparts[i].v_full[2] * a_inv;
-
-    swift_parts[i].mass = gravity_get_mass(&gparts[i]);
-    swift_parts[i].potential = gravity_get_comoving_potential(&gparts[i]);
-
-    swift_parts[i].type = gparts[i].type;
-
-    swift_parts[i].index = i;
-#ifdef WITH_MPI
-    swift_parts[i].task = e->nodeID;
-#else
-    swift_parts[i].task = 0;
-#endif
-
-    /* Set gas particle IDs from their hydro counterparts and set internal
-     * energies. */
-    switch (gparts[i].type) {
-
-      case swift_type_gas: {
-        const struct part *p = &parts[-gparts[i].id_or_neg_offset];
-        const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
-
-        swift_parts[i].id = parts[-gparts[i].id_or_neg_offset].id;
-        swift_parts[i].u = hydro_get_drifted_physical_internal_energy(p, cosmo);
-        swift_parts[i].T = cooling_get_temperature(phys_const, hydro_props, us,
-                                                   cosmo, cool_func, p, xp);
-      } break;
-
-      case swift_type_stars:
-
-        swift_parts[i].id = sparts[-gparts[i].id_or_neg_offset].id;
-        swift_parts[i].u = 0.f;
-        swift_parts[i].T = 0.f;
-        break;
-
-      case swift_type_dark_matter:
-
-        swift_parts[i].id = gparts[i].id_or_neg_offset;
-        swift_parts[i].u = 0.f;
-        swift_parts[i].T = 0.f;
-        break;
-
-      default:
-        error("Particle type not handled by VELOCIraptor.");
-    }
-  }
+  tic = getticks();
 
   /* Values returned by VELOCIRaptor */
   int num_gparts_in_groups = -1;
@@ -523,6 +573,13 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     error("VELOCIraptor returned an array whilst it should not have.");
   }
 
+  /* Report timing */
+  if (e->verbose)
+    message("VR Invokation of velociraptor took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
   /* Assign the group IDs back to the gparts */
   if (linked_with_snap) {
 
@@ -540,6 +597,11 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
       data[group_info[i].index].groupID = group_info[i].groupID;
     }
 
+    /* Report timing */
+    if (e->verbose)
+      message("VR Copying group information back took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
     /* Free the array returned by VELOCIraptor */
     free(group_info);
   }
@@ -550,9 +612,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Increase output counter (if not linked with snapshots) */
   if (!linked_with_snap) e->stf_output_count++;
 
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
 #else
   error("SWIFT not configure to run with VELOCIraptor.");
 #endif /* HAVE_VELOCIRAPTOR */

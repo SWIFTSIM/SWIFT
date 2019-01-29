@@ -72,6 +72,11 @@
 #include "./hydro/Planetary/hydro.h"
 #include "./hydro/Planetary/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Minimal version of SPH with multiple materials"
+#elif defined(ANARCHY_PU_SPH)
+#include "./hydro/AnarchyPU/hydro.h"
+#include "./hydro/AnarchyPU/hydro_iact.h"
+#define SPH_IMPLEMENTATION \
+  "ANARCHY (Pressure-Energy) SPH (Dalla Vecchia+ in prep)"
 #else
 #error "Invalid choice of SPH variant"
 #endif

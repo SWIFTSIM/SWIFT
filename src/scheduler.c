@@ -1735,9 +1735,9 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->nr_unlock_tasks = 0;
 #ifdef SWIFT_DEBUG_TASKS
   t->rid = -1;
+#endif
   t->tic = 0;
   t->toc = 0;
-#endif
 
   /* Add an index for it. */
   // lock_lock( &s->lock );
@@ -1956,17 +1956,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
   /* Run through the tasks backwards and set their weights. */
   for (int k = nr_tasks - 1; k >= 0; k--) {
     struct task *t = &tasks[tid[k]];
+    float cost = 0.f;
     t->weight = 0.f;
-#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
-    t->cost = 0.f;
-#endif
+
     for (int j = 0; j < t->nr_unlock_tasks; j++)
       if (t->unlock_tasks[j]->weight > t->weight)
         t->weight = t->unlock_tasks[j]->weight;
-    float cost = 0.f;
-#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
-    int partcost = 1;
-#endif
 
     const float count_i = (t->ci != NULL) ? t->ci->hydro.count : 0.f;
     const float count_j = (t->cj != NULL) ? t->cj->hydro.count : 0.f;
@@ -1987,9 +1982,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_self:
-        if (t->subtype == task_subtype_grav)
+        if (t->subtype == task_subtype_grav) {
           cost = 1.f * (wscale * gcount_i) * gcount_i;
-        else if (t->subtype == task_subtype_external_grav)
+        } else if (t->subtype == task_subtype_external_grav)
           cost = 1.f * wscale * gcount_i;
         else if (t->subtype == task_subtype_stars_density)
           cost = 1.f * wscale * scount_i * count_i;
@@ -2089,18 +2084,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * count_i + wscale * gcount_i;
         break;
       case task_type_send:
-#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
-        partcost = 0;
-#endif
         if (count_i < 1e5)
           cost = 10.f * (wscale * count_i) * count_i;
         else
           cost = 2e9;
         break;
       case task_type_recv:
-#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
-        partcost = 0;
-#endif
         if (count_i < 1e5)
           cost = 5.f * (wscale * count_i) * count_i;
         else
@@ -2110,10 +2099,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = 0;
         break;
     }
-
-#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
-    if (partcost) t->cost = cost;
-#endif
     t->weight += cost;
   }
 
@@ -2186,14 +2171,14 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
 
-/* Reset all task debugging timers */
-#ifdef SWIFT_DEBUG_TASKS
+  /* Reset all task timers. */
   for (int i = 0; i < s->nr_tasks; ++i) {
     s->tasks[i].tic = 0;
     s->tasks[i].toc = 0;
+#ifdef SWIFT_DEBUG_TASKS
     s->tasks[i].rid = -1;
-  }
 #endif
+  }
 
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
@@ -2445,9 +2430,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
   /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
-#ifdef SWIFT_DEBUG_TASKS
     t->toc = getticks();
-#endif
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
@@ -2488,9 +2471,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
 
   /* Task definitely done. */
   if (!t->implicit) {
-#ifdef SWIFT_DEBUG_TASKS
     t->toc = getticks();
-#endif
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
@@ -2574,13 +2555,13 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
     }
   }
 
-#ifdef SWIFT_DEBUG_TASKS
   /* Start the timer on this task, if we got one. */
   if (res != NULL) {
     res->tic = getticks();
+#ifdef SWIFT_DEBUG_TASKS
     res->rid = qid;
-  }
 #endif
+  }
 
   /* No milk today. */
   return res;

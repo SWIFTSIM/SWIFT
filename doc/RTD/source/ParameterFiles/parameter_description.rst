@@ -458,7 +458,7 @@ using the parameter:
 
 The default level of ``0`` implies no compression and values have to be in the
 range :math:`[0-9]`. This integer is passed to the i/o library and used for the
-lossless GZIP compression algorithm. Higher values imply higher compression but
+loss-less GZIP compression algorithm. Higher values imply higher compression but
 also more time spent deflating and inflating the data. Note that up until HDF5
 1.10.x this option is not available when using the MPI-parallel version of the
 i/o routines.
@@ -500,7 +500,7 @@ Showing all the parameters for a basic hydro test-case, one would have:
      int_time_label_on:   0
      compression:         3
      UnitLength_in_cgs:   1.  # Use cm in outputs
-     UnitMass_in_cgs:     1.  # Use grams in outpus
+     UnitMass_in_cgs:     1.  # Use grams in outputs
      UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
      UnitCurrent_in_cgs:  1.  # Use Ampere in outputs
      UnitTemp_in_cgs:     1.  # Use Kelvin in outputs
@@ -611,8 +611,212 @@ Scheduler
 
 .. _Parameters_domain_decomposition:
 
-Domain Decomposition
---------------------
+Domain Decomposition:
+---------------------
+
+This section determines how the top-level cells are distributed between the
+ranks of an MPI run. An ideal decomposition should result in each rank having
+a similar amount of work to do, so that all the ranks complete at the same
+time. Achieving a good balance requires that SWIFT is compiled with either the
+ParMETIS or METIS libraries. ParMETIS is an MPI version of METIS, so is
+preferred for performance reasons.
+
+When we use ParMETIS/METIS the top-level cells of the volume are considered as
+a graph, with a cell at each vertex and edges that connect the vertices to all
+the neighbouring cells (so we have 26 edges connected to each vertex).
+Decomposing such a graph into domains is known as partitioning, so in SWIFT we
+refer to domain decomposition as partitioning.
+
+This graph of cells can have weights associated with the vertices and the
+edges. These weights are then used to guide the partitioning, seeking to
+balance the total weight of the vertices and minimize the weights of the edges
+that are cut by the domain boundaries (known as the edgecut). We can consider
+the edge weights as a proxy for the exchange of data between cells, so
+minimizing this reduces communication.
+
+The Initial Partition:
+^^^^^^^^^^^^^^^^^^^^^^
+
+When SWIFT first starts it reads the initial conditions and then does an
+initial distribution of the top-level cells. At this time the only information
+available is the cell structure and, by geometry, the particles each cell
+should contain. The type of partitioning attempted is controlled by the::
+
+  DomainDecomposition:
+    initial_type:
+
+parameter. Which can have the values *memory*, *region*, *grid* or
+*vectorized*:
+
+
+    * *memory*
+
+    This is the default if METIS or ParMETIS is available. It performs a
+    partition based on the memory use of all the particles in each cell,
+    attempting to equalize the memory used by all the ranks.
+    How successful this attempt is depends on the granularity of cells and particles
+    and the number of ranks, clearly if most of the particles are in one cell,
+    or a small region of the volume, balance is impossible or
+    difficult. Having more top-level cells makes it easier to calculate a
+    good distribution (but this comes at the cost of greater overheads).
+
+    * *region*
+
+    The one other METIS/ParMETIS option is "region". This attempts to assign equal
+    numbers of cells to each rank, with the surface area of the regions minimised
+    (so we get blobs, rather than rectangular volumes of cells).
+
+If ParMETIS and METIS are not available two other options are possible, but
+will give a poorer partition:
+
+    * *grid*
+
+    Split the cells into a number of axis aligned regions. The number of
+    splits per axis is controlled by the::
+
+       initial_grid
+
+    parameter. It takes an array of three values. The product of these values
+    must equal the number of MPI ranks. If not set a suitable default will be used.
+
+    * *vectorized*
+
+    Allocate the cells on the basis of proximity to a set of seed
+    positions. The seed positions are picked every nranks along a vectorized
+    cell list (1D representation). This is guaranteed to give an initial
+    partition for all cases when the number of cells is greater equal to the
+    number of MPI ranks, so can be used if the others fail. Don't use this.
+
+If ParMETIS and METIS are not available then only an initial partition will be
+performed. So the balance will be compromised by the quality of the initial
+partition.
+
+Repartitioning:
+^^^^^^^^^^^^^^^
+
+When ParMETIS or METIS is available we can consider adjusting the balance
+during the run, so we can improve from the initial partition and also track
+changes in the run that require a different balance. The initial partition is
+usually not optimal as although it may have balanced the distribution of
+particles it has not taken account of the fact that different particles types
+require differing amounts of processing and we have not considered that we
+also need to do work requiring communication between cells. This latter point
+is important as we are running an MPI job, as inter-cell communication may be
+very expensive.
+
+There are a number of possible repartition strategies which are defined using
+the::
+
+  DomainDecomposition:
+    repartition_type:
+
+parameter. The possible values for this are *none*, *fullcosts*, *edgecosts*,
+*memory*, *timecosts*.
+
+    * *none*
+
+    Rather obviously, don't repartition. You are happy to run with the
+    initial partition.
+
+    * *fullcosts*
+
+    Use computation weights derived from the running tasks for the vertex and
+    edge weights. This is the default.
+
+    * *edgecosts*
+
+    Only use computation weights derived from the running tasks for the edge
+    weights.
+
+    * *memory*
+
+    Repeat the initial partition with the current particle positions
+    re-balancing the memory use.
+
+    * *timecosts*
+
+    Only use computation weights derived from the running tasks for the vertex
+    weights and the expected time the particles will interact in the cells as
+    the edge weights. Using time as the edge weight has the effect of keeping
+    very active cells on single MPI ranks, so can reduce MPI communication.
+
+The computation weights are actually the measured times, in CPU ticks, that
+tasks associated with a cell take. So these automatically reflect the relative
+cost of the different task types (SPH, self-gravity etc.), and other factors
+like how well they run on the current hardware and are optimized by the
+compiler used, but this means that we have a constraint on how often we can
+consider repartitioning, namely when all (or nearly all) the tasks of the
+system have been invoked in a step. To control this we have the::
+
+    minfrac:     0.9
+
+parameter. Which defines the minimum fraction of all the particles in the
+simulation that must have been actively updated in the last step, before
+repartitioning is considered.
+
+That then leaves the question of when a run is considered to be out of balance
+and should benefit from a repartition. That is controlled by the::
+
+    trigger:          0.05
+
+parameter. This value is the CPU time difference between MPI ranks, as a
+fraction, if less than this value a repartition will not be
+done. Repartitioning can be expensive not just in CPU time, but also because
+large numbers of particles can be exchanged between MPI ranks, so is best
+avoided.
+
+If you are using ParMETIS there additional ways that you can tune the
+repartition process. 
+
+METIS only offers the ability to create a partition from a graph, which means
+that each solution is independent of those that have already been made, that
+can make the exchange of particles very large (although SWIFT attempts to
+minimize this), however, using ParMETIS we can use the existing partition to
+inform the new partition, this has two algorithms that are controlled using::
+
+    adaptive:         1       
+
+which means use adaptive repartition, otherwise simple refinement. The
+adaptive algorithm is further controlled by the::
+
+    itr:              100     
+
+parameter, which defines the ratio of inter node communication time to data
+redistribution time, in the range 0.00001 to 10000000.0. Lower values give
+less data movement during redistributions. The best choice for these can only
+be determined by experimentation (the gains are usually small, so not really
+recommended).
+
+Finally we have the parameter::
+
+    usemetis:         0
+
+Forces the use of the METIS API, probably only useful for developers.
+
+**Fixed cost repartitioning:**
+
+So far we have assumed that repartitioning will only happen after a step that
+meets the `minfrac:` and `trigger:` criteria, but we may want to repartition
+at some arbitrary steps, and indeed do better than the initial partition
+earlier in the run. This can be done using *fixed cost* repartitioning.
+
+Fixed costs are output during each repartition step into the file
+`partition_fixed_costs.h`, this should be created by a test run of your your
+full simulation (with possibly with a smaller volume, but all the physics
+enabled). This file can then be used to replace the same file found in the
+`src/` directory and SWIFT should then be recompiled. Once you have that, you
+can use the parameter::
+
+    use_fixed_costs:  1       
+
+to control whether they are used or not. If enabled these will be used to
+repartition after the second step, which will generally give as good a
+repartition immediately as you get at the first unforced repartition.
+
+Also once these have been enabled you can change the `trigger:` value to
+numbers greater than 2, and repartitioning will be forced every `trigger`
+steps. This latter option is probably only useful for developers, but tuning
+the second step to use fixed costs can give some improvements.
 
 .. _Parameters_structure_finding:
 

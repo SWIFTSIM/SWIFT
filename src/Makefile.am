@@ -41,8 +41,8 @@ endif
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
-    common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
-    physical_constants.h physical_constants_cgs.h potential.h starformation.h version.h \
+    common_io.h single_io.h multipole.h map.h tools.h partition.h partition_fixed_costs.h \
+    clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling_io.h cooling.h cooling_struct.h \
     statistics.h memswap.h cache.h runner_doiact_vec.h profiler.h entropy_floor.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
@@ -50,7 +50,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
     logger_io.h tracers_io.h tracers.h tracers_struct.h sftracers_io.h sftracers.h \
-    sftracers_struct.h velociraptor_struct.h velociraptor_io.h
+    sftracers_struct.h starformation.h velociraptor_struct.h velociraptor_io.h
 
 # source files for EAGLE cooling
 EAGLE_COOLING_SOURCES =

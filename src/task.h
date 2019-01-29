@@ -158,11 +158,6 @@ struct task {
   /*! Weight of the task */
   float weight;
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-  /*! Individual cost estimate for this task. */
-  float cost;
-#endif
-
   /*! Number of tasks unlocked by this one */
   short int nr_unlock_tasks;
 
@@ -187,10 +182,10 @@ struct task {
 
   /*! Information about the direction of the pair task */
   short int sid;
+#endif
 
   /*! Start and end time of this task */
   ticks tic, toc;
-#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* When was this task last run? */
@@ -205,6 +200,9 @@ float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);
 void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
+void task_dump_all(struct engine *e, int step);
+void task_dump_stats(const char *dumpfile, struct engine *e, int header,
+                     int allranks);
 void task_get_full_name(int type, int subtype, char *name);
 void task_get_group_name(int type, int subtype, char *cluster);
 

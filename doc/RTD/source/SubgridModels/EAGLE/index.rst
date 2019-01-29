@@ -236,7 +236,7 @@ implicit problem. A valid section of the YAML file looks like:
      H_reion_z:            11.5      # Redhift of Hydrogen re-ionization
      He_reion_z_centre:     3.5      # Centre of the Gaussian used for Helium re-ionization
      He_reion_z_sigma:      0.5      # Width of the Gaussian used for Helium re-ionization
-     He_reion_eV_p_H:       2.0      # Energy injected in eV per Hydrogen atom for Helium re-ionization.
+     He_reion_ev_p_H:       2.0      # Energy injected in eV per Hydrogen atom for Helium re-ionization.
 
 And the optional parameters are:
 
