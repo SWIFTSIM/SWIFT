@@ -1402,7 +1402,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Check whether the particle has an inappropriate smoothing length */
-        if (fabsf(h_new - h_old) > eps * h_init) {
+        if (fabsf(h_new - h_old) > eps * h_old) {
 
           /* Ok, correct then */
 
