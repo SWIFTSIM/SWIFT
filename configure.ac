@@ -1184,7 +1184,6 @@ AC_ARG_WITH([subgrid],
 with_subgrid_cooling=none
 with_subgrid_chemistry=none
 with_subgrid_tracers=none
-with_subgrid_hydro=none
 with_subgrid_entropy_floor=none
 with_subgrid_stars=none
 with_subgrid_star_formation=none
@@ -1201,7 +1200,6 @@ case "$with_subgrid" in
 	with_subgrid_cooling=grackle
 	with_subgrid_chemistry=GEAR
 	with_subgrid_tracers=none
-	with_subgrid_hydro=gadget2
 	with_subgrid_entropy_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=none
@@ -1212,7 +1210,6 @@ case "$with_subgrid" in
 	with_subgrid_cooling=EAGLE
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
-	with_subgrid_hydro=gadget2
 	with_subgrid_entropy_floor=EAGLE
 	with_subgrid_stars=EAGLE
 	with_subgrid_star_formation=EAGLE
@@ -1253,14 +1250,6 @@ AC_ARG_WITH([hydro],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
 )
-
-if test "$with_subgrid" != "none"; then
-   if test "$with_hydro" != "gadget2"; then
-      AC_MSG_ERROR([Cannot provide with-subgrid and with-hydro together])
-   else
-      with_hydro="$with_subgrid_hydro"
-   fi
-fi
 
 case "$with_hydro" in
    gadget2)
