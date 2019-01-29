@@ -386,5 +386,4 @@ static INLINE void cooling_struct_restore(struct cooling_function_data* cooling,
                       stream, NULL, "cooling function");
 }
 
-
 #endif /* SWIFT_COOLING_CONST_LAMBDA_H */
