@@ -926,9 +926,8 @@ void write_output_single(struct engine* e, const char* baseName,
           }
           num_fields += tracers_write_particles(
               parts, xparts, list + num_fields, with_cosmology);
-          num_fields += star_formation_write_particles(
-						       parts, xparts, list + num_fields);
-
+          num_fields +=
+              star_formation_write_particles(parts, xparts, list + num_fields);
 
         } else {
 
@@ -964,7 +963,7 @@ void write_output_single(struct engine* e, const char* baseName,
           num_fields += tracers_write_particles(
               parts_written, xparts_written, list + num_fields, with_cosmology);
           num_fields += star_formation_write_particles(
-						       parts_written, xparts_written, list + num_fields);
+              parts_written, xparts_written, list + num_fields);
         }
       } break;
 

@@ -35,7 +35,8 @@
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int star_formation_write_particles(
-										const struct part* parts, const struct xpart* xparts, struct io_props* list) {
+    const struct part* parts, const struct xpart* xparts,
+    struct io_props* list) {
 
   return 0;
 }
