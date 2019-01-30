@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *******************************************************************************/
-#ifndef SWIFT_SCHAYE_STARFORMATION_H
-#define SWIFT_SCHAYE_STARFORMATION_H
+#ifndef SWIFT_EAGLE_STAR_FORMATION_H
+#define SWIFT_EAGLE_STAR_FORMATION_H
 
 /* Some standard headers */
 #include <stdlib.h>
@@ -570,4 +570,4 @@ struct star_formation_history {
   };
 };
 
-#endif /* SWIFT_SCHAYE_STARFORMATION_H */
+#endif /* SWIFT_EAGLE_STAR_FORMATION_H */

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *******************************************************************************/
-#ifndef SWIFT_NO_STARFORMATION_H
-#define SWIFT_NO_STARFORMATION_H
+#ifndef SWIFT_NONE_STAR_FORMATION_H
+#define SWIFT_NONE_STAR_FORMATION_H
 
 /* Local includes */
 #include "cosmology.h"
@@ -99,4 +99,4 @@ INLINE static void starformation_print_backend(
   message("Star formation law is 'No Star Formation'");
 }
 
-#endif /* SWIFT_NO_STARFORMATION_H */
+#endif /* SWIFT_NONE_STAR_FORMATION_H */

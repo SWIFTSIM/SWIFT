@@ -1760,7 +1760,7 @@ case "$with_star_formation" in
       AC_DEFINE([STAR_FORMATION_NONE], [1], [No star formation])
    ;;
    EAGLE)
-      AC_DEFINE([STAR_FORMATION_SCHAYE], [1], [Schaye and Dalla Vecchia (2008) star formation])
+      AC_DEFINE([STAR_FORMATION_EAGLE], [1], [EAGLE star formation model (Schaye and Dalla Vecchia (2008))])
    ;;
    *)
       AC_MSG_ERROR([Unknown star formation model])
