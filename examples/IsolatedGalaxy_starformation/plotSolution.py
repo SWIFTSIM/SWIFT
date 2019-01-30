@@ -39,6 +39,9 @@ k_in_cgs = 1.38064852e-16
 mH_in_cgs = 1.6737236e-24
 year_in_cgs = 3600.0 * 24 * 365.0
 Msun_in_cgs = 1.98848e33
+G_in_cgs = 6.67259e-8
+pc_in_cgs = 3.08567758e18
+Msun_p_pc2 = Msun_in_cgs / pc_in_cgs**2
 
 # Gemoetry info
 boxsize = f["/Header"].attrs["BoxSize"]
@@ -48,6 +51,9 @@ centre = boxsize / 2.0
 unit_length_in_cgs = f["/Units"].attrs["Unit length in cgs (U_L)"]
 unit_mass_in_cgs = f["/Units"].attrs["Unit mass in cgs (U_M)"]
 unit_time_in_cgs = f["/Units"].attrs["Unit time in cgs (U_t)"]
+
+# Calculate Gravitational constant in internal units
+G = G_in_cgs * ( unit_length_in_cgs**3 / unit_mass_in_cgs / unit_time_in_cgs**2)**(-1)
 
 # Read parameters of the model
 KS_law_slope = float(f["/Parameters"].attrs["SchayeSF:SchmidtLawExponent"])
@@ -60,7 +66,18 @@ KS_thresh_max_norm = float(f["/Parameters"].attrs["SchayeSF:thresh_max_norm_HpCM
 KS_gamma_effective = float(
     f["/Parameters"].attrs["EAGLEEntropyFloor:Jeans_gamma_effective"]
 )
+KS_high_den_thresh = float(f["/Parameters"].attrs["SchayeSF:SchmidtLawHighDens_thresh_HpCM3"])
+KS_law_slope_high_den = float(f["/Parameters"].attrs["SchayeSF:SchmidtLawHighDensExponent"])
 EAGLE_Z = float(f["/Parameters"].attrs["EAGLEChemistry:init_abundance_metal"])
+EAGLEfloor_rho_norm = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Jeans_density_threshold_H_p_cm3"])
+EAGLEfloor_T = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Jeans_temperature_norm_K"])
+EAGLEfloor_cool_rho = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Cool_density_threshold_H_p_cm3"])
+EAGLEfloor_cool_temperature_norm_K = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Cool_temperature_norm_K"])
+EAGLEfloor_cool_gamma_effective = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Cool_gamma_effective"])
+
+KS_law_norm_cgs = KS_law_norm * Msun_in_cgs / ( 1e6 * pc_in_cgs**2 * year_in_cgs )
+gamma = 5./3.
+KS_press_norm = k_in_cgs * EAGLEfloor_T * EAGLEfloor_rho_norm
 
 # Read gas properties
 gas_pos = f["/PartType0/Coordinates"][:, :]
@@ -71,6 +88,11 @@ gas_SFR = f["/PartType0/SFR"][:]
 gas_XH = f["/PartType0/ElementAbundance"][:, 0]
 gas_Z = f["/PartType0/Metallicity"][:]
 gas_hsml = f["/PartType0/SmoothingLength"][:]
+gas_sSFR = f["/PartType0/sSFR"][:]
+
+# Read the Star properties
+stars_pos = f["/PartType4/Coordinates"][:, :]
+stars_BirthDensity = f["/PartType4/BirthDensity"][:]
 
 # Centre the box
 gas_pos[:, 0] -= centre[0]
@@ -90,12 +112,15 @@ gas_nH = gas_rho * unit_mass_in_cgs / unit_length_in_cgs ** 3
 gas_nH /= mH_in_cgs
 gas_nH *= gas_XH
 
+stars_BirthDensity = gas_rho * unit_mass_in_cgs / unit_length_in_cgs ** 3
+stars_BirthDensity /= mH_in_cgs
+stars_BirthDensity *= gas_XH
+
 # Equations of state
 eos_cool_rho = np.logspace(-5, 5, 1000)
-eos_cool_T = eos_cool_rho ** 0.0 * 8000.0
+eos_cool_T = EAGLEfloor_cool_temperature_norm_K * eos_cool_rho **( EAGLEfloor_cool_gamma_effective - 1.0 )
 eos_Jeans_rho = np.logspace(-1, 5, 1000)
-eos_Jeans_T = (eos_Jeans_rho / 10 ** (-1)) ** (1.0 / 3.0) * 8000.0
-
+eos_Jeans_T = EAGLEfloor_T * (eos_Jeans_rho / EAGLEfloor_rho_norm) ** (KS_gamma_effective - 1.0 ) 
 # Plot the phase space diagram
 figure()
 subplot(111, xscale="log", yscale="log")
@@ -132,6 +157,36 @@ ylabel("${\\rm SFR}~[{\\rm M_\\odot~\\cdot~yr^{-1}}]$", labelpad=-7)
 xlim(1e-4, 3e3)
 ylim(8e-6, 2.5e-4)
 savefig("rho_SFR.png", dpi=200)
+
+########################################################################3
+
+# Histogram of the birth density
+figure()
+subplot(111, xscale="linear", yscale="linear")
+hist(np.log10(stars_BirthDensity),density=True,bins=100)
+xlabel("${\\rm Birth Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
+ylabel("Probability", labelpad=-7)
+savefig("BirthDensity.png", dpi=200)
+
+# Plot of the specific star formation rate in the galaxy
+rhos = 10**np.linspace(-1,np.log10(KS_high_den_thresh),100)
+rhoshigh = 10**np.linspace(np.log10(KS_high_den_thresh),5,100)
+
+P_effective = KS_press_norm * ( rhos / EAGLEfloor_rho_norm)**(KS_gamma_effective)
+P_norm_high = KS_press_norm * (KS_high_den_thresh  / EAGLEfloor_rho_norm)**(KS_gamma_effective)
+sSFR = KS_law_norm_cgs * (Msun_p_pc2)**(-KS_law_slope) * (gamma/G_in_cgs * KS_gas_fraction *P_effective)**((KS_law_slope-1.)/2.)
+KS_law_norm_high_den_cgs = KS_law_norm_cgs * (Msun_p_pc2)**(-KS_law_slope) * (gamma/G_in_cgs * KS_gas_fraction * P_norm_high)**((KS_law_slope-1.)/2.)
+sSFR_high_den = KS_law_norm_high_den_cgs * ((rhoshigh/KS_high_den_thresh)**KS_gamma_effective)**((KS_law_slope_high_den-1)/2.)
+
+
+figure()
+subplot(111)
+hist2d(np.log10(gas_nH), np.log10(gas_sSFR), bins=50,range=[[-1.5,5],[-.5,2.5]])
+plot(np.log10(rhos),np.log10(sSFR)+np.log10(year_in_cgs)+9.,'k--',label='sSFR low density EAGLE')
+plot(np.log10(rhoshigh),np.log10(sSFR_high_den)+np.log10(year_in_cgs)+9.,'k--',label='sSFR high density EAGLE')
+xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
+ylabel("${\\rm sSFR}~[{\\rm Gyr^{-1}}]$", labelpad=-7)
+savefig("density-sSFR.png", dpi=200)
 
 ########################################################################3
 
