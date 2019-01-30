@@ -19,9 +19,6 @@
 #ifndef SWIFT_EAGLE_STAR_FORMATION_H
 #define SWIFT_EAGLE_STAR_FORMATION_H
 
-/* Some standard headers */
-#include <stdlib.h>
-
 /* Local includes */
 #include "adiabatic_index.h"
 #include "cooling.h"
@@ -36,8 +33,8 @@
 #include "units.h"
 
 /**
- * @file src/starformation/schaye08/starformation.h
- * @brief Entropy floor used in the EAGLE model
+ * @file src/star_formation/EAGLE/star_formation.h
+ * @brief Star formation model used in the EAGLE model
  */
 
 /**

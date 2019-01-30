@@ -20,8 +20,8 @@
 #define SWIFT_STAR_FORMATION_IO_H
 
 /**
- * @file src/sftracers_io.h
- * @brief Branches between the different particle data star formation tracers
+ * @file src/star_formation_io.h
+ * @brief Branches between the i/o routines for the SF code.
  */
 
 /* Config parameters. */

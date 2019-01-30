@@ -35,8 +35,7 @@
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int star_formation_write_particles(
-    const struct part* parts, const struct xpart* xparts, struct io_props* list,
-    const int with_cosmology) {
+										const struct part* parts, const struct xpart* xparts, struct io_props* list) {
 
   list[0] =
       io_make_output_field("SFR", FLOAT, 1, UNIT_CONV_SFR, xparts, sf_data.SFR);

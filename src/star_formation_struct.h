@@ -20,8 +20,8 @@
 #define SWIFT_STAR_FORMATION_STRUCT_H
 
 /**
- * @file src/tracers_struct.h
- * @brief Branches between the different particle data tracers
+ * @file src/star_formation_struct.h
+ * @brief Branches between the different particle data SF tracers
  */
 
 /* Config parameters. */

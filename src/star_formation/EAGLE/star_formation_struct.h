@@ -20,7 +20,8 @@
 #define SWIFT_EAGLE_STAR_FORMATION_STRUCT_H
 
 /**
- * @brief Properties of the tracers stored in the extended particle data.
+ * @brief Star-formation-related properties stored in the extended particle
+ * data.
  */
 struct star_formation_xpart_data {
 

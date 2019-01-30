@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STARFORMATION_H
-#define SWIFT_STARFORMATION_H
+#ifndef SWIFT_STAR_FORMATION_H
+#define SWIFT_STAR_FORMATION_H
 
 /**
- * @file src/starformation.h
+ * @file src/star_formation.h
  * @brief Branches between the different star formation recipies.
  */
 
@@ -52,4 +52,4 @@ void starformation_struct_dump(const struct star_formation* starform,
 void starformation_struct_restore(const struct star_formation* starform,
                                   FILE* stream);
 
-#endif /* SWIFT_STARFORMATION_H */
+#endif /* SWIFT_STAR_FORMATION_H */

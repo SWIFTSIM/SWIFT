@@ -1156,7 +1156,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         num_fields += tracers_write_particles(parts, xparts, list + num_fields,
                                               with_cosmology);
         num_fields += star_formation_write_particles(
-            parts, xparts, list + num_fields, with_cosmology);
+						     parts, xparts, list + num_fields);
         if (with_stf) {
           num_fields +=
               velociraptor_write_parts(parts, xparts, list + num_fields);
@@ -1479,7 +1479,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           num_fields += tracers_write_particles(
               parts, xparts, list + num_fields, with_cosmology);
           num_fields += star_formation_write_particles(
-              parts, xparts, list + num_fields, with_cosmology);
+						       parts, xparts, list + num_fields);
 
         } else {
 
@@ -1515,7 +1515,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           num_fields += tracers_write_particles(
               parts_written, xparts_written, list + num_fields, with_cosmology);
           num_fields += star_formation_write_particles(
-              parts_written, xparts_written, list + num_fields, with_cosmology);
+						       parts_written, xparts_written, list + num_fields);
         }
       } break;
 

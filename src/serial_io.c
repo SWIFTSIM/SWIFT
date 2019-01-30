@@ -1124,7 +1124,7 @@ void write_output_serial(struct engine* e, const char* baseName,
               num_fields += tracers_write_particles(
                   parts, xparts, list + num_fields, with_cosmology);
               num_fields += star_formation_write_particles(
-                  parts, xparts, list + num_fields, with_cosmology);
+							   parts, xparts, list + num_fields);
 
             } else {
 
@@ -1161,8 +1161,8 @@ void write_output_serial(struct engine* e, const char* baseName,
                   tracers_write_particles(parts_written, xparts_written,
                                           list + num_fields, with_cosmology);
               num_fields += star_formation_write_particles(
-                  parts_written, xparts_written, list + num_fields,
-                  with_cosmology);
+							   parts_written, xparts_written, list + num_fields);
+          
             }
           } break;
 
