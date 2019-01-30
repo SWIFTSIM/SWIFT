@@ -33,7 +33,7 @@
 
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
-#include "sftracers_struct.h"
+#include "star_formation_struct.h"
 #include "tracers_struct.h"
 
 /**
@@ -67,7 +67,7 @@ struct xpart {
   struct tracers_xpart_data tracers_data;
 
   /* Additional data used by the tracers */
-  struct sftracers_xpart_data sftracers_data;
+  struct star_formation_xpart_data sf_data;
 
 } SWIFT_STRUCT_ALIGN;
 
