@@ -71,11 +71,22 @@ const char *initial_partition_name[] = {
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
     "none", "edge and vertex task cost weights", "task cost edge weights",
-    "task cost vertex weights",
+    "memory balanced, using particle vertex weights",
     "vertex task costs and edge delta timebin weights"};
 
 /* Local functions, if needed. */
 static int check_complete(struct space *s, int verbose, int nregions);
+
+/*
+ * Repartition fixed costs per type/subtype. These are determined from the
+ * statistics output produced when running with task debugging enabled.
+ */
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+static double repartition_costs[task_type_count][task_subtype_count];
+#endif
+#if defined(WITH_MPI)
+static int repart_init_fixed_costs(void);
+#endif
 
 /*  Vectorisation support */
 /*  ===================== */
@@ -330,22 +341,28 @@ static void accumulate_sizes(struct space *s, double *counts) {
   mapper_data.s = s;
 
   double hsize = (double)sizeof(struct part);
-  mapper_data.size = hsize;
-  threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_part, s->parts,
-                 s->nr_parts, sizeof(struct part), space_splitsize,
-                 &mapper_data);
+  if (s->nr_parts > 0) {
+    mapper_data.size = hsize;
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_part, s->parts,
+                   s->nr_parts, sizeof(struct part), space_splitsize,
+                   &mapper_data);
+  }
 
   double gsize = (double)sizeof(struct gpart);
-  mapper_data.size = gsize;
-  threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart, s->gparts,
-                 s->nr_gparts, sizeof(struct gpart), space_splitsize,
-                 &mapper_data);
+  if (s->nr_gparts > 0) {
+    mapper_data.size = gsize;
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart, s->gparts,
+                   s->nr_gparts, sizeof(struct gpart), space_splitsize,
+                   &mapper_data);
+  }
 
   double ssize = (double)sizeof(struct spart);
-  mapper_data.size = ssize;
-  threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_spart, s->sparts,
-                 s->nr_sparts, sizeof(struct spart), space_splitsize,
-                 &mapper_data);
+  if (s->nr_sparts > 0) {
+    mapper_data.size = ssize;
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_spart, s->sparts,
+                   s->nr_sparts, sizeof(struct spart), space_splitsize,
+                   &mapper_data);
+  }
 
   /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
   if ((s->e->total_nr_parts * hsize + s->e->total_nr_gparts * gsize +
@@ -1156,6 +1173,7 @@ struct weights_mapper_data {
   int timebins;
   int vweights;
   int nr_cells;
+  int use_ticks;
   struct cell *cells;
 };
 
@@ -1173,8 +1191,8 @@ static void check_weights(struct task *tasks, int nr_tasks,
  * @param num_elements the number of data elements to process.
  * @param extra_data additional data for the mapper context.
  */
-void partition_gather_weights(void *map_data, int num_elements,
-                              void *extra_data) {
+static void partition_gather_weights(void *map_data, int num_elements,
+                                     void *extra_data) {
 
   struct task *tasks = (struct task *)map_data;
   struct weights_mapper_data *mydata = (struct weights_mapper_data *)extra_data;
@@ -1187,6 +1205,7 @@ void partition_gather_weights(void *map_data, int num_elements,
   int nr_cells = mydata->nr_cells;
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
+  int use_ticks = mydata->use_ticks;
 
   struct cell *cells = mydata->cells;
 
@@ -1195,10 +1214,18 @@ void partition_gather_weights(void *map_data, int num_elements,
     struct task *t = &tasks[i];
 
     /* Skip un-interesting tasks. */
-    if (t->cost == 0.f) continue;
+    if (t->type == task_type_send || t->type == task_type_recv ||
+        t->type == task_type_logger || t->implicit || t->ci == NULL)
+      continue;
 
-    /* Get the task weight based on costs. */
-    double w = (double)t->cost;
+    /* Get weight for this task. Either based on fixed costs or task timings. */
+    double w = 0.0;
+    if (use_ticks) {
+      w = (double)t->toc - (double)t->tic;
+    } else {
+      w = repartition_costs[t->type][t->subtype];
+    }
+    if (w <= 0.0) continue;
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
@@ -1361,6 +1388,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   weights_data.vweights = vweights;
   weights_data.weights_e = weights_e;
   weights_data.weights_v = weights_v;
+  weights_data.use_ticks = repartition->use_ticks;
 
   ticks tic = getticks();
 
@@ -1405,10 +1433,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
 
   /* We need to rescale the sum of the weights so that the sums of the two
-   * types of weights are less than IDX_MAX, that is the range of idx_t.  Also
-   * we would like to balance edges and vertices when the edge weights are
-   * timebins, as these have no reason to have equivalent scales, so we use an
-   * equipartition. */
+   * types of weights are less than IDX_MAX, that is the range of idx_t.  */
   double vsum = 0.0;
   if (vweights)
     for (int k = 0; k < nr_cells; k++) vsum += weights_v[k];
@@ -1416,41 +1441,60 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   if (eweights)
     for (int k = 0; k < 26 * nr_cells; k++) esum += weights_e[k];
 
+  /* Do the scaling, if needed, keeping both weights in proportion. */
   double vscale = 1.0;
   double escale = 1.0;
+  if (vweights && eweights) {
+    if (vsum > esum) {
+      if (vsum > (double)IDX_MAX) {
+        vscale = (double)(IDX_MAX - 1000) / vsum;
+        escale = vscale;
+      }
+    } else {
+      if (esum > (double)IDX_MAX) {
+        escale = (double)(IDX_MAX - 1000) / esum;
+        vscale = escale;
+      }
+    }
+  } else if (vweights) {
+    if (vsum > (double)IDX_MAX) {
+      vscale = (double)(IDX_MAX - 1000) / vsum;
+    }
+  } else if (eweights) {
+    if (esum > (double)IDX_MAX) {
+      escale = (double)(IDX_MAX - 1000) / esum;
+    }
+  }
+
+  if (vweights && vscale != 1.0) {
+    vsum = 0.0;
+    for (int k = 0; k < nr_cells; k++) {
+      weights_v[k] *= vscale;
+      vsum += weights_v[k];
+    }
+    vscale = 1.0;
+  }
+  if (eweights && escale != 1.0) {
+    esum = 0.0;
+    for (int k = 0; k < 26 * nr_cells; k++) {
+      weights_e[k] *= escale;
+      esum += weights_e[k];
+    }
+    escale = 1.0;
+  }
+
+  /* Balance edges and vertices when the edge weights are timebins, as these
+   * have no reason to have equivalent scales, we use an equipartition. */
   if (timebins && eweights) {
+
     /* Make sums the same. */
     if (vsum > esum) {
       escale = vsum / esum;
-      esum = vsum;
+      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= escale;
     } else {
       vscale = esum / vsum;
-      vsum = esum;
-    }
-  }
-
-  /* Now make sure sum of weights are in the range of idx_t. */
-  if (vweights) {
-    if (vsum > (double)IDX_MAX) {
-      vscale = (double)(IDX_MAX - 1000) / vsum;
-
-      if (!timebins && eweights) {
-        /* Keep edge weights in proportion. */
-        esum = 0.0;
-        for (int k = 0; k < 26 * nr_cells; k++) {
-          weights_e[k] *= vscale;
-          esum += weights_e[k];
-        }
-      }
-    }
-    if (vscale != 1.0)
       for (int k = 0; k < nr_cells; k++) weights_v[k] *= vscale;
-  }
-
-  if (eweights) {
-    if (esum > (double)IDX_MAX) escale = (double)(IDX_MAX - 1000) / esum;
-    if (escale != 1.0)
-      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= escale;
+    }
   }
 
     /* And repartition/ partition, using both weights or not as requested. */
@@ -1505,7 +1549,105 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   if (vweights) free(weights_v);
   if (eweights) free(weights_e);
 }
+
+/**
+ * @brief Repartition the cells amongst the nodes using weights based on
+ *        the memory use of particles in the cells.
+ *
+ * @param repartition the partition struct of the local engine.
+ * @param nodeID our nodeID.
+ * @param nr_nodes the number of nodes.
+ * @param s the space of cells holding our local particles.
+ */
+static void repart_memory_metis(struct repartition *repartition, int nodeID,
+                                int nr_nodes, struct space *s) {
+
+  /* Space for counts of particle memory use per cell. */
+  double *weights = NULL;
+  if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+    error("Failed to allocate cell weights buffer.");
+  bzero(weights, sizeof(double) * s->nr_cells);
+
+  /* Check each particle and accumulate the sizes per cell. */
+  accumulate_sizes(s, weights);
+
+  /* Get all the counts from all the nodes. */
+  if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                    MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to allreduce particle cell weights.");
+
+    /* Allocate cell list for the partition. If not already done. */
+#ifdef HAVE_PARMETIS
+  int refine = 1;
 #endif
+  if (repartition->ncelllist != s->nr_cells) {
+#ifdef HAVE_PARMETIS
+    refine = 0;
+#endif
+    free(repartition->celllist);
+    repartition->ncelllist = 0;
+    if ((repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) ==
+        NULL)
+      error("Failed to allocate celllist");
+    repartition->ncelllist = s->nr_cells;
+  }
+
+  /* We need to rescale the sum of the weights so that the sum is
+   * less than IDX_MAX, that is the range of idx_t. */
+  double sum = 0.0;
+  for (int k = 0; k < s->nr_cells; k++) sum += weights[k];
+  if (sum > (double)IDX_MAX) {
+    double scale = (double)(IDX_MAX - 1000) / sum;
+    for (int k = 0; k < s->nr_cells; k++) weights[k] *= scale;
+  }
+
+    /* And repartition. */
+#ifdef HAVE_PARMETIS
+  if (repartition->usemetis) {
+    pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+  } else {
+    pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
+                  repartition->adaptive, repartition->itr,
+                  repartition->celllist);
+  }
+#else
+  pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+#endif
+
+  /* Check that all cells have good values. All nodes have same copy, so just
+   * check on one. */
+  if (nodeID == 0) {
+    for (int k = 0; k < s->nr_cells; k++)
+      if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
+        error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
+  }
+
+  /* Check that the partition is complete and all nodes have some cells. */
+  int present[nr_nodes];
+  int failed = 0;
+  for (int i = 0; i < nr_nodes; i++) present[i] = 0;
+  for (int i = 0; i < s->nr_cells; i++) present[repartition->celllist[i]]++;
+  for (int i = 0; i < nr_nodes; i++) {
+    if (!present[i]) {
+      failed = 1;
+      if (nodeID == 0) message("Node %d is not present after repartition", i);
+    }
+  }
+
+  /* If partition failed continue with the current one, but make this clear. */
+  if (failed) {
+    if (nodeID == 0)
+      message(
+          "WARNING: repartition has failed, continuing with the current"
+          " partition, load balance will not be optimal");
+    for (int k = 0; k < s->nr_cells; k++)
+      repartition->celllist[k] = s->cells_top[k].nodeID;
+  }
+
+  /* And apply to our cells */
+  split_metis(s, nr_nodes, repartition->celllist);
+}
+#endif /* WITH_MPI && (HAVE_METIS || HAVE_PARMETIS) */
 
 /**
  * @brief Repartition the space using the given repartition type.
@@ -1536,13 +1678,12 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
     repart_edge_metis(0, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
                       nr_tasks);
 
-  } else if (reparttype->type == REPART_METIS_VERTEX_COSTS) {
-    repart_edge_metis(1, 0, 0, reparttype, nodeID, nr_nodes, s, tasks,
-                      nr_tasks);
-
   } else if (reparttype->type == REPART_METIS_VERTEX_COSTS_TIMEBINS) {
     repart_edge_metis(1, 1, 1, reparttype, nodeID, nr_nodes, s, tasks,
                       nr_tasks);
+
+  } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS) {
+    repart_memory_metis(reparttype, nodeID, nr_nodes, s);
 
   } else if (reparttype->type == REPART_NONE) {
     /* Doing nothing. */
@@ -1700,7 +1841,7 @@ void partition_initial_partition(struct partition *initial_partition,
 
 /**
  * @brief Initialises the partition and re-partition scheme from the parameter
- *        file
+ *        file.
  *
  * @param partition The #partition scheme to initialise.
  * @param repartition The #repartition scheme to initialise.
@@ -1715,10 +1856,10 @@ void partition_init(struct partition *partition,
 
 /* Defaults make use of METIS if available */
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
-  const char *default_repart = "costs/costs";
+  const char *default_repart = "fullcosts";
   const char *default_part = "memory";
 #else
-  const char *default_repart = "none/none";
+  const char *default_repart = "none";
   const char *default_part = "grid";
 #endif
 
@@ -1771,32 +1912,32 @@ void partition_init(struct partition *partition,
   parser_get_opt_param_string(params, "DomainDecomposition:repartition_type",
                               part_type, default_repart);
 
-  if (strcmp("none/none", part_type) == 0) {
+  if (strcmp("none", part_type) == 0) {
     repartition->type = REPART_NONE;
 
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
-  } else if (strcmp("costs/costs", part_type) == 0) {
+  } else if (strcmp("fullcosts", part_type) == 0) {
     repartition->type = REPART_METIS_VERTEX_EDGE_COSTS;
 
-  } else if (strcmp("none/costs", part_type) == 0) {
+  } else if (strcmp("edgecosts", part_type) == 0) {
     repartition->type = REPART_METIS_EDGE_COSTS;
 
-  } else if (strcmp("costs/none", part_type) == 0) {
-    repartition->type = REPART_METIS_VERTEX_COSTS;
+  } else if (strcmp("memory", part_type) == 0) {
+    repartition->type = REPART_METIS_VERTEX_COUNTS;
 
-  } else if (strcmp("costs/time", part_type) == 0) {
+  } else if (strcmp("timecosts", part_type) == 0) {
     repartition->type = REPART_METIS_VERTEX_COSTS_TIMEBINS;
 
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
     error(
-        "Permitted values are: 'none/none', 'costs/costs', 'none/costs' "
-        "'costs/none' or 'costs/time'");
+        "Permitted values are: 'none', 'fullcosts', 'edgecosts' "
+        "'memory' or 'timecosts'");
 #else
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
     error(
-        "Permitted values are: 'none/none' when compiled without "
+        "Permitted values are: 'none' when compiled without "
         "METIS or ParMETIS.");
 #endif
   }
@@ -1813,13 +1954,13 @@ void partition_init(struct partition *partition,
         " than 1");
 
   /* Fraction of particles that should be updated before a repartition
-   * based on CPU time is considered. */
+   * based on CPU time is considered, needs to be high. */
   repartition->minfrac =
-      parser_get_opt_param_float(params, "DomainDecomposition:minfrac", 0.9f);
-  if (repartition->minfrac <= 0 || repartition->minfrac > 1)
+      parser_get_opt_param_float(params, "DomainDecomposition:minfrac", 0.95f);
+  if (repartition->minfrac <= 0.5 || repartition->minfrac > 1)
     error(
-        "Invalid DomainDecomposition:minfrac, must be greater than 0 and less "
-        "than equal to 1");
+        "Invalid DomainDecomposition:minfrac, must be greater than 0.5 "
+        "and less than equal to 1");
 
   /* Use METIS or ParMETIS when ParMETIS is also available. */
   repartition->usemetis =
@@ -1838,10 +1979,61 @@ void partition_init(struct partition *partition,
   repartition->ncelllist = 0;
   repartition->celllist = NULL;
 
+  /* Do we have fixed costs available? These can be used to force
+   * repartitioning at any time. Not required if not repartitioning.*/
+  repartition->use_fixed_costs = parser_get_opt_param_int(
+      params, "DomainDecomposition:use_fixed_costs", 0);
+  if (repartition->type == REPART_NONE) repartition->use_fixed_costs = 0;
+
+  /* Check if this is true or required and initialise them. */
+  if (repartition->use_fixed_costs || repartition->trigger > 1) {
+    if (!repart_init_fixed_costs()) {
+      if (repartition->trigger <= 1) {
+        if (engine_rank == 0)
+          message(
+              "WARNING: fixed cost repartitioning was requested but is"
+              " not available.");
+        repartition->use_fixed_costs = 0;
+      } else {
+        error(
+            "Forced fixed cost repartitioning was requested but is"
+            " not available.");
+      }
+    }
+  }
+
 #else
   error("SWIFT was not compiled with MPI support");
 #endif
 }
+
+#ifdef WITH_MPI
+/**
+ * @brief Set the fixed costs for repartition using METIS.
+ *
+ *  These are determined using a run with the -y flag on which produces
+ *  a statistical analysis that is condensed into a .h file for inclusion.
+ *
+ *  If the default include file is used then no fixed costs are set and this
+ *  function will return 0.
+ */
+static int repart_init_fixed_costs(void) {
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /* Set the default fixed cost. */
+  for (int j = 0; j < task_type_count; j++) {
+    for (int k = 0; k < task_subtype_count; k++) {
+      repartition_costs[j][k] = 1.0;
+    }
+  }
+
+#include <partition_fixed_costs.h>
+  return HAVE_FIXED_COSTS;
+#endif
+
+  return 0;
+}
+#endif /* WITH_MPI */
 
 /*  General support */
 /*  =============== */
@@ -1902,6 +2094,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
   int nr_cells = mydata->nr_cells;
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
+  int use_ticks = mydata->use_ticks;
 
   struct cell *cells = mydata->cells;
 
@@ -1926,10 +2119,18 @@ static void check_weights(struct task *tasks, int nr_tasks,
     struct task *t = &tasks[j];
 
     /* Skip un-interesting tasks. */
-    if (t->cost == 0.f) continue;
+    if (t->type == task_type_send || t->type == task_type_recv ||
+        t->type == task_type_logger || t->implicit || t->ci == NULL)
+      continue;
 
-    /* Get the task weight based on costs. */
-    double w = (double)t->cost;
+    /* Get weight for this task. Either based on fixed costs or task timings. */
+    double w = 0.0;
+    if (use_ticks) {
+      w = (double)t->toc - (double)t->tic;
+    } else {
+      w = repartition_costs[t->type][t->subtype];
+    }
+    if (w <= 0.0) continue;
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;

@@ -1,0 +1,43 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     2.94e55   # Grams
+  UnitLength_in_cgs:   3.086e18   # pc
+  UnitVelocity_in_cgs: 1.   # km per s
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            sodShock # Common part of the name of output files
+  time_first:          0.       # Time of the first output (in internal units)
+  delta_time:          1.06638      # Time difference between consecutive outputs (in internal units)
+  scale_factor_first:  0.001
+  compression:         1
+  
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1.02 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./sodShock.hdf5       # The file to read
+  periodic:   1
+
+Cosmology:
+  Omega_m: 1.
+  Omega_lambda: 0.
+  Omega_b: 1.
+  h: 1.
+  a_begin: 0.001
+  a_end: 0.00106638
+

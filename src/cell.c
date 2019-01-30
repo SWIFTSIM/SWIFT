@@ -64,6 +64,7 @@
 #include "stars.h"
 #include "timers.h"
 #include "tools.h"
+#include "tracers.h"
 
 /* Global variables. */
 int cell_next_tag = 0;
@@ -97,6 +98,14 @@ int cell_getsize(struct cell *c) {
  */
 int cell_link_parts(struct cell *c, struct part *parts) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->hydro.parts != NULL)
+    error("Linking parts into a cell that was already linked");
+#endif
+
   c->hydro.parts = parts;
 
   /* Fill the progeny recursively, depth-first. */
@@ -121,6 +130,14 @@ int cell_link_parts(struct cell *c, struct part *parts) {
  * @return The number of particles linked.
  */
 int cell_link_gparts(struct cell *c, struct gpart *gparts) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->grav.parts != NULL)
+    error("Linking gparts into a cell that was already linked");
+#endif
 
   c->grav.parts = gparts;
 
@@ -147,6 +164,14 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
  */
 int cell_link_sparts(struct cell *c, struct spart *sparts) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->stars.parts != NULL)
+    error("Linking sparts into a cell that was already linked");
+#endif
+
   c->stars.parts = sparts;
 
   /* Fill the progeny recursively, depth-first. */
@@ -160,6 +185,182 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
 
   /* Return the total number of linked particles. */
   return c->stars.count;
+}
+
+/**
+ * @brief Recurse down foreign cells until reaching one with hydro
+ * tasks; then trigger the linking of the #part array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param parts The #part array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_parts(struct cell *c, struct part *parts) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.hydro.recv_xv != NULL) {
+
+    /* Recursively attach the parts */
+    const int counts = cell_link_parts(c, parts);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (counts != c->hydro.count)
+      error("Something is wrong with the foreign counts");
+#endif
+    return counts;
+  }
+
+  /* Go deeper to find the level where the tasks are */
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        count += cell_link_foreign_parts(c->progeny[k], &parts[count]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recurse down foreign cells until reaching one with gravity
+ * tasks; then trigger the linking of the #gpart array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param gparts The #gpart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.grav.recv != NULL) {
+
+    /* Recursively attach the gparts */
+    const int counts = cell_link_gparts(c, gparts);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (counts != c->grav.count)
+      error("Something is wrong with the foreign counts");
+#endif
+    return counts;
+  }
+
+  /* Go deeper to find the level where the tasks are */
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        count += cell_link_foreign_gparts(c->progeny[k], &gparts[count]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recursively count the number of #part in foreign cells that
+ * are in cells with hydro-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
+int cell_count_parts_for_tasks(const struct cell *c) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Counting foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.hydro.recv_xv != NULL) {
+    return c->hydro.count;
+  }
+
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        count += cell_count_parts_for_tasks(c->progeny[k]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recursively count the number of #gpart in foreign cells that
+ * are in cells with gravity-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
+int cell_count_gparts_for_tasks(const struct cell *c) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Counting foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.grav.recv != NULL) {
+    return c->grav.count;
+  }
+
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        count += cell_count_gparts_for_tasks(c->progeny[k]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
 }
 
 /**
@@ -180,6 +381,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
 
   /* Start by packing the data of the current cell. */
   pc->hydro.h_max = c->hydro.h_max;
+  pc->stars.h_max = c->stars.h_max;
   pc->hydro.ti_end_min = c->hydro.ti_end_min;
   pc->hydro.ti_end_max = c->hydro.ti_end_max;
   pc->grav.ti_end_min = c->grav.ti_end_min;
@@ -284,6 +486,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
 
   /* Unpack the current pcell. */
   c->hydro.h_max = pc->hydro.h_max;
+  c->stars.h_max = pc->stars.h_max;
   c->hydro.ti_end_min = pc->hydro.ti_end_min;
   c->hydro.ti_end_max = pc->hydro.ti_end_max;
   c->grav.ti_end_min = pc->grav.ti_end_min;
@@ -972,6 +1175,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->hydro.count = bucket_count[k];
+    c->progeny[k]->hydro.count_total = c->progeny[k]->hydro.count;
     c->progeny[k]->hydro.parts = &c->hydro.parts[bucket_offset[k]];
     c->progeny[k]->hydro.xparts = &c->hydro.xparts[bucket_offset[k]];
   }
@@ -1089,6 +1293,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->stars.count = bucket_count[k];
+    c->progeny[k]->stars.count_total = c->progeny[k]->stars.count;
     c->progeny[k]->stars.parts = &c->stars.parts[bucket_offset[k]];
   }
 
@@ -1151,6 +1356,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->grav.count = bucket_count[k];
+    c->progeny[k]->grav.count_total = c->progeny[k]->grav.count;
     c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
   }
 }
@@ -1228,8 +1434,11 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.density = NULL;
   c->hydro.gradient = NULL;
   c->hydro.force = NULL;
+  c->hydro.limiter = NULL;
   c->grav.grav = NULL;
   c->grav.mm = NULL;
+  c->stars.density = NULL;
+  c->stars.feedback = NULL;
 }
 
 /**
@@ -1596,6 +1805,14 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Clear the limiter flags on the given cell.
+ */
+void cell_clear_limiter_flags(struct cell *c, void *data) {
+  c->hydro.do_limiter = 0;
+  c->hydro.do_sub_limiter = 0;
+}
+
+/**
  * @brief Activate the #part drifts on the given cell.
  */
 void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
@@ -1618,7 +1835,10 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
     for (struct cell *parent = c->parent;
          parent != NULL && !parent->hydro.do_sub_drift;
          parent = parent->parent) {
+
+      /* Mark this cell for drifting */
       parent->hydro.do_sub_drift = 1;
+
       if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (parent->hydro.drift == NULL)
@@ -1680,6 +1900,45 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
   // MATTHIEU: This will need changing
   cell_activate_drift_gpart(c, s);
+}
+
+/**
+ * @brief Activate the drifts on the given cell.
+ */
+void cell_activate_limiter(struct cell *c, struct scheduler *s) {
+
+  /* If this cell is already marked for drift, quit early. */
+  if (c->hydro.do_limiter) return;
+
+  /* Mark this cell for limiting. */
+  c->hydro.do_limiter = 1;
+
+  /* Set the do_sub_limiter all the way up and activate the super limiter
+     if this has not yet been done. */
+  if (c == c->super) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->timestep_limiter == NULL)
+      error("Trying to activate un-existing c->timestep_limiter");
+#endif
+    scheduler_activate(s, c->timestep_limiter);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !parent->hydro.do_sub_limiter;
+         parent = parent->parent) {
+
+      /* Mark this cell for limiting */
+      parent->hydro.do_sub_limiter = 1;
+
+      if (parent == c->super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->timestep_limiter == NULL)
+          error("Trying to activate un-existing parent->timestep_limiter");
+#endif
+        scheduler_activate(s, parent->timestep_limiter);
+        break;
+      }
+    }
+  }
 }
 
 /**
@@ -1745,14 +2004,18 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 
   if (c == c->super) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->stars.sorts == NULL)
+    if ((c->nodeID == engine_rank && c->stars.sorts_local == NULL) ||
+        (c->nodeID != engine_rank && c->stars.sorts_foreign == NULL))
       error("Trying to activate un-existing c->stars.sorts");
 #endif
-    scheduler_activate(s, c->stars.sorts);
     if (c->nodeID == engine_rank) {
+      scheduler_activate(s, c->stars.sorts_local);
       // MATTHIEU: to do: do we actually need both drifts here?
       cell_activate_drift_part(c, s);
       cell_activate_drift_spart(c, s);
+    }
+    if (c->nodeID != engine_rank) {
+      scheduler_activate(s, c->stars.sorts_foreign);
     }
   } else {
 
@@ -1762,13 +2025,17 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
       parent->stars.do_sub_sort = 1;
       if (parent == c->super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if (parent->stars.sorts == NULL)
+        if ((c->nodeID == engine_rank && parent->stars.sorts_local == NULL) ||
+            (c->nodeID != engine_rank && parent->stars.sorts_foreign == NULL))
           error("Trying to activate un-existing parents->stars.sorts");
 #endif
-        scheduler_activate(s, parent->stars.sorts);
-        if (parent->nodeID == engine_rank) {
+        if (c->nodeID == engine_rank) {
+          scheduler_activate(s, parent->stars.sorts_local);
           cell_activate_drift_part(parent, s);
           cell_activate_drift_spart(parent, s);
+        }
+        if (c->nodeID != engine_rank) {
+          scheduler_activate(s, parent->stars.sorts_foreign);
         }
         break;
       }
@@ -1812,6 +2079,7 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s) {
   const struct engine *e = s->space->e;
+  const int with_limiter = (e->policy & engine_policy_limiter);
 
   /* Store the current dx_max and h_max values. */
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
@@ -1845,6 +2113,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 
       /* We have reached the bottom of the tree: activate drift */
       cell_activate_drift_part(ci, s);
+      if (with_limiter) cell_activate_limiter(ci, s);
     }
   }
 
@@ -2150,6 +2419,12 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
       if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
       if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
 
+      /* Also activate the time-step limiter */
+      if (ci->nodeID == engine_rank && with_limiter)
+        cell_activate_limiter(ci, s);
+      if (cj->nodeID == engine_rank && with_limiter)
+        cell_activate_limiter(cj, s);
+
       /* Do we need to sort the cells? */
       cell_activate_hydro_sorts(ci, sid, s);
       cell_activate_hydro_sorts(cj, sid, s);
@@ -2211,19 +2486,20 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   else {
 
     /* Should we even bother? */
-    if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
+    const int should_do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
+      cell_is_active_stars(ci, e);
+    const int should_do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
+      cell_is_active_stars(cj, e);
 
-    int should_do = ci->stars.count != 0 && cj->hydro.count != 0;
-    should_do |= cj->stars.count != 0 && ci->hydro.count != 0;
-    if (!should_do) return;
+    if (!should_do_ci && !should_do_cj) return;
 
     /* Get the orientation of the pair. */
     double shift[3];
     int sid = space_getsid(s->space, &ci, &cj, shift);
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_stars_task(ci) &&
-        cell_can_recurse_in_pair_stars_task(cj)) {
+    if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
+        cell_can_recurse_in_pair_stars_task(cj, ci)) {
 
       /* Different types of flags. */
       switch (sid) {
@@ -2501,9 +2777,10 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 
     /* Otherwise, activate the sorts and drifts. */
     else {
+      const int do_ci = cell_is_active_stars(ci, e);
+      const int do_cj = cell_is_active_stars(cj, e);
 
-      if (cell_is_active_stars(ci, e) && cj->hydro.count != 0 &&
-          ci->stars.count != 0) {
+      if (do_ci) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->hydro.requires_sorts, 1 << sid);
         atomic_or(&ci->stars.requires_sorts, 1 << sid);
@@ -2520,8 +2797,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         cell_activate_stars_sorts(ci, sid, s);
       }
 
-      if (cell_is_active_stars(cj, e) && ci->hydro.count != 0 &&
-          cj->stars.count != 0) {
+      if (do_cj) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->stars.requires_sorts, 1 << sid);
         atomic_or(&ci->hydro.requires_sorts, 1 << sid);
@@ -2714,6 +2990,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
+  const int with_limiter = (e->policy & engine_policy_limiter);
   int rebuild = 0;
 
   /* Un-skip the density tasks involved with this cell. */
@@ -2739,6 +3016,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       /* Activate hydro drift */
       if (t->type == task_type_self) {
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (ci_nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
       }
 
       /* Set the correct sorting flags and activate hydro drifts */
@@ -2752,6 +3030,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Activate the drift tasks. */
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
         if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+        /* Activate the limiter tasks. */
+        if (ci_nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
+        if (cj_nodeID == nodeID && with_limiter) cell_activate_limiter(cj, s);
 
         /* Check the sorts and activate them if needed. */
         cell_activate_hydro_sorts(ci, t->flags, s);
@@ -2768,7 +3050,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
@@ -2787,7 +3069,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active) scheduler_activate(s, ci->mpi.recv_ti);
+        if (ci_active || with_limiter) scheduler_activate(s, ci->mpi.recv_ti);
+
+        if (with_limiter) scheduler_activate(s, ci->mpi.limiter.recv);
+        if (with_limiter)
+          scheduler_activate_send(s, cj->mpi.limiter.send, ci->nodeID);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
@@ -2797,6 +3083,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(cj, s);
+          if (with_limiter) cell_activate_limiter(cj, s);
 
           /* If the local cell is also active, more stuff will be needed. */
           if (cj_active) {
@@ -2809,7 +3096,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (cj_active) scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+        if (cj_active || with_limiter)
+          scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
 
       } else if (cj_nodeID != nodeID) {
 
@@ -2826,7 +3114,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active) scheduler_activate(s, cj->mpi.recv_ti);
+        if (cj_active || with_limiter) scheduler_activate(s, cj->mpi.recv_ti);
+
+        if (with_limiter) scheduler_activate(s, cj->mpi.limiter.recv);
+        if (with_limiter)
+          scheduler_activate_send(s, ci->mpi.limiter.send, cj->nodeID);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -2836,6 +3128,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(ci, s);
+          if (with_limiter) cell_activate_limiter(ci, s);
 
           /* If the local cell is also active, more stuff will be needed. */
           if (ci_active) {
@@ -2849,7 +3142,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (ci_active) scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+        if (ci_active || with_limiter)
+          scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
       }
 #endif
     }
@@ -2861,6 +3155,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     for (struct link *l = c->hydro.gradient; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
     for (struct link *l = c->hydro.force; l != NULL; l = l->next)
+      scheduler_activate(s, l->t);
+    for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
 
     if (c->hydro.extra_ghost != NULL)
@@ -2875,7 +3171,6 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->hydro.cooling != NULL) scheduler_activate(s, c->hydro.cooling);
     if (c->hydro.star_formation != NULL)
       scheduler_activate(s, c->hydro.star_formation);
-    if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
     if (c->logger != NULL) scheduler_activate(s, c->logger);
   }
 
@@ -3048,7 +3343,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
-
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
@@ -3060,55 +3354,62 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
     struct cell *cj = t->cj;
     const int ci_active = cell_is_active_stars(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_stars(cj, e) : 0;
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
 
-    /* Only activate tasks that involve a local active cell. */
-    if ((ci_active && ci->nodeID == nodeID) ||
-        (cj_active && cj->nodeID == nodeID)) {
+    if (t->type == task_type_self &&
+	ci_active && ci->nodeID == nodeID) {
+
+	cell_activate_drift_part(ci, s);
+	cell_activate_drift_spart(ci, s);
+    }
+
+    /* Activate cells that contains either a density or a feedback task */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+
+      /* Only activate tasks that involve a local active cell. */
       scheduler_activate(s, t);
 
-      /* Activate drifts */
-      if (t->type == task_type_self) {
-        if (ci->nodeID == nodeID) {
-          cell_activate_drift_part(ci, s);
-          cell_activate_drift_spart(ci, s);
-        }
-      }
-
       /* Set the correct sorting flags and activate hydro drifts */
-      else if (t->type == task_type_pair) {
+      if (t->type == task_type_pair) {
         /* Do ci */
-        /* stars for ci */
-        atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
-        ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
+        if (ci_active) {
+          /* stars for ci */
+          atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
+          ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
 
-        /* hydro for cj */
-        atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+          /* hydro for cj */
+          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
-        /* Activate the drift tasks. */
-        if (ci->nodeID == nodeID) cell_activate_drift_spart(ci, s);
-        if (cj->nodeID == nodeID) cell_activate_drift_part(cj, s);
+          /* Activate the drift tasks. */
+          if (ci->nodeID == nodeID) cell_activate_drift_spart(ci, s);
+          if (cj->nodeID == nodeID) cell_activate_drift_part(cj, s);
 
-        /* Check the sorts and activate them if needed. */
-        cell_activate_stars_sorts(ci, t->flags, s);
-        cell_activate_hydro_sorts(cj, t->flags, s);
+          /* Check the sorts and activate them if needed. */
+          cell_activate_stars_sorts(ci, t->flags, s);
+          cell_activate_hydro_sorts(cj, t->flags, s);
+        }
 
         /* Do cj */
-        /* hydro for ci */
-        atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+        if (cj_active) {
+          /* hydro for ci */
+          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
 
-        /* stars for cj */
-        atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
-        cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
+          /* stars for cj */
+          atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
+          cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
 
-        /* Activate the drift tasks. */
-        if (cj->nodeID == nodeID) cell_activate_drift_spart(cj, s);
-        if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
+          /* Activate the drift tasks. */
+          if (cj->nodeID == nodeID) cell_activate_drift_spart(cj, s);
+          if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
 
-        /* Check the sorts and activate them if needed. */
-        cell_activate_hydro_sorts(ci, t->flags, s);
-        cell_activate_stars_sorts(cj, t->flags, s);
+          /* Check the sorts and activate them if needed. */
+          cell_activate_hydro_sorts(ci, t->flags, s);
+          cell_activate_stars_sorts(cj, t->flags, s);
+        }
 
       }
       /* Store current values of dx_max and h_max. */
@@ -3122,88 +3423,82 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
 
 #ifdef WITH_MPI
-      error("MPI with stars not implemented");
-      /* /\* Activate the send/recv tasks. *\/ */
-      /* if (ci->nodeID != nodeID) { */
+      /* Activate the send/recv tasks. */
+      if (ci_nodeID != nodeID) {
 
-      /*   /\* If the local cell is active, receive data from the foreign cell.
-       * *\/ */
-      /*   if (cj_active) { */
-      /*     scheduler_activate(s, ci->hydro.recv_xv); */
-      /*     if (ci_active) { */
-      /*       scheduler_activate(s, ci->hydro.recv_rho); */
+        if (cj_active) {
+          scheduler_activate(s, ci->mpi.hydro.recv_xv);
 
-      /*     } */
-      /*   } */
+	  /* If the local cell is active, more stuff will be needed.
+	   */
+          scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
 
-      /*   /\* If the foreign cell is active, we want its ti_end values. *\/ */
-      /*   if (ci_active) scheduler_activate(s, ci->mpi.recv_ti); */
+	  /* If the local cell is active, send its ti_end values. */
+	  scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+	}
 
-      /*   /\* Is the foreign cell active and will need stuff from us? *\/ */
-      /*   if (ci_active) { */
+        if (ci_active) {
+          scheduler_activate(s, ci->mpi.stars.recv);
 
-      /*     scheduler_activate_send(s, cj->hydro.send_xv, ci->nodeID); */
+	  /* If the foreign cell is active, we want its ti_end values. */
+	  scheduler_activate(s, ci->mpi.recv_ti);
 
-      /*     /\* Drift the cell which will be sent; note that not all sent */
-      /*        particles will be drifted, only those that are needed. *\/ */
-      /*     cell_activate_drift_part(cj, s); */
+	  /* Is the foreign cell active and will need stuff from us? */
+          scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
 
-      /*     /\* If the local cell is also active, more stuff will be needed.
-       * *\/ */
-      /*     if (cj_active) { */
-      /*       scheduler_activate_send(s, cj->hydro.send_rho, ci->nodeID); */
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(cj, s);
+        }
 
-      /*     } */
-      /*   } */
+      } else if (cj_nodeID != nodeID) {
 
-      /*   /\* If the local cell is active, send its ti_end values. *\/ */
-      /*   if (cj_active) scheduler_activate_send(s, cj->mpi.send_ti,
-       * ci->nodeID);
-       */
+        /* If the local cell is active, receive data from the foreign cell. */
+        if (ci_active) {
+          scheduler_activate(s, cj->mpi.hydro.recv_xv);
 
-      /* } else if (cj->nodeID != nodeID) { */
+	  /* If the local cell is active, more stuff will be needed.
+	   */
+          scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
 
-      /*   /\* If the local cell is active, receive data from the foreign cell.
-       * *\/ */
-      /*   if (ci_active) { */
-      /*     scheduler_activate(s, cj->hydro.recv_xv); */
-      /*     if (cj_active) { */
-      /*       scheduler_activate(s, cj->hydro.recv_rho); */
+	  /* If the local cell is active, send its ti_end values. */
+	  scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+        }
 
-      /*     } */
-      /*   } */
+        if (cj_active) {
+          scheduler_activate(s, cj->mpi.stars.recv);
 
-      /*   /\* If the foreign cell is active, we want its ti_end values. *\/ */
-      /*   if (cj_active) scheduler_activate(s, cj->mpi.recv_ti); */
+	  /* If the foreign cell is active, we want its ti_end values. */
+	  scheduler_activate(s, cj->mpi.recv_ti);
 
-      /*   /\* Is the foreign cell active and will need stuff from us? *\/ */
-      /*   if (cj_active) { */
+        /* Is the foreign cell active and will need stuff from us? */
+          scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
 
-      /*     scheduler_activate_send(s, ci->hydro.send_xv, cj->nodeID); */
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(ci, s);
+        }
 
-      /*     /\* Drift the cell which will be sent; note that not all sent */
-      /*        particles will be drifted, only those that are needed. *\/ */
-      /*     cell_activate_drift_part(ci, s); */
-
-      /*     /\* If the local cell is also active, more stuff will be needed.
-       * *\/ */
-      /*     if (ci_active) { */
-
-      /*       scheduler_activate_send(s, ci->hydro.send_rho, cj->nodeID); */
-
-      /*     } */
-      /*   } */
-
-      /*   /\* If the local cell is active, send its ti_end values. *\/ */
-      /*   if (ci_active) scheduler_activate_send(s, ci->mpi.send_ti,
-       * cj->nodeID);
-       */
-      /* } */
+      }
 #endif
     }
+  }
+
+  /* Un-skip the feedback tasks involved with this cell. */
+  for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
+    struct cell *ci = l->t->ci;
+    struct cell *cj = l->t->cj;
+    const int ci_active = cell_is_active_stars(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_stars(cj, e) : 0;
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : nodeID;
+    if ((ci_active && cj_nodeID == nodeID) ||
+        (cj_active && ci_nodeID == nodeID))
+      scheduler_activate(s, l->t);
   }
 
   /* Unskip all the other task types. */
@@ -3350,6 +3645,9 @@ int cell_has_tasks(struct cell *c) {
  */
 void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
+  const int periodic = e->s->periodic;
+  const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float hydro_h_max = e->hydro_properties->h_max;
   const integertime_t ti_old_part = c->hydro.ti_old_part;
   const integertime_t ti_current = e->ti_current;
@@ -3416,7 +3714,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
     /* Drift from the last time the cell was drifted to the current time */
     double dt_drift, dt_kick_grav, dt_kick_hydro, dt_therm;
-    if (e->policy & engine_policy_cosmology) {
+    if (with_cosmology) {
       dt_drift =
           cosmology_get_drift_factor(e->cosmology, ti_old_part, ti_current);
       dt_kick_grav =
@@ -3447,6 +3745,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current);
 
+      /* Update the tracers properties */
+      tracers_after_drift(p, xp, e->internal_units, e->physical_constants,
+                          with_cosmology, e->cosmology, e->hydro_properties,
+                          e->cooling_func, e->time);
+
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
       if (fabs(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
@@ -3456,35 +3759,27 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       }
 #endif
 
-#ifdef PLANETARY_SPH
-      /* Remove particles that cross the non-periodic box edge */
-      if (!(e->s->periodic)) {
-        for (int i = 0; i < 3; i++) {
-          if ((p->x[i] - xp->v_full[i] * dt_drift > e->s->dim[i]) ||
-              (p->x[i] - xp->v_full[i] * dt_drift < 0.f) ||
-              ((p->mass != 0.f) && ((p->x[i] < 0.01f * e->s->dim[i]) ||
-                                    (p->x[i] > 0.99f * e->s->dim[i])))) {
-            /* (TEMPORARY) Crudely stop the particle manually */
-            message(
-                "Particle %lld hit a box edge. \n"
-                "  pos=%.4e %.4e %.4e  vel=%.2e %.2e %.2e",
-                p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2]);
-            for (int j = 0; j < 3; j++) {
-              p->v[j] = 0.f;
-              p->gpart->v_full[j] = 0.f;
-              xp->v_full[j] = 0.f;
-            }
-            p->h = hydro_h_max;
-            p->time_bin = time_bin_inhibited;
-            p->gpart->time_bin = time_bin_inhibited;
-            hydro_part_has_no_neighbours(p, xp, e->cosmology);
-            p->mass = 0.f;
-            p->gpart->mass = 0.f;
-            break;
-          }
+      /* In non-periodic BC runs, remove particles that crossed the border */
+      if (!periodic) {
+
+        /* Did the particle leave the box?  */
+        if ((p->x[0] > dim[0]) || (p->x[0] < 0.) ||  // x
+            (p->x[1] > dim[1]) || (p->x[1] < 0.) ||  // y
+            (p->x[2] > dim[2]) || (p->x[2] < 0.)) {  // z
+
+          /* One last action before death? */
+          hydro_remove_part(p, xp);
+
+          /* Remove the particle entirely */
+          struct gpart *gp = p->gpart;
+          cell_remove_part(e, c, p, xp);
+
+          /* and it's gravity friend */
+          if (gp != NULL) cell_remove_gpart(e, c, gp);
+
+          continue;
         }
       }
-#endif
 
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
@@ -3506,6 +3801,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
         chemistry_init_part(p, e->chemistry);
+        tracers_after_init(p, xp, e->internal_units, e->physical_constants,
+                           with_cosmology, e->cosmology, e->hydro_properties,
+                           e->cooling_func, e->time);
       }
     }
 
@@ -3536,6 +3834,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
  */
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
+  const int periodic = e->s->periodic;
+  const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float stars_h_max = e->stars_properties->h_max;
   const integertime_t ti_old_gpart = c->grav.ti_old_part;
   const integertime_t ti_current = e->ti_current;
@@ -3602,11 +3903,12 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
     /* Drift from the last time the cell was drifted to the current time */
     double dt_drift;
-    if (e->policy & engine_policy_cosmology)
+    if (with_cosmology) {
       dt_drift =
           cosmology_get_drift_factor(e->cosmology, ti_old_gpart, ti_current);
-    else
+    } else {
       dt_drift = (ti_current - ti_old_gpart) * e->time_base;
+    }
 
     /* Loop over all the g-particles in the cell */
     const size_t nr_gparts = c->grav.count;
@@ -3630,25 +3932,20 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       }
 #endif
 
-#ifdef PLANETARY_SPH
-      /* Remove particles that cross the non-periodic box edge */
-      if (!(e->s->periodic)) {
-        for (int i = 0; i < 3; i++) {
-          if ((gp->x[i] - gp->v_full[i] * dt_drift > e->s->dim[i]) ||
-              (gp->x[i] - gp->v_full[i] * dt_drift < 0.f) ||
-              ((gp->mass != 0.f) && ((gp->x[i] < 0.01f * e->s->dim[i]) ||
-                                     (gp->x[i] > 0.99f * e->s->dim[i])))) {
-            /* (TEMPORARY) Crudely stop the particle manually */
-            for (int j = 0; j < 3; j++) {
-              gp->v_full[j] = 0.f;
-            }
-            gp->time_bin = time_bin_inhibited;
-            gp->mass = 0.f;
-            break;
-          }
+      /* In non-periodic BC runs, remove particles that crossed the border */
+      if (!periodic) {
+
+        /* Did the particle leave the box?  */
+        if ((gp->x[0] > dim[0]) || (gp->x[0] < 0.) ||  // x
+            (gp->x[1] > dim[1]) || (gp->x[1] < 0.) ||  // y
+            (gp->x[2] > dim[2]) || (gp->x[2] < 0.)) {  // z
+
+          /* Remove the particle entirely */
+          if (gp->type == swift_type_dark_matter) cell_remove_gpart(e, c, gp);
+
+          continue;
         }
       }
-#endif
 
       /* Init gravity force fields. */
       if (gpart_is_active(gp, e)) {
@@ -3678,6 +3975,25 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       }
 #endif
 
+      /* In non-periodic BC runs, remove particles that crossed the border */
+      if (!periodic) {
+
+        /* Did the particle leave the box?  */
+        if ((sp->x[0] > dim[0]) || (sp->x[0] < 0.) ||  // x
+            (sp->x[1] > dim[1]) || (sp->x[1] < 0.) ||  // y
+            (sp->x[2] > dim[2]) || (sp->x[2] < 0.)) {  // z
+
+          /* Remove the particle entirely */
+          struct gpart *gp = sp->gpart;
+          cell_remove_spart(e, c, sp);
+
+          /* and it's gravity friend */
+          cell_remove_gpart(e, c, gp);
+
+          continue;
+        }
+      }
+
       /* Limit h to within the allowed range */
       sp->h = min(sp->h, stars_h_max);
 
@@ -3696,6 +4012,10 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, sp->h);
 
+      /* Get ready for a density calculation */
+      if (spart_is_active(sp, e)) {
+        stars_init_spart(sp);
+      }
     } /* Note: no need to compute dx_max as all spart have a gpart */
 
     /* Now, get the maximal particle motion from its square */
@@ -3813,6 +4133,190 @@ void cell_check_timesteps(struct cell *c) {
 #endif
 }
 
+void cell_check_spart_pos(const struct cell *c,
+                          const struct spart *global_sparts) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL)
+        cell_check_spart_pos(c->progeny[k], global_sparts);
+  }
+
+  struct spart *sparts = c->stars.parts;
+  const int count = c->stars.count;
+  for (int i = 0; i < count; ++i) {
+
+    const struct spart *sp = &sparts[i];
+    if ((sp->x[0] < c->loc[0] / space_stretch) ||
+        (sp->x[1] < c->loc[1] / space_stretch) ||
+        (sp->x[2] < c->loc[2] / space_stretch) ||
+        (sp->x[0] >= (c->loc[0] + c->width[0]) * space_stretch) ||
+        (sp->x[1] >= (c->loc[1] + c->width[1]) * space_stretch) ||
+        (sp->x[2] >= (c->loc[2] + c->width[2]) * space_stretch))
+      error("spart not in its cell!");
+
+    if (sp->time_bin != time_bin_not_created &&
+        sp->time_bin != time_bin_inhibited) {
+
+      const struct gpart *gp = sp->gpart;
+      if (gp == NULL && sp->time_bin != time_bin_not_created)
+        error("Unlinked spart!");
+
+      if (&global_sparts[-gp->id_or_neg_offset] != sp)
+        error("Incorrectly linked spart!");
+    }
+  }
+
+#else
+  error("Calling a degugging function outside debugging mode.");
+#endif
+}
+
+/**
+ * @brief Recursively update the pointer and counter for #spart after the
+ * addition of a new particle.
+ *
+ * @param c The cell we are working on.
+ * @param progeny_list The list of the progeny index at each level for the
+ * leaf-cell where the particle was added.
+ * @param main_branch Are we in a cell directly above the leaf where the new
+ * particle was added?
+ */
+void cell_recursively_shift_sparts(struct cell *c,
+                                   const int progeny_list[space_cell_maxdepth],
+                                   const int main_branch) {
+  if (c->split) {
+
+    /* No need to recurse in progenies located before the insestion point */
+    const int first_progeny = main_branch ? progeny_list[(int)c->depth] : 0;
+
+    for (int k = first_progeny; k < 8; ++k) {
+
+      if (c->progeny[k] != NULL)
+        cell_recursively_shift_sparts(c->progeny[k], progeny_list,
+                                      main_branch && (k == first_progeny));
+    }
+  }
+
+  /* When directly above the leaf with the new particle: increase the particle
+   * count */
+  /* When after the leaf with the new particle: shift by one position */
+  if (main_branch)
+    c->stars.count++;
+  else
+    c->stars.parts++;
+}
+
+/**
+ * @brief "Add" a #spart in a given #cell.
+ *
+ * This function will a a #spart at the start of the current cell's array by
+ * shifting all the #spart in the top-level cell by one position. All the
+ * pointers and cell counts are updated accordingly.
+ *
+ * @param e The #engine.
+ * @param c The leaf-cell in which to add the #spart.
+ *
+ * @return A pointer to the newly added #spart. The spart has a been zeroed and
+ * given a position within the cell as well as set to the minimal active time
+ * bin.
+ */
+struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
+
+  /* Perform some basic consitency checks */
+  if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
+  if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
+  if (c->split) error("Addition of spart performed above the leaf level");
+
+  /* Progeny number at each level */
+  int progeny[space_cell_maxdepth];
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < space_cell_maxdepth; ++i) progeny[i] = -1;
+#endif
+
+  /* Get the top-level this leaf cell is in and compute the progeny indices at
+     each level */
+  struct cell *top = c;
+  while (top->parent != NULL) {
+    for (int k = 0; k < 8; ++k) {
+      if (top->parent->progeny[k] == top) {
+        progeny[(int)top->parent->depth] = k;
+      }
+    }
+    top = top->parent;
+  }
+
+  /* Are there any extra particles left? */
+  if (top->stars.count == top->stars.count_total - 1) {
+    message("We ran out of star particles!");
+    atomic_inc(&e->forcerebuild);
+    return NULL;
+  }
+
+  /* Number of particles to shift in order to get a free space. */
+  const size_t n_copy = &top->stars.parts[top->stars.count] - c->stars.parts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->stars.parts + n_copy > top->stars.parts + top->stars.count)
+    error("Copying beyond the allowed range");
+#endif
+
+  if (n_copy > 0) {
+
+    // MATTHIEU: This can be improved. We don't need to copy everything, just
+    // need to swap a few particles.
+    memmove(&c->stars.parts[1], &c->stars.parts[0],
+            n_copy * sizeof(struct spart));
+
+    /* Update the gpart->spart links (shift by 1) */
+    for (size_t i = 0; i < n_copy; ++i) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (c->stars.parts[i + 1].gpart == NULL) {
+        error("Incorrectly linked spart!");
+      }
+#endif
+      c->stars.parts[i + 1].gpart->id_or_neg_offset--;
+    }
+  }
+
+  /* Recursively shift all the stars to get a free spot at the start of the
+   * current cell*/
+  cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1);
+
+  /* We now have an empty spart as the first particle in that cell */
+  struct spart *sp = &c->stars.parts[0];
+  bzero(sp, sizeof(struct spart));
+
+  /* Give it a decent position */
+  sp->x[0] = c->loc[0] + 0.5 * c->width[0];
+  sp->x[1] = c->loc[1] + 0.5 * c->width[1];
+  sp->x[2] = c->loc[2] + 0.5 * c->width[2];
+
+  /* Set it to the current time-bin */
+  sp->time_bin = e->min_active_bin;
+
+  top = c;
+  while (top->parent != NULL) {
+    top->grav.ti_end_min = e->ti_current;
+    top = top->parent;
+  }
+  top->grav.ti_end_min = e->ti_current;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Specify it was drifted to this point */
+  sp->ti_drift = e->ti_current;
+#endif
+
+  /* Register that we used one of the free slots. */
+  const size_t one = 1;
+  atomic_sub(&e->s->nr_extra_sparts, one);
+
+  return sp;
+}
+
 /**
  * @brief "Remove" a gas particle from the calculation.
  *
@@ -3899,15 +4403,21 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
  * @brief "Remove" a gas particle from the calculation and convert its gpart
  * friend to a dark matter particle.
  *
+ * Note that the #part is not destroyed. The pointer is still valid
+ * after this call and the properties of the #part are not altered
+ * apart from the time-bin and #gpart pointer.
  * The particle is inhibited and will officially be removed at the next rebuild.
  *
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
  * @param p The #part to remove.
  * @param xp The extended data of the particle to remove.
+ *
+ * @return Pointer to the #gpart the #part has become. It carries the
+ * ID of the #part and has a dark matter type.
  */
-void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
-                                struct part *p, struct xpart *xp) {
+struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
+                                         struct part *p, struct xpart *xp) {
 
   /* Quick cross-checks */
   if (c->nodeID != e->nodeID)
@@ -3932,20 +4442,28 @@ void cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = p->ti_kick;
 #endif
+
+  return gp;
 }
 
 /**
  * @brief "Remove" a spart particle from the calculation and convert its gpart
  * friend to a dark matter particle.
  *
+ * Note that the #spart is not destroyed. The pointer is still valid
+ * after this call and the properties of the #spart are not altered
+ * apart from the time-bin and #gpart pointer.
  * The particle is inhibited and will officially be removed at the next rebuild.
  *
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
  * @param sp The #spart to remove.
+ *
+ * @return Pointer to the #gpart the #spart has become. It carries the
+ * ID of the #spart and has a dark matter type.
  */
-void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
-                                 struct spart *sp) {
+struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
+                                          struct cell *c, struct spart *sp) {
 
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
@@ -3970,6 +4488,210 @@ void cell_convert_spart_to_gpart(const struct engine *e, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = sp->ti_kick;
 #endif
+
+  return gp;
+}
+
+/**
+ * @brief "Remove" a #part from a #cell and replace it with a #spart
+ * connected to the same #gpart.
+ *
+ * Note that the #part is not destroyed. The pointer is still valid
+ * after this call and the properties of the #part are not altered
+ * apart from the time-bin and #gpart pointer.
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param e The #engine.
+ * @param c The #cell from which to remove the #part.
+ * @param p The #part to remove (must be inside c).
+ * @param xp The extended data of the #part.
+ *
+ * @return A fresh #spart with the same ID, position, velocity and
+ * time-bin as the original #part.
+ */
+struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
+                                         struct part *p, struct xpart *xp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  if (p->gpart == NULL)
+    error("Trying to convert part without gpart friend to star!");
+
+  /* Create a fresh (empty) spart */
+  struct spart *sp = cell_add_spart(e, c);
+
+  /* Did we run out of free spart slots? */
+  if (sp == NULL) return NULL;
+
+  /* Destroy the gas particle and get it's gpart friend */
+  struct gpart *gp = cell_convert_part_to_gpart(e, c, p, xp);
+
+  /* Assign the ID back */
+  sp->id = gp->id_or_neg_offset;
+  gp->type = swift_type_stars;
+
+  /* Re-link things */
+  sp->gpart = gp;
+  gp->id_or_neg_offset = -(sp - e->s->sparts);
+
+  /* Synchronize clocks */
+  gp->time_bin = sp->time_bin;
+
+  /* Synchronize masses, positions and velocities */
+  sp->mass = gp->mass;
+  sp->x[0] = gp->x[0];
+  sp->x[1] = gp->x[1];
+  sp->x[2] = gp->x[2];
+  sp->v[0] = gp->v_full[0];
+  sp->v[1] = gp->v_full[1];
+  sp->v[2] = gp->v_full[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  sp->ti_kick = gp->ti_kick;
+  gp->ti_drift = sp->ti_drift;
+#endif
+
+  /* Set a smoothing length */
+  sp->h = max(c->stars.h_max, c->hydro.h_max);
+
+  /* Here comes the Sun! */
+  return sp;
+}
+
+/**
+ * @brief Re-arrange the #part in a top-level cell such that all the extra ones
+ * for on-the-fly creation are located at the end of the array.
+ *
+ * @param c The #cell to sort.
+ * @param parts_offset The offset between the first #part in the array and the
+ * first #part in the global array in the space structure (for re-linking).
+ */
+void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
+
+  struct part *parts = c->hydro.parts;
+  struct xpart *xparts = c->hydro.xparts;
+  const int count_real = c->hydro.count;
+
+  if (c->depth != 0 || c->nodeID != engine_rank)
+    error("This function should only be called on local top-level cells!");
+
+  int first_not_extra = count_real;
+
+  /* Find extra particles */
+  for (int i = 0; i < count_real; ++i) {
+    if (parts[i].time_bin == time_bin_not_created) {
+
+      /* Find the first non-extra particle after the end of the
+         real particles */
+      while (parts[first_not_extra].time_bin == time_bin_not_created) {
+        ++first_not_extra;
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (first_not_extra >= count_real + space_extra_parts)
+        error("Looking for extra particles beyond this cell's range!");
+#endif
+
+      /* Swap everything, including g-part pointer */
+      memswap(&parts[i], &parts[first_not_extra], sizeof(struct part));
+      memswap(&xparts[i], &xparts[first_not_extra], sizeof(struct xpart));
+      if (parts[i].gpart)
+        parts[i].gpart->id_or_neg_offset = -(i + parts_offset);
+    }
+  }
+}
+
+/**
+ * @brief Re-arrange the #spart in a top-level cell such that all the extra ones
+ * for on-the-fly creation are located at the end of the array.
+ *
+ * @param c The #cell to sort.
+ * @param sparts_offset The offset between the first #spart in the array and the
+ * first #spart in the global array in the space structure (for re-linking).
+ */
+void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
+
+  struct spart *sparts = c->stars.parts;
+  const int count_real = c->stars.count;
+
+  if (c->depth != 0 || c->nodeID != engine_rank)
+    error("This function should only be called on local top-level cells!");
+
+  int first_not_extra = count_real;
+
+  /* Find extra particles */
+  for (int i = 0; i < count_real; ++i) {
+    if (sparts[i].time_bin == time_bin_not_created) {
+
+      /* Find the first non-extra particle after the end of the
+         real particles */
+      while (sparts[first_not_extra].time_bin == time_bin_not_created) {
+        ++first_not_extra;
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (first_not_extra >= count_real + space_extra_sparts)
+        error("Looking for extra particles beyond this cell's range!");
+#endif
+
+      /* Swap everything, including g-part pointer */
+      memswap(&sparts[i], &sparts[first_not_extra], sizeof(struct spart));
+      if (sparts[i].gpart)
+        sparts[i].gpart->id_or_neg_offset = -(i + sparts_offset);
+      sparts[first_not_extra].gpart = NULL;
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sparts[first_not_extra].time_bin != time_bin_not_created)
+        error("Incorrect swap occured!");
+#endif
+    }
+  }
+}
+
+/**
+ * @brief Re-arrange the #gpart in a top-level cell such that all the extra ones
+ * for on-the-fly creation are located at the end of the array.
+ *
+ * @param c The #cell to sort.
+ * @param parts The global array of #part (for re-linking).
+ * @param sparts The global array of #spart (for re-linking).
+ */
+void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
+                               struct spart *sparts) {
+
+  struct gpart *gparts = c->grav.parts;
+  const int count_real = c->grav.count;
+
+  if (c->depth != 0 || c->nodeID != engine_rank)
+    error("This function should only be called on local top-level cells!");
+
+  int first_not_extra = count_real;
+
+  /* Find extra particles */
+  for (int i = 0; i < count_real; ++i) {
+    if (gparts[i].time_bin == time_bin_not_created) {
+
+      /* Find the first non-extra particle after the end of the
+         real particles */
+      while (gparts[first_not_extra].time_bin == time_bin_not_created) {
+        ++first_not_extra;
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (first_not_extra >= count_real + space_extra_gparts)
+        error("Looking for extra particles beyond this cell's range!");
+#endif
+
+      /* Swap everything (including pointers) */
+      memswap(&gparts[i], &gparts[first_not_extra], sizeof(struct gpart));
+      if (gparts[i].type == swift_type_gas) {
+        parts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
+      } else if (gparts[i].type == swift_type_stars) {
+        sparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
+      }
+    }
+  }
 }
 
 /**

@@ -142,7 +142,7 @@ void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
  * Calls #error() if an error occurs.
  */
 void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
-                        void* data, int num) {
+                        const void* data, int num) {
 
   const hid_t h_space = H5Screate(H5S_SIMPLE);
   if (h_space < 0)
@@ -387,6 +387,332 @@ void io_write_engine_policy(hid_t h_file, const struct engine* e) {
   H5Gclose(h_grp);
 }
 
+void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
+                           const struct cell* cells_top, const int nr_cells,
+                           const double width[3], const int nodeID,
+                           const long long global_counts[swift_type_count],
+                           const long long global_offsets[swift_type_count],
+                           const struct unit_system* internal_units,
+                           const struct unit_system* snapshot_units) {
+
+  double cell_width[3] = {width[0], width[1], width[2]};
+
+  /* Temporary memory for the cell-by-cell information */
+  double* centres = NULL;
+  centres = (double*)malloc(3 * nr_cells * sizeof(double));
+
+  /* Count of particles in each cell */
+  long long *count_part = NULL, *count_gpart = NULL, *count_spart = NULL;
+  count_part = (long long*)malloc(nr_cells * sizeof(long long));
+  count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  count_spart = (long long*)malloc(nr_cells * sizeof(long long));
+
+  /* Global offsets of particles in each cell */
+  long long *offset_part = NULL, *offset_gpart = NULL, *offset_spart = NULL;
+  offset_part = (long long*)malloc(nr_cells * sizeof(long long));
+  offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
+
+  /* Offsets of the 0^th element */
+  offset_part[0] = 0;
+  offset_gpart[0] = 0;
+  offset_spart[0] = 0;
+
+  /* Collect the cell information of *local* cells */
+  long long local_offset_part = 0;
+  long long local_offset_gpart = 0;
+  long long local_offset_spart = 0;
+  for (int i = 0; i < nr_cells; ++i) {
+
+    if (cells_top[i].nodeID == nodeID) {
+
+      /* Centre of each cell */
+      centres[i * 3 + 0] = cells_top[i].loc[0] + cell_width[0] * 0.5;
+      centres[i * 3 + 1] = cells_top[i].loc[1] + cell_width[1] * 0.5;
+      centres[i * 3 + 2] = cells_top[i].loc[2] + cell_width[2] * 0.5;
+
+      /* Count real particles that will be written */
+      count_part[i] = cells_top[i].hydro.count - cells_top[i].hydro.inhibited;
+      count_gpart[i] = cells_top[i].grav.count - cells_top[i].grav.inhibited;
+      count_spart[i] = cells_top[i].stars.count - cells_top[i].stars.inhibited;
+
+      /* Only count DM gpart (gpart without friends) */
+      count_gpart[i] -= count_part[i];
+      count_gpart[i] -= count_spart[i];
+
+      /* Offsets including the global offset of all particles on this MPI rank
+       */
+      offset_part[i] = local_offset_part + global_offsets[swift_type_gas];
+      offset_gpart[i] =
+          local_offset_gpart + global_offsets[swift_type_dark_matter];
+      offset_spart[i] = local_offset_spart + global_offsets[swift_type_stars];
+
+      local_offset_part += count_part[i];
+      local_offset_gpart += count_gpart[i];
+      local_offset_spart += count_spart[i];
+
+    } else {
+
+      /* Just zero everything for the foregin cells */
+
+      centres[i * 3 + 0] = 0.;
+      centres[i * 3 + 1] = 0.;
+      centres[i * 3 + 2] = 0.;
+
+      count_part[i] = 0;
+      count_gpart[i] = 0;
+      count_spart[i] = 0;
+
+      offset_part[i] = 0;
+      offset_gpart[i] = 0;
+      offset_spart[i] = 0;
+    }
+  }
+
+#ifdef WITH_MPI
+  /* Now, reduce all the arrays. Note that we use a bit-wise OR here. This
+     is safe as we made sure only local cells have non-zero values. */
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, count_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+               0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(count_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+               0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(count_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, count_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+               0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(count_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, offset_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+               0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(offset_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, offset_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+               0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(offset_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, offset_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+               0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(offset_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
+  }
+
+  /* For the centres we use a sum as MPI does not like bit-wise operations
+     on floating point numbers */
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM, 0,
+               MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(centres, NULL, 3 * nr_cells, MPI_DOUBLE, MPI_SUM, 0,
+               MPI_COMM_WORLD);
+  }
+#endif
+
+  /* Only rank 0 actually writes */
+  if (nodeID == 0) {
+
+    /* Unit conversion if necessary */
+    const double factor = units_conversion_factor(
+        internal_units, snapshot_units, UNIT_CONV_LENGTH);
+    if (factor != 1.) {
+
+      /* Convert the cell centres */
+      for (int i = 0; i < nr_cells; ++i) {
+        centres[i * 3 + 0] *= factor;
+        centres[i * 3 + 1] *= factor;
+        centres[i * 3 + 2] *= factor;
+      }
+
+      /* Convert the cell widths */
+      cell_width[0] *= factor;
+      cell_width[1] *= factor;
+      cell_width[2] *= factor;
+    }
+
+    /* Write some meta-information first */
+    hid_t h_subgrp =
+        H5Gcreate(h_grp, "Meta-data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_subgrp < 0) error("Error while creating meta-data sub-group");
+    io_write_attribute(h_subgrp, "nr_cells", INT, &nr_cells, 1);
+    io_write_attribute(h_subgrp, "size", DOUBLE, cell_width, 3);
+    io_write_attribute(h_subgrp, "dimension", INT, cdim, 3);
+    H5Gclose(h_subgrp);
+
+    /* Write the centres to the group */
+    hsize_t shape[2] = {nr_cells, 3};
+    hid_t h_space = H5Screate(H5S_SIMPLE);
+    if (h_space < 0) error("Error while creating data space for cell centres");
+    hid_t h_err = H5Sset_extent_simple(h_space, 2, shape, shape);
+    if (h_err < 0)
+      error("Error while changing shape of gas offsets data space.");
+    hid_t h_data = H5Dcreate(h_grp, "Centres", io_hdf5_type(DOUBLE), h_space,
+                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_data < 0) error("Error while creating dataspace for gas offsets.");
+    h_err = H5Dwrite(h_data, io_hdf5_type(DOUBLE), h_space, H5S_ALL,
+                     H5P_DEFAULT, centres);
+    if (h_err < 0) error("Error while writing centres.");
+    H5Dclose(h_data);
+    H5Sclose(h_space);
+
+    /* Group containing the offsets for each particle type */
+    h_subgrp =
+        H5Gcreate(h_grp, "Offsets", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_subgrp < 0) error("Error while creating offsets sub-group");
+
+    if (global_counts[swift_type_gas] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0) error("Error while creating data space for gas offsets");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of gas offsets data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType0", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0) error("Error while creating dataspace for gas offsets.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, offset_part);
+      if (h_err < 0) error("Error while writing gas offsets.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
+    if (global_counts[swift_type_dark_matter] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0) error("Error while creating data space for DM offsets");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of DM offsets data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType1", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0) error("Error while creating dataspace for DM offsets.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, offset_gpart);
+      if (h_err < 0) error("Error while writing DM offsets.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
+    if (global_counts[swift_type_stars] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0)
+        error("Error while creating data space for stars offsets");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of stars offsets data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType4", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0) error("Error while creating dataspace for star offsets.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, offset_spart);
+      if (h_err < 0) error("Error while writing star offsets.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
+    H5Gclose(h_subgrp);
+
+    /* Group containing the counts for each particle type */
+    h_subgrp =
+        H5Gcreate(h_grp, "Counts", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_subgrp < 0) error("Error while creating counts sub-group");
+
+    if (global_counts[swift_type_gas] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0) error("Error while creating data space for gas counts");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of gas counts data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType0", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0) error("Error while creating dataspace for gas counts.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, count_part);
+      if (h_err < 0) error("Error while writing gas counts.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
+    if (global_counts[swift_type_dark_matter] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0) error("Error while creating data space for DM counts");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of DM counts data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType1", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0) error("Error while creating dataspace for DM counts.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, count_gpart);
+      if (h_err < 0) error("Error while writing DM counts.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
+    if (global_counts[swift_type_stars] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0)
+        error("Error while creating data space for stars counts");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of stars counts data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType4", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0) error("Error while creating dataspace for star counts.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, count_spart);
+      if (h_err < 0) error("Error while writing star counts.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
+    H5Gclose(h_subgrp);
+  }
+
+  /* Free everything we allocated */
+  free(centres);
+  free(count_part);
+  free(count_gpart);
+  free(count_spart);
+  free(offset_part);
+  free(offset_gpart);
+  free(offset_spart);
+}
+
 #endif /* HAVE_HDF5 */
 
 /**
@@ -483,6 +809,28 @@ void io_convert_part_d_mapper(void* restrict temp, int N,
 }
 
 /**
+ * @brief Mapper function to copy #part into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_part_l_mapper(void* restrict temp, int N,
+                              void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct part* restrict parts = props.parts;
+  const struct xpart* restrict xparts = props.xparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  long long* restrict temp_l = (long long*)temp;
+  const ptrdiff_t delta = (temp_l - props.start_temp_l) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_part_l(e, parts + delta + i, xparts + delta + i,
+                         &temp_l[i * dim]);
+}
+
+/**
  * @brief Mapper function to copy #gpart into a buffer of floats using a
  * conversion function.
  */
@@ -523,6 +871,26 @@ void io_convert_gpart_d_mapper(void* restrict temp, int N,
 }
 
 /**
+ * @brief Mapper function to copy #gpart into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_gpart_l_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct gpart* restrict gparts = props.gparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  long long* restrict temp_l = (long long*)temp;
+  const ptrdiff_t delta = (temp_l - props.start_temp_l) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_gpart_l(e, gparts + delta + i, &temp_l[i * dim]);
+}
+
+/**
  * @brief Mapper function to copy #spart into a buffer of floats using a
  * conversion function.
  */
@@ -560,6 +928,26 @@ void io_convert_spart_d_mapper(void* restrict temp, int N,
 
   for (int i = 0; i < N; i++)
     props.convert_spart_d(e, sparts + delta + i, &temp_d[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #spart into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_spart_l_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct spart* restrict sparts = props.sparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  long long* restrict temp_l = (long long*)temp;
+  const ptrdiff_t delta = (temp_l - props.start_temp_l) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_spart_l(e, sparts + delta + i, &temp_l[i * dim]);
 }
 
 /**
@@ -619,6 +1007,18 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_part_d_mapper, temp_d, N, copySize, 0,
                      (void*)&props);
 
+    } else if (props.convert_part_l != NULL) {
+
+      /* Prepare some parameters */
+      long long* temp_l = (long long*)temp;
+      props.start_temp_l = (long long*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_part_l_mapper, temp_l, N, copySize, 0,
+                     (void*)&props);
+
     } else if (props.convert_gpart_f != NULL) {
 
       /* Prepare some parameters */
@@ -643,6 +1043,18 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_gpart_d_mapper, temp_d, N, copySize, 0,
                      (void*)&props);
 
+    } else if (props.convert_gpart_l != NULL) {
+
+      /* Prepare some parameters */
+      long long* temp_l = (long long*)temp;
+      props.start_temp_l = (long long*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_gpart_l_mapper, temp_l, N, copySize, 0,
+                     (void*)&props);
+
     } else if (props.convert_spart_f != NULL) {
 
       /* Prepare some parameters */
@@ -665,6 +1077,18 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_spart_d_mapper, temp_d, N, copySize, 0,
+                     (void*)&props);
+
+    } else if (props.convert_spart_l != NULL) {
+
+      /* Prepare some parameters */
+      long long* temp_l = (long long*)temp;
+      props.start_temp_l = (long long*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_spart_l_mapper, temp_l, N, copySize, 0,
                      (void*)&props);
 
     } else {
@@ -875,7 +1299,8 @@ void io_collect_parts_to_write(const struct part* restrict parts,
   for (size_t i = 0; i < Nparts; ++i) {
 
     /* And collect the ones that have not been removed */
-    if (parts[i].time_bin != time_bin_inhibited) {
+    if (parts[i].time_bin != time_bin_inhibited &&
+        parts[i].time_bin != time_bin_not_created) {
 
       parts_written[count] = parts[i];
       xparts_written[count] = xparts[i];
@@ -909,7 +1334,8 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
   for (size_t i = 0; i < Nsparts; ++i) {
 
     /* And collect the ones that have not been removed */
-    if (sparts[i].time_bin != time_bin_inhibited) {
+    if (sparts[i].time_bin != time_bin_inhibited &&
+        sparts[i].time_bin != time_bin_not_created) {
 
       sparts_written[count] = sparts[i];
       count++;
@@ -926,15 +1352,21 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
  * @brief Copy every non-inhibited DM #gpart into the gparts_written array.
  *
  * @param gparts The array of #gpart containing all particles.
+ * @param vr_data The array of gpart-related VELOCIraptor output.
  * @param gparts_written The array of #gpart to fill with particles we want to
  * write.
+ * @param vr_data_written The array of gpart-related VELOCIraptor with particles
+ * we want to write.
  * @param Ngparts The total number of #part.
  * @param Ngparts_written The total number of #part to write.
+ * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
  */
-void io_collect_gparts_to_write(const struct gpart* restrict gparts,
-                                struct gpart* restrict gparts_written,
-                                const size_t Ngparts,
-                                const size_t Ngparts_written) {
+void io_collect_gparts_to_write(
+    const struct gpart* restrict gparts,
+    const struct velociraptor_gpart_data* restrict vr_data,
+    struct gpart* restrict gparts_written,
+    struct velociraptor_gpart_data* restrict vr_data_written,
+    const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
 
   size_t count = 0;
 
@@ -943,7 +1375,10 @@ void io_collect_gparts_to_write(const struct gpart* restrict gparts,
 
     /* And collect the ones that have not been removed */
     if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
         (gparts[i].type == swift_type_dark_matter)) {
+
+      if (with_stf) vr_data_written[count] = vr_data[i];
 
       gparts_written[count] = gparts[i];
       count++;
@@ -952,7 +1387,7 @@ void io_collect_gparts_to_write(const struct gpart* restrict gparts,
 
   /* Check that everything is fine */
   if (count != Ngparts_written)
-    error("Collected the wrong number of s-particles (%zu vs. %zu expected)",
+    error("Collected the wrong number of g-particles (%zu vs. %zu expected)",
           count, Ngparts_written);
 }
 

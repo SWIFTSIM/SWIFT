@@ -32,12 +32,12 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "u=%.3e, du/dt=%.3e v_sig=%.3e, P=%.3e\n"
       "h=%.3e, dh/dt=%.3e wcount=%d, m=%.3e, dh_drho=%.3e, rho=%.3e, \n"
       "p_dh=%.3e, p_bar=%.3e \n"
-      "time_bin=%d\n",
+      "time_bin=%d wakeup=%d\n",
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
       xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
       p->u, p->u_dt, p->force.v_sig, hydro_get_comoving_pressure(p), p->h,
       p->force.h_dt, (int)p->density.wcount, p->mass, p->density.rho_dh, p->rho,
-      p->density.pressure_bar_dh, p->pressure_bar, p->time_bin);
+      p->density.pressure_bar_dh, p->pressure_bar, p->time_bin, p->wakeup);
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_DEBUG_H */

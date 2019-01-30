@@ -19,6 +19,22 @@
 AC_INIT([SWIFT],[0.8.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
+#  We want to stop when given unrecognised options. No subdirs so this is safe.
+enable_option_checking=${enable_option_checking:-fatal}
+if test -n "$ac_unrecognized_opts"; then
+    case $enable_option_checking in
+        no)
+        ;;
+        fatal)
+            { $as_echo "$as_me: error: unrecognized options: $ac_unrecognized_opts" >&2
+              { (exit 1); exit 1; }; }
+        ;;
+        *)
+            $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2
+        ;;
+    esac
+fi
+
 AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
@@ -199,7 +215,7 @@ fi
 # Check if task debugging is on.
 AC_ARG_ENABLE([task-debugging],
    [AS_HELP_STRING([--enable-task-debugging],
-     [Store task timing information and generate task dump files @<:@yes/no@:>@]
+     [Store extra information for generating task dump files @<:@yes/no@:>@]
    )],
    [enable_task_debugging="$enableval"],
    [enable_task_debugging="no"]
@@ -335,7 +351,7 @@ AC_ARG_ENABLE([vec],
    [enable_vec="yes"]
 )
 
-#  Disable hand written vectorisation. Slightly odd implementation as want 
+#  Disable hand written vectorisation. Slightly odd implementation as want
 # to describe as --disable-hand-vec, but macro is enable (there is no enable action).
 AC_ARG_ENABLE([hand-vec],
    [AS_HELP_STRING([--disable-hand-vec],
@@ -941,7 +957,7 @@ if test "x$with_velociraptor" != "xno"; then
    AC_PROG_FC
    AC_FC_LIBRARY_LDFLAGS
    if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
-      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lstf -lstdc++ -lhdf5_cpp"
+      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lmpi -lstdc++ -lhdf5_cpp"
       CFLAGS="$CFLAGS -fopenmp"
    else
       VELOCIRAPTOR_LIBS=""
@@ -950,7 +966,7 @@ if test "x$with_velociraptor" != "xno"; then
    have_velociraptor="yes"
 
    AC_CHECK_LIB(
-      [stf],
+      [velociraptor],
       [InitVelociraptor],
       [AC_DEFINE([HAVE_VELOCIRAPTOR],1,[The VELOCIraptor library appears to be present.])],
       [AC_MSG_ERROR(Cannot find VELOCIraptor library at $with_velociraptor)],
@@ -986,16 +1002,55 @@ AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[1],
 AM_CONDITIONAL(HAVESETAFFINITY,
     [test "$ac_cv_func_pthread_setaffinity_np" = "yes"])
 
+# If available check for NUMA as well. There is a problem with the headers of
+# this library, mainly that they do not pass the strict prototypes check when
+# installed outside of the system directories. So we actually do this check
+# in two phases. The basic ones first (before strict-prototypes is added to CFLAGS).
 have_numa="no"
-if test "$ac_cv_func_pthread_setaffinity_np" = "yes"; then
-  # Check for libnuma.
-  AC_CHECK_HEADER([numa.h])
-  if test "$ac_cv_header_numa_h" = "yes"; then
-    AC_CHECK_LIB([numa], [numa_available])
-    have_numa="yes"
-  fi
-fi
+AC_ARG_WITH([numa],
+    [AS_HELP_STRING([--with-numa=PATH],
+       [Directory where the NUMA library exists @<:@yes/no@:>@]
+    )],
+    [with_numa="$withval"],
+    [with_numa="yes"]
+)
+if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; then
 
+    if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+        NUMA_LIBS="-L$with_numa/lib -lnuma"
+        NUMA_INCS="-I$with_numa/include"
+    else
+        NUMA_LIBS="-lnuma"
+        NUMA_INCS=""
+    fi
+
+    #  Test for header file.
+    old_CPPFLAGS="$CPPFLAGS"
+    CPPFLAGS="$CPPFLAGS $NUMA_INCS"
+    AC_CHECK_HEADER([numa.h])
+    CPPFLAGS="$old_CPPFLAGS"
+    if test "$ac_cv_header_numa_h" = "yes"; then
+
+        #  If NUMA location is specified check if we have it.
+        if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+            AC_CHECK_LIB([numa],[numa_available],
+                AC_DEFINE([HAVE_LIBNUMA],1,[The NUMA library appears to be present.]),
+                AC_MSG_ERROR(something is wrong with the NUMA library!), $NUMA_LIBS)
+            have_numa="yes"
+        else
+            AC_CHECK_LIB([numa],[numa_available],[have_numa="yes"],[have_numa="no"],$NUMA_LIBS)
+            if test "x$have_numa" != "xno"; then
+                AC_DEFINE([HAVE_LIBNUMA],1,[The NUMA library appears to be present.])
+            fi
+        fi
+    fi
+
+    #  We can live without this.
+    if test "$have_numa" = "no"; then
+       NUMA_LIBS=""
+    fi
+fi
+AC_SUBST([NUMA_LIBS])
 
 # Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
@@ -1082,6 +1137,35 @@ if test "$enable_warn" != "no"; then
                           [CFLAGS="$CFLAGS"],[$CFLAGS],[AC_LANG_SOURCE([int main(void){return 0;}])])
 fi
 
+# Second part of the NUMA library checks. We now decide if we need to use
+# -isystem to get around the strict-prototypes problem. Assumes isystem
+# is available when strict-prototypes is.
+if test "$have_numa" != "no"; then
+    if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+        case "$CFLAGS" in
+            *strict-prototypes*)
+                NUMA_INCS="-isystem$with_numa/include"
+                # This may still fail if CPATH is used, so we check if the
+                # headers are usable.
+                AS_UNSET(ac_cv_header_numa_h)
+                old_CPPFLAGS="$CPPFLAGS"
+                CPPFLAGS="$CPPFLAGS $NUMA_INCS"
+                numa_failed="no"
+                AC_CHECK_HEADER([numa.h],[numa_failed="no"],
+                                [numa_failed="yes"])
+                if test "$numa_failed" = "yes"; then
+                    AC_MSG_ERROR([Failed to compile the numa.h header file: you may need to set --enable-compiler-warnings to yes or no])
+                fi
+                CPPFLAGS="$old_CPPFLAGS"
+            ;;
+            *)
+                NUMA_INCS="-I$with_numa/include"
+            ;;
+        esac
+   fi
+fi
+AC_SUBST([NUMA_INCS])
+
 # Various package configuration options.
 
 # Master subgrid options
@@ -1099,7 +1183,10 @@ AC_ARG_WITH([subgrid],
 # Default values
 with_subgrid_cooling=none
 with_subgrid_chemistry=none
+with_subgrid_tracers=none
 with_subgrid_hydro=none
+with_subgrid_stars=none
+with_subgrid_feedback=none
 
 case "$with_subgrid" in
    yes)
@@ -1110,6 +1197,7 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle
 	with_subgrid_chemistry=GEAR
+	with_subgrid_tracers=none
 	with_subgrid_hydro=gadget2
 	with_subgrid_stars=GEAR
 	with_subgrid_feedback=thermal
@@ -1117,6 +1205,7 @@ case "$with_subgrid" in
    EAGLE)
 	with_subgrid_cooling=EAGLE
 	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
 	with_subgrid_hydro=gadget2
 	with_subgrid_stars=none
 	with_subgrid_feedback=none
@@ -1150,7 +1239,7 @@ esac
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, debug default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, anarchy-pu debug default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -1194,6 +1283,9 @@ case "$with_hydro" in
    ;;
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
+   ;;
+   anarchy-pu)
+      AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])
    ;;
 
 
@@ -1460,6 +1552,35 @@ case "$with_chemistry" in
    ;;
 esac
 
+#  Particle tracers
+AC_ARG_WITH([tracers],
+   [AS_HELP_STRING([--with-tracers=<function>],
+      [chemistry function @<:@none, EAGLE default: none@:>@]
+   )],
+   [with_tracers="$withval"],
+   [with_tracers="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_tracers" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-tracers together])
+   else
+      with_tracers="$with_subgrid_tracers"
+   fi
+fi
+
+case "$with_tracers" in
+   none)
+      AC_DEFINE([TRACERS_NONE], [1], [No tracers function])
+   ;;
+   EAGLE)
+      AC_DEFINE([TRACERS_EAGLE], [1], [Tracers taken from the EAGLE model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown tracers choice: $with_tracers])
+   ;;
+esac
+
 # Stellar model.
 AC_ARG_WITH([stars],
    [AS_HELP_STRING([--with-stars=<model>],
@@ -1512,6 +1633,9 @@ fi
 case "$with_feedback" in
    thermal)
       AC_DEFINE([FEEDBACK_THERMAL], [1], [Thermal Blastwave])
+   ;;
+   const)
+      AC_DEFINE([FEEDBACK_CONST], [1], [Constant feedback model])
    ;;
    none)
    ;;
@@ -1655,6 +1779,7 @@ AC_MSG_RESULT([
 
    Cooling function   : $with_cooling
    Chemistry          : $with_chemistry
+   Tracers            : $with_tracers
    Stellar model      : $with_stars
    Feedback model     : $with_feedback
 

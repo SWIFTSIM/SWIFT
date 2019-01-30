@@ -84,6 +84,12 @@ struct hydro_props {
   /*! Temperature of the neutral to ionized transition of Hydrogen */
   float hydrogen_ionization_temperature;
 
+  /*! Mean molecular weight below hydrogen ionization temperature */
+  float mu_neutral;
+
+  /*! Mean molecular weight above hydrogen ionization temperature */
+  float mu_ionised;
+
   /*! Artificial viscosity parameters */
   struct {
     /*! For the fixed, simple case. Also used to set the initial AV
@@ -99,6 +105,24 @@ struct hydro_props {
     /*! The decay length of the artificial viscosity (used in M&M, etc.) */
     float length;
   } viscosity;
+
+  /*! Thermal diffusion parameters */
+  struct {
+
+    /*! Initialisation value, or the case for constant thermal diffusion coeffs
+     */
+    float alpha;
+
+    /*! Tuning parameter for speed of ramp up/down */
+    float beta;
+
+    /*! Maximal value for alpha_diff */
+    float alpha_max;
+
+    /*! Minimal value for alpha_diff */
+    float alpha_min;
+
+  } diffusion;
 };
 
 void hydro_props_print(const struct hydro_props *p);

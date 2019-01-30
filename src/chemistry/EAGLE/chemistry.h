@@ -129,7 +129,21 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
                                  struct xpart* restrict xp,
                                  const struct chemistry_global_data* cd,
                                  const struct cosmology* cosmo) {
-  error("Needs implementing!");
+
+  /* Just make all the smoothed fields default to the un-smoothed values */
+  struct chemistry_part_data* cpd = &p->chemistry_data;
+
+  /* Total metal mass fraction */
+  cpd->smoothed_metal_mass_fraction_total = cpd->metal_mass_fraction_total;
+
+  /* Iron frac from SNIa */
+  cpd->smoothed_iron_mass_fraction_from_SNIa =
+      cpd->iron_mass_fraction_from_SNIa;
+
+  /* Individual metal mass fractions */
+  for (int i = 0; i < chemistry_element_count; i++) {
+    cpd->smoothed_metal_mass_fraction[i] = cpd->metal_mass_fraction[i];
+  }
 }
 
 /**
@@ -154,6 +168,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   if (data->initial_metal_mass_fraction_total != -1) {
     p->chemistry_data.metal_mass_fraction_total =
         data->initial_metal_mass_fraction_total;
+
     for (int elem = 0; elem < chemistry_element_count; ++elem)
       p->chemistry_data.metal_mass_fraction[elem] =
           data->initial_metal_mass_fraction[elem];
@@ -176,24 +191,18 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 
   /* Read the total metallicity */
   data->initial_metal_mass_fraction_total = parser_get_opt_param_float(
-      parameter_file, "EAGLEChemistry:InitMetallicity", -1);
+      parameter_file, "EAGLEChemistry:init_abundance_metal", -1);
 
   if (data->initial_metal_mass_fraction_total != -1) {
     /* Read the individual mass fractions */
     for (int elem = 0; elem < chemistry_element_count; ++elem) {
       char buffer[50];
-      sprintf(buffer, "EAGLEChemistry:InitAbundance_%s",
+      sprintf(buffer, "EAGLEChemistry:init_abundance_%s",
               chemistry_get_element_name((enum chemistry_element)elem));
 
       data->initial_metal_mass_fraction[elem] =
           parser_get_param_float(parameter_file, buffer);
     }
-
-    /* Read the constant ratios */
-    data->calcium_over_silicon_ratio = parser_get_param_float(
-        parameter_file, "EAGLEChemistry:CalciumOverSilicon");
-    data->sulphur_over_silicon_ratio = parser_get_param_float(
-        parameter_file, "EAGLEChemistry:SulphurOverSilicon");
   }
 }
 

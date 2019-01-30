@@ -82,6 +82,7 @@ TASKTYPES = [
     "kick1",
     "kick2",
     "timestep",
+    "timestep_limiter",
     "send",
     "recv",
     "grav_long_range",
@@ -91,7 +92,6 @@ TASKTYPES = [
     "grav_mesh",
     "cooling",
     "star_formation",
-    "sourceterms",
     "logger",
     "stars_ghost_in",
     "stars_ghost",
@@ -105,6 +105,7 @@ SUBTYPES = [
     "density",
     "gradient",
     "force",
+    "limiter",
     "grav",
     "external_grav",
     "tend",
@@ -114,6 +115,7 @@ SUBTYPES = [
     "multipole",
     "spart",
     "stars_density",
+    "stars_feedback",
     "count",
 ]
 

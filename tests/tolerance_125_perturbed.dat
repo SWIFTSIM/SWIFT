@@ -1,4 +1,4 @@
 #   ID    pos_x    pos_y    pos_z      v_x      v_y      v_z        h      rho    div_v        S        u        P        c      a_x      a_y      a_z     h_dt    v_sig    dS/dt    du/dt
     0	  1e-4	   1e-4	    1e-4       1e-4	1e-4	 1e-4	    1e-4   1e-4	  1e-4	       1e-4	1e-4	 1e-4	  1e-4	 1e-4	  1e-4	   1e-4	   1e-4	   1e-4	    1e-4     1e-4
-    0	  1e-4	   1e-4	    1e-4       1e-4	1e-4	 1e-4	    1e-4   1e-4	  1e-4	       1e-4	1e-4	 1e-4	  1e-4	 2.3e-3	  2e-3	   2e-3	   1e-4	   1e-4	    1e-4     1e-4
+    0	  1e-4	   1e-4	    1e-4       1e-4	1e-4	 1e-4	    1e-4   1e-4	  1e-4	       1e-4	1e-4	 1e-4	  1e-4	 3.6e-3	  2e-3	   2e-3	   1e-4	   1e-4	    1e-4     1e-4
     0	  1e-6	   1e-6	    1e-6       1e-6	1e-6	 1e-6	    1e-6   1e-6	  1e-6	       1e-6	1e-6	 1e-6	  1e-6	 2e-4	  2e-4	   2e-4	   1e-6	   1e-6	    1e-6     1e-6

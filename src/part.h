@@ -75,6 +75,10 @@
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#elif defined(ANARCHY_PU_SPH)
+#include "./hydro/AnarchyPU/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
 #else
 #error "Invalid choice of SPH variant"
 #endif
@@ -89,6 +93,8 @@
 #endif
 
 /* Import the right star particle definition */
+#if defined(FEEDBACK_CONST)
+#include "./stars/const/stars_part.h"
 #if defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars_part.h"
 #else

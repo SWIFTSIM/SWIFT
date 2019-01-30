@@ -38,6 +38,8 @@ void pairs_single_density(double *dim, long long int pid,
 
 void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj);
 void self_all_density(struct runner *r, struct cell *ci);
+void pairs_all_gradient(struct runner *r, struct cell *ci, struct cell *cj);
+void self_all_gradient(struct runner *r, struct cell *ci);
 void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj);
 void self_all_force(struct runner *r, struct cell *ci);
 void pairs_all_stars_density(struct runner *r, struct cell *ci,

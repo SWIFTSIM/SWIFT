@@ -37,19 +37,21 @@ time using $\Delta t_{\rm kick,A} = \Delta t_{\rm
   operator. They then use $\int H dt$ as the operator, which
   integrates out trivially. This slight inconsistency with the rest of
   the time-integration operators is unlikely to lead to any practical
-  difference.}, whilst the change in energy due to the expansion of
-the Universe (first term in eq.~\ref{eq:cosmo_eom_u}) can be computed
-using
-\begin{equation}
-  \int_{a_n}^{a_{n+1}} H dt = \int_{a_n}^{a_{n+1}} \frac{da}{a} =
-  \log{a_{n+1}} - \log{a_n}.
-\end{equation}
+  difference.}. We additionally compute a few other terms
+appearing in some viscosity terms and subgrid models. There are the
+difference in cosmic time between the start and the end of the step
+and the corresponding change in redshift:
+\begin{align}
+  \Delta t_{\rm cosmic} &= \int_{a_n}^{a_{n+1}} dt = \frac{1}{H_0}
+  \int_{a_n}^{a_{n+1}} \frac{da}{a E(a)},\\
+  \Delta z &= \frac{1}{a_n} - \frac{1}{a_{n+1}} \approx -\frac{H}{a} \Delta t_{\rm cosmic}.
+\end{align}
 Following the same method as for the age of the Universe
-(sec. \ref{ssec:flrw}), the three non-trivial integrals are evaluated
-numerically at the start of the simulation for a series $10^4$ values
-of $a$ placed at regular intervals between $\log a_{\rm begin}$ and
-$\log a_{\rm end}$. The values for a specific pair of scale-factors
-$a_n$ and $a_{n+1}$ are then obtained by interpolating that table
-linearly.
+(sec. \ref{ssec:flrw}), these three non-trivial integrals are
+evaluated numerically at the start of the simulation for a series
+$10^4$ values of $a$ placed at regular intervals between $\log a_{\rm
+  begin}$ and $\log a_{\rm end}$. The values for a specific pair of
+scale-factors $a_n$ and $a_{n+1}$ are then obtained by interpolating
+that table linearly.
 
 

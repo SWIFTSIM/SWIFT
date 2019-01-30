@@ -46,7 +46,6 @@
 #include "potential.h"
 #include "runner.h"
 #include "scheduler.h"
-#include "sourceterms_struct.h"
 #include "space.h"
 #include "task.h"
 #include "units.h"
@@ -70,14 +69,15 @@ enum engine_policy {
   engine_policy_cosmology = (1 << 10),
   engine_policy_drift_all = (1 << 11),
   engine_policy_reconstruct_mpoles = (1 << 12),
-  engine_policy_cooling = (1 << 13),
-  engine_policy_sourceterms = (1 << 14),
+  engine_policy_temperature = (1 << 13),
+  engine_policy_cooling = (1 << 14),
   engine_policy_stars = (1 << 15),
   engine_policy_structure_finding = (1 << 16),
   engine_policy_star_formation = (1 << 17),
-  engine_policy_feedback = (1 << 18)
+  engine_policy_feedback = (1 << 18),
+  engine_policy_limiter = (1 << 19)
 };
-#define engine_maxpolicy 19
+#define engine_maxpolicy 20
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -91,7 +91,8 @@ enum engine_step_properties {
   engine_step_prop_statistics = (1 << 3),
   engine_step_prop_snapshot = (1 << 4),
   engine_step_prop_restarts = (1 << 5),
-  engine_step_prop_logger_index = (1 << 6)
+  engine_step_prop_stf = (1 << 6),
+  engine_step_prop_logger_index = (1 << 7)
 };
 
 /* Some constants */
@@ -100,6 +101,8 @@ enum engine_step_properties {
 #define engine_parts_size_grow 1.05
 #define engine_max_proxy_centre_frac 0.2
 #define engine_redistribute_alloc_margin 1.2
+#define engine_rebuild_link_alloc_margin 1.2
+#define engine_foreign_alloc_margin 1.05
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost 1000
@@ -223,9 +226,6 @@ struct engine {
   /* The internal system of units */
   const struct unit_system *internal_units;
 
-  /* Top-level cell locations for VELOCIraptor. */
-  struct cell_loc *cell_loc;
-
   /* Snapshot information */
   double a_first_snapshot;
   double time_first_snapshot;
@@ -240,12 +240,11 @@ struct engine {
   char snapshot_base_name[PARSER_MAX_LINE_SIZE];
   int snapshot_compression;
   int snapshot_int_time_label_on;
+  int snapshot_invoke_stf;
   struct unit_system *snapshot_units;
   int snapshot_output_count;
 
   /* Structure finding information */
-  enum io_stf_output_format stf_output_freq_format;
-  int delta_step_stf;
   double a_first_stf_output;
   double time_first_stf_output;
   double delta_time_stf;
@@ -256,7 +255,9 @@ struct engine {
   /* Integer time of the next stf output */
   integertime_t ti_next_stf;
 
-  char stfBaseName[PARSER_MAX_LINE_SIZE];
+  char stf_config_file_name[PARSER_MAX_LINE_SIZE];
+  char stf_base_name[PARSER_MAX_LINE_SIZE];
+  int stf_output_count;
 
   /* Statistics information */
   double a_first_statistics;
@@ -289,10 +290,8 @@ struct engine {
   struct proxy *proxies;
   int nr_proxies, *proxy_ind;
 
-#ifdef SWIFT_DEBUG_TASKS
   /* Tic/toc at the start/end of a step. */
   ticks tic_step, toc_step;
-#endif
 
 #ifdef WITH_MPI
   /* CPU time of the last step. */
@@ -330,6 +329,10 @@ struct engine {
    * of the various task arrays. */
   size_t tasks_per_cell;
 
+  /* Average number of links per tasks. This number is used before
+     the creation of communication tasks so needs to be large enough. */
+  size_t links_per_tasks;
+
   /* Are we talkative ? */
   int verbose;
 
@@ -359,9 +362,6 @@ struct engine {
 
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
-
-  /* Properties of source terms */
-  struct sourceterms *sourceterms;
 
   /* The (parsed) parameter file */
   struct swift_params *parameter_file;
@@ -403,6 +403,7 @@ void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
+void engine_allocate_foreign_particles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_check_for_dumps(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
@@ -417,8 +418,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
-                 const struct chemistry_global_data *chemistry,
-                 struct sourceterms *sourceterms);
+                 const struct chemistry_global_data *chemistry);
 void engine_config(int restart, struct engine *e, struct swift_params *params,
                    int nr_nodes, int nodeID, int nr_threads, int with_aff,
                    int verbose, const char *restart_file);
@@ -444,7 +444,7 @@ int engine_is_done(struct engine *e);
 void engine_pin(void);
 void engine_unpin(void);
 void engine_clean(struct engine *e);
-int engine_estimate_nr_tasks(struct engine *e);
+int engine_estimate_nr_tasks(const struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);

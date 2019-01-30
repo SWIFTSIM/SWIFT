@@ -46,8 +46,7 @@
  * @param cooling The #cooling_function_data used in the run.
  */
 INLINE static void cooling_update(const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling,
-                                  const int restart_flag) {
+                                  struct cooling_function_data* cooling) {
   // Add content if required.
 }
 
@@ -120,6 +119,49 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
     struct xpart* restrict xp) {}
 
 /**
+ * @brief Compute the temperature of a #part based on the cooling function.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+INLINE static float cooling_get_temperature(
+    const struct phys_const* restrict phys_const,
+    const struct hydro_props* restrict hydro_props,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, const struct xpart* restrict xp) {
+
+  /* Physical constants */
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+
+  /* Gas properties */
+  const double T_transition = hydro_props->hydrogen_ionization_temperature;
+  const double mu_neutral = hydro_props->mu_neutral;
+  const double mu_ionised = hydro_props->mu_ionised;
+
+  /* Particle temperature */
+  const double u = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Temperature over mean molecular weight */
+  const double T_over_mu = hydro_gamma_minus_one * u * m_H / k_B;
+
+  /* Are we above or below the HII -> HI transition? */
+  if (T_over_mu > (T_transition + 1.) / mu_ionised)
+    return T_over_mu * mu_ionised;
+  else if (T_over_mu < (T_transition - 1.) / mu_neutral)
+    return T_over_mu * mu_neutral;
+  else
+    return T_transition;
+}
+
+/**
  * @brief Returns the total radiated energy by this particle.
  *
  * No cooling, so return 0.
@@ -149,18 +191,6 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
 }
 
 /**
- * @brief Restore cooling tables (if applicable) after
- * restart
- *
- * Nothing to do here
- *
- * @param cooling the cooling_function_data structure
- * @param cosmo cosmology structure
- */
-static INLINE void cooling_restore_tables(struct cooling_function_data* cooling,
-                                          const struct cosmology* cosmo) {}
-
-/**
  * @brief Prints the properties of the cooling model to stdout.
  *
  * @param cooling The properties of the cooling function.
@@ -177,5 +207,30 @@ static INLINE void cooling_print_backend(
  * @param cooling the cooling data structure.
  */
 static INLINE void cooling_clean(struct cooling_function_data* cooling) {}
+
+/**
+ * @brief Write a cooling struct to the given FILE as a stream of bytes.
+ *
+ * Empty structure so nothing to do here.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ */
+static INLINE void cooling_struct_dump(
+    const struct cooling_function_data* cooling, FILE* stream) {}
+
+/**
+ * @brief Restore a hydro_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * Empty structure so nothing to do here.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ * @param cosmo #cosmology structure
+ */
+static INLINE void cooling_struct_restore(struct cooling_function_data* cooling,
+                                          FILE* stream,
+                                          const struct cosmology* cosmo) {}
 
 #endif /* SWIFT_COOLING_NONE_H */

@@ -35,9 +35,14 @@ SPH:
   H_mass_fraction:       0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
   H_ionization_temperature: 1e4   # (Optional) Temperature of the transition from neutral to ionized Hydrogen for primoridal gas.
   viscosity_alpha:       0.8      # (Optional) Override for the initial value of the artificial viscosity. In schemes that have a fixed AV, this remains as alpha throughout the run.
-  viscosity_alpha_max:   2.0      # (Optional) Maximal value for the artificial viscosity in schemes that allow alpha to vary
-  viscosity_alpha_min:   0.1      # (Optional) Minimal value for the artificial viscosity in schemes that allow alpha to vary
-  viscosity_length:      0.1      # (Optional) Decay length for the artificial viscosity in schemes that allow alpha to vary
+  viscosity_alpha_max:   2.0      # (Optional) Maximal value for the artificial viscosity in schemes that allow alpha to vary.
+  viscosity_alpha_min:   0.1      # (Optional) Minimal value for the artificial viscosity in schemes that allow alpha to vary.
+  viscosity_length:      0.1      # (Optional) Decay length for the artificial viscosity in schemes that allow alpha to vary.
+  diffusion_alpha:       0.0      # (Optional) Override the initial value for the thermal diffusion coefficient in schemes with thermal diffusion.
+  diffusion_beta:        0.01     # (Optional) Override the decay/rise rate tuning parameter for the thermal diffusion.
+  diffusion_alpha_max:   1.0      # (Optional) Override the maximal thermal diffusion coefficient that is allowed for a given particle.
+  diffusion_alpha_min:   0.0      # (Optional) Override the minimal thermal diffusion coefficient that is allowed for a given particle.
+
 
 # Parameters for the self-gravity scheme
 Gravity:
@@ -63,8 +68,12 @@ Scheduler:
   cell_sub_size_self_stars:  32000     # (Optional) Maximal number of interactions per sub-self stars task  (this is the default value).
   cell_split_size:           400       # (Optional) Maximal number of particles per cell (this is the default value).
   cell_subdepth_diff_grav:   4         # (Optional) Maximal depth difference between leaves and a cell that gravity tasks can be pushed down to (this is the default value).
+  cell_extra_parts:          0         # (Optional) Number of spare parts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_gparts:         0         # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts:         400       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells:       12        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
   tasks_per_cell:            0         # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
+  links_per_tasks:           10        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 10.
   mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
@@ -81,6 +90,7 @@ Snapshots:
   scale_factor_first: 0.1 # (Optional) Scale-factor of the first snapshot if cosmological time-integration.
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
+  invoke_stf: 0           # (Optional) Call VELOCIraptor every time a snapshot is written irrespective of the VELOCIraptor output strategy.
   compression: 0          # (Optional) Set the level of compression of the HDF5 datasets [0-9]. 0 does no compression.
   int_time_label_on:   0  # (Optional) Enable to label the snapshots using the time rounded to an integer (in internal units)
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
@@ -135,23 +145,34 @@ Restarts:
 
 # Parameters governing domain decomposition
 DomainDecomposition:
-  initial_type:     memory  # (Optional) The initial decomposition strategy: "grid",
-                            #            "region", "memory", or "vectorized".
-  initial_grid: [10,10,10]  # (Optional) Grid sizes if the "grid" strategy is chosen.
+  initial_type:     memory    # (Optional) The initial decomposition strategy: "grid",
+                              #            "region", "memory", or "vectorized".
+  initial_grid: [10,10,10]    # (Optional) Grid sizes if the "grid" strategy is chosen.
 
-  repartition_type: costs/costs # (Optional) The re-decomposition strategy, one of:
-                            # "none/none", "costs/costs", "none/costs", "costs/none" or "costs/time".
-                            # These are vertex/edge weights with "costs" as task timing
-                            # and "time" as the expected time of the next updates
+  repartition_type: fullcosts # (Optional) The re-decomposition strategy, one of:
+                              # "none", "fullcosts", "edgecosts", "memory" or
+                              # "timecosts".
+  trigger:          0.05      # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
+                              # new decomposition, or number of steps (>1) between decompositions
+  minfrac:          0.9       # (Optional) Fractional of all particles that should be updated in previous step when
+                              # using CPU time trigger
+  usemetis:         0         # Use serial METIS when ParMETIS is also available.
+  adaptive:         1         # Use adaptive repartition when ParMETIS is available, otherwise simple refinement.
+  itr:              100       # When adaptive defines the ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0.
+                              # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
+  use_fixed_costs:  1         # If 1 then use any compiled in fixed costs for
+                              # task weights in first repartition, if 0 only use task timings, if > 1 only use
+                              # fixed costs, unless none are available.
 
-  trigger:          0.05    # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
-                            # new decomposition, or number of steps (>1) between decompositions
-  minfrac:          0.9     # (Optional) Fractional of all particles that should be updated in previous step when
-                            # using CPU time trigger
-  usemetis:         0       # Use serial METIS when ParMETIS is also available.
-  adaptive:         1       # Use adaptive repartition when ParMETIS is available, otherwise simple refinement.
-  itr:              100     # When adaptive defines the ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0.
-                            # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
+# Structure finding options (requires velociraptor)
+StructureFinding:
+  config_file_name:     stf_input.cfg # Name of the STF config file.
+  basename:             ./stf         # Common part of the name of output files.
+  scale_factor_first:   0.92          # (Optional) Scale-factor of the first snaphot (cosmological run)
+  time_first:           0.01          # (Optional) Time of the first structure finding output (in internal units).
+  delta_time:           1.10          # (Optional) Time difference between consecutive structure finding outputs (in internal units) in simulation time intervals.
+  output_list_on:       0   	      # (Optional) Enable the output list
+  output_list:          stflist.txt   # (Optional) File containing the output times (see documentation in "Parameter File" section)
 
 # Parameters related to the equation of state ------------------------------------------
 
@@ -245,6 +266,17 @@ LambdaCooling:
   lambda_nH2_cgs:              1e-22 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
   cooling_tstep_mult:          1.0   # (Optional) Dimensionless pre-factor for the time-step condition.
 
+# Parameters of the EAGLE cooling model (Wiersma+08 cooling tables).
+EAGLECooling:
+  dir_name:                  ./coolingtables/  # Location of the Wiersma+08 cooling tables
+  H_reion_z:                 8.5               # Redshift of Hydrogen re-ionization
+  He_reion_z_centre:         3.5               # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:          0.5               # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:           2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+  newton_integration:        0                 # (Optional) Set to 1 to use the Newton-Raphson method to solve the xplicit cooling problem.
+  Ca_over_Si_in_solar:       1.                # (Optional) Ratio of Ca/Si to use in units of solar. If set to 1, the code uses [Ca/Si] = 0, i.e. Ca/Si = 0.0941736.
+  S_over_Si_in_solar:        1.                # (Optional) Ratio of S/Si to use in units of solar. If set to 1, the code uses [S/Si] = 0, i.e. S/Si = 0.6054160.
+  
 # Cooling with Grackle 3.0
 GrackleCooling:
   CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
@@ -262,27 +294,13 @@ GrackleCooling:
 
 # EAGLE model
 EAGLEChemistry:
-  InitMetallicity:         0.           # Inital fraction of particle mass in *all* metals
-  InitAbundance_Hydrogen:  0.752        # Inital fraction of particle mass in Hydrogen
-  InitAbundance_Helium:    0.248        # Inital fraction of particle mass in Helium
-  InitAbundance_Carbon:    0.000        # Inital fraction of particle mass in Carbon
-  InitAbundance_Nitrogen:  0.000        # Inital fraction of particle mass in Nitrogen
-  InitAbundance_Oxygen:    0.000        # Inital fraction of particle mass in Oxygen
-  InitAbundance_Neon:      0.000        # Inital fraction of particle mass in Neon
-  InitAbundance_Magnesium: 0.000        # Inital fraction of particle mass in Magnesium
-  InitAbundance_Silicon:   0.000        # Inital fraction of particle mass in Silicon
-  InitAbundance_Iron:      0.000        # Inital fraction of particle mass in Iron
-  CalciumOverSilicon:      0.0941736    # Constant ratio of Calcium over Silicon abundance
-  SulphurOverSilicon:      0.6054160    # Constant ratio of Sulphur over Silicon abundance
-
-# Structure finding options (requires velociraptor)
-StructureFinding:
-  config_file_name:     stf_input.cfg # Name of the STF config file.
-  basename:             ./stf         # Common part of the name of output files.
-  output_time_format:   0             # Specifies the frequency format of structure finding. 0 for simulation steps (delta_step) and 1 for simulation time intervals (delta_time).
-  scale_factor_first:   0.92          # Scale-factor of the first snaphot (cosmological run)
-  time_first:           0.01          # Time of the first structure finding output (in internal units).
-  delta_step:           1000          # Time difference between consecutive structure finding outputs (in internal units) in simulation steps.
-  delta_time:           1.10          # Time difference between consecutive structure finding outputs (in internal units) in simulation time intervals.
-  output_list_on:      0   	      # (Optional) Enable the output list
-  output_list:         stflist.txt    # (Optional) File containing the output times (see documentation in "Parameter File" section)
+  init_abundance_metal:     0.           # Inital fraction of particle mass in *all* metals
+  init_abundance_Hydrogen:  0.752        # Inital fraction of particle mass in Hydrogen
+  init_abundance_Helium:    0.248        # Inital fraction of particle mass in Helium
+  init_abundance_Carbon:    0.000        # Inital fraction of particle mass in Carbon
+  init_abundance_Nitrogen:  0.000        # Inital fraction of particle mass in Nitrogen
+  init_abundance_Oxygen:    0.000        # Inital fraction of particle mass in Oxygen
+  init_abundance_Neon:      0.000        # Inital fraction of particle mass in Neon
+  init_abundance_Magnesium: 0.000        # Inital fraction of particle mass in Magnesium
+  init_abundance_Silicon:   0.000        # Inital fraction of particle mass in Silicon
+  init_abundance_Iron:      0.000        # Inital fraction of particle mass in Iron

@@ -22,7 +22,11 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Import star model */
+/* Straight-forward import */
+#if defined(FEEDBACK_CONST)
+#include "./stars/const/stars.h"
+#include "./stars/const/stars_part.h"
+#include "./stars/const/stars_iact.h"
 #if defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars.h"
 #include "./stars/EAGLE/stars_iact.h"

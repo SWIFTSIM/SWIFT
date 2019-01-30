@@ -33,8 +33,7 @@
 #include "units.h"
 
 void cooling_update(const struct cosmology *cosmo,
-                    struct cooling_function_data *cooling,
-                    const int restart_flag);
+                    struct cooling_function_data *cooling);
 
 void cooling_cool_part(const struct phys_const *restrict phys_const,
                        const struct unit_system *restrict us,
@@ -58,6 +57,14 @@ void cooling_first_init_part(
     const struct cosmology *restrict cosmo,
     const struct cooling_function_data *restrict cooling,
     const struct part *restrict p, struct xpart *restrict xp);
+
+float cooling_get_temperature(
+    const struct phys_const *restrict phys_const,
+    const struct hydro_props *restrict hydro_props,
+    const struct unit_system *restrict us,
+    const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct part *restrict p, const struct xpart *restrict xp);
 
 float cooling_get_radiated_energy(const struct xpart *restrict xp);
 

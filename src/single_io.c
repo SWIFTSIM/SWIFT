@@ -51,7 +51,9 @@
 #include "part.h"
 #include "part_type.h"
 #include "stars_io.h"
+#include "tracers_io.h"
 #include "units.h"
+#include "velociraptor_io.h"
 #include "xmf.h"
 
 /**
@@ -638,13 +640,21 @@ void write_output_single(struct engine* e, const char* baseName,
                          const struct unit_system* snapshot_units) {
 
   hid_t h_file = 0, h_grp = 0;
-  int periodic = e->s->periodic;
   int numFiles = 1;
   const struct part* parts = e->s->parts;
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   struct swift_params* params = e->parameter_file;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int with_cooling = e->policy & engine_policy_cooling;
+  const int with_temperature = e->policy & engine_policy_temperature;
+#ifdef HAVE_VELOCIRAPTOR
+  const int with_stf = (e->policy & engine_policy_structure_finding) &&
+                       (e->s->gpart_group_data != NULL);
+#else
+  const int with_stf = 0;
+#endif
 
   /* Number of particles currently in the arrays */
   const size_t Ntot = e->s->nr_gparts;
@@ -654,9 +664,12 @@ void write_output_single(struct engine* e, const char* baseName,
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
   /* Number of particles that we will write */
-  const size_t Ntot_written = e->s->nr_gparts - e->s->nr_inhibited_sparts;
-  const size_t Ngas_written = e->s->nr_parts - e->s->nr_inhibited_parts;
-  const size_t Nstars_written = e->s->nr_sparts - e->s->nr_inhibited_gparts;
+  const size_t Ntot_written =
+      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
+  const size_t Ngas_written =
+      e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
+  const size_t Nstars_written =
+      e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
   const size_t Nbaryons_written = Ngas_written + Nstars_written;
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
@@ -694,27 +707,24 @@ void write_output_single(struct engine* e, const char* baseName,
   if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
   /* Open header to write simulation properties */
-  /* message("Writing runtime parameters..."); */
-  h_grp =
-      H5Gcreate(h_file, "/RuntimePars", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_grp < 0) error("Error while creating runtime parameters group\n");
-
-  /* Write the relevant information */
-  io_write_attribute(h_grp, "PeriodicBoundariesOn", INT, &periodic, 1);
-
-  /* Close runtime parameters */
-  H5Gclose(h_grp);
-
-  /* Open header to write simulation properties */
   /* message("Writing file header..."); */
   h_grp = H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating file header\n");
 
+  /* Convert basic output information to snapshot units */
+  const double factor_time =
+      units_conversion_factor(internal_units, snapshot_units, UNIT_CONV_TIME);
+  const double factor_length =
+      units_conversion_factor(internal_units, snapshot_units, UNIT_CONV_LENGTH);
+  const double dblTime = e->time * factor_time;
+  const double dim[3] = {e->s->dim[0] * factor_length,
+                         e->s->dim[1] * factor_length,
+                         e->s->dim[2] * factor_length};
+
   /* Print the relevant information and print status */
-  io_write_attribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
-  double dblTime = e->time;
+  io_write_attribute(h_grp, "BoxSize", DOUBLE, dim, 3);
   io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
-  int dimension = (int)hydro_dimension;
+  const int dimension = (int)hydro_dimension;
   io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
   io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
   io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
@@ -769,6 +779,7 @@ void write_output_single(struct engine* e, const char* baseName,
   if (h_grp < 0) error("Error while creating subgrid group");
   cooling_write_flavour(h_grp, e->cooling_func);
   chemistry_write_flavour(h_grp);
+  tracers_write_flavour(h_grp);
   H5Gclose(h_grp);
 
   /* Print the gravity parameters */
@@ -819,6 +830,17 @@ void write_output_single(struct engine* e, const char* baseName,
 
   /* Print the system of Units used internally */
   io_write_unit_system(h_file, internal_units, "InternalCodeUnits");
+
+  /* Now write the top-level cell structure */
+  long long global_offsets[swift_type_count] = {0};
+  h_grp = H5Gcreate(h_file, "/Cells", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating cells group");
+
+  /* Write the location of the particles in the arrays */
+  io_write_cell_offsets(h_grp, e->s->cdim, e->s->cells_top, e->s->nr_cells,
+                        e->s->width, e->nodeID, N_total, global_offsets,
+                        internal_units, snapshot_units);
+  H5Gclose(h_grp);
 
   /* Tell the user if a conversion will be needed */
   if (e->verbose) {
@@ -878,6 +900,7 @@ void write_output_single(struct engine* e, const char* baseName,
     struct part* parts_written = NULL;
     struct xpart* xparts_written = NULL;
     struct gpart* gparts_written = NULL;
+    struct velociraptor_gpart_data* gpart_group_data_written = NULL;
     struct spart* sparts_written = NULL;
 
     /* Write particle fields from the particle structure */
@@ -890,8 +913,17 @@ void write_output_single(struct engine* e, const char* baseName,
           N = Ngas;
           hydro_write_particles(parts, xparts, list, &num_fields);
           num_fields += chemistry_write_particles(parts, list + num_fields);
-          num_fields += cooling_write_particles(xparts, list + num_fields,
-                                                e->cooling_func);
+          if (with_cooling || with_temperature) {
+            num_fields += cooling_write_particles(
+                parts, xparts, list + num_fields, e->cooling_func);
+          }
+          if (with_stf) {
+            num_fields +=
+                velociraptor_write_parts(parts, xparts, list + num_fields);
+          }
+          num_fields += tracers_write_particles(
+              parts, xparts, list + num_fields, with_cosmology);
+
         } else {
 
           /* Ok, we need to fish out the particles we want */
@@ -914,8 +946,17 @@ void write_output_single(struct engine* e, const char* baseName,
                                 &num_fields);
           num_fields +=
               chemistry_write_particles(parts_written, list + num_fields);
-          num_fields += cooling_write_particles(
-              xparts_written, list + num_fields, e->cooling_func);
+          if (with_cooling || with_temperature) {
+            num_fields +=
+                cooling_write_particles(parts_written, xparts_written,
+                                        list + num_fields, e->cooling_func);
+          }
+          if (with_stf) {
+            num_fields += velociraptor_write_parts(
+                parts_written, xparts_written, list + num_fields);
+          }
+          num_fields += tracers_write_particles(
+              parts_written, xparts_written, list + num_fields, with_cosmology);
         }
       } break;
 
@@ -925,6 +966,10 @@ void write_output_single(struct engine* e, const char* baseName,
           /* This is a DM-only run without inhibited particles */
           N = Ntot;
           darkmatter_write_particles(gparts, list, &num_fields);
+          if (with_stf) {
+            num_fields += velociraptor_write_gparts(e->s->gpart_group_data,
+                                                    list + num_fields);
+          }
         } else {
 
           /* Ok, we need to fish out the particles we want */
@@ -935,11 +980,26 @@ void write_output_single(struct engine* e, const char* baseName,
                              Ndm_written * sizeof(struct gpart)) != 0)
             error("Error while allocating temporart memory for gparts");
 
-          /* Collect the non-inhibited DM particles from gpart */
-          io_collect_gparts_to_write(gparts, gparts_written, Ntot, Ndm_written);
+          if (with_stf) {
+            if (posix_memalign(
+                    (void**)&gpart_group_data_written, gpart_align,
+                    Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
+              error(
+                  "Error while allocating temporart memory for gparts STF "
+                  "data");
+          }
 
-          /* Write DM particles */
+          /* Collect the non-inhibited DM particles from gpart */
+          io_collect_gparts_to_write(gparts, e->s->gpart_group_data,
+                                     gparts_written, gpart_group_data_written,
+                                     Ntot, Ndm_written, with_stf);
+
+          /* Select the fields to write */
           darkmatter_write_particles(gparts_written, list, &num_fields);
+          if (with_stf) {
+            num_fields += velociraptor_write_gparts(gpart_group_data_written,
+                                                    list + num_fields);
+          }
         }
       } break;
 
@@ -949,6 +1009,9 @@ void write_output_single(struct engine* e, const char* baseName,
           /* No inhibted particles: easy case */
           N = Nstars;
           stars_write_particles(sparts, list, &num_fields);
+          if (with_stf) {
+            num_fields += velociraptor_write_sparts(sparts, list + num_fields);
+          }
         } else {
 
           /* Ok, we need to fish out the particles we want */
@@ -965,6 +1028,10 @@ void write_output_single(struct engine* e, const char* baseName,
 
           /* Select the fields to write */
           stars_write_particles(sparts_written, list, &num_fields);
+          if (with_stf) {
+            num_fields +=
+                velociraptor_write_sparts(sparts_written, list + num_fields);
+          }
         }
       } break;
 
@@ -990,6 +1057,7 @@ void write_output_single(struct engine* e, const char* baseName,
     if (parts_written) free(parts_written);
     if (xparts_written) free(xparts_written);
     if (gparts_written) free(gparts_written);
+    if (gpart_group_data_written) free(gpart_group_data_written);
     if (sparts_written) free(sparts_written);
 
     /* Close particle group */

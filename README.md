@@ -69,21 +69,25 @@ Parameters:
     -h, --help                        show this help message and exit
 
   Simulation options:
-    -b, --feedback                    Run with stars feedback
+  
+    -b, --feedback                    Run with stars feedback.
     -c, --cosmology                   Run with cosmological time integration.
-    -C, --cooling                     Run with cooling
+    --temperature                     Run with temperature calculation.
+    -C, --cooling                     Run with cooling (also switches on --with-temperature).
     -D, --drift-all                   Always drift all particles even the ones
                                       far from active particles. This emulates
                                       Gadget-[23] and GIZMO's default behaviours.
-    -F, --sourceterms
+    -F, --star-formation	      Run with star formation.
     -g, --external-gravity            Run with an external gravitational potential.
     -G, --self-gravity                Run with self-gravity.
     -M, --multipole-reconstruction    Reconstruct the multipoles every time-step.
     -s, --hydro                       Run with hydrodynamics.
-    -S, --stars                       Run with stars
-    -x, --velociraptor                Run with structure finding
+    -S, --stars                       Run with stars.
+    -x, --velociraptor                Run with structure finding.
+    --limiter                         Run with time-step limiter.
 
   Control options:
+  
     -a, --pin                         Pin runners using processor affinity.
     -d, --dry-run                     Dry run. Read the parameter file, allocates
                                       memory but does not read the particles
@@ -109,8 +113,8 @@ Parameters:
     -T, --timers=<int>                Print timers every time-step.
     -v, --verbose=<int>               Run in verbose mode, in MPI mode 2 outputs
                                       from all ranks.
-    -y, --task-dumps=<int>            Time-step frequency at which task graphs
-                                      are dumped.
+    -y, --task-dumps=<int>            Time-step frequency at which task analysis
+                                      files and/or tasks are dumped.
     -Y, --threadpool-dumps=<int>      Time-step frequency at which threadpool
                                       tasks are dumped.
 

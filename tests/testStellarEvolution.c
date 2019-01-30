@@ -18,6 +18,7 @@
  ******************************************************************************/
 
 #include <unistd.h>
+#include "../config.h"
 #include "hydro.h"
 #include "physical_constants.h"
 #include "swift.h"
@@ -36,12 +37,12 @@ int main(int argc, char **argv) {
   struct unit_system us;
   struct chemistry_global_data chem_data;
   struct part p;
-  struct spart sp;
   struct xpart xp;
+  struct spart sp;
   struct phys_const phys_const;
   struct cosmology cosmo;
-  struct hydro_props hp;
-  struct stars_props stars;
+  struct hydro_props hydro_properties;
+  struct stars_props stars_properties;
   char *parametersFileName = "./testStellarEvolution.yml";
 
   /* Read the parameter file */
@@ -62,30 +63,36 @@ int main(int argc, char **argv) {
   cosmology_init(params, &us, &phys_const, &cosmo);
   cosmology_print(&cosmo);
 
-  /* Init hydro_props  */
-  hydro_props_init(&hp, &phys_const, &us, params);
+  /* Init hydro properties */
+  hydro_props_init(&hydro_properties, &phys_const, &us, params);
 
-  /* Init stars_props  */
-  stars_props_init(&stars, &phys_const, &us, params, &hp);
-  // To do: Read in IMF model from yaml file.
-  strcpy(stars.IMF_Model, "Chabrier");
+  /* Init star properties */
+  stars_props_init(&stars_properties, &phys_const, &us, params, &hydro_properties);
 
-  /* Read yield tables  */
-  stars_evolve_init(params,&stars);
-
-  /* Create spart */
+  /* Init spart */
   stars_first_init_spart(&sp);
-  stars_init_spart(&sp);
-  // Should these assignments be done in stars_init_part? Check with Matthieu.
-  sp.chemistry_data = p.chemistry_data;
-  sp.age = 0.f;
 
   /* Evolve spart */
-  stars_evolve_spart(&sp, &stars, &cosmo);
+  float dt = 1.0e-6;
+  stars_evolve_spart(&sp, &stars_properties, &cosmo, dt);
+
+  for (int i = 0; i < 9; i++) {
+    message("element %d to distribute fraction %.5e", i, sp.to_distribute.chemistry_data.metal_mass_fraction[i]);
+  }
+  message("to distribute mass %.5e",sp.to_distribute.mass);
+  message("to distribute num_SNIa %.5e",sp.to_distribute.num_SNIa);
+  message("to distribute ejecta_specific_thermal_energy %.5e",sp.to_distribute.ejecta_specific_thermal_energy);
+  message("to distribute metal_mass_fraction_total %.5e",sp.to_distribute.chemistry_data.metal_mass_fraction_total);
+  message("to distribute mass_from_AGB %.5e",sp.to_distribute.chemistry_data.mass_from_AGB);
+  message("to distribute metal_mass_fraction_from_AGB %.5e",sp.to_distribute.chemistry_data.metal_mass_fraction_from_AGB);
+  message("to distribute mass_from_SNII %.5e",sp.to_distribute.chemistry_data.mass_from_SNII);
+  message("to distribute metal_mass_fraction_from_SNII %.5e",sp.to_distribute.chemistry_data.metal_mass_fraction_from_SNII);
+  message("to distribute mass_from_SNIa %.5e",sp.to_distribute.chemistry_data.mass_from_SNIa);
+  message("to distribute metal_mass_fraction_from_SNIa %.5e",sp.to_distribute.chemistry_data.metal_mass_fraction_from_SNIa);
+  message("to distribute iron_mass_fraction_from_SNIa %.5e",sp.to_distribute.chemistry_data.iron_mass_fraction_from_SNIa);
+
+  message("done test");
 
   free(params);
-
-  message("done stellar evolution test");
   return 0;
 }
-

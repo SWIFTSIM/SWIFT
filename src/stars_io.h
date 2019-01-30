@@ -21,6 +21,8 @@
 
 #include "./const.h"
 
+#if defined(FEEDBACK_CONST)
+#include "./stars/const/stars_io.h"
 #if defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars_io.h"
 #else

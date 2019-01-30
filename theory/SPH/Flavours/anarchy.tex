@@ -1,0 +1,123 @@
+\section{ANARCHY-SPH}
+\label{sec:sph:anarchy}
+
+This section is loosely based on Dalla Vecchia (\textit{in prep.}), also described in section 2.2.2 of
+\cite{Schaller2015}.\\
+
+The version of ANARCHY that is currently implemented in \swift{} is based on the Pressure-Energy
+(P-U) SPH scheme, rather than the original Pressure-Entropy. This was chosen to make the
+implementation of sub-grid physics easier, as well as injection of energy more accurate as
+no iteration of the entropy-energy relation is required.
+
+ANARCH SPH comprises of:
+\begin{itemize}
+	\item Pressure-Energy SPH
+	\item \citet[][, henceforth C\&D]{cullen2010} variable artificial viscosity
+	\item A basic thermal diffusion term
+	\item The time-step limiter from \citet{durier2012}.
+\end{itemize}
+
+\subsection{Equations of Motion}
+
+The following smoothed quantities are required, and are calculated in the density loop:
+\begin{itemize}
+	\item $\rho_i = [h_i^{-n_d}]\sum_j m_j w_{i}$
+	\item $(d\rho/dh)_i = - [h_i^{-n_d - 1}]\sum_j m_j ( n_d * w_i + x_i \nabla_i w_i)$
+	\item $\bar{P}_i = [(\gamma - 1)h_i^{-n_d}]\sum_j m_j u_j w_{i}$
+	\item $(d\bar{P}/dh)_i = - [(\gamma - 1)h_i^{-n_d - 1}]\sum_j m_j u_j ( n_d * w_i + x_i \nabla_i w_i)$
+	\item $n_i = [h_i^{-n_d}]\sum_j w_{i}$
+	\item $(dn/dh)_i = - [h_i^{-n_d - 1}]\sum_j ( n_d * w_i + x_i \nabla_i w_i)$
+	\item $(\nabla \cdot \mathbf{v})_i = - [a^{-2} \rho_i^{-1} h^{-n_d - 1}]\sum_j m_j \mathbf{v}_{ij} \cdot \tilde{\mathbf{x}}_{ij} \nabla_i w_i$
+	% Think the cosmo factor entering here is wrong...
+	\item $(\nabla \times \mathbf{v})_i = - [a^{-2} \rho_i^{-1} h^{-n_d - 1} + Hn_d]\sum_j m_j \mathbf{v}_{ij} \times \tilde{\mathbf{x}}_{ij} \nabla_i w_i$
+\end{itemize}
+with quantities in square brackets added in {\tt hydro\_end\_density} and:
+\begin{itemize}
+	\item $h_i$ the smoothing length of particle $i$
+	\item $n_d$ the number of hydro dimensions
+	\item $m_j$ the mass of particle $j$
+	\item $w_{i}$ the dimensionless kernel evalulated at $x_i = r / h_i$
+	\item $r$ the interparticle separation of particles $i$ and $j$
+	\item $u_i$ the internal energy of the particle
+	\item $\gamma$ the ratio of specific heats
+	\item $\mathbf{v}_{ij}$ the difference between the velocities of particle $i$ and $j$
+	\item $\tilde{\mathbf{x}}_{ij}$ the unit vector connecting particles $i$ and $j$
+	\item $a$ the current scale factor
+	\item $H$ the current Hubble constant
+\end{itemize}
+
+The ANARCHY scheme requires a gradient loop, as intermediate smoothed quantities are required
+for the artificial viscosity and diffusion schemes. The following quatntities are calculated:
+\begin{itemize}
+	\item $v_{{\rm sig}, i} = \rm{max}(v_{\rm sig}, c_i + c_j - 3\mathbf{v}_{ij} \cdot \tilde{\mathbf{x}}_{ij})$
+	\item $\nabla^2 u_i = [2]\sum_j m_j \frac{u_i - u_j}{\rho_j} \frac{\nabla_i W_i}{r_{ij}}$
+\end{itemize}
+with quantities in square brackets added in {\tt hydro\_end\_gradient} and:
+\begin{itemize}
+	\item $v_{\rm sig}$ the siginal velocity	
+	\item $c_i$ the sound speed of particle $i$
+\end{itemize}
+
+In {\tt hydro\_prepare\_force}, the differential equations for the viscosity and
+diffusion schemes are integrated as follows. This includes some logic, so it is
+split into viscosity:
+\begin{itemize}
+	\item $\tau_i = h_i / (2 v_{{\rm sig}, i} \ell$
+	\item $\dot{\nabla \cdot \mathbf{v}_i} =
+	       \left({\nabla \cdot \mathbf{v}_i}(t+dt) - {\nabla \cdot \mathbf{v}_i}(t)\right)
+	       / dt$
+	\item $S_i = h_i^2 {\rm max}(0, -\dot{\nabla \cdot \mathbf{v}_i})$
+	\item $\alpha_{{\rm loc}, i} = \alpha_{\rm max} S_i / (S_i + v_{{\rm sig}, i}^2)$.
+\end{itemize}
+and diffusion:
+\begin{itemize}
+	\item $\dot{\tilde{\alpha}}_i = \beta h_i \frac{\nabla^2 u_i}{\sqrt{u_i}}$
+\end{itemize}
+where:
+\begin{itemize}
+	\item $\alpha_i$ is the viscosity coefficient
+	\item $\tilde{\alpha}_i$ is the diffusion coefficient
+	\item $\tau_i$ is the timescale for decay
+	\item $\ell$ is the viscosity length coefficient
+	\item $\beta$ is the diffusion length coefficient
+\end{itemize}
+The equations are then integrated as follows for viscosity:
+\begin{enumerate}
+	\item If $\alpha_{\rm loc} > \alpha_i$, update $\alpha_i$ to $\alpha_{\rm loc}$
+	      immediately.
+	\item Otherwise, decay the viscosity, with $\dot{\alpha}_i = (\alpha_{\rm loc} - \alpha_i) / \tau_i$.
+	      This equation is integrated with the same time-step as the velocity divergence derivative
+	      uses, and is the same time-step used for the cooling.
+	\item Finally, if $\alpha_i < \alpha_{\rm min}$, $\alpha_i$ is reset to that minimal
+	      value.
+\end{enumerate}
+and for diffusion:
+\begin{enumerate}
+	\item First, find the new diffusion coefficient, $\tilde{\alpha}_i(t+dt) = 
+	      \tilde{\alpha}_i(t) + \dot{\tilde{\alpha}}_i \cdot dt$, using the
+	      same time-step as for the viscosity.
+	\item If this is outside of the bounds set for the coefficient, set it
+	      to the respective upper or lower bound.
+\end{enumerate}
+The final force loop calculates the equations of motion for the particles ready for
+their time-integration. The following quantities are calculated:
+\begin{itemize}
+	\item $\mathbf{a}_{\rm hydro} = -\sum_j m_j u_i u_j (\gamma - 1)^2 \left(
+	       \frac{f_{ij}}{\bar{P}_i} \nabla_i W_i + \frac{f_{ji}}{\bar{P}_j} \nabla_j W_j\right)$
+	\item $\mathbf{a}_{\rm visc} = - \frac{1}{8}\sum_j (\alpha_i + \alpha_j) v_{{\rm sig}, i}
+	       \mu_{ij} (b_i + b_j) (\nabla_i W_i + \nabla_j W_j)/ (\rho_i + \rho_j)$
+	\item $\dot{u}_{ij, {\rm hydro}} = \sum_j m_j u_i u_j (\gamma - 1)^2
+	       \frac{f_{ij}}{\bar{P}_i} \nabla_i W_i$
+	\item $\dot{u}_{ij, {\rm visc}} = \frac{1}{2} \a_{\rm visc} (\mathbf{v}_{ij} \cdot \tilde{\mathbf{x}}_{ij} + r^2a^2 H)$
+	\item $v_{{\rm diff}, i} = {\rm max}(0, c_i + c_j + \mathbf{v}_{ij} \cdot \tilde{\mathbf{x}}_{ij} + r^2a^2 H)$
+	\item $\dot{u}_{ij, {\rm diff}} = \frac{1}{2}(\tilde{\alpha}_i + \tilde{\alpha}_j) a^{(3\gamma - 5)/2)}
+	       v_{{\rm diff}, i} (u_i - u_j) (\nabla_i W_i + \nabla_j W_j)/ (\rho_i + \rho_j) $
+	\item $\dot{u}_i = \sum_j \dot{u}_{ij, {\rm hydro}} +  \dot{u}_{ij, {\rm visc}} + \dot{u}_{ij, {\rm diff}}$
+\end{itemize}
+where:
+\begin{itemize}
+	\item $f_{ij}$ are the variable smoothing length correction factors
+	\item $b_i$ is the Balsara switch for particle $i$
+	\item $\mu_{ij} = a^{(3\gamma - 5)/2) {\rm min}(\mathbf{v}_{ij} \cdot \tilde{\mathbf{x}}_{ij} + r^2a^2 H, 0)$
+\end{itemize}
+

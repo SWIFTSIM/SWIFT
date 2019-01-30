@@ -52,7 +52,7 @@
 /* Global profiler. */
 struct profiler prof;
 
-//  Usage string.
+/*  Usage string. */
 static const char *const swift_usage[] = {
     "swift [options] [[--] param-file]",
     "swift [options] param-file",
@@ -61,7 +61,7 @@ static const char *const swift_usage[] = {
     NULL,
 };
 
-// Function to handle multiple -P arguments.
+/* Function to handle multiple -P arguments. */
 struct cmdparams {
   const char *param[PARSER_MAX_NO_OF_PARAMS];
   int nparam;
@@ -97,7 +97,6 @@ int main(int argc, char *argv[]) {
   struct stars_props stars_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
-  struct sourceterms sourceterms;
   struct space s;
   struct spart *sparts = NULL;
   struct unit_system us;
@@ -147,12 +146,14 @@ int main(int argc, char *argv[]) {
   int restart = 0;
   int with_cosmology = 0;
   int with_external_gravity = 0;
-  int with_sourceterms = 0;
+  int with_temperature = 0;
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_stars = 0;
+  int with_star_formation = 0;
   int with_feedback = 0;
+  int with_limiter = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
@@ -174,19 +175,23 @@ int main(int argc, char *argv[]) {
   struct argparse_option options[] = {
       OPT_HELP(),
 
-      OPT_GROUP("  Simulation options:"),
-      OPT_BOOLEAN('b', "feedback", &with_feedback, "Run with stars feedback",
+      OPT_GROUP("  Simulation options:\n"),
+      OPT_BOOLEAN('b', "feedback", &with_feedback, "Run with stars feedback.",
                   NULL, 0, 0),
       OPT_BOOLEAN('c', "cosmology", &with_cosmology,
                   "Run with cosmological time integration.", NULL, 0, 0),
-      OPT_BOOLEAN('C', "cooling", &with_cooling, "Run with cooling", NULL, 0,
-                  0),
+      OPT_BOOLEAN(0, "temperature", &with_temperature,
+                  "Run with temperature calculation.", NULL, 0, 0),
+      OPT_BOOLEAN('C', "cooling", &with_cooling,
+                  "Run with cooling (also switches on --with-temperature).",
+                  NULL, 0, 0),
       OPT_BOOLEAN('D', "drift-all", &with_drift_all,
                   "Always drift all particles even the ones far from active "
                   "particles. This emulates Gadget-[23] and GIZMO's default "
                   "behaviours.",
                   NULL, 0, 0),
-      OPT_BOOLEAN('F', "sourceterms", &with_sourceterms, "", NULL, 0, 0),
+      OPT_BOOLEAN('F', "star-formation", &with_star_formation,
+                  "Run with star formation.", NULL, 0, 0),
       OPT_BOOLEAN('g', "external-gravity", &with_external_gravity,
                   "Run with an external gravitational potential.", NULL, 0, 0),
       OPT_BOOLEAN('G', "self-gravity", &with_self_gravity,
@@ -195,11 +200,13 @@ int main(int argc, char *argv[]) {
                   "Reconstruct the multipoles every time-step.", NULL, 0, 0),
       OPT_BOOLEAN('s', "hydro", &with_hydro, "Run with hydrodynamics.", NULL, 0,
                   0),
-      OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars", NULL, 0, 0),
+      OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
-                  "Run with structure finding", NULL, 0, 0),
+                  "Run with structure finding.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "limiter", &with_limiter, "Run with time-step limiter.",
+                  NULL, 0, 0),
 
-      OPT_GROUP("  Control options:"),
+      OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
       OPT_BOOLEAN('d', "dry-run", &dry_run,
@@ -283,10 +290,12 @@ int main(int argc, char *argv[]) {
 
 #ifndef SWIFT_DEBUG_TASKS
   if (dump_tasks) {
-    printf(
-        "Error: task dumping is only possible if SWIFT was configured"
-        " with the --enable-task-debugging option.\n");
-    return 1;
+    if (myrank == 0) {
+      message(
+          "WARNING: complete task dumps are only created when "
+          "configured with --enable-task-debugging.");
+      message("         Basic task statistics will be output.");
+    }
   }
 #endif
 
@@ -449,15 +458,16 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   if (with_mpole_reconstruction && nr_nodes > 1)
     error("Cannot reconstruct m-poles every step over MPI (yet).");
+  if (with_star_formation)
+    error("Can't run with star formation over MPI (yet)");
+  if (with_limiter) error("Can't run with time-step limiter over MPI (yet)");
 #endif
 
-#ifdef WITH_MPI
-  if (with_feedback) error("Can't run with feedback over MPI (yet).");
-#endif
-
-#if defined(WITH_MPI) && defined(HAVE_VELOCIRAPTOR)
-  if (with_structure_finding && nr_nodes > 1)
-    error("VEOCIraptor not yet enabled over MPI.");
+    /* Temporary early aborts for modes not supported with hand-vec. */
+#if defined(WITH_VECTORIZATION) && !defined(CHEMISTRY_NONE)
+  error(
+      "Cannot run with chemistry and hand-vectorization (yet). "
+      "Use --disable-hand-vec at configure time.");
 #endif
 
   /* Check that we can write the snapshots by testing if the output
@@ -470,8 +480,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Check that we can write the structure finding catalogues by testing if the
-   * output
-   * directory exists and is searchable and writable. */
+   * output directory exists and is searchable and writable. */
   if (with_structure_finding) {
     char stfbasename[PARSER_MAX_LINE_SIZE];
     parser_get_param_string(params, "StructureFinding:basename", stfbasename);
@@ -495,8 +504,10 @@ int main(int argc, char *argv[]) {
       message("Using METIS serial partitioning:");
     else
       message("Using ParMETIS partitioning:");
-#else
+#elif defined(HAVE_METIS)
     message("Using METIS serial partitioning:");
+#else
+    message("Non-METIS partitioning:");
 #endif
     message("  initial partitioning: %s",
             initial_partition_name[initial_partition.type]);
@@ -683,7 +694,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the stars properties */
     if (with_stars)
       stars_props_init(&stars_properties, &prog_const, &us, params,
-                       &hydro_properties);
+                       &hydro_properties, &cosmo);
     else
       bzero(&stars_properties, sizeof(struct stars_props));
 
@@ -779,7 +790,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
                Nspart, periodic, replicate, generate_gas_in_ics, with_hydro,
-               with_self_gravity, talking, dry_run);
+               with_self_gravity, with_star_formation, talking, dry_run);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -833,6 +844,18 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
+    /* Verify that we are not using basic modes incorrectly */
+    if (with_hydro && N_total[0] == 0) {
+      error(
+          "ERROR: Running with hydrodynamics but no gas particles found in the "
+          "ICs!");
+    }
+    if ((with_self_gravity || with_external_gravity) && N_total[1] == 0) {
+      error(
+          "ERROR: Running with gravity but no gravity particles found in "
+          "the ICs!");
+    }
+
     /* Verify that each particle is in it's proper cell. */
     if (talking && !dry_run) {
       int icount = 0;
@@ -848,21 +871,21 @@ int main(int argc, char *argv[]) {
     }
 
     /* Initialise the external potential properties */
+    bzero(&potential, sizeof(struct external_potential));
     if (with_external_gravity)
       potential_init(params, &prog_const, &us, &s, &potential);
     if (myrank == 0) potential_print(&potential);
 
     /* Initialise the cooling function properties */
-    if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
+    bzero(&cooling_func, sizeof(struct cooling_function_data));
+    if (with_cooling || with_temperature)
+      cooling_init(params, &us, &prog_const, &cooling_func);
     if (myrank == 0) cooling_print(&cooling_func);
 
     /* Initialise the chemistry */
+    bzero(&chemistry, sizeof(struct chemistry_global_data));
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
-
-    /* Initialise the feedback properties */
-    if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
-    if (with_sourceterms && myrank == 0) sourceterms_print(&sourceterms);
 
     /* Construct the engine policy */
     int engine_policies = ENGINE_POLICY | engine_policy_steal;
@@ -874,22 +897,21 @@ int main(int argc, char *argv[]) {
     if (with_external_gravity)
       engine_policies |= engine_policy_external_gravity;
     if (with_cosmology) engine_policies |= engine_policy_cosmology;
+    if (with_temperature) engine_policies |= engine_policy_temperature;
+    if (with_limiter) engine_policies |= engine_policy_limiter;
     if (with_cooling) engine_policies |= engine_policy_cooling;
-    if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
     if (with_stars) engine_policies |= engine_policy_stars;
+    if (with_star_formation) engine_policies |= engine_policy_star_formation;
     if (with_feedback) engine_policies |= engine_policy_feedback;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
-
-    // MATTHIEU: Temporary star formation law
-    // engine_policies |= engine_policy_star_formation;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &gravity_properties, &stars_properties,
-                &mesh, &potential, &cooling_func, &chemistry, &sourceterms);
+                &mesh, &potential, &cooling_func, &chemistry);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 
@@ -960,14 +982,6 @@ int main(int argc, char *argv[]) {
 
     /* Is there a dump before the end of the first time-step? */
     engine_check_for_dumps(&e);
-
-#ifdef HAVE_VELOCIRAPTOR
-    /* Call VELOCIraptor for the first time after the first snapshot dump. */
-    // if (e.policy & engine_policy_structure_finding) {
-    // velociraptor_init(&e);
-    // velociraptor_invoke(&e);
-    //}
-#endif
   }
 
   /* Legend */
@@ -1029,99 +1043,17 @@ int main(int argc, char *argv[]) {
     if (force_stop || (e.restart_onexit && e.step - 1 == nsteps))
       engine_dump_restarts(&e, 0, 1);
 
-#ifdef SWIFT_DEBUG_TASKS
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
-#ifdef WITH_MPI
+#ifdef SWIFT_DEBUG_TASKS
+      task_dump_all(&e, j + 1);
+#endif
 
-      /* Make sure output file is empty, only on one rank. */
-      char dumpfile[35];
-      snprintf(dumpfile, sizeof(dumpfile), "thread_info_MPI-step%d.dat", j + 1);
-      FILE *file_thread;
-      if (myrank == 0) {
-        file_thread = fopen(dumpfile, "w");
-        fclose(file_thread);
-      }
-      MPI_Barrier(MPI_COMM_WORLD);
-
-      for (int i = 0; i < nr_nodes; i++) {
-
-        /* Rank 0 decides the index of writing node, this happens one-by-one. */
-        int kk = i;
-        MPI_Bcast(&kk, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-        if (i == myrank) {
-
-          /* Open file and position at end. */
-          file_thread = fopen(dumpfile, "a");
-
-          fprintf(file_thread,
-                  " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld\n", myrank,
-                  e.tic_step, e.toc_step, e.updates, e.g_updates, e.s_updates,
-                  cpufreq);
-          int count = 0;
-          for (int l = 0; l < e.sched.nr_tasks; l++) {
-            if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
-              fprintf(file_thread,
-                      " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n",
-                      myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
-                      e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
-                      e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-                      (e.sched.tasks[l].ci != NULL)
-                          ? e.sched.tasks[l].ci->hydro.count
-                          : 0,
-                      (e.sched.tasks[l].cj != NULL)
-                          ? e.sched.tasks[l].cj->hydro.count
-                          : 0,
-                      (e.sched.tasks[l].ci != NULL)
-                          ? e.sched.tasks[l].ci->grav.count
-                          : 0,
-                      (e.sched.tasks[l].cj != NULL)
-                          ? e.sched.tasks[l].cj->grav.count
-                          : 0,
-                      e.sched.tasks[l].flags, e.sched.tasks[l].sid);
-            }
-            fflush(stdout);
-            count++;
-          }
-          fclose(file_thread);
-        }
-
-        /* And we wait for all to synchronize. */
-        MPI_Barrier(MPI_COMM_WORLD);
-      }
-
-#else
-      char dumpfile[32];
-      snprintf(dumpfile, sizeof(dumpfile), "thread_info-step%d.dat", j + 1);
-      FILE *file_thread;
-      file_thread = fopen(dumpfile, "w");
-      /* Add some information to help with the plots */
-      fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n",
-              -2, -1, -1, 1, e.tic_step, e.toc_step, e.updates, e.g_updates,
-              e.s_updates, 0, cpufreq);
-      for (int l = 0; l < e.sched.nr_tasks; l++) {
-        if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
-          fprintf(
-              file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
-              e.sched.tasks[l].rid, e.sched.tasks[l].type,
-              e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
-              e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-              (e.sched.tasks[l].ci == NULL) ? 0
-                                            : e.sched.tasks[l].ci->hydro.count,
-              (e.sched.tasks[l].cj == NULL) ? 0
-                                            : e.sched.tasks[l].cj->hydro.count,
-              (e.sched.tasks[l].ci == NULL) ? 0
-                                            : e.sched.tasks[l].ci->grav.count,
-              (e.sched.tasks[l].cj == NULL) ? 0
-                                            : e.sched.tasks[l].cj->grav.count,
-              e.sched.tasks[l].sid);
-        }
-      }
-      fclose(file_thread);
-#endif  // WITH_MPI
+      /* Generate the task statistics. */
+      char dumpfile[40];
+      snprintf(dumpfile, 40, "thread_stats-step%d.dat", j + 1);
+      task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
     }
-#endif  // SWIFT_DEBUG_TASKS
 
 #ifdef SWIFT_DEBUG_THREADPOOL
     /* Dump the task data using the given frequency. */
@@ -1180,15 +1112,18 @@ int main(int argc, char *argv[]) {
     logger_log_all(e.logger, &e);
     engine_dump_index(&e);
 #endif
-    // write a final snapshot with logger, in order to facilitate a restart
+
+#ifdef HAVE_VELOCIRAPTOR
+    if (with_structure_finding && e.snapshot_invoke_stf)
+      velociraptor_invoke(&e, /*linked_with_snap=*/1);
+#endif
+
+    /* write a final snapshot */
     engine_dump_snapshot(&e);
 
 #ifdef HAVE_VELOCIRAPTOR
-    /* Call VELOCIraptor at the end of the run to find groups. */
-    if (e.policy & engine_policy_structure_finding) {
-      velociraptor_init(&e);
-      velociraptor_invoke(&e);
-    }
+    if (with_structure_finding && e.snapshot_invoke_stf)
+      free(e.s->gpart_group_data);
 #endif
   }
 
@@ -1214,7 +1149,7 @@ int main(int argc, char *argv[]) {
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
-  if (with_cooling) cooling_clean(&cooling_func);
+  if (with_cooling || with_temperature) cooling_clean(&cooling_func);
   engine_clean(&e);
   free(params);
 
